@@ -10,21 +10,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
 
-Map<String, dynamic> _spot({
-  required String call,
-  double? freq,
-  String? band,
-  String? mode,
-  List<Map<String, dynamic>>? refs,
-}) =>
-    {
-      'their': {'call': call},
-      'freq': ?freq,
-      'band': ?band,
-      'mode': ?mode,
-      'refs': refs ?? const <Map<String, dynamic>>[],
-      'spot': {'timeInMillis': 1000, 'source': 'test'},
-    };
+Map<String, dynamic> _spot({required String call, double? freq, String? band, String? mode, List<Map<String, dynamic>>? refs}) => {
+  'their': {'call': call},
+  'freq': ?freq,
+  'band': ?band,
+  'mode': ?mode,
+  'refs': refs ?? const <Map<String, dynamic>>[],
+  'spot': {'timeInMillis': 1000, 'source': 'test'},
+};
 
 ({List<String> notices, List<String> alerts}) _dupe() => (notices: const [], alerts: const ['duplicate']);
 ({List<String> notices, List<String> alerts}) _notice(String key) => (notices: [key], alerts: const []);
@@ -35,12 +28,23 @@ void main() {
     // operator on the same band/mode/park is one question, and asking it twice
     // costs a scoresheet copy per extra spot on a busy board.
     test('the same operator on the same band, mode and refs asks once', () {
-      final a = _spot(call: 'K1ABC', band: '20m', mode: 'SSB', refs: [
-        {'type': 'pota', 'ref': 'US-0001'},
-      ]);
-      final b = _spot(call: 'K1ABC', freq: 14285.5, band: '20m', mode: 'SSB', refs: [
-        {'type': 'pota', 'ref': 'US-0001'},
-      ]);
+      final a = _spot(
+        call: 'K1ABC',
+        band: '20m',
+        mode: 'SSB',
+        refs: [
+          {'type': 'pota', 'ref': 'US-0001'},
+        ],
+      );
+      final b = _spot(
+        call: 'K1ABC',
+        freq: 14285.5,
+        band: '20m',
+        mode: 'SSB',
+        refs: [
+          {'type': 'pota', 'ref': 'US-0001'},
+        ],
+      );
       expect(spotCandidateKey('K1ABC', a), spotCandidateKey('K1ABC', b));
     });
 
@@ -56,31 +60,49 @@ void main() {
     // into one key would strike a spot the operator has not worked on that band.
     test('band and mode each split the question', () {
       final base = _spot(call: 'K1ABC', band: '20m', mode: 'SSB');
-      expect(spotCandidateKey('K1ABC', base),
-          isNot(spotCandidateKey('K1ABC', _spot(call: 'K1ABC', band: '40m', mode: 'SSB'))));
-      expect(spotCandidateKey('K1ABC', base),
-          isNot(spotCandidateKey('K1ABC', _spot(call: 'K1ABC', band: '20m', mode: 'CW'))));
+      expect(spotCandidateKey('K1ABC', base), isNot(spotCandidateKey('K1ABC', _spot(call: 'K1ABC', band: '40m', mode: 'SSB'))));
+      expect(spotCandidateKey('K1ABC', base), isNot(spotCandidateKey('K1ABC', _spot(call: 'K1ABC', band: '20m', mode: 'CW'))));
     });
 
     // Activity scorers judge per hunted reference, so a station spotted at two
     // parks is two questions with two answers.
     test('the reference set splits the question, regardless of its order', () {
-      final one = _spot(call: 'K1ABC', band: '20m', mode: 'SSB', refs: [
-        {'type': 'pota', 'ref': 'US-0001'},
-      ]);
-      final two = _spot(call: 'K1ABC', band: '20m', mode: 'SSB', refs: [
-        {'type': 'pota', 'ref': 'US-0002'},
-      ]);
+      final one = _spot(
+        call: 'K1ABC',
+        band: '20m',
+        mode: 'SSB',
+        refs: [
+          {'type': 'pota', 'ref': 'US-0001'},
+        ],
+      );
+      final two = _spot(
+        call: 'K1ABC',
+        band: '20m',
+        mode: 'SSB',
+        refs: [
+          {'type': 'pota', 'ref': 'US-0002'},
+        ],
+      );
       expect(spotCandidateKey('K1ABC', one), isNot(spotCandidateKey('K1ABC', two)));
 
-      final forwards = _spot(call: 'K1ABC', band: '20m', mode: 'SSB', refs: [
-        {'type': 'pota', 'ref': 'US-0001'},
-        {'type': 'pota', 'ref': 'US-0002'},
-      ]);
-      final backwards = _spot(call: 'K1ABC', band: '20m', mode: 'SSB', refs: [
-        {'type': 'pota', 'ref': 'US-0002'},
-        {'type': 'pota', 'ref': 'US-0001'},
-      ]);
+      final forwards = _spot(
+        call: 'K1ABC',
+        band: '20m',
+        mode: 'SSB',
+        refs: [
+          {'type': 'pota', 'ref': 'US-0001'},
+          {'type': 'pota', 'ref': 'US-0002'},
+        ],
+      );
+      final backwards = _spot(
+        call: 'K1ABC',
+        band: '20m',
+        mode: 'SSB',
+        refs: [
+          {'type': 'pota', 'ref': 'US-0002'},
+          {'type': 'pota', 'ref': 'US-0001'},
+        ],
+      );
       expect(spotCandidateKey('K1ABC', forwards), spotCandidateKey('K1ABC', backwards));
     });
   });
@@ -158,9 +180,12 @@ void main() {
     // hides the contact worth making, which is the failure this whole function
     // is written to avoid.
     test('a notice from another scorer un-strikes the spot', () {
-      final flags = spotDisplayFlags(worked, scores: {
-        spotCandidateKey('K1ABC', worked): (notices: const ['newRef'], alerts: const ['duplicate']),
-      });
+      final flags = spotDisplayFlags(
+        worked,
+        scores: {
+          spotCandidateKey('K1ABC', worked): (notices: const ['newRef'], alerts: const ['duplicate']),
+        },
+      );
       expect(flags.worked, isFalse);
       expect(flags.notices, {'newRef'});
     });
@@ -170,10 +195,10 @@ void main() {
     // worth flagging on the row.
     test('notices merge across a multi-op spot\'s operators', () {
       final multi = _spot(call: 'K1ABC,W2XYZ', band: '20m', mode: 'SSB');
-      final flags = spotDisplayFlags(multi, scores: {
-        spotCandidateKey('K1ABC', multi): _notice('newBand'),
-        spotCandidateKey('W2XYZ', multi): _notice('newMult'),
-      });
+      final flags = spotDisplayFlags(
+        multi,
+        scores: {spotCandidateKey('K1ABC', multi): _notice('newBand'), spotCandidateKey('W2XYZ', multi): _notice('newMult')},
+      );
       expect(flags.notices, {'newBand', 'newMult'});
     });
 
@@ -203,7 +228,11 @@ void main() {
     // by the SDK type but nothing enforces it across the bridge). It must not
     // strike itself through on the strength of having no operators to check.
     test('a call-less spot is neither worked nor self', () {
-      final flags = spotDisplayFlags(_spot(call: '', band: '20m'), scores: const {}, ourCall: 'K1ABC');
+      final flags = spotDisplayFlags(
+        _spot(call: '', band: '20m'),
+        scores: const {},
+        ourCall: 'K1ABC',
+      );
       expect(flags.worked, isFalse);
       expect(flags.isSelf, isFalse);
     });

@@ -50,10 +50,7 @@ class _TestGroup extends SettingsGroup {
   @override
   Future<List<Map<String, dynamic>>> buildElements() async => [
     for (final el in elements)
-      if (el['key'] is String && committed.containsKey(el['key']))
-        {...el, 'value': committed[el['key']]}
-      else
-        el,
+      if (el['key'] is String && committed.containsKey(el['key'])) {...el, 'value': committed[el['key']]} else el,
   ];
 
   @override
@@ -68,18 +65,17 @@ SettingsCatalogEntry _entry(
   dynamic value = false,
   String? description,
   List<Map<String, dynamic>> options = const [],
-}) =>
-    SettingsCatalogEntry(
-      key: key,
-      bareKey: key,
-      label: label ?? key,
-      description: description,
-      aliases: aliases,
-      section: 'Section',
-      fieldType: fieldType,
-      value: value,
-      options: options,
-    );
+}) => SettingsCatalogEntry(
+  key: key,
+  bareKey: key,
+  label: label ?? key,
+  description: description,
+  aliases: aliases,
+  section: 'Section',
+  fieldType: fieldType,
+  value: value,
+  options: options,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -97,20 +93,14 @@ void main() {
 
   group('catalog reachability follows the settings screen', () {
     test('a devMode field is absent until developer mode is on', () async {
-      const el = {
-        'type': 'field',
-        'fieldType': 'checkbox',
-        'key': 'secretKnob',
-        'label': 'Secret Knob',
-        'value': false,
-        'devMode': true,
-      };
+      const el = {'type': 'field', 'fieldType': 'checkbox', 'key': 'secretKnob', 'label': 'Secret Knob', 'value': false, 'devMode': true};
 
       final off = await servicesWith([el]);
       expect(
         (await buildSettingsCatalog(off, developerMode: false)).map((e) => e.key),
         isNot(contains('secretKnob')),
-        reason: 'FormRenderer hides devMode elements entirely; a command that still reached one would be '
+        reason:
+            'FormRenderer hides devMode elements entirely; a command that still reached one would be '
             'changing a setting the user cannot see or find',
       );
 
@@ -153,8 +143,7 @@ void main() {
           'aliases': ['zeroBeat'],
         },
       ]);
-      final entry = (await buildSettingsCatalog(services, developerMode: false))
-          .firstWhere((e) => e.key == 'avoidZeroBeat');
+      final entry = (await buildSettingsCatalog(services, developerMode: false)).firstWhere((e) => e.key == 'avoidZeroBeat');
       expect(entry.aliases, contains('zeroBeat'));
     });
   });
@@ -191,7 +180,8 @@ void main() {
           expect(
             elementSearchScore(element!, query),
             isNotNull,
-            reason: 'SET "$query" resolves ${match.entry.key}, but searching "$query" in Settings would not '
+            reason:
+                'SET "$query" resolves ${match.entry.key}, but searching "$query" in Settings would not '
                 'list it — the operator would be told about a setting they cannot then find',
           );
         }
@@ -212,12 +202,7 @@ void main() {
     });
 
     test('a query with punctuation or spacing finds the setting either way', () {
-      const element = {
-        'type': 'field',
-        'fieldType': 'checkbox',
-        'key': 'avoidZeroBeat',
-        'label': 'Avoid Zero Beat',
-      };
+      const element = {'type': 'field', 'fieldType': 'checkbox', 'key': 'avoidZeroBeat', 'label': 'Avoid Zero Beat'};
       for (final query in ['zerobeat', 'Zero Beat', 'zero-beat']) {
         expect(elementSearchScore(element, query), isNotNull, reason: query);
       }
@@ -227,12 +212,7 @@ void main() {
       // An empty query means "no filter" and matches all. A query that merely
       // normalizes away is not the same thing: treating it as one would show
       // every setting for `-` or `/`, with the section chrome stripped.
-      const element = {
-        'type': 'field',
-        'fieldType': 'checkbox',
-        'key': 'someToggle',
-        'label': 'Some Toggle',
-      };
+      const element = {'type': 'field', 'fieldType': 'checkbox', 'key': 'someToggle', 'label': 'Some Toggle'};
       expect(elementSearchScore(element, '-'), isNull);
       expect(elementSearchScore(element, ''), 0, reason: 'an empty query really is "no filter"');
     });
@@ -253,8 +233,11 @@ void main() {
         'description': 'Shows the grid square for each contact',
       };
       expect(elementSearchScore(element, 'grid square'), isNotNull);
-      expect(elementSearchScore(element, 'thegrid'), isNull,
-          reason: 'a normalized description would join "the" and "grid" into a match that is not really there');
+      expect(
+        elementSearchScore(element, 'thegrid'),
+        isNull,
+        reason: 'a normalized description would join "the" and "grid" into a match that is not really there',
+      );
     });
   });
 
@@ -264,35 +247,27 @@ void main() {
       // in order. `zrbt` is not a substring of anything here.
       final entries = [_entry('avoidZeroBeat', label: 'Avoid Zero Beat', value: true)];
       expect(rankSettings('zrbt', entries).single.entry.key, 'avoidZeroBeat');
-      expect(rankSettings('dfrcw', [
-        _entry('defaultReportCW', label: 'Default Report CW', fieldType: 'text', value: '599'),
-      ]).single.entry.key, 'defaultReportCW');
+      expect(
+        rankSettings('dfrcw', [_entry('defaultReportCW', label: 'Default Report CW', fieldType: 'text', value: '599')]).single.entry.key,
+        'defaultReportCW',
+      );
     });
 
     test('order still matters — a subsequence is not a bag of letters', () {
       final entries = [_entry('avoidZeroBeat', label: 'Avoid Zero Beat', value: true)];
-      expect(rankSettings('tbz', entries), isEmpty,
-          reason: 'the same letters in the wrong order must not match, or the ranking is just an anagram check');
+      expect(rankSettings('tbz', entries), isEmpty, reason: 'the same letters in the wrong order must not match, or the ranking is just an anagram check');
     });
 
     test('a tight run beats the same letters scattered', () {
-      final entries = [
-        _entry('showDeletedQSOs', label: 'Show Deleted QSOs'),
-        _entry('sentExchange', label: 'Sent Exchange', fieldType: 'text', value: ''),
-      ];
+      final entries = [_entry('showDeletedQSOs', label: 'Show Deleted QSOs'), _entry('sentExchange', label: 'Sent Exchange', fieldType: 'text', value: '')];
       final ranked = rankSettings('sent', entries);
-      expect(ranked.first.entry.key, 'sentExchange',
-          reason: '"Show DElemeNTed"-style scatter matches, but must never outrank the word typed in full');
+      expect(ranked.first.entry.key, 'sentExchange', reason: '"Show DElemeNTed"-style scatter matches, but must never outrank the word typed in full');
     });
 
     test('a match at a word boundary beats one buried mid-word', () {
-      final entries = [
-        _entry('useCompactFileNames', label: 'Use Compact File Names'),
-        _entry('namedThing', label: 'Named Thing'),
-      ];
+      final entries = [_entry('useCompactFileNames', label: 'Use Compact File Names'), _entry('namedThing', label: 'Named Thing')];
       final ranked = rankSettings('name', entries);
-      expect(ranked.first.entry.key, 'namedThing',
-          reason: 'a name STARTING with the query is what the operator most likely meant');
+      expect(ranked.first.entry.key, 'namedThing', reason: 'a name STARTING with the query is what the operator most likely meant');
     });
 
     test('an alias outranks a longer name that merely contains the query', () {
@@ -304,9 +279,13 @@ void main() {
       ];
       final ranked = rankSettings('ZEROBEAT', entries);
       expect(ranked.first.entry.key, 'avoidZeroBeat');
-      expect(ranked.first.score, greaterThan(ranked[1].score),
-          reason: 'an exact alias must win outright, not merely sort ahead — an equal score makes the command stop '
-              'and ask instead of acting');
+      expect(
+        ranked.first.score,
+        greaterThan(ranked[1].score),
+        reason:
+            'an exact alias must win outright, not merely sort ahead — an equal score makes the command stop '
+            'and ask instead of acting',
+      );
     });
 
     test('the shorter of two equally good names wins', () {
@@ -315,8 +294,7 @@ void main() {
         _entry('defaultReport', label: 'Default Report', fieldType: 'text', value: '59'),
       ];
       final ranked = rankSettings('REPORT', entries);
-      expect(ranked.first.entry.key, 'defaultReport',
-          reason: 'both match the same way, so the one with least left over is the likelier target');
+      expect(ranked.first.entry.key, 'defaultReport', reason: 'both match the same way, so the one with least left over is the likelier target');
     });
 
     test('two names that score identically still tie, so the command can ask', () {
@@ -325,10 +303,7 @@ void main() {
       // (in the real catalog "numbers" ties showNumbersRow with showQsoNumbers)
       // and they are what stops a value being written to a setting the query
       // did not really name.
-      final entries = [
-        _entry('alphaMode', label: 'Alpha Mode'),
-        _entry('alphaCode', label: 'Alpha Code'),
-      ];
+      final entries = [_entry('alphaMode', label: 'Alpha Mode'), _entry('alphaCode', label: 'Alpha Code')];
       final ranked = rankSettings('alpha', entries);
       expect(ranked.length, 2);
       expect(ranked[0].score, ranked[1].score);
@@ -347,12 +322,14 @@ void main() {
     test('a description is matched as a substring, never as a subsequence', () {
       // A subsequence of a whole sentence matches almost anything, which is
       // why VS Code fuzzy-matches file names and not file contents.
-      final entries = [
-        _entry('somethingElse', label: 'Something Else', description: 'controls the grid square shown'),
-      ];
-      expect(rankSettings('ctgs', entries), isEmpty,
-          reason: 'those letters are a subsequence of the description, and matching them would make every '
-              'setting with prose match every query');
+      final entries = [_entry('somethingElse', label: 'Something Else', description: 'controls the grid square shown')];
+      expect(
+        rankSettings('ctgs', entries),
+        isEmpty,
+        reason:
+            'those letters are a subsequence of the description, and matching them would make every '
+            'setting with prose match every query',
+      );
     });
 
     test('SHOW/HIDE reach only visibility toggles, and match with the prefix stripped', () {
@@ -362,9 +339,13 @@ void main() {
       ];
 
       final asShow = rankSettings('GRID', entries, kind: SettingCommandKind.show);
-      expect(asShow.map((m) => m.entry.key), ['showGridField'],
-          reason: 'gridSquareFormat is not a visibility toggle, so SHOW must not offer it — that narrowing is what '
-              'makes SHOW GRID unambiguous where SET GRID is not');
+      expect(
+        asShow.map((m) => m.entry.key),
+        ['showGridField'],
+        reason:
+            'gridSquareFormat is not a visibility toggle, so SHOW must not offer it — that narrowing is what '
+            'makes SHOW GRID unambiguous where SET GRID is not',
+      );
 
       final asSet = rankSettings('GRID', entries, kind: SettingCommandKind.set);
       expect(asSet.length, 2, reason: 'SET searches everything');
@@ -381,9 +362,13 @@ void main() {
   group('SHOW/HIDE polarity', () {
     test('a hide-named toggle is inverted, so the verb means what it says', () {
       expect(_entry('showNumbersRow', label: 'Show Numbers Row').isInverted, isFalse);
-      expect(_entry('hideDupes', label: 'Hide Dupes').isInverted, isTrue,
-          reason: 'HIDE DUPES must write true to hideDupes but false to a showDupes — reading the polarity off the '
-              'name is the only thing keeping the two consistent for the operator');
+      expect(
+        _entry('hideDupes', label: 'Hide Dupes').isInverted,
+        isTrue,
+        reason:
+            'HIDE DUPES must write true to hideDupes but false to a showDupes — reading the polarity off the '
+            'name is the only thing keeping the two consistent for the operator',
+      );
     });
 
     test('a non-checkbox named "show…" is not a visibility toggle', () {
@@ -400,13 +385,7 @@ void main() {
     // tests can't tell the polarity logic from a constant `false`. This is
     // where inversion is actually exercised — through the same entry point
     // the host call uses.
-    const hideDupes = {
-      'type': 'field',
-      'fieldType': 'checkbox',
-      'key': 'hideDupes',
-      'label': 'Hide Dupes',
-      'value': false,
-    };
+    const hideDupes = {'type': 'field', 'fieldType': 'checkbox', 'key': 'hideDupes', 'label': 'Hide Dupes', 'value': false};
 
     test('HIDE writes true to a hide-named toggle, and SHOW writes false', () async {
       final services = await servicesWith([hideDupes]);
@@ -444,20 +423,13 @@ void main() {
       // "THEME DARK" are the same shape — only the catalog can say that the
       // first three words are a name here and the first one is a name there.
       final services = await servicesWith([
-        {
-          'type': 'field',
-          'fieldType': 'checkbox',
-          'key': 'avoidZeroBeat',
-          'label': 'Avoid Zero Beat',
-          'value': false,
-        },
+        {'type': 'field', 'fieldType': 'checkbox', 'key': 'avoidZeroBeat', 'label': 'Avoid Zero Beat', 'value': false},
       ]);
 
       final result = await searchSettingsForCommand(services, args: 'AVOID ZERO BEAT Y');
       expect(result['key'], 'avoidZeroBeat');
       expect(result['newValue'], isTrue, reason: 'the trailing Y is the value, everything before it the name');
-      expect(result['query'], 'AVOID ZERO BEAT',
-          reason: 'the message quotes the name it settled on, not the whole of what was typed');
+      expect(result['query'], 'AVOID ZERO BEAT', reason: 'the message quotes the name it settled on, not the whole of what was typed');
     });
 
     test('a longer name wins over a shorter one whose leftover would still parse', () async {
@@ -490,8 +462,7 @@ void main() {
         {'type': 'field', 'fieldType': 'checkbox', 'key': 'wobbleBravoo', 'label': 'Wobble Bravoo', 'value': false},
       ]);
       final result = await searchSettingsForCommand(services, args: 'wobble Y');
-      expect(result['ambiguous'], isTrue,
-          reason: 'both names begin with the query and matched it the same way');
+      expect(result['ambiguous'], isTrue, reason: 'both names begin with the query and matched it the same way');
     });
 
     test('a name that IS the query is not a tie with one that merely starts with it', () async {
@@ -500,10 +471,22 @@ void main() {
       // length tie-breaker separates them, so a pure score comparison calls
       // this ambiguous and refuses to write. `SET REPORT 59` must still act.
       final services = await servicesWith([
-        {'type': 'field', 'fieldType': 'text', 'key': 'wibbleReport', 'label': 'Wibble Report',
-          'value': '59', 'aliases': ['wreport']},
-        {'type': 'field', 'fieldType': 'text', 'key': 'wibbleReportCW', 'label': 'Wibble Report CW',
-          'value': '599', 'aliases': ['wreportCW']},
+        {
+          'type': 'field',
+          'fieldType': 'text',
+          'key': 'wibbleReport',
+          'label': 'Wibble Report',
+          'value': '59',
+          'aliases': ['wreport'],
+        },
+        {
+          'type': 'field',
+          'fieldType': 'text',
+          'key': 'wibbleReportCW',
+          'label': 'Wibble Report CW',
+          'value': '599',
+          'aliases': ['wreportCW'],
+        },
       ]);
       final result = await searchSettingsForCommand(services, args: 'wreport 5nn');
       expect(result['key'], 'wibbleReport');
@@ -529,15 +512,15 @@ void main() {
       // many. `SET <name>` ranks twice (the debounced preview, then the
       // `execute: true` pass), so an unbroken tie could preview one setting
       // and write another, with the confirmation naming the first.
-      final entries = [
-        for (var i = 0; i < 40; i++)
-          _entry('zzTie${i.toString().padLeft(2, '0')}', label: 'ZZ Tie ${i.toString().padLeft(2, '0')}'),
-      ];
+      final entries = [for (var i = 0; i < 40; i++) _entry('zzTie${i.toString().padLeft(2, '0')}', label: 'ZZ Tie ${i.toString().padLeft(2, '0')}')];
       final first = rankSettings('zztie', entries).map((m) => m.entry.key).toList();
       expect(first.length, 40, reason: 'past the threshold where Dart stops being stable');
       for (var run = 0; run < 5; run++) {
-        expect(rankSettings('zztie', entries).map((m) => m.entry.key).toList(), first,
-            reason: 'run $run disagreed — the order must not depend on the sort implementation');
+        expect(
+          rankSettings('zztie', entries).map((m) => m.entry.key).toList(),
+          first,
+          reason: 'run $run disagreed — the order must not depend on the sort implementation',
+        );
       }
       expect(first.first, 'zzTie00', reason: 'ties fall back to catalog order');
     });
@@ -549,14 +532,10 @@ void main() {
       // compare their numbers.
       final entries = [
         _entry('somethingElse', label: 'Something Else', description: 'mentions ab here'),
-        _entry(
-          'aVeryLongSettingNameIndeedForTesting',
-          label: 'A Very Long Setting Name Indeed For Testing b',
-        ),
+        _entry('aVeryLongSettingNameIndeedForTesting', label: 'A Very Long Setting Name Indeed For Testing b'),
       ];
       final ranked = rankSettings('ab', entries);
-      expect(ranked.first.entry.key, 'aVeryLongSettingNameIndeedForTesting',
-          reason: 'a weak NAME match still beats a description mention');
+      expect(ranked.first.entry.key, 'aVeryLongSettingNameIndeedForTesting', reason: 'a weak NAME match still beats a description mention');
       expect(ranked.first.viaDescription, isFalse);
     });
 
@@ -585,8 +564,7 @@ void main() {
       services.settingsRegistry.register(group);
 
       expect(await applySettingCommand(services, key: 'hideDupes', value: true), isNull);
-      expect(group.committed, {'hideDupes': true},
-          reason: 'the command must reuse the settings form\'s own commit path, not write storage directly');
+      expect(group.committed, {'hideDupes': true}, reason: 'the command must reuse the settings form\'s own commit path, not write storage directly');
     });
 
     test('a write to a setting that has since vanished reports, rather than passing as done', () async {
@@ -634,10 +612,15 @@ void main() {
     });
 
     test('a select matches an option by its label, not just its stored value', () {
-      final entry = _entry('themeMode', fieldType: 'select', value: 'system', options: [
-        {'label': 'System', 'value': 'system'},
-        {'label': 'Dark', 'value': 'dark'},
-      ]);
+      final entry = _entry(
+        'themeMode',
+        fieldType: 'select',
+        value: 'system',
+        options: [
+          {'label': 'System', 'value': 'system'},
+          {'label': 'Dark', 'value': 'dark'},
+        ],
+      );
       final parsed = parseSettingValue(entry, 'dark') as ParsedSettingValue;
       expect(parsed.value, 'dark');
       expect(parsed.label, 'Dark', reason: 'the confirmation should read back the option the user recognizes');
@@ -646,18 +629,28 @@ void main() {
     test('a select given nothing usable does not silently take the first option', () {
       // `startsWith('')` is true of every option, so an empty term would write
       // whichever happened to be declared first.
-      final entry = _entry('themeMode', fieldType: 'select', value: 'system', options: [
-        {'label': 'System', 'value': 'system'},
-        {'label': 'Dark', 'value': 'dark'},
-      ]);
+      final entry = _entry(
+        'themeMode',
+        fieldType: 'select',
+        value: 'system',
+        options: [
+          {'label': 'System', 'value': 'system'},
+          {'label': 'Dark', 'value': 'dark'},
+        ],
+      );
       expect(parseSettingValue(entry, '---'), isA<UnparsedSettingValue>());
     });
 
     test('a select rejects an unknown option and names the real ones', () {
-      final entry = _entry('themeMode', fieldType: 'select', value: 'system', options: [
-        {'label': 'System', 'value': 'system'},
-        {'label': 'Dark', 'value': 'dark'},
-      ]);
+      final entry = _entry(
+        'themeMode',
+        fieldType: 'select',
+        value: 'system',
+        options: [
+          {'label': 'System', 'value': 'system'},
+          {'label': 'Dark', 'value': 'dark'},
+        ],
+      );
       final parsed = parseSettingValue(entry, 'purple');
       expect(parsed, isA<UnparsedSettingValue>());
       expect((parsed as UnparsedSettingValue).expected, contains('Dark'));
@@ -665,8 +658,11 @@ void main() {
 
     test("a secret's value is never echoed back", () {
       final entry = _entry('apiKey', fieldType: 'secret', value: 'hunter2');
-      expect(settingValueLabel(entry), isNot(contains('hunter2')),
-          reason: 'this string lands in a describe preview that sits on screen while the operator types');
+      expect(
+        settingValueLabel(entry),
+        isNot(contains('hunter2')),
+        reason: 'this string lands in a describe preview that sits on screen while the operator types',
+      );
     });
   });
 }

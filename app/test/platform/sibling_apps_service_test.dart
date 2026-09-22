@@ -54,9 +54,7 @@ void main() {
   test('every iOS probe is a scheme the plist lets this app ask about', () {
     // canOpenURL answers false for a scheme missing from
     // LSApplicationQueriesSchemes whether or not the app is installed.
-    final queried = RegExp(r'<key>LSApplicationQueriesSchemes</key>\s*<array>(.*?)</array>', dotAll: true)
-        .firstMatch(ios)!
-        .group(1)!;
+    final queried = RegExp(r'<key>LSApplicationQueriesSchemes</key>\s*<array>(.*?)</array>', dotAll: true).firstMatch(ios)!.group(1)!;
     final schemes = RegExp(r'<string>([^<]+)</string>').allMatches(queried).map((m) => m.group(1)!).toSet();
     expect(schemes, containsAll(iosSiblingCatalog.map((a) => a.id)));
   });

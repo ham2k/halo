@@ -24,10 +24,14 @@ void main() {
   /// Both commands are operation-scoped, so the operation goes in — without
   /// it every one of them answers with `error` instead.
   Future<Map<String, dynamic>?> interpret(String input, {bool withOperation = true}) async {
-    final entries = await extensions.host!.invokeHookAll('command', method: 'interpret', args: {
-      'input': input,
-      if (withOperation) 'operation': {'stationCall': 'K2SUL'},
-    });
+    final entries = await extensions.host!.invokeHookAll(
+      'command',
+      method: 'interpret',
+      args: {
+        'input': input,
+        if (withOperation) 'operation': {'stationCall': 'K2SUL'},
+      },
+    );
     for (final entry in entries) {
       if (entry['ok'] == true && entry['value'] is Map) {
         return (entry['value'] as Map).cast<String, dynamic>();

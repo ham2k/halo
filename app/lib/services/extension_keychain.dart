@@ -17,11 +17,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'error_reporting_service.dart';
 
 /// Every shape a key `<extension>` may own, as a prefix that ends in `_`.
-List<String> _prefixesFor(String key) => [
-      'settingsPanel_secret_${key}_',
-      'account_creds_${key}_',
-      'account_session_${key}_',
-    ];
+List<String> _prefixesFor(String key) => ['settingsPanel_secret_${key}_', 'account_creds_${key}_', 'account_session_${key}_'];
 
 /// The two that are the bare key rather than a prefix of one.
 List<String> _exactFor(String key) => ['account_creds_$key', 'account_session_$key'];
@@ -29,8 +25,7 @@ List<String> _exactFor(String key) => ['account_creds_$key', 'account_session_$k
 /// Whether [storedKey] is an account credential or session, which carry
 /// per-account keychain options and so may not be read or written with the
 /// instance defaults.
-bool _isAccountItem(String storedKey) =>
-    storedKey.startsWith('account_creds_') || storedKey.startsWith('account_session_');
+bool _isAccountItem(String storedKey) => storedKey.startsWith('account_creds_') || storedKey.startsWith('account_session_');
 
 /// Copies every keychain item [from] owned onto [to], leaving [from] alone.
 ///
@@ -157,15 +152,9 @@ String? _renamed(String storedKey, {required String from, required String to}) {
 /// [deleteOne] is how an item is removed when the keychain cannot be
 /// enumerated, with the options its writer used — the same fallback, and the
 /// same limit, as the copy above.
-Future<void> forgetExtensionKeychainItems(
-  FlutterSecureStorage storage,
-  String key, {
-  required Future<void> Function(String name) deleteOne,
-}) async {
+Future<void> forgetExtensionKeychainItems(FlutterSecureStorage storage, String key, {required Future<void> Function(String name) deleteOne}) async {
   final stored = await _readAllOrNull(storage, context: 'extension-uninstall:secrets');
-  final names = stored == null
-      ? _exactFor(key)
-      : stored.keys.where((k) => _prefixesFor(key).any(k.startsWith) || _exactFor(key).contains(k)).toList();
+  final names = stored == null ? _exactFor(key) : stored.keys.where((k) => _prefixesFor(key).any(k.startsWith) || _exactFor(key).contains(k)).toList();
   for (final name in names) {
     try {
       // Through the caller where enumeration failed, because an item written

@@ -67,26 +67,18 @@ class AccountItems {
   /// When a failure was recorded (real millis), null for a successful read.
   final int? failedAtMillis;
 
-  const AccountItems({required this.creds, required this.session})
-      : unavailable = false,
-        failedAtMillis = null;
-  AccountItems.unreadable()
-      : creds = null,
-        session = null,
-        unavailable = true,
-        failedAtMillis = realNowMillis();
+  const AccountItems({required this.creds, required this.session}) : unavailable = false, failedAtMillis = null;
+  AccountItems.unreadable() : creds = null, session = null, unavailable = true, failedAtMillis = realNowMillis();
 
   /// A failure older than [AccountContextCache.unreadableRetry]; a
   /// successful read never expires.
-  bool get expired =>
-      failedAtMillis != null &&
-      realNowMillis() - failedAtMillis! >= AccountContextCache.unreadableRetry.inMilliseconds;
+  bool get expired => failedAtMillis != null && realNowMillis() - failedAtMillis! >= AccountContextCache.unreadableRetry.inMilliseconds;
 
   /// The `getAccount` answer: `unavailable` is only ever present when true,
   /// so an extension telling "signed out" from "could not look" keys on it.
   Map<String, dynamic> toHostResult() => {
-        'credentials': creds != null ? jsonDecode(creds!) : const <String, dynamic>{},
-        'session': session != null ? jsonDecode(session!) : const <String, dynamic>{},
-        if (unavailable) 'unavailable': true,
-      };
+    'credentials': creds != null ? jsonDecode(creds!) : const <String, dynamic>{},
+    'session': session != null ? jsonDecode(session!) : const <String, dynamic>{},
+    if (unavailable) 'unavailable': true,
+  };
 }

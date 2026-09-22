@@ -76,12 +76,7 @@ extension QsoLocationSourceProximity on QsoLocationSource {
 /// square instead would throw away the precision this whole path exists to
 /// carry. Callers holding raw JSON parse it with [locationFromLatLon] first,
 /// so "is this a usable coordinate?" is answered in one place.
-({GridLocation location, QsoLocationSource source})? locationForQsoInfoWithSource({
-  GridLocation? exact,
-  String? grid,
-  String? entityPrefix,
-  String? state,
-}) {
+({GridLocation location, QsoLocationSource source})? locationForQsoInfoWithSource({GridLocation? exact, String? grid, String? entityPrefix, String? state}) {
   if (exact != null) return (location: exact, source: QsoLocationSource.exact);
   if (grid != null && !isPlaceholderGrid(grid)) {
     if (gridToLocation(grid) case final location?) {
@@ -103,12 +98,7 @@ extension QsoLocationSourceProximity on QsoLocationSource {
 
 /// The location alone (see [locationForQsoInfoWithSource]) — kept for callers
 /// (e.g. the map) that don't need the source.
-GridLocation? locationForQsoInfo({
-  GridLocation? exact,
-  String? grid,
-  String? entityPrefix,
-  String? state,
-}) =>
+GridLocation? locationForQsoInfo({GridLocation? exact, String? grid, String? entityPrefix, String? state}) =>
     locationForQsoInfoWithSource(exact: exact, grid: grid, entityPrefix: entityPrefix, state: state)?.location;
 
 /// Points along the great circle from [start] to [end], split into multiple
@@ -122,8 +112,7 @@ List<List<GridLocation>> greatCirclePoints(GridLocation start, GridLocation end,
   final phi2 = _deg2rad(end.latitude);
 
   // Angular distance (haversine, on the unit sphere).
-  final d = 2 *
-      asin(sqrt(pow(sin((phi2 - phi1) / 2), 2) + cos(phi1) * cos(phi2) * pow(sin((lam2 - lam1) / 2), 2)));
+  final d = 2 * asin(sqrt(pow(sin((phi2 - phi1) / 2), 2) + cos(phi1) * cos(phi2) * pow(sin((lam2 - lam1) / 2), 2)));
   if (d < 1e-9) return const [];
   // (Near-)antipodal endpoints have no unique great-circle path, and the
   // slerp below divides by sin(d) ≈ 0, producing garbage points smeared

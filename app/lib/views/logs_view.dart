@@ -67,24 +67,17 @@ class _LogsColumnWidths {
   final double call;
   final double name;
 
-  const _LogsColumnWidths({
-    this.date = 92,
-    this.time = 56,
-    this.freq = 78,
-    this.mode = 42,
-    this.call = 100,
-    this.name = 150,
-  });
+  const _LogsColumnWidths({this.date = 92, this.time = 56, this.freq = 78, this.mode = 42, this.call = 100, this.name = 150});
 
   double widthOf(String id) => switch (id) {
-        'date' => date,
-        'time' => time,
-        'freq' => freq,
-        'mode' => mode,
-        'call' => call,
-        'name' => name,
-        _ => 0,
-      };
+    'date' => date,
+    'time' => time,
+    'freq' => freq,
+    'mode' => mode,
+    'call' => call,
+    'name' => name,
+    _ => 0,
+  };
 
   factory _LogsColumnWidths.fromMap(Map<String, dynamic>? map) {
     double read(String key, double fallback) => (map?[key] as num?)?.toDouble() ?? fallback;
@@ -102,14 +95,14 @@ class _LogsColumnWidths {
   Map<String, dynamic> toMap() => {'date': date, 'time': time, 'freq': freq, 'mode': mode, 'call': call, 'name': name};
 
   _LogsColumnWidths _copyWith(String column, double value) => switch (column) {
-        'date' => _LogsColumnWidths(date: value, time: time, freq: freq, mode: mode, call: call, name: name),
-        'time' => _LogsColumnWidths(date: date, time: value, freq: freq, mode: mode, call: call, name: name),
-        'freq' => _LogsColumnWidths(date: date, time: time, freq: value, mode: mode, call: call, name: name),
-        'mode' => _LogsColumnWidths(date: date, time: time, freq: freq, mode: value, call: call, name: name),
-        'call' => _LogsColumnWidths(date: date, time: time, freq: freq, mode: mode, call: value, name: name),
-        'name' => _LogsColumnWidths(date: date, time: time, freq: freq, mode: mode, call: call, name: value),
-        _ => this,
-      };
+    'date' => _LogsColumnWidths(date: value, time: time, freq: freq, mode: mode, call: call, name: name),
+    'time' => _LogsColumnWidths(date: date, time: value, freq: freq, mode: mode, call: call, name: name),
+    'freq' => _LogsColumnWidths(date: date, time: time, freq: value, mode: mode, call: call, name: name),
+    'mode' => _LogsColumnWidths(date: date, time: time, freq: freq, mode: value, call: call, name: name),
+    'call' => _LogsColumnWidths(date: date, time: time, freq: freq, mode: mode, call: value, name: name),
+    'name' => _LogsColumnWidths(date: date, time: time, freq: freq, mode: mode, call: call, name: value),
+    _ => this,
+  };
 
   /// Widens or narrows [column] by [delta], clamped so a fast drag can't
   /// shrink it to nothing (or past it, going negative).
@@ -226,11 +219,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   };
 
   @override
-  Set<String> get nativeModuleIds => const {
-    LogsView.qsoTablePanelId,
-    LogsView.infoPanelId,
-    LogsView.mapPanelId,
-  };
+  Set<String> get nativeModuleIds => const {LogsView.qsoTablePanelId, LogsView.infoPanelId, LogsView.mapPanelId};
 
   @override
   Map<String, String> get nativeTitles => {
@@ -268,45 +257,58 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   /// sheet, and arrive as TABS: three groups sharing a phone's width is three
   /// panes none of which can be read.
   @override
-  DockNode buildDefaultDockSpec(DockLayoutClass layoutClass, {bool migrate = true}) =>
-      switch (layoutClass) {
-        DockLayoutClass.narrow => DockGroup([LogsView.qsoTablePanelId]),
-        DockLayoutClass.wide => DockSplit(Axis.horizontal, [
-          DockGroup([LogsView.qsoTablePanelId]),
-          DockSplit(Axis.vertical, [
+  DockNode buildDefaultDockSpec(DockLayoutClass layoutClass, {bool migrate = true}) => switch (layoutClass) {
+    DockLayoutClass.narrow => DockGroup([LogsView.qsoTablePanelId]),
+    DockLayoutClass.wide => DockSplit(
+      Axis.horizontal,
+      [
+        DockGroup([LogsView.qsoTablePanelId]),
+        DockSplit(
+          Axis.vertical,
+          [
             DockGroup([LogsView.infoPanelId]),
             DockGroup([LogsView.mapPanelId]),
-          ], [1, 1]),
-        ], [2, 1]),
-      };
+          ],
+          [1, 1],
+        ),
+      ],
+      [2, 1],
+    ),
+  };
 
   void _registerNativePanels() {
     final t = context.t.home.logs.panels;
     final service = widget.services.panels;
-    service.registerNative(PanelDefinition(
-      id: LogsView.qsoTablePanelId,
-      title: t.qsos,
-      description: t.qsosDescription,
-      icon: 'notebook',
-      source: PanelSource.native,
-      views: const {PanelViews.logs},
-    ));
-    service.registerNative(PanelDefinition(
-      id: LogsView.infoPanelId,
-      title: t.info,
-      description: t.infoDescription,
-      icon: 'informationOutline',
-      source: PanelSource.native,
-      views: const {PanelViews.logs},
-    ));
-    service.registerNative(PanelDefinition(
-      id: LogsView.mapPanelId,
-      title: t.map,
-      description: t.mapDescription,
-      icon: 'map',
-      source: PanelSource.native,
-      views: const {PanelViews.logs},
-    ));
+    service.registerNative(
+      PanelDefinition(
+        id: LogsView.qsoTablePanelId,
+        title: t.qsos,
+        description: t.qsosDescription,
+        icon: 'notebook',
+        source: PanelSource.native,
+        views: const {PanelViews.logs},
+      ),
+    );
+    service.registerNative(
+      PanelDefinition(
+        id: LogsView.infoPanelId,
+        title: t.info,
+        description: t.infoDescription,
+        icon: 'informationOutline',
+        source: PanelSource.native,
+        views: const {PanelViews.logs},
+      ),
+    );
+    service.registerNative(
+      PanelDefinition(
+        id: LogsView.mapPanelId,
+        title: t.map,
+        description: t.mapDescription,
+        icon: 'map',
+        source: PanelSource.native,
+        views: const {PanelViews.logs},
+      ),
+    );
     registerSharedDashboardPanels();
   }
 
@@ -423,9 +425,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     // recognizes (a future rename) is dropped instead of discarding the
     // whole order, and one this build knows but the stored order doesn't
     // (a future addition) is appended rather than going missing.
-    final storedOrder =
-        (widget.services.settings.layoutData(LayoutKeys.logsQsoColumnOrder)?['order'] as List?)?.cast<String>() ??
-            const [];
+    final storedOrder = (widget.services.settings.layoutData(LayoutKeys.logsQsoColumnOrder)?['order'] as List?)?.cast<String>() ?? const [];
     final knownOrder = storedOrder.where(_allLogsColumns.contains).toList();
     _columnOrder = [...knownOrder, ..._allLogsColumns.where((column) => !knownOrder.contains(column))];
     _subscribeCallsigns();
@@ -476,11 +476,9 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   /// Live-updates the dragged column as the pointer moves; the drag itself
   /// never touches settings storage — see [_persistColumnWidths], called
   /// once the pointer lifts, so a fast drag doesn't write prefs every frame.
-  void _resizeColumn(String column, double delta) =>
-      setState(() => _columnWidths = _columnWidths.resized(column, delta));
+  void _resizeColumn(String column, double delta) => setState(() => _columnWidths = _columnWidths.resized(column, delta));
 
-  void _persistColumnWidths() =>
-      unawaited(widget.services.settings.setLayoutData(LayoutKeys.logsQsoColumnWidths, _columnWidths.toMap()));
+  void _persistColumnWidths() => unawaited(widget.services.settings.setLayoutData(LayoutKeys.logsQsoColumnWidths, _columnWidths.toMap()));
 
   /// Double-click "auto-fit" — sets and persists in one step, unlike a drag's
   /// [_resizeColumn]/[_persistColumnWidths] pair, since there's no in-between
@@ -502,10 +500,11 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       if (!next.remove(column)) next.add(column);
       _visibleColumns = next;
     });
-    unawaited(widget.services.settings.setLayoutData(
-      LayoutKeys.logsQsoVisibleColumns,
-      {for (final column in _allLogsColumns) column: _visibleColumns.contains(column)},
-    ));
+    unawaited(
+      widget.services.settings.setLayoutData(LayoutKeys.logsQsoVisibleColumns, {
+        for (final column in _allLogsColumns) column: _visibleColumns.contains(column),
+      }),
+    );
   }
 
   /// The right-click "manage columns" menu — a single tap toggles one column
@@ -514,24 +513,19 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   Future<void> _openColumnMenu(Offset globalPosition) async {
     final t = context.t.home.logs.columns;
     String labelFor(String column) => switch (column) {
-          'date' => t.date,
-          'time' => t.time,
-          'freq' => t.freq,
-          'mode' => t.mode,
-          'call' => t.call,
-          'name' => t.name,
-          _ => column,
-        };
+      'date' => t.date,
+      'time' => t.time,
+      'freq' => t.freq,
+      'mode' => t.mode,
+      'call' => t.call,
+      'name' => t.name,
+      _ => column,
+    };
     final selection = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(globalPosition.dx, globalPosition.dy, globalPosition.dx, globalPosition.dy),
       items: [
-        for (final column in _allLogsColumns)
-          CheckedPopupMenuItem(
-            value: column,
-            checked: _visibleColumns.contains(column),
-            child: Text(labelFor(column)),
-          ),
+        for (final column in _allLogsColumns) CheckedPopupMenuItem(value: column, checked: _visibleColumns.contains(column), child: Text(labelFor(column))),
       ],
     );
     // Same guard [_openCallsignPicker] uses for its own awaited `showMenu` —
@@ -566,8 +560,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     if (query.isEmpty) return qsos;
     return [
       for (final qso in qsos)
-        if (qso.theirCall.toLowerCase().contains(query) || (qso.theirName ?? '').toLowerCase().contains(query))
-          qso,
+        if (qso.theirCall.toLowerCase().contains(query) || (qso.theirName ?? '').toLowerCase().contains(query)) qso,
     ];
   }
 
@@ -589,17 +582,17 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(call, style: const TextStyle(fontFamily: 'RobotoMono', fontWeight: FontWeight.w700)),
+                  child: Text(
+                    call,
+                    style: const TextStyle(fontFamily: 'RobotoMono', fontWeight: FontWeight.w700),
+                  ),
                 ),
                 const SizedBox(width: Space.md),
                 // Same count-pill treatment the operation list uses for its
                 // own QSO count.
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xxs),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
                   child: Text(formatNumber(_callsigns[call] ?? 0), style: theme.textTheme.labelLarge),
                 ),
               ],
@@ -621,10 +614,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     // header (count/date span) reads from the same snapshot as the dock, so
     // it has to sit inside this same builder rather than the plain `build`
     // above.
-    return StreamBuilder<List<Qso>>(
-      stream: stream,
-      builder: (context, snapshot) => _buildScaffold(context, snapshot.data),
-    );
+    return StreamBuilder<List<Qso>>(stream: stream, builder: (context, snapshot) => _buildScaffold(context, snapshot.data));
   }
 
   Widget _buildScaffold(BuildContext context, List<Qso>? qsos) {
@@ -669,10 +659,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: windowHeaderGestureArea(),
-        leadingWidth: HomeRailLogo.headerReserveOf(
-          context,
-          railWidth: HomeNavigationRail.widthFor(context, expanded: homeRail.expanded),
-        ),
+        leadingWidth: HomeRailLogo.headerReserveOf(context, railWidth: HomeNavigationRail.widthFor(context, expanded: homeRail.expanded)),
         leading: const SizedBox.shrink(),
         titleSpacing: Space.xl,
         title: _buildTitle(context, filtered, includeSearch: isTwoPane),
@@ -688,16 +675,17 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       // imports, not just over the QSO table.
       body: AdifDropTarget(
         onFile: _handleAdifDrop,
-        child: withViewOverrides(buildDock(
-          children: {
-            LogsView.qsoTablePanelId: qsoListPane,
-            LogsView.infoPanelId:
-                _LogsInfoPanel(services: widget.services, totalCount: filtered?.length ?? 0, selected: selected),
-            LogsView.mapPanelId: _LogsMapPanel(services: widget.services, selected: selected),
-          },
-          tabActions: {LogsView.mapPanelId: (context) => _buildMapSettingsButton(context)},
-          extraChildren: sharedDashboardPanes,
-        )),
+        child: withViewOverrides(
+          buildDock(
+            children: {
+              LogsView.qsoTablePanelId: qsoListPane,
+              LogsView.infoPanelId: _LogsInfoPanel(services: widget.services, totalCount: filtered?.length ?? 0, selected: selected),
+              LogsView.mapPanelId: _LogsMapPanel(services: widget.services, selected: selected),
+            },
+            tabActions: {LogsView.mapPanelId: (context) => _buildMapSettingsButton(context)},
+            extraChildren: sharedDashboardPanes,
+          ),
+        ),
       ),
     );
   }
@@ -707,11 +695,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   /// this button) — Map is native and reached through a target rather than
   /// through `formFields`, so [DockHost.buildPanelSettingsButton] wouldn't
   /// find it either.
-  Widget _buildMapSettingsButton(BuildContext context) => buildTargetSettingsButton(
-        context,
-        target: 'map',
-        title: context.t.operation.menu.mapSettingsTitle,
-      );
+  Widget _buildMapSettingsButton(BuildContext context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle);
 
   /// The search field's own row, shown only below the two-pane boundary —
   /// the title row (see [_buildTitle]) drops it there rather than shrinking
@@ -756,7 +740,10 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
             children: [
               Text(call == null ? t.home.logs.title : '${t.home.logs.titleFor} ', style: baseStyle),
               if (call != null)
-                Text(call, style: baseStyle.copyWith(fontFamily: 'RobotoMono', fontWeight: FontWeight.w800)),
+                Text(
+                  call,
+                  style: baseStyle.copyWith(fontFamily: 'RobotoMono', fontWeight: FontWeight.w800),
+                ),
               const SizedBox(width: Space.xs),
               Icon(MdiIcons.menuDown, color: foreground, semanticLabel: t.home.logs.changeCallsign),
             ],
@@ -773,9 +760,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
             // Blank while the callsign list is still loading — the list pane
             // itself carries the loading spinner (see [_QsoListPanel]), so
             // this stays quiet rather than doubling it up in the header.
-            child: (_callsignsLoaded && call != null && filtered != null)
-                ? _countAndDates(context, filtered, foreground)
-                : null,
+            child: (_callsignsLoaded && call != null && filtered != null) ? _countAndDates(context, filtered, foreground) : null,
           ),
         ),
         // Dropped below the two-pane boundary rather than shrunk — see
@@ -836,7 +821,10 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(countLabel, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: color)),
+        Text(
+          countLabel,
+          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: color),
+        ),
         if (rangeLabel != null) Text(rangeLabel, style: theme.textTheme.bodySmall?.copyWith(color: color)),
       ],
     );
@@ -905,11 +893,13 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       if (dialogNavigator.mounted) dialogNavigator.pop();
     }
 
-    unawaited(showHaloDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _AdifProgressDialog(title: title, progress: progress, detail: detail),
-    ));
+    unawaited(
+      showHaloDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _AdifProgressDialog(title: title, progress: progress, detail: detail),
+      ),
+    );
 
     AdifLog log;
     AdifImportPlan plan;
@@ -948,8 +938,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       // expects.
       final theirCalls = <String>{
         for (final record in log.qsos)
-          if ((record.qso['their'] as Map?)?['call'] case final String call when call.isNotEmpty)
-            call.trim().toUpperCase(),
+          if ((record.qso['their'] as Map?)?['call'] case final String call when call.isNotEmpty) call.trim().toUpperCase(),
       }..removeWhere((call) => call.isEmpty);
       final checkTotal = log.qsos.length + theirCalls.length;
       void reportChecked(int checked) {
@@ -957,18 +946,12 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
         detail.value = importT.checkingDetail(done: formatNumber(checked), total: formatNumber(checkTotal));
       }
 
-      final hookOutcome = await AdifImportService(widget.services.extensions.host).applyHooks(
-        log.qsos,
-        onBatch: (done, total) => reportChecked(done),
-      );
+      final hookOutcome = await AdifImportService(widget.services.extensions.host).applyHooks(log.qsos, onBatch: (done, total) => reportChecked(done));
       // One batched query rather than one per distinct counterparty — a
       // large file's callsigns run into the thousands, and a sequential
       // `historyForCall` per callsign turns that into thousands of
       // round trips with the progress bar stuck on indeterminate.
-      final existing = await widget.services.qsos.historyForCalls(
-        theirCalls,
-        onChunk: (done, total) => reportChecked(log.qsos.length + done),
-      );
+      final existing = await widget.services.qsos.historyForCalls(theirCalls, onChunk: (done, total) => reportChecked(log.qsos.length + done));
       // Threaded through to the plan the same way `adif_import_flow.dart`
       // does — dropping these silently degrades a ref-hook failure into a
       // clean-looking import with no references, indistinguishable from a
@@ -1003,10 +986,8 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     // entry in the picker after `_selectCall` below.
     final calls = <String>{
       for (final record in log.qsos)
-        if ((record.qso['our'] as Map?)?['call'] case final String call when call.isNotEmpty)
-          call.toUpperCase(),
-    }.toList()
-      ..sort();
+        if ((record.qso['our'] as Map?)?['call'] case final String call when call.isNotEmpty) call.toUpperCase(),
+    }.toList()..sort();
     // Coerced through `qsoStartMillis` rather than cast directly — a JSON
     // number from `applyHooks`'s extension host can come back as a double,
     // and a raw `as int?` throws on that outside the try block above.
@@ -1035,15 +1016,12 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
               // nothing in the file was recognized rather than as "nothing
               // has changed since last time."
               Text(dateRangeLabel == null ? totalInFile : '$totalInFile ($dateRangeLabel)'),
-              if (plan.alreadyLoggedCount > 0)
-                Text(t.alreadyLogged(count: plan.alreadyLoggedCount, formatted: formatNumber(plan.alreadyLoggedCount))),
+              if (plan.alreadyLoggedCount > 0) Text(t.alreadyLogged(count: plan.alreadyLoggedCount, formatted: formatNumber(plan.alreadyLoggedCount))),
               Text(t.willImport(count: plan.importCount, formatted: formatNumber(plan.importCount))),
               if (plan.refusedCount > 0) ...[
                 const SizedBox(height: Space.sm),
                 Text(
-                  plan.refusedCount == 1
-                      ? importT.skippedOne
-                      : importT.skippedOther(count: formatNumber(plan.refusedCount)),
+                  plan.refusedCount == 1 ? importT.skippedOne : importT.skippedOther(count: formatNumber(plan.refusedCount)),
                   style: TextStyle(color: Theme.of(dialogContext).colorScheme.error),
                 ),
               ],
@@ -1064,8 +1042,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
                 const SizedBox(height: Space.sm),
                 Text(
                   t.partialRefs(
-                    programs: failedProgramNames(widget.services.extensions.availableExtensions, plan.failedHooks)
-                        .join(', '),
+                    programs: failedProgramNames(widget.services.extensions.availableExtensions, plan.failedHooks).join(', '),
                     count: plan.recordsWithFailedHooks,
                     formatted: formatNumber(plan.recordsWithFailedHooks),
                   ),
@@ -1076,16 +1053,13 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
               // re-import, which still has `alreadyLoggedCount` to say so —
               // gets the same explicit line `adif_import_flow.dart`'s
               // summary shows for the same case.
-              if (plan.isEmpty && plan.refusedCount == 0 && plan.alreadyLoggedCount == 0)
-                Text(context.t.adifImport.nothingToImport),
+              if (plan.isEmpty && plan.refusedCount == 0 && plan.alreadyLoggedCount == 0) Text(context.t.adifImport.nothingToImport),
             ],
           ),
           // Empty plans get no confirm action, the same way
           // `adif_import_flow.dart` handles them — nothing to write, so the
           // only thing to do is close the summary.
-          actions: [
-            if (!plan.isEmpty) FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(t.confirm)),
-          ],
+          actions: [if (!plan.isEmpty) FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(t.confirm))],
           cancel: TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: Text(plan.isEmpty ? context.t.common.done : context.t.common.cancel),
@@ -1103,11 +1077,13 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
     title.value = importT.importingTitle;
     progress.value = 0;
     detail.value = importT.importingDetail(imported: formatNumber(written), total: formatNumber(totalPlanned));
-    unawaited(showHaloDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _AdifProgressDialog(title: title, progress: progress, detail: detail),
-    ));
+    unawaited(
+      showHaloDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _AdifProgressDialog(title: title, progress: progress, detail: detail),
+      ),
+    );
 
     // Unsubscribed for the write phase, not merely paused — a large import
     // commits dozens of chunks, and each commit makes a live Drift stream
@@ -1135,6 +1111,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
         ErrorReportingService.report(e, stack, context: 'logsAdifImport:resubscribe');
       }
     }
+
     // `writeBatch` refuses a batch whose updates don't all share its
     // `operationUuid`, so each destination operation (or the loose bucket)
     // gets its own call — chunked, so `progress` moves as QSOs actually
@@ -1166,8 +1143,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
         // only consults the uuids it is writing, and without them a row
         // that moved while the confirm dialog sat open is clobbered with
         // the stale plan-time fold (see `updateBases`).
-        written += await widget.services.qsos
-            .writeBatch(operationUuid: operationUuid, updates: chunk, updateBases: plan.mergeBases, refreshCounters: false);
+        written += await widget.services.qsos.writeBatch(operationUuid: operationUuid, updates: chunk, updateBases: plan.mergeBases, refreshCounters: false);
         if (totalPlanned > 0) progress.value = written / totalPlanned;
         detail.value = importT.importingDetail(imported: formatNumber(written), total: formatNumber(totalPlanned));
       }
@@ -1212,7 +1188,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
         await _showAdifNotice(
           written > 0
               ? '${t.failed(filename: file.name, error: e.toString())}\n\n'
-                  '${importT.importingDetail(imported: formatNumber(written), total: formatNumber(totalPlanned))}'
+                    '${importT.importingDetail(imported: formatNumber(written), total: formatNumber(totalPlanned))}'
               : t.failed(filename: file.name, error: e.toString()),
         );
       }
@@ -1238,10 +1214,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
       );
     }
     try {
-      widget.services.track(
-        'adif_imported',
-        {'count': written, 'merged': plan.merges.length, 'planned': plan.importCount, 'source': 'logs'},
-      );
+      widget.services.track('adif_imported', {'count': written, 'merged': plan.merges.length, 'planned': plan.importCount, 'source': 'logs'});
     } catch (e, stack) {
       ErrorReportingService.report(e, stack, context: 'logsAdifImport:telemetry');
     }
@@ -1268,13 +1241,13 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView> {
   }
 
   Future<void> _showAdifNotice(String message) => showHaloDialog<void>(
-        context: context,
-        builder: (dialogContext) => HaloDialog(
-          title: Text(context.t.adifImport.title),
-          content: Text(message),
-          cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.t.common.done)),
-        ),
-      );
+    context: context,
+    builder: (dialogContext) => HaloDialog(
+      title: Text(context.t.adifImport.title),
+      content: Text(message),
+      cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.t.common.done)),
+    ),
+  );
 }
 
 /// The middle pane: every QSO the filter and search match, oldest first — the
@@ -1370,9 +1343,7 @@ class _QsoListPanel extends StatelessWidget {
     final list = qsos;
     if (list == null) return const Center(child: CircularProgressIndicator());
     if (list.isEmpty) {
-      return Center(
-        child: Text(searching ? context.t.home.logs.noSearchMatches : context.t.home.logs.emptyQsos(call: call!)),
-      );
+      return Center(child: Text(searching ? context.t.home.logs.noSearchMatches : context.t.home.logs.emptyQsos(call: call!)));
     }
     final rowExtent = LayoutDensity.metricsOf(context).qsoRowHeight;
     // Same boundary the view's own single-pane fallback uses (see
@@ -1394,12 +1365,7 @@ class _QsoListPanel extends StatelessWidget {
               // live update arriving mid-edit can overwrite what the
               // operator is typing (see [_LogQsoEditPanel]'s own doc
               // comment).
-              : _LogQsoEditPanel(
-                  key: ValueKey(selected!.uuid),
-                  services: services,
-                  qso: selected!,
-                  onDone: () => onSelect(selected!.uuid),
-                ),
+              : _LogQsoEditPanel(key: ValueKey(selected!.uuid), services: services, qso: selected!, onDone: () => onSelect(selected!.uuid)),
           secondChild: const SizedBox(width: double.infinity),
           crossFadeState: selected == null ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 400),
@@ -1439,16 +1405,11 @@ class _QsoListPanel extends StatelessWidget {
                               tableWidth: tableWidth,
                               onResize: onResizeColumn,
                               onResizeEnd: onResizeColumnEnd,
-                              onAutoFit: (column) => onAutoFitColumn(
-                                column,
-                                _autoFitColumnWidth(column, context, list, freqMhzDigits),
-                              ),
+                              onAutoFit: (column) => onAutoFitColumn(column, _autoFitColumnWidth(column, context, list, freqMhzDigits)),
                               onShowMenu: onShowColumnMenu,
                               onReorder: onReorderColumn,
                             ),
-                            Expanded(
-                              child: _buildRows(context, list, rowExtent, compact: false, tableWidth: tableWidth),
-                            ),
+                            Expanded(child: _buildRows(context, list, rowExtent, compact: false, tableWidth: tableWidth)),
                           ],
                         ),
                       ),
@@ -1465,37 +1426,30 @@ class _QsoListPanel extends StatelessWidget {
   /// nullable `tableWidth` param everywhere else has to null-check.
   static const _compactTableWidth = _LogsTableWidth(content: 0, flexWidth: 0, flexId: null);
 
-  Widget _buildRows(
-    BuildContext context,
-    List<Qso> list,
-    double rowExtent, {
-    required bool compact,
-    required _LogsTableWidth tableWidth,
-  }) =>
-      ListView.builder(
-        itemCount: list.length,
-        itemExtent: rowExtent,
-        itemBuilder: (context, index) {
-          final qso = list[index];
-          return _LogQsoSummaryRow(
-            qso: qso,
-            selected: qso.uuid == selectedUuid,
-            // The selected row's own accent border already marks its bottom
-            // edge (see [_LogQsoSummaryRow]); a divider under it too would
-            // paint over that border, foreground decorations painting
-            // child-to-ancestor. The very last row has nothing below it to
-            // divide from either way.
-            drawDivider: index < list.length - 1 && qso.uuid != selectedUuid,
-            compact: compact,
-            widths: columnWidths,
-            visibleColumns: visibleColumns,
-            columnOrder: columnOrder,
-            freqMhzDigits: freqMhzDigits,
-            tableWidth: tableWidth,
-            onTap: () => onSelect(qso.uuid),
-          );
-        },
+  Widget _buildRows(BuildContext context, List<Qso> list, double rowExtent, {required bool compact, required _LogsTableWidth tableWidth}) => ListView.builder(
+    itemCount: list.length,
+    itemExtent: rowExtent,
+    itemBuilder: (context, index) {
+      final qso = list[index];
+      return _LogQsoSummaryRow(
+        qso: qso,
+        selected: qso.uuid == selectedUuid,
+        // The selected row's own accent border already marks its bottom
+        // edge (see [_LogQsoSummaryRow]); a divider under it too would
+        // paint over that border, foreground decorations painting
+        // child-to-ancestor. The very last row has nothing below it to
+        // divide from either way.
+        drawDivider: index < list.length - 1 && qso.uuid != selectedUuid,
+        compact: compact,
+        widths: columnWidths,
+        visibleColumns: visibleColumns,
+        columnOrder: columnOrder,
+        freqMhzDigits: freqMhzDigits,
+        tableWidth: tableWidth,
+        onTap: () => onSelect(qso.uuid),
       );
+    },
+  );
 }
 
 /// Labels [_QsoListPanel]'s columns and carries the drag handles that resize
@@ -1555,30 +1509,27 @@ class _QsoListHeaderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = context.t.home.logs.columns;
-    final labelStyle = theme.textTheme.labelMedium?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-      fontWeight: FontWeight.w700,
-    );
+    final labelStyle = theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700);
 
     Widget label(String text) => Text(text, style: labelStyle, maxLines: 1, overflow: TextOverflow.ellipsis);
 
     String labelOf(String id) => switch (id) {
-          'date' => t.date,
-          'time' => t.time,
-          'freq' => t.freq,
-          'mode' => t.mode,
-          'call' => t.call,
-          'name' => t.name,
-          _ => id,
-        };
+      'date' => t.date,
+      'time' => t.time,
+      'freq' => t.freq,
+      'mode' => t.mode,
+      'call' => t.call,
+      'name' => t.name,
+      _ => id,
+    };
 
     Widget handle(String column, {bool asOverlay = false}) => _ColumnResizeHandle(
-          width: Space.lg,
-          asOverlay: asOverlay,
-          onDragUpdate: (delta) => onResize(column, delta),
-          onDragEnd: onResizeEnd,
-          onDoubleTap: () => onAutoFit(column),
-        );
+      width: Space.lg,
+      asOverlay: asOverlay,
+      onDragUpdate: (delta) => onResize(column, delta),
+      onDragEnd: onResizeEnd,
+      onDoubleTap: () => onAutoFit(column),
+    );
 
     // Drop target first, `Draggable` inside it: this cell needs to
     // recognize a drag landing on ITSELF (to swap in) as much as it needs
@@ -1640,15 +1591,7 @@ class _QsoListHeaderRow extends StatelessWidget {
         // line sits in and nothing else.
         children.add(touchSlop > 0 ? const SizedBox(width: Space.lg) : handle(id));
         if (touchSlop > 0) {
-          strips.add(
-            Positioned(
-              left: offset - touchSlop,
-              top: 0,
-              bottom: 0,
-              width: Space.lg + touchSlop * 2,
-              child: handle(id, asOverlay: true),
-            ),
-          );
+          strips.add(Positioned(left: offset - touchSlop, top: 0, bottom: 0, width: Space.lg + touchSlop * 2, child: handle(id, asOverlay: true)));
         }
         offset += Space.lg;
       }
@@ -1671,7 +1614,13 @@ class _QsoListHeaderRow extends StatelessWidget {
           // widths this row was already built from.
           child: strips.isEmpty
               ? Row(children: children)
-              : Stack(fit: StackFit.passthrough, children: [Row(children: children), ...strips]),
+              : Stack(
+                  fit: StackFit.passthrough,
+                  children: [
+                    Row(children: children),
+                    ...strips,
+                  ],
+                ),
         ),
       ),
     );
@@ -1705,13 +1654,7 @@ class _ColumnResizeHandle extends StatefulWidget {
   final VoidCallback onDragEnd;
   final VoidCallback onDoubleTap;
 
-  const _ColumnResizeHandle({
-    required this.width,
-    required this.onDragUpdate,
-    required this.onDragEnd,
-    required this.onDoubleTap,
-    this.asOverlay = false,
-  });
+  const _ColumnResizeHandle({required this.width, required this.onDragUpdate, required this.onDragEnd, required this.onDoubleTap, this.asOverlay = false});
 
   @override
   State<_ColumnResizeHandle> createState() => _ColumnResizeHandleState();
@@ -1739,8 +1682,7 @@ class _ColumnResizeHandleState extends State<_ColumnResizeHandle> {
   Offset? _downPosition;
   Offset? _lastPosition;
 
-  static double _dragSlop(PointerDeviceKind kind) =>
-      kind == PointerDeviceKind.touch ? kTouchSlop : kPrecisePointerPanSlop;
+  static double _dragSlop(PointerDeviceKind kind) => kind == PointerDeviceKind.touch ? kTouchSlop : kPrecisePointerPanSlop;
 
   void _handlePointerDown(PointerDownEvent event) {
     if (_trackingPointer != null) return;
@@ -1758,7 +1700,9 @@ class _ColumnResizeHandleState extends State<_ColumnResizeHandle> {
       setState(() => _dragging = true);
       final overlay = Overlay.of(context, rootOverlay: true);
       _captureOverlay = OverlayEntry(
-        builder: (context) => const Positioned.fill(child: IgnorePointer(child: ColoredBox(color: Colors.transparent))),
+        builder: (context) => const Positioned.fill(
+          child: IgnorePointer(child: ColoredBox(color: Colors.transparent)),
+        ),
       );
       overlay.insert(_captureOverlay!);
     }
@@ -1857,10 +1801,9 @@ class _QsoOperationBuilder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => StreamBuilder<Operation?>(
-        stream: services.operations.watchOperation(operationUuid),
-        builder: (context, snapshot) =>
-            builder(context, snapshot.data ?? Operation(uuid: operationUuid, data: const {})),
-      );
+    stream: services.operations.watchOperation(operationUuid),
+    builder: (context, snapshot) => builder(context, snapshot.data ?? Operation(uuid: operationUuid, data: const {})),
+  );
 }
 
 /// The info panel: no selection shows the filter's aggregate QSO count. A QSO
@@ -1918,24 +1861,29 @@ class _LogsInfoPanelState extends State<_LogsInfoPanel> {
     }
     if (call == _requestedFor) return;
     _requestedFor = call;
-    widget.services.extensions.lookupCall(call, qso: const {}, operation: const {}).then((result) {
-      if (!mounted || widget.selected?.theirCall != call) return;
-      setState(() {
-        _resolvedFor = call;
-        _guess = result?['guess'] as Map<String, dynamic>?;
-        _lookups = asQsonList(result?['lookups'])?.whereType<Map<String, dynamic>>().toList() ?? const [];
-      });
-    }, onError: (Object e, StackTrace stack) {
-      ErrorReportingService.report(e, stack, context: 'logsInfoPanel:lookupCall');
-      if (!mounted || widget.selected?.theirCall != call) return;
-      // Cleared, not left at the previous callsign's values — a failed
-      // lookup under the new callsign must not go on showing the old one's.
-      setState(() {
-        _resolvedFor = call;
-        _guess = null;
-        _lookups = const [];
-      });
-    });
+    widget.services.extensions
+        .lookupCall(call, qso: const {}, operation: const {})
+        .then(
+          (result) {
+            if (!mounted || widget.selected?.theirCall != call) return;
+            setState(() {
+              _resolvedFor = call;
+              _guess = result?['guess'] as Map<String, dynamic>?;
+              _lookups = asQsonList(result?['lookups'])?.whereType<Map<String, dynamic>>().toList() ?? const [];
+            });
+          },
+          onError: (Object e, StackTrace stack) {
+            ErrorReportingService.report(e, stack, context: 'logsInfoPanel:lookupCall');
+            if (!mounted || widget.selected?.theirCall != call) return;
+            // Cleared, not left at the previous callsign's values — a failed
+            // lookup under the new callsign must not go on showing the old one's.
+            setState(() {
+              _resolvedFor = call;
+              _guess = null;
+              _lookups = const [];
+            });
+          },
+        );
   }
 
   @override
@@ -1952,13 +1900,8 @@ class _LogsInfoPanelState extends State<_LogsInfoPanel> {
     return _QsoOperationBuilder(
       services: widget.services,
       operationUuid: selected.operationUuid,
-      builder: (context, operation) => CallInfoPanel(
-        operation: operation,
-        services: widget.services,
-        call: selected.theirCall,
-        guess: _guess,
-        lookups: _lookups,
-      ),
+      builder: (context, operation) =>
+          CallInfoPanel(operation: operation, services: widget.services, call: selected.theirCall, guess: _guess, lookups: _lookups),
     );
   }
 }
@@ -2069,30 +2012,26 @@ double _autoFitColumnWidth(String column, BuildContext context, List<Qso> qsos, 
     'date' => ('0000-00-00', monoStyle, t.date),
     'time' => ('00:00z', monoStyle, t.time),
     'freq' => (
-        widest([
-          for (final qso in qsos)
-            if (qso.freq case final khz?)
-              (() {
-                // The same string `_freqRow` draws — this measures the
-                // column, so a separator of a different width under-reserves
-                // it.
-                final parts = freqDisplayParts(khz, hzDigits: 0);
-                return '${groupDigits(parts.mhz).padLeft(freqMhzDigits)}'
-                    '${NumberFormatting.instance.groupingSeparator}${parts.khz}';
-              })()
-            else
-              ?qso.band,
-        ]),
-        monoStyle,
-        t.freq,
-      ),
+      widest([
+        for (final qso in qsos)
+          if (qso.freq case final khz?)
+            (() {
+              // The same string `_freqRow` draws — this measures the
+              // column, so a separator of a different width under-reserves
+              // it.
+              final parts = freqDisplayParts(khz, hzDigits: 0);
+              return '${groupDigits(parts.mhz).padLeft(freqMhzDigits)}'
+                  '${NumberFormatting.instance.groupingSeparator}${parts.khz}';
+            })()
+          else
+            ?qso.band,
+      ]),
+      monoStyle,
+      t.freq,
+    ),
     // The DISPLAYED mode, like the cell below — measuring a stored `LSB` for
     // a cell that renders `SSB` reserves a width no row uses.
-    'mode' => (
-        widest(qsos.map((qso) => displayMode(qso.mode, freqKHz: qso.freq, band: qso.band) ?? '')),
-        monoStyle,
-        t.mode,
-      ),
+    'mode' => (widest(qsos.map((qso) => displayMode(qso.mode, freqKHz: qso.freq, band: qso.band) ?? '')), monoStyle, t.mode),
     'call' => (widest(qsos.map((qso) => qso.theirCall)), callStyle, t.call),
     'name' => (widest(qsos.map((qso) => qso.theirName ?? '')), nameStyle, t.name),
     _ => ('', monoStyle, ''),
@@ -2198,8 +2137,7 @@ class _LogQsoSummaryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final start =
-        qso.startAtMillis == null ? null : DateTime.fromMillisecondsSinceEpoch(qso.startAtMillis!, isUtc: true);
+    final start = qso.startAtMillis == null ? null : DateTime.fromMillisecondsSinceEpoch(qso.startAtMillis!, isUtc: true);
     final date = start == null ? '' : _dateFormat.format(start);
     final time = start == null ? '' : '${_timeFormat.format(start)}z';
     final textColor = selected ? theme.colorScheme.onSecondaryContainer : null;
@@ -2224,16 +2162,12 @@ class _LogQsoSummaryRow extends StatelessWidget {
     final cellContent = {
       'date': Text(date, style: condensedStyle, maxLines: 1, softWrap: false),
       'time': Text(time, style: condensedStyle),
-      'freq': freqKHz == null
-          ? Text(qso.band ?? '', style: condensedStyle)
-          : _freqField(freqKHz, condensedStyle, mhzDigits: freqMhzDigits),
+      'freq': freqKHz == null ? Text(qso.band ?? '', style: condensedStyle) : _freqField(freqKHz, condensedStyle, mhzDigits: freqMhzDigits),
       // `SSB` for the sideband the band runs; the one it doesn't is spelled
       // out, in the error color, because that is the whole reason to spell it.
       'mode': Text(
         displayMode(qso.mode, freqKHz: freqKHz, band: qso.band) ?? '',
-        style: isUnexpectedSideband(qso.mode, freqKHz: freqKHz, band: qso.band)
-            ? monoStyle?.copyWith(color: theme.colorScheme.error)
-            : monoStyle,
+        style: isUnexpectedSideband(qso.mode, freqKHz: freqKHz, band: qso.band) ? monoStyle?.copyWith(color: theme.colorScheme.error) : monoStyle,
       ),
       'call': callsignText,
       // The notes marker rides in the Name cell, this row having no badge
@@ -2276,11 +2210,7 @@ class _LogQsoSummaryRow extends StatelessWidget {
       // class doc.
       for (final id in compactVisible) {
         if (rowChildren.isNotEmpty) rowChildren.add(SizedBox(width: columnGap));
-        rowChildren.add(
-          id == compactFlexId
-              ? Expanded(child: cellContent[id]!)
-              : SizedBox(width: columnWidths.widthOf(id), child: cellContent[id]!),
-        );
+        rowChildren.add(id == compactFlexId ? Expanded(child: cellContent[id]!) : SizedBox(width: columnWidths.widthOf(id), child: cellContent[id]!));
       }
     } else {
       // Gap unconditionally AFTER every visible NON-TRAILING column —
@@ -2310,9 +2240,7 @@ class _LogQsoSummaryRow extends StatelessWidget {
       decoration: BoxDecoration(
         border: selected
             ? Border.symmetric(horizontal: BorderSide(color: theme.colorScheme.secondary, width: 3))
-            : (drawDivider
-                ? Border(bottom: BorderSide(width: 1, color: DividerTheme.of(context).color ?? theme.dividerColor))
-                : null),
+            : (drawDivider ? Border(bottom: BorderSide(width: 1, color: DividerTheme.of(context).color ?? theme.dividerColor)) : null),
       ),
       child: Material(
         color: selected ? theme.colorScheme.secondaryContainer : theme.colorScheme.surface,
@@ -2382,9 +2310,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   void initState() {
     super.initState();
     final qso = _loadedQso = widget.qso;
-    final start = qso.startAtMillis == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(qso.startAtMillis!, isUtc: true);
+    final start = qso.startAtMillis == null ? null : DateTime.fromMillisecondsSinceEpoch(qso.startAtMillis!, isUtc: true);
     _call = TextEditingController(text: qso.theirCall);
     _date = TextEditingController(text: start == null ? '' : _dateFormat.format(start));
     _time = TextEditingController(text: start == null ? '' : _timeFormat.format(start));
@@ -2396,8 +2322,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     // the QSO is saved three orders of magnitude off, having never been
     // touched. `fmtFreqInput` also emits no thousands separator at all, which
     // is what keeps 1296 MHz from parsing as 1296 kHz.
-    _freqOrBand =
-        TextEditingController(text: qso.freq != null ? fmtFreqInput(qso.freq!) : (qso.band ?? ''));
+    _freqOrBand = TextEditingController(text: qso.freq != null ? fmtFreqInput(qso.freq!) : (qso.band ?? ''));
     // The mode as the row above shows it, or the dialog would read `LSB`
     // under a row reading `SSB`. Resolved again on save, against the seed
     // kept here so an untouched field cannot write the collapse back.
@@ -2426,7 +2351,8 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
       // DateTime.utc normalizes out-of-range components (e.g. day 30 in
       // February) instead of throwing — round-tripping catches what the
       // FormatException/RangeError guards below can't.
-      final roundTrips = parsed.year == dateParts[0] &&
+      final roundTrips =
+          parsed.year == dateParts[0] &&
           parsed.month == dateParts[1] &&
           parsed.day == dateParts[2] &&
           parsed.hour == timeParts[0] &&
@@ -2507,7 +2433,10 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     } catch (e, stack) {
       ErrorReportingService.report(e, stack, context: 'logsQsoEdit:save');
       if (mounted) {
-        widget.services.statusBar.showNotice(key: 'logsQsoEdit:save', text: context.t.loggingControls.saveFailed(error: e));
+        widget.services.statusBar.showNotice(
+          key: 'logsQsoEdit:save',
+          text: context.t.loggingControls.saveFailed(error: e),
+        );
       }
       return;
     } finally {
@@ -2524,7 +2453,10 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
       ErrorReportingService.report(e, stack, context: 'logsQsoEdit:delete');
       if (mounted) {
         setState(() => _saving = false);
-        widget.services.statusBar.showNotice(key: 'logsQsoEdit:delete', text: context.t.loggingControls.deleteFailed(error: e));
+        widget.services.statusBar.showNotice(
+          key: 'logsQsoEdit:delete',
+          text: context.t.loggingControls.deleteFailed(error: e),
+        );
       }
       return;
     }
@@ -2546,7 +2478,9 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
       color: theme.colorScheme.secondaryContainer,
       elevation: 4,
       child: DecoratedBox(
-        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.colorScheme.secondary, width: 3))),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: theme.colorScheme.secondary, width: 3)),
+        ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.lg, 0),
           child: Column(
@@ -2559,11 +2493,9 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
                   if (widget.qso.operationUuid.isNotEmpty)
                     IconButton(
                       icon: Icon(MdiIcons.openInNew, semanticLabel: t.home.logs.openOperation),
-                      onPressed: () => Navigator.of(context).push(
-                        slideInFromRight<void>(
-                          (_) => OperationView(services: widget.services, operationUuid: widget.qso.operationUuid),
-                        ),
-                      ),
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).push(slideInFromRight<void>((_) => OperationView(services: widget.services, operationUuid: widget.qso.operationUuid))),
                     ),
                 ],
               ),
@@ -2572,8 +2504,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
                   padding: const EdgeInsets.only(bottom: Space.md),
                   child: Text(
                     t.loggingControls.pendingDeleteWarning,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w700),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w700),
                   ),
                 ),
               Row(
@@ -2628,26 +2559,17 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   }
 
   Widget _field(String label, TextEditingController controller, {required double width}) => SizedBox(
-        width: width,
-        child: TextField(
-          controller: controller,
-          enabled: !_pendingDelete,
-          decoration: _fieldDecoration(context, label),
-        ),
-      );
+    width: width,
+    child: TextField(controller: controller, enabled: !_pendingDelete, decoration: _fieldDecoration(context, label)),
+  );
 
   /// Filled, matching the one documented "fields need a background"
   /// convention in the app (`LoggingControls`' secondary-fields panel, which
   /// paints its fields on `colorScheme.surface` regardless of the panel's
   /// own tinted background) — this panel's own background is the selection
   /// tint, same reasoning applies.
-  InputDecoration _fieldDecoration(BuildContext context, String label) => InputDecoration(
-        labelText: label,
-        isDense: true,
-        filled: true,
-        fillColor: Theme.of(context).colorScheme.surface,
-        border: const OutlineInputBorder(),
-      );
+  InputDecoration _fieldDecoration(BuildContext context, String label) =>
+      InputDecoration(labelText: label, isDense: true, filled: true, fillColor: Theme.of(context).colorScheme.surface, border: const OutlineInputBorder());
 
   /// Same circular, `secondary`-filled button `LoggingControls` shows while
   /// editing (there it's a `tertiary`→`secondary` theme remap; here the
@@ -2735,28 +2657,25 @@ class _AdifProgressDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PopScope(
-        // `barrierDismissible: false` on the call site keeps a tap outside
-        // from closing this, but only the system back button/gesture goes
-        // through `PopScope` — without this, that route is the one thing
-        // able to pop the dialog out from under the code driving it, which
-        // then pops whatever the NEXT topmost route happens to be instead.
-        canPop: false,
-        child: HaloDialog(
-          title: ValueListenableBuilder<String>(valueListenable: title, builder: (context, value, _) => Text(value)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ValueListenableBuilder<double?>(
-                valueListenable: progress,
-                builder: (context, value, _) => LinearProgressIndicator(value: value),
-              ),
-              const SizedBox(height: Space.lg),
-              ValueListenableBuilder<String>(
-                valueListenable: detail,
-                builder: (context, value, _) => Text(value),
-              ),
-            ],
+    // `barrierDismissible: false` on the call site keeps a tap outside
+    // from closing this, but only the system back button/gesture goes
+    // through `PopScope` — without this, that route is the one thing
+    // able to pop the dialog out from under the code driving it, which
+    // then pops whatever the NEXT topmost route happens to be instead.
+    canPop: false,
+    child: HaloDialog(
+      title: ValueListenableBuilder<String>(valueListenable: title, builder: (context, value, _) => Text(value)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ValueListenableBuilder<double?>(
+            valueListenable: progress,
+            builder: (context, value, _) => LinearProgressIndicator(value: value),
           ),
-        ),
-      );
+          const SizedBox(height: Space.lg),
+          ValueListenableBuilder<String>(valueListenable: detail, builder: (context, value, _) => Text(value)),
+        ],
+      ),
+    ),
+  );
 }

@@ -5,9 +5,4 @@
 // end, and neither of the calls the watchdog exists for — the serial open and
 // close — is synchronous FFI there. Declining is the whole implementation.
 
-Future<void Function(Object message)?> spawnWatchdog({
-  required Duration silence,
-  required Duration grace,
-  required int exitCode,
-}) async =>
-    null;
+Future<void Function(Object message)?> spawnWatchdog({required Duration silence, required Duration grace, required int exitCode}) async => null;

@@ -245,8 +245,7 @@ class QsoDraft extends ChangeNotifier with PanelModel {
   bool get hasComposedValues {
     final config = this.config();
     return config.call.isNotEmpty ||
-        (!config.hasRadioService &&
-            (config.radio.freqController.text.trim().isNotEmpty || config.radio.manualBand != null)) ||
+        (!config.hasRadioService && (config.radio.freqController.text.trim().isNotEmpty || config.radio.manualBand != null)) ||
         config.time.manualStartAtMillis != null ||
         theirNameOverride != null ||
         config.refs.hasRefs ||
@@ -372,8 +371,7 @@ class QsoDraft extends ChangeNotifier with PanelModel {
       // one another device added while the editor sat open. An empty string,
       // not null, because that is what a deliberate clear stores everywhere
       // else here — a stamp fills what is ABSENT, and this key is present.
-      if (extra.containsKey('notes') || (asQsonString(base['notes']) ?? '').isNotEmpty)
-        'notes': (extra['notes'] as String?) ?? '',
+      if (extra.containsKey('notes') || (asQsonString(base['notes']) ?? '').isNotEmpty) 'notes': (extra['notes'] as String?) ?? '',
     };
   }
 
@@ -541,5 +539,4 @@ bool qsoDataEquivalent(dynamic a, dynamic b) {
   return a == b;
 }
 
-bool _isEmptyish(dynamic v) =>
-    v == null || (v is String && v.isEmpty) || (v is Map && v.isEmpty) || (v is List && v.isEmpty);
+bool _isEmptyish(dynamic v) => v == null || (v is String && v.isEmpty) || (v is Map && v.isEmpty) || (v is List && v.isEmpty);

@@ -28,12 +28,6 @@ void showPatchReadyNotice(StatusBarService statusBar, RestartService restart) {
     icon: 'restart',
     title: t.updates.updateReady,
     text: restart.isSupported ? t.updates.restartToApply : t.updates.appliesNextLaunch,
-    actions: [
-      if (restart.isSupported)
-        StatusBarAction(
-          label: t.updates.restartNow,
-          onTap: () => unawaited(restart.restart()),
-        ),
-    ],
+    actions: [if (restart.isSupported) StatusBarAction(label: t.updates.restartNow, onTap: () => unawaited(restart.restart()))],
   );
 }

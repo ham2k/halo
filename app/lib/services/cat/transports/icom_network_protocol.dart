@@ -32,7 +32,6 @@
 // disconnect, or the radio keeps the login alive and refuses every later
 // one. polo built a disconnect it never called and had no logout at all.
 
-
 /// The three UDP ports the radio listens on. Audio is never read; a socket
 /// is bound for it only because the stream request must name a real port.
 const icomControlPort = 50001;
@@ -52,18 +51,101 @@ const icomAudioSampleRate = 48000;
 const icomTxBufferMs = 150;
 
 const _substitutionTable = <int, int>{
-  32: 0x47, 33: 0x5d, 34: 0x4c, 35: 0x42, 36: 0x66, 37: 0x20, 38: 0x23, 39: 0x46,
-  40: 0x4e, 41: 0x57, 42: 0x45, 43: 0x3d, 44: 0x67, 45: 0x76, 46: 0x60, 47: 0x41,
-  48: 0x62, 49: 0x39, 50: 0x59, 51: 0x2d, 52: 0x68, 53: 0x7e, 54: 0x7c, 55: 0x65,
-  56: 0x7d, 57: 0x49, 58: 0x29, 59: 0x72, 60: 0x73, 61: 0x78, 62: 0x21, 63: 0x6e,
-  64: 0x5a, 65: 0x5e, 66: 0x4a, 67: 0x3e, 68: 0x71, 69: 0x2c, 70: 0x2a, 71: 0x54,
-  72: 0x3c, 73: 0x3a, 74: 0x63, 75: 0x4f, 76: 0x43, 77: 0x75, 78: 0x27, 79: 0x79,
-  80: 0x5b, 81: 0x35, 82: 0x70, 83: 0x48, 84: 0x6b, 85: 0x56, 86: 0x6f, 87: 0x34,
-  88: 0x32, 89: 0x6c, 90: 0x30, 91: 0x61, 92: 0x6d, 93: 0x7b, 94: 0x2f, 95: 0x4b,
-  96: 0x64, 97: 0x38, 98: 0x2b, 99: 0x2e, 100: 0x50, 101: 0x40, 102: 0x3f, 103: 0x55,
-  104: 0x33, 105: 0x37, 106: 0x25, 107: 0x77, 108: 0x24, 109: 0x26, 110: 0x74, 111: 0x6a,
-  112: 0x28, 113: 0x53, 114: 0x4d, 115: 0x69, 116: 0x22, 117: 0x5c, 118: 0x44, 119: 0x31,
-  120: 0x36, 121: 0x58, 122: 0x3b, 123: 0x7a, 124: 0x51, 125: 0x5f, 126: 0x52,
+  32: 0x47,
+  33: 0x5d,
+  34: 0x4c,
+  35: 0x42,
+  36: 0x66,
+  37: 0x20,
+  38: 0x23,
+  39: 0x46,
+  40: 0x4e,
+  41: 0x57,
+  42: 0x45,
+  43: 0x3d,
+  44: 0x67,
+  45: 0x76,
+  46: 0x60,
+  47: 0x41,
+  48: 0x62,
+  49: 0x39,
+  50: 0x59,
+  51: 0x2d,
+  52: 0x68,
+  53: 0x7e,
+  54: 0x7c,
+  55: 0x65,
+  56: 0x7d,
+  57: 0x49,
+  58: 0x29,
+  59: 0x72,
+  60: 0x73,
+  61: 0x78,
+  62: 0x21,
+  63: 0x6e,
+  64: 0x5a,
+  65: 0x5e,
+  66: 0x4a,
+  67: 0x3e,
+  68: 0x71,
+  69: 0x2c,
+  70: 0x2a,
+  71: 0x54,
+  72: 0x3c,
+  73: 0x3a,
+  74: 0x63,
+  75: 0x4f,
+  76: 0x43,
+  77: 0x75,
+  78: 0x27,
+  79: 0x79,
+  80: 0x5b,
+  81: 0x35,
+  82: 0x70,
+  83: 0x48,
+  84: 0x6b,
+  85: 0x56,
+  86: 0x6f,
+  87: 0x34,
+  88: 0x32,
+  89: 0x6c,
+  90: 0x30,
+  91: 0x61,
+  92: 0x6d,
+  93: 0x7b,
+  94: 0x2f,
+  95: 0x4b,
+  96: 0x64,
+  97: 0x38,
+  98: 0x2b,
+  99: 0x2e,
+  100: 0x50,
+  101: 0x40,
+  102: 0x3f,
+  103: 0x55,
+  104: 0x33,
+  105: 0x37,
+  106: 0x25,
+  107: 0x77,
+  108: 0x24,
+  109: 0x26,
+  110: 0x74,
+  111: 0x6a,
+  112: 0x28,
+  113: 0x53,
+  114: 0x4d,
+  115: 0x69,
+  116: 0x22,
+  117: 0x5c,
+  118: 0x44,
+  119: 0x31,
+  120: 0x36,
+  121: 0x58,
+  122: 0x3b,
+  123: 0x7a,
+  124: 0x51,
+  125: 0x5f,
+  126: 0x52,
 };
 
 List<int> passcode(String text) {
@@ -79,8 +161,7 @@ List<int> passcode(String text) {
 List<int> be32(int n) => [(n >> 24) & 0xFF, (n >> 16) & 0xFF, (n >> 8) & 0xFF, n & 0xFF];
 List<int> le16(int n) => [n & 0xFF, (n >> 8) & 0xFF];
 List<int> le32(int n) => [n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >> 24) & 0xFF];
-int readBe32(List<int> b, int o) =>
-    ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) & 0xFFFFFFFF;
+int readBe32(List<int> b, int o) => ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) & 0xFFFFFFFF;
 List<int> zeros(int n) => List<int>.filled(n, 0);
 
 /// Whether [bytes] begins with [prefix] — how every packet type is
@@ -122,24 +203,42 @@ bool icomPrefixIs(List<int> bytes, List<int> prefix) {
   return true;
 }
 
-List<int> buildPkt3(int local, int remote) =>
-    [0x10, 0, 0, 0, 0x03, 0, 0, 0, ...be32(local), ...be32(remote)];
+List<int> buildPkt3(int local, int remote) => [0x10, 0, 0, 0, 0x03, 0, 0, 0, ...be32(local), ...be32(remote)];
 
-List<int> buildPkt6(int local, int remote) =>
-    [0x10, 0, 0, 0, 0x06, 0, 0x01, 0, ...be32(local), ...be32(remote)];
+List<int> buildPkt6(int local, int remote) => [0x10, 0, 0, 0, 0x06, 0, 0x01, 0, ...be32(local), ...be32(remote)];
 
-List<int> buildIdle(int local, int remote, int seq) =>
-    [0x10, 0, 0, 0, 0, 0, ...le16(seq), ...be32(local), ...be32(remote)];
+List<int> buildIdle(int local, int remote, int seq) => [0x10, 0, 0, 0, 0, 0, ...le16(seq), ...be32(local), ...be32(remote)];
 
-List<int> buildDisconnect(int local, int remote) =>
-    [0x10, 0, 0, 0, 0x05, 0, 0, 0, ...be32(local), ...be32(remote)];
+List<int> buildDisconnect(int local, int remote) => [0x10, 0, 0, 0, 0x05, 0, 0, 0, ...be32(local), ...be32(remote)];
 
 /// Our own outgoing ping. polo only ever built the *reply* to the radio's.
-List<int> buildPing(int local, int remote, int seq, List<int> payload) =>
-    [0x15, 0, 0, 0, 0x07, 0, ...le16(seq), ...be32(local), ...be32(remote), 0x00, ...payload];
+List<int> buildPing(int local, int remote, int seq, List<int> payload) => [
+  0x15,
+  0,
+  0,
+  0,
+  0x07,
+  0,
+  ...le16(seq),
+  ...be32(local),
+  ...be32(remote),
+  0x00,
+  ...payload,
+];
 
-List<int> buildPingReply(int local, int remote, int seq, List<int> payload) =>
-    [0x15, 0, 0, 0, 0x07, 0, ...le16(seq), ...be32(local), ...be32(remote), 0x01, ...payload];
+List<int> buildPingReply(int local, int remote, int seq, List<int> payload) => [
+  0x15,
+  0,
+  0,
+  0,
+  0x07,
+  0,
+  ...le16(seq),
+  ...be32(local),
+  ...be32(remote),
+  0x01,
+  ...payload,
+];
 
 List<int> buildLogin({
   required int local,
@@ -148,34 +247,60 @@ List<int> buildLogin({
   required List<int> authStartId,
   required String username,
   required String password,
-}) =>
-    [
-      0x80, 0, 0, 0, 0, 0, 0, 0,
-      ...be32(local), ...be32(remote),
-      0, 0, 0, 0x70, 0x01, 0, 0, ...le16(innerSeq), 0,
-      authStartId[0], authStartId[1],
-      ...zeros(4),
-      ...zeros(32),
-      ...passcode(username),
-      ...passcode(password),
-      ...icomDeviceId.codeUnits, 0,
-      ...zeros(24),
-    ];
+}) => [
+  0x80,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  ...be32(local),
+  ...be32(remote),
+  0,
+  0,
+  0,
+  0x70,
+  0x01,
+  0,
+  0,
+  ...le16(innerSeq),
+  0,
+  authStartId[0],
+  authStartId[1],
+  ...zeros(4),
+  ...zeros(32),
+  ...passcode(username),
+  ...passcode(password),
+  ...icomDeviceId.codeUnits,
+  0,
+  ...zeros(24),
+];
 
-List<int> buildAuth({
-  required int local,
-  required int remote,
-  required int innerSeq,
-  required int magic,
-  required List<int> authId,
-}) =>
-    [
-      0x40, 0, 0, 0, 0, 0, 0, 0,
-      ...be32(local), ...be32(remote),
-      0, 0, 0, 0x30, 0x01, magic, 0, ...le16(innerSeq), 0,
-      ...authId,
-      ...zeros(32),
-    ];
+List<int> buildAuth({required int local, required int remote, required int innerSeq, required int magic, required List<int> authId}) => [
+  0x40,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  ...be32(local),
+  ...be32(remote),
+  0,
+  0,
+  0,
+  0x30,
+  0x01,
+  magic,
+  0,
+  ...le16(innerSeq),
+  0,
+  ...authId,
+  ...zeros(32),
+];
 
 /// [ourSerialPort] and [ourAudioPort] are the ports the RADIO should send
 /// those streams to — i.e. the local ports our own sockets are bound to.
@@ -200,21 +325,64 @@ List<int> buildRequestStreams({
 }) {
   final name = deviceName.codeUnits;
   return [
-    0x90, 0, 0, 0, 0, 0, 0, 0,
-    ...be32(local), ...be32(remote),
-    0, 0, 0, 0x80, 0x01, 0x03, 0, ...le16(innerSeq), 0,
+    0x90,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    ...be32(local),
+    ...be32(remote),
+    0,
+    0,
+    0,
+    0x80,
+    0x01,
+    0x03,
+    0,
+    ...le16(innerSeq),
+    0,
     ...authId,
     ...a8ReplyId,
     ...zeros(16),
-    ...name, ...zeros(8 - name.length),
+    ...name,
+    ...zeros(8 - name.length),
     ...zeros(24),
     ...passcode(username),
-    0x01, 0x01, 0x04, 0x04,
-    0, 0, (audioSampleRate >> 8) & 0xFF, audioSampleRate & 0xFF,
-    0, 0, (audioSampleRate >> 8) & 0xFF, audioSampleRate & 0xFF,
-    0, 0, (ourSerialPort >> 8) & 0xFF, ourSerialPort & 0xFF,
-    0, 0, (ourAudioPort >> 8) & 0xFF, ourAudioPort & 0xFF, 0, 0,
-    (txBufferMs >> 8) & 0xFF, txBufferMs & 0xFF, 0x01, 0, 0, 0, 0, 0, 0, 0,
+    0x01,
+    0x01,
+    0x04,
+    0x04,
+    0,
+    0,
+    (audioSampleRate >> 8) & 0xFF,
+    audioSampleRate & 0xFF,
+    0,
+    0,
+    (audioSampleRate >> 8) & 0xFF,
+    audioSampleRate & 0xFF,
+    0,
+    0,
+    (ourSerialPort >> 8) & 0xFF,
+    ourSerialPort & 0xFF,
+    0,
+    0,
+    (ourAudioPort >> 8) & 0xFF,
+    ourAudioPort & 0xFF,
+    0,
+    0,
+    (txBufferMs >> 8) & 0xFF,
+    txBufferMs & 0xFF,
+    0x01,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
   ];
 }
 
@@ -222,10 +390,23 @@ List<int> buildRequestStreams({
 /// commit credits a WRONG one as a bug it found on hardware and then lost
 /// with the deletion, so it is swept rather than assumed.
 List<int> buildSerialOpen(int local, int remote, int innerSeq, {int magic = 0x05}) => [
-      0x16, 0, 0, 0, 0, 0, 0, 0,
-      ...be32(local), ...be32(remote),
-      0xc0, 0x01, 0, (innerSeq >> 8) & 0xFF, innerSeq & 0xFF, magic,
-    ];
+  0x16,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  ...be32(local),
+  ...be32(remote),
+  0xc0,
+  0x01,
+  0,
+  (innerSeq >> 8) & 0xFF,
+  innerSeq & 0xFF,
+  magic,
+];
 
 /// The datagram length is a full LE32 and the CI-V length an LE16 — never a
 /// single byte with the high bytes hardcoded to zero. That shortcut is
@@ -234,12 +415,19 @@ List<int> buildSerialOpen(int local, int remote, int innerSeq, {int magic = 0x05
 /// settings block, memory contents), which would land as a wrong length the
 /// radio cannot parse.
 List<int> buildCivData(int local, int remote, int innerSeq, List<int> civ) => [
-      ...le32(0x15 + civ.length),
-      0, 0, 0, 0,
-      ...be32(local), ...be32(remote),
-      0xc1, ...le16(civ.length), (innerSeq >> 8) & 0xFF, innerSeq & 0xFF,
-      ...civ,
-    ];
+  ...le32(0x15 + civ.length),
+  0,
+  0,
+  0,
+  0,
+  ...be32(local),
+  ...be32(remote),
+  0xc1,
+  ...le16(civ.length),
+  (innerSeq >> 8) & 0xFF,
+  innerSeq & 0xFF,
+  ...civ,
+];
 
 bool isCivData(List<int> b) => b.length >= 22 && b[16] == 0xc1 && ((b[0] - 0x15) & 0xFF) == b[17];
 List<int> unwrapCiv(List<int> b) => b.sublist(21);
@@ -336,5 +524,4 @@ bool isLoginAnswer(List<int> b) => b.length == 96 && icomPrefixIs(b, [0x60, 0, 0
 /// distinguished only by `0x02` at offset 20 where the request carries `0x01`.
 /// Both directions are otherwise identical, so a predicate that ignores byte
 /// 20 would match our own outgoing packet. See docs/design/ic705-teardown.md.
-bool isLogoutAck(List<int> b) =>
-    b.length == 64 && icomPrefixIs(b, [0x40, 0, 0, 0, 0, 0]) && b[20] == 0x02;
+bool isLogoutAck(List<int> b) => b.length == 64 && icomPrefixIs(b, [0x40, 0, 0, 0, 0, 0]) && b[20] == 0x02;

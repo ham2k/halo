@@ -151,9 +151,7 @@ class _InlineMarkdownTextState extends State<InlineMarkdownText> {
           // onSurfaceAccent, not colorScheme.primary: a link is text read ON
           // the surface, and this widget's whole point is being embedded in a
           // row of body text rather than on a fill.
-          linkStyle:
-              widget.linkStyle ??
-              TextStyle(color: HaLoColors.of(context).onSurfaceAccent, fontWeight: FontWeight.w600),
+          linkStyle: widget.linkStyle ?? TextStyle(color: HaLoColors.of(context).onSurfaceAccent, fontWeight: FontWeight.w600),
           recognizerFor: (url) => _recognizers[url],
           imageBuilder: widget.imageBuilder,
           onOpenLink: widget.onOpenLink,
@@ -286,21 +284,16 @@ List<String> inlineMarkdownLinkUrls(String text) {
 /// builder rather than its parser, and for a one-line render trimming the whole
 /// string is the same thing.
 List<md.Node> _parseDocument(String text) => md.Document(
-      blockSyntaxes: const [
-        md.EmptyBlockSyntax(),
-        md.LinkReferenceDefinitionSyntax(),
-        md.HeaderSyntax(),
-        md.ParagraphSyntax(),
-      ],
-      inlineSyntaxes: md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
-      withDefaultBlockSyntaxes: false,
-      // withDefaultInlineSyntaxes stays TRUE: the CommonMark defaults are the
-      // base inline set (emphasis, escapes, code, links), not an extra layer.
-      // Turning it off leaves `**bold**` and `\*` unparsed. The only cost is a
-      // duplicate InlineHtmlSyntax appended after gitHubFlavored's, which is
-      // inert — first match wins.
-      encodeHtml: false,
-    ).parse(text.trim());
+  blockSyntaxes: const [md.EmptyBlockSyntax(), md.LinkReferenceDefinitionSyntax(), md.HeaderSyntax(), md.ParagraphSyntax()],
+  inlineSyntaxes: md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
+  withDefaultBlockSyntaxes: false,
+  // withDefaultInlineSyntaxes stays TRUE: the CommonMark defaults are the
+  // base inline set (emphasis, escapes, code, links), not an extra layer.
+  // Turning it off leaves `**bold**` and `\*` unparsed. The only cost is a
+  // duplicate InlineHtmlSyntax appended after gitHubFlavored's, which is
+  // inert — first match wins.
+  encodeHtml: false,
+).parse(text.trim());
 
 /// A soft line break inside a paragraph is a space, not a break — the same
 /// normalization `MarkdownBody` applies. A real `<br>` still breaks.
@@ -325,12 +318,8 @@ void _appendNode(
   // Recognizers ride the LEAF spans: RenderParagraph resolves a tap through
   // InlineSpan.getSpanForPosition, which descends past any span carrying
   // children instead of text — so one on a wrapper span is never found.
-  TextSpan leaf(String text, TextStyle? leafStyle) => TextSpan(
-        text: text,
-        style: leafStyle,
-        recognizer: recognizer,
-        mouseCursor: recognizer == null ? null : SystemMouseCursors.click,
-      );
+  TextSpan leaf(String text, TextStyle? leafStyle) =>
+      TextSpan(text: text, style: leafStyle, recognizer: recognizer, mouseCursor: recognizer == null ? null : SystemMouseCursors.click);
 
   if (node is md.Text) {
     spans.add(leaf(node.text.replaceAll(_softLineBreak, ' '), style));
@@ -350,17 +339,20 @@ void _appendNode(
     // ATX headings). Flattened onto one line, separated by a space so
     // "a\n\nb" reads "a b" rather than "ab".
     case 'p':
-      _appendBlockChildren(node, spans,
-          style: style,
-          joinStyle: style,
-          baseFontSize: baseFontSize,
-          codeStyle: codeStyle,
-          linkStyle: linkStyle,
-          recognizerFor: recognizerFor,
-          imageBuilder: imageBuilder,
-          onOpenLink: onOpenLink,
-          recognizer: recognizer,
-          href: href);
+      _appendBlockChildren(
+        node,
+        spans,
+        style: style,
+        joinStyle: style,
+        baseFontSize: baseFontSize,
+        codeStyle: codeStyle,
+        linkStyle: linkStyle,
+        recognizerFor: recognizerFor,
+        imageBuilder: imageBuilder,
+        onOpenLink: onOpenLink,
+        recognizer: recognizer,
+        href: href,
+      );
       return;
     // A heading renders inline — bold, with a per-level size delta off
     // [baseFontSize] (NOT off `style?.fontSize`, which is usually null here) —
@@ -373,21 +365,21 @@ void _appendNode(
     case 'h5':
     case 'h6':
       final level = int.parse(node.tag.substring(1));
-      final headingStyle = (style ?? const TextStyle()).merge(TextStyle(
-        fontWeight: FontWeight.w700,
-        fontSize: baseFontSize + _headingFontSizeDelta(level),
-      ));
-      _appendBlockChildren(node, spans,
-          style: headingStyle,
-          joinStyle: style,
-          baseFontSize: baseFontSize,
-          codeStyle: codeStyle,
-          linkStyle: linkStyle,
-          recognizerFor: recognizerFor,
-          imageBuilder: imageBuilder,
-          onOpenLink: onOpenLink,
-          recognizer: recognizer,
-          href: href);
+      final headingStyle = (style ?? const TextStyle()).merge(TextStyle(fontWeight: FontWeight.w700, fontSize: baseFontSize + _headingFontSizeDelta(level)));
+      _appendBlockChildren(
+        node,
+        spans,
+        style: headingStyle,
+        joinStyle: style,
+        baseFontSize: baseFontSize,
+        codeStyle: codeStyle,
+        linkStyle: linkStyle,
+        recognizerFor: recognizerFor,
+        imageBuilder: imageBuilder,
+        onOpenLink: onOpenLink,
+        recognizer: recognizer,
+        href: href,
+      );
       return;
     // `code` holds its content literally — never re-parsed — but the mono style
     // merges onto the inherited one, so code inside a link keeps the link's
@@ -463,24 +455,22 @@ void _appendBlockChildren(
     // Same leaf shape _appendNode's own `leaf` closure builds — the joining
     // space rides the same recognizer as the block it opens, matching what a
     // reader tapping right at the boundary would expect.
-    spans.add(TextSpan(
-      text: ' ',
-      style: joinStyle,
-      recognizer: recognizer,
-      mouseCursor: recognizer == null ? null : SystemMouseCursors.click,
-    ));
+    spans.add(TextSpan(text: ' ', style: joinStyle, recognizer: recognizer, mouseCursor: recognizer == null ? null : SystemMouseCursors.click));
   }
   for (final child in node.children ?? const <md.Node>[]) {
-    _appendNode(child, spans,
-        style: style,
-        baseFontSize: baseFontSize,
-        codeStyle: codeStyle,
-        linkStyle: linkStyle,
-        recognizerFor: recognizerFor,
-        imageBuilder: imageBuilder,
-        onOpenLink: onOpenLink,
-        recognizer: recognizer,
-        href: href);
+    _appendNode(
+      child,
+      spans,
+      style: style,
+      baseFontSize: baseFontSize,
+      codeStyle: codeStyle,
+      linkStyle: linkStyle,
+      recognizerFor: recognizerFor,
+      imageBuilder: imageBuilder,
+      onOpenLink: onOpenLink,
+      recognizer: recognizer,
+      href: href,
+    );
   }
 }
 
@@ -496,23 +486,20 @@ int _headingFontSizeDelta(int level) => 6 - level * 2;
 /// A `WidgetSpan` cannot carry a [GestureRecognizer] the way a [TextSpan] can,
 /// so an image inside a link gets its own detector — otherwise the image half
 /// of `[![flag](…) QRZ](url)` is dead and leaks the tap to the row behind it.
-WidgetSpan? _imageSpan(
-  md.Element node,
-  Widget Function(MarkdownImageConfig) imageBuilder,
-  InlineMarkdownOpenLink? onOpenLink,
-  String? href,
-) {
+WidgetSpan? _imageSpan(md.Element node, Widget Function(MarkdownImageConfig) imageBuilder, InlineMarkdownOpenLink? onOpenLink, String? href) {
   final src = node.attributes['src'];
   final parsed = src == null ? null : Uri.tryParse(src);
   if (parsed == null) return null;
   final size = _sizeFragment.firstMatch(parsed.fragment);
-  final image = imageBuilder(MarkdownImageConfig(
-    uri: parsed,
-    alt: node.attributes['alt'],
-    title: node.attributes['title'],
-    width: size == null ? null : double.tryParse(size[1]!),
-    height: size == null ? null : double.tryParse(size[2]!),
-  ));
+  final image = imageBuilder(
+    MarkdownImageConfig(
+      uri: parsed,
+      alt: node.attributes['alt'],
+      title: node.attributes['title'],
+      width: size == null ? null : double.tryParse(size[1]!),
+      height: size == null ? null : double.tryParse(size[2]!),
+    ),
+  );
   return WidgetSpan(
     alignment: PlaceholderAlignment.middle,
     child: (href == null || onOpenLink == null)

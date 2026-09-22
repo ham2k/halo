@@ -27,8 +27,7 @@ class TestCat extends Fake implements CatService {
   @override
   MainVfo? get radio1 => selected;
   @override
-  EquipmentNode? nodeFor(String uuid) =>
-      ['a', 'b', 'switch'].contains(uuid) ? EquipmentNode(uuid: uuid, typeKey: 'test') : null;
+  EquipmentNode? nodeFor(String uuid) => ['a', 'b', 'switch'].contains(uuid) ? EquipmentNode(uuid: uuid, typeKey: 'test') : null;
   @override
   List<EquipmentNode> get nodes => [nodeFor('a')!, nodeFor('b')!, nodeFor('switch')!];
   @override
@@ -132,12 +131,7 @@ void main() {
   test('expired telemetry is omitted instead of looking like fresh RF output', () {
     final cat = TestCat();
     cat.state = cat.state.copyWith(
-      telemetry: RadioTelemetry(
-        meters: {
-          RadioMeter.powerOut: MeterReading(5, nowMillis() - 60000),
-          RadioMeter.supplyVolts: MeterReading(13.8, nowMillis()),
-        },
-      ),
+      telemetry: RadioTelemetry(meters: {RadioMeter.powerOut: MeterReading(5, nowMillis() - 60000), RadioMeter.supplyVolts: MeterReading(13.8, nowMillis())}),
     );
     final meters = PanelRadioService(cat, TestRadio()).read()['meters'] as Map;
     expect(meters.containsKey('powerOut'), false);

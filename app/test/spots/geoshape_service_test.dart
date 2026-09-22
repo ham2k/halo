@@ -31,8 +31,7 @@ class _FakeExtensions extends ExtensionService {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   // ham2kUserAgent() reads the package info before every fetch.
-  PackageInfo.setMockInitialValues(
-      appName: 'HaLo', packageName: 'com.ham2k.halo', version: '1.0.0', buildNumber: '1', buildSignature: '');
+  PackageInfo.setMockInitialValues(appName: 'HaLo', packageName: 'com.ham2k.halo', version: '1.0.0', buildNumber: '1', buildSignature: '');
 
   late HaLoDatabase db;
   late LookupRepository lookups;
@@ -40,31 +39,17 @@ void main() {
   setUp(() => db = HaLoDatabase(NativeDatabase.memory()));
   tearDown(() => db.close());
 
-  GeoshapeService serviceFor(
-    RefGeojson? source, {
-    required http.Client Function() client,
-    Duration timeout = GeoshapeService.defaultFetchTimeout,
-  }) {
+  GeoshapeService serviceFor(RefGeojson? source, {required http.Client Function() client, Duration timeout = GeoshapeService.defaultFetchTimeout}) {
     lookups = LookupRepository(db);
-    return GeoshapeService(
-      extensions: _FakeExtensions(source),
-      lookups: lookups,
-      httpClientFactory: client,
-      fetchTimeout: timeout,
-    );
+    return GeoshapeService(extensions: _FakeExtensions(source), lookups: lookups, httpClientFactory: client, fetchTimeout: timeout);
   }
 
   /// A cache row as it would look [age] ago. Written directly rather than by
   /// letting the service fetch and then waiting: the stamps are real time
   /// (docs/design/time.md §1 — they persist), so a test cannot move them.
-  Future<void> seed({String? geojson, required Duration age}) => LookupRepository(db).insertLookupBatch([
-        LookupRow(
-          category: geoshapeLookupCategory,
-          key: _url,
-          data: geojson,
-          updated: realNowMillis() - age.inMilliseconds,
-        ),
-      ]);
+  Future<void> seed({String? geojson, required Duration age}) => LookupRepository(
+    db,
+  ).insertLookupBatch([LookupRow(category: geoshapeLookupCategory, key: _url, data: geojson, updated: realNowMillis() - age.inMilliseconds)]);
 
   test('a fresh cached shape is served without a request', () async {
     var requests = 0;
@@ -131,8 +116,11 @@ void main() {
     );
     await seed(geojson: _shape, age: const Duration(days: 400));
 
-    expect((await service.shapeForRef(_summit)).geojson, _shape,
-        reason: 'a boundary a year old is still where the boundary is; the summit is where the signal is not');
+    expect(
+      (await service.shapeForRef(_summit)).geojson,
+      _shape,
+      reason: 'a boundary a year old is still where the boundary is; the summit is where the signal is not',
+    );
   });
 
   test('a body that is not JSON is never stored', () async {
@@ -146,8 +134,7 @@ void main() {
     );
 
     expect((await service.shapeForRef(_summit)).geojson, isNull);
-    expect(await lookups.getLookup(geoshapeLookupCategory, _url), isNull,
-        reason: 'stored, it would be re-read and re-fail for the whole 30 days');
+    expect(await lookups.getLookup(geoshapeLookupCategory, _url), isNull, reason: 'stored, it would be re-read and re-fail for the whole 30 days');
     expect(requests, 1);
   });
 
@@ -173,10 +160,7 @@ void main() {
   });
 
   test('a reference whose handler offers no url asks for nothing', () async {
-    final service = serviceFor(
-      null,
-      client: () => http.MockClient((_) async => fail('a reference with no shape must not be fetched')),
-    );
+    final service = serviceFor(null, client: () => http.MockClient((_) async => fail('a reference with no shape must not be fetched')));
     expect((await service.shapeForRef({'type': 'pota', 'ref': 'US-0001'})).geojson, isNull);
   });
 
@@ -294,15 +278,13 @@ void main() {
     test('ignores a non-positive age instead of honoring it', () {
       // Honored, a zero would re-fetch on every rebuild of the map — a
       // request per keystroke in the search field above it.
-      final source = refGeojsonFromHookResult({'url': _url, 'maxAgeInDays': 0, 'missMaxAgeInDays': -1},
-          type: 'sotaActivation');
+      final source = refGeojsonFromHookResult({'url': _url, 'maxAgeInDays': 0, 'missMaxAgeInDays': -1}, type: 'sotaActivation');
       expect(source?.maxAge, const Duration(days: 30));
       expect(source?.missMaxAge, const Duration(days: 1));
     });
 
     test('reads a fractional age, so a program can ask for hours', () {
-      expect(refGeojsonFromHookResult({'url': _url, 'missMaxAgeInDays': 0.5}, type: 'sotaActivation')?.missMaxAge,
-          const Duration(hours: 12));
+      expect(refGeojsonFromHookResult({'url': _url, 'missMaxAgeInDays': 0.5}, type: 'sotaActivation')?.missMaxAge, const Duration(hours: 12));
     });
   });
 }

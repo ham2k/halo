@@ -16,12 +16,16 @@ import 'package:halo_widgets/halo_widgets.dart';
 void main() {
   testWidgets('OncePerSecond re-runs its builder as wall-clock seconds pass', (tester) async {
     var builds = 0;
-    await tester.pumpWidget(MaterialApp(
-      home: OncePerSecond(builder: (context, _) {
-        builds++;
-        return const SizedBox();
-      }),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OncePerSecond(
+          builder: (context, _) {
+            builds++;
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
 
     expect(builds, 1);
     // Each armed timer waits at most 1s (aimed at the next second boundary,
@@ -34,15 +38,21 @@ void main() {
   testWidgets('ticks rebuild only the leaf, not the widget that owns the spec', (tester) async {
     var parentBuilds = 0;
     var leafBuilds = 0;
-    await tester.pumpWidget(MaterialApp(
-      home: Builder(builder: (context) {
-        parentBuilds++;
-        return OncePerSecond(builder: (context, _) {
-          leafBuilds++;
-          return const SizedBox();
-        });
-      }),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            parentBuilds++;
+            return OncePerSecond(
+              builder: (context, _) {
+                leafBuilds++;
+                return const SizedBox();
+              },
+            );
+          },
+        ),
+      ),
+    );
 
     await tester.pump(const Duration(seconds: 3));
     await tester.pump(const Duration(seconds: 3));
@@ -54,9 +64,7 @@ void main() {
   });
 
   testWidgets('the shared timer disarms once the last listener is gone', (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: OncePerSecond(builder: (context, _) => const SizedBox()),
-    ));
+    await tester.pumpWidget(MaterialApp(home: OncePerSecond(builder: (context, _) => const SizedBox())));
     await tester.pump(const Duration(seconds: 2));
 
     // Removing the subtree removes the last listener; if the timer kept
@@ -71,12 +79,16 @@ void main() {
     testWidgets('the builder is handed the travelled time', (tester) async {
       AppClock.instance.travel(delta: const Duration(days: 30));
       DateTime? seen;
-      await tester.pumpWidget(MaterialApp(
-        home: OncePerSecond(builder: (context, nowUtc) {
-          seen = nowUtc;
-          return const SizedBox();
-        }),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OncePerSecond(
+            builder: (context, nowUtc) {
+              seen = nowUtc;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
 
       expect(seen, isNotNull);
       expect(seen!.difference(nowUtc()).abs(), lessThan(const Duration(seconds: 2)));
@@ -84,12 +96,16 @@ void main() {
 
     testWidgets('travelling repaints immediately instead of at the next tick', (tester) async {
       var builds = 0;
-      await tester.pumpWidget(MaterialApp(
-        home: OncePerSecond(builder: (context, _) {
-          builds++;
-          return const SizedBox();
-        }),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OncePerSecond(
+            builder: (context, _) {
+              builds++;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
       expect(builds, 1);
 
       // No pumped time at all: without the AppClock listener the leaf would sit
@@ -126,9 +142,7 @@ void main() {
     });
 
     testWidgets('the clock listener is dropped with the last subscriber', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: OncePerSecond(builder: (context, _) => const SizedBox()),
-      ));
+      await tester.pumpWidget(MaterialApp(home: OncePerSecond(builder: (context, _) => const SizedBox())));
       await tester.pumpWidget(const MaterialApp(home: SizedBox()));
 
       // A leaked listener would re-arm the timer from a disposed subtree, and

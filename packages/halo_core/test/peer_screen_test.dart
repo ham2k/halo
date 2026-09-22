@@ -20,15 +20,7 @@ PeerScreenFrame _frame({
   int sequence = 7,
   String format = 'jpeg',
   List<int> image = const [0xFF, 0xD8, 0xFF, 0xE0, 0x00],
-}) =>
-    PeerScreenFrame(
-      sourceId: sourceId,
-      width: width,
-      height: height,
-      sequence: sequence,
-      format: format,
-      image: Uint8List.fromList(image),
-    );
+}) => PeerScreenFrame(sourceId: sourceId, width: width, height: height, sequence: sequence, format: format, image: Uint8List.fromList(image));
 
 void main() {
   group('PeerScreenFrame round trip', () {
@@ -216,8 +208,7 @@ void main() {
         quality: 0.8,
         crop: PeerScreenCrop(left: 0.5, top: 0.25, width: 0.25, height: 0.25),
       );
-      final read = PeerMessage.decode(PeerMessage.screenSubscribe(request).encode())!
-          .screenSubscriptionOrNull!;
+      final read = PeerMessage.decode(PeerMessage.screenSubscribe(request).encode())!.screenSubscriptionOrNull!;
       expect(read.crop, request.crop);
       expect(read.quality, 0.8);
     });
@@ -237,29 +228,14 @@ void main() {
       // sharper picture and being served the old one for ever.
       const base = PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1280, fps: 10);
       expect(
-        base ==
-            const PeerScreenSubscription(
-                sourceId: 'display:1',
-                maxWidth: 1280,
-                fps: 10,
-                crop: PeerScreenCrop(left: 0, top: 0, width: 0.5, height: 0.5)),
+        base == const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1280, fps: 10, crop: PeerScreenCrop(left: 0, top: 0, width: 0.5, height: 0.5)),
         isFalse,
       );
-      expect(
-        base ==
-            const PeerScreenSubscription(
-                sourceId: 'display:1', maxWidth: 1280, fps: 10, quality: 0.9),
-        isFalse,
-      );
+      expect(base == const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1280, fps: 10, quality: 0.9), isFalse);
       // Acking is how a viewer takes delivery, not a term of the capture:
       // restarting the stream because one of two viewers acks would drop
       // frames for the other.
-      expect(
-        base ==
-            const PeerScreenSubscription(
-                sourceId: 'display:1', maxWidth: 1280, fps: 10, acks: true),
-        isTrue,
-      );
+      expect(base == const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1280, fps: 10, acks: true), isTrue);
     });
   });
 
@@ -365,8 +341,7 @@ void main() {
 
   group('PeerScreenAck', () {
     test('survives a round trip', () {
-      final decoded = PeerScreenAck.decode(
-          const PeerScreenAck(sourceId: 'display:1', sequence: 5007).encode())!;
+      final decoded = PeerScreenAck.decode(const PeerScreenAck(sourceId: 'display:1', sequence: 5007).encode())!;
       expect(decoded.sourceId, 'display:1');
       expect(decoded.sequence, 5007);
     });
@@ -404,15 +379,10 @@ void main() {
         ..[2] = 0xFF;
       expect(PeerScreenAck.decode(longHeader), isNull);
       final junk = utf8.encode('not json');
-      expect(
-          PeerScreenAck.decode(Uint8List.fromList([2, 0, junk.length, ...junk])), isNull);
+      expect(PeerScreenAck.decode(Uint8List.fromList([2, 0, junk.length, ...junk])), isNull);
       for (final header in ['{"seq":1}', '{"src":"display:1"}', '{"src":"","seq":1}']) {
         final bytes = utf8.encode(header);
-        expect(
-            PeerScreenAck.decode(
-                Uint8List.fromList([2, bytes.length >> 8, bytes.length & 0xFF, ...bytes])),
-            isNull,
-            reason: header);
+        expect(PeerScreenAck.decode(Uint8List.fromList([2, bytes.length >> 8, bytes.length & 0xFF, ...bytes])), isNull, reason: header);
       }
     });
   });
@@ -424,8 +394,7 @@ void main() {
       // reader that never looks — every real viewer would be served ungated,
       // the feature would be inert in production, and nothing else in the
       // suite would notice.
-      const request =
-          PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5, acks: true);
+      const request = PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5, acks: true);
       final decoded = PeerScreenSubscription.from(request.toJson())!;
       expect(decoded.acks, isTrue);
       expect(decoded.sourceId, 'display:1');
@@ -441,14 +410,10 @@ void main() {
       // The other direction. A viewer that acks a producer which never reads
       // its end of the link buffers those acks in that device's memory for
       // the life of the link.
-      const grant =
-          PeerScreenGrant(sourceId: 'display:1', ticket: 'abc', port: 5000, paced: true);
-      final decoded = PeerScreenGrant.from(
-          PeerMessage.decode(PeerMessage.screenGrant(grant).encode())!.fields)!;
+      const grant = PeerScreenGrant(sourceId: 'display:1', ticket: 'abc', port: 5000, paced: true);
+      final decoded = PeerScreenGrant.from(PeerMessage.decode(PeerMessage.screenGrant(grant).encode())!.fields)!;
       expect(decoded.paced, isTrue);
-      expect(
-          PeerScreenGrant.from({'id': 'display:1', 'ticket': 'abc', 'port': 5000})!.paced,
-          isFalse);
+      expect(PeerScreenGrant.from({'id': 'display:1', 'ticket': 'abc', 'port': 5000})!.paced, isFalse);
     });
   });
 }

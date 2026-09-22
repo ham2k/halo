@@ -59,7 +59,8 @@ void main() {
         expect(
           elementMatchesTarget(el, 'logging-extended'),
           isTrue,
-          reason: '"$key" is neither a base toggle nor tagged logging-extended — it would be unreachable '
+          reason:
+              '"$key" is neither a base toggle nor tagged logging-extended — it would be unreachable '
               'from the tune-icon dialog entirely',
         );
       }
@@ -108,15 +109,10 @@ void main() {
   });
 
   group('RadioSettingsGroup', () {
-    Future<SettingsService> settingsWith({
-      bool cat = true,
-      bool keyer = true,
-      bool snap = true,
-      bool zeroBeat = true,
-      bool developer = true,
-    }) async {
+    Future<SettingsService> settingsWith({bool cat = true, bool keyer = true, bool snap = true, bool zeroBeat = true, bool developer = true}) async {
       SharedPreferences.setMockInitialValues({
-        if (cat) 'experiments': jsonEncode({
+        if (cat)
+          'experiments': jsonEncode({
             'gato': {'enabled': true},
             if (keyer) 'keyer': {'enabled': true},
           }),
@@ -138,14 +134,11 @@ void main() {
     /// has no key at all. Kept out of the knob tests, and tested on their own.
     /// The repeat delays belong here too: they are keyer settings under the
     /// message dialogs' own targets, not tuning knobs.
-    bool isCwMessageElement(Map<String, dynamic> el) =>
-        el['key'] == null || (el['key'] as String).startsWith('cwMessage') || el['key'] == 'cwRepeatDelay';
+    bool isCwMessageElement(Map<String, dynamic> el) => el['key'] == null || (el['key'] as String).startsWith('cwMessage') || el['key'] == 'cwRepeatDelay';
 
     /// The voice memory labels, the same way, under `voice-messages`.
     bool isVoiceMessageElement(Map<String, dynamic> el) =>
-        el['key'] == null ||
-        (el['key'] as String).startsWith('voiceMessage') ||
-        el['key'] == 'voiceRepeatDelay';
+        el['key'] == null || (el['key'] as String).startsWith('voiceMessage') || el['key'] == 'voiceRepeatDelay';
 
     bool isMessageElement(Map<String, dynamic> el) => isCwMessageElement(el) || isVoiceMessageElement(el);
 
@@ -153,9 +146,9 @@ void main() {
     bool isPanelLink(Map<String, dynamic> el) => el['type'] == 'link' && el['panel'] != null;
 
     Future<Set<String>> keysFor(SettingsService settings) async => {
-          for (final el in await RadioSettingsGroup(settings).buildElements())
-            if (!isMessageElement(el) && !isPanelLink(el)) el['key'] as String,
-        };
+      for (final el in await RadioSettingsGroup(settings).buildElements())
+        if (!isMessageElement(el) && !isPanelLink(el)) el['key'] as String,
+    };
 
     test('contributes nothing at all until the CAT experiment is on', () async {
       // An empty group renders nothing; a group with only a header renders a
@@ -189,8 +182,7 @@ void main() {
       // deliberately switched the feature on — and that operator is exactly
       // who would want to tune the spread, developer or not.
       expect(await keysFor(await settingsWith(developer: false)), contains('zeroBeatRangeHz'));
-      expect(await keysFor(await settingsWith(developer: false, zeroBeat: false)),
-          isNot(contains('zeroBeatRangeHz')));
+      expect(await keysFor(await settingsWith(developer: false, zeroBeat: false)), isNot(contains('zeroBeatRangeHz')));
     });
 
     test('the knobs mean nothing with the feature off, and are not offered', () async {
@@ -222,13 +214,11 @@ void main() {
       expect(knobs, hasLength(5));
       for (final el in knobs) {
         // Every knob stays out of the tune dialog's always-visible set...
-        expect(elementMatchesTarget(el, 'current-radio-extended'), isTrue,
-            reason: '${el['key']} would crowd the tune dialog\'s always-visible set');
+        expect(elementMatchesTarget(el, 'current-radio-extended'), isTrue, reason: '${el['key']} would crowd the tune dialog\'s always-visible set');
         // ...but only the snap knobs also hide behind developer mode. Compared
         // as `== true`, which is how FormRenderer reads the flag — an absent
         // key and an explicit false both mean "show it".
-        expect(el['devMode'] == true, el['key'] != 'zeroBeatRangeHz',
-            reason: '${el['key']} is flagged for the wrong audience in Settings');
+        expect(el['devMode'] == true, el['key'] != 'zeroBeatRangeHz', reason: '${el['key']} is flagged for the wrong audience in Settings');
       }
 
       // The select fields emit strings; a commit path that only handled bools
@@ -293,8 +283,7 @@ void main() {
       expect(settings.cwRepeatDelay, const Duration(seconds: 5));
       await group.commit('voiceRepeatDelay', '3');
       expect(settings.voiceRepeatDelay, const Duration(seconds: 3));
-      expect(await RadioSettingsGroup(await settingsWith(cat: false)).buildElements(), isEmpty,
-          reason: 'sanity: still nothing without CAT, messages included');
+      expect(await RadioSettingsGroup(await settingsWith(cat: false)).buildElements(), isEmpty, reason: 'sanity: still nothing without CAT, messages included');
       // CAT on, keyer off: the radio's own toggles, none of the messages.
       final withoutKeyer = await RadioSettingsGroup(await settingsWith(keyer: false, snap: false, zeroBeat: false)).buildElements();
       expect(withoutKeyer.where(isMessageElement), isEmpty, reason: 'the messages follow the keyer experiment');
@@ -316,8 +305,7 @@ void main() {
         'settings.radio': jsonEncode({'smartVfoSnap': true, 'smartVfoSnapMinSpeed': '0'}),
       });
       final settings = SettingsService(await SharedPreferences.getInstance());
-      final speed = (await RadioSettingsGroup(settings).buildElements())
-          .firstWhere((el) => el['key'] == 'smartVfoSnapMinSpeed');
+      final speed = (await RadioSettingsGroup(settings).buildElements()).firstWhere((el) => el['key'] == 'smartVfoSnapMinSpeed');
       final offered = [for (final o in speed['options'] as List) (o as Map)['value']];
 
       expect(offered, isNot(contains('0')));
@@ -349,8 +337,7 @@ void main() {
         for (final option in options) {
           await settings.setSettingValue(SettingsService.radioGroup, 'smartVfoSnap', true);
           await settings.setSettingValue(SettingsService.radioGroup, key, option);
-          final el =
-              (await RadioSettingsGroup(settings).buildElements()).firstWhere((e) => e['key'] == key);
+          final el = (await RadioSettingsGroup(settings).buildElements()).firstWhere((e) => e['key'] == key);
           expect(el['value'], option, reason: '$key: "$option" does not survive the getter it renders through');
         }
       }

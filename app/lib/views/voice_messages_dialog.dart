@@ -34,9 +34,9 @@ import '../services/settings_service.dart';
 import 'cw_messages_dialog.dart' show cwMessageNumberIcons;
 
 Future<void> showVoiceMessagesDialog(BuildContext context, HaLoServices services) => showHaloDialog<void>(
-      context: context,
-      builder: (context) => _VoiceMessagesDialog(services: services),
-    );
+  context: context,
+  builder: (context) => _VoiceMessagesDialog(services: services),
+);
 
 class _VoiceMessagesDialog extends StatelessWidget {
   final HaLoServices services;
@@ -68,10 +68,7 @@ class _VoiceMessagesDialog extends StatelessWidget {
               isExpanded: true,
               initialValue: '${settings.voiceRepeatDelay.inSeconds}',
               icon: dropdownTrailingIcon,
-              decoration: poloFieldDecoration(context, m.repeat).copyWith(
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-              ),
+              decoration: poloFieldDecoration(context, m.repeat).copyWith(filled: true, fillColor: theme.colorScheme.surface),
               menuMaxHeight: dropdownMenuMaxHeight(context),
               items: [
                 for (final option in SettingsService.cwRepeatDelayOptions)
@@ -95,24 +92,26 @@ class _VoiceMessagesDialog extends StatelessWidget {
               for (var n = 1; n <= count; n++)
                 ListTile(
                   leading: Icon(cwMessageNumberIcons[n - 1]),
-                  title: Text.rich(TextSpan(children: [
-                    TextSpan(text: m.key(n: n), style: const TextStyle(fontWeight: FontWeight.w600)),
-                    if (cat.voiceMessageLabel(n).trim().isNotEmpty)
-                      TextSpan(text: '  ${cat.voiceMessageLabel(n).trim()}'),
-                  ])),
+                  title: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: m.key(n: n),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        if (cat.voiceMessageLabel(n).trim().isNotEmpty) TextSpan(text: '  ${cat.voiceMessageLabel(n).trim()}'),
+                      ],
+                    ),
+                  ),
                   // What the memory IS — its measured length — unless the
                   // radio is doing something with it right now, which is
                   // the more urgent thing to say.
                   subtitle: Text(
                     activity?.memory == n
                         ? (activity!.doubtful ? m.doubtful : (activity.recording ? m.recording : m.playing))
-                        : (cat.voiceMessageDuration(n) > 0
-                            ? voiceDurationText(context, cat.voiceMessageDuration(n))
-                            : m.notMeasured),
+                        : (cat.voiceMessageDuration(n) > 0 ? voiceDurationText(context, cat.voiceMessageDuration(n)) : m.notMeasured),
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: activity?.memory == n || cat.voiceMessageDuration(n) > 0
-                          ? null
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      color: activity?.memory == n || cat.voiceMessageDuration(n) > 0 ? null : theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                   onTap: () => showHaloDialog<void>(
@@ -128,10 +127,7 @@ class _VoiceMessagesDialog extends StatelessWidget {
               if (!canPlay)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.md),
-                  child: Text(
-                    m.notAvailable,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
-                  ),
+                  child: Text(m.notAvailable, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
                 ),
             ],
           ),
@@ -225,9 +221,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                   padding: rowInset.copyWith(bottom: Space.md),
                   child: Text(
                     m.namedOnDevice(device: peerDeviceLabel(cat.followedPeerRadio)),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8)),
                   ),
                 ),
               // Shown, never asked for: every play times itself, so a memory
@@ -262,18 +256,12 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                         textAlign: TextAlign.center,
                         style: duration > 0
                             ? theme.textTheme.bodyLarge
-                            : theme.textTheme.bodyLarge?.copyWith(
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                              ),
+                            : theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
                       ),
                     ),
                     if (cat.canPlayVoice)
                       if (playing)
-                        FilledButton.tonalIcon(
-                          onPressed: cat.stopVoice,
-                          icon: const Icon(MdiIcons.stop),
-                          label: Text(m.stopButton),
-                        )
+                        FilledButton.tonalIcon(onPressed: cat.stopVoice, icon: const Icon(MdiIcons.stop), label: Text(m.stopButton))
                       else
                         FilledButton.tonalIcon(
                           // Once: this is the operator listening to the
@@ -291,12 +279,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
               if (!cat.canRecordVoice)
                 Padding(
                   padding: rowInset.copyWith(bottom: Space.xl),
-                  child: Text(
-                    m.recordOnRadio,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                    ),
-                  ),
+                  child: Text(m.recordOnRadio, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8))),
                 ),
               // Under the buttons: it explains what to do AFTER pressing
               // Record, not what Record is (EquipmentModel.recordingHelp).
@@ -304,26 +287,24 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                 Padding(
                   padding: rowInset.copyWith(bottom: Space.xl),
                   child: Text.rich(
-                    TextSpan(children: [
-                      // Named, because the note describes ONE rig's front
-                      // panel and a station can have more than one radio.
-                      TextSpan(
-                        text: '${m.recordHelpTitle(model: cat.voiceRecordingHelp!.model)} ',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      TextSpan(text: cat.voiceRecordingHelp!.text),
-                    ]),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                    TextSpan(
+                      children: [
+                        // Named, because the note describes ONE rig's front
+                        // panel and a station can have more than one radio.
+                        TextSpan(
+                          text: '${m.recordHelpTitle(model: cat.voiceRecordingHelp!.model)} ',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(text: cat.voiceRecordingHelp!.text),
+                      ],
                     ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8)),
                   ),
                 ),
             ],
           ),
           cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-          actions: [
-            FilledButton(onPressed: _save, child: Text(context.t.common.save)),
-          ],
+          actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
         );
       },
     );
@@ -333,8 +314,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
 /// A measured length as seconds with one decimal — "4.2 s". The measurement
 /// has milliseconds in it (settings_service.dart), and a memory rounded to
 /// the second reads as if the app guessed.
-String voiceDurationText(BuildContext context, int millis) =>
-    context.t.settings.radio.voiceMessages.durationSeconds(n: (millis / 1000).toStringAsFixed(1));
+String voiceDurationText(BuildContext context, int millis) => context.t.settings.radio.voiceMessages.durationSeconds(n: (millis / 1000).toStringAsFixed(1));
 
 /// What to CALL the device holding the memories — its name, or its id when a
 /// pick made as the peer dropped stored no name (`PeerRadioSelection`).

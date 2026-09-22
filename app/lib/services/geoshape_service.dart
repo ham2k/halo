@@ -57,12 +57,7 @@ class CachedGeoshape {
 }
 
 class GeoshapeService {
-  GeoshapeService({
-    required this.extensions,
-    required this.lookups,
-    this.httpClientFactory = http.Client.new,
-    this.fetchTimeout = defaultFetchTimeout,
-  });
+  GeoshapeService({required this.extensions, required this.lookups, this.httpClientFactory = http.Client.new, this.fetchTimeout = defaultFetchTimeout});
 
   final ExtensionService extensions;
   final LookupRepository lookups;
@@ -212,19 +207,12 @@ class GeoshapeService {
   /// this device holds one, otherwise "still unknown" — never
   /// [Geoshape.none], which would have the map stop asking on the strength of
   /// a dropped connection.
-  Geoshape _fallback(CachedGeoshape? fallback) =>
-      fallback == null ? Geoshape.unknown : Geoshape(fallback.geojson, resolved: fallback.geojson != null);
+  Geoshape _fallback(CachedGeoshape? fallback) => fallback == null ? Geoshape.unknown : Geoshape(fallback.geojson, resolved: fallback.geojson != null);
 
   /// `realNowMillis`, not the app clock (docs/design/time.md §1): the stamp
   /// persists and outlives the travel that wrote it, so a developer three
   /// days forward must not leave rows that look fresh for three days after
   /// they come back.
-  Future<void> _store(String url, String? geojson) => lookups.insertLookupBatch([
-        LookupRow(
-          category: geoshapeLookupCategory,
-          key: url,
-          data: geojson,
-          updated: realNowMillis(),
-        ),
-      ]);
+  Future<void> _store(String url, String? geojson) =>
+      lookups.insertLookupBatch([LookupRow(category: geoshapeLookupCategory, key: url, data: geojson, updated: realNowMillis())]);
 }

@@ -97,13 +97,9 @@ Future<List<ScannedSetting>> scanSettings(HaLoServices services) async {
     final elements = filterElementsForEnvironment(resolved);
     final values = _valuesOf(elements);
     for (final el in elements) {
-      scanned.add(ScannedSetting(
-        element: el,
-        key: el['key'] is String ? el['key'] as String : '',
-        sectionTitle: group.title,
-        siblingValues: values,
-        group: group,
-      ));
+      scanned.add(
+        ScannedSetting(element: el, key: el['key'] is String ? el['key'] as String : '', sectionTitle: group.title, siblingValues: values, group: group),
+      );
     }
   }
 
@@ -112,11 +108,7 @@ Future<List<ScannedSetting>> scanSettings(HaLoServices services) async {
     final panelKey = panel['panelKey'] as String?;
     final kind = panel['kind'] as String?;
     if (hookKey == null || panelKey == null || kind == null) continue;
-    final definition = await services.extensions.getSettingsPanelDefinition(
-      hookKey: hookKey,
-      panelKey: panelKey,
-      kind: kind,
-    );
+    final definition = await services.extensions.getSettingsPanelDefinition(hookKey: hookKey, panelKey: panelKey, kind: kind);
     final rawElements = (definition?['elements'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
     final resolved = await services.systemLists.resolveInElements(rawElements);
     final elements = filterElementsForEnvironment(resolved);
@@ -131,16 +123,16 @@ Future<List<ScannedSetting>> scanSettings(HaLoServices services) async {
       final elementKey = el['key'];
       if (elementKey is! String) continue;
       final namespacedKey = '$panelKey.$elementKey';
-      scanned.add(ScannedSetting(
-        element: {...el, 'key': namespacedKey},
-        key: namespacedKey,
-        sectionTitle: title,
-        siblingValues: values,
-        fieldRoute: type == 'field'
-            ? (hookKey: hookKey, panelKey: panelKey, kind: kind, fieldKey: elementKey, field: el)
-            : null,
-        actionRoute: type == 'action' ? (hookKey: hookKey, panelKey: panelKey) : null,
-      ));
+      scanned.add(
+        ScannedSetting(
+          element: {...el, 'key': namespacedKey},
+          key: namespacedKey,
+          sectionTitle: title,
+          siblingValues: values,
+          fieldRoute: type == 'field' ? (hookKey: hookKey, panelKey: panelKey, kind: kind, fieldKey: elementKey, field: el) : null,
+          actionRoute: type == 'action' ? (hookKey: hookKey, panelKey: panelKey) : null,
+        ),
+      );
     }
   }
 

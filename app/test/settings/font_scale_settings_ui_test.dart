@@ -31,8 +31,7 @@ void main() {
     return elements.firstWhere((e) => e['key'] == 'fontScale');
   }
 
-  List<Map<String, dynamic>> optionsOf(Map<String, dynamic> field) =>
-      (field['options'] as List).cast<Map<String, dynamic>>();
+  List<Map<String, dynamic>> optionsOf(Map<String, dynamic> field) => (field['options'] as List).cast<Map<String, dynamic>>();
 
   test('picker lists exactly the five selectable levels, in order', () async {
     SharedPreferences.setMockInitialValues({});

@@ -63,12 +63,7 @@ class ServiceReachability {
   final DateTime? lastSuccessAt;
   final DateTime? lastFailureAt;
 
-  const ServiceReachability({
-    required this.id,
-    required this.label,
-    this.lastSuccessAt,
-    this.lastFailureAt,
-  });
+  const ServiceReachability({required this.id, required this.label, this.lastSuccessAt, this.lastFailureAt});
 
   /// Whether its most recent word was a failure. A service that has never
   /// reported either way is not failing — it is unknown, and saying "failing"
@@ -132,28 +127,31 @@ class ConnectivityService {
 
   /// Installs the plugin subscription and probes the current state. Idempotent.
   /// [changesSource] and [check] are test seams for the platform channel.
-  static void start({
-    Stream<List<ConnectivityResult>>? changesSource,
-    Future<List<ConnectivityResult>> Function()? check,
-  }) {
+  static void start({Stream<List<ConnectivityResult>>? changesSource, Future<List<ConnectivityResult>> Function()? check}) {
     if (_subscription != null) return;
-    _subscription = (changesSource ?? Connectivity().onConnectivityChanged).listen(_onStreamEvent, onError: (Object e) {
-      // A backend that can't be watched (no NetworkManager on Linux) costs
-      // the OS half of the offline state — the probe half still works, and
-      // the app stays in the loud-by-default state until it says otherwise.
-      // This print is the only record: nothing subscribes to a raw
-      // connectivity stream any more. The Linux backend can also throw from
-      // its own async stream setup, unreachable by this onError; ErrorPolicy's
-      // connectivity-backend-unavailable rule covers that leg.
-      debugPrint('[connectivity] stream error: $e');
-    });
-    (check ?? Connectivity().checkConnectivity)().then((results) {
-      // The probe is a snapshot from before the subscription's first event;
-      // a real change that beat it here is newer and must not be clobbered.
-      if (!_sawStreamEvent) _onChanged(results);
-    }, onError: (Object e) {
-      debugPrint('[connectivity] initial check failed: $e');
-    });
+    _subscription = (changesSource ?? Connectivity().onConnectivityChanged).listen(
+      _onStreamEvent,
+      onError: (Object e) {
+        // A backend that can't be watched (no NetworkManager on Linux) costs
+        // the OS half of the offline state — the probe half still works, and
+        // the app stays in the loud-by-default state until it says otherwise.
+        // This print is the only record: nothing subscribes to a raw
+        // connectivity stream any more. The Linux backend can also throw from
+        // its own async stream setup, unreachable by this onError; ErrorPolicy's
+        // connectivity-backend-unavailable rule covers that leg.
+        debugPrint('[connectivity] stream error: $e');
+      },
+    );
+    (check ?? Connectivity().checkConnectivity)().then(
+      (results) {
+        // The probe is a snapshot from before the subscription's first event;
+        // a real change that beat it here is newer and must not be clobbered.
+        if (!_sawStreamEvent) _onChanged(results);
+      },
+      onError: (Object e) {
+        debugPrint('[connectivity] initial check failed: $e');
+      },
+    );
   }
 
   static bool _sawStreamEvent = false;

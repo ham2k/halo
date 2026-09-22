@@ -46,11 +46,7 @@ void main() {
     final field = await densityField(settings);
     final options = (field['options'] as List).cast<Map<String, dynamic>>();
 
-    expect(
-      options.map((o) => o['value']),
-      DensityPreference.values.map((p) => p.name),
-      reason: 'a level missing here is a level only the keyboard can reach',
-    );
+    expect(options.map((o) => o['value']), DensityPreference.values.map((p) => p.name), reason: 'a level missing here is a level only the keyboard can reach');
     expect(options.first['value'], 'auto');
     // Labels come from i18n and must all resolve — a missing key surfaces as
     // the raw path rather than as a failure anywhere else.

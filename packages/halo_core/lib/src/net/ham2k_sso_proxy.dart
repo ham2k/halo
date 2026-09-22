@@ -26,10 +26,7 @@ const sotaSsoHost = 'sso.sota.org.uk';
 /// without the verifier the browser holds — but the tokens it buys are a
 /// different thing, and every path added here widens what else can pass. The
 /// discovery document is CORS-open at the source, so it must NOT be listed.
-const sotaProxiedSsoPaths = {
-  '/auth/realms/SOTA/protocol/openid-connect/token',
-  '/auth/realms/SOTA/account',
-};
+const sotaProxiedSsoPaths = {'/auth/realms/SOTA/protocol/openid-connect/token', '/auth/realms/SOTA/account'};
 
 /// [uri] as this build must fetch it: through the proxy where a browser would
 /// otherwise be refused, unchanged everywhere else.
@@ -37,7 +34,5 @@ Uri ham2kSsoFetchUri(Uri uri, {required bool onWeb}) {
   if (!onWeb) return uri;
   if (uri.host != sotaSsoHost) return uri;
   if (!sotaProxiedSsoPaths.contains(uri.path)) return uri;
-  return Uri.parse(
-    'https://$ham2kProxyHost/${uri.host}${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}',
-  );
+  return Uri.parse('https://$ham2kProxyHost/${uri.host}${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}');
 }

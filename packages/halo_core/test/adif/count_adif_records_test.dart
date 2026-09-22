@@ -28,8 +28,7 @@ void main() {
   });
 
   test('upTo stops at the limit and never undercounts below it', () {
-    List<int> file(int records) =>
-        utf8.encode('<EOH>\n${List.filled(records, '<CALL:5>N0DEV<EOR>\n').join()}');
+    List<int> file(int records) => utf8.encode('<EOH>\n${List.filled(records, '<CALL:5>N0DEV<EOR>\n').join()}');
     // Stopping early is what keeps a whole-log file from freezing the UI, so
     // a count that runs on returns 50,000 here; one that stops a record late
     // or early moves the cap by one either way.

@@ -51,30 +51,21 @@ void main() {
       // The clamp is one-directional: an operator on a shared line, or one
       // who simply does not want their rig chattered at, is allowed to ask
       // for less than the wire could carry.
-      expect(
-        telemetryIntervalFor(const {telemetryIntervalConfigKey: 2000}, cycleBytes: 52, baudRate: 38400),
-        const Duration(milliseconds: 2000),
-      );
+      expect(telemetryIntervalFor(const {telemetryIntervalConfigKey: 2000}, cycleBytes: 52, baudRate: 38400), const Duration(milliseconds: 2000));
     });
 
     test('a faster cadence than the link can carry is clamped to the link', () {
       // Where the arithmetic has to win. Without this, 50 entered on a
       // 4800-baud radio saturates the line and the symptom appears as a
       // radio that will not tune.
-      expect(
-        telemetryIntervalFor(const {telemetryIntervalConfigKey: 50}, cycleBytes: 52, baudRate: 4800),
-        telemetryFloor(cycleBytes: 52, baudRate: 4800),
-      );
+      expect(telemetryIntervalFor(const {telemetryIntervalConfigKey: 50}, cycleBytes: 52, baudRate: 4800), telemetryFloor(cycleBytes: 52, baudRate: 4800));
     });
 
     test('a value round-tripped through JSON as a string still counts', () {
       // Every stored node config has been through JSON, and a form field can
       // hand back either shape. Read as absent, this would silently revert
       // to the default and the operator's setting would appear not to take.
-      expect(
-        telemetryIntervalFor(const {telemetryIntervalConfigKey: '750'}, cycleBytes: 0),
-        const Duration(milliseconds: 750),
-      );
+      expect(telemetryIntervalFor(const {telemetryIntervalConfigKey: '750'}, cycleBytes: 0), const Duration(milliseconds: 750));
     });
   });
 
@@ -88,10 +79,7 @@ void main() {
       const icom = IcomCivDriver();
       expect(icom.defaultTelemetryInterval(const {'baudRate': 38400}), kTelemetryInterval);
       // Four CI-V meter exchanges at 4800 cannot be had at 200ms.
-      expect(
-        icom.defaultTelemetryInterval(const {'baudRate': 4800}),
-        telemetryFloor(cycleBytes: civMeterCycleBytes, baudRate: 4800),
-      );
+      expect(icom.defaultTelemetryInterval(const {'baudRate': 4800}), telemetryFloor(cycleBytes: civMeterCycleBytes, baudRate: 4800));
     });
 
     test('the number shown is the SLOWEST of the two cadences', () {
@@ -119,9 +107,11 @@ void main() {
       // three costs three. Charged a flat four, the FT-891 — which has no
       // Vdd meter at all — was quoted a cadence a fifth slower than it runs.
       MeterCalibration one(Set<MeterTable> tables) => MeterCalibration(
-            model: 'test',
-            tables: {for (final table in tables) table: const [MeterPoint(0, 1.0)]},
-          );
+        model: 'test',
+        tables: {
+          for (final table in tables) table: const [MeterPoint(0, 1.0)],
+        },
+      );
       MeterCalibrations.instance.setForTesting({
         'one': one({MeterTable.swr}),
         'three': one({MeterTable.swr, MeterTable.power, MeterTable.alc}),
@@ -144,19 +134,13 @@ void main() {
       // The capture is per NODE, so the default is too: three extra reads on
       // a 4800 line cannot be had as often as one, and an operator who
       // switched the capture on should see the number change.
-      expect(
-        const Ft891Driver().defaultTelemetryInterval(const {'baudRate': 4800, 'yaesuMeterCapture': true}),
-        greaterThan(kTelemetryInterval),
-      );
+      expect(const Ft891Driver().defaultTelemetryInterval(const {'baudRate': 4800, 'yaesuMeterCapture': true}), greaterThan(kTelemetryInterval));
     });
 
     test('the placeholder ignores what the operator already typed', () {
       // Otherwise the hint would echo the value in the box, and the field
       // would appear to have no default at all.
-      expect(
-        const Ft891Driver().defaultTelemetryInterval(const {telemetryIntervalConfigKey: 1500, 'baudRate': 38400}),
-        kTelemetryInterval,
-      );
+      expect(const Ft891Driver().defaultTelemetryInterval(const {telemetryIntervalConfigKey: 1500, 'baudRate': 38400}), kTelemetryInterval);
     });
   });
 
@@ -167,11 +151,7 @@ void main() {
       // would be noticed halfway through and a short one not at all.
       fakeAsync((async) {
         final asked = <bool>[];
-        final poller = TelemetryPoller(
-          onPoll: asked.add,
-          idleInterval: const Duration(milliseconds: 200),
-          txInterval: const Duration(milliseconds: 500),
-        );
+        final poller = TelemetryPoller(onPoll: asked.add, idleInterval: const Duration(milliseconds: 200), txInterval: const Duration(milliseconds: 500));
         poller.start();
         async.elapse(const Duration(milliseconds: 650));
         expect(asked, [false, false, false], reason: 'three watches at 200ms, none of them a meter read');
@@ -217,11 +197,7 @@ void main() {
       // was computed to protect.
       fakeAsync((async) {
         final asked = <bool>[];
-        final poller = TelemetryPoller(
-          onPoll: asked.add,
-          idleInterval: const Duration(milliseconds: 100),
-          txInterval: const Duration(milliseconds: 500),
-        );
+        final poller = TelemetryPoller(onPoll: asked.add, idleInterval: const Duration(milliseconds: 100), txInterval: const Duration(milliseconds: 500));
         poller.start();
         poller.noteTransmitting(true);
         asked.clear();
@@ -252,11 +228,7 @@ void main() {
     test('unkeying goes back to watching, and a session that never watched goes quiet', () {
       fakeAsync((async) {
         final asked = <bool>[];
-        final poller = TelemetryPoller(
-          onPoll: asked.add,
-          idleInterval: const Duration(milliseconds: 200),
-          txInterval: const Duration(milliseconds: 200),
-        );
+        final poller = TelemetryPoller(onPoll: asked.add, idleInterval: const Duration(milliseconds: 200), txInterval: const Duration(milliseconds: 200));
         poller.start();
         poller.noteTransmitting(true);
         async.elapse(const Duration(milliseconds: 500));

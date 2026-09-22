@@ -52,12 +52,7 @@ class _CannedCommandExtensions extends ExtensionService {
   Completer<void>? executeGate;
 
   @override
-  Future<Map<String, dynamic>?> interpretCommand(
-    String input, [
-    Map<String, dynamic>? operation,
-    Map<String, dynamic>? qso,
-    bool execute = false,
-  ]) async {
+  Future<Map<String, dynamic>?> interpretCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
     interpretCalls++;
     if (interpretGate != null) await interpretGate!.future;
     if (execute) {
@@ -72,7 +67,9 @@ class _CannedCommandExtensions extends ExtensionService {
         'describe': 'Activate developer mode?',
         'confirm': 'Developer mode activated',
         'commands': [
-          {'updateSettings': {'developerMode': true}},
+          {
+            'updateSettings': {'developerMode': true},
+          },
         ],
       };
     }
@@ -112,8 +109,7 @@ class _CannedCommandExtensions extends ExtensionService {
     required Map<String, dynamic> operation,
     bool online = true,
     bool recentContext = false,
-  }) async =>
-      cannedLookup;
+  }) async => cannedLookup;
 
   /// Stands in for the extension runtime's `host.updateInterpretation`
   /// channel, which the real service feeds from the host.
@@ -124,8 +120,7 @@ class _CannedCommandExtensions extends ExtensionService {
 
   /// A `command` hook answering again, later, for an input it already
   /// interpreted.
-  void pushInterpretation(String input, Map<String, dynamic> interpretation) =>
-      _pushes.add({'input': input, 'interpretation': interpretation});
+  void pushInterpretation(String input, Map<String, dynamic> interpretation) => _pushes.add({'input': input, 'interpretation': interpretation});
 }
 
 void main() {
@@ -135,11 +130,13 @@ void main() {
     final extensions = _CannedCommandExtensions();
     final HaLoHarness(:services, :db, :settings) = await makeHaLoServices(extensions: extensions);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(body: HomeQuickLookup(services: services)),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: HomeQuickLookup(services: services)),
+        ),
       ),
-    ));
+    );
 
     // Typing "SEED" surfaces the error through the debounced describe slot.
     await tester.enterText(find.byType(TextField), 'SEED');
@@ -178,11 +175,13 @@ void main() {
   testWidgets('the field keeps focus after executing a command, so the next one can be typed right away', (tester) async {
     final HaLoHarness(:services, :db) = await makeHaLoServices(extensions: _CannedCommandExtensions());
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(body: HomeQuickLookup(services: services)),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: HomeQuickLookup(services: services)),
+        ),
       ),
-    ));
+    );
 
     // Checked on the field's own FocusNode, not FocusManager.primaryFocus:
     // unfocus() falls back to the enclosing FocusScopeNode, which then IS
@@ -215,10 +214,12 @@ void main() {
     }
 
     Future<void> pumpLookup(WidgetTester tester, HaLoServices services) => tester.pumpWidget(
-          TranslationProvider(
-            child: MaterialApp(home: Scaffold(body: HomeQuickLookup(services: services))),
-          ),
-        );
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: HomeQuickLookup(services: services)),
+        ),
+      ),
+    );
 
     /// Types [text] the way a fast operator does — one character at a time,
     /// with only a frame between them. No pump here may reach 150ms: the
@@ -255,10 +256,7 @@ void main() {
       await pumpLookup(tester, await makeServices());
 
       await typeThrough(tester, 'report crash on save');
-      expect(
-        tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        'REPORT crash on save',
-      );
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'REPORT crash on save');
 
       await tester.pump(const Duration(milliseconds: 200));
     });
@@ -291,10 +289,7 @@ void main() {
 
       await tester.enterText(find.byType(TextField), 'NOTE  hello   there');
       await tester.pump();
-      expect(
-        tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        'NOTE hello there',
-      );
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'NOTE hello there');
 
       await tester.pump(const Duration(milliseconds: 200));
     });
@@ -325,11 +320,7 @@ void main() {
       // the whole point, and a widget test forbids that.
       final services = await makeServices();
       final extensions = services.extensions as _CannedCommandExtensions;
-      final engine = CommandEngine(
-        services: services,
-        operationContext: () => null,
-        runAction: (_, _) async {},
-      );
+      final engine = CommandEngine(services: services, operationContext: () => null, runAction: (_, _) async {});
       addTearDown(engine.dispose);
       final controller = TextEditingController(text: 'DEVMODE');
       addTearDown(controller.dispose);
@@ -378,11 +369,7 @@ void main() {
       // double-submit case above.
       final services = await makeServices();
       final extensions = services.extensions as _CannedCommandExtensions;
-      final engine = CommandEngine(
-        services: services,
-        operationContext: () => null,
-        runAction: (_, _) async {},
-      );
+      final engine = CommandEngine(services: services, operationContext: () => null, runAction: (_, _) async {});
       addTearDown(engine.dispose);
       final controller = TextEditingController(text: 'DEVMODE');
       addTearDown(controller.dispose);
@@ -465,8 +452,7 @@ void main() {
       await engine.submit();
 
       expect(engine.message, isNot(t.commands.enableSyncFirst), reason: 'nothing is painted where nobody looks');
-      expect(services.statusBar.items.map((i) => i.text), contains(t.commands.enableSyncFirst),
-          reason: 'and the status bar picks up what the bar declined');
+      expect(services.statusBar.items.map((i) => i.text), contains(t.commands.enableSyncFirst), reason: 'and the status bar picks up what the bar declined');
     });
 
     test('a hook retracting its preview leaves nothing recognized', () async {
@@ -477,11 +463,7 @@ void main() {
       // claims.
       final services = await makeServices();
       final extensions = services.extensions as _CannedCommandExtensions;
-      final engine = CommandEngine(
-        services: services,
-        operationContext: () => null,
-        runAction: (_, _) async {},
-      );
+      final engine = CommandEngine(services: services, operationContext: () => null, runAction: (_, _) async {});
       addTearDown(engine.dispose);
       final controller = TextEditingController();
       addTearDown(controller.dispose);
@@ -502,11 +484,7 @@ void main() {
       // erase the only record that the first command happened at all.
       final services = await makeServices();
       final extensions = services.extensions as _CannedCommandExtensions;
-      final engine = CommandEngine(
-        services: services,
-        operationContext: () => null,
-        runAction: (_, _) async {},
-      );
+      final engine = CommandEngine(services: services, operationContext: () => null, runAction: (_, _) async {});
       addTearDown(engine.dispose);
       final controller = TextEditingController(text: 'DEVMODE');
       addTearDown(controller.dispose);
@@ -523,8 +501,7 @@ void main() {
       extensions.pushInterpretation('SOLAR', {'describe': 'SFI 168, A 5, K 2'});
       await pumpEventQueue();
 
-      expect(engine.message, 'Developer mode activated',
-          reason: 'the command that ran keeps the line for its five seconds');
+      expect(engine.message, 'Developer mode activated', reason: 'the command that ran keeps the line for its five seconds');
     });
 
     testWidgets('whitespace that is not the space key still reaches the field', (tester) async {
@@ -537,7 +514,11 @@ void main() {
       // not ours, and the rule is wrong if it ever changes.
       final controller = TextEditingController();
       addTearDown(controller.dispose);
-      await tester.pumpWidget(MaterialApp(home: Scaffold(body: TextField(controller: controller))));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: TextField(controller: controller)),
+        ),
+      );
 
       for (final probe in ['a\tb', 'a\rb', 'a b']) {
         await tester.enterText(find.byType(TextField), probe);
@@ -589,10 +570,7 @@ void main() {
 
         await tester.enterText(find.byType(TextField), 'report it crashes. every time');
         await tester.pump();
-        expect(
-          tester.widget<TextField>(find.byType(TextField)).controller!.text,
-          'REPORT it crashes. every time',
-        );
+        expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'REPORT it crashes. every time');
 
         // The correction the formatter exists for still happens, on the call.
         await tester.enterText(find.byType(TextField), 'K1ABC.P');
@@ -690,11 +668,7 @@ void main() {
       // command that actually succeeded.
       final services = await makeServices();
       final extensions = services.extensions as _CannedCommandExtensions;
-      final engine = CommandEngine(
-        services: services,
-        operationContext: () => null,
-        runAction: (_, _) async {},
-      );
+      final engine = CommandEngine(services: services, operationContext: () => null, runAction: (_, _) async {});
       final controller = TextEditingController(text: 'DEVMODE');
       engine.attach(controller);
 
@@ -713,7 +687,6 @@ void main() {
       expect(await submitted, isFalse);
       expect(extensions.executeCalls, 1); // ...and the command still ran exactly once
     });
-
   });
 
   group('the call-info the bar shows (HALO-408)', () {
@@ -749,10 +722,12 @@ void main() {
     }
 
     Future<void> pumpBar(WidgetTester tester, HaLoServices services) => tester.pumpWidget(
-          TranslationProvider(
-            child: MaterialApp(home: Scaffold(body: HomeQuickLookup(services: services))),
-          ),
-        );
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: HomeQuickLookup(services: services)),
+        ),
+      ),
+    );
 
     testWidgets('a resolved callsign renders the shared summary, not a line of its own', (tester) async {
       // The point of the card: the bar and the logging panel's info area are
@@ -793,10 +768,7 @@ void main() {
       expect(summary.locationLine, 'Newington, CT • United States • FN31pr');
       GridPrecision.configure(GridPrecision.eight);
       addTearDown(GridPrecision.reset);
-      expect(
-        gridForDisplay(lat: guess['lat'], lon: guess['lon'], grid: guess['grid'] as String),
-        'FN31pr21',
-      );
+      expect(gridForDisplay(lat: guess['lat'], lon: guess['lon'], grid: guess['grid'] as String), 'FN31pr21');
       // Nothing to label a distance with, so no scoring either: pills are the
       // operation's verdict on a QSO, and there is no operation.
       expect(summary.data.alertKeys, isEmpty);
@@ -983,32 +955,32 @@ void main() {
     /// keyboard. The `ValueListenableBuilder` here stands in for the overlay so
     /// these tests still exercise the row end to end (publish → render → tap).
     Future<void> pumpHome(WidgetTester tester, HaLoServices services) => tester.pumpWidget(
-          TranslationProvider(
-            child: MaterialApp(
-              // Matches the real Home Scaffold, so MediaQuery keeps the inset.
-              home: Scaffold(
-                resizeToAvoidBottomInset: false,
-                body: Column(
-                  children: [
-                    Expanded(child: HomeQuickLookup(services: services)),
-                    ValueListenableBuilder<KeyboardAccessorySpec?>(
-                      valueListenable: services.keyboardAccessory,
-                      builder: (context, spec, _) => spec == null
-                          ? const SizedBox.shrink()
-                          : NumberKeys(
-                              onKey: spec.onKey,
-                              extraKey: spec.extraKey,
-                              vibrate: spec.vibrate,
-                              backgroundColor: Color(spec.backgroundColor),
-                              foregroundColor: Color(spec.foregroundColor),
-                            ),
-                    ),
-                  ],
+      TranslationProvider(
+        child: MaterialApp(
+          // Matches the real Home Scaffold, so MediaQuery keeps the inset.
+          home: Scaffold(
+            resizeToAvoidBottomInset: false,
+            body: Column(
+              children: [
+                Expanded(child: HomeQuickLookup(services: services)),
+                ValueListenableBuilder<KeyboardAccessorySpec?>(
+                  valueListenable: services.keyboardAccessory,
+                  builder: (context, spec, _) => spec == null
+                      ? const SizedBox.shrink()
+                      : NumberKeys(
+                          onKey: spec.onKey,
+                          extraKey: spec.extraKey,
+                          vibrate: spec.vibrate,
+                          backgroundColor: Color(spec.backgroundColor),
+                          foregroundColor: Color(spec.foregroundColor),
+                        ),
                 ),
-              ),
+              ],
             ),
           ),
-        );
+        ),
+      ),
+    );
 
     Finder keyInRow(String glyph) => find.descendant(of: find.byType(NumberKeys), matching: find.text(glyph));
 

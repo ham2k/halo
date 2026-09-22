@@ -76,20 +76,14 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     final options = <SerialPortOption>[];
     for (var i = 0; i < ports.length; i++) {
       granted[keys[i]] = ports[i];
-      options.add(SerialPortOption(
-        name: keys[i],
-        description: describeWebSerialUsbId(infos[i].usbVendorId, infos[i].usbProductId),
-      ));
+      options.add(SerialPortOption(name: keys[i], description: describeWebSerialUsbId(infos[i].usbVendorId, infos[i].usbProductId)));
     }
     _grantedPorts = granted;
     _cachedPortOptions = options;
   }
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) {
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) {
     final fields = super.configElements(overrides: overrides, restrictions: restrictions);
     // No point offering to grant a device for a field the operator can't
     // even see, or on a browser that doesn't have the API to grant one on.
@@ -106,12 +100,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
             ...field,
             'options': [
               ...(field['options'] as List),
-              {
-                'value': _requestDeviceActionKey,
-                'label': t.settings.station.serialDeviceRequest,
-                'isAction': true,
-                'method': _requestDeviceMethod,
-              },
+              {'value': _requestDeviceActionKey, 'label': t.settings.station.serialDeviceRequest, 'isAction': true, 'method': _requestDeviceMethod},
             ],
           }
         else
@@ -155,8 +144,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
 
     final serial = navigatorSerial;
     if (serial == null) {
-      throw UnsupportedError(
-          'CAT control over serial needs the Web Serial API, which this browser does not support — try Chrome, Edge, or Opera.');
+      throw UnsupportedError('CAT control over serial needs the Web Serial API, which this browser does not support — try Chrome, Edge, or Opera.');
     }
 
     final name = target['port'] as String? ?? '';
@@ -170,9 +158,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     final stopBits = (target['stopBits'] as num?)?.toInt() ?? 1;
 
     try {
-      await port
-          .open(SerialOptions(baudRate: baudRate, dataBits: 8, stopBits: stopBits, parity: 'none', flowControl: 'none'))
-          .toDart;
+      await port.open(SerialOptions(baudRate: baudRate, dataBits: 8, stopBits: stopBits, parity: 'none', flowControl: 'none')).toDart;
     } catch (e) {
       throw SerialPortUnavailable(name, '$e');
     }
@@ -294,10 +280,12 @@ class _WebSerialConnection implements EquipmentConnection {
     // returned promise, unlike a synchronous call, would otherwise reject
     // unhandled in the JS console rather than reach a Dart catch at all.
     try {
-      unawaited(_writer.write(Uint8List.fromList(bytes).toJS).toDart.catchError((Object e) {
-        debugPrint('[cat] web serial write failed: $e');
-        return null;
-      }));
+      unawaited(
+        _writer.write(Uint8List.fromList(bytes).toJS).toDart.catchError((Object e) {
+          debugPrint('[cat] web serial write failed: $e');
+          return null;
+        }),
+      );
     } catch (e) {
       debugPrint('[cat] web serial write failed: $e');
     }

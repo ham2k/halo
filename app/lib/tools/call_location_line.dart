@@ -75,8 +75,8 @@ String? callLocationLine(
     final phrase = bearingDeg == null
         ? t.distanceTo(distance: distStr)
         : reverseDeg == null
-            ? t.distanceBearingTo(distance: distStr, bearing: bearingDeg)
-            : t.distanceBearingsTo(distance: distStr, bearing: bearingDeg, reverse: reverseDeg);
+        ? t.distanceBearingTo(distance: distStr, bearing: bearingDeg)
+        : t.distanceBearingsTo(distance: distStr, bearing: bearingDeg, reverse: reverseDeg);
     return '$phrase $label';
   }
   if (label.isNotEmpty) return label;
@@ -85,8 +85,8 @@ String? callLocationLine(
     return bearingDeg == null
         ? t.distanceAway(distance: distStr)
         : reverseDeg == null
-            ? t.distanceBearingAway(distance: distStr, bearing: bearingDeg)
-            : t.distanceBearingsAway(distance: distStr, bearing: bearingDeg, reverse: reverseDeg);
+        ? t.distanceBearingAway(distance: distStr, bearing: bearingDeg)
+        : t.distanceBearingsAway(distance: distStr, bearing: bearingDeg, reverse: reverseDeg);
   }
   return null;
 }

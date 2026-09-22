@@ -69,10 +69,7 @@ void main() {
       // any more, because sha is dead input on this branch. What is worth
       // pinning is that the two inputs give the SAME answer, which is what
       // makes the identity one thing rather than a thing plus a qualifier.
-      expect(
-        buildDetails(edition: Edition.next, build: 125, sha: ''),
-        buildDetails(edition: Edition.next, build: 125, sha: '04e3d1'),
-      );
+      expect(buildDetails(edition: Edition.next, build: 125, sha: ''), buildDetails(edition: Edition.next, build: 125, sha: '04e3d1'));
       expect(buildDetails(edition: Edition.next, build: 125, sha: ''), '(build 125)');
     });
 
@@ -151,9 +148,7 @@ void main() {
   });
 
   testWidgets('detailed mode\'s second line is smaller than the first', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: VersionLabel(detailed: true, style: TextStyle(fontSize: 15))),
-    );
+    await tester.pumpWidget(const MaterialApp(home: VersionLabel(detailed: true, style: TextStyle(fontSize: 15))));
 
     final lines = tester.widgetList<SelectableText>(find.byType(SelectableText)).toList();
     expect(lines, hasLength(2));
@@ -161,18 +156,13 @@ void main() {
     expect(lines[1].style?.fontSize, lessThan(lines[0].style!.fontSize!));
   });
 
-  testWidgets('detailed + boldFirstLine: name is bold, detail is normal weight and exactly two points smaller',
-      (tester) async {
+  testWidgets('detailed + boldFirstLine: name is bold, detail is normal weight and exactly two points smaller', (tester) async {
     // The About row's intent: the version name reads as the heading, the
     // "Version … (build …)" detail as secondary — normal weight, two points
     // smaller than the name.
     await tester.pumpWidget(
       const MaterialApp(
-        home: VersionLabel(
-          detailed: true,
-          boldFirstLine: true,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
-        ),
+        home: VersionLabel(detailed: true, boldFirstLine: true, style: TextStyle(fontSize: 16, fontWeight: FontWeight.normal)),
       ),
     );
 
@@ -203,10 +193,7 @@ void main() {
       // any other locale the two differ on purpose, which is the point of the
       // split — so this compares spellings, not languages.
       for (final version in versions) {
-        expect(
-          localizedVersionName(version: version, stageLabel: 'ALPHA').toLowerCase(),
-          version.displayName(stageLabel: 'ALPHA').toLowerCase(),
-        );
+        expect(localizedVersionName(version: version, stageLabel: 'ALPHA').toLowerCase(), version.displayName(stageLabel: 'ALPHA').toLowerCase());
       }
     });
 
@@ -215,11 +202,7 @@ void main() {
       // qualifiers that open its second.
       for (final version in versions) {
         final parts = version.displayParts(stageLabel: 'ALPHA');
-        final lines = [
-          parts.mainName,
-          parts.stageLabel,
-          versionQualifiers(version: version, stageLabel: 'ALPHA'),
-        ].where((part) => part.isNotEmpty).join(' ');
+        final lines = [parts.mainName, parts.stageLabel, versionQualifiers(version: version, stageLabel: 'ALPHA')].where((part) => part.isNotEmpty).join(' ');
         expect(lines.toLowerCase(), version.displayName(stageLabel: 'ALPHA').toLowerCase());
       }
     });
@@ -431,7 +414,10 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Center(
-            child: SizedBox(width: 60, child: VersionLabel(nameAndBuild: true, style: style, detailStyle: detail)),
+            child: SizedBox(
+              width: 60,
+              child: VersionLabel(nameAndBuild: true, style: style, detailStyle: detail),
+            ),
           ),
         ),
       );
@@ -449,7 +435,10 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Center(
-            child: SizedBox(width: 60, child: VersionLabel(nameAndBuild: true, style: style, detailStyle: detail)),
+            child: SizedBox(
+              width: 60,
+              child: VersionLabel(nameAndBuild: true, style: style, detailStyle: detail),
+            ),
           ),
         ),
       );

@@ -26,8 +26,7 @@ class _FakePlatformWebViewEnvironment extends PlatformWebViewEnvironment {
   _FakePlatformWebViewEnvironment() : super.implementation(const PlatformWebViewEnvironmentCreationParams());
 }
 
-WebViewEnvironment _fakeEnvironment() =>
-    WebViewEnvironment.fromPlatform(platform: _FakePlatformWebViewEnvironment());
+WebViewEnvironment _fakeEnvironment() => WebViewEnvironment.fromPlatform(platform: _FakePlatformWebViewEnvironment());
 
 class _Harness extends StatefulWidget {
   const _Harness();
@@ -50,8 +49,7 @@ class _HarnessState extends State<_Harness> with WebviewSupportProbe<_Harness> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      Text(webviewSupported ? 'supported' : 'not supported', textDirection: TextDirection.ltr);
+  Widget build(BuildContext context) => Text(webviewSupported ? 'supported' : 'not supported', textDirection: TextDirection.ltr);
 }
 
 void main() {
@@ -71,24 +69,21 @@ void main() {
   // `addTearDown` callback would (same reason activities_map_toggle_test.dart
   // does this).
 
-  testWidgets('a pane mounted hidden in a dock group does not build the real webview from a cached answer', (
-    tester,
-  ) async {
+  testWidgets('a pane mounted hidden in a dock group does not build the real webview from a cached answer', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     try {
       WindowsWebView.debugCreateEnvironment = () async => _fakeEnvironment();
       // Warm the cache, as an earlier-opened pane in the same session would.
       expect(await WindowsWebView.isAvailable(), isTrue);
 
-      await tester.pumpWidget(
-        const MaterialApp(home: DockPaneVisibility(visible: false, child: _Harness())),
-      );
+      await tester.pumpWidget(const MaterialApp(home: DockPaneVisibility(visible: false, child: _Harness())));
       await tester.pump();
 
       expect(
         find.text('not supported'),
         findsOneWidget,
-        reason: 'a hidden pane must not read the cached answer — that is what builds the real InAppWebView '
+        reason:
+            'a hidden pane must not read the cached answer — that is what builds the real InAppWebView '
             'and races every other webview-backed pane in the same dock group',
       );
     } finally {
@@ -102,15 +97,11 @@ void main() {
       WindowsWebView.debugCreateEnvironment = () async => _fakeEnvironment();
       expect(await WindowsWebView.isAvailable(), isTrue);
 
-      await tester.pumpWidget(
-        const MaterialApp(home: DockPaneVisibility(visible: false, child: _Harness())),
-      );
+      await tester.pumpWidget(const MaterialApp(home: DockPaneVisibility(visible: false, child: _Harness())));
       await tester.pump();
       expect(find.text('not supported'), findsOneWidget);
 
-      await tester.pumpWidget(
-        const MaterialApp(home: DockPaneVisibility(visible: true, child: _Harness())),
-      );
+      await tester.pumpWidget(const MaterialApp(home: DockPaneVisibility(visible: true, child: _Harness())));
       await tester.pump();
 
       expect(find.text('supported'), findsOneWidget);
@@ -131,7 +122,8 @@ void main() {
       expect(
         find.text('supported'),
         findsOneWidget,
-        reason: 'outside a dock (or already selected within one) the cached answer must still apply '
+        reason:
+            'outside a dock (or already selected within one) the cached answer must still apply '
             'immediately — this gate is about hidden panes, not about delaying every pane',
       );
     } finally {

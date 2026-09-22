@@ -83,8 +83,5 @@ bool _holds(Map<String, dynamic> data, String key) => data[key] != null;
 /// the coordinate its own locator was written from.
 GridLocation? _statedCoordinate(Map<String, dynamic> data) {
   if (data['locSource'] == 'prefix') return null;
-  return locationFromLatLon(
-    asQsonCoordinate(data['lat'], latitude: true),
-    asQsonCoordinate(data['lon'], latitude: false),
-  );
+  return locationFromLatLon(asQsonCoordinate(data['lat'], latitude: true), asQsonCoordinate(data['lon'], latitude: false));
 }

@@ -4,8 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'
-    show HardwareKeyboard, KeyDownEvent, KeyEvent, KeyRepeatEvent, LogicalKeyboardKey;
+import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, KeyRepeatEvent, LogicalKeyboardKey;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -195,10 +194,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
   // Imperative handle into LoggingControls, used to drive the dev bridge
   // (window.__halo setField/tap) when it's installed (dev/preview web).
   final _loggingController = LoggingControlsController();
-  late List<String> _controlOrder =
-      widget.services.settings.secondaryControlsOrder;
-  late Set<String> _hiddenControls =
-      widget.services.settings.hiddenSecondaryControls;
+  late List<String> _controlOrder = widget.services.settings.secondaryControlsOrder;
+  late Set<String> _hiddenControls = widget.services.settings.hiddenSecondaryControls;
   // Read once, not per build: each getter re-parses the logging prefs JSON,
   // and this panel rebuilds on every QSO-stream emission. Fresh values
   // arrive with a fresh panel — the settings view is only reachable from
@@ -211,8 +208,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   // change while this panel is alive — mirrored here and refreshed via the
   // listener below.
   late bool _showNumbersRow = widget.services.settings.showNumbersRow;
-  late bool _showExtraInNumbersRow =
-      widget.services.settings.showExtraInNumbersRow;
+  late bool _showExtraInNumbersRow = widget.services.settings.showExtraInNumbersRow;
   late bool _vibrateNumbersRow = widget.services.settings.vibrateNumbersRow;
   late bool _leftieMode = widget.services.settings.leftieMode;
 
@@ -343,8 +339,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     return {...qso, 'our': our, 'power': ?power};
   }
 
-  Future<void> _openStationConfigDialog(BuildContext context) =>
-      showStationConfigDialog(context, widget.services);
+  Future<void> _openStationConfigDialog(BuildContext context) => showStationConfigDialog(context, widget.services);
 
   @override
   void didChangeDependencies() {
@@ -725,22 +720,20 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// and this device's own units — see [callLocationLine], which the peer
   /// positions panel composes the same line with.
   String? _callLocationLine(BuildContext context, Map<String, dynamic> guess) => callLocationLine(
-        context,
-        guess,
-        ourLocation: widget.operation.location,
-        miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
-        showBearing: widget.services.settings.showBearing,
-        showReverseBearing: widget.services.settings.showReverseBearing,
-        ourEntityPrefix: widget.ourEntityPrefix,
-      );
-
+    context,
+    guess,
+    ourLocation: widget.operation.location,
+    miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
+    showBearing: widget.services.settings.showBearing,
+    showReverseBearing: widget.services.settings.showReverseBearing,
+    ourEntityPrefix: widget.ourEntityPrefix,
+  );
 
   @override
   Widget build(BuildContext context) {
     // Cached by `ScoringService.rescoreOperation` into `Operation.localData`
     // (never synced — DESIGN.md §4); absent until the first rescore lands.
-    final scoring =
-        widget.operation.localData['scoring'] as Map<String, dynamic>?;
+    final scoring = widget.operation.localData['scoring'] as Map<String, dynamic>?;
     // Keyed by scorer, so this folds every
     // active scorer's sections into one day-keyed list (see
     // app/lib/tools/scoring_summaries.dart).
@@ -801,8 +794,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
               operation: widget.operation,
               qsosRepository: widget.services.qsos,
               qsos: widget.qsos,
-              decorateQsoBeforeSave: (qso, operation) => widget.services.extensions
-                  .decorateQsoBeforeSave(qsoWithOperator(_withStationInfo(qso), widget.operation), operation),
+              decorateQsoBeforeSave: (qso, operation) =>
+                  widget.services.extensions.decorateQsoBeforeSave(qsoWithOperator(_withStationInfo(qso), widget.operation), operation),
               onWriteError: (error, stack) => ErrorReportingService.report(error, stack, context: 'loggingControls:log'),
               serialNumbers: widget.serialNumbers,
               onLogged: (qso) {
@@ -812,10 +805,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                 // _selectedQso is still set here for a save-of-edit; it only
                 // clears below — that's what tells the two events apart.
                 if (!qso.isEvent) {
-                  widget.services.track(
-                    _selectedQso != null ? 'qso_edited' : 'qso_added',
-                    _qsoTrackProps(qso),
-                  );
+                  widget.services.track(_selectedQso != null ? 'qso_edited' : 'qso_added', _qsoTrackProps(qso));
                 }
                 setState(() => _selectedQso = null);
                 widget.onQsoLogged?.call();
@@ -828,8 +818,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
               },
               // A comma-separated call list logs several QSOs at
               // once — one rescore for the whole batch, not one per call.
-              onCallListLogged: () =>
-                  widget.services.scoring.rescoreOperation(widget.operation),
+              onCallListLogged: () => widget.services.scoring.rescoreOperation(widget.operation),
             ),
             session: LoggingSession(
               controller: _loggingController,
@@ -906,15 +895,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
                   qso: qso,
                   excludeUuid: excludeUuid,
                   segments: segments,
-                  huntedRefTypes: ((widget.operation.localData['huntedRefTypes'] as List?) ?? const [])
-                      .whereType<String>()
-                      .toSet(),
+                  huntedRefTypes: ((widget.operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet(),
                   resume: resume,
                 );
               },
               scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
-              workedBefore: (call, {excludingQsoUuid}) =>
-                  widget.services.qsos.historyStartTimesForCall(call, excludingUuid: excludingQsoUuid),
+              workedBefore: (call, {excludingQsoUuid}) => widget.services.qsos.historyStartTimesForCall(call, excludingUuid: excludingQsoUuid),
               workedBeforeLabel: (times) => workedBeforeLabel(context, times),
               onCallInfoChanged: widget.onCallInfoChanged,
               onCallInfoTap: widget.onCallInfoTap,
@@ -936,8 +922,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
               // HaLoServices.currentCommandDispatch. Attached to this
               // operation's own stack entry, so a disposing panel can't detach a
               // still-live one's dispatcher.
-              onDispatcherChanged: (dispatch) =>
-                  widget.services.setCommandDispatchFor(widget.operation.uuid, dispatch),
+              onDispatcherChanged: (dispatch) => widget.services.setCommandDispatchFor(widget.operation.uuid, dispatch),
             ),
             strip: ControlStripSettings(
               aboveEntryRow: _gatoEnabled && _keyerEnabled
@@ -955,10 +940,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
               hiddenControlKeys: _hiddenControls,
               onControlsSettingsChanged: _handleControlsSettingsChanged,
             ),
-            spotting: SpottingHooks(
-              suggestSpotSources: widget.services.extensions.suggestSpotSources,
-              sendSpot: widget.services.extensions.sendSpot,
-            ),
+            spotting: SpottingHooks(suggestSpotSources: widget.services.extensions.suggestSpotSources, sendSpot: widget.services.extensions.sendSpot),
             prefs: LoggingPreferences(
               // Leftie Mode is a one-handed-phone layout; a desktop or web session
               // carrying a stored `true` (restored from a phone) has no toggle to
@@ -990,21 +972,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // LoggingControls' modifier chords, for the same reason as Escape above:
     // with a delete staged its fields are disabled, so the keyboard is in the
     // list (or nowhere) exactly when Cmd/Ctrl+Z has something to take back.
-    return Focus(
-      canRequestFocus: false,
-      skipTraversal: true,
-      onKeyEvent: (node, event) => _loggingController.handleChord(event),
-      child: panel,
-    );
+    return Focus(canRequestFocus: false, skipTraversal: true, onKeyEvent: (node, event) => _loggingController.handleChord(event), child: panel);
   }
 
   /// The qso_* events' shared properties — same two app-polo sends: the
   /// contact's DXCC prefix and the ref types on the QSO. Never the callsign
   /// or any other identifying detail.
-  Map<String, Object?> _qsoTrackProps(Qso qso) => {
-        'their_prefix': qso.theirEntityPrefix,
-        'refs': qso.refs.map((r) => r['type']).join(','),
-      };
+  Map<String, Object?> _qsoTrackProps(Qso qso) => {'their_prefix': qso.theirEntityPrefix, 'refs': qso.refs.map((r) => r['type']).join(',')};
 }
 
 /// Below this QSO count, [QsoList]'s first build is cheap enough that
@@ -1115,6 +1089,5 @@ class _LazyQsoListState extends State<_LazyQsoList> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      (!widget.largeEnough || _ready) ? widget.child : const Center(child: CircularProgressIndicator());
+  Widget build(BuildContext context) => (!widget.largeEnough || _ready) ? widget.child : const Center(child: CircularProgressIndicator());
 }

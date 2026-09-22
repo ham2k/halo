@@ -75,12 +75,7 @@ abstract class KeyingStation {
 }
 
 class CatKeying {
-  CatKeying({
-    required this.station,
-    required this.settings,
-    required this.chain,
-    required this.peer,
-  }) {
+  CatKeying({required this.station, required this.settings, required this.chain, required this.peer}) {
     voiceActivity.addListener(_onVoiceActivityForSequence);
     // A message-1 mark lasts while its message does. Left standing, the
     // next message on a shared transmitter — a peer's, or a third
@@ -201,9 +196,9 @@ class CatKeying {
   /// Every node the "key in use" pick may offer as a keying source: keyers,
   /// and radios whose driver can key.
   List<EquipmentNode> get keyerCandidates => [
-        for (final node in station.nodes)
-          if (station.isKeyerNode(node)) node,
-      ];
+    for (final node in station.nodes)
+      if (station.isKeyerNode(node)) node,
+  ];
 
   /// The keyer's speed as it reported it, or null while unknown — also null
   /// when nothing can key.
@@ -261,9 +256,7 @@ class CatKeying {
 
   /// Enter Sends Messages, and Run versus S&P — the keyer area's pill and the
   /// ESM/RUN/SP commands set it, the logging panel reads it.
-  late final enterSends = ValueNotifier<({bool on, bool running})>(
-    (on: settings.enterSendsMessages, running: settings.enterSendsRunning),
-  );
+  late final enterSends = ValueNotifier<({bool on, bool running})>((on: settings.enterSendsMessages, running: settings.enterSendsRunning));
 
   void setEnterSends({bool? on, bool? running}) {
     final next = (on: on ?? enterSends.value.on, running: running ?? enterSends.value.running);
@@ -464,9 +457,9 @@ class CatKeying {
     if (station.typeFor(node)?.driver.remembersKeyerSpeed != true) return;
     if (node.config[keyerSpeedConfigKey] == wpm) return;
     unawaited(
-      station.updateNode(node.copyWith(config: {...node.config, keyerSpeedConfigKey: wpm})).catchError(
-        (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'cat:remember-keyer-speed'),
-      ),
+      station
+          .updateNode(node.copyWith(config: {...node.config, keyerSpeedConfigKey: wpm}))
+          .catchError((Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'cat:remember-keyer-speed')),
     );
   }
 
@@ -540,8 +533,7 @@ class CatKeying {
 
   /// Whether radio1's CAT can also record a memory (docs/design/cat.md
   /// § Voice keying lists which can).
-  bool get canRecordVoice =>
-      _voiceKeyer?.canRecordVoice ?? (playsVoiceOverPeer && peer.recordsVoice);
+  bool get canRecordVoice => _voiceKeyer?.canRecordVoice ?? (playsVoiceOverPeer && peer.recordsVoice);
 
   /// What the memories are CALLED, and how long each was measured to run.
   ///
@@ -620,12 +612,7 @@ class CatKeying {
       }
       _voiceMessageOne = n == 1;
       if (chaining) {
-        chain.arm(
-          delay: settings.voiceRepeatDelay,
-          text: '',
-          memory: n,
-          send: () => playVoiceMemory(n),
-        );
+        chain.arm(delay: settings.voiceRepeatDelay, text: '', memory: n, send: () => playVoiceMemory(n));
       }
       return;
     }
@@ -645,12 +632,7 @@ class CatKeying {
       // otherwise leave a chain armed with nothing playing, and nothing
       // ending to start its next wait.
       if (chaining) {
-        chain.arm(
-          delay: settings.voiceRepeatDelay,
-          text: '',
-          memory: n,
-          send: () => playVoiceMemory(n),
-        );
+        chain.arm(delay: settings.voiceRepeatDelay, text: '', memory: n, send: () => playVoiceMemory(n));
       }
     } catch (e, st) {
       chain.cancel();
@@ -907,12 +889,12 @@ class CatKeying {
   /// keyer row reads. The strip follows [cwProgress] and [voiceActivity],
   /// which this does not speak for.
   Object get peerShownState => (
-        peer.keyerSpeed,
-        peer.keyerSpeedRange,
-        Object.hashAll(peer.status?.voiceLabels ?? const []),
-        Object.hashAll(peer.status?.voiceDurationsMs ?? const []),
-        peer.voiceMemories,
-      );
+    peer.keyerSpeed,
+    peer.keyerSpeedRange,
+    Object.hashAll(peer.status?.voiceLabels ?? const []),
+    Object.hashAll(peer.status?.voiceDurationsMs ?? const []),
+    peer.voiceMemories,
+  );
 
   // ------------------------------------------- the bridge, both directions
 

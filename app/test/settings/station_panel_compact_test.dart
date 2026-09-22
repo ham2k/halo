@@ -35,8 +35,8 @@ void main() {
   Future<void> settleVfoWrite(WidgetTester tester) => tester.runAsync(services.radio.flushPendingWrites);
 
   Widget wrap(Widget child) => TranslationProvider(
-        child: MaterialApp(home: Scaffold(body: child)),
-      );
+    child: MaterialApp(home: Scaffold(body: child)),
+  );
 
   testWidgets('shows only the current rig, not other radios, and no Add Equipment', (tester) async {
     await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
@@ -68,12 +68,7 @@ void main() {
   });
 
   group("a peer's radio driving the main VFO", () {
-    const pick = PeerRadioSelection(
-      deviceId: 'device-a',
-      radioId: 'rig-1',
-      deviceName: "VE1SK's iPad",
-      radioName: 'FTDX10',
-    );
+    const pick = PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-1', deviceName: "VE1SK's iPad", radioName: 'FTDX10');
 
     testWidgets('gets a row of its own in Equipment in Use', (tester) async {
       await services.cat.setRadio1(const PeerRadio(pick));
@@ -122,8 +117,7 @@ void main() {
       // reading the stored value alone says None while F1 keys over the link.
       await services.settings.setExperimentEnabled('keyer', true);
       await services.cat.setRadio1(const PeerRadio(pick));
-      services.cat.noteOffer(pick.deviceId, pick.deviceName,
-          const [PeerRadioOffer(id: 'rig-1', name: 'FTDX10', keysCw: true)]);
+      services.cat.noteOffer(pick.deviceId, pick.deviceName, const [PeerRadioOffer(id: 'rig-1', name: 'FTDX10', keysCw: true)]);
 
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
@@ -135,8 +129,7 @@ void main() {
 
     testWidgets('a keying peer adds no key row while the keyer experiment is off', (tester) async {
       await services.cat.setRadio1(const PeerRadio(pick));
-      services.cat.noteOffer(pick.deviceId, pick.deviceName,
-          const [PeerRadioOffer(id: 'rig-1', name: 'FTDX10', keysCw: true)]);
+      services.cat.noteOffer(pick.deviceId, pick.deviceName, const [PeerRadioOffer(id: 'rig-1', name: 'FTDX10', keysCw: true)]);
 
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
@@ -168,22 +161,23 @@ void main() {
       // it can key and nothing else was. The trap this catches is laying the
       // row out from the LINK: everything below is a fact about the rig, and
       // an unplugged cable changes none of it.
-      await services.cat.addNode(
-        typeKey: 'placeholder-radio',
-        name: 'Bench Rig',
-        config: placeholderRadioModel.variants.single.defaultConfig,
-      );
+      await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
       final pick = tester.widget<DropdownButtonFormField<int>>(find.byType(DropdownButtonFormField<int>));
       expect(pick.onChanged, isNull, reason: 'the speed is the keyer\'s; only a live session can take one');
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed, isNotNull,
-          reason: 'the messages are settings, editable without a radio');
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Voice Messages')).onPressed, isNotNull,
-          reason: 'the rig holds memories whether or not it is plugged in');
-      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNotNull,
-          reason: 'the keyer area is worth showing for a rig that can key');
+      expect(
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed,
+        isNotNull,
+        reason: 'the messages are settings, editable without a radio',
+      );
+      expect(
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Voice Messages')).onPressed,
+        isNotNull,
+        reason: 'the rig holds memories whether or not it is plugged in',
+      );
+      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNotNull, reason: 'the keyer area is worth showing for a rig that can key');
       expect(find.text('CAT Keyer in Bench Rig'), findsOneWidget, reason: 'a radio in the key pick is its keyer');
     });
 
@@ -193,11 +187,7 @@ void main() {
       // voice memory can. Disabling on capability is the point — a hover
       // tooltip is not available to say so (docs/design/user-interface.md),
       // so the reason has to reach a screen reader or nowhere.
-      final keyer = await services.cat.addNode(
-        typeKey: 'placeholder-radio',
-        name: 'Bench Keyer',
-        config: placeholderRadioModel.variants.single.defaultConfig,
-      );
+      final keyer = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Keyer', config: placeholderRadioModel.variants.single.defaultConfig);
       await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
       await services.cat.setDesignated(kCategoryKey, keyer.uuid);
       expect(services.cat.radio1HasVoiceMemories, isFalse, reason: 'sanity: a generic Kenwood pins no memory count');
@@ -212,8 +202,11 @@ void main() {
       expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed, isNotNull);
       expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Voice Messages')).onPressed, isNull);
       expect(find.bySemanticsLabel('Voice Messages. Not supported by this radio'), findsOneWidget);
-      expect(find.bySemanticsLabel('CW Messages. Not supported by this radio'), findsNothing,
-          reason: 'a button that works must not carry a reason it does not');
+      expect(
+        find.bySemanticsLabel('CW Messages. Not supported by this radio'),
+        findsNothing,
+        reason: 'a button that works must not carry a reason it does not',
+      );
       semantics.dispose();
     });
 
@@ -222,11 +215,7 @@ void main() {
       // One rig, auto-designated both as radio1 and as the key in use — the
       // trap is drawing it a second time as "the keyer in use", which reads
       // as a shack with two identical radios on one address.
-      await services.cat.addNode(
-        typeKey: 'placeholder-radio',
-        name: 'Bench Rig',
-        config: placeholderRadioModel.variants.single.defaultConfig,
-      );
+      await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
       expect(services.cat.isRadio1(services.cat.designatedKeyerNode!.uuid), isTrue, reason: 'sanity: one node fills both roles');
 
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
@@ -242,11 +231,7 @@ void main() {
       // The keyer added first, the rig second so the rig is radio1. The row
       // is this keyer's only reachable connect button in compact, so the
       // one-row rule above must narrow to the shared node and no further.
-      final keyer = await services.cat.addNode(
-        typeKey: 'placeholder-radio',
-        name: 'Bench Keyer',
-        config: placeholderRadioModel.variants.single.defaultConfig,
-      );
+      final keyer = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Keyer', config: placeholderRadioModel.variants.single.defaultConfig);
       await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
       await services.cat.setDesignated(kCategoryKey, keyer.uuid);
       expect(services.cat.isRadio1(keyer.uuid), isFalse, reason: 'sanity: the rig, not the keyer, drives the main VFO');
@@ -341,21 +326,21 @@ void main() {
 
   testWidgets('footer: More Settings fires the callback, Done pops the pane', (tester) async {
     var moreSettingsTapped = false;
-    await tester.pumpWidget(wrap(Builder(
-      builder: (context) => ElevatedButton(
-        onPressed: () => showDialog<void>(
-          context: context,
-          builder: (_) => Dialog(
-            child: StationPanel(
-              services: services,
-              compact: true,
-              onMoreSettings: () => moreSettingsTapped = true,
+    await tester.pumpWidget(
+      wrap(
+        Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => Dialog(
+                child: StationPanel(services: services, compact: true, onMoreSettings: () => moreSettingsTapped = true),
+              ),
             ),
+            child: const Text('open'),
           ),
         ),
-        child: const Text('open'),
       ),
-    )));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 

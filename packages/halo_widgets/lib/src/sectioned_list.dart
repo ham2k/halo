@@ -36,14 +36,7 @@ class SectionedListView extends StatelessWidget {
 
   final ScrollPhysics? physics;
 
-  const SectionedListView({
-    super.key,
-    required this.children,
-    this.padding,
-    this.controller,
-    this.shrinkWrap = false,
-    this.physics,
-  });
+  const SectionedListView({super.key, required this.children, this.padding, this.controller, this.shrinkWrap = false, this.physics});
 
   @override
   Widget build(BuildContext context) {

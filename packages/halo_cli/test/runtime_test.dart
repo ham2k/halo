@@ -32,12 +32,7 @@ void main() {
   Future<ExtRuntime> start({Set<String> only = const {'radio-commands', 'dev-commands'}}) async {
     final config = CliConfig(settings: const {'developerMode': true});
     final calls = CliHostCalls(config: config, index: index);
-    return runtime = await ExtRuntime.start(
-      index: index,
-      config: config,
-      onHostCall: calls.call,
-      only: only,
-    );
+    return runtime = await ExtRuntime.start(index: index, config: config, onHostCall: calls.call, only: only);
   }
 
   tearDown(() async => runtime.stop());
@@ -51,8 +46,8 @@ void main() {
     expect(matched, hasLength(1), reason: 'exactly one command hook should claim a frequency');
     expect((matched.single['value'] as Map)['commands'], [
       {
-        'setVfo': {'freq': 14285}
-      }
+        'setVfo': {'freq': 14285},
+      },
     ]);
   });
 
@@ -63,8 +58,7 @@ void main() {
     expect([for (final entry in runtime.loaded) entry.key], ['radio-commands']);
 
     final results = await runtime.host.invokeHookAll('command', method: 'interpret', args: {'input': 'DEVMODE'});
-    expect(results.where((entry) => entry['value'] != null), isEmpty,
-        reason: 'dev-commands was not loaded, so nothing should interpret DEVMODE');
+    expect(results.where((entry) => entry['value'] != null), isEmpty, reason: 'dev-commands was not loaded, so nothing should interpret DEVMODE');
   });
 
   test('an unknown --only key is named rather than silently ignored', () async {

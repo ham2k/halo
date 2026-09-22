@@ -22,17 +22,15 @@ void main() {
   const channel = MethodChannel('ham2k/window_chrome');
 
   Widget host({VoidCallback? onSettingsPressed}) => MaterialApp(
-        home: Scaffold(
-          appBar: AppBar(
-            flexibleSpace: windowHeaderGestureArea(),
-            title: const Text('Title'),
-            actions: [
-              IconButton(icon: const Icon(MdiIcons.cog), onPressed: onSettingsPressed ?? () {}),
-            ],
-          ),
-          body: const SizedBox.expand(),
-        ),
-      );
+    home: Scaffold(
+      appBar: AppBar(
+        flexibleSpace: windowHeaderGestureArea(),
+        title: const Text('Title'),
+        actions: [IconButton(icon: const Icon(MdiIcons.cog), onPressed: onSettingsPressed ?? () {})],
+      ),
+      body: const SizedBox.expand(),
+    ),
+  );
 
   Future<void> doubleTapAt(WidgetTester tester, Offset location) async {
     await tester.tapAt(location);
@@ -97,12 +95,14 @@ void main() {
     try {
       double? clearance;
       Widget host(bool fullScreen) => MacOSFullScreenScope(
-            isFullScreen: fullScreen,
-            child: Builder(builder: (context) {
-              clearance = macOSTrafficLightClearance(context);
-              return const SizedBox();
-            }),
-          );
+        isFullScreen: fullScreen,
+        child: Builder(
+          builder: (context) {
+            clearance = macOSTrafficLightClearance(context);
+            return const SizedBox();
+          },
+        ),
+      );
 
       await tester.pumpWidget(host(false));
       expect(clearance, macOSTrafficLightInset + macOSTrafficLightGap);
@@ -181,8 +181,7 @@ void main() {
     }
   });
 
-  testWidgets('the traffic-light mask paints the header colour fading to transparent, at fixed clearance width',
-      (tester) async {
+  testWidgets('the traffic-light mask paints the header colour fading to transparent, at fixed clearance width', (tester) async {
     // The mask hides header content that animates through the top-left corner
     // under the native buttons: it must be the header's own colour (invisible
     // against the header) and fade to transparent toward the content so masked
@@ -190,15 +189,16 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
       const headerColor = Color(0xFF123456);
-      await tester.pumpWidget(MaterialApp(
-        theme: ThemeData(appBarTheme: const AppBarTheme(backgroundColor: headerColor, toolbarHeight: 48)),
-        home: const Scaffold(body: Align(alignment: Alignment.topLeft, child: MacOSTrafficLightMask())),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(appBarTheme: const AppBarTheme(backgroundColor: headerColor, toolbarHeight: 48)),
+          home: const Scaffold(
+            body: Align(alignment: Alignment.topLeft, child: MacOSTrafficLightMask()),
+          ),
+        ),
+      );
 
-      final box = tester.widget<DecoratedBox>(find.descendant(
-        of: find.byType(MacOSTrafficLightMask),
-        matching: find.byType(DecoratedBox),
-      ));
+      final box = tester.widget<DecoratedBox>(find.descendant(of: find.byType(MacOSTrafficLightMask), matching: find.byType(DecoratedBox)));
       final gradient = (box.decoration as BoxDecoration).gradient! as LinearGradient;
       // Opaque header colour on the left (under the buttons)…
       expect(gradient.colors.first, headerColor);
@@ -231,15 +231,19 @@ void main() {
       });
 
       // Mirror main.dart: the mask is overlaid on top of the header.
-      await tester.pumpWidget(MaterialApp(
-        home: Stack(children: [
-          Scaffold(
-            appBar: AppBar(automaticallyImplyLeading: false, flexibleSpace: windowHeaderGestureArea()),
-            body: const SizedBox.expand(),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Stack(
+            children: [
+              Scaffold(
+                appBar: AppBar(automaticallyImplyLeading: false, flexibleSpace: windowHeaderGestureArea()),
+                body: const SizedBox.expand(),
+              ),
+              const Positioned(top: 0, left: 0, child: MacOSTrafficLightMask()),
+            ],
           ),
-          const Positioned(top: 0, left: 0, child: MacOSTrafficLightMask()),
-        ]),
-      ));
+        ),
+      );
 
       await doubleTapAt(tester, tester.getRect(find.byType(MacOSTrafficLightMask)).center);
 
@@ -255,15 +259,14 @@ void main() {
     // system's auto-hiding overlay), so there is nothing to mask.
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
-      await tester.pumpWidget(const MacOSFullScreenScope(
-        isFullScreen: true,
-        child: MaterialApp(home: Scaffold(body: MacOSTrafficLightMask())),
-      ));
-
-      expect(
-        find.descendant(of: find.byType(MacOSTrafficLightMask), matching: find.byType(DecoratedBox)),
-        findsNothing,
+      await tester.pumpWidget(
+        const MacOSFullScreenScope(
+          isFullScreen: true,
+          child: MaterialApp(home: Scaffold(body: MacOSTrafficLightMask())),
+        ),
       );
+
+      expect(find.descendant(of: find.byType(MacOSTrafficLightMask), matching: find.byType(DecoratedBox)), findsNothing);
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
@@ -274,10 +277,7 @@ void main() {
     try {
       await tester.pumpWidget(const MaterialApp(home: Scaffold(body: MacOSTrafficLightMask())));
 
-      expect(
-        find.descendant(of: find.byType(MacOSTrafficLightMask), matching: find.byType(DecoratedBox)),
-        findsNothing,
-      );
+      expect(find.descendant(of: find.byType(MacOSTrafficLightMask), matching: find.byType(DecoratedBox)), findsNothing);
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
@@ -292,9 +292,13 @@ void main() {
         return null;
       });
 
-      await tester.pumpWidget(const MaterialApp(
-        home: Scaffold(body: Align(alignment: Alignment.topRight, child: WindowsCaptionButtons())),
-      ));
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Align(alignment: Alignment.topRight, child: WindowsCaptionButtons()),
+          ),
+        ),
+      );
 
       await tester.tap(find.byIcon(MdiIcons.windowMinimize));
       await tester.tap(find.byIcon(MdiIcons.windowMaximize));
@@ -321,8 +325,7 @@ void main() {
     // steps aside (as the release/onboarding overlays already do by z-order).
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
-      Finder maskBox() =>
-          find.descendant(of: find.byType(MacOSTrafficLightMask), matching: find.byType(DecoratedBox));
+      Finder maskBox() => find.descendant(of: find.byType(MacOSTrafficLightMask), matching: find.byType(DecoratedBox));
       await tester.pumpWidget(const MaterialApp(home: Scaffold(body: MacOSTrafficLightMask())));
       expect(maskBox(), findsOneWidget);
 
@@ -341,10 +344,12 @@ void main() {
 
   testWidgets('ModalBarrierRouteObserver flips the signal for dimming dialogs, not plain page routes', (tester) async {
     try {
-      await tester.pumpWidget(MaterialApp(
-        navigatorObservers: [ModalBarrierRouteObserver()],
-        home: const Scaffold(body: SizedBox()),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorObservers: [ModalBarrierRouteObserver()],
+          home: const Scaffold(body: SizedBox()),
+        ),
+      );
       final navigator = tester.state<NavigatorState>(find.byType(Navigator));
       expect(modalBarrierIsVisible.value, isFalse);
 
@@ -356,7 +361,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // A dialog dims the window — on while it's up, off once dismissed.
-      unawaited(showDialog<void>(context: navigator.context, builder: (_) => const AlertDialog(content: Text('hi'))));
+      unawaited(
+        showDialog<void>(
+          context: navigator.context,
+          builder: (_) => const AlertDialog(content: Text('hi')),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(modalBarrierIsVisible.value, isTrue);
 
@@ -375,25 +385,31 @@ void main() {
     // set on the way in goes wrong: the second one's answer is the one that
     // counts while it is up, and the first one's again once it is gone.
     try {
-      await tester.pumpWidget(MaterialApp(
-        navigatorObservers: [ModalBarrierRouteObserver()],
-        home: const Scaffold(body: SizedBox()),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorObservers: [ModalBarrierRouteObserver()],
+          home: const Scaffold(body: SizedBox()),
+        ),
+      );
       final navigator = tester.state<NavigatorState>(find.byType(Navigator));
       expect(modalBarrierIsDismissible.value, isFalse, reason: 'nothing is up');
 
-      unawaited(showDialog<void>(
-        context: navigator.context,
-        builder: (_) => const AlertDialog(content: Text('first')),
-      ));
+      unawaited(
+        showDialog<void>(
+          context: navigator.context,
+          builder: (_) => const AlertDialog(content: Text('first')),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(modalBarrierIsDismissible.value, isTrue);
 
-      unawaited(showDialog<void>(
-        context: navigator.context,
-        barrierDismissible: false,
-        builder: (_) => const AlertDialog(content: Text('second')),
-      ));
+      unawaited(
+        showDialog<void>(
+          context: navigator.context,
+          barrierDismissible: false,
+          builder: (_) => const AlertDialog(content: Text('second')),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(modalBarrierIsDismissible.value, isFalse, reason: "the top dialog refuses barrier dismissal");
 
@@ -418,13 +434,13 @@ void main() {
     // (rather than the whole window) keeps the natural-vs-fitted contrast
     // deterministic regardless of surrounding chrome.
     Widget host(String text, double width) => MaterialApp(
-          home: Scaffold(
-            body: Align(
-              alignment: Alignment.topLeft,
-              child: SizedBox(width: width, child: shrinkToFit(Text(text))),
-            ),
-          ),
-        );
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(width: width, child: shrinkToFit(Text(text))),
+        ),
+      ),
+    );
 
     testWidgets('renders at natural size, unscaled, when the text already fits', (tester) async {
       await tester.pumpWidget(host('Short', 300));
@@ -465,19 +481,24 @@ void main() {
     const style = TextStyle(fontSize: 18);
 
     double naturalWidth(WidgetTester tester) {
-      final painter = TextPainter(text: const TextSpan(text: longTitle, style: style), textDirection: TextDirection.ltr)
-        ..layout();
+      final painter = TextPainter(
+        text: const TextSpan(text: longTitle, style: style),
+        textDirection: TextDirection.ltr,
+      )..layout();
       return painter.width;
     }
 
     Widget host(double width) => MaterialApp(
-          home: Scaffold(
-            body: Align(
-              alignment: Alignment.topLeft,
-              child: SizedBox(width: width, child: shrinkToFitText(const Text(longTitle, style: style))),
-            ),
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: width,
+            child: shrinkToFitText(const Text(longTitle, style: style)),
           ),
-        );
+        ),
+      ),
+    );
 
     testWidgets('reads the full text, scaled down but above the 75% floor, when moderately too wide', (tester) async {
       final natural = naturalWidth(tester);
@@ -531,38 +552,35 @@ void main() {
       final natural = (TextPainter(
         text: const TextSpan(text: shortTitle, style: style),
         textDirection: TextDirection.ltr,
-      )..layout())
-          .width;
+      )..layout()).width;
       expect(natural * 1.2, lessThan(760), reason: 'the box must fit the test surface, or the surface decides the result');
 
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(
-          builder: (context) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2.0)),
-            child: Directionality(
-              textDirection: TextDirection.ltr,
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: SizedBox(
-                  width: natural * 1.2,
-                  child: shrinkToFitText(const Text(shortTitle, style: style)),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2.0)),
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox(
+                    width: natural * 1.2,
+                    child: shrinkToFitText(const Text(shortTitle, style: style)),
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
 
       expect(tester.takeException(), isNull);
       final rendered = tester.widget<Text>(find.text(shortTitle));
       // The floor is 75% of the SCALED size, not of the unscaled one: a
       // reader who asked for a 2x font keeps most of it.
-      expect(
-        rendered.style!.fontSize,
-        style.fontSize! * 0.75,
-        reason: 'measuring unscaled would see a fit and leave the size at 18',
-      );
+      expect(rendered.style!.fontSize, style.fontSize! * 0.75, reason: 'measuring unscaled would see a fit and leave the size at 18');
       // And at that floor it STILL doesn't fit — 2x is more than this box can
       // hold at any size the floor allows, so the line is shrunk AND
       // ellipsized. That is the accepted outcome, not an oversight: the
@@ -582,26 +600,27 @@ void main() {
         text: const TextSpan(text: shortTitle, style: style),
         textDirection: TextDirection.ltr,
         textScaler: scaler,
-      )..layout())
-          .width;
+      )..layout()).width;
 
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(
-          builder: (context) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: scaler),
-            child: Directionality(
-              textDirection: TextDirection.ltr,
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: SizedBox(
-                  width: scaled * 0.9,
-                  child: shrinkToFitText(const Text(shortTitle, style: style)),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: scaler),
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox(
+                    width: scaled * 0.9,
+                    child: shrinkToFitText(const Text(shortTitle, style: style)),
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
 
       final rendered = tester.widget<Text>(find.text(shortTitle));
@@ -615,8 +634,7 @@ void main() {
         text: TextSpan(text: shortTitle, style: rendered.style),
         textDirection: TextDirection.ltr,
         textScaler: scaler,
-      )..layout())
-          .width;
+      )..layout()).width;
       expect(fittedWidth, lessThanOrEqualTo(scaled * 0.9 + 0.5));
     });
 
@@ -629,31 +647,35 @@ void main() {
       const shortTitle = 'KI2D Field Day';
       const scaler = _TaperingScaler();
       double widthAt(TextStyle s) => (TextPainter(
-            text: TextSpan(text: shortTitle, style: s),
-            textDirection: TextDirection.ltr,
-            textScaler: scaler,
-          )..layout())
-              .width;
+        text: TextSpan(text: shortTitle, style: s),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+      )..layout()).width;
 
       final scaled = widthAt(style);
       // Wide enough that the floor is not what saves it: the fit has to come
       // from the size the helper chose.
       final boxWidth = scaled * 0.85;
 
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(
-          builder: (context) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: scaler),
-            child: Directionality(
-              textDirection: TextDirection.ltr,
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: SizedBox(width: boxWidth, child: shrinkToFitText(const Text(shortTitle, style: style))),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: scaler),
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox(
+                    width: boxWidth,
+                    child: shrinkToFitText(const Text(shortTitle, style: style)),
+                  ),
+                ),
               ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
 
       final rendered = tester.widget<Text>(find.text(shortTitle));
@@ -686,22 +708,21 @@ void main() {
       });
 
       double widthOf(TextStyle style) => (TextPainter(
-            text: TextSpan(text: longTitle, style: style),
-            textDirection: TextDirection.ltr,
-          )..layout())
-          .width;
+        text: TextSpan(text: longTitle, style: style),
+        textDirection: TextDirection.ltr,
+      )..layout()).width;
 
       Widget condensedHost(double width) => MaterialApp(
-            home: Scaffold(
-              body: Align(
-                alignment: Alignment.topLeft,
-                child: SizedBox(
-                  width: width,
-                  child: shrinkToFitText(const Text(longTitle, style: condensedStyle), condensed: true),
-                ),
-              ),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: width,
+              child: shrinkToFitText(const Text(longTitle, style: condensedStyle), condensed: true),
             ),
-          );
+          ),
+        ),
+      );
 
       testWidgets('narrows the glyphs at full size when that alone is enough to fit', (tester) async {
         final natural = widthOf(condensedStyle);
@@ -728,7 +749,11 @@ void main() {
 
         expect(tester.takeException(), isNull);
         final rendered = tester.widget<Text>(find.text(longTitle));
-        expect(rendered.style!.fontVariations, contains(const FontVariation('wdth', 75)), reason: 'condensed width should still be used as the base to shrink from');
+        expect(
+          rendered.style!.fontVariations,
+          contains(const FontVariation('wdth', 75)),
+          reason: 'condensed width should still be used as the base to shrink from',
+        );
         expect(rendered.style!.fontSize, lessThan(condensedStyle.fontSize!));
         expect(rendered.style!.fontSize, greaterThanOrEqualTo(condensedStyle.fontSize! * 0.75));
       });

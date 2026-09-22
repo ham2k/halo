@@ -90,7 +90,8 @@ class PreferencesFileUnreadable implements Exception {
   final PreferencesRecovery recovery;
 
   @override
-  String toString() => 'PreferencesFileUnreadable: the preferences file could not be parsed '
+  String toString() =>
+      'PreferencesFileUnreadable: the preferences file could not be parsed '
       '(${recovery.name})';
 }
 
@@ -143,11 +144,7 @@ Future<PreferencesRecovery> initializeAppStorage() async {
       // reach for another hundred-odd steps: anything that throws in between
       // would lose the only record that an operator's settings were just
       // quarantined. The notice can wait for a screen; the fact cannot.
-      ErrorReportingService.report(
-        PreferencesFileUnreadable(recovery),
-        StackTrace.current,
-        context: 'app-storage:preferences-recovered',
-      );
+      ErrorReportingService.report(PreferencesFileUnreadable(recovery), StackTrace.current, context: 'app-storage:preferences-recovered');
     }
     return recovery;
   } catch (e, st) {
@@ -295,8 +292,7 @@ typedef _PreferencesRead = ({String? text, bool unreadable});
 /// Losing the first bad file loses the settings only it still holds.
 Future<File> _quarantineName(Directory directory) async {
   final stamp = realNowUtc().toIso8601String().replaceAll(RegExp('[:-]'), '').replaceFirst('.', '');
-  File named(String suffix) =>
-      File(p.join(directory.path, '$kPreferencesQuarantinePrefix$stamp$suffix.json'));
+  File named(String suffix) => File(p.join(directory.path, '$kPreferencesQuarantinePrefix$stamp$suffix.json'));
   var candidate = named('');
   for (var n = 2; await candidate.exists(); n++) {
     candidate = named('-$n');
@@ -434,11 +430,7 @@ Future<_Storage> _resolveStorage() async {
 
     await target.create(recursive: true);
     final resolved = documents == null ? target : await migrateLegacyAppData(legacy: documents, target: target);
-    return (
-      directory: resolved,
-      relocated: p.equals(resolved.path, target.path),
-      sandboxed: false,
-    );
+    return (directory: resolved, relocated: p.equals(resolved.path, target.path), sandboxed: false);
   } catch (e, st) {
     // Creating the directory can fail outright — group policy, an antivirus
     // product holding it, an unwritable %LOCALAPPDATA%. Boot must survive

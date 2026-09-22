@@ -73,10 +73,7 @@ class _SecretTextFieldState extends State<SecretTextField> {
       // Obscured → an eye (tap to show); revealed → eye-with-slash (tap to
       // hide). No hover tooltip (user-interface.md); the label is for screen
       // readers only, and flips with the icon.
-      icon: Icon(
-        _obscured ? MdiIcons.eyeOutline : MdiIcons.eyeOffOutline,
-        semanticLabel: _obscured ? 'Show' : 'Hide',
-      ),
+      icon: Icon(_obscured ? MdiIcons.eyeOutline : MdiIcons.eyeOffOutline, semanticLabel: _obscured ? 'Show' : 'Hide'),
       onPressed: () => setState(() => _obscured = !_obscured),
     );
     return TextField(

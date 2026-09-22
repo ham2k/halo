@@ -42,6 +42,7 @@ Future<Map<String, dynamic>?> showFormPane(
   FormOpenLink? onOpenLink,
   bool developerMode = false,
   String? saveLabel,
+
   /// A destructive action for the footer, beside Cancel and in its own
   /// colour. The PANE CLOSES FIRST and then the callback runs, so the
   /// callback owns only the confirmation. A caller cannot pop it itself
@@ -77,9 +78,7 @@ Future<Map<String, dynamic>?> showFormPane(
   // say — so `formDefinition['elements']` can't just be handed to
   // [FormRenderer] once; this is what [FormRenderer.onElementsChanged]
   // pushes into.
-  final elementsNotifier = ValueNotifier<List<Map<String, dynamic>>>(
-    (formDefinition['elements'] as List?)?.cast<Map<String, dynamic>>() ?? const [],
-  );
+  final elementsNotifier = ValueNotifier<List<Map<String, dynamic>>>((formDefinition['elements'] as List?)?.cast<Map<String, dynamic>>() ?? const []);
 
   return showModalPane<Map<String, dynamic>>(
     context,
@@ -196,9 +195,7 @@ Future<Map<String, dynamic>?> showFormPane(
       ),
     ),
   );
-
 }
-
 
 /// Rebuilds [elements] on a timer for as long as this is in the tree — see
 /// [showFormPane]'s `refreshElements`. A widget rather than a timer started

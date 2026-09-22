@@ -251,8 +251,7 @@ void main() {
       // unscoped one arriving from upstream would start accusing every
       // caller who passed no scope at all, and nothing else here would
       // notice.
-      final unscoped = bandPlanModeSegments
-          .where((s) => s.mode == outOfBandMode && s.regions.isEmpty && s.countries.isEmpty);
+      final unscoped = bandPlanModeSegments.where((s) => s.mode == outOfBandMode && s.regions.isEmpty && s.countries.isEmpty);
       expect(unscoped, isEmpty);
     });
 
@@ -380,8 +379,7 @@ void main() {
       final reachable = [...extendedBands, ...bandAliases.keys];
       for (final band in reachable.where((b) => b.endsWith('m') && !b.endsWith('mm'))) {
         final asFrequency = parseFreq(band.replaceAll(RegExp(r'(c?m)$'), ''));
-        expect(bandForFrequency(asFrequency!), isNull,
-            reason: '$band typed bare parses as $asFrequency kHz, a real frequency');
+        expect(bandForFrequency(asFrequency!), isNull, reason: '$band typed bare parses as $asFrequency kHz, a real frequency');
       }
     });
   });

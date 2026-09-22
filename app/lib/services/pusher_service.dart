@@ -77,13 +77,9 @@ class PusherService {
   final Set<String> _channels = {};
   final _eventsController = StreamController<PusherEvent>.broadcast();
 
-  PusherService({
-    required this.appKey,
-    this.cluster,
-    this.host,
-    StreamChannel<dynamic> Function(Uri uri)? connect,
-  })  : assert(cluster != null || host != null, 'PusherService needs either a cluster or a host'),
-        _connect = connect ?? WebSocketChannel.connect;
+  PusherService({required this.appKey, this.cluster, this.host, StreamChannel<dynamic> Function(Uri uri)? connect})
+    : assert(cluster != null || host != null, 'PusherService needs either a cluster or a host'),
+      _connect = connect ?? WebSocketChannel.connect;
 
   /// Where to connect. Pusher derives its host from the cluster; ours is named
   /// outright.
@@ -112,12 +108,7 @@ class PusherService {
     final uri = Uri.parse('wss://$_wsHost/app/$appKey?protocol=7&client=halo&version=1.0');
     final socket = _connect(uri);
     _socket = socket;
-    _socketSub = socket.stream.listen(
-      _onMessage,
-      onDone: _onDisconnected,
-      onError: (Object _) => _onDisconnected(),
-      cancelOnError: true,
-    );
+    _socketSub = socket.stream.listen(_onMessage, onDone: _onDisconnected, onError: (Object _) => _onDisconnected(), cancelOnError: true);
   }
 
   void _onMessage(dynamic raw) {

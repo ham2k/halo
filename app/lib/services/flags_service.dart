@@ -148,8 +148,8 @@ class FlagsService extends ChangeNotifier {
     this._onTrack,
     this.isReleaseBuild = kReleaseMode,
     this.staleness,
-  })  : _client = client ?? http.Client(),
-        _environmentProvider = environmentProvider ?? defaultNoticeEnvironment {
+  }) : _client = client ?? http.Client(),
+       _environmentProvider = environmentProvider ?? defaultNoticeEnvironment {
     // Gating the push alone isn't enough: notices persist, so one an earlier
     // build left on file sits in the footer of every later launch until
     // somebody dismisses it. Clear it here rather than in the push path,
@@ -274,11 +274,7 @@ class FlagsService extends ChangeNotifier {
   /// Fetches and deep-merges the flag files for [call]. Returns null if NOT
   /// A SINGLE file could be fetched (total failure — likely offline), so the
   /// caller can preserve the previous flags instead of overwriting them.
-  Future<Map<String, dynamic>?> _fetchAndMerge(
-    String call, {
-    required String baseCall,
-    String? entityPrefix,
-  }) async {
+  Future<Map<String, dynamic>?> _fetchAndMerge(String call, {required String baseCall, String? entityPrefix}) async {
     final locations = <String>['defaults.json'];
     if (call.isNotEmpty) {
       final cleanCall = _clean(call);
@@ -458,9 +454,7 @@ class FlagsService extends ChangeNotifier {
   /// (docs/design/network.md); the fallback resolver never throws, so a
   /// missing build number can't block a flag fetch.
   Future<Map<String, dynamic>?> _httpFetch(String location) async {
-    final response = await _client
-        .get(Uri.parse('$baseUrl/$location'), headers: {'User-Agent': await ham2kUserAgentOrFallback()})
-        .timeout(_maxRequestTime);
+    final response = await _client.get(Uri.parse('$baseUrl/$location'), headers: {'User-Agent': await ham2kUserAgentOrFallback()}).timeout(_maxRequestTime);
     if (response.statusCode != 200) return null;
     final decoded = jsonDecode(response.body);
     return decoded is Map ? decoded.cast<String, dynamic>() : null;
@@ -473,12 +467,7 @@ class FlagsService extends ChangeNotifier {
   /// report — the same seam, for the same reason, as `buildDetails` in
   /// views/version_label.dart. Taking the wrong constant here is silent: a
   /// notice rule simply targets the wrong installs.
-  static Future<NoticeEnvironment> defaultNoticeEnvironment({
-    Edition edition = kEdition,
-    int build = kBuildNumber,
-    String sha = kGitSha,
-    int? codePush,
-  }) async {
+  static Future<NoticeEnvironment> defaultNoticeEnvironment({Edition edition = kEdition, int build = kBuildNumber, String sha = kGitSha, int? codePush}) async {
     codePush ??= currentCodePush;
     String platform;
     if (kIsWeb) {

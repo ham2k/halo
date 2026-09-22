@@ -33,10 +33,7 @@ class FakeBleWorld {
       if (!scanner.scanning) continue;
       for (final advertiser in byAddress.values) {
         if (identical(advertiser, scanner) || !advertiser.advertising) continue;
-        scanner._sightings.add(PeerBleSighting(
-          addressId: advertiser.address,
-          nameHint: advertiser.advertisedName,
-        ));
+        scanner._sightings.add(PeerBleSighting(addressId: advertiser.address, nameHint: advertiser.advertisedName));
       }
     }
   }
@@ -166,10 +163,7 @@ class FakeBleGateway implements PeerBleGateway {
   int connectYields = 0;
 
   @override
-  Future<PeerBleClientConnection> connect(
-    String addressId, {
-    required void Function(Uint8List packet) onPacket,
-  }) async {
+  Future<PeerBleClientConnection> connect(String addressId, {required void Function(Uint8List packet) onPacket}) async {
     connectCalls++;
     final target = world.byAddress[addressId];
     if (target == null || !target.advertising) {

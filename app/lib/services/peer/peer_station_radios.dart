@@ -36,22 +36,16 @@ class PeerRadioSelection {
   final String deviceName;
   final String radioName;
 
-  const PeerRadioSelection({
-    required this.deviceId,
-    required this.radioId,
-    this.deviceName = '',
-    this.radioName = '',
-  });
+  const PeerRadioSelection({required this.deviceId, required this.radioId, this.deviceName = '', this.radioName = ''});
 
-  bool matches(String deviceId, String radioId) =>
-      this.deviceId == deviceId && this.radioId == radioId;
+  bool matches(String deviceId, String radioId) => this.deviceId == deviceId && this.radioId == radioId;
 
   Map<String, dynamic> toJson() => {
-        'deviceId': deviceId,
-        'radioId': radioId,
-        if (deviceName.isNotEmpty) 'deviceName': deviceName,
-        if (radioName.isNotEmpty) 'radioName': radioName,
-      };
+    'deviceId': deviceId,
+    'radioId': radioId,
+    if (deviceName.isNotEmpty) 'deviceName': deviceName,
+    if (radioName.isNotEmpty) 'radioName': radioName,
+  };
 
   /// Null for anything malformed, which reads as "nothing selected" —
   /// the same fallback a stored `radio1` naming an unloadable node takes.
@@ -72,8 +66,7 @@ class PeerRadioSelection {
   }
 
   @override
-  bool operator ==(Object other) =>
-      other is PeerRadioSelection && other.deviceId == deviceId && other.radioId == radioId;
+  bool operator ==(Object other) => other is PeerRadioSelection && other.deviceId == deviceId && other.radioId == radioId;
 
   @override
   int get hashCode => Object.hash(deviceId, radioId);
@@ -91,8 +84,7 @@ const _peerRadioValuePrefix = 'peer:';
 /// because a menu's items are captured when it opens: the value has to carry
 /// enough to rebuild the pick, since the offer it was built from may be gone
 /// by the time the operator taps it.
-String peerRadioValue(PeerRadioSelection selection) =>
-    '$_peerRadioValuePrefix${selection.deviceId}:${selection.radioId}';
+String peerRadioValue(PeerRadioSelection selection) => '$_peerRadioValuePrefix${selection.deviceId}:${selection.radioId}';
 
 /// The pick [value] names, or null when it does not name one at all — a local
 /// node's uuid, or a malformed value with a half missing.
@@ -104,10 +96,7 @@ PeerRadioSelection? peerRadioSelectionFromValue(String? value) {
   // radio half.
   final split = rest.indexOf(':');
   if (split <= 0 || split == rest.length - 1) return null;
-  return PeerRadioSelection(
-    deviceId: rest.substring(0, split),
-    radioId: rest.substring(split + 1),
-  );
+  return PeerRadioSelection(deviceId: rest.substring(0, split), radioId: rest.substring(split + 1));
 }
 
 /// The station, as the peer bridge sees it.

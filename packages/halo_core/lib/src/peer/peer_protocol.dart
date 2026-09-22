@@ -244,19 +244,17 @@ class PeerMessage {
     String? operationUuid,
     String? accountTag,
     List<String> capabilities = const [],
-  }) =>
-      PeerMessage(PeerMessageType.hello, {
-        'v': peerProtocolVersion,
-        'deviceId': deviceId,
-        'deviceName': deviceName,
-        'operationUuid': ?operationUuid,
-        'acct': ?accountTag,
-        if (capabilities.isNotEmpty) 'caps': capabilities,
-      });
+  }) => PeerMessage(PeerMessageType.hello, {
+    'v': peerProtocolVersion,
+    'deviceId': deviceId,
+    'deviceName': deviceName,
+    'operationUuid': ?operationUuid,
+    'acct': ?accountTag,
+    if (capabilities.isNotEmpty) 'caps': capabilities,
+  });
 
   /// Null means "sharing nothing now" — a real state, not an error.
-  static PeerMessage sharing(String? operationUuid) => PeerMessage(
-      PeerMessageType.sharing, {'operationUuid': ?operationUuid});
+  static PeerMessage sharing(String? operationUuid) => PeerMessage(PeerMessageType.sharing, {'operationUuid': ?operationUuid});
 
   static PeerMessage trusted() => const PeerMessage(PeerMessageType.trusted);
 
@@ -273,26 +271,13 @@ class PeerMessage {
   /// [events] entries are `{seq, kind, data}` — `kind` naming which
   /// repository's `mergeFromPeer` applies `data`, exactly as `PeerEvents`
   /// stores them.
-  static PeerMessage eventsBatch(String operationUuid, List<Map<String, dynamic>> events,
-          {required bool hasMore}) =>
-      PeerMessage(
-          PeerMessageType.events, {'operationUuid': operationUuid, 'events': events, 'hasMore': hasMore});
+  static PeerMessage eventsBatch(String operationUuid, List<Map<String, dynamic>> events, {required bool hasMore}) =>
+      PeerMessage(PeerMessageType.events, {'operationUuid': operationUuid, 'events': events, 'hasMore': hasMore});
 
-  static PeerMessage ack(String operationUuid, int seq) =>
-      PeerMessage(PeerMessageType.ack, {'operationUuid': operationUuid, 'seq': seq});
+  static PeerMessage ack(String operationUuid, int seq) => PeerMessage(PeerMessageType.ack, {'operationUuid': operationUuid, 'seq': seq});
 
-  static PeerMessage position({
-    required double latitude,
-    required double longitude,
-    double? accuracyMeters,
-    required int atMillis,
-  }) =>
-      PeerMessage(PeerMessageType.position, {
-        'lat': latitude,
-        'lon': longitude,
-        'acc': ?accuracyMeters,
-        'at': atMillis,
-      });
+  static PeerMessage position({required double latitude, required double longitude, double? accuracyMeters, required int atMillis}) =>
+      PeerMessage(PeerMessageType.position, {'lat': latitude, 'lon': longitude, 'acc': ?accuracyMeters, 'at': atMillis});
 
   /// Null unless this is a well-formed [PeerMessageType.position].
   PeerPositionPayload? get positionOrNull {
@@ -302,12 +287,7 @@ class PeerMessage {
     final at = (fields['at'] as num?)?.toInt();
     if (lat == null || lon == null || at == null) return null;
     if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
-    return PeerPositionPayload(
-      latitude: lat,
-      longitude: lon,
-      accuracyMeters: (fields['acc'] as num?)?.toDouble(),
-      atMillis: at,
-    );
+    return PeerPositionPayload(latitude: lat, longitude: lon, accuracyMeters: (fields['acc'] as num?)?.toDouble(), atMillis: at);
   }
 
   /// The contact this device is composing. [qso] is sent as-is apart from
@@ -362,9 +342,7 @@ class PeerMessage {
       // draft: this list crossed a network from a build whose row may hold
       // controls this one has never heard of, and a block missing one field
       // still says what the position is working.
-      fields: row is List
-          ? [for (final raw in row) ?PeerDraftFieldPayload.from(raw)]
-          : const [],
+      fields: row is List ? [for (final raw in row) ?PeerDraftFieldPayload.from(raw)] : const [],
       position: fields['pos'] is String ? fields['pos'] as String : '',
       operatorCall: fields['oper'] is String ? fields['oper'] as String : '',
       left: fields['left'] == true,
@@ -373,12 +351,7 @@ class PeerMessage {
 
   /// See [PeerMessageType.serialClaims]. [seq] numbers the sender's claim
   /// rounds; [ack] names the receiver's round being acknowledged, if any.
-  static PeerMessage serialClaims({
-    required String operationUuid,
-    required int seq,
-    required List<PeerSerialClaim> claims,
-    int? ack,
-  }) =>
+  static PeerMessage serialClaims({required String operationUuid, required int seq, required List<PeerSerialClaim> claims, int? ack}) =>
       PeerMessage(PeerMessageType.serialClaims, {
         'opUuid': operationUuid,
         'seq': seq,
@@ -404,8 +377,9 @@ class PeerMessage {
     );
   }
 
-  static PeerMessage catOffer(List<PeerRadioOffer> radios) =>
-      PeerMessage(PeerMessageType.catOffer, {'radios': [for (final r in radios) r.toJson()]});
+  static PeerMessage catOffer(List<PeerRadioOffer> radios) => PeerMessage(PeerMessageType.catOffer, {
+    'radios': [for (final r in radios) r.toJson()],
+  });
 
   /// Null unless this is a [PeerMessageType.catOffer]. An EMPTY list is a
   /// valid answer and must be distinguishable from "not that message" —
@@ -438,15 +412,10 @@ class PeerMessage {
     final mode = fields['mode'];
     if (freqKHz == null && mode is! String) return null;
     if (freqKHz != null && (freqKHz <= 0 || !freqKHz.isFinite)) return null;
-    return PeerVfoPayload(
-      radioId: radioId,
-      freqKHz: freqKHz,
-      mode: mode is String && mode.isNotEmpty ? mode : null,
-    );
+    return PeerVfoPayload(radioId: radioId, freqKHz: freqKHz, mode: mode is String && mode.isNotEmpty ? mode : null);
   }
 
-  static PeerMessage keyStatus(PeerKeyStatusPayload status) =>
-      PeerMessage(PeerMessageType.keyStatus, status.toJson());
+  static PeerMessage keyStatus(PeerKeyStatusPayload status) => PeerMessage(PeerMessageType.keyStatus, status.toJson());
 
   /// Null unless this is a well-formed [PeerMessageType.keyStatus]. An
   /// otherwise EMPTY status — no speed, no message, no memory — is the one
@@ -456,8 +425,7 @@ class PeerMessage {
     return PeerKeyStatusPayload.from(fields);
   }
 
-  static PeerMessage keySet(PeerKeyRequestPayload request) =>
-      PeerMessage(PeerMessageType.keySet, request.toJson());
+  static PeerMessage keySet(PeerKeyRequestPayload request) => PeerMessage(PeerMessageType.keySet, request.toJson());
 
   /// Null unless this is a [PeerMessageType.keySet] naming a radio and an
   /// operation this build knows, with what that operation needs. A request
@@ -468,28 +436,23 @@ class PeerMessage {
     return PeerKeyRequestPayload.from(fields);
   }
 
-  static PeerMessage screenSources(List<PeerScreenSource> sources) => PeerMessage(
-      PeerMessageType.screenSources, {'sources': [for (final s in sources) s.toJson()]});
+  static PeerMessage screenSources(List<PeerScreenSource> sources) => PeerMessage(PeerMessageType.screenSources, {
+    'sources': [for (final s in sources) s.toJson()],
+  });
 
-  static PeerMessage screenSubscribe(PeerScreenSubscription request) =>
-      PeerMessage(PeerMessageType.screenSubscribe, request.toJson());
+  static PeerMessage screenSubscribe(PeerScreenSubscription request) => PeerMessage(PeerMessageType.screenSubscribe, request.toJson());
 
-  static PeerMessage screenUnsubscribe(String sourceId) =>
-      PeerMessage(PeerMessageType.screenUnsubscribe, {'id': sourceId});
+  static PeerMessage screenUnsubscribe(String sourceId) => PeerMessage(PeerMessageType.screenUnsubscribe, {'id': sourceId});
 
-  static PeerMessage screenGrant(PeerScreenGrant grant) =>
-      PeerMessage(PeerMessageType.screenGrant, grant.toJson());
+  static PeerMessage screenGrant(PeerScreenGrant grant) => PeerMessage(PeerMessageType.screenGrant, grant.toJson());
 
-  static PeerMessage screenRefuse(String sourceId, String reason) =>
-      PeerMessage(PeerMessageType.screenRefuse, {'id': sourceId, 'reason': reason});
+  static PeerMessage screenRefuse(String sourceId, String reason) => PeerMessage(PeerMessageType.screenRefuse, {'id': sourceId, 'reason': reason});
 
-  static PeerMessage screenThumbRequest(String sourceId) =>
-      PeerMessage(PeerMessageType.screenThumbRequest, {'id': sourceId});
+  static PeerMessage screenThumbRequest(String sourceId) => PeerMessage(PeerMessageType.screenThumbRequest, {'id': sourceId});
 
   /// [image] null means "nothing to show" — see [PeerMessageType.screenThumb].
-  static PeerMessage screenThumb(String sourceId, List<int>? image) => PeerMessage(
-      PeerMessageType.screenThumb,
-      {'id': sourceId, if (image != null && image.isNotEmpty) 'jpeg': base64Encode(image)});
+  static PeerMessage screenThumb(String sourceId, List<int>? image) =>
+      PeerMessage(PeerMessageType.screenThumb, {'id': sourceId, if (image != null && image.isNotEmpty) 'jpeg': base64Encode(image)});
 
   /// The still a [PeerMessageType.screenThumb] carries, or null when it
   /// carries none — which is a real answer, not a malformed message.
@@ -511,18 +474,14 @@ class PeerMessage {
     if (type != PeerMessageType.screenSources) return null;
     final raw = fields['sources'];
     if (raw is! List) return const [];
-    return [
-      for (final entry in raw) ?PeerScreenSource.from(entry),
-    ];
+    return [for (final entry in raw) ?PeerScreenSource.from(entry)];
   }
 
   /// Null unless this is a well-formed [PeerMessageType.screenSubscribe].
-  PeerScreenSubscription? get screenSubscriptionOrNull =>
-      type == PeerMessageType.screenSubscribe ? PeerScreenSubscription.from(fields) : null;
+  PeerScreenSubscription? get screenSubscriptionOrNull => type == PeerMessageType.screenSubscribe ? PeerScreenSubscription.from(fields) : null;
 
   /// Null unless this is a well-formed [PeerMessageType.screenGrant].
-  PeerScreenGrant? get screenGrantOrNull =>
-      type == PeerMessageType.screenGrant ? PeerScreenGrant.from(fields) : null;
+  PeerScreenGrant? get screenGrantOrNull => type == PeerMessageType.screenGrant ? PeerScreenGrant.from(fields) : null;
 
   /// The source a [PeerMessageType.screenUnsubscribe] or
   /// [PeerMessageType.screenRefuse] names.
@@ -549,10 +508,7 @@ class PeerMessage {
   List<PeerEventPayload> get events {
     final raw = fields['events'];
     if (raw is! List) return const [];
-    return [
-      for (final entry in raw)
-        ?PeerEventPayload.from(entry),
-    ];
+    return [for (final entry in raw) ?PeerEventPayload.from(entry)];
   }
 
   /// Null unless this is a well-formed [PeerMessageType.hello].
@@ -616,8 +572,7 @@ class PeerHello {
 
   /// Whether [other] is signed in to the same account as this device. False
   /// whenever either side has none — see [accountTag].
-  bool sameAccountAs(String? localAccountTag) =>
-      localAccountTag != null && localAccountTag.isNotEmpty && localAccountTag == accountTag;
+  bool sameAccountAs(String? localAccountTag) => localAccountTag != null && localAccountTag.isNotEmpty && localAccountTag == accountTag;
 }
 
 /// A peer's GPS fix. [atMillis] is the SENDER's real wall clock at the fix —
@@ -629,12 +584,7 @@ class PeerPositionPayload {
   final double? accuracyMeters;
   final int atMillis;
 
-  const PeerPositionPayload({
-    required this.latitude,
-    required this.longitude,
-    this.accuracyMeters,
-    required this.atMillis,
-  });
+  const PeerPositionPayload({required this.latitude, required this.longitude, this.accuracyMeters, required this.atMillis});
 }
 
 /// What one operating position is composing, as its peers see it.
@@ -698,19 +648,9 @@ class PeerSerialClaim {
   final bool conflicted;
   final bool committed;
 
-  const PeerSerialClaim({
-    required this.label,
-    required this.number,
-    this.conflicted = false,
-    this.committed = false,
-  });
+  const PeerSerialClaim({required this.label, required this.number, this.conflicted = false, this.committed = false});
 
-  Map<String, dynamic> toJson() => {
-        'l': label,
-        'n': number,
-        if (conflicted) 'c': true,
-        if (committed) 'k': true,
-      };
+  Map<String, dynamic> toJson() => {'l': label, 'n': number, if (conflicted) 'c': true, if (committed) 'k': true};
 
   static PeerSerialClaim? from(Object? raw) {
     if (raw is! Map) return null;
@@ -722,18 +662,13 @@ class PeerSerialClaim {
 
   @override
   bool operator ==(Object other) =>
-      other is PeerSerialClaim &&
-      other.label == label &&
-      other.number == number &&
-      other.conflicted == conflicted &&
-      other.committed == committed;
+      other is PeerSerialClaim && other.label == label && other.number == number && other.conflicted == conflicted && other.committed == committed;
 
   @override
   int get hashCode => Object.hash(label, number, conflicted, committed);
 
   @override
-  String toString() =>
-      'PeerSerialClaim($label #$number${conflicted ? ' conflicted' : ''}${committed ? ' committed' : ''})';
+  String toString() => 'PeerSerialClaim($label #$number${conflicted ? ' conflicted' : ''}${committed ? ' committed' : ''})';
 }
 
 /// See [PeerMessageType.serialClaims].
@@ -743,12 +678,7 @@ class PeerSerialClaimsPayload {
   final List<PeerSerialClaim> claims;
   final int? ack;
 
-  const PeerSerialClaimsPayload({
-    required this.operationUuid,
-    required this.seq,
-    required this.claims,
-    this.ack,
-  });
+  const PeerSerialClaimsPayload({required this.operationUuid, required this.seq, required this.claims, this.ack});
 }
 
 /// One control from the sender's main logging row.
@@ -764,19 +694,14 @@ class PeerDraftFieldPayload {
   final String value;
   final String? hint;
 
-  const PeerDraftFieldPayload({
-    required this.key,
-    this.label = '',
-    this.value = '',
-    this.hint,
-  });
+  const PeerDraftFieldPayload({required this.key, this.label = '', this.value = '', this.hint});
 
   Map<String, dynamic> toJson() => {
-        'k': key,
-        if (label.isNotEmpty) 'l': label,
-        if (value.isNotEmpty) 'v': value,
-        if (hint != null && hint!.isNotEmpty) 'h': hint,
-      };
+    'k': key,
+    if (label.isNotEmpty) 'l': label,
+    if (value.isNotEmpty) 'v': value,
+    if (hint != null && hint!.isNotEmpty) 'h': hint,
+  };
 
   /// Null for anything without a key — a control nothing can be said about,
   /// which is not worth a slot in somebody's row.
@@ -833,24 +758,18 @@ class PeerRadioOffer {
   /// answering, since most of these lines record from the front panel only.
   final bool recordsVoice;
 
-  const PeerRadioOffer({
-    required this.id,
-    required this.name,
-    this.keysCw = false,
-    this.voiceMemories = 0,
-    this.recordsVoice = false,
-  });
+  const PeerRadioOffer({required this.id, required this.name, this.keysCw = false, this.voiceMemories = 0, this.recordsVoice = false});
 
   /// Every keying field is omitted when it says no, so an offer from a
   /// station that keys nothing is byte-for-byte what a build without any of
   /// this sends — and reads the same on both.
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        if (keysCw) 'cw': true,
-        if (voiceMemories > 0) 'voice': voiceMemories,
-        if (recordsVoice) 'rec': true,
-      };
+    'id': id,
+    'name': name,
+    if (keysCw) 'cw': true,
+    if (voiceMemories > 0) 'voice': voiceMemories,
+    if (recordsVoice) 'rec': true,
+  };
 
   /// Null for anything malformed, so one bad entry costs that entry rather
   /// than the peer's whole offer. The keying fields absent read as "keys
@@ -925,15 +844,15 @@ class PeerKeyStatusPayload {
   });
 
   Map<String, dynamic> toJson() => {
-        'radioId': radioId,
-        'wpm': ?keyerSpeedWpm,
-        'wpmMin': ?keyerSpeedMin,
-        'wpmMax': ?keyerSpeedMax,
-        'cw': ?cw?.toJson(),
-        'voice': ?voice?.toJson(),
-        if (voiceLabels.isNotEmpty) 'labels': voiceLabels,
-        if (voiceDurationsMs.isNotEmpty) 'durations': voiceDurationsMs,
-      };
+    'radioId': radioId,
+    'wpm': ?keyerSpeedWpm,
+    'wpmMin': ?keyerSpeedMin,
+    'wpmMax': ?keyerSpeedMax,
+    'cw': ?cw?.toJson(),
+    'voice': ?voice?.toJson(),
+    if (voiceLabels.isNotEmpty) 'labels': voiceLabels,
+    if (voiceDurationsMs.isNotEmpty) 'durations': voiceDurationsMs,
+  };
 
   /// Null for a status naming no radio — not a status about "the" radio.
   static PeerKeyStatusPayload? from(Map<String, dynamic> fields) {
@@ -956,8 +875,7 @@ class PeerKeyStatusPayload {
       cw: PeerCwProgressPayload.from(fields['cw']),
       voice: PeerVoiceActivityPayload.from(fields['voice']),
       voiceLabels: labels is List ? [for (final entry in labels) entry is String ? entry : ''] : const [],
-      voiceDurationsMs:
-          durations is List ? [for (final entry in durations) entry is num ? entry.toInt() : 0] : const [],
+      voiceDurationsMs: durations is List ? [for (final entry in durations) entry is num ? entry.toInt() : 0] : const [],
     );
   }
 }
@@ -1004,13 +922,13 @@ class PeerCwProgressPayload {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'text': text,
-        if (characterEndsMs.isNotEmpty) 'ends': characterEndsMs,
-        if (pending.isNotEmpty) 'pending': pending,
-        if (pendingIds.isNotEmpty) 'pendingIds': pendingIds,
-        'sent': ?sentCount,
-      };
+    'id': id,
+    'text': text,
+    if (characterEndsMs.isNotEmpty) 'ends': characterEndsMs,
+    if (pending.isNotEmpty) 'pending': pending,
+    if (pendingIds.isNotEmpty) 'pendingIds': pendingIds,
+    'sent': ?sentCount,
+  };
 
   /// Null for absent or malformed — and absent is the common case, meaning
   /// nothing is keying.
@@ -1026,9 +944,13 @@ class PeerCwProgressPayload {
     // and the invariant a local keyer maintains is not re-established by the
     // wire. A count beyond the text throws inside build on the controller.
     final sent = (raw['sent'] as num?)?.toInt().clamp(0, text.length);
-    final texts = pending is List ? [for (final entry in pending) if (entry is String) entry] : const <String>[];
-    final ids =
-        pendingIds is List ? [for (final entry in pendingIds) entry is num ? entry.toInt() : 0] : const <int>[];
+    final texts = pending is List
+        ? [
+            for (final entry in pending)
+              if (entry is String) entry,
+          ]
+        : const <String>[];
+    final ids = pendingIds is List ? [for (final entry in pendingIds) entry is num ? entry.toInt() : 0] : const <int>[];
     return PeerCwProgressPayload(
       id: id,
       text: text,
@@ -1052,27 +974,15 @@ class PeerVoiceActivityPayload {
   final bool recording;
   final bool doubtful;
 
-  const PeerVoiceActivityPayload({
-    required this.memory,
-    this.recording = false,
-    this.doubtful = false,
-  });
+  const PeerVoiceActivityPayload({required this.memory, this.recording = false, this.doubtful = false});
 
-  Map<String, dynamic> toJson() => {
-        'n': memory,
-        if (recording) 'rec': true,
-        if (doubtful) 'doubt': true,
-      };
+  Map<String, dynamic> toJson() => {'n': memory, if (recording) 'rec': true, if (doubtful) 'doubt': true};
 
   static PeerVoiceActivityPayload? from(Object? raw) {
     if (raw is! Map) return null;
     final memory = (raw['n'] as num?)?.toInt();
     if (memory == null || memory <= 0) return null;
-    return PeerVoiceActivityPayload(
-      memory: memory,
-      recording: raw['rec'] == true,
-      doubtful: raw['doubt'] == true,
-    );
+    return PeerVoiceActivityPayload(memory: memory, recording: raw['rec'] == true, doubtful: raw['doubt'] == true);
   }
 }
 
@@ -1119,23 +1029,9 @@ class PeerKeyRequestPayload {
   /// [PeerCwProgressPayload.pendingIds] handed back.
   final int? queuedId;
 
-  const PeerKeyRequestPayload({
-    required this.radioId,
-    required this.op,
-    this.text = '',
-    this.wpm,
-    this.memory,
-    this.queuedId,
-  });
+  const PeerKeyRequestPayload({required this.radioId, required this.op, this.text = '', this.wpm, this.memory, this.queuedId});
 
-  Map<String, dynamic> toJson() => {
-        'radioId': radioId,
-        'op': op,
-        if (text.isNotEmpty) 'text': text,
-        'wpm': ?wpm,
-        'n': ?memory,
-        'queued': ?queuedId,
-      };
+  Map<String, dynamic> toJson() => {'radioId': radioId, 'op': op, if (text.isNotEmpty) 'text': text, 'wpm': ?wpm, 'n': ?memory, 'queued': ?queuedId};
 
   /// Null unless the request names a radio, an operation this build knows,
   /// and whatever that operation needs to mean anything — an empty message,
@@ -1167,14 +1063,7 @@ class PeerKeyRequestPayload {
       default:
         return null;
     }
-    return PeerKeyRequestPayload(
-      radioId: radioId,
-      op: op,
-      text: text,
-      wpm: wpm,
-      memory: memory,
-      queuedId: queuedId,
-    );
+    return PeerKeyRequestPayload(radioId: radioId, op: op, text: text, wpm: wpm, memory: memory, queuedId: queuedId);
   }
 }
 

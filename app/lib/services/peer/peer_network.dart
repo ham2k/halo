@@ -50,6 +50,5 @@ class RealPeerNetwork implements PeerNetwork {
   Future<PeerLinkServer> bindLinkServer() => bindPeerLinkServer();
 
   @override
-  Future<PeerLink> dial(String address, int port, {String? mediaTicket}) =>
-      dialPeerLink(address, port, mediaTicket: mediaTicket);
+  Future<PeerLink> dial(String address, int port, {String? mediaTicket}) => dialPeerLink(address, port, mediaTicket: mediaTicket);
 }

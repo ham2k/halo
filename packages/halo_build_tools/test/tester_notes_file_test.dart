@@ -110,11 +110,7 @@ upcoming:
       // it, so the release reports "nothing accumulated" and the notes sit in
       // the file forever. The cut is the only place that can notice.
       for (final typo in ['Upcoming', 'upcomming', 'unreleased']) {
-        expect(
-          () => renameUpcomingTesterNotes('$typo:\n  changes:\n    - "One"\n', 127),
-          throwsFormatException,
-          reason: typo,
-        );
+        expect(() => renameUpcomingTesterNotes('$typo:\n  changes:\n    - "One"\n', 127), throwsFormatException, reason: typo);
       }
     });
 
@@ -129,10 +125,7 @@ upcoming:
       // A flow mapping is valid yaml and a valid accumulation key, but the
       // textual rewrite can't rename it — better a stopped cut than a release
       // that silently reports nothing accumulated.
-      expect(
-        () => renameUpcomingTesterNotes('{upcoming: {changes: ["One"]}}\n', 127),
-        throwsFormatException,
-      );
+      expect(() => renameUpcomingTesterNotes('{upcoming: {changes: ["One"]}}\n', 127), throwsFormatException);
     });
   });
 }

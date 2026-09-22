@@ -76,12 +76,7 @@ void main() {
         var polls = 0;
         var stops = 0;
         late final VoiceActivityTracker tracker;
-        tracker = VoiceActivityTracker(
-          report: reports.add,
-          poll: () => polls++,
-          stop: () => stops++,
-          ceiling: () => voiceActivityCeiling,
-        );
+        tracker = VoiceActivityTracker(report: reports.add, poll: () => polls++, stop: () => stops++, ceiling: () => voiceActivityCeiling);
         tracker.start(playing3);
         expect(reports, [playing3]);
         async.elapse(const Duration(seconds: 5));
@@ -102,11 +97,7 @@ void main() {
     test('the ceiling is the session\'s — a radio whose memory holds ninety seconds is not cut at fifteen', () {
       fakeAsync((async) {
         var stops = 0;
-        final tracker = VoiceActivityTracker(
-          report: (_) {},
-          stop: () => stops++,
-          ceiling: () => const Duration(seconds: 90),
-        );
+        final tracker = VoiceActivityTracker(report: (_) {}, stop: () => stops++, ceiling: () => const Duration(seconds: 90));
         tracker.start(recording2);
         async.elapse(voiceActivityCeiling + const Duration(seconds: 1));
         expect(stops, 0, reason: 'still recording past the default ceiling');
@@ -120,12 +111,7 @@ void main() {
         final reports = <VoiceActivity?>[];
         var stops = 0;
         var polls = 0;
-        final tracker = VoiceActivityTracker(
-          report: reports.add,
-          stop: () => stops++,
-          poll: () => polls++,
-          ceiling: () => voiceActivityCeiling,
-        );
+        final tracker = VoiceActivityTracker(report: reports.add, stop: () => stops++, poll: () => polls++, ceiling: () => voiceActivityCeiling);
         tracker.start(playing3);
         async.elapse(const Duration(seconds: 1));
         tracker.endFromPoll();
@@ -188,8 +174,7 @@ void main() {
         tracker.start(playing3);
         async.elapse(voiceActivityPollInterval);
         tracker.endFromPoll();
-        expect(reports.last, const VoiceActivity(memory: 3, doubtful: true),
-            reason: 'not confirmed by the stray answer');
+        expect(reports.last, const VoiceActivity(memory: 3, doubtful: true), reason: 'not confirmed by the stray answer');
       });
     });
 
@@ -270,10 +255,7 @@ void main() {
       // STOPS a memory that is on the air.
       fakeAsync((async) {
         final sink = _Sink();
-        final session = const IcomCivDriver().createSession(sink, const {
-          voiceMemoriesConfigKey: 8,
-          telemetryIntervalConfigKey: 200,
-        }) as VoiceKeyerSession;
+        final session = const IcomCivDriver().createSession(sink, const {voiceMemoriesConfigKey: 8, telemetryIntervalConfigKey: 200}) as VoiceKeyerSession;
         (session as EquipmentSession).startUpdates();
         session.playVoiceMemory(1);
         expect(sink.activities.last?.doubtful, isFalse);
@@ -282,8 +264,7 @@ void main() {
         // keys up — exactly what a real rig answers in that window.
         for (var i = 0; i < 3; i++) {
           async.elapse(const Duration(milliseconds: 200));
-          session.handleData(Uint8List.fromList(
-              [0xFE, 0xFE, civDefaultControllerAddress, 0xA4, 0x1C, 0x00, 0x00, 0xFD]));
+          session.handleData(Uint8List.fromList([0xFE, 0xFE, civDefaultControllerAddress, 0xA4, 0x1C, 0x00, 0x00, 0xFD]));
         }
         expect(sink.activities.last?.doubtful, isFalse, reason: 'the radio has not had a poll interval to key up');
         expect(sink.activities.last, isNotNull, reason: 'and the memory has certainly not been stopped');
@@ -541,8 +522,10 @@ void main() {
         feedTo(session, 'DARM0050090000;');
         expect(sink.activities.last, recording2);
         session.stopVoice();
-        expect(sink.sentAscii.sublist(sink.sentAscii.length - 2), ['DA0;', 'DAMS2;'],
-            reason: 'DA0 is the K4\'s stop for any digital-audio action; a recording is not a memory until saved');
+        expect(sink.sentAscii.sublist(sink.sentAscii.length - 2), [
+          'DA0;',
+          'DAMS2;',
+        ], reason: 'DA0 is the K4\'s stop for any digital-audio action; a recording is not a memory until saved');
         expect(sink.activities.last, isNull);
       });
     });
@@ -567,8 +550,7 @@ void main() {
         feedTo(session, 'DARM0050090000;'); // confirmed recording
         feedTo(session, 'DA0;');
         expect(sink.activities.last, isNull);
-        expect(sink.sentAscii.where((c) => c.startsWith('DAMS')), isEmpty,
-            reason: 'saving is the operator\'s stop, not something a poll answer does');
+        expect(sink.sentAscii.where((c) => c.startsWith('DAMS')), isEmpty, reason: 'saving is the operator\'s stop, not something a poll answer does');
       });
     });
 
@@ -761,8 +743,7 @@ void main() {
         final session = KenwoodSession(sink, cwDialect: KenwoodCwDialect.elecraft);
         session.handleData(Uint8List.fromList(ascii.encode('KS020;')));
         session.sendCw('CQ CQ CQ DE N0CALL N0CALL N0CALL K');
-        expect(sink.sentAscii.where((c) => c.startsWith('KY ')), ['KY CQ CQ CQ DE N0CALL;'],
-            reason: 'the second piece waits for the first to be keyed');
+        expect(sink.sentAscii.where((c) => c.startsWith('KY ')), ['KY CQ CQ CQ DE N0CALL;'], reason: 'the second piece waits for the first to be keyed');
         async.elapse(const Duration(seconds: 20));
         expect(sink.sentAscii.where((c) => c.startsWith('KY ')), ['KY CQ CQ CQ DE N0CALL;', 'KY N0CALL N0CALL K;']);
       });

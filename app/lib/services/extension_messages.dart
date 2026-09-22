@@ -40,11 +40,7 @@ typedef OpenAccount = void Function(String accountKey, {String? subkey});
 ///
 /// Only what an extension posted through its own namespace. A data file's
 /// progress is the app's (`dataFile:…`) and outlives any one generation.
-void clearGenerationStatus({
-  required StatusBarService? statusBar,
-  required Iterable<String> dying,
-  required Set<String> returning,
-}) {
+void clearGenerationStatus({required StatusBarService? statusBar, required Iterable<String> dying, required Set<String> returning}) {
   if (statusBar == null) return;
   for (final key in dying) {
     statusBar.clearNamespace(key, notices: !returning.contains(key));
@@ -90,12 +86,7 @@ VoidCallback? declarativeActionHandler(Map<String, dynamic> map, {required OpenA
   return null;
 }
 
-void showExtensionMarkdownDialog({
-  String? title,
-  required String text,
-  List<Map<String, dynamic>> actions = const [],
-  required OpenAccount? onOpenAccount,
-}) {
+void showExtensionMarkdownDialog({String? title, required String text, List<Map<String, dynamic>> actions = const [], required OpenAccount? onOpenAccount}) {
   final context = navigatorKey.currentContext;
   if (context == null) return;
   showHaloDialog<void>(
@@ -103,10 +94,7 @@ void showExtensionMarkdownDialog({
     builder: (dialogContext) => HaloDialog(
       wide: true,
       title: title != null ? Text(title) : null,
-      content: MarkdownBody(
-        data: text,
-        styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(Theme.of(dialogContext))),
-      ),
+      content: MarkdownBody(data: text, styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(Theme.of(dialogContext)))),
       cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
       actions: [
         for (final action in actions)
@@ -137,10 +125,7 @@ void presentExtensionResultMessage(
   final title = message['title'] as String?;
   final text = message['text'] as String? ?? '';
   if (message['presentation'] == 'dialog') {
-    final actions = ((message['actions'] as List?) ?? const [])
-        .whereType<Map<dynamic, dynamic>>()
-        .map((a) => a.cast<String, dynamic>())
-        .toList();
+    final actions = ((message['actions'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>().map((a) => a.cast<String, dynamic>()).toList();
     showExtensionMarkdownDialog(title: title, text: text, actions: actions, onOpenAccount: onOpenAccount);
   } else {
     statusBar?.setMessage(key: '$ns:resultMessage', icon: message['icon'] as String?, title: title, text: text);

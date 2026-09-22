@@ -40,8 +40,7 @@ List<String> _watchPlatformCalls(WidgetTester tester) {
     calls.add(call.method);
     return null;
   });
-  addTearDown(() =>
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+  addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
   return calls;
 }
 
@@ -51,9 +50,16 @@ Future<void> _pumpHome(WidgetTester tester, HaLoServices services, {required Siz
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(home: HomeRailShell(services: services, routes: HomeView(services: services))),
-  ));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: HomeRailShell(
+          services: services,
+          routes: HomeView(services: services),
+        ),
+      ),
+    ),
+  );
   await _settle(tester);
 }
 

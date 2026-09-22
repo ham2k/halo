@@ -14,12 +14,7 @@ import 'package:ham2k_logger/views/operation/pane_layout_options.dart';
 
 void main() {
   test('round-trips through JSON', () {
-    const options = PaneLayoutOptions(
-      title: 'Sked list',
-      showHeader: false,
-      fontScale: 'smaller',
-      density: 'dense',
-    );
+    const options = PaneLayoutOptions(title: 'Sked list', showHeader: false, fontScale: 'smaller', density: 'dense');
     final revived = PaneLayoutOptions.fromJson(options.toJson());
     expect(revived.title, 'Sked list');
     expect(revived.showHeader, isFalse);

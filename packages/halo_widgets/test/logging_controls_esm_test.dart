@@ -51,10 +51,7 @@ void main() {
     // exchange, so waiting for a second Enter would leave the thanks unsent
     // and the contact unlogged for no reason.
     test('running with reports only answers, thanks and logs in one Enter', () {
-      expect(
-        step(),
-        'hisCall+exchange+thanks -> log',
-      );
+      expect(step(), 'hisCall+exchange+thanks -> log');
     });
 
     test('running with an exchange sends it first and waits for theirs', () {
@@ -97,12 +94,9 @@ void main() {
       'input': {'kind': 'text', 'refType': 'contest', 'field': 'exchange'},
     };
 
-    EnterSends? Function() esm({bool running = true, bool on = true}) => () => on
-        ? EnterSends(
-            running: running,
-            send: (messages, qso) =>
-                sent.add('${messages.map((m) => m.name).join('+')} @ ${(qso['their'] as Map?)?['call'] ?? ''}'),
-          )
+    EnterSends? Function() esm({bool running = true, bool on = true}) =>
+        () => on
+        ? EnterSends(running: running, send: (messages, qso) => sent.add('${messages.map((m) => m.name).join('+')} @ ${(qso['their'] as Map?)?['call'] ?? ''}'))
         : null;
 
     const name = {
@@ -119,23 +113,21 @@ void main() {
           body: LoggingControls(
             log: LogHooks(
               operation: contest
-                  ? Operation(uuid: operation.uuid, data: {
-                      ...operation.data,
-                      'refs': [
-                        {'type': 'contest'},
-                      ],
-                    })
+                  ? Operation(
+                      uuid: operation.uuid,
+                      data: {
+                        ...operation.data,
+                        'refs': [
+                          {'type': 'contest'},
+                        ],
+                      },
+                    )
                   : operation,
               qsosRepository: qsos,
             ),
             session: LoggingSession(enterSends: enterSends),
             radio: RadioHookup(radioService: radio, radioUpdates: radio),
-            activities: ActivityHooks(
-              activityControls: [
-                if (contest && twoFields) name,
-                if (contest) exchange,
-              ],
-            ),
+            activities: ActivityHooks(activityControls: [if (contest && twoFields) name, if (contest) exchange]),
           ),
         ),
       );
@@ -158,8 +150,7 @@ void main() {
 
     Finder field(String label) => find.widgetWithText(TextField, label);
 
-    bool focused(WidgetTester tester, String label) =>
-        tester.widget<TextField>(field(label)).focusNode?.hasFocus ?? false;
+    bool focused(WidgetTester tester, String label) => tester.widget<TextField>(field(label)).focusNode?.hasFocus ?? false;
 
     testWidgets('with ESM off, Enter logs and keys nothing', (tester) async {
       await tester.pumpWidget(host(enterSends: esm(on: false)));
@@ -281,6 +272,5 @@ class _TunedVfoStore extends ChangeNotifier implements VfoStore {
   Vfo get vfoA => const Vfo(freq: 14025, band: '20m', mode: 'CW');
 
   @override
-  void setVfo(String key,
-      {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {}
+  void setVfo(String key, {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {}
 }

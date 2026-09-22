@@ -52,10 +52,7 @@ class _FakeGeoshapes extends GeoshapeService {
   }
 }
 
-Operation _operationWith({String? grid, List<Map<String, dynamic>> refs = const []}) => Operation(
-      uuid: 'op-shapes',
-      data: {'grid': ?grid, 'refs': refs},
-    );
+Operation _operationWith({String? grid, List<Map<String, dynamic>> refs = const []}) => Operation(uuid: 'op-shapes', data: {'grid': ?grid, 'refs': refs});
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -74,19 +71,15 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final geoshapes = _FakeGeoshapes(answers, lookups: LookupRepository(db));
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: MapPanel(
-            operation: operation,
-            qsos: const [],
-            settings: settings,
-            geoshapes: geoshapes,
-            activityControls: controls,
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: MapPanel(operation: operation, qsos: const [], settings: settings, geoshapes: geoshapes, activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     return geoshapes;
   }
@@ -98,9 +91,12 @@ void main() {
         tester,
         // A grid is what puts a marker on the map; with none the panel shows
         // its empty state and never reaches a backend at all.
-        operation: _operationWith(grid: 'FN31pr', refs: const [
-          {'type': 'sotaActivation', 'ref': 'W2/GC-099'}
-        ]),
+        operation: _operationWith(
+          grid: 'FN31pr',
+          refs: const [
+            {'type': 'sotaActivation', 'ref': 'W2/GC-099'},
+          ],
+        ),
         answers: const {'W2/GC-099': Geoshape(_zone, resolved: true)},
         controls: const [_summitControl],
       );
@@ -122,9 +118,12 @@ void main() {
     try {
       await pump(
         tester,
-        operation: _operationWith(grid: 'FN31pr', refs: const [
-          {'type': 'potaActivation', 'ref': 'US-0001'}
-        ]),
+        operation: _operationWith(
+          grid: 'FN31pr',
+          refs: const [
+            {'type': 'potaActivation', 'ref': 'US-0001'},
+          ],
+        ),
         answers: const {},
       );
       await tester.pumpAndSettle();
@@ -143,9 +142,11 @@ void main() {
       // nothing is going to render.
       final geoshapes = await pump(
         tester,
-        operation: _operationWith(refs: const [
-          {'type': 'sotaActivation', 'ref': 'W2/GC-099'}
-        ]),
+        operation: _operationWith(
+          refs: const [
+            {'type': 'sotaActivation', 'ref': 'W2/GC-099'},
+          ],
+        ),
         answers: const {'W2/GC-099': Geoshape(_zone, resolved: true)},
       );
       await tester.pumpAndSettle();

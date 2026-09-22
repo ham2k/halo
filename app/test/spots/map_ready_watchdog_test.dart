@@ -124,10 +124,7 @@ void main() {
       // timers ran on fake time — every elapsed span would compute as zero
       // and the accumulation tests would pass without exercising anything
       // (docs/design/time.md §7).
-      watchdog = MapReadyWatchdog(
-        onUnavailable: () => unavailableCalls++,
-        now: () => clock.now().millisecondsSinceEpoch,
-      );
+      watchdog = MapReadyWatchdog(onUnavailable: () => unavailableCalls++, now: () => clock.now().millisecondsSinceEpoch);
     });
 
     tearDown(() => watchdog.dispose());
@@ -146,8 +143,7 @@ void main() {
 
         expect(reported(), hasLength(1));
         expect(reported().single, contains('ready-late'));
-        expect(reported().single, isNot(contains('never-ready')),
-            reason: 'a map that did load must not land in the issue counting maps that never did');
+        expect(reported().single, isNot(contains('never-ready')), reason: 'a map that did load must not land in the issue counting maps that never did');
       });
     });
 
@@ -275,8 +271,7 @@ void main() {
     AppClock.instance.travel(delta: const Duration(days: 3));
     addTearDown(AppClock.instance.reset);
 
-    expect((watchdog.now() - realNowMillis()).abs(), lessThan(2000),
-        reason: 'three days of travel must not reach a value that becomes a Timer duration');
+    expect((watchdog.now() - realNowMillis()).abs(), lessThan(2000), reason: 'three days of travel must not reach a value that becomes a Timer duration');
   });
 
   testWidgets('a map behind another tab is never reported', (tester) async {

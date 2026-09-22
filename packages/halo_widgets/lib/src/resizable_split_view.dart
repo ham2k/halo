@@ -254,10 +254,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         // minimums; the primary's minimum wins (upper >= lower keeps
         // clamp() valid).
         final reservedDivider = solid ? dividerExtent : ResizableSplitView.dividerWidth;
-        final upper = math.max(
-          lower,
-          math.min(widget.maxPrimaryWidth, total - widget.minSecondaryWidth - reservedDivider),
-        );
+        final upper = math.max(lower, math.min(widget.maxPrimaryWidth, total - widget.minSecondaryWidth - reservedDivider));
         _dragLowerBound = lower;
         _dragUpperBound = upper;
         // No preference yet → the primary takes about two thirds of the
@@ -265,9 +262,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         // layout gets — content designed for a pane reads fine up to
         // there). primaryFraction (fixed, non-resizable splits) overrides
         // both the preference and that default.
-        final preferred = widget.primaryFraction != null
-            ? total * widget.primaryFraction!
-            : (_preferredWidth ?? math.min(total * 2 / 3, ShirtSize.sMax));
+        final preferred = widget.primaryFraction != null ? total * widget.primaryFraction! : (_preferredWidth ?? math.min(total * 2 / 3, ShirtSize.sMax));
         final effectiveWidth = grid.snap(preferred.clamp(lower, upper).toDouble());
         _effectiveWidthForDrag = effectiveWidth;
 
@@ -342,13 +337,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                 // single-pane rest so no right-edge gap.
                 return SizedBox(width: width >= primaryCap ? primaryCap : grid.snapDown(width), child: child);
               },
-              child: PaneSafeArea(
-                left: ambientLeft,
-                top: ambientTop,
-                right: twoPane ? 0 : ambientRight,
-                bottom: ambientBottom,
-                child: widget.primary,
-              ),
+              child: PaneSafeArea(left: ambientLeft, top: ambientTop, right: twoPane ? 0 : ambientRight, bottom: ambientBottom, child: widget.primary),
             ),
             if (twoPane && solid)
               SolidPaneDivider(
@@ -557,33 +546,22 @@ class PaneSafeArea extends InheritedWidget {
     // MediaQueryData — a bare `MediaQuery.of` here would rebuild the entire
     // body on every keyboard show/hide or text-scale change.
     final padding = MediaQuery.paddingOf(context);
-    return PaneSafeArea(
-      left: left ?? padding.left,
-      right: padding.right,
-      bottom: padding.bottom,
-      child: child,
-    );
+    return PaneSafeArea(left: left ?? padding.left, right: padding.right, bottom: padding.bottom, child: child);
   }
 
   /// All 4 edges composed into one [EdgeInsets], for a consumer that pads
   /// every side at once instead of reading each accessor separately.
-  static EdgeInsets paddingOf(BuildContext context) =>
-      EdgeInsets.fromLTRB(leftOf(context), topOf(context), rightOf(context), bottomOf(context));
+  static EdgeInsets paddingOf(BuildContext context) => EdgeInsets.fromLTRB(leftOf(context), topOf(context), rightOf(context), bottomOf(context));
 
   /// A row's own fixed horizontal/vertical padding, widened on the left/right
   /// by the ambient clearance — the shape every edge-to-edge row (a QSO, a
   /// spot, a list tile) needs: background stays full-width, only the row's
   /// own content shifts in from a real device edge or a divider's grab strip.
-  static EdgeInsets symmetricOf(BuildContext context, {double horizontal = 0, double vertical = 0}) => EdgeInsets.fromLTRB(
-    horizontal + leftOf(context),
-    vertical,
-    horizontal + rightOf(context),
-    vertical,
-  );
+  static EdgeInsets symmetricOf(BuildContext context, {double horizontal = 0, double vertical = 0}) =>
+      EdgeInsets.fromLTRB(horizontal + leftOf(context), vertical, horizontal + rightOf(context), vertical);
 
   @override
-  bool updateShouldNotify(PaneSafeArea oldWidget) =>
-      left != oldWidget.left || top != oldWidget.top || right != oldWidget.right || bottom != oldWidget.bottom;
+  bool updateShouldNotify(PaneSafeArea oldWidget) => left != oldWidget.left || top != oldWidget.top || right != oldWidget.right || bottom != oldWidget.bottom;
 }
 
 class _DividerHandle extends StatefulWidget {

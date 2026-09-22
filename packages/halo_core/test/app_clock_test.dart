@@ -84,8 +84,11 @@ void main() {
       AppClock.instance.travel(delta: const Duration(days: 2));
       final before = nowUtc();
       AppClock.instance.travel(speed: 1000);
-      expect(nowUtc().difference(before).abs(), lessThan(const Duration(seconds: 2)),
-          reason: 'a speed change is continuous — it changes the RATE, not the reading');
+      expect(
+        nowUtc().difference(before).abs(),
+        lessThan(const Duration(seconds: 2)),
+        reason: 'a speed change is continuous — it changes the RATE, not the reading',
+      );
     });
 
     test('virtual time advances faster than real time', () async {
@@ -177,16 +180,12 @@ void main() {
     // startAtMillis that renders as garbage and loses every sync comparison.
     // Refusing is the only way that failure gets reported at all.
     test('refuses an offset past the cap', () {
-      expect(
-        () => AppClock.instance.travel(delta: AppClock.maxTravel + const Duration(days: 1)),
-        throwsA(isA<ArgumentError>()),
-      );
+      expect(() => AppClock.instance.travel(delta: AppClock.maxTravel + const Duration(days: 1)), throwsA(isA<ArgumentError>()));
       expect(AppClock.instance.isTravelling, isFalse);
     });
 
     test('refuses an absurd offset rather than wrapping the epoch', () {
-      expect(() => AppClock.instance.travel(delta: const Duration(days: 400000000)),
-          throwsA(isA<ArgumentError>()));
+      expect(() => AppClock.instance.travel(delta: const Duration(days: 400000000)), throwsA(isA<ArgumentError>()));
       expect(nowUtc().year, greaterThan(2000), reason: 'the clock must still be in this era');
     });
 
@@ -194,8 +193,7 @@ void main() {
     // repeated in-range hops would otherwise reach the same overflow.
     test('refuses a hop that would put the ACCUMULATED offset past the cap', () {
       AppClock.instance.travel(delta: AppClock.maxTravel - const Duration(days: 1));
-      expect(() => AppClock.instance.travel(delta: const Duration(days: 30)),
-          throwsA(isA<ArgumentError>()));
+      expect(() => AppClock.instance.travel(delta: const Duration(days: 30)), throwsA(isA<ArgumentError>()));
       // The earlier, legitimate travel is untouched.
       expect(AppClock.instance.offset.inDays, closeTo(AppClock.maxTravel.inDays - 1, 1));
     });
@@ -239,8 +237,7 @@ void main() {
       AppClock.instance.travel(speed: AppClock.maxSpeed);
       final first = AppClock.instance.travelLabel;
       await Future<void>.delayed(const Duration(milliseconds: 30));
-      expect(AppClock.instance.offset, greaterThan(const Duration(seconds: 5)),
-          reason: 'sanity: the clock really did move a long way');
+      expect(AppClock.instance.offset, greaterThan(const Duration(seconds: 5)), reason: 'sanity: the clock really did move a long way');
       expect(AppClock.instance.travelLabel, first);
     });
 
@@ -248,14 +245,12 @@ void main() {
     // for a speed-only hop is the only interesting number about it.
     test('liveTravelLabel reports the offset the clock has reached', () async {
       AppClock.instance.travel(speed: AppClock.maxSpeed);
-      expect(AppClock.instance.liveTravelLabel, 'at 1000x',
-          reason: 'no offset yet in the first moment');
+      expect(AppClock.instance.liveTravelLabel, 'at 1000x', reason: 'no offset yet in the first moment');
       await Future<void>.delayed(const Duration(milliseconds: 30));
       final label = AppClock.instance.liveTravelLabel!;
       expect(label, endsWith('at 1000x'));
       expect(label, startsWith('+'), reason: 'and by now it has travelled a measurable distance');
-      expect(AppClock.instance.travelLabel, 'at 1000x',
-          reason: 'the configured label stays put; only the live one moves');
+      expect(AppClock.instance.travelLabel, 'at 1000x', reason: 'the configured label stays put; only the live one moves');
     });
 
     test('liveTravelLabel names both the offset and the factor', () {
@@ -326,10 +321,7 @@ void main() {
         AppClock.instance.removeListener(second);
       });
 
-      expect(
-        () => AppClock.instance.travel(delta: const Duration(hours: 1)),
-        throwsA(isA<ClockListenerException>()),
-      );
+      expect(() => AppClock.instance.travel(delta: const Duration(hours: 1)), throwsA(isA<ClockListenerException>()));
       expect(heard, ['first', 'second'], reason: 'a failure must not strand the listeners after it');
       // And the travel itself stands — the anchors moved before anyone was told.
       expect(AppClock.instance.isTravelling, isTrue);
@@ -358,10 +350,7 @@ void main() {
       AppClock.instance.addListener(picky);
       addTearDown(() => AppClock.instance.removeListener(picky));
 
-      expect(
-        () => AppClock.instance.travel(delta: const Duration(hours: 1)),
-        throwsA(isA<ClockListenerException>()),
-      );
+      expect(() => AppClock.instance.travel(delta: const Duration(hours: 1)), throwsA(isA<ClockListenerException>()));
       expect(AppClock.instance.isTravelling, isTrue, reason: 'it was applied, not refused');
     });
 
@@ -389,8 +378,7 @@ void main() {
       final clock = AppClock.instance;
       final real = realNow().millisecondsSinceEpoch;
       // The kernel's formula, applied to what the kernel is told.
-      final asSandboxSeesIt =
-          clock.anchorVirtualMillis + (real - clock.anchorRealMillis) * clock.speed;
+      final asSandboxSeesIt = clock.anchorVirtualMillis + (real - clock.anchorRealMillis) * clock.speed;
       expect((asSandboxSeesIt - nowMillis()).abs(), lessThan(1000));
     });
   });

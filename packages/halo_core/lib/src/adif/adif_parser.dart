@@ -83,14 +83,7 @@ class AdifField {
   /// Null when the declared length landed cleanly.
   final AdifFieldAnomaly? anomaly;
 
-  const AdifField({
-    required this.name,
-    required this.length,
-    required this.value,
-    this.type,
-    this.extraData = '',
-    this.anomaly,
-  });
+  const AdifField({required this.name, required this.length, required this.value, this.type, this.extraData = '', this.anomaly});
 }
 
 /// Everything between one end marker and the next.
@@ -106,12 +99,7 @@ class AdifSegment {
   /// that the file ended without closing.
   final String endMarker;
 
-  const AdifSegment({
-    required this.type,
-    required this.preamble,
-    required this.fields,
-    required this.endMarker,
-  });
+  const AdifSegment({required this.type, required this.preamble, required this.fields, required this.endMarker});
 }
 
 /// Splits ADIF text into header and record segments.
@@ -162,14 +150,8 @@ Iterable<AdifSegment> parseAdifBytes(List<int> bytes) sync* {
     (fields.isEmpty ? preamble : trailing).addAll(bytes.getRange(from, to));
   }
 
-  AdifField withTrailing(AdifField field) => AdifField(
-        name: field.name,
-        length: field.length,
-        type: field.type,
-        value: field.value,
-        anomaly: field.anomaly,
-        extraData: _decode(trailing),
-      );
+  AdifField withTrailing(AdifField field) =>
+      AdifField(name: field.name, length: field.length, type: field.type, value: field.value, anomaly: field.anomaly, extraData: _decode(trailing));
 
   void addField(AdifField field) {
     if (fields.isNotEmpty) fields.add(withTrailing(fields.removeLast()));
@@ -224,12 +206,7 @@ Iterable<AdifSegment> parseAdifBytes(List<int> bytes) sync* {
 
   final open = sealFields();
   if (open.isNotEmpty) {
-    yield AdifSegment(
-      type: AdifSegmentType.record,
-      preamble: _decode(preamble),
-      fields: open,
-      endMarker: '',
-    );
+    yield AdifSegment(type: AdifSegmentType.record, preamble: _decode(preamble), fields: open, endMarker: '');
   }
 }
 
@@ -365,13 +342,7 @@ _Tag? _scanTag(List<int> bytes, int open) {
   }
 
   return _Tag(
-    field: AdifField(
-      name: name,
-      length: declared,
-      type: type,
-      value: _decode(bytes.sublist(valueStart, valueEnd)),
-      anomaly: anomaly,
-    ),
+    field: AdifField(name: name, length: declared, type: type, value: _decode(bytes.sublist(valueStart, valueEnd)), anomaly: anomaly),
     end: valueEnd,
   );
 }
@@ -384,8 +355,7 @@ _Tag? _scanTag(List<int> bytes, int open) {
 /// LoTW writes a human-readable annotation there (`US,NY,ORANGE // New York`),
 /// which is exactly what `extraData` exists to hold. Scanning ahead would read
 /// every one of those as damage and flag a clean file end to end.
-bool _endsAtBoundary(List<int> bytes, int from) =>
-    from >= bytes.length || _isSeparator(bytes[from]) || bytes[from] == _lt;
+bool _endsAtBoundary(List<int> bytes, int from) => from >= bytes.length || _isSeparator(bytes[from]) || bytes[from] == _lt;
 
 /// The last `<` in `[from, to)`, or -1. Used to hand back a tag opener that an
 /// over-declared length swallowed, rather than losing the tag it began.

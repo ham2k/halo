@@ -24,8 +24,7 @@ void main() {
   });
 
   test('defaults to a daemon on the same machine, on rigctld\'s own port', () {
-    expect(type.defaultConfig['host'], '127.0.0.1',
-        reason: 'rigctld usually runs beside the logger; a remote daemon is the exception');
+    expect(type.defaultConfig['host'], '127.0.0.1', reason: 'rigctld usually runs beside the logger; a remote daemon is the exception');
     expect(type.defaultConfig['port'], RigctldDriver.defaultPort);
     expect(RigctldDriver.defaultPort, 4532, reason: "rigctld's default listening port");
   });

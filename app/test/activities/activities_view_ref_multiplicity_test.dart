@@ -27,14 +27,7 @@ void main() {
     });
 
     test('suggestion wins over the control when both declare it', () {
-      expect(
-        allowsMultipleRefsOfType(
-          'sota',
-          suggestion: const {'allowsMultiple': true},
-          control: const {'allowsMultiple': false},
-        ),
-        isTrue,
-      );
+      expect(allowsMultipleRefsOfType('sota', suggestion: const {'allowsMultiple': true}, control: const {'allowsMultiple': false}), isTrue);
     });
 
     test('ignores a non-boolean value rather than treating it as true', () {
@@ -54,13 +47,10 @@ void main() {
     });
 
     test('drops only the same type when it does not, leaving other types alone', () {
-      expect(
-        refsKeptWhenAdding(refs: refs, type: 'sota', allowsMultiple: false),
-        [
-          {'type': 'pota', 'ref': 'US-0001'},
-          {'type': 'pota', 'ref': 'US-0002'},
-        ],
-      );
+      expect(refsKeptWhenAdding(refs: refs, type: 'sota', allowsMultiple: false), [
+        {'type': 'pota', 'ref': 'US-0001'},
+        {'type': 'pota', 'ref': 'US-0002'},
+      ]);
     });
 
     test('drops every ref of a single-ref type, not just the first', () {

@@ -57,11 +57,7 @@ void main() {
   });
 
   Future<Map<String, dynamic>?> interpret(String input) async {
-    final entries = await extensions.host!.invokeHookAll(
-      'command',
-      method: 'interpret',
-      args: {'input': input},
-    );
+    final entries = await extensions.host!.invokeHookAll('command', method: 'interpret', args: {'input': input});
     for (final entry in entries) {
       if (entry['ok'] == true && entry['value'] is Map) {
         return (entry['value'] as Map).cast<String, dynamic>();
@@ -107,12 +103,8 @@ void main() {
 
   test('syncAllDataFiles(categoryFilter:) reprocesses only the matching category, force bypasses ETag', () async {
     final defs = await extensions.host!.invokeHookAll('dataFile', method: 'getDefinition');
-    final potaDef = Map<String, dynamic>.from(
-      (defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'pota-all-parks')['value'] as Map),
-    );
-    final sotaDef = Map<String, dynamic>.from(
-      (defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'sota-all-summits')['value'] as Map),
-    );
+    final potaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'pota-all-parks')['value'] as Map));
+    final sotaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'sota-all-summits')['value'] as Map));
 
     final prefs = await SharedPreferences.getInstance();
     final manager = _CannedDataFileManager(
@@ -120,9 +112,11 @@ void main() {
       extensions: extensions,
       prefs: prefs,
       bodiesByKey: {
-        'pota-all-parks': 'reference,name,active,entityId,locationDesc,latitude,longitude,grid\n'
+        'pota-all-parks':
+            'reference,name,active,entityId,locationDesc,latitude,longitude,grid\n'
             'US-1234,Test State Park,1,291,US-CA,37.7749,-122.4194,\n',
-        'sota-all-summits': 'SOTA Summits List\n'
+        'sota-all-summits':
+            'SOTA Summits List\n'
             'SummitCode,SummitName,AssociationName,RegionName,Latitude,Longitude,AltM,Points,ValidFrom,ValidTo\n'
             'W6/CT-001,Test Peak,USA-California,Central,37.5,-122.1,1200,4,01/01/2020,31/12/2099\n',
       },

@@ -29,8 +29,7 @@ class _FakePlatformWebViewEnvironment extends PlatformWebViewEnvironment {
   _FakePlatformWebViewEnvironment() : super.implementation(const PlatformWebViewEnvironmentCreationParams());
 }
 
-WebViewEnvironment _fakeEnvironment() =>
-    WebViewEnvironment.fromPlatform(platform: _FakePlatformWebViewEnvironment());
+WebViewEnvironment _fakeEnvironment() => WebViewEnvironment.fromPlatform(platform: _FakePlatformWebViewEnvironment());
 
 void main() {
   // The %LOCALAPPDATA%-less fallback asks path_provider where the app's own
@@ -50,8 +49,7 @@ void main() {
     // exception that gets this far reaches PlatformDispatcher.onError as a
     // fatal report and the view stays blank. Rethrowing here, or letting the
     // future complete with an error, puts that bug straight back.
-    WindowsWebView.debugCreateEnvironment = () async =>
-        throw PlatformException(code: '0', message: 'Cannot create WebViewEnvironment: Access is denied.');
+    WindowsWebView.debugCreateEnvironment = () async => throw PlatformException(code: '0', message: 'Cannot create WebViewEnvironment: Access is denied.');
 
     expect(await WindowsWebView.isAvailable(), isFalse);
     expect(WindowsWebView.resolved, isFalse);
@@ -113,7 +111,10 @@ void main() {
       // Absent and empty both mean "not set" — an empty value would otherwise
       // build a relative path, which WebView2 resolves against the exe: the
       // very folder this exists to avoid.
-      for (final environment in [<String, String>{}, {'LOCALAPPDATA': ''}]) {
+      for (final environment in [
+        <String, String>{},
+        {'LOCALAPPDATA': ''},
+      ]) {
         final path = await WindowsWebView.userDataFolderPath(environment: environment);
 
         expect(p.basename(path), kWebView2DataDirName);

@@ -37,13 +37,7 @@ class FakeExtensionHost implements ExtensionHost {
   }
 
   @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
+  Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     final res = stubs['$category:$key:$method'];
     if (res is Exception) throw res;
     if (res is Function) return res(args);

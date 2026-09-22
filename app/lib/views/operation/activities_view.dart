@@ -47,7 +47,6 @@ import '../../tools/operation_title.dart';
 import '../map/map_zoom_controller.dart';
 import 'activities_results_map.dart';
 
-
 /// An icon, circled in [color] at 60% opacity when the control declares an
 /// accent — sparingly used, so a control with no color just
 /// renders the bare icon.
@@ -182,11 +181,7 @@ const _accordionHeaderHeight = 48.0 + Space.sm * 2;
 
   if (gpsPosition != null) {
     if (distanceKm == null || distanceKm > _nearbyGridAdoptionKm) return null;
-    return (
-      grid: gridForLocation(gpsPosition.latitude, gpsPosition.longitude),
-      location: gpsPosition,
-      source: 'gps',
-    );
+    return (grid: gridForLocation(gpsPosition.latitude, gpsPosition.longitude), location: gpsPosition, source: 'gps');
   }
 
   if (refsAfterAdd.isEmpty) return null;
@@ -204,11 +199,7 @@ const _accordionHeaderHeight = 48.0 + Space.sm * 2;
 /// assumption, and a type that genuinely stacks (POTA n-fers) says so
 /// explicitly. Anything else gets the replace-on-add behavior of
 /// [refsKeptWhenAdding].
-bool allowsMultipleRefsOfType(
-  String? type, {
-  Map<String, dynamic>? suggestion,
-  Map<String, dynamic>? control,
-}) {
+bool allowsMultipleRefsOfType(String? type, {Map<String, dynamic>? suggestion, Map<String, dynamic>? control}) {
   final fromSuggestion = suggestion?['allowsMultiple'];
   if (fromSuggestion is bool) return fromSuggestion;
   final fromControl = control?['allowsMultiple'];
@@ -271,10 +262,7 @@ String activityRowTitle(Map<String, dynamic>? control, Map<String, dynamic> entr
 /// a park's name and location, a contest's exchange. Null when the entry
 /// carries neither, so the row stays a single line rather than an empty one.
 String? activityRowDetail(Map<String, dynamic> entry) {
-  final detail = [
-    entry['name'],
-    entry['location'],
-  ].whereType<String>().where((s) => s.isNotEmpty).join(' • ');
+  final detail = [entry['name'], entry['location']].whereType<String>().where((s) => s.isNotEmpty).join(' • ');
   return detail.isEmpty ? null : detail;
 }
 
@@ -285,18 +273,13 @@ String? activityRowDetail(Map<String, dynamic> entry) {
 /// can't quietly disagree. A nearby suggestion already on the operation is
 /// just noise; a SEARCH hit has to stay — dropping what the operator
 /// searched for reads as "no such reference".
-bool suggestionHidesAsAlreadyAdded({required bool alreadyAdded, required bool suggestionsAreSearchResults}) =>
-    alreadyAdded && !suggestionsAreSearchResults;
+bool suggestionHidesAsAlreadyAdded({required bool alreadyAdded, required bool suggestionsAreSearchResults}) => alreadyAdded && !suggestionsAreSearchResults;
 
 /// The refs to keep when adding one of [type]: all of them when the type
 /// allows multiple, and otherwise everything BUT that type — a single-ref
 /// type's new reference replaces the one already there rather than piling up
 /// next to it.
-List<Map<String, dynamic>> refsKeptWhenAdding({
-  required List<Map<String, dynamic>> refs,
-  required String? type,
-  required bool allowsMultiple,
-}) {
+List<Map<String, dynamic>> refsKeptWhenAdding({required List<Map<String, dynamic>> refs, required String? type, required bool allowsMultiple}) {
   if (type == null || allowsMultiple) return refs;
   return refs.where((r) => r['type'] != type).toList();
 }
@@ -344,12 +327,7 @@ class ActivitySearchQuery {
   /// Equals [term] whenever [preferredKeys] is null.
   final String otherTerm;
 
-  const ActivitySearchQuery({
-    this.activityKeys,
-    this.preferredKeys,
-    required this.term,
-    required this.otherTerm,
-  });
+  const ActivitySearchQuery({this.activityKeys, this.preferredKeys, required this.term, required this.otherTerm});
 
   static final _scopePattern = RegExp(r'^([a-zA-Z][a-zA-Z0-9_-]*):(.*)$', dotAll: true);
   static final _leadingWordPattern = RegExp(r'^([a-zA-Z][a-zA-Z0-9_-]*)(?:\s+(.*))?$', dotAll: true);
@@ -434,13 +412,7 @@ class OperationSheet extends StatefulWidget {
   /// [OperationSheetState.updateOperation].
   final VoidCallback? onEditDetails;
 
-  const OperationSheet({
-    super.key,
-    required this.services,
-    required this.operation,
-    this.onOperationChanged,
-    this.onEditDetails,
-  });
+  const OperationSheet({super.key, required this.services, required this.operation, this.onOperationChanged, this.onEditDetails});
 
   @override
   State<OperationSheet> createState() => OperationSheetState();
@@ -457,6 +429,7 @@ class OperationSheetState extends State<OperationSheet> {
       _researchIfLocationChanged(before, op);
     }
   }
+
   List<Map<String, dynamic>> _controls = const [];
   ControlsLoadState _controlsState = ControlsLoadState.loading;
 
@@ -492,6 +465,7 @@ class OperationSheetState extends State<OperationSheet> {
     final isEmpty = _searchController.text.isEmpty;
     if (isEmpty != _searchIsEmpty.value) _searchIsEmpty.value = isEmpty;
   }
+
   Timer? _debounce;
   List<Map<String, dynamic>> _suggestions = const [];
   bool _loadingSuggestions = true;
@@ -542,11 +516,7 @@ class OperationSheetState extends State<OperationSheet> {
     // is a reference to ask about, so an operation whose activities all load
     // reaches the catalog no more than an empty search box does.
     if (unhandledRefs.isNotEmpty) _ensureCatalogFetched();
-    _catalogTier.refMatches = _catalogTier.matchingRefs(
-      widget.services,
-      unhandledRefs,
-      alreadyOffered: {for (final entry in _catalogTier.matches) entry.key},
-    );
+    _catalogTier.refMatches = _catalogTier.matchingRefs(widget.services, unhandledRefs, alreadyOffered: {for (final entry in _catalogTier.matches) entry.key});
     final unhandled = _extensionsForUnhandledRefs(unhandledRefs);
     // Recorded BEFORE the search's matches are subtracted: an extension the
     // box happens to name right now is still one the operator has seen
@@ -565,8 +535,7 @@ class OperationSheetState extends State<OperationSheet> {
   /// The operation's references no loaded control handles. Empty while the
   /// descriptors are unreliable — an absent control then means "not loaded
   /// yet", not "no extension has it".
-  List<({String type, String? code})> _unhandledRefs() =>
-      _controlsUnreliable ? const [] : unhandledRefsIn(_operation.refs, _controls);
+  List<({String type, String? code})> _unhandledRefs() => _controlsUnreliable ? const [] : unhandledRefsIn(_operation.refs, _controls);
 
   /// Every switched-off extension claiming one of [unhandled].
   List<ExtensionInfo> _extensionsForUnhandledRefs(List<({String type, String? code})> unhandled) {
@@ -722,20 +691,12 @@ class OperationSheetState extends State<OperationSheet> {
   /// deliberately different here, where the line is a code rather than prose.
   /// Its 75% floor still stands: below that a code stops being readable, and
   /// an ellipsis is the better failure.
-  Widget _activityRowTitleText(String title) => shrinkToFitText(
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        condensed: true,
-      );
+  Widget _activityRowTitleText(String title) => shrinkToFitText(Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), condensed: true);
 
   /// A search result's distance and its web button, or `null` when it has
   /// neither — an empty `Row` would still claim the tile's trailing slot and
   /// pull the title in from the edge.
-  Widget? _suggestionTrailing(
-    ThemeData theme,
-    Map<String, dynamic> suggestion, {
-    required RefLink? link,
-    required Map<String, dynamic>? control,
-  }) {
+  Widget? _suggestionTrailing(ThemeData theme, Map<String, dynamic> suggestion, {required RefLink? link, required Map<String, dynamic>? control}) {
     final distance = suggestion['distance'];
     if (distance is! num && link == null) return null;
     return Row(
@@ -743,16 +704,10 @@ class OperationSheetState extends State<OperationSheet> {
       children: [
         if (distance is num)
           Text(
-            fmtDistance(
-              distance.toDouble(),
-              miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
-            ),
+            fmtDistance(distance.toDouble(), miles: widget.services.settings.distanceUnits == DistanceUnits.miles),
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
-        if (link != null) ...[
-          const SizedBox(width: Space.md),
-          _refLinkButton(link, fallbackName: activityRowTitle(control, suggestion)),
-        ],
+        if (link != null) ...[const SizedBox(width: Space.md), _refLinkButton(link, fallbackName: activityRowTitle(control, suggestion))],
       ],
     );
   }
@@ -761,10 +716,7 @@ class OperationSheetState extends State<OperationSheet> {
   /// assistive technology when the extension offered no name of its own.
   Widget _refLinkButton(RefLink link, {required String fallbackName}) {
     return IconButton(
-      icon: Icon(
-        MdiIcons.web,
-        semanticLabel: context.t.activitiesView.openReferenceLink(name: link.label ?? fallbackName),
-      ),
+      icon: Icon(MdiIcons.web, semanticLabel: context.t.activitiesView.openReferenceLink(name: link.label ?? fallbackName)),
       onPressed: () => openExternalUrl(link.url),
     );
   }
@@ -795,24 +747,26 @@ class OperationSheetState extends State<OperationSheet> {
       final key = _refLinkKey(ref);
       if (key != null) keyed.putIfAbsent(key, () => ref);
     }
-    final resolved = await Future.wait(keyed.entries.map((entry) async {
-      try {
-        return MapEntry(entry.key, await widget.services.extensions.linkForRef(entry.value));
-      } catch (e, stack) {
-        // Caught PER ENTRY, because `Future.wait` completes with the first
-        // error and discards every value the others already resolved — one
-        // malformed ref would otherwise cost the whole list its links, and
-        // (nothing else catching it) spend the session's one "something went
-        // wrong" notice on a missing icon.
-        //
-        // An extension's own failure never reaches here — `linkForRef`
-        // swallows those — so what does is OUR bug, and is reported the way
-        // `_loadControls` reports its own: uploaded, with no notice, because
-        // the row showing no button is all the operator can act on.
-        ErrorReportingService.report(e, stack, context: 'activities:linkForRef');
-        return MapEntry(entry.key, null);
-      }
-    }));
+    final resolved = await Future.wait(
+      keyed.entries.map((entry) async {
+        try {
+          return MapEntry(entry.key, await widget.services.extensions.linkForRef(entry.value));
+        } catch (e, stack) {
+          // Caught PER ENTRY, because `Future.wait` completes with the first
+          // error and discards every value the others already resolved — one
+          // malformed ref would otherwise cost the whole list its links, and
+          // (nothing else catching it) spend the session's one "something went
+          // wrong" notice on a missing icon.
+          //
+          // An extension's own failure never reaches here — `linkForRef`
+          // swallows those — so what does is OUR bug, and is reported the way
+          // `_loadControls` reports its own: uploaded, with no notice, because
+          // the row showing no button is all the operator can act on.
+          ErrorReportingService.report(e, stack, context: 'activities:linkForRef');
+          return MapEntry(entry.key, null);
+        }
+      }),
+    );
     return {
       for (final entry in resolved)
         if (entry.value != null) entry.key: entry.value!,
@@ -886,8 +840,7 @@ class OperationSheetState extends State<OperationSheet> {
 
   bool _isInvalidRef(Map<String, dynamic> entry) => activityRowIsInvalid(_controls, entry);
 
-  bool _isDuplicateRef(String type, String code) =>
-      _operation.refs.any((ref) => ref['type'] == type && ref['ref'] == code);
+  bool _isDuplicateRef(String type, String code) => _operation.refs.any((ref) => ref['type'] == type && ref['ref'] == code);
 
   bool _areRefsEqual(List<dynamic> a, List<dynamic> b) {
     if (a.length != b.length) return false;
@@ -959,10 +912,7 @@ class OperationSheetState extends State<OperationSheet> {
   /// The form's values live directly on the ref, so they persist through the
   /// same `_saveRefs` path every other activity ref uses — no separate
   /// operation write-path is involved.
-  Future<Map<String, dynamic>?> _runSetupForm(
-    Map<String, dynamic> control, {
-    Map<String, dynamic>? existing,
-  }) async {
+  Future<Map<String, dynamic>?> _runSetupForm(Map<String, dynamic> control, {Map<String, dynamic>? existing}) async {
     final input = (control['input'] as Map?) ?? const {};
     final refType = input['refType'] as String?;
     final form = (input['form'] as Map?)?.cast<String, dynamic>();
@@ -974,12 +924,7 @@ class OperationSheetState extends State<OperationSheet> {
         if (entry.key != 'type') entry.key: entry.value,
     };
 
-    final result = await showFormDialog(
-      context,
-      formDefinition: form,
-      initialState: initialState,
-      developerMode: widget.services.settings.developerMode,
-    );
+    final result = await showFormDialog(context, formDefinition: form, initialState: initialState, developerMode: widget.services.settings.developerMode);
     if (result == null || !mounted) return null;
 
     return refWithFormResult(existing, result, refType: refType);
@@ -1111,8 +1056,7 @@ class OperationSheetState extends State<OperationSheet> {
       activityKeys: query.activityKeys,
       preferredKeys: query.preferredKeys,
       preferredSearchTerm: trimmed.isEmpty ? null : trimmed,
-      fallbackLocation:
-          fallbackPosition == null ? null : GridLocation(fallbackPosition.latitude, fallbackPosition.longitude),
+      fallbackLocation: fallbackPosition == null ? null : GridLocation(fallbackPosition.latitude, fallbackPosition.longitude),
     );
     // A newer search may have fired (and even resolved) while this one was
     // in flight — only the still-current request gets to apply its results.
@@ -1164,14 +1108,10 @@ class OperationSheetState extends State<OperationSheet> {
   /// [refsKeptWhenAdding]), reading the type's multiplicity off the
   /// suggestion being added or, for a hand-typed ref, its control descriptor.
   List<Map<String, dynamic>> _refsKeeping(String? type, {Map<String, dynamic>? suggestion}) => refsKeptWhenAdding(
-        refs: _operation.refs,
-        type: type,
-        allowsMultiple: allowsMultipleRefsOfType(
-          type,
-          suggestion: suggestion,
-          control: controlForRefType(_controls, type),
-        ),
-      );
+    refs: _operation.refs,
+    type: type,
+    allowsMultiple: allowsMultipleRefsOfType(type, suggestion: suggestion, control: controlForRefType(_controls, type)),
+  );
 
   Future<void> _addSuggestion(Map<String, dynamic> suggestion) async {
     final type = suggestion['type'] as String?;
@@ -1222,10 +1162,7 @@ class OperationSheetState extends State<OperationSheet> {
     // that renders non-editable because `refTypeIsEditable(null)` is false,
     // and — silently — no way back to the setup they were about to be shown.
     if (control == null && _controlsState == ControlsLoadState.failed) {
-      widget.services.statusBar.setMessage(
-        key: 'activities:setup-unavailable',
-        text: context.t.activitiesView.setupUnavailable,
-      );
+      widget.services.statusBar.setMessage(key: 'activities:setup-unavailable', text: context.t.activitiesView.setupUnavailable);
       return;
     }
     if (!refTypeIsForm(control)) return;
@@ -1266,8 +1203,7 @@ class OperationSheetState extends State<OperationSheet> {
         if (!info.core &&
             extensions.isExtensionAvailable(info) &&
             !extensions.isExtensionEnabled(info) &&
-            (info.key.toLowerCase() == candidates.key ||
-                (!keyOnly && info.matchesSearch(candidates.search, locale: locale))))
+            (info.key.toLowerCase() == candidates.key || (!keyOnly && info.matchesSearch(candidates.search, locale: locale))))
           info,
     ];
   }
@@ -1278,8 +1214,7 @@ class OperationSheetState extends State<OperationSheet> {
   void _refreshCatalogMatches() {
     final term = _searchController.text;
     final query = ActivitySearchQuery.parse(term, _activityScopes);
-    _catalogTier.matches =
-        _catalogTier.matching(widget.services, extensionSearchCandidates(term), keyOnly: query.activityKeys != null);
+    _catalogTier.matches = _catalogTier.matching(widget.services, extensionSearchCandidates(term), keyOnly: query.activityKeys != null);
     _refreshUnhandledRefMatches();
     if (_catalogTier.matches.isNotEmpty || _catalogTier.refMatches.isNotEmpty) _allOptionsExpanded = true;
   }
@@ -1295,10 +1230,10 @@ class OperationSheetState extends State<OperationSheet> {
   /// the enable row lands. The consent screen, the refusals and the failure
   /// report are all [installCatalogExtension]'s; false covers every one.
   Future<void> _installCatalogExtension(CatalogEntry entry) => _gainExtension(
-        entry.key,
-        scopeSearch: true,
-        gain: () => installCatalogExtension(context, services: widget.services, entry: entry),
-      );
+    entry.key,
+    scopeSearch: true,
+    gain: () => installCatalogExtension(context, services: widget.services, entry: entry),
+  );
 
   /// Turns an extension on from the search results, then scopes the search to
   /// the ref type it lists. Text that merely NAMED the extension is dropped —
@@ -1313,20 +1248,20 @@ class OperationSheetState extends State<OperationSheet> {
   /// same happens for an extension whose controls declare no ref type: there
   /// is no word to type.
   Future<void> _enableExtension(ExtensionInfo info, {bool scopeSearch = true}) => _gainExtension(
-        info.key,
-        scopeSearch: scopeSearch,
-        gain: () async {
-          try {
-            await widget.services.extensions.setExtensionEnabled(info.key, true);
-            return true;
-          } catch (e, st) {
-            // A failed restart must not strand the section on its spinner.
-            debugPrint('[activities] enabling ${info.key} failed: $e');
-            ErrorReportingService.report(e, st, context: 'activities:enable-extension');
-            return false;
-          }
-        },
-      );
+    info.key,
+    scopeSearch: scopeSearch,
+    gain: () async {
+      try {
+        await widget.services.extensions.setExtensionEnabled(info.key, true);
+        return true;
+      } catch (e, st) {
+        // A failed restart must not strand the section on its spinner.
+        debugPrint('[activities] enabling ${info.key} failed: $e');
+        ErrorReportingService.report(e, st, context: 'activities:enable-extension');
+        return false;
+      }
+    },
+  );
 
   /// Gaining an extension, however it is gained: [gain] acquires it and
   /// answers whether it worked, then the search lands on it. The guard is
@@ -1378,8 +1313,10 @@ class OperationSheetState extends State<OperationSheet> {
 
   /// Replaces the search box, caret at the end — every caller has just
   /// written a scope prefix for a reference to be typed after.
-  void _putInSearchBox(String text) =>
-      _searchController.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
+  void _putInSearchBox(String text) => _searchController.value = TextEditingValue(
+    text: text,
+    selection: TextSelection.collapsed(offset: text.length),
+  );
 
   /// The scope word any of [hookKey]'s loaded controls answers to, or null
   /// when none declares a ref type. A word shared with another extension
@@ -1394,18 +1331,17 @@ class OperationSheetState extends State<OperationSheet> {
   /// An "Enable X" row of the Activity Types section, for an extension the
   /// search matched or one an unhandled ref needs — the same row, told apart
   /// by [hint] and by whether enabling then scopes the search to it.
-  Widget _enableExtensionRow(ThemeData theme, ExtensionInfo info, {required String hint, required bool scopeSearch}) =>
-      ListTile(
-        tileColor: theme.colorScheme.secondaryContainer,
-        leading: _accentIcon(info.icon, resolveExtensionColor(info.accentColor)),
-        title: Text(
-          context.t.activitiesView.enableExtension(name: info.nameFor(LocaleSettings.currentLocale.languageCode)),
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(hint),
-        trailing: const Icon(MdiIcons.plus),
-        onTap: () => _enableExtension(info, scopeSearch: scopeSearch),
-      );
+  Widget _enableExtensionRow(ThemeData theme, ExtensionInfo info, {required String hint, required bool scopeSearch}) => ListTile(
+    tileColor: theme.colorScheme.secondaryContainer,
+    leading: _accentIcon(info.icon, resolveExtensionColor(info.accentColor)),
+    title: Text(
+      context.t.activitiesView.enableExtension(name: info.nameFor(LocaleSettings.currentLocale.languageCode)),
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    ),
+    subtitle: Text(hint),
+    trailing: const Icon(MdiIcons.plus),
+    onTap: () => _enableExtension(info, scopeSearch: scopeSearch),
+  );
 
   /// Tapping an activity type scopes the search to it (`pota: `) rather than
   /// prompting for a reference: the extension's own suggestions and search
@@ -1456,7 +1392,8 @@ class OperationSheetState extends State<OperationSheet> {
     if (ref == null) return;
     final decorated = await widget.services.extensions.decorateRef(ref);
     _saveRefs([..._operation.refs, decorated]);
-    widget.services.track('activity_added', {'activity': refType});  }
+    widget.services.track('activity_added', {'activity': refType});
+  }
 
   /// How tall the collapsed Activity Types section stands, given the height
   /// [available] to the results list and this section together.
@@ -1495,11 +1432,7 @@ class OperationSheetState extends State<OperationSheet> {
     final scale = MediaQuery.textScalerOf(context);
     return math.max(
       scale.scale(_optionsPeekHeight),
-      available -
-          scale.scale(_accordionHeaderHeight) -
-          scale.scale(_searchBandHeight) -
-          _searchProgressHeight -
-          scale.scale(_resultsMinPeekHeight),
+      available - scale.scale(_accordionHeaderHeight) - scale.scale(_searchBandHeight) - _searchProgressHeight - scale.scale(_resultsMinPeekHeight),
     );
   }
 
@@ -1509,10 +1442,7 @@ class OperationSheetState extends State<OperationSheet> {
   Future<void> _editLocation() async {
     final patch = await showHaloDialog<Map<String, dynamic>>(
       context: context,
-      builder: (_) => OperationLocationScreen(
-        services: widget.services,
-        operation: _operation,
-      ),
+      builder: (_) => OperationLocationScreen(services: widget.services, operation: _operation),
     );
     if (patch == null) return;
     if (!mounted) {
@@ -1568,11 +1498,7 @@ class OperationSheetState extends State<OperationSheet> {
   /// tail of their headline into the muted body.
   Widget _emptyStateFromMessage(ThemeData theme, String message) {
     final split = message.indexOf('\n');
-    return _emptyStateMessage(
-      theme,
-      title: split < 0 ? message : message.substring(0, split),
-      body: split < 0 ? '' : message.substring(split + 1),
-    );
+    return _emptyStateMessage(theme, title: split < 0 ? message : message.substring(0, split), body: split < 0 ? '' : message.substring(split + 1));
   }
 
   /// An empty-state message: [title] bold and in [titleColor], [body] muted
@@ -1586,7 +1512,10 @@ class OperationSheetState extends State<OperationSheet> {
             style: TextStyle(color: titleColor ?? theme.colorScheme.onSurface, fontWeight: FontWeight.bold),
           ),
           if (body.isNotEmpty)
-            TextSpan(text: '\n$body', style: TextStyle(color: theme.colorScheme.outline)),
+            TextSpan(
+              text: '\n$body',
+              style: TextStyle(color: theme.colorScheme.outline),
+            ),
         ],
       ),
       textAlign: TextAlign.center,
@@ -1607,12 +1536,7 @@ class OperationSheetState extends State<OperationSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: _emptyStateMessage(
-              theme,
-              title: t.controlsUnavailableTitle,
-              body: t.controlsUnavailableReason,
-              titleColor: theme.colorScheme.error,
-            ),
+            child: _emptyStateMessage(theme, title: t.controlsUnavailableTitle, body: t.controlsUnavailableReason, titleColor: theme.colorScheme.error),
           ),
           TextButton(
             onPressed: () {
@@ -1630,17 +1554,17 @@ class OperationSheetState extends State<OperationSheet> {
   /// ones sit at the same height under the search band rather than the notice
   /// looking like a different kind of thing.
   Widget _emptyStatePadding({required Widget child}) => Padding(
-        padding: const EdgeInsets.only(top: Space.xl, bottom: Space.md),
-        child: child,
-      );
+    padding: const EdgeInsets.only(top: Space.xl, bottom: Space.md),
+    child: child,
+  );
 
   /// What to do about a location the OS is withholding, or null when the OS
   /// isn't the thing in the way (no GPS at all, or a fix still coming).
   VoidCallback? get _locationPermissionAction => switch (widget.services.location.status) {
-        LocationStatus.permissionDenied => () => unawaited(_grantLocationPermission()),
-        LocationStatus.permissionBlocked => () => unawaited(_openLocationSettings()),
-        _ => null,
-      };
+    LocationStatus.permissionDenied => () => unawaited(_grantLocationPermission()),
+    LocationStatus.permissionBlocked => () => unawaited(_openLocationSettings()),
+    _ => null,
+  };
 
   /// Sends the operator to the OS settings page, or tells them where to go
   /// when the platform has none — a button that silently does nothing is the
@@ -1648,10 +1572,7 @@ class OperationSheetState extends State<OperationSheet> {
   Future<void> _openLocationSettings() async {
     final opened = await widget.services.location.openSystemSettings();
     if (opened || !mounted) return;
-    widget.services.statusBar.setMessage(
-      key: 'activities:location-permission',
-      text: context.t.activitiesView.locationSettingsUnavailable,
-    );
+    widget.services.statusBar.setMessage(key: 'activities:location-permission', text: context.t.activitiesView.locationSettingsUnavailable);
   }
 
   /// Asks the OS again, and says so when the answer is still no — a button
@@ -1666,10 +1587,7 @@ class OperationSheetState extends State<OperationSheet> {
       _debounce?.cancel();
       unawaited(_search(_searchController.text));
     } else {
-      widget.services.statusBar.setMessage(
-        key: 'activities:location-permission',
-        text: context.t.activitiesView.locationGrantRefused,
-      );
+      widget.services.statusBar.setMessage(key: 'activities:location-permission', text: context.t.activitiesView.locationGrantRefused);
     }
   }
 
@@ -1697,12 +1615,7 @@ class OperationSheetState extends State<OperationSheet> {
     // a reference that may well be there.
     if (_searchFailed) {
       return _emptyStatePadding(
-        child: _emptyStateMessage(
-          theme,
-          title: t.searchUnavailableTitle,
-          body: t.searchUnavailableReason,
-          titleColor: theme.colorScheme.error,
-        ),
+        child: _emptyStateMessage(theme, title: t.searchUnavailableTitle, body: t.searchUnavailableReason, titleColor: theme.colorScheme.error),
       );
     }
     // A typed search, or a location the search could actually use, was
@@ -1711,15 +1624,9 @@ class OperationSheetState extends State<OperationSheet> {
     // cleared, so `suggestActivities` searched WITH it, and blaming the
     // location for an empty answer it had nothing to do with sends the
     // operator to type a grid that will change none of it.
-    if (_searchController.text.trim().isNotEmpty ||
-        _hasOperationGrid ||
-        widget.services.location.position != null) {
+    if (_searchController.text.trim().isNotEmpty || _hasOperationGrid || widget.services.location.position != null) {
       return _emptyStatePadding(
-        child: _emptyStateMessage(
-          theme,
-          title: t.noSuggestions,
-          body: '${t.noSuggestionsHint}\n${t.noSuggestionsExample}',
-        ),
+        child: _emptyStateMessage(theme, title: t.noSuggestions, body: '${t.noSuggestionsHint}\n${t.noSuggestionsExample}'),
       );
     }
 
@@ -1772,11 +1679,7 @@ class OperationSheetState extends State<OperationSheet> {
                   const SizedBox(height: Space.lg),
                   FilledButton(
                     onPressed: _locationPermissionAction,
-                    child: Text(
-                      widget.services.location.status == LocationStatus.permissionDenied
-                          ? t.locationGrantAction
-                          : t.locationSettingsAction,
-                    ),
+                    child: Text(widget.services.location.status == LocationStatus.permissionDenied ? t.locationGrantAction : t.locationSettingsAction),
                   ),
                 ],
                 // What to do about it is its own paragraph, not a third line of
@@ -1846,9 +1749,7 @@ class OperationSheetState extends State<OperationSheet> {
   }
 
   String _allOptionsTitle(TranslationsEn t) {
-    final refListControls = _controls
-        .where((c) => (c['input'] as Map?)?['kind'] == 'refList' || (c['input'] as Map?)?['kind'] == 'form')
-        .toList();
+    final refListControls = _controls.where((c) => (c['input'] as Map?)?['kind'] == 'refList' || (c['input'] as Map?)?['kind'] == 'form').toList();
     final labels = <String>[];
     for (final control in refListControls) {
       final controlKey = control['key'] as String? ?? '';
@@ -1868,11 +1769,7 @@ class OperationSheetState extends State<OperationSheet> {
     } else if (labels.length == 2) {
       return t.activitiesView.activitiesTitle2(first: labels[0], second: labels[1]);
     } else {
-      return t.activitiesView.activitiesTitleMore(
-        first: labels[0],
-        second: labels[1],
-        more: (labels.length - 2).toString(),
-      );
+      return t.activitiesView.activitiesTitleMore(first: labels[0], second: labels[1], more: (labels.length - 2).toString());
     }
   }
 
@@ -1897,12 +1794,7 @@ class OperationSheetState extends State<OperationSheet> {
     if (!mounted || _flashingRefRowId != id) return;
     final rowContext = _refRowKeys[_refRowKeyId(id)]?.currentContext;
     if (rowContext != null && rowContext.mounted) {
-      await Scrollable.ensureVisible(
-        rowContext,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-        alignment: 0.5,
-      );
+      await Scrollable.ensureVisible(rowContext, duration: const Duration(milliseconds: 250), curve: Curves.easeInOut, alignment: 0.5);
     }
     if (!mounted) return;
     _flashTimer = Timer(_flashDuration, () {
@@ -1975,9 +1867,7 @@ class OperationSheetState extends State<OperationSheet> {
   /// gated on `mounted`.
   Future<void> saveAndClose() async {
     final fragments = await widget.services.operationTitles.suggestFragments(_operation);
-    final data = fragments == null
-        ? _operation.data
-        : {..._operation.data, 'title': buildGeneratedTitle(t, fragments)};
+    final data = fragments == null ? _operation.data : {..._operation.data, 'title': buildGeneratedTitle(t, fragments)};
     await widget.services.operations.saveData(
       Operation(
         uuid: _operation.uuid,
@@ -2012,62 +1902,51 @@ class OperationSheetState extends State<OperationSheet> {
     // DefaultTextStyle: the measuring below has to see the very style the
     // pill renders at, or the line count it predicts is not the one the Wrap
     // produces.
-    final pillTextStyle = theme.textTheme.labelLarge?.copyWith(
-      color: theme.colorScheme.onPrimary,
-      fontWeight: FontWeight.bold,
-    );
+    final pillTextStyle = theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold);
     // [minWidth] is for the icon-only pills, whose glyph alone reads as a blob
     // rather than as one of the row's chips. A pill carrying a value is never
     // padded out past it: the callsigns' widths are information.
     Widget chip(Widget child, {bool light = false, double? minWidth, bool ellipsize = true}) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: _pillPadding, vertical: Space.xs),
-          // Constraints only, never `alignment`: a Container with an alignment
-          // takes ALL the width it is offered instead of hugging its child, so
-          // the floor would become the whole row. The centering that goes with
-          // it rides on the text style below.
-          constraints: minWidth == null ? null : BoxConstraints(minWidth: minWidth),
-          decoration: BoxDecoration(
-            color: light ? lightChipColor : chipColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          // A pill is one line, always: a callsign broken across two lines
-          // inside a rounded chip reads as damage, so a squeezed pill
-          // ellipsizes instead (and the whole group sheds pills before it
-          // gets that tight — see below). Where [ellipsize] is off the text
-          // runs past the chip rather than lose a character — a half-read
-          // callsign is worse than an untidy one.
-          child: DefaultTextStyle.merge(
-            style: pillTextStyle,
-            textAlign: TextAlign.center,
-            softWrap: false,
-            maxLines: 1,
-            overflow: ellipsize ? TextOverflow.ellipsis : TextOverflow.visible,
-            child: child,
-          ),
-        );
+      padding: const EdgeInsets.symmetric(horizontal: _pillPadding, vertical: Space.xs),
+      // Constraints only, never `alignment`: a Container with an alignment
+      // takes ALL the width it is offered instead of hugging its child, so
+      // the floor would become the whole row. The centering that goes with
+      // it rides on the text style below.
+      constraints: minWidth == null ? null : BoxConstraints(minWidth: minWidth),
+      decoration: BoxDecoration(color: light ? lightChipColor : chipColor, borderRadius: BorderRadius.circular(12)),
+      // A pill is one line, always: a callsign broken across two lines
+      // inside a rounded chip reads as damage, so a squeezed pill
+      // ellipsizes instead (and the whole group sheds pills before it
+      // gets that tight — see below). Where [ellipsize] is off the text
+      // runs past the chip rather than lose a character — a half-read
+      // callsign is worse than an untidy one.
+      child: DefaultTextStyle.merge(
+        style: pillTextStyle,
+        textAlign: TextAlign.center,
+        softWrap: false,
+        maxLines: 1,
+        overflow: ellipsize ? TextOverflow.ellipsis : TextOverflow.visible,
+        child: child,
+      ),
+    );
 
     // The glyph rides inside a Text so the chip takes its height from the
     // same line box as its text-bearing siblings, rather than from the
     // glyph. Nudged up 1px: the glyph's own bearing sits it slightly low
     // against the text line box that PlaceholderAlignment.middle centers on.
     Widget iconPill(IconData icon, {String? semanticLabel, double? minWidth = _pillMinWidth}) => chip(
-          light: true,
-          minWidth: minWidth,
-          Text.rich(
-            WidgetSpan(
-              alignment: PlaceholderAlignment.middle,
-              child: Transform.translate(
-                offset: const Offset(0, -1),
-                child: Icon(
-                  icon,
-                  size: _pillIconSize,
-                  color: theme.colorScheme.onPrimary,
-                  semanticLabel: semanticLabel,
-                ),
-              ),
-            ),
+      light: true,
+      minWidth: minWidth,
+      Text.rich(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Transform.translate(
+            offset: const Offset(0, -1),
+            child: Icon(icon, size: _pillIconSize, color: theme.colorScheme.onPrimary, semanticLabel: semanticLabel),
           ),
-        );
+        ),
+      ),
+    );
 
     // The shared measurer: it folds in the ambient DefaultTextStyle the chip
     // renders through and disposes its painter, both of which a hand-rolled
@@ -2075,8 +1954,7 @@ class OperationSheetState extends State<OperationSheet> {
     // Rounded UP: a paragraph lays out a hair wider than its measured width,
     // and a prediction that lands a tenth of a pixel short is still a row
     // overflow.
-    double measure(List<InlineSpan> spans) =>
-        (spansWidth(context, spans, pillTextStyle) + _pillPadding * 2).ceilToDouble();
+    double measure(List<InlineSpan> spans) => (spansWidth(context, spans, pillTextStyle) + _pillPadding * 2).ceilToDouble();
 
     // An icon inside a WidgetSpan is scaled by the text scaler like the text
     // around it, so the icon pills' widths cannot be constants — a declared
@@ -2087,22 +1965,13 @@ class OperationSheetState extends State<OperationSheet> {
     final iconPillWidth = math.max(_pillMinWidth, iconPillNaturalWidth);
 
     const callStyle = TextStyle(fontFamily: 'RobotoMono');
-    final stationSpans = [
-      const TextSpan(text: 'Station: '),
-      TextSpan(text: stationCall, style: callStyle),
-    ];
-    final operatorSpans = [
-      const TextSpan(text: 'Op: '),
-      TextSpan(text: operatorCall, style: callStyle),
-    ];
+    final stationSpans = [const TextSpan(text: 'Station: '), TextSpan(text: stationCall, style: callStyle)];
+    final operatorSpans = [const TextSpan(text: 'Op: '), TextSpan(text: operatorCall, style: callStyle)];
     // Shown to anyone who has a position set, developer mode or not: the
     // identifier keeps suffixing this device's spots (`K2SUL/OP2`) after
     // developer mode goes off, and this pill is the only thing on the sheet
     // that explains where that came from.
-    final positionSpans = [
-      const TextSpan(text: 'Pos: '),
-      TextSpan(text: multiIdentifier, style: callStyle),
-    ];
+    final positionSpans = [const TextSpan(text: 'Pos: '), TextSpan(text: multiIdentifier, style: callStyle)];
 
     // What the pills may take before they start shedding: the title keeps
     // _headerTitleMinWidth of the row for its count and subtitle. They can
@@ -2121,28 +1990,16 @@ class OperationSheetState extends State<OperationSheet> {
           // leaves the row saying nothing about a call that goes out modified.
           dropOrder: 4,
         ),
-      if (operatorCall.isNotEmpty)
-        _HeaderPill(
-          chip(light: true, Text.rich(TextSpan(children: operatorSpans))),
-          measure(operatorSpans),
-          dropOrder: 2,
-        ),
+      if (operatorCall.isNotEmpty) _HeaderPill(chip(light: true, Text.rich(TextSpan(children: operatorSpans))), measure(operatorSpans), dropOrder: 2),
       // The station callsign is the one value the header exists to show, so it
       // never truncates and never goes.
-      _HeaderPill(
-        chip(Text.rich(TextSpan(children: stationSpans)), ellipsize: false),
-        stationWidth,
-        absorbsShortfall: true,
-      ),
+      _HeaderPill(chip(Text.rich(TextSpan(children: stationSpans)), ellipsize: false), stationWidth, absorbsShortfall: true),
       // The affordance for what the whole group already does: the pencil
       // carries no tap of its own, so it can't drift from the pills'. Sized to
       // its glyph and nothing more — it is furniture, not a value. It rides
       // with the identity so the row always advertises the tap, whatever else
       // the width forces out.
-      _HeaderPill(
-        iconPill(MdiIcons.pencil, semanticLabel: context.t.activitiesView.operationDetails, minWidth: null),
-        iconPillNaturalWidth,
-      ),
+      _HeaderPill(iconPill(MdiIcons.pencil, semanticLabel: context.t.activitiesView.operationDetails, minWidth: null), iconPillNaturalWidth),
     ];
 
     // What the operation says about itself beyond its callsigns — the second
@@ -2153,12 +2010,7 @@ class OperationSheetState extends State<OperationSheet> {
       // operation-details dialog. Last to go: it is the only place the sheet
       // admits the notes exist at all, where every other pill's value is also
       // spelled out inside the editor.
-      if (notes.trim().isNotEmpty)
-        _HeaderPill(
-          iconPill(MdiIcons.fileDocument, semanticLabel: context.t.dialogs.notes),
-          iconPillWidth,
-          dropOrder: 3,
-        ),
+      if (notes.trim().isNotEmpty) _HeaderPill(iconPill(MdiIcons.fileDocument, semanticLabel: context.t.dialogs.notes), iconPillWidth, dropOrder: 3),
       // A title is free text and can run long — it ellipsizes rather than
       // pushing the callsign chips aside, and it is the first pill to go.
       if (operationTitle.isNotEmpty)
@@ -2181,8 +2033,7 @@ class OperationSheetState extends State<OperationSheet> {
       math.max(_pillMinWidth, measure([const TextSpan(text: '…')])),
     );
 
-    double runWidth(List<_HeaderPill> run) =>
-        run.fold(0.0, (total, pill) => total + pill.width) + math.max(0, run.length - 1) * _pillSpacing;
+    double runWidth(List<_HeaderPill> run) => run.fold(0.0, (total, pill) => total + pill.width) + math.max(0, run.length - 1) * _pillSpacing;
 
     /// [run] narrowed to [budget] by shedding its least informative pills
     /// (lowest non-zero [_HeaderPill.dropOrder] first; 0 never goes), with what
@@ -2191,8 +2042,7 @@ class OperationSheetState extends State<OperationSheet> {
       final kept = run.toList();
       final shed = <_HeaderPill>[];
       while (runWidth(kept) > budget) {
-        final droppable = kept.where((pill) => pill.dropOrder > 0).toList()
-          ..sort((a, b) => a.dropOrder.compareTo(b.dropOrder));
+        final droppable = kept.where((pill) => pill.dropOrder > 0).toList()..sort((a, b) => a.dropOrder.compareTo(b.dropOrder));
         if (droppable.isEmpty) break;
         kept.remove(droppable.first);
         shed.add(droppable.first);
@@ -2219,9 +2069,7 @@ class OperationSheetState extends State<OperationSheet> {
     final oneLine = [...extras, ...identity];
     final runs = runWidth(oneLine) <= pillBudget
         ? [oneLine]
-        : [fitAndMark(identity, pillBudget), fitAndMark(extras, pillBudget)]
-            .where((run) => run.isNotEmpty)
-            .toList();
+        : [fitAndMark(identity, pillBudget), fitAndMark(extras, pillBudget)].where((run) => run.isNotEmpty).toList();
 
     // The box is sized to the widest run rather than to the budget: sized any
     // narrower, a run that outgrew the budget (the station callsign and the
@@ -2248,10 +2096,7 @@ class OperationSheetState extends State<OperationSheet> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   spacing: _pillSpacing,
-                  children: [
-                    for (final pill in run)
-                      pill.absorbsShortfall ? Flexible(child: pill.widget) : pill.widget,
-                  ],
+                  children: [for (final pill in run) pill.absorbsShortfall ? Flexible(child: pill.widget) : pill.widget],
                 ),
             ],
           ),
@@ -2280,91 +2125,88 @@ class OperationSheetState extends State<OperationSheet> {
     return [
       if (_controlsState == ControlsLoadState.failed && refs.isNotEmpty) _controlsFailedNotice(theme),
       for (final ref in refs)
-        Builder(builder: (context) {
-          final control = controlForRef(_controls, type: ref['type'] as String?, code: refCodeOf(ref));
-          final detail = activityRowDetail(ref);
-          final linkKey = _refLinkKey(ref);
-          final link = linkKey == null ? null : _refLinks[linkKey];
-          return Material(
-            type: MaterialType.transparency,
-            child: _flashableRow(
-              ref,
-              ListTile(
-                tileColor: _controlsUnreliable
-                    ? rowColor
-                    : (control == null ? theme.colorScheme.errorContainer.withValues(alpha: 0.4) : rowColor),
-                // Right padding matches the header rows' own horizontal
-                // inset, so the RIGHTMOST trailing button lines up under the
-                // search row's location button — same IconButton defaults
-                // (no custom size/padding) too. Any button added left of it
-                // hangs off that alignment rather than moving it, which is
-                // why the web button — the one every list here ends with —
-                // is the rightmost, and Remove sits inside it.
-                contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
-                leading: _controlsUnreliable && control == null
-                    ? const Icon(MdiIcons.toyBrick)
-                    // With the code: a reference answered under a legacy type
-                    // draws its extension's icon, not the unknown marker.
-                    : activityRefIcon(_controls, ref['type'] as String?, code: refCodeOf(ref)),
-                title: Row(
-                  children: [
-                    Flexible(child: _activityRowTitleText(activityRowTitle(control, ref))),
-                    if (_isInvalidRef(ref))
-                      Padding(
-                        padding: const EdgeInsets.only(left: Space.md),
-                        child: ActivityRowChip(label: t.invalidReference, unavailable: true),
-                      ),
-                    if (activityRowIsRetired(ref))
-                      Padding(
-                        padding: const EdgeInsets.only(left: Space.md),
-                        child: ActivityRowChip(label: t.retiredReference, unavailable: true),
-                      ),
-                  ],
-                ),
-                subtitle: detail == null ? null : Text(detail),
-                // Tappable only for a type that declares it has something to
-                // edit — a plain ref activity doesn't, so the row stays inert
-                // rather than offering to retype a code its own search
-                // already resolved.
-                // The editor wins where a type has one: the tune button
-                // beside it opens the same thing, but a form-configured
-                // reference has nothing else that does, and a row that
-                // panned the map instead would strand it.
-                onTap: refTypeIsEditable(control) ? () => _editRef(ref) : _moveMapToRef(ref),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // The row has always opened the editor on tap, with
-                    // nothing to say so. This is that affordance made
-                    // visible, not a second way in — same condition as the
-                    // tap above, so the two can never disagree about whether
-                    // a row is configurable.
-                    if (refTypeIsEditable(control))
-                      IconButton(
-                        icon: Icon(MdiIcons.tune, semanticLabel: t.editActivity),
-                        onPressed: () => _editRef(ref),
-                      ),
-                    IconButton(
-                      icon: Icon(MdiIcons.delete, semanticLabel: t.removeActivity),
-                      onPressed: () => _deleteRef(ref),
-                    ),
-                    // Absent, not disabled, when the program has no page for
-                    // this reference (and while the hook is still answering):
-                    // a placeholder would be a dead control rather than free
-                    // space. Its gap is wider than the one between the other
-                    // buttons — leaving a reference and destroying one are
-                    // different enough that they should not sit a thumb's
-                    // width apart.
-                    if (link != null) ...[
-                      const SizedBox(width: Space.md),
-                      _refLinkButton(link, fallbackName: activityRowTitle(control, ref)),
+        Builder(
+          builder: (context) {
+            final control = controlForRef(_controls, type: ref['type'] as String?, code: refCodeOf(ref));
+            final detail = activityRowDetail(ref);
+            final linkKey = _refLinkKey(ref);
+            final link = linkKey == null ? null : _refLinks[linkKey];
+            return Material(
+              type: MaterialType.transparency,
+              child: _flashableRow(
+                ref,
+                ListTile(
+                  tileColor: _controlsUnreliable ? rowColor : (control == null ? theme.colorScheme.errorContainer.withValues(alpha: 0.4) : rowColor),
+                  // Right padding matches the header rows' own horizontal
+                  // inset, so the RIGHTMOST trailing button lines up under the
+                  // search row's location button — same IconButton defaults
+                  // (no custom size/padding) too. Any button added left of it
+                  // hangs off that alignment rather than moving it, which is
+                  // why the web button — the one every list here ends with —
+                  // is the rightmost, and Remove sits inside it.
+                  contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
+                  leading: _controlsUnreliable && control == null
+                      ? const Icon(MdiIcons.toyBrick)
+                      // With the code: a reference answered under a legacy type
+                      // draws its extension's icon, not the unknown marker.
+                      : activityRefIcon(_controls, ref['type'] as String?, code: refCodeOf(ref)),
+                  title: Row(
+                    children: [
+                      Flexible(child: _activityRowTitleText(activityRowTitle(control, ref))),
+                      if (_isInvalidRef(ref))
+                        Padding(
+                          padding: const EdgeInsets.only(left: Space.md),
+                          child: ActivityRowChip(label: t.invalidReference, unavailable: true),
+                        ),
+                      if (activityRowIsRetired(ref))
+                        Padding(
+                          padding: const EdgeInsets.only(left: Space.md),
+                          child: ActivityRowChip(label: t.retiredReference, unavailable: true),
+                        ),
                     ],
-                  ],
+                  ),
+                  subtitle: detail == null ? null : Text(detail),
+                  // Tappable only for a type that declares it has something to
+                  // edit — a plain ref activity doesn't, so the row stays inert
+                  // rather than offering to retype a code its own search
+                  // already resolved.
+                  // The editor wins where a type has one: the tune button
+                  // beside it opens the same thing, but a form-configured
+                  // reference has nothing else that does, and a row that
+                  // panned the map instead would strand it.
+                  onTap: refTypeIsEditable(control) ? () => _editRef(ref) : _moveMapToRef(ref),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // The row has always opened the editor on tap, with
+                      // nothing to say so. This is that affordance made
+                      // visible, not a second way in — same condition as the
+                      // tap above, so the two can never disagree about whether
+                      // a row is configurable.
+                      if (refTypeIsEditable(control))
+                        IconButton(
+                          icon: Icon(MdiIcons.tune, semanticLabel: t.editActivity),
+                          onPressed: () => _editRef(ref),
+                        ),
+                      IconButton(
+                        icon: Icon(MdiIcons.delete, semanticLabel: t.removeActivity),
+                        onPressed: () => _deleteRef(ref),
+                      ),
+                      // Absent, not disabled, when the program has no page for
+                      // this reference (and while the hook is still answering):
+                      // a placeholder would be a dead control rather than free
+                      // space. Its gap is wider than the one between the other
+                      // buttons — leaving a reference and destroying one are
+                      // different enough that they should not sit a thumb's
+                      // width apart.
+                      if (link != null) ...[const SizedBox(width: Space.md), _refLinkButton(link, fallbackName: activityRowTitle(control, ref))],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          },
+        ),
     ];
   }
 
@@ -2405,49 +2247,39 @@ class OperationSheetState extends State<OperationSheet> {
             color: accordionColor,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(Space.xl, Space.md, Space.lg, Space.md),
-              child: LayoutBuilder(builder: (context, constraints) {
-                return Row(
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: Space.xl),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _activitiesTitle(
-                                refs
-                                    .map((r) => r['type'] as String?)
-                                    .whereType<String>()
-                                    .where((t) => t.isNotEmpty)
-                                    .toSet()
-                                    .length,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: Space.xl),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _activitiesTitle(refs.map((r) => r['type'] as String?).whereType<String>().where((t) => t.isNotEmpty).toSet().length),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleMedium?.copyWith(color: onAccordionColor, fontWeight: FontWeight.w600),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: onAccordionColor,
-                                fontWeight: FontWeight.w600,
+                              const SizedBox(height: Space.xxs),
+                              Text(
+                                refs.isEmpty ? context.t.activitiesView.emptySheet : _groupedActivitiesSubtitle(refs),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline),
                               ),
-                            ),
-                            const SizedBox(height: Space.xxs),
-                            Text(
-                              refs.isEmpty ? context.t.activitiesView.emptySheet : _groupedActivitiesSubtitle(refs),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.outline,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    _operationPills(theme, constraints.maxWidth),
-                  ],
-                );
-              }),
+                      _operationPills(theme, constraints.maxWidth),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
           // The results list and Activity Types share what the header leaves,
@@ -2456,533 +2288,495 @@ class OperationSheetState extends State<OperationSheet> {
           // the same pixels. Measuring the results list itself instead would
           // be circular — its height is what the peek decides.
           Expanded(
-            child: LayoutBuilder(builder: (context, sheetBody) {
-              final optionsPeekHeight = _optionsPeekHeightFor(context, sheetBody.maxHeight);
-              final optionsMaxHeight = _optionsMaxHeightFor(context, sheetBody.maxHeight);
-              return Column(children: [
-          // Selected activities, the search field and its results live in
-          // ONE clipped scroll area — only Activity Types below keeps the
-          // accordion behavior.
-          Expanded(
-            child: Builder(
-              builder: (context) {
-                final locStatus = widget.services.location.status;
-                final operationGrid = _operation.displayGrid;
+            child: LayoutBuilder(
+              builder: (context, sheetBody) {
+                final optionsPeekHeight = _optionsPeekHeightFor(context, sheetBody.maxHeight);
+                final optionsMaxHeight = _optionsMaxHeightFor(context, sheetBody.maxHeight);
+                return Column(
+                  children: [
+                    // Selected activities, the search field and its results live in
+                    // ONE clipped scroll area — only Activity Types below keeps the
+                    // accordion behavior.
+                    Expanded(
+                      child: Builder(
+                        builder: (context) {
+                          final locStatus = widget.services.location.status;
+                          final operationGrid = _operation.displayGrid;
 
-                // Every variation is the same filled button: white icon and
-                // label on a state color, rather than colored text on nothing.
-                const onLocationColor = Colors.white;
-                final Widget locationPin;
-                final String label;
-                final Color locationColor;
-                // The glyph behind [locationPin], for the results map's own
-                // dot — the pill's widget can't be handed to a map backend
-                // that draws pixels rather than widgets.
-                final IconData locationIcon;
+                          // Every variation is the same filled button: white icon and
+                          // label on a state color, rather than colored text on nothing.
+                          const onLocationColor = Colors.white;
+                          final Widget locationPin;
+                          final String label;
+                          final Color locationColor;
+                          // The glyph behind [locationPin], for the results map's own
+                          // dot — the pill's widget can't be handed to a map backend
+                          // that draws pixels rather than widgets.
+                          final IconData locationIcon;
 
-                // The SAME question the empty state asks, so the two can't
-                // contradict each other over a grid the search can't place:
-                // a half-typed `FN` saved unvalidated must not label this
-                // button "located" under a notice still saying it isn't.
-                if (_hasOperationGrid) {
-                  // Only for operations stored before `gridSource` existed, and
-                  // compared at SIX characters on both sides: those carry a
-                  // 6-character grid, so matching them against a fix's own
-                  // displayed locator could never be reliably equal, and every
-                  // legacy GPS-set operation would quietly lose its green pin.
-                  final gridSource = asQsonString(_operation.data['gridSource']) ?? (
-                    (_operation.location != null &&
-                            widget.services.location.grid != null &&
-                            locationToGrid6(_operation.location!.latitude, _operation.location!.longitude) ==
-                                widget.services.location.grid)
-                        ? 'gps'
-                        : 'manual'
-                  );
+                          // The SAME question the empty state asks, so the two can't
+                          // contradict each other over a grid the search can't place:
+                          // a half-typed `FN` saved unvalidated must not label this
+                          // button "located" under a notice still saying it isn't.
+                          if (_hasOperationGrid) {
+                            // Only for operations stored before `gridSource` existed, and
+                            // compared at SIX characters on both sides: those carry a
+                            // 6-character grid, so matching them against a fix's own
+                            // displayed locator could never be reliably equal, and every
+                            // legacy GPS-set operation would quietly lose its green pin.
+                            final gridSource =
+                                asQsonString(_operation.data['gridSource']) ??
+                                ((_operation.location != null &&
+                                        widget.services.location.grid != null &&
+                                        locationToGrid6(_operation.location!.latitude, _operation.location!.longitude) == widget.services.location.grid)
+                                    ? 'gps'
+                                    : 'manual');
 
-                  if (gridSource == 'gps') {
-                    locationIcon = MdiIcons.mapMarker;
-                    locationPin = Icon(locationIcon, color: onLocationColor);
-                    label = operationGrid!;
-                    locationColor = const Color(0xFF1B5E20);
-                  } else {
-                    locationIcon = MdiIcons.pin;
-                    locationPin = Icon(locationIcon, color: onLocationColor);
-                    label = operationGrid!;
-                    locationColor = const Color(0xFF455A64);
-                  }
-                } else {
-                  if (locStatus == LocationStatus.unknown || locStatus == LocationStatus.determining) {
-                    // The pulse is an animation over the same glyph, and a
-                    // map marker takes one frame of it.
-                    locationIcon = MdiIcons.mapMarker;
-                    locationPin = const _PulsingGpsPin(color: onLocationColor);
-                    label = 'GPS…';
-                    locationColor = const Color(0xFF1565C0);
-                  } else if (locStatus == LocationStatus.available && widget.services.location.displayGrid != null) {
-                    locationIcon = MdiIcons.mapMarker;
-                    locationPin = Icon(locationIcon, color: onLocationColor);
-                    label = widget.services.location.displayGrid!;
-                    locationColor = const Color(0xFF1B5E20);
-                  } else if (locStatus == LocationStatus.available && widget.services.location.displayGrid == null) {
-                    locationIcon = MdiIcons.mapMarker;
-                    locationPin = const _PulsingGpsPin(color: onLocationColor);
-                    label = 'GPS…';
-                    locationColor = const Color(0xFF1565C0);
-                  } else {
-                    // The only variant that can end up with no label, so the
-                    // only one that would otherwise announce nothing — and it
-                    // is on screen exactly while the notice below tells the
-                    // operator to tap it. Named the way this app names an
-                    // icon-only button (see no_hover_tooltips_test).
-                    locationIcon = MdiIcons.mapMarkerOff;
-                    locationPin = Icon(
-                      locationIcon,
-                      color: onLocationColor,
-                      semanticLabel: context.t.operationLocationScreen.title,
-                    );
-                    // A grid that got this far is one the search can't place.
-                    // Keeping it on the button, in the red state, says which
-                    // text is the problem; dropping it would leave the operator
-                    // wondering where what they typed went.
-                    label = operationGrid ?? '';
-                    locationColor = const Color(0xFFC62828);
-                  }
-                }
+                            if (gridSource == 'gps') {
+                              locationIcon = MdiIcons.mapMarker;
+                              locationPin = Icon(locationIcon, color: onLocationColor);
+                              label = operationGrid!;
+                              locationColor = const Color(0xFF1B5E20);
+                            } else {
+                              locationIcon = MdiIcons.pin;
+                              locationPin = Icon(locationIcon, color: onLocationColor);
+                              label = operationGrid!;
+                              locationColor = const Color(0xFF455A64);
+                            }
+                          } else {
+                            if (locStatus == LocationStatus.unknown || locStatus == LocationStatus.determining) {
+                              // The pulse is an animation over the same glyph, and a
+                              // map marker takes one frame of it.
+                              locationIcon = MdiIcons.mapMarker;
+                              locationPin = const _PulsingGpsPin(color: onLocationColor);
+                              label = 'GPS…';
+                              locationColor = const Color(0xFF1565C0);
+                            } else if (locStatus == LocationStatus.available && widget.services.location.displayGrid != null) {
+                              locationIcon = MdiIcons.mapMarker;
+                              locationPin = Icon(locationIcon, color: onLocationColor);
+                              label = widget.services.location.displayGrid!;
+                              locationColor = const Color(0xFF1B5E20);
+                            } else if (locStatus == LocationStatus.available && widget.services.location.displayGrid == null) {
+                              locationIcon = MdiIcons.mapMarker;
+                              locationPin = const _PulsingGpsPin(color: onLocationColor);
+                              label = 'GPS…';
+                              locationColor = const Color(0xFF1565C0);
+                            } else {
+                              // The only variant that can end up with no label, so the
+                              // only one that would otherwise announce nothing — and it
+                              // is on screen exactly while the notice below tells the
+                              // operator to tap it. Named the way this app names an
+                              // icon-only button (see no_hover_tooltips_test).
+                              locationIcon = MdiIcons.mapMarkerOff;
+                              locationPin = Icon(locationIcon, color: onLocationColor, semanticLabel: context.t.operationLocationScreen.title);
+                              // A grid that got this far is one the search can't place.
+                              // Keeping it on the button, in the red state, says which
+                              // text is the problem; dropping it would leave the operator
+                              // wondering where what they typed went.
+                              label = operationGrid ?? '';
+                              locationColor = const Color(0xFFC62828);
+                            }
+                          }
 
-                // The results map's own "you are here" dot — the same
-                // coordinate and color as the pill above, computed by the
-                // same two branches (operation grid first, then a live GPS
-                // fix) so the dot and the pill can never disagree about
-                // where "here" is. Null exactly when the pill has nothing to
-                // show either (still determining, denied, or an unplaceable
-                // grid) — there's nothing to plot in that state.
-                final currentLocation = _hasOperationGrid
-                    ? _operation.location
-                    : (locStatus == LocationStatus.available ? widget.services.location.location : null);
+                          // The results map's own "you are here" dot — the same
+                          // coordinate and color as the pill above, computed by the
+                          // same two branches (operation grid first, then a live GPS
+                          // fix) so the dot and the pill can never disagree about
+                          // where "here" is. Null exactly when the pill has nothing to
+                          // show either (still determining, denied, or an unplaceable
+                          // grid) — there's nothing to plot in that state.
+                          final currentLocation = _hasOperationGrid
+                              ? _operation.location
+                              : (locStatus == LocationStatus.available ? widget.services.location.location : null);
 
-                final searchBorder = OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: onAccordionColor.withValues(alpha: 0.25)),
-                );
+                          final searchBorder = OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: onAccordionColor.withValues(alpha: 0.25)),
+                          );
 
-                final searchBand = Material(
-                  color: accordionColor,
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: MediaQuery.textScalerOf(context).scale(_searchBandHeight),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(Space.xl, Space.md, Space.lg, Space.md),
-                          child: Row(
-                            children: [
-                        Expanded(
-                          // Listens to _searchIsEmpty, not the controller
-                          // directly nor the outer rebuild cycle:
-                          // _onSearchChanged only sets state after its 400ms
-                          // debounce fires, which would leave the clear
-                          // button lagging a beat behind every keystroke
-                          // instead of tracking the field live — and
-                          // _searchIsEmpty only flips (so only rebuilds)
-                          // when the button's own presence actually changes,
-                          // not on every keystroke or caret move.
-                          child: AnimatedBuilder(
-                            animation: _searchIsEmpty,
-                            builder: (context, _) => TextField(
-                              selectAllOnFocus: false,
-                              controller: _searchController,
-                              focusNode: _searchFocusNode,
-                              decoration: InputDecoration(
-                                hintText: t.searchHint,
-                                prefixIcon: Icon(MdiIcons.magnify, color: onAccordionColor.withValues(alpha: 0.6)),
-                                suffixIcon: _searchIsEmpty.value
-                                    ? null
-                                    : IconButton(
-                                        icon: Icon(
-                                          MdiIcons.close,
-                                          color: onAccordionColor.withValues(alpha: 0.6),
-                                          semanticLabel: context.t.common.clear,
+                          final searchBand = Material(
+                            color: accordionColor,
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: MediaQuery.textScalerOf(context).scale(_searchBandHeight),
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(Space.xl, Space.md, Space.lg, Space.md),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          // Listens to _searchIsEmpty, not the controller
+                                          // directly nor the outer rebuild cycle:
+                                          // _onSearchChanged only sets state after its 400ms
+                                          // debounce fires, which would leave the clear
+                                          // button lagging a beat behind every keystroke
+                                          // instead of tracking the field live — and
+                                          // _searchIsEmpty only flips (so only rebuilds)
+                                          // when the button's own presence actually changes,
+                                          // not on every keystroke or caret move.
+                                          child: AnimatedBuilder(
+                                            animation: _searchIsEmpty,
+                                            builder: (context, _) => TextField(
+                                              selectAllOnFocus: false,
+                                              controller: _searchController,
+                                              focusNode: _searchFocusNode,
+                                              decoration: InputDecoration(
+                                                hintText: t.searchHint,
+                                                prefixIcon: Icon(MdiIcons.magnify, color: onAccordionColor.withValues(alpha: 0.6)),
+                                                suffixIcon: _searchIsEmpty.value
+                                                    ? null
+                                                    : IconButton(
+                                                        icon: Icon(
+                                                          MdiIcons.close,
+                                                          color: onAccordionColor.withValues(alpha: 0.6),
+                                                          semanticLabel: context.t.common.clear,
+                                                        ),
+                                                        onPressed: _clearSearch,
+                                                      ),
+                                                filled: true,
+                                                // Paler than the band it sits on, so the field
+                                                // reads as a well rather than blending in.
+                                                fillColor: theme.colorScheme.surface,
+                                                border: searchBorder,
+                                                // Contrast is against the field's own `surface`
+                                                // fill, not the accordion band around it — the
+                                                // indicator is drawn over the well.
+                                                focusedBorder: haloFocusedBorder(searchBorder, context),
+                                                isDense: true,
+                                              ),
+                                              onChanged: _onSearchChanged,
+                                            ),
+                                          ),
                                         ),
-                                        onPressed: _clearSearch,
-                                      ),
-                                filled: true,
-                                // Paler than the band it sits on, so the field
-                                // reads as a well rather than blending in.
-                                fillColor: theme.colorScheme.surface,
-                                border: searchBorder,
-                                // Contrast is against the field's own `surface`
-                                // fill, not the accordion band around it — the
-                                // indicator is drawn over the well.
-                                focusedBorder: haloFocusedBorder(searchBorder, context),
-                                isDense: true,
-                              ),
-                              onChanged: _onSearchChanged,
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(left: Space.md),
-                          // Full-strength, unlike the magnify and clear icons
-                          // inside the field: those decorate the well they sit
-                          // in, while this is an action of its own alongside
-                          // it, and dimming it reads as disabled.
-                          child: IconButton(
-                            icon: Icon(
-                              _showResultsMap ? MdiIcons.formatListBulleted : MdiIcons.map,
-                              color: onAccordionColor,
-                              semanticLabel: _showResultsMap ? t.showResultsList : t.showResultsMap,
-                            ),
-                            onPressed: () => setState(() => _showResultsMap = !_showResultsMap),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(left: Space.md),
-                          // With no grid to show there is no label, and
-                          // TextButton.icon still reserves the 8px gap before
-                          // one plus M3's wider trailing inset — which reads as
-                          // the pin sitting off-centre in its own button. The
-                          // plain button centres it, at the same size: both
-                          // variants share one defaultStyleOf.
-                          child: label.isEmpty
-                              ? TextButton(
-                                  style: TextButton.styleFrom(
-                                    backgroundColor: locationColor,
-                                    foregroundColor: onLocationColor,
-                                  ),
-                                  onPressed: _editLocation,
-                                  child: locationPin,
-                                )
-                              : TextButton.icon(
-                                  icon: locationPin,
-                                  label: Text(
-                                    label,
-                                    style: const TextStyle(
-                                      fontFamily: 'RobotoMono',
-                                      fontWeight: FontWeight.bold,
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: Space.md),
+                                          // Full-strength, unlike the magnify and clear icons
+                                          // inside the field: those decorate the well they sit
+                                          // in, while this is an action of its own alongside
+                                          // it, and dimming it reads as disabled.
+                                          child: IconButton(
+                                            icon: Icon(
+                                              _showResultsMap ? MdiIcons.formatListBulleted : MdiIcons.map,
+                                              color: onAccordionColor,
+                                              semanticLabel: _showResultsMap ? t.showResultsList : t.showResultsMap,
+                                            ),
+                                            onPressed: () => setState(() => _showResultsMap = !_showResultsMap),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: Space.md),
+                                          // With no grid to show there is no label, and
+                                          // TextButton.icon still reserves the 8px gap before
+                                          // one plus M3's wider trailing inset — which reads as
+                                          // the pin sitting off-centre in its own button. The
+                                          // plain button centres it, at the same size: both
+                                          // variants share one defaultStyleOf.
+                                          child: label.isEmpty
+                                              ? TextButton(
+                                                  style: TextButton.styleFrom(backgroundColor: locationColor, foregroundColor: onLocationColor),
+                                                  onPressed: _editLocation,
+                                                  child: locationPin,
+                                                )
+                                              : TextButton.icon(
+                                                  icon: locationPin,
+                                                  label: Text(
+                                                    label,
+                                                    style: const TextStyle(fontFamily: 'RobotoMono', fontWeight: FontWeight.bold),
+                                                  ),
+                                                  style: TextButton.styleFrom(backgroundColor: locationColor, foregroundColor: onLocationColor),
+                                                  onPressed: _editLocation,
+                                                ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  style: TextButton.styleFrom(
-                                    backgroundColor: locationColor,
-                                    foregroundColor: onLocationColor,
-                                  ),
-                                  onPressed: _editLocation,
                                 ),
-                        ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // The slot is always there, empty when idle: showing
-                      // and hiding the bar itself would move every row under
-                      // it by its height each time a search resolved.
-                      SizedBox(
-                        height: _searchProgressHeight,
-                        child: _loadingSuggestions
-                            ? const LinearProgressIndicator(minHeight: _searchProgressHeight)
-                            : null,
-                      ),
-                    ],
-                  ),
-                );
-
-                final resultRows = <Widget>[
-                  // Switched-off extensions that match are NOT here: they
-                  // answer "which activities exist", not "which reference do I
-                  // add", so they live in the Activity Types section below and
-                  // this list stays what the operator searched for.
-                  for (final suggestion in _suggestions)
-                    Builder(builder: (context) {
-                      final alreadySelected =
-                          refs.any((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']);
-                      if (suggestionHidesAsAlreadyAdded(
-                        alreadyAdded: alreadySelected,
-                        suggestionsAreSearchResults: _suggestionsAreSearchResults,
-                      )) {
-                        return const SizedBox.shrink();
-                      }
-                      final suggestionControl = controlForRefType(_controls, suggestion['type'] as String?);
-                      final suggestionLinkKey = _refLinkKey(suggestion);
-                      final suggestionLink =
-                          suggestionLinkKey == null ? null : _suggestionLinks[suggestionLinkKey];
-                      return ListTile(
-                        tileColor: _controlsUnreliable
-                            ? rowColor
-                            : (isUnknownRefType(_controls, suggestion['type'] as String?)
-                                ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
-                                : rowColor),
-                        // Only a ref with NO control is ambiguous. A partial
-                        // failure leaves the hooks that did answer perfectly
-                        // usable, and blanking their icons too overstates the
-                        // damage.
-                        leading: _controlsUnreliable && suggestionControl == null
-                            ? const Icon(MdiIcons.toyBrick)
-                            : activityRefIcon(_controls, suggestion['type'] as String?),
-                        title: Row(
-                          children: [
-                            // Not `spaceBetween` with a trailing `Spacer`: a
-                            // Spacer is a flex child, so it would split the
-                            // row's free space with the title's own `Flexible`
-                            // and cap the reference at half the width before
-                            // it had shrunk a single point. Laid out from the
-                            // start, the chips take what they need and the
-                            // reference takes the rest.
-                            Flexible(child: _activityRowTitleText(activityRowTitle(suggestionControl, suggestion))),
-                            if (_isInvalidRef(suggestion))
-                              Padding(
-                                padding: const EdgeInsets.only(left: Space.md),
-                                child: ActivityRowChip(label: t.invalidReference, unavailable: true),
-                              ),
-                            if (activityRowIsRetired(suggestion))
-                              Padding(
-                                padding: const EdgeInsets.only(left: Space.md),
-                                child: ActivityRowChip(label: t.retiredReference, unavailable: true),
-                              ),
-                            // Marked, not disabled: tapping still goes through
-                            // `_addSuggestion`, which flashes the existing
-                            // Current Activities row rather than adding a
-                            // second copy.
-                            if (alreadySelected)
-                              Padding(
-                                padding: const EdgeInsets.only(left: Space.md),
-                                child: ActivityRowChip(label: t.alreadySelected),
-                              ),
-                          ],
-                        ),
-                        subtitle: Text(activityRowDetail(suggestion) ?? ''),
-                        // Same inset as the Current Activities rows, so the
-                        // web button sits at the same distance from the edge
-                        // in both lists — clear of the scrollbar, and lined up
-                        // with the search row's location button above.
-                        contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
-                        // The distance rides in the trailing group rather than
-                        // in the title row: `trailing` is centred against the
-                        // whole two-line tile, where the title row would pin it
-                        // to the first line. It stays LEFT of the button — the
-                        // edge belongs to the same web button the Current
-                        // Activities rows end with, whichever list a reference
-                        // is being read about from.
-                        trailing: _suggestionTrailing(
-                          theme,
-                          suggestion,
-                          link: suggestionLink,
-                          control: suggestionControl,
-                        ),
-                        onTap: () => _addSuggestion(suggestion),
-                      );
-                    }),
-                ];
-
-                // The map is a sibling of the scroll area, never a sliver
-                // inside it: a platform-view-backed map backend (the GL
-                // webview/web view — see activities_results_map.dart) loses
-                // pointer events to the CustomScrollView's own drag
-                // recognizer when embedded as one of its slivers, so every
-                // tap on a marker is swallowed before the map ever sees it.
-                // OsmMapView's pure-Flutter canvas isn't affected, but
-                // routing every backend through the same sibling structure
-                // keeps this one thing true regardless of which backend a
-                // platform happens to pick.
-                if (_showResultsMap) {
-                  final currentActivityRows = _currentActivityRows(theme, rowColor);
-                  return Column(
-                    children: [
-                      if (currentActivityRows.isNotEmpty)
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxHeight: MediaQuery.textScalerOf(context).scale(_currentActivitiesMapMaxHeight),
-                          ),
-                          child: SingleChildScrollView(
-                            physics: const ClampingScrollPhysics(),
-                            child: Material(
-                              type: MaterialType.transparency,
-                              child: Column(mainAxisSize: MainAxisSize.min, children: currentActivityRows),
+                                // The slot is always there, empty when idle: showing
+                                // and hiding the bar itself would move every row under
+                                // it by its height each time a search resolved.
+                                SizedBox(
+                                  height: _searchProgressHeight,
+                                  child: _loadingSuggestions ? const LinearProgressIndicator(minHeight: _searchProgressHeight) : null,
+                                ),
+                              ],
                             ),
-                          ),
-                        ),
-                      searchBand,
-                      Expanded(
-                        child: ActivitiesResultsMap(
-                          suggestions: _suggestions,
-                          controls: _controls,
-                          refs: refs,
-                          settings: widget.services.settings,
-                          geoshapes: widget.services.geoshapes,
-                          camera: _resultsCamera,
-                          onAdd: _addSuggestion,
-                          currentLocation: currentLocation,
-                          currentLocationColor: locationColor,
-                          currentLocationIcon: locationIcon,
-                          currentLocationIconColor: onLocationColor,
-                        ),
-                      ),
-                    ],
-                  );
-                }
+                          );
 
-                // One ink layer PER ROW: a ListTile's tileColor/splash ink
-                // clips to the nearest Material's bounds, which must be the
-                // row itself for rows scrolled out of this viewport to stop
-                // painting.
-                return CustomScrollView(
-                  slivers: [
-                    SliverList(
-                      delegate: SliverChildListDelegate(
-                        _currentActivityRows(theme, rowColor),
+                          final resultRows = <Widget>[
+                            // Switched-off extensions that match are NOT here: they
+                            // answer "which activities exist", not "which reference do I
+                            // add", so they live in the Activity Types section below and
+                            // this list stays what the operator searched for.
+                            for (final suggestion in _suggestions)
+                              Builder(
+                                builder: (context) {
+                                  final alreadySelected = refs.any((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']);
+                                  if (suggestionHidesAsAlreadyAdded(alreadyAdded: alreadySelected, suggestionsAreSearchResults: _suggestionsAreSearchResults)) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  final suggestionControl = controlForRefType(_controls, suggestion['type'] as String?);
+                                  final suggestionLinkKey = _refLinkKey(suggestion);
+                                  final suggestionLink = suggestionLinkKey == null ? null : _suggestionLinks[suggestionLinkKey];
+                                  return ListTile(
+                                    tileColor: _controlsUnreliable
+                                        ? rowColor
+                                        : (isUnknownRefType(_controls, suggestion['type'] as String?)
+                                              ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
+                                              : rowColor),
+                                    // Only a ref with NO control is ambiguous. A partial
+                                    // failure leaves the hooks that did answer perfectly
+                                    // usable, and blanking their icons too overstates the
+                                    // damage.
+                                    leading: _controlsUnreliable && suggestionControl == null
+                                        ? const Icon(MdiIcons.toyBrick)
+                                        : activityRefIcon(_controls, suggestion['type'] as String?),
+                                    title: Row(
+                                      children: [
+                                        // Not `spaceBetween` with a trailing `Spacer`: a
+                                        // Spacer is a flex child, so it would split the
+                                        // row's free space with the title's own `Flexible`
+                                        // and cap the reference at half the width before
+                                        // it had shrunk a single point. Laid out from the
+                                        // start, the chips take what they need and the
+                                        // reference takes the rest.
+                                        Flexible(child: _activityRowTitleText(activityRowTitle(suggestionControl, suggestion))),
+                                        if (_isInvalidRef(suggestion))
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: Space.md),
+                                            child: ActivityRowChip(label: t.invalidReference, unavailable: true),
+                                          ),
+                                        if (activityRowIsRetired(suggestion))
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: Space.md),
+                                            child: ActivityRowChip(label: t.retiredReference, unavailable: true),
+                                          ),
+                                        // Marked, not disabled: tapping still goes through
+                                        // `_addSuggestion`, which flashes the existing
+                                        // Current Activities row rather than adding a
+                                        // second copy.
+                                        if (alreadySelected)
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: Space.md),
+                                            child: ActivityRowChip(label: t.alreadySelected),
+                                          ),
+                                      ],
+                                    ),
+                                    subtitle: Text(activityRowDetail(suggestion) ?? ''),
+                                    // Same inset as the Current Activities rows, so the
+                                    // web button sits at the same distance from the edge
+                                    // in both lists — clear of the scrollbar, and lined up
+                                    // with the search row's location button above.
+                                    contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
+                                    // The distance rides in the trailing group rather than
+                                    // in the title row: `trailing` is centred against the
+                                    // whole two-line tile, where the title row would pin it
+                                    // to the first line. It stays LEFT of the button — the
+                                    // edge belongs to the same web button the Current
+                                    // Activities rows end with, whichever list a reference
+                                    // is being read about from.
+                                    trailing: _suggestionTrailing(theme, suggestion, link: suggestionLink, control: suggestionControl),
+                                    onTap: () => _addSuggestion(suggestion),
+                                  );
+                                },
+                              ),
+                          ];
+
+                          // The map is a sibling of the scroll area, never a sliver
+                          // inside it: a platform-view-backed map backend (the GL
+                          // webview/web view — see activities_results_map.dart) loses
+                          // pointer events to the CustomScrollView's own drag
+                          // recognizer when embedded as one of its slivers, so every
+                          // tap on a marker is swallowed before the map ever sees it.
+                          // OsmMapView's pure-Flutter canvas isn't affected, but
+                          // routing every backend through the same sibling structure
+                          // keeps this one thing true regardless of which backend a
+                          // platform happens to pick.
+                          if (_showResultsMap) {
+                            final currentActivityRows = _currentActivityRows(theme, rowColor);
+                            return Column(
+                              children: [
+                                if (currentActivityRows.isNotEmpty)
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints(maxHeight: MediaQuery.textScalerOf(context).scale(_currentActivitiesMapMaxHeight)),
+                                    child: SingleChildScrollView(
+                                      physics: const ClampingScrollPhysics(),
+                                      child: Material(
+                                        type: MaterialType.transparency,
+                                        child: Column(mainAxisSize: MainAxisSize.min, children: currentActivityRows),
+                                      ),
+                                    ),
+                                  ),
+                                searchBand,
+                                Expanded(
+                                  child: ActivitiesResultsMap(
+                                    suggestions: _suggestions,
+                                    controls: _controls,
+                                    refs: refs,
+                                    settings: widget.services.settings,
+                                    geoshapes: widget.services.geoshapes,
+                                    camera: _resultsCamera,
+                                    onAdd: _addSuggestion,
+                                    currentLocation: currentLocation,
+                                    currentLocationColor: locationColor,
+                                    currentLocationIcon: locationIcon,
+                                    currentLocationIconColor: onLocationColor,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+
+                          // One ink layer PER ROW: a ListTile's tileColor/splash ink
+                          // clips to the nearest Material's bounds, which must be the
+                          // row itself for rows scrolled out of this viewport to stop
+                          // painting.
+                          return CustomScrollView(
+                            slivers: [
+                              SliverList(delegate: SliverChildListDelegate(_currentActivityRows(theme, rowColor))),
+                              // The band pins below the sheet's header once the
+                              // activity rows above it scroll away; the results keep
+                              // scrolling underneath it.
+                              SliverPersistentHeader(
+                                pinned: true,
+                                delegate: _PinnedSearchBand(
+                                  height: MediaQuery.textScalerOf(context).scale(_searchBandHeight) + _searchProgressHeight,
+                                  child: searchBand,
+                                ),
+                              ),
+                              SliverList(
+                                delegate: SliverChildListDelegate([
+                                  if (resultRows.isEmpty && !_loadingSuggestions)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.md),
+                                      child: _suggestionsEmptyContent(theme),
+                                    )
+                                  else
+                                    for (final row in resultRows) Material(type: MaterialType.transparency, child: row),
+                                ]),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
-                    // The band pins below the sheet's header once the
-                    // activity rows above it scroll away; the results keep
-                    // scrolling underneath it.
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _PinnedSearchBand(
-                        height: MediaQuery.textScalerOf(context).scale(_searchBandHeight) +
-                            _searchProgressHeight,
-                        child: searchBand,
+                    AccordionSection(
+                      title: Padding(
+                        padding: const EdgeInsets.only(right: Space.xl),
+                        child: Text(
+                          _allOptionsTitle(context.t),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(color: onAccordionColor, fontWeight: FontWeight.w600),
+                        ),
                       ),
-                    ),
-                    SliverList(
-                      delegate: SliverChildListDelegate([
-                        if (resultRows.isEmpty && !_loadingSuggestions)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: Space.xl, vertical: Space.md),
-                            child: _suggestionsEmptyContent(theme),
-                          )
-                        else
-                          for (final row in resultRows) Material(type: MaterialType.transparency, child: row),
-                      ]),
+                      expanded: _allOptionsExpanded,
+                      onToggle: () {
+                        setState(() {
+                          if (_allOptionsExpanded) {
+                            _allOptionsExpanded = false;
+                            widget.services.settings.prefs.setBool('activitiesAllOptionsHidden', true);
+                          } else {
+                            _allOptionsExpanded = true;
+                            _allOptionsFullyOpened = true;
+                            widget.services.settings.prefs.setBool('activitiesAllOptionsHidden', false);
+                          }
+                        });
+                      },
+                      headerColor: accordionColor,
+                      onHeaderColor: onAccordionColor,
+                      trailing: TextButton.icon(
+                        onPressed: () async {
+                          await showModalPane<void>(
+                            context,
+                            title: t.manageExtensions,
+                            closeLabel: context.t.common.close,
+                            // The list scrolls; the footer stays pinned under it and its
+                            // Done is the way out — so no X in the header (see
+                            // haloDialogFooterBand).
+                            scrollable: false,
+                            closeButton: false,
+                            builder: (_) => ExtensionsPanel(services: widget.services, footer: true),
+                          );
+                          if (mounted) {
+                            _debounce?.cancel();
+                            await _loadControls();
+                            unawaited(_search(_searchController.text));
+                          }
+                        },
+                        icon: Icon(MdiIcons.toyBrick, size: 18, color: onAccordionColor),
+                        label: Text(t.manage, style: TextStyle(color: onAccordionColor)),
+                        style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: Space.lg)),
+                      ),
+                      child: () {
+                        final allOptionsContent = Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // FIRST in the section, because this is the one row that
+                            // answers the search the operator just typed. The section
+                            // grows to hold these ([_optionsPeekHeightFor]) but is
+                            // bounded by the results list's own claim, so on a short
+                            // window they are the rows that have to fit; below the
+                            // loaded types they would be the rows that get cut.
+                            for (final info in _disabledMatches) _enableExtensionRow(theme, info, hint: t.enableExtensionHint, scopeSearch: true),
+                            // Next, and for the same reason: the remedy for a red
+                            // "unknown" row in Current Activities.
+                            for (final info in _unhandledRefMatches) _enableExtensionRow(theme, info, hint: t.enableExtensionForRefHint, scopeSearch: false),
+                            // Last of the three tiers, and last for a reason: what the
+                            // app already has is always the cheaper answer, so an
+                            // install is offered only under the rows that need no
+                            // download at all.
+                            for (final entry in [..._catalogTier.matches, ..._catalogTier.refMatches])
+                              InstallExtensionRow(entry: entry, onTap: () => unawaited(_installCatalogExtension(entry))),
+                            for (final control in _controls)
+                              if ((control['input'] as Map?)?['kind'] == 'refList' || (control['input'] as Map?)?['kind'] == 'form')
+                                ListTile(
+                                  tileColor: rowColor,
+                                  leading: _accentIcon(control['icon'] as String?, resolveExtensionColor(control['color'] as String?)),
+                                  title: Text((control['label'] as String?) ?? ''),
+                                  onTap: () => _scopeSearchTo(control),
+                                ),
+                          ],
+                        );
+                        return _allOptionsFullyOpened
+                            // Bounded and scrollable even when opened: this list holds
+                            // every loaded type AND every enable row a search turns up,
+                            // and as an unbounded Column beside the results list it
+                            // squeezes them out from under the operator as they type.
+                            // That failure is a RenderFlex overflow, which ErrorPolicy
+                            // treats as `logOnly` — release builds clip it silently, so
+                            // nothing would ever report it.
+                            ? ConstrainedBox(
+                                constraints: BoxConstraints(maxHeight: optionsMaxHeight),
+                                child: SingleChildScrollView(
+                                  physics: const ClampingScrollPhysics(),
+                                  // Same ink-clipping reason as the peeking branch below.
+                                  child: Material(type: MaterialType.transparency, child: allOptionsContent),
+                                ),
+                              )
+                            : SizedBox(
+                                height: optionsPeekHeight,
+                                child: SingleChildScrollView(
+                                  physics: const ClampingScrollPhysics(),
+                                  // Its own ink layer, INSIDE the scroll view, so the
+                                  // viewport clips it along with the rows. A ListTile
+                                  // paints `tileColor` with `Ink`, onto the nearest
+                                  // ancestor Material — without this that's the
+                                  // sheet's root, above this scroll view, and ink is
+                                  // clipped to that Material's bounds rather than to
+                                  // the viewport in between, so
+                                  // rows scrolled out of this peeking window would still
+                                  // paint their backgrounds over the sections above.
+                                  // MaterialType.transparency: an ink layer, no
+                                  // surface of its own.
+                                  child: Material(type: MaterialType.transparency, child: allOptionsContent),
+                                ),
+                              );
+                      }(),
                     ),
                   ],
                 );
               },
             ),
-          ),
-          AccordionSection(
-            title: Padding(
-              padding: const EdgeInsets.only(right: Space.xl),
-              child: Text(
-                _allOptionsTitle(context.t),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium?.copyWith(color: onAccordionColor, fontWeight: FontWeight.w600),
-              ),
-            ),
-            expanded: _allOptionsExpanded,
-            onToggle: () {
-              setState(() {
-                if (_allOptionsExpanded) {
-                  _allOptionsExpanded = false;
-                  widget.services.settings.prefs.setBool('activitiesAllOptionsHidden', true);
-                } else {
-                  _allOptionsExpanded = true;
-                  _allOptionsFullyOpened = true;
-                  widget.services.settings.prefs.setBool('activitiesAllOptionsHidden', false);
-                }
-              });
-            },
-            headerColor: accordionColor,
-            onHeaderColor: onAccordionColor,
-            trailing: TextButton.icon(
-              onPressed: () async {
-                await showModalPane<void>(
-                  context,
-                  title: t.manageExtensions,
-                  closeLabel: context.t.common.close,
-                  // The list scrolls; the footer stays pinned under it and its
-                  // Done is the way out — so no X in the header (see
-                  // haloDialogFooterBand).
-                  scrollable: false,
-                  closeButton: false,
-                  builder: (_) => ExtensionsPanel(services: widget.services, footer: true),
-                );
-                if (mounted) {
-                  _debounce?.cancel();
-                  await _loadControls();
-                  unawaited(_search(_searchController.text));
-                }
-              },
-              icon: Icon(MdiIcons.toyBrick, size: 18, color: onAccordionColor),
-              label: Text(
-                t.manage,
-                style: TextStyle(color: onAccordionColor),
-              ),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: Space.lg),
-              ),
-            ),
-            child: () {
-              final allOptionsContent = Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // FIRST in the section, because this is the one row that
-                  // answers the search the operator just typed. The section
-                  // grows to hold these ([_optionsPeekHeightFor]) but is
-                  // bounded by the results list's own claim, so on a short
-                  // window they are the rows that have to fit; below the
-                  // loaded types they would be the rows that get cut.
-                  for (final info in _disabledMatches)
-                    _enableExtensionRow(theme, info, hint: t.enableExtensionHint, scopeSearch: true),
-                  // Next, and for the same reason: the remedy for a red
-                  // "unknown" row in Current Activities.
-                  for (final info in _unhandledRefMatches)
-                    _enableExtensionRow(theme, info, hint: t.enableExtensionForRefHint, scopeSearch: false),
-                  // Last of the three tiers, and last for a reason: what the
-                  // app already has is always the cheaper answer, so an
-                  // install is offered only under the rows that need no
-                  // download at all.
-                  for (final entry in [..._catalogTier.matches, ..._catalogTier.refMatches])
-                    InstallExtensionRow(entry: entry, onTap: () => unawaited(_installCatalogExtension(entry))),
-                  for (final control in _controls)
-                    if ((control['input'] as Map?)?['kind'] == 'refList' ||
-                        (control['input'] as Map?)?['kind'] == 'form')
-                      ListTile(
-                        tileColor: rowColor,
-                        leading: _accentIcon(control['icon'] as String?, resolveExtensionColor(control['color'] as String?)),
-                        title: Text((control['label'] as String?) ?? ''),
-                        onTap: () => _scopeSearchTo(control),
-                      ),
-                ],
-              );
-              return _allOptionsFullyOpened
-                  // Bounded and scrollable even when opened: this list holds
-                  // every loaded type AND every enable row a search turns up,
-                  // and as an unbounded Column beside the results list it
-                  // squeezes them out from under the operator as they type.
-                  // That failure is a RenderFlex overflow, which ErrorPolicy
-                  // treats as `logOnly` — release builds clip it silently, so
-                  // nothing would ever report it.
-                  ? ConstrainedBox(
-                      constraints: BoxConstraints(maxHeight: optionsMaxHeight),
-                      child: SingleChildScrollView(
-                        physics: const ClampingScrollPhysics(),
-                        // Same ink-clipping reason as the peeking branch below.
-                        child: Material(type: MaterialType.transparency, child: allOptionsContent),
-                      ),
-                    )
-                  : SizedBox(
-                      height: optionsPeekHeight,
-                      child: SingleChildScrollView(
-                        physics: const ClampingScrollPhysics(),
-                        // Its own ink layer, INSIDE the scroll view, so the
-                        // viewport clips it along with the rows. A ListTile
-                        // paints `tileColor` with `Ink`, onto the nearest
-                        // ancestor Material — without this that's the
-                        // sheet's root, above this scroll view, and ink is
-                        // clipped to that Material's bounds rather than to
-                        // the viewport in between, so
-                        // rows scrolled out of this peeking window would still
-                        // paint their backgrounds over the sections above.
-                        // MaterialType.transparency: an ink layer, no
-                        // surface of its own.
-                        child: Material(
-                          type: MaterialType.transparency,
-                          child: allOptionsContent,
-                        ),
-                      ),
-                    );
-            }(),
-          ),
-              ]);
-            }),
           ),
         ],
       ),
@@ -3040,15 +2834,8 @@ class ActivityRowChip extends StatelessWidget {
     final scheme = theme.colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xxs),
-      decoration: BoxDecoration(
-        color: unavailable ? scheme.errorContainer : scheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelSmall
-            ?.copyWith(color: unavailable ? scheme.onErrorContainer : scheme.onSecondaryContainer),
-      ),
+      decoration: BoxDecoration(color: unavailable ? scheme.errorContainer : scheme.secondaryContainer, borderRadius: BorderRadius.circular(10)),
+      child: Text(label, style: theme.textTheme.labelSmall?.copyWith(color: unavailable ? scheme.onErrorContainer : scheme.onSecondaryContainer)),
     );
   }
 }
@@ -3112,10 +2899,7 @@ class _PulsingGpsPinState extends State<_PulsingGpsPin> with SingleTickerProvide
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: _pulsePeriod,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: _pulsePeriod, vsync: this);
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
 
     final isTest = !kIsWeb && io.Platform.environment.containsKey('FLUTTER_TEST');

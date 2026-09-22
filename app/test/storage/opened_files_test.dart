@@ -18,13 +18,11 @@ void main() {
   const channel = MethodChannel('ham2k/open_file');
 
   /// Invokes the channel the way AppDelegate does.
-  Future<void> nativeOpens(List<String> paths) => TestDefaultBinaryMessengerBinding
-      .instance.defaultBinaryMessenger
-      .handlePlatformMessage(
-        channel.name,
-        const StandardMethodCodec().encodeMethodCall(MethodCall('openFiles', {'paths': paths})),
-        (_) {},
-      );
+  Future<void> nativeOpens(List<String> paths) => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+    channel.name,
+    const StandardMethodCodec().encodeMethodCall(MethodCall('openFiles', {'paths': paths})),
+    (_) {},
+  );
 
   test('a path the native side sends arrives on the stream', () async {
     final service = OpenedFilesService();

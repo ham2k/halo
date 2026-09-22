@@ -82,14 +82,16 @@ void main() {
     expect(
       post.substring(0, post.indexOf('\n    }')),
       contains('if (!accepting_)'),
-      reason: 'work queued after Shutdown() would run against a half-destroyed '
+      reason:
+          'work queued after Shutdown() would run against a half-destroyed '
           'plugin',
     );
     final handle = source.substring(source.indexOf('HandleWindowMessage(\n'));
     expect(
       handle,
       contains('if (!accepting_)'),
-      reason: 'a window message already posted before Shutdown() still arrives '
+      reason:
+          'a window message already posted before Shutdown() still arrives '
           'afterwards; the drain has to refuse it too',
     );
   });
@@ -108,13 +110,15 @@ void main() {
     expect(
       body,
       contains('if (!accepting_)'),
-      reason: 'without the early return, teardown double-unregisters the '
+      reason:
+          'without the early return, teardown double-unregisters the '
           'delegate on every single shutdown',
     );
     expect(
       body.indexOf('accepting_ = false'),
       lessThan(body.indexOf('UnregisterTopLevelWindowProcDelegate')),
-      reason: 'clearing the flag after the unregister leaves a window where '
+      reason:
+          'clearing the flag after the unregister leaves a window where '
           'the delegate is gone but the queue still accepts work',
     );
   });
@@ -132,7 +136,8 @@ void main() {
     expect(
       body.indexOf('ui_thread_handler_.Shutdown()'),
       lessThan(body.indexOf('ClearServices()')),
-      reason: 'shutting the hop down after the services are cleared leaves '
+      reason:
+          'shutting the hop down after the services are cleared leaves '
           'exactly the window the crash arrives through',
     );
   });
@@ -146,7 +151,8 @@ void main() {
     expect(
       source,
       contains('std::atomic<HWND> hwnd_'),
-      reason: 'a plain HWND here is a data race between the UI thread and '
+      reason:
+          'a plain HWND here is a data race between the UI thread and '
           'every Post() caller',
     );
   });
@@ -156,14 +162,16 @@ void main() {
     expect(
       source,
       contains(r'target_compile_options(${PLUGIN_NAME} PRIVATE $<$<CONFIG:Release>:/Zi>)'),
-      reason: 'without a PDB a crash inside this plugin resolves in Sentry to '
+      reason:
+          'without a PDB a crash inside this plugin resolves in Sentry to '
           'the nearest exported symbol only — which is how HALO-290 spent '
           'three rounds attributing these frames to MSVCP140',
     );
     expect(
       source,
       contains(r'target_link_options(${PLUGIN_NAME} PRIVATE $<$<CONFIG:Release>:/DEBUG>)'),
-      reason: 'MSVC emits the linked PDB only with the linker\'s /DEBUG — /Zi '
+      reason:
+          'MSVC emits the linked PDB only with the linker\'s /DEBUG — /Zi '
           'alone leaves compiler-side PDBs the release pipeline never uploads, '
           'so dropping just this line defeats the hunk while the /Zi check '
           'above stays green',

@@ -115,10 +115,7 @@ class MapReadyWatchdog {
     // backend titles and GROUPS the issue by, so a number in it would split
     // one finding into an issue per session — which is exactly what the
     // per-tile map errors already do.
-    MapErrorReporter.report(
-        backend: 'webview',
-        kind: 'ready-late',
-        message: 'the map page reported ready only after the pane gave up on it');
+    MapErrorReporter.report(backend: 'webview', kind: 'ready-late', message: 'the map page reported ready only after the pane gave up on it');
   }
 
   void dispose() {
@@ -143,8 +140,7 @@ class MapReadyWatchdog {
     _giveUpTimer = Timer(remaining.isNegative ? Duration.zero : remaining, () {
       if (_ready || _disposed || _reported) return;
       _reported = true;
-      MapErrorReporter.report(
-          backend: 'webview', kind: 'never-ready', message: 'the map page never reported ready');
+      MapErrorReporter.report(backend: 'webview', kind: 'never-ready', message: 'the map page never reported ready');
     });
   }
 

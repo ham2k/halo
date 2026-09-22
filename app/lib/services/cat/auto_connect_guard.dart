@@ -34,8 +34,7 @@ const autoConnectInFlightKey = 'cat:autoConnectInFlight';
 /// Read ONCE per launch, before this process writes any mark of its own — see
 /// [CatService.autoConnectHeldNodes]. Read live, it would answer "held" for a
 /// connect that is merely in progress right now.
-List<String> autoConnectMarks(SharedPreferences prefs) =>
-    prefs.getStringList(autoConnectInFlightKey) ?? const [];
+List<String> autoConnectMarks(SharedPreferences prefs) => prefs.getStringList(autoConnectInFlightKey) ?? const [];
 
 /// Awaited by every caller, unlike most preference writes: a mark still
 /// sitting in a buffer when the open wedges is not a mark at all.

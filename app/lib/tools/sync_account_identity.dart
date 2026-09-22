@@ -34,9 +34,7 @@ String syncAccountLabel(Object? accountData) {
 
   final pending = _pendingEmail(account);
   if (pending != null) {
-    return id == null
-        ? t.syncAccount.pendingConfirmation(email: pending)
-        : t.syncAccount.pendingConfirmationWithId(email: pending, id: id);
+    return id == null ? t.syncAccount.pendingConfirmation(email: pending) : t.syncAccount.pendingConfirmationWithId(email: pending, id: id);
   }
 
   final email = _field(account, 'email');

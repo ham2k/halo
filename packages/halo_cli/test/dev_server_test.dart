@@ -22,13 +22,15 @@ void main() {
   Directory builtBundles() {
     final dir = Directory.systemTemp.createTempSync('halo-bundles');
     addTearDown(() => dir.deleteSync(recursive: true));
-    File('${dir.path}/index.json').writeAsStringSync(jsonEncode({
-      'kernel': 'kernel.js',
-      'extensions': [
-        {'key': 'pota', 'file': 'pota.js', 'core': false, 'name': 'Parks on the Air'},
-        {'key': 'sota', 'file': 'sota.js', 'core': false, 'name': 'Summits on the Air'},
-      ],
-    }));
+    File('${dir.path}/index.json').writeAsStringSync(
+      jsonEncode({
+        'kernel': 'kernel.js',
+        'extensions': [
+          {'key': 'pota', 'file': 'pota.js', 'core': false, 'name': 'Parks on the Air'},
+          {'key': 'sota', 'file': 'sota.js', 'core': false, 'name': 'Summits on the Air'},
+        ],
+      }),
+    );
     File('${dir.path}/kernel.js').writeAsStringSync('/* built kernel */');
     File('${dir.path}/pota.js').writeAsStringSync('/* built pota */');
     File('${dir.path}/sota.js').writeAsStringSync('/* built sota */');
@@ -41,16 +43,15 @@ void main() {
     List<Map<String, dynamic>> extensions = const [
       {'key': 'pota', 'file': 'pota.js', 'core': false, 'name': 'Parks on the Air'},
     ],
-  }) =>
-      MockClient((request) async {
-        final path = request.url.path;
-        if (path.endsWith('/ping')) {
-          return http.Response(jsonEncode({'server': server, 'protocol': protocol}), 200);
-        }
-        if (path.endsWith('/index.json')) return http.Response(jsonEncode({'extensions': extensions}), 200);
-        if (path.endsWith('.js')) return http.Response('/* dev ${path.split('/').last} */', 200);
-        return http.Response('not found', 404);
-      });
+  }) => MockClient((request) async {
+    final path = request.url.path;
+    if (path.endsWith('/ping')) {
+      return http.Response(jsonEncode({'server': server, 'protocol': protocol}), 200);
+    }
+    if (path.endsWith('/index.json')) return http.Response(jsonEncode({'extensions': extensions}), 200);
+    if (path.endsWith('.js')) return http.Response('/* dev ${path.split('/').last} */', 200);
+    return http.Response('not found', 404);
+  });
 
   test('a dev-served extension replaces the built one', () async {
     final index = BundleIndex.load(dir: builtBundles());
@@ -93,9 +94,11 @@ void main() {
 
     await index.overlayDevServer(
       Uri.parse('http://host:8787/'),
-      httpClient: devServer(extensions: const [
-        {'key': 'brandnew', 'file': 'brandnew.js', 'core': false, 'name': 'Brand New'},
-      ]),
+      httpClient: devServer(
+        extensions: const [
+          {'key': 'brandnew', 'file': 'brandnew.js', 'core': false, 'name': 'Brand New'},
+        ],
+      ),
     );
 
     final fresh = index.extensions.firstWhere((e) => e.key == 'brandnew');
@@ -106,14 +109,10 @@ void main() {
   });
 
   group('what it refuses', () {
-    Future<void> overlay(MockClient client) =>
-        BundleIndex.load(dir: builtBundles()).overlayDevServer(Uri.parse('http://host:8787/'), httpClient: client);
+    Future<void> overlay(MockClient client) => BundleIndex.load(dir: builtBundles()).overlayDevServer(Uri.parse('http://host:8787/'), httpClient: client);
 
     test('a server that is not a dev server', () {
-      expect(
-        () => overlay(MockClient((_) async => http.Response('<html>hi</html>', 200))),
-        throwsA(isA<DevServerUnreachable>()),
-      );
+      expect(() => overlay(MockClient((_) async => http.Response('<html>hi</html>', 200))), throwsA(isA<DevServerUnreachable>()));
     });
 
     test('a protocol this build does not speak', () {
@@ -121,10 +120,7 @@ void main() {
     });
 
     test('nothing listening', () {
-      expect(
-        () => overlay(MockClient((_) async => throw http.ClientException('connection refused'))),
-        throwsA(isA<DevServerUnreachable>()),
-      );
+      expect(() => overlay(MockClient((_) async => throw http.ClientException('connection refused'))), throwsA(isA<DevServerUnreachable>()));
     });
   });
 

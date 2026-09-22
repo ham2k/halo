@@ -49,23 +49,14 @@ Future<HaLoServices> _boot(WidgetTester tester, {double height = 900}) async {
 /// `sendKeyEvent` cannot find one and asserts; the event has to be built
 /// naming the unshifted key it actually rides on, exactly as
 /// font_scale_test.dart does.
-Future<void> _chord(
-  WidgetTester tester,
-  LogicalKeyboardKey key, {
-  bool shift = false,
-  PhysicalKeyboardKey? on,
-}) async {
+Future<void> _chord(WidgetTester tester, LogicalKeyboardKey key, {bool shift = false, PhysicalKeyboardKey? on}) async {
   await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
   if (shift) await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
   if (on == null) {
     await tester.sendKeyEvent(key);
   } else {
-    HardwareKeyboard.instance.handleKeyEvent(
-      KeyDownEvent(physicalKey: on, logicalKey: key, timeStamp: Duration.zero),
-    );
-    HardwareKeyboard.instance.handleKeyEvent(
-      KeyUpEvent(physicalKey: on, logicalKey: key, timeStamp: Duration.zero),
-    );
+    HardwareKeyboard.instance.handleKeyEvent(KeyDownEvent(physicalKey: on, logicalKey: key, timeStamp: Duration.zero));
+    HardwareKeyboard.instance.handleKeyEvent(KeyUpEvent(physicalKey: on, logicalKey: key, timeStamp: Duration.zero));
   }
   if (shift) await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
   await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
@@ -95,12 +86,7 @@ void main() {
     await _chord(tester, LogicalKeyboardKey.minus, shift: true);
     expect(settings.densityPreference, DensityPreference.densest);
 
-    for (final expected in [
-      DensityPreference.dense,
-      DensityPreference.normal,
-      DensityPreference.sparse,
-      DensityPreference.sparsest,
-    ]) {
+    for (final expected in [DensityPreference.dense, DensityPreference.normal, DensityPreference.sparse, DensityPreference.sparsest]) {
       await _chord(tester, LogicalKeyboardKey.equal, shift: true);
       expect(settings.densityPreference, expected, reason: 'one rung per press, all the way up');
     }
@@ -180,11 +166,7 @@ void main() {
       await _chord(tester, LogicalKeyboardKey.equal, shift: true);
       reached.add(settings.densityPreference.resolve(900));
     }
-    expect(
-      reached,
-      LayoutDensity.values.toSet(),
-      reason: 'every rung must be reachable by keyboard on an ordinary window',
-    );
+    expect(reached, LayoutDensity.values.toSet(), reason: 'every rung must be reachable by keyboard on an ordinary window');
 
     await _drain(tester);
   });
@@ -200,18 +182,10 @@ void main() {
     final services = await _boot(tester, height: 500);
     final settings = services.settings;
 
-    for (final expected in [
-      DensityPreference.normal,
-      DensityPreference.sparse,
-      DensityPreference.sparsest,
-    ]) {
+    for (final expected in [DensityPreference.normal, DensityPreference.sparse, DensityPreference.sparsest]) {
       await _chord(tester, LogicalKeyboardKey.equal, shift: true);
       expect(settings.densityPreference, expected, reason: 'the setting must keep moving while clamped');
-      expect(
-        settings.densityPreference.resolve(500),
-        LayoutDensity.dense,
-        reason: 'while the screen stays put',
-      );
+      expect(settings.densityPreference.resolve(500), LayoutDensity.dense, reason: 'while the screen stays put');
     }
 
     // Grow the window past the clamp: the pick that was stored all along is
@@ -234,11 +208,7 @@ void main() {
 
     final item = services.statusBar.items.where((i) => i.key == 'layoutDensity').firstOrNull;
     expect(item, isNotNull);
-    expect(
-      item!.text,
-      contains('too short'),
-      reason: 'the operator must be told the pick was stored but not applied',
-    );
+    expect(item!.text, contains('too short'), reason: 'the operator must be told the pick was stored but not applied');
 
     await _drain(tester);
   });

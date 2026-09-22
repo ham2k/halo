@@ -48,8 +48,7 @@ Future<void> _loadGl() async {
   await preloadMapGlLibrary();
   head.append(web.HTMLStyleElement()..textContent = mapGlLibraryCss);
   // Popup styling the webview backend gets from its own page's <style>.
-  head.append(web.HTMLStyleElement()
-    ..textContent = '.maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }');
+  head.append(web.HTMLStyleElement()..textContent = '.maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }');
 
   head.append(web.HTMLScriptElement()..textContent = mapGlLibrarySource);
   head.append(web.HTMLScriptElement()..textContent = mapGlScript);
@@ -77,17 +76,18 @@ class MapboxWebMapView extends StatefulWidget {
   /// map, which keeps its own popup.
   final ValueChanged<String>? onMarkerTap;
 
-  const MapboxWebMapView(
-      {super.key,
-      required this.markers,
-      this.lines = const [],
-      this.shapes = const [],
-      required this.projection,
-      required this.isDark,
-      required this.styleUrl,
-      required this.styleUrlDark,
-      this.zoomController,
-      this.onMarkerTap});
+  const MapboxWebMapView({
+    super.key,
+    required this.markers,
+    this.lines = const [],
+    this.shapes = const [],
+    required this.projection,
+    required this.isDark,
+    required this.styleUrl,
+    required this.styleUrlDark,
+    this.zoomController,
+    this.onMarkerTap,
+  });
 
   @override
   State<MapboxWebMapView> createState() => _MapboxWebMapViewState();
@@ -237,20 +237,19 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     _handle?.callMethod('setShapesJson'.toJS, jsonEncode(mapShapesPayload(widget.shapes)).toJS);
   }
 
-  void _moveTo(double latitude, double longitude, double zoom) =>
-      _handle?.callMethod('moveTo'.toJS, latitude.toJS, longitude.toJS, zoom.toJS);
+  void _moveTo(double latitude, double longitude, double zoom) => _handle?.callMethod('moveTo'.toJS, latitude.toJS, longitude.toJS, zoom.toJS);
 
   void _zoomIn() => _handle?.callMethod('zoomIn'.toJS);
   void _zoomOut() => _handle?.callMethod('zoomOut'.toJS);
 
   @override
   void dispose() {
-      // Identity-guarded, never a blind null: when the facade swaps backends
-      // (a webview probe answering, so OsmMapView gives way to the GL view),
-      // Flutter runs the incoming State's initState during the build and this
-      // dispose afterwards — so clearing unconditionally would wipe the
-      // handlers the live backend has just installed and leave the camera
-      // inert for the rest of the session.
+    // Identity-guarded, never a blind null: when the facade swaps backends
+    // (a webview probe answering, so OsmMapView gives way to the GL view),
+    // Flutter runs the incoming State's initState during the build and this
+    // dispose afterwards — so clearing unconditionally would wipe the
+    // handlers the live backend has just installed and leave the camera
+    // inert for the rest of the session.
     final controller = widget.zoomController;
     if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
     if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
@@ -262,9 +261,9 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
 
   @override
   Widget build(BuildContext context) => Stack(
-        children: [
-          Positioned.fill(child: HtmlElementView(viewType: _viewType)),
-          if (_unavailable) const Positioned.fill(child: MapUnavailableState()),
-        ],
-      );
+    children: [
+      Positioned.fill(child: HtmlElementView(viewType: _viewType)),
+      if (_unavailable) const Positioned.fill(child: MapUnavailableState()),
+    ],
+  );
 }

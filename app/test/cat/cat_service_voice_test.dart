@@ -30,11 +30,7 @@ void main() {
   });
 
   Future<EquipmentNode> connectPlaceholder(String name) async {
-    final node = await services.cat.addNode(
-      typeKey: 'placeholder-radio',
-      name: name,
-      config: placeholderRadioModel.variants.single.defaultConfig,
-    );
+    final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);
     await services.cat.connect(node.uuid);
     addTearDown(() => services.cat.disconnect(node.uuid));
     return node;

@@ -15,50 +15,14 @@ void main() {
     'title': 'Test Form',
     'subtitle': 'A form to verify fields',
     'elements': [
-      {
-        'type': 'header',
-        'title': 'My Header',
-        'subtitle': 'My Subtitle',
-      },
-      {
-        'type': 'divider',
-        'title': 'My Divider',
-      },
-      {
-        'type': 'markdown',
-        'text': 'This is **bold** text',
-      },
-      {
-        'type': 'field',
-        'fieldType': 'text',
-        'key': 'name',
-        'label': 'Name Field',
-        'placeholder': 'Enter name',
-      },
-      {
-        'type': 'field',
-        'fieldType': 'multiline',
-        'key': 'bio',
-        'label': 'Bio Field',
-      },
-      {
-        'type': 'field',
-        'fieldType': 'email',
-        'key': 'email',
-        'label': 'Email Field',
-      },
-      {
-        'type': 'field',
-        'fieldType': 'callsign',
-        'key': 'callsign',
-        'label': 'Callsign Field',
-      },
-      {
-        'type': 'field',
-        'fieldType': 'number',
-        'key': 'power',
-        'label': 'Power Field',
-      },
+      {'type': 'header', 'title': 'My Header', 'subtitle': 'My Subtitle'},
+      {'type': 'divider', 'title': 'My Divider'},
+      {'type': 'markdown', 'text': 'This is **bold** text'},
+      {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name Field', 'placeholder': 'Enter name'},
+      {'type': 'field', 'fieldType': 'multiline', 'key': 'bio', 'label': 'Bio Field'},
+      {'type': 'field', 'fieldType': 'email', 'key': 'email', 'label': 'Email Field'},
+      {'type': 'field', 'fieldType': 'callsign', 'key': 'callsign', 'label': 'Callsign Field'},
+      {'type': 'field', 'fieldType': 'number', 'key': 'power', 'label': 'Power Field'},
       {
         'type': 'field',
         'fieldType': 'select',
@@ -79,34 +43,26 @@ void main() {
           {'label': 'CW', 'value': 'cw'},
         ],
       },
-      {
-        'type': 'field',
-        'fieldType': 'checkbox',
-        'key': 'agree',
-        'label': 'Agree Field',
-      },
+      {'type': 'field', 'fieldType': 'checkbox', 'key': 'agree', 'label': 'Agree Field'},
     ],
   };
 
   group('FormRenderer', () {
     testWidgets('renders all element types', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: FormRenderer(
-              formDefinition: formDefinition,
-              initialState: const {
-                'name': 'Initial Name',
-                'license': 'tech',
-                'pref': 'cw',
-                'agree': true,
-              },
-              onSubmit: (_) {},
-              onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: FormRenderer(
+                formDefinition: formDefinition,
+                initialState: const {'name': 'Initial Name', 'license': 'tech', 'pref': 'cw', 'agree': true},
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       // Verify Title & Subtitle
       expect(find.text('Test Form'), findsOneWidget);
@@ -142,34 +98,36 @@ void main() {
     // somewhere the operator cannot see while the pane is open.
     testWidgets('a disabled select refuses to open', (tester) async {
       var changed = false;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'select',
-                  'key': 'port',
-                  'label': 'Port A',
-                  'disabled': true,
-                  'options': [
-                    {'value': '1', 'label': 'Hex'},
-                    {'value': '2', 'label': 'EFHW'},
-                  ],
-                },
-              ],
-            },
-            initialState: const {'port': '1'},
-            onChange: (key, value, state) async {
-              changed = true;
-              return null;
-            },
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'select',
+                    'key': 'port',
+                    'label': 'Port A',
+                    'disabled': true,
+                    'options': [
+                      {'value': '1', 'label': 'Hex'},
+                      {'value': '2', 'label': 'EFHW'},
+                    ],
+                  },
+                ],
+              },
+              initialState: const {'port': '1'},
+              onChange: (key, value, state) async {
+                changed = true;
+                return null;
+              },
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       expect(find.text('Hex'), findsOneWidget, reason: 'greyed, not hidden');
       await tester.tap(find.byType(DropdownButtonFormField<dynamic>));
@@ -199,22 +157,24 @@ void main() {
 
     testWidgets('arrow keys cycle a focused select field through its options', (tester) async {
       Map<String, dynamic>? changedTo;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: FormRenderer(
-              formDefinition: formDefinition,
-              initialState: const {'license': 'tech'},
-              onChange: (key, value, state) async {
-                if (key == 'license') changedTo = {'value': value};
-                return null;
-              },
-              onSubmit: (_) {},
-              onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: FormRenderer(
+                formDefinition: formDefinition,
+                initialState: const {'license': 'tech'},
+                onChange: (key, value, state) async {
+                  if (key == 'license') changedTo = {'value': value};
+                  return null;
+                },
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       // DropdownButtonFormField doesn't expose its FocusNode as a public
       // getter, so reach the `Focus` it wraps itself in and focus that
@@ -222,10 +182,7 @@ void main() {
       // also avoids ever opening the popup menu, which is the whole point:
       // this cycling only needs to work while the menu is closed.
       final dropdownFocusNode = find
-          .descendant(
-            of: find.byType(DropdownButtonFormField<dynamic>),
-            matching: find.byType(Focus),
-          )
+          .descendant(of: find.byType(DropdownButtonFormField<dynamic>), matching: find.byType(Focus))
           .evaluate()
           .map((e) => (e.widget as Focus).focusNode)
           .firstWhere((node) => node != null);
@@ -255,29 +212,31 @@ void main() {
 
     testWidgets('link elements hand their URL to onOpenLink', (tester) async {
       String? openedUrl;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: FormRenderer(
-              formDefinition: const {
-                'elements': [
-                  {
-                    'type': 'link',
-                    'label': 'Privacy Policy',
-                    'description': 'How we handle your data',
-                    'icon': 'shield-account',
-                    'url': 'https://example.com/privacy',
-                  },
-                ],
-              },
-              initialState: const {},
-              onOpenLink: (url) => openedUrl = url,
-              onSubmit: (_) {},
-              onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: FormRenderer(
+                formDefinition: const {
+                  'elements': [
+                    {
+                      'type': 'link',
+                      'label': 'Privacy Policy',
+                      'description': 'How we handle your data',
+                      'icon': 'shield-account',
+                      'url': 'https://example.com/privacy',
+                    },
+                  ],
+                },
+                initialState: const {},
+                onOpenLink: (url) => openedUrl = url,
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       expect(find.text('Privacy Policy'), findsOneWidget);
       expect(find.text('How we handle your data'), findsOneWidget);
@@ -291,38 +250,36 @@ void main() {
       var validatorCalled = false;
       var transformerCalled = false;
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: FormRenderer(
-              formDefinition: formDefinition,
-              initialState: const {
-                'name': 'John Doe',
-                'callsign': 'ki2d',
-                'agree': false,
-              },
-              validator: (key, value, state) async {
-                validatorCalled = true;
-                if (key == 'name' && (value?.toString().isEmpty ?? true)) {
-                  return 'Name cannot be empty';
-                }
-                return null;
-              },
-              transformer: (key, value, state) async {
-                transformerCalled = true;
-                if (key == 'callsign') {
-                  return value?.toString().toUpperCase();
-                }
-                return value;
-              },
-              onSubmit: (vals) {
-                submittedValues = vals;
-              },
-              onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: FormRenderer(
+                formDefinition: formDefinition,
+                initialState: const {'name': 'John Doe', 'callsign': 'ki2d', 'agree': false},
+                validator: (key, value, state) async {
+                  validatorCalled = true;
+                  if (key == 'name' && (value?.toString().isEmpty ?? true)) {
+                    return 'Name cannot be empty';
+                  }
+                  return null;
+                },
+                transformer: (key, value, state) async {
+                  transformerCalled = true;
+                  if (key == 'callsign') {
+                    return value?.toString().toUpperCase();
+                  }
+                  return value;
+                },
+                onSubmit: (vals) {
+                  submittedValues = vals;
+                },
+                onCancel: () {},
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       // Enter value in callsign (which forces lowercase text to uppercase via capitalization/formatters)
       final callsignField = find.widgetWithText(TextField, 'Callsign Field');
@@ -349,28 +306,28 @@ void main() {
     testWidgets('shows validation errors and blocks submit', (tester) async {
       var submitted = false;
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: FormRenderer(
-              formDefinition: formDefinition,
-              initialState: const {
-                'name': 'John Doe',
-              },
-              validator: (key, value, state) async {
-                if (key == 'name') {
-                  return 'Name is invalid';
-                }
-                return null;
-              },
-              onSubmit: (_) {
-                submitted = true;
-              },
-              onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: FormRenderer(
+                formDefinition: formDefinition,
+                initialState: const {'name': 'John Doe'},
+                validator: (key, value, state) async {
+                  if (key == 'name') {
+                    return 'Name is invalid';
+                  }
+                  return null;
+                },
+                onSubmit: (_) {
+                  submitted = true;
+                },
+                onCancel: () {},
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       final saveButton = find.widgetWithText(FilledButton, 'Save');
       await tester.ensureVisible(saveButton);
@@ -385,27 +342,27 @@ void main() {
     testWidgets('triggers validation on blur and configures keyboard/autofill attributes', (tester) async {
       var validationCalledKey = '';
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: FormRenderer(
-              formDefinition: formDefinition,
-              initialState: const {
-                'name': 'John Doe',
-              },
-              validator: (key, value, state) async {
-                validationCalledKey = key;
-                if (key == 'name' && value == 'invalid') {
-                  return 'Bad name';
-                }
-                return null;
-              },
-              onSubmit: (_) {},
-              onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: FormRenderer(
+                formDefinition: formDefinition,
+                initialState: const {'name': 'John Doe'},
+                validator: (key, value, state) async {
+                  validationCalledKey = key;
+                  if (key == 'name' && value == 'invalid') {
+                    return 'Bad name';
+                  }
+                  return null;
+                },
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       // Check text field attributes
       final nameFieldFinder = find.widgetWithText(TextField, 'Name Field');
@@ -435,27 +392,26 @@ void main() {
     });
 
     testWidgets('triggers onChange to modify another field', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: FormRenderer(
-              formDefinition: formDefinition,
-              initialState: const {
-                'name': 'Old Name',
-                'agree': false,
-              },
-              onChange: (key, value, state) async {
-                if (key == 'agree' && value == true) {
-                  return {'name': 'Agreed Name'};
-                }
-                return null;
-              },
-              onSubmit: (_) {},
-              onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: FormRenderer(
+                formDefinition: formDefinition,
+                initialState: const {'name': 'Old Name', 'agree': false},
+                onChange: (key, value, state) async {
+                  if (key == 'agree' && value == true) {
+                    return {'name': 'Agreed Name'};
+                  }
+                  return null;
+                },
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       final nameFieldFinder = find.widgetWithText(TextField, 'Name Field');
       final nameTextField1 = tester.widget<TextField>(nameFieldFinder);
@@ -470,38 +426,36 @@ void main() {
       final nameTextField2 = tester.widget<TextField>(nameFieldFinder);
       expect(nameTextField2.controller?.text, 'Agreed Name');
     });
-
   });
 
   group('FormRenderer collapsible markdown block', () {
     final collapsibleFormDefinition = {
       'elements': [
-        {
-          'type': 'markdown',
-          'collapsible': true,
-          'title': 'How to build your own',
-          'text': 'Read **this** carefully.',
-        },
+        {'type': 'markdown', 'collapsible': true, 'title': 'How to build your own', 'text': 'Read **this** carefully.'},
       ],
     };
 
     testWidgets('starts collapsed, showing the title but not the text', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(formDefinition: collapsibleFormDefinition, initialState: const {}, onSubmit: (_) {}, onCancel: () {}),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: collapsibleFormDefinition, initialState: const {}, onSubmit: (_) {}, onCancel: () {}),
+          ),
         ),
-      ));
+      );
 
       expect(find.text('How to build your own'), findsOneWidget);
       expect(find.byType(MarkdownBody), findsNothing, reason: 'the help text is collapsed by default');
     });
 
     testWidgets('tapping the header expands it to reveal the text', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(formDefinition: collapsibleFormDefinition, initialState: const {}, onSubmit: (_) {}, onCancel: () {}),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: collapsibleFormDefinition, initialState: const {}, onSubmit: (_) {}, onCancel: () {}),
+          ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('How to build your own'));
       await tester.pumpAndSettle();
@@ -511,20 +465,22 @@ void main() {
     });
 
     testWidgets('a plain (non-collapsible) markdown block is unaffected', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: {
-              'elements': [
-                {'type': 'markdown', 'text': 'Always visible'},
-              ],
-            },
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: {
+                'elements': [
+                  {'type': 'markdown', 'text': 'Always visible'},
+                ],
+              },
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       expect(find.byType(ExpansionTile), findsNothing);
       expect(find.byType(MarkdownBody), findsOneWidget);
@@ -534,20 +490,22 @@ void main() {
 
   group('FormRenderer secret/list/action fields', () {
     testWidgets('secret field obscures its text', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {'type': 'field', 'fieldType': 'secret', 'key': 'apiKey', 'label': 'API Key'},
-              ],
-            },
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {'type': 'field', 'fieldType': 'secret', 'key': 'apiKey', 'label': 'API Key'},
+                ],
+              },
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       final field = tester.widget<TextField>(find.widgetWithText(TextField, 'API Key'));
       expect(field.obscureText, isTrue);
@@ -559,26 +517,22 @@ void main() {
       // without the app ever loading it into the form. Two things have to hold
       // for that to be safe, and both are pinned here.
       Map<String, dynamic>? submitted;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'secret',
-                  'key': 'password',
-                  'label': 'Password',
-                  'placeholder': '••••••••',
-                },
-              ],
-            },
-            initialState: const {},
-            onSubmit: (values) => submitted = values,
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {'type': 'field', 'fieldType': 'secret', 'key': 'password', 'label': 'Password', 'placeholder': '••••••••'},
+                ],
+              },
+              initialState: const {},
+              onSubmit: (values) => submitted = values,
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       // 1. It is visible — otherwise a stored password looks like no password.
       final field = tester.widget<TextField>(find.widgetWithText(TextField, 'Password'));
@@ -591,8 +545,7 @@ void main() {
 
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
-      expect(submitted?['password'], isEmpty,
-          reason: 'an untouched hinted field must submit empty, which means "unchanged"');
+      expect(submitted?['password'], isEmpty, reason: 'an untouched hinted field must submit empty, which means "unchanged"');
     });
 
     testWidgets('list field adds, edits, and deletes items via the nested item dialog', (tester) async {
@@ -613,16 +566,13 @@ void main() {
         ],
       };
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: listFormDefinition,
-            initialState: const {},
-            onSubmit: (vals) => submittedValues = vals,
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: listFormDefinition, initialState: const {}, onSubmit: (vals) => submittedValues = vals, onCancel: () {}),
           ),
         ),
-      ));
+      );
 
       // The form itself shows only the summary row — no inline list editing.
       expect(find.text('Presets'), findsOneWidget);
@@ -636,8 +586,7 @@ void main() {
       // Item add/edit dialogs have their own Save button, distinct from the
       // outer form's — scope taps to the dialog to avoid ambiguity (the
       // list editor dialog itself only has Done, so Save stays unique).
-      Finder dialogSaveButton() =>
-          find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, 'Save'));
+      Finder dialogSaveButton() => find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, 'Save'));
 
       // Add an item through the nested item dialog.
       await tester.tap(find.widgetWithText(TextButton, 'Add Presets'));
@@ -653,9 +602,7 @@ void main() {
       // Edit the item: tapping its editor row reopens the item dialog
       // pre-filled (scoped to the dialog — the summary row behind the
       // barrier shows the same string).
-      await tester.tap(
-        find.descendant(of: find.byType(HaloDialog), matching: find.text('Field Day — 1A NNJ')),
-      );
+      await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.text('Field Day — 1A NNJ')));
       await tester.pumpAndSettle();
       expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
       final nameField = tester.widget<TextField>(find.widgetWithText(TextField, 'Name'));
@@ -687,8 +634,7 @@ void main() {
       expect(find.text('Field Day — 2A NNJ'), findsNothing);
     });
 
-    testWidgets('non-inline list field editor honors itemLabel too, not just the inline one',
-        (tester) async {
+    testWidgets('non-inline list field editor honors itemLabel too, not just the inline one', (tester) async {
       final listFormDefinition = {
         'elements': [
           {
@@ -705,16 +651,13 @@ void main() {
         ],
       };
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: listFormDefinition,
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: listFormDefinition, initialState: const {}, onSubmit: (_) {}, onCancel: () {}),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Presets'));
       await tester.pumpAndSettle();
@@ -751,23 +694,19 @@ void main() {
         ],
       };
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: listFormDefinition,
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: listFormDefinition, initialState: const {}, onSubmit: (_) {}, onCancel: () {}),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Presets'));
       await tester.pumpAndSettle();
 
       final listView = tester.widget<ReorderableListView>(find.byType(ReorderableListView));
-      expect(listView.buildDefaultDragHandles, isFalse,
-          reason: 'the framework auto-handle doubles the row\'s own on mouse platforms');
+      expect(listView.buildDefaultDragHandles, isFalse, reason: 'the framework auto-handle doubles the row\'s own on mouse platforms');
       expect(find.byIcon(MdiIcons.dragHorizontalVariant), findsNWidgets(2), reason: 'one handle per row, no extras');
       expect(
         find.ancestor(of: find.byIcon(MdiIcons.dragHorizontalVariant).first, matching: find.byType(ReorderableDragStartListener)),
@@ -800,16 +739,13 @@ void main() {
         ],
       };
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: inlineListFormDefinition,
-            initialState: const {},
-            onSubmit: (vals) => submittedValues = vals,
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: inlineListFormDefinition, initialState: const {}, onSubmit: (vals) => submittedValues = vals, onCancel: () {}),
           ),
         ),
-      ));
+      );
 
       // The item, the reorder handle, delete button, and Add row are all
       // directly on the form — no summary row / "tap to open a dialog" step.
@@ -835,8 +771,7 @@ void main() {
       // the dialog since the Add button behind it shares the same text.
       await tester.tap(find.widgetWithText(TextButton, 'Add custom note file'));
       await tester.pumpAndSettle();
-      expect(find.descendant(of: find.byType(HaloDialog), matching: find.text('Add custom note file')),
-          findsOneWidget);
+      expect(find.descendant(of: find.byType(HaloDialog), matching: find.text('Add custom note file')), findsOneWidget);
       await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Second File');
       await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, 'Save')));
       await tester.pumpAndSettle();
@@ -857,34 +792,36 @@ void main() {
 
     testWidgets('multiselect toggles from a fixed vocabulary with common-subset disclosure', (tester) async {
       Map<String, dynamic>? submittedValues;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'multiselect',
-                  'key': 'bands',
-                  'label': 'Bands',
-                  'value': ['80m', '40m'],
-                  'defaultValue': ['80m', '40m'],
-                  'options': [
-                    {'label': '80m', 'value': '80m', 'common': true},
-                    {'label': '40m', 'value': '40m', 'common': true},
-                    {'label': '20m', 'value': '20m', 'common': true},
-                    {'label': '630m', 'value': '630m'},
-                    {'label': 'submm', 'value': 'submm', 'uncommon': true},
-                  ],
-                },
-              ],
-            },
-            initialState: {},
-            onSubmit: (vals) => submittedValues = vals,
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'multiselect',
+                    'key': 'bands',
+                    'label': 'Bands',
+                    'value': ['80m', '40m'],
+                    'defaultValue': ['80m', '40m'],
+                    'options': [
+                      {'label': '80m', 'value': '80m', 'common': true},
+                      {'label': '40m', 'value': '40m', 'common': true},
+                      {'label': '20m', 'value': '20m', 'common': true},
+                      {'label': '630m', 'value': '630m'},
+                      {'label': 'submm', 'value': 'submm', 'uncommon': true},
+                    ],
+                  },
+                ],
+              },
+              initialState: {},
+              onSubmit: (vals) => submittedValues = vals,
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       // The row summarizes the selection; no editor inline.
       expect(find.text('80m, 40m'), findsOneWidget);
@@ -899,8 +836,7 @@ void main() {
       expect(find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField)), findsNothing);
 
       // Selected rows read bold; unselected ones use the disabled color.
-      Text rowLabel(String label) => tester.widget<Text>(
-          find.descendant(of: find.widgetWithText(SwitchListTile, label), matching: find.text(label)));
+      Text rowLabel(String label) => tester.widget<Text>(find.descendant(of: find.widgetWithText(SwitchListTile, label), matching: find.text(label)));
       expect(rowLabel('80m').style?.fontWeight, FontWeight.bold);
       expect(rowLabel('20m').style?.fontWeight, isNot(FontWeight.bold));
       expect(rowLabel('20m').style?.color, isNotNull);
@@ -958,30 +894,32 @@ void main() {
     });
 
     testWidgets('multiselect search filters large vocabularies with a reveal row', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'multiselect',
-                  'key': 'things',
-                  'label': 'Things',
-                  'value': const ['Alpha 1', 'Alpha 3'],
-                  'options': [
-                    for (var i = 1; i <= 12; i++) {'label': 'Alpha $i', 'value': 'Alpha $i', 'common': i <= 3},
-                    for (var i = 1; i <= 12; i++) {'label': 'Bravo $i', 'value': 'Bravo $i'},
-                  ],
-                },
-              ],
-            },
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'multiselect',
+                    'key': 'things',
+                    'label': 'Things',
+                    'value': const ['Alpha 1', 'Alpha 3'],
+                    'options': [
+                      for (var i = 1; i <= 12; i++) {'label': 'Alpha $i', 'value': 'Alpha $i', 'common': i <= 3},
+                      for (var i = 1; i <= 12; i++) {'label': 'Bravo $i', 'value': 'Bravo $i'},
+                    ],
+                  },
+                ],
+              },
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       // 24 options → the search field is pinned under the list.
       await tester.tap(find.text('Things'));
@@ -996,10 +934,7 @@ void main() {
       // Focus survives the status row popping in on the FIRST letter and
       // out again on deleting it (the field shifts index in its column —
       // regression: without keys it was rebuilt and dropped focus).
-      bool searchHasFocus() => tester
-          .widget<EditableText>(find.descendant(of: searchField, matching: find.byType(EditableText)))
-          .focusNode
-          .hasFocus;
+      bool searchHasFocus() => tester.widget<EditableText>(find.descendant(of: searchField, matching: find.byType(EditableText))).focusNode.hasFocus;
       await tester.enterText(searchField, 'B');
       await tester.pumpAndSettle();
       expect(searchHasFocus(), isTrue, reason: 'typing the first letter must not drop focus');
@@ -1037,25 +972,27 @@ void main() {
       String? capturedKey;
       String? capturedMethod;
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {'type': 'action', 'key': 'test', 'label': 'Test Connection', 'method': 'testCredentials'},
-              ],
-            },
-            initialState: const {},
-            onAction: (actionKey, method, state) async {
-              capturedKey = actionKey;
-              capturedMethod = method;
-              return const FormActionResult(message: 'Connected');
-            },
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {'type': 'action', 'key': 'test', 'label': 'Test Connection', 'method': 'testCredentials'},
+                ],
+              },
+              initialState: const {},
+              onAction: (actionKey, method, state) async {
+                capturedKey = actionKey;
+                capturedMethod = method;
+                return const FormActionResult(message: 'Connected');
+              },
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.widgetWithText(OutlinedButton, 'Test Connection'));
       await tester.pumpAndSettle();
@@ -1070,32 +1007,33 @@ void main() {
       // that picks a value on the operator's behalf) handing that value
       // straight to the field it belongs in, instead of only being able to
       // tell the operator about it in a message they'd have to retype.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'select',
-                  'key': 'port',
-                  'label': 'Port',
-                  'options': [
-                    {'value': 'COM1', 'label': 'COM1'},
-                    {'value': 'COM3', 'label': 'COM3'},
-                  ],
-                },
-                {'type': 'action', 'key': 'grant', 'label': 'Add device', 'method': 'requestDevice'},
-              ],
-            },
-            initialState: const {'port': 'COM1'},
-            onAction: (actionKey, method, state) async =>
-                const FormActionResult(fieldUpdates: {'port': 'COM3'}),
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'select',
+                    'key': 'port',
+                    'label': 'Port',
+                    'options': [
+                      {'value': 'COM1', 'label': 'COM1'},
+                      {'value': 'COM3', 'label': 'COM3'},
+                    ],
+                  },
+                  {'type': 'action', 'key': 'grant', 'label': 'Add device', 'method': 'requestDevice'},
+                ],
+              },
+              initialState: const {'port': 'COM1'},
+              onAction: (actionKey, method, state) async => const FormActionResult(fieldUpdates: {'port': 'COM3'}),
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       expect(find.text('COM1'), findsOneWidget);
 
@@ -1106,42 +1044,43 @@ void main() {
       expect(find.text('COM1'), findsNothing);
     });
 
-    testWidgets('a select option marked isAction runs onAction instead of becoming the field\'s value',
-        (tester) async {
+    testWidgets('a select option marked isAction runs onAction instead of becoming the field\'s value', (tester) async {
       // The case this exists for: "add a USB device" living right in the
       // port list rather than as a separate button — picking it must run
       // the action, not silently "select" an option that was never a real
       // port to begin with.
       String? capturedActionKey;
       String? capturedMethod;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'select',
-                  'key': 'port',
-                  'label': 'Port',
-                  'options': [
-                    {'value': 'COM1', 'label': 'COM1'},
-                    {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
-                  ],
-                },
-              ],
-            },
-            initialState: const {'port': 'COM1'},
-            onAction: (actionKey, method, state) async {
-              capturedActionKey = actionKey;
-              capturedMethod = method;
-              return null;
-            },
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'select',
+                    'key': 'port',
+                    'label': 'Port',
+                    'options': [
+                      {'value': 'COM1', 'label': 'COM1'},
+                      {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
+                    ],
+                  },
+                ],
+              },
+              initialState: const {'port': 'COM1'},
+              onAction: (actionKey, method, state) async {
+                capturedActionKey = actionKey;
+                capturedMethod = method;
+                return null;
+              },
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.byType(DropdownButtonFormField<dynamic>));
       await tester.pumpAndSettle();
@@ -1166,50 +1105,58 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () => showFormPane(
-                context,
-                formDefinition: const {
-                  'title': 'Every type',
-                  'elements': [
-                    {'type': 'header', 'title': 'Wiring', 'style': 'category'},
-                    {'type': 'field', 'fieldType': 'text', 'key': 'text', 'label': 'A text field'},
-                    {'type': 'field', 'fieldType': 'secret', 'key': 'secret', 'label': 'A secret field'},
-                    {
-                      'type': 'field',
-                      'fieldType': 'select',
-                      'key': 'select',
-                      'label': 'A select field',
-                      'options': [{'value': 'a', 'label': 'Only option'}],
-                    },
-                    {
-                      'type': 'field',
-                      'fieldType': 'radio',
-                      'key': 'radio',
-                      'label': 'A radio group',
-                      'options': [{'value': 'a', 'label': 'Radio option'}],
-                    },
-                    {
-                      'type': 'field',
-                      'fieldType': 'checkboxGroup',
-                      'key': 'boxes',
-                      'label': 'A checkbox group',
-                      'options': [{'value': 'a', 'label': 'Box option'}],
-                    },
-                    {'type': 'field', 'fieldType': 'checkbox', 'key': 'flag', 'label': 'A checkbox'},
-                    {'type': 'action', 'key': 'act', 'label': 'An action'},
-                  ],
-                },
-                initialState: const {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showFormPane(
+                  context,
+                  formDefinition: const {
+                    'title': 'Every type',
+                    'elements': [
+                      {'type': 'header', 'title': 'Wiring', 'style': 'category'},
+                      {'type': 'field', 'fieldType': 'text', 'key': 'text', 'label': 'A text field'},
+                      {'type': 'field', 'fieldType': 'secret', 'key': 'secret', 'label': 'A secret field'},
+                      {
+                        'type': 'field',
+                        'fieldType': 'select',
+                        'key': 'select',
+                        'label': 'A select field',
+                        'options': [
+                          {'value': 'a', 'label': 'Only option'},
+                        ],
+                      },
+                      {
+                        'type': 'field',
+                        'fieldType': 'radio',
+                        'key': 'radio',
+                        'label': 'A radio group',
+                        'options': [
+                          {'value': 'a', 'label': 'Radio option'},
+                        ],
+                      },
+                      {
+                        'type': 'field',
+                        'fieldType': 'checkboxGroup',
+                        'key': 'boxes',
+                        'label': 'A checkbox group',
+                        'options': [
+                          {'value': 'a', 'label': 'Box option'},
+                        ],
+                      },
+                      {'type': 'field', 'fieldType': 'checkbox', 'key': 'flag', 'label': 'A checkbox'},
+                      {'type': 'action', 'key': 'act', 'label': 'An action'},
+                    ],
+                  },
+                  initialState: const {},
+                ),
+                child: const Text('open'),
               ),
-              child: const Text('open'),
             ),
           ),
         ),
-      ));
+      );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
 
@@ -1219,27 +1166,15 @@ void main() {
       // that, so the tolerance is a couple of pixels wide — the failure this
       // guards against is a field back at the pane's EDGE, a whole inset out.
       final edge = tester.getTopLeft(find.text('Wiring')).dx;
-      for (final label in [
-        'A text field',
-        'A secret field',
-        'A select field',
-        'A radio group',
-        'A checkbox group',
-      ]) {
+      for (final label in ['A text field', 'A secret field', 'A select field', 'A radio group', 'A checkbox group']) {
         expect(tester.getTopLeft(find.text(label)).dx, closeTo(edge, 5), reason: label);
       }
       // Two rows whose LABEL is not their left edge: a checkbox row leads
       // with its control, and an action's label is centred in a button that
       // spans the row. Both are measured by the thing that does sit there.
-      expect(tester.getTopLeft(find.widgetWithText(OutlinedButton, 'An action')).dx, closeTo(edge, 5),
-          reason: 'An action');
+      expect(tester.getTopLeft(find.widgetWithText(OutlinedButton, 'An action')).dx, closeTo(edge, 5), reason: 'An action');
       expect(
-        tester
-            .getTopLeft(find.descendant(
-              of: find.widgetWithText(CheckboxListTile, 'A checkbox'),
-              matching: find.byType(Checkbox),
-            ))
-            .dx,
+        tester.getTopLeft(find.descendant(of: find.widgetWithText(CheckboxListTile, 'A checkbox'), matching: find.byType(Checkbox))).dx,
         closeTo(edge, 5),
         reason: 'A checkbox',
       );
@@ -1249,33 +1184,37 @@ void main() {
       // The equipment editor's own groups: a heading that is the top level of
       // its surface rather than a section inside one. The ground reaching the
       // edges is what says so — inset, it would read as one highlighted row.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: ListTileTheme(
-            data: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 24)),
-            child: FormRenderer(
-              formDefinition: const {
-                'elements': [
-                  {'type': 'header', 'title': 'Wiring', 'style': 'category'},
-                  {'type': 'field', 'fieldType': 'text', 'key': 'a', 'label': 'Antenna port 1'},
-                ],
-              },
-              initialState: const {},
-              onSubmit: (_) {},
-              onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListTileTheme(
+              data: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 24)),
+              child: FormRenderer(
+                formDefinition: const {
+                  'elements': [
+                    {'type': 'header', 'title': 'Wiring', 'style': 'category'},
+                    {'type': 'field', 'fieldType': 'text', 'key': 'a', 'label': 'Antenna port 1'},
+                  ],
+                },
+                initialState: const {},
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       final band = find.byType(CategoryBand);
       final form = find.byType(FormRenderer);
       expect(tester.getSize(band).width, tester.getSize(form).width, reason: 'the ground spans the surface');
       // The title, though, lands on the rows' own inset — the band names them.
       expect(tester.getTopLeft(find.text('Wiring')).dx, tester.getTopLeft(form).dx + 24);
-      expect(tester.getTopLeft(find.widgetWithText(TextField, 'Antenna port 1')).dx,
-          tester.getTopLeft(form).dx + 24,
-          reason: 'a bare control takes the same inset, since the host no longer pads around it');
+      expect(
+        tester.getTopLeft(find.widgetWithText(TextField, 'Antenna port 1')).dx,
+        tester.getTopLeft(form).dx + 24,
+        reason: 'a bare control takes the same inset, since the host no longer pads around it',
+      );
     });
 
     testWidgets('a section band in a form pane holds the top while its own fields scroll under it', (tester) async {
@@ -1287,30 +1226,30 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () => showFormPane(
-                context,
-                formDefinition: {
-                  'title': 'Radio',
-                  'elements': [
-                    {'type': 'header', 'title': 'Connection', 'style': 'section'},
-                    for (var i = 0; i < 8; i++)
-                      {'type': 'field', 'fieldType': 'text', 'key': 'a$i', 'label': 'Connection field $i'},
-                    {'type': 'header', 'title': 'Wiring', 'style': 'section'},
-                    for (var i = 0; i < 8; i++)
-                      {'type': 'field', 'fieldType': 'text', 'key': 'b$i', 'label': 'Wiring field $i'},
-                  ],
-                },
-                initialState: const {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showFormPane(
+                  context,
+                  formDefinition: {
+                    'title': 'Radio',
+                    'elements': [
+                      {'type': 'header', 'title': 'Connection', 'style': 'section'},
+                      for (var i = 0; i < 8; i++) {'type': 'field', 'fieldType': 'text', 'key': 'a$i', 'label': 'Connection field $i'},
+                      {'type': 'header', 'title': 'Wiring', 'style': 'section'},
+                      for (var i = 0; i < 8; i++) {'type': 'field', 'fieldType': 'text', 'key': 'b$i', 'label': 'Wiring field $i'},
+                    ],
+                  },
+                  initialState: const {},
+                ),
+                child: const Text('open'),
               ),
-              child: const Text('open'),
             ),
           ),
         ),
-      ));
+      );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
 
@@ -1329,60 +1268,60 @@ void main() {
       expect(tester.getTopLeft(find.text('Connection field 0')).dy, lessThan(band));
     });
 
-    testWidgets(
-        'an action\'s elements replace the form\'s own definition, so a newly-picked value is immediately selectable',
-        (tester) async {
+    testWidgets('an action\'s elements replace the form\'s own definition, so a newly-picked value is immediately selectable', (tester) async {
       // The case this exists for: fieldUpdates alone would set
       // _values['port'] to a value the ORIGINAL options have no matching
       // item for — a newly-granted Web Serial device isn't offered until
       // the element list itself is rebuilt to include it.
       Map<String, dynamic>? submitted;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () async {
-                submitted = await showFormPane(
-                  context,
-                  formDefinition: const {
-                    'title': 'Radio',
-                    'elements': [
-                      {
-                        'type': 'field',
-                        'fieldType': 'select',
-                        'key': 'port',
-                        'label': 'Port',
-                        'options': [
-                          {'value': 'COM1', 'label': 'COM1'},
-                          {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
-                        ],
-                      },
-                    ],
-                  },
-                  initialState: const {'port': 'COM1'},
-                  onAction: (actionKey, method, state) async => const FormActionResult(
-                    fieldUpdates: {'port': 'usb-new'},
-                    elements: [
-                      {
-                        'type': 'field',
-                        'fieldType': 'select',
-                        'key': 'port',
-                        'label': 'Port',
-                        'options': [
-                          {'value': 'COM1', 'label': 'COM1'},
-                          {'value': 'usb-new', 'label': 'USB 10C4:EA70'},
-                          {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
-                        ],
-                      },
-                    ],
-                  ),
-                );
-              },
-              child: const Text('Open'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () async {
+                  submitted = await showFormPane(
+                    context,
+                    formDefinition: const {
+                      'title': 'Radio',
+                      'elements': [
+                        {
+                          'type': 'field',
+                          'fieldType': 'select',
+                          'key': 'port',
+                          'label': 'Port',
+                          'options': [
+                            {'value': 'COM1', 'label': 'COM1'},
+                            {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
+                          ],
+                        },
+                      ],
+                    },
+                    initialState: const {'port': 'COM1'},
+                    onAction: (actionKey, method, state) async => const FormActionResult(
+                      fieldUpdates: {'port': 'usb-new'},
+                      elements: [
+                        {
+                          'type': 'field',
+                          'fieldType': 'select',
+                          'key': 'port',
+                          'label': 'Port',
+                          'options': [
+                            {'value': 'COM1', 'label': 'COM1'},
+                            {'value': 'usb-new', 'label': 'USB 10C4:EA70'},
+                            {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
+                          ],
+                        },
+                      ],
+                    ),
+                  );
+                },
+                child: const Text('Open'),
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
@@ -1412,39 +1351,41 @@ void main() {
       var builds = 0;
       var extraPort = false;
       List<Map<String, dynamic>> elements() => [
-            {
-              'type': 'field',
-              'fieldType': 'select',
-              'key': 'port',
-              'label': 'Port',
-              'options': [
-                {'value': 'COM1', 'label': 'COM1'},
-                if (extraPort) {'value': 'COM9', 'label': 'COM9'},
-              ],
-            },
-          ];
+        {
+          'type': 'field',
+          'fieldType': 'select',
+          'key': 'port',
+          'label': 'Port',
+          'options': [
+            {'value': 'COM1', 'label': 'COM1'},
+            if (extraPort) {'value': 'COM9', 'label': 'COM9'},
+          ],
+        },
+      ];
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () => showFormPane(
-                context,
-                formDefinition: {'title': 'Radio', 'elements': elements()},
-                initialState: const {'port': 'COM1'},
-                refreshElements: (
-                  every: const Duration(seconds: 1),
-                  build: () async {
-                    builds++;
-                    return elements();
-                  },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showFormPane(
+                  context,
+                  formDefinition: {'title': 'Radio', 'elements': elements()},
+                  initialState: const {'port': 'COM1'},
+                  refreshElements: (
+                    every: const Duration(seconds: 1),
+                    build: () async {
+                      builds++;
+                      return elements();
+                    },
+                  ),
                 ),
+                child: const Text('Open'),
               ),
-              child: const Text('Open'),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
@@ -1479,49 +1420,51 @@ void main() {
       // under a selected-then-vanished port takes the whole form down with
       // "There should be exactly one item with [DropdownButton]'s value".
       var unplugged = false;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () => showFormPane(
-                context,
-                formDefinition: const {
-                  'title': 'Radio',
-                  'elements': [
-                    {
-                      'type': 'field',
-                      'fieldType': 'select',
-                      'key': 'port',
-                      'label': 'Port',
-                      'options': [
-                        {'value': 'COM1', 'label': 'COM1'},
-                        {'value': 'COM9', 'label': 'COM9'},
-                      ],
-                    },
-                  ],
-                },
-                initialState: const {'port': 'COM9'},
-                refreshElements: (
-                  every: const Duration(seconds: 1),
-                  build: () async => [
-                    {
-                      'type': 'field',
-                      'fieldType': 'select',
-                      'key': 'port',
-                      'label': 'Port',
-                      'options': [
-                        const {'value': 'COM1', 'label': 'COM1'},
-                        if (!unplugged) const {'value': 'COM9', 'label': 'COM9'},
-                      ],
-                    },
-                  ],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showFormPane(
+                  context,
+                  formDefinition: const {
+                    'title': 'Radio',
+                    'elements': [
+                      {
+                        'type': 'field',
+                        'fieldType': 'select',
+                        'key': 'port',
+                        'label': 'Port',
+                        'options': [
+                          {'value': 'COM1', 'label': 'COM1'},
+                          {'value': 'COM9', 'label': 'COM9'},
+                        ],
+                      },
+                    ],
+                  },
+                  initialState: const {'port': 'COM9'},
+                  refreshElements: (
+                    every: const Duration(seconds: 1),
+                    build: () async => [
+                      {
+                        'type': 'field',
+                        'fieldType': 'select',
+                        'key': 'port',
+                        'label': 'Port',
+                        'options': [
+                          const {'value': 'COM1', 'label': 'COM1'},
+                          if (!unplugged) const {'value': 'COM9', 'label': 'COM9'},
+                        ],
+                      },
+                    ],
+                  ),
                 ),
+                child: const Text('Open'),
               ),
-              child: const Text('Open'),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
@@ -1544,40 +1487,42 @@ void main() {
       // key as the port — which Save then writes into the radio's config.
       var ran = 0;
       Map<String, dynamic>? submitted;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () async {
-                submitted = await showFormPane(
-                  context,
-                  formDefinition: const {
-                    'title': 'Radio',
-                    'elements': [
-                      {
-                        'type': 'field',
-                        'fieldType': 'select',
-                        'key': 'port',
-                        'label': 'Port',
-                        'options': [
-                          {'value': 'COM1', 'label': 'CP2105', 'trailing': 'usbserial-A1'},
-                          {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
-                        ],
-                      },
-                    ],
-                  },
-                  initialState: const {'port': 'COM1'},
-                  onAction: (actionKey, method, state) async {
-                    ran++;
-                    return null;
-                  },
-                );
-              },
-              child: const Text('Open'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () async {
+                  submitted = await showFormPane(
+                    context,
+                    formDefinition: const {
+                      'title': 'Radio',
+                      'elements': [
+                        {
+                          'type': 'field',
+                          'fieldType': 'select',
+                          'key': 'port',
+                          'label': 'Port',
+                          'options': [
+                            {'value': 'COM1', 'label': 'CP2105', 'trailing': 'usbserial-A1'},
+                            {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
+                          ],
+                        },
+                      ],
+                    },
+                    initialState: const {'port': 'COM1'},
+                    onAction: (actionKey, method, state) async {
+                      ran++;
+                      return null;
+                    },
+                  );
+                },
+                child: const Text('Open'),
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
@@ -1600,34 +1545,36 @@ void main() {
       var unplugged = false;
       Map<String, dynamic>? submitted;
       List<Map<String, dynamic>> elements() => [
-            {
-              'type': 'field',
-              'fieldType': 'select',
-              'key': 'port',
-              'label': 'Port',
-              'options': [
-                const {'value': 'COM1', 'label': 'FT232R', 'trailing': 'usbserial-A1'},
-                if (!unplugged) const {'value': 'COM9', 'label': 'CP2105', 'trailing': 'usbserial-B2'},
-              ],
-            },
-          ];
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () async {
-                submitted = await showFormPane(
-                  context,
-                  formDefinition: {'title': 'Radio', 'elements': elements()},
-                  initialState: const {'port': 'COM9'},
-                  refreshElements: (every: const Duration(seconds: 1), build: () async => elements()),
-                );
-              },
-              child: const Text('Open'),
+        {
+          'type': 'field',
+          'fieldType': 'select',
+          'key': 'port',
+          'label': 'Port',
+          'options': [
+            const {'value': 'COM1', 'label': 'FT232R', 'trailing': 'usbserial-A1'},
+            if (!unplugged) const {'value': 'COM9', 'label': 'CP2105', 'trailing': 'usbserial-B2'},
+          ],
+        },
+      ];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () async {
+                  submitted = await showFormPane(
+                    context,
+                    formDefinition: {'title': 'Radio', 'elements': elements()},
+                    initialState: const {'port': 'COM9'},
+                    refreshElements: (every: const Duration(seconds: 1), build: () async => elements()),
+                  );
+                },
+                child: const Text('Open'),
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
@@ -1647,35 +1594,37 @@ void main() {
       // for a vocabulary that genuinely changed — the port would be cleared on
       // a field they never touched, and Save refused for a missing port.
       Map<String, dynamic>? submitted;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () async {
-                submitted = await showFormPane(
-                  context,
-                  formDefinition: const {
-                    'title': 'Radio',
-                    'elements': [
-                      {
-                        'type': 'field',
-                        'fieldType': 'select',
-                        'key': 'port',
-                        'label': 'Port',
-                        'options': [
-                          {'value': 'COM1', 'label': 'FT232R', 'trailing': 'usbserial-A1'},
-                        ],
-                      },
-                    ],
-                  },
-                  initialState: const {'port': 'COM9'},
-                );
-              },
-              child: const Text('Open'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () async {
+                  submitted = await showFormPane(
+                    context,
+                    formDefinition: const {
+                      'title': 'Radio',
+                      'elements': [
+                        {
+                          'type': 'field',
+                          'fieldType': 'select',
+                          'key': 'port',
+                          'label': 'Port',
+                          'options': [
+                            {'value': 'COM1', 'label': 'FT232R', 'trailing': 'usbserial-A1'},
+                          ],
+                        },
+                      ],
+                    },
+                    initialState: const {'port': 'COM9'},
+                  );
+                },
+                child: const Text('Open'),
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
@@ -1689,37 +1638,39 @@ void main() {
       // handlers — so "Add a USB device…" is reachable by arrow key and would
       // be written into the field as if it were a port.
       Map<String, dynamic>? submitted;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () async {
-                submitted = await showFormPane(
-                  context,
-                  formDefinition: const {
-                    'title': 'Radio',
-                    'elements': [
-                      {
-                        'type': 'field',
-                        'fieldType': 'select',
-                        'key': 'port',
-                        'label': 'Port',
-                        'options': [
-                          {'value': 'COM1', 'label': 'COM1'},
-                          {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
-                        ],
-                      },
-                    ],
-                  },
-                  initialState: const {'port': 'COM1'},
-                  onAction: (_, _, _) async => null,
-                );
-              },
-              child: const Text('Open'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () async {
+                  submitted = await showFormPane(
+                    context,
+                    formDefinition: const {
+                      'title': 'Radio',
+                      'elements': [
+                        {
+                          'type': 'field',
+                          'fieldType': 'select',
+                          'key': 'port',
+                          'label': 'Port',
+                          'options': [
+                            {'value': 'COM1', 'label': 'COM1'},
+                            {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
+                          ],
+                        },
+                      ],
+                    },
+                    initialState: const {'port': 'COM1'},
+                    onAction: (_, _, _) async => null,
+                  );
+                },
+                child: const Text('Open'),
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
@@ -1741,29 +1692,31 @@ void main() {
       // The port a radio's own definition names has to LOOK picked-out; a
       // "[suggested]" that reads like the rest of the list is the thing this
       // exists to avoid.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'select',
-                  'key': 'port',
-                  'label': 'Port',
-                  'options': [
-                    {'value': 'COM1', 'label': 'COM1 [suggested]', 'emphasis': true},
-                    {'value': 'COM2', 'label': 'COM2'},
-                  ],
-                },
-              ],
-            },
-            initialState: const {'port': 'COM2'},
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'select',
+                    'key': 'port',
+                    'label': 'Port',
+                    'options': [
+                      {'value': 'COM1', 'label': 'COM1 [suggested]', 'emphasis': true},
+                      {'value': 'COM2', 'label': 'COM2'},
+                    ],
+                  },
+                ],
+              },
+              initialState: const {'port': 'COM2'},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.byType(DropdownButtonFormField<dynamic>));
       await tester.pumpAndSettle();
@@ -1782,33 +1735,35 @@ void main() {
       // the operator's edits go to that route and the pane stays open.
       final gate = Completer<void>();
       var secondaryRan = 0;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () => showFormPane(
-                context,
-                formDefinition: const {
-                  'title': 'Radio',
-                  'elements': [
-                    {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name'},
-                  ],
-                },
-                initialState: const {'name': 'Left Radio'},
-                destructiveAction: (label: 'Remove', color: const Color(0xFFB3261E), onPressed: () {}, icon: null),
-                secondaryAction: (label: 'Report', onPressed: () => secondaryRan++),
-                // submit() awaits the validator per field, so holding it here
-                // holds the form in its submitting state.
-                validator: (_, _, _) async {
-                  await gate.future;
-                  return null;
-                },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showFormPane(
+                  context,
+                  formDefinition: const {
+                    'title': 'Radio',
+                    'elements': [
+                      {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name'},
+                    ],
+                  },
+                  initialState: const {'name': 'Left Radio'},
+                  destructiveAction: (label: 'Remove', color: const Color(0xFFB3261E), onPressed: () {}, icon: null),
+                  secondaryAction: (label: 'Report', onPressed: () => secondaryRan++),
+                  // submit() awaits the validator per field, so holding it here
+                  // holds the form in its submitting state.
+                  validator: (_, _, _) async {
+                    await gate.future;
+                    return null;
+                  },
+                ),
+                child: const Text('Open'),
               ),
-              child: const Text('Open'),
             ),
           ),
         ),
-      ));
+      );
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
 
@@ -1819,11 +1774,7 @@ void main() {
       // beside it accepts a tap.
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       for (final verb in ['Report', 'Remove', 'Cancel']) {
-        expect(
-          tester.widget<TextButton>(find.widgetWithText(TextButton, verb)).onPressed,
-          isNull,
-          reason: '$verb stays live while the form is submitting',
-        );
+        expect(tester.widget<TextButton>(find.widgetWithText(TextButton, verb)).onPressed, isNull, reason: '$verb stays live while the form is submitting');
       }
 
       gate.complete();
@@ -1839,35 +1790,32 @@ void main() {
       var secondaryRan = 0;
       var destructiveRan = 0;
       var completed = false;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              onPressed: () async {
-                await showFormPane(
-                  context,
-                  formDefinition: const {
-                    'title': 'Radio',
-                    'elements': [
-                      {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name'},
-                    ],
-                  },
-                  initialState: const {'name': 'Left Radio'},
-                  destructiveAction: (
-                    label: 'Remove',
-                    color: const Color(0xFFB3261E),
-                    onPressed: () => destructiveRan++,
-                    icon: null,
-                  ),
-                  secondaryAction: (label: 'Report', onPressed: () => secondaryRan++),
-                );
-                completed = true;
-              },
-              child: const Text('Open'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () async {
+                  await showFormPane(
+                    context,
+                    formDefinition: const {
+                      'title': 'Radio',
+                      'elements': [
+                        {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Name'},
+                      ],
+                    },
+                    initialState: const {'name': 'Left Radio'},
+                    destructiveAction: (label: 'Remove', color: const Color(0xFFB3261E), onPressed: () => destructiveRan++, icon: null),
+                    secondaryAction: (label: 'Report', onPressed: () => secondaryRan++),
+                  );
+                  completed = true;
+                },
+                child: const Text('Open'),
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
@@ -1906,27 +1854,29 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        await tester.pumpWidget(MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => TextButton(
-                onPressed: () => showFormPane(
-                  context,
-                  formDefinition: const {
-                    'title': 'Radio',
-                    'elements': [
-                      {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Nombre'},
-                    ],
-                  },
-                  initialState: const {'name': 'Left Radio'},
-                  destructiveAction: (label: 'Eliminar', color: const Color(0xFFB3261E), onPressed: () {}, icon: null),
-                  secondaryAction: (label: 'Informar', onPressed: () {}),
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showFormPane(
+                    context,
+                    formDefinition: const {
+                      'title': 'Radio',
+                      'elements': [
+                        {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Nombre'},
+                      ],
+                    },
+                    initialState: const {'name': 'Left Radio'},
+                    destructiveAction: (label: 'Eliminar', color: const Color(0xFFB3261E), onPressed: () {}, icon: null),
+                    secondaryAction: (label: 'Informar', onPressed: () {}),
+                  ),
+                  child: const Text('Open'),
                 ),
-                child: const Text('Open'),
               ),
             ),
           ),
-        ));
+        );
 
         await tester.tap(find.text('Open'));
         await tester.pumpAndSettle();
@@ -1941,26 +1891,28 @@ void main() {
     }
 
     testWidgets('account field shows Not Connected / Connect when no status is set', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'account',
-                  'key': 'qrzStatus',
-                  'label': 'QRZ.com Account',
-                  'account': {'key': 'qrz'},
-                },
-              ],
-            },
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'account',
+                    'key': 'qrzStatus',
+                    'label': 'QRZ.com Account',
+                    'account': {'key': 'qrz'},
+                  },
+                ],
+              },
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       expect(find.text('QRZ.com Account'), findsOneWidget);
       expect(find.text('Not Connected'), findsOneWidget);
@@ -1970,27 +1922,29 @@ void main() {
     testWidgets('account field shows the connected label and Manage, and never persists a value on submit', (tester) async {
       Map<String, dynamic>? submittedValues;
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'account',
-                  'key': 'qrzStatus',
-                  'label': 'QRZ.com Account',
-                  'value': {'connected': true, 'label': 'Connected as KI2D'},
-                  'account': {'key': 'qrz'},
-                },
-              ],
-            },
-            initialState: const {},
-            onSubmit: (vals) => submittedValues = vals,
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'account',
+                    'key': 'qrzStatus',
+                    'label': 'QRZ.com Account',
+                    'value': {'connected': true, 'label': 'Connected as KI2D'},
+                    'account': {'key': 'qrz'},
+                  },
+                ],
+              },
+              initialState: const {},
+              onSubmit: (vals) => submittedValues = vals,
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       expect(find.text('Connected as KI2D'), findsOneWidget);
       expect(find.widgetWithText(TextButton, 'Manage'), findsOneWidget);
@@ -2010,30 +1964,32 @@ void main() {
       String? capturedKey;
       String? capturedSubkey;
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'account',
-                  'key': 'lofiStatus',
-                  'label': 'LoFi Account',
-                  'account': {'key': 'lofi', 'subkey': 'backup'},
-                },
-              ],
-            },
-            initialState: const {},
-            onManageAccount: (accountKey, subkey) {
-              capturedKey = accountKey;
-              capturedSubkey = subkey;
-            },
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'account',
+                    'key': 'lofiStatus',
+                    'label': 'LoFi Account',
+                    'account': {'key': 'lofi', 'subkey': 'backup'},
+                  },
+                ],
+              },
+              initialState: const {},
+              onManageAccount: (accountKey, subkey) {
+                capturedKey = accountKey;
+                capturedSubkey = subkey;
+              },
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.widgetWithText(TextButton, 'Connect'));
       await tester.pumpAndSettle();
@@ -2054,16 +2010,13 @@ void main() {
 
     testWidgets('devMode elements are hidden entirely when developerMode is false (the default)', (tester) async {
       Map<String, dynamic>? submittedValues;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: devModeFormDefinition,
-            initialState: const {},
-            onSubmit: (vals) => submittedValues = vals,
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: devModeFormDefinition, initialState: const {}, onSubmit: (vals) => submittedValues = vals, onCancel: () {}),
           ),
         ),
-      ));
+      );
 
       expect(find.text('Dev Only Header'), findsNothing);
       expect(find.text('Debug Flag'), findsNothing);
@@ -2077,17 +2030,13 @@ void main() {
     });
 
     testWidgets('devMode elements show and are tinted the orange dev-mode accent when developerMode is true', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: devModeFormDefinition,
-            initialState: const {},
-            developerMode: true,
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: devModeFormDefinition, initialState: const {}, developerMode: true, onSubmit: (_) {}, onCancel: () {}),
           ),
         ),
-      ));
+      );
 
       expect(find.text('Dev Only Header'), findsOneWidget);
       expect(find.text('Debug Flag'), findsOneWidget);
@@ -2140,26 +2089,20 @@ void main() {
       // renders a panel of extension settings (whose fields declare no icons)
       // as compact form controls beside a panel of settings rows.
       Widget renderer({required bool settingsList}) => MaterialApp(
-            home: Scaffold(
-              body: FormRenderer(
-                formDefinition: const {
-                  'elements': [
-                    {
-                      'type': 'field',
-                      'fieldType': 'checkbox',
-                      'key': 'noIconToggle',
-                      'label': 'Plain Toggle',
-                      'value': false,
-                    },
-                  ],
-                },
-                initialState: const {},
-                settingsList: settingsList,
-                onSubmit: (_) {},
-                onCancel: () {},
-              ),
-            ),
-          );
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {'type': 'field', 'fieldType': 'checkbox', 'key': 'noIconToggle', 'label': 'Plain Toggle', 'value': false},
+              ],
+            },
+            initialState: const {},
+            settingsList: settingsList,
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      );
 
       await tester.pumpWidget(renderer(settingsList: false));
       // A form's toggle is the compact control: the checkbox leads the row,
@@ -2184,16 +2127,13 @@ void main() {
     });
 
     testWidgets('a select field with icon set renders as a tappable list row showing the current value', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: iconRowFormDefinition,
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: iconRowFormDefinition, initialState: const {}, onSubmit: (_) {}, onCancel: () {}),
           ),
         ),
-      ));
+      );
 
       // The icon-row select renders inside a ListTile (leading icon, title,
       // subtitle) instead of the standalone DropdownButtonFormField a
@@ -2218,16 +2158,13 @@ void main() {
 
     testWidgets('tapping an icon-row select opens a picker dialog whose choice commits like the inline control', (tester) async {
       Map<String, dynamic>? submittedValues;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: iconRowFormDefinition,
-            initialState: const {},
-            onSubmit: (vals) => submittedValues = vals,
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: iconRowFormDefinition, initialState: const {}, onSubmit: (vals) => submittedValues = vals, onCancel: () {}),
           ),
         ),
-      ));
+      );
 
       // Tapping the row opens a dialog listing the options.
       await tester.tap(find.text('Theme Mode'));
@@ -2262,16 +2199,13 @@ void main() {
         ],
       };
       Map<String, dynamic>? submittedValues;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: textFormDefinition,
-            initialState: const {},
-            onSubmit: (vals) => submittedValues = vals,
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: textFormDefinition, initialState: const {}, onSubmit: (vals) => submittedValues = vals, onCancel: () {}),
           ),
         ),
-      ));
+      );
 
       // The row states what the setting is SET TO. The description is prose
       // about the setting, and giving it the subtitle would push the value —
@@ -2310,27 +2244,22 @@ void main() {
       // route result alone would silently drop the edit on both — they pop
       // with no result at all.
       Map<String, dynamic>? submittedValues;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'text',
-                  'key': 'stationName',
-                  'label': 'Station Name',
-                  'icon': 'account',
-                  'value': 'Field Day',
-                },
-              ],
-            },
-            initialState: const {},
-            onSubmit: (vals) => submittedValues = vals,
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {'type': 'field', 'fieldType': 'text', 'key': 'stationName', 'label': 'Station Name', 'icon': 'account', 'value': 'Field Day'},
+                ],
+              },
+              initialState: const {},
+              onSubmit: (vals) => submittedValues = vals,
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Station Name'));
       await tester.pumpAndSettle();
@@ -2351,31 +2280,26 @@ void main() {
       // would otherwise fire onChange — a real write, with whatever the
       // presenter hung off it (an account revalidating, a sync kicking).
       final committed = <String>[];
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'text',
-                  'key': 'stationName',
-                  'label': 'Station Name',
-                  'icon': 'account',
-                  'value': 'Field Day',
-                },
-              ],
-            },
-            initialState: const {},
-            onChange: (key, value, state) async {
-              committed.add('$key=$value');
-              return null;
-            },
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {'type': 'field', 'fieldType': 'text', 'key': 'stationName', 'label': 'Station Name', 'icon': 'account', 'value': 'Field Day'},
+                ],
+              },
+              initialState: const {},
+              onChange: (key, value, state) async {
+                committed.add('$key=$value');
+                return null;
+              },
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Station Name'));
       await tester.pumpAndSettle();
@@ -2393,36 +2317,23 @@ void main() {
     });
 
     testWidgets('a field declaring a defaultValue offers Defaults, and one without does not', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'text',
-                  'key': 'report',
-                  'label': 'Default Report',
-                  'icon': 'account',
-                  'value': '5NN',
-                  'defaultValue': '599',
-                },
-                {
-                  'type': 'field',
-                  'fieldType': 'text',
-                  'key': 'stationName',
-                  'label': 'Station Name',
-                  'icon': 'account',
-                  'value': 'Field Day',
-                },
-              ],
-            },
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {'type': 'field', 'fieldType': 'text', 'key': 'report', 'label': 'Default Report', 'icon': 'account', 'value': '5NN', 'defaultValue': '599'},
+                  {'type': 'field', 'fieldType': 'text', 'key': 'stationName', 'label': 'Station Name', 'icon': 'account', 'value': 'Field Day'},
+                ],
+              },
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       // No declared default, nothing to restore — the button is offered only
       // where the definition says what the default IS.
@@ -2446,28 +2357,30 @@ void main() {
       // 12pt switch at its far edge reads as broken — and on a phone it is
       // the hardest target in the panel.
       Map<String, dynamic>? submittedValues;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'checkbox',
-                  'key': 'shareData',
-                  'label': 'Share app usage data',
-                  'icon': 'chart-box',
-                  'description': 'Help us improve the app',
-                  'value': false,
-                },
-              ],
-            },
-            initialState: const {},
-            onSubmit: (vals) => submittedValues = vals,
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'checkbox',
+                    'key': 'shareData',
+                    'label': 'Share app usage data',
+                    'icon': 'chart-box',
+                    'description': 'Help us improve the app',
+                    'value': false,
+                  },
+                ],
+              },
+              initialState: const {},
+              onSubmit: (vals) => submittedValues = vals,
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
 
@@ -2486,29 +2399,31 @@ void main() {
       // `disabled` greys a row rather than hiding it, so the row still looks
       // tappable — the switch refusing while the row still toggled would be
       // the worst of both.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'checkbox',
-                  'key': 'shareData',
-                  'label': 'Share app usage data',
-                  'icon': 'chart-box',
-                  'description': 'Not available here',
-                  'value': false,
-                  'disabled': true,
-                },
-              ],
-            },
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'checkbox',
+                    'key': 'shareData',
+                    'label': 'Share app usage data',
+                    'icon': 'chart-box',
+                    'description': 'Not available here',
+                    'value': false,
+                    'disabled': true,
+                  },
+                ],
+              },
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.text('Not available here'));
       await tester.pumpAndSettle();
@@ -2519,30 +2434,20 @@ void main() {
     testWidgets('a toggle (checkbox) field stays trailing even on a narrow panel', (tester) async {
       final toggleFormDefinition = {
         'elements': [
-          {
-            'type': 'field',
-            'fieldType': 'checkbox',
-            'key': 'syncEnabled',
-            'label': 'Sync with Ham2K Log Filer',
-            'icon': 'cloud-sync',
-            'value': false,
-          },
+          {'type': 'field', 'fieldType': 'checkbox', 'key': 'syncEnabled', 'label': 'Sync with Ham2K Log Filer', 'icon': 'cloud-sync', 'value': false},
         ],
       };
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 300,
-            child: FormRenderer(
-              formDefinition: toggleFormDefinition,
-              initialState: const {},
-              onSubmit: (_) {},
-              onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 300,
+              child: FormRenderer(formDefinition: toggleFormDefinition, initialState: const {}, onSubmit: (_) {}, onCancel: () {}),
             ),
           ),
         ),
-      ));
+      );
 
       final titleTop = tester.getTopLeft(find.text('Sync with Ham2K Log Filer')).dy;
       final switchTop = tester.getTopLeft(find.byType(Switch)).dy;
@@ -2556,35 +2461,30 @@ void main() {
     // so without this the same element rendered its hint or silently dropped
     // it depending only on whether it also carried an `icon`.
     testWidgets('an icon-row field shows its placeholder in place of an empty value', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'text',
-                  'key': 'stationCall',
-                  'label': 'Station Call',
-                  'icon': 'account',
-                  'placeholder': 'Same as the operator',
-                },
-                {
-                  'type': 'field',
-                  'fieldType': 'secret',
-                  'key': 'apiKey',
-                  'label': 'API Key',
-                  'icon': 'shield-account',
-                  'placeholder': 'Already stored',
-                },
-              ],
-            },
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'text',
+                    'key': 'stationCall',
+                    'label': 'Station Call',
+                    'icon': 'account',
+                    'placeholder': 'Same as the operator',
+                  },
+                  {'type': 'field', 'fieldType': 'secret', 'key': 'apiKey', 'label': 'API Key', 'icon': 'shield-account', 'placeholder': 'Already stored'},
+                ],
+              },
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
 
       // Both fields took the icon-row path: a ListTile each, nothing to type
       // into until one is opened.
@@ -2621,65 +2521,13 @@ void main() {
       // Settings panels get read over shoulders and screen-shared. A stored
       // secret has to show that it IS stored without showing what it is —
       // and without leaking its length either.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'secret',
-                  'key': 'apiKey',
-                  'label': 'API Key',
-                  'icon': 'shield-account',
-                  'value': 'hunter2-and-then-some',
-                },
-              ],
-            },
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
-          ),
-        ),
-      ));
-
-      expect(find.text('hunter2-and-then-some'), findsNothing);
-      expect(find.text('••••••••'), findsOneWidget);
-    });
-
-    testWidgets('a header with no style (or style: default) keeps the bold form-title look', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {'type': 'header', 'title': 'Plain Header'},
-              ],
-            },
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
-          ),
-        ),
-      ));
-
-      final header = tester.widget<Text>(find.text('Plain Header'));
-      expect(header.style?.fontWeight, FontWeight.w900);
-      expect(header.style?.fontFamily, 'RobotoSlab');
-    });
-
-    testWidgets("style: 'section' is a ruled header standing proud of its rows", (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          // The inset a settings list publishes: without one the rows sit at
-          // the edge and the band has nothing to stand proud of.
-          body: ListTileTheme(
-            data: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 24)),
-            child: FormRenderer(
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
               formDefinition: const {
                 'elements': [
-                  {'type': 'header', 'title': 'Plain Title'},
-                  {'type': 'header', 'title': 'Section Header', 'style': 'section'},
+                  {'type': 'field', 'fieldType': 'secret', 'key': 'apiKey', 'label': 'API Key', 'icon': 'shield-account', 'value': 'hunter2-and-then-some'},
                 ],
               },
               initialState: const {},
@@ -2688,7 +2536,58 @@ void main() {
             ),
           ),
         ),
-      ));
+      );
+
+      expect(find.text('hunter2-and-then-some'), findsNothing);
+      expect(find.text('••••••••'), findsOneWidget);
+    });
+
+    testWidgets('a header with no style (or style: default) keeps the bold form-title look', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {'type': 'header', 'title': 'Plain Header'},
+                ],
+              },
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      );
+
+      final header = tester.widget<Text>(find.text('Plain Header'));
+      expect(header.style?.fontWeight, FontWeight.w900);
+      expect(header.style?.fontFamily, 'RobotoSlab');
+    });
+
+    testWidgets("style: 'section' is a ruled header standing proud of its rows", (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            // The inset a settings list publishes: without one the rows sit at
+            // the edge and the band has nothing to stand proud of.
+            body: ListTileTheme(
+              data: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 24)),
+              child: FormRenderer(
+                formDefinition: const {
+                  'elements': [
+                    {'type': 'header', 'title': 'Plain Title'},
+                    {'type': 'header', 'title': 'Section Header', 'style': 'section'},
+                  ],
+                },
+                initialState: const {},
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
+            ),
+          ),
+        ),
+      );
 
       final title = find.text('Section Header');
       final header = tester.widget<Text>(title);
@@ -2752,21 +2651,18 @@ void main() {
       late StateSetter setOuterState;
       Map<String, dynamic>? submittedValues;
 
-      await tester.pumpWidget(StatefulBuilder(
-        builder: (context, setState) {
-          setOuterState = setState;
-          return MaterialApp(
-            home: Scaffold(
-              body: FormRenderer(
-                formDefinition: currentDefinition,
-                initialState: const {},
-                onSubmit: (vals) => submittedValues = vals,
-                onCancel: () {},
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setState) {
+            setOuterState = setState;
+            return MaterialApp(
+              home: Scaffold(
+                body: FormRenderer(formDefinition: currentDefinition, initialState: const {}, onSubmit: (vals) => submittedValues = vals, onCancel: () {}),
               ),
-            ),
-          );
-        },
-      ));
+            );
+          },
+        ),
+      );
 
       expect(find.text('Newly Appeared'), findsNothing);
 
@@ -2846,17 +2742,12 @@ void main() {
     Map<String, dynamic>? submitted;
 
     Widget host() => MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: FormRenderer(
-                formDefinition: conditionalForm,
-                initialState: const {},
-                onSubmit: (vals) => submitted = vals,
-                onCancel: () {},
-              ),
-            ),
-          ),
-        );
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: FormRenderer(formDefinition: conditionalForm, initialState: const {}, onSubmit: (vals) => submitted = vals, onCancel: () {}),
+        ),
+      ),
+    );
 
     setUp(() => submitted = null);
 
@@ -2966,33 +2857,32 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: FormRenderer(
-          formDefinition: const {
-            'title': 'Entry',
-            'elements': [
-              {
-                'type': 'field',
-                'fieldType': 'select',
-                'key': 'category',
-                'label': 'Entry Category',
-                'options': [
-                  {'value': 'SL', 'label': 'SL — Single Op, Low Power'},
-                  {
-                    'value': 'MML',
-                    'label': 'MML — Multi-Op Multi-Transmitter Low Power (.1 to 100 watts) located at one Ohio State Park',
-                  },
-                ],
-              },
-            ],
-          },
-          initialState: const {},
-          onSubmit: (_) async {},
-          onCancel: () {},
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'title': 'Entry',
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'select',
+                  'key': 'category',
+                  'label': 'Entry Category',
+                  'options': [
+                    {'value': 'SL', 'label': 'SL — Single Op, Low Power'},
+                    {'value': 'MML', 'label': 'MML — Multi-Op Multi-Transmitter Low Power (.1 to 100 watts) located at one Ohio State Park'},
+                  ],
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) async {},
+            onCancel: () {},
+          ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // A RenderFlex overflow is reported as a test failure in its own right, so
@@ -3012,30 +2902,32 @@ void main() {
     // element's own `value`, and DropdownButton asserts that its value is exactly
     // one of its items — so reopening that setup form threw instead of rendering.
     Map<String, dynamic>? submitted;
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: FormRenderer(
-          formDefinition: const {
-            'title': 'Entry',
-            'elements': [
-              {
-                'type': 'field',
-                'fieldType': 'select',
-                'key': 'ourPower',
-                'label': 'Power',
-                'options': [
-                  {'value': 'LP', 'label': 'Low Power'},
-                  {'value': 'HP', 'label': 'High Power'},
-                ],
-              },
-            ],
-          },
-          initialState: const {'ourPower': 'QRP'},
-          onSubmit: (values) async => submitted = values,
-          onCancel: () {},
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'title': 'Entry',
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'select',
+                  'key': 'ourPower',
+                  'label': 'Power',
+                  'options': [
+                    {'value': 'LP', 'label': 'Low Power'},
+                    {'value': 'HP', 'label': 'High Power'},
+                  ],
+                },
+              ],
+            },
+            initialState: const {'ourPower': 'QRP'},
+            onSubmit: (values) async => submitted = values,
+            onCancel: () {},
+          ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // Renders, with nothing selected rather than a value the form cannot show.
@@ -3053,31 +2945,31 @@ void main() {
 
   group('a select behind an icon row', () {
     Widget renderer({required int optionCount, String? description, Object? initial}) => MaterialApp(
-          home: Scaffold(
-            body: FormRenderer(
-              formDefinition: {
-                'elements': [
-                  {
-                    'type': 'field',
-                    'fieldType': 'select',
-                    // `icon` is what routes a select to the row-and-dialog
-                    // form instead of an inline dropdown.
-                    'icon': 'earth',
-                    'key': 'zone',
-                    'label': 'Time Zone',
-                    'description': ?description,
-                    'options': [
-                      for (var i = 1; i <= optionCount; i++) {'label': 'Zone $i', 'value': 'z$i'},
-                    ],
-                  },
+      home: Scaffold(
+        body: FormRenderer(
+          formDefinition: {
+            'elements': [
+              {
+                'type': 'field',
+                'fieldType': 'select',
+                // `icon` is what routes a select to the row-and-dialog
+                // form instead of an inline dropdown.
+                'icon': 'earth',
+                'key': 'zone',
+                'label': 'Time Zone',
+                'description': ?description,
+                'options': [
+                  for (var i = 1; i <= optionCount; i++) {'label': 'Zone $i', 'value': 'z$i'},
                 ],
               },
-              initialState: initial == null ? const {} : {'zone': initial},
-              onSubmit: (_) {},
-              onCancel: () {},
-            ),
-          ),
-        );
+            ],
+          },
+          initialState: initial == null ? const {} : {'zone': initial},
+          onSubmit: (_) {},
+          onCancel: () {},
+        ),
+      ),
+    );
 
     testWidgets('the row names the chosen option when there is no description', (tester) async {
       // A zone is its own explanation, so such a field writes no description
@@ -3114,10 +3006,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Time Zone'));
       await tester.pumpAndSettle();
-      expect(
-        find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField)),
-        findsOneWidget,
-      );
+      expect(find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField)), findsOneWidget);
     });
 
     testWidgets('typing narrows the list, and picking from it commits', (tester) async {
@@ -3125,30 +3014,32 @@ void main() {
       // without filtering a known name can only be reached by scrolling. 341
       // IANA zones is the real case.
       Map<String, dynamic>? submitted;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FormRenderer(
-            formDefinition: {
-              'elements': [
-                {
-                  'type': 'field',
-                  'fieldType': 'select',
-                  'icon': 'earth',
-                  'key': 'zone',
-                  'label': 'Time Zone',
-                  'options': [
-                    for (var i = 1; i <= 30; i++) {'label': 'Alpha $i', 'value': 'a$i'},
-                    {'label': 'Zulu', 'value': 'zulu'},
-                  ],
-                },
-              ],
-            },
-            initialState: const {},
-            onSubmit: (values) async => submitted = values,
-            onCancel: () {},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: {
+                'elements': [
+                  {
+                    'type': 'field',
+                    'fieldType': 'select',
+                    'icon': 'earth',
+                    'key': 'zone',
+                    'label': 'Time Zone',
+                    'options': [
+                      for (var i = 1; i <= 30; i++) {'label': 'Alpha $i', 'value': 'a$i'},
+                      {'label': 'Zulu', 'value': 'zulu'},
+                    ],
+                  },
+                ],
+              },
+              initialState: const {},
+              onSubmit: (values) async => submitted = values,
+              onCancel: () {},
+            ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Time Zone'));
       await tester.pumpAndSettle();

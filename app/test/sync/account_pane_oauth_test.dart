@@ -61,18 +61,15 @@ class _FakeHttpClient implements HttpClient {
   Future<HttpClientRequest> _open(String method, Uri url) async {
     if (url.path.endsWith('/.well-known/openid-configuration')) {
       owner.discoveryFetches++;
-      return _FakeRequest(url, method, jsonEncode({
-        'authorization_endpoint': '$_issuer/protocol/openid-connect/auth',
-        'token_endpoint': '$_issuer/protocol/openid-connect/token',
-      }));
+      return _FakeRequest(
+        url,
+        method,
+        jsonEncode({'authorization_endpoint': '$_issuer/protocol/openid-connect/auth', 'token_endpoint': '$_issuer/protocol/openid-connect/token'}),
+      );
     }
     if (url.path.endsWith('/token')) {
       owner.tokenExchanges++;
-      return _FakeRequest(url, method, jsonEncode({
-        'access_token': 'ACCESS',
-        'refresh_token': 'REFRESH',
-        'id_token': _idToken,
-      }));
+      return _FakeRequest(url, method, jsonEncode({'access_token': 'ACCESS', 'refresh_token': 'REFRESH', 'id_token': _idToken}));
     }
     return _FakeRequest(url, method, '{}', status: 404);
   }
@@ -153,14 +150,8 @@ class _FakeResponse extends Stream<List<int>> implements HttpClientResponse {
   HttpClientResponseCompressionState get compressionState => HttpClientResponseCompressionState.notCompressed;
 
   @override
-  StreamSubscription<List<int>> listen(
-    void Function(List<int> event)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) =>
-      Stream<List<int>>.value(utf8.encode(body))
-          .listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+  StreamSubscription<List<int>> listen(void Function(List<int> event)? onData, {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
+      Stream<List<int>>.value(utf8.encode(body)).listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -215,23 +206,19 @@ final _accountDefinition = {
   },
 };
 
-typedef _Harness = ({
-  HaLoServices services,
-  _FakeDeepLinkService links,
-  _OAuthHttpOverrides http,
-  _AccountExtensionService extensions,
-});
+typedef _Harness = ({HaLoServices services, _FakeDeepLinkService links, _OAuthHttpOverrides http, _AccountExtensionService extensions});
 
 Future<_Harness> _harness(_OAuthHttpOverrides overrides) async {
   SharedPreferences.setMockInitialValues({});
   final settings = SettingsService(await SharedPreferences.getInstance());
-  final extensions = _AccountExtensionService(FakeExtensionHost({
-    'account:*:getDefinition': [_accountDefinition],
-  }));
+  final extensions = _AccountExtensionService(
+    FakeExtensionHost({
+      'account:*:getDefinition': [_accountDefinition],
+    }),
+  );
   extensions.settings = settings;
   final links = _FakeDeepLinkService();
-  final services = HaLoServices(HaLoDatabase(NativeDatabase.memory()), settings,
-      extensions: extensions, deepLinks: links);
+  final services = HaLoServices(HaLoDatabase(NativeDatabase.memory()), settings, extensions: extensions, deepLinks: links);
   return (services: services, links: links, http: overrides, extensions: extensions);
 }
 
@@ -267,11 +254,16 @@ Future<void> _deliver(WidgetTester tester, _FakeDeepLinkService links, String ur
 
 Future<_Harness> _openPane(WidgetTester tester, _OAuthHttpOverrides overrides) async {
   final h = await _harness(overrides);
-  await tester.pumpWidget(TranslationProvider(
-    // showAccountDialogByKey opens on the app's root navigator, so it needs
-    // the navigatorKey main.dart wires up rather than this test's context.
-    child: MaterialApp(navigatorKey: navigatorKey, home: const Scaffold(body: SizedBox())),
-  ));
+  await tester.pumpWidget(
+    TranslationProvider(
+      // showAccountDialogByKey opens on the app's root navigator, so it needs
+      // the navigatorKey main.dart wires up rather than this test's context.
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        home: const Scaffold(body: SizedBox()),
+      ),
+    ),
+  );
   unawaited(showAccountDialogByKey(h.services, 'testsso'));
   await tester.pumpAndSettle();
   return h;
@@ -291,13 +283,7 @@ void main() {
   // when package_info_plus's channel can't answer — headless tests exactly.
   // Without this the login aborts in the prologue and never reaches the
   // waiting body, which looks identical to the login simply not starting.
-  PackageInfo.setMockInitialValues(
-    appName: 'Ham2K Logger',
-    packageName: 'com.ham2k.logger.test',
-    version: '0.1.0',
-    buildNumber: '1',
-    buildSignature: '',
-  );
+  PackageInfo.setMockInitialValues(appName: 'Ham2K Logger', packageName: 'com.ham2k.logger.test', version: '0.1.0', buildNumber: '1', buildSignature: '');
 
   testWidgets('the authorization code comes home and the pane offers to keep it', (tester) async {
     // The one path that has never run against a real provider: HALO-372 means
@@ -313,10 +299,7 @@ void main() {
 
       expect(find.text(t.settings.accounts.browserLoginTitle), findsOneWidget);
 
-      final state = tester
-          .widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody))
-          .authUri
-          .queryParameters['state']!;
+      final state = tester.widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody)).authUri.queryParameters['state']!;
       await _deliver(tester, h.links, '$_redirect?code=THE_CODE&state=${Uri.encodeQueryComponent(state)}');
 
       expect(overrides.tokenExchanges, 1, reason: 'the code was actually exchanged');
@@ -367,20 +350,14 @@ void main() {
       final h = await _openPane(tester, overrides);
       await tester.tap(_connect);
       await _pump(tester);
-      final firstState = tester
-          .widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody))
-          .authUri
-          .queryParameters['state']!;
+      final firstState = tester.widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody)).authUri.queryParameters['state']!;
 
       await tester.tap(_cancelLogin);
       await _flush(tester);
       expect(_enabled(tester, _connect), isTrue, reason: 'the pane is ready for another attempt');
       await tester.tap(_connect);
       await _pump(tester);
-      final secondState = tester
-          .widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody))
-          .authUri
-          .queryParameters['state']!;
+      final secondState = tester.widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody)).authUri.queryParameters['state']!;
       expect(secondState, isNot(firstState), reason: 'each attempt gets its own nonce');
 
       await _deliver(tester, h.links, '$_redirect?code=STALE&state=${Uri.encodeQueryComponent(firstState)}');
@@ -401,10 +378,7 @@ void main() {
       final h = await _openPane(tester, overrides);
       await tester.tap(_connect);
       await _pump(tester);
-      final state = tester
-          .widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody))
-          .authUri
-          .queryParameters['state']!;
+      final state = tester.widget<OAuthBrowserLoginBody>(find.byType(OAuthBrowserLoginBody)).authUri.queryParameters['state']!;
 
       await _deliver(tester, h.links, '$_redirect?code=THEIRS&state=${Uri.encodeQueryComponent('${state}x')}');
 
@@ -434,8 +408,7 @@ void main() {
         await tester.tap(_connect);
         await _pump(tester);
 
-        expect(h.extensions.registrationRefreshes, [true],
-            reason: 'one login, and it demanded a current token');
+        expect(h.extensions.registrationRefreshes, [true], reason: 'one login, and it demanded a current token');
         expect(find.byType(OAuthBrowserLoginBody), findsOneWidget, reason: 'the wait actually started');
         await h.links.dispose();
       }, createHttpClient: (c) => _FakeHttpClient(overrides));

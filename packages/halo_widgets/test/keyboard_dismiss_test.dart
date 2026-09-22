@@ -23,17 +23,17 @@ void main() {
   /// field makes its own internal node), and `node?.hasFocus ?? false` then
   /// silently reports "not focused" for every case.
   Widget host(_Fields f) => TapToDismissEmptyField(
-        child: MaterialApp(
-          home: Scaffold(
-            body: Column(
-              children: [
-                TextField(key: const Key('first'), controller: f.firstText, focusNode: f.first),
-                TextField(key: const Key('second'), controller: f.secondText, focusNode: f.second),
-              ],
-            ),
-          ),
+    child: MaterialApp(
+      home: Scaffold(
+        body: Column(
+          children: [
+            TextField(key: const Key('first'), controller: f.firstText, focusNode: f.first),
+            TextField(key: const Key('second'), controller: f.secondText, focusNode: f.second),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
   /// Raises/lowers the on-screen keyboard. `viewInsets` is in PHYSICAL pixels
   /// (the helper divides by devicePixelRatio), and the helper reads the raw
@@ -89,11 +89,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(f.first.hasFocus, isFalse, reason: 'the empty field should have blurred');
-      expect(
-        tester.testTextInput.isVisible,
-        isFalse,
-        reason: 'blurring the only focused field closes the input connection',
-      );
+      expect(tester.testTextInput.isVisible, isFalse, reason: 'blurring the only focused field closes the input connection');
     });
   });
 
@@ -136,18 +132,20 @@ void main() {
       // fraction of its height (measured: 24pt inside 88pt), and the rest is
       // decoration the field still focuses from — so the dismissal has to use
       // the field's tap target, not the editable's box.
-      await tester.pumpWidget(TapToDismissEmptyField(
-        child: MaterialApp(
-          home: Scaffold(
-            body: TextField(
-              key: const Key('first'),
-              controller: f.firstText,
-              focusNode: f.first,
-              decoration: const InputDecoration(labelText: 'Callsign', contentPadding: EdgeInsets.all(24)),
+      await tester.pumpWidget(
+        TapToDismissEmptyField(
+          child: MaterialApp(
+            home: Scaffold(
+              body: TextField(
+                key: const Key('first'),
+                controller: f.firstText,
+                focusNode: f.first,
+                decoration: const InputDecoration(labelText: 'Callsign', contentPadding: EdgeInsets.all(24)),
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.tap(find.byKey(const Key('first')));
       await tester.pumpAndSettle();
@@ -156,11 +154,7 @@ void main() {
 
       final rect = tester.getRect(find.byKey(const Key('first')));
       final editableBox = f.first.context!.findRenderObject()! as RenderBox;
-      expect(
-        editableBox.size.height,
-        lessThan(rect.height / 2),
-        reason: 'guard the premise: the editable really is much smaller than the field',
-      );
+      expect(editableBox.size.height, lessThan(rect.height / 2), reason: 'guard the premise: the editable really is much smaller than the field');
 
       // 6pt below the field's top edge — inside the decoration, outside the
       // editable.
@@ -205,11 +199,7 @@ void main() {
       setKeyboard(tester, up: true);
       await tester.pump();
 
-      await slowTap(
-        tester,
-        tester.getCenter(find.byKey(const Key('first'))),
-        hold: kLongPressTimeout + const Duration(milliseconds: 50),
-      );
+      await slowTap(tester, tester.getCenter(find.byKey(const Key('first'))), hold: kLongPressTimeout + const Duration(milliseconds: 50));
 
       expect(f.first.hasFocus, isTrue, reason: 'a long press is not a tap');
     });
@@ -232,16 +222,14 @@ void main() {
       final gesture = await tester.startGesture(tester.getCenter(find.byKey(const Key('first'))));
       await tester.pump(const Duration(milliseconds: 120));
       await gesture.up();
-      await tester.pumpWidget(TapToDismissEmptyField(
-        child: MaterialApp(home: Scaffold(body: Container())),
-      ));
+      await tester.pumpWidget(
+        TapToDismissEmptyField(
+          child: MaterialApp(home: Scaffold(body: Container())),
+        ),
+      );
       await tester.pumpAndSettle();
 
-      expect(
-        tester.takeException(),
-        isNull,
-        reason: 'reading a deactivated context\'s ancestors would throw',
-      );
+      expect(tester.takeException(), isNull, reason: 'reading a deactivated context\'s ancestors would throw');
     });
   });
 
@@ -356,9 +344,7 @@ class _Fields {
   final FocusNode first = FocusNode(debugLabel: 'first');
   final FocusNode second = FocusNode(debugLabel: 'second');
 
-  _Fields({String firstValue = ''})
-      : firstText = TextEditingController(text: firstValue),
-        secondText = TextEditingController();
+  _Fields({String firstValue = ''}) : firstText = TextEditingController(text: firstValue), secondText = TextEditingController();
 
   void dispose() {
     firstText.dispose();

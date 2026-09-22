@@ -50,9 +50,7 @@ const segmentOverrideKeys = ['stationCall', 'refs', 'grid', 'gridSource', 'lat',
 /// of what was true, and an omitted key would fall back to the base
 /// operation — which is exactly what a stretch "with a grid but no exact
 /// fix" must not do.
-Map<String, dynamic> segmentOverrideOf(Map<String, dynamic> operationData) => {
-      for (final key in segmentOverrideKeys) key: operationData[key],
-    };
+Map<String, dynamic> segmentOverrideOf(Map<String, dynamic> operationData) => {for (final key in segmentOverrideKeys) key: operationData[key]};
 
 /// Whether an edit from [before] to [after] changes anything a segment
 /// restates — the test for whether the latest segment has to follow it.
@@ -78,13 +76,12 @@ class OperationSegment {
 
   const OperationSegment({required this.fromMillis, required this.operation});
 
-  List<Map<String, dynamic>> get refs =>
-      ((operation['refs'] as List?) ?? const []).whereType<Map<String, dynamic>>().toList();
+  List<Map<String, dynamic>> get refs => ((operation['refs'] as List?) ?? const []).whereType<Map<String, dynamic>>().toList();
 
   Set<String> get refTypes => {
-        for (final ref in refs)
-          if (ref['type'] case final String type) type,
-      };
+    for (final ref in refs)
+      if (ref['type'] case final String type) type,
+  };
 }
 
 /// An operation resolved into its segments.
@@ -101,30 +98,26 @@ class SegmentedOperation {
   /// [qsos] need not be sorted; event rows are ordered by `startAtMillis`
   /// here, because the caller's list may exclude or reorder real QSOs and the
   /// segment boundaries have to be right regardless.
-  factory SegmentedOperation.from({
-    required Map<String, dynamic> operation,
-    required List<Qso> qsos,
-  }) {
+  factory SegmentedOperation.from({required Map<String, dynamic> operation, required List<Qso> qsos}) {
     final overrides = [
       for (final qso in qsos)
         if (qso.isEvent && !qso.deleted && eventKindOpensSegment(qso.eventKind))
-          if (qso.event?['operation'] case final Map<String, dynamic> override)
-            (at: qso.startAtMillis ?? 0, override: override),
+          if (qso.event?['operation'] case final Map<String, dynamic> override) (at: qso.startAtMillis ?? 0, override: override),
     ]..sort((a, b) => a.at.compareTo(b.at));
 
     // The base operation covers everything before the first override — and the
     // whole log when there are none, which is the overwhelmingly common case.
-    final segments = <OperationSegment>[
-      OperationSegment(fromMillis: -1 << 62, operation: operation),
-    ];
+    final segments = <OperationSegment>[OperationSegment(fromMillis: -1 << 62, operation: operation)];
     for (final entry in overrides) {
-      segments.add(OperationSegment(
-        fromMillis: entry.at,
-        // Over the BASE, not the previous segment. Each segment is an
-        // independent statement of what was true; a grid set in segment one
-        // does not leak into segment two just because two didn't mention it.
-        operation: {...operation, ...entry.override},
-      ));
+      segments.add(
+        OperationSegment(
+          fromMillis: entry.at,
+          // Over the BASE, not the previous segment. Each segment is an
+          // independent statement of what was true; a grid set in segment one
+          // does not leak into segment two just because two didn't mention it.
+          operation: {...operation, ...entry.override},
+        ),
+      );
     }
     return SegmentedOperation._(segments);
   }
@@ -164,17 +157,15 @@ class SegmentedOperation {
   /// Worth sending only when [isSegmented] — the harness treats a single
   /// segment as no timeline at all, so a one-entry list is pure payload.
   List<Map<String, dynamic>> get payload => [
-        for (final segment in segments) {'fromMillis': segment.fromMillis, 'operation': segment.operation},
-      ];
+    for (final segment in segments) {'fromMillis': segment.fromMillis, 'operation': segment.operation},
+  ];
 
   /// Every ref type on the base operation or any segment.
   ///
   /// Scorer selection uses this: a contest that only covers the back half of a
   /// log must still be invoked, and a scorer selected from the base operation
   /// alone never would be.
-  Set<String> get allRefTypes => {
-        for (final segment in segments) ...segment.refTypes,
-      };
+  Set<String> get allRefTypes => {for (final segment in segments) ...segment.refTypes};
 
   /// Every reference carried by any segment — one export is offered per
   /// entry, since an activity that supports multiple references produces a
@@ -240,8 +231,6 @@ class SegmentedOperation {
   }
 
   Set<String> _refIdentitiesAt(int? startAtMillis) => {
-        for (final ref in ((effectiveAt(startAtMillis)['refs'] as List?) ?? const [])
-            .whereType<Map<String, dynamic>>())
-          '${ref['type']}\u0000${ref['ref']}',
-      };
+    for (final ref in ((effectiveAt(startAtMillis)['refs'] as List?) ?? const []).whereType<Map<String, dynamic>>()) '${ref['type']}\u0000${ref['ref']}',
+  };
 }

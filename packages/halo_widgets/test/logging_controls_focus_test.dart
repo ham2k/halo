@@ -79,9 +79,7 @@ void main() {
       // it to "/285" as the operator reaches for 14.285 is worse than the
       // suffix it would have fixed. The pairs below straddle exactly that line
       // — flipping the rule to "any leading dot" breaks the last two.
-      String run(String text) => MobileDotToSlashFormatter()
-          .formatEditUpdate(const TextEditingValue(text: ''), TextEditingValue(text: text))
-          .text;
+      String run(String text) => MobileDotToSlashFormatter().formatEditUpdate(const TextEditingValue(text: ''), TextEditingValue(text: text)).text;
 
       expect(run('.P'), '/P');
       expect(run('..P'), '//P');
@@ -105,9 +103,7 @@ void main() {
       // rewrote, so a call that opens with a slash is this formatter's own
       // output: gate the prefix on "." alone and "//KI..KN" stops converting
       // the moment its leading ".." becomes "//".
-      String run(String text) => MobileDotToSlashFormatter()
-          .formatEditUpdate(const TextEditingValue(text: ''), TextEditingValue(text: text))
-          .text;
+      String run(String text) => MobileDotToSlashFormatter().formatEditUpdate(const TextEditingValue(text: ''), TextEditingValue(text: text)).text;
 
       expect(run('//KI..KN'), '//KI//KN');
       expect(run('/P.QRP'), '/P/QRP');
@@ -146,8 +142,7 @@ void main() {
   // ancestor mid-build. So the row appears ONE FRAME after whatever changed it:
   // [pumpRow] is that frame, and any assertion about the row's contents needs it.
   group('mobile numbers row (issue #27)', () {
-    Finder keyInRow(String glyph) =>
-        find.descendant(of: find.byType(NumberKeys), matching: find.text(glyph));
+    Finder keyInRow(String glyph) => find.descendant(of: find.byType(NumberKeys), matching: find.text(glyph));
 
     Future<void> pumpRow(WidgetTester tester) async {
       await tester.pump(); // runs the publish
@@ -346,20 +341,17 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: LogHooks(
-            operation: running(['cqwpx']),
-            qsosRepository: qsos,
-          ),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['cqwpx']), qsosRepository: qsos),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
 
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
@@ -381,8 +373,7 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     await tester.pump();
-    expect(field('Their #').focusNode!.hasFocus, isTrue,
-        reason: 'space advances Our # → Their # — a serial is not skipped');
+    expect(field('Their #').focusNode!.hasFocus, isTrue, reason: 'space advances Our # → Their # — a serial is not skipped');
 
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     await tester.pump();
@@ -402,20 +393,17 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: LogHooks(
-            operation: running(['c']),
-            qsosRepository: qsos,
-          ),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
 
     tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode!.requestFocus();
@@ -466,20 +454,17 @@ void main() {
         'input': {'kind': 'text', 'refType': 'qp', 'field': 'county'},
       },
     ];
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: LogHooks(
-            operation: running(['qp']),
-            qsosRepository: qsos,
-          ),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['qp']), qsosRepository: qsos),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
     final field = tester.widget<TextField>(find.widgetWithText(TextField, 'County'));
     // Sent is a fixed main field; the exchange refuses exactly what it does.
@@ -517,20 +502,17 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: LogHooks(
-            operation: running(['cqwpx']),
-            qsosRepository: qsos,
-          ),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['cqwpx']), qsosRepository: qsos),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
 
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
@@ -580,12 +562,7 @@ void main() {
     // but the double-space that exits the field — and even if it didn't,
     // _handleSpace re-inserts the literal space for those modes, a safety net
     // this test also exercises end to end. The exit itself is covered below.)
-    Future<Map<String, dynamic>?> fakeReloadPrefix(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeReloadPrefix(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() == 'RELOAD') return {'expectsParams': true};
       return null;
     }
@@ -611,8 +588,7 @@ void main() {
     // An operator running a pileup tabs by feel: landing on a button (where the
     // next keystroke does nothing, or worse, logs) costs a QSO. The rules here
     // are specified in docs/design/logging-fields.md.
-    TextField field(WidgetTester tester, String label) =>
-        tester.widget<TextField>(find.widgetWithText(TextField, label));
+    TextField field(WidgetTester tester, String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     testWidgets('Tab off the last main field returns to the call field', (tester) async {
       await tester.pumpWidget(host());
@@ -622,8 +598,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
 
-      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue,
-          reason: 'Tab past the last field wraps to Call rather than leaving the row');
+      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue, reason: 'Tab past the last field wraps to Call rather than leaving the row');
     });
 
     testWidgets('Shift-Tab off the call field goes to the last main field', (tester) async {
@@ -636,8 +611,7 @@ void main() {
       await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
       await tester.pump();
 
-      expect(field(tester, 'Rcvd').focusNode!.hasFocus, isTrue,
-          reason: 'Shift-Tab wraps backwards to the last field, not out of the row');
+      expect(field(tester, 'Rcvd').focusNode!.hasFocus, isTrue, reason: 'Shift-Tab wraps backwards to the last field, not out of the row');
     });
 
     testWidgets('Tab in the MIDDLE of the row is left to the ordinary traversal', (tester) async {
@@ -659,8 +633,7 @@ void main() {
   group('arrow keys travel between fields at the value edges', () {
     // Reading back a logged exchange means walking the row with the arrows; the
     // caret stopping dead at a field boundary forces a reach for the mouse.
-    TextField field(WidgetTester tester, String label) =>
-        tester.widget<TextField>(find.widgetWithText(TextField, label));
+    TextField field(WidgetTester tester, String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     testWidgets('right arrow at the end of a value moves to the START of the next field', (tester) async {
       await tester.pumpWidget(host());
@@ -701,8 +674,7 @@ void main() {
 
       field(tester, 'Rcvd').focusNode!.requestFocus();
       await tester.pump();
-      field(tester, 'Rcvd').controller!.selection =
-          TextSelection.collapsed(offset: field(tester, 'Rcvd').controller!.text.length);
+      field(tester, 'Rcvd').controller!.selection = TextSelection.collapsed(offset: field(tester, 'Rcvd').controller!.text.length);
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
@@ -725,8 +697,7 @@ void main() {
       await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
       await tester.pump();
 
-      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue,
-          reason: 'Cmd+Right is a caret move, not a field change');
+      expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue, reason: 'Cmd+Right is a caret move, not a field change');
       expect(field(tester, 'Sent').focusNode!.hasFocus, isFalse);
     });
 
@@ -736,17 +707,13 @@ void main() {
       // written unconditionally by the move would sit there uncollected, and
       // the next field to focus — Frequency, which is not even a primary field
       // — would take it and put its caret at 0 instead of the end of "14285".
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            prefs: LoggingPreferences(
-              showRSTFields: false,
-            ),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(log: baseLog(), radio: baseRadio(), prefs: LoggingPreferences(showRSTFields: false)),
           ),
         ),
-      ));
+      );
       await tester.pump();
 
       // Give Frequency a value FIRST — it is the give-away field (it shares the
@@ -768,8 +735,7 @@ void main() {
       await openControl(tester, MdiIcons.radio);
       final freq = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
 
-      expect(freq.controller!.selection.baseOffset, 5,
-          reason: 'Frequency keeps cursor-at-end; it must not inherit a stale instruction');
+      expect(freq.controller!.selection.baseOffset, 5, reason: 'Frequency keeps cursor-at-end; it must not inherit a stale instruction');
     });
 
     testWidgets('an arrow key INSIDE a value still just moves the caret', (tester) async {
@@ -795,18 +761,12 @@ void main() {
     // a space is a character rather than "next field". Without an exit gesture
     // the field is a keyboard dead end — the operator has to reach for the
     // mouse, mid-QSO, which is exactly what the entry row exists to avoid.
-    Future<Map<String, dynamic>?> reloadPrefix(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> reloadPrefix(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() == 'RELOAD') return {'expectsParams': true};
       return null;
     }
 
-    TextField field(WidgetTester tester, String label) =>
-        tester.widget<TextField>(find.widgetWithText(TextField, label));
+    TextField field(WidgetTester tester, String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     testWidgets('a second hardware space removes both and advances', (tester) async {
       await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: reloadPrefix)));
@@ -816,14 +776,12 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
       await tester.pump();
-      expect(field(tester, 'Their call').controller!.text, 'RELOAD ',
-          reason: 'the first space is a literal parameter character');
+      expect(field(tester, 'Their call').controller!.text, 'RELOAD ', reason: 'the first space is a literal parameter character');
       expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
       await tester.pump();
-      expect(field(tester, 'Their call').controller!.text, 'RELOAD',
-          reason: 'both spaces come off — the value left behind carries neither');
+      expect(field(tester, 'Their call').controller!.text, 'RELOAD', reason: 'both spaces come off — the value left behind carries neither');
       expect(field(tester, 'Sent').focusNode!.hasFocus, isTrue);
     });
 
@@ -868,32 +826,24 @@ void main() {
         await tester.pump();
 
         // Exactly what iOS sends, traced on an iPhone 17 Pro simulator: TWO
-      // edits, the first REPLACING the trailing space with a period at the
-      // same length, the second re-adding the space.
-      //
-      // Sent back to back with NO pump between them, which is the whole point:
-      // on the device both edits are applied synchronously before any
-      // microtask runs. Pumping in between drains our deferred handler early
-      // and the test then passes against code that leaves the period behind on
-      // a real phone — which is exactly what happened.
-      //
-      // `updateEditingValue` rather than `enterText` so each edit goes to
-      // whatever client is attached at the time, as the real ones do.
-      tester.testTextInput.updateEditingValue(const TextEditingValue(
-        text: 'RELOAD.',
-        selection: TextSelection.collapsed(offset: 7),
-      ));
-      tester.testTextInput.updateEditingValue(const TextEditingValue(
-        text: 'RELOAD. ',
-        selection: TextSelection.collapsed(offset: 8),
-      ));
-      await tester.pump();
+        // edits, the first REPLACING the trailing space with a period at the
+        // same length, the second re-adding the space.
+        //
+        // Sent back to back with NO pump between them, which is the whole point:
+        // on the device both edits are applied synchronously before any
+        // microtask runs. Pumping in between drains our deferred handler early
+        // and the test then passes against code that leaves the period behind on
+        // a real phone — which is exactly what happened.
+        //
+        // `updateEditingValue` rather than `enterText` so each edit goes to
+        // whatever client is attached at the time, as the real ones do.
+        tester.testTextInput.updateEditingValue(const TextEditingValue(text: 'RELOAD.', selection: TextSelection.collapsed(offset: 7)));
+        tester.testTextInput.updateEditingValue(const TextEditingValue(text: 'RELOAD. ', selection: TextSelection.collapsed(offset: 8)));
+        await tester.pump();
 
-      expect(field(tester, 'Their call').controller!.text, 'RELOAD',
-          reason: 'the whole gesture comes off — no period, no spaces');
-      expect(field(tester, 'Sent').focusNode!.hasFocus, isTrue);
-        expect(field(tester, 'Rcvd').focusNode!.hasFocus, isFalse,
-            reason: 'one gesture advances one field, not two');
+        expect(field(tester, 'Their call').controller!.text, 'RELOAD', reason: 'the whole gesture comes off — no period, no spaces');
+        expect(field(tester, 'Sent').focusNode!.hasFocus, isTrue);
+        expect(field(tester, 'Rcvd').focusNode!.hasFocus, isFalse, reason: 'one gesture advances one field, not two');
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
@@ -909,30 +859,21 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD ');
       await tester.pump();
-      tester.testTextInput.updateEditingValue(const TextEditingValue(
-        text: 'RELOAD.',
-        selection: TextSelection.collapsed(offset: 7),
-      ));
+      tester.testTextInput.updateEditingValue(const TextEditingValue(text: 'RELOAD.', selection: TextSelection.collapsed(offset: 7)));
       await tester.pump();
 
       expect(field(tester, 'Their call').controller!.text, 'RELOAD.');
       expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue);
     });
 
-    testWidgets('a COMPLETE command exits too — the flags are not what makes a field space-accepting',
-        (tester) async {
+    testWidgets('a COMPLETE command exits too — the flags are not what makes a field space-accepting', (tester) async {
       // Third way into free-text mode, and the one the flags miss: once the
       // text holds a space, `_commandExpectsParams` latches on regardless of
       // what the interpretation says (see `_callsignModeSafeText`). A complete
       // command reached that way carries neither `expectsParams` nor
       // `mixedCase`, so keying the exit to those flags advanced focus while
       // leaving the trailing space sitting in the value.
-      Future<Map<String, dynamic>?> completeAfterParam(
-        String input, [
-        Map<String, dynamic>? operation,
-        Map<String, dynamic>? qso,
-        bool execute = false,
-      ]) async {
+      Future<Map<String, dynamic>?> completeAfterParam(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
         final text = input.trim().toUpperCase();
         if (text == 'EXP') return {'expectsParams': true};
         if (text.startsWith('EXP ')) return {'describe': 'toggle experiment'}; // complete, no flags
@@ -947,14 +888,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP LA ');
       await tester.pump(const Duration(milliseconds: 200));
-      expect(field(tester, 'Their call').controller!.text, 'EXP LA ',
-          reason: 'test setup: space is literal here');
+      expect(field(tester, 'Their call').controller!.text, 'EXP LA ', reason: 'test setup: space is literal here');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
       await tester.pump();
 
-      expect(field(tester, 'Their call').controller!.text, 'EXP LA',
-          reason: 'the trailing space comes off, whichever route put the field in free-text mode');
+      expect(field(tester, 'Their call').controller!.text, 'EXP LA', reason: 'the trailing space comes off, whichever route put the field in free-text mode');
       expect(field(tester, 'Sent').focusNode!.hasFocus, isTrue);
     });
 
@@ -984,8 +923,7 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD A B');
       await tester.pump();
 
-      expect(field(tester, 'Their call').controller!.text, 'RELOAD A B',
-          reason: 'only a space landing after an existing trailing space is an exit');
+      expect(field(tester, 'Their call').controller!.text, 'RELOAD A B', reason: 'only a space landing after an existing trailing space is an exit');
       expect(field(tester, 'Their call').focusNode!.hasFocus, isTrue);
     });
   });
@@ -1005,20 +943,17 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: LogHooks(
-            operation: running(['c']),
-            qsosRepository: qsos,
-          ),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
 
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
@@ -1084,11 +1019,7 @@ void main() {
       TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
       for (final label in ['Sent', 'Rcvd', 'Frequency']) {
-        expect(
-          field(label).keyboardType.signed,
-          isTrue,
-          reason: '$label should use the numbers-and-punctuation keyboard on iOS',
-        );
+        expect(field(label).keyboardType.signed, isTrue, reason: '$label should use the numbers-and-punctuation keyboard on iOS');
       }
     } finally {
       // Reset before the body returns — the binding's platform-override
@@ -1136,9 +1067,14 @@ void main() {
     final outside = FocusNode(debugLabel: 'outside');
     addTearDown(outside.dispose);
     // A focusable field sits below the panel, standing in for the QSO list.
-    await tester.pumpWidget(host(
-      trailing: TextField(focusNode: outside, decoration: const InputDecoration(labelText: 'Outside')),
-    ));
+    await tester.pumpWidget(
+      host(
+        trailing: TextField(
+          focusNode: outside,
+          decoration: const InputDecoration(labelText: 'Outside'),
+        ),
+      ),
+    );
 
     await tester.tap(find.widgetWithText(TextField, 'Their call'));
     await tester.pump();
@@ -1172,8 +1108,7 @@ void main() {
       await tester.pump();
     }
 
-    bool callHasFocus(WidgetTester tester) =>
-        tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode!.hasFocus;
+    bool callHasFocus(WidgetTester tester) => tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode!.hasFocus;
 
     testWidgets('focus that falls to nothing comes back to the callsign field', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
@@ -1216,9 +1151,11 @@ void main() {
         // Web hands a clicked button its focus, and a dialog closing over it
         // hands the focus straight back to the button — so "any leaf is a
         // claim" leaves the operator typing into a button after every dialog.
-        await tester.pumpWidget(host(
-          trailing: TextButton(focusNode: button, onPressed: () {}, child: const Text('b')),
-        ));
+        await tester.pumpWidget(
+          host(
+            trailing: TextButton(focusNode: button, onPressed: () {}, child: const Text('b')),
+          ),
+        );
         await tester.pump();
         button.requestFocus();
         await tester.pump();
@@ -1236,18 +1173,22 @@ void main() {
       addTearDown(list.dispose);
       addTearDown(dropdown.dispose);
       try {
-        await tester.pumpWidget(host(
-          trailing: Column(children: [
-            // The QSO list's shape: a bare Focus steering rows with the keys.
-            Focus(focusNode: list, onKeyEvent: (_, _) => KeyEventResult.ignored, child: const SizedBox(height: 10)),
-            DropdownButton<String>(
-              focusNode: dropdown,
-              value: 'a',
-              items: const [DropdownMenuItem(value: 'a', child: Text('a'))],
-              onChanged: (_) {},
+        await tester.pumpWidget(
+          host(
+            trailing: Column(
+              children: [
+                // The QSO list's shape: a bare Focus steering rows with the keys.
+                Focus(focusNode: list, onKeyEvent: (_, _) => KeyEventResult.ignored, child: const SizedBox(height: 10)),
+                DropdownButton<String>(
+                  focusNode: dropdown,
+                  value: 'a',
+                  items: const [DropdownMenuItem(value: 'a', child: Text('a'))],
+                  onChanged: (_) {},
+                ),
+              ],
             ),
-          ]),
-        ));
+          ),
+        );
         await tester.pump();
         list.requestFocus();
         await tester.pump();
@@ -1271,7 +1212,11 @@ void main() {
         // A menu or in-route overlay takes focus into a scope of its own
         // with no field inside — a scope, but not on the panel's ancestry.
         // The route guard can't tell this apart: the route is still current.
-        await tester.pumpWidget(host(trailing: FocusScope(node: overlay, child: const SizedBox.shrink())));
+        await tester.pumpWidget(
+          host(
+            trailing: FocusScope(node: overlay, child: const SizedBox.shrink()),
+          ),
+        );
         await tester.pump();
         overlay.requestFocus();
         await tester.pump();
@@ -1292,10 +1237,14 @@ void main() {
         // The panel had nothing focused when the dialog opened — the case a
         // per-caller assertion never covers, because no caller is involved.
         FocusManager.instance.primaryFocus?.unfocus();
-        unawaited(navigator.push(DialogRoute<void>(
-          context: navigator.context,
-          builder: (_) => const AlertDialog(content: Text('dialog')),
-        )));
+        unawaited(
+          navigator.push(
+            DialogRoute<void>(
+              context: navigator.context,
+              builder: (_) => const AlertDialog(content: Text('dialog')),
+            ),
+          ),
+        );
         await tester.pumpAndSettle();
         // Primary focus is the dialog's own scope: not the panel's ancestry,
         // so not "nothing". Reclaiming here would type behind the dialog.
@@ -1410,7 +1359,11 @@ void main() {
         },
       );
       try {
-        await tester.pumpWidget(host(session: LoggingSession(editingQso: event, onEditCanceled: () {})));
+        await tester.pumpWidget(
+          host(
+            session: LoggingSession(editingQso: event, onEditCanceled: () {}),
+          ),
+        );
         await tester.pump();
         expect(find.widgetWithText(TextField, 'Their call'), findsNothing, reason: 'test setup: no callsign field');
         final text = find.byWidgetPredicate((w) => w is TextField && w.controller?.text == 'lunch');
@@ -1433,10 +1386,14 @@ void main() {
         expect(callHasFocus(tester), isTrue, reason: 'test setup: autofocus with a keyboard');
         final navigator = tester.state<NavigatorState>(find.byType(Navigator));
         FocusManager.instance.primaryFocus?.unfocus();
-        unawaited(navigator.push(DialogRoute<void>(
-          context: navigator.context,
-          builder: (_) => const AlertDialog(content: Text('dialog')),
-        )));
+        unawaited(
+          navigator.push(
+            DialogRoute<void>(
+              context: navigator.context,
+              builder: (_) => const AlertDialog(content: Text('dialog')),
+            ),
+          ),
+        );
         await tester.pumpAndSettle();
         navigator.pop();
         await tester.pumpAndSettle();
@@ -1472,10 +1429,14 @@ void main() {
         expect(callHasFocus(tester), isFalse, reason: 'test setup: dismissed');
 
         final navigator = tester.state<NavigatorState>(find.byType(Navigator));
-        unawaited(navigator.push(DialogRoute<void>(
-          context: navigator.context,
-          builder: (_) => const AlertDialog(content: Text('dialog')),
-        )));
+        unawaited(
+          navigator.push(
+            DialogRoute<void>(
+              context: navigator.context,
+              builder: (_) => const AlertDialog(content: Text('dialog')),
+            ),
+          ),
+        );
         await tester.pumpAndSettle();
         navigator.pop();
         await tester.pumpAndSettle();
@@ -1498,10 +1459,14 @@ void main() {
         // The way operation_view opens its sheet: an unfocus first, which
         // also throws away what Navigator would otherwise restore on pop.
         FocusManager.instance.primaryFocus?.unfocus();
-        unawaited(navigator.push(DialogRoute<void>(
-          context: navigator.context,
-          builder: (_) => const AlertDialog(content: Text('dialog')),
-        )));
+        unawaited(
+          navigator.push(
+            DialogRoute<void>(
+              context: navigator.context,
+              builder: (_) => const AlertDialog(content: Text('dialog')),
+            ),
+          ),
+        );
         await tester.pumpAndSettle();
         expect(find.text('dialog'), findsOneWidget, reason: 'test setup');
         navigator.pop();
@@ -1706,8 +1671,11 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await settleControl(tester);
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsNothing);
-      expect(find.widgetWithText(TextField, 'Band'), findsOneWidget,
-          reason: 'crossing in from Tab lands on the FIRST field, not the one a tap opens into (Frequency)');
+      expect(
+        find.widgetWithText(TextField, 'Band'),
+        findsOneWidget,
+        reason: 'crossing in from Tab lands on the FIRST field, not the one a tap opens into (Frequency)',
+      );
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Band')).focusNode?.hasFocus, isTrue);
 
       // Two more Tabs step through Radio's remaining fields (Frequency,
@@ -1775,8 +1743,7 @@ void main() {
       expect(focusedPill(tester), 'more', reason: 'off the end of Radio\'s own fields, More has none to walk into');
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
-    testWidgets('a cursor key crosses to the next control\'s own canonical field, once at the edge of the value',
-        (tester) async {
+    testWidgets('a cursor key crosses to the next control\'s own canonical field, once at the edge of the value', (tester) async {
       await tester.pumpWidget(host());
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'Their call'));
@@ -1826,12 +1793,16 @@ void main() {
       // Up used to stop at the main field, same as Down/Enter/Escape — now it
       // keeps going, the same direction Up already takes from a bare pill.
       var handedOver = 0;
-      await tester.pumpWidget(host(
-        session: LoggingSession(onNavigateToQsoList: () {
-        handedOver++;
-        return true;
-      }),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            onNavigateToQsoList: () {
+              handedOver++;
+              return true;
+            },
+          ),
+        ),
+      );
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'Their call'));
       await tester.pump();
@@ -1847,8 +1818,7 @@ void main() {
       // its selection) — this only proves the control closed and asked.
     });
 
-    testWidgets('Arrow Up from inside a control falls back to the main fields when nothing is navigable',
-        (tester) async {
+    testWidgets('Arrow Up from inside a control falls back to the main fields when nothing is navigable', (tester) async {
       // A brand-new operation, or a host with no list at all: the callback
       // reports it couldn't hand off, so this control's own field (which
       // just closed) doesn't leave the keyboard stranded on nothing.
@@ -1858,15 +1828,21 @@ void main() {
       await tester.pump();
       await openControl(tester, MdiIcons.radio);
       expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
-      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).focusNode?.hasFocus, isTrue,
-          reason: 'precondition: Up has to actually originate from inside the open control');
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).focusNode?.hasFocus,
+        isTrue,
+        reason: 'precondition: Up has to actually originate from inside the open control',
+      );
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await settleControl(tester);
 
       expect(find.widgetWithText(TextField, 'Frequency'), findsNothing, reason: 'the control still closed');
-      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode?.hasFocus, isTrue,
-          reason: 'falls back to a main field instead of leaving focus nowhere');
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode?.hasFocus,
+        isTrue,
+        reason: 'falls back to a main field instead of leaving focus nowhere',
+      );
     });
 
     testWidgets('Down out of an open control closes it and returns to the main field', (tester) async {
@@ -1958,17 +1934,17 @@ void main() {
         'icon': 'pine-tree',
         'input': {'kind': 'refList', 'refType': 'pota', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
       };
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: const [potaControl],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: const [potaControl]),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
@@ -2010,8 +1986,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.meta);
       await settleControl(tester);
-      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget,
-          reason: 'Cmd+Down/Right are caret/platform gestures, not a way out of the control');
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget, reason: 'Cmd+Down/Right are caret/platform gestures, not a way out of the control');
 
       // Shift+Down is a selection gesture, and must not close it either.
       await tester.sendKeyDownEvent(LogicalKeyboardKey.shift);
@@ -2034,8 +2009,7 @@ void main() {
       expect(focusedPill(tester), 'more', reason: 'Cmd+Left belongs to the platform');
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
-    testWidgets('Arrow Down out of an auto-opened control returns to the field the operator was last in',
-        (tester) async {
+    testWidgets('Arrow Down out of an auto-opened control returns to the field the operator was last in', (tester) async {
       await tester.pumpWidget(host());
       await tester.pump();
       // Sent, not Call — the point is that the ladder remembers where you
@@ -2057,12 +2031,16 @@ void main() {
       // one place Up still means "leave the strip upward" in a single step,
       // the way it already did before any control could auto-open.
       var handedOver = 0;
-      await tester.pumpWidget(host(
-        session: LoggingSession(onNavigateToQsoList: () {
-        handedOver++;
-        return true;
-      }),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            onNavigateToQsoList: () {
+              handedOver++;
+              return true;
+            },
+          ),
+        ),
+      );
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'Their call'));
       await tester.pump();
@@ -2090,37 +2068,28 @@ void main() {
 
   group('main field widths', () {
     /// The rendered width of one of the main logging fields, by its label.
-    double widthOf(WidgetTester tester, String label) =>
-        tester.getSize(find.widgetWithText(TextField, label)).width;
+    double widthOf(WidgetTester tester, String label) => tester.getSize(find.widgetWithText(TextField, label)).width;
 
     /// The width [text] actually paints at in [label]'s own field, read off
     /// the `EditableText` in the tree rather than re-derived from the style
     /// constants the widget uses — a test that recomputed those couldn't fail
     /// when they change.
     double paintedWidth(WidgetTester tester, String label, String text) {
-      final editable = tester.widget<EditableText>(
-        find.descendant(of: find.widgetWithText(TextField, label), matching: find.byType(EditableText)),
-      );
+      final editable = tester.widget<EditableText>(find.descendant(of: find.widgetWithText(TextField, label), matching: find.byType(EditableText)));
       return (TextPainter(
         text: TextSpan(text: text, style: editable.style),
         textDirection: TextDirection.ltr,
-      )..layout())
-          .width;
+      )..layout()).width;
     }
 
     /// The bare gap between two adjacent fields, and the padding between a
     /// field's own left edge and where its value starts — the two things the
     /// row gives up once the fields are at their floors.
     double gapBetween(WidgetTester tester, String left, String right) =>
-        tester.getTopLeft(find.widgetWithText(TextField, right)).dx -
-        tester.getTopRight(find.widgetWithText(TextField, left)).dx;
+        tester.getTopLeft(find.widgetWithText(TextField, right)).dx - tester.getTopRight(find.widgetWithText(TextField, left)).dx;
 
     double innerPadding(WidgetTester tester, String label) =>
-        tester
-            .getTopLeft(
-              find.descendant(of: find.widgetWithText(TextField, label), matching: find.byType(EditableText)),
-            )
-            .dx -
+        tester.getTopLeft(find.descendant(of: find.widgetWithText(TextField, label), matching: find.byType(EditableText))).dx -
         tester.getTopLeft(find.widgetWithText(TextField, label)).dx;
 
     /// Pins the panel to [width] logical pixels. 600 tall throughout: only the
@@ -2154,32 +2123,28 @@ void main() {
     // a DIFFERENT width than the rest (76 against 64), which is what makes
     // "evenly" below distinguishable from "in proportion".
     Widget crowded() => MaterialApp(
-          home: Scaffold(
-            body: Column(children: [
-              const Expanded(child: SizedBox.shrink()),
-              LoggingControls(
-                log: LogHooks(
-                  operation: running(['contest']),
-                  qsosRepository: qsos,
-                ),
-                activities: ActivityHooks(
-                  activityControls: const [
-                    {
-                      'key': 'contest/exchange',
-                      'label': 'Exch',
-                      'icon': 'flag-checkered',
-                      'input': {'kind': 'text', 'refType': 'contest', 'field': 'exchange'},
-                    }
-                  ],
-                ),
-                prefs: LoggingPreferences(
-                  showStateField: true,
-                  showGridField: true,
-                ),
+      home: Scaffold(
+        body: Column(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            LoggingControls(
+              log: LogHooks(operation: running(['contest']), qsosRepository: qsos),
+              activities: ActivityHooks(
+                activityControls: const [
+                  {
+                    'key': 'contest/exchange',
+                    'label': 'Exch',
+                    'icon': 'flag-checkered',
+                    'input': {'kind': 'text', 'refType': 'contest', 'field': 'exchange'},
+                  },
+                ],
               ),
-            ]),
-          ),
-        );
+              prefs: LoggingPreferences(showStateField: true, showGridField: true),
+            ),
+          ],
+        ),
+      ),
+    );
 
     const fixedLabels = ['Sent', 'Rcvd', 'State', 'Grid'];
 
@@ -2224,10 +2189,7 @@ void main() {
       // same share of what it asked for — so the exchange, which is wider to
       // begin with, stays wider by exactly as much as it started. A
       // proportional split would have taken more from it.
-      final givenUp = [
-        for (final label in fixedLabels) 64 - widthOf(tester, label),
-        76 - widthOf(tester, 'Exch'),
-      ];
+      final givenUp = [for (final label in fixedLabels) 64 - widthOf(tester, label), 76 - widthOf(tester, 'Exch')];
       expect(givenUp.first, greaterThan(1), reason: 'the row is genuinely short of space here');
       for (final amount in givenUp) {
         expect(amount, closeTo(givenUp.first, 0.5));
@@ -2277,13 +2239,11 @@ void main() {
       // Narrower than the fields can honestly fit in, even at their floors.
       await pumpAt(tester, 400, at: crowded());
 
-      final widths = [for (final label in [...fixedLabels, 'Exch']) widthOf(tester, label)];
+      final widths = [
+        for (final label in [...fixedLabels, 'Exch']) widthOf(tester, label),
+      ];
       for (final (i, label) in [...fixedLabels, 'Exch'].indexed) {
-        expect(
-          widths[i],
-          greaterThanOrEqualTo(paintedWidth(tester, label, 'WW')),
-          reason: '$label still shows two characters',
-        );
+        expect(widths[i], greaterThanOrEqualTo(paintedWidth(tester, label, 'WW')), reason: '$label still shows two characters');
         // Two characters is two characters: the floor is the same for every
         // field, so down here the exchange — which asked for 76 against an
         // RST's 64 — is exactly as wide as one. Left to the even split alone
@@ -2315,10 +2275,7 @@ void main() {
 
       // The callsign is still holding its own six characters — it is the LAST
       // thing the row gives up, after the gaps and the padding.
-      expect(
-        widthOf(tester, 'Their call'),
-        greaterThanOrEqualTo(paintedWidth(tester, 'Their call', 'W1AW/4')),
-      );
+      expect(widthOf(tester, 'Their call'), greaterThanOrEqualTo(paintedWidth(tester, 'Their call', 'W1AW/4')));
 
       // And they go all the way to nothing, not to some residue. Material adds
       // 4pt a side to every `filled` field that no InputDecoration field

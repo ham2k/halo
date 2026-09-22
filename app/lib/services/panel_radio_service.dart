@@ -27,9 +27,7 @@ class PanelRadioService {
           _ => null,
         };
     final candidate = id == null ? null : cat.nodeFor(id);
-    final node = selection != null && candidate != null && cat.typeFor(candidate)?.category != kCategoryTransceiver
-        ? null
-        : candidate;
+    final node = selection != null && candidate != null && cat.typeFor(candidate)?.category != kCategoryTransceiver ? null : candidate;
     // From the NODE, not the id: a selection naming an antenna switch or a
     // keyer has no node here, and must not answer with that device's status,
     // problem text or frequency under a capability that reads radios.
@@ -49,12 +47,7 @@ class PanelRadioService {
       'meters': {
         if (live)
           for (final meter in RadioMeter.values)
-            if (telemetry.fresh(
-                  meter,
-                  nowMillis(),
-                  linger: meter == RadioMeter.signalDbm ? const Duration(seconds: 2) : meterLinger,
-                )
-                case final reading?)
+            if (telemetry.fresh(meter, nowMillis(), linger: meter == RadioMeter.signalDbm ? const Duration(seconds: 2) : meterLinger) case final reading?)
               meter.name: reading.value,
       },
       'canTune': live && state.vfo.freqKHz != null,

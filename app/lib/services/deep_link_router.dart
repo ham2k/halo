@@ -96,7 +96,9 @@ void listenForDeepLinks(HaLoServices services) {
           StatusBarAction(
             label: t.settings.syncPanel.openSettings,
             onTap: () => navigatorKey.currentState?.push(
-              MaterialPageRoute<void>(builder: (_) => SettingsView(services: services, initialPanel: 'sync')),
+              MaterialPageRoute<void>(
+                builder: (_) => SettingsView(services: services, initialPanel: 'sync'),
+              ),
             ),
           ),
         ],
@@ -130,14 +132,7 @@ void _applyVfoDeepLink(HaLoServices services, ({double? freqKHz, String? band, S
 /// `_updatesVFO`), so the fields and the VFO must agree afterwards.
 Future<void> _presentDeepLinkedQso(
   HaLoServices services,
-  ({
-    List<String> calls,
-    double? freqKHz,
-    String? band,
-    String? mode,
-    int? startAtMillis,
-    List<({String key, String ref})> theirRefs,
-  }) link,
+  ({List<String> calls, double? freqKHz, String? band, String? mode, int? startAtMillis, List<({String key, String ref})> theirRefs}) link,
 ) async {
   final resolved = await _deepLinkRefs(services, link.theirRefs, (types) => types.huntingType);
   if (link.freqKHz != null || link.band != null || link.mode != null) {
@@ -159,10 +154,7 @@ Future<void> _presentDeepLinkedQso(
   if (outcome == _DeepLinkOutcome.delivered && resolved.dropped.isNotEmpty) {
     _reportDroppedRefs(services, resolved);
   }
-  services.track('deep_link_qso', {
-    'outcome': outcome.name,
-    'refsDropped': resolved.dropped.length,
-  });
+  services.track('deep_link_qso', {'outcome': outcome.name, 'refsDropped': resolved.dropped.length});
 }
 
 /// What became of a `/qso` link, so telemetry counts deliveries rather than
@@ -180,9 +172,7 @@ void _reportDroppedRefs(HaLoServices services, ({List<Map<String, dynamic>> refs
   final names = resolved.dropped.join(', ');
   services.statusBar.setMessage(
     key: 'deep-link:dropped-refs',
-    text: resolved.loadFailed
-        ? t.deepLink.activitiesUnavailable(refs: names)
-        : t.deepLink.unknownActivities(refs: names),
+    text: resolved.loadFailed ? t.deepLink.activitiesUnavailable(refs: names) : t.deepLink.unknownActivities(refs: names),
   );
 }
 
@@ -196,11 +186,7 @@ void _reportDroppedRefs(HaLoServices services, ({List<Map<String, dynamic>> refs
 /// The retry mirrors [openInstallExtension]'s: a link that cold-launches the
 /// app arrives before the first frame, and dropping it silently leaves
 /// whoever sent it with nothing at all.
-Future<_DeepLinkOutcome> _deliverDeepLinkedQso(
-  HaLoServices services,
-  Map<String, dynamic> suggestion, {
-  int attemptsLeft = 20,
-}) async {
+Future<_DeepLinkOutcome> _deliverDeepLinkedQso(HaLoServices services, Map<String, dynamic> suggestion, {int attemptsLeft = 20}) async {
   final front = services.frontOperationContext;
   final suggest = front?.suggestQso;
   if (suggest != null) {
@@ -219,15 +205,10 @@ Future<_DeepLinkOutcome> _deliverDeepLinkedQso(
     if (attemptsLeft <= 0) {
       // A navigator still absent five seconds after launch is our bug, not a
       // state to wait out — and the operator is owed an answer either way.
-      ErrorReportingService.report(
-        StateError('deep link dropped: no navigator after 5s'),
-        StackTrace.current,
-        context: 'deep-link',
-      );
+      ErrorReportingService.report(StateError('deep link dropped: no navigator after 5s'), StackTrace.current, context: 'deep-link');
       return _DeepLinkOutcome.noNavigator;
     }
-    Timer(const Duration(milliseconds: 250),
-        () => unawaited(_deliverDeepLinkedQso(services, suggestion, attemptsLeft: attemptsLeft - 1)));
+    Timer(const Duration(milliseconds: 250), () => unawaited(_deliverDeepLinkedQso(services, suggestion, attemptsLeft: attemptsLeft - 1)));
     // Not an outcome yet — the retry reports its own. Counting this as a
     // delivery is what would make the metric read 100% success forever.
     return _DeepLinkOutcome.noNavigator;
@@ -247,13 +228,13 @@ Future<_DeepLinkOutcome> _deliverDeepLinkedQso(
   // unawaited future.
   final target = navigatorKey.currentState;
   if (target == null) return _DeepLinkOutcome.noNavigator;
-  unawaited(target.push(MaterialPageRoute<void>(
-    builder: (_) => OperationView(
-      services: services,
-      operationUuid: operations.first.uuid,
-      initialSuggestedQso: suggestion,
+  unawaited(
+    target.push(
+      MaterialPageRoute<void>(
+        builder: (_) => OperationView(services: services, operationUuid: operations.first.uuid, initialSuggestedQso: suggestion),
+      ),
     ),
-  )));
+  );
   return _DeepLinkOutcome.delivered;
 }
 
@@ -264,22 +245,13 @@ Future<_DeepLinkOutcome> _deliverDeepLinkedQso(
 /// a park-and-summit operation, and vice versa — those are distinct
 /// activations, and reusing one for the other silently files the contacts
 /// under the wrong award.
-Future<void> _openDeepLinkedOperation(
-  HaLoServices services,
-  List<({String key, String ref})> pairs, {
-  int attemptsLeft = 20,
-}) async {
+Future<void> _openDeepLinkedOperation(HaLoServices services, List<({String key, String ref})> pairs, {int attemptsLeft = 20}) async {
   if (navigatorKey.currentState == null) {
     if (attemptsLeft <= 0) {
-      ErrorReportingService.report(
-        StateError('deep link dropped: no navigator after 5s'),
-        StackTrace.current,
-        context: 'deep-link',
-      );
+      ErrorReportingService.report(StateError('deep link dropped: no navigator after 5s'), StackTrace.current, context: 'deep-link');
       return;
     }
-    Timer(const Duration(milliseconds: 250),
-        () => unawaited(_openDeepLinkedOperation(services, pairs, attemptsLeft: attemptsLeft - 1)));
+    Timer(const Duration(milliseconds: 250), () => unawaited(_openDeepLinkedOperation(services, pairs, attemptsLeft: attemptsLeft - 1)));
     return;
   }
   final resolved = await _deepLinkRefs(services, pairs, (types) => types.activationType);
@@ -313,11 +285,14 @@ Future<void> _openDeepLinkedOperation(
   // be deactivated.
   final navigator = navigatorKey.currentState;
   if (navigator == null) return;
-  unawaited(navigator.push(MaterialPageRoute<void>(builder: (_) => OperationView(services: services, operationUuid: uuid))));
-  services.track('deep_link_operation', {
-    'created': existing == null,
-    'refsDropped': resolved.dropped.length,
-  });
+  unawaited(
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => OperationView(services: services, operationUuid: uuid),
+      ),
+    ),
+  );
+  services.track('deep_link_operation', {'created': existing == null, 'refsDropped': resolved.dropped.length});
 }
 
 /// Creates the operation an `/operation` link asked for, with its references
@@ -345,11 +320,8 @@ Future<String> _createDeepLinkedOperation(HaLoServices services, List<Map<String
       decorated.add(ref);
     }
   }
-  final operation = await services.operations.create(
-    stationCall: services.settings.activeProfile.operatorCall,
-  );
-  await services.operations
-      .saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'refs': decorated}));
+  final operation = await services.operations.create(stationCall: services.settings.activeProfile.operatorCall);
+  await services.operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'refs': decorated}));
   return operation.uuid;
 }
 
@@ -410,8 +382,7 @@ void openInstallExtension(HaLoServices services, Uri source, {int attemptsLeft =
       debugPrint('[deep-link] install_extension dropped: no navigator or store after 5s');
       return;
     }
-    Timer(const Duration(milliseconds: 250),
-        () => openInstallExtension(services, source, attemptsLeft: attemptsLeft - 1));
+    Timer(const Duration(milliseconds: 250), () => openInstallExtension(services, source, attemptsLeft: attemptsLeft - 1));
     return;
   }
   // A file the operator double-clicked is one they chose, exactly like one
@@ -429,13 +400,15 @@ void openInstallExtension(HaLoServices services, Uri source, {int attemptsLeft =
     unawaited(_installFromCatalogLink(services, context, store, source));
     return;
   }
-  unawaited(installExtensionFromBytes(
-    context,
-    store: store,
-    read: local ? () => File(source.toFilePath()).readAsBytes() : () => services.catalog.downloadBundle(source),
-    from: local ? null : source.host,
-    commit: services.extensions.installBundle,
-  ).then((name) => _installedFromLink(services, name)));
+  unawaited(
+    installExtensionFromBytes(
+      context,
+      store: store,
+      read: local ? () => File(source.toFilePath()).readAsBytes() : () => services.catalog.downloadBundle(source),
+      from: local ? null : source.host,
+      commit: services.extensions.installBundle,
+    ).then((name) => _installedFromLink(services, name)),
+  );
 }
 
 /// A `.../extensions/<key>/versions/<version>/bundle` link on the catalog:
@@ -444,8 +417,7 @@ void openInstallExtension(HaLoServices services, Uri source, {int attemptsLeft =
 /// can name a release younger than that cache — and from there the install
 /// is the panel's (installFromCatalog): the bytes refused unless they hash
 /// to it, a built-in key refused before anything is fetched.
-Future<void> _installFromCatalogLink(
-    HaLoServices services, BuildContext context, InstalledExtensions store, Uri source) async {
+Future<void> _installFromCatalogLink(HaLoServices services, BuildContext context, InstalledExtensions store, Uri source) async {
   final catalog = services.catalog;
   final ref = CatalogService.parseBundleUrl(source);
   if (ref == null) {
@@ -457,10 +429,9 @@ Future<void> _installFromCatalogLink(
   if (!context.mounted) return;
   if (version == null) {
     await showInstallRefusal(
-        context,
-        listing == null
-            ? t.extensionsPanel.catalogUnreachable
-            : t.extensionsPanel.catalogVersionUnknown(key: ref.key, version: ref.version));
+      context,
+      listing == null ? t.extensionsPanel.catalogUnreachable : t.extensionsPanel.catalogVersionUnknown(key: ref.key, version: ref.version),
+    );
     return;
   }
   await installFromCatalog(
@@ -474,7 +445,10 @@ Future<void> _installFromCatalogLink(
 void _installedFromLink(HaLoServices services, String? name) {
   if (name == null) return;
   services.track('extension_installed', {});
-  services.statusBar.setMessage(key: 'extensions:installed', text: t.extensionsPanel.installedMessage(name: name));
+  services.statusBar.setMessage(
+    key: 'extensions:installed',
+    text: t.extensionsPanel.installedMessage(name: name),
+  );
 }
 
 /// Opens the pane once there is a navigator to open it onto.
@@ -485,22 +459,18 @@ void _installedFromLink(HaLoServices services, String? name) {
 /// Connection Requests row either, since a blank permission has no account
 /// behind it for `pending_challenges` to count. Retries on the same cadence
 /// the staleness nag uses for the same reason.
-void _openConfirmDevicePane(
-  HaLoServices services,
-  ({String clientUuid, String challengeToken}) request, {
-  int attemptsLeft = 20,
-}) {
+void _openConfirmDevicePane(HaLoServices services, ({String clientUuid, String challengeToken}) request, {int attemptsLeft = 20}) {
   final context = navigatorKey.currentContext;
   if (context == null) {
     if (attemptsLeft <= 0) {
       debugPrint('[deep-link] link_client dropped: no navigator after 5s');
       return;
     }
-    Timer(const Duration(milliseconds: 250),
-        () => _openConfirmDevicePane(services, request, attemptsLeft: attemptsLeft - 1));
+    Timer(const Duration(milliseconds: 250), () => _openConfirmDevicePane(services, request, attemptsLeft: attemptsLeft - 1));
     return;
   }
-  unawaited(showConfirmDeviceDialog(
+  unawaited(
+    showConfirmDeviceDialog(
       context,
       findByCode: services.extensions.syncFindLinkRequest,
       findByClient: services.extensions.syncFindLinkRequestByClient,
@@ -512,7 +482,7 @@ void _openConfirmDevicePane(
       // across an arbitrary stretch of the operator's attention.
       final messengerContext = navigatorKey.currentContext;
       if (linked != true || messengerContext == null || !messengerContext.mounted) return;
-      ScaffoldMessenger.of(messengerContext)
-          .showSnackBar(SnackBar(content: Text(t.settings.syncPanel.deviceLinked)));
-    }));
+      ScaffoldMessenger.of(messengerContext).showSnackBar(SnackBar(content: Text(t.settings.syncPanel.deviceLinked)));
+    }),
+  );
 }

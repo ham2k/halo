@@ -45,13 +45,7 @@ List<File> _uiSources() {
       fail('expected ${root.path} to exist — run this suite from the app package (cwd: ${Directory.current.path})');
     }
   }
-  return [
-    for (final root in roots)
-      ...root
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.dart') && !f.path.endsWith('.g.dart')),
-  ];
+  return [for (final root in roots) ...root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart') && !f.path.endsWith('.g.dart'))];
 }
 
 /// The source with comments and string literals blanked out, so a number
@@ -152,12 +146,7 @@ void main() {
     for (final file in _uiSources()) {
       final raw = file.readAsStringSync();
       final source = _blankNonCode(raw);
-      final allowed = _allowed.entries
-              .firstWhere(
-                (e) => file.path.replaceAll(r'\', '/').endsWith(e.key),
-                orElse: () => const MapEntry('', <double>{}),
-              )
-              .value;
+      final allowed = _allowed.entries.firstWhere((e) => file.path.replaceAll(r'\', '/').endsWith(e.key), orElse: () => const MapEntry('', <double>{})).value;
 
       int lineOf(int offset) => '\n'.allMatches(raw.substring(0, offset)).length + 1;
 
@@ -224,10 +213,6 @@ void main() {
       contains('+ Space.sm * 2; // noticePill\'s padding'),
       reason: 'the notice-pill width measurement must track noticePill\'s own padding constant',
     );
-    expect(
-      source,
-      contains('+ Space.xs; // the SizedBox beside the glyph'),
-      reason: 'the call-note glyph measurement must track the rendered gap\'s constant',
-    );
+    expect(source, contains('+ Space.xs; // the SizedBox beside the glyph'), reason: 'the call-note glyph measurement must track the rendered gap\'s constant');
   });
 }

@@ -28,8 +28,7 @@ void main() {
 
   const noticeKey = 'testOperations:receivedPurges';
 
-  testWidgets('a received purge shows a non-persisted notice, and confirming it clears it for real',
-      (tester) async {
+  testWidgets('a received purge shows a non-persisted notice, and confirming it clears it for real', (tester) async {
     final services = await buildServices();
     services.watchReceivedTestOperationPurges();
 
@@ -45,19 +44,20 @@ void main() {
     await tester.pump();
 
     final notice = services.statusBar.activeNotices.singleWhere((n) => n.key == noticeKey);
-    expect(notice.persist, isFalse,
-        reason: 'a persisted copy would come back after a restart with a Review button that does nothing');
+    expect(notice.persist, isFalse, reason: 'a persisted copy would come back after a restart with a Review button that does nothing');
 
     final result = await services.confirmReceivedTestOperationPurges(['remote-op']);
     expect(result, (eligible: 1, removed: 1));
     await tester.pump();
 
-    expect(services.statusBar.activeNotices.where((n) => n.key == noticeKey), isEmpty,
-        reason: 'must be dismissNotice, not clear() — clear() only ever touches unrelated status items');
+    expect(
+      services.statusBar.activeNotices.where((n) => n.key == noticeKey),
+      isEmpty,
+      reason: 'must be dismissNotice, not clear() — clear() only ever touches unrelated status items',
+    );
   });
 
-  testWidgets('dismissing the notice is not undone by an unrelated write to the operations table',
-      (tester) async {
+  testWidgets('dismissing the notice is not undone by an unrelated write to the operations table', (tester) async {
     final services = await buildServices();
     services.watchReceivedTestOperationPurges();
 
@@ -80,12 +80,14 @@ void main() {
     await services.operations.create(stationCall: 'N0DEV');
     await tester.pump();
 
-    expect(services.statusBar.activeNotices.where((n) => n.key == noticeKey), isEmpty,
-        reason: 'an unchanged pending set must not re-show a notice the operator already dismissed');
+    expect(
+      services.statusBar.activeNotices.where((n) => n.key == noticeKey),
+      isEmpty,
+      reason: 'an unchanged pending set must not re-show a notice the operator already dismissed',
+    );
   });
 
-  testWidgets(
-      'confirming a received purge through the real service removes a QSO whose own purge tombstone '
+  testWidgets('confirming a received purge through the real service removes a QSO whose own purge tombstone '
       "hasn't arrived yet", (tester) async {
     // Drives it through HaLoServices.confirmReceivedTestOperationPurges
     // itself, not the repository methods by hand — a prior version of this
@@ -107,7 +109,12 @@ void main() {
     ]);
     // Synced normally, with no purged flag of its own — the gap this pins.
     await services.qsos.mergeFromSync([
-      {'uuid': 'remote-qso', 'operation': 'remote-op', 'their': {'call': 'W1AW'}, 'updatedAtMillis': 1},
+      {
+        'uuid': 'remote-qso',
+        'operation': 'remote-op',
+        'their': {'call': 'W1AW'},
+        'updatedAtMillis': 1,
+      },
     ]);
     await tester.pump();
 
@@ -135,9 +142,11 @@ void main() {
 
     // A navigator for the dialog to open in — same wiring the real app
     // gives `_confirmReceivedPurgesFromNotice` via the global `navigatorKey`.
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(navigatorKey: navigatorKey, home: const SizedBox()),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(navigatorKey: navigatorKey, home: const SizedBox()),
+      ),
+    );
     await tester.pump();
 
     // Invokes the exact closure a tap on the notice's own action button
@@ -145,19 +154,25 @@ void main() {
     // StatusBarAction, so this is the real private method, not a stand-in.
     services.statusBar.activeNotices.singleWhere((n) => n.key == noticeKey).actions.single.onTap();
     await tester.pumpAndSettle();
-    expect(services.statusBar.activeNotices.where((n) => n.key == noticeKey), isEmpty,
-        reason: 'dismissed unconditionally as soon as Review is tapped, before the dialog even resolves');
+    expect(
+      services.statusBar.activeNotices.where((n) => n.key == noticeKey),
+      isEmpty,
+      reason: 'dismissed unconditionally as soon as Review is tapped, before the dialog even resolves',
+    );
 
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
 
-    expect(services.statusBar.activeNotices.where((n) => n.key == noticeKey), isNotEmpty,
-        reason: 'cancelling — backing out after a look, the common case — must re-arm the notice, '
-            'not leave it dismissed for the rest of the session');
+    expect(
+      services.statusBar.activeNotices.where((n) => n.key == noticeKey),
+      isNotEmpty,
+      reason:
+          'cancelling — backing out after a look, the common case — must re-arm the notice, '
+          'not leave it dismissed for the rest of the session',
+    );
   });
 
-  testWidgets('a re-delivered purge tombstone does not bring the notice back after the operator removed it',
-      (tester) async {
+  testWidgets('a re-delivered purge tombstone does not bring the notice back after the operator removed it', (tester) async {
     // The server keeps a purged record for good and re-delivers it on later
     // pulls, so a removal that only deletes local rows is undone within a
     // round or two: the operation reappears and the notice with it, which is

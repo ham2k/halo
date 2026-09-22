@@ -33,15 +33,7 @@ class SelectRow {
   /// This is the row to pick — drawn heavier than the rest.
   final bool emphasis;
 
-  const SelectRow({
-    required this.value,
-    required this.name,
-    this.tags = const [],
-    this.trailing,
-    this.icon,
-    this.subtitle,
-    this.emphasis = false,
-  });
+  const SelectRow({required this.value, required this.name, this.tags = const [], this.trailing, this.icon, this.subtitle, this.emphasis = false});
 
   /// What the closed field shows, which has one line and no columns.
   String get flatLabel => [name, ...tags, ?trailing].join(' ');
@@ -113,8 +105,7 @@ class _RowSelectFieldState extends State<RowSelectField> {
         // sized to that falls back to its own content and comes out narrower
         // than the field it dropped out of. [_anchorWidth] is what the field
         // actually painted at, which is never infinite.
-        builder: (context, constraints) =>
-            _build(context, constraints.maxWidth.isFinite ? constraints.maxWidth : _anchorWidth ?? 0),
+        builder: (context, constraints) => _build(context, constraints.maxWidth.isFinite ? constraints.maxWidth : _anchorWidth ?? 0),
       );
 
   Widget _build(BuildContext context, double width) {
@@ -182,10 +173,7 @@ class _RowSelectFieldState extends State<RowSelectField> {
             widget.label,
             errorText: widget.errorText,
             labelColor: widget.labelColor,
-          ).copyWith(
-            suffixIcon: dropdownTrailingIcon,
-            enabled: widget.enabled,
-          ),
+          ).copyWith(suffixIcon: dropdownTrailingIcon, enabled: widget.enabled),
           isEmpty: selected == null && widget.value == null && widget.placeholder == null,
           child: selected == null
               // A value no row offers is still the field's value — the port
@@ -193,10 +181,10 @@ class _RowSelectFieldState extends State<RowSelectField> {
               // as a blank field, which reads as nothing configured and has
               // the operator picking a port they had already chosen.
               ? (widget.value != null
-                  ? Text('${widget.value}', style: _SelectRowLayout.detailStyle(theme))
-                  : widget.placeholder == null
-                      ? null
-                      : Text(widget.placeholder!, style: TextStyle(color: theme.colorScheme.onSurfaceVariant)))
+                    ? Text('${widget.value}', style: _SelectRowLayout.detailStyle(theme))
+                    : widget.placeholder == null
+                    ? null
+                    : Text(widget.placeholder!, style: TextStyle(color: theme.colorScheme.onSurfaceVariant)))
               // The closed field shows the row's own layout, so what the
               // operator picked reads the same shut as it did open.
               : _SelectRowLayout(row: selected, trailingWidth: trailingWidth, twoLine: twoLine),
@@ -233,8 +221,7 @@ class _SelectRowLayout extends StatelessWidget {
       ) ??
       const TextStyle();
 
-  static TextStyle detailStyle(ThemeData theme) =>
-      theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant) ?? const TextStyle();
+  static TextStyle detailStyle(ThemeData theme) => theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant) ?? const TextStyle();
 
   @override
   Widget build(BuildContext context) {
@@ -253,21 +240,13 @@ class _SelectRowLayout extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: nameStyle(theme, emphasis: row.emphasis),
         ),
-        if (row.subtitle != null)
-          Text(row.subtitle!, overflow: TextOverflow.ellipsis, style: detailStyle(theme)),
+        if (row.subtitle != null) Text(row.subtitle!, overflow: TextOverflow.ellipsis, style: detailStyle(theme)),
       ],
     );
 
     final tags = [for (final tag in row.tags) _TagPill(text: tag)];
 
-    final trailing = row.trailing == null
-        ? null
-        : Text(
-            row.trailing!,
-            textAlign: TextAlign.right,
-            overflow: TextOverflow.ellipsis,
-            style: detailStyle(theme),
-          );
+    final trailing = row.trailing == null ? null : Text(row.trailing!, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, style: detailStyle(theme));
 
     if (twoLine) {
       return Column(
@@ -276,7 +255,11 @@ class _SelectRowLayout extends StatelessWidget {
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [icon, const SizedBox(width: Space.sm), Expanded(child: name)],
+            children: [
+              icon,
+              const SizedBox(width: Space.sm),
+              Expanded(child: name),
+            ],
           ),
           // Indented to the name's own left edge, so the second line reads as
           // belonging to the row above it rather than as a row of its own.
@@ -291,10 +274,7 @@ class _SelectRowLayout extends StatelessWidget {
                 Flexible(
                   child: Wrap(spacing: Space.sm, runSpacing: Space.xxs, children: tags),
                 ),
-                if (trailing != null) ...[
-                  const SizedBox(width: Space.sm),
-                  Expanded(child: trailing),
-                ],
+                if (trailing != null) ...[const SizedBox(width: Space.sm), Expanded(child: trailing)],
               ],
             ),
           ),
@@ -315,10 +295,7 @@ class _SelectRowLayout extends StatelessWidget {
         // whatever length the name happened to have.
         Expanded(child: name),
         for (final tag in tags) ...[const SizedBox(width: Space.sm), tag],
-        if (trailing != null) ...[
-          const SizedBox(width: Space.md),
-          SizedBox(width: trailingWidth, child: trailing),
-        ],
+        if (trailing != null) ...[const SizedBox(width: Space.md), SizedBox(width: trailingWidth, child: trailing)],
       ],
     );
   }
@@ -339,18 +316,14 @@ class _TagPill extends StatelessWidget {
   /// The horizontal room the pill adds around its own text.
   static const padding = 2 * Space.sm;
 
-  static TextStyle textStyle(ThemeData theme) =>
-      theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer) ?? const TextStyle();
+  static TextStyle textStyle(ThemeData theme) => theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer) ?? const TextStyle();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(Space.sm),
-      ),
+      decoration: BoxDecoration(color: theme.colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(Space.sm)),
       child: Text(text, style: textStyle(theme)),
     );
   }

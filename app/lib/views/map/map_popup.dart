@@ -31,8 +31,8 @@ class MapCircleMarker extends StatelessWidget {
     final diameter = glyph != null
         ? markerIconDiameter
         : isQth
-            ? 12.0
-            : 14.0 * marker.sizeFactor;
+        ? 12.0
+        : 14.0 * marker.sizeFactor;
     return Container(
       width: diameter,
       height: diameter,
@@ -44,8 +44,8 @@ class MapCircleMarker extends StatelessWidget {
           width: glyph != null
               ? markerIconStrokeWidth
               : isQth
-                  ? 2
-                  : 1.5,
+              ? 2
+              : 1.5,
         ),
       ),
       child: glyph == null
@@ -69,8 +69,7 @@ class MapPopupCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onSurface;
-    final hasDetail =
-        marker.popupDetailPrefix.isNotEmpty || marker.popupBand.isNotEmpty || marker.popupDetailSuffix.isNotEmpty;
+    final hasDetail = marker.popupDetailPrefix.isNotEmpty || marker.popupBand.isNotEmpty || marker.popupDetailSuffix.isNotEmpty;
 
     return Container(
       constraints: const BoxConstraints(maxWidth: maxWidth),
@@ -93,14 +92,16 @@ class MapPopupCard extends StatelessWidget {
           ),
           if (hasDetail)
             Text.rich(
-              TextSpan(children: [
-                TextSpan(text: marker.popupDetailPrefix),
-                TextSpan(
-                  text: marker.popupBand,
-                  style: TextStyle(fontWeight: FontWeight.w700, color: marker.color),
-                ),
-                TextSpan(text: marker.popupDetailSuffix),
-              ]),
+              TextSpan(
+                children: [
+                  TextSpan(text: marker.popupDetailPrefix),
+                  TextSpan(
+                    text: marker.popupBand,
+                    style: TextStyle(fontWeight: FontWeight.w700, color: marker.color),
+                  ),
+                  TextSpan(text: marker.popupDetailSuffix),
+                ],
+              ),
               style: theme.textTheme.bodySmall?.copyWith(color: textColor),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

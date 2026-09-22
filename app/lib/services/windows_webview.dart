@@ -115,10 +115,8 @@ class WindowsWebView {
   /// path IS the mitigation, so a silent regression (a mistyped or dropped
   /// flag) brings the crash straight back with the suite still green.
   @visibleForTesting
-  static WebViewEnvironmentSettings debugEnvironmentSettings(String userDataFolder) => WebViewEnvironmentSettings(
-        userDataFolder: userDataFolder,
-        additionalBrowserArguments: '--disable-gpu-compositing',
-      );
+  static WebViewEnvironmentSettings debugEnvironmentSettings(String userDataFolder) =>
+      WebViewEnvironmentSettings(userDataFolder: userDataFolder, additionalBrowserArguments: '--disable-gpu-compositing');
 
   static Future<WebViewEnvironment> _createEnvironment() async {
     final folder = await Directory(await userDataFolderPath()).create(recursive: true);
@@ -139,9 +137,7 @@ class WindowsWebView {
   @visibleForTesting
   static Future<String> userDataFolderPath({Map<String, String>? environment}) async {
     final localAppData = (environment ?? Platform.environment)['LOCALAPPDATA'];
-    final base = (localAppData == null || localAppData.isEmpty)
-        ? (await appDataDirectory()).path
-        : p.join(localAppData, windowsDataFolderName);
+    final base = (localAppData == null || localAppData.isEmpty) ? (await appDataDirectory()).path : p.join(localAppData, windowsDataFolderName);
     return p.join(base, kWebView2DataDirName);
   }
 

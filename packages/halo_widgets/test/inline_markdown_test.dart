@@ -52,10 +52,7 @@ void main() {
     });
 
     test('renders a link as its label, styled, dropping the url from the text', () {
-      final spans = inlineMarkdownSpans(
-        'see [the docs](https://ham2k.com/docs) first',
-        linkStyle: const TextStyle(color: Color(0xFF0000FF)),
-      );
+      final spans = inlineMarkdownSpans('see [the docs](https://ham2k.com/docs) first', linkStyle: const TextStyle(color: Color(0xFF0000FF)));
       expect(_plainText(spans), 'see the docs first');
       expect(_styleIn(spans, 'the docs')?.color, const Color(0xFF0000FF));
     });
@@ -69,14 +66,11 @@ void main() {
 
     test('autolinks a bare url and a bare email, as MarkdownBody did', () {
       const input = 'Friend, https://qrz.com/db/N0DEV and mail me at n0dev@example.com';
+      expect(inlineMarkdownLinkUrls(input), ['https://qrz.com/db/N0DEV', 'mailto:n0dev@example.com']);
       expect(
-        inlineMarkdownLinkUrls(input),
-        ['https://qrz.com/db/N0DEV', 'mailto:n0dev@example.com'],
+        _styleIn(inlineMarkdownSpans(input, linkStyle: const TextStyle(color: Color(0xFF00FF00))), 'https://qrz.com/db/N0DEV')?.color,
+        const Color(0xFF00FF00),
       );
-      expect(_styleIn(inlineMarkdownSpans(input, linkStyle: const TextStyle(color: Color(0xFF00FF00))),
-              'https://qrz.com/db/N0DEV')
-          ?.color,
-          const Color(0xFF00FF00));
     });
 
     test('leaves bracket text that is not a link literal', () {
@@ -110,16 +104,10 @@ void main() {
     });
 
     test('collects link urls in document order, deduplicated, images excluded', () {
-      expect(
-        inlineMarkdownLinkUrls('[a](https://a.example) then [b](https://b.example)'),
-        ['https://a.example', 'https://b.example'],
-      );
+      expect(inlineMarkdownLinkUrls('[a](https://a.example) then [b](https://b.example)'), ['https://a.example', 'https://b.example']);
       expect(inlineMarkdownLinkUrls('![flag](flag:us#12x9) [b](https://b.example)'), ['https://b.example']);
       // One recognizer per url, even when the same link appears twice.
-      expect(
-        inlineMarkdownLinkUrls('[a](https://a.example) and again [a](https://a.example)'),
-        ['https://a.example'],
-      );
+      expect(inlineMarkdownLinkUrls('[a](https://a.example) and again [a](https://a.example)'), ['https://a.example']);
       expect(inlineMarkdownLinkUrls('no links here'), isEmpty);
     });
 
@@ -279,10 +267,7 @@ void main() {
     // The separator check has to see the image: a link ending in a flag reports
     // a trailing space from the text BEFORE it unless placeholders count.
     test('separates paragraphs when the previous one ends in an image', () {
-      final spans = inlineMarkdownSpans(
-        '[QRZ ![f](flag:us#16x12)](https://x.example)\n\nsecond',
-        imageBuilder: (_) => const SizedBox.shrink(),
-      );
+      final spans = inlineMarkdownSpans('[QRZ ![f](flag:us#16x12)](https://x.example)\n\nsecond', imageBuilder: (_) => const SizedBox.shrink());
       // "QRZ " + <image> + " " + "second" — two spaces once the image is skipped.
       expect(_plainText(spans), 'QRZ  second');
     });
@@ -328,10 +313,7 @@ void main() {
       addTearDown(second.dispose);
       final byUrl = {'https://a.example': first, 'https://b.example': second};
 
-      final spans = inlineMarkdownSpans(
-        '[a](https://a.example) and [b](https://b.example)',
-        recognizerFor: (url) => byUrl[url],
-      );
+      final spans = inlineMarkdownSpans('[a](https://a.example) and [b](https://b.example)', recognizerFor: (url) => byUrl[url]);
       final linked = _flattenAll(spans).whereType<TextSpan>().where((s) => s.recognizer != null).toList();
       expect(linked.map((s) => s.recognizer).toList(), [first, second]);
       expect(linked.first.mouseCursor, SystemMouseCursors.click);
@@ -348,13 +330,9 @@ void main() {
 
   group('InlineMarkdownText', () {
     testWidgets('actually ellipsizes rather than wrapping — the reason this exists', (tester) async {
-      await tester.pumpWidget(_host(const SizedBox(
-        width: 120,
-        child: InlineMarkdownText(
-          'A **very** long description that cannot possibly fit on one line',
-          maxLines: 1,
-        ),
-      )));
+      await tester.pumpWidget(
+        _host(const SizedBox(width: 120, child: InlineMarkdownText('A **very** long description that cannot possibly fit on one line', maxLines: 1))),
+      );
 
       final paragraph = tester.renderObject<RenderParagraph>(find.byType(RichText));
       expect(paragraph.didExceedMaxLines, isTrue, reason: 'should have been truncated, not wrapped');
@@ -362,15 +340,11 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a heading size delta is relative to the widget\'s own style, not a hardcoded default',
-        (tester) async {
+    testWidgets('a heading size delta is relative to the widget\'s own style, not a hardcoded default', (tester) async {
       // Regression: baseFontSize must reach _appendNode from widget.style —
       // without it, a heading in a small control (here 10px) would jump to
       // flagGlyphDefaultFontSize+4 (20px) instead of 10+4=14px.
-      await tester.pumpWidget(_host(const InlineMarkdownText(
-        '# Small heading',
-        style: TextStyle(fontSize: 10),
-      )));
+      await tester.pumpWidget(_host(const InlineMarkdownText('# Small heading', style: TextStyle(fontSize: 10))));
 
       final richText = tester.widget<RichText>(find.byType(RichText));
       TextStyle? styleOf(InlineSpan span) {
@@ -387,10 +361,7 @@ void main() {
 
     testWidgets('opens a tapped link through onOpenLink', (tester) async {
       final opened = <String>[];
-      await tester.pumpWidget(_host(InlineMarkdownText(
-        'see [the docs](https://ham2k.com/docs)',
-        onOpenLink: opened.add,
-      )));
+      await tester.pumpWidget(_host(InlineMarkdownText('see [the docs](https://ham2k.com/docs)', onOpenLink: opened.add)));
 
       // Tapped on the label itself — a plain `tap` hits the RichText's centre,
       // which is not necessarily inside the link span.
@@ -405,11 +376,11 @@ void main() {
     // un-clickable exactly where the link sits.
     testWidgets('with no onOpenLink, a tap on the link reaches the enclosing row', (tester) async {
       var rowTaps = 0;
-      await tester.pumpWidget(_host(GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => rowTaps++,
-        child: const InlineMarkdownText('run [the thing](https://x.example) now'),
-      )));
+      await tester.pumpWidget(
+        _host(
+          GestureDetector(behavior: HitTestBehavior.opaque, onTap: () => rowTaps++, child: const InlineMarkdownText('run [the thing](https://x.example) now')),
+        ),
+      );
 
       await tester.tapOnText(find.textRange.ofSubstring('the thing'));
       await tester.pump();
@@ -449,11 +420,15 @@ void main() {
     // detector — without one the image half of a link is dead.
     testWidgets('an image inside a link opens it too, not just the text', (tester) async {
       final opened = <String>[];
-      await tester.pumpWidget(_host(InlineMarkdownText(
-        '[![flag](flag:us#19x14) QRZ](https://qrz.com/db/K1ABC)',
-        onOpenLink: opened.add,
-        imageBuilder: (config) => Container(width: config.width, height: config.height, color: const Color(0xFFFF0000)),
-      )));
+      await tester.pumpWidget(
+        _host(
+          InlineMarkdownText(
+            '[![flag](flag:us#19x14) QRZ](https://qrz.com/db/K1ABC)',
+            onOpenLink: opened.add,
+            imageBuilder: (config) => Container(width: config.width, height: config.height, color: const Color(0xFFFF0000)),
+          ),
+        ),
+      );
 
       await tester.tap(find.byType(Container));
       await tester.pump();
@@ -490,15 +465,11 @@ Iterable<InlineSpan> _flattenAll(List<InlineSpan> spans) sync* {
 }
 
 /// The leaf text runs, in order — what the operator actually reads.
-List<String?> _textsOf(String input) => _flatten(inlineMarkdownSpans(input))
-    .where((s) => s.text != null)
-    .map((s) => s.text)
-    .toList();
+List<String?> _textsOf(String input) => _flatten(inlineMarkdownSpans(input)).where((s) => s.text != null).map((s) => s.text).toList();
 
 String _plainTextOf(String input) => _plainText(inlineMarkdownSpans(input));
 
-String _plainText(List<InlineSpan> spans) =>
-    _flatten(spans).map((s) => s.text ?? '').join();
+String _plainText(List<InlineSpan> spans) => _flatten(spans).map((s) => s.text ?? '').join();
 
 /// The resolved style of the leaf run whose text is [text].
 TextStyle? _styleOf(String input, String text) => _styleIn(inlineMarkdownSpans(input), text);
@@ -510,7 +481,9 @@ TextStyle? _styleIn(List<InlineSpan> spans, String text) {
   return null;
 }
 
-Widget _host(Widget child) => MaterialApp(home: Scaffold(body: Center(child: child)));
+Widget _host(Widget child) => MaterialApp(
+  home: Scaffold(body: Center(child: child)),
+);
 
 /// The recognizer attached to the rendered leaf whose text is [text].
 GestureRecognizer? _recognizerFor(WidgetTester tester, String text) {

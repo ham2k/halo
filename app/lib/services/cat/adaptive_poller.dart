@@ -70,11 +70,7 @@ class AdaptivePoller {
   int _quietPolls = 0;
   bool _sawChangeSinceLastPoll = false;
 
-  AdaptivePoller({
-    required this.onPoll,
-    this.fast = kPollFast,
-    this.slow = kPollSlow,
-  }) : _interval = slow;
+  AdaptivePoller({required this.onPoll, this.fast = kPollFast, this.slow = kPollSlow}) : _interval = slow;
 
   /// The interval currently in use — for tests and diagnostics.
   Duration get interval => _interval;

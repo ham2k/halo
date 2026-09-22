@@ -25,21 +25,17 @@ abstract class TypeOnlyEquipmentDriver extends EquipmentDriver {
       throw UnsupportedError('$key has no session to create — nothing calls connect on it');
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [
-        {
-          'type': 'field',
-          'fieldType': 'select',
-          'key': typeFieldKey,
-          'label': fieldLabel,
-          'options': [
-            for (final value in typeValues) {'value': value, 'label': labelFor(value)},
-          ],
-        },
-      ];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    {
+      'type': 'field',
+      'fieldType': 'select',
+      'key': typeFieldKey,
+      'label': fieldLabel,
+      'options': [
+        for (final value in typeValues) {'value': value, 'label': labelFor(value)},
+      ],
+    },
+  ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {

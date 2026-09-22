@@ -50,7 +50,11 @@ void main() {
     final services = HaLoServices(db, settings, extensions: extensions);
     addTearDown(db.close);
 
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: SettingsView(services: services)),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // Select the Data Files panel from the sidebar (wide/two-pane layout).
@@ -67,8 +71,7 @@ void main() {
     expect(find.bySemanticsLabel('Refresh'), findsNWidgets(2));
   });
 
-  testWidgets('tapping Refresh shows progress and updates the row from the returned time without re-listing',
-      (tester) async {
+  testWidgets('tapping Refresh shows progress and updates the row from the returned time without re-listing', (tester) async {
     tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -80,15 +83,16 @@ void main() {
     addTearDown(db.close);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
 
-    final fake = _FakeDataFiles(
-      lookups: LookupRepository(db),
-      extensions: extensions,
-      prefs: await SharedPreferences.getInstance(),
-    )..files = [DataFileStatus(key: 'alpha', name: 'Alpha Data')];
+    final fake = _FakeDataFiles(lookups: LookupRepository(db), extensions: extensions, prefs: await SharedPreferences.getInstance())
+      ..files = [DataFileStatus(key: 'alpha', name: 'Alpha Data')];
 
     final services = HaLoServices(db, settings, extensions: extensions, dataFiles: fake);
 
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: SettingsView(services: services)),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Accounts, Services & Data Sources'));
     await tester.pumpAndSettle();
@@ -123,15 +127,16 @@ void main() {
     addTearDown(db.close);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
 
-    final fake = _FakeDataFiles(
-      lookups: LookupRepository(db),
-      extensions: extensions,
-      prefs: await SharedPreferences.getInstance(),
-    )..files = [DataFileStatus(key: 'alpha', name: 'Alpha Data'), DataFileStatus(key: 'zeta', name: 'Zeta Data')];
+    final fake = _FakeDataFiles(lookups: LookupRepository(db), extensions: extensions, prefs: await SharedPreferences.getInstance())
+      ..files = [DataFileStatus(key: 'alpha', name: 'Alpha Data'), DataFileStatus(key: 'zeta', name: 'Zeta Data')];
 
     final services = HaLoServices(db, settings, extensions: extensions, dataFiles: fake);
 
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: SettingsView(services: services)),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Accounts, Services & Data Sources'));
     await tester.pumpAndSettle();

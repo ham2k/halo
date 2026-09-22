@@ -46,12 +46,7 @@ void main() {
   // The skip list must not grow into the sources: a check that stops seeing
   // an edit silently tests the previous build, which is what it exists for.
   test('an edit anywhere a bundle is built from still counts', () {
-    for (final path in [
-      'activities/pota/src/index.ts',
-      'sdk/src/kernel.ts',
-      'samples/k2hrc-radio/src/index.ts',
-      'samples/k2hrc-radio/manifest.json',
-    ]) {
+    for (final path in ['activities/pota/src/index.ts', 'sdk/src/kernel.ts', 'samples/k2hrc-radio/src/index.ts', 'samples/k2hrc-radio/manifest.json']) {
       write(path, after);
       expect(newestExtensionSource(root)!.isAfter(built), isTrue, reason: path);
       write(path, before);

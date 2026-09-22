@@ -33,8 +33,10 @@ Object? readJsonArg(String? value, {required String label}) {
     final path = value.startsWith('@') ? value.substring(1) : value;
     final file = File(path);
     if (!file.existsSync()) {
-      throw CliUsageError('$label: no such file: $path\n'
-          '(a value is a path, `-` for stdin, or inline JSON starting with { or [)');
+      throw CliUsageError(
+        '$label: no such file: $path\n'
+        '(a value is a path, `-` for stdin, or inline JSON starting with { or [)',
+      );
     }
     text = file.readAsStringSync();
   }

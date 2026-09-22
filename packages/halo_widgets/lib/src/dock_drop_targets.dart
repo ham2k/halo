@@ -226,12 +226,7 @@ class _DockTabDropSlotState extends State<DockTabDropSlot> {
             // Always positioned, only its width animates: a bar that is
             // mounted and unmounted can't slide from one edge of the tab to
             // the other as the pointer crosses the middle.
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              curve: layoutAnimationCurve,
-              width: _after == null ? 0 : 3,
-              color: primary,
-            ),
+            child: AnimatedContainer(duration: const Duration(milliseconds: 120), curve: layoutAnimationCurve, width: _after == null ? 0 : 3, color: primary),
           ),
         ],
       ),

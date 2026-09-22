@@ -45,11 +45,7 @@ double _contrast(Color a, Color b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-Future<HaLoServices> makeServices({
-  Map<String, Object> prefs = const {},
-  ExtensionService? extensions,
-  SiblingAppsService? siblingApps,
-}) async {
+Future<HaLoServices> makeServices({Map<String, Object> prefs = const {}, ExtensionService? extensions, SiblingAppsService? siblingApps}) async {
   SharedPreferences.setMockInitialValues(prefs);
   final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
   final db = HaLoDatabase(NativeDatabase.memory());
@@ -457,7 +453,7 @@ void main() {
       expect(email, 'test@example.com');
       linkCalled = true;
       return {
-        'permission': {'status': 'pending', 'challenge_token': '123456', 'challenge_expires_at': '2026-12-31T23:59:59Z'}
+        'permission': {'status': 'pending', 'challenge_token': '123456', 'challenge_expires_at': '2026-12-31T23:59:59Z'},
       };
     };
 
@@ -497,7 +493,9 @@ void main() {
 
     final services = await makeServices(extensions: mockExtensions);
     final op = await services.operations.create(stationCall: 'KI2D');
-    await services.qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+    await services.qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+    });
 
     await pumpApp(tester, services);
 
@@ -516,7 +514,7 @@ void main() {
     // Enter email and submit
     mockExtensions.onLinkClient = (email) {
       return {
-        'permission': {'status': 'pending', 'challenge_token': '123456', 'challenge_expires_at': '2026-12-31T23:59:59Z'}
+        'permission': {'status': 'pending', 'challenge_token': '123456', 'challenge_expires_at': '2026-12-31T23:59:59Z'},
       };
     };
 
@@ -554,12 +552,7 @@ void main() {
     mockExtensions.onLinkClient = (email) {
       expect(email, isNull);
       return {
-        'permission': {
-          'status': 'pending',
-          'client': 'client-123',
-          'challenge_token': 'token-456',
-          'challenge_expires_at': '2026-12-31T23:59:59Z',
-        }
+        'permission': {'status': 'pending', 'client': 'client-123', 'challenge_token': 'token-456', 'challenge_expires_at': '2026-12-31T23:59:59Z'},
       };
     };
 
@@ -613,8 +606,8 @@ void main() {
       'accounts': [],
     };
     mockExtensions.onLinkClient = (_) => {
-          'permission': {'status': 'pending', 'challenge_token': '123456', 'challenge_expires_at': '2026-12-31T23:59:59Z'}
-        };
+      'permission': {'status': 'pending', 'challenge_token': '123456', 'challenge_expires_at': '2026-12-31T23:59:59Z'},
+    };
     final services = await makeServices(extensions: mockExtensions);
     await pumpApp(tester, services);
     await tester.tap(find.text('Continue'));
@@ -630,7 +623,9 @@ void main() {
     // The engine got there first: the account's QSOs are already local by
     // the time the poll sees the changed account.
     final op = await services.operations.create(stationCall: 'K2DEF');
-    await services.qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+    await services.qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+    });
     mockExtensions.mockAccountData = {
       'current_account': {'uuid': 'acct-2', 'call': 'K2DEF'},
       'accounts': [],
@@ -689,12 +684,7 @@ void main() {
     mockExtensions.onLinkClient = (email) {
       requestedEmail = email;
       return {
-        'permission': {
-          'status': 'pending',
-          'client': 'client-123',
-          'challenge_token': 'token-456',
-          'challenge_expires_at': '2026-12-31T23:59:59Z',
-        }
+        'permission': {'status': 'pending', 'client': 'client-123', 'challenge_token': 'token-456', 'challenge_expires_at': '2026-12-31T23:59:59Z'},
       };
     };
     final services = await makeServices(extensions: mockExtensions, siblingApps: siblings);
@@ -734,13 +724,8 @@ void main() {
       'accounts': [],
     };
     mockExtensions.onLinkClient = (_) => {
-          'permission': {
-            'status': 'pending',
-            'client': 'client-123',
-            'challenge_token': 'token-456',
-            'challenge_expires_at': '2026-12-31T23:59:59Z',
-          }
-        };
+      'permission': {'status': 'pending', 'client': 'client-123', 'challenge_token': 'token-456', 'challenge_expires_at': '2026-12-31T23:59:59Z'},
+    };
     final services = await makeServices(extensions: mockExtensions, siblingApps: siblings);
     await pumpApp(tester, services);
     await tester.tap(find.text('Continue'));
@@ -778,13 +763,8 @@ void main() {
       'accounts': [],
     };
     mockExtensions.onLinkClient = (_) => {
-          'permission': {
-            'status': 'pending',
-            'client': 'client-123',
-            'challenge_token': 'token-456',
-            'challenge_expires_at': '2026-12-31T23:59:59Z',
-          }
-        };
+      'permission': {'status': 'pending', 'client': 'client-123', 'challenge_token': 'token-456', 'challenge_expires_at': '2026-12-31T23:59:59Z'},
+    };
     final services = await makeServices(extensions: mockExtensions, siblingApps: siblings);
     await pumpApp(tester, services);
     await tester.tap(find.text('Continue'));
@@ -810,11 +790,16 @@ void main() {
     final mockExtensions = MockExtensionService();
     var reachable = false;
     var requests = 0;
-    mockExtensions.onAccountData = () => reachable ? {'current_account': {'uuid': 'acct-1'}, 'accounts': []} : null;
+    mockExtensions.onAccountData = () => reachable
+        ? {
+            'current_account': {'uuid': 'acct-1'},
+            'accounts': [],
+          }
+        : null;
     mockExtensions.onLinkClient = (_) {
       requests++;
       return {
-        'permission': {'status': 'pending', 'client': 'c', 'challenge_token': 't', 'challenge_expires_at': '2026-12-31T23:59:59Z'}
+        'permission': {'status': 'pending', 'client': 'c', 'challenge_token': 't', 'challenge_expires_at': '2026-12-31T23:59:59Z'},
       };
     };
     final services = await makeServices(extensions: mockExtensions, siblingApps: siblings);

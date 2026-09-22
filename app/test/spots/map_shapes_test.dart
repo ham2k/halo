@@ -12,8 +12,7 @@ import 'package:flutter/material.dart' show Colors;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
 
-List<MapShapeData> parse(String json) =>
-    mapShapesFromGeojson(jsonDecode(json), idPrefix: 'ref-sotaActivation/W2/GC-116', color: Colors.green);
+List<MapShapeData> parse(String json) => mapShapesFromGeojson(jsonDecode(json), idPrefix: 'ref-sotaActivation/W2/GC-116', color: Colors.green);
 
 void main() {
   test('a FeatureCollection of one polygon reads as one shape', () {

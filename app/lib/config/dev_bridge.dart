@@ -121,9 +121,7 @@ class DevBridge {
   /// when it isn't up.
   Map<String, dynamic> Function()? commandBarStateProvider;
 
-  Map<String, dynamic> commandBarState() =>
-      commandBarStateProvider?.call() ?? <String, dynamic>{'open': false};
-
+  Map<String, dynamic> commandBarState() => commandBarStateProvider?.call() ?? <String, dynamic>{'open': false};
 
   // ── Fixture reset ─────────────────────────────────────────────────────────
 
@@ -139,8 +137,7 @@ class DevBridge {
 
   /// Backs `window.__halo.resetFixture()`. A no-op summary when no handler is
   /// registered (native / production, or before boot completes — see above).
-  Future<Map<String, dynamic>> resetFixture() =>
-      resetFixtureHandler?.call() ?? Future.value(<String, dynamic>{'error': 'no fixture handler'});
+  Future<Map<String, dynamic>> resetFixture() => resetFixtureHandler?.call() ?? Future.value(<String, dynamic>{'error': 'no fixture handler'});
 
   // ── Structured log ────────────────────────────────────────────────────────
 

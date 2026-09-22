@@ -51,10 +51,7 @@ class PlatformVersions {
     required this.linuxPackageVersion,
   });
 
-  factory PlatformVersions.project({
-    required PublicVersion publicVersion,
-    required int build,
-  }) {
+  factory PlatformVersions.project({required PublicVersion publicVersion, required int build}) {
     final major = publicVersion.main.year;
     final minor = publicVersion.main.month;
 

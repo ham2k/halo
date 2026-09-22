@@ -47,10 +47,7 @@ void main() {
     });
 
     test('a probe that got no answer is offline even with a healthy interface', () async {
-      ConnectivityService.start(
-        changesSource: Stream.value([ConnectivityResult.wifi]),
-        check: () async => [ConnectivityResult.wifi],
-      );
+      ConnectivityService.start(changesSource: Stream.value([ConnectivityResult.wifi]), check: () async => [ConnectivityResult.wifi]);
       await pumpEventQueue();
       expect(ConnectivityService.isOffline, isFalse);
 
@@ -240,10 +237,7 @@ void main() {
       // only emits on CHANGE, nothing would ever revise it: the app would
       // suspend its whole network surface for the session, on a working
       // connection, with no way back.
-      ConnectivityService.start(
-        changesSource: Stream.value(const <ConnectivityResult>[]),
-        check: () async => const <ConnectivityResult>[],
-      );
+      ConnectivityService.start(changesSource: Stream.value(const <ConnectivityResult>[]), check: () async => const <ConnectivityResult>[]);
       await pumpEventQueue();
       expect(ConnectivityService.hasNoRoute, isFalse);
       expect(ConnectivityService.isOffline, isFalse);
@@ -309,8 +303,12 @@ void main() {
       var offline = false;
       final qsos = _RecoveringQsos(db, onWrite: () => offline = false);
       final operation = await operations.create(stationCall: 'KI2D');
-      final first = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
-      final second = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
+      final first = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      final second = await qsos.add(operation.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
 
       final looked = <String>[];
       final queue = LookupQueueService(
@@ -318,7 +316,9 @@ void main() {
           looked.add(call);
           // Coverage drops, so the drain breaks with `second` still held.
           if (looked.length == 1) offline = true;
-          return {'guess': {'name': 'Someone'}};
+          return {
+            'guess': {'name': 'Someone'},
+          };
         },
         qsos: qsos,
         operations: operations,
@@ -337,7 +337,6 @@ void main() {
   });
 }
 
-
 /// The connectivity status is drawn by `StatusBarOverlay`, which wraps the
 /// Navigator rather than living inside it — it owns the bottom of the window
 /// across every route. So its own `BuildContext` has no Navigator ancestor,
@@ -350,8 +349,7 @@ void main() {
 /// make reading the statuses impossible without answering one), and the entry
 /// it reveals is what opens the detail.
 void _indicatorTests() {
-  testWidgets('the connectivity status opens a menu, then the detail dialog from outside the Navigator',
-      (tester) async {
+  testWidgets('the connectivity status opens a menu, then the detail dialog from outside the Navigator', (tester) async {
     final navigatorKey = GlobalKey<NavigatorState>();
     await tester.pumpWidget(
       TranslationProvider(
@@ -379,11 +377,8 @@ void _indicatorTests() {
                             key: 'connectivity',
                             icon: MdiIcons.cloudOff,
                             text: 'No internet connection',
-                            onTap: () => showOfflineDetail(
-                              navigatorKey: navigatorKey,
-                              onRetry: () async => SyncRetryOutcome.unreachable,
-                              nextAttemptAt: () => null,
-                            ),
+                            onTap: () =>
+                                showOfflineDetail(navigatorKey: navigatorKey, onRetry: () async => SyncRetryOutcome.unreachable, nextAttemptAt: () => null),
                           ),
                         ],
                       ),

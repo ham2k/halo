@@ -42,9 +42,7 @@ const String _noBandLabel = '???';
 /// The list's UTC time-column label — `HH:MMz`, or a placeholder when the
 /// record has no start time. Shared by the QSO, event, and annotation rows
 /// so their time columns can never drift apart.
-String _utcTimeLabel(DateTime? time) => time == null
-    ? '--:--z'
-    : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}z';
+String _utcTimeLabel(DateTime? time) => time == null ? '--:--z' : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}z';
 
 /// Every time label is the same six mono characters wide, so one measurement
 /// stands in for the whole column.
@@ -117,11 +115,7 @@ enum DxFlags { dx, all, none }
 /// when neither is available. Shared by the list-wide column-width
 /// precompute and the per-row builder in `_QsoListState.build`, so they can
 /// never disagree about what a QSO shows there (ham2k/halo-dist#186).
-({String text, bool isFlag, bool guessed})? _dxStateContentFor(
-  Qso qso,
-  String? ourEntityPrefix,
-  DxFlags dxFlags,
-) {
+({String text, bool isFlag, bool guessed})? _dxStateContentFor(Qso qso, String? ourEntityPrefix, DxFlags dxFlags) {
   final theirEntityPrefix = qso.theirEntityPrefix;
   final isDX = theirEntityPrefix != null && ourEntityPrefix != null && theirEntityPrefix != ourEntityPrefix;
   final wantsFlag = switch (dxFlags) {
@@ -429,10 +423,7 @@ class _QsoListState extends State<QsoList> {
       return unscaled <= 0 ? 1.0 : (scaled / unscaled).clamp(1.0, double.infinity);
     }
 
-    _rowHeightScale = [
-      growthOf(haloMonoStyle(context, fontSize: _rowMonoFontSize)),
-      growthOf(theme.textTheme.bodyMedium),
-    ].reduce((a, b) => a > b ? a : b);
+    _rowHeightScale = [growthOf(haloMonoStyle(context, fontSize: _rowMonoFontSize)), growthOf(theme.textTheme.bodyMedium)].reduce((a, b) => a > b ? a : b);
   }
 
   /// The resolved dimensions, refreshed by [didChangeDependencies].
@@ -554,11 +545,7 @@ class _QsoListState extends State<QsoList> {
     }
     final clamped = target.clamp(position.minScrollExtent, position.maxScrollExtent);
     if ((clamped - position.pixels).abs() < 0.5) return null;
-    return _scrollController.animateTo(
-      clamped,
-      duration: const Duration(milliseconds: 120),
-      curve: Curves.easeOut,
-    );
+    return _scrollController.animateTo(clamped, duration: const Duration(milliseconds: 120), curve: Curves.easeOut);
   }
 
   /// One measured pass over what [_revealSelected]'s arithmetic left behind.
@@ -605,8 +592,7 @@ class _QsoListState extends State<QsoList> {
   bool _onScrollMetricsNotification(ScrollMetricsNotification notification) {
     if (notification.depth == 0) {
       final metrics = notification.metrics;
-      if (_lastMaxScrollExtent != null &&
-          metrics.maxScrollExtent > _lastMaxScrollExtent!) {
+      if (_lastMaxScrollExtent != null && metrics.maxScrollExtent > _lastMaxScrollExtent!) {
         // If maxScrollExtent increased (e.g. secondary controls expanded,
         // layout resized) and user was near bottom, keep bottom QSO in view.
         if (_wasNearBottom) {
@@ -655,12 +641,8 @@ class _QsoListState extends State<QsoList> {
         color: theme.colorScheme.surfaceContainerHighest,
         child: Center(
           child: Text(
-            warn
-                ? (widget.bandOrModeWarningLabel ?? 'Please make sure your band and mode are correct')
-                : (widget.noQsosLabel ?? 'No QSOs yet — work someone!'),
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: warn ? theme.colorScheme.error : theme.colorScheme.outline,
-            ),
+            warn ? (widget.bandOrModeWarningLabel ?? 'Please make sure your band and mode are correct') : (widget.noQsosLabel ?? 'No QSOs yet — work someone!'),
+            style: theme.textTheme.bodyLarge?.copyWith(color: warn ? theme.colorScheme.error : theme.colorScheme.outline),
           ),
         ),
       );
@@ -671,23 +653,13 @@ class _QsoListState extends State<QsoList> {
     // they stand clear of the dim columns beside them without the dim ones
     // dropping back to outline. Local to this list: the theme's onSurface
     // is untouched.
-    final strong = Color.lerp(
-      theme.colorScheme.onSurface,
-      theme.brightness == Brightness.dark ? Colors.white : Colors.black,
-      0.5,
-    );
-    final mono = haloMonoStyle(
-      context,
-      fontSize: _rowMonoFontSize,
-      color: strong,
-    );
+    final strong = Color.lerp(theme.colorScheme.onSurface, theme.brightness == Brightness.dark ? Colors.white : Colors.black, 0.5);
+    final mono = haloMonoStyle(context, fontSize: _rowMonoFontSize, color: strong);
     // Halfway from `onSurfaceVariant` to `onSurface`: the
     // variant alone reads too faint for a column of data, while the full
     // onSurface would put the columns level with the callsign they sit
     // behind.
-    final monoDim = mono.copyWith(
-      color: Color.lerp(theme.colorScheme.onSurfaceVariant, theme.colorScheme.onSurface, 0.5),
-    );
+    final monoDim = mono.copyWith(color: Color.lerp(theme.colorScheme.onSurfaceVariant, theme.colorScheme.onSurface, 0.5));
     // Bold, but the same base size as every other field per the issue: "All
     // fields use the same base font size (except for frequency, see below)."
     final callStyle = mono.copyWith(fontWeight: FontWeight.w700);
@@ -748,9 +720,7 @@ class _QsoListState extends State<QsoList> {
     // for QSOs just logged) just means that header shows no score badges.
     final scoresByDay = <int, Map<String, dynamic>?>{
       for (final section in widget.daySections)
-        if (section['day'] is num)
-          (section['day'] as num).toInt():
-              section['scores'] as Map<String, dynamic>?,
+        if (section['day'] is num) (section['day'] as num).toInt(): section['scores'] as Map<String, dynamic>?,
     };
 
     Widget buildRowContent(BuildContext context, int chronologicalIndex, _ColumnPlan plan) {
@@ -785,46 +755,23 @@ class _QsoListState extends State<QsoList> {
       // Selected treatment matches app-polo's QSOList: secondaryContainer
       // fill with a secondary top/bottom border accent, text tinted
       // toward onSecondaryContainer so it doesn't wash out.
-      var rowMono = selected
-          ? mono.copyWith(color: theme.colorScheme.onSecondaryContainer)
-          : mono;
-      var rowMonoDim = selected
-          ? monoDim.copyWith(
-              color: theme.colorScheme.onSecondaryContainer.withValues(
-                alpha: 0.75,
-              ),
-            )
-          : monoDim;
-      var rowCall = selected
-          ? callStyle.copyWith(color: theme.colorScheme.onSecondaryContainer)
-          : callStyle;
+      var rowMono = selected ? mono.copyWith(color: theme.colorScheme.onSecondaryContainer) : mono;
+      var rowMonoDim = selected ? monoDim.copyWith(color: theme.colorScheme.onSecondaryContainer.withValues(alpha: 0.75)) : monoDim;
+      var rowCall = selected ? callStyle.copyWith(color: theme.colorScheme.onSecondaryContainer) : callStyle;
       // Deleted QSOs only ever show up here when the "show deleted QSOs"
       // menu toggle is on — struck-through and faded so they read as
       // gone without disappearing from the timeline.
       if (qso.deleted) {
-        rowMono = rowMono.copyWith(
-          color: rowMono.color?.withValues(alpha: 0.5),
-          decoration: TextDecoration.lineThrough,
-        );
-        rowMonoDim = rowMonoDim.copyWith(
-          color: rowMonoDim.color?.withValues(alpha: 0.5),
-          decoration: TextDecoration.lineThrough,
-        );
-        rowCall = rowCall.copyWith(
-          color: rowCall.color?.withValues(alpha: 0.5),
-          decoration: TextDecoration.lineThrough,
-        );
+        rowMono = rowMono.copyWith(color: rowMono.color?.withValues(alpha: 0.5), decoration: TextDecoration.lineThrough);
+        rowMonoDim = rowMonoDim.copyWith(color: rowMonoDim.color?.withValues(alpha: 0.5), decoration: TextDecoration.lineThrough);
+        rowCall = rowCall.copyWith(color: rowCall.color?.withValues(alpha: 0.5), decoration: TextDecoration.lineThrough);
       }
       // The name is the one proportional column: Roboto rather than the
       // mono the data columns line up in, since it never needs to align
       // digit-for-digit with the row above, in the same dim gray as the
       // time and RST. Its size is the row's base size (never smaller): the
       // row height is measured against bodyMedium, so this stays inside it.
-      final rowNameDim = theme.textTheme.bodyMedium!.copyWith(
-        fontSize: _rowMonoFontSize,
-        color: rowMonoDim.color,
-        decoration: rowMonoDim.decoration,
-      );
+      final rowNameDim = theme.textTheme.bodyMedium!.copyWith(fontSize: _rowMonoFontSize, color: rowMonoDim.color, decoration: rowMonoDim.decoration);
 
       // DX/State column — see _dxStateContentFor's doc for the flag-vs-state
       // rule, shared with the list-wide width precompute above. Emoji use a
@@ -835,9 +782,7 @@ class _QsoListState extends State<QsoList> {
       final dxState = _dxStateContentFor(qso, ourEntityPrefix, dxFlags);
       Widget? dxStateField;
       if (dxState != null) {
-        dxStateField = dxState.isFlag
-            ? flagGlyph(dxState.text, shadows: glyphGlow(theme))
-            : Text(dxState.text, style: rowMonoDim);
+        dxStateField = dxState.isFlag ? flagGlyph(dxState.text, shadows: glyphGlow(theme)) : Text(dxState.text, style: rowMonoDim);
         // Values coming from the callsign guess rather than an entered field
         // paint a touch fainter (80%) so guessed-but-unconfirmed reads as
         // such — the flag is an emoji, whose color the text style can't
@@ -858,9 +803,7 @@ class _QsoListState extends State<QsoList> {
       final bandKnown = freqKHz != null ? bandForFrequency(freqKHz) != null : qso.band != null;
       // Carries the row's own alpha across, so a deleted QSO's bad band
       // stays faded rather than snapping back to full strength.
-      final freqStyle = bandKnown
-          ? rowMono
-          : rowMono.copyWith(color: theme.colorScheme.error.withValues(alpha: rowMono.color?.a ?? 1.0));
+      final freqStyle = bandKnown ? rowMono : rowMono.copyWith(color: theme.colorScheme.error.withValues(alpha: rowMono.color?.a ?? 1.0));
       final Widget freqField;
       // Right-aligned within the column's fixed width, so the kHz digits of
       // a 7 MHz row sit under those of a 14 MHz row, band-only rows included.
@@ -907,12 +850,7 @@ class _QsoListState extends State<QsoList> {
               ),
             if (parts.hz != null) ...[
               Text(NumberFormatting.instance.decimalSeparator, style: freqStyle),
-              Text(
-                parts.hz!,
-                style: freqStyle.copyWith(
-                  fontSize: (freqStyle.fontSize ?? 14) * 0.8,
-                ),
-              ),
+              Text(parts.hz!, style: freqStyle.copyWith(fontSize: (freqStyle.fontSize ?? 14) * 0.8)),
             ],
           ],
         );
@@ -925,159 +863,139 @@ class _QsoListState extends State<QsoList> {
 
       // #236: stable id for agent/browser tooling — per-callsign so a specific
       // logged QSO's row is targetable.
-      return semanticId('qso.row.${qso.theirCall}', Container(
-        // foregroundDecoration paints over the already-laid-out child
-        // instead of insetting it (unlike Container's `decoration`,
-        // which turns a BoxDecoration's border into padding) — the
-        // selected-row accent border can't add any height on top of the
-        // hairline row/divider spacing the issue calls for.
-        foregroundDecoration: BoxDecoration(
-          border: selected
-              ? Border.symmetric(
-                  horizontal: BorderSide(
-                    color: theme.colorScheme.secondary,
-                    width: 3,
-                  ),
-                )
-              : null,
-        ),
-        child: Material(
-          color: selected
-              ? theme.colorScheme.secondaryContainer
-              : theme.colorScheme.surface,
-          child: InkWell(
-            onTap: () => onSelect(qso),
-            mouseCursor: SystemMouseCursors.click,
-            child: Padding(
-              padding: PaneSafeArea.symmetricOf(
-                context,
-                horizontal: Space.lg,
-                vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
-              ),
-              child: Row(
-                children: [
-                  if (plan.showNumbers) ...[
-                    SizedBox(
-                      width: numberWidth,
-                      child: Text(
-                        qso.deleted ? '' : formatNumber(number),
-                        style: rowMonoDim,
-                        textAlign: TextAlign.right,
-                        // [numberWidth] is measured to fit exactly, but every
-                        // row sits in a fixed-height sliver slot (HALO-258),
-                        // which can't grow to absorb a wrapped second line —
-                        // forcing one line trades a rounding-error's worth of
-                        // horizontal clipping for that, which is far less
-                        // visible.
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.clip,
-                      ),
-                    ),
-                    const SizedBox(width: _columnGap),
-                  ],
-                  Text(timeLabel, style: rowMonoDim),
-                  const SizedBox(width: _columnGap),
-                  // Fixed width so an empty freq/band still holds the column
-                  // open and the columns after it stay aligned (#354).
-                  SizedBox(width: freqWidth, child: freqField),
-                  const SizedBox(width: _columnGap),
-                  if (plan.showMode) ...[
-                    SizedBox(
-                      width: _modeWidth,
-                      child: Text(
-                        displayMode(qso.mode, freqKHz: freqKHz, band: qso.band) ?? '',
-                        // Same alpha-preserving error color as the frequency
-                        // above: a sideband the band doesn't run is the one
-                        // thing [displayMode] spells out, and it is spelled
-                        // out to be noticed.
-                        style: isUnexpectedSideband(qso.mode, freqKHz: freqKHz, band: qso.band)
-                            ? rowMonoDim.copyWith(color: theme.colorScheme.error.withValues(alpha: rowMonoDim.color?.a ?? 1.0))
-                            : rowMonoDim,
-                      ),
-                    ),
-                    const SizedBox(width: _columnGap),
-                  ],
-                  // The callsign never truncates; the name absorbs the squeeze.
-                  SizedBox(
-                    width: callsignWidth,
-                    child: Text(qso.theirCall, style: rowCall),
-                  ),
-                  const SizedBox(width: _columnGap),
-                  // Fixed-width, like callsign/number above — reserved
-                  // whenever ANY row in the list has a flag/state to show,
-                  // even on rows with neither, so Name always starts at the
-                  // same x position (ham2k/halo-dist#186).
-                  if (plan.showDxState) ...[
-                    SizedBox(width: dxStateWidth, child: dxStateField),
-                    const SizedBox(width: _columnGap),
-                  ],
-                  Expanded(
-                    // A guessed name paints at 80% too (see the DX/state note).
-                    child: Opacity(
-                      opacity: qso.theirFieldIsGuessed('name') ? 0.8 : 1.0,
-                      child: Text.rich(
-                        TextSpan(
-                          children: [
-                            // A noted station leads with its marker.
-                            if (qso.theirNoteEmoji case final emoji? when emoji.isNotEmpty) ...[
-                              flagSpan(emoji, style: rowNameDim, shadows: glyphGlow(theme)),
-                              const TextSpan(text: ' '),
-                            ],
-                            TextSpan(text: qso.theirName ?? ''),
-                          ],
-                        ),
-                        style: rowNameDim,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  if (plan.showRefs && (refCountsByType.isNotEmpty || qso.serialConflict || qso.hasNotes)) ...[
-                    const SizedBox(width: _columnGap),
-                    QsoRowBadges(
-                      qso: qso,
-                      refCounts: refCountsByType,
-                      activityControls: activityControls,
-                      dimStyle: rowMonoDim,
-                    ),
-                  ],
-                  if (plan.showRst)
-                    SizedBox(
-                      width: rstWidth,
-                      child: Text(
-                        widget.switchSentRcvd
-                            ? '${qso.receivedRST ?? ''} ${qso.sentRST ?? ''}'
-                            : '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
-                        style: rowMonoDim,
-                        textAlign: TextAlign.right,
-                      ),
-                    ),
-                  // The exchange, after the signal reports (#354): ours then
-                  // theirs in the RST cell's order, so a serial contest shows
-                  // the number that went out next to the one that came back.
-                  // Reserved list-wide only when some QSO carries one, so it
-                  // costs no space in the common (RST-only) case.
-                  if (plan.showExchange) ...[
-                    const SizedBox(width: _columnGap),
-                    SizedBox(
-                      width: exchangeWidth,
-                      child: Opacity(
-                        opacity: qso.theirFieldIsGuessed('exchange') ? 0.8 : 1.0,
+      return semanticId(
+        'qso.row.${qso.theirCall}',
+        Container(
+          // foregroundDecoration paints over the already-laid-out child
+          // instead of insetting it (unlike Container's `decoration`,
+          // which turns a BoxDecoration's border into padding) — the
+          // selected-row accent border can't add any height on top of the
+          // hairline row/divider spacing the issue calls for.
+          foregroundDecoration: BoxDecoration(
+            border: selected ? Border.symmetric(horizontal: BorderSide(color: theme.colorScheme.secondary, width: 3)) : null,
+          ),
+          child: Material(
+            color: selected ? theme.colorScheme.secondaryContainer : theme.colorScheme.surface,
+            child: InkWell(
+              onTap: () => onSelect(qso),
+              mouseCursor: SystemMouseCursors.click,
+              child: Padding(
+                padding: PaneSafeArea.symmetricOf(context, horizontal: Space.lg, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV),
+                child: Row(
+                  children: [
+                    if (plan.showNumbers) ...[
+                      SizedBox(
+                        width: numberWidth,
                         child: Text(
-                          _exchangePair(qso, switchSentRcvd: widget.switchSentRcvd),
+                          qso.deleted ? '' : formatNumber(number),
+                          style: rowMonoDim,
+                          textAlign: TextAlign.right,
+                          // [numberWidth] is measured to fit exactly, but every
+                          // row sits in a fixed-height sliver slot (HALO-258),
+                          // which can't grow to absorb a wrapped second line —
+                          // forcing one line trades a rounding-error's worth of
+                          // horizontal clipping for that, which is far less
+                          // visible.
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.clip,
+                        ),
+                      ),
+                      const SizedBox(width: _columnGap),
+                    ],
+                    Text(timeLabel, style: rowMonoDim),
+                    const SizedBox(width: _columnGap),
+                    // Fixed width so an empty freq/band still holds the column
+                    // open and the columns after it stay aligned (#354).
+                    SizedBox(width: freqWidth, child: freqField),
+                    const SizedBox(width: _columnGap),
+                    if (plan.showMode) ...[
+                      SizedBox(
+                        width: _modeWidth,
+                        child: Text(
+                          displayMode(qso.mode, freqKHz: freqKHz, band: qso.band) ?? '',
+                          // Same alpha-preserving error color as the frequency
+                          // above: a sideband the band doesn't run is the one
+                          // thing [displayMode] spells out, and it is spelled
+                          // out to be noticed.
+                          style: isUnexpectedSideband(qso.mode, freqKHz: freqKHz, band: qso.band)
+                              ? rowMonoDim.copyWith(color: theme.colorScheme.error.withValues(alpha: rowMonoDim.color?.a ?? 1.0))
+                              : rowMonoDim,
+                        ),
+                      ),
+                      const SizedBox(width: _columnGap),
+                    ],
+                    // The callsign never truncates; the name absorbs the squeeze.
+                    SizedBox(
+                      width: callsignWidth,
+                      child: Text(qso.theirCall, style: rowCall),
+                    ),
+                    const SizedBox(width: _columnGap),
+                    // Fixed-width, like callsign/number above — reserved
+                    // whenever ANY row in the list has a flag/state to show,
+                    // even on rows with neither, so Name always starts at the
+                    // same x position (ham2k/halo-dist#186).
+                    if (plan.showDxState) ...[SizedBox(width: dxStateWidth, child: dxStateField), const SizedBox(width: _columnGap)],
+                    Expanded(
+                      // A guessed name paints at 80% too (see the DX/state note).
+                      child: Opacity(
+                        opacity: qso.theirFieldIsGuessed('name') ? 0.8 : 1.0,
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              // A noted station leads with its marker.
+                              if (qso.theirNoteEmoji case final emoji? when emoji.isNotEmpty) ...[
+                                flagSpan(emoji, style: rowNameDim, shadows: glyphGlow(theme)),
+                                const TextSpan(text: ' '),
+                              ],
+                              TextSpan(text: qso.theirName ?? ''),
+                            ],
+                          ),
+                          style: rowNameDim,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    if (plan.showRefs && (refCountsByType.isNotEmpty || qso.serialConflict || qso.hasNotes)) ...[
+                      const SizedBox(width: _columnGap),
+                      QsoRowBadges(qso: qso, refCounts: refCountsByType, activityControls: activityControls, dimStyle: rowMonoDim),
+                    ],
+                    if (plan.showRst)
+                      SizedBox(
+                        width: rstWidth,
+                        child: Text(
+                          widget.switchSentRcvd ? '${qso.receivedRST ?? ''} ${qso.sentRST ?? ''}' : '${qso.sentRST ?? ''} ${qso.receivedRST ?? ''}',
                           style: rowMonoDim,
                           textAlign: TextAlign.right,
                         ),
                       ),
-                    ),
+                    // The exchange, after the signal reports (#354): ours then
+                    // theirs in the RST cell's order, so a serial contest shows
+                    // the number that went out next to the one that came back.
+                    // Reserved list-wide only when some QSO carries one, so it
+                    // costs no space in the common (RST-only) case.
+                    if (plan.showExchange) ...[
+                      const SizedBox(width: _columnGap),
+                      SizedBox(
+                        width: exchangeWidth,
+                        child: Opacity(
+                          opacity: qso.theirFieldIsGuessed('exchange') ? 0.8 : 1.0,
+                          child: Text(
+                            _exchangePair(qso, switchSentRcvd: widget.switchSentRcvd),
+                            style: rowMonoDim,
+                            textAlign: TextAlign.right,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
         ),
-      ));
+      );
     }
 
     /// The selected row carries [_selectedRowKey], so [_revealSelected] has
@@ -1103,13 +1021,7 @@ class _QsoListState extends State<QsoList> {
     // to the pixel. Budgeting to the exact measurement leaves a row one
     // rounding difference away from overflowing by a fraction of a pixel —
     // still a logged error.
-    final mandatoryWidth = textWidth(context, _timeLabelSample, monoDim) +
-        _columnGap +
-        freqWidth +
-        _columnGap +
-        callsignWidth +
-        _columnGap +
-        _fitSlack;
+    final mandatoryWidth = textWidth(context, _timeLabelSample, monoDim) + _columnGap + freqWidth + _columnGap + callsignWidth + _columnGap + _fitSlack;
 
     // What each optional column costs, INCLUDING the [_columnGap] it brings
     // with it, and whether it has earned its place on content at all (#354,
@@ -1159,94 +1071,93 @@ class _QsoListState extends State<QsoList> {
       // [planFor] keeps rows inside the pane in the first place; this stays
       // as the backstop for the residue (a ref badge wider than its estimate)
       // and for a pane narrower than [minWidth] below.
-      child: LayoutBuilder(builder: (context, constraints) {
-        final padding = PaneSafeArea.symmetricOf(context, horizontal: 12);
-        // Below this the list has nothing left to drop — time, freq and
-        // callsign are what a log row means. So it stops shrinking and lays
-        // out at its minimum instead, letting the ClipRect above trim the
-        // right edge: rows that are cut off but internally consistent, rather
-        // than rows whose columns overflow and land on top of each other.
-        final minWidth = mandatoryWidth + padding.horizontal;
-        final width = constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
-        final plan = planFor(width - padding.horizontal);
-        return OverflowBox(
-          alignment: Alignment.topLeft,
-          minWidth: width,
-          maxWidth: width,
-          child: Container(
-            // Shows through wherever the list doesn't reach (e.g. below the
-            // newest row when there are few QSOs) — rows themselves stay opaque
-            // on the normal surface color below.
-            color: theme.colorScheme.surfaceContainerHighest,
-            child: NotificationListener<ScrollNotification>(
-              onNotification: _onScrollNotification,
-              child: NotificationListener<ScrollMetricsNotification>(
-                onNotification: _onScrollMetricsNotification,
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  slivers: [
-                    for (var g = 0; g < dayGroups.length; g++)
-                      // Groups each day's header with its own rows so Flutter's sliver
-                      // protocol coordinates pinning *between* groups — without this,
-                      // sibling `SliverPersistentHeader`s pin independently of each
-                      // other and a short day's header never gets pushed off by the
-                      // next day's, so both stay stuck on screen at once instead of
-                      // only the current day's header showing.
-                      SliverMainAxisGroup(
-                        slivers: [
-                          SliverPersistentHeader(
-                            pinned: true,
-                            delegate: _DayHeaderDelegate(
-                              extent: headerExtent,
-                              child: DayHeaderRow(
-                                dayMillis: dayKeys[g],
-                                count: dayGroups[g]
-                                    .where((i) => qsos[i].isRealContact)
-                                    .length,
-                                scores: scoresByDay[dayKeys[g]],
-                                onTap: widget.onTapDayHeader,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final padding = PaneSafeArea.symmetricOf(context, horizontal: 12);
+          // Below this the list has nothing left to drop — time, freq and
+          // callsign are what a log row means. So it stops shrinking and lays
+          // out at its minimum instead, letting the ClipRect above trim the
+          // right edge: rows that are cut off but internally consistent, rather
+          // than rows whose columns overflow and land on top of each other.
+          final minWidth = mandatoryWidth + padding.horizontal;
+          final width = constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
+          final plan = planFor(width - padding.horizontal);
+          return OverflowBox(
+            alignment: Alignment.topLeft,
+            minWidth: width,
+            maxWidth: width,
+            child: Container(
+              // Shows through wherever the list doesn't reach (e.g. below the
+              // newest row when there are few QSOs) — rows themselves stay opaque
+              // on the normal surface color below.
+              color: theme.colorScheme.surfaceContainerHighest,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _onScrollNotification,
+                child: NotificationListener<ScrollMetricsNotification>(
+                  onNotification: _onScrollMetricsNotification,
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    slivers: [
+                      for (var g = 0; g < dayGroups.length; g++)
+                        // Groups each day's header with its own rows so Flutter's sliver
+                        // protocol coordinates pinning *between* groups — without this,
+                        // sibling `SliverPersistentHeader`s pin independently of each
+                        // other and a short day's header never gets pushed off by the
+                        // next day's, so both stay stuck on screen at once instead of
+                        // only the current day's header showing.
+                        SliverMainAxisGroup(
+                          slivers: [
+                            SliverPersistentHeader(
+                              pinned: true,
+                              delegate: _DayHeaderDelegate(
+                                extent: headerExtent,
+                                child: DayHeaderRow(
+                                  dayMillis: dayKeys[g],
+                                  count: dayGroups[g].where((i) => qsos[i].isRealContact).length,
+                                  scores: scoresByDay[dayKeys[g]],
+                                  onTap: widget.onTapDayHeader,
+                                ),
                               ),
                             ),
-                          ),
-                          // Fixed extent, not a plain SliverList: it gives
-                          // RenderSliverFixedExtentList's maxScrollExtent as
-                          // itemExtent * childCount, an O(1) computation —
-                          // instead of the O(n) layout walk a variable-extent
-                          // sliver needs to find where the list ends, which is
-                          // what made jumping to the newest QSO in a large
-                          // operation block the UI thread for up to 1.5s
-                          // (HALO-258). Every row is forced into this exact
-                          // height regardless of kind — see EventRow's and
-                          // AnnotationRow's padding, matched to the ordinary
-                          // row's for exactly this reason.
-                          SliverFixedExtentList(
-                            itemExtent: rowExtent,
-                            delegate: SliverChildBuilderDelegate(
-                              (context, i) => _RowDivider(
-                                // The last row of a day already meets the
-                                // next day's pinned header — a divider there
-                                // would just be a hairline under the header,
-                                // not between two rows. A selected row paints
-                                // its own accent border on the same edge
-                                // (buildRow, above) — the divider would paint
-                                // over it, since foreground decorations paint
-                                // in child-to-ancestor order.
-                                draw: i < dayGroups[g].length - 1 &&
-                                    qsos[dayGroups[g][i]].uuid != selectedUuid,
-                                child: buildRow(context, dayGroups[g][i], plan),
+                            // Fixed extent, not a plain SliverList: it gives
+                            // RenderSliverFixedExtentList's maxScrollExtent as
+                            // itemExtent * childCount, an O(1) computation —
+                            // instead of the O(n) layout walk a variable-extent
+                            // sliver needs to find where the list ends, which is
+                            // what made jumping to the newest QSO in a large
+                            // operation block the UI thread for up to 1.5s
+                            // (HALO-258). Every row is forced into this exact
+                            // height regardless of kind — see EventRow's and
+                            // AnnotationRow's padding, matched to the ordinary
+                            // row's for exactly this reason.
+                            SliverFixedExtentList(
+                              itemExtent: rowExtent,
+                              delegate: SliverChildBuilderDelegate(
+                                (context, i) => _RowDivider(
+                                  // The last row of a day already meets the
+                                  // next day's pinned header — a divider there
+                                  // would just be a hairline under the header,
+                                  // not between two rows. A selected row paints
+                                  // its own accent border on the same edge
+                                  // (buildRow, above) — the divider would paint
+                                  // over it, since foreground decorations paint
+                                  // in child-to-ancestor order.
+                                  draw: i < dayGroups[g].length - 1 && qsos[dayGroups[g][i]].uuid != selectedUuid,
+                                  child: buildRow(context, dayGroups[g][i], plan),
+                                ),
+                                childCount: dayGroups[g].length,
                               ),
-                              childCount: dayGroups[g].length,
                             ),
-                          ),
-                        ],
-                      ),
-                  ],
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 }
@@ -1381,8 +1292,7 @@ _QsoListMetrics _computeMetrics({
   // Names the size the glyph actually paints at — qso_list's flagGlyph call
   // takes the default, so measuring emojiStyle()'s own default instead would
   // agree only by coincidence.
-  final flagWidth =
-      longestFlag.isEmpty ? 0.0 : textWidth(context, longestFlag, emojiStyle(fontSize: flagGlyphDefaultFontSize));
+  final flagWidth = longestFlag.isEmpty ? 0.0 : textWidth(context, longestFlag, emojiStyle(fontSize: flagGlyphDefaultFontSize));
   final stateWidth = longestState.isEmpty ? 0.0 : textWidth(context, longestState, monoDim);
   final dxStateWidth = flagWidth > stateWidth ? flagWidth : stateWidth;
 
@@ -1413,9 +1323,7 @@ _QsoListMetrics _computeMetrics({
     // this measures the column, so anything narrower here under-reserves it.
     final decimal = NumberFormatting.instance.decimalSeparator;
     final mhzValue = int.parse(parts.mhz);
-    final whole = mhzValue > 0
-        ? '${groupDigits(parts.mhz)}${NumberFormatting.instance.groupingSeparator}${parts.khz}'
-        : int.parse(parts.khz).toString();
+    final whole = mhzValue > 0 ? '${groupDigits(parts.mhz)}${NumberFormatting.instance.groupingSeparator}${parts.khz}' : int.parse(parts.khz).toString();
     final s = parts.hz != null ? '$whole$decimal${parts.hz}' : whole;
     if (s.length > longestFreqOrBand.length) longestFreqOrBand = s;
   }
@@ -1429,13 +1337,10 @@ _QsoListMetrics _computeMetrics({
   // Reserved for EVERY icon on the widest row rather than only the ones
   // that repeat: over-reserving costs the exchange column a few pixels,
   // under-reserving costs a row that overflows.
-  final refCountWidth =
-      largestRefCount > 1 ? textWidth(context, '×$largestRefCount', mono.copyWith(fontSize: 11)) : 0.0;
+  final refCountWidth = largestRefCount > 1 ? textWidth(context, '×$largestRefCount', mono.copyWith(fontSize: 11)) : 0.0;
   // The "×N" is reserved per REF icon on the row with the most of those,
   // which need not be the row with the most badges: the sum bounds both.
-  final refsWidth = mostBadges == 0
-      ? 0.0
-      : _columnGap + mostBadges * (qsoRefIconWidth + qsoRefIconGap) + mostRefIcons * refCountWidth;
+  final refsWidth = mostBadges == 0 ? 0.0 : _columnGap + mostBadges * (qsoRefIconWidth + qsoRefIconGap) + mostRefIcons * refCountWidth;
 
   // `qsos` arrives oldest-first (QsosRepository.watchForOperation orders
   // by startAtMillis) — bucket it into consecutive UTC-day runs so each
@@ -1497,9 +1402,7 @@ class _RowDivider extends StatelessWidget {
       decoration: BoxDecoration(
         // What a plain `Divider` resolves its own color to — matching it
         // here since this replaces one (see class doc).
-        border: Border(
-          bottom: BorderSide(width: 1, color: DividerTheme.of(context).color ?? Theme.of(context).dividerColor),
-        ),
+        border: Border(bottom: BorderSide(width: 1, color: DividerTheme.of(context).color ?? Theme.of(context).dividerColor)),
       ),
       child: child,
     );
@@ -1526,11 +1429,7 @@ class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => extent;
 
   @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     // Forces the child to exactly [extent] regardless of its own intrinsic
     // size — a pinned sliver header's declared extent must match what it
     // actually paints, or Flutter throws a "layoutExtent exceeds
@@ -1540,8 +1439,7 @@ class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  bool shouldRebuild(covariant _DayHeaderDelegate oldDelegate) =>
-      oldDelegate.child != child || oldDelegate.extent != extent;
+  bool shouldRebuild(covariant _DayHeaderDelegate oldDelegate) => oldDelegate.child != child || oldDelegate.extent != extent;
 }
 
 /// One UTC-day divider in [QsoList]: the day's date, its real-contact count,
@@ -1570,14 +1468,7 @@ class DayHeaderRow extends StatelessWidget {
   /// header always compares against the current moment.
   final DateTime? now;
 
-  const DayHeaderRow({
-    super.key,
-    required this.dayMillis,
-    required this.count,
-    this.scores,
-    this.now,
-    this.onTap,
-  });
+  const DayHeaderRow({super.key, required this.dayMillis, required this.count, this.scores, this.now, this.onTap});
 
   /// Same tiering as app-polo/web-lofi's `fmtDateDynamicZulu(compact: true)`
   /// (lib-format-tools' `fmtDateDynamic`): "Today"/"Yesterday" for the
@@ -1619,10 +1510,7 @@ class DayHeaderRow extends StatelessWidget {
     // as the row's own `haloMonoStyle`, which never sets an explicit
     // `height` either — so the header doesn't come out visibly taller than
     // an ordinary QSO row despite using the same 14px font size.
-    final rowStyle = theme.textTheme.bodyMedium?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-      height: 1.0,
-    );
+    final rowStyle = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.0);
 
     final badges = <Widget>[];
     for (final entry in (scores ?? const <String, dynamic>{}).entries) {
@@ -1645,11 +1533,7 @@ class DayHeaderRow extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                resolveIconName(icon),
-                size: 14,
-                color: activated ? HaLoColors.of(context).important : theme.colorScheme.onSurfaceVariant,
-              ),
+              Icon(resolveIconName(icon), size: 14, color: activated ? HaLoColors.of(context).important : theme.colorScheme.onSurfaceVariant),
               const SizedBox(width: Space.xs),
               Text(summary, style: rowStyle),
             ],
@@ -1684,18 +1568,12 @@ class DayHeaderRow extends StatelessWidget {
           // since `outlineVariant` is nearly the same color as the header's own
           // background and the border all but disappears against it.
           foregroundDecoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: theme.colorScheme.outline, width: 3),
-            ),
+            border: Border(bottom: BorderSide(color: theme.colorScheme.outline, width: 3)),
           ),
           child: Padding(
             // Same vertical padding as a QSO row (see `buildRow`'s own
             // `Padding` above) so the header comes out exactly row-height.
-            padding: PaneSafeArea.symmetricOf(
-              context,
-              horizontal: Space.lg,
-              vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
-            ),
+            padding: PaneSafeArea.symmetricOf(context, horizontal: Space.lg, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV),
             child: Row(
               children: [
                 // The header lives inside the same minimum width the QSO rows do,
@@ -1714,10 +1592,7 @@ class DayHeaderRow extends StatelessWidget {
                       Flexible(
                         child: Text(
                           _dayLabel(context, dayMillis, now ?? nowUtc()),
-                          style: rowStyle?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: theme.colorScheme.onSurface,
-                          ),
+                          style: rowStyle?.copyWith(fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1732,10 +1607,7 @@ class DayHeaderRow extends StatelessWidget {
                       // label wider than the list's whole minimum width, and that
                       // needs ~25 characters of "N QSOs".
                       // Same "1 QSO"/"N QSOs" vocabulary the info area's stats line uses.
-                      Text(
-                        count == 1 ? t.loggingControls.info.qsoCountOne : t.loggingControls.info.qsoCountOther(count: count),
-                        style: rowStyle,
-                      ),
+                      Text(count == 1 ? t.loggingControls.info.qsoCountOne : t.loggingControls.info.qsoCountOther(count: count), style: rowStyle),
                     ],
                   ),
                 ),
@@ -1763,20 +1635,9 @@ class EventRow extends StatelessWidget {
   /// column lines up with the QSO rows around it — same as [AnnotationRow].
   final double leadingWidth;
 
-  const EventRow({
-    super.key,
-    required this.qso,
-    required this.onTap,
-    this.selected = false,
-    this.leadingWidth = 0,
-  });
+  const EventRow({super.key, required this.qso, required this.onTap, this.selected = false, this.leadingWidth = 0});
 
-  static const _icons = {
-    'start': MdiIcons.playBox,
-    'break': MdiIcons.slashForwardBox,
-    'end': MdiIcons.stopCircle,
-    'stop': MdiIcons.stopCircle,
-  };
+  static const _icons = {'start': MdiIcons.playBox, 'break': MdiIcons.slashForwardBox, 'end': MdiIcons.stopCircle, 'stop': MdiIcons.stopCircle};
 
   /// The rule the top border takes out of the row's vertical padding, so the
   /// row keeps [QsoList]'s fixed per-row height (HALO-258).
@@ -1800,9 +1661,7 @@ class EventRow extends StatelessWidget {
     // ("Break") would say nothing the icon doesn't.
     final stored = (qso.event?['description'] as String?)?.trim() ?? '';
     final override = qso.event?['operation'];
-    final description = stored.isNotEmpty
-        ? stored
-        : (override is Map ? (override['grid'] as String?)?.trim() ?? '' : '');
+    final description = stored.isNotEmpty ? stored : (override is Map ? (override['grid'] as String?)?.trim() ?? '' : '');
     final ink = selected ? theme.colorScheme.onSecondaryContainer : theme.colorScheme.onSurfaceVariant;
     // polo's `primaryLighter` segment row: a wash of the primary over the
     // surface, so a blue theme reads blue-gray, and the dark theme gets the
@@ -1818,11 +1677,7 @@ class EventRow extends StatelessWidget {
     // walk on `jumpTo`), so a row whose natural height doesn't match that
     // box overflows or leaves a gap. The border comes out of the top
     // padding for the same reason.
-    final padding = PaneSafeArea.symmetricOf(
-      context,
-      horizontal: 12,
-      vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
-    );
+    final padding = PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV);
 
     // The border is part of the row's height, so it comes OUT of the
     // padding — off the top first, and off the bottom for whatever the top
@@ -1836,15 +1691,19 @@ class EventRow extends StatelessWidget {
         onTap: onTap,
         mouseCursor: SystemMouseCursors.click,
         child: Container(
-          decoration: BoxDecoration(border: Border(top: BorderSide(color: rule, width: _topBorder))),
-          padding: padding.copyWith(
-            top: padding.top - borderTop,
-            bottom: (padding.bottom - (_topBorder - borderTop)).clamp(0.0, double.infinity),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: rule, width: _topBorder),
+            ),
           ),
+          padding: padding.copyWith(top: padding.top - borderTop, bottom: (padding.bottom - (_topBorder - borderTop)).clamp(0.0, double.infinity)),
           child: Row(
             children: [
               SizedBox(width: leadingWidth),
-              Text(timeLabel, style: haloMonoStyle(context, fontSize: _rowMonoFontSize, color: ink)),
+              Text(
+                timeLabel,
+                style: haloMonoStyle(context, fontSize: _rowMonoFontSize, color: ink),
+              ),
               const SizedBox(width: _columnGap),
               Icon(_icons[kind] ?? MdiIcons.timelapse, size: 16, color: ink),
               const SizedBox(width: _columnGap),
@@ -1881,13 +1740,7 @@ class AnnotationRow extends StatelessWidget {
   /// column lines up with the QSO rows around it.
   final double leadingWidth;
 
-  const AnnotationRow({
-    super.key,
-    required this.qso,
-    required this.onTap,
-    this.selected = false,
-    this.leadingWidth = 0,
-  });
+  const AnnotationRow({super.key, required this.qso, required this.onTap, this.selected = false, this.leadingWidth = 0});
 
   /// app-polo's `eventRow` background, `rgb(252, 244, 167)` — blended over
   /// the surface at app-polo's row opacity (0.85 light / 0.65 dark) so the
@@ -1920,39 +1773,24 @@ class AnnotationRow extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final event = qso.event;
     final timeLabel = _utcTimeLabel(qso.startAt);
-    final text = (event?['description'] as String?) ??
-        (event?['note'] as String?) ??
-        qso.eventKind?.toUpperCase() ??
-        'Event';
+    final text = (event?['description'] as String?) ?? (event?['note'] as String?) ?? qso.eventKind?.toUpperCase() ?? 'Event';
 
     final background = selected
         ? theme.colorScheme.secondaryContainer
-        : Color.alphaBlend(
-            _yellow.withValues(alpha: isDark ? 0.65 : 0.85),
-            theme.colorScheme.surface,
-          );
+        : Color.alphaBlend(_yellow.withValues(alpha: isDark ? 0.65 : 0.85), theme.colorScheme.surface);
     var ink = selected ? theme.colorScheme.onSecondaryContainer : _ink;
     // SOLAR/WEATHER descriptions mix emoji into the text, so the style
     // needs the bundled color-emoji font as an explicit fallback — the web
     // renderer never falls back to an OS emoji font on its own (see
     // theme.dart's `emojiFontFamily`).
-    var textStyle = theme.textTheme.bodyMedium?.copyWith(
-      color: ink,
-      fontFamilyFallback: const [emojiFontFamily],
-    );
+    var textStyle = theme.textTheme.bodyMedium?.copyWith(color: ink, fontFamilyFallback: const [emojiFontFamily]);
     var timeStyle = haloMonoStyle(context, fontSize: _rowMonoFontSize, color: ink);
     // Deleted annotations follow the QSO rows' "show deleted" treatment:
     // struck-through and faded, still in the timeline.
     if (qso.deleted) {
       ink = ink.withValues(alpha: 0.5);
-      textStyle = textStyle?.copyWith(
-        color: ink,
-        decoration: TextDecoration.lineThrough,
-      );
-      timeStyle = timeStyle.copyWith(
-        color: ink,
-        decoration: TextDecoration.lineThrough,
-      );
+      textStyle = textStyle?.copyWith(color: ink, decoration: TextDecoration.lineThrough);
+      timeStyle = timeStyle.copyWith(color: ink, decoration: TextDecoration.lineThrough);
     }
 
     return Material(
@@ -1964,11 +1802,7 @@ class AnnotationRow extends StatelessWidget {
           // See EventRow's identical note: matches the ordinary row's own
           // padding so this row's natural height fits [QsoList]'s fixed
           // per-row box exactly (HALO-258).
-          padding: PaneSafeArea.symmetricOf(
-            context,
-            horizontal: 12,
-            vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
-          ),
+          padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV),
           child: Row(
             children: [
               SizedBox(width: leadingWidth),
@@ -1977,12 +1811,7 @@ class AnnotationRow extends StatelessWidget {
               Icon(resolveIconName(_iconName), size: 16, color: ink),
               const SizedBox(width: _columnGap),
               Expanded(
-                child: Text(
-                  text,
-                  style: textStyle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                child: Text(text, style: textStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ],
           ),

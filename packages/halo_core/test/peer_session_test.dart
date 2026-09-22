@@ -107,22 +107,21 @@ class _Device {
     List<String> capabilities = const [],
     void Function(PeerSession, PeerMessage)? onEphemeral,
     void Function(PeerSession)? onEstablished,
-  }) =>
-      PeerSession(
-        link: link,
-        localDeviceId: deviceId,
-        localDeviceName: name,
-        sharedOperationUuid: sharing,
-        localAccountTag: accountTag,
-        localCapabilities: capabilities,
-        outbox: outbox,
-        cursors: cursors,
-        trust: trust,
-        operations: operations,
-        qsos: qsos,
-        onEphemeral: onEphemeral,
-        onEstablished: onEstablished,
-      );
+  }) => PeerSession(
+    link: link,
+    localDeviceId: deviceId,
+    localDeviceName: name,
+    sharedOperationUuid: sharing,
+    localAccountTag: accountTag,
+    localCapabilities: capabilities,
+    outbox: outbox,
+    cursors: cursors,
+    trust: trust,
+    operations: operations,
+    qsos: qsos,
+    onEphemeral: onEphemeral,
+    onEstablished: onEstablished,
+  );
 
   Future<void> dispose() => db.close();
 }
@@ -156,12 +155,7 @@ void main() {
   Future<(PeerSession, PeerSession, String)> pairedSessions() async {
     final op = await deviceA.operations.create(stationCall: 'KI2D', userTitle: 'Shared');
     await deviceB.operations.mergeFromPeer([
-      {
-        'uuid': op.uuid,
-        'stationCall': 'KI2D',
-        'userTitle': 'Shared',
-        'updatedAtMillis': op.updatedAtMillis,
-      },
+      {'uuid': op.uuid, 'stationCall': 'KI2D', 'userTitle': 'Shared', 'updatedAtMillis': op.updatedAtMillis},
     ]);
     deviceA.outbox.activeOperationUuid = op.uuid;
     deviceB.outbox.activeOperationUuid = op.uuid;
@@ -190,7 +184,9 @@ void main() {
       final op = await deviceA.operations.create(stationCall: 'KI2D');
       deviceA.outbox.activeOperationUuid = op.uuid;
       deviceB.outbox.activeOperationUuid = op.uuid;
-      final qso = await deviceA.qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await deviceA.qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await deviceA.outbox.scanNow();
 
       final links = _LinkPair();
@@ -202,14 +198,12 @@ void main() {
 
       expect(sessionA.state, PeerSessionState.needsPairing);
       expect(sessionB.state, PeerSessionState.needsPairing);
-      expect(await deviceB.qsos.get(qso.uuid), isNull,
-          reason: 'nothing may cross before BOTH operators have confirmed');
+      expect(await deviceB.qsos.get(qso.uuid), isNull, reason: 'nothing may cross before BOTH operators have confirmed');
 
       // Only one side confirms — still not enough.
       await sessionB.acceptPairing();
       await settle();
-      expect(await deviceB.qsos.get(qso.uuid), isNull,
-          reason: 'A has not welcomed B back yet, so A must not answer its catch-up');
+      expect(await deviceB.qsos.get(qso.uuid), isNull, reason: 'A has not welcomed B back yet, so A must not answer its catch-up');
 
       await sessionA.acceptPairing();
       await settle();
@@ -232,8 +226,7 @@ void main() {
       // The trap: `needsPairing` means "not yet mutual", NOT "this operator
       // has not answered". A caller that prompts on the state alone re-asks
       // B's operator on every notification until A's operator confirms.
-      expect(sessionB.state, PeerSessionState.needsPairing,
-          reason: 'mutual trust still needs A, so the state cannot advance yet');
+      expect(sessionB.state, PeerSessionState.needsPairing, reason: 'mutual trust still needs A, so the state cannot advance yet');
       expect(sessionB.localTrusts, isTrue, reason: 'B answered — nothing may ask B again');
       expect(sessionA.localTrusts, isFalse, reason: 'A has not been asked yet');
     });
@@ -298,7 +291,9 @@ void main() {
       // — the only pair an operation neither has shared before crosses.
       final opA = await deviceA.operations.create(stationCall: 'KI2D', userTitle: 'Field day');
       deviceA.outbox.activeOperationUuid = opA.uuid;
-      await deviceA.qsos.add(opA.uuid, {'their': {'call': 'W1AW'}});
+      await deviceA.qsos.add(opA.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await deviceA.outbox.scanNow();
       await deviceA.trust.trust('device-b', name: 'Phone');
       await deviceB.trust.trust('device-a', name: 'Laptop');
@@ -312,13 +307,10 @@ void main() {
       await sessionB.start();
       await settle();
 
-      expect((await deviceB.operations.get(opA.uuid))?.userTitle, 'Field day',
-          reason: 'the operation itself must arrive, not just its QSOs');
-      expect((await deviceB.qsos.watchForOperation(opA.uuid).first).map((q) => q.theirCall),
-          ['W1AW']);
+      expect((await deviceB.operations.get(opA.uuid))?.userTitle, 'Field day', reason: 'the operation itself must arrive, not just its QSOs');
+      expect((await deviceB.qsos.watchForOperation(opA.uuid).first).map((q) => q.theirCall), ['W1AW']);
       expect(sessionB.state, PeerSessionState.live);
-      expect(sessionA.state, PeerSessionState.live,
-          reason: 'the device being pulled FROM is carrying a log, not idling');
+      expect(sessionA.state, PeerSessionState.live, reason: 'the device being pulled FROM is carrying a log, not idling');
     });
 
     test('a QSO logged after the pull keeps streaming, with nothing shared back', () async {
@@ -339,20 +331,23 @@ void main() {
       await settle();
 
       // Logged AFTER catch-up finished, so only a live push can carry it.
-      await deviceA.qsos.add(opA.uuid, {'their': {'call': 'K1ABC'}});
+      await deviceA.qsos.add(opA.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
       await deviceA.outbox.scanNow();
       await sessionA.pushLocal();
       await settle();
 
-      expect((await deviceB.qsos.watchForOperation(opA.uuid).first).map((q) => q.theirCall),
-          ['K1ABC']);
+      expect((await deviceB.qsos.watchForOperation(opA.uuid).first).map((q) => q.theirCall), ['K1ABC']);
     });
 
     test('sync engages in place when an operation is opened mid-session', () async {
       // The whole point of device-bound sessions: opening an operation moves
       // the sync without touching the link.
       final opA = await deviceA.operations.create(stationCall: 'KI2D');
-      await deviceA.qsos.add(opA.uuid, {'their': {'call': 'W1AW'}});
+      await deviceA.qsos.add(opA.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await deviceA.trust.trust('device-b', name: 'Phone');
       await deviceB.trust.trust('device-a', name: 'Laptop');
 
@@ -374,8 +369,7 @@ void main() {
 
       expect(sessionB.state, PeerSessionState.live);
       final onB = await deviceB.qsos.watchForOperation(opA.uuid).first;
-      expect(onB.map((q) => q.theirCall), ['W1AW'],
-          reason: 'catch-up must run for the newly opened operation over the SAME link');
+      expect(onB.map((q) => q.theirCall), ['W1AW'], reason: 'catch-up must run for the newly opened operation over the SAME link');
     });
 
     test('closing the operation on one device does not stop the other\'s log arriving', () async {
@@ -389,17 +383,17 @@ void main() {
       await sessionA.setSharing(null);
       await settle();
 
-      await deviceB.qsos.add(op, {'their': {'call': 'K1ABC'}});
+      await deviceB.qsos.add(op, {
+        'their': {'call': 'K1ABC'},
+      });
       await deviceB.outbox.scanNow();
       await sessionB.pushLocal();
       await settle();
 
-      expect((await deviceA.qsos.watchForOperation(op).first).map((q) => q.theirCall),
-          contains('K1ABC'));
+      expect((await deviceA.qsos.watchForOperation(op).first).map((q) => q.theirCall), contains('K1ABC'));
     });
 
-    test('with neither side in the operation the sync idles without dropping the session',
-        () async {
+    test('with neither side in the operation the sync idles without dropping the session', () async {
       final (sessionA, sessionB, op) = await pairedSessions();
       expect(sessionA.state, PeerSessionState.live, reason: 'sanity');
 
@@ -408,11 +402,12 @@ void main() {
       await settle();
 
       expect(sessionA.state, PeerSessionState.connected);
-      expect(sessionB.state, PeerSessionState.connected,
-          reason: 'each side hears the other\'s sharing change and idles too');
+      expect(sessionB.state, PeerSessionState.connected, reason: 'each side hears the other\'s sharing change and idles too');
 
       // A QSO logged on B for the now-closed operation must not cross.
-      await deviceB.qsos.add(op, {'their': {'call': 'K1ABC'}});
+      await deviceB.qsos.add(op, {
+        'their': {'call': 'K1ABC'},
+      });
       await deviceB.outbox.scanNow();
       await sessionB.pushLocal();
       await settle();
@@ -422,8 +417,7 @@ void main() {
       // Re-opening it resumes over the same link, from the cursor.
       await sessionB.setSharing(op);
       await settle();
-      expect((await deviceA.qsos.watchForOperation(op).first).map((q) => q.theirCall).toSet(),
-          contains('K1ABC'));
+      expect((await deviceA.qsos.watchForOperation(op).first).map((q) => q.theirCall).toSet(), contains('K1ABC'));
       expect(sessionA.state, PeerSessionState.live);
     });
 
@@ -435,7 +429,9 @@ void main() {
       deviceB.accountTag = 'account-2';
       final opA = await deviceA.operations.create(stationCall: 'KI2D');
       deviceA.outbox.activeOperationUuid = opA.uuid;
-      await deviceA.qsos.add(opA.uuid, {'their': {'call': 'W1AW'}});
+      await deviceA.qsos.add(opA.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await deviceA.outbox.scanNow();
       await deviceA.trust.trust('device-b', name: 'Phone');
       await deviceB.trust.trust('device-a', name: 'Laptop');
@@ -449,8 +445,7 @@ void main() {
 
       expect(await deviceB.operations.get(opA.uuid), isNull);
       expect(await deviceB.qsos.watchForOperation(opA.uuid).first, isEmpty);
-      expect(sessionB.state, PeerSessionState.connected,
-          reason: 'the pair stays up for ephemeral traffic — it is the durable sync that idles');
+      expect(sessionB.state, PeerSessionState.connected, reason: 'the pair stays up for ephemeral traffic — it is the durable sync that idles');
     });
 
     test('an operation BOTH already have still syncs across accounts', () async {
@@ -459,7 +454,9 @@ void main() {
       deviceB.accountTag = 'account-2';
       final (sessionA, sessionB, op) = await pairedSessions();
 
-      await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}});
+      await deviceA.qsos.add(op, {
+        'their': {'call': 'W1AW'},
+      });
       await deviceA.outbox.scanNow();
       await sessionA.pushLocal();
       await settle();
@@ -476,7 +473,9 @@ void main() {
       deviceB.accountTag = null;
       final opA = await deviceA.operations.create(stationCall: 'KI2D');
       deviceA.outbox.activeOperationUuid = opA.uuid;
-      await deviceA.qsos.add(opA.uuid, {'their': {'call': 'W1AW'}});
+      await deviceA.qsos.add(opA.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await deviceA.outbox.scanNow();
       await deviceA.trust.trust('device-b', name: 'Phone');
       await deviceB.trust.trust('device-a', name: 'Laptop');
@@ -517,13 +516,9 @@ void main() {
       await sessionA.start();
 
       // A peer from a future (or past) build.
-      links.b.send(utf8.encode(jsonEncode({
-        't': 'hello',
-        'v': peerProtocolVersion + 1,
-        'deviceId': 'device-b',
-        'deviceName': 'Phone',
-        'operationUuid': op.uuid,
-      })));
+      links.b.send(
+        utf8.encode(jsonEncode({'t': 'hello', 'v': peerProtocolVersion + 1, 'deviceId': 'device-b', 'deviceName': 'Phone', 'operationUuid': op.uuid})),
+      );
       await settle();
 
       expect(sessionA.state, PeerSessionState.refused);
@@ -542,8 +537,12 @@ void main() {
       await deviceA.trust.trust('device-b', name: 'Phone');
       await deviceB.trust.trust('device-a', name: 'Laptop');
 
-      await deviceA.qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
-      await deviceA.qsos.add(op.uuid, {'their': {'call': 'K1ABC'}});
+      await deviceA.qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      await deviceA.qsos.add(op.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
       await deviceA.outbox.scanNow();
 
       final links = _LinkPair();
@@ -560,7 +559,9 @@ void main() {
     test('a QSO logged while live reaches the peer without a reconnect', () async {
       final (sessionA, _, op) = await pairedSessions();
 
-      await deviceA.qsos.add(op, {'their': {'call': 'EA4XYZ'}});
+      await deviceA.qsos.add(op, {
+        'their': {'call': 'EA4XYZ'},
+      });
       await deviceA.outbox.scanNow();
       await sessionA.pushLocal();
       await settle();
@@ -572,8 +573,12 @@ void main() {
     test('sync is bidirectional over one link — both devices end up with both logs', () async {
       final (sessionA, sessionB, op) = await pairedSessions();
 
-      await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}});
-      await deviceB.qsos.add(op, {'their': {'call': 'K1ABC'}});
+      await deviceA.qsos.add(op, {
+        'their': {'call': 'W1AW'},
+      });
+      await deviceB.qsos.add(op, {
+        'their': {'call': 'K1ABC'},
+      });
       await deviceA.outbox.scanNow();
       await deviceB.outbox.scanNow();
       await sessionA.pushLocal();
@@ -597,7 +602,10 @@ void main() {
       await deviceB.trust.trust('device-a', name: 'Laptop');
 
       for (var i = 0; i < 25; i++) {
-        await deviceA.qsos.add(op.uuid, {'their': {'call': 'W${i}AW'}, 'startAtMillis': 1000 + i});
+        await deviceA.qsos.add(op.uuid, {
+          'their': {'call': 'W${i}AW'},
+          'startAtMillis': 1000 + i,
+        });
       }
       await deviceA.outbox.scanNow();
 
@@ -636,7 +644,10 @@ void main() {
       deviceA.outbox.activeOperationUuid = op.uuid;
       await deviceA.trust.trust('device-b', name: 'Phone');
       for (var i = 0; i < 6; i++) {
-        await deviceA.qsos.add(op.uuid, {'their': {'call': 'W${i}AW'}, 'startAtMillis': 1000 + i});
+        await deviceA.qsos.add(op.uuid, {
+          'their': {'call': 'W${i}AW'},
+          'startAtMillis': 1000 + i,
+        });
       }
       await deviceA.outbox.scanNow();
 
@@ -660,28 +671,24 @@ void main() {
       // A hand-driven peer: it shares the operation and answers A's own
       // catch-up with nothing, so A's RECEIVE direction settles — then it
       // asks for the backlog and never acks a byte of it.
-      links.b.send(PeerMessage.hello(
-        deviceId: 'device-b',
-        deviceName: 'Phone',
-        operationUuid: op.uuid,
-      ).encode());
+      links.b.send(PeerMessage.hello(deviceId: 'device-b', deviceName: 'Phone', operationUuid: op.uuid).encode());
       links.b.send(PeerMessage.trusted().encode());
       links.b.send(PeerMessage.eventsBatch(op.uuid, const [], hasMore: false).encode());
       links.b.send(PeerMessage.catchUp(op.uuid, 0).encode());
       await settle();
-      expect(sessionA.state, PeerSessionState.syncing,
-          reason: 'sanity: a full batch went out and its ack is outstanding');
+      expect(sessionA.state, PeerSessionState.syncing, reason: 'sanity: a full batch went out and its ack is outstanding');
 
       await sessionA.setSharing(null);
       await settle();
 
-      expect(sessionA.state, PeerSessionState.live,
-          reason: 'A serves nothing now, so the abandoned batch must stop counting as in train');
+      expect(sessionA.state, PeerSessionState.live, reason: 'A serves nothing now, so the abandoned batch must stop counting as in train');
     });
 
     test('a reconnect resumes from the cursor instead of replaying the whole log', () async {
       final (sessionA, sessionB, op) = await pairedSessions();
-      await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}});
+      await deviceA.qsos.add(op, {
+        'their': {'call': 'W1AW'},
+      });
       await deviceA.outbox.scanNow();
       await sessionA.pushLocal();
       await settle();
@@ -692,7 +699,9 @@ void main() {
       await settle();
 
       // Logged while the link was down.
-      await deviceA.qsos.add(op, {'their': {'call': 'K1ABC'}});
+      await deviceA.qsos.add(op, {
+        'their': {'call': 'K1ABC'},
+      });
       await deviceA.outbox.scanNow();
 
       final links2 = _LinkPair();
@@ -708,13 +717,15 @@ void main() {
       await settle();
 
       expect(await deviceB.qsos.watchForOperation(op).first, hasLength(2));
-      expect(recordsSentByA, 1,
-          reason: 'only the QSO logged while disconnected should cross — the cursor covers the rest');
+      expect(recordsSentByA, 1, reason: 'only the QSO logged while disconnected should cross — the cursor covers the rest');
     });
 
     test('concurrent edits made while disconnected converge on the newer one, both sides', () async {
       final (sessionA, sessionB, op) = await pairedSessions();
-      final qso = await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}, 'notes': 'original'});
+      final qso = await deviceA.qsos.add(op, {
+        'their': {'call': 'W1AW'},
+        'notes': 'original',
+      });
       await deviceA.outbox.scanNow();
       await sessionA.pushLocal();
       await settle();
@@ -746,10 +757,8 @@ void main() {
       await sessionB2.start();
       await settle();
 
-      expect((await deviceA.qsos.watchForOperation(op).first).single.notes, 'from B',
-          reason: "A's own older edit must lose to the newer revision it receives");
-      expect((await deviceB.qsos.watchForOperation(op).first).single.notes, 'from B',
-          reason: "B's newer edit must survive A's replay of the older one");
+      expect((await deviceA.qsos.watchForOperation(op).first).single.notes, 'from B', reason: "A's own older edit must lose to the newer revision it receives");
+      expect((await deviceB.qsos.watchForOperation(op).first).single.notes, 'from B', reason: "B's newer edit must survive A's replay of the older one");
       expect(qso.uuid, onA.uuid);
     });
   });
@@ -763,7 +772,9 @@ void main() {
       deviceA.outbox.activeOperationUuid = op.uuid;
       await deviceA.trust.trust('device-b', name: 'Phone');
       await deviceB.trust.trust('device-a', name: 'Laptop');
-      await deviceA.qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await deviceA.qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await deviceA.outbox.scanNow();
 
       final failingQsos = _FailingQsosRepository(deviceB.db);
@@ -785,10 +796,12 @@ void main() {
       await settle();
 
       expect(failingQsos.attempts, 1, reason: 'the batch was delivered and the apply was attempted');
-      expect(await deviceB.qsos.watchForOperation(op.uuid).first, isEmpty,
-          reason: 'the apply threw, so nothing landed');
-      expect(await deviceB.cursors.lastAppliedSeq('device-a', op.uuid), 0,
-          reason: 'a cursor advanced past an apply that never committed loses that record forever');
+      expect(await deviceB.qsos.watchForOperation(op.uuid).first, isEmpty, reason: 'the apply threw, so nothing landed');
+      expect(
+        await deviceB.cursors.lastAppliedSeq('device-a', op.uuid),
+        0,
+        reason: 'a cursor advanced past an apply that never committed loses that record forever',
+      );
 
       // A fresh session re-requests from the unmoved cursor, and this time
       // the apply succeeds.
@@ -818,7 +831,9 @@ void main() {
     test('a catchUp arriving before the handshake completes extracts nothing', () async {
       final op = await deviceA.operations.create(stationCall: 'KI2D');
       deviceA.outbox.activeOperationUuid = op.uuid;
-      await deviceA.qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await deviceA.qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await deviceA.outbox.scanNow();
 
       final links = _LinkPair();
@@ -836,11 +851,7 @@ void main() {
       links.b.send(PeerMessage.catchUp(op.uuid, 0).encode());
       await settle();
 
-      expect(
-        received.where((m) => m.type == PeerMessageType.events),
-        isEmpty,
-        reason: 'an unauthenticated catchUp must not be answered with the log',
-      );
+      expect(received.where((m) => m.type == PeerMessageType.events), isEmpty, reason: 'an unauthenticated catchUp must not be answered with the log');
     });
 
     test('a trusted peer asking for an UNSHARED operation gets silence, not the log', () async {
@@ -852,7 +863,9 @@ void main() {
       final opShared = await deviceA.operations.create(stationCall: 'KI2D');
       final opClosed = await deviceA.operations.create(stationCall: 'KI2D/P');
       deviceA.outbox.activeOperationUuid = opClosed.uuid;
-      await deviceA.qsos.add(opClosed.uuid, {'their': {'call': 'SECRET1'}});
+      await deviceA.qsos.add(opClosed.uuid, {
+        'their': {'call': 'SECRET1'},
+      });
       await deviceA.outbox.scanNow();
       deviceA.outbox.activeOperationUuid = opShared.uuid;
       await deviceA.outbox.scanNow();
@@ -876,9 +889,7 @@ void main() {
       linkB.peer.onSend = null;
       links.a.onSend = (raw) {
         final message = PeerMessage.decode(raw);
-        if (message?.type == PeerMessageType.events &&
-            message!.operationUuid == opClosed.uuid &&
-            message.events.isNotEmpty) {
+        if (message?.type == PeerMessageType.events && message!.operationUuid == opClosed.uuid && message.events.isNotEmpty) {
           closedOpEvents += message.events.length;
         }
         if (message != null) received.add(message);
@@ -886,8 +897,7 @@ void main() {
       linkB.send(PeerMessage.catchUp(opClosed.uuid, 0).encode());
       await settle();
 
-      expect(closedOpEvents, 0,
-          reason: 'rows for an operation no longer shared must never be served');
+      expect(closedOpEvents, 0, reason: 'rows for an operation no longer shared must never be served');
     });
 
     test('a trusted peer pushing events for an UNSHARED operation writes nothing', () async {
@@ -910,23 +920,24 @@ void main() {
       await settle();
       expect(sessionA.state, PeerSessionState.live, reason: 'sanity: fully established');
 
-      links.b.send(PeerMessage.eventsBatch(opClosed.uuid, [
-        PeerEventPayload(
-          seq: 1,
-          kind: PeerEventKind.qso,
-          data: {
-            'uuid': 'injected-into-closed',
-            'operation': opClosed.uuid,
-            'their': {'call': 'N0PE'},
-            'updatedAtMillis': 9999999999999,
-          },
-        ).toJson(),
-      ], hasMore: false).encode());
+      links.b.send(
+        PeerMessage.eventsBatch(opClosed.uuid, [
+          PeerEventPayload(
+            seq: 1,
+            kind: PeerEventKind.qso,
+            data: {
+              'uuid': 'injected-into-closed',
+              'operation': opClosed.uuid,
+              'their': {'call': 'N0PE'},
+              'updatedAtMillis': 9999999999999,
+            },
+          ).toJson(),
+        ], hasMore: false).encode(),
+      );
       await settle();
 
       expect(await deviceA.qsos.get('injected-into-closed'), isNull);
-      expect(await deviceA.cursors.lastAppliedSeq('device-b', opClosed.uuid), 0,
-          reason: 'nor may the rejected batch move any cursor');
+      expect(await deviceA.cursors.lastAppliedSeq('device-b', opClosed.uuid), 0, reason: 'nor may the rejected batch move any cursor');
     });
 
     test('events arriving from a peer this side has not trusted are not applied', () async {
@@ -938,18 +949,20 @@ void main() {
       await sessionA.start();
       await settle();
 
-      links.b.send(PeerMessage.eventsBatch(op.uuid, [
-        PeerEventPayload(
-          seq: 1,
-          kind: PeerEventKind.qso,
-          data: {
-            'uuid': 'injected-qso',
-            'operation': op.uuid,
-            'their': {'call': 'N0PE'},
-            'updatedAtMillis': 9999999999999,
-          },
-        ).toJson(),
-      ], hasMore: false).encode());
+      links.b.send(
+        PeerMessage.eventsBatch(op.uuid, [
+          PeerEventPayload(
+            seq: 1,
+            kind: PeerEventKind.qso,
+            data: {
+              'uuid': 'injected-qso',
+              'operation': op.uuid,
+              'their': {'call': 'N0PE'},
+              'updatedAtMillis': 9999999999999,
+            },
+          ).toJson(),
+        ], hasMore: false).encode(),
+      );
       await settle();
 
       expect(await deviceA.qsos.get('injected-qso'), isNull);
@@ -1042,13 +1055,17 @@ void main() {
       final seenByB = <PeerMessage>[];
       var establishedCount = 0;
       final links = _LinkPair();
-      final sessionA = deviceA.session(links.a, op.uuid, onEstablished: (session) {
-        establishedCount++;
-        // The snapshot pattern: latest-value state sent the moment the peer
-        // can receive it. If this send is dropped, onEstablished fired too
-        // early to be usable and the whole snapshot design is broken.
-        session.sendEphemeral(const PeerMessage('position', {'lat': 40.7}));
-      });
+      final sessionA = deviceA.session(
+        links.a,
+        op.uuid,
+        onEstablished: (session) {
+          establishedCount++;
+          // The snapshot pattern: latest-value state sent the moment the peer
+          // can receive it. If this send is dropped, onEstablished fired too
+          // early to be usable and the whole snapshot design is broken.
+          session.sendEphemeral(const PeerMessage('position', {'lat': 40.7}));
+        },
+      );
       final sessionB = deviceB.session(links.b, op.uuid, onEphemeral: (_, m) => seenByB.add(m));
       await sessionA.start();
       await sessionB.start();
@@ -1083,7 +1100,9 @@ void main() {
       await settle();
       expect(sessionA.state, PeerSessionState.live);
 
-      await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}});
+      await deviceA.qsos.add(op, {
+        'their': {'call': 'W1AW'},
+      });
       await deviceA.outbox.scanNow();
       await sessionA.pushLocal();
       await settle();

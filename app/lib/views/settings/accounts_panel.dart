@@ -119,9 +119,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
     // `kvKey` defaults to its extension's key (docs/extensions/settings.md),
     // which is what ties the two together; anything that doesn't match a
     // known extension falls to "other" rather than being dropped.
-    final categoryOf = {
-      for (final info in widget.services.extensions.availableExtensions) info.key: info.category ?? 'other',
-    };
+    final categoryOf = {for (final info in widget.services.extensions.availableExtensions) info.key: info.category ?? 'other'};
     String categoryFor(Map<String, dynamic> account) => categoryOf[account['kvKey'] as String] ?? 'other';
     final grouped = <String, List<Map<String, dynamic>>>{};
     for (final account in _accounts!) {
@@ -129,35 +127,38 @@ class _AccountsPanelState extends State<AccountsPanel> {
     }
 
     final children = <Widget>[
-        // Said once, at
-        // the top — beats each row claiming to be disconnected.
-        if (_secureStorageUnavailable)
-          ListTile(
-            leading: const Icon(MdiIcons.keyRemove),
-            title: Text(storageUnavailableMessage(context)),
-          ),
-        if (_accounts!.isEmpty)
-          ListTile(title: Text(context.t.settings.accounts.none))
-        else
-          for (final category in extensionCategoriesIn(grouped.keys)) ...[
-            SectionHeader(extensionCategoryTitle(category)),
-            ...grouped[category]!.map((account) {
-              final kvKey = account['kvKey'] as String;
-              final label = account['label'] as String;
-              final description = account['description'] as String?;
-              final identity = _accountIdentities[kvKey];
-              return ListTile(
-                leading: Icon(extensionCategoryIcon(category)),
-                title: Text.rich(TextSpan(children: [
-                  TextSpan(text: label, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  if (identity != null) TextSpan(text: '  $identity'),
-                ])),
-                subtitle: Text(description ?? (identity == null ? context.t.settings.accounts.notConfigured : '')),
-                onTap: () => _openAccountDialog(account),
-                mouseCursor: SystemMouseCursors.click,
-              );
-            }),
-          ],
+      // Said once, at
+      // the top — beats each row claiming to be disconnected.
+      if (_secureStorageUnavailable) ListTile(leading: const Icon(MdiIcons.keyRemove), title: Text(storageUnavailableMessage(context))),
+      if (_accounts!.isEmpty)
+        ListTile(title: Text(context.t.settings.accounts.none))
+      else
+        for (final category in extensionCategoriesIn(grouped.keys)) ...[
+          SectionHeader(extensionCategoryTitle(category)),
+          ...grouped[category]!.map((account) {
+            final kvKey = account['kvKey'] as String;
+            final label = account['label'] as String;
+            final description = account['description'] as String?;
+            final identity = _accountIdentities[kvKey];
+            return ListTile(
+              leading: Icon(extensionCategoryIcon(category)),
+              title: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: label,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    if (identity != null) TextSpan(text: '  $identity'),
+                  ],
+                ),
+              ),
+              subtitle: Text(description ?? (identity == null ? context.t.settings.accounts.notConfigured : '')),
+              onTap: () => _openAccountDialog(account),
+              mouseCursor: SystemMouseCursors.click,
+            );
+          }),
+        ],
     ];
     return SliverMainAxisGroup(slivers: sectionSlivers(context, children));
   }
@@ -212,12 +213,7 @@ class _PendingOAuthLogin {
   /// than a code — read once, by the `_doOAuth` the completion wakes.
   String? error;
 
-  _PendingOAuthLogin({
-    required this.authUri,
-    this.expectedState,
-    this.webhookEvents,
-    this.fetchWebhookEvents,
-  });
+  _PendingOAuthLogin({required this.authUri, this.expectedState, this.webhookEvents, this.fetchWebhookEvents});
 }
 
 /// One extension account's credentials, shown as a Modal Pane
@@ -289,8 +285,7 @@ class _AccountPaneState extends State<AccountPane> {
     return null;
   }
 
-  List<Map<String, dynamic>> get _fields =>
-      (widget.account['fields'] as List? ?? const []).cast<Map<String, dynamic>>();
+  List<Map<String, dynamic>> get _fields => (widget.account['fields'] as List? ?? const []).cast<Map<String, dynamic>>();
 
   Map<String, dynamic>? get _oauth2 => widget.account['oauth2'] as Map<String, dynamic>?;
 
@@ -343,7 +338,10 @@ class _AccountPaneState extends State<AccountPane> {
     } catch (e) {
       debugPrint('[accounts] save failed for $_kvKey: $e');
       if (mounted) {
-        widget.services.statusBar.setMessage(key: 'accounts:save', text: t.settings.accounts.saveFailed(error: e));
+        widget.services.statusBar.setMessage(
+          key: 'accounts:save',
+          text: t.settings.accounts.saveFailed(error: e),
+        );
       }
       return;
     }
@@ -472,11 +470,7 @@ class _AccountPaneState extends State<AccountPane> {
       // native path `state` is just a plain CSRF nonce, same as always —
       // the redirect_uri itself already identifies this device.
       final state = useRelay
-          ? base64Url.encode(utf8.encode(jsonEncode({
-              'n': _randomString(16),
-              't': registration!.webhookClientToken,
-              'p': widget.account['key'],
-            })))
+          ? base64Url.encode(utf8.encode(jsonEncode({'n': _randomString(16), 't': registration!.webhookClientToken, 'p': widget.account['key']})))
           : _randomString(16);
 
       final authUri = Uri.parse(authEndpoint).replace(
@@ -576,13 +570,7 @@ class _AccountPaneState extends State<AccountPane> {
         // (halo_extension_host's _resolveFetchUri).
         ham2kSsoFetchUri(Uri.parse(tokenEndpoint), onWeb: kIsWeb),
         headers: {'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent},
-        body: {
-          'grant_type': 'authorization_code',
-          'client_id': clientId,
-          'code': code,
-          'redirect_uri': redirectUrl,
-          'code_verifier': codeVerifier,
-        },
+        body: {'grant_type': 'authorization_code', 'client_id': clientId, 'code': code, 'redirect_uri': redirectUrl, 'code_verifier': codeVerifier},
       );
 
       if (tokenResponse.statusCode != 200) {
@@ -590,9 +578,7 @@ class _AccountPaneState extends State<AccountPane> {
         // Ham2K's CORS proxy, so a failure body can be an HTML error page,
         // and a status bar showing `<!DOCTYPE html>…` buries the one fact
         // that identifies which hop refused.
-        final detail = tokenResponse.body.length > 200
-            ? '${tokenResponse.body.substring(0, 200)}…'
-            : tokenResponse.body;
+        final detail = tokenResponse.body.length > 200 ? '${tokenResponse.body.substring(0, 200)}…' : tokenResponse.body;
         throw Exception('Failed to exchange code (HTTP ${tokenResponse.statusCode}): $detail');
       }
 
@@ -615,7 +601,10 @@ class _AccountPaneState extends State<AccountPane> {
     } catch (e) {
       if (mounted) {
         setState(() => _testing = false);
-        widget.services.statusBar.setMessage(key: 'accounts:login', text: t.settings.accounts.loginFailed(error: e));
+        widget.services.statusBar.setMessage(
+          key: 'accounts:login',
+          text: t.settings.accounts.loginFailed(error: e),
+        );
       }
     } finally {
       if (mounted) {
@@ -664,24 +653,14 @@ class _AccountPaneState extends State<AccountPane> {
             ),
           ] else if (_pendingCredentials != null) ...[
             Text(
-              context.t.settings.accounts.loggedInAs(
-                  identity: ExtensionService.identityFromCredentials(_pendingCredentials!) ??
-                      '${widget.account['label']}'),
+              context.t.settings.accounts.loggedInAs(identity: ExtensionService.identityFromCredentials(_pendingCredentials!) ?? '${widget.account['label']}'),
               style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: Space.md),
-            Text(
-              context.t.settings.accounts.pressSaveToKeep,
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
+            Text(context.t.settings.accounts.pressSaveToKeep, style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
           ] else if (_secureStorageUnavailable) ...[
-            Text(
-              storageUnavailableMessage(context),
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
+            Text(storageUnavailableMessage(context), style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
           ] else if (_loggedIn) ...[
             Text(
               context.t.settings.accounts.connectedTo(label: '${widget.account['label']}'),
@@ -689,9 +668,7 @@ class _AccountPaneState extends State<AccountPane> {
               textAlign: TextAlign.center,
             ),
           ] else ...[
-            OutlinedButton(
-                onPressed: (_testing || _startingOAuth) ? null : _doOAuth,
-                child: Text(context.t.settings.accounts.connect)),
+            OutlinedButton(onPressed: (_testing || _startingOAuth) ? null : _doOAuth, child: Text(context.t.settings.accounts.connect)),
           ],
         ] else ...[
           ..._fields.map((field) {
@@ -715,10 +692,7 @@ class _AccountPaneState extends State<AccountPane> {
                     SecretTextField(
                       controller: controller,
                       style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
-                      decoration: poloFieldDecoration(
-                        context,
-                        field['label'] as String,
-                      ).copyWith(errorText: _fieldError(key, controller.text)),
+                      decoration: poloFieldDecoration(context, field['label'] as String).copyWith(errorText: _fieldError(key, controller.text)),
                       onChanged: (_) => setState(() {}),
                     )
                   else
@@ -727,10 +701,7 @@ class _AccountPaneState extends State<AccountPane> {
                       controller: controller,
                       style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
                       keyboardType: field['type'] == 'email' ? TextInputType.emailAddress : TextInputType.text,
-                      decoration: poloFieldDecoration(
-                        context,
-                        field['label'] as String,
-                      ).copyWith(errorText: _fieldError(key, controller.text)),
+                      decoration: poloFieldDecoration(context, field['label'] as String).copyWith(errorText: _fieldError(key, controller.text)),
                       onChanged: (_) => setState(() {}),
                     ),
                   if (postface != null && postface.isNotEmpty) ...[
@@ -745,10 +716,7 @@ class _AccountPaneState extends State<AccountPane> {
         if (_loggedIn && _pendingCredentials == null) ...[
           const SizedBox(height: Space.md),
           Center(
-            child: OutlinedButton(
-              onPressed: _clear,
-              child: Text(context.t.settings.accounts.disconnect),
-            ),
+            child: OutlinedButton(onPressed: _clear, child: Text(context.t.settings.accounts.disconnect)),
           ),
         ],
         // Hidden while a sign-in is in flight: it can only report on the
@@ -759,10 +727,7 @@ class _AccountPaneState extends State<AccountPane> {
           const SizedBox(height: Space.xl),
           const Divider(),
           const SizedBox(height: Space.md),
-          Text(
-            context.t.settings.accounts.connectedAs,
-            style: theme.textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent),
-          ),
+          Text(context.t.settings.accounts.connectedAs, style: theme.textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent)),
           const SizedBox(height: Space.md),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -770,19 +735,13 @@ class _AccountPaneState extends State<AccountPane> {
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(Space.md),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(8)),
                   child: _testing
                       ? const SizedBox(
                           height: 20,
                           child: Center(child: SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))),
                         )
-                      : MarkdownBody(
-                          data: _testResult ?? '—',
-                          styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme)),
-                        ),
+                      : MarkdownBody(data: _testResult ?? '—', styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme))),
                 ),
               ),
               const SizedBox(width: Space.md),
@@ -797,12 +756,8 @@ class _AccountPaneState extends State<AccountPane> {
           // gesture as the waiting body's own "Cancel sign-in" and is not.
           // The pane's header close button remains, so this is about telling
           // the two apart, not about trapping the operator in the wait.
-          cancel: TextButton(
-              onPressed: oauthLogin == null ? () => Navigator.of(context).pop() : null,
-              child: Text(context.t.common.cancel)),
-          actions: [
-            FilledButton(onPressed: oauthLogin == null ? _save : null, child: Text(context.t.common.save)),
-          ],
+          cancel: TextButton(onPressed: oauthLogin == null ? () => Navigator.of(context).pop() : null, child: Text(context.t.common.cancel)),
+          actions: [FilledButton(onPressed: oauthLogin == null ? _save : null, child: Text(context.t.common.save))],
         ),
       ],
     );

@@ -37,14 +37,7 @@ void main() {
   final newerRelease = '${kPublicVersionInfo.main.year + 1}.1';
   final evenNewerRelease = '${kPublicVersionInfo.main.year + 2}.1';
 
-  const env = NoticeEnvironment(
-    appVersion: '26.8.0',
-    appVersionName: "August '26",
-    appBuild: '1234',
-    appCodePush: '',
-    appSha: 'abc123',
-    platform: 'macos',
-  );
+  const env = NoticeEnvironment(appVersion: '26.8.0', appVersionName: "August '26", appBuild: '1234', appCodePush: '', appSha: 'abc123', platform: 'macos');
 
   group('the environment a real build reports', () {
     test('an official build reports the release build number, not the native metadata', () async {
@@ -53,11 +46,7 @@ void main() {
       // the native one: `1` on any local run, and frozen at the shipped value
       // after a Shorebird patch — a rule naming the patched build would miss
       // every install it was written for.
-      final e = await FlagsService.defaultNoticeEnvironment(
-        edition: Edition.next,
-        build: 126,
-        sha: '04e3d1a29',
-      );
+      final e = await FlagsService.defaultNoticeEnvironment(edition: Edition.next, build: 126, sha: '04e3d1a29');
       expect(e.appBuild, '126');
       expect(e.appSha, '04e3d1a29');
       expect(e.appVersion, kPublicVersion);
@@ -67,11 +56,7 @@ void main() {
       // kBuildNumber in a Dev build names the last RELEASE. Dev is what the
       // hosted web app, every preview deploy and every local run are, so
       // reporting it would fire `builds: ["126"]` on all of them at once.
-      final e = await FlagsService.defaultNoticeEnvironment(
-        edition: Edition.dev,
-        build: 126,
-        sha: '04e3d1a29',
-      );
+      final e = await FlagsService.defaultNoticeEnvironment(edition: Edition.dev, build: 126, sha: '04e3d1a29');
       expect(e.appBuild, isEmpty);
       // The SHA is what remains to target it by — it names the running commit.
       expect(e.appSha, '04e3d1a29');
@@ -81,12 +66,7 @@ void main() {
       // The build must NOT become '126.2'. Both are matched by exact string
       // membership, so merging them would silently retire every existing
       // `builds` rule the first time a code push shipped.
-      final e = await FlagsService.defaultNoticeEnvironment(
-        edition: Edition.next,
-        build: 126,
-        sha: '04e3d1a29',
-        codePush: 2,
-      );
+      final e = await FlagsService.defaultNoticeEnvironment(edition: Edition.next, build: 126, sha: '04e3d1a29', codePush: 2);
       expect(e.appBuild, '126');
       expect(e.appCodePush, '2');
     });
@@ -96,12 +76,7 @@ void main() {
       // in and names the last release, while the code push is read from the
       // running updater and names this install. A Dev build carrying a push is
       // a real release build, and reachable by a rule.
-      final e = await FlagsService.defaultNoticeEnvironment(
-        edition: Edition.dev,
-        build: 126,
-        sha: '04e3d1a29',
-        codePush: 2,
-      );
+      final e = await FlagsService.defaultNoticeEnvironment(edition: Edition.dev, build: 126, sha: '04e3d1a29', codePush: 2);
       expect(e.appBuild, isEmpty);
       expect(e.appCodePush, '2');
     });
@@ -123,11 +98,7 @@ void main() {
   /// The update-available notice is StalenessService's to push now — it is
   /// reached through FlagsService's refresh, so these tests wire the real one
   /// rather than asserting against a seam that no longer decides anything.
-  StalenessService stalenessFor({
-    SharedPreferences? prefs,
-    bool isReleaseBuild = true,
-    void Function(String, Map<String, dynamic>)? onNoticeAction,
-  }) =>
+  StalenessService stalenessFor({SharedPreferences? prefs, bool isReleaseBuild = true, void Function(String, Map<String, dynamic>)? onNoticeAction}) =>
       StalenessService(
         statusBar: statusBar,
         prefs: prefs,
@@ -171,10 +142,7 @@ void main() {
     });
 
     test('adds a base-call file when the entered call has a suffix', () async {
-      final b = build(
-        {'defaults.json': {}, 'entities/k.json': {}, 'ki/ki2d.json': {}, 'ki/ki2d-p.json': {}},
-        guess: {'baseCall': 'KI2D', 'entityPrefix': 'K'},
-      );
+      final b = build({'defaults.json': {}, 'entities/k.json': {}, 'ki/ki2d.json': {}, 'ki/ki2d-p.json': {}}, guess: {'baseCall': 'KI2D', 'entityPrefix': 'K'});
       await b.service.refreshForCall('KI2D/P');
       expect(b.requested, ['defaults.json', 'entities/k.json', 'ki/ki2d.json', 'ki/ki2d-p.json']);
     });
@@ -305,7 +273,11 @@ void main() {
 
     test('a timeout aborts the round but keeps prior flags', () async {
       final b = build(
-        {'defaults.json': {'a': 1}, 'entities/k.json': {}, 'ki/ki2d.json': {'b': 2}},
+        {
+          'defaults.json': {'a': 1},
+          'entities/k.json': {},
+          'ki/ki2d.json': {'b': 2},
+        },
         timeoutAt: {'entities/k.json'},
       );
       await b.service.refreshForCall('KI2D');
@@ -318,11 +290,11 @@ void main() {
 
   group('notice pushing', () {
     Map<String, dynamic> plea(String key) => {
-          'key': key,
-          'title': 'Help',
-          'text': 'Support Ham2K',
-          'versions': ['26.8'],
-        };
+      'key': key,
+      'title': 'Help',
+      'text': 'Support Ham2K',
+      'versions': ['26.8'],
+    };
 
     test('combines `notices` and `halo-notices`', () async {
       final b = build({
@@ -341,10 +313,20 @@ void main() {
       final b = build({
         'defaults.json': {
           'notices': [
-            {'key': 'k', 'title': 'from-notices', 'text': 'x', 'versions': ['26.8']},
+            {
+              'key': 'k',
+              'title': 'from-notices',
+              'text': 'x',
+              'versions': ['26.8'],
+            },
           ],
           'halo-notices': [
-            {'key': 'k', 'title': 'from-halo', 'text': 'x', 'versions': ['26.8']},
+            {
+              'key': 'k',
+              'title': 'from-halo',
+              'text': 'x',
+              'versions': ['26.8'],
+            },
           ],
         },
         'entities/k.json': {},
@@ -364,8 +346,14 @@ void main() {
       final b = build({
         'defaults.json': {
           'halo-notices': [
-            {...plea('mine'), 'shas': ['abc123']},
-            {...plea('theirs'), 'shas': ['deadbe']},
+            {
+              ...plea('mine'),
+              'shas': ['abc123'],
+            },
+            {
+              ...plea('theirs'),
+              'shas': ['deadbe'],
+            },
           ],
         },
         'entities/k.json': {},
@@ -389,7 +377,9 @@ void main() {
 
     test('pushes a qualifying notice to the status bar', () async {
       final b = build({
-        'defaults.json': {'notices': [plea('plea')]},
+        'defaults.json': {
+          'notices': [plea('plea')],
+        },
         'entities/k.json': {},
         'ki/ki2d.json': {},
       });
@@ -401,7 +391,11 @@ void main() {
       final b = build({
         'defaults.json': {
           'notices': [
-            {'key': 'old', 'text': 'x', 'versions': ['26.6']},
+            {
+              'key': 'old',
+              'text': 'x',
+              'versions': ['26.6'],
+            },
           ],
         },
         'entities/k.json': {},
@@ -413,7 +407,9 @@ void main() {
 
     test('does not resurrect a dismissed notice on re-fetch', () async {
       final b = build({
-        'defaults.json': {'notices': [plea('plea')]},
+        'defaults.json': {
+          'notices': [plea('plea')],
+        },
         'entities/k.json': {},
         'ki/ki2d.json': {},
       });
@@ -429,7 +425,9 @@ void main() {
 
     test('does not reset an already-active notice on re-fetch', () async {
       final b = build({
-        'defaults.json': {'notices': [plea('plea')]},
+        'defaults.json': {
+          'notices': [plea('plea')],
+        },
         'entities/k.json': {},
         'ki/ki2d.json': {},
       });
@@ -463,7 +461,11 @@ void main() {
                   'text': 'x',
                   'versions': ['26.8'],
                   'actions': [
-                    {'label': 'Give', 'action': 'link', 'args': {'url': 'https://ham2k.com'}},
+                    {
+                      'label': 'Give',
+                      'action': 'link',
+                      'args': {'url': 'https://ham2k.com'},
+                    },
                   ],
                 },
               ],
@@ -520,11 +522,7 @@ void main() {
       // Notices persist, so gating the push alone would leave one already on
       // file sitting there for every launch from now on. Cleared at
       // construction, not on refresh — an offline launch never refreshes.
-      statusBar.showNotice(
-        key: 'update:version',
-        title: 'Update available',
-        text: 'A new version (26.9) is available.',
-      );
+      statusBar.showNotice(key: 'update:version', title: 'Update available', text: 'A new version (26.9) is available.');
       build({'defaults.json': {}}, isReleaseBuild: false);
       expect(statusBar.activeNotices, isEmpty);
     });
@@ -538,16 +536,15 @@ void main() {
       // mark, silencing the real notice for good.
       final prefs = await SharedPreferences.getInstance();
       FlagsService shipped() => FlagsService(
-            statusBar: statusBar,
-            staleness: stalenessFor(prefs: prefs),
-            baseUrl: 'https://example.test/flags',
-            annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
-            environmentProvider: () async => env,
-            isReleaseBuild: true,
-            prefs: prefs,
-            fetcher: (location) async =>
-                location == 'defaults.json' ? {'latestRelease': newerRelease} : {},
-          );
+        statusBar: statusBar,
+        staleness: stalenessFor(prefs: prefs),
+        baseUrl: 'https://example.test/flags',
+        annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
+        environmentProvider: () async => env,
+        isReleaseBuild: true,
+        prefs: prefs,
+        fetcher: (location) async => location == 'defaults.json' ? {'latestRelease': newerRelease} : {},
+      );
 
       await shipped().refreshForCall('KI2D');
       expect(statusBar.activeNotices.single.key, 'update:version');
@@ -584,13 +581,13 @@ void main() {
         annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
         environmentProvider: () async => env,
         isReleaseBuild: true,
-        staleness: stalenessFor(onNoticeAction: (key, action) {
-          actedKey = key;
-          actedAction = action;
-        }),
-        fetcher: (location) async => location == 'defaults.json'
-            ? {'latestRelease': newerRelease, 'latestReleaseUrl': 'https://ham2k.com/halo'}
-            : {},
+        staleness: stalenessFor(
+          onNoticeAction: (key, action) {
+            actedKey = key;
+            actedAction = action;
+          },
+        ),
+        fetcher: (location) async => location == 'defaults.json' ? {'latestRelease': newerRelease, 'latestReleaseUrl': 'https://ham2k.com/halo'} : {},
       );
 
       await service.refreshForCall('KI2D');
@@ -611,8 +608,7 @@ void main() {
         environmentProvider: () async => env,
         isReleaseBuild: true,
         staleness: stalenessFor(onNoticeAction: (_, action) => actedAction = action),
-        fetcher: (location) async =>
-            location == 'defaults.json' ? {'latestRelease': newerRelease} : {},
+        fetcher: (location) async => location == 'defaults.json' ? {'latestRelease': newerRelease} : {},
       );
 
       await service.refreshForCall('KI2D');
@@ -629,8 +625,7 @@ void main() {
         environmentProvider: () async => env,
         isReleaseBuild: true,
         staleness: stalenessFor(),
-        fetcher: (location) async =>
-            location == 'defaults.json' ? {'latestRelease': latest} : {},
+        fetcher: (location) async => location == 'defaults.json' ? {'latestRelease': latest} : {},
       );
 
       await service.refreshForCall('KI2D');
@@ -656,8 +651,7 @@ void main() {
         isReleaseBuild: true,
         prefs: prefs,
         staleness: stalenessFor(prefs: prefs),
-        fetcher: (location) async =>
-            location == 'defaults.json' ? {'latestRelease': latest} : {},
+        fetcher: (location) async => location == 'defaults.json' ? {'latestRelease': latest} : {},
       );
 
       await service.refreshForCall('KI2D');

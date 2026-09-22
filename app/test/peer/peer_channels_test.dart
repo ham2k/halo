@@ -31,11 +31,7 @@ import 'package:ham2k_logger/services/peer/peer_drafts.dart';
 
 import '../support/peer_network_fakes.dart';
 
-Future<void> waitFor(
-  String what,
-  FutureOr<bool> Function() condition, {
-  Duration timeout = const Duration(seconds: 20),
-}) async {
+Future<void> waitFor(String what, FutureOr<bool> Function() condition, {Duration timeout = const Duration(seconds: 20)}) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
     if (await condition()) return;
@@ -45,17 +41,17 @@ Future<void> waitFor(
 }
 
 Position fixAt(double lat, double lon) => Position(
-      latitude: lat,
-      longitude: lon,
-      timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
-      accuracy: 5,
-      altitude: 0,
-      altitudeAccuracy: 0,
-      heading: 0,
-      headingAccuracy: 0,
-      speed: 0,
-      speedAccuracy: 0,
-    );
+  latitude: lat,
+  longitude: lon,
+  timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+  accuracy: 5,
+  altitude: 0,
+  altitudeAccuracy: 0,
+  heading: 0,
+  headingAccuracy: 0,
+  speed: 0,
+  speedAccuracy: 0,
+);
 
 /// This device's station, as the bridge sees it — a stub, deliberately, so
 /// these tests keep running two REAL `RadioService`s over real sockets and
@@ -105,9 +101,8 @@ class _FakeStation extends ChangeNotifier implements PeerStationRadios {
 
   @override
   List<PeerRadioOffer> get offeredRadios => [
-        if (offeredId case final id?)
-          PeerRadioOffer(id: id, name: offeredName, keysCw: keysCw, voiceMemories: voiceMemories),
-      ];
+    if (offeredId case final id?) PeerRadioOffer(id: id, name: offeredName, keysCw: keysCw, voiceMemories: voiceMemories),
+  ];
 
   /// What this station says it can be asked to do with the radio it offers.
   bool keysCw = false;
@@ -212,8 +207,7 @@ class _FakeGpsLocation extends LocationService {
 }
 
 class _Device {
-  _Device(this.deviceId, this.name, FakeHost host,
-      {LocationService? locationOverride, required SharedPreferences prefs, bool ownsRadio = false}) {
+  _Device(this.deviceId, this.name, FakeHost host, {LocationService? locationOverride, required SharedPreferences prefs, bool ownsRadio = false}) {
     db = HaLoDatabase(NativeDatabase.memory());
     outbox = PeerOutbox(db);
     operations = OperationsRepository(db, onChange: outbox.notifyChanged);
@@ -239,18 +233,13 @@ class _Device {
     claims = SerialClaims(
       localDeviceId: deviceId,
       peek: (_, _) async => 1,
-      livePeers: () => [for (final id in service.peers.keys) if (service.hasSession(id)) id],
+      livePeers: () => [
+        for (final id in service.peers.keys)
+          if (service.hasSession(id)) id,
+      ],
       send: (id, message) => service.sendEphemeralTo(id, message, allowBle: true),
     );
-    channels = PeerChannels(
-      peers: service,
-      location: location,
-      radio: radio,
-      drafts: drafts,
-      claims: claims,
-      station: station,
-      remoteRadios: remoteRadios,
-    );
+    channels = PeerChannels(peers: service, location: location, radio: radio, drafts: drafts, claims: claims, station: station, remoteRadios: remoteRadios);
   }
 
   late final RadioService radio;
@@ -267,8 +256,7 @@ class _Device {
   /// `station.notifyPick()` after it to stand in for the panel's write,
   /// which notifies; setting the field alone is the pre-pairing setup every
   /// other test wants.
-  void control(_Device owner) => station.followedPeerRadio =
-      PeerRadioSelection(deviceId: owner.deviceId, radioId: owner.radioId);
+  void control(_Device owner) => station.followedPeerRadio = PeerRadioSelection(deviceId: owner.deviceId, radioId: owner.radioId);
 
   final String deviceId;
   final String name;
@@ -319,8 +307,7 @@ void main() {
     await phone.service.trust.trust('device-a', name: 'Laptop');
     await laptop.service.setEnabled(true);
     await phone.service.setEnabled(true);
-    await waitFor('the pair to establish', () =>
-        laptop.service.peers['device-b']?.session?.established ?? false);
+    await waitFor('the pair to establish', () => laptop.service.peers['device-b']?.session?.established ?? false);
   }
 
   test('the park scenario: the phone\'s fix reaches the laptop with no operation open at all', () async {
@@ -329,8 +316,7 @@ void main() {
 
     // The establish-time snapshot carries it — the phone does not have to
     // move first, and neither side has an operation open.
-    await waitFor('the fix to arrive',
-        () => laptop.location.peerPositionProviderId == 'device-b');
+    await waitFor('the fix to arrive', () => laptop.location.peerPositionProviderId == 'device-b');
 
     // And the laptop's own hardware failing is what surfaces it: this is the
     // REAL LocationService fallback path, end to end.
@@ -360,8 +346,7 @@ void main() {
 
     await phone.service.setEnabled(false);
 
-    await waitFor('the fix to clear with its provider',
-        () => laptop.location.peerPositionProviderId == null);
+    await waitFor('the fix to clear with its provider', () => laptop.location.peerPositionProviderId == null);
   });
 
   test('a served peer fix is never relayed onward', () async {
@@ -372,12 +357,10 @@ void main() {
     phoneGps.setFix(fixAt(40.7, -74.0));
     await paired();
     await laptop.location.start();
-    await waitFor('the laptop to be serving the phone\'s fix',
-        () => laptop.location.positionIsFromPeer);
+    await waitFor('the laptop to be serving the phone\'s fix', () => laptop.location.positionIsFromPeer);
 
     await Future<void>.delayed(const Duration(milliseconds: 500));
-    expect(phone.location.peerPositionProviderId, isNull,
-        reason: 'the phone must never receive its own fix back as the laptop\'s');
+    expect(phone.location.peerPositionProviderId, isNull, reason: 'the phone must never receive its own fix back as the laptop\'s');
   });
 
   test('a peer leaving DURING the permission check still releases the GPS', () async {
@@ -392,8 +375,7 @@ void main() {
     // The pair drops while the check is still in flight...
     await laptop.service.setEnabled(false);
     await waitFor('the phone to notice', () => !(phone.service.peers['device-a']?.session?.established ?? false));
-    expect(phoneGps.stopCalls, 0,
-        reason: 'nothing to stop yet — the listener has not been taken, and an early stop would strip a view');
+    expect(phoneGps.stopCalls, 0, reason: 'nothing to stop yet — the listener has not been taken, and an early stop would strip a view');
 
     // ...and then the check resolves with permission granted.
     phoneGps.gate!.complete(true);
@@ -412,8 +394,7 @@ void main() {
     test('a peer\'s offer reaches the picker — snapshot first, then live', () async {
       await paired();
 
-      await waitFor('the establish-time snapshot',
-          () => phone.remoteRadios.find('device-a', laptop.radioId) != null);
+      await waitFor('the establish-time snapshot', () => phone.remoteRadios.find('device-a', laptop.radioId) != null);
       expect(phone.remoteRadios.all.single.deviceName, 'Laptop');
 
       // The rig drops. An EMPTY offer is the message that says so, and a
@@ -428,8 +409,7 @@ void main() {
       laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
       await paired();
 
-      await waitFor('the snapshot to land',
-          () => phone.radio.vfoA.freq == 14285.0 && phone.radio.vfoA.mode == 'USB');
+      await waitFor('the snapshot to land', () => phone.radio.vfoA.freq == 14285.0 && phone.radio.vfoA.mode == 'USB');
 
       laptop.radio.setVfo('vfoA', freq: 7074.0, mode: 'LSB');
       await waitFor('the live change to follow', () => phone.radio.vfoA.freq == 7074.0);
@@ -442,12 +422,10 @@ void main() {
       // decides, and there is none.
       laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
       await paired();
-      await waitFor('the offer, so the report has certainly been sent too',
-          () => phone.remoteRadios.all.isNotEmpty);
+      await waitFor('the offer, so the report has certainly been sent too', () => phone.remoteRadios.all.isNotEmpty);
       await Future<void>.delayed(const Duration(milliseconds: 500));
 
-      expect(phone.radio.vfoA.freq, isNull,
-          reason: 'a radio-less device follows the radio its operator picked, not any it hears');
+      expect(phone.radio.vfoA.freq, isNull, reason: 'a radio-less device follows the radio its operator picked, not any it hears');
     });
 
     test('a report for the RIGHT device but the wrong radio moves nothing', () async {
@@ -455,8 +433,7 @@ void main() {
       // uuids are unique within a station but the pair is not one station,
       // so matching on the device alone would follow the wrong rig here and
       // any peer's rig in the test above.
-      phone.station.followedPeerRadio =
-          const PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-the-other-one');
+      phone.station.followedPeerRadio = const PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-the-other-one');
       laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
       await paired();
       await waitFor('the offer', () => phone.remoteRadios.all.isNotEmpty);
@@ -474,8 +451,7 @@ void main() {
       phone.radio.setVfo('vfoA', freq: 21074.0, mode: 'USB');
 
       await waitFor('the tune to land on the owner', () => laptop.radio.vfoA.freq == 21074.0);
-      expect(seenOrigin, VfoOrigin.user,
-          reason: 'user origin is what makes CatService forward it to the real rig');
+      expect(seenOrigin, VfoOrigin.user, reason: 'user origin is what makes CatService forward it to the real rig');
     });
 
     test('a tune goes only to the peer whose radio was picked', () async {
@@ -493,16 +469,13 @@ void main() {
       phone.control(laptop);
       await paired();
       await clone.service.setEnabled(true);
-      await waitFor('the clone to join too',
-          () => phone.service.peers['device-c']?.session?.established ?? false);
+      await waitFor('the clone to join too', () => phone.service.peers['device-c']?.session?.established ?? false);
 
       phone.radio.setVfo('vfoA', freq: 21074.0, mode: 'USB');
-      await waitFor('the tune to land on the picked radio',
-          () => laptop.radio.vfoA.freq == 21074.0);
+      await waitFor('the tune to land on the picked radio', () => laptop.radio.vfoA.freq == 21074.0);
       await Future<void>.delayed(const Duration(milliseconds: 500));
 
-      expect(clone.station.tuneRequests, isEmpty,
-          reason: 'a device nobody picked was asked to move its rig');
+      expect(clone.station.tuneRequests, isEmpty, reason: 'a device nobody picked was asked to move its rig');
       expect(clone.radio.vfoA.freq, isNull);
     });
 
@@ -516,8 +489,7 @@ void main() {
       laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
       await waitFor('the report', () => phone.radio.vfoA.freq == 14285.0);
 
-      phone.service.broadcastEphemeral(
-          PeerMessage.catSet(radioId: 'rig-nobody-has', freqKHz: 1234.0, mode: 'CW'));
+      phone.service.broadcastEphemeral(PeerMessage.catSet(radioId: 'rig-nobody-has', freqKHz: 1234.0, mode: 'CW'));
       await Future<void>.delayed(const Duration(milliseconds: 500));
 
       expect(laptop.station.tuneRequests, contains('rig-nobody-has'));
@@ -543,8 +515,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 500));
 
       expect(laptopChanges, 1, reason: 'the owner applies the tune once');
-      expect(phoneChanges, lessThanOrEqualTo(2),
-          reason: 'the phone: its own tune, at most one confirming report — never a loop');
+      expect(phoneChanges, lessThanOrEqualTo(2), reason: 'the phone: its own tune, at most one confirming report — never a loop');
     });
 
     test('offering a radio does not make this device follow anyone', () async {
@@ -558,8 +529,7 @@ void main() {
       laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
       await Future<void>.delayed(const Duration(milliseconds: 500));
 
-      expect(phone.radio.vfoA.freq, 3573.0,
-          reason: 'a report from elsewhere must never move a rig-owning device\'s VFO');
+      expect(phone.radio.vfoA.freq, 3573.0, reason: 'a report from elsewhere must never move a rig-owning device\'s VFO');
     });
 
     test('a DISCONNECTED rig is neither offered nor tunable', () async {
@@ -599,8 +569,7 @@ void main() {
       phone.control(laptop);
       phone.station.notifyPick();
 
-      await waitFor('the picked radio to show where it is',
-          () => phone.radio.vfoA.freq == 14285.0 && phone.radio.vfoA.mode == 'USB');
+      await waitFor('the picked radio to show where it is', () => phone.radio.vfoA.freq == 14285.0 && phone.radio.vfoA.mode == 'USB');
     });
 
     test('a peer walking away leaves the pick alone', () async {
@@ -637,8 +606,7 @@ void main() {
       // on, so it must not wait for the next thing the operator does.
       laptop.station.keying = PeerKeyStatusPayload(radioId: laptop.radioId);
       laptop.station.keyingChanged();
-      await waitFor('the message ending to cross',
-          () => phone.station.notedKeyStatus.last.cw == null);
+      await waitFor('the message ending to cross', () => phone.station.notedKeyStatus.last.cw == null);
     });
 
     test('keying is announced on its OWN listenable, not the offer\'s', () async {
@@ -693,17 +661,14 @@ void main() {
       phone.control(laptop);
       await paired();
       await clone.service.setEnabled(true);
-      await waitFor('the clone to join too',
-          () => phone.service.peers['device-c']?.session?.established ?? false);
+      await waitFor('the clone to join too', () => phone.service.peers['device-c']?.session?.established ?? false);
 
-      phone.station.sendPeerKeyRequest!(
-          PeerKeyRequestPayload(radioId: laptop.radioId, op: PeerKeyOp.cw, text: 'CQ TEST'));
+      phone.station.sendPeerKeyRequest!(PeerKeyRequestPayload(radioId: laptop.radioId, op: PeerKeyOp.cw, text: 'CQ TEST'));
 
       await waitFor('the request to land', () => laptop.station.keyRequests.isNotEmpty);
       expect(laptop.station.keyRequests.single.text, 'CQ TEST');
       await Future<void>.delayed(const Duration(milliseconds: 300));
-      expect(clone.station.keyRequests, isEmpty,
-          reason: 'one operator pressing F1 must not key a rig in someone else\'s shack');
+      expect(clone.station.keyRequests, isEmpty, reason: 'one operator pressing F1 must not key a rig in someone else\'s shack');
     });
 
     test('a request for a radio the operator did not pick is not sent', () async {
@@ -713,8 +678,7 @@ void main() {
       phone.control(laptop);
       await paired();
 
-      phone.station.sendPeerKeyRequest!(
-          const PeerKeyRequestPayload(radioId: 'rig-nobody-picked', op: PeerKeyOp.cw, text: 'CQ'));
+      phone.station.sendPeerKeyRequest!(const PeerKeyRequestPayload(radioId: 'rig-nobody-picked', op: PeerKeyOp.cw, text: 'CQ'));
 
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(laptop.station.keyRequests, isEmpty);
@@ -765,10 +729,7 @@ void main() {
       // uuid-keyed map cannot produce this, which is exactly why nothing else
       // would catch a sender that is not.
       final radios = PeerRemoteRadios();
-      radios.setOffers('device-a', 'Laptop', const [
-        PeerRadioOffer(id: 'rig-1', name: 'IC-705'),
-        PeerRadioOffer(id: 'rig-1', name: 'IC-705 again'),
-      ]);
+      radios.setOffers('device-a', 'Laptop', const [PeerRadioOffer(id: 'rig-1', name: 'IC-705'), PeerRadioOffer(id: 'rig-1', name: 'IC-705 again')]);
 
       expect(radios.all, hasLength(1));
       expect(radios.all.single.radio.name, 'IC-705', reason: 'the first one wins');
@@ -782,24 +743,23 @@ void main() {
       String position = '',
       String operatorCall = '',
       String operationUuid = 'op-1',
-    }) =>
-        PeerQsoDraftPayload(
-          qso: {
-            'their': {
-              'call': call,
-              'sent': '59',
-              'guess': {'name': 'John', 'state': 'NY'},
-            },
-            'our': {'sent': '59'},
-            'band': '20m',
-            'mode': 'CW',
-            'freq': 14025.0,
-          },
-          operationUuid: operationUuid,
-          fields: fields,
-          position: position,
-          operatorCall: operatorCall,
-        );
+    }) => PeerQsoDraftPayload(
+      qso: {
+        'their': {
+          'call': call,
+          'sent': '59',
+          'guess': {'name': 'John', 'state': 'NY'},
+        },
+        'our': {'sent': '59'},
+        'band': '20m',
+        'mode': 'CW',
+        'freq': 14025.0,
+      },
+      operationUuid: operationUuid,
+      fields: fields,
+      position: position,
+      operatorCall: operatorCall,
+    );
 
     test("a position's contact reaches the other position as it is typed", () async {
       await paired();
@@ -821,12 +781,16 @@ void main() {
     test("the sender's row crosses with its labels and its answers", () async {
       await paired();
 
-      phone.drafts.publishLocal(draftOf(fields: const [
-        PeerDraftFieldPayload(key: 'call', label: 'Call', value: 'KN2X'),
-        PeerDraftFieldPayload(key: 'sent', label: 'Sent', value: '599'),
-        PeerDraftFieldPayload(key: 'rcvd', label: 'Rcvd', hint: '599'),
-        PeerDraftFieldPayload(key: 'wfd_class', label: 'Class', value: '3A'),
-      ]));
+      phone.drafts.publishLocal(
+        draftOf(
+          fields: const [
+            PeerDraftFieldPayload(key: 'call', label: 'Call', value: 'KN2X'),
+            PeerDraftFieldPayload(key: 'sent', label: 'Sent', value: '599'),
+            PeerDraftFieldPayload(key: 'rcvd', label: 'Rcvd', hint: '599'),
+            PeerDraftFieldPayload(key: 'wfd_class', label: 'Class', value: '3A'),
+          ],
+        ),
+      );
 
       await waitFor('the draft to cross', () => laptop.drafts.blocksFor('op-1').isNotEmpty);
       final row = laptop.drafts.blocksFor('op-1').single.draft.fields;
@@ -919,8 +883,7 @@ void main() {
 
       phone.drafts.publishLocal(draftOf(call: '', fields: const []));
 
-      await waitFor('the wipe to cross',
-          () => laptop.drafts.blocksFor('op-1').single.draft.fields.isEmpty);
+      await waitFor('the wipe to cross', () => laptop.drafts.blocksFor('op-1').single.draft.fields.isEmpty);
       expect(laptop.drafts.blocksFor('op-1'), hasLength(1));
     });
 
@@ -968,7 +931,9 @@ void main() {
       // the same way, with no keystroke to wait for.
       await phone.service.setEnabled(false);
       await waitFor('the pair to drop', () => !(laptop.service.peers['device-b']?.session?.established ?? false));
-      expect(laptop.claims.peerClaimsFor('op-1', request.label), {'device-b': {2}}, reason: 'a dropped peer still holds its number');
+      expect(laptop.claims.peerClaimsFor('op-1', request.label), {
+        'device-b': {2},
+      }, reason: 'a dropped peer still holds its number');
       phone.claims.release('op-1');
       await phone.service.setEnabled(true);
       await waitFor('the pair to re-establish', () => phone.service.peers['device-a']?.session?.established ?? false);

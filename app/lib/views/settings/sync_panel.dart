@@ -87,9 +87,7 @@ class _SyncPanelState extends State<SyncPanel> {
       // zone handler — on a fixed short timer, which would turn one broken
       // extension call into a notice every ten seconds for as long as this
       // panel stays open.
-      (_) => unawaited(_refreshSyncAccount(quiet: true).catchError(
-        (Object error) => debugPrint('[sync-panel] background refresh failed: $error'),
-      )),
+      (_) => unawaited(_refreshSyncAccount(quiet: true).catchError((Object error) => debugPrint('[sync-panel] background refresh failed: $error'))),
     );
     // On its own cadence, never the account poll's: these are three counts
     // against the local database with no network in them, while that poll
@@ -101,9 +99,7 @@ class _SyncPanelState extends State<SyncPanel> {
     _localCountsTimer?.cancel();
     _localCountsTimer = Timer.periodic(
       syncAccountPollWithoutRealtime,
-      (_) => unawaited(_refreshLocalCounts().catchError(
-        (Object error) => debugPrint('[sync-panel] local count refresh failed: $error'),
-      )),
+      (_) => unawaited(_refreshLocalCounts().catchError((Object error) => debugPrint('[sync-panel] local count refresh failed: $error'))),
     );
     _accountEvents ??= widget.services.pusher?.events.listen((event) {
       // Anything the server says about THIS account: a device asking to
@@ -369,8 +365,7 @@ class _SyncPanelState extends State<SyncPanel> {
 
   /// Developer-facing and in English, like the DEVTT command it names — this is
   /// only reachable with developer mode on (docs/design/time.md §4).
-  static const _syncNeedsRealClock =
-      'Linking or replacing an account is refused while time travelling — run DEVTT first';
+  static const _syncNeedsRealClock = 'Linking or replacing an account is refused while time travelling — run DEVTT first';
 
   Future<void> _replaceAccount() async {
     final opCount = (await widget.services.operations.syncCounts()).total;
@@ -383,18 +378,12 @@ class _SyncPanelState extends State<SyncPanel> {
         title: Text(context.t.settings.syncPanel.replaceDialogTitle),
         content: Text(
           context.t.settings.syncPanel.replaceDialogBody(
-            operations:
-                context.t.settings.syncPanel.countOperations(count: opCount, n: formatNumber(opCount)),
+            operations: context.t.settings.syncPanel.countOperations(count: opCount, n: formatNumber(opCount)),
             qsos: context.t.settings.syncPanel.countQsos(count: qsoCount, n: formatNumber(qsoCount)),
           ),
         ),
-        cancel: TextButton(
-            onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-        actions: [
-          FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(context.t.settings.syncPanel.replace)),
-        ],
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.settings.syncPanel.replace))],
       ),
     );
     if (confirmed != true) return;
@@ -417,8 +406,7 @@ class _SyncPanelState extends State<SyncPanel> {
   /// numbers sit side by side precisely so a difference means work still in
   /// flight; counting them by different rules would turn that signal into
   /// noise.
-  String _countsLine(String Function({required String operations, required String qsos}) line,
-      int operationCount, int qsoCount) {
+  String _countsLine(String Function({required String operations, required String qsos}) line, int operationCount, int qsoCount) {
     return line(
       operations: t.settings.syncPanel.countOperations(count: operationCount, n: formatNumber(operationCount)),
       qsos: t.settings.syncPanel.countQsos(count: qsoCount, n: formatNumber(qsoCount)),
@@ -445,8 +433,7 @@ class _SyncPanelState extends State<SyncPanel> {
     if (operations == 0 && qsos == 0) return null;
     final items = [
       if (qsos > 0) t.settings.syncPanel.countQsos(count: qsos, n: formatNumber(qsos)),
-      if (operations > 0)
-        t.settings.syncPanel.countOperations(count: operations, n: formatNumber(operations)),
+      if (operations > 0) t.settings.syncPanel.countOperations(count: operations, n: formatNumber(operations)),
     ];
     return t.settings.syncPanel.countsPending(items: items.join(' · '));
   }
@@ -465,10 +452,7 @@ class _SyncPanelState extends State<SyncPanel> {
   /// "not available" is a claim about the server, so it must not be made
   /// while the fetch that would answer it is still in flight.
   String get _serverCountsText =>
-      _serverCountsLine ??
-      (_loadingSyncAccount
-          ? t.settings.syncPanel.countsServerChecking
-          : t.settings.syncPanel.countsServerUnavailable);
+      _serverCountsLine ?? (_loadingSyncAccount ? t.settings.syncPanel.countsServerChecking : t.settings.syncPanel.countsServerUnavailable);
 
   @override
   Widget build(BuildContext context) {
@@ -486,17 +470,12 @@ class _SyncPanelState extends State<SyncPanel> {
             SwitchListTile(
               secondary: Icon(settings.syncEnabled ? MdiIcons.cloudSync : MdiIcons.cloudOff),
               title: Text(context.t.settings.syncPanel.enableTitle),
-              subtitle: Text(
-                settings.syncEnabled
-                    ? context.t.settings.syncPanel.enabledDescription
-                    : context.t.settings.syncPanel.disabledDescription,
-              ),
+              subtitle: Text(settings.syncEnabled ? context.t.settings.syncPanel.enabledDescription : context.t.settings.syncPanel.disabledDescription),
               value: settings.syncEnabled,
               onChanged: _toggleSync,
               mouseCursor: SystemMouseCursors.click,
             ),
-            if (settings.syncState['pendingAccountUUID'] != null)
-              _PendingAccountBanner(onCombine: _combineAccount, onReplace: _replaceAccount),
+            if (settings.syncState['pendingAccountUUID'] != null) _PendingAccountBanner(onCombine: _combineAccount, onReplace: _replaceAccount),
             // The footer status bar isn't visible on this screen, so mirror
             // the backfill-progress item here while it's active.
             ListenableBuilder(
@@ -565,25 +544,21 @@ class _SyncPanelState extends State<SyncPanel> {
               // treatment. A permanent row would be an invitation to type a
               // code nobody has issued; this one is a notification.
               if (_pendingChallenges > 0)
-                Builder(builder: (context) {
-                  final important = HaLoColors.of(context).important;
-                  return ListTile(
-                    leading: Icon(MdiIcons.accountMultiplePlus, color: important),
-                    title: Text(
-                      context.t.settings.syncPanel.connectionRequests,
-                      style: TextStyle(color: important),
-                    ),
-                    subtitle: Text(
-                      context.t.settings.syncPanel.connectionRequestsDescription(
-                        count: _pendingChallenges,
-                        n: formatNumber(_pendingChallenges),
+                Builder(
+                  builder: (context) {
+                    final important = HaLoColors.of(context).important;
+                    return ListTile(
+                      leading: Icon(MdiIcons.accountMultiplePlus, color: important),
+                      title: Text(context.t.settings.syncPanel.connectionRequests, style: TextStyle(color: important)),
+                      subtitle: Text(
+                        context.t.settings.syncPanel.connectionRequestsDescription(count: _pendingChallenges, n: formatNumber(_pendingChallenges)),
+                        style: TextStyle(color: important),
                       ),
-                      style: TextStyle(color: important),
-                    ),
-                    onTap: _confirmDevice,
-                    mouseCursor: SystemMouseCursors.click,
-                  );
-                }),
+                      onTap: _confirmDevice,
+                      mouseCursor: SystemMouseCursors.click,
+                    );
+                  },
+                ),
             ],
           ],
         );
@@ -604,8 +579,7 @@ class _PendingAccountBanner extends StatelessWidget {
     return Card(
       // Lined up with the rows it sits among, off the ambient ListTileTheme
       // (grab-strip clearance and pane centring included).
-      margin: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero)
-          .add(const EdgeInsets.only(top: Space.xs, bottom: Space.lg)),
+      margin: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero).add(const EdgeInsets.only(top: Space.xs, bottom: Space.lg)),
       color: theme.colorScheme.tertiaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(Space.xl),
@@ -625,10 +599,7 @@ class _PendingAccountBanner extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Space.md),
-            Text(
-              context.t.settings.syncPanel.pendingBannerBody,
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer),
-            ),
+            Text(context.t.settings.syncPanel.pendingBannerBody, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer)),
             const SizedBox(height: Space.lg),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,

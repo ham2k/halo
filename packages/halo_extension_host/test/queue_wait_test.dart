@@ -18,8 +18,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'support/bundles.dart';
 
-HookCallSample _sample(String label, int queueMicros) =>
-    HookCallSample(label: label, totalMillis: 0, jsMillis: 0, queueMicros: queueMicros);
+HookCallSample _sample(String label, int queueMicros) => HookCallSample(label: label, totalMillis: 0, jsMillis: 0, queueMicros: queueMicros);
 
 /// Something `jsonEncode` cannot take and that no `toJson` rescues.
 class _Unencodable {
@@ -61,10 +60,7 @@ void main() {
       // session.
       final host = await sharedHost(['lookups']);
 
-      await expectLater(
-        host.invokeHook('lookup', method: 'lookupCall', args: {'bad': const _Unencodable()}),
-        throwsA(isA<ExtensionHostException>()),
-      );
+      await expectLater(host.invokeHook('lookup', method: 'lookupCall', args: {'bad': const _Unencodable()}), throwsA(isA<ExtensionHostException>()));
 
       final echo = await host.invokeHook('bench', key: 'kernel', method: 'echo', args: {'x': 1});
       expect(echo, {'x': 1});

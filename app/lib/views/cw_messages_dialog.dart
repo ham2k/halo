@@ -40,9 +40,9 @@ const cwMessageNumberIcons = [
 ];
 
 Future<void> showCwMessagesDialog(BuildContext context, HaLoServices services) => showHaloDialog<void>(
-      context: context,
-      builder: (context) => _CwMessagesDialog(services: services),
-    );
+  context: context,
+  builder: (context) => _CwMessagesDialog(services: services),
+);
 
 class _CwMessagesDialog extends StatefulWidget {
   final HaLoServices services;
@@ -157,46 +157,36 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
         color: haloDialogBandColorAt(context),
         padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
         child: Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: set.name,
-                    icon: dropdownTrailingIcon,
-                    decoration: poloFieldDecoration(context, m.sets).copyWith(
-                      filled: true,
-                      fillColor: theme.colorScheme.surface,
-                    ),
-                    menuMaxHeight: dropdownMenuMaxHeight(context),
-                    items: [
-                      for (final entry in _sets)
-                        DropdownMenuItem<String>(value: entry.name, child: Text(entry.name)),
-                    ],
-                    onChanged: (name) => name == null ? null : setState(() => _selected = name),
-                  ),
-                ),
-                const SizedBox(width: Space.sm),
-                // The three things one does to a set, beside the picker that
-                // says which one. No hover tooltips (docs/design/user-interface.md),
-                // so the accessible name is the only place each is named.
-                IconButton(
-                  icon: Icon(MdiIcons.fileOutline, semanticLabel: m.newSet),
-                  onPressed: _newSet,
-                ),
-                IconButton(
-                  icon: Icon(MdiIcons.pencilOutline, semanticLabel: m.renameSet),
-                  onPressed: _rename,
-                ),
-                IconButton(
-                  icon: Icon(
-                    MdiIcons.trashCanOutline,
-                    semanticLabel: m.deleteSet,
-                    color: _canDelete ? theme.colorScheme.error : null,
-                  ),
-                  onPressed: _canDelete ? _delete : null,
-                ),
-              ],
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: set.name,
+                icon: dropdownTrailingIcon,
+                decoration: poloFieldDecoration(context, m.sets).copyWith(filled: true, fillColor: theme.colorScheme.surface),
+                menuMaxHeight: dropdownMenuMaxHeight(context),
+                items: [for (final entry in _sets) DropdownMenuItem<String>(value: entry.name, child: Text(entry.name))],
+                onChanged: (name) => name == null ? null : setState(() => _selected = name),
+              ),
             ),
+            const SizedBox(width: Space.sm),
+            // The three things one does to a set, beside the picker that
+            // says which one. No hover tooltips (docs/design/user-interface.md),
+            // so the accessible name is the only place each is named.
+            IconButton(
+              icon: Icon(MdiIcons.fileOutline, semanticLabel: m.newSet),
+              onPressed: _newSet,
+            ),
+            IconButton(
+              icon: Icon(MdiIcons.pencilOutline, semanticLabel: m.renameSet),
+              onPressed: _rename,
+            ),
+            IconButton(
+              icon: Icon(MdiIcons.trashCanOutline, semanticLabel: m.deleteSet, color: _canDelete ? theme.colorScheme.error : null),
+              onPressed: _canDelete ? _delete : null,
+            ),
+          ],
+        ),
       ),
       // The rows ARE the dialog's content — to the card's edges, inset
       // off the same SettingsList every other list in the app reads.
@@ -207,17 +197,22 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
           for (var n = 1; n <= SettingsService.cwMessageCount; n++)
             ListTile(
               leading: Icon(cwMessageNumberIcons[n - 1]),
-              title: Text.rich(TextSpan(children: [
-                TextSpan(text: m.key(n: n), style: const TextStyle(fontWeight: FontWeight.w600)),
-                if (set.label(n).trim().isNotEmpty) TextSpan(text: '  ${set.label(n).trim()}'),
-              ])),
+              title: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: m.key(n: n),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    if (set.label(n).trim().isNotEmpty) TextSpan(text: '  ${set.label(n).trim()}'),
+                  ],
+                ),
+              ),
               subtitle: Text(
                 set.message(n).trim().isEmpty ? m.empty : set.message(n),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: set.message(n).trim().isEmpty ? theme.colorScheme.onSurface.withValues(alpha: 0.5) : null,
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: set.message(n).trim().isEmpty ? theme.colorScheme.onSurface.withValues(alpha: 0.5) : null),
               ),
               onTap: () async {
                 final edited = await showHaloDialog<({String message, String label})>(
@@ -238,9 +233,7 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
       // Cancel, not Done: there are pending changes to abandon now that the
       // rows edit a draft (dialog_footer_convention_test.dart).
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-      actions: [
-        FilledButton(onPressed: _save, child: Text(context.t.common.save)),
-      ],
+      actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
     );
   }
 }
@@ -275,10 +268,7 @@ class _CwMessagesHelpDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.md),
-            child: Text(m.helpIntro),
-          ),
+          Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.md), child: Text(m.helpIntro)),
           for (final (template, meaning) in rows)
             ListTile(
               visualDensity: VisualDensity.compact,
@@ -322,19 +312,17 @@ class _NewSetDialogState extends State<_NewSetDialog> {
 
   @override
   Widget build(BuildContext context) => HaloDialog(
-        title: Text(widget.title),
-        content: TextField(
-          controller: _name,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          decoration: poloFieldDecoration(context, widget.field),
-          onSubmitted: (_) => _save(),
-        ),
-        cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-        actions: [
-          FilledButton(onPressed: _save, child: Text(context.t.common.save)),
-        ],
-      );
+    title: Text(widget.title),
+    content: TextField(
+      controller: _name,
+      autofocus: true,
+      textCapitalization: TextCapitalization.words,
+      decoration: poloFieldDecoration(context, widget.field),
+      onSubmitted: (_) => _save(),
+    ),
+    cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
+    actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
+  );
 }
 
 /// One message: the template first, then its label under a Details band.
@@ -403,9 +391,7 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
         ],
       ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-      actions: [
-        FilledButton(onPressed: _save, child: Text(context.t.common.save)),
-      ],
+      actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
     );
   }
 }

@@ -48,12 +48,7 @@ typedef GuessProvenance = ({String? forCall, List<Map<String, dynamic>> guessed}
 
 /// The activity refs' state. See the file comment.
 class ActivityRefsModel extends ChangeNotifier with PanelModel {
-  ActivityRefsModel({
-    required this.config,
-    required this.draft,
-    required this.draftQsoData,
-    required this.onControlsRefreshed,
-  });
+  ActivityRefsModel({required this.config, required this.draft, required this.draftQsoData, required this.onControlsRefreshed});
 
   /// The panel's configuration as it stands right now.
   final ActivityRefsConfig Function() config;
@@ -144,8 +139,7 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
 
   /// Whether [key] names a refList control — the one kind that builds a
   /// field to focus, the same condition that gives it a chip.
-  bool isRefListControl(String key) =>
-      controls.any((c) => c['key'] == key && (c['input'] as Map?)?['kind'] == 'refList');
+  bool isRefListControl(String key) => controls.any((c) => c['key'] == key && (c['input'] as Map?)?['kind'] == 'refList');
 
   /// The activity control that would own a ref of [type] — the refList
   /// control whose `refType` matches. Primary fields (`text`/`serial`/
@@ -211,10 +205,7 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
   List<Map<String, dynamic>> refsFor(String key) => _controlRefs[key] ?? const [];
 
   /// Every ref on the draft: the controls' own, then the unmatched ones.
-  List<Map<String, dynamic>> get allRefs => [
-        for (final list in _controlRefs.values) ...list,
-        ..._unmatched,
-      ];
+  List<Map<String, dynamic>> get allRefs => [for (final list in _controlRefs.values) ...list, ..._unmatched];
 
   /// Whether the draft carries any ref at all — part of what makes it worth
   /// an undo offer.
@@ -277,8 +268,7 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
     // its type, and the re-lookup that deletion triggers proposes the same
     // park again — which would put it straight back into the field they
     // just emptied.
-    bool alreadyGiven(Map<String, dynamic> ref) =>
-        _guessedFor == forCall && _guessed.any((g) => g['type'] == ref['type'] && g['ref'] == ref['ref']);
+    bool alreadyGiven(Map<String, dynamic> ref) => _guessedFor == forCall && _guessed.any((g) => g['type'] == ref['type'] && g['ref'] == ref['ref']);
     for (final ref in proposed) {
       final type = ref['type'];
       if (type is! String || type.isEmpty || ref['ref'] == null) continue;
@@ -304,11 +294,7 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
     // [_guessed]. Appended, not replaced: the offline pass and the online
     // pass both contribute for the same call.
     _guessedFor = forCall;
-    _guessed = [
-      ..._guessed,
-      for (final refs in added.values) ...refs,
-      ...addedUnmatched,
-    ];
+    _guessed = [..._guessed, for (final refs in added.values) ...refs, ...addedUnmatched];
     notify();
     return true;
   }
@@ -339,8 +325,12 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
     // Replaced, never mutated in place — see [applyGuessRefs]: a take-back
     // the field did not notice would keep showing the park, and the next
     // keystroke there would put it back on the QSO.
-    List<Map<String, dynamic>>? without(List<Map<String, dynamic>> list) =>
-        list.any(isStale) ? [for (final ref in list) if (!isStale(ref)) ref] : null;
+    List<Map<String, dynamic>>? without(List<Map<String, dynamic>> list) => list.any(isStale)
+        ? [
+            for (final ref in list)
+              if (!isStale(ref)) ref,
+          ]
+        : null;
 
     var removed = false;
     for (final key in _controlRefs.keys) {
@@ -385,9 +375,7 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
   /// matches nothing and so removes nothing.
   void restoreGuesses(GuessProvenance snapshot) {
     _guessedFor = snapshot.forCall;
-    _guessed = [
-      for (final guess in snapshot.guessed) _liveRefMatching(guess) ?? guess,
-    ];
+    _guessed = [for (final guess in snapshot.guessed) _liveRefMatching(guess) ?? guess];
   }
 
   /// The ref currently in the field carrying the same `(type, ref)` as
@@ -472,10 +460,7 @@ SecondaryControlSpec activityControlSpec(
         label: (control['label'] as String?) ?? '',
         placeholder: (control['input'] as Map)['placeholder'] as String?,
         pattern: (control['input'] as Map)['pattern'] as String?,
-        transforms: [
-          for (final t in ((control['input'] as Map)['transforms'] as List?) ?? const [])
-            RefTransform.fromMap((t as Map).cast<String, dynamic>()),
-        ],
+        transforms: [for (final t in ((control['input'] as Map)['transforms'] as List?) ?? const []) RefTransform.fromMap((t as Map).cast<String, dynamic>())],
         // Not the `refs` captured above for the chip: that one is spec-time,
         // and the row can build an expanded field from an earlier spec. A
         // snapshot would hand the field refs it has since moved past — which

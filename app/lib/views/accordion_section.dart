@@ -65,11 +65,7 @@ class AccordionHeader extends StatelessWidget {
         turns: expanded ? 0 : -0.25,
         duration: accordionDuration,
         curve: accordionCurve,
-        child: Icon(
-          MdiIcons.chevronDown,
-          color: onHeaderColor,
-          semanticLabel: expanded ? context.t.common.collapse : context.t.common.expand,
-        ),
+        child: Icon(MdiIcons.chevronDown, color: onHeaderColor, semanticLabel: expanded ? context.t.common.collapse : context.t.common.expand),
       ),
       onPressed: onToggle,
     );
@@ -129,26 +125,26 @@ class AccordionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AccordionHeader(
-            title: title,
-            expanded: expanded,
-            onToggle: onToggle,
-            headerColor: headerColor,
-            onHeaderColor: onHeaderColor,
-            trailing: trailing,
-            headerInset: headerInset,
-          ),
-          AnimatedCrossFade(
-            firstChild: child,
-            secondChild: const SizedBox(width: double.infinity),
-            crossFadeState: expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-            duration: accordionDuration,
-            sizeCurve: accordionCurve,
-          ),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      AccordionHeader(
+        title: title,
+        expanded: expanded,
+        onToggle: onToggle,
+        headerColor: headerColor,
+        onHeaderColor: onHeaderColor,
+        trailing: trailing,
+        headerInset: headerInset,
+      ),
+      AnimatedCrossFade(
+        firstChild: child,
+        secondChild: const SizedBox(width: double.infinity),
+        crossFadeState: expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+        duration: accordionDuration,
+        sizeCurve: accordionCurve,
+      ),
+    ],
+  );
 }
 
 /// [AccordionSection] over a SLIVER body, with its header PINNED: the header
@@ -195,20 +191,20 @@ class SliverAccordionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SliverMainAxisGroup(
-        slivers: [
-          PinnedHeaderSliver(
-            child: AccordionHeader(
-              key: headerKey,
-              title: title,
-              expanded: expanded,
-              onToggle: onToggle,
-              headerColor: headerColor,
-              onHeaderColor: onHeaderColor,
-              trailing: trailing,
-              headerInset: headerInset,
-            ),
-          ),
-          CollapsingSliver(expanded: expanded, child: sliver),
-        ],
-      );
+    slivers: [
+      PinnedHeaderSliver(
+        child: AccordionHeader(
+          key: headerKey,
+          title: title,
+          expanded: expanded,
+          onToggle: onToggle,
+          headerColor: headerColor,
+          onHeaderColor: onHeaderColor,
+          trailing: trailing,
+          headerInset: headerInset,
+        ),
+      ),
+      CollapsingSliver(expanded: expanded, child: sliver),
+    ],
+  );
 }

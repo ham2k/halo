@@ -136,18 +136,17 @@ class SerialClaims extends ChangeNotifier implements SerialNumberSource {
 
   /// What this device holds on [operationUuid], as its peers are told it.
   List<PeerSerialClaim> localClaimsFor(String operationUuid) => [
-        for (final claim in (_local[operationUuid] ?? const {}).values)
-          PeerSerialClaim(label: claim.label, number: claim.number, conflicted: claim.conflicted),
-        for (final entry in (_committed[operationUuid] ?? const {}).entries)
-          for (final number in entry.value.keys) PeerSerialClaim(label: entry.key, number: number, committed: true),
-      ];
+    for (final claim in (_local[operationUuid] ?? const {}).values) PeerSerialClaim(label: claim.label, number: claim.number, conflicted: claim.conflicted),
+    for (final entry in (_committed[operationUuid] ?? const {}).entries)
+      for (final number in entry.value.keys) PeerSerialClaim(label: entry.key, number: number, committed: true),
+  ];
 
   /// The peers' holds on [label] in [operationUuid], by device.
   Map<String, Set<int>> peerClaimsFor(String operationUuid, String label) => {
-        for (final entry in _peerClaims.entries)
-          if (entry.value[operationUuid]?[label] case final claims?)
-            if (claims.isNotEmpty) entry.key: {for (final claim in claims) claim.number},
-      };
+    for (final entry in _peerClaims.entries)
+      if (entry.value[operationUuid]?[label] case final claims?)
+        if (claims.isNotEmpty) entry.key: {for (final claim in claims) claim.number},
+  };
 
   /// Whether [peerDeviceId] is currently one a claim does not wait on.
   @visibleForTesting
@@ -159,9 +158,9 @@ class SerialClaims extends ChangeNotifier implements SerialNumberSource {
 
   /// Every number a peer or a fresh commit holds on [label] here.
   Set<int> _taken(String operationUuid, String label) => {
-        for (final numbers in peerClaimsFor(operationUuid, label).values) ...numbers,
-        ...?_committed[operationUuid]?[label]?.keys,
-      };
+    for (final numbers in peerClaimsFor(operationUuid, label).values) ...numbers,
+    ...?_committed[operationUuid]?[label]?.keys,
+  };
 
   @override
   Future<int> claim(String operationUuid, SequenceRequest request) async {
@@ -343,14 +342,7 @@ class SerialClaims extends ChangeNotifier implements SerialNumberSource {
   /// set included, which is how an operation let go while apart is cleared.
   void snapshotTo(String peerDeviceId) {
     for (final operationUuid in _touchedOperations) {
-      send(
-        peerDeviceId,
-        PeerMessage.serialClaims(
-          operationUuid: operationUuid,
-          seq: _seq,
-          claims: localClaimsFor(operationUuid),
-        ),
-      );
+      send(peerDeviceId, PeerMessage.serialClaims(operationUuid: operationUuid, seq: _seq, claims: localClaimsFor(operationUuid)));
     }
   }
 
@@ -364,11 +356,7 @@ class SerialClaims extends ChangeNotifier implements SerialNumberSource {
   }
 
   void _announce(_LocalClaim claim) {
-    final message = PeerMessage.serialClaims(
-      operationUuid: claim.operationUuid,
-      seq: claim.seq,
-      claims: localClaimsFor(claim.operationUuid),
-    );
+    final message = PeerMessage.serialClaims(operationUuid: claim.operationUuid, seq: claim.seq, claims: localClaimsFor(claim.operationUuid));
     claim.awaiting.clear();
     for (final peerDeviceId in livePeers()) {
       if (!send(peerDeviceId, message)) continue;
@@ -421,12 +409,7 @@ class SerialClaims extends ChangeNotifier implements SerialNumberSource {
   void _ackTo(String peerDeviceId, PeerSerialClaimsPayload payload) {
     send(
       peerDeviceId,
-      PeerMessage.serialClaims(
-        operationUuid: payload.operationUuid,
-        seq: _seq,
-        claims: localClaimsFor(payload.operationUuid),
-        ack: payload.seq,
-      ),
+      PeerMessage.serialClaims(operationUuid: payload.operationUuid, seq: _seq, claims: localClaimsFor(payload.operationUuid), ack: payload.seq),
     );
   }
 
@@ -434,11 +417,7 @@ class SerialClaims extends ChangeNotifier implements SerialNumberSource {
   /// round: a release, or a kept-after-conflict mark the winner has to hear
   /// about. A new version, so a peer that saw the previous set takes this one.
   void _broadcast(String operationUuid) {
-    final message = PeerMessage.serialClaims(
-      operationUuid: operationUuid,
-      seq: ++_seq,
-      claims: localClaimsFor(operationUuid),
-    );
+    final message = PeerMessage.serialClaims(operationUuid: operationUuid, seq: ++_seq, claims: localClaimsFor(operationUuid));
     for (final peerDeviceId in livePeers()) {
       // Every later message carries the whole set again, so a drop costs
       // nothing lasting — but a live peer refusing a send is worth a trace.

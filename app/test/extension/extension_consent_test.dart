@@ -41,37 +41,40 @@ void main() {
     return ZipEncoder().encode(out);
   }
 
-  Future<InspectedBundle> inspect(List<int> bytes) => InstalledExtensions(
-        builtInKeys: () => const {},
-        hostSharedModules: const {'i18next': '23.11.5'},
-        rootOverride: Directory.systemTemp,
-      ).inspect(bytes);
+  Future<InspectedBundle> inspect(List<int> bytes) =>
+      InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {'i18next': '23.11.5'}, rootOverride: Directory.systemTemp).inspect(bytes);
 
   /// Pumps the dialog alone. The picker and the install are not under test
   /// here; what the operator is shown is.
   Future<void> show(WidgetTester tester, InspectedBundle bundle, {bool replacing = false}) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        locale: const Locale('en'),
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: ElevatedButton(
-              onPressed: () => showConsentDialog(context, bundle: bundle, replacing: replacing),
-              child: const Text('open'),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          locale: const Locale('en'),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: ElevatedButton(
+                onPressed: () => showConsentDialog(context, bundle: bundle, replacing: replacing),
+                child: const Text('open'),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
   }
 
   testWidgets('every domain the manifest asks for is named', (tester) async {
-    final bundle = await inspect(withManifest((m) => {
+    final bundle = await inspect(
+      withManifest(
+        (m) => {
           ...m,
           'domains': ['time.example.org', 'backup.example.org'],
-        }));
+        },
+      ),
+    );
 
     await show(tester, bundle);
 
@@ -83,11 +86,7 @@ void main() {
   });
 
   testWidgets('location and user-agent claims are named too', (tester) async {
-    final bundle = await inspect(withManifest((m) => {
-          ...m,
-          'requiresLocation': true,
-          'allowUserAgentOverride': true,
-        }));
+    final bundle = await inspect(withManifest((m) => {...m, 'requiresLocation': true, 'allowUserAgentOverride': true}));
 
     await show(tester, bundle);
 
@@ -135,19 +134,21 @@ void main() {
     final bundle = await inspect(fixture);
     bool? answer;
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        locale: const Locale('en'),
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: ElevatedButton(
-              onPressed: () async => answer = await showConsentDialog(context, bundle: bundle, replacing: false),
-              child: const Text('open'),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          locale: const Locale('en'),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: ElevatedButton(
+                onPressed: () async => answer = await showConsentDialog(context, bundle: bundle, replacing: false),
+                child: const Text('open'),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
@@ -166,19 +167,21 @@ void main() {
   testWidgets('a bundle from a link names where it came from', (tester) async {
     final bundle = await inspect(fixture);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        locale: const Locale('en'),
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: ElevatedButton(
-              onPressed: () => showConsentDialog(context, bundle: bundle, replacing: false, from: 'example.org'),
-              child: const Text('open'),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          locale: const Locale('en'),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: ElevatedButton(
+                onPressed: () => showConsentDialog(context, bundle: bundle, replacing: false, from: 'example.org'),
+                child: const Text('open'),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 

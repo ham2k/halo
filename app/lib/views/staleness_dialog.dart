@@ -91,13 +91,7 @@ void showStalenessNag({
 }
 
 class StalenessNagDialog extends StatelessWidget {
-  const StalenessNagDialog({
-    super.key,
-    required this.signal,
-    required this.body,
-    this.url,
-    this.restart = const RestartService(),
-  });
+  const StalenessNagDialog({super.key, required this.signal, required this.body, this.url, this.restart = const RestartService()});
 
   final StalenessSignal signal;
   final String body;
@@ -139,20 +133,14 @@ class StalenessNagDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(body),
-          if (_isFloor) ...[
-            const SizedBox(height: Space.md),
-            Text(_floorAction, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
-          ],
+          if (_isFloor) ...[const SizedBox(height: Space.md), Text(_floorAction, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold))],
         ],
       ),
       // The way out sits in `cancel`, not in `actions`: only that slot gets
       // haloDialogCancelGap, and this is the button an operator reaches for at
       // speed. "Ignore for now" rather than Dismiss or Done — it names what is
       // actually happening, which is that the nag is coming back.
-      cancel: TextButton(
-        onPressed: () => Navigator.of(context).pop(true),
-        child: Text(t.staleness.ignoreForNow),
-      ),
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.staleness.ignoreForNow)),
       actions: [
         if (_isFloor && restart.isSupported)
           FilledButton(
@@ -167,10 +155,7 @@ class StalenessNagDialog extends StatelessWidget {
             child: Text(t.updates.restartNow),
           )
         else if (!_isFloor && url != null)
-          FilledButton(
-            onPressed: () => openStalenessUrl(url!),
-            child: Text(t.expiredBuild.visit),
-          ),
+          FilledButton(onPressed: () => openStalenessUrl(url!), child: Text(t.expiredBuild.visit)),
       ],
     );
   }

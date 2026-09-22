@@ -92,8 +92,7 @@ String dcnAddress(Object? address) {
 /// NOT CRLF. A module scans for the terminator and evaluates its input
 /// buffer there, so a stray LF would be carried into the next packet's start
 /// and the buffer flushed when it failed to parse.
-String buildDcnPacket(String payload, {required String to, String from = dcnMasterAddress}) =>
-    '/$from$to:$payload:$dcnCrcPlaceholder\r';
+String buildDcnPacket(String payload, {required String to, String from = dcnMasterAddress}) => '/$from$to:$payload:$dcnCrcPlaceholder\r';
 
 /// A broadcast packet — decoded by every module on the bus.
 ///
@@ -221,11 +220,7 @@ CoaxState? parseCoaxUpdate(DcnPacket packet) {
   if (mask.split('').where((c) => c == '1').length > 1) return null;
 
   final index = mask.indexOf('1');
-  return CoaxState(
-    moduleType: fields[1],
-    mask: mask,
-    selectedPort: index < 0 ? null : index + 1,
-  );
+  return CoaxState(moduleType: fields[1], mask: mask, selectedPort: index < 0 ? null : index + 1);
 }
 
 final _labelPattern = RegExp(r'^Label\s+(\d+)\s*=\s*(.*)$');

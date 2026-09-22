@@ -55,5 +55,4 @@ export 'src/wall_clock.dart';
 export 'src/form_renderer.dart' hide formActionsRow;
 export 'src/format_utils.dart';
 
-
 export 'src/text_template_editor.dart';

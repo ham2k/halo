@@ -74,11 +74,13 @@ void main() {
       if (start == 0) argsJsonBytes = jsonEncode({'rows': chunk, 'headers': headers}).length;
 
       final swB = Stopwatch()..start();
-      final dynamic response = await host.invokeHook('dataFile',
-          key: 'sota-all-summits',
-          method: 'mapCsvBatch',
-          args: {'rows': chunk, 'headers': headers},
-          timeout: const Duration(seconds: 120));
+      final dynamic response = await host.invokeHook(
+        'dataFile',
+        key: 'sota-all-summits',
+        method: 'mapCsvBatch',
+        args: {'rows': chunk, 'headers': headers},
+        timeout: const Duration(seconds: 120),
+      );
       swB.stop();
       msB += swB.elapsedMilliseconds;
 
@@ -95,17 +97,19 @@ void main() {
           if (item is Map) {
             final entryKey = item['key'] as String?;
             if (entryKey != null) {
-              lookupRows.add(LookupRow(
-                category: 'sota',
-                subCategory: item['subCategory'] as String?,
-                key: entryKey,
-                name: item['name'] as String?,
-                lat: (item['lat'] as num?)?.toDouble(),
-                lon: (item['lon'] as num?)?.toDouble(),
-                flags: item['flags'] as int?,
-                data: item['data'] != null ? jsonEncode(item['data']) : null,
-                updated: updatedFlag,
-              ));
+              lookupRows.add(
+                LookupRow(
+                  category: 'sota',
+                  subCategory: item['subCategory'] as String?,
+                  key: entryKey,
+                  name: item['name'] as String?,
+                  lat: (item['lat'] as num?)?.toDouble(),
+                  lon: (item['lon'] as num?)?.toDouble(),
+                  flags: item['flags'] as int?,
+                  data: item['data'] != null ? jsonEncode(item['data']) : null,
+                  updated: updatedFlag,
+                ),
+              );
             }
           }
         }

@@ -59,8 +59,9 @@ void main() {
     expect(await callsKnown(replay: true), 0, reason: 'nothing cached yet');
 
     Directory(DataFileSync.rawCacheDir(LookupStore.open(cache.path))).createSync(recursive: true);
-    File('${DataFileSync.rawCacheDir(LookupStore.open(cache.path))}/hams-of-note.json')
-        .writeAsStringSync(File('test/fixtures/hams-of-note.json').readAsStringSync());
+    File(
+      '${DataFileSync.rawCacheDir(LookupStore.open(cache.path))}/hams-of-note.json',
+    ).writeAsStringSync(File('test/fixtures/hams-of-note.json').readAsStringSync());
 
     expect(await callsKnown(replay: true), 2);
     // And the proof that it is the replay doing it, not the file's mere

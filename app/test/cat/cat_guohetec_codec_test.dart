@@ -30,25 +30,24 @@ List<int> statusPayload({
   int statusBits = 0x00,
   int signalByte = 0x12,
   int swrByte = 0x00,
-}) =>
-    [
-      transmitting ? 1 : 0,
-      vfoAMode,
-      vfoBMode,
-      ...encodeFrequency(vfoAHz),
-      ...encodeFrequency(vfoBHz),
-      vfoBActive ? 1 : 0,
-      0, // NR/NB
-      0, // RIT
-      0, // XIT
-      20, // filter bandwidth
-      0, // spectrum bandwidth
-      voltage,
-      12, 34, 56, // UTC
-      statusBits,
-      signalByte,
-      swrByte,
-    ];
+}) => [
+  transmitting ? 1 : 0,
+  vfoAMode,
+  vfoBMode,
+  ...encodeFrequency(vfoAHz),
+  ...encodeFrequency(vfoBHz),
+  vfoBActive ? 1 : 0,
+  0, // NR/NB
+  0, // RIT
+  0, // XIT
+  20, // filter bandwidth
+  0, // spectrum bandwidth
+  voltage,
+  12, 34, 56, // UTC
+  statusBits,
+  signalByte,
+  swrByte,
+];
 
 void main() {
   group('CRC', () {
@@ -83,7 +82,9 @@ void main() {
     test('a frame round-trips through the framer', () {
       final framer = GuohetecFramer();
       final frames = framer.add(buildGuohetecFrame(GuohetecOpcode.equipmentType, [0x00]));
-      expect(frames, [const GuohetecFrame(command: GuohetecOpcode.equipmentType, data: [0x00])]);
+      expect(frames, [
+        const GuohetecFrame(command: GuohetecOpcode.equipmentType, data: [0x00]),
+      ]);
       expect(framer.crcFailures, 0);
     });
 
@@ -132,7 +133,10 @@ void main() {
       // 256 bytes of magnitudes as a status reply.
       final sweep = [0x7E, 0x7E, 0x7E, 0x7E, ...List.filled(80, 0x33)];
       final framer = GuohetecFramer();
-      final frames = framer.add([...sweep, ...buildGuohetecFrame(GuohetecOpcode.meters, [0x12, 0x00])]);
+      final frames = framer.add([
+        ...sweep,
+        ...buildGuohetecFrame(GuohetecOpcode.meters, [0x12, 0x00]),
+      ]);
       expect(frames.single.command, GuohetecOpcode.meters);
       expect(framer.crcFailures, 0);
     });
@@ -168,7 +172,11 @@ void main() {
       // header. Taking the FIRST four of the run would read a preamble byte
       // as the length.
       final framer = GuohetecFramer();
-      final frames = framer.add([0xA5, 0xA5, ...buildGuohetecFrame(GuohetecOpcode.equipmentType, [0x00])]);
+      final frames = framer.add([
+        0xA5,
+        0xA5,
+        ...buildGuohetecFrame(GuohetecOpcode.equipmentType, [0x00]),
+      ]);
       expect(frames.single.command, GuohetecOpcode.equipmentType);
     });
 

@@ -93,8 +93,8 @@ void main() {
           'key': 'sota',
           'ok': true,
           'value': [
-            {'refType': 'sota', 'order': 1}
-          ]
+            {'refType': 'sota', 'order': 1},
+          ],
         },
       ]);
 
@@ -123,7 +123,7 @@ void main() {
             {'refType': 'good'},
             42,
             null,
-          ]
+          ],
         },
       ]);
 
@@ -146,8 +146,8 @@ void main() {
           'key': 'pota',
           'ok': true,
           'value': [
-            {'refType': 'pota'}
-          ]
+            {'refType': 'pota'},
+          ],
         },
       ]);
 
@@ -164,15 +164,17 @@ void main() {
       // its fields by an extension it has nothing to do with. Drop the flag
       // and `_TimingOutHost` throws, so this fails on the controls, not on a
       // spied-upon argument.
-      final service = _ServiceWithHost(const _TimingOutHost([
-        {
-          'key': 'pota',
-          'ok': true,
-          'value': [
-            {'refType': 'pota'}
-          ]
-        },
-      ]));
+      final service = _ServiceWithHost(
+        const _TimingOutHost([
+          {
+            'key': 'pota',
+            'ok': true,
+            'value': [
+              {'refType': 'pota'},
+            ],
+          },
+        ]),
+      );
 
       final result = await service.operationControls(const {});
 
@@ -198,7 +200,7 @@ void main() {
             {'refType': 'late', 'order': 2},
             {'refType': 'bogus', 'order': '1'},
             {'refType': 'early', 'order': 0},
-          ]
+          ],
         },
       ]);
 
@@ -218,8 +220,8 @@ void main() {
           'key': 'pota',
           'ok': true,
           'value': [
-            {'refType': 'pota'}
-          ]
+            {'refType': 'pota'},
+          ],
         },
       ]);
 
@@ -241,8 +243,8 @@ void main() {
         'key': 'pota',
         'ok': true,
         'value': [
-          {'refType': 'pota'}
-        ]
+          {'refType': 'pota'},
+        ],
       },
     ]);
 
@@ -263,30 +265,33 @@ void main() {
       extensions.settings = settings;
       final services = HaLoServices(db, settings, extensions: extensions);
 
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: OperationLocationScreen(
-            services: services,
-            operation: Operation(
-              uuid: 'op-fail',
-              data: {
-                'refs': [
-                  {'type': 'pota', 'ref': 'US-9999', 'name': 'A Park', 'grid': 'FN31pr'},
-                ],
-              },
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: OperationLocationScreen(
+              services: services,
+              operation: Operation(
+                uuid: 'op-fail',
+                data: {
+                  'refs': [
+                    {'type': 'pota', 'ref': 'US-9999', 'name': 'A Park', 'grid': 'FN31pr'},
+                  ],
+                },
+              ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
     }
 
     testWidgets('a failed fetch does not blame the extension, and says so', (tester) async {
       await pumpWith(
-          tester,
-          _serviceAnswering([
-            {'key': 'pota', 'ok': false, 'error': 'timed out'},
-          ]));
+        tester,
+        _serviceAnswering([
+          {'key': 'pota', 'ok': false, 'error': 'timed out'},
+        ]),
+      );
 
       final tileFinder = find.ancestor(of: find.text('US-9999'), matching: find.byType(ListTile));
       final tile = tester.widget<ListTile>(tileFinder);
@@ -295,14 +300,16 @@ void main() {
       // The whole point. POTA is installed and enabled; only its hook failed,
       // so the red "no longer installed" treatment would be a false statement
       // about the operator's setup.
-      expect(tile.tileColor, isNot(theme.colorScheme.errorContainer.withValues(alpha: 0.4)),
-          reason: 'a hook that could not answer is not the same as an uninstalled extension');
+      expect(
+        tile.tileColor,
+        isNot(theme.colorScheme.errorContainer.withValues(alpha: 0.4)),
+        reason: 'a hook that could not answer is not the same as an uninstalled extension',
+      );
       expect(find.descendant(of: tileFinder, matching: find.byIcon(MdiIcons.help)), findsNothing);
 
       // Suppressing the red silently would swap a wrong explanation for none
       // at all, so the notice is what makes the suppression honest.
-      expect(find.text(TranslationProvider.of(tester.element(tileFinder)).translations.operationLocationScreen.controlsUnavailableTitle),
-          findsOneWidget);
+      expect(find.text(TranslationProvider.of(tester.element(tileFinder)).translations.operationLocationScreen.controlsUnavailableTitle), findsOneWidget);
     });
 
     testWidgets('a clean fetch with a genuinely unknown ref type still flags it', (tester) async {

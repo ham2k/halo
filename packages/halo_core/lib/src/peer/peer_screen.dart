@@ -55,8 +55,7 @@ class PeerScreenSource {
   }
 
   @override
-  bool operator ==(Object other) =>
-      other is PeerScreenSource && other.id == id && other.name == name && other.kind == kind;
+  bool operator ==(Object other) => other is PeerScreenSource && other.id == id && other.name == name && other.kind == kind;
 
   @override
   int get hashCode => Object.hash(id, name, kind);
@@ -87,22 +86,12 @@ class PeerScreenCrop {
   final double width;
   final double height;
 
-  const PeerScreenCrop({
-    required this.left,
-    required this.top,
-    required this.width,
-    required this.height,
-  });
+  const PeerScreenCrop({required this.left, required this.top, required this.width, required this.height});
 
   /// Clamped into the source and never inverted, so a caller may hand over
   /// whatever its pan arithmetic produced — an off-screen rect is an
   /// ordinary consequence of panning, not a fault.
-  factory PeerScreenCrop.clamped({
-    required double left,
-    required double top,
-    required double width,
-    required double height,
-  }) {
+  factory PeerScreenCrop.clamped({required double left, required double top, required double width, required double height}) {
     final w = width.isFinite ? width.clamp(minSize, 1.0).toDouble() : 1.0;
     final h = height.isFinite ? height.clamp(minSize, 1.0).toDouble() : 1.0;
     return PeerScreenCrop(
@@ -142,34 +131,20 @@ class PeerScreenCrop {
   /// viewer gets anyway. It is wrong on a frame, where the rect says where
   /// to draw the picture — read as "no crop", a cropped frame is stretched
   /// across the pane and re-fits the framing to itself.
-  static bool isReadable(Object? raw) =>
-      raw == null ||
-      (raw is List && raw.length == 4 && raw.every((v) => v is num && v.isFinite));
+  static bool isReadable(Object? raw) => raw == null || (raw is List && raw.length == 4 && raw.every((v) => v is num && v.isFinite));
 
   /// Null for anything malformed OR for the whole source, so a caller can
   /// treat "no crop" and "crop of everything" as the one case they are.
   static PeerScreenCrop? from(Object? raw) {
     if (raw is! List || raw.length != 4) return null;
-    final values = [
-      for (final value in raw) value is num ? value.toDouble() : double.nan,
-    ];
+    final values = [for (final value in raw) value is num ? value.toDouble() : double.nan];
     if (values.any((v) => !v.isFinite)) return null;
-    final crop = PeerScreenCrop.clamped(
-      left: values[0],
-      top: values[1],
-      width: values[2],
-      height: values[3],
-    );
+    final crop = PeerScreenCrop.clamped(left: values[0], top: values[1], width: values[2], height: values[3]);
     return crop.isFull ? null : crop;
   }
 
   @override
-  bool operator ==(Object other) =>
-      other is PeerScreenCrop &&
-      other.left == left &&
-      other.top == top &&
-      other.width == width &&
-      other.height == height;
+  bool operator ==(Object other) => other is PeerScreenCrop && other.left == left && other.top == top && other.width == width && other.height == height;
 
   @override
   int get hashCode => Object.hash(left, top, width, height);
@@ -235,14 +210,9 @@ class PeerScreenFrame {
   });
 
   Uint8List encode() {
-    final header = utf8.encode(jsonEncode({
-      'src': sourceId,
-      'w': width,
-      'h': height,
-      'seq': sequence,
-      'fmt': format,
-      if (crop != null && !crop!.isFull) 'crop': crop!.toJson(),
-    }));
+    final header = utf8.encode(
+      jsonEncode({'src': sourceId, 'w': width, 'h': height, 'seq': sequence, 'fmt': format, if (crop != null && !crop!.isFull) 'crop': crop!.toJson()}),
+    );
     final out = Uint8List(3 + header.length + image.length);
     out[0] = formatVersion;
     out[1] = (header.length >> 8) & 0xFF;
@@ -446,13 +416,13 @@ class PeerScreenSubscription {
   static const double defaultQuality = 0.6;
 
   Map<String, dynamic> toJson() => {
-        'id': sourceId,
-        'maxWidth': maxWidth,
-        'fps': fps,
-        if (quality != defaultQuality) 'quality': quality,
-        if (crop != null && !crop!.isFull) 'crop': crop!.toJson(),
-        if (acks) 'acks': true,
-      };
+    'id': sourceId,
+    'maxWidth': maxWidth,
+    'fps': fps,
+    if (quality != defaultQuality) 'quality': quality,
+    if (crop != null && !crop!.isFull) 'crop': crop!.toJson(),
+    if (acks) 'acks': true,
+  };
 
   static PeerScreenSubscription? from(Map<String, dynamic> fields) {
     final id = fields['id'];
@@ -531,21 +501,9 @@ class PeerScreenGrant {
   /// has the address from the socket and no port at all.
   final int port;
 
-  const PeerScreenGrant({
-    required this.sourceId,
-    required this.ticket,
-    required this.port,
-    this.paced = false,
-    this.crops = false,
-  });
+  const PeerScreenGrant({required this.sourceId, required this.ticket, required this.port, this.paced = false, this.crops = false});
 
-  Map<String, dynamic> toJson() => {
-        'id': sourceId,
-        'ticket': ticket,
-        'port': port,
-        if (paced) 'paced': true,
-        if (crops) 'crops': true,
-      };
+  Map<String, dynamic> toJson() => {'id': sourceId, 'ticket': ticket, 'port': port, if (paced) 'paced': true, if (crops) 'crops': true};
 
   static PeerScreenGrant? from(Map<String, dynamic> fields) {
     final id = fields['id'];
@@ -554,12 +512,6 @@ class PeerScreenGrant {
     if (id is! String || id.isEmpty) return null;
     if (ticket is! String || ticket.isEmpty) return null;
     if (port == null || port <= 0 || port > 65535) return null;
-    return PeerScreenGrant(
-      sourceId: id,
-      ticket: ticket,
-      port: port,
-      paced: fields['paced'] == true,
-      crops: fields['crops'] == true,
-    );
+    return PeerScreenGrant(sourceId: id, ticket: ticket, port: port, paced: fields['paced'] == true, crops: fields['crops'] == true);
   }
 }

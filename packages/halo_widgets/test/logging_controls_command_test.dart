@@ -65,8 +65,7 @@ void main() {
   });
 
   group('HALO-158: the frequency field also takes a band', () {
-    TextField field(WidgetTester tester, String label) =>
-        tester.widget<TextField>(find.widgetWithText(TextField, label));
+    TextField field(WidgetTester tester, String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     /// Types [text] into the Frequency field and leaves it with Space —
     /// which, from this field, hands focus back to the call field
@@ -88,8 +87,7 @@ void main() {
       await typeFreqAndLeave(tester, '40m');
 
       expect(field(tester, 'Band').controller!.text, '40m');
-      expect(field(tester, 'Frequency').controller!.text, isEmpty,
-          reason: 'the text that named the band is not a frequency, and must not read as one');
+      expect(field(tester, 'Frequency').controller!.text, isEmpty, reason: 'the text that named the band is not a frequency, and must not read as one');
     });
 
     testWidgets('a bare number names a band too, since the iOS keyboard here has no letters', (tester) async {
@@ -108,8 +106,7 @@ void main() {
 
       await typeFreqAndLeave(tester, '7123');
 
-      expect(field(tester, 'Frequency').controller!.text, '7123',
-          reason: 'a frequency inside a band is never re-read as a band');
+      expect(field(tester, 'Frequency').controller!.text, '7123', reason: 'a frequency inside a band is never re-read as a band');
       expect(field(tester, 'Band').controller!.text, '40m');
     });
 
@@ -169,13 +166,11 @@ void main() {
 
       final logged = await waitForQsos(tester, 1);
       expect(logged.single.band, '40m');
-      expect(logged.single.freq, isNull,
-          reason: 'the operator named a band, not a frequency — HALO-24 is satisfied by the band alone');
+      expect(logged.single.freq, isNull, reason: 'the operator named a band, not a frequency — HALO-24 is satisfied by the band alone');
     });
   });
 
-  testWidgets('HALO-32: a frequency command with no mode of its own guesses one from the band plan',
-      (tester) async {
+  testWidgets('HALO-32: a frequency command with no mode of its own guesses one from the band plan', (tester) async {
     await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeInterpretCommand)));
     await openControl(tester, MdiIcons.radio);
 
@@ -190,8 +185,11 @@ void main() {
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).decoration!.hintText, '+0',
-        reason: 'FT8 exchanges a signal-to-noise figure, not an RST');
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).decoration!.hintText,
+      '+0',
+      reason: 'FT8 exchanges a signal-to-noise figure, not an RST',
+    );
   });
 
   // Enter must never cost the operator the field they were typing in. The
@@ -224,8 +222,7 @@ void main() {
     }
 
     Finder callField() => find.widgetWithText(TextField, 'Their call');
-    bool hasFocus(WidgetTester tester, Finder field) =>
-        tester.widget<TextField>(field).focusNode!.hasFocus;
+    bool hasFocus(WidgetTester tester, Finder field) => tester.widget<TextField>(field).focusNode!.hasFocus;
 
     testWidgets('after an everyday frequency command', (tester) async {
       await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeInterpretCommand)));
@@ -241,24 +238,29 @@ void main() {
     // between them is downstream, in the status bar.
     testWidgets('after a command that only posts to the status bar', (tester) async {
       final dispatched = <String>[];
-      Future<Map<String, dynamic>?> interpretDevProgress(String input,
-          [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
+      Future<Map<String, dynamic>?> interpretDevProgress(
+        String input, [
+        Map<String, dynamic>? operation,
+        Map<String, dynamic>? qso,
+        bool execute = false,
+      ]) async {
         if (input.trim().toUpperCase() != 'DEVPROGRESS') return null;
         return {
           'describe': 'Show an indeterminate dev progress bar?',
           'confirm': 'Added an indeterminate progress bar',
           'commands': [
-            {'devProgress': {'icon': 'progress-clock', 'title': 'Dev progress'}}
+            {
+              'devProgress': {'icon': 'progress-clock', 'title': 'Dev progress'},
+            },
           ],
         };
       }
 
-      await tester.pumpWidget(host(
-        commands: CommandHooks(
-          interpretCommand: interpretDevProgress,
-          onCommandAction: (a, [params]) async => dispatched.add(a),
+      await tester.pumpWidget(
+        host(
+          commands: CommandHooks(interpretCommand: interpretDevProgress, onCommandAction: (a, [params]) async => dispatched.add(a)),
         ),
-      ));
+      );
       await submit(tester, callField(), 'DEVPROGRESS');
       expect(hasFocus(tester, callField()), isTrue);
       expect(dispatched, ['devProgress']);
@@ -286,15 +288,8 @@ void main() {
       node.requestFocus();
       await tester.pump();
 
-      final state = tester.state<EditableTextState>(find.descendant(
-        of: callField(),
-        matching: find.byType(EditableText),
-      ));
-      state.updateEditingValue(const TextEditingValue(
-        text: 'W1A',
-        selection: TextSelection.collapsed(offset: 3),
-        composing: TextRange(start: 0, end: 3),
-      ));
+      final state = tester.state<EditableTextState>(find.descendant(of: callField(), matching: find.byType(EditableText)));
+      state.updateEditingValue(const TextEditingValue(text: 'W1A', selection: TextSelection.collapsed(offset: 3), composing: TextRange(start: 0, end: 3)));
       await tester.pump();
       expect(state.textEditingValue.composing.isValid, isTrue, reason: 'the IME state must be set up first');
 
@@ -305,8 +300,7 @@ void main() {
       // pump, the no-op mutant survives; without one, it fails.
       await tester.testTextInput.receiveAction(TextInputAction.done);
 
-      expect(state.textEditingValue.composing.isValid, isFalse,
-          reason: 'a live composing run must not survive the submit');
+      expect(state.textEditingValue.composing.isValid, isFalse, reason: 'a live composing run must not survive the submit');
     });
 
     // Submitting from a field other than the callsign must leave focus THERE.
@@ -345,23 +339,18 @@ void main() {
         'icon': 'flag-checkered',
         'input': {'kind': 'text', 'refType': 'cqwpx', 'field': 'theirSerial', 'numeric': true},
       };
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['cqwpx']),
-              qsosRepository: qsos,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: const [theirSerial],
-            ),
-            commands: CommandHooks(
-              interpretCommand: fakeInterpretCommand,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['cqwpx']), qsosRepository: qsos),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: const [theirSerial]),
+              commands: CommandHooks(interpretCommand: fakeInterpretCommand),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump(const Duration(milliseconds: 100));
 
       final exchange = find.widgetWithText(TextField, 'Their #');
@@ -375,24 +364,27 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(hasFocus(tester, exchange), isTrue,
-          reason: 'Enter from a contest exchange must not move the caret to the call field');
+      expect(hasFocus(tester, exchange), isTrue, reason: 'Enter from a contest exchange must not move the caret to the call field');
       expect(hasFocus(tester, callField()), isFalse);
     });
 
     // Saving an edit returns through `onEditCanceled`, which never touched
     // focus — a path no amount of re-focusing inside the command branch reaches.
     testWidgets('saving an edited QSO with Enter keeps focus', (tester) async {
-      final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'their': {'call': 'W1AW'},
-            'startAtMillis': 1000000,
-            'freq': 7100,
-            'mode': 'SSB',
-          })))!;
+      final existingQso = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': 1000000,
+          'freq': 7100,
+          'mode': 'SSB',
+        }),
+      ))!;
       var canceled = false;
-      await tester.pumpWidget(host(
-        session: LoggingSession(editingQso: existingQso, onEditCanceled: () => canceled = true),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: existingQso, onEditCanceled: () => canceled = true),
+        ),
+      );
 
       await submit(tester, callField(), 'W1AWX');
       expect(canceled, isTrue, reason: 'the edit should have been saved, not ignored');
@@ -407,22 +399,25 @@ void main() {
     // read this one as proving the guard holds generally.
     testWidgets('a second Enter while a slow command is in flight keeps focus', (tester) async {
       final release = Completer<void>();
-      Future<Map<String, dynamic>?> slowCommand(String input,
-          [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
+      Future<Map<String, dynamic>?> slowCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
         if (input.trim().toUpperCase() != 'SLOW') return null;
         if (execute) await release.future;
         return {
           'describe': 'Run the slow one?',
           'confirm': 'Ran it',
           'commands': [
-            {'devStatus': {'text': 'done'}}
+            {
+              'devStatus': {'text': 'done'},
+            },
           ],
         };
       }
 
-      await tester.pumpWidget(host(
-        commands: CommandHooks(interpretCommand: slowCommand, onCommandAction: (a, [p]) async {}),
-      ));
+      await tester.pumpWidget(
+        host(
+          commands: CommandHooks(interpretCommand: slowCommand, onCommandAction: (a, [p]) async {}),
+        ),
+      );
       await tester.enterText(callField(), 'SLOW');
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -454,8 +449,7 @@ void main() {
     // auto-repeat (~33-90ms on macOS) fires well inside them.
     testWidgets('a second Enter during the interpret round-trip does not log the QSO twice', (tester) async {
       var interpretCalls = 0;
-      Future<Map<String, dynamic>?> slowNullInterpret(String input,
-          [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
+      Future<Map<String, dynamic>?> slowNullInterpret(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
         interpretCalls++;
         await Future<void>.delayed(const Duration(milliseconds: 50));
         return null; // a callsign is not a command — the ordinary logging path
@@ -465,13 +459,17 @@ void main() {
       // the first Enter finishes and `_wipe`s the field before the second
       // resumes, so the `_call != call` staleness check catches the duplicate
       // by accident and the test passes against the bug.
-      await tester.pumpWidget(host(
-        log: baseLog().copyWith(decorateQsoBeforeSave: (data, _) async {
-          await Future<void>.delayed(const Duration(milliseconds: 60));
-          return data;
-        }),
-        commands: CommandHooks(interpretCommand: slowNullInterpret),
-      ));
+      await tester.pumpWidget(
+        host(
+          log: baseLog().copyWith(
+            decorateQsoBeforeSave: (data, _) async {
+              await Future<void>.delayed(const Duration(milliseconds: 60));
+              return data;
+            },
+          ),
+          commands: CommandHooks(interpretCommand: slowNullInterpret),
+        ),
+      );
       await tester.enterText(callField(), 'W1AW');
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -503,13 +501,11 @@ void main() {
     }
 
     String? lastMessage;
-    await tester.pumpWidget(host(
-      commands: CommandHooks(
-        interpretCommand: interpret,
-        interpretationUpdates: updates.stream,
-        onCommandMessageChanged: (message) => lastMessage = message,
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(interpretCommand: interpret, interpretationUpdates: updates.stream, onCommandMessageChanged: (message) => lastMessage = message),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SOLAR');
     await tester.pump(const Duration(milliseconds: 200)); // past the 150ms describe debounce
@@ -541,13 +537,11 @@ void main() {
     }
 
     String? lastMessage;
-    await tester.pumpWidget(host(
-      commands: CommandHooks(
-        interpretCommand: interpret,
-        interpretationUpdates: updates.stream,
-        onCommandMessageChanged: (message) => lastMessage = message,
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(interpretCommand: interpret, interpretationUpdates: updates.stream, onCommandMessageChanged: (message) => lastMessage = message),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SOLAR');
     await tester.pump(const Duration(milliseconds: 200));
@@ -615,8 +609,11 @@ void main() {
     await tester.pump();
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
-    expect(sent.selection, const TextSelection.collapsed(offset: 0),
-        reason: 'the guess did not change, so the RSTs must not have been rewritten out from under the cursor');
+    expect(
+      sent.selection,
+      const TextSelection.collapsed(offset: 0),
+      reason: 'the guess did not change, so the RSTs must not have been rewritten out from under the cursor',
+    );
   });
 
   testWidgets('HALO-32: typing a frequency guesses its mode from the band plan', (tester) async {
@@ -628,8 +625,11 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14074');
     await tester.pump();
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).decoration!.hintText, '+0',
-        reason: 'the mode guess refreshes the default report placeholder too');
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).decoration!.hintText,
+      '+0',
+      reason: 'the mode guess refreshes the default report placeholder too',
+    );
 
     // 5332 kHz (a 60m channel) is a frequency the band plan has no single
     // mode for. Both edits happen inside the same continuous session (the
@@ -654,9 +654,7 @@ void main() {
     // country code is discarded (see radio.dart's `_bestSegmentFor`), and
     // the panel is fed both from one DXCC entity anyway — operation_view's
     // `ourGuess` sets `_ourItuRegion` and `_ourCountryCode` together.
-    await tester.pumpWidget(host(
-      radio: baseRadio().copyWith(ourItuRegion: 2, ourCountryCode: 'us'),
-    )); // tunedRadio seeds Mode as SSB
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(ourItuRegion: 2, ourCountryCode: 'us'))); // tunedRadio seeds Mode as SSB
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
 
@@ -674,8 +672,7 @@ void main() {
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
   });
 
-  testWidgets('HALO-32: a transient mid-typing match does not strand the mode when the finished frequency has none',
-      (tester) async {
+  testWidgets('HALO-32: a transient mid-typing match does not strand the mode when the finished frequency has none', (tester) async {
     // Typing "18001" character by character passes through "1800" (a real
     // 160m match, guesses RTTY) before landing on "18001" itself, which
     // falls in the real gap between 160m (ends 2000) and 17m (starts
@@ -695,12 +692,7 @@ void main() {
   });
 
   testWidgets('call-field command awaiting params (expectsParams) allows space but stays uppercase, and Enter does not execute it', (tester) async {
-    Future<Map<String, dynamic>?> fakeReloadPrefix(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeReloadPrefix(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() == 'RELOAD') return {'expectsParams': true};
       return null;
     }
@@ -737,12 +729,7 @@ void main() {
     // the bare-prefix result and the complete result. The second half is
     // what keeps "NOTE Called Bob," + more typing from being snapped back
     // to uppercase after the debounced interpret() sees a complete command.
-    Future<Map<String, dynamic>?> fakeNoteCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeNoteCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       final match = RegExp(r'^NOTE(?:\s+(.*))?$', caseSensitive: false).firstMatch(input.trim());
       if (match == null) return null;
       final text = match.group(1)?.trim();
@@ -751,7 +738,9 @@ void main() {
         'mixedCase': true,
         'describe': 'Add note "$text"?',
         'commands': [
-          {'updateQso': {'notes': text}},
+          {
+            'updateQso': {'notes': text},
+          },
         ],
       };
     }
@@ -812,12 +801,7 @@ void main() {
     // character filter over the ENTIRE text — silently deleting every
     // space ("NOTCALLEDBOB…") with no undo. The retained free-text mode
     // must survive until the field is cleared instead.
-    Future<Map<String, dynamic>?> fakeNoteCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeNoteCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       final match = RegExp(r'^NOTE(?:\s+(.*))?$', caseSensitive: false).firstMatch(input.trim());
       if (match == null) return null;
       final text = match.group(1)?.trim();
@@ -826,7 +810,9 @@ void main() {
         'mixedCase': true,
         'describe': 'Add note "$text"?',
         'commands': [
-          {'updateQso': {'notes': text}},
+          {
+            'updateQso': {'notes': text},
+          },
         ],
       };
     }
@@ -863,12 +849,7 @@ void main() {
     // reset the call field would show W1AW while still in the note's
     // free-prose mode, and the stale interpretation would make Space
     // insert a literal space instead of advancing focus.
-    Future<Map<String, dynamic>?> fakeNoteCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeNoteCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       final match = RegExp(r'^NOTE(?:\s+(.*))?$', caseSensitive: false).firstMatch(input.trim());
       if (match == null) return null;
       final text = match.group(1)?.trim();
@@ -877,7 +858,9 @@ void main() {
         'mixedCase': true,
         'describe': 'Add note "$text"?',
         'commands': [
-          {'updateQso': {'notes': text}},
+          {
+            'updateQso': {'notes': text},
+          },
         ],
       };
     }
@@ -889,12 +872,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200)); // complete mixedCase interpretation stored
 
     // Tap a spot: didUpdateWidget applies the suggestion.
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-        'their': {'call': 'W1AW'},
-      }),
-      commands: CommandHooks(interpretCommand: fakeNoteCommand),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'W1AW'},
+          },
+        ),
+        commands: CommandHooks(interpretCommand: fakeNoteCommand),
+      ),
+    );
     await tester.pump();
     expect(field('Their call').controller!.text, 'W1AW');
 
@@ -916,12 +903,7 @@ void main() {
     // interpretation synchronously before deciding, so a space typed right
     // after "RELOAD" in one fluent motion (no pause for the 150ms debounce)
     // still inserts a literal space instead of silently advancing focus.
-    Future<Map<String, dynamic>?> fakeReloadPrefix(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeReloadPrefix(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() == 'RELOAD') return {'expectsParams': true};
       return null;
     }
@@ -947,12 +929,7 @@ void main() {
     // typed by the user is silently destroyed before the extension ever
     // sees it.
     final seenInputs = <String>[];
-    Future<Map<String, dynamic>?> fakeNotePrefix(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeNotePrefix(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       seenInputs.add(input);
       // mixedCase, like the real NOTE command: without it the field's own
       // uppercase formatter would destroy the lowercase before
@@ -980,12 +957,7 @@ void main() {
     // interprets fine but silently no-ops on execution, exactly what
     // happened when reloadDataFiles first shipped without this wiring.
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
-    Future<Map<String, dynamic>?> fakeReloadCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeReloadCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != 'RELOADALL') return null;
       return {
         'describe': 'Reload all data files?',
@@ -998,11 +970,16 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(
-      commands: CommandHooks(interpretCommand: fakeReloadCommand, onCommandAction: (action, [params]) async {
-        dispatched.add(MapEntry(action, params));
-      }),
-    ));
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(
+          interpretCommand: fakeReloadCommand,
+          onCommandAction: (action, [params]) async {
+            dispatched.add(MapEntry(action, params));
+          },
+        ),
+      ),
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOADALL');
     await tester.pump();
@@ -1021,12 +998,7 @@ void main() {
     // `updateSettings` it kept for itself would write nothing and say
     // nothing — the host's own confirm text is the only feedback.
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
-    Future<Map<String, dynamic>?> fakeDevmode(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeDevmode(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != 'DEVMODE') return null;
       return {
         'describe': 'Developer mode on',
@@ -1039,11 +1011,16 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(
-      commands: CommandHooks(interpretCommand: fakeDevmode, onCommandAction: (action, [params]) async {
-        dispatched.add(MapEntry(action, params));
-      }),
-    ));
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(
+          interpretCommand: fakeDevmode,
+          onCommandAction: (action, [params]) async {
+            dispatched.add(MapEntry(action, params));
+          },
+        ),
+      ),
+    );
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVMODE');
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -1061,12 +1038,7 @@ void main() {
     // told the status bar is being hammered while nothing happens at all —
     // which reads as the churn no longer provoking the bug.
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
-    Future<Map<String, dynamic>?> fakeHammerCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeHammerCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != 'DEVHAMMER') return null;
       return {
         'describe': 'Churn the status bar?',
@@ -1079,11 +1051,16 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(
-      commands: CommandHooks(interpretCommand: fakeHammerCommand, onCommandAction: (action, [params]) async {
-        dispatched.add(MapEntry(action, params));
-      }),
-    ));
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(
+          interpretCommand: fakeHammerCommand,
+          onCommandAction: (action, [params]) async {
+            dispatched.add(MapEntry(action, params));
+          },
+        ),
+      ),
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVHAMMER');
     await tester.pump();
@@ -1102,12 +1079,7 @@ void main() {
     // to Off?", clears the field, prints the confirmation — and changes
     // nothing at all.
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
-    Future<Map<String, dynamic>?> fakeSettingsCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeSettingsCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       switch (input.trim().toUpperCase()) {
         case 'SETONE':
           return {
@@ -1136,11 +1108,16 @@ void main() {
       }
     }
 
-    await tester.pumpWidget(host(
-      commands: CommandHooks(interpretCommand: fakeSettingsCommand, onCommandAction: (action, [params]) async {
-        dispatched.add(MapEntry(action, params));
-      }),
-    ));
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(
+          interpretCommand: fakeSettingsCommand,
+          onCommandAction: (action, [params]) async {
+            dispatched.add(MapEntry(action, params));
+          },
+        ),
+      ),
+    );
 
     final field = find.widgetWithText(TextField, 'Their call');
     await tester.enterText(field, 'SETONE');
@@ -1168,12 +1145,7 @@ void main() {
     // here — a missing branch would still show "Change power to 5W?" /
     // "Power set to 5W" and silently do nothing.
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
-    Future<Map<String, dynamic>?> fakePowerCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakePowerCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != '5W') return null;
       return {
         'describe': 'Change power to **5W**?',
@@ -1186,11 +1158,16 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(
-      commands: CommandHooks(interpretCommand: fakePowerCommand, onCommandAction: (action, [params]) async {
-        dispatched.add(MapEntry(action, params));
-      }),
-    ));
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(
+          interpretCommand: fakePowerCommand,
+          onCommandAction: (action, [params]) async {
+            dispatched.add(MapEntry(action, params));
+          },
+        ),
+      ),
+    );
 
     final field = find.widgetWithText(TextField, 'Their call');
     await tester.enterText(field, '5W');
@@ -1208,12 +1185,7 @@ void main() {
     // paramless `{devTester: {}}` shape: without its _dispatchActions
     // branch, DEVTESTER interprets fine but submitting it does nothing.
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
-    Future<Map<String, dynamic>?> fakeTesterCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeTesterCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != 'DEVTESTER') return null;
       return {
         'describe': 'Show the tester-notes overlay?',
@@ -1224,12 +1196,11 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(
-      commands: CommandHooks(
-        interpretCommand: fakeTesterCommand,
-        onCommandAction: (action, [params]) async => dispatched.add(MapEntry(action, params)),
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(interpretCommand: fakeTesterCommand, onCommandAction: (action, [params]) async => dispatched.add(MapEntry(action, params))),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVTESTER');
     await tester.pump();
@@ -1250,12 +1221,7 @@ void main() {
 
   testWidgets('tapping the submit button accepts a recognized command, the same as Enter', (tester) async {
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
-    Future<Map<String, dynamic>?> fakeReloadCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeReloadCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != 'RELOADALL') return null;
       return {
         'describe': 'Reload all data files?',
@@ -1268,12 +1234,11 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(
-      commands: CommandHooks(
-        interpretCommand: fakeReloadCommand,
-        onCommandAction: (action, [params]) async => dispatched.add(MapEntry(action, params)),
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(interpretCommand: fakeReloadCommand, onCommandAction: (action, [params]) async => dispatched.add(MapEntry(action, params))),
       ),
-    ));
+    );
 
     // A plain empty field: nothing to submit, button disabled.
     expect(tester.widget<FilledButton>(submitButton()).onPressed, isNull);
@@ -1284,11 +1249,7 @@ void main() {
 
     // The fix: a recognized command enables the button even though it isn't a
     // callsign (so _canLog is false).
-    expect(
-      tester.widget<FilledButton>(submitButton()).onPressed,
-      isNotNull,
-      reason: 'a complete command must enable the submit button, not just Enter',
-    );
+    expect(tester.widget<FilledButton>(submitButton()).onPressed, isNotNull, reason: 'a complete command must enable the submit button, not just Enter');
 
     // Tapping the BUTTON (not Enter) runs the command.
     await tester.tap(submitButton());
@@ -1302,30 +1263,18 @@ void main() {
   testWidgets('the submit button stays disabled while a command still awaits its parameters', (tester) async {
     // A bare command prefix (EXP before its token) is incomplete — Enter falls
     // through and logs nothing, and the button must not offer to submit it.
-    Future<Map<String, dynamic>?> fakeExpPrefix(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeExpPrefix(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       final match = RegExp(r'^EXP(?:\s+(\S+))?$', caseSensitive: false).firstMatch(input.trim());
       if (match == null) return null;
       if (match.group(1) == null) return {'expectsParams': true};
-      return {
-        'describe': 'Toggle experiment ${match.group(1)}?',
-        'commands': const [],
-      };
+      return {'describe': 'Toggle experiment ${match.group(1)}?', 'commands': const []};
     }
 
     await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeExpPrefix)));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
     await tester.pump(const Duration(milliseconds: 200));
-    expect(
-      tester.widget<FilledButton>(submitButton()).onPressed,
-      isNull,
-      reason: 'a bare EXP still awaiting its token has nothing to submit',
-    );
+    expect(tester.widget<FilledButton>(submitButton()).onPressed, isNull, reason: 'a bare EXP still awaiting its token has nothing to submit');
 
     // Completing it (a token) enables the button.
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP FOO');
@@ -1338,12 +1287,7 @@ void main() {
     // complete interpretation (token "L") — which used to drop the field
     // out of free-text mode, so the callsign filter rewrote the whole
     // field on the next keystroke and "EXP LA" became "EXPLA".
-    Future<Map<String, dynamic>?> fakeExpCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeExpCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       final match = RegExp(r'^EXP(?:\s+(\S+))?$', caseSensitive: false).firstMatch(input.trim());
       if (match == null) return null;
       final token = match.group(1);
@@ -1374,12 +1318,7 @@ void main() {
 
   testWidgets('toggleExperiment forwards to onCommandAction (same whitelist trap as reloadDataFiles)', (tester) async {
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
-    Future<Map<String, dynamic>?> fakeExpCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeExpCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       // Like the real EXP hook: bare prefix asks for the parameter (which
       // also switches the field into space-allowed free-text mode).
       if (input.trim().toUpperCase() == 'EXP') return {'expectsParams': true};
@@ -1394,11 +1333,16 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(
-      commands: CommandHooks(interpretCommand: fakeExpCommand, onCommandAction: (action, [params]) async {
-        dispatched.add(MapEntry(action, params));
-      }),
-    ));
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(
+          interpretCommand: fakeExpCommand,
+          onCommandAction: (action, [params]) async {
+            dispatched.add(MapEntry(action, params));
+          },
+        ),
+      ),
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
     await tester.pump(const Duration(milliseconds: 200));
@@ -1433,12 +1377,11 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(
-      commands: CommandHooks(
-        interpretCommand: fakeDevOnboardCommand,
-        onCommandAction: (action, [params]) async => dispatched.add(action),
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(interpretCommand: fakeDevOnboardCommand, onCommandAction: (action, [params]) async => dispatched.add(action)),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVONBOARD');
     await tester.pump();
@@ -1454,12 +1397,7 @@ void main() {
     // replaced text must then behave exactly as if typed — Enter logs one
     // QSO per call (issue #7) — because expansion's entire purpose is
     // feeding the ordinary call-list path, not a parallel one.
-    Future<Map<String, dynamic>?> fakeExpandCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeExpandCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != '//DAN') return null;
       return {
         'describe': 'Expand to WD4DAN,WD4JMM?',
@@ -1498,12 +1436,7 @@ void main() {
     // "//DAN", it's a stack. The panel asks the same hook about just the
     // segment under the cursor and splices the answer back into it, so
     // Enter expands and the NEXT Enter logs.
-    Future<Map<String, dynamic>?> fakeExpandCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeExpandCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != '//DAN') return null;
       return {
         'describe': 'Expand to WD4DAN,WD4JMM?',
@@ -1515,8 +1448,7 @@ void main() {
       };
     }
 
-    TextField callField(WidgetTester tester) =>
-        tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+    TextField callField(WidgetTester tester) => tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
 
     testWidgets('Enter expands the segment under the cursor and logs nothing', (tester) async {
       await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeExpandCommand)));
@@ -1581,12 +1513,7 @@ void main() {
       // path and this logs a stray QSO for a station never worked. "//DAN"
       // cannot catch that: DAN has no digit, so looksLikeCallsign rejects it
       // and stacking would decline the segment anyway.
-      Future<Map<String, dynamic>?> expandsW1AW(
-        String input, [
-        Map<String, dynamic>? operation,
-        Map<String, dynamic>? qso,
-        bool execute = false,
-      ]) async {
+      Future<Map<String, dynamic>?> expandsW1AW(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
         if (input.trim().toUpperCase() != '//W1AW') return null;
         return {
           'commands': [
@@ -1679,12 +1606,7 @@ void main() {
       // network fetch, a batch of generated QSOs), so a speculative one whose
       // answer is then thrown away is a real action nobody asked for.
       final executed = <String>[];
-      Future<Map<String, dynamic>?> recording(
-        String input, [
-        Map<String, dynamic>? operation,
-        Map<String, dynamic>? qso,
-        bool execute = false,
-      ]) async {
+      Future<Map<String, dynamic>?> recording(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
         if (execute) executed.add(input.trim().toUpperCase());
         return fakeExpandCommand(input, operation, qso, execute);
       }
@@ -1713,12 +1635,7 @@ void main() {
       // only compares text would let the answer for one segment overwrite a
       // completely different call.
       final gate = Completer<void>();
-      Future<Map<String, dynamic>?> slowExpand(
-        String input, [
-        Map<String, dynamic>? operation,
-        Map<String, dynamic>? qso,
-        bool execute = false,
-      ]) async {
+      Future<Map<String, dynamic>?> slowExpand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
         if (input.trim().toUpperCase() == '//DAN') await gate.future;
         return fakeExpandCommand(input, operation, qso, execute);
       }
@@ -1746,12 +1663,7 @@ void main() {
       // otherwise capture that station forever: Enter expands, deleting what
       // the expansion added and pressing Enter expands again, and the call
       // can never be logged on its own.
-      Future<Map<String, dynamic>?> expandsW1AW(
-        String input, [
-        Map<String, dynamic>? operation,
-        Map<String, dynamic>? qso,
-        bool execute = false,
-      ]) async {
+      Future<Map<String, dynamic>?> expandsW1AW(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
         if (input.trim().toUpperCase() != '//W1AW') return null;
         return {
           'describe': 'Expand to W1AW,W1AX?',
@@ -1816,12 +1728,7 @@ void main() {
       // probe now sits between _log's entry guard and the point it commits to
       // logging — so both presses can be inside that window at once.
       final gate = Completer<void>();
-      Future<Map<String, dynamic>?> slowExpand(
-        String input, [
-        Map<String, dynamic>? operation,
-        Map<String, dynamic>? qso,
-        bool execute = false,
-      ]) async {
+      Future<Map<String, dynamic>?> slowExpand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
         if (input.trim().startsWith('//')) await gate.future;
         return null; // nothing expands — this Enter is an ordinary stacked log
       }

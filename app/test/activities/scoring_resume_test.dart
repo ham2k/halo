@@ -26,13 +26,7 @@ class _RecordingHost implements ExtensionHost {
   _RecordingHost([this.answers = const {}]);
 
   @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
+  Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     calls.add((key: key, method: method, args: args));
     final answer = answers['$key:$method'];
     if (answer is Exception) throw answer;
@@ -57,26 +51,19 @@ class _LiveExtensions extends ExtensionService {
   Future<void> start() async {}
 }
 
-Qso _contact(
-  String uuid, {
-  required int updatedAt,
-  int? startAt,
-  bool deleted = false,
-  bool event = false,
-}) =>
-    Qso(
-      uuid: uuid,
-      operationUuid: 'op-1',
-      deleted: deleted,
-      data: {
-        'uuid': uuid,
-        'their': {'call': 'W1AW'},
-        'band': event ? 'event' : '20m',
-        'mode': 'SSB',
-        'startAtMillis': startAt ?? updatedAt,
-        'updatedAtMillis': updatedAt,
-      },
-    );
+Qso _contact(String uuid, {required int updatedAt, int? startAt, bool deleted = false, bool event = false}) => Qso(
+  uuid: uuid,
+  operationUuid: 'op-1',
+  deleted: deleted,
+  data: {
+    'uuid': uuid,
+    'their': {'call': 'W1AW'},
+    'band': event ? 'event' : '20m',
+    'mode': 'SSB',
+    'startAtMillis': startAt ?? updatedAt,
+    'updatedAtMillis': updatedAt,
+  },
+);
 
 /// The operation's own stamp as the rescore saw it.
 const _operationStamp = 5000;
@@ -85,19 +72,19 @@ const _operationStamp = 5000;
 /// their digest, the newest stamp among them, the time of the last contact in
 /// log order, and the operation's stamp.
 Map<String, dynamic> _scoring(List<Qso> folded, {bool stamped = true, int? day, int? operationStamp = _operationStamp}) => {
-      'core': {
-        'operationSummary': const {},
-        'scoresheet': const {'worked': {}},
-        'scoresheetDay': ?day,
-        if (stamped)
-          'checkpoint': {
-            'digest': checkpointDigestOf(folded),
-            'updatedAtMillis': folded.map((q) => q.updatedAtMillis!).reduce((a, b) => a > b ? a : b),
-            'startAtMillis': folded.where((q) => !q.isEvent).map((q) => q.startAtMillis!).reduce((a, b) => a > b ? a : b),
-            'operationUpdatedAtMillis': operationStamp,
-          },
+  'core': {
+    'operationSummary': const {},
+    'scoresheet': const {'worked': {}},
+    'scoresheetDay': ?day,
+    if (stamped)
+      'checkpoint': {
+        'digest': checkpointDigestOf(folded),
+        'updatedAtMillis': folded.map((q) => q.updatedAtMillis!).reduce((a, b) => a > b ? a : b),
+        'startAtMillis': folded.where((q) => !q.isEvent).map((q) => q.startAtMillis!).reduce((a, b) => a > b ? a : b),
+        'operationUpdatedAtMillis': operationStamp,
       },
-    };
+  },
+};
 
 ScoringResume? _resolve(Map<String, dynamic>? scoring, List<Qso> qsos, {String? excludeUuid, int? operationStamp = _operationStamp}) =>
     resolveScoringResume(scoring: scoring, operationUpdatedAtMillis: operationStamp, qsos: qsos, excludeUuid: excludeUuid);
@@ -114,8 +101,7 @@ void main() {
     });
 
     test('contacts stamped after the checkpoint are the tail, oldest first', () {
-      final resume = _resolve(_scoring(folded, day: 86400000), [...folded, _contact('c', updatedAt: 3000), _contact('d', updatedAt: 3500)],
-      );
+      final resume = _resolve(_scoring(folded, day: 86400000), [...folded, _contact('c', updatedAt: 3000), _contact('d', updatedAt: 3500)]);
       expect(resume?.tail.map((q) => q['uuid']), ['c', 'd']);
     });
 
@@ -148,18 +134,11 @@ void main() {
     });
 
     test('the contact being edited is inside the sheet, so it folds cold', () {
-      expect(
-        _resolve(_scoring(folded), folded, excludeUuid: 'b'),
-        isNull,
-      );
+      expect(_resolve(_scoring(folded), folded, excludeUuid: 'b'), isNull);
     });
 
     test('deleted rows are neither digested nor replayed', () {
-      final withNoise = [
-        ...folded,
-        _contact('gone', updatedAt: 9000, deleted: true),
-        _contact('gone-marker', updatedAt: 9500, event: true, deleted: true),
-      ];
+      final withNoise = [...folded, _contact('gone', updatedAt: 9000, deleted: true), _contact('gone-marker', updatedAt: 9500, event: true, deleted: true)];
       final resume = _resolve(_scoring(folded), withNoise);
       expect(resume, isNotNull);
       expect(resume!.tail, isEmpty);
@@ -183,7 +162,10 @@ void main() {
     // checkpoint and ignores the tail — and only a tail-aware harness returns
     // the day beside its sheet. Nothing to replay: an old harness resumes fine.
     test('a checkpoint without a day is resumed only when there is nothing to replay', () {
-      final scoring = {..._scoring(folded), 'pota': {..._scoring(folded, day: 86400000)['core'] as Map}};
+      final scoring = {
+        ..._scoring(folded),
+        'pota': {..._scoring(folded, day: 86400000)['core'] as Map},
+      };
       final current = _resolve(scoring, folded);
       expect(current?.checkpoints.keys, containsAll(['core', 'pota']));
 
@@ -255,22 +237,40 @@ void main() {
       // Three rows: two contacts and a break marker. The marker is part of the
       // digest and the newest stamp (the timeline is folded too) but not of the
       // last contact's time.
-      final first = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}, 'band': '20m', 'mode': 'SSB', 'startAtMillis': 1000});
-      await qsos.add(operation.uuid, {'band': 'event', 'event': {'event': 'break'}, 'startAtMillis': 1500});
-      final second = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB', 'startAtMillis': 2000});
+      final first = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+      });
+      await qsos.add(operation.uuid, {
+        'band': 'event',
+        'event': {'event': 'break'},
+        'startAtMillis': 1500,
+      });
+      final second = await qsos.add(operation.uuid, {
+        'their': {'call': 'K1ABC'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': 2000,
+      });
 
       final host = _RecordingHost({
         'core:scoreQsos': {
-          'qsoScores': {first.uuid: {'value': 1}, second.uuid: {'value': 1}},
+          'qsoScores': {
+            first.uuid: {'value': 1},
+            second.uuid: {'value': 1},
+          },
           'daySections': const [],
           'operationSummary': const {},
-          'scoresheet': const {'worked': {'W1AW': true}},
+          'scoresheet': const {
+            'worked': {'W1AW': true},
+          },
           'scoresheetDay': 0,
         },
       });
       final scored = (await operations.get(operation.uuid))!;
-      await ScoringService(extensions: _LiveExtensions(host), qsos: qsos, operations: operations)
-          .rescoreOperation(scored);
+      await ScoringService(extensions: _LiveExtensions(host), qsos: qsos, operations: operations).rescoreOperation(scored);
 
       final scoring = (await operations.get(operation.uuid))!.localData['scoring'] as Map;
       final core = scoring['core'] as Map;
@@ -297,7 +297,11 @@ void main() {
   });
 
   group('ExtensionService.scoreQso', () {
-    final qso = {'their': {'call': 'W1AW'}, 'band': '20m', 'mode': 'SSB'};
+    final qso = {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'mode': 'SSB',
+    };
     setUp(ErrorReportingService.resetFailureStreaks);
     tearDown(ErrorReportingService.resetFailureStreaks);
 
@@ -307,7 +311,11 @@ void main() {
     test('a scorer that recovers and breaks again is reported again', () async {
       final backend = FakeErrorReportingBackend();
       final broken = _LiveExtensions(_RecordingHost({'core:scoreQso': Exception('scorer blew up')}));
-      final working = _LiveExtensions(_RecordingHost({'core:scoreQso': {'notices': [], 'alerts': []}}));
+      final working = _LiveExtensions(
+        _RecordingHost({
+          'core:scoreQso': {'notices': [], 'alerts': []},
+        }),
+      );
       await withErrorHooks(() async {
         for (final service in [broken, working, broken]) {
           await service.scoreQso(operation: const {'uuid': 'op-1'}, qso: qso);
@@ -317,30 +325,54 @@ void main() {
     });
 
     test('a checkpoint reaches its scorer as resumeFrom with its day, and the tail as qsos', () async {
-      final host = _RecordingHost({'core:scoreQso': {'notices': [], 'alerts': ['duplicate']}});
+      final host = _RecordingHost({
+        'core:scoreQso': {
+          'notices': [],
+          'alerts': ['duplicate'],
+        },
+      });
       await _LiveExtensions(host).scoreQso(
         operation: const {'uuid': 'op-1'},
         qso: qso,
         resume: (
-          checkpoints: {'core': (sheet: const {'worked': {}}, day: 86400000)},
-          tail: [const {'uuid': 'c', 'their': {'call': 'W1AW'}}],
+          checkpoints: {
+            'core': (sheet: const {'worked': {}}, day: 86400000),
+          },
+          tail: [
+            const {
+              'uuid': 'c',
+              'their': {'call': 'W1AW'},
+            },
+          ],
         ),
       );
       final args = host.calls.single.args as Map;
       expect(args['resumeFrom'], const {'worked': {}});
       expect(args['resumeDay'], 86400000);
-      expect(args['qsos'], [const {'uuid': 'c', 'their': {'call': 'W1AW'}}]);
+      expect(args['qsos'], [
+        const {
+          'uuid': 'c',
+          'their': {'call': 'W1AW'},
+        },
+      ]);
     });
 
     // The harness branches on the KEY's presence: a null `resumeFrom` would
     // resume from nothing, and a tail beside no checkpoint is a fold from the
     // wrong starting point.
     test('without a checkpoint for the scorer none of the three keys is sent, tail or not', () async {
-      final host = _RecordingHost({'core:scoreQso': {'notices': [], 'alerts': []}});
+      final host = _RecordingHost({
+        'core:scoreQso': {'notices': [], 'alerts': []},
+      });
       await _LiveExtensions(host).scoreQso(
         operation: const {'uuid': 'op-1'},
         qso: qso,
-        resume: (checkpoints: {'pota': (sheet: const {}, day: 0)}, tail: [const {'uuid': 'c'}]),
+        resume: (
+          checkpoints: {'pota': (sheet: const {}, day: 0)},
+          tail: [
+            const {'uuid': 'c'},
+          ],
+        ),
       );
       final args = host.calls.single.args as Map;
       expect(args.containsKey('resumeFrom'), isFalse);
@@ -349,11 +381,18 @@ void main() {
     });
 
     test('a checkpoint with no day sends no resumeDay, and an empty tail no qsos', () async {
-      final host = _RecordingHost({'core:scoreQso': {'notices': [], 'alerts': []}});
+      final host = _RecordingHost({
+        'core:scoreQso': {'notices': [], 'alerts': []},
+      });
       await _LiveExtensions(host).scoreQso(
         operation: const {'uuid': 'op-1'},
         qso: qso,
-        resume: (checkpoints: {'core': (sheet: const {'worked': {}}, day: null)}, tail: const []),
+        resume: (
+          checkpoints: {
+            'core': (sheet: const {'worked': {}}, day: null),
+          },
+          tail: const [],
+        ),
       );
       final args = host.calls.single.args as Map;
       expect(args['resumeFrom'], const {'worked': {}});

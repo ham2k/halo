@@ -58,7 +58,13 @@ void main() {
     int protocol = 1,
     String server = 'halo-ext-dev',
     List<Map<String, dynamic>> extensions = const [
-      {'key': 'pota', 'file': 'pota.js', 'core': false, 'name': 'Parks on the Air', 'domains': ['api.pota.app']},
+      {
+        'key': 'pota',
+        'file': 'pota.js',
+        'core': false,
+        'name': 'Parks on the Air',
+        'domains': ['api.pota.app'],
+      },
     ],
     String bundleSource = '/* pota bundle */',
   }) {
@@ -69,7 +75,14 @@ void main() {
         requested.add(request.url);
         final path = request.url.path;
         if (path.endsWith('/ping')) {
-          return http.Response(jsonEncode({'server': server, 'protocol': protocol, 'extensions': ['pota']}), 200);
+          return http.Response(
+            jsonEncode({
+              'server': server,
+              'protocol': protocol,
+              'extensions': ['pota'],
+            }),
+            200,
+          );
         }
         if (path.endsWith('/index.json')) {
           return http.Response(jsonEncode({'extensions': extensions}), 200);
@@ -94,8 +107,7 @@ void main() {
     expect(service.devBundleSets, hasLength(1));
     final handed = service.devBundleSets.single['pota']!;
     expect(handed.source, '/* pota bundle */');
-    expect(handed.info.domains, ['api.pota.app'],
-        reason: 'the manifest travels with the bundle, so the fetch allowlist follows the code');
+    expect(handed.info.domains, ['api.pota.app'], reason: 'the manifest travels with the bundle, so the fetch allowlist follows the code');
   });
 
   test('a dev-served extension is marked as such, which is what withholds build secrets', () async {
@@ -195,17 +207,12 @@ void main() {
 
     expect(client.state, DevServerState.disconnected);
     expect(client.servedKeys, isEmpty);
-    expect(service.devBundleSets.last, isEmpty,
-        reason: 'an empty set is what returns the app to its built-in extensions');
+    expect(service.devBundleSets.last, isEmpty, reason: 'an empty set is what returns the app to its built-in extensions');
   });
 
   group('canHotSwapDevBundle — when a reload needs a full restart', () {
     test('a key already served by the dev server swaps in place', () {
-      expect(
-        canHotSwapDevBundle(
-            runtimeAlive: true, alreadyLoaded: true, alreadyDevServed: true, capabilitiesUnchanged: true),
-        isTrue,
-      );
+      expect(canHotSwapDevBundle(runtimeAlive: true, alreadyLoaded: true, alreadyDevServed: true, capabilitiesUnchanged: true), isTrue);
     });
 
     test('a key currently loaded FROM ASSETS restarts instead', () {
@@ -216,39 +223,23 @@ void main() {
       // them on reload. Swapping dev code in there would hand real credentials
       // to code fetched over plain HTTP (HALO-425). Restarting re-resolves
       // them against the dev provenance, which is what makes them absent.
-      expect(
-        canHotSwapDevBundle(
-            runtimeAlive: true, alreadyLoaded: true, alreadyDevServed: false, capabilitiesUnchanged: true),
-        isFalse,
-      );
+      expect(canHotSwapDevBundle(runtimeAlive: true, alreadyLoaded: true, alreadyDevServed: false, capabilitiesUnchanged: true), isFalse);
     });
 
     test('a key the runtime has never loaded restarts', () {
       // Its very existence changes what the app offers — an activity in
       // Operation Setup, a settings panel — and only a boot re-reads that.
-      expect(
-        canHotSwapDevBundle(
-            runtimeAlive: true, alreadyLoaded: false, alreadyDevServed: true, capabilitiesUnchanged: true),
-        isFalse,
-      );
+      expect(canHotSwapDevBundle(runtimeAlive: true, alreadyLoaded: false, alreadyDevServed: true, capabilitiesUnchanged: true), isFalse);
     });
 
     test('a changed start-time capability restarts', () {
       // `domains` travels with the bundle, but requiresLocation and
       // allowUserAgentOverride are allowlists the host builds at start.
-      expect(
-        canHotSwapDevBundle(
-            runtimeAlive: true, alreadyLoaded: true, alreadyDevServed: true, capabilitiesUnchanged: false),
-        isFalse,
-      );
+      expect(canHotSwapDevBundle(runtimeAlive: true, alreadyLoaded: true, alreadyDevServed: true, capabilitiesUnchanged: false), isFalse);
     });
 
     test('a dead runtime restarts', () {
-      expect(
-        canHotSwapDevBundle(
-            runtimeAlive: false, alreadyLoaded: true, alreadyDevServed: true, capabilitiesUnchanged: true),
-        isFalse,
-      );
+      expect(canHotSwapDevBundle(runtimeAlive: false, alreadyLoaded: true, alreadyDevServed: true, capabilitiesUnchanged: true), isFalse);
     });
   });
 
@@ -272,8 +263,7 @@ void main() {
     });
 
     test('an INSTALLED extension claiming that key reads nothing either', () {
-      const sideloaded = ExtensionInfo(
-          key: 'sota', file: 'sota.js', core: false, name: 'SOTA', source: ExtensionSource.installed);
+      const sideloaded = ExtensionInfo(key: 'sota', file: 'sota.js', core: false, name: 'SOTA', source: ExtensionSource.installed);
 
       // The same rule, and it has to reach the second non-shipped source or
       // HALO-425 holds only for the dev loop: a .h2kext is a file from anyone,
@@ -306,13 +296,7 @@ void main() {
       // carried has since moved into the extension as a constant, because the
       // catalog serves these bundles to anyone and a `.h2kext` is a zip.
       // Reinstating it silently is the regression this catches.
-      const preloaded = ExtensionInfo(
-        key: 'ham2k-sota',
-        file: 'index.js',
-        core: false,
-        name: 'SOTA',
-        source: ExtensionSource.installed,
-      );
+      const preloaded = ExtensionInfo(key: 'ham2k-sota', file: 'index.js', core: false, name: 'SOTA', source: ExtensionSource.installed);
       expect(visibleSecretsFor(preloaded, const {'SOTA_OAUTH_CLIENT_ID_PROD': 'real-client-id'}), isEmpty);
     });
   });
@@ -328,8 +312,7 @@ void main() {
     // Retype the address wrong and reconnect. The pane will say "not
     // connected"; the app must not still be executing the previous server's
     // bundles behind that, with no server anywhere to reload them.
-    final broken = ExtensionDevClient(
-        extensions: service, httpClient: MockClient((_) async => throw http.ClientException('no route')));
+    final broken = ExtensionDevClient(extensions: service, httpClient: MockClient((_) async => throw http.ClientException('no route')));
     addTearDown(broken.dispose);
     await broken.connect('http://elsewhere:8787');
 
@@ -361,11 +344,13 @@ void main() {
     addTearDown(client.dispose);
     await client.connect('http://host:8787');
 
-    client.debugHandleEventLine('data: ${jsonEncode({
-          'type': 'hello',
-          'protocol': 1,
-          'buildErrors': {'sota': 'sota/src/index.ts:12: Unexpected token'},
-        })}');
+    client.debugHandleEventLine(
+      'data: ${jsonEncode({
+        'type': 'hello',
+        'protocol': 1,
+        'buildErrors': {'sota': 'sota/src/index.ts:12: Unexpected token'},
+      })}',
+    );
 
     expect(client.buildErrors['sota'], contains('Unexpected token'));
   });

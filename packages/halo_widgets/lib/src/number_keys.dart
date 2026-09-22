@@ -54,14 +54,7 @@ class NumberKeys extends StatelessWidget {
   final Color backgroundColor;
   final Color foregroundColor;
 
-  const NumberKeys({
-    super.key,
-    required this.onKey,
-    required this.backgroundColor,
-    required this.foregroundColor,
-    this.extraKey,
-    this.vibrate = true,
-  });
+  const NumberKeys({super.key, required this.onKey, required this.backgroundColor, required this.foregroundColor, this.extraKey, this.vibrate = true});
 
   void _handle(String key) {
     // app-polo buzzes on press; HapticFeedback is the built-in equivalent, no
@@ -72,45 +65,35 @@ class NumberKeys extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final keys = <String>[
-      '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-      ?extraKey,
-    ];
+    final keys = <String>['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ?extraKey];
     return ChromeTopEdge(
       child: Material(
-      color: backgroundColor,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: Space.xs,
-          vertical: LayoutDensity.metricsOf(context).numbersRowPaddingV,
-        ),
-        child: Row(
-          children: [
-            for (final key in keys)
-              Expanded(
-                child: InkWell(
-                  // Never steal focus — see the class doc comment.
-                  canRequestFocus: false,
-                  onTap: () => _handle(key),
-                  child: SizedBox(
-                    height: _keyHeight,
-                    child: Center(
-                      child: Text(
-                        key,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: foregroundColor,
+        color: backgroundColor,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: Space.xs, vertical: LayoutDensity.metricsOf(context).numbersRowPaddingV),
+          child: Row(
+            children: [
+              for (final key in keys)
+                Expanded(
+                  child: InkWell(
+                    // Never steal focus — see the class doc comment.
+                    canRequestFocus: false,
+                    onTap: () => _handle(key),
+                    child: SizedBox(
+                      height: _keyHeight,
+                      child: Center(
+                        child: Text(
+                          key,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: foregroundColor),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

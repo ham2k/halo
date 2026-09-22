@@ -123,12 +123,7 @@ int guohetecCrc(List<int> bytes) {
 List<int> buildGuohetecFrame(int command, [List<int> data = const []]) {
   final body = [data.length + 3, command, ...data];
   final crc = guohetecCrc(body);
-  return [
-    for (var i = 0; i < guohetecPreambleCount; i++) guohetecPreamble,
-    ...body,
-    (crc >> 8) & 0xFF,
-    crc & 0xFF,
-  ];
+  return [for (var i = 0; i < guohetecPreambleCount; i++) guohetecPreamble, ...body, (crc >> 8) & 0xFF, crc & 0xFF];
 }
 
 /// Frequencies travel as four big-endian bytes of PLAIN HERTZ, not the BCD
@@ -146,8 +141,7 @@ List<int> encodeFrequency(int freqHz) {
   return [(value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF];
 }
 
-int decodeFrequency(List<int> bytes) =>
-    (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
+int decodeFrequency(List<int> bytes) => (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
 
 /// Modes, by the code the manual's mode-setting and status-sync tables
 /// share.
@@ -179,9 +173,7 @@ const guohetecModeCodes = <String, int>{
   'DATA-LSB': 0x08,
 };
 
-final Map<int, String> _modeNamesByCode = {
-  for (final entry in guohetecModeCodes.entries) entry.value: entry.key,
-};
+final Map<int, String> _modeNamesByCode = {for (final entry in guohetecModeCodes.entries) entry.value: entry.key};
 
 String? guohetecModeNameForCode(int code) => _modeNamesByCode[code];
 
@@ -193,8 +185,7 @@ int? guohetecCodeForModeName(String? name) => name == null ? null : guohetecMode
 /// **0x00 presses PTT and 0x01 releases it.** Inverting this transmits when
 /// the app means to stop, so it is written out rather than computed from a
 /// bool in a way a later edit could quietly flip.
-List<int> buildPttCommand(bool transmit) =>
-    buildGuohetecFrame(GuohetecOpcode.ptt, [transmit ? 0x00 : 0x01]);
+List<int> buildPttCommand(bool transmit) => buildGuohetecFrame(GuohetecOpcode.ptt, [transmit ? 0x00 : 0x01]);
 
 /// Sets both VFO frequencies, because there is no command that sets one.
 ///
@@ -249,8 +240,7 @@ List<int> buildSplitCommand(bool on) => buildGuohetecFrame(GuohetecOpcode.split,
 /// Transmit power as a percentage, 0-100. Clamped rather than rejected: the
 /// radio's own range is the authority, and a caller asking for 120% wants
 /// full power.
-List<int> buildPowerLevelCommand(int percent) =>
-    buildGuohetecFrame(GuohetecOpcode.powerLevel, [percent.clamp(0, 100)]);
+List<int> buildPowerLevelCommand(int percent) => buildGuohetecFrame(GuohetecOpcode.powerLevel, [percent.clamp(0, 100)]);
 
 /// Which scale a meter byte is reporting on. The protocol multiplexes
 /// several meters onto one byte and names the scale in its top bits, so a
@@ -271,8 +261,7 @@ class GuohetecMeterReading {
   const GuohetecMeterReading({required this.scale, required this.raw});
 
   @override
-  bool operator ==(Object other) =>
-      other is GuohetecMeterReading && other.scale == scale && other.raw == raw;
+  bool operator ==(Object other) => other is GuohetecMeterReading && other.scale == scale && other.raw == raw;
 
   @override
   int get hashCode => Object.hash(scale, raw);
@@ -285,10 +274,8 @@ class GuohetecMeterReading {
 ///
 /// A receiving radio reports on the S scale and a transmitting one on the
 /// power scale, so which arrives is not a setting — it follows the PTT.
-GuohetecMeterReading parseSignalMeter(int byte) => GuohetecMeterReading(
-      scale: (byte & 0x80) != 0 ? GuohetecMeterScale.power : GuohetecMeterScale.sMeter,
-      raw: byte & 0x7F,
-    );
+GuohetecMeterReading parseSignalMeter(int byte) =>
+    GuohetecMeterReading(scale: (byte & 0x80) != 0 ? GuohetecMeterScale.power : GuohetecMeterScale.sMeter, raw: byte & 0x7F);
 
 /// The SWR/AUD/ALC byte: bits 7 and 6 pick the scale.
 ///
@@ -316,7 +303,6 @@ GuohetecMeterReading? parseSwrMeter(int byte) {
 /// How many payload bytes a [GuohetecOpcode.statusSync] reply carries — the
 /// manual's field list, added up.
 const guohetecStatusPayloadLength = 24;
-
 
 /// Everything one status sync says.
 ///
@@ -382,9 +368,9 @@ class GuohetecStatus {
   int get activeFreqHz => vfoBActive ? vfoBHz : vfoAHz;
   String? get activeMode => vfoBActive ? vfoBMode : vfoAMode;
 
-
   @override
-  String toString() => 'GuohetecStatus(${transmitting ? 'TX' : 'RX'}, '
+  String toString() =>
+      'GuohetecStatus(${transmitting ? 'TX' : 'RX'}, '
       'A: $vfoAHz ${vfoAMode ?? '?'}, B: $vfoBHz ${vfoBMode ?? '?'}, '
       'active: ${vfoBActive ? 'B' : 'A'}, ${voltageVolts}V)';
 }
@@ -428,14 +414,14 @@ class GuohetecFrame {
   const GuohetecFrame({required this.command, this.data = const []});
 
   @override
-  bool operator ==(Object other) =>
-      other is GuohetecFrame && other.command == command && _sameBytes(other.data, data);
+  bool operator ==(Object other) => other is GuohetecFrame && other.command == command && _sameBytes(other.data, data);
 
   @override
   int get hashCode => Object.hash(command, Object.hashAll(data));
 
   @override
-  String toString() => 'GuohetecFrame(cmd: 0x${command.toRadixString(16).padLeft(2, '0')}, '
+  String toString() =>
+      'GuohetecFrame(cmd: 0x${command.toRadixString(16).padLeft(2, '0')}, '
       'data: ${data.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')})';
 }
 

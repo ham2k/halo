@@ -8,15 +8,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/extension_info.dart';
 
-ExtensionInfo info(String key, {bool location = false}) =>
-    ExtensionInfo(key: key, file: '$key.js', core: true, name: key, requiresLocation: location);
+ExtensionInfo info(String key, {bool location = false}) => ExtensionInfo(key: key, file: '$key.js', core: true, name: key, requiresLocation: location);
 
 void main() {
-  final grant = CapabilityGrant.among([
-    info('pota', location: true),
-    info('pota-themes'),
-    info('sota'),
-  ], (info) => info.requiresLocation);
+  final grant = CapabilityGrant.among([info('pota', location: true), info('pota-themes'), info('sota')], (info) => info.requiresLocation);
 
   test('a bundle and the sub-extensions it defines share its grant', () {
     expect(grant.allows('pota'), isTrue);

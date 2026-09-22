@@ -28,27 +28,29 @@ void main() {
 
     final HaLoHarness(:services) = await makeHaLoServices();
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: OperationSheet(
-            // A fresh State per reference: the sheet reads the operation in
-            // `initState`, so re-pumping the same widget type would keep the
-            // first one and measure it twice.
-            key: ValueKey(reference),
-            services: services,
-            operation: Operation(
-              uuid: 'op-123',
-              data: {
-                'refs': [
-                  {'type': 'potaActivation', 'ref': reference, 'shortLabel': reference, 'name': 'A Park'},
-                ],
-              },
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: OperationSheet(
+              // A fresh State per reference: the sheet reads the operation in
+              // `initState`, so re-pumping the same widget type would keep the
+              // first one and measure it twice.
+              key: ValueKey(reference),
+              services: services,
+              operation: Operation(
+                uuid: 'op-123',
+                data: {
+                  'refs': [
+                    {'type': 'potaActivation', 'ref': reference, 'shortLabel': reference, 'name': 'A Park'},
+                  ],
+                },
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // `find.text` reads `Text.data`, which is the same string whether or not

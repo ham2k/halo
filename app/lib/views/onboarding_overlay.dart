@@ -53,14 +53,7 @@ const _bandMinExpandedHeight = 360.0;
 /// Below this available height the brand mark shrinks.
 const _compactHeightThreshold = 540.0;
 
-enum _OnboardingStep {
-  welcome,
-  foundSibling,
-  callsign,
-  linkAccount,
-  activities,
-  consent,
-}
+enum _OnboardingStep { welcome, foundSibling, callsign, linkAccount, activities, consent }
 
 /// Pins the light theme, and does nothing else.
 ///
@@ -306,10 +299,7 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     // loaded a newly-enabled extension, or its dataFile hook wouldn't be
     // there to ask yet.
     await widget.services.extensions.setExtensionsEnabled({'pota': _pota, 'sota': _sota, 'wwff': _wwff});
-    await settings.updateSettingsGroup(SettingsService.privacyGroup, {
-      'consentAppData': _consentAppData,
-      'consentOpData': _consentOpData,
-    });
+    await settings.updateSettingsGroup(SettingsService.privacyGroup, {'consentAppData': _consentAppData, 'consentOpData': _consentOpData});
   }
 
   Future<void> _finish() async {
@@ -381,7 +371,8 @@ class _OnboardingContentState extends State<_OnboardingContent> {
         key: 'clock:onboardingNeedsRealClock',
         icon: 'clock-alert',
         title: 'Account not linked',
-        text: 'Linking an account replaces local data, which is refused while time travelling.'
+        text:
+            'Linking an account replaces local data, which is refused while time travelling.'
             ' Run DEVTT to return to real time, then link it from Settings › Sync.',
         persist: false,
       );
@@ -397,11 +388,13 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     // already has or the round just kicked will; there is nothing to
     // resolve from here.
     if (_hadLocalQsos) {
-      unawaited(navigatorKey.currentState?.push(
-        MaterialPageRoute<void>(
-          builder: (_) => SettingsView(services: widget.services, initialPanel: 'sync'),
+      unawaited(
+        navigatorKey.currentState?.push(
+          MaterialPageRoute<void>(
+            builder: (_) => SettingsView(services: widget.services, initialPanel: 'sync'),
+          ),
         ),
-      ));
+      );
     }
 
     // 4. Dismiss onboarding overlay.
@@ -454,93 +447,88 @@ class _OnboardingContentState extends State<_OnboardingContent> {
             behavior: HitTestBehavior.opaque,
             onTap: _step == _OnboardingStep.welcome ? _afterWelcome : null,
             child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (release != null)
-                Positioned.fill(
-                  child: ReleasePhoto(
-                    imageAssetPath: release.imageAssetPath,
-                    errorBuilder: (context, error, stackTrace) => const ColoredBox(color: _photoFallbackColor),
+              fit: StackFit.expand,
+              children: [
+                if (release != null)
+                  Positioned.fill(
+                    child: ReleasePhoto(
+                      imageAssetPath: release.imageAssetPath,
+                      errorBuilder: (context, error, stackTrace) => const ColoredBox(color: _photoFallbackColor),
+                    ),
+                  ),
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
+                    child: overlayVersionHeader(context, logoWidth: compact ? 90 : 140),
                   ),
                 ),
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
-                  child: overlayVersionHeader(context, logoWidth: compact ? 90 : 140),
-                ),
-              ),
-              // Caption + band in one bottom column, same as the release
-              // overlay: the caption fades away as the band expands over the
-              // photo, and the whole column sits above the keyboard.
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (caption.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(Space.xxl, 0, Space.xxl, Space.md),
-                        child: AnimatedOpacity(
-                          duration: _bandAnimationDuration,
-                          curve: Curves.easeInOut,
-                          opacity: expanded ? 0 : 1,
-                          child: Text(
-                            caption,
-                            textAlign: TextAlign.center,
-                            style: creditsStyle.copyWith(fontFamily: 'RobotoMono', fontSize: creditsStyle.fontSize! * 0.85),
+                // Caption + band in one bottom column, same as the release
+                // overlay: the caption fades away as the band expands over the
+                // photo, and the whole column sits above the keyboard.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (caption.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(Space.xxl, 0, Space.xxl, Space.md),
+                          child: AnimatedOpacity(
+                            duration: _bandAnimationDuration,
+                            curve: Curves.easeInOut,
+                            opacity: expanded ? 0 : 1,
+                            child: Text(
+                              caption,
+                              textAlign: TextAlign.center,
+                              style: creditsStyle.copyWith(fontFamily: 'RobotoMono', fontSize: creditsStyle.fontSize! * 0.85),
+                            ),
                           ),
                         ),
-                      ),
-                    AnimatedSize(
-                      duration: _bandAnimationDuration,
-                      curve: Curves.easeInOut,
-                      // SizedBox + ColoredBox, never a Container: a Container
-                      // emits its ConstrainedBox only when it HAS constraints,
-                      // so a height that goes null when the soft keyboard opens
-                      // changes the tree's shape and re-inflates everything
-                      // below — the step loses its State mid-typing, closing
-                      // the keyboard it just opened. SizedBox always emits one.
-                      child: SizedBox(
-                        height: (isKeyboardOpen || _step == _OnboardingStep.welcome) ? null : bandHeight + keyboardInset,
-                        child: ColoredBox(
-                          color: _bandColor.withValues(alpha: bandOpacity),
-                          // Material (not just the animated color) so the step's
-                          // tiles and switches paint their ink on the band.
-                          child: Material(
-                            type: MaterialType.transparency,
-                            child: SafeArea(
-                              top: false,
-                              child: Padding(
-                                padding: EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl + keyboardInset),
-                                // Steps slide horizontally: forward navigation
-                                // enters from the right (and exits left), Back
-                                // the mirror image. StackFit.expand keeps both
-                                // children band-sized during the transition;
-                                // ClipRect keeps the slide inside the band.
-                                child: AnimatedSwitcher(
-                                  duration: _bandAnimationDuration,
-                                  switchInCurve: Curves.easeInOut,
-                                  switchOutCurve: Curves.easeInOut,
-                                  layoutBuilder: (currentChild, previousChildren) => ClipRect(
-                                    child: Stack(
-                                      fit: isHeightConstrained ? StackFit.expand : StackFit.loose,
-                                      children: [...previousChildren, ?currentChild],
+                      AnimatedSize(
+                        duration: _bandAnimationDuration,
+                        curve: Curves.easeInOut,
+                        // SizedBox + ColoredBox, never a Container: a Container
+                        // emits its ConstrainedBox only when it HAS constraints,
+                        // so a height that goes null when the soft keyboard opens
+                        // changes the tree's shape and re-inflates everything
+                        // below — the step loses its State mid-typing, closing
+                        // the keyboard it just opened. SizedBox always emits one.
+                        child: SizedBox(
+                          height: (isKeyboardOpen || _step == _OnboardingStep.welcome) ? null : bandHeight + keyboardInset,
+                          child: ColoredBox(
+                            color: _bandColor.withValues(alpha: bandOpacity),
+                            // Material (not just the animated color) so the step's
+                            // tiles and switches paint their ink on the band.
+                            child: Material(
+                              type: MaterialType.transparency,
+                              child: SafeArea(
+                                top: false,
+                                child: Padding(
+                                  padding: EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl + keyboardInset),
+                                  // Steps slide horizontally: forward navigation
+                                  // enters from the right (and exits left), Back
+                                  // the mirror image. StackFit.expand keeps both
+                                  // children band-sized during the transition;
+                                  // ClipRect keeps the slide inside the band.
+                                  child: AnimatedSwitcher(
+                                    duration: _bandAnimationDuration,
+                                    switchInCurve: Curves.easeInOut,
+                                    switchOutCurve: Curves.easeInOut,
+                                    layoutBuilder: (currentChild, previousChildren) => ClipRect(
+                                      child: Stack(fit: isHeightConstrained ? StackFit.expand : StackFit.loose, children: [...previousChildren, ?currentChild]),
                                     ),
-                                  ),
-                                  transitionBuilder: (child, animation) {
-                                    final incoming = child.key == ValueKey(_step);
-                                    final fromRight = incoming == _movedForward;
-                                    return SlideTransition(
-                                      position: Tween(begin: Offset(fromRight ? 1 : -1, 0), end: Offset.zero).animate(animation),
-                                      child: child,
-                                    );
-                                  },
-                                  child: KeyedSubtree(
-                                    key: ValueKey(_step),
-                                    child: _buildStep(theme),
+                                    transitionBuilder: (child, animation) {
+                                      final incoming = child.key == ValueKey(_step);
+                                      final fromRight = incoming == _movedForward;
+                                      return SlideTransition(
+                                        position: Tween(begin: Offset(fromRight ? 1 : -1, 0), end: Offset.zero).animate(animation),
+                                        child: child,
+                                      );
+                                    },
+                                    child: KeyedSubtree(key: ValueKey(_step), child: _buildStep(theme)),
                                   ),
                                 ),
                               ),
@@ -548,11 +536,10 @@ class _OnboardingContentState extends State<_OnboardingContent> {
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
             ),
           );
         },
@@ -562,15 +549,8 @@ class _OnboardingContentState extends State<_OnboardingContent> {
 
   Widget _buildStep(ThemeData theme) {
     final s = context.t.onboarding;
-    final titleStyle = theme.textTheme.titleLarge?.copyWith(
-      fontFamily: 'RobotoSlab',
-      fontWeight: FontWeight.bold,
-      color: Colors.black,
-    );
-    final bodyStyle = theme.textTheme.bodyMedium?.copyWith(
-      fontSize: (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2,
-      color: Colors.black,
-    );
+    final titleStyle = theme.textTheme.titleLarge?.copyWith(fontFamily: 'RobotoSlab', fontWeight: FontWeight.bold, color: Colors.black);
+    final bodyStyle = theme.textTheme.bodyMedium?.copyWith(fontSize: (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2, color: Colors.black);
 
     switch (_step) {
       case _OnboardingStep.welcome:
@@ -579,9 +559,7 @@ class _OnboardingContentState extends State<_OnboardingContent> {
           body: Text(s.welcomeBody, style: bodyStyle),
           secondaryLabel: s.skip,
           onSecondary: _skip,
-          secondaryButtonStyle: TextButton.styleFrom(
-            backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
-          ),
+          secondaryButtonStyle: TextButton.styleFrom(backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65)),
           primaryLabel: s.kContinue,
           onPrimary: _afterWelcome,
         );
@@ -594,14 +572,11 @@ class _OnboardingContentState extends State<_OnboardingContent> {
               // PoLo is named as "an older version" — it is the app most
               // operators are coming from; another HaLo edition is named
               // as itself.
-              Text(
-                switch (_siblings) {
-                  [SiblingApp(edition: null)] => s.foundPoloBody,
-                  [final only] => s.foundSiblingBody(app: only.name),
-                  _ => s.foundSiblingsBody,
-                },
-                style: bodyStyle,
-              ),
+              Text(switch (_siblings) {
+                [SiblingApp(edition: null)] => s.foundPoloBody,
+                [final only] => s.foundSiblingBody(app: only.name),
+                _ => s.foundSiblingsBody,
+              }, style: bodyStyle),
               const SizedBox(height: Space.lg),
               for (final sibling in _siblings)
                 ListTile(
@@ -655,10 +630,7 @@ class _OnboardingContentState extends State<_OnboardingContent> {
               const SizedBox(height: Space.xl),
               Align(
                 alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: () => _startLinkingFlow(),
-                  child: Text(s.alreadyHaveAccount),
-                ),
+                child: TextButton(onPressed: () => _startLinkingFlow(), child: Text(s.alreadyHaveAccount)),
               ),
             ],
           ),
@@ -819,27 +791,15 @@ class _OnboardingContentState extends State<_OnboardingContent> {
                 // keeps the body inflexible when the band is unbounded, which
                 // a flexible child in an unbounded Column is not allowed to
                 // be.
-                Flexible(
-                  flex: bounded ? 1 : 0,
-                  fit: bounded ? FlexFit.tight : FlexFit.loose,
-                  child: bodyWidget,
-                ),
+                Flexible(flex: bounded ? 1 : 0, fit: bounded ? FlexFit.tight : FlexFit.loose, child: bodyWidget),
                 const SizedBox(height: Space.md),
                 Row(
                   children: [
                     // An empty label means the step has no button for that
                     // slot, same as the primary below — a TextButton around
                     // empty text is invisible but still takes a tap.
-                    if (secondaryLabel.isNotEmpty)
-                      TextButton(
-                        onPressed: onSecondary,
-                        style: secondaryButtonStyle,
-                        child: Text(secondaryLabel),
-                      ),
-                    if (primaryLabel.isNotEmpty) ...[
-                      const Spacer(),
-                      FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
-                    ],
+                    if (secondaryLabel.isNotEmpty) TextButton(onPressed: onSecondary, style: secondaryButtonStyle, child: Text(secondaryLabel)),
+                    if (primaryLabel.isNotEmpty) ...[const Spacer(), FilledButton(onPressed: onPrimary, child: Text(primaryLabel))],
                   ],
                 ),
               ],

@@ -19,23 +19,14 @@ import 'package:halo_widgets/src/theme.dart';
 const _floors = (callValue: 60.0, fieldValue: 20.0, fullPadding: 8.0);
 const _button = 44.0;
 
-MainField _field({double minWidth = 64, double gapBefore = 8, FocusNode? focus}) => (
-      gapBefore: gapBefore,
-      minWidth: minWidth,
-      focusNode: focus ?? FocusNode(),
-      build: (_, _, _) => const SizedBox(),
-    );
+MainField _field({double minWidth = 64, double gapBefore = 8, FocusNode? focus}) =>
+    (gapBefore: gapBefore, minWidth: minWidth, focusNode: focus ?? FocusNode(), build: (_, _, _) => const SizedBox());
 
 /// The width at which [fields] fit with [slack] to spare — the gaps, the
 /// button, and the callsign's floor plus its padding, all at full size. A
 /// field's declared minimum already includes its own padding.
 double _fits(List<MainField> fields, {double slack = 0}) =>
-    _button +
-    logButtonGap +
-    fields.fold(0.0, (w, f) => w + f.gapBefore + f.minWidth) +
-    _floors.fullPadding +
-    _floors.callValue +
-    slack;
+    _button + logButtonGap + fields.fold(0.0, (w, f) => w + f.gapBefore + f.minWidth) + _floors.fullPadding + _floors.callValue + slack;
 
 void main() {
   test('everything fits: declared widths, nothing given up', () {
@@ -67,7 +58,11 @@ void main() {
 
   testWidgets('the focused field is exempt, and its neighbours carry its share', (tester) async {
     final focus = FocusNode();
-    await tester.pumpWidget(MaterialApp(home: Focus(focusNode: focus, child: const SizedBox())));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Focus(focusNode: focus, child: const SizedBox()),
+      ),
+    );
     focus.requestFocus();
     await tester.pump();
     final fields = [_field(focus: focus), _field(), _field()];
@@ -96,26 +91,24 @@ void main() {
     expect(r.squeezed, isTrue);
   });
 
-
   // The label half of the same squeeze: a field narrower than "QP Location"
   // shows "QP Loc" rather than an ellipsized "QP Loca…", which names the field
   // no better than nothing does.
   testWidgets('a squeezed field falls back to its short label, and only then', (tester) async {
     late BuildContext context;
-    await tester.pumpWidget(MaterialApp(
-      home: Builder(builder: (ctx) {
-        context = ctx;
-        return const SizedBox();
-      }),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (ctx) {
+            context = ctx;
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
 
-    String pick(double width, {String? shortLabel}) => mainFieldLabel(
-          context,
-          label: 'QP Location',
-          shortLabel: shortLabel,
-          width: width,
-          horizontalPadding: 8,
-        );
+    String pick(double width, {String? shortLabel}) =>
+        mainFieldLabel(context, label: 'QP Location', shortLabel: shortLabel, width: width, horizontalPadding: 8);
 
     // Measured, not assumed: the threshold is whatever the label actually
     // paints at under this font and text scaler, so the test states the rule
@@ -139,20 +132,20 @@ void main() {
   // the day either of those changes, which is the whole point of it.
   testWidgets('the label budget is what InputDecorator actually hands the label', (tester) async {
     for (final (width, padding) in [(76.0, 16.0), (76.0, 8.0), (76.0, 0.0), (110.0, 16.0), (110.0, 0.0)]) {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: width,
-              child: Builder(
-                builder: (ctx) => TextField(
-                  decoration: mainFieldDecoration(ctx, 'QP Location', horizontalPadding: padding),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: width,
+                child: Builder(
+                  builder: (ctx) => TextField(decoration: mainFieldDecoration(ctx, 'QP Location', horizontalPadding: padding)),
                 ),
               ),
             ),
           ),
         ),
-      ));
+      );
       final painted = tester.getSize(find.text('QP Location')).width;
       expect(
         mainFieldLabelWidth(width: width, horizontalPadding: padding),
@@ -179,34 +172,28 @@ void main() {
     testWidgets('a label with a short form is never shown cut off', (tester) async {
       for (var width = 40.0; width <= 100.0; width += 1) {
         for (final padding in [0.0, 8.0, 16.0]) {
-          await tester.pumpWidget(MaterialApp(
-            theme: buildHaLoTheme(Brightness.light),
-            home: Scaffold(
-              body: Center(
-                child: SizedBox(
-                  width: width,
-                  child: Builder(builder: (context) {
-                    final label = mainFieldLabel(
-                      context,
-                      label: 'QP Location',
-                      shortLabel: 'QP Loc',
-                      width: width,
-                      horizontalPadding: padding,
-                    );
-                    return TextField(decoration: mainFieldDecoration(context, label, horizontalPadding: padding));
-                  }),
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: buildHaLoTheme(Brightness.light),
+              home: Scaffold(
+                body: Center(
+                  child: SizedBox(
+                    width: width,
+                    child: Builder(
+                      builder: (context) {
+                        final label = mainFieldLabel(context, label: 'QP Location', shortLabel: 'QP Loc', width: width, horizontalPadding: padding);
+                        return TextField(decoration: mainFieldDecoration(context, label, horizontalPadding: padding));
+                      },
+                    ),
+                  ),
                 ),
               ),
             ),
-          ));
+          );
           final shown = find.byWidgetPredicate((w) => w is Text && (w.data == 'QP Location'));
           if (shown.evaluate().isEmpty) continue;
           final paragraph = tester.renderObject<RenderParagraph>(shown);
-          expect(
-            paragraph.didExceedMaxLines,
-            isFalse,
-            reason: 'at width $width, padding $padding the full label was chosen and then cut off',
-          );
+          expect(paragraph.didExceedMaxLines, isFalse, reason: 'at width $width, padding $padding the full label was chosen and then cut off');
         }
       }
     });

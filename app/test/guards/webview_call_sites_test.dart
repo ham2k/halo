@@ -53,9 +53,7 @@ const _expectedCallSites = {
 /// Linux hazard as the widget and would otherwise slip past; the optional
 /// `.name` admits the named constructors and statics, which is the only way
 /// `WebViewEnvironment` is ever reached — it has no unnamed constructor.
-final _construction = RegExp(
-  r'\b(?:(?:Headless)?InAppWebView|InAppBrowser|ChromeSafariBrowser|WebViewEnvironment)(?:\.\w+)?\(',
-);
+final _construction = RegExp(r'\b(?:(?:Headless)?InAppWebView|InAppBrowser|ChromeSafariBrowser|WebViewEnvironment)(?:\.\w+)?\(');
 
 /// Every `.dart` file under the app's and the widget package's `lib/`, with
 /// forward-slashed paths so the expected set above reads the same on Windows.
@@ -68,10 +66,7 @@ List<File> _appSources() {
       fail('expected ${root.path} to exist — run this suite from the app package (cwd: ${Directory.current.path})');
     }
   }
-  return [
-    for (final root in roots)
-      ...root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart')),
-  ];
+  return [for (final root in roots) ...root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart'))];
 }
 
 void main() {

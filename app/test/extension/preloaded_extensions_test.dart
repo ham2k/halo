@@ -40,13 +40,7 @@ void main() {
       // A bundle added and left out of the index ships dead weight and never
       // loads; an entry left in after its file went is a report on every
       // launch. Neither says anything on its own.
-      final onDisk = dir
-          .listSync()
-          .whereType<File>()
-          .map((f) => f.uri.pathSegments.last)
-          .where((name) => name.endsWith('.h2kext'))
-          .toList()
-        ..sort();
+      final onDisk = dir.listSync().whereType<File>().map((f) => f.uri.pathSegments.last).where((name) => name.endsWith('.h2kext')).toList()..sort();
       expect([for (final entry in index) entry.file]..sort(), onDisk);
       expect(onDisk, isNotEmpty, reason: 'the app ships no pre-loaded bundles at all');
     });
@@ -76,16 +70,10 @@ void main() {
     });
 
     test('the eight the app promises are the eight it ships', () {
-      expect({for (final entry in index) entry.key}, {
-        'ham2k-pota',
-        'ham2k-sota',
-        'ham2k-wwff',
-        'ham2k-lookup',
-        'ham2k-qrz',
-        'ham2k-call-notes',
-        'ham2k-spot-history',
-        'ham2k-call-history',
-      });
+      expect(
+        {for (final entry in index) entry.key},
+        {'ham2k-pota', 'ham2k-sota', 'ham2k-wwff', 'ham2k-lookup', 'ham2k-qrz', 'ham2k-call-notes', 'ham2k-spot-history', 'ham2k-call-history'},
+      );
     });
 
     test('each one that renames a built-in says which, and no name is claimed twice', () {
@@ -236,14 +224,19 @@ void main() {
         ExtensionInfo(key: 'adif', file: 'adif.js', core: true, name: 'ADIF'),
         ExtensionInfo(key: 'ham2k-lofi', file: 'lofi.js', core: true, name: 'LoFi sync'),
         ExtensionInfo(
-            key: 'ham2k-pota', file: 'index.js', core: false, name: 'POTA', category: 'activity',
-            source: ExtensionSource.installed, version: '0.2.0'),
+          key: 'ham2k-pota',
+          file: 'index.js',
+          core: false,
+          name: 'POTA',
+          category: 'activity',
+          source: ExtensionSource.installed,
+          version: '0.2.0',
+        ),
       ]);
       return (extensions, settings);
     }
 
-    ExtensionInfo infoFor(ExtensionService extensions, String key) =>
-        extensions.availableExtensions.firstWhere((info) => info.key == key);
+    ExtensionInfo infoFor(ExtensionService extensions, String key) => extensions.availableExtensions.firstWhere((info) => info.key == key);
 
     test('off the experiment, everything the app ships is offered', () async {
       final (extensions, _) = await harness();
@@ -268,8 +261,7 @@ void main() {
       // app's own out of the set — the two differ in version today, and
       // nothing enforces that they always will.
       final (extensions, settings) = await harness();
-      const asset = ExtensionInfo(
-          key: 'ham2k-lookup', file: 'ham2k-lookup.js', core: false, name: 'Lookup', version: '0.0.1');
+      const asset = ExtensionInfo(key: 'ham2k-lookup', file: 'ham2k-lookup.js', core: false, name: 'Lookup', version: '0.0.1');
       const installed = ExtensionInfo(
         key: 'ham2k-lookup',
         file: 'ham2k-lookup.js',
@@ -343,8 +335,14 @@ void main() {
       final settings = SettingsService(await SharedPreferences.getInstance());
       final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
       const llota = ExtensionInfo(
-          key: 'ce1vk-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0');
+        key: 'ce1vk-llota',
+        file: 'index.js',
+        core: false,
+        name: 'LLOTA',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '1.0.0',
+      );
       extensions.debugSetAvailableExtensions(const [llota]);
       expect(extensions.isExtensionAvailable(llota), isTrue);
       await moveToCatalog(settings);
@@ -419,9 +417,7 @@ void main() {
       // `potato` starts with `pota` and belongs to somebody else. The
       // namespacing rule is the extension key followed by `.` or `_`, and
       // matching on the bare prefix would take a neighbour's settings.
-      SharedPreferences.setMockInitialValues(const {
-        'settingsPanel.potato.token': 'not mine',
-      });
+      SharedPreferences.setMockInitialValues(const {'settingsPanel.potato.token': 'not mine'});
       final settings = SettingsService(await SharedPreferences.getInstance());
       await settings.copyExtensionRecords(from: 'pota', to: 'ham2k-pota');
       expect(settings.prefs.getString('settingsPanel.ham2k-potato.token'), isNull);
@@ -441,8 +437,7 @@ void main() {
     late SettingsService settings;
     final assetDir = Directory('assets/preloaded-extensions');
 
-    Future<ByteData> loadAsset(String key) async =>
-        ByteData.view(File('${assetDir.path}/${key.split('/').last}').readAsBytesSync().buffer);
+    Future<ByteData> loadAsset(String key) async => ByteData.view(File('${assetDir.path}/${key.split('/').last}').readAsBytesSync().buffer);
     Future<String> loadIndex(String key) async => File('${assetDir.path}/index.json').readAsStringSync();
 
     /// What `recordInstall` was told, per key — `fresh` is what decides
@@ -450,14 +445,14 @@ void main() {
     late Map<String, bool> freshness;
 
     Future<bool> runPreload({Map<String, String?> installed = const {}}) => installShippedExtensions(
-          store: store,
-          settings: settings,
-          installedVersions: installed,
-          recordInstall: (bundle, {required bool fresh}) async => freshness[bundle.key] = fresh,
-          copySecrets: ({required String from, required String to}) async {},
-          loadAsset: loadAsset,
-          loadIndex: loadIndex,
-        );
+      store: store,
+      settings: settings,
+      installedVersions: installed,
+      recordInstall: (bundle, {required bool fresh}) async => freshness[bundle.key] = fresh,
+      copySecrets: ({required String from, required String to}) async {},
+      loadAsset: loadAsset,
+      loadIndex: loadIndex,
+    );
 
     setUp(() async {
       freshness = {};
@@ -552,25 +547,13 @@ void main() {
     // of the work it skipped — an operator saw their SOTA login simply gone.
     test('falls back to the account pair, whose names are fixed by convention', () async {
       final copied = <String, String>{};
-      await copyExtensionKeychainItems(
-        const FlutterSecureStorage(),
-        from: 'sota',
-        to: 'ham2k-sota',
-        copyOne: (from, to) async => copied[from] = to,
-      );
-      expect(copied, {
-        'account_creds_sota': 'account_creds_ham2k-sota',
-        'account_session_sota': 'account_session_ham2k-sota',
-      });
+      await copyExtensionKeychainItems(const FlutterSecureStorage(), from: 'sota', to: 'ham2k-sota', copyOne: (from, to) async => copied[from] = to);
+      expect(copied, {'account_creds_sota': 'account_creds_ham2k-sota', 'account_session_sota': 'account_session_ham2k-sota'});
     });
 
     test('and the uninstall removes that same pair rather than nothing', () async {
       final deleted = <String>[];
-      await forgetExtensionKeychainItems(
-        const FlutterSecureStorage(),
-        'ham2k-sota',
-        deleteOne: (name) async => deleted.add(name),
-      );
+      await forgetExtensionKeychainItems(const FlutterSecureStorage(), 'ham2k-sota', deleteOne: (name) async => deleted.add(name));
       expect(deleted, ['account_creds_ham2k-sota', 'account_session_ham2k-sota']);
     });
   });

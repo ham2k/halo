@@ -45,9 +45,7 @@ class VersionDisplayParts {
   /// `1` or `1.2` — the pre-release counter with its patch, null for a stable
   /// release. The two are one number to a reader, and every display that shows
   /// the counter shows the patch with it.
-  String? get preReleaseCounter => preRelease == null
-      ? null
-      : '$preRelease${preReleasePatch == null ? '' : '.$preReleasePatch'}';
+  String? get preReleaseCounter => preRelease == null ? null : '$preRelease${preReleasePatch == null ? '' : '.$preReleasePatch'}';
 }
 
 /// The human-readable `MAJOR.MINOR.PATCH[-preN[.M]]` version shown in the UI,
@@ -74,18 +72,10 @@ class PublicVersion {
   /// `-pre1.1`. Only meaningful when [preRelease] is set.
   final int? preReleasePatch;
 
-  const PublicVersion({
-    required this.main,
-    required this.patch,
-    this.preRelease,
-    this.preReleaseLabel = 'pre',
-    this.preReleasePatch,
-  }) : assert(patch >= 0, 'patch must not be negative, was $patch'),
-       assert(preReleaseLabel != '', 'preReleaseLabel must not be empty'),
-       assert(
-         preReleasePatch == null || preRelease != null,
-         'preReleasePatch requires preRelease to be set',
-       );
+  const PublicVersion({required this.main, required this.patch, this.preRelease, this.preReleaseLabel = 'pre', this.preReleasePatch})
+    : assert(patch >= 0, 'patch must not be negative, was $patch'),
+      assert(preReleaseLabel != '', 'preReleaseLabel must not be empty'),
+      assert(preReleasePatch == null || preRelease != null, 'preReleasePatch requires preRelease to be set');
 
   /// The full public version string, e.g. `26.8.0-pre1.1` or `26.8.0-alpha0`.
   String get value {
@@ -104,15 +94,15 @@ class PublicVersion {
   /// [displayName] composes these same parts, so a new component added here
   /// reaches every caller by way of one grammar.
   VersionDisplayParts displayParts({String stageLabel = ''}) => VersionDisplayParts._(
-        mainName: main.displayName,
-        stageLabel: stageLabel,
-        // Patch 0 is not a patch: the first release of a version names no
-        // patch at all, and `patch 0` would name a thing that doesn't exist.
-        patch: patch == 0 ? null : patch,
-        preReleaseLabel: preRelease == null ? null : preReleaseLabel,
-        preRelease: preRelease,
-        preReleasePatch: preRelease == null ? null : preReleasePatch,
-      );
+    mainName: main.displayName,
+    stageLabel: stageLabel,
+    // Patch 0 is not a patch: the first release of a version names no
+    // patch at all, and `patch 0` would name a thing that doesn't exist.
+    patch: patch == 0 ? null : patch,
+    preReleaseLabel: preRelease == null ? null : preReleaseLabel,
+    preRelease: preRelease,
+    preReleasePatch: preRelease == null ? null : preReleasePatch,
+  );
 
   /// The human-friendly line name, e.g. `August '26`, `August '26 patch 2`,
   /// `August '26 pre 1`, `August '26 alpha 0`, or `August '26 patch 2 pre 1`.
@@ -148,9 +138,7 @@ class PublicVersion {
   /// (`26.8.1`), not the [displayName] (`August '26 alpha 1`).
   String releaseMessage(int build) {
     final core = '${main.year}.${main.month}.$patch';
-    final pre = preRelease == null
-        ? ''
-        : ' $preReleaseLabel $preRelease${preReleasePatch == null ? '' : '.$preReleasePatch'}';
+    final pre = preRelease == null ? '' : ' $preReleaseLabel $preRelease${preReleasePatch == null ? '' : '.$preReleasePatch'}';
     return 'Release $core$pre ($build)';
   }
 

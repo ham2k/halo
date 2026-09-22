@@ -207,8 +207,7 @@ class HistoryFilter {
     return value is String && refPrefixes.any(_asciiUpper(value).startsWith);
   }
 
-  static String _asciiUpper(String value) =>
-      String.fromCharCodes(value.codeUnits.map((c) => c >= 0x61 && c <= 0x7a ? c - 0x20 : c));
+  static String _asciiUpper(String value) => String.fromCharCodes(value.codeUnits.map((c) => c >= 0x61 && c <= 0x7a ? c - 0x20 : c));
 
   /// [matches], in SQL over [q] and [o], the operation it belongs to — left
   /// joined, so a QSO whose operation row has not arrived is matched on its
@@ -229,11 +228,10 @@ class HistoryFilter {
     if (refTypes.isNotEmpty || refPrefixes.isNotEmpty) {
       final qsoData = '"${q.aliasedName}"."${q.data.name}"';
       final operationData = '"${o.aliasedName}"."${o.data.name}"';
-      all = all &
+      all =
+          all &
           (_hasMatchingRef(qsoData, r'$.refs') |
-              (refsSegmentAware
-                  ? _hasMatchingRef(_segmentRefsSql(q, operationData), r'$')
-                  : _hasMatchingRef(operationData, r'$.refs')));
+              (refsSegmentAware ? _hasMatchingRef(_segmentRefsSql(q, operationData), r'$') : _hasMatchingRef(operationData, r'$.refs')));
     }
     if (operations.isNotEmpty) all = all & q.operation.isIn(operations);
     if (excludeOperations.isNotEmpty) all = all & q.operation.isNotIn(excludeOperations);
@@ -280,11 +278,9 @@ class HistoryFilter {
     final tests = [
       if (refTypes.isNotEmpty) "json_extract(r.value, '\$.type') IN (${refTypes.map(quoted).join(', ')})",
       if (refPrefixes.isNotEmpty)
-        "json_type(r.value, '\$.ref') = 'text' AND (${[
-          for (final prefix in refPrefixes)
-            // substr counts characters, not UTF-16 code units.
-            "upper(substr(json_extract(r.value, '\$.ref'), 1, ${prefix.runes.length})) = ${quoted(prefix)}",
-        ].join(' OR ')})",
+        "json_type(r.value, '\$.ref') = 'text' AND (${[for (final prefix in refPrefixes)
+          // substr counts characters, not UTF-16 code units.
+          "upper(substr(json_extract(r.value, '\$.ref'), 1, ${prefix.runes.length})) = ${quoted(prefix)}"].join(' OR ')})",
     ];
     return CustomExpression<bool>(
       'CASE WHEN json_valid($json) THEN CASE WHEN json_type($json, \'$path\') = \'array\' THEN EXISTS ('
@@ -296,9 +292,23 @@ class HistoryFilter {
 
   static const _knownParams = {
     'call',
-    'refType', 'refPrefix', 'refsSegmentAware', 'operation', 'excludeOperation', 'band', 'excludeBand', 'mode', 'excludeMode',
-    'fromDate', 'toDate', 'fromDateMillis', 'toDateMillis',
-    'fromTime', 'toTime', 'fromTimeMillis', 'toTimeMillis',
+    'refType',
+    'refPrefix',
+    'refsSegmentAware',
+    'operation',
+    'excludeOperation',
+    'band',
+    'excludeBand',
+    'mode',
+    'excludeMode',
+    'fromDate',
+    'toDate',
+    'fromDateMillis',
+    'toDateMillis',
+    'fromTime',
+    'toTime',
+    'fromTimeMillis',
+    'toTimeMillis',
     'limit',
   };
 
@@ -309,7 +319,10 @@ class HistoryFilter {
     if (value is String) {
       values = {if (value.trim().isNotEmpty) value.trim()};
     } else if (value is List && value.every((v) => v is String)) {
-      values = {for (final v in value.cast<String>()) if (v.trim().isNotEmpty) v.trim()};
+      values = {
+        for (final v in value.cast<String>())
+          if (v.trim().isNotEmpty) v.trim(),
+      };
     } else {
       throw FormatException('getHistoryForCall: `$key` must be a string or an array of strings, got $value');
     }
@@ -345,9 +358,16 @@ class HistoryFilter {
     final parsed = value is String ? DateTime.tryParse(value.trim()) : null;
     if (parsed != null) {
       if (parsed.isUtc) return parsed.millisecondsSinceEpoch;
-      return DateTime.utc(parsed.year, parsed.month, parsed.day, parsed.hour, parsed.minute, parsed.second,
-              parsed.millisecond, parsed.microsecond)
-          .millisecondsSinceEpoch;
+      return DateTime.utc(
+        parsed.year,
+        parsed.month,
+        parsed.day,
+        parsed.hour,
+        parsed.minute,
+        parsed.second,
+        parsed.millisecond,
+        parsed.microsecond,
+      ).millisecondsSinceEpoch;
     }
     throw FormatException('getHistoryForCall: `$key` must be an ISO 8601 date or timestamp, got $value');
   }

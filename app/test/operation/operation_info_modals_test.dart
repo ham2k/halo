@@ -45,10 +45,14 @@ void main() {
     if (dock != null) {
       await settings.setLayoutData(
         LayoutKeys.operationDock,
-        DockSplit(Axis.horizontal, [
-          DockGroup([dock.first]),
-          DockGroup(dock.sublist(1)),
-        ], [2, 1]).toJson(),
+        DockSplit(
+          Axis.horizontal,
+          [
+            DockGroup([dock.first]),
+            DockGroup(dock.sublist(1)),
+          ],
+          [2, 1],
+        ).toJson(),
       );
     }
     final db = HaLoDatabase(NativeDatabase.memory());
@@ -64,11 +68,13 @@ void main() {
     tester.view.physicalSize = Size(width, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
@@ -112,10 +118,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(InformationPanel), findsOneWidget);
-    expect(
-      find.descendant(of: find.byType(InformationPanel), matching: find.text('Operation Stats')),
-      findsOneWidget,
-    );
+    expect(find.descendant(of: find.byType(InformationPanel), matching: find.text('Operation Stats')), findsOneWidget);
     // Never the call detail: the header stands for the operation, not for
     // whichever QSO the tap before it happened to select.
     expect(find.byType(CallInfoPanel), findsNothing);
@@ -136,10 +139,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(InformationPanel), findsOneWidget);
-    expect(
-      find.descendant(of: find.byType(InformationPanel), matching: find.text('Operation Stats')),
-      findsOneWidget,
-    );
+    expect(find.descendant(of: find.byType(InformationPanel), matching: find.text('Operation Stats')), findsOneWidget);
     expect(find.byType(CallInfoPanel), findsNothing);
 
     await unmount(tester);
@@ -189,10 +189,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(InformationPanel), findsOneWidget);
-    expect(
-      find.descendant(of: find.byType(InformationPanel), matching: find.text('Operation Stats')),
-      findsOneWidget,
-    );
+    expect(find.descendant(of: find.byType(InformationPanel), matching: find.text('Operation Stats')), findsOneWidget);
 
     await unmount(tester);
   });

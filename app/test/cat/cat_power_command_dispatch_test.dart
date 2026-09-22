@@ -26,12 +26,7 @@ class _PowerCommandExtensions extends ExtensionService {
   Future<void> start() async {}
 
   @override
-  Future<Map<String, dynamic>?> interpretCommand(
-    String input, [
-    Map<String, dynamic>? operation,
-    Map<String, dynamic>? qso,
-    bool execute = false,
-  ]) async {
+  Future<Map<String, dynamic>?> interpretCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
     if (input.trim().toUpperCase() != '5W') return null;
     return {
       'describe': 'Change power to **5W**?',
@@ -56,12 +51,14 @@ void main() {
     final services = await buildServices();
     expect(services.radio.vfoA.power, isNull);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        home: Scaffold(body: HomeQuickLookup(services: services)),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          home: Scaffold(body: HomeQuickLookup(services: services)),
+        ),
       ),
-    ));
+    );
 
     final field = find.byType(TextField);
     await tester.enterText(field, '5W');
@@ -73,10 +70,13 @@ void main() {
     // widget tree and fail the test on a pending timer.
     await tester.runAsync(services.radio.flushPendingWrites);
 
-    expect(services.radio.vfoA.power, 5,
-        reason: 'the VFO is where every power surface reads it from; a connected radio '
-            'hears about it from there, through CatService');
-    expect(services.cat.displayedPower, 5,
-        reason: 'no radio is connected in this test, so the VFO is what the app displays');
+    expect(
+      services.radio.vfoA.power,
+      5,
+      reason:
+          'the VFO is where every power surface reads it from; a connected radio '
+          'hears about it from there, through CatService',
+    );
+    expect(services.cat.displayedPower, 5, reason: 'no radio is connected in this test, so the VFO is what the app displays');
   });
 }

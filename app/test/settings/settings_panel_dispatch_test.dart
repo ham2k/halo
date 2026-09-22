@@ -62,14 +62,7 @@ void main() {
     expect((firstLoad!['elements'] as List).first['value'], 'default');
 
     // Commit a new value, then re-fetch: the overlay now wins over the static default.
-    await extensions.commitSettingsFieldValue(
-      kind: 'simple',
-      hookKey: 'pota',
-      panelKey: 'pota',
-      fieldKey: 'apiKey',
-      value: 'committed-value',
-      state: const {},
-    );
+    await extensions.commitSettingsFieldValue(kind: 'simple', hookKey: 'pota', panelKey: 'pota', fieldKey: 'apiKey', value: 'committed-value', state: const {});
     final secondLoad = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple');
     expect((secondLoad!['elements'] as List).first['value'], 'committed-value');
   });
@@ -152,7 +145,12 @@ void main() {
         ],
       },
     });
-    final extensions = AccountStubExtensionService(mockHost, credentials: {'qrz': {'username': 'KI2D'}})..settings = settings;
+    final extensions = AccountStubExtensionService(
+      mockHost,
+      credentials: {
+        'qrz': {'username': 'KI2D'},
+      },
+    )..settings = settings;
 
     for (final kind in ['simple', 'dynamic']) {
       final definition = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: kind);
@@ -211,9 +209,7 @@ void main() {
   });
 
   test('validateSettingsField: Tier 2 forwards to the validateField hook method', () async {
-    final mockHost = FakeExtensionHost({
-      'settingsPanel:lofi:validateField': 'Invalid endpoint URL',
-    });
+    final mockHost = FakeExtensionHost({'settingsPanel:lofi:validateField': 'Invalid endpoint URL'});
     final extensions = MockExtensionService(mockHost)..settings = settings;
 
     final error = await extensions.validateSettingsField(
@@ -229,17 +225,10 @@ void main() {
   });
 
   test('runSettingsAction forwards the action element method and returns the result banner text', () async {
-    final mockHost = FakeExtensionHost({
-      'settingsPanel:qrz:clearCache': 'Cache cleared',
-    });
+    final mockHost = FakeExtensionHost({'settingsPanel:qrz:clearCache': 'Cache cleared'});
     final extensions = MockExtensionService(mockHost)..settings = settings;
 
-    final result = await extensions.runSettingsAction(
-      hookKey: 'qrz',
-      panelKey: 'qrz',
-      method: 'clearCache',
-      state: const {},
-    );
+    final result = await extensions.runSettingsAction(hookKey: 'qrz', panelKey: 'qrz', method: 'clearCache', state: const {});
     expect(result, 'Cache cleared');
   });
 
@@ -352,29 +341,15 @@ void main() {
     final mockHost = FakeExtensionHost(const {});
     final extensions = MockExtensionService(mockHost)..settings = settings;
 
-    final result = await extensions.transformSettingsField(
-      hookKey: 'core',
-      panelKey: 'core',
-      fieldKey: 'themeMode',
-      value: 'dark',
-      state: const {},
-    );
+    final result = await extensions.transformSettingsField(hookKey: 'core', panelKey: 'core', fieldKey: 'themeMode', value: 'dark', state: const {});
     expect(result, 'dark');
   });
 
   test('transformSettingsField still applies a real transformField result when the hook has one', () async {
-    final mockHost = FakeExtensionHost({
-      'settingsPanel:lofi:transformField': 'TRANSFORMED',
-    });
+    final mockHost = FakeExtensionHost({'settingsPanel:lofi:transformField': 'TRANSFORMED'});
     final extensions = MockExtensionService(mockHost)..settings = settings;
 
-    final result = await extensions.transformSettingsField(
-      hookKey: 'lofi',
-      panelKey: 'lofi',
-      fieldKey: 'endpoint',
-      value: 'raw',
-      state: const {},
-    );
+    final result = await extensions.transformSettingsField(hookKey: 'lofi', panelKey: 'lofi', fieldKey: 'endpoint', value: 'raw', state: const {});
     expect(result, 'TRANSFORMED');
   });
 

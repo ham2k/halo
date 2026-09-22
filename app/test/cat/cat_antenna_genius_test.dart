@@ -21,13 +21,10 @@ import 'package:ham2k_logger/services/cat/drivers/antenna_genius_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 
 const _banner = 'V4.1.16 AG';
-const _infoLine = 'R1|0|info v=4.1.16 date=2024-10-18 btl=1.6 hw=4.0 serial=00-00-00 '
+const _infoLine =
+    'R1|0|info v=4.1.16 date=2024-10-18 btl=1.6 hw=4.0 serial=00-00-00 '
     'name=Antenna_Genius ports=2 antennas=8 mode=master uptime=6139922';
-const _bandLines = [
-  'R2|0|band 0 name=None freq_start=0.000000 freq_stop=0.000000',
-  'R2|0|band 5 name=20m freq_start=13.800000 freq_stop=14.550000',
-  'R2|0|',
-];
+const _bandLines = ['R2|0|band 0 name=None freq_start=0.000000 freq_stop=0.000000', 'R2|0|band 5 name=20m freq_start=13.800000 freq_stop=14.550000', 'R2|0|'];
 const _antennaLines = [
   'R3|0|antenna 1 name=Hex tx=07E1 rx=07E1 inband=0000 hotkey=0',
   'R3|0|antenna 2 name=DXC tx=07F9 rx=07F9 inband=0000 hotkey=0',
@@ -38,6 +35,7 @@ const _antennaLines = [
   'R3|0|antenna 4 name=Antenna_4 tx=0000 rx=0000 inband=0000 hotkey=0',
   'R3|0|',
 ];
+
 /// The same 8x2 with a FlexRadio driving it — captured live. A port carries
 /// the driving radio's own nickname, its band and its frequency, and `source`
 /// names what is doing the driving.
@@ -103,6 +101,7 @@ class _FakeSink implements EquipmentSink {
     ports = p;
     reports++;
   }
+
   @override
   void reportAlive() {}
 
@@ -149,11 +148,7 @@ void main() {
       final subAt = sink.sent.indexWhere((line) => line.contains('sub port all'));
       expect(antennaAt, isNonNegative);
       expect(subAt, isNonNegative);
-      expect(
-        antennaAt,
-        lessThan(subAt),
-        reason: 'the subscription answers at once with ports naming antennas by key',
-      );
+      expect(antennaAt, lessThan(subAt), reason: 'the subscription answers at once with ports naming antennas by key');
     });
 
     test('commands carry an increasing sequence number in the C<seq>| envelope', () {
@@ -413,7 +408,8 @@ void main() {
   group('announcing itself', () {
     // Captured off the real 8x2 on UDP 9007. CRLF-terminated, no VITA-49
     // wrapper — unlike the FlexRadio broadcast this otherwise resembles.
-    const announcement = 'AG ip=10.0.0.67 port=9007 v=4.1.16 serial=00-00-00 '
+    const announcement =
+        'AG ip=10.0.0.67 port=9007 v=4.1.16 serial=00-00-00 '
         'name=Antenna_Genius ports=2 antennas=8 mode=master uptime=6143110\r\n';
 
     AgAnnouncement? parse(String text) => parseAgAnnouncement(utf8.encode(text));
@@ -457,9 +453,7 @@ void main() {
       final reversed = AntennaGeniusSession(sink, reversed: true);
       addTearDown(reversed.teardown);
       reversed.startUpdates();
-      reversed.handleData(
-        Uint8List.fromList(utf8.encode('${_portLines.join('\n')}\nR4|0|\n')),
-      );
+      reversed.handleData(Uint8List.fromList(utf8.encode('${_portLines.join('\n')}\nR4|0|\n')));
       expect(sink.ports.map((p) => p.label), ['1', '2'], reason: 'Port A is not where the radios are');
     });
 
@@ -467,9 +461,7 @@ void main() {
       final reversed = AntennaGeniusSession(sink, reversed: true);
       addTearDown(reversed.teardown);
       reversed.startUpdates();
-      reversed.handleData(
-        Uint8List.fromList(utf8.encode('${_portLines.join('\n')}\nR4|0|\n')),
-      );
+      reversed.handleData(Uint8List.fromList(utf8.encode('${_portLines.join('\n')}\nR4|0|\n')));
       sink.sent.clear();
       reversed.selectAntenna('1', '3');
       expect(sink.sent.single, endsWith('|port set 1 rxant=3\n'));

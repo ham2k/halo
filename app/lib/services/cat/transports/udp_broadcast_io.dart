@@ -72,8 +72,7 @@ Future<RawDatagramSocket> _bind(int port) async {
   // doesn't implement SO_REUSEPORT and throws on it, so fall back rather
   // than lose discovery on that platform entirely.
   try {
-    return await RawDatagramSocket.bind(InternetAddress.anyIPv4, port,
-        reuseAddress: true, reusePort: true);
+    return await RawDatagramSocket.bind(InternetAddress.anyIPv4, port, reuseAddress: true, reusePort: true);
   } catch (e) {
     debugPrint('[cat] SO_REUSEPORT unavailable ($e), binding $port without it');
     return RawDatagramSocket.bind(InternetAddress.anyIPv4, port, reuseAddress: true);

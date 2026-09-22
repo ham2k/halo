@@ -72,8 +72,8 @@ Object? theirPaneValue(String formKey, Object? raw) {
 /// The pane's `their` values as they stood when it opened, keyed by form
 /// field — the baseline every override below is measured against.
 Map<String, Object?> theirPaneValues(Map<String, dynamic> their) => {
-      for (final entry in theirPaneFormKeys.entries) entry.key: theirPaneValue(entry.key, their[entry.value]),
-    };
+  for (final entry in theirPaneFormKeys.entries) entry.key: theirPaneValue(entry.key, their[entry.value]),
+};
 
 /// The `their` keys the operator actually CHANGED in the pane, keyed by
 /// record field, ready to merge into the override map.
@@ -85,10 +85,10 @@ Map<String, Object?> theirPaneValues(Map<String, dynamic> their) => {
 /// [result] that would otherwise read as the operator clearing something they
 /// were never shown.
 Map<String, Object?> theirPaneOverrides(Map<String, dynamic> result, Map<String, Object?> before) => {
-      for (final entry in theirPaneFormKeys.entries)
-        if (result.containsKey(entry.key) && theirPaneValue(entry.key, result[entry.key]) != before[entry.key])
-          entry.value: theirPaneValue(entry.key, result[entry.key]),
-    };
+  for (final entry in theirPaneFormKeys.entries)
+    if (result.containsKey(entry.key) && theirPaneValue(entry.key, result[entry.key]) != before[entry.key])
+      entry.value: theirPaneValue(entry.key, result[entry.key]),
+};
 
 /// The instant the pane's Date and Time fields name, or null where they were
 /// left exactly as they were shown.
@@ -207,8 +207,7 @@ Map<String, dynamic> buildQsoEditFormDefinition({
         // value matches no option renders empty, and saving that pane would
         // then clear the mode the contact was worked on.
         'options': [
-          for (final m in [...modes, if (!modes.contains(currentMode)) currentMode])
-            {'value': m, 'label': m},
+          for (final m in [...modes, if (!modes.contains(currentMode)) currentMode]) {'value': m, 'label': m},
         ],
       },
       // After the mode, with the rest of what describes the transmission
@@ -244,14 +243,19 @@ Map<String, dynamic> buildQsoEditFormDefinition({
       // a lookup answers with.
       {'type': 'field', 'key': 'theirCity', 'fieldType': 'text', 'label': tt.theirCity, 'placeholder': guess?['city'] as String?},
       {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': tt.theirState, 'uppercase': true, 'placeholder': guess?['state'] as String?},
-      if (us)
-        {'type': 'field', 'key': 'theirCounty', 'fieldType': 'text', 'label': tt.theirCounty, 'placeholder': guess?['county'] as String?},
-      if (entity != null)
-        {'type': 'field', 'key': 'theirEntity', 'fieldType': 'text', 'label': tt.theirEntity, 'disabled': true},
+      if (us) {'type': 'field', 'key': 'theirCounty', 'fieldType': 'text', 'label': tt.theirCounty, 'placeholder': guess?['county'] as String?},
+      if (entity != null) {'type': 'field', 'key': 'theirEntity', 'fieldType': 'text', 'label': tt.theirEntity, 'disabled': true},
       {'type': 'field', 'key': 'theirCqZone', 'fieldType': 'number', 'label': tt.theirCqZone, 'placeholder': _numericGuess(guess, 'cqZone')},
       {'type': 'field', 'key': 'theirItuZone', 'fieldType': 'number', 'label': tt.theirItuZone, 'placeholder': _numericGuess(guess, 'ituZone')},
       if (us)
-        {'type': 'field', 'key': 'theirArrlSection', 'fieldType': 'text', 'label': tt.theirArrlSection, 'uppercase': true, 'placeholder': guess?['arrlSection'] as String?},
+        {
+          'type': 'field',
+          'key': 'theirArrlSection',
+          'fieldType': 'text',
+          'label': tt.theirArrlSection,
+          'uppercase': true,
+          'placeholder': guess?['arrlSection'] as String?,
+        },
       {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': tt.theirGrid, 'uppercase': true, 'placeholder': guessGridDisplay(guess)},
       // Editable, and cleared by the grid above the moment it is edited (see
       // [showQsoEditPane]'s onChange): a coordinate outranks a grid wherever
@@ -312,31 +316,30 @@ Future<Map<String, dynamic>?> showQsoEditPane(
   required Map<String, dynamic> formDefinition,
   required Map<String, dynamic> initialState,
   required String gridBeforePane,
-}) =>
-    showFormPane(
-      context,
-      formDefinition: formDefinition,
-      initialState: initialState,
-      onChange: (key, value, state) async {
-        // Freq wins over a manually-typed band, matching _onFreqChanged's
-        // existing precedence for the inline Radio control.
-        if (key == 'freq' && value is num) {
-          final band = bandForFrequency(value.toDouble());
-          if (band != null) return {'band': band};
-        }
-        // A typed locator replaces whatever coordinate the record arrived
-        // with, and the save path clears the pair for exactly that reason
-        // (`QsoDraft.toData`). Blanking the fields here is
-        // what keeps the pane honest about it: locations.md's rule is that a
-        // field the operator types into shows what would be stored if they
-        // left it alone, and a coordinate left on screen beside a corrected
-        // grid says the opposite of what the save will do.
-        if (key == 'theirGrid' && normalizeGrid((value as String? ?? '').trim()) != normalizeGrid(gridBeforePane)) {
-          return {'theirLat': null, 'theirLon': null};
-        }
-        return null;
-      },
-    );
+}) => showFormPane(
+  context,
+  formDefinition: formDefinition,
+  initialState: initialState,
+  onChange: (key, value, state) async {
+    // Freq wins over a manually-typed band, matching _onFreqChanged's
+    // existing precedence for the inline Radio control.
+    if (key == 'freq' && value is num) {
+      final band = bandForFrequency(value.toDouble());
+      if (band != null) return {'band': band};
+    }
+    // A typed locator replaces whatever coordinate the record arrived
+    // with, and the save path clears the pair for exactly that reason
+    // (`QsoDraft.toData`). Blanking the fields here is
+    // what keeps the pane honest about it: locations.md's rule is that a
+    // field the operator types into shows what would be stored if they
+    // left it alone, and a coordinate left on screen beside a corrected
+    // grid says the opposite of what the save will do.
+    if (key == 'theirGrid' && normalizeGrid((value as String? ?? '').trim()) != normalizeGrid(gridBeforePane)) {
+      return {'theirLat': null, 'theirLon': null};
+    }
+    return null;
+  },
+);
 
 /// The Notes chip and its field — a free-prose note about this contact.
 ///
@@ -351,12 +354,8 @@ const notesChipIcon = MdiIcons.noteOutline;
 
 /// The More chip. Never actually expanded — the logging panel special-cases
 /// 'more' to open this pane instead of expanding inline.
-SecondaryControlSpec moreControlSpec() => SecondaryControlSpec(
-      key: 'more',
-      icon: moreChipIcon,
-      summary: t.loggingControls.more,
-      expandedBuilder: (context) => const SizedBox.shrink(),
-    );
+SecondaryControlSpec moreControlSpec() =>
+    SecondaryControlSpec(key: 'more', icon: moreChipIcon, summary: t.loggingControls.more, expandedBuilder: (context) => const SizedBox.shrink());
 
 SecondaryControlSpec notesControlSpec(
   ThemeData theme, {

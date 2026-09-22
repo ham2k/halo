@@ -64,13 +64,7 @@ void main() {
       onHostCall: (method, params) async {
         if (method == 'dbLookupSelectAll' && params['category'] == 'satellites') {
           return [
-            for (final bird in birds)
-              {
-                'category': 'satellites',
-                'key': (bird['name'] as String).toUpperCase(),
-                'name': bird['name'],
-                'data': bird,
-              },
+            for (final bird in birds) {'category': 'satellites', 'key': (bird['name'] as String).toUpperCase(), 'name': bird['name'], 'data': bird},
           ];
         }
         return null;
@@ -80,28 +74,43 @@ void main() {
   }
 
   Future<List<Map<String, String>>> adifFor(ExtensionHost host, String? ref) async {
-    final fields = await host.invokeHook('adifFields',
-        key: 'satellites',
-        method: 'fieldsForOneQSO',
-        args: {
-          'qso': {'refs': ref == null ? [] : [{'type': 'satellite', 'ref': ref}]},
-          'operation': const {'refs': []},
-        },
-        timeout: const Duration(seconds: 10)) as List;
+    final fields =
+        await host.invokeHook(
+              'adifFields',
+              key: 'satellites',
+              method: 'fieldsForOneQSO',
+              args: {
+                'qso': {
+                  'refs': ref == null
+                      ? []
+                      : [
+                          {'type': 'satellite', 'ref': ref},
+                        ],
+                },
+                'operation': const {'refs': []},
+              },
+              timeout: const Duration(seconds: 10),
+            )
+            as List;
     return fields.map((f) => {(f as Map)['name'] as String: f['value'] as String}).toList();
   }
 
-  Map<String, String> flat(List<Map<String, String>> fields) => {
-        for (final f in fields) ...f,
-      };
+  Map<String, String> flat(List<Map<String, String>> fields) => {for (final f in fields) ...f};
 
   group('what an award reads', () {
     test('a satellite QSO carries PROP_MODE, SAT_NAME and the downlink band', () async {
       final host = await hostWithBirds([soFifty]);
       // The picker has to have been opened once for the bird table to be
       // loaded, which is what the export path then reads.
-      await host.invokeHook('activity', key: 'satellites', method: 'loggingControls',
-          args: {'operation': const {'refs': []}}, timeout: const Duration(seconds: 10));
+      await host.invokeHook(
+        'activity',
+        key: 'satellites',
+        method: 'loggingControls',
+        args: {
+          'operation': const {'refs': []},
+        },
+        timeout: const Duration(seconds: 10),
+      );
 
       expect(flat(await adifFor(host, 'SO-50/145.85/fm')), {
         'PROP_MODE': 'SAT',
@@ -116,8 +125,15 @@ void main() {
       // SAT_NAME, different BAND_RX — a reference that named only "AO-7" could
       // not express this, and would be wrong half the time.
       final host = await hostWithBirds([aoSeven]);
-      await host.invokeHook('activity', key: 'satellites', method: 'loggingControls',
-          args: {'operation': const {'refs': []}}, timeout: const Duration(seconds: 10));
+      await host.invokeHook(
+        'activity',
+        key: 'satellites',
+        method: 'loggingControls',
+        args: {
+          'operation': const {'refs': []},
+        },
+        timeout: const Duration(seconds: 10),
+      );
 
       expect(flat(await adifFor(host, 'AO-7/145.85/linear'))['BAND_RX'], '10m');
       expect(flat(await adifFor(host, 'AO-7/432.125/linear'))['BAND_RX'], '2m');
@@ -159,16 +175,17 @@ void main() {
     // most of what these assert is when the hook must refuse to guess.
     Future<List<dynamic>> importFrom(ExtensionHost host, List<Map<String, String>> records) async {
       return await host.invokeHook(
-        'adifImport',
-        key: 'satellites',
-        method: 'refsForRecords',
-        args: {
-          'records': [
-            for (final fields in records) {'fields': fields},
-          ],
-        },
-        timeout: const Duration(seconds: 20),
-      ) as List;
+            'adifImport',
+            key: 'satellites',
+            method: 'refsForRecords',
+            args: {
+              'records': [
+                for (final fields in records) {'fields': fields},
+              ],
+            },
+            timeout: const Duration(seconds: 20),
+          )
+          as List;
     }
 
     test('a one-transponder bird round-trips what the exporter wrote', () async {
@@ -316,13 +333,11 @@ void main() {
     test('maps the real feed into one row per bird', () async {
       final feed = jsonDecode(File('test/fixtures/satellites.json').readAsStringSync()) as List;
       final host = await hostWithBirds(const []);
-      final rows = (await host.invokeHook('dataFile',
-              key: 'satellite-data',
-              method: 'mapJsonBatch',
-              args: {'entries': feed},
-              timeout: const Duration(seconds: 20)) as List)
-          .map((e) => (e as Map).cast<String, dynamic>())
-          .toList();
+      final rows =
+          (await host.invokeHook('dataFile', key: 'satellite-data', method: 'mapJsonBatch', args: {'entries': feed}, timeout: const Duration(seconds: 20))
+                  as List)
+              .map((e) => (e as Map).cast<String, dynamic>())
+              .toList();
 
       // One row per BIRD, not per transponder — `queryLookups` caps at 100 and
       // the cap is silent.
@@ -337,15 +352,19 @@ void main() {
       // End to end on real data: feed → rows → picker options. A bird that
       // produced a malformed code would be unselectable and would export a
       // wrong SAT_NAME.
-      final feed = (jsonDecode(File('test/fixtures/satellites.json').readAsStringSync()) as List)
-          .map((e) => (e as Map).cast<String, dynamic>())
-          .toList();
+      final feed = (jsonDecode(File('test/fixtures/satellites.json').readAsStringSync()) as List).map((e) => (e as Map).cast<String, dynamic>()).toList();
       final host = await hostWithBirds(feed);
-      final controls = await host.invokeHook('activity',
-          key: 'satellites',
-          method: 'loggingControls',
-          args: {'operation': const {'refs': []}},
-          timeout: const Duration(seconds: 10)) as List;
+      final controls =
+          await host.invokeHook(
+                'activity',
+                key: 'satellites',
+                method: 'loggingControls',
+                args: {
+                  'operation': const {'refs': []},
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List;
       final options = (((controls.single as Map)['input'] as Map)['options'] as List).cast<Map>();
 
       // AO-7 and QO-100 have two uplinks each; SO-50 and IO-117 one.
@@ -362,11 +381,17 @@ void main() {
   group('the pickers', () {
     test('the per-QSO control offers one option per transponder', () async {
       final host = await hostWithBirds([soFifty, aoSeven]);
-      final controls = await host.invokeHook('activity',
-          key: 'satellites',
-          method: 'loggingControls',
-          args: {'operation': const {'refs': []}},
-          timeout: const Duration(seconds: 10)) as List;
+      final controls =
+          await host.invokeHook(
+                'activity',
+                key: 'satellites',
+                method: 'loggingControls',
+                args: {
+                  'operation': const {'refs': []},
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List;
 
       final input = (controls.single as Map)['input'] as Map;
       expect(input['kind'], 'options');
@@ -376,11 +401,7 @@ void main() {
       expect(input['uppercase'], isFalse);
 
       final options = (input['options'] as List).cast<Map>();
-      expect(options.map((o) => o['code']), [
-        'SO-50/145.85/fm',
-        'AO-7/145.85/linear',
-        'AO-7/432.125/linear',
-      ]);
+      expect(options.map((o) => o['code']), ['SO-50/145.85/fm', 'AO-7/145.85/linear', 'AO-7/432.125/linear']);
       // MHz to three decimals — `fmtFreq` would render QO-100's 10489.5 as
       // "10.489.500", reading its argument as kHz.
       expect(options.first['name'], 'SO-50 • FM: 145.850 → 436.795');
@@ -390,13 +411,21 @@ void main() {
       // app-polo's `operation.satellite` without a second place to store it: a
       // pass is one choice, not one per contact.
       final host = await hostWithBirds([soFifty]);
-      final controls = await host.invokeHook('activity',
-          key: 'satellites',
-          method: 'loggingControls',
-          args: {
-            'operation': {'refs': [{'type': 'satellite', 'ref': 'SO-50/145.85/fm'}]},
-          },
-          timeout: const Duration(seconds: 10)) as List;
+      final controls =
+          await host.invokeHook(
+                'activity',
+                key: 'satellites',
+                method: 'loggingControls',
+                args: {
+                  'operation': {
+                    'refs': [
+                      {'type': 'satellite', 'ref': 'SO-50/145.85/fm'},
+                    ],
+                  },
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List;
 
       final control = controls.single as Map;
       expect((control['input'] as Map)['suggestedValue'], 'SO-50/145.85/fm');
@@ -409,11 +438,17 @@ void main() {
       // `operationControls` handles `refList` and `form` only — an `options`
       // control there would silently never appear.
       final host = await hostWithBirds([soFifty, aoSeven]);
-      final controls = await host.invokeHook('activity',
-          key: 'satellites',
-          method: 'operationControls',
-          args: {'operation': const {'refs': []}},
-          timeout: const Duration(seconds: 10)) as List;
+      final controls =
+          await host.invokeHook(
+                'activity',
+                key: 'satellites',
+                method: 'operationControls',
+                args: {
+                  'operation': const {'refs': []},
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List;
 
       final input = (controls.single as Map)['input'] as Map;
       expect(input['kind'], 'form');
@@ -427,11 +462,8 @@ void main() {
 
   group('the SAT command', () {
     Future<Map?> interpret(ExtensionHost host, String input, {Map<String, dynamic>? qso}) async =>
-        await host.invokeHook('command',
-            key: 'satellites-sat',
-            method: 'interpret',
-            args: {'input': input, 'qso': ?qso},
-            timeout: const Duration(seconds: 10)) as Map?;
+        await host.invokeHook('command', key: 'satellites-sat', method: 'interpret', args: {'input': input, 'qso': ?qso}, timeout: const Duration(seconds: 10))
+            as Map?;
 
     test('names the bird AND tunes the radio, which a control cannot', () async {
       // The whole reason the command exists: a `loggingControls` selection
@@ -460,12 +492,16 @@ void main() {
       // `updateQso` writes whole fields, so a bare refs list would drop the
       // park this contact is also for — a silent loss of the operator's log.
       final host = await hostWithBirds([soFifty]);
-      final result = await interpret(host, 'SAT SO-50', qso: {
-        'refs': [
-          {'type': 'pota', 'ref': 'US-0001'},
-          {'type': 'satellite', 'ref': 'AO-7/145.85/linear'},
-        ],
-      });
+      final result = await interpret(
+        host,
+        'SAT SO-50',
+        qso: {
+          'refs': [
+            {'type': 'pota', 'ref': 'US-0001'},
+            {'type': 'satellite', 'ref': 'AO-7/145.85/linear'},
+          ],
+        },
+      );
 
       final refs = (((result!['commands'] as List).last as Map)['updateQso'] as Map)['refs'] as List;
       expect(refs, [

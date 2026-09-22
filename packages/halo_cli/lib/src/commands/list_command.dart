@@ -15,8 +15,7 @@ class ListCommand extends ExtCommand {
   final description = 'List the extensions in the bundle index, and optionally the hooks they register.';
 
   ListCommand() {
-    argParser.addFlag('hooks',
-        negatable: false, help: 'Boot the runtime and report the hooks each extension actually registered.');
+    argParser.addFlag('hooks', negatable: false, help: 'Boot the runtime and report the hooks each extension actually registered.');
   }
 
   @override
@@ -28,9 +27,7 @@ class ListCommand extends ExtCommand {
       // No runtime: this answers from index.json, so it still works when a
       // bundle is broken enough that the runtime won't boot — which is
       // exactly when somebody runs it.
-      final index = BundleIndex.load(
-        dir: globalResults!.option('bundles') != null ? Directory(globalResults!.option('bundles')!) : null,
-      );
+      final index = BundleIndex.load(dir: globalResults!.option('bundles') != null ? Directory(globalResults!.option('bundles')!) : null);
       emit({
         'bundles': index.directory.path,
         'extensions': [for (final entry in index.extensions) entry.toJson()],
@@ -55,10 +52,7 @@ class ListCommand extends ExtCommand {
         'bundles': runtime.index.directory.path,
         'loaded': [
           for (final entry in (active as List? ?? const []).cast<Map<dynamic, dynamic>>())
-            {
-              ...entry.cast<String, Object?>(),
-              'hooks': hooksByExtension[entry['key']] ?? const [],
-            },
+            {...entry.cast<String, Object?>(), 'hooks': hooksByExtension[entry['key']] ?? const []},
         ],
       });
       return 0;

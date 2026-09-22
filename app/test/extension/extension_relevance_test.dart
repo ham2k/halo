@@ -21,13 +21,27 @@ void main() {
     test('every valid shape passes, in either case', () {
       for (final relevance in [
         <String, Object?>{},
-        {'entities': ['K', 'VE', '*4U1U', 'ce']},
-        {'countries': ['us', 'CL']},
-        {'continents': ['NA', 'sa']},
-        {'ituRegions': [1, 2, 3]},
-        {'ituRegions': [2.0]},
-        {'dates': ['2026-09-19', '2028-02-29']},
-        {'interests': ['cw', 'vhf', 'satellite']},
+        {
+          'entities': ['K', 'VE', '*4U1U', 'ce'],
+        },
+        {
+          'countries': ['us', 'CL'],
+        },
+        {
+          'continents': ['NA', 'sa'],
+        },
+        {
+          'ituRegions': [1, 2, 3],
+        },
+        {
+          'ituRegions': [2.0],
+        },
+        {
+          'dates': ['2026-09-19', '2028-02-29'],
+        },
+        {
+          'interests': ['cw', 'vhf', 'satellite'],
+        },
         {'entities': [], 'countries': [], 'continents': [], 'ituRegions': [], 'dates': [], 'interests': []},
       ]) {
         expect(ExtensionRelevance.validate(relevance), isEmpty, reason: '$relevance');
@@ -43,7 +57,12 @@ void main() {
       final bad = <(Object?, Pattern)>[
         ('CE', "'relevance' must be an object"),
         ([], "'relevance' must be an object"),
-        ({'entity': ['CE']}, "unknown key 'entity'"),
+        (
+          {
+            'entity': ['CE'],
+          },
+          "unknown key 'entity'",
+        ),
         ({'geo': {}}, "unknown key 'geo'"),
         ({'entities': 'CE'}, "'relevance.entities' must be a list"),
         // JSON null is a value the author wrote. Read as an absent key it
@@ -51,20 +70,90 @@ void main() {
         // installs as worldwide — the one input the twins would disagree on.
         ({'entities': null}, "'relevance.entities' must be a list"),
         ({'dates': null}, "'relevance.dates' must be a list"),
-        ({'entities': ['']}, 'not a non-empty string'),
-        ({'entities': [7]}, 'not a non-empty string'),
-        ({'entities': ['C E']}, 'not a DXCC entity prefix'),
-        ({'countries': ['USA']}, 'not a two-letter ISO country code'),
-        ({'continents': ['North America']}, 'not a continent (AF AS EU NA OC SA AN)'),
-        ({'continents': ['EUR']}, 'not a continent'),
-        ({'ituRegions': ['2']}, 'not an ITU region (1, 2, 3)'),
-        ({'ituRegions': [7]}, 'not an ITU region'),
-        ({'ituRegions': [2.5]}, 'not an ITU region'),
-        ({'dates': ['19 September 2026']}, 'not a YYYY-MM-DD date'),
-        ({'dates': ['2026-9-19']}, 'not a YYYY-MM-DD date'),
-        ({'dates': [20260919]}, 'not a non-empty string'),
-        ({'interests': ['CW']}, 'not an interest'),
-        ({'interests': ['morse']}, 'not an interest (cw phone digital hf vhf uhf microwave satellite portable qrp)'),
+        (
+          {
+            'entities': [''],
+          },
+          'not a non-empty string',
+        ),
+        (
+          {
+            'entities': [7],
+          },
+          'not a non-empty string',
+        ),
+        (
+          {
+            'entities': ['C E'],
+          },
+          'not a DXCC entity prefix',
+        ),
+        (
+          {
+            'countries': ['USA'],
+          },
+          'not a two-letter ISO country code',
+        ),
+        (
+          {
+            'continents': ['North America'],
+          },
+          'not a continent (AF AS EU NA OC SA AN)',
+        ),
+        (
+          {
+            'continents': ['EUR'],
+          },
+          'not a continent',
+        ),
+        (
+          {
+            'ituRegions': ['2'],
+          },
+          'not an ITU region (1, 2, 3)',
+        ),
+        (
+          {
+            'ituRegions': [7],
+          },
+          'not an ITU region',
+        ),
+        (
+          {
+            'ituRegions': [2.5],
+          },
+          'not an ITU region',
+        ),
+        (
+          {
+            'dates': ['19 September 2026'],
+          },
+          'not a YYYY-MM-DD date',
+        ),
+        (
+          {
+            'dates': ['2026-9-19'],
+          },
+          'not a YYYY-MM-DD date',
+        ),
+        (
+          {
+            'dates': [20260919],
+          },
+          'not a non-empty string',
+        ),
+        (
+          {
+            'interests': ['CW'],
+          },
+          'not an interest',
+        ),
+        (
+          {
+            'interests': ['morse'],
+          },
+          'not an interest (cw phone digital hf vhf uhf microwave satellite portable qrp)',
+        ),
       ];
       for (final (relevance, message) in bad) {
         final problems = ExtensionRelevance.validate(relevance);
@@ -72,7 +161,14 @@ void main() {
         expect(problems.join(' | '), contains(message), reason: '$relevance');
       }
       // Every problem, not the first: an author fixes the manifest once.
-      expect(ExtensionRelevance.validate({'entities': [''], 'continents': ['EUR'], 'bogus': []}), hasLength(3));
+      expect(
+        ExtensionRelevance.validate({
+          'entities': [''],
+          'continents': ['EUR'],
+          'bogus': [],
+        }),
+        hasLength(3),
+      );
     });
 
     test('a date that only exists once the calendar rolls it over is refused', () {
@@ -80,12 +176,27 @@ void main() {
       // accepts the manifest and then silently means a different day. Every
       // one of these is a plausible typo for a real event date.
       for (final date in ['2026-02-31', '2026-13-01', '2026-00-10', '2026-04-31', '2026-09-00']) {
-        expect(ExtensionRelevance.validate({'dates': [date]}).join(' | '), contains('not a day that exists'),
-            reason: date);
+        expect(
+          ExtensionRelevance.validate({
+            'dates': [date],
+          }).join(' | '),
+          contains('not a day that exists'),
+          reason: date,
+        );
       }
       // The leap day itself is a real date, and 2027 has none.
-      expect(ExtensionRelevance.validate({'dates': ['2028-02-29']}), isEmpty);
-      expect(ExtensionRelevance.validate({'dates': ['2027-02-29']}).join(' | '), contains('not a day that exists'));
+      expect(
+        ExtensionRelevance.validate({
+          'dates': ['2028-02-29'],
+        }),
+        isEmpty,
+      );
+      expect(
+        ExtensionRelevance.validate({
+          'dates': ['2027-02-29'],
+        }).join(' | '),
+        contains('not a day that exists'),
+      );
     });
 
     test('a year under four figures is refused, because the packer cannot represent it', () {
@@ -94,11 +205,20 @@ void main() {
       // that while this accepted it. Neither answer is worth having, and the
       // rule that keeps the twins equal is the one both can state.
       for (final date in ['0050-01-01', '0099-12-31', '0000-01-01']) {
-        expect(ExtensionRelevance.validate({'dates': [date]}).join(' | '),
-            contains('not a year an event could fall in'),
-            reason: date);
+        expect(
+          ExtensionRelevance.validate({
+            'dates': [date],
+          }).join(' | '),
+          contains('not a year an event could fall in'),
+          reason: date,
+        );
       }
-      expect(ExtensionRelevance.validate({'dates': ['1000-01-01']}), isEmpty);
+      expect(
+        ExtensionRelevance.validate({
+          'dates': ['1000-01-01'],
+        }),
+        isEmpty,
+      );
     });
 
     test('the keys and the vocabulary are the packer\'s, literal for literal', () {
@@ -283,8 +403,7 @@ void main() {
       return '${at.year}-${at.month.toString().padLeft(2, '0')}-${at.day.toString().padLeft(2, '0')}';
     }
 
-    int bandOf(ExtensionRelevance? r, {OperatorGeo? operator = kilo}) =>
-        relevanceBand(r, operator: operator, now: now);
+    int bandOf(ExtensionRelevance? r, {OperatorGeo? operator = kilo}) => relevanceBand(r, operator: operator, now: now);
 
     test('a date inside the window outranks a place, which outranks neither', () {
       // The whole point of the ordering: a date expires and a place does not.
@@ -343,7 +462,14 @@ void main() {
       // Shape is refused upstream, so anything unreadable here came from a
       // stale index rather than an author — and ranking an extension by a
       // typo is worse than not ranking it.
-      expect(bandOf(ExtensionRelevance.fromJson(const {'dates': ['whenever']})), 2);
+      expect(
+        bandOf(
+          ExtensionRelevance.fromJson(const {
+            'dates': ['whenever'],
+          }),
+        ),
+        2,
+      );
     });
   });
 }

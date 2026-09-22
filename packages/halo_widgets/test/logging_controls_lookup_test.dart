@@ -19,54 +19,49 @@ void main() {
   installLoggingHarness();
 
   group('info area (issue #40)', () {
-    Future<Map<String, dynamic>?> Function(String,
-            {required Map<String, dynamic> qso,
-            required Map<String, dynamic> operation,
-            required bool online,
-            bool recentContext}) guessLookup(
-      Map<String, dynamic> guess,
-    ) {
+    Future<Map<String, dynamic>?> Function(
+      String, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+      bool recentContext,
+    })
+    guessLookup(Map<String, dynamic> guess) {
       return (call, {required qso, required operation, required online, recentContext = false}) async => {'guess': guess};
     }
 
-    Widget withWorkedBefore({
-      required WorkedBefore workedBefore,
-      Qso? editingQso,
-    }) =>
-        MaterialApp(
-          home: Scaffold(
-            body: LoggingControls(
-              log: baseLog(),
-              session: LoggingSession(
-                editingQso: editingQso,
-              ),
-              radio: baseRadio(),
-              lookups: LookupHooks(
-                lookup: guessLookup({'name': 'Hiram'}),
-                workedBefore: workedBefore,
-                workedBeforeLabel: (times) => '${times.length} before',
-              ),
-            ),
-          ),
-        );
+    Widget withWorkedBefore({required WorkedBefore workedBefore, Qso? editingQso}) => MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          log: baseLog(),
+          session: LoggingSession(editingQso: editingQso),
+          radio: baseRadio(),
+          lookups: LookupHooks(lookup: guessLookup({'name': 'Hiram'}), workedBefore: workedBefore, workedBeforeLabel: (times) => '${times.length} before'),
+        ),
+      ),
+    );
 
     // The argument is the whole reason an edited QSO is not its own prior
     // contact; nothing else fails when it is dropped.
     testWidgets('worked-before: an edit asks with its own QSO excluded, and shows the answer', (tester) async {
-      final existing = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'their': {'call': 'W1AW'},
-            'startAtMillis': 1000000,
-            'freq': 7100,
-            'mode': 'SSB',
-          })))!;
+      final existing = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': 1000000,
+          'freq': 7100,
+          'mode': 'SSB',
+        }),
+      ))!;
       final asked = <(String, String?)>[];
-      await tester.pumpWidget(withWorkedBefore(
-        editingQso: existing,
-        workedBefore: (call, {excludingQsoUuid}) async {
-          asked.add((call, excludingQsoUuid));
-          return [500];
-        },
-      ));
+      await tester.pumpWidget(
+        withWorkedBefore(
+          editingQso: existing,
+          workedBefore: (call, {excludingQsoUuid}) async {
+            asked.add((call, excludingQsoUuid));
+            return [500];
+          },
+        ),
+      );
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(asked, contains(('W1AW', existing.uuid)));
@@ -81,9 +76,7 @@ void main() {
     // typo, was never fetched again for the rest of the call's life.
     testWidgets('worked-before: survives a typo corrected before the lookup debounce fires', (tester) async {
       final pending = <String, Completer<List<int>>>{};
-      await tester.pumpWidget(withWorkedBefore(
-        workedBefore: (call, {excludingQsoUuid}) => (pending[call] ??= Completer()).future,
-      ));
+      await tester.pumpWidget(withWorkedBefore(workedBefore: (call, {excludingQsoUuid}) => (pending[call] ??= Completer()).future));
       final field = find.widgetWithText(TextField, 'Their call');
 
       await tester.enterText(field, 'W1AW');
@@ -103,9 +96,7 @@ void main() {
 
     testWidgets('worked-before: an answer for a call no longer at the cursor is dropped', (tester) async {
       final pending = <String, Completer<List<int>>>{};
-      await tester.pumpWidget(withWorkedBefore(
-        workedBefore: (call, {excludingQsoUuid}) => (pending[call] ??= Completer()).future,
-      ));
+      await tester.pumpWidget(withWorkedBefore(workedBefore: (call, {excludingQsoUuid}) => (pending[call] ??= Completer()).future));
       final field = find.widgetWithText(TextField, 'Their call');
       await tester.enterText(field, 'W1AW');
       await tester.pump(const Duration(milliseconds: 400));
@@ -124,17 +115,17 @@ void main() {
     });
 
     testWidgets('idle (no call): renders the operation statistics lines', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              operationStatsLines: (_) => ['12 QSOs in 1h 5m', '48 Q/h for last 10'],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(operationStatsLines: (_) => ['12 QSOs in 1h 5m', '48 Q/h for last 10']),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
 
       expect(find.text('12 QSOs in 1h 5m'), findsOneWidget);
@@ -142,19 +133,21 @@ void main() {
     });
 
     testWidgets('call entered: flag, location line and name replace the stats', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: guessLookup({'flag': '🇮🇹', 'name': 'Marco', 'entityPrefix': 'I', 'country': 'Italy'}),
-              callLocationLine: (guess) => '5,000 mi to • ${guess['country']}',
-              operationStatsLines: (_) => ['stats-line-should-be-hidden'],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: guessLookup({'flag': '🇮🇹', 'name': 'Marco', 'entityPrefix': 'I', 'country': 'Italy'}),
+                callLocationLine: (guess) => '5,000 mi to • ${guess['country']}',
+                operationStatsLines: (_) => ['stats-line-should-be-hidden'],
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
       await tester.pump(const Duration(milliseconds: 500));
@@ -174,21 +167,18 @@ void main() {
       // must this. Nothing else of call-info applies: no lookup ran, so the
       // line is all that appears, and it goes back to the stats the moment
       // the grid stops being complete.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              callLocationLine: (guess) => '${guess['grid']} is 42 km away',
-              operationStatsLines: (_) => ['stats-line'],
-            ),
-            prefs: LoggingPreferences(
-              showGridField: true,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(callLocationLine: (guess) => '${guess['grid']} is 42 km away', operationStatsLines: (_) => ['stats-line']),
+              prefs: LoggingPreferences(showGridField: true),
             ),
           ),
         ),
-      ));
+      );
       expect(find.text('stats-line'), findsOneWidget);
 
       await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN20aa');
@@ -213,22 +203,22 @@ void main() {
       // (docs/design/locations.md) — or the hint and the record disagree.
       GridPrecision.configure(GridPrecision.eight);
       addTearDown(GridPrecision.reset);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
-                'guess': {'grid': 'FN31pr', 'lat': 41.7135, 'lon': -72.7278},
-              },
-            ),
-            prefs: LoggingPreferences(
-              showGridField: true,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
+                  'guess': {'grid': 'FN31pr', 'lat': 41.7135, 'lon': -72.7278},
+                },
+              ),
+              prefs: LoggingPreferences(showGridField: true),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump(const Duration(milliseconds: 400));
@@ -244,22 +234,22 @@ void main() {
       // the stored square goes through as written however fine the setting is.
       GridPrecision.configure(GridPrecision.eight);
       addTearDown(GridPrecision.reset);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
-                'guess': {'grid': 'FN31pr'},
-              },
-            ),
-            prefs: LoggingPreferences(
-              showGridField: true,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
+                  'guess': {'grid': 'FN31pr'},
+                },
+              ),
+              prefs: LoggingPreferences(showGridField: true),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump(const Duration(milliseconds: 400));
@@ -272,21 +262,18 @@ void main() {
       // The app answers null when the operation has no location of its own;
       // swapping the stats for an empty line would hide that the operator's
       // own grid is what's missing.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              callLocationLine: (guess) => null,
-              operationStatsLines: (_) => ['stats-line'],
-            ),
-            prefs: LoggingPreferences(
-              showGridField: true,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(callLocationLine: (guess) => null, operationStatsLines: (_) => ['stats-line']),
+              prefs: LoggingPreferences(showGridField: true),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN20aa');
       await tester.pump(const Duration(milliseconds: 300));
@@ -298,30 +285,26 @@ void main() {
       // The 10 GHz events take the grid on their exchange field, not the core
       // Grid field — the descriptor names its ref field `grid`, and that is
       // what marks it.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['arrl-vhf-tests']),
-              qsosRepository: qsos,
-            ),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              callLocationLine: (guess) => '${guess['grid']} is 42 km away',
-              operationStatsLines: (_) => ['stats-line'],
-            ),
-            activities: ActivityHooks(
-              activityControls: const [
-                {
-                  'key': 'arrl-vhf-tests/grid',
-                  'label': 'Grid',
-                  'input': {'kind': 'text', 'refType': 'arrl-vhf-tests', 'field': 'grid', 'maxLength': 6},
-                },
-              ],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['arrl-vhf-tests']), qsosRepository: qsos),
+              radio: baseRadio(),
+              lookups: LookupHooks(callLocationLine: (guess) => '${guess['grid']} is 42 km away', operationStatsLines: (_) => ['stats-line']),
+              activities: ActivityHooks(
+                activityControls: const [
+                  {
+                    'key': 'arrl-vhf-tests/grid',
+                    'label': 'Grid',
+                    'input': {'kind': 'text', 'refType': 'arrl-vhf-tests', 'field': 'grid', 'maxLength': 6},
+                  },
+                ],
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN20aa');
       await tester.pump(const Duration(milliseconds: 300));
@@ -331,17 +314,17 @@ void main() {
     });
 
     testWidgets('a lookup note takes line 2 over the name', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: guessLookup({'name': 'Marco', 'note': 'Old friend, always on 20m'}),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(lookup: guessLookup({'name': 'Marco', 'note': 'Old friend, always on 20m'})),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
       await tester.pump(const Duration(milliseconds: 500));
@@ -355,18 +338,17 @@ void main() {
     // socials link and not follow it.
     testWidgets('a link in a note opens through onOpenLink', (tester) async {
       final opened = <String>[];
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              onOpenLink: opened.add,
-              lookup: guessLookup({'note': 'QSL via [the club](https://example.org/qsl)'}),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(onOpenLink: opened.add, lookup: guessLookup({'note': 'QSL via [the club](https://example.org/qsl)'})),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
       await tester.pump(const Duration(milliseconds: 500));
@@ -385,43 +367,43 @@ void main() {
     // choice is the only way this test can fail if the measurement breaks —
     // an earlier version asserted only "no exception", which both branches
     // satisfy.
-    testWidgets('the measured note shares line 2 when it fits, and takes its own line when it does not',
-        (tester) async {
+    testWidgets('the measured note shares line 2 when it fits, and takes its own line when it does not', (tester) async {
       Future<({Offset pill, Offset note})> layout(String note) async {
-        await tester.pumpWidget(MaterialApp(
-          home: Scaffold(
-            // 700px wide on purpose. The note below measures 342 as spans and
-            // 627 as raw markdown, and the fit test is
-            // `pills(92.5) + gap(8) + note <= maxWidth`, so at this width the
-            // span measurement fits and the raw one does not. At the default
-            // 800 there is ~400px of slack and BOTH fit, which is why an
-            // earlier version of this test could not fail.
-            body: SizedBox(
-              width: 700,
-              // Keyed per note: without it the second pump reuses the same
-              // State, whose guess is already cached for this callsign, and
-              // the note never changes.
-              child: LoggingControls(
-                key: ValueKey(note),
-                log: baseLog(),
-                radio: baseRadio(),
-                lookups: LookupHooks(
-                  lookup: guessLookup({'note': note}),
-                  scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
-                      {'notices': ['newDXCC'], 'alerts': <String>[]},
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              // 700px wide on purpose. The note below measures 342 as spans and
+              // 627 as raw markdown, and the fit test is
+              // `pills(92.5) + gap(8) + note <= maxWidth`, so at this width the
+              // span measurement fits and the raw one does not. At the default
+              // 800 there is ~400px of slack and BOTH fit, which is why an
+              // earlier version of this test could not fail.
+              body: SizedBox(
+                width: 700,
+                // Keyed per note: without it the second pump reuses the same
+                // State, whose guess is already cached for this callsign, and
+                // the note never changes.
+                child: LoggingControls(
+                  key: ValueKey(note),
+                  log: baseLog(),
+                  radio: baseRadio(),
+                  lookups: LookupHooks(
+                    lookup: guessLookup({'note': note}),
+                    scoreQso: ({required operation, required qso, excludeUuid, segments}) async => {
+                      'notices': ['newDXCC'],
+                      'alerts': <String>[],
+                    },
+                  ),
                 ),
               ),
             ),
           ),
-        ));
+        );
         await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
         await tester.pump(const Duration(milliseconds: 500));
         expect(tester.takeException(), isNull);
 
-        return (
-          pill: tester.getTopLeft(find.text('newDXCC')),
-          note: tester.getTopLeft(find.byType(InlineMarkdownText)),
-        );
+        return (pill: tester.getTopLeft(find.text('newDXCC')), note: tester.getTopLeft(find.byType(InlineMarkdownText)));
       }
 
       // Heavily marked up on purpose: 342 as spans, 627 as raw markdown. Only
@@ -438,8 +420,7 @@ void main() {
       final wraps = await layout('Very long note about this operator ' * 8);
       // The note starts at the column's left edge; the pill's label is inset by
       // its own 6px padding, so the note is very slightly left of it.
-      expect(wraps.note.dx, lessThan(wraps.pill.dx),
-          reason: 'a note too wide for the row should start where the pills do, not trail them');
+      expect(wraps.note.dx, lessThan(wraps.pill.dx), reason: 'a note too wide for the row should start where the pills do, not trail them');
       expect(wraps.note.dy, lessThan(wraps.pill.dy), reason: 'and sit above them');
     });
 
@@ -448,20 +429,24 @@ void main() {
     // and Roboto resolves no emoji on web at all. Asserting the fallback
     // rather than the glyph: a widget test cannot see which font painted.
     testWidgets('a note carrying a flag styles it in the bundled emoji font', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            key: const ValueKey('flag-note'),
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: guessLookup({'note': 'from 🇺🇸 with **love**'}),
-              scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
-                  {'notices': ['newDXCC'], 'alerts': <String>[]},
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              key: const ValueKey('flag-note'),
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: guessLookup({'note': 'from 🇺🇸 with **love**'}),
+                scoreQso: ({required operation, required qso, excludeUuid, segments}) async => {
+                  'notices': ['newDXCC'],
+                  'alerts': <String>[],
+                },
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
       await tester.pump(const Duration(milliseconds: 500));
@@ -475,20 +460,24 @@ void main() {
     });
 
     testWidgets('scoreQso notices render as line-3 pills', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: guessLookup({'name': 'Marco'}),
-              scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
-                  {'notices': ['newDXCC', 'newBand'], 'alerts': <String>[]},
-              scoreNoticeLabel: (key) => const {'newDXCC': 'New DXCC', 'newBand': 'New Band'}[key] ?? key,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: guessLookup({'name': 'Marco'}),
+                scoreQso: ({required operation, required qso, excludeUuid, segments}) async => {
+                  'notices': ['newDXCC', 'newBand'],
+                  'alerts': <String>[],
+                },
+                scoreNoticeLabel: (key) => const {'newDXCC': 'New DXCC', 'newBand': 'New Band'}[key] ?? key,
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
       await tester.pump(const Duration(milliseconds: 500));
@@ -501,19 +490,23 @@ void main() {
       // Dupe detection now lives in the scoreQso hook (which knows the
       // operation's activities), not a client-side check — the widget just
       // renders whatever the hook returns.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
-                  {'notices': <String>[], 'alerts': ['duplicate']},
-              scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                scoreQso: ({required operation, required qso, excludeUuid, segments}) async => {
+                  'notices': <String>[],
+                  'alerts': ['duplicate'],
+                },
+                scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump(const Duration(milliseconds: 500));
@@ -526,20 +519,22 @@ void main() {
 
     testWidgets('scoreQso fires only for a plausible callsign, not junk input', (tester) async {
       final scored = <String>[];
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-                scored.add(((qso['their'] as Map)['call']) as String);
-                return {'notices': <String>[], 'alerts': <String>[]};
-              },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                  scored.add(((qso['their'] as Map)['call']) as String);
+                  return {'notices': <String>[], 'alerts': <String>[]};
+                },
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       // "QQQ" is ≥3 chars but not a plausible callsign — no whole-log scoring
       // pass should fire (the same gate the lookup uses).
@@ -559,22 +554,24 @@ void main() {
     // already in the lookup cache.
     testWidgets('a resolved lookup re-scores, so the guess it carries can be scored on', (tester) async {
       final scoredStates = <String?>[];
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: guessLookup({'state': 'CT'}),
-              scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-                final their = qso['their'] as Map;
-                scoredStates.add(((their['guess'] as Map?)?['state']) as String?);
-                return {'notices': <String>[], 'alerts': <String>[]};
-              },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: guessLookup({'state': 'CT'}),
+                scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                  final their = qso['their'] as Map;
+                  scoredStates.add(((their['guess'] as Map?)?['state']) as String?);
+                  return {'notices': <String>[], 'alerts': <String>[]};
+                },
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump(const Duration(milliseconds: 500));
@@ -588,23 +585,23 @@ void main() {
     // The operator typing a state is the other way it reaches the scorer.
     testWidgets('typing a state re-scores', (tester) async {
       final scoredStates = <String?>[];
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-                scoredStates.add(((qso['their'] as Map)['state']) as String?);
-                return {'notices': <String>[], 'alerts': <String>[]};
-              },
-            ),
-            prefs: LoggingPreferences(
-              showStateField: true,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                  scoredStates.add(((qso['their'] as Map)['state']) as String?);
+                  return {'notices': <String>[], 'alerts': <String>[]};
+                },
+              ),
+              prefs: LoggingPreferences(showStateField: true),
             ),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump(const Duration(milliseconds: 500));
@@ -628,22 +625,23 @@ void main() {
       bool recentContext = false,
     }) async {
       lookedUp.add(call);
-      return {'guess': {'name': 'Should Not Be Saved Inline'}};
+      return {
+        'guess': {'name': 'Should Not Be Saved Inline'},
+      };
     }
 
     final enqueued = <Qso>[];
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          lookups: LookupHooks(
-            lookup: lookup,
-            enqueueLookup: enqueued.add,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            lookups: LookupHooks(lookup: lookup, enqueueLookup: enqueued.add),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
     // Enter before the 300ms preview debounce fires — the save must not
@@ -663,69 +661,73 @@ void main() {
   });
 
   testWidgets(
-      'editing a QSO into a comma-separated list: the original record survives untouched; saving only enqueues the newly added call, not the original again',
-      (tester) async {
-    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+    'editing a QSO into a comma-separated list: the original record survives untouched; saving only enqueues the newly added call, not the original again',
+    (tester) async {
+      final existingQso = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
           'their': {'call': 'W1AW', 'name': 'Stale Cached Name', 'grid': 'FN31pr'},
           'startAtMillis': 1000000,
           // A real logged contact carries a frequency; editing one that has
           // neither band nor frequency is refused (HALO-24), which would stop
           // this test's save before it reached what it's actually about.
           'freq': 14285.0,
-        })))!;
+        }),
+      ))!;
 
-    final enqueued = <Qso>[];
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          session: LoggingSession(
-            editingQso: existingQso,
-          ),
-          radio: baseRadio(),
-          lookups: LookupHooks(
-            enqueueLookup: enqueued.add,
+      final enqueued = <Qso>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: existingQso),
+              radio: baseRadio(),
+              lookups: LookupHooks(enqueueLookup: enqueued.add),
+            ),
           ),
         ),
-      ),
-    ));
-    // Opening it for editing enqueues it once, on its own (it never had an
-    // online lookup) — asserted here so the rest of this test can focus on
-    // what SAVING does, without that opening-time enqueue muddying it.
-    expect(enqueued.map((q) => q.uuid).toList(), [existingQso.uuid]);
+      );
+      // Opening it for editing enqueues it once, on its own (it never had an
+      // online lookup) — asserted here so the rest of this test can focus on
+      // what SAVING does, without that opening-time enqueue muddying it.
+      expect(enqueued.map((q) => q.uuid).toList(), [existingQso.uuid]);
 
-    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
-    await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
 
-    final logged = await waitForQsos(tester, 2);
-    final w1aw = logged.firstWhere((q) => q.theirCall == 'W1AW');
-    final k1abc = logged.firstWhere((q) => q.theirCall == 'K1ABC');
-    // The record being edited is untouched — not re-looked-up (inline or
-    // via the queue), its own already-stored data survives exactly as
-    // before: a background refresh would overwrite `guess` data the
-    // operator may already be relying on.
-    expect(w1aw.theirName, 'Stale Cached Name');
-    expect(w1aw.theirGrid, 'FN31pr');
-    // The newly added call is saved bare and queued for its own
-    // independent background lookup, rather than inheriting anything
-    // cached for the original call — and saving doesn't enqueue the
-    // original record a second time.
-    expect(k1abc.theirName, isNull);
-    expect(enqueued.map((q) => q.uuid).toList(), [existingQso.uuid, k1abc.uuid]);
-  });
+      final logged = await waitForQsos(tester, 2);
+      final w1aw = logged.firstWhere((q) => q.theirCall == 'W1AW');
+      final k1abc = logged.firstWhere((q) => q.theirCall == 'K1ABC');
+      // The record being edited is untouched — not re-looked-up (inline or
+      // via the queue), its own already-stored data survives exactly as
+      // before: a background refresh would overwrite `guess` data the
+      // operator may already be relying on.
+      expect(w1aw.theirName, 'Stale Cached Name');
+      expect(w1aw.theirGrid, 'FN31pr');
+      // The newly added call is saved bare and queued for its own
+      // independent background lookup, rather than inheriting anything
+      // cached for the original call — and saving doesn't enqueue the
+      // original record a second time.
+      expect(k1abc.theirName, isNull);
+      expect(enqueued.map((q) => q.uuid).toList(), [existingQso.uuid, k1abc.uuid]);
+    },
+  );
 
-  testWidgets('constructed already editing a QSO enqueues it for a background lookup (ham2k/halo-dist#279 follow-up)',
-      (tester) async {
-    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-        })))!;
+  testWidgets('constructed already editing a QSO enqueues it for a background lookup (ham2k/halo-dist#279 follow-up)', (tester) async {
+    final existingQso = (await tester.runAsync(
+      () => qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+      }),
+    ))!;
 
     final enqueued = <Qso>[];
-    await tester.pumpWidget(host(
-      session: LoggingSession(editingQso: existingQso),
-      lookups: LookupHooks(enqueueLookup: enqueued.add),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(editingQso: existingQso),
+        lookups: LookupHooks(enqueueLookup: enqueued.add),
+      ),
+    );
 
     // enqueueLookup itself decides (via LookupQueueService, tested
     // separately) whether the record actually needs a fresh lookup —
@@ -733,28 +735,35 @@ void main() {
     expect(enqueued.map((q) => q.uuid).toList(), [existingQso.uuid]);
   });
 
-  testWidgets('selecting a different QSO to edit (not constructing already editing one) also enqueues it',
-      (tester) async {
-    final first = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-        })))!;
-    final second = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'K1ABC'},
-        })))!;
+  testWidgets('selecting a different QSO to edit (not constructing already editing one) also enqueues it', (tester) async {
+    final first = (await tester.runAsync(
+      () => qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+      }),
+    ))!;
+    final second = (await tester.runAsync(
+      () => qsos.add(operation.uuid, {
+        'their': {'call': 'K1ABC'},
+      }),
+    ))!;
 
     final enqueued = <Qso>[];
-    await tester.pumpWidget(host(
-      session: LoggingSession(editingQso: first),
-      lookups: LookupHooks(enqueueLookup: enqueued.add),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(editingQso: first),
+        lookups: LookupHooks(enqueueLookup: enqueued.add),
+      ),
+    );
     expect(enqueued.map((q) => q.uuid).toList(), [first.uuid]);
 
     // Same widget, editingQso transitions via didUpdateWidget — not a fresh
     // construction, the other code path that also has to enqueue.
-    await tester.pumpWidget(host(
-      session: LoggingSession(editingQso: second),
-      lookups: LookupHooks(enqueueLookup: enqueued.add),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(editingQso: second),
+        lookups: LookupHooks(enqueueLookup: enqueued.add),
+      ),
+    );
     expect(enqueued.map((q) => q.uuid).toList(), [first.uuid, second.uuid]);
   });
 
@@ -767,21 +776,22 @@ void main() {
       required bool online,
       bool recentContext = false,
     }) async {
-      return {'guess': {'name': 'ARRL HQ'}};
+      return {
+        'guess': {'name': 'ARRL HQ'},
+      };
     }
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          lookups: LookupHooks(
-            lookup: lookup,
-            enqueueLookup: enqueued.add,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            lookups: LookupHooks(lookup: lookup, enqueueLookup: enqueued.add),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump(const Duration(milliseconds: 400)); // let the preview lookup settle
@@ -803,32 +813,36 @@ void main() {
     // through enqueueAllLookups (not the per-QSO enqueueLookup), reusing the
     // same "Lookup all QSOs" bulk mechanism and progress reporting, fired
     // once the whole command has finished adding QSOs rather than QSO-by-QSO.
-    Future<Map<String, dynamic>?> interpret(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> interpret(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input != 'ADDCMD') return null;
       return {
         'describe': 'Add QSOs?',
         'confirm': 'Added',
         'commands': [
-          {'addQso': {'their': {'call': 'W1AW'}, 'startAtMillis': 1000000}},
-          {'addQso': {'their': {'call': 'K1ABC'}, 'startAtMillis': 2000000}},
+          {
+            'addQso': {
+              'their': {'call': 'W1AW'},
+              'startAtMillis': 1000000,
+            },
+          },
+          {
+            'addQso': {
+              'their': {'call': 'K1ABC'},
+              'startAtMillis': 2000000,
+            },
+          },
         ],
       };
     }
 
     final enqueuedSingly = <Qso>[];
     final enqueuedBatches = <List<Qso>>[];
-    await tester.pumpWidget(host(
-      lookups: LookupHooks(
-        enqueueLookup: enqueuedSingly.add,
-        enqueueAllLookups: (qsos) => enqueuedBatches.add(qsos.toList()),
+    await tester.pumpWidget(
+      host(
+        lookups: LookupHooks(enqueueLookup: enqueuedSingly.add, enqueueAllLookups: (qsos) => enqueuedBatches.add(qsos.toList())),
+        commands: CommandHooks(interpretCommand: interpret),
       ),
-      commands: CommandHooks(interpretCommand: interpret),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'ADDCMD');
     await tester.pump();
@@ -847,19 +861,24 @@ void main() {
     // SEED's fabricated calls only ever carry the offline guess the
     // extension attached itself — there's no real online data to fetch, so
     // SEED sets `skipOnlineLookup` and the batch never reaches the queue.
-    Future<Map<String, dynamic>?> interpret(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> interpret(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input != 'SEED') return null;
       return {
         'describe': 'Add seed QSOs?',
         'confirm': 'Added',
         'commands': [
-          {'addQso': {'their': {'call': 'W1AW'}, 'startAtMillis': 1000000}},
-          {'addQso': {'their': {'call': 'K1ABC'}, 'startAtMillis': 2000000}},
+          {
+            'addQso': {
+              'their': {'call': 'W1AW'},
+              'startAtMillis': 1000000,
+            },
+          },
+          {
+            'addQso': {
+              'their': {'call': 'K1ABC'},
+              'startAtMillis': 2000000,
+            },
+          },
         ],
         'skipOnlineLookup': true,
       };
@@ -867,13 +886,12 @@ void main() {
 
     final enqueuedSingly = <Qso>[];
     final enqueuedBatches = <List<Qso>>[];
-    await tester.pumpWidget(host(
-      lookups: LookupHooks(
-        enqueueLookup: enqueuedSingly.add,
-        enqueueAllLookups: (qsos) => enqueuedBatches.add(qsos.toList()),
+    await tester.pumpWidget(
+      host(
+        lookups: LookupHooks(enqueueLookup: enqueuedSingly.add, enqueueAllLookups: (qsos) => enqueuedBatches.add(qsos.toList())),
+        commands: CommandHooks(interpretCommand: interpret),
       ),
-      commands: CommandHooks(interpretCommand: interpret),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SEED');
     await tester.pump();
@@ -887,24 +905,26 @@ void main() {
   });
 
   testWidgets('a manually entered name override does not duplicate onto a newly added call, but a grid override does', (tester) async {
-    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-          // See the note on the same fixture above: saving an edit is refused
-          // when the contact would carry neither band nor frequency.
-          'freq': 14285.0,
-        })))!;
+    final existingQso = (await tester.runAsync(
+      () => qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        // See the note on the same fixture above: saving an edit is refused
+        // when the contact would carry neither band nor frequency.
+        'freq': 14285.0,
+      }),
+    ))!;
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          session: LoggingSession(
-            editingQso: existingQso,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            session: LoggingSession(editingQso: existingQso),
+            radio: baseRadio(),
           ),
-          radio: baseRadio(),
         ),
       ),
-    ));
+    );
 
     // Drive the "More" pane to set an explicit name+grid override. The
     // icon sits inside a horizontally-scrolling chip row — same harmless
@@ -1034,8 +1054,7 @@ void main() {
     await tester.pumpWidget(host());
     await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(TextField, 'Position'), findsNothing,
-        reason: 'a single-operator station has no seats to choose between');
+    expect(find.widgetWithText(TextField, 'Position'), findsNothing, reason: 'a single-operator station has no seats to choose between');
   });
 
   testWidgets('a position typed into the More pane is logged in its canonical form', (tester) async {
@@ -1073,20 +1092,22 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          lookups: LookupHooks(
-            lookup: lookup,
-            // The location line is formatted by the app layer (issue #40);
-            // surface the guess's location so it can be asserted here.
-            callLocationLine: (guess) => guess['location'] as String?,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            lookups: LookupHooks(
+              lookup: lookup,
+              // The location line is formatted by the app layer (issue #40);
+              // surface the guess's location so it can be asserted here.
+              callLocationLine: (guess) => guess['location'] as String?,
+            ),
           ),
         ),
       ),
-    ));
+    );
 
     // Typing partial calls must not fire lookups until the debounce expires.
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1A');
@@ -1128,18 +1149,17 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          lookups: LookupHooks(
-            lookup: lookup,
-            callLocationLine: (guess) => guess['location'] as String?,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            lookups: LookupHooks(lookup: lookup, callLocationLine: (guess) => guess['location'] as String?),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump(const Duration(milliseconds: 350));
@@ -1168,19 +1188,23 @@ void main() {
     // dupe/New-* score pill: _wipe() clears score notices along with the
     // lookup cache, so restoring must re-trigger scoring too, or the pill
     // stays gone until the user edits the field themselves.
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          lookups: LookupHooks(
-            scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
-                {'notices': <String>[], 'alerts': ['duplicate']},
-            scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            lookups: LookupHooks(
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async => {
+                'notices': <String>[],
+                'alerts': ['duplicate'],
+              },
+              scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+            ),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump(const Duration(milliseconds: 350));
@@ -1215,18 +1239,17 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          lookups: LookupHooks(
-            lookup: lookup,
-            callLocationLine: (guess) => guess['location'] as String?,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            lookups: LookupHooks(lookup: lookup, callLocationLine: (guess) => guess['location'] as String?),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D');
     await tester.pump(const Duration(milliseconds: 350));
@@ -1258,27 +1281,23 @@ void main() {
     );
 
     String? excluded;
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: LogHooks(
-            operation: operation,
-            qsosRepository: qsos,
-            qsos: [existingQso],
-          ),
-          session: LoggingSession(
-            editingQso: existingQso,
-          ),
-          radio: baseRadio(),
-          lookups: LookupHooks(
-            scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-              excluded = excludeUuid;
-              return {'notices': <String>[], 'alerts': <String>[]};
-            },
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: operation, qsosRepository: qsos, qsos: [existingQso]),
+            session: LoggingSession(editingQso: existingQso),
+            radio: baseRadio(),
+            lookups: LookupHooks(
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                excluded = excludeUuid;
+                return {'notices': <String>[], 'alerts': <String>[]};
+              },
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 500));
 
     // Editing populates the fields from the QSO, then scores it excluding
@@ -1293,19 +1312,21 @@ void main() {
     late Qso editing;
 
     Qso segmentBreak(List<String> refTypes) => Qso(
-          uuid: 'break-1',
-          operationUuid: operation.uuid,
-          data: {
-            'startAtMillis': 1000,
-            'band': 'event',
-            'event': {
-              'event': 'break',
-              'operation': {
-                'refs': [for (final type in refTypes) {'type': type}],
-              },
-            },
+      uuid: 'break-1',
+      operationUuid: operation.uuid,
+      data: {
+        'startAtMillis': 1000,
+        'band': 'event',
+        'event': {
+          'event': 'break',
+          'operation': {
+            'refs': [
+              for (final type in refTypes) {'type': type},
+            ],
           },
-        );
+        },
+      },
+    );
 
     setUp(() {
       editing = Qso(
@@ -1319,40 +1340,39 @@ void main() {
       );
     });
 
-    Future<({Map<String, dynamic>? operation, List<Map<String, dynamic>>? segments})> scored(
-      WidgetTester tester, {
-      required List<Qso> log,
-    }) async {
+    Future<({Map<String, dynamic>? operation, List<Map<String, dynamic>>? segments})> scored(WidgetTester tester, {required List<Qso> log}) async {
       Map<String, dynamic>? sentOperation;
       List<Map<String, dynamic>>? sentSegments;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['pota']),
-              qsosRepository: qsos,
-              qsos: log,
-            ),
-            session: LoggingSession(
-              editingQso: editing,
-            ),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-                sentOperation = operation;
-                sentSegments = segments;
-                return {'notices': <String>[], 'alerts': <String>[]};
-              },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['pota']), qsosRepository: qsos, qsos: log),
+              session: LoggingSession(editingQso: editing),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                  sentOperation = operation;
+                  sentSegments = segments;
+                  return {'notices': <String>[], 'alerts': <String>[]};
+                },
+              ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump(const Duration(milliseconds: 500));
       return (operation: sentOperation, segments: sentSegments);
     }
 
     testWidgets('sends the current segment, not the base operation', (tester) async {
-      final sent = await scored(tester, log: [segmentBreak(['cqww']), editing]);
+      final sent = await scored(
+        tester,
+        log: [
+          segmentBreak(['cqww']),
+          editing,
+        ],
+      );
 
       // The operation is a park activation; a break turned it into a contest.
       // Scoring must follow, or the contest's dupe rules never apply.
@@ -1375,17 +1395,16 @@ void main() {
     /// A panel whose lookup answers [guess] for W1AW — the pane's placeholders
     /// and its US-only fields both hang off what the lookup said.
     Widget hostWithGuess(Map<String, dynamic> guess) => MaterialApp(
-          home: Scaffold(
-            body: LoggingControls(
-              log: baseLog(),
-              radio: baseRadio(),
-              lookups: LookupHooks(
-                lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
-                    call == 'W1AW' ? {'guess': guess} : null,
-              ),
-            ),
+      home: Scaffold(
+        body: LoggingControls(
+          log: baseLog(),
+          radio: baseRadio(),
+          lookups: LookupHooks(
+            lookup: (call, {required qso, required operation, required online, recentContext = false}) async => call == 'W1AW' ? {'guess': guess} : null,
           ),
-        );
+        ),
+      ),
+    );
 
     Future<void> openPane(WidgetTester tester) async {
       await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
@@ -1659,15 +1678,18 @@ void main() {
     /// A lookup returning [refs] on the guess, counting its own calls so a
     /// re-lookup loop shows up as an ever-growing number rather than a hang.
     ({
-      Future<Map<String, dynamic>?> Function(String, {
+      Future<Map<String, dynamic>?> Function(
+        String, {
         required Map<String, dynamic> qso,
         required Map<String, dynamic> operation,
         required bool online,
         bool recentContext,
-      }) fn,
+      })
+      fn,
       List<Map<String, dynamic>> seenQsos,
       List<bool> seenRecentContext,
-    }) refLookup(List<Map<String, dynamic>> refs, {String forCall = 'W1AW'}) {
+    })
+    refLookup(List<Map<String, dynamic>> refs, {String forCall = 'W1AW'}) {
       final seenQsos = <Map<String, dynamic>>[];
       final seenRecentContext = <bool>[];
       Future<Map<String, dynamic>?> fn(
@@ -1697,31 +1719,26 @@ void main() {
 
     testWidgets('a park from the guess is logged on the QSO', (tester) async {
       final lookup = refLookup([
-        {'type': 'potaHunter', 'ref': 'US-1234'}
+        {'type': 'potaHunter', 'ref': 'US-1234'},
       ]);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: lookup.fn,
-            ),
-            activities: ActivityHooks(
-              activityControls: const [hunter],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(lookup: lookup.fn),
+              activities: ActivityHooks(activityControls: const [hunter]),
             ),
           ),
         ),
-      ));
+      );
 
       await typeCall(tester, 'W1AW');
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       final logged = await waitForQsos(tester, 1);
 
-      expect(
-        (logged.single.data['refs'] as List).cast<Map>(),
-        contains(containsPair('ref', 'US-1234')),
-      );
+      expect((logged.single.data['refs'] as List).cast<Map>(), contains(containsPair('ref', 'US-1234')));
     });
 
     testWidgets('composing a contact asks for recent context; editing a logged one does not', (tester) async {
@@ -1732,20 +1749,18 @@ void main() {
       // here, at the request, so those hooks are never even consulted rather
       // than each having to recognize a context it cannot see.
       final composing = refLookup(const []);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: composing.fn,
-            ),
-            activities: ActivityHooks(
-              activityControls: const [hunter],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(lookup: composing.fn),
+              activities: ActivityHooks(activityControls: const [hunter]),
             ),
           ),
         ),
-      ));
+      );
       await typeCall(tester, 'W1AW');
       expect(composing.seenRecentContext, isNotEmpty);
       expect(composing.seenRecentContext, everyElement(isTrue));
@@ -1753,29 +1768,27 @@ void main() {
       // A different call from the one typed below, so the edit genuinely
       // changes it — retyping the record's own call is an early return in
       // `_scheduleLookup` and no lookup would fire at all.
-      final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'their': {'call': 'K1ABC'},
-            'startAtMillis': 1000000,
-            'freq': 14285.0,
-          })))!;
+      final existingQso = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'K1ABC'},
+          'startAtMillis': 1000000,
+          'freq': 14285.0,
+        }),
+      ))!;
       final editing = refLookup(const []);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            session: LoggingSession(
-              editingQso: existingQso,
-            ),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: editing.fn,
-            ),
-            activities: ActivityHooks(
-              activityControls: const [hunter],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: existingQso),
+              radio: baseRadio(),
+              lookups: LookupHooks(lookup: editing.fn),
+              activities: ActivityHooks(activityControls: const [hunter]),
             ),
           ),
         ),
-      ));
+      );
       await typeCall(tester, 'W1AW');
       expect(editing.seenRecentContext, isNotEmpty, reason: 'the lookup still runs when editing');
       expect(editing.seenRecentContext, everyElement(isFalse));
@@ -1786,34 +1799,32 @@ void main() {
       // stale, or for the wrong one of two parks, and silently rewriting what
       // was typed would put the wrong reference in the log.
       final lookup = refLookup([
-        {'type': 'potaHunter', 'ref': 'US-9999'}
+        {'type': 'potaHunter', 'ref': 'US-9999'},
       ]);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            session: LoggingSession(
-              // Shaped like a real spot tap — band and mode included, since a
-              // suggestedQso replaces the radio-seeded ones and a QSO carrying
-              // neither refuses to log (HALO-24).
-              suggestedQso: const {
-                'band': '20m',
-                'mode': 'SSB',
-                'refs': [
-                  {'type': 'potaHunter', 'ref': 'US-0001'}
-                ],
-              },
-            ),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: lookup.fn,
-            ),
-            activities: ActivityHooks(
-              activityControls: const [hunter],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(
+                // Shaped like a real spot tap — band and mode included, since a
+                // suggestedQso replaces the radio-seeded ones and a QSO carrying
+                // neither refuses to log (HALO-24).
+                suggestedQso: const {
+                  'band': '20m',
+                  'mode': 'SSB',
+                  'refs': [
+                    {'type': 'potaHunter', 'ref': 'US-0001'},
+                  ],
+                },
+              ),
+              radio: baseRadio(),
+              lookups: LookupHooks(lookup: lookup.fn),
+              activities: ActivityHooks(activityControls: const [hunter]),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
 
       await typeCall(tester, 'W1AW');
@@ -1832,22 +1843,20 @@ void main() {
       // the call to KI2E must not log KI2E at KI2D's park — the ref answered
       // a question about a station that is no longer the one being worked.
       final lookup = refLookup(const [
-        {'type': 'potaHunter', 'ref': 'US-2080'}
+        {'type': 'potaHunter', 'ref': 'US-2080'},
       ], forCall: 'KI2D');
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: lookup.fn,
-            ),
-            activities: ActivityHooks(
-              activityControls: const [hunter],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(lookup: lookup.fn),
+              activities: ActivityHooks(activityControls: const [hunter]),
             ),
           ),
         ),
-      ));
+      );
 
       await typeCall(tester, 'KI2D');
       expect(find.text('✓ POTA'), findsOneWidget, reason: 'the park was picked up');
@@ -1863,10 +1872,7 @@ void main() {
       final logged = await waitForQsos(tester, 1);
 
       expect(logged.single.theirCall, 'KI2E');
-      expect(
-        (logged.single.data['refs'] as List?) ?? const [],
-        isNot(contains(containsPair('ref', 'US-2080'))),
-      );
+      expect((logged.single.data['refs'] as List?) ?? const [], isNot(contains(containsPair('ref', 'US-2080'))));
     });
 
     testWidgets('taking back a guessed ref leaves the operator\'s own alone', (tester) async {
@@ -1876,31 +1882,29 @@ void main() {
       // worse than the bug being fixed. Both kinds are present here at once —
       // the guessed summit must go, the typed park must stay.
       final lookup = refLookup(const [
-        {'type': 'sotaHunter', 'ref': 'W2/GC-001'}
+        {'type': 'sotaHunter', 'ref': 'W2/GC-001'},
       ], forCall: 'KI2D');
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            session: LoggingSession(
-              suggestedQso: const {
-                'band': '20m',
-                'mode': 'SSB',
-                'refs': [
-                  {'type': 'potaHunter', 'ref': 'US-0001'}
-                ],
-              },
-            ),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: lookup.fn,
-            ),
-            activities: ActivityHooks(
-              activityControls: const [hunter],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(
+                suggestedQso: const {
+                  'band': '20m',
+                  'mode': 'SSB',
+                  'refs': [
+                    {'type': 'potaHunter', 'ref': 'US-0001'},
+                  ],
+                },
+              ),
+              radio: baseRadio(),
+              lookups: LookupHooks(lookup: lookup.fn),
+              activities: ActivityHooks(activityControls: const [hunter]),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
 
       await typeCall(tester, 'KI2D');
@@ -1920,22 +1924,20 @@ void main() {
       // one the guess put there keeps KI2E off KI2D's park — and the field
       // has to be told the list changed, or it goes on showing the park.
       final lookup = refLookup(const [
-        {'type': 'potaHunter', 'ref': 'US-2080'}
+        {'type': 'potaHunter', 'ref': 'US-2080'},
       ], forCall: 'KI2D');
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: lookup.fn,
-            ),
-            activities: ActivityHooks(
-              activityControls: const [hunter],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(lookup: lookup.fn),
+              activities: ActivityHooks(activityControls: const [hunter]),
             ),
           ),
         ),
-      ));
+      );
       await openControl(tester, MdiIcons.pineTree);
       TextField potaField() => tester.widget<TextField>(find.widgetWithText(TextField, 'POTA'));
       // A park typed and deleted again leaves the field holding an empty
@@ -1980,22 +1982,20 @@ void main() {
       // distinction the clearing has to draw: the call left the CURSOR, not
       // the field.
       final lookup = refLookup(const [
-        {'type': 'potaHunter', 'ref': 'US-2080'}
+        {'type': 'potaHunter', 'ref': 'US-2080'},
       ], forCall: 'KI2D');
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: lookup.fn,
-            ),
-            activities: ActivityHooks(
-              activityControls: const [hunter],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(lookup: lookup.fn),
+              activities: ActivityHooks(activityControls: const [hunter]),
             ),
           ),
         ),
-      ));
+      );
 
       await typeCall(tester, 'KI2D');
       expect(find.text('✓ POTA'), findsOneWidget);
@@ -2006,11 +2006,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       final logged = await waitForQsos(tester, 2);
       for (final qso in logged) {
-        expect(
-          (qso.data['refs'] as List).cast<Map>(),
-          contains(containsPair('ref', 'US-2080')),
-          reason: '${qso.theirCall} shares the stack\'s park',
-        );
+        expect((qso.data['refs'] as List).cast<Map>(), contains(containsPair('ref', 'US-2080')), reason: '${qso.theirCall} shares the stack\'s park');
       }
     });
 
@@ -2022,22 +2018,20 @@ void main() {
       // Only reachable once guessed refs are cleared on a call change, which
       // is what makes this a pair with the test above.
       final lookup = refLookup(const [
-        {'type': 'potaHunter', 'ref': 'US-2080'}
+        {'type': 'potaHunter', 'ref': 'US-2080'},
       ], forCall: 'KI2D');
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: lookup.fn,
-            ),
-            activities: ActivityHooks(
-              activityControls: const [hunter],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(lookup: lookup.fn),
+              activities: ActivityHooks(activityControls: const [hunter]),
             ),
           ),
         ),
-      ));
+      );
       await typeCall(tester, 'KI2D');
       expect(find.text('✓ POTA'), findsOneWidget, reason: 'picked up the first time');
       await typeCall(tester, 'KI2E');
@@ -2051,22 +2045,20 @@ void main() {
       // park to resolve its grid), and the lookup proposes refs — the exact
       // shape of an endless loop if an already-applied ref were re-applied.
       final lookup = refLookup([
-        {'type': 'potaHunter', 'ref': 'US-1234'}
+        {'type': 'potaHunter', 'ref': 'US-1234'},
       ]);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: lookup.fn,
-            ),
-            activities: ActivityHooks(
-              activityControls: const [hunter],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(lookup: lookup.fn),
+              activities: ActivityHooks(activityControls: const [hunter]),
             ),
           ),
         ),
-      ));
+      );
 
       await typeCall(tester, 'W1AW');
       // Let any re-lookup rounds play out.
@@ -2081,11 +2073,7 @@ void main() {
 
       // And the park did reach the hooks: some pass saw it on the QSO it was
       // handed, which is the whole reason for the re-lookup.
-      expect(
-        lookup.seenQsos.any((qso) =>
-            (qso['refs'] as List?)?.any((ref) => (ref as Map)['ref'] == 'US-1234') ?? false),
-        isTrue,
-      );
+      expect(lookup.seenQsos.any((qso) => (qso['refs'] as List?)?.any((ref) => (ref as Map)['ref'] == 'US-1234') ?? false), isTrue);
     });
 
     // A restore puts the refs back as plain data, and plain data cannot say
@@ -2097,33 +2085,34 @@ void main() {
     group('a guess survives the draft being parked and put back', () {
       Widget hostWithGuess(
         ({
-          Future<Map<String, dynamic>?> Function(String, {
+          Future<Map<String, dynamic>?> Function(
+            String, {
             required Map<String, dynamic> qso,
             required Map<String, dynamic> operation,
             required bool online,
             bool recentContext,
-          }) fn,
+          })
+          fn,
           List<Map<String, dynamic>> seenQsos,
           List<bool> seenRecentContext,
-        }) lookup, {
+        })
+        lookup, {
         Qso? editingQso,
-      }) =>
-          MaterialApp(
-            home: Scaffold(
-              body: LoggingControls(
-                log: baseLog(),
-                session: LoggingSession(editingQso: editingQso, onEditCanceled: () {}),
-                radio: baseRadio(),
-                lookups: LookupHooks(lookup: lookup.fn),
-                activities: ActivityHooks(activityControls: const [hunter]),
-              ),
-            ),
-          );
+      }) => MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            session: LoggingSession(editingQso: editingQso, onEditCanceled: () {}),
+            radio: baseRadio(),
+            lookups: LookupHooks(lookup: lookup.fn),
+            activities: ActivityHooks(activityControls: const [hunter]),
+          ),
+        ),
+      );
 
-      testWidgets('a wipe undone keeps the park a lookup proposed, so correcting the call still takes it back',
-          (tester) async {
+      testWidgets('a wipe undone keeps the park a lookup proposed, so correcting the call still takes it back', (tester) async {
         final lookup = refLookup(const [
-          {'type': 'potaHunter', 'ref': 'US-2080'}
+          {'type': 'potaHunter', 'ref': 'US-2080'},
         ], forCall: 'KI2D');
         await tester.pumpWidget(hostWithGuess(lookup));
 
@@ -2153,7 +2142,7 @@ void main() {
 
       testWidgets('a detour through an earlier contact keeps it too', (tester) async {
         final lookup = refLookup(const [
-          {'type': 'potaHunter', 'ref': 'US-2080'}
+          {'type': 'potaHunter', 'ref': 'US-2080'},
         ], forCall: 'KI2D');
         await tester.pumpWidget(hostWithGuess(lookup));
 
@@ -2162,11 +2151,13 @@ void main() {
 
         // Away to an earlier contact and back — the draft is parked and
         // restored, exactly as the undo path does it.
-        final earlier = (await tester.runAsync(() => qsos.add(operation.uuid, {
-              'their': {'call': 'W1AW'},
-              'startAtMillis': 1000000,
-              'freq': 14285.0,
-            })))!;
+        final earlier = (await tester.runAsync(
+          () => qsos.add(operation.uuid, {
+            'their': {'call': 'W1AW'},
+            'startAtMillis': 1000000,
+            'freq': 14285.0,
+          }),
+        ))!;
         await tester.pumpWidget(hostWithGuess(lookup, editingQso: earlier));
         await tester.pump();
         await tester.pumpWidget(hostWithGuess(lookup));
@@ -2178,10 +2169,7 @@ void main() {
         final logged = await waitForQsos(tester, 2);
         final composed = logged.firstWhere((qso) => qso.theirCall == 'KI2E');
 
-        expect(
-          (composed.data['refs'] as List?) ?? const [],
-          isNot(contains(containsPair('ref', 'US-2080'))),
-        );
+        expect((composed.data['refs'] as List?) ?? const [], isNot(contains(containsPair('ref', 'US-2080'))));
       });
 
       testWidgets('a guess the operator deleted before the wipe stays deleted after the undo', (tester) async {
@@ -2190,7 +2178,7 @@ void main() {
         // put it straight back. An undo that restored only the refs still in
         // the field would lose that, and hand back the park just removed.
         final lookup = refLookup(const [
-          {'type': 'potaHunter', 'ref': 'US-2080'}
+          {'type': 'potaHunter', 'ref': 'US-2080'},
         ], forCall: 'KI2D');
         await tester.pumpWidget(hostWithGuess(lookup));
 
@@ -2213,8 +2201,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 350));
         await tester.pump();
 
-        expect(find.text('✓ POTA'), findsNothing,
-            reason: 'the re-lookup must not hand back the park the operator deleted');
+        expect(find.text('✓ POTA'), findsNothing, reason: 'the re-lookup must not hand back the park the operator deleted');
       });
     });
   });

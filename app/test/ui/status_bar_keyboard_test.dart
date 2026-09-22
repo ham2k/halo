@@ -33,7 +33,6 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 
-
 import '../support/halo_test_support.dart';
 
 void main() {
@@ -78,15 +77,17 @@ void main() {
   /// out of resizing, like Home and Operation do; pass a plain one to model
   /// every OTHER route, which does not.
   Future<void> pumpOverlay(WidgetTester tester, {Widget? child}) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        builder: (context, _) => StatusBarOverlay(
-          services: services,
-          child: child ?? const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          builder: (context, _) => StatusBarOverlay(
+            services: services,
+            child: child ?? const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand()),
+          ),
+          home: const SizedBox.shrink(),
         ),
-        home: const SizedBox.shrink(),
       ),
-    ));
+    );
     await tester.pump();
   }
 
@@ -112,10 +113,7 @@ void main() {
       // The real check: its bottom edge sits at the top of the keyboard, not at
       // the bottom of the window. Before this change it was flush with the
       // window bottom — i.e. behind the keyboard — which made it invisible.
-      expect(
-        tester.getBottomLeft(footer).dy,
-        moreOrLessEquals(windowHeight(tester) - keyboardHeight, epsilon: 1.0),
-      );
+      expect(tester.getBottomLeft(footer).dy, moreOrLessEquals(windowHeight(tester) - keyboardHeight, epsilon: 1.0));
     });
   });
 
@@ -174,10 +172,7 @@ void main() {
       await pumpOverlay(tester);
       await postProgress(tester);
 
-      expect(
-        tester.getBottomLeft(find.byType(StatusBarFooter)).dy,
-        moreOrLessEquals(windowHeight(tester), epsilon: 1.0),
-      );
+      expect(tester.getBottomLeft(find.byType(StatusBarFooter)).dy, moreOrLessEquals(windowHeight(tester), epsilon: 1.0));
     });
   });
 
@@ -204,10 +199,7 @@ void main() {
       await pumpOverlay(tester);
       await postProgress(tester);
 
-      expect(
-        tester.getBottomLeft(find.byType(StatusBarFooter)).dy,
-        moreOrLessEquals(windowHeight(tester), epsilon: 1.0),
-      );
+      expect(tester.getBottomLeft(find.byType(StatusBarFooter)).dy, moreOrLessEquals(windowHeight(tester), epsilon: 1.0));
     });
   });
 
@@ -221,17 +213,16 @@ void main() {
     await on(TargetPlatform.iOS, () async {
       const bodyKey = Key('route-body');
       raiseKeyboard(tester);
-      await pumpOverlay(tester, child: const Scaffold(body: SizedBox.expand(key: bodyKey)));
+      await pumpOverlay(
+        tester,
+        child: const Scaffold(body: SizedBox.expand(key: bodyKey)),
+      );
       await postProgress(tester);
 
       // The body should fill everything the overlay handed the route: the
       // window, less the footer and the keyboard strip — and no less.
       final footerTop = tester.getTopLeft(find.byType(StatusBarFooter)).dy;
-      expect(
-        tester.getBottomLeft(find.byKey(bodyKey)).dy,
-        moreOrLessEquals(footerTop, epsilon: 1.0),
-        reason: 'the route reserved the keyboard a second time',
-      );
+      expect(tester.getBottomLeft(find.byKey(bodyKey)).dy, moreOrLessEquals(footerTop, epsilon: 1.0), reason: 'the route reserved the keyboard a second time');
     });
   });
 
@@ -242,7 +233,10 @@ void main() {
   testWidgets('a notice does not steal height from the app', (tester) async {
     await on(TargetPlatform.iOS, () async {
       const bodyKey = Key('route-body');
-      await pumpOverlay(tester, child: const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand(key: bodyKey)));
+      await pumpOverlay(
+        tester,
+        child: const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand(key: bodyKey)),
+      );
 
       final before = tester.getSize(find.byKey(bodyKey)).height;
       services.statusBar.showNotice(key: 'n', icon: 'bug', title: 'Heads up', text: 'sample');
@@ -250,10 +244,8 @@ void main() {
       final after = tester.getSize(find.byKey(bodyKey)).height;
 
       final noticeHeight = tester.getSize(find.byType(NoticeStack)).height;
-      expect(before - after, moreOrLessEquals(noticeHeight, epsilon: 1.0),
-          reason: 'the app should give up exactly the notice, not share the window with it');
-      expect(after, greaterThan(before * 0.75),
-          reason: 'an ordinary notice must not take a large fraction of the app');
+      expect(before - after, moreOrLessEquals(noticeHeight, epsilon: 1.0), reason: 'the app should give up exactly the notice, not share the window with it');
+      expect(after, greaterThan(before * 0.75), reason: 'an ordinary notice must not take a large fraction of the app');
     });
   });
 
@@ -289,7 +281,8 @@ void main() {
         key: 'n',
         icon: 'bug',
         title: 'Heads up',
-        text: 'A notice long enough to want more room than the space above the keyboard can give it, '
+        text:
+            'A notice long enough to want more room than the space above the keyboard can give it, '
             'so its own cap is what decides how tall it ends up being.',
       );
       await settle(tester);
@@ -346,18 +339,15 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetViewInsets);
 
-        await pumpOverlay(tester, child: const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand(key: bodyKey)));
+        await pumpOverlay(
+          tester,
+          child: const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand(key: bodyKey)),
+        );
 
         // A numbers row, as a focused logging field publishes one.
         services.keyboardAccessory.publish(
           Object(),
-          const KeyboardAccessorySpec(
-            onKey: _noop,
-            vibrate: false,
-            backgroundColor: 0xFF102030,
-            foregroundColor: 0xFFFFFFFF,
-            extraKey: '/',
-          ),
+          const KeyboardAccessorySpec(onKey: _noop, vibrate: false, backgroundColor: 0xFF102030, foregroundColor: 0xFFFFFFFF, extraKey: '/'),
         );
         for (var i = 0; i < 6; i++) {
           services.statusBar.setMessage(key: 'm$i', text: 'Item $i');
@@ -367,7 +357,8 @@ void main() {
           key: 'n',
           icon: 'bug',
           title: 'Heads up',
-          text: 'A notice long enough to want more room than the space above the keyboard can give it, '
+          text:
+              'A notice long enough to want more room than the space above the keyboard can give it, '
               'so its own cap is what decides how tall it ends up being.',
         );
         await settle(tester);
@@ -389,15 +380,8 @@ void main() {
         // the band bug survived its first verification). Measure the boxes.
         final window = tester.getSize(find.byType(StatusBarOverlay)).height;
         double heightOf(Finder finder) => finder.evaluate().isEmpty ? 0.0 : tester.getSize(finder).height;
-        final chrome = heightOf(find.byType(NoticeStack)) +
-            heightOf(find.byType(StatusBarFooter)) +
-            heightOf(find.byType(NumberKeys)) +
-            keyboard / scale;
-        expect(
-          chrome,
-          lessThanOrEqualTo(window + 0.01),
-          reason: 'the chrome below the app must fit the window without it',
-        );
+        final chrome = heightOf(find.byType(NoticeStack)) + heightOf(find.byType(StatusBarFooter)) + heightOf(find.byType(NumberKeys)) + keyboard / scale;
+        expect(chrome, lessThanOrEqualTo(window + 0.01), reason: 'the chrome below the app must fit the window without it');
 
         // The app keeps a real share at every reachable scale — not merely a
         // non-negative height, which a box can never fail.
@@ -432,16 +416,13 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetViewInsets);
 
-      await pumpOverlay(tester, child: const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand(key: bodyKey)));
+      await pumpOverlay(
+        tester,
+        child: const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand(key: bodyKey)),
+      );
       services.keyboardAccessory.publish(
         Object(),
-        const KeyboardAccessorySpec(
-          onKey: _noop,
-          vibrate: false,
-          backgroundColor: 0xFF102030,
-          foregroundColor: 0xFFFFFFFF,
-          extraKey: '/',
-        ),
+        const KeyboardAccessorySpec(onKey: _noop, vibrate: false, backgroundColor: 0xFF102030, foregroundColor: 0xFFFFFFFF, extraKey: '/'),
       );
       // Far more rows than the budget can seat, so the cap is what decides.
       for (var i = 0; i < 20; i++) {
@@ -490,11 +471,7 @@ void main() {
       // Epsilon covers PixelGrid snapping, which rounds the rendered height
       // to the device pixel grid — the budget deals in raw logical pixels and
       // the widget lands on the nearest grid line.
-      expect(
-        expanded,
-        moreOrLessEquals(budget.footerMax, epsilon: 0.5),
-        reason: 'the expanded footer must land on its budget, collapsed height included',
-      );
+      expect(expanded, moreOrLessEquals(budget.footerMax, epsilon: 0.5), reason: 'the expanded footer must land on its budget, collapsed height included');
     });
   });
 
@@ -532,123 +509,110 @@ void main() {
               // also unreachable. The ceiling is what keeps the budget
               // solvable at these sizes.
               for (final preference in DensityPreference.values) {
-              final density = preference.resolve(window);
-              final numbersRowHeight = NumberKeys.heightFor(density.metrics);
-              final footerHeight = density.metrics.statusBarCollapsed;
-              // Both layers, because the band has a fourth piece on the home
-              // one: Quick Lookup, which the operator cannot rearrange away.
-              // A budget that only balances on the layer WITHOUT it is a
-              // budget that overflows exactly where the tightest geometry is.
-              // A readable notice is a row plus the band the stack paints
-              // around it — the same number `NoticeStack.minHeightOf` gives the
-              // app, spelled out here because this is the arithmetic, not a
-              // widget.
-              final noticeFloor = density.metrics.statusBarRow + Space.lg + Space.md;
-              for (final homeChrome in [0.0, density.metrics.chromeHeight + Space.md * 2]) {
-              final budget = BottomChromeBudget.of(
-                windowHeight: window,
-                keyboardInset: inset,
-                hasNumbersRow: hasRow,
-                hasStatusItems: hasItems,
-                numbersRowHeight: numbersRowHeight,
-                footerHeight: footerHeight,
-                homeChromeHeight: homeChrome,
-                noticeFloor: noticeFloor,
-              );
-              final where =
-                  '$device/$keyboard @$scale row=$hasRow items=$hasItems home=$homeChrome pref=$preference d=$density';
-
-              expect(budget.noticeMax, greaterThanOrEqualTo(0), reason: 'negative cap at $where');
-              expect(budget.footerMax, greaterThanOrEqualTo(0), reason: 'negative cap at $where');
-
-              // Both caps are TOTALS for their widget, so everything at its
-              // limit at once is the worst case the Column can be asked to
-              // lay out. It has to fit what is left of the window.
-              final drawnRow = hasRow && budget.showNumbersRow ? numbersRowHeight : 0.0;
-              final worstCase = budget.noticeMax + budget.footerMax + drawnRow + homeChrome + inset;
-              expect(
-                worstCase,
-                lessThanOrEqualTo(window + 0.01),
-                reason: 'chrome at full cap overruns the window at $where',
-              );
-
-              // Dropping is a last resort and an ordered one. Anything dropped
-              // where the band DID have the room is chrome taken away for
-              // nothing, and a row dropped while the footer stayed is the
-              // wrong one gone.
-              if (!budget.showNumbersRow) {
-                expect(budget.showFooter, isFalse, reason: 'status yields before the row at $where');
-              }
-              if (inset <= 0) {
-                expect(budget.showFooter && budget.showNumbersRow, isTrue,
-                    reason: 'nothing is dropped with the keyboard down at $where');
-              }
-
-              // The notice is where ErrorPolicy raises what the operator must
-              // read, so a share that works out to a few points is a silent
-              // failure, not a tight layout. It gets a readable row wherever
-              // the window has one left to give, and says so when it does not.
-              if (budget.seatsNotice) {
-                expect(budget.noticeMax, greaterThanOrEqualTo(noticeFloor), reason: 'seated but unreadable at $where');
-              } else {
-                // Short only where the whole growable share is smaller than a
-                // readable row — and then the notice already holds ALL of it.
-                // It may not reach past that: the app's share is not the
-                // notice's to take, whatever the notice needs.
-                final chromeShare = budget.noticeMax + budget.footerMax - (hasItems && budget.showFooter ? footerHeight : 0.0);
-                expect(
-                  budget.noticeMax,
-                  moreOrLessEquals(chromeShare, epsilon: 0.01),
-                  reason: 'the notice may only go short once it holds the whole chrome share at $where',
-                );
-              }
-
-              // The app's share is the invariant the whole class exists for,
-              // and the notice floor is the one thing that could quietly eat
-              // it: everything the chrome may take, at once, still leaves the
-              // app `1 - _chromeShare` of what was negotiable.
-              final handedOut = budget.noticeMax + budget.footerMax - (hasItems && budget.showFooter ? footerHeight : 0.0);
-              final negotiable = math.max(
-                0.0,
-                window - inset - homeChrome - drawnRow - (hasItems && budget.showFooter ? footerHeight : 0.0),
-              );
-              expect(
-                handedOut,
-                lessThanOrEqualTo(negotiable * 0.6 + 0.01),
-                reason: 'the chrome took more than its share, so the app keeps less than promised at $where',
-              );
-
-              // Space is only charged for what is actually drawn. Without
-              // items the footer is a zero-height box, so charging its
-              // collapsed height anyway would quietly shrink the notice for a
-              // widget that is not there.
-              // …and only where the footer was going to be drawn: where the
-              // band could not seat one, dropping the items frees nothing
-              // because nothing was charged.
-              if (hasItems && budget.showFooter) {
-                final withoutItems = BottomChromeBudget.of(
-                  windowHeight: window,
-                  keyboardInset: inset,
-                  hasNumbersRow: hasRow,
-                  hasStatusItems: false,
-                  numbersRowHeight: numbersRowHeight,
-                  footerHeight: footerHeight,
-                  homeChromeHeight: homeChrome,
-                  noticeFloor: noticeFloor,
-                );
-                // Only while the notice is taking a SHARE. Pinned to its floor
-                // it takes the same minimum either way, and freed room goes to
-                // the app instead — which is the floor working, not the charge
-                // going missing.
-                if (budget.noticeMax > noticeFloor) {
-                  expect(
-                    withoutItems.noticeMax,
-                    greaterThan(budget.noticeMax),
-                    reason: 'an absent footer must free up room at $where',
+                final density = preference.resolve(window);
+                final numbersRowHeight = NumberKeys.heightFor(density.metrics);
+                final footerHeight = density.metrics.statusBarCollapsed;
+                // Both layers, because the band has a fourth piece on the home
+                // one: Quick Lookup, which the operator cannot rearrange away.
+                // A budget that only balances on the layer WITHOUT it is a
+                // budget that overflows exactly where the tightest geometry is.
+                // A readable notice is a row plus the band the stack paints
+                // around it — the same number `NoticeStack.minHeightOf` gives the
+                // app, spelled out here because this is the arithmetic, not a
+                // widget.
+                final noticeFloor = density.metrics.statusBarRow + Space.lg + Space.md;
+                for (final homeChrome in [0.0, density.metrics.chromeHeight + Space.md * 2]) {
+                  final budget = BottomChromeBudget.of(
+                    windowHeight: window,
+                    keyboardInset: inset,
+                    hasNumbersRow: hasRow,
+                    hasStatusItems: hasItems,
+                    numbersRowHeight: numbersRowHeight,
+                    footerHeight: footerHeight,
+                    homeChromeHeight: homeChrome,
+                    noticeFloor: noticeFloor,
                   );
+                  final where = '$device/$keyboard @$scale row=$hasRow items=$hasItems home=$homeChrome pref=$preference d=$density';
+
+                  expect(budget.noticeMax, greaterThanOrEqualTo(0), reason: 'negative cap at $where');
+                  expect(budget.footerMax, greaterThanOrEqualTo(0), reason: 'negative cap at $where');
+
+                  // Both caps are TOTALS for their widget, so everything at its
+                  // limit at once is the worst case the Column can be asked to
+                  // lay out. It has to fit what is left of the window.
+                  final drawnRow = hasRow && budget.showNumbersRow ? numbersRowHeight : 0.0;
+                  final worstCase = budget.noticeMax + budget.footerMax + drawnRow + homeChrome + inset;
+                  expect(worstCase, lessThanOrEqualTo(window + 0.01), reason: 'chrome at full cap overruns the window at $where');
+
+                  // Dropping is a last resort and an ordered one. Anything dropped
+                  // where the band DID have the room is chrome taken away for
+                  // nothing, and a row dropped while the footer stayed is the
+                  // wrong one gone.
+                  if (!budget.showNumbersRow) {
+                    expect(budget.showFooter, isFalse, reason: 'status yields before the row at $where');
+                  }
+                  if (inset <= 0) {
+                    expect(budget.showFooter && budget.showNumbersRow, isTrue, reason: 'nothing is dropped with the keyboard down at $where');
+                  }
+
+                  // The notice is where ErrorPolicy raises what the operator must
+                  // read, so a share that works out to a few points is a silent
+                  // failure, not a tight layout. It gets a readable row wherever
+                  // the window has one left to give, and says so when it does not.
+                  if (budget.seatsNotice) {
+                    expect(budget.noticeMax, greaterThanOrEqualTo(noticeFloor), reason: 'seated but unreadable at $where');
+                  } else {
+                    // Short only where the whole growable share is smaller than a
+                    // readable row — and then the notice already holds ALL of it.
+                    // It may not reach past that: the app's share is not the
+                    // notice's to take, whatever the notice needs.
+                    final chromeShare = budget.noticeMax + budget.footerMax - (hasItems && budget.showFooter ? footerHeight : 0.0);
+                    expect(
+                      budget.noticeMax,
+                      moreOrLessEquals(chromeShare, epsilon: 0.01),
+                      reason: 'the notice may only go short once it holds the whole chrome share at $where',
+                    );
+                  }
+
+                  // The app's share is the invariant the whole class exists for,
+                  // and the notice floor is the one thing that could quietly eat
+                  // it: everything the chrome may take, at once, still leaves the
+                  // app `1 - _chromeShare` of what was negotiable.
+                  final handedOut = budget.noticeMax + budget.footerMax - (hasItems && budget.showFooter ? footerHeight : 0.0);
+                  final negotiable = math.max(0.0, window - inset - homeChrome - drawnRow - (hasItems && budget.showFooter ? footerHeight : 0.0));
+                  expect(
+                    handedOut,
+                    lessThanOrEqualTo(negotiable * 0.6 + 0.01),
+                    reason: 'the chrome took more than its share, so the app keeps less than promised at $where',
+                  );
+
+                  // Space is only charged for what is actually drawn. Without
+                  // items the footer is a zero-height box, so charging its
+                  // collapsed height anyway would quietly shrink the notice for a
+                  // widget that is not there.
+                  // …and only where the footer was going to be drawn: where the
+                  // band could not seat one, dropping the items frees nothing
+                  // because nothing was charged.
+                  if (hasItems && budget.showFooter) {
+                    final withoutItems = BottomChromeBudget.of(
+                      windowHeight: window,
+                      keyboardInset: inset,
+                      hasNumbersRow: hasRow,
+                      hasStatusItems: false,
+                      numbersRowHeight: numbersRowHeight,
+                      footerHeight: footerHeight,
+                      homeChromeHeight: homeChrome,
+                      noticeFloor: noticeFloor,
+                    );
+                    // Only while the notice is taking a SHARE. Pinned to its floor
+                    // it takes the same minimum either way, and freed room goes to
+                    // the app instead — which is the floor working, not the charge
+                    // going missing.
+                    if (budget.noticeMax > noticeFloor) {
+                      expect(withoutItems.noticeMax, greaterThan(budget.noticeMax), reason: 'an absent footer must free up room at $where');
+                    }
+                  }
                 }
-              }
-              }
               }
             }
           }
@@ -672,9 +636,7 @@ void main() {
       // of its own in there, and which of the two comes last is a Z-ORDER
       // decision that has nothing to do with this.
       final strip = find.descendant(
-        of: find.byWidgetPredicate(
-          (w) => w is SizedBox && w.width == double.infinity && w.height == keyboardHeight,
-        ),
+        of: find.byWidgetPredicate((w) => w is SizedBox && w.width == double.infinity && w.height == keyboardHeight),
         matching: find.byType(ColoredBox),
       );
       expect(strip, findsWidgets, reason: 'the strip must actually be painted');
@@ -692,10 +654,12 @@ void main() {
       double? seen;
       await pumpOverlay(
         tester,
-        child: Builder(builder: (context) {
-          seen = MediaQuery.viewInsetsOf(context).bottom;
-          return const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand());
-        }),
+        child: Builder(
+          builder: (context) {
+            seen = MediaQuery.viewInsetsOf(context).bottom;
+            return const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand());
+          },
+        ),
       );
       expect(seen, 0.0, reason: 'the overlay must consume the bottom inset on the way down');
     });

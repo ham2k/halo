@@ -165,9 +165,7 @@ void main() {
   });
 
   test('comments lead the notes, ahead of the contest exchange', () {
-    final info = parseWsjtxQsoLogged(
-      _qsoLoggedDatagram(comments: 'Great signal', exchangeSent: '599 05', exchangeReceived: '599 10'),
-    );
+    final info = parseWsjtxQsoLogged(_qsoLoggedDatagram(comments: 'Great signal', exchangeSent: '599 05', exchangeReceived: '599 10'));
     expect(info!.qso['notes'], startsWith('Great signal'));
     expect(info.qso['notes'], contains('WSJT-X exchange'));
   });

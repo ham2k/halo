@@ -32,12 +32,7 @@ final _t0 = DateTime.utc(2026, 1, 1, 12);
 /// [stepGap] apart, starting from a resting [from]. The default gap is an
 /// unhurried turn — comfortably above the default speed floor, so a test only
 /// meets that rule when it sets out to.
-double? _turn(
-  double from,
-  List<double> steps, {
-  Duration stepGap = const Duration(milliseconds: 200),
-  VfoSnapTuning tuning = const VfoSnapTuning(),
-}) {
+double? _turn(double from, List<double> steps, {Duration stepGap = const Duration(milliseconds: 200), VfoSnapTuning tuning = const VfoSnapTuning()}) {
   final snapper = VfoSnapper()..rebase(from);
   var at = _t0;
   for (final step in steps) {
@@ -49,13 +44,10 @@ double? _turn(
 
 /// A knob turn covering [distanceKHz] in [over], reported every 20 ms — the
 /// rate a streaming radio (FlexRadio, flrig) reports a moving VFO at.
-double? _sweep(double from, double distanceKHz,
-    {required Duration over, VfoSnapTuning tuning = const VfoSnapTuning()}) {
+double? _sweep(double from, double distanceKHz, {required Duration over, VfoSnapTuning tuning = const VfoSnapTuning()}) {
   const tick = Duration(milliseconds: 20);
   final ticks = over.inMilliseconds ~/ tick.inMilliseconds;
-  return _turn(from, [
-    for (var i = 1; i <= ticks; i++) from + distanceKHz * i / ticks,
-  ], stepGap: tick, tuning: tuning);
+  return _turn(from, [for (var i = 1; i <= ticks; i++) from + distanceKHz * i / ticks], stepGap: tick, tuning: tuning);
 }
 
 class _FakeConnection implements EquipmentConnection {
@@ -79,8 +71,7 @@ class _FakeTransport extends EquipmentTransport {
   @override
   String get key => 'fake';
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async =>
-      _FakeConnection();
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async => _FakeConnection();
 }
 
 class _FakeSession implements TransceiverSession {
@@ -130,13 +121,11 @@ class _FakeDriver extends EquipmentDriver {
 }
 
 EquipmentModel _fakeModel(EquipmentDriver driver, EquipmentTransport transport) => EquipmentModel(
-      key: 'fake',
-      category: kCategoryTransceiver,
-      name: () => 'Fake Radio',
-      variants: [
-        EquipmentVariant(key: 'fake-type', driver: driver, transport: transport),
-      ],
-    );
+  key: 'fake',
+  category: kCategoryTransceiver,
+  name: () => 'Fake Radio',
+  variants: [EquipmentVariant(key: 'fake-type', driver: driver, transport: transport)],
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -152,11 +141,7 @@ void main() {
       // average demote the grid. Easing in over the last two seconds is how
       // anyone lands on a signal after a sweep — 2.4 kHz covered, and the
       // average speed is under the floor, but this is still an arrival.
-      expect(
-        _sweep(14260.0, 2.4, over: const Duration(seconds: 6)),
-        14262.0,
-        reason: 'the long-move rule is checked before the speed floor',
-      );
+      expect(_sweep(14260.0, 2.4, over: const Duration(seconds: 6)), 14262.0, reason: 'the long-move rule is checked before the speed floor');
     });
 
     test('half a long move lands on the quarter-kHz grid', () {
@@ -311,10 +296,7 @@ void main() {
         settings,
         radio: radio,
         now: () => fakeNow,
-        registry: EquipmentRegistry(
-          models: [_fakeModel(driver, transport)],
-          transports: {'fake': transport},
-        ),
+        registry: EquipmentRegistry(models: [_fakeModel(driver, transport)], transports: {'fake': transport}),
       );
     });
 

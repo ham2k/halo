@@ -29,14 +29,14 @@ import '../support/halo_test_support.dart';
 class _ReachableCatalog extends CatalogService {
   @override
   Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false}) async => [
-        CatalogEntry(
-          key: 'wca',
-          name: 'WCA',
-          version: '1.0.0',
-          sha256: 'a' * 64,
-          bundleUrl: Uri.parse('https://catalog.example/api/v1/extensions/wca/versions/1.0.0/bundle'),
-        ),
-      ];
+    CatalogEntry(
+      key: 'wca',
+      name: 'WCA',
+      version: '1.0.0',
+      sha256: 'a' * 64,
+      bundleUrl: Uri.parse('https://catalog.example/api/v1/extensions/wca/versions/1.0.0/bundle'),
+    ),
+  ];
 }
 
 /// Answers the upgrade as if every twin arrived, without a network or a
@@ -160,13 +160,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget);
@@ -187,13 +189,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing, reason: 'the experiment is still off');
 
@@ -213,13 +217,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text(t.extensionsPanel.upgradeLater));
     await tester.pumpAndSettle();
@@ -240,13 +246,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget);
 
@@ -268,13 +276,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     await h.settings.setExperimentEnabled(kCatalogExperiment, true);
@@ -296,13 +306,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(h.services.statusBar.itemForKey('extensions:upgradeOffer'), isNull, reason: 'boot says nothing');
 
@@ -310,8 +322,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing);
-    expect(h.services.statusBar.itemForKey('extensions:upgradeOffer')?.text,
-        t.extensionsPanel.upgradeUnreachable);
+    expect(h.services.statusBar.itemForKey('extensions:upgradeOffer')?.text, t.extensionsPanel.upgradeUnreachable);
   });
 
   testWidgets('a finished upgrade says so', (tester) async {
@@ -323,13 +334,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text(t.extensionsPanel.upgradeAction));
@@ -357,13 +370,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text(t.extensionsPanel.upgradeAction));
@@ -389,23 +404,22 @@ void main() {
   testWidgets('a built-in the operator had switched off is not named as lost', (tester) async {
     // The upgrade withdraws nothing the operator was running there, so naming
     // it would report a loss that was their own choice.
-    final extensions = _MigrationSucceeds()
-      ..debugSetAvailableExtensions(const [
-        ExtensionInfo(key: 'qp', file: 'qp.js', core: false, name: 'QSO Parties'),
-      ]);
+    final extensions = _MigrationSucceeds()..debugSetAvailableExtensions(const [ExtensionInfo(key: 'qp', file: 'qp.js', core: false, name: 'QSO Parties')]);
     final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
     await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
     await h.settings.setExtensionOverrides({'qp': false});
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text(t.extensionsPanel.upgradeAction));
@@ -424,13 +438,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text(t.extensionsPanel.upgradeAction));
@@ -445,8 +461,7 @@ void main() {
     expect(h.settings.extensionsMigrated, isFalse, reason: 'a failed upgrade must leave the built-ins in use');
   });
 
-  testWidgets('a runtime that would not start says so, and says the old extensions are back',
-      (tester) async {
+  testWidgets('a runtime that would not start says so, and says the old extensions are back', (tester) async {
     // Told "your extensions are ready", the operator reads success over an
     // install running nothing at all. The upgrade reverts itself first, so
     // what this has to say is that the previous extensions are working.
@@ -455,13 +470,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text(t.extensionsPanel.upgradeAction));
     await tester.pumpAndSettle();
@@ -478,27 +495,22 @@ void main() {
     // reload, navigation. Dropped here, nothing anywhere says what happened.
     final extensions = _SlowMigration()
       ..debugSetAvailableExtensions(const [
-        ExtensionInfo(
-          key: 'ki2d-my-clock',
-          file: 'index.js',
-          source: ExtensionSource.installed,
-          core: false,
-          name: 'Clock',
-          version: '1.2.3',
-        ),
+        ExtensionInfo(key: 'ki2d-my-clock', file: 'index.js', source: ExtensionSource.installed, core: false, name: 'Clock', version: '1.2.3'),
       ]);
     final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
     await h.settings.setExtensionRefused({'ki2d-my-clock': '1.2.3'});
     await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text(t.extensionsPanel.upgradeAction));
     await tester.pump();
@@ -523,27 +535,22 @@ void main() {
     // report the failure and bury the loss the operator most needs to know.
     final extensions = _SlowMigration(adoptionCompletes: false)
       ..debugSetAvailableExtensions(const [
-        ExtensionInfo(
-          key: 'ki2d-my-clock',
-          file: 'index.js',
-          source: ExtensionSource.installed,
-          core: false,
-          name: 'Clock',
-          version: '1.2.3',
-        ),
+        ExtensionInfo(key: 'ki2d-my-clock', file: 'index.js', source: ExtensionSource.installed, core: false, name: 'Clock', version: '1.2.3'),
       ]);
     final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
     await h.settings.setExtensionRefused({'ki2d-my-clock': '1.2.3'});
     await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text(t.extensionsPanel.upgradeAction));
     await tester.pump();
@@ -567,13 +574,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing);
@@ -589,13 +598,15 @@ void main() {
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-        home: const Scaffold(body: SizedBox()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+          home: const Scaffold(body: SizedBox()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing);

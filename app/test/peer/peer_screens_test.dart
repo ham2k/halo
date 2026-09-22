@@ -38,11 +38,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../support/error_reporting_fakes.dart';
 import '../support/peer_network_fakes.dart';
 
-Future<void> waitFor(
-  String what,
-  FutureOr<bool> Function() condition, {
-  Duration timeout = const Duration(seconds: 20),
-}) async {
+Future<void> waitFor(String what, FutureOr<bool> Function() condition, {Duration timeout = const Duration(seconds: 20)}) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
     if (await condition()) return;
@@ -96,13 +92,7 @@ class _FakeCapture extends ScreenCaptureService {
   final List<double> startedQualities = [];
 
   @override
-  Future<void> start(
-    String sourceId, {
-    int maxWidth = 1280,
-    int fps = 10,
-    double quality = 0.6,
-    PeerScreenCrop? crop,
-  }) async {
+  Future<void> start(String sourceId, {int maxWidth = 1280, int fps = 10, double quality = 0.6, PeerScreenCrop? crop}) async {
     if (failStartWith case final message?) {
       throw ScreenCaptureException(message, code: 'capture');
     }
@@ -115,8 +105,7 @@ class _FakeCapture extends ScreenCaptureService {
 
   /// The OS ending a stream on its own — the shared window closed, or the
   /// operator revoked Screen Recording while it was running.
-  void osStopped(String sourceId, String reason) =>
-      _stopped.add(ScreenCaptureStopped(sourceId, reason));
+  void osStopped(String sourceId, String reason) => _stopped.add(ScreenCaptureStopped(sourceId, reason));
 
   @override
   Future<void> stop(String sourceId) async => stopCalls.add(sourceId);
@@ -134,19 +123,11 @@ class _FakeCapture extends ScreenCaptureService {
   /// this build does not know would look like on the wire.
   void emitWithoutSequence(String sourceId) {
     final header = utf8.encode('{"src":"$sourceId","w":640,"h":400,"fmt":"jpeg"}');
-    _frames.add(Uint8List.fromList(
-        [1, header.length >> 8, header.length & 0xFF, ...header, 7, 7, 7]));
+    _frames.add(Uint8List.fromList([1, header.length >> 8, header.length & 0xFF, ...header, 7, 7, 7]));
   }
 
   void emit(String sourceId, int sequence, List<int> image) {
-    _frames.add(PeerScreenFrame(
-      sourceId: sourceId,
-      width: 640,
-      height: 400,
-      sequence: sequence,
-      format: 'jpeg',
-      image: Uint8List.fromList(image),
-    ).encode());
+    _frames.add(PeerScreenFrame(sourceId: sourceId, width: 640, height: 400, sequence: sequence, format: 'jpeg', image: Uint8List.fromList(image)).encode());
   }
 }
 
@@ -162,8 +143,7 @@ class _MediaClient {
       if (garbageAcks) {
         _link.send(utf8.encode('not an acknowledgement'));
       } else if (acking) {
-        _link.send(
-            PeerScreenAck(sourceId: frame.sourceId, sequence: frame.sequence).encode());
+        _link.send(PeerScreenAck(sourceId: frame.sourceId, sequence: frame.sequence).encode());
       }
     });
   }
@@ -184,13 +164,7 @@ class _MediaClient {
 }
 
 class _Device {
-  _Device(
-    this.deviceId,
-    this.name,
-    this.host, {
-    required this.settings,
-    required List<PeerScreenSource> sources,
-  }) {
+  _Device(this.deviceId, this.name, this.host, {required this.settings, required List<PeerScreenSource> sources}) {
     db = HaLoDatabase(NativeDatabase.memory());
     outbox = PeerOutbox(db);
     operations = OperationsRepository(db, onChange: outbox.notifyChanged);
@@ -209,12 +183,7 @@ class _Device {
     );
     screens = PeerScreens(settings: settings, peers: service, capture: capture);
     views = PeerScreenViews(peers: service);
-    channels = PeerChannels(
-      peers: service,
-      location: location,
-      screens: screens,
-      views: views,
-    );
+    channels = PeerChannels(peers: service, location: location, screens: screens, views: views);
   }
 
   final String deviceId;
@@ -304,9 +273,10 @@ void main() {
     await tablet.service.trust.trust('device-b', name: 'Shack PC');
     await shack.service.setEnabled(true);
     await tablet.service.setEnabled(true);
-    await waitFor('both sessions established', () =>
-        (shack.service.peers['device-a']?.session?.established ?? false) &&
-        (tablet.service.peers['device-b']?.session?.established ?? false));
+    await waitFor(
+      'both sessions established',
+      () => (shack.service.peers['device-a']?.session?.established ?? false) && (tablet.service.peers['device-b']?.session?.established ?? false),
+    );
   }
 
   /// The shack machine sharing [ids].
@@ -325,8 +295,7 @@ void main() {
     await paired();
     await sharing([_display.id]);
 
-    await waitFor('the tablet hears the offer',
-        () => tablet.views.offers['device-b']?.length == 1);
+    await waitFor('the tablet hears the offer', () => tablet.views.offers['device-b']?.length == 1);
     expect(tablet.views.catalog.single.$3.name, 'Built-in');
     expect(tablet.views.catalog.single.$2, 'Shack PC');
 
@@ -380,8 +349,7 @@ void main() {
     tablet.views.unsubscribe('remoteScreen#1');
     // A moment for an unsubscribe that should not happen to cross the wire.
     await Future<void>.delayed(const Duration(milliseconds: 300));
-    expect(shack.capture.stopCalls, isEmpty,
-        reason: 'the second pane is still watching');
+    expect(shack.capture.stopCalls, isEmpty, reason: 'the second pane is still watching');
 
     tablet.views.unsubscribe('remoteScreen#2');
     await waitFor('capture stopped', () => shack.capture.stopCalls.contains('display:1'));
@@ -396,13 +364,8 @@ void main() {
     await waitFor('offer heard', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
 
     tablet.views.subscribe('remoteScreen#1', const PeerScreenTarget('device-b', 'window:99'));
-    await waitFor('refused', () =>
-        tablet.views.viewFor(const PeerScreenTarget('device-b', 'window:99'))?.status ==
-        PeerScreenViewStatus.refused);
-    expect(
-      tablet.views.viewFor(const PeerScreenTarget('device-b', 'window:99'))!.refusal,
-      'notOffered',
-    );
+    await waitFor('refused', () => tablet.views.viewFor(const PeerScreenTarget('device-b', 'window:99'))?.status == PeerScreenViewStatus.refused);
+    expect(tablet.views.viewFor(const PeerScreenTarget('device-b', 'window:99'))!.refusal, 'notOffered');
     expect(shack.capture.started, isEmpty, reason: 'nothing may capture for a refused request');
   });
 
@@ -419,9 +382,7 @@ void main() {
     await settings.setPeerSharedScreenIds([_display.id]);
     await shack.screens.applyOffers();
 
-    await waitFor('the viewer is told', () =>
-        tablet.views.viewFor(const PeerScreenTarget('device-b', 'window:99'))?.status ==
-        PeerScreenViewStatus.refused);
+    await waitFor('the viewer is told', () => tablet.views.viewFor(const PeerScreenTarget('device-b', 'window:99'))?.status == PeerScreenViewStatus.refused);
     expect(shack.capture.stopCalls, contains('window:99'));
   });
 
@@ -454,12 +415,9 @@ void main() {
 
       tablet.host.dialFailure = StateError('the dialler lost its own state');
       tablet.views.subscribe('remoteScreen#1', target);
-      await waitFor('the bug reaches the backend', () => backend.exceptions.isNotEmpty,
-          timeout: PeerScreenViews.retryDelay * 4);
+      await waitFor('the bug reaches the backend', () => backend.exceptions.isNotEmpty, timeout: PeerScreenViews.retryDelay * 4);
       final reported = backend.exceptions.single;
-      expect(reported.error, isA<PeerMediaDialFailure>()
-          .having((f) => f.peerDeviceId, 'peer', 'device-b')
-          .having((f) => f.cause, 'cause', isA<StateError>()));
+      expect(reported.error, isA<PeerMediaDialFailure>().having((f) => f.peerDeviceId, 'peer', 'device-b').having((f) => f.cause, 'cause', isA<StateError>()));
       expect(reported.context, contains('failed 3 times in a row'));
       expect(tablet.views.viewFor(target)!.status, PeerScreenViewStatus.peerUnreachable);
 
@@ -484,8 +442,7 @@ void main() {
     });
 
     await shack.service.setEnabled(false);
-    await waitFor('the tablet notices', () =>
-        tablet.views.viewFor(target)?.status == PeerScreenViewStatus.peerUnreachable);
+    await waitFor('the tablet notices', () => tablet.views.viewFor(target)?.status == PeerScreenViewStatus.peerUnreachable);
     // The picture stays. It is still the last thing that device showed, and
     // blanking it would lose exactly what the operator opened the pane for.
     expect(tablet.views.viewFor(target)!.frame!.image, [9, 9, 9]);
@@ -503,8 +460,7 @@ void main() {
     await paired();
     await shack.screens.ensureSourcesFresh();
 
-    await waitFor('the tablet is told, with nobody having opened settings',
-        () => tablet.views.offers['device-b']?.length == 1);
+    await waitFor('the tablet is told, with nobody having opened settings', () => tablet.views.offers['device-b']?.length == 1);
   });
 
   test('a capture that will not start is refused, not granted', () async {
@@ -518,8 +474,7 @@ void main() {
 
     const target = PeerScreenTarget('device-b', 'display:1');
     tablet.views.subscribe('remoteScreen#1', target);
-    await waitFor('refused', () =>
-        tablet.views.viewFor(target)?.status == PeerScreenViewStatus.refused);
+    await waitFor('refused', () => tablet.views.viewFor(target)?.status == PeerScreenViewStatus.refused);
     expect(tablet.views.viewFor(target)!.refusal, 'captureFailed');
     expect(shack.screens.isWatched('display:1'), isFalse);
   });
@@ -534,8 +489,7 @@ void main() {
     await waitFor('capturing', () => shack.capture.started.isNotEmpty);
 
     shack.capture.osStopped('display:1', 'The window was closed');
-    await waitFor('the viewer is told', () =>
-        tablet.views.viewFor(target)?.status == PeerScreenViewStatus.refused);
+    await waitFor('the viewer is told', () => tablet.views.viewFor(target)?.status == PeerScreenViewStatus.refused);
     expect(tablet.views.viewFor(target)!.refusal, 'stopped');
   });
 
@@ -545,15 +499,12 @@ void main() {
     // paying for a stream nobody wants.
     await paired();
     await sharing([_display.id]);
-    await shack.screens.addWatcher(
-        'preview', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 480, fps: 5));
-    await shack.screens.addWatcher(
-        'big', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
+    await shack.screens.addWatcher('preview', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 480, fps: 5));
+    await shack.screens.addWatcher('big', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
     expect(shack.capture.startedWidths.last, 1920);
 
     await shack.screens.removeWatcher('big', 'display:1');
-    expect(shack.capture.startedWidths.last, 480,
-        reason: 'the surviving watcher only ever asked for 480');
+    expect(shack.capture.startedWidths.last, 480, reason: 'the surviving watcher only ever asked for 480');
     expect(shack.screens.isWatched('display:1'), isTrue);
   });
 
@@ -571,17 +522,11 @@ void main() {
     await waitFor('capturing', () => shack.capture.started.isNotEmpty);
     expect(shack.capture.startedCrops.last, isNull, reason: 'a pane at rest wants all of it');
 
-    tablet.views.setDemand('remoteScreen#1', (
-      maxWidth: 1280,
-      fullWidth: 1280,
-      crop: const PeerScreenCrop(left: 0.5, top: 0.5, width: 0.25, height: 0.25),
-    ));
+    tablet.views.setDemand('remoteScreen#1', (maxWidth: 1280, fullWidth: 1280, crop: const PeerScreenCrop(left: 0.5, top: 0.5, width: 0.25, height: 0.25)));
     await waitFor('the crop reaches the OS', () => shack.capture.startedCrops.last != null);
     expect(shack.capture.startedCrops.last!.left, 0.5);
-    expect(shack.capture.startedWidths.last, 1280,
-        reason: 'the same pixels, spent on a quarter of the picture');
-    expect(shack.capture.startedQualities.last, greaterThan(0.6),
-        reason: 'a small picture can afford a better encode, and zoom shows artefacts');
+    expect(shack.capture.startedWidths.last, 1280, reason: 'the same pixels, spent on a quarter of the picture');
+    expect(shack.capture.startedQualities.last, greaterThan(0.6), reason: 'a small picture can afford a better encode, and zoom shows artefacts');
   });
 
   test('a pane repeating what it already asked for costs nothing', () async {
@@ -601,8 +546,7 @@ void main() {
       tablet.views.setDemand('remoteScreen#1', (maxWidth: 1280, fullWidth: 1280, crop: null));
     }
     await Future<void>.delayed(PeerScreenViews.retermDelay * 3);
-    expect(shack.capture.started.length, starts,
-        reason: 'the terms never actually changed');
+    expect(shack.capture.started.length, starts, reason: 'the terms never actually changed');
   });
 
   test('two viewers on one source are served a region covering both', () async {
@@ -614,30 +558,18 @@ void main() {
     await sharing([_display.id]);
     await shack.screens.addWatcher(
       'left',
-      const PeerScreenSubscription(
-        sourceId: 'display:1',
-        maxWidth: 1280,
-        fps: 10,
-        crop: PeerScreenCrop(left: 0, top: 0, width: 0.25, height: 0.25),
-      ),
+      const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1280, fps: 10, crop: PeerScreenCrop(left: 0, top: 0, width: 0.25, height: 0.25)),
     );
     expect(shack.capture.startedCrops.last!.width, 0.25);
 
     await shack.screens.addWatcher(
       'right',
-      const PeerScreenSubscription(
-        sourceId: 'display:1',
-        maxWidth: 1280,
-        fps: 10,
-        crop: PeerScreenCrop(left: 0.75, top: 0.75, width: 0.25, height: 0.25),
-      ),
+      const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1280, fps: 10, crop: PeerScreenCrop(left: 0.75, top: 0.75, width: 0.25, height: 0.25)),
     );
-    expect(shack.capture.startedCrops.last, isNull,
-        reason: 'opposite corners span the whole source');
+    expect(shack.capture.startedCrops.last, isNull, reason: 'opposite corners span the whole source');
 
     await shack.screens.removeWatcher('right', 'display:1');
-    expect(shack.capture.startedCrops.last!.width, 0.25,
-        reason: 'the surviving watcher gets its own corner back');
+    expect(shack.capture.startedCrops.last!.width, 0.25, reason: 'the surviving watcher gets its own corner back');
   });
 
   test('a peer that cannot crop is asked for the whole picture instead', () async {
@@ -654,8 +586,7 @@ void main() {
     await waitFor('capturing', () => shack.capture.started.isNotEmpty);
     // Undo what the real grant established, so this stands for a producer
     // from a build that predates the crop.
-    tablet.views.onGrant('device-b',
-        const PeerScreenGrant(sourceId: 'display:1', ticket: 'x', port: 1, paced: true));
+    tablet.views.onGrant('device-b', const PeerScreenGrant(sourceId: 'display:1', ticket: 'x', port: 1, paced: true));
 
     tablet.views.setDemand('remoteScreen#1', (
       maxWidth: 640,
@@ -666,8 +597,7 @@ void main() {
     ));
     await waitFor('the terms are converted', () => shack.capture.startedWidths.last != 1280);
     expect(shack.capture.startedCrops.last, isNull, reason: 'it would be ignored anyway');
-    expect(shack.capture.startedWidths.last, 1920,
-        reason: "the pane's own answer for a peer that cannot crop");
+    expect(shack.capture.startedWidths.last, 1920, reason: "the pane's own answer for a peer that cannot crop");
   });
 
   test('a pane hidden and shown again does not re-negotiate from scratch', () async {
@@ -682,19 +612,14 @@ void main() {
     const target = PeerScreenTarget('device-b', 'display:1');
     tablet.views.subscribe('remoteScreen#1', target);
     await waitFor('capturing', () => shack.capture.started.isNotEmpty);
-    tablet.views.setDemand('remoteScreen#1', (
-      maxWidth: 1280,
-      fullWidth: 1280,
-      crop: const PeerScreenCrop(left: 0.25, top: 0.25, width: 0.5, height: 0.5),
-    ));
+    tablet.views.setDemand('remoteScreen#1', (maxWidth: 1280, fullWidth: 1280, crop: const PeerScreenCrop(left: 0.25, top: 0.25, width: 0.5, height: 0.5)));
     await waitFor('the crop reaches the OS', () => shack.capture.startedCrops.last != null);
 
     tablet.views.unsubscribe('remoteScreen#1');
     await waitFor('the capture stops', () => shack.capture.stopCalls.isNotEmpty);
     tablet.views.subscribe('remoteScreen#1', target);
     await waitFor('capturing again', () => shack.capture.startedCrops.length > 2);
-    expect(shack.capture.startedCrops.last?.width, 0.5,
-        reason: 'the pane is looking at what it was looking at');
+    expect(shack.capture.startedCrops.last?.width, 0.5, reason: 'the pane is looking at what it was looking at');
   });
 
   test('a second pane does not cost the zoomed one its detail', () async {
@@ -710,20 +635,14 @@ void main() {
     const target = PeerScreenTarget('device-b', 'display:1');
     tablet.views.subscribe('remoteScreen#1', target);
     await waitFor('capturing', () => shack.capture.started.isNotEmpty);
-    tablet.views.setDemand('remoteScreen#1', (
-      maxWidth: 1280,
-      fullWidth: 2560,
-      crop: const PeerScreenCrop(left: 0.5, top: 0.5, width: 0.25, height: 0.25),
-    ));
+    tablet.views.setDemand('remoteScreen#1', (maxWidth: 1280, fullWidth: 2560, crop: const PeerScreenCrop(left: 0.5, top: 0.5, width: 0.25, height: 0.25)));
     await waitFor('zoomed in', () => shack.capture.startedCrops.last != null);
 
     tablet.views.subscribe('remoteScreen#2', target);
     tablet.views.setDemand('remoteScreen#2', (maxWidth: 1280, fullWidth: 1280, crop: null));
     await waitFor('the crop is given up', () => shack.capture.startedCrops.last == null);
-    expect(shack.capture.startedWidths.last, 2560,
-        reason: 'the zoomed pane still needs that many pixels across the screen');
-    expect(shack.capture.startedQualities.last, 0.6,
-        reason: 'a whole screen is not owed the quality a small picture earns');
+    expect(shack.capture.startedWidths.last, 2560, reason: 'the zoomed pane still needs that many pixels across the screen');
+    expect(shack.capture.startedQualities.last, 0.6, reason: 'a whole screen is not owed the quality a small picture earns');
   });
 
   test('a pane pointed somewhere else takes no crop with it', () async {
@@ -733,24 +652,17 @@ void main() {
     // a quarter-size tile in the corner of the pane.
     await paired();
     await sharing([_display.id, _window.id]);
-    await waitFor('offered',
-        () => (tablet.views.offers['device-b']?.length ?? 0) > 1);
+    await waitFor('offered', () => (tablet.views.offers['device-b']?.length ?? 0) > 1);
 
     const first = PeerScreenTarget('device-b', 'display:1');
     tablet.views.subscribe('remoteScreen#1', first);
     await waitFor('capturing', () => shack.capture.started.isNotEmpty);
-    tablet.views.setDemand('remoteScreen#1', (
-      maxWidth: 1280,
-      fullWidth: 2560,
-      crop: const PeerScreenCrop(left: 0, top: 0, width: 0.25, height: 0.25),
-    ));
+    tablet.views.setDemand('remoteScreen#1', (maxWidth: 1280, fullWidth: 2560, crop: const PeerScreenCrop(left: 0, top: 0, width: 0.25, height: 0.25)));
     await waitFor('zoomed in', () => shack.capture.startedCrops.last != null);
 
     tablet.views.subscribe('remoteScreen#1', PeerScreenTarget('device-b', _window.id));
-    await waitFor('the other source starts',
-        () => shack.capture.started.last == _window.id);
-    expect(shack.capture.startedCrops.last, isNull,
-        reason: 'nothing has framed this picture yet');
+    await waitFor('the other source starts', () => shack.capture.started.last == _window.id);
+    expect(shack.capture.startedCrops.last, isNull, reason: 'nothing has framed this picture yet');
   });
 
   test('a dropped media link recovers on its own', () async {
@@ -775,8 +687,7 @@ void main() {
 
     await waitFor('it comes back without anyone touching anything', () {
       shack.capture.emit('display:1', 2, [2]);
-      return tablet.views.viewFor(target)?.status == PeerScreenViewStatus.live &&
-          shack.capture.started.length >= 2;
+      return tablet.views.viewFor(target)?.status == PeerScreenViewStatus.live && shack.capture.started.length >= 2;
     }, timeout: PeerScreenViews.retryDelay * 4);
   });
 
@@ -798,8 +709,7 @@ void main() {
     await waitFor('both panes go live', () {
       shack.capture.emit('display:1', 1, [1]);
       shack.capture.emit('window:99', 1, [2]);
-      return tablet.views.viewFor(one)?.status == PeerScreenViewStatus.live &&
-          tablet.views.viewFor(two)?.status == PeerScreenViewStatus.live;
+      return tablet.views.viewFor(one)?.status == PeerScreenViewStatus.live && tablet.views.viewFor(two)?.status == PeerScreenViewStatus.live;
     });
     expect(tablet.views.viewFor(two)!.frame!.image, [2]);
   });
@@ -821,11 +731,9 @@ void main() {
     });
 
     shack.capture.failStartWith = 'The window was closed';
-    await shack.screens.addWatcher(
-        'big', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
+    await shack.screens.addWatcher('big', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
 
-    await waitFor('the viewer already being served is told', () =>
-        tablet.views.viewFor(target)?.status == PeerScreenViewStatus.refused);
+    await waitFor('the viewer already being served is told', () => tablet.views.viewFor(target)?.status == PeerScreenViewStatus.refused);
     expect(tablet.views.viewFor(target)!.refusal, 'captureFailed');
   });
 
@@ -852,8 +760,7 @@ void main() {
     expect(local.viewFor(target)!.frame!.image, [7, 7, 7]);
 
     local.unsubscribe('remoteScreen#1');
-    await waitFor('and the capture stops with it',
-        () => shack.capture.stopCalls.contains('display:1'));
+    await waitFor('and the capture stops with it', () => shack.capture.stopCalls.contains('display:1'));
   });
 
   test('a local pane asking for something unshared is refused, not left waiting', () async {
@@ -867,8 +774,7 @@ void main() {
     expect(shack.capture.started, isEmpty);
   });
 
-  test('un-sharing a source a LOCAL pane is watching tells it, and re-sharing brings it back',
-      () async {
+  test('un-sharing a source a LOCAL pane is watching tells it, and re-sharing brings it back', () async {
     // The peer path is covered above by the offer broadcast. A pane on this
     // very device reads the offer straight off the producer and hears no
     // message, so without an explicit refusal it keeps a frozen picture that
@@ -887,8 +793,7 @@ void main() {
 
     await settings.setPeerSharedScreenIds(const []);
     await shack.screens.applyOffers();
-    await waitFor('the local pane is told', () =>
-        local.viewFor(target)?.status == PeerScreenViewStatus.refused);
+    await waitFor('the local pane is told', () => local.viewFor(target)?.status == PeerScreenViewStatus.refused);
     expect(local.viewFor(target)!.refusal, 'stopped');
 
     await sharing([_display.id]);
@@ -912,9 +817,11 @@ void main() {
 
     const target = PeerScreenTarget('device-b', 'display:1');
     deaf.subscribe('remoteScreen#1', target);
-    await waitFor('it stops waiting and says why', () =>
-        deaf.viewFor(target)?.status == PeerScreenViewStatus.refused,
-        timeout: PeerScreenViews.answerDeadline * 3);
+    await waitFor(
+      'it stops waiting and says why',
+      () => deaf.viewFor(target)?.status == PeerScreenViewStatus.refused,
+      timeout: PeerScreenViews.answerDeadline * 3,
+    );
     expect(deaf.viewFor(target)!.refusal, 'noAnswer');
   });
 
@@ -930,13 +837,10 @@ void main() {
     // never acted on and no media link is ever opened — a viewer behind a
     // firewall, as far as this device can tell.
     tablet.channels.dispose();
-    await shack.screens.handleSubscribe(
-        'device-a', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5));
+    await shack.screens.handleSubscribe('device-a', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5));
     expect(shack.capture.started, contains('display:1'));
 
-    await waitFor('the producer gives up on it',
-        () => shack.capture.stopCalls.contains('display:1'),
-        timeout: PeerScreens.mediaDeadline * 2);
+    await waitFor('the producer gives up on it', () => shack.capture.stopCalls.contains('display:1'), timeout: PeerScreens.mediaDeadline * 2);
     expect(shack.screens.isWatched('display:1'), isFalse);
     // The deadline is deliberately longer than a viewer's retry round, so
     // this test outlives the framework's own 30s default.
@@ -959,8 +863,7 @@ void main() {
       grant ??= message.screenGrantOrNull;
     };
 
-    await shack.screens.handleSubscribe('device-a',
-        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5, acks: true));
+    await shack.screens.handleSubscribe('device-a', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5, acks: true));
     await waitFor('the grant arrives', () => grant != null);
 
     final media = await _dialMedia(tablet, shack, grant!);
@@ -1002,8 +905,7 @@ void main() {
     tablet.service.onEphemeral = (peer, message) => grant ??= message.screenGrantOrNull;
 
     // Subscribes the way an older build does: no `acks` field at all.
-    await shack.screens.handleSubscribe('device-a',
-        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5));
+    await shack.screens.handleSubscribe('device-a', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5));
     await waitFor('the grant arrives', () => grant != null);
 
     final media = await _dialMedia(tablet, shack, grant!);
@@ -1016,8 +918,7 @@ void main() {
       shack.capture.emit('display:1', seq, [seq & 0xFF]);
     }
     await waitFor('everything reaches it', () => received >= 25);
-    expect(shack.screens.framesDropped, 0,
-        reason: 'an unacking viewer must not be throttled into silence');
+    expect(shack.screens.framesDropped, 0, reason: 'an unacking viewer must not be throttled into silence');
   }, timeout: const Timeout(Duration(seconds: 90)));
 
   test('an acking viewer keeps receiving, and says nothing while it keeps up', () async {
@@ -1036,25 +937,20 @@ void main() {
       // them delivery would have stopped at PeerScreens.inFlightWindow.
       return (view?.frame?.sequence ?? 0) > PeerScreens.inFlightWindow + 3;
     });
-    expect(tablet.views.viewFor(target)!.degraded, isFalse,
-        reason: 'a viewer that is keeping up has nothing to report');
+    expect(tablet.views.viewFor(target)!.degraded, isFalse, reason: 'a viewer that is keeping up has nothing to report');
   });
 
   /// Subscribes as a bare media client, bypassing the tablet's own viewer.
-  Future<_MediaClient> rawViewer(_Device shackDevice, _Device viewerDevice,
-      {required String sourceId, required bool acks, required bool declareAcks}) async {
+  Future<_MediaClient> rawViewer(_Device shackDevice, _Device viewerDevice, {required String sourceId, required bool acks, required bool declareAcks}) async {
     PeerScreenGrant? grant;
     viewerDevice.channels.dispose();
     viewerDevice.service.onEphemeral = (peer, message) => grant ??= message.screenGrantOrNull;
-    await shackDevice.screens.handleSubscribe(
-        viewerDevice.deviceId,
-        PeerScreenSubscription(sourceId: sourceId, maxWidth: 640, fps: 5, acks: declareAcks));
+    await shackDevice.screens.handleSubscribe(viewerDevice.deviceId, PeerScreenSubscription(sourceId: sourceId, maxWidth: 640, fps: 5, acks: declareAcks));
     await waitFor('the grant arrives', () => grant != null);
     final link = await _dialMedia(viewerDevice, shackDevice, grant!);
     final client = _MediaClient(link, acks: acks);
     addTearDown(client.close);
-    await waitFor('the producer sees the media link',
-        () => shackDevice.screens.hasMediaLink(viewerDevice.deviceId));
+    await waitFor('the producer sees the media link', () => shackDevice.screens.hasMediaLink(viewerDevice.deviceId));
     return client;
   }
 
@@ -1066,8 +962,7 @@ void main() {
     // until that one frame happens to be acknowledged.
     await paired();
     await sharing([_display.id]);
-    final viewer = await rawViewer(shack, tablet,
-        sourceId: _display.id, acks: true, declareAcks: true);
+    final viewer = await rawViewer(shack, tablet, sourceId: _display.id, acks: true, declareAcks: true);
 
     for (var i = 0; i < 30; i++) {
       shack.capture.emit('display:1', 5000 + i, [i & 0xFF]);
@@ -1084,8 +979,7 @@ void main() {
     // back — or every acknowledgement look stale, which starves the viewer.
     await paired();
     await sharing([_display.id]);
-    final viewer = await rawViewer(shack, tablet,
-        sourceId: _display.id, acks: true, declareAcks: true);
+    final viewer = await rawViewer(shack, tablet, sourceId: _display.id, acks: true, declareAcks: true);
 
     for (var i = 0; i < 8; i++) {
       shack.capture.emit('display:1', 5000 + i, [i & 0xFF]);
@@ -1096,18 +990,15 @@ void main() {
 
     // A second, more demanding watcher raises the merged terms, which is what
     // restarts the capture.
-    await shack.screens.addWatcher('other',
-        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
+    await shack.screens.addWatcher('other', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
     expect(shack.capture.started.length, greaterThan(1));
 
     for (var i = 1; i < 20; i++) {
       shack.capture.emit('display:1', i, [i & 0xFF]);
       await Future<void>.delayed(const Duration(milliseconds: 15));
     }
-    await waitFor('the renumbered session reaches the same viewer',
-        () => viewer.received.length > beforeRestart + 3);
+    await waitFor('the renumbered session reaches the same viewer', () => viewer.received.length > beforeRestart + 3);
     expect(viewer.received.last, lessThan(100), reason: 'these are the new session\'s numbers');
-
   }, timeout: const Timeout(Duration(seconds: 90)));
 
   test('a restart clears what the old numbering left outstanding', () async {
@@ -1117,8 +1008,7 @@ void main() {
     // and the viewer never retries, because nothing about its link is wrong.
     await paired();
     await sharing([_display.id]);
-    final viewer = await rawViewer(shack, tablet,
-        sourceId: _display.id, acks: true, declareAcks: true);
+    final viewer = await rawViewer(shack, tablet, sourceId: _display.id, acks: true, declareAcks: true);
 
     for (var i = 0; i < 4; i++) {
       shack.capture.emit('display:1', 5000 + i, [i]);
@@ -1131,21 +1021,18 @@ void main() {
     for (var i = 10; i < 20; i++) {
       shack.capture.emit('display:1', 5000 + i, [i]);
     }
-    await waitFor('the window is full of the old session',
-        () => shack.screens.framesDropped > 0);
+    await waitFor('the window is full of the old session', () => shack.screens.framesDropped > 0);
     final beforeRestart = viewer.received.length;
     viewer.acking = true;
 
     // Terms change, so the capture restarts and numbers from one again.
-    await shack.screens.addWatcher('other',
-        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
+    await shack.screens.addWatcher('other', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
 
     for (var i = 1; i < 20; i++) {
       shack.capture.emit('display:1', i, [i & 0xFF]);
       await Future<void>.delayed(const Duration(milliseconds: 15));
     }
-    await waitFor('the new session still reaches it',
-        () => viewer.received.length > beforeRestart);
+    await waitFor('the new session still reaches it', () => viewer.received.length > beforeRestart);
   }, timeout: const Timeout(Duration(seconds: 90)));
 
   test('a replaced media link is not starved by what the old one was charged', () async {
@@ -1155,14 +1042,12 @@ void main() {
     // and the viewer never retries, because as far as it knows its link is up.
     await paired();
     await sharing([_display.id]);
-    final deaf = await rawViewer(shack, tablet,
-        sourceId: _display.id, acks: false, declareAcks: true);
+    final deaf = await rawViewer(shack, tablet, sourceId: _display.id, acks: false, declareAcks: true);
 
     for (var i = 1; i <= 10; i++) {
       shack.capture.emit('display:1', i, [i]);
     }
-    await waitFor('the window closes against the silent viewer',
-        () => shack.screens.framesDropped > 0);
+    await waitFor('the window closes against the silent viewer', () => shack.screens.framesDropped > 0);
     await deaf.close();
     // Let the producer see the close before resubscribing: its teardown is
     // asynchronous, and a subscribe that overtakes it would have the old
@@ -1170,8 +1055,7 @@ void main() {
     await waitFor('the producer notices the close', () => shack.screens.watchers.isEmpty);
 
     // The same peer dials again — its retry, or a reconnect.
-    final fresh = await rawViewer(shack, tablet,
-        sourceId: _display.id, acks: true, declareAcks: true);
+    final fresh = await rawViewer(shack, tablet, sourceId: _display.id, acks: true, declareAcks: true);
     for (var i = 20; i < 30; i++) {
       shack.capture.emit('display:1', i, [i & 0xFF]);
       await Future<void>.delayed(const Duration(milliseconds: 15));
@@ -1179,8 +1063,7 @@ void main() {
     await waitFor('the replacement is served', () => fresh.received.isNotEmpty);
   }, timeout: const Timeout(Duration(seconds: 90)));
 
-  test('a viewer that is missing frames says so, and stops saying it once they arrive again',
-      () async {
+  test('a viewer that is missing frames says so, and stops saying it once they arrive again', () async {
     // The other half of "says nothing while it keeps up". Pacing DROPS
     // frames by design, so the notice is what tells the operator that the
     // picture they are watching is not the one on the other screen — and a
@@ -1218,8 +1101,7 @@ void main() {
     }, timeout: const Duration(seconds: 40));
   }, timeout: const Timeout(Duration(seconds: 90)));
 
-  test('a viewer that takes delivery of nothing is given up on rather than paced forever',
-      () async {
+  test('a viewer that takes delivery of nothing is given up on rather than paced forever', () async {
     // The state this change creates: both sockets healthy, capture running,
     // window shut against a viewer that declared it acks and then never did.
     // Nothing on the viewer can tell that from a screen nobody is touching —
@@ -1227,8 +1109,7 @@ void main() {
     // side that knows it is holding frames it cannot send, has to say so.
     await paired();
     await sharing([_display.id]);
-    final deaf = await rawViewer(shack, tablet,
-        sourceId: _display.id, acks: false, declareAcks: true);
+    final deaf = await rawViewer(shack, tablet, sourceId: _display.id, acks: false, declareAcks: true);
     // Installed after rawViewer, which takes the same hook to catch the grant.
     final refusals = <String>[];
     tablet.service.onEphemeral = (peer, message) {
@@ -1263,10 +1144,7 @@ void main() {
     tablet.service.onEphemeral = (peer, message) {
       final grant = message.screenGrantOrNull;
       if (grant != null) {
-        tablet.views.onGrant(
-            peer,
-            PeerScreenGrant(
-                sourceId: grant.sourceId, ticket: grant.ticket, port: grant.port));
+        tablet.views.onGrant(peer, PeerScreenGrant(sourceId: grant.sourceId, ticket: grant.ticket, port: grant.port));
       }
     };
 
@@ -1277,12 +1155,10 @@ void main() {
       shack.capture.emit('display:1', ++seq, [seq & 0xFF]);
       return shack.screens.framesDropped > 0;
     });
-    expect(tablet.views.viewFor(target)?.frame, isNotNull,
-        reason: 'the window it did get through is not the failure being caught');
+    expect(tablet.views.viewFor(target)?.frame, isNotNull, reason: 'the window it did get through is not the failure being caught');
   }, timeout: const Timeout(Duration(seconds: 90)));
 
-  test('a viewer that stops taking delivery is given up on even while the screen sits still',
-      () async {
+  test('a viewer that stops taking delivery is given up on even while the screen sits still', () async {
     // The capture emits nothing while its source is static — the native side
     // drops every non-complete buffer — so a deadline compared on each frame
     // stops being read at exactly the moment the failure starts. A viewer
@@ -1291,8 +1167,7 @@ void main() {
     await paired();
     await sharing([_display.id]);
     final refusals = <String>[];
-    final deaf = await rawViewer(shack, tablet,
-        sourceId: _display.id, acks: false, declareAcks: true);
+    final deaf = await rawViewer(shack, tablet, sourceId: _display.id, acks: false, declareAcks: true);
     tablet.service.onEphemeral = (peer, message) {
       if (message.type == PeerMessageType.screenRefuse) refusals.add(message.reason ?? '');
     };
@@ -1305,10 +1180,8 @@ void main() {
 
     // The screen now sits still: nothing more is captured, ever.
     final capturedWhenQuiet = shack.screens.framesCaptured;
-    await waitFor('the producer gives up anyway', () => refusals.contains('stalled'),
-        timeout: PeerScreens.stallDeadline + const Duration(seconds: 20));
-    expect(shack.screens.framesCaptured, capturedWhenQuiet,
-        reason: 'nothing may have been captured — that is the whole point');
+    await waitFor('the producer gives up anyway', () => refusals.contains('stalled'), timeout: PeerScreens.stallDeadline + const Duration(seconds: 20));
+    expect(shack.screens.framesCaptured, capturedWhenQuiet, reason: 'nothing may have been captured — that is the whole point');
     expect(shack.screens.watchers, isEmpty);
     expect(deaf.received, isNotEmpty);
   }, timeout: const Timeout(Duration(seconds: 120)));
@@ -1321,8 +1194,7 @@ void main() {
     // exact failure the unacked SET is designed to prevent.
     await paired();
     await sharing([_display.id]);
-    final viewer = await rawViewer(shack, tablet,
-        sourceId: _display.id, acks: true, declareAcks: true);
+    final viewer = await rawViewer(shack, tablet, sourceId: _display.id, acks: true, declareAcks: true);
 
     for (var i = 0; i < 3; i++) {
       shack.capture.emit('display:1', 5000 + i, [i]);
@@ -1335,13 +1207,11 @@ void main() {
     final gate = Completer<void>();
     shack.capture.startGate = gate;
     viewer.acking = false;
-    final restarted = shack.screens.addWatcher('other',
-        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
+    final restarted = shack.screens.addWatcher('other', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
     for (var i = 20; i < 24; i++) {
       shack.capture.emit('display:1', 5000 + i, [i]);
     }
-    await waitFor('the stragglers are charged to the window',
-        () => shack.screens.framesDropped > 0);
+    await waitFor('the stragglers are charged to the window', () => shack.screens.framesDropped > 0);
     gate.complete();
     shack.capture.startGate = null;
     await restarted;
@@ -1352,8 +1222,7 @@ void main() {
       shack.capture.emit('display:1', i, [i & 0xFF]);
       await Future<void>.delayed(const Duration(milliseconds: 15));
     }
-    await waitFor('the renumbered session flows at full depth',
-        () => viewer.received.length > beforeRenumber + 5);
+    await waitFor('the renumbered session flows at full depth', () => viewer.received.length > beforeRenumber + 5);
   }, timeout: const Timeout(Duration(seconds: 90)));
 
   test('a capture with no usable header is dropped, never sent past the window', () async {
@@ -1363,8 +1232,7 @@ void main() {
     // nothing counting it.
     await paired();
     await sharing([_display.id]);
-    final viewer = await rawViewer(shack, tablet,
-        sourceId: _display.id, acks: true, declareAcks: true);
+    final viewer = await rawViewer(shack, tablet, sourceId: _display.id, acks: true, declareAcks: true);
 
     for (var i = 0; i < 20; i++) {
       shack.capture.emitWithoutSequence('display:1');
@@ -1385,8 +1253,7 @@ void main() {
     await paired();
     await sharing([_display.id]);
     final refusals = <String>[];
-    final viewer = await rawViewer(shack, tablet,
-        sourceId: _display.id, acks: false, declareAcks: true);
+    final viewer = await rawViewer(shack, tablet, sourceId: _display.id, acks: false, declareAcks: true);
     viewer.garbageAcks = true;
     tablet.service.onEphemeral = (peer, message) {
       if (message.type == PeerMessageType.screenRefuse) refusals.add(message.reason ?? '');
@@ -1418,9 +1285,11 @@ void main() {
     for (var attempt = 1; attempt <= 2; attempt++) {
       await shack.screens.removeWatcher('device-a', 'display:1');
       tablet.views.onRefused('device-b', 'display:1', 'stalled');
-      await waitFor('re-asked after stall $attempt',
-          () => shack.screens.watchers.isNotEmpty,
-          timeout: PeerScreenViews.retryDelay + const Duration(seconds: 10));
+      await waitFor(
+        're-asked after stall $attempt',
+        () => shack.screens.watchers.isNotEmpty,
+        timeout: PeerScreenViews.retryDelay + const Duration(seconds: 10),
+      );
     }
 
     await shack.screens.removeWatcher('device-a', 'display:1');
@@ -1441,13 +1310,11 @@ void main() {
     // can never reach them, and no acknowledgement will ever reopen it.
     await paired();
     await sharing([_display.id]);
-    final viewer = await rawViewer(shack, tablet,
-        sourceId: _display.id, acks: true, declareAcks: true);
+    final viewer = await rawViewer(shack, tablet, sourceId: _display.id, acks: true, declareAcks: true);
     shack.capture.emit('display:1', 5000, [1]);
     await waitFor('flowing', () => viewer.received.isNotEmpty);
 
-    await shack.screens.addWatcher('other',
-        const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
+    await shack.screens.addWatcher('other', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 1920, fps: 30));
 
     // Late stragglers, unacknowledged: the window is now shut on numbers the
     // restarted session will not produce for another eight minutes.
@@ -1463,7 +1330,6 @@ void main() {
       shack.capture.emit('display:1', i, [i & 0xFF]);
       await Future<void>.delayed(const Duration(milliseconds: 15));
     }
-    await waitFor('the renumbered session is served',
-        () => viewer.received.length > beforeRenumber + 5);
+    await waitFor('the renumbered session is served', () => viewer.received.length > beforeRenumber + 5);
   }, timeout: const Timeout(Duration(seconds: 90)));
 }

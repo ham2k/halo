@@ -32,11 +32,7 @@ void main() {
 
   tearDown(() => root.deleteSync(recursive: true));
 
-  InstalledExtensions store({
-    Set<String> builtIn = const {'pota', 'sota'},
-    Map<String, String>? shared,
-    bool Function(String key)? catalogInstalled,
-  }) =>
+  InstalledExtensions store({Set<String> builtIn = const {'pota', 'sota'}, Map<String, String>? shared, bool Function(String key)? catalogInstalled}) =>
       InstalledExtensions(
         builtInKeys: () => builtIn,
         hostSharedModules: shared ?? const {'i18next': '23.11.5', '@ham2k/lib-callsigns': '1.0.2'},
@@ -177,9 +173,11 @@ void main() {
       // never tested, with nothing to connect it to the cause.
       await expectLater(
         store(shared: const {'i18next': '22.0.0'}).inspect(fixture),
-        throwsA(isA<BundleException>()
-            .having((e) => e.reason, 'reason', BundleRejection.unsatisfiedDependency)
-            .having((e) => e.message, 'message', allOf(contains('i18next'), contains('22.0.0')))),
+        throwsA(
+          isA<BundleException>()
+              .having((e) => e.reason, 'reason', BundleRejection.unsatisfiedDependency)
+              .having((e) => e.message, 'message', allOf(contains('i18next'), contains('22.0.0'))),
+        ),
       );
     });
 
@@ -213,8 +211,12 @@ void main() {
       final bytes = rebuilt((m) => {...m, 'key': 'ham2k-clock'});
       final vouched = <String>{'ham2k-clock'};
       final s = store(catalogInstalled: vouched.contains);
-      await s.install(await s.inspect(bytes,
-          provenance: BundleProvenance(host: kCatalogHost, sha256: sha256Hex(bytes), version: '1.2.3')));
+      await s.install(
+        await s.inspect(
+          bytes,
+          provenance: BundleProvenance(host: kCatalogHost, sha256: sha256Hex(bytes), version: '1.2.3'),
+        ),
+      );
 
       expect((await s.list()).map((i) => i.key), ['ham2k-clock']);
       vouched.clear();
@@ -228,14 +230,20 @@ void main() {
       // for an extension that may be DISABLED — so both must come off the
       // manifest on disk, not out of a running bundle.
       final s = store();
-      await s.install(await s.inspect(rebuilt((m) => {
-            ...m,
-            'version': '4.5.6',
-            'relevance': {
-              'entities': ['CE'],
-              'ituRegions': [2],
+      await s.install(
+        await s.inspect(
+          rebuilt(
+            (m) => {
+              ...m,
+              'version': '4.5.6',
+              'relevance': {
+                'entities': ['CE'],
+                'ituRegions': [2],
+              },
             },
-          })));
+          ),
+        ),
+      );
 
       final listed = (await s.list()).single;
       expect(listed.version, '4.5.6');
@@ -316,11 +324,7 @@ void main() {
       // fetch allowlists and hooks by the extension key — so a key that was
       // free at install time and is shipped later would otherwise be handed
       // whatever the built-in was granted.
-      final later = InstalledExtensions(
-        builtInKeys: () => const {'ki2d-my-clock'},
-        hostSharedModules: const {'i18next': '23.11.5'},
-        rootOverride: root,
-      );
+      final later = InstalledExtensions(builtInKeys: () => const {'ki2d-my-clock'}, hostSharedModules: const {'i18next': '23.11.5'}, rootOverride: root);
       expect(await later.list(), isEmpty);
     });
 
@@ -339,8 +343,7 @@ void main() {
       final s = store();
       await s.install(await s.inspect(fixture));
       Directory(p.join(root.path, 'renamed')).createSync();
-      File(p.join(root.path, 'renamed', 'manifest.json'))
-          .writeAsStringSync(jsonEncode({'key': 'ki2d-my-clock', 'name': 'X', 'category': 'dashboard'}));
+      File(p.join(root.path, 'renamed', 'manifest.json')).writeAsStringSync(jsonEncode({'key': 'ki2d-my-clock', 'name': 'X', 'category': 'dashboard'}));
 
       // The directory IS the identity — it is what uninstall and sourceFor
       // address. A manifest disagreeing with it would give two entries one
@@ -375,64 +378,66 @@ void main() {
     // install as relevant to NOBODY, ranked last for every operator forever.
     for (final bad in [
       {'domains': 'evil.example.org'},
-      {'domains': [1, 2]},
+      {
+        'domains': [1, 2],
+      },
       {'name': 7},
       {'version': 3},
       {'relevance': 'CE'},
       {
-        'relevance': {'entities': 'CE'}
+        'relevance': {'entities': 'CE'},
       },
       {
         'relevance': {
-          'entity': ['CE']
-        }
+          'entity': ['CE'],
+        },
       },
       {
         'relevance': {
-          'ituRegions': ['2']
-        }
+          'ituRegions': ['2'],
+        },
       },
       {
         'relevance': {
-          'continents': ['North America']
-        }
+          'continents': ['North America'],
+        },
       },
       {
         'relevance': {
-          'countries': ['USA']
-        }
+          'countries': ['USA'],
+        },
       },
       {
         'relevance': {
-          'ituRegions': [7]
-        }
+          'ituRegions': [7],
+        },
       },
       // JSON null is a value the author wrote, not an absent key. Read as
       // absent, each of these installs as worldwide while the packer refuses
       // it — the only inputs on which the two validators would disagree.
       {'relevance': null},
       {
-        'relevance': {'entities': null}
+        'relevance': {'entities': null},
       },
       {
-        'relevance': {'dates': null}
+        'relevance': {'dates': null},
       },
       // A day that does not exist, and one the packer's `Date.UTC` would read
       // as 1950 while Dart reads it as year 50.
       {
         'relevance': {
-          'dates': ['2026-02-31']
-        }
+          'dates': ['2026-02-31'],
+        },
       },
       {
         'relevance': {
-          'dates': ['0050-01-01']
-        }
+          'dates': ['0050-01-01'],
+        },
       },
       {
         'relevance': {
-          'interests': ['CW']
-        }
+          'interests': ['CW'],
+        },
       },
     ]) {
       test('$bad', () async {
@@ -457,10 +462,7 @@ void main() {
       }
       // Decided before anything is written, and before the operator is asked
       // to approve something whose size nobody has looked at.
-      await expectLater(
-        store().inspect(ZipEncoder().encode(out)),
-        throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.tooLarge)),
-      );
+      await expectLater(store().inspect(ZipEncoder().encode(out)), throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.tooLarge)));
     });
   });
 
@@ -475,12 +477,16 @@ void main() {
     // `geo` is simply not read.
     await expectLater(store().inspect(rebuilt((m) => {...m, 'enabledByDefault': false})), completes);
     await expectLater(
-      store().inspect(rebuilt((m) => {
+      store().inspect(
+        rebuilt(
+          (m) => {
             ...m,
             'geo': {
-              'countries': ['us']
-            }
-          })),
+              'countries': ['us'],
+            },
+          },
+        ),
+      ),
       completes,
     );
   });
@@ -490,7 +496,14 @@ void main() {
     // rather than a gate. Installed, it would report success and then never
     // load — permanently invisible, with nothing in the UI to explain it.
     await expectLater(
-      store().inspect(rebuilt((m) => {...m, 'experiments': ['nope']})),
+      store().inspect(
+        rebuilt(
+          (m) => {
+            ...m,
+            'experiments': ['nope'],
+          },
+        ),
+      ),
       throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.malformed)),
     );
   });
@@ -502,11 +515,7 @@ void main() {
     // Re-validated on every read, not just at install: an app update can raise
     // a library's major, and refusing at the door is the whole point of
     // declaring ranges — otherwise it loads and dies inside a hook.
-    final later = InstalledExtensions(
-      builtInKeys: () => const {},
-      hostSharedModules: const {'i18next': '24.0.0'},
-      rootOverride: root,
-    );
+    final later = InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {'i18next': '24.0.0'}, rootOverride: root);
     expect(await later.list(), isEmpty);
   });
 
@@ -526,7 +535,14 @@ void main() {
       // Telling an author their version is wrong, when the fault is the range
       // they wrote, sends them to inspect the one thing that is fine.
       await expectLater(
-        store().inspect(rebuilt((m) => {...m, 'sharedDependencies': {'i18next': 'not-a-range'}})),
+        store().inspect(
+          rebuilt(
+            (m) => {
+              ...m,
+              'sharedDependencies': {'i18next': 'not-a-range'},
+            },
+          ),
+        ),
         throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.malformed)),
       );
     });
@@ -536,12 +552,12 @@ void main() {
     /// The shape `assets/extensions/index.json` has, so this exercises the
     /// real merge rather than a stand-in for it.
     Map<String, dynamic> assetIndex() => {
-          'kernel': 'kernel.js',
-          'sharedModules': {'i18next': '23.11.5'},
-          'extensions': [
-            {'key': 'pota', 'file': 'pota.js', 'core': false, 'name': 'Parks on the Air', 'category': 'activity'},
-          ],
-        };
+      'kernel': 'kernel.js',
+      'sharedModules': {'i18next': '23.11.5'},
+      'extensions': [
+        {'key': 'pota', 'file': 'pota.js', 'core': false, 'name': 'Parks on the Air', 'category': 'activity'},
+      ],
+    };
 
     test('an installed extension joins the list, carrying its provenance', () async {
       final s = store();

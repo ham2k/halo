@@ -92,9 +92,7 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
                 // (below), so text truncates before it rather than rendering
                 // underneath.
                 child: Padding(
-                  padding: widget.leftieMode
-                      ? EdgeInsets.only(left: reserve + Space.md)
-                      : EdgeInsets.only(right: reserve + Space.md),
+                  padding: widget.leftieMode ? EdgeInsets.only(left: reserve + Space.md) : EdgeInsets.only(right: reserve + Space.md),
                   // Top-aligned, with the height animating as the content
                   // grows/shrinks and content swaps cross-fading. AnimatedSize
                   // drives the height; AnimatedSwitcher fades between distinct
@@ -105,13 +103,7 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
                     alignment: Alignment.topLeft,
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 120),
-                      layoutBuilder: (currentChild, previousChildren) => Stack(
-                        alignment: Alignment.topLeft,
-                        children: [
-                          ...previousChildren,
-                          ?currentChild,
-                        ],
-                      ),
+                      layoutBuilder: (currentChild, previousChildren) => Stack(alignment: Alignment.topLeft, children: [...previousChildren, ?currentChild]),
                       child: KeyedSubtree(key: ValueKey(_generation), child: widget.child),
                     ),
                   ),
@@ -123,20 +115,12 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
             // entry row makes — the button's diameter plus gap.
             if (widget.strip case final strip?)
               Padding(
-                padding: EdgeInsets.only(
-                  right: widget.leftieMode ? 0 : reserve + logButtonGap,
-                  left: widget.leftieMode ? reserve + logButtonGap : 0,
-                ),
+                padding: EdgeInsets.only(right: widget.leftieMode ? 0 : reserve + logButtonGap, left: widget.leftieMode ? reserve + logButtonGap : 0),
                 child: strip,
               ),
           ],
         ),
-        Positioned(
-          left: widget.leftieMode ? 0 : null,
-          right: widget.leftieMode ? null : 0,
-          bottom: 0,
-          child: widget.actionButton,
-        ),
+        Positioned(left: widget.leftieMode ? 0 : null, right: widget.leftieMode ? null : 0, bottom: 0, child: widget.actionButton),
       ],
     );
   }
@@ -150,14 +134,7 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
 /// background of its own, and its icon tinted with the colour the submit
 /// button uses as its *background*, tying the two together visually.
 class LoggingActionButton extends StatelessWidget {
-  const LoggingActionButton({
-    super.key,
-    required this.diameter,
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-    required this.color,
-  });
+  const LoggingActionButton({super.key, required this.diameter, required this.icon, required this.label, required this.onPressed, required this.color});
 
   final double diameter;
   final IconData icon;

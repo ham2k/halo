@@ -103,8 +103,15 @@ class MapboxWebviewMapView extends StatefulWidget {
   // drag interrupted by a real focus loss ends on the next move rather than
   // following the cursor.
   @visibleForTesting
-  static String pageHtml(bool isDark, String styleUrl, String styleUrlDark, bool notifyClicks,
-          {required bool suppressWindowBlur, required String glSource, required String glCss}) =>
+  static String pageHtml(
+    bool isDark,
+    String styleUrl,
+    String styleUrlDark,
+    bool notifyClicks, {
+    required bool suppressWindowBlur,
+    required String glSource,
+    required String glCss,
+  }) =>
       '''
 <!DOCTYPE html>
 <html>
@@ -241,8 +248,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
   bool _appVisible = true;
   bool _dockVisible = false;
 
-  static bool _visibleIn(AppLifecycleState state) =>
-      state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+  static bool _visibleIn(AppLifecycleState state) => state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -263,12 +269,12 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
 
   @override
   void dispose() {
-      // Identity-guarded, never a blind null: when the facade swaps backends
-      // (a webview probe answering, so OsmMapView gives way to the GL view),
-      // Flutter runs the incoming State's initState during the build and this
-      // dispose afterwards — so clearing unconditionally would wipe the
-      // handlers the live backend has just installed and leave the camera
-      // inert for the rest of the session.
+    // Identity-guarded, never a blind null: when the facade swaps backends
+    // (a webview probe answering, so OsmMapView gives way to the GL view),
+    // Flutter runs the incoming State's initState during the build and this
+    // dispose afterwards — so clearing unconditionally would wipe the
+    // handlers the live backend has just installed and leave the camera
+    // inert for the rest of the session.
     final controller = widget.zoomController;
     if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
     if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
@@ -282,8 +288,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     super.dispose();
   }
 
-  void _moveTo(double latitude, double longitude, double zoom) =>
-      _controller?.evaluateJavascript(source: 'window.poloMoveTo($latitude, $longitude, $zoom);');
+  void _moveTo(double latitude, double longitude, double zoom) => _controller?.evaluateJavascript(source: 'window.poloMoveTo($latitude, $longitude, $zoom);');
 
   void _zoomIn() => _controller?.evaluateJavascript(source: 'window.poloZoomIn();');
   void _zoomOut() => _controller?.evaluateJavascript(source: 'window.poloZoomOut();');
@@ -306,9 +311,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
   }
 
   Future<void> _applyProjection() async {
-    await _controller?.evaluateJavascript(
-      source: "window.poloSetProjection('${widget.projection.name}');",
-    );
+    await _controller?.evaluateJavascript(source: "window.poloSetProjection('${widget.projection.name}');");
   }
 
   Future<void> _applyDark() async {
@@ -346,10 +349,15 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
       // the exe (see WindowsWebView).
       webViewEnvironment: WindowsWebView.environment,
       initialData: InAppWebViewInitialData(
-        data: MapboxWebviewMapView.pageHtml(widget.isDark, widget.styleUrl, widget.styleUrlDark, widget.onMarkerTap != null,
-            suppressWindowBlur: defaultTargetPlatform == TargetPlatform.windows,
-            glSource: mapGlLibrarySource,
-            glCss: mapGlLibraryCss),
+        data: MapboxWebviewMapView.pageHtml(
+          widget.isDark,
+          widget.styleUrl,
+          widget.styleUrlDark,
+          widget.onMarkerTap != null,
+          suppressWindowBlur: defaultTargetPlatform == TargetPlatform.windows,
+          glSource: mapGlLibrarySource,
+          glCss: mapGlLibraryCss,
+        ),
         baseUrl: WebUri('https://ham2k.com/'),
       ),
       initialSettings: InAppWebViewSettings(transparentBackground: true),

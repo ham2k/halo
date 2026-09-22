@@ -50,8 +50,7 @@ void main() {
     // "next field".
     const alum = ExchangeOption(code: 'ALU', name: 'Alum Creek SP');
     const crane = ExchangeOption(code: 'CRA', name: 'Crane Creek SP');
-    expect(matchExchangeOptions('CR', const [alum, crane]).first.code, 'CRA',
-        reason: 'the ranking itself is unchanged');
+    expect(matchExchangeOptions('CR', const [alum, crane]).first.code, 'CRA', reason: 'the ranking itself is unchanged');
     expect(isAcceptableExchangeMatch('CR', crane), isTrue);
     expect(isAcceptableExchangeMatch('CR', alum), isFalse);
 
@@ -78,39 +77,26 @@ void main() {
 
   test('matching ignores case on both sides', () {
     expect(_codes(matchExchangeOptions('cuy', _counties)), ['CUY']);
-    expect(
-      _codes(matchExchangeOptions('ash', [const ExchangeOption(code: 'x1', name: 'ASHLAND')])),
-      ['x1'],
-    );
+    expect(_codes(matchExchangeOptions('ash', [const ExchangeOption(code: 'x1', name: 'ASHLAND')])), ['x1']);
   });
 
   test('preferred codes float up WITHIN a tier, never above a better match', () {
     // A QSO party surfaces the caller's likely state first — but an exact code
     // the operator typed in full still wins, or the preference would be
     // actively fighting them.
-    expect(
-      _codes(matchExchangeOptions('AS', _counties, preferred: ['WAS'])),
-      ['ASD', 'ASE', 'WAS', 'HAS'],
-      reason: 'WAS is preferred, so it leads its own substring tier — but not the prefix tier',
-    );
-    expect(
-      _codes(matchExchangeOptions('ASD', _counties, preferred: ['WAS'])).first,
+    expect(_codes(matchExchangeOptions('AS', _counties, preferred: ['WAS'])), [
       'ASD',
-      reason: 'an exact match is never displaced by a preference',
-    );
+      'ASE',
+      'WAS',
+      'HAS',
+    ], reason: 'WAS is preferred, so it leads its own substring tier — but not the prefix tier');
+    expect(_codes(matchExchangeOptions('ASD', _counties, preferred: ['WAS'])).first, 'ASD', reason: 'an exact match is never displaced by a preference');
   });
 
   test('an empty query offers the preferred codes first', () {
     // A freshly focused field should show something useful rather than nothing.
-    expect(
-      _codes(matchExchangeOptions('', _counties, preferred: ['CUY'])).first,
-      'CUY',
-    );
-    expect(
-      _codes(matchExchangeOptions('', _counties)),
-      ['ASD', 'ASE', 'ATH', 'CUY', 'HAS', 'WAS'],
-      reason: 'with no preference, declaration order',
-    );
+    expect(_codes(matchExchangeOptions('', _counties, preferred: ['CUY'])).first, 'CUY');
+    expect(_codes(matchExchangeOptions('', _counties)), ['ASD', 'ASE', 'ATH', 'CUY', 'HAS', 'WAS'], reason: 'with no preference, declaration order');
   });
 
   test('matchOn can restrict the search to codes alone', () {
@@ -120,17 +106,13 @@ void main() {
   });
 
   test('ties keep declaration order, so a well-ordered set stays well ordered', () {
-    final many = [
-      for (var i = 0; i < 40; i++) ExchangeOption(code: 'C$i', name: 'County $i'),
-    ];
+    final many = [for (var i = 0; i < 40; i++) ExchangeOption(code: 'C$i', name: 'County $i')];
     // Every one of these is a code-prefix match on "C".
     expect(_codes(matchExchangeOptions('C', many, limit: 5)), ['C0', 'C1', 'C2', 'C3', 'C4']);
   });
 
   test('the result is capped, because this feeds a line not a browsable list', () {
-    expect(matchExchangeOptions('C', [
-      for (var i = 0; i < 40; i++) ExchangeOption(code: 'C$i'),
-    ]), hasLength(8));
+    expect(matchExchangeOptions('C', [for (var i = 0; i < 40; i++) ExchangeOption(code: 'C$i')]), hasLength(8));
   });
 
   test('no match returns empty rather than everything', () {
@@ -217,10 +199,7 @@ void main() {
     });
 
     test('a borrowed prefix is honoured when validating', () {
-      final party = [
-        const ExchangeOption(code: 'ORDES', name: 'Deschutes OR'),
-        const ExchangeOption(code: 'ORJEF', name: 'Jefferson OR'),
-      ];
+      final party = [const ExchangeOption(code: 'ORDES', name: 'Deschutes OR'), const ExchangeOption(code: 'ORJEF', name: 'Jefferson OR')];
       expect(areKnownExchangeOptions('ORDES/ORJEF', party, separator: '/', inheritPrefix: 2), isTrue);
       expect(areKnownExchangeOptions('ORDES/JEF', party, separator: '/', inheritPrefix: 2), isTrue);
       // Without the rule declared, the shorthand is exactly the unknown value

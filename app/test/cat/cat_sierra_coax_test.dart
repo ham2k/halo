@@ -33,8 +33,7 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 /// Byte-for-byte what a CX-1 sends, lowercase check value and CRLF included
 /// — both of which differ from what the manual prints and from what this app
 /// transmits, which is the reason neither is matched on anywhere.
-String _update(String mask, {String from = '02', String type = 'CX1'}) =>
-    '/${from}00:UPDATE,$type,$mask:xx\r\n';
+String _update(String mask, {String from = '02', String type = 'CX1'}) => '/${from}00:UPDATE,$type,$mask:xx\r\n';
 
 class _FakeSink implements EquipmentSink {
   final sent = <String>[];
@@ -87,6 +86,7 @@ class _FakeSink implements EquipmentSink {
     ports = p;
     reports++;
   }
+
   @override
   void reportAlive() {}
 
@@ -251,10 +251,7 @@ void main() {
   group('CR framing', () {
     test('a CR-terminated peer yields one line per packet', () {
       final framer = LineFramer(crTerminates: true);
-      expect(
-        framer.add(Uint8List.fromList(utf8.encode('/0200:A:XX\r/0200:B:XX\r'))),
-        ['/0200:A:XX', '/0200:B:XX'],
-      );
+      expect(framer.add(Uint8List.fromList(utf8.encode('/0200:A:XX\r/0200:B:XX\r'))), ['/0200:A:XX', '/0200:B:XX']);
     });
 
     test('the CX-1 sends CRLF, which is still one line per packet', () {
@@ -262,10 +259,7 @@ void main() {
       // end of packet is CR. Without the empty-line suppression this yields
       // a blank after every packet, and the label reader would see one too.
       final framer = LineFramer(crTerminates: true);
-      expect(
-        framer.add(Uint8List.fromList(utf8.encode('/0200:UPDATE,CX1,1000:xx\r\nLabel 1 = HEX\r\n'))),
-        ['/0200:UPDATE,CX1,1000:xx', 'Label 1 = HEX'],
-      );
+      expect(framer.add(Uint8List.fromList(utf8.encode('/0200:UPDATE,CX1,1000:xx\r\nLabel 1 = HEX\r\n'))), ['/0200:UPDATE,CX1,1000:xx', 'Label 1 = HEX']);
     });
 
     test('a packet split across chunks is reassembled', () {
@@ -274,9 +268,7 @@ void main() {
       // the app-polo bug docs/design/cat.md § Framing records.
       final framer = LineFramer(crTerminates: true);
       expect(framer.add(Uint8List.fromList(utf8.encode('/0200:UPD'))), isEmpty);
-      expect(framer.add(Uint8List.fromList(utf8.encode('ATE,CX1,0001:XX\r'))), [
-        '/0200:UPDATE,CX1,0001:XX',
-      ]);
+      expect(framer.add(Uint8List.fromList(utf8.encode('ATE,CX1,0001:XX\r'))), ['/0200:UPDATE,CX1,0001:XX']);
     });
 
     test('the default framer is unchanged: CR is dropped, a blank line kept', () {
@@ -537,10 +529,7 @@ void main() {
     });
 
     test('the session is built for the configured address and layout', () {
-      final session = driver.createSession(_FakeSink(), {
-        sierraAddressConfigKey: '7',
-        'switchLayout': 'antennaPorts',
-      }) as SierraCoaxSession;
+      final session = driver.createSession(_FakeSink(), {sierraAddressConfigKey: '7', 'switchLayout': 'antennaPorts'}) as SierraCoaxSession;
       addTearDown(session.teardown);
       expect(session.address, '07');
       expect(session.reversed, isTrue);
@@ -559,9 +548,7 @@ void main() {
       // `??` leaves dcnAddress to return the master's own address. Every
       // command would go to /0000 and the session's sender filter would drop
       // every real reply: connected, green, polling forever, no ports.
-      final session = driver.createSession(_FakeSink(), {
-        sierraAddressConfigKey: '',
-      }) as SierraCoaxSession;
+      final session = driver.createSession(_FakeSink(), {sierraAddressConfigKey: ''}) as SierraCoaxSession;
       addTearDown(session.teardown);
       expect(session.address, '02');
       expect(session.address, isNot(dcnMasterAddress));

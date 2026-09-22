@@ -57,11 +57,7 @@ class _Extensions extends ExtensionServiceWithFakeHost {
   List<Map<String, dynamic>> controls = const [];
 
   @override
-  Future<ControlsResult> operationControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
-      (controls: controls, loadFailed: false);
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async => (controls: controls, loadFailed: false);
 
   @override
   Future<void> setExtensionEnabled(String key, bool enabled) async {
@@ -73,8 +69,7 @@ class _Extensions extends ExtensionServiceWithFakeHost {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('enabling the extension that claims a legacy reference answers for it, and leaves it alone',
-      (tester) async {
+  testWidgets('enabling the extension that claims a legacy reference answers for it, and leaves it alone', (tester) async {
     SharedPreferences.setMockInitialValues(const {});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
@@ -82,20 +77,21 @@ void main() {
     extensions.debugSetAvailableExtensions(const [_nyqpInfo]);
     final services = HaLoServices(db, settings, extensions: extensions);
 
-    var operation = Operation(uuid: 'op-1', data: const {
-      'refs': [_legacyRef]
-    });
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: OperationSheet(
-            services: services,
-            operation: operation,
-            onOperationChanged: (updated) => operation = updated,
+    var operation = Operation(
+      uuid: 'op-1',
+      data: const {
+        'refs': [_legacyRef],
+      },
+    );
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: OperationSheet(services: services, operation: operation, onOperationChanged: (updated) => operation = updated),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Enable New York QSO Party').hitTestable());
@@ -116,20 +112,14 @@ void main() {
     // first edit. The control publishes `ny-qso-party` and answers for
     // `qp/ny`; taking the control's type here would retype the operation the
     // moment the operator opened its form to change their power class.
-    expect(
-      refWithFormResult(
-        const {'type': 'qp', 'ref': 'NY', 'power': 'LOW'},
-        const {'power': 'HIGH'},
-        refType: 'ny-qso-party',
-      ),
-      {'type': 'qp', 'ref': 'NY', 'power': 'HIGH'},
-    );
+    expect(refWithFormResult(const {'type': 'qp', 'ref': 'NY', 'power': 'LOW'}, const {'power': 'HIGH'}, refType: 'ny-qso-party'), {
+      'type': 'qp',
+      'ref': 'NY',
+      'power': 'HIGH',
+    });
   });
 
   test('a reference being created takes the control\'s own type', () {
-    expect(
-      refWithFormResult(null, const {'power': 'LOW'}, refType: 'ny-qso-party'),
-      {'power': 'LOW', 'type': 'ny-qso-party'},
-    );
+    expect(refWithFormResult(null, const {'power': 'LOW'}, refType: 'ny-qso-party'), {'power': 'LOW', 'type': 'ny-qso-party'});
   });
 }

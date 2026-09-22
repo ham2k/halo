@@ -48,33 +48,27 @@ class _FakeExtensions extends ExtensionService {
     List<Map<String, dynamic>>? segments,
     ScoringResume? resume,
     Set<String> huntedRefTypes = const {},
-  }) async =>
-      {
-        for (final key in candidates.keys)
-          if (dupeCalls.contains(key.split('|').first))
-            key: const {
-              'alerts': ['duplicate']
-            },
-      };
+  }) async => {
+    for (final key in candidates.keys)
+      if (dupeCalls.contains(key.split('|').first))
+        key: const {
+          'alerts': ['duplicate'],
+        },
+  };
 
   @override
-  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>
-      getSpots() async =>
-      (
-        items: board,
-        succeeded: board.map((s) => s['hookKey'] as String? ?? 'unknown').toSet().toList(),
-        unreachable: const <String>[],
-        failed: const <String>[],
-      );
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async => (
+    items: board,
+    succeeded: board.map((s) => s['hookKey'] as String? ?? 'unknown').toSet().toList(),
+    unreachable: const <String>[],
+    failed: const <String>[],
+  );
 
   @override
   Future<Map<String, String>> getSpotSourceNames() async => const {'test': 'Test Source'};
 
   @override
-  Future<ControlsResult> loggingControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
+  Future<ControlsResult> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
       (controls: const <Map<String, dynamic>>[], loadFailed: false);
 
   @override
@@ -84,45 +78,41 @@ class _FakeExtensions extends ExtensionService {
     required Map<String, dynamic> operation,
     bool online = true,
     bool recentContext = false,
-  }) async =>
-      notedCalls.contains(call) ? {'guess': {'emoji': '⭐️'}} : null;
+  }) async => notedCalls.contains(call)
+      ? {
+          'guess': {'emoji': '⭐️'},
+        }
+      : null;
 }
 
 Map<String, dynamic> _spot(String call, {String band = '20m', double freq = 14250.0}) => {
-      'their': {'call': call},
-      'freq': freq,
-      'band': band,
-      'mode': 'SSB',
-      'refs': const <Map<String, dynamic>>[],
-      'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test'},
-      'hookKey': 'test',
-    };
+  'their': {'call': call},
+  'freq': freq,
+  'band': band,
+  'mode': 'SSB',
+  'refs': const <Map<String, dynamic>>[],
+  'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test'},
+  'hookKey': 'test',
+};
 
 /// A board of [count] spots on one band, called K0000, K0001, … — enough rows
 /// that the ones at the bottom start well outside the viewport.
-List<Map<String, dynamic>> _board(int count) => [
-      for (var i = 0; i < count; i++)
-        _spot('K${i.toString().padLeft(4, '0')}', freq: 14000.0 + i),
-    ];
+List<Map<String, dynamic>> _board(int count) => [for (var i = 0; i < count; i++) _spot('K${i.toString().padLeft(4, '0')}', freq: 14000.0 + i)];
 
 /// The same board, every spot carrying a reference label. Those rows paint a
 /// few pixels TALLER than a plain one — the label line draws at the
 /// callsign's size rather than the mode's — so the estimate drifts by roughly
 /// a row for every twenty, and only the measured correction lands it.
 List<Map<String, dynamic>> _labelledBoard(int count) => [
-      for (var i = 0; i < count; i++)
-        {
-          ..._spot('K${i.toString().padLeft(4, '0')}', freq: 14000.0 + i),
-          'refs': [
-            {'type': 'pota', 'ref': 'US-0001'}
-          ],
-          'spot': {
-            'timeInMillis': nowMillis() - 60000,
-            'source': 'test',
-            'label': 'US-0001 Somewhere National Park',
-          },
-        },
-    ];
+  for (var i = 0; i < count; i++)
+    {
+      ..._spot('K${i.toString().padLeft(4, '0')}', freq: 14000.0 + i),
+      'refs': [
+        {'type': 'pota', 'ref': 'US-0001'},
+      ],
+      'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test', 'label': 'US-0001 Somewhere National Park'},
+    },
+];
 
 CallInfoData _entering(String call, {bool editing = false}) => CallInfoData(call: call, isEditing: editing);
 
@@ -148,7 +138,11 @@ void main() {
       'groupByBand': true,
       'groupCallsWithNotes': groupCallsWithNotes,
     });
-    return HaLoServices(db, settings, extensions: _FakeExtensions(spots, notedCalls: notedCalls, dupeCalls: dupeCalls));
+    return HaLoServices(
+      db,
+      settings,
+      extensions: _FakeExtensions(spots, notedCalls: notedCalls, dupeCalls: dupeCalls),
+    );
   }
 
   setUp(() async {
@@ -214,33 +208,33 @@ void main() {
     addTearDown(tester.view.reset);
 
     Widget host(CallInfoData? callInfo) => TranslationProvider(
-          child: MaterialApp(
-            theme: buildHaLoTheme(Brightness.light),
-            home: MediaQuery(
-              data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-              child: ValueListenableBuilder(
-                valueListenable: densityNotifier,
-                builder: (_, density, _) => LayoutDensityScope(
-                  density: density,
-                  child: Scaffold(
-                    body: SpotsPanel(
-                      operation: operation,
-                      services: services,
-                      logRevision: 'r1',
-                      visible: visible,
-                      callInfo: callInfo,
-                      onSuggestQso: onSuggestQso,
-                      closeSlidesSerial: closeSlidesSerial,
-                      onWithdrawSuggestion: onWithdrawSuggestion,
-                      onSuggestionSettled: onSuggestionSettled,
-                      onLogQso: onLogQso,
-                    ),
-                  ),
+      child: MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+          child: ValueListenableBuilder(
+            valueListenable: densityNotifier,
+            builder: (_, density, _) => LayoutDensityScope(
+              density: density,
+              child: Scaffold(
+                body: SpotsPanel(
+                  operation: operation,
+                  services: services,
+                  logRevision: 'r1',
+                  visible: visible,
+                  callInfo: callInfo,
+                  onSuggestQso: onSuggestQso,
+                  closeSlidesSerial: closeSlidesSerial,
+                  onWithdrawSuggestion: onWithdrawSuggestion,
+                  onSuggestionSettled: onSuggestionSettled,
+                  onLogQso: onLogQso,
                 ),
               ),
             ),
           ),
-        );
+        ),
+      ),
+    );
 
     await tester.pumpWidget(host(null));
     // The fetch, the source names and the per-call note lookups are all
@@ -264,9 +258,7 @@ void main() {
   Color? tintOf(WidgetTester tester, String call) {
     // Filtered by alpha: Material's own internals put a fully transparent
     // ColoredBox in this ancestry, and it would otherwise answer first.
-    final painted = tester
-        .widgetList<ColoredBox>(find.ancestor(of: find.text(call), matching: find.byType(ColoredBox)))
-        .where((box) => box.color.a > 0);
+    final painted = tester.widgetList<ColoredBox>(find.ancestor(of: find.text(call), matching: find.byType(ColoredBox))).where((box) => box.color.a > 0);
     return painted.isEmpty ? null : painted.first.color;
   }
 
@@ -302,11 +294,7 @@ void main() {
     // its band section, so a row key placed by spot identity landed on two
     // tiles at once and the tree rejected the duplicate GlobalKey.
     testWidgets('a spot pinned in Calls of Note and its band section still builds', (tester) async {
-      final services = await servicesWith(
-        [_spot('K1ABC'), _spot('W2DEF', freq: 14260.0)],
-        notedCalls: {'K1ABC'},
-        groupCallsWithNotes: true,
-      );
+      final services = await servicesWith([_spot('K1ABC'), _spot('W2DEF', freq: 14260.0)], notedCalls: {'K1ABC'}, groupCallsWithNotes: true);
       final setCall = await pumpPanel(tester, services: services, visible: ValueNotifier(true));
 
       await setCall(_entering('K1ABC'));
@@ -358,14 +346,9 @@ void main() {
       // Held AT the top, not merely somewhere above the row: an unpinned band
       // that has scrolled off is still laid out in the viewport's cache, and a
       // one-sided "above" check would pass for it too.
-      expect(bandRect.top, closeTo(tester.getRect(spotsList).top, 0.5),
-          reason: 'pinned at the top of the list, not scrolled away with its rows');
-      final row = find.ancestor(
-        of: find.text('K0003'),
-        matching: find.byWidgetPredicate((w) => w.runtimeType.toString() == '_SpotTile'),
-      );
-      expect(tester.getRect(row).top, greaterThanOrEqualTo(bandRect.bottom),
-          reason: 'the revealed row is below the header, not behind it');
+      expect(bandRect.top, closeTo(tester.getRect(spotsList).top, 0.5), reason: 'pinned at the top of the list, not scrolled away with its rows');
+      final row = find.ancestor(of: find.text('K0003'), matching: find.byWidgetPredicate((w) => w.runtimeType.toString() == '_SpotTile'));
+      expect(tester.getRect(row).top, greaterThanOrEqualTo(bandRect.bottom), reason: 'the revealed row is below the header, not behind it');
     });
 
     // What the SliverMainAxisGroup buys, and the reason each band is grouped
@@ -388,15 +371,13 @@ void main() {
       final listTop = tester.getRect(spotsList).top;
       final atTheTop = [
         for (final band in find.byWidgetPredicate((w) => w.runtimeType.toString() == '_SpotsSectionHeader').evaluate())
-          if ((tester.getRect(find.byWidget(band.widget)).top - listTop).abs() < 1.0)
-            (band.widget as dynamic).label as String,
+          if ((tester.getRect(find.byWidget(band.widget)).top - listTop).abs() < 1.0) (band.widget as dynamic).label as String,
       ];
       expect(atTheTop, hasLength(1), reason: 'one band at the top, not one per section scrolled through');
       // And it is the band whose rows are actually being read: this board's
       // 20m spots are called K…, its 40m spots W….
       final reading = atTheTop.single.startsWith('20m') ? 'K' : 'W';
-      expect(find.textContaining(RegExp('^$reading[0-9]{4}\$')).hitTestable(), findsWidgets,
-          reason: 'the pinned band names the rows on screen');
+      expect(find.textContaining(RegExp('^$reading[0-9]{4}\$')).hitTestable(), findsWidgets, reason: 'the pinned band names the rows on screen');
     });
 
     // The contract that makes this bearable to use: a spot the operator can
@@ -420,8 +401,7 @@ void main() {
 
       await setCall(_entering('K0050'));
 
-      expect(find.text('K0050').hitTestable(), findsOneWidget,
-          reason: 'on screen, not merely built into the viewport cache');
+      expect(find.text('K0050').hitTestable(), findsOneWidget, reason: 'on screen, not merely built into the viewport cache');
     });
 
     // A full POTA board, every row labelled and the target five hundred rows
@@ -463,17 +443,10 @@ void main() {
     // could re-learn it is only mounted near the top of a list this operator
     // has long since scrolled past. Carrying the stretch across the change is
     // what lands this; leave the scale alone and every summed row is ~6% short.
-    testWidgets('reveals a far row at an OS text scale of 1.3 after the density changes',
-        (tester) async {
+    testWidgets('reveals a far row at an OS text scale of 1.3 after the density changes', (tester) async {
       final services = await servicesWith(_board(300));
       final density = ValueNotifier(LayoutDensity.sparsest);
-      final setCall = await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        textScale: 1.3,
-        density: density,
-      );
+      final setCall = await pumpPanel(tester, services: services, visible: ValueNotifier(true), textScale: 1.3, density: density);
 
       // Learn the scale at the roomiest rung, then drop to the tightest — the
       // widest gap the ladder offers, and the direction a window resize takes.
@@ -502,8 +475,12 @@ void main() {
   // cannot fail when _SpotTile changes — and a change to what the tile paints
   // is exactly what silently breaks every offset the reveal sums.
   group('the declared row heights', () {
-    Future<double> pitchOf(WidgetTester tester, List<Map<String, dynamic>> board,
-        {Set<String> notedCalls = const {}, LayoutDensity density = LayoutDensity.normal}) async {
+    Future<double> pitchOf(
+      WidgetTester tester,
+      List<Map<String, dynamic>> board, {
+      Set<String> notedCalls = const {},
+      LayoutDensity density = LayoutDensity.normal,
+    }) async {
       final services = await servicesWith(board, notedCalls: notedCalls);
       await pumpPanel(tester, services: services, visible: ValueNotifier(true), density: ValueNotifier(density));
       return tester.getRect(find.text('K0002')).top - tester.getRect(find.text('K0001')).top;
@@ -514,10 +491,7 @@ void main() {
     // at `normal` while every other rung's reveal scrolled to the wrong place.
     for (final density in LayoutDensity.values) {
       testWidgets('a plain row paints what spotRowHeightFor declares at $density', (tester) async {
-        expect(
-          await pitchOf(tester, _board(6), density: density),
-          closeTo(spotRowHeightFor(metrics: density.metrics, hasLabel: false, hasEmoji: false), 0.5),
-        );
+        expect(await pitchOf(tester, _board(6), density: density), closeTo(spotRowHeightFor(metrics: density.metrics, hasLabel: false, hasEmoji: false), 0.5));
       });
 
       testWidgets('a labelled row paints what spotRowHeightFor declares at $density', (tester) async {
@@ -543,7 +517,7 @@ void main() {
     }
   });
 
-// The slide is the only gesture in the app that acts on a row, and both of
+  // The slide is the only gesture in the app that acts on a row, and both of
   // its ends are destructive in their own way: one logs a contact, the other
   // strikes a station off the board. What these pin is that neither happens
   // by accident, and that the row's declared geometry survives a widget that
@@ -630,13 +604,7 @@ void main() {
 
     testWidgets('the action icon crosses its well once the drag is armed', (tester) async {
       final services = await servicesWith(_board(6));
-      await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: (_) {},
-      );
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: (_) {});
 
       double iconDx() => tester.getCenter(find.byIcon(MdiIcons.upload)).dx;
 
@@ -652,8 +620,7 @@ void main() {
       // measuring it beats deriving it from the travel: the recogniser eats an
       // opening slop this test has no business knowing the size of.
       final revealed = tester.getCenter(find.text('K0001')).dx - rowDx;
-      expect(iconDx(), closeTo(revealed / 2, 1),
-          reason: 'centred in what has been uncovered, not pinned to either edge');
+      expect(iconDx(), closeTo(revealed / 2, 1), reason: 'centred in what has been uncovered, not pinned to either edge');
       final resting = iconDx();
 
       // Past two fifths of the 500pt row: the icon rides across to sit against
@@ -665,21 +632,14 @@ void main() {
       await tester.pumpAndSettle();
       final armed = iconDx();
 
-      expect(armed, greaterThan(resting),
-          reason: 'the icon moved toward the row, not merely with the widening well');
+      expect(armed, greaterThan(resting), reason: 'the icon moved toward the row, not merely with the widening well');
       await gesture.up();
       await tester.pumpAndSettle();
     });
 
     testWidgets('a row resting open centres its icon in the well', (tester) async {
       final services = await servicesWith(_board(6));
-      await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: (_) {},
-      );
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: (_) {});
 
       await slide(tester, 'K0001', 120);
 
@@ -692,13 +652,7 @@ void main() {
     testWidgets('a drag past two fifths of the row logs it on release', (tester) async {
       final services = await servicesWith(_board(6));
       final logged = <Map<String, dynamic>>[];
-      await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: logged.add,
-      );
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: logged.add);
 
       // The panel is 500 wide, so the commit point is 200 of displacement and
       // 240 of travel clears it by less than the old half-width rule would
@@ -757,13 +711,7 @@ void main() {
     testWidgets('a second touch cancelled mid-drag still lets the release log', (tester) async {
       final services = await servicesWith(_board(6));
       final logged = <Map<String, dynamic>>[];
-      await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: logged.add,
-      );
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: logged.add);
 
       final row = tester.getCenter(find.text('K0001'));
       final a = await tester.startGesture(row, pointer: 7);
@@ -792,13 +740,7 @@ void main() {
     testWidgets('a row whose drag was cancelled can still be slid to log', (tester) async {
       final services = await servicesWith(_board(6));
       final logged = <Map<String, dynamic>>[];
-      await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: logged.add,
-      );
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: logged.add);
 
       final cancelled = await tester.startGesture(tester.getCenter(find.text('K0001')));
       for (var i = 0; i < 20; i++) {
@@ -921,17 +863,9 @@ void main() {
       final semantics = tester.ensureSemantics();
       final services = await servicesWith(_board(6));
       final logged = <Map<String, dynamic>>[];
-      await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: logged.add,
-      );
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: logged.add);
 
-      final node = tester.getSemantics(
-        find.ancestor(of: find.text('K0001'), matching: find.byType(RawGestureDetector)).first,
-      );
+      final node = tester.getSemantics(find.ancestor(of: find.text('K0001'), matching: find.byType(RawGestureDetector)).first);
       expect(node.getSemanticsData().hasAction(SemanticsAction.scrollRight), isTrue);
 
       node.owner!.performAction(node.id, SemanticsAction.scrollRight);
@@ -1071,10 +1005,7 @@ void main() {
       // its own callsign back as `callInfo` — and everything the panel does
       // with that (locate the row, arm the reveal, scroll) runs between one
       // slide and the next.
-      final services = await servicesWith([
-        _spot('EA3/KI2D'),
-        _spot('W2DEF', freq: 14260.0),
-      ]);
+      final services = await servicesWith([_spot('EA3/KI2D'), _spot('W2DEF', freq: 14260.0)]);
       final suggested = <String>[];
       var withdrawn = 0;
       final setCall = await pumpPanel(
@@ -1160,13 +1091,7 @@ void main() {
     testWidgets('tapping the revealed button logs it', (tester) async {
       final services = await servicesWith(_board(6));
       final logged = <Map<String, dynamic>>[];
-      await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: logged.add,
-      );
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: logged.add);
 
       await slide(tester, 'K0001', 120);
       await tester.tap(find.byIcon(MdiIcons.upload));
@@ -1180,8 +1105,7 @@ void main() {
     // slide. Only the slide-made case is reachable from this harness (scoring
     // arrives through the extension host), but both go through the one
     // `worked` value the row is built from.
-    testWidgets('the trailing action flips between taking a spot off the board and putting it back',
-        (tester) async {
+    testWidgets('the trailing action flips between taking a spot off the board and putting it back', (tester) async {
       final services = await servicesWith(_board(6));
       await pumpPanel(tester, services: services, visible: ValueNotifier(true));
 
@@ -1209,16 +1133,14 @@ void main() {
       await pumpPanel(tester, services: services, visible: ValueNotifier(true));
 
       final theme = buildHaLoTheme(Brightness.light);
-      double alphaOf(String call) =>
-          tester.widget<Text>(find.text(call)).style!.color!.a;
+      double alphaOf(String call) => tester.widget<Text>(find.text(call)).style!.color!.a;
 
       final live = alphaOf('K0001');
       expect(live, closeTo(theme.colorScheme.onSurface.a, 0.001), reason: 'sanity: undimmed to start');
 
       await slide(tester, 'K0001', -400);
 
-      expect(alphaOf('K0001'), closeTo(theme.colorScheme.onSurface.a * 0.6, 0.001),
-          reason: 'one 0.6, not 0.6 squared');
+      expect(alphaOf('K0001'), closeTo(theme.colorScheme.onSurface.a * 0.6, 0.001), reason: 'one 0.6, not 0.6 squared');
       // Mutation check: restore the Opacity wrapper and this still passes — the
       // style colour is unchanged by it — so the layer has to be checked too.
       expect(
@@ -1235,13 +1157,7 @@ void main() {
       // that they have worked it before.
       final services = await servicesWith(_board(6));
       final logged = <Map<String, dynamic>>[];
-      await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: logged.add,
-      );
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: logged.add);
 
       await slide(tester, 'K0001', -400);
       await slide(tester, 'K0001', 400);
@@ -1249,8 +1165,7 @@ void main() {
       expect(logged.single['their'], {'call': 'K0001'});
     });
 
-    testWidgets('sliding left far enough greys the row out without striking it',
-        (tester) async {
+    testWidgets('sliding left far enough greys the row out without striking it', (tester) async {
       final services = await servicesWith(_board(6));
       await pumpPanel(tester, services: services, visible: ValueNotifier(true));
 
@@ -1302,11 +1217,7 @@ void main() {
       final before = tester.widget<Text>(find.text('K0002')).style?.color;
       await slide(tester, 'K0001', -400);
 
-      expect(
-        tester.widget<Text>(find.text('K0002')).style?.color,
-        before,
-        reason: 'the ignore set is keyed by call, not applied to the list',
-      );
+      expect(tester.widget<Text>(find.text('K0002')).style?.color, before, reason: 'the ignore set is keyed by call, not applied to the list');
     });
 
     /// How far [call]'s row is displaced from where it sits closed. Measured
@@ -1321,13 +1232,7 @@ void main() {
     // that is deactivated mid-gesture takes the drag down with it.
     testWidgets('the drag survives the slid row becoming the current QSO', (tester) async {
       final services = await servicesWith(_board(6));
-      final setCall = await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: (_) {},
-      );
+      final setCall = await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: (_) {});
 
       final closedAt = tester.getTopLeft(find.text('K0003')).dx;
       final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
@@ -1344,8 +1249,7 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
 
-      expect(tester.getTopLeft(find.text('K0001')).dx - closedAt, greaterThan(0),
-          reason: 'the row stayed open — the re-key did not cancel the drag');
+      expect(tester.getTopLeft(find.text('K0001')).dx - closedAt, greaterThan(0), reason: 'the row stayed open — the re-key did not cancel the drag');
     });
 
     testWidgets('scrolling the board leaves an open row open', (tester) async {
@@ -1370,13 +1274,11 @@ void main() {
       tester.widget<Scrollable>(find.byType(Scrollable).first).controller?.jumpTo(20);
       await tester.pumpAndSettle();
 
-      expect(openDx(tester, 'K0001', closed: 'K0003'), greaterThan(0),
-          reason: 'the scroll left the peek alone');
+      expect(openDx(tester, 'K0001', closed: 'K0003'), greaterThan(0), reason: 'the scroll left the peek alone');
       expect(withdrawn, 0, reason: 'and left what it filled in the logging fields');
     });
 
-    testWidgets('a mid-drag close does not take the row out from under the finger',
-        (tester) async {
+    testWidgets('a mid-drag close does not take the row out from under the finger', (tester) async {
       final services = await servicesWith(_board(60));
       final suggested = <Map<String, dynamic>>[];
       await pumpPanel(
@@ -1415,8 +1317,7 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
 
-      expect(suggested, hasLength(1),
-          reason: 'the row was never reset, so the peek was not re-crossed');
+      expect(suggested, hasLength(1), reason: 'the row was never reset, so the peek was not re-crossed');
     });
 
     testWidgets('a row discarded while open takes its fill with it', (tester) async {
@@ -1460,13 +1361,7 @@ void main() {
       // is open and untracked: nothing closes it, and every later slide adds
       // another, until the list is a column of open rows.
       final services = await servicesWith(_board(60));
-      await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: (_) {},
-      );
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: (_) {});
 
       final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
       for (var i = 0; i < 10; i++) {
@@ -1491,16 +1386,9 @@ void main() {
       expect(find.byIcon(MdiIcons.upload), findsOneWidget, reason: 'and only one row is ever open');
     });
 
-    testWidgets('opening a second row closes the first, and the second ends up open',
-        (tester) async {
+    testWidgets('opening a second row closes the first, and the second ends up open', (tester) async {
       final services = await servicesWith(_board(6));
-      await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: (_) {},
-      );
+      await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: (_) {});
 
       await slide(tester, 'K0001', 120);
       expect(openDx(tester, 'K0001', closed: 'K0003'), greaterThan(0));
@@ -1512,8 +1400,7 @@ void main() {
       // cost the new one its drag, which is the failure this pins: the second
       // slide was interrupted mid-gesture and the row snapped back shut.
       expect(openDx(tester, 'K0001', closed: 'K0003'), 0, reason: 'the first row closed');
-      expect(openDx(tester, 'K0002', closed: 'K0003'), greaterThan(0),
-          reason: 'the second row is open — its slide was not suspended by the first closing');
+      expect(openDx(tester, 'K0002', closed: 'K0003'), greaterThan(0), reason: 'the second row is open — its slide was not suspended by the first closing');
     });
 
     /// The last spot whose row the fold cuts: rendered, its text still on
@@ -1573,8 +1460,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
       }
 
-      expect(offsetOf(tester), 25,
-          reason: 'nor once the row comes to rest open with the call still in the fields');
+      expect(offsetOf(tester), 25, reason: 'nor once the row comes to rest open with the call still in the fields');
 
       // Dragged back shut, with the call left in the fields — what a peek the
       // operator typed over leaves behind, since the withdrawal declines to
@@ -1605,13 +1491,7 @@ void main() {
 
     testWidgets('a call the open row did not put there is still revealed', (tester) async {
       final services = await servicesWith(_board(20));
-      final setCall = await pumpPanel(
-        tester,
-        services: services,
-        visible: ValueNotifier(true),
-        onSuggestQso: (qso, {bool reveal = true}) {},
-        onLogQso: (_) {},
-      );
+      final setCall = await pumpPanel(tester, services: services, visible: ValueNotifier(true), onSuggestQso: (qso, {bool reveal = true}) {}, onLogQso: (_) {});
 
       final gesture = await tester.startGesture(tester.getCenter(find.text('K0001')));
       for (var i = 0; i < 10; i++) {
@@ -1665,9 +1545,13 @@ void main() {
       await tester.pump();
       await settle(tester);
 
-      expect(offsetOf(tester), greaterThan(0),
-          reason: 'the reveal owed from while it was hidden never ran; K0050 built: '
-              '${find.text('K0050').evaluate().isNotEmpty}');
+      expect(
+        offsetOf(tester),
+        greaterThan(0),
+        reason:
+            'the reveal owed from while it was hidden never ran; K0050 built: '
+            '${find.text('K0050').evaluate().isNotEmpty}',
+      );
       expect(find.text('K0050'), findsOneWidget);
     });
 
@@ -1682,22 +1566,16 @@ void main() {
       addTearDown(tester.view.reset);
 
       Widget host(CallInfoData? callInfo) => TranslationProvider(
-            child: MaterialApp(
-              theme: buildHaLoTheme(Brightness.light),
-              home: Scaffold(
-                body: DockPaneVisibility(
-                  visible: false,
-                  child: SpotsPanel(
-                    operation: operation,
-                    services: services,
-                    logRevision: 'r1',
-                    visible: ValueNotifier(true),
-                    callInfo: callInfo,
-                  ),
-                ),
-              ),
+        child: MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Scaffold(
+            body: DockPaneVisibility(
+              visible: false,
+              child: SpotsPanel(operation: operation, services: services, logRevision: 'r1', visible: ValueNotifier(true), callInfo: callInfo),
             ),
-          );
+          ),
+        ),
+      );
 
       await tester.pumpWidget(host(null));
       for (var i = 0; i < 4; i++) {
@@ -1722,22 +1600,16 @@ void main() {
       addTearDown(tester.view.reset);
 
       Widget host({required bool dockVisible, CallInfoData? callInfo}) => TranslationProvider(
-            child: MaterialApp(
-              theme: buildHaLoTheme(Brightness.light),
-              home: Scaffold(
-                body: DockPaneVisibility(
-                  visible: dockVisible,
-                  child: SpotsPanel(
-                    operation: operation,
-                    services: services,
-                    logRevision: 'r1',
-                    visible: ValueNotifier(true),
-                    callInfo: callInfo,
-                  ),
-                ),
-              ),
+        child: MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Scaffold(
+            body: DockPaneVisibility(
+              visible: dockVisible,
+              child: SpotsPanel(operation: operation, services: services, logRevision: 'r1', visible: ValueNotifier(true), callInfo: callInfo),
             ),
-          );
+          ),
+        ),
+      );
 
       await tester.pumpWidget(host(dockVisible: true));
       for (var i = 0; i < 4; i++) {

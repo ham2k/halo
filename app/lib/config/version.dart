@@ -25,10 +25,7 @@ export 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition, 
 /// just its derived strings) so CI tooling can project it, together with
 /// [kBuildNumber], into the native per-platform version fields via
 /// [PlatformVersions] — see tool/print_build_versions.dart.
-const kPublicVersionInfo = PublicVersion(
-  main: MainVersion(year: 26, month: 9),
-  patch: 0,
-);
+const kPublicVersionInfo = PublicVersion(main: MainVersion(year: 26, month: 9), patch: 0);
 
 /// The product-wide stage marker carried by every human version name —
 /// `August '26 ALPHA patch 1` — across all versions and editions. It is not
@@ -98,10 +95,7 @@ final kVersionParts = kPublicVersionInfo.displayParts(stageLabel: kStageLabel);
 /// patch and pre-release parts left to `versionBuildLine()`, which puts them on
 /// their own line beneath (views/version_label.dart). This is a display split
 /// of [kVersionName], not a second identity: nothing outside the UI uses it.
-final kVersionMainName = [
-  kVersionParts.mainName,
-  if (kVersionParts.stageLabel.isNotEmpty) kVersionParts.stageLabel,
-].join(' ');
+final kVersionMainName = [kVersionParts.mainName, if (kVersionParts.stageLabel.isNotEmpty) kVersionParts.stageLabel].join(' ');
 
 /// [kVersionName] with the edition qualifier appended for the non-stable
 /// editions — `August '26 ALPHA (Dev Edition)`, `… (Next Edition)` — so a

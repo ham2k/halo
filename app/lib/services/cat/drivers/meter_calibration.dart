@@ -133,11 +133,7 @@ class MeterCalibration {
       final points = <MeterPoint>[
         for (final row in rows)
           if (row is Map)
-            MeterPoint(
-              (row['value'] as num).toInt(),
-              (row[unit] as num?)?.toDouble() ??
-                  (throw FormatException('${table.name} row has no "$unit": $row')),
-            ),
+            MeterPoint((row['value'] as num).toInt(), (row[unit] as num?)?.toDouble() ?? (throw FormatException('${table.name} row has no "$unit": $row'))),
       ];
       // Sorted here rather than trusted from the file: [convert] walks the
       // points in order, and a file with two rows swapped would answer
@@ -145,11 +141,7 @@ class MeterCalibration {
       points.sort((a, b) => a.value.compareTo(b.value));
       if (points.isNotEmpty) tables[table] = points;
     }
-    return MeterCalibration(
-      model: '${json['model'] ?? 'unnamed'}',
-      provenance: calibration['_comments'] as String?,
-      tables: tables,
-    );
+    return MeterCalibration(model: '${json['model'] ?? 'unnamed'}', provenance: calibration['_comments'] as String?, tables: tables);
   }
 }
 

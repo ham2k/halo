@@ -58,9 +58,7 @@ class _PeerScreenSourcesState extends State<PeerScreenSources> {
   /// mean it.
   Future<void> _stopSharing(PeerScreenSource source) async {
     final settings = widget.services.settings;
-    await settings.setPeerSharedScreenIds(
-      settings.peerSharedScreenIds.where((id) => id != source.id).toList(),
-    );
+    await settings.setPeerSharedScreenIds(settings.peerSharedScreenIds.where((id) => id != source.id).toList());
     await _screens.applyOffers();
   }
 
@@ -73,10 +71,7 @@ class _PeerScreenSourcesState extends State<PeerScreenSources> {
     if (watchers.isEmpty) return t.screenSharedToNobody;
     final names = [
       for (final watcher in watchers)
-        if (watcher == localViewerWatcher)
-          t.screenThisDevice
-        else
-          widget.services.peerService.peers[watcher]?.beacon.deviceName ?? watcher,
+        if (watcher == localViewerWatcher) t.screenThisDevice else widget.services.peerService.peers[watcher]?.beacon.deviceName ?? watcher,
     ]..sort();
     return t.screenSharedTo(devices: names.join(', '));
   }
@@ -102,11 +97,7 @@ class _PeerScreenSourcesState extends State<PeerScreenSources> {
         if (!capable)
           ListTile(
             leading: Icon(MdiIcons.informationOutline),
-            title: Text(
-              _screens.availability == ScreenCaptureAvailability.unsupportedVersion
-                  ? t.screenUnsupportedVersion
-                  : t.screenUnsupportedPlatform,
-            ),
+            title: Text(_screens.availability == ScreenCaptureAvailability.unsupportedVersion ? t.screenUnsupportedVersion : t.screenUnsupportedPlatform),
           )
         else
           // Its own opt-in, on the same reasoning as Bluetooth's: sharing the
@@ -135,10 +126,7 @@ class _PeerScreenSourcesState extends State<PeerScreenSources> {
               // would be a button that cannot work.
               subtitle: Text(t.screenRelaunchAfterGranting),
               isThreeLine: true,
-              trailing: FilledButton(
-                onPressed: () => unawaited(_screens.requestPermission()),
-                child: Text(t.screenGrantPermission),
-              ),
+              trailing: FilledButton(onPressed: () => unawaited(_screens.requestPermission()), child: Text(t.screenGrantPermission)),
             ),
           if (_screens.error case final problem?)
             ListTile(
@@ -156,10 +144,7 @@ class _PeerScreenSourcesState extends State<PeerScreenSources> {
             onTap: () => unawaited(showScreenSharePicker(context, services: widget.services)),
           ),
           if (offered.isEmpty)
-            ListTile(
-              leading: Icon(MdiIcons.informationOutline),
-              title: Text(t.screenSharedSummaryNone),
-            )
+            ListTile(leading: Icon(MdiIcons.informationOutline), title: Text(t.screenSharedSummaryNone))
           else
             // One row per shared source, saying who is looking at it. The
             // operator is entitled to know that per SOURCE rather than as a
@@ -175,10 +160,7 @@ class _PeerScreenSourcesState extends State<PeerScreenSources> {
                 // prompt here would put friction on the safe move — the one
                 // an operator may want in a hurry, with someone watching.
                 trailing: IconButton(
-                  icon: Icon(
-                    MdiIcons.deleteOutline,
-                    semanticLabel: t.screenStopSharing(name: source.name),
-                  ),
+                  icon: Icon(MdiIcons.deleteOutline, semanticLabel: t.screenStopSharing(name: source.name)),
                   onPressed: () => unawaited(_stopSharing(source)),
                 ),
               ),

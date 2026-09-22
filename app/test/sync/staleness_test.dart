@@ -12,42 +12,29 @@ void main() {
       // action available to them would make it stop, because there is nothing
       // left to install. Silence costs one missed nag; the read retries free
       // on the next launch.
-      expect(
-        isBelowCodePushFloor(updaterAvailable: true, resolved: false, codePush: null, floor: 3),
-        isFalse,
-      );
+      expect(isBelowCodePushFloor(updaterAvailable: true, resolved: false, codePush: null, floor: 3), isFalse);
     });
 
     test('a RESOLVED absence of any code push is below a floor', () {
       // The target case: a fresh store download, zero pushes applied, floor 3.
       // Distinguished from the case above only by `resolved`.
-      expect(
-        isBelowCodePushFloor(updaterAvailable: true, resolved: true, codePush: null, floor: 3),
-        isTrue,
-      );
+      expect(isBelowCodePushFloor(updaterAvailable: true, resolved: true, codePush: null, floor: 3), isTrue);
     });
 
     test('no updater means no code-push plane, so no floor can apply', () {
       // Web, debug and every local `flutter build`. Without this the nag could
       // fire on a developer's own machine, where no push can ever be installed.
-      expect(
-        isBelowCodePushFloor(updaterAvailable: false, resolved: true, codePush: null, floor: 3),
-        isFalse,
-      );
+      expect(isBelowCodePushFloor(updaterAvailable: false, resolved: true, codePush: null, floor: 3), isFalse);
     });
 
     test('no declared floor is silent, whatever the install is running', () {
       // Declaring a floor is always an explicit act — absence must never be
       // read as "floor 1" or every install without a push would nag.
-      expect(
-        isBelowCodePushFloor(updaterAvailable: true, resolved: true, codePush: null, floor: null),
-        isFalse,
-      );
+      expect(isBelowCodePushFloor(updaterAvailable: true, resolved: true, codePush: null, floor: null), isFalse);
     });
 
     test('at or above the floor is satisfied; below it is not', () {
-      bool below(int? push, int floor) =>
-          isBelowCodePushFloor(updaterAvailable: true, resolved: true, codePush: push, floor: floor);
+      bool below(int? push, int floor) => isBelowCodePushFloor(updaterAvailable: true, resolved: true, codePush: push, floor: floor);
       expect(below(2, 3), isTrue);
       expect(below(3, 3), isFalse, reason: 'the floor is a minimum, not a threshold to exceed');
       expect(below(4, 3), isFalse);
@@ -80,44 +67,28 @@ void main() {
     test('returns exactly ONE signal even when all three are true', () {
       // The point of unifying: three mechanisms could each fire on one launch,
       // stacking two dialogs and a notice. Only the most severe is returned.
-      expect(
-        rankStaleness(belowCodePushFloor: true, buildExpired: true, releaseWorthAnnouncing: true),
-        StalenessSignal.codePushFloor,
-      );
+      expect(rankStaleness(belowCodePushFloor: true, buildExpired: true, releaseWorthAnnouncing: true), StalenessSignal.codePushFloor);
     });
 
     test('the code-push floor outranks both binary signals', () {
       // Its remedy is a restart, not a download. Sending someone to fetch a
       // binary when the fix is already on the device is worse advice.
-      expect(
-        rankStaleness(belowCodePushFloor: true, buildExpired: true, releaseWorthAnnouncing: false),
-        StalenessSignal.codePushFloor,
-      );
+      expect(rankStaleness(belowCodePushFloor: true, buildExpired: true, releaseWorthAnnouncing: false), StalenessSignal.codePushFloor);
     });
 
     test('an expired build outranks a merely newer release', () {
-      expect(
-        rankStaleness(belowCodePushFloor: false, buildExpired: true, releaseWorthAnnouncing: true),
-        StalenessSignal.expiredBuild,
-      );
+      expect(rankStaleness(belowCodePushFloor: false, buildExpired: true, releaseWorthAnnouncing: true), StalenessSignal.expiredBuild);
     });
 
     test('nothing wrong yields no verdict', () {
-      expect(
-        rankStaleness(belowCodePushFloor: false, buildExpired: false, releaseWorthAnnouncing: false),
-        isNull,
-      );
+      expect(rankStaleness(belowCodePushFloor: false, buildExpired: false, releaseWorthAnnouncing: false), isNull);
     });
 
     test('the enum declaration order IS the ranking', () {
       // rankStaleness is a chain of ifs; this pins the contract the chain is
       // meant to implement, so reordering the enum without reordering the
       // chain (or vice versa) fails here rather than in the field.
-      expect(StalenessSignal.values, [
-        StalenessSignal.codePushFloor,
-        StalenessSignal.expiredBuild,
-        StalenessSignal.newerRelease,
-      ]);
+      expect(StalenessSignal.values, [StalenessSignal.codePushFloor, StalenessSignal.expiredBuild, StalenessSignal.newerRelease]);
     });
   });
 

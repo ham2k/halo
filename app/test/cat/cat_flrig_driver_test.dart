@@ -74,7 +74,8 @@ extension on FlrigSession {
 /// A response as flrig 2.0.12 actually frames one: XMLRPC++ 0.8 headers,
 /// lowercase `Content-length`, CRLF line endings inside the body.
 String _response(String inner) {
-  final body = '<?xml version="1.0"?>\r\n'
+  final body =
+      '<?xml version="1.0"?>\r\n'
       '<methodResponse><params><param>\r\n'
       '\t<value>$inner</value>\r\n'
       '</param></params></methodResponse>\r\n';
@@ -87,7 +88,8 @@ String _response(String inner) {
 }
 
 String _fault() {
-  const body = '<?xml version="1.0"?>\r\n'
+  const body =
+      '<?xml version="1.0"?>\r\n'
       '<methodResponse><fault>\r\n'
       '\t<value><struct><member><name>faultCode</name><value><i4>-1</i4></value></member></struct></value>\r\n'
       '</fault></methodResponse>\r\n';
@@ -108,8 +110,7 @@ String _fault() {
 /// correlates to the oldest unanswered question and nothing else, so a test
 /// that fed a frequency to a PTT question would be lying about what the
 /// driver saw. The watch has tests of its own below.
-FlrigSession _stateOnlySession(EquipmentSink sink) =>
-    FlrigSession(sink, const {telemetryIntervalConfigKey: 600000});
+FlrigSession _stateOnlySession(EquipmentSink sink) => FlrigSession(sink, const {telemetryIntervalConfigKey: 600000});
 
 void main() {
   group('mode names', () {
@@ -187,10 +188,7 @@ void main() {
       session.startUpdates();
       session.feed(_response('7074000'));
       session.feed(_response('USB-D'));
-      expect(sink.readings, [
-        const VfoReading(freqKHz: 7074),
-        const VfoReading(mode: 'DATA-USB'),
-      ]);
+      expect(sink.readings, [const VfoReading(freqKHz: 7074), const VfoReading(mode: 'DATA-USB')]);
       session.teardown();
     });
 
@@ -220,10 +218,7 @@ void main() {
       session.feed(_response('USB'));
       session.setFrequency(14250);
       session.feed(_response('<i4>1</i4>'));
-      expect(sink.readings, [
-        const VfoReading(freqKHz: 7074),
-        const VfoReading(mode: 'USB'),
-      ]);
+      expect(sink.readings, [const VfoReading(freqKHz: 7074), const VfoReading(mode: 'USB')]);
       session.teardown();
     });
 
@@ -370,8 +365,7 @@ void main() {
         final session = _stateOnlySession(sink);
         session.startUpdates();
         session.feed(_response('14250000'));
-        expect(session.pollInterval, kPollSlow,
-            reason: 'the first reading is the answer to startUpdates, not movement');
+        expect(session.pollInterval, kPollSlow, reason: 'the first reading is the answer to startUpdates, not movement');
         session.feed(_response('USB'));
         session.feed(_response('100'));
         async.elapse(kPollSlow + const Duration(milliseconds: 10));
@@ -483,5 +477,4 @@ void main() {
       session.teardown();
     });
   });
-
 }

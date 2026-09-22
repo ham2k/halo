@@ -35,31 +35,25 @@ void main() {
     num? power,
     Set<RadioMeter> meters = const {},
     String style = radioStyleModern,
-  }) =>
-      tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: RadioReadout(
-            node: node,
-            state: state,
-            live: live,
-            style: style,
-            palette: live ? palette : palette.dimmed(0.3),
-            power: power,
-            meters: meters,
-            onTune: null,
-            powerButton: node == null
-                ? null
-                : RadioPowerButton(
-                    status: state.status,
-                    accent: palette.ink,
-                    palette: palette,
-                    style: style,
-                    height: 22,
-                    onPressed: () {},
-                  ),
-          ),
+  }) => tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: RadioReadout(
+          node: node,
+          state: state,
+          live: live,
+          style: style,
+          palette: live ? palette : palette.dimmed(0.3),
+          power: power,
+          meters: meters,
+          onTune: null,
+          powerButton: node == null
+              ? null
+              : RadioPowerButton(status: state.status, accent: palette.ink, palette: palette, style: style, height: 22, onPressed: () {}),
         ),
-      ));
+      ),
+    ),
+  );
 
   testWidgets('a connected radio shows where it actually is, to the Hz', (tester) async {
     await pumpReadout(
@@ -284,11 +278,7 @@ void main() {
           vfo: const VfoReading(freqKHz: 14074.0, mode: 'USB'),
           telemetry: RadioTelemetry(
             transmitting: true,
-            meters: {
-              RadioMeter.powerOut: justRead(48),
-              RadioMeter.swr: justRead(1.3),
-              RadioMeter.supplyVolts: justRead(13.8),
-            },
+            meters: {RadioMeter.powerOut: justRead(48), RadioMeter.swr: justRead(1.3), RadioMeter.supplyVolts: justRead(13.8)},
           ),
         ),
         live: true,
@@ -350,11 +340,7 @@ void main() {
         node: node,
         state: EquipmentState(
           status: EquipmentStatus.connected,
-          telemetry: RadioTelemetry(
-            meters: {
-              RadioMeter.swr: MeterReading(2.4, nowMillis() - meterLinger.inMilliseconds - 1000),
-            },
-          ),
+          telemetry: RadioTelemetry(meters: {RadioMeter.swr: MeterReading(2.4, nowMillis() - meterLinger.inMilliseconds - 1000)}),
         ),
         live: true,
         meters: const {RadioMeter.swr},
@@ -461,46 +447,43 @@ void main() {
       // as the Wrap-in-a-Row overflow this codebase has been bitten by. The
       // wide test font makes this the case worth pinning: it is exactly what
       // the tightest Font Scale does to a real pane.
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 180,
-                height: 120,
-                child: RadioReadout(
-                  node: node,
-                  state: EquipmentState(
-                    status: EquipmentStatus.connected,
-                    vfo: const VfoReading(freqKHz: 14074.0, mode: 'USB'),
-                    telemetry: RadioTelemetry(
-                      transmitting: true,
-                      meters: {
-                        RadioMeter.powerOut: justRead(48),
-                        RadioMeter.swr: justRead(1.3),
-                        RadioMeter.alc: justRead(0.4),
-                        RadioMeter.supplyVolts: justRead(13.8),
-                      },
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: 180,
+                  height: 120,
+                  child: RadioReadout(
+                    node: node,
+                    state: EquipmentState(
+                      status: EquipmentStatus.connected,
+                      vfo: const VfoReading(freqKHz: 14074.0, mode: 'USB'),
+                      telemetry: RadioTelemetry(
+                        transmitting: true,
+                        meters: {
+                          RadioMeter.powerOut: justRead(48),
+                          RadioMeter.swr: justRead(1.3),
+                          RadioMeter.alc: justRead(0.4),
+                          RadioMeter.supplyVolts: justRead(13.8),
+                        },
+                      ),
                     ),
+                    live: true,
+                    style: radioStyleModern,
+                    palette: palette,
+                    power: 100,
+                    meters: const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.alc, RadioMeter.supplyVolts},
+                    onTune: null,
+                    powerButton: null,
                   ),
-                  live: true,
-                  style: radioStyleModern,
-                  palette: palette,
-                  power: 100,
-                  meters: const {
-                    RadioMeter.powerOut,
-                    RadioMeter.swr,
-                    RadioMeter.alc,
-                    RadioMeter.supplyVolts,
-                  },
-                  onTune: null,
-                  powerButton: null,
                 ),
               ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       expect(tester.takeException(), isNull);
     });
@@ -524,5 +507,4 @@ void main() {
       expect(MeterBarPainter.isAlertSegment(9, 10, null), isFalse, reason: 'no zone, no red');
     });
   });
-
 }

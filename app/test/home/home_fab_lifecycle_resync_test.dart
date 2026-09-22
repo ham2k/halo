@@ -28,8 +28,7 @@ import '../support/halo_test_support.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('a resumed lifecycle event asks for a fresh frame, to recover from a stalled paint',
-      (tester) async {
+  testWidgets('a resumed lifecycle event asks for a fresh frame, to recover from a stalled paint', (tester) async {
     await pumpHaLo(tester, (services) => HomeView(services: services));
     await tester.pumpAndSettle();
 
@@ -40,7 +39,8 @@ void main() {
     expect(
       SchedulerBinding.instance.hasScheduledFrame,
       isTrue,
-      reason: 'HomeView must ask for a fresh frame on resume — if an animation (the FAB extend/collapse) was '
+      reason:
+          'HomeView must ask for a fresh frame on resume — if an animation (the FAB extend/collapse) was '
           'mid-transition when a tab/app was last backgrounded, this is what gives it a chance to finish or '
           'repaint at its actual current state instead of a stale one',
     );

@@ -11,32 +11,29 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
   Widget host({required bool expanded, ScrollController? controller}) => MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            height: 600,
-            child: CustomScrollView(
-              controller: controller,
-              slivers: [
-                const PinnedHeaderSliver(child: SizedBox(height: 40, child: Text('Band'))),
-                CollapsingSliver(
-                  expanded: expanded,
-                  child: SliverList.list(
-                    children: [for (var i = 0; i < 4; i++) SizedBox(height: 100, child: Text('Row $i'))],
-                  ),
-                ),
-                SliverList.list(children: const [SizedBox(height: 100, child: Text('After'))]),
-              ],
+    home: Scaffold(
+      body: SizedBox(
+        height: 600,
+        child: CustomScrollView(
+          controller: controller,
+          slivers: [
+            const PinnedHeaderSliver(child: SizedBox(height: 40, child: Text('Band'))),
+            CollapsingSliver(
+              expanded: expanded,
+              child: SliverList.list(children: [for (var i = 0; i < 4; i++) SizedBox(height: 100, child: Text('Row $i'))]),
             ),
-          ),
+            SliverList.list(children: const [SizedBox(height: 100, child: Text('After'))]),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
   testWidgets('shut, it claims no room — and the rows below sit under the band', (tester) async {
     await tester.pumpWidget(host(expanded: false));
     await tester.pumpAndSettle();
 
-    expect(tester.getTopLeft(find.text('After')).dy, tester.getBottomLeft(find.text('Band')).dy,
-        reason: 'a shut body takes no extent at all');
+    expect(tester.getTopLeft(find.text('After')).dy, tester.getBottomLeft(find.text('Band')).dy, reason: 'a shut body takes no extent at all');
     // Mounted, though — a category's forms own the FocusNodes and
     // TextEditingControllers the operator is typing into, and unmounting
     // them takes the focus with them.
@@ -82,28 +79,28 @@ void main() {
   testWidgets('what the wipe has not reached yet does not answer a tap', (tester) async {
     var tapped = <String>[];
     Widget hostWithTaps({required bool expanded}) => MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              height: 600,
-              child: CustomScrollView(
-                slivers: [
-                  CollapsingSliver(
-                    expanded: expanded,
-                    child: SliverList.list(
-                      children: [
-                        for (var i = 0; i < 4; i++)
-                          GestureDetector(
-                            onTap: () => tapped.add('Row $i'),
-                            child: SizedBox(height: 100, child: Text('Row $i')),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
+      home: Scaffold(
+        body: SizedBox(
+          height: 600,
+          child: CustomScrollView(
+            slivers: [
+              CollapsingSliver(
+                expanded: expanded,
+                child: SliverList.list(
+                  children: [
+                    for (var i = 0; i < 4; i++)
+                      GestureDetector(
+                        onTap: () => tapped.add('Row $i'),
+                        child: SizedBox(height: 100, child: Text('Row $i')),
+                      ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
-        );
+        ),
+      ),
+    );
 
     await tester.pumpWidget(hostWithTaps(expanded: false));
     await tester.pumpAndSettle();

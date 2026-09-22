@@ -111,8 +111,7 @@ class _RefusingWritesStore extends SharedPreferencesStorePlatform {
   Future<bool> remove(String key) => refuse ? _refused() : inner.remove(key);
 
   @override
-  Future<bool> setValue(String valueType, String key, Object value) =>
-      refuse ? _refused() : inner.setValue(valueType, key, value);
+  Future<bool> setValue(String valueType, String key, Object value) => refuse ? _refused() : inner.setValue(valueType, key, value);
 }
 
 class _FakeTransport extends EquipmentTransport {
@@ -133,11 +132,9 @@ class _FakeTransport extends EquipmentTransport {
   String get key => transportKey;
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [const {'type': 'field', 'fieldType': 'text', 'key': 'host', 'label': 'Host'}];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    const {'type': 'field', 'fieldType': 'text', 'key': 'host', 'label': 'Host'},
+  ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
@@ -153,9 +150,11 @@ class _FakeTransport extends EquipmentTransport {
     final attempt = _Attempt(target, cancel);
     attempts.add(attempt);
     if (honorsCancellation) {
-      unawaited(cancel.whenCancelled.then((_) {
-        if (!attempt.completer.isCompleted) attempt.completer.completeError(const CatCancelledException());
-      }));
+      unawaited(
+        cancel.whenCancelled.then((_) {
+          if (!attempt.completer.isCompleted) attempt.completer.completeError(const CatCancelledException());
+        }),
+      );
     }
     return attempt.completer.future;
   }
@@ -176,10 +175,7 @@ class _FakeSession implements TransceiverSession, CwKeyerSession {
       if (line.trim().isEmpty) continue;
       if (line == 'BOOM') throw StateError('malformed frame');
       final parts = line.trim().split(' ');
-      sink.report(VfoReading(
-        freqKHz: double.tryParse(parts[0]),
-        mode: parts.length > 1 ? parts[1] : null,
-      ));
+      sink.report(VfoReading(freqKHz: double.tryParse(parts[0]), mode: parts.length > 1 ? parts[1] : null));
     }
   }
 
@@ -199,10 +195,8 @@ class _FakeSession implements TransceiverSession, CwKeyerSession {
 
   /// Stands in for a piece of equipment with no VFO at all — an antenna
   /// switch — reporting the only thing it has.
-  void reportSwitchState() => sink.reportSwitchState(
-        const [SwitchAntenna(key: '1', name: 'Hex')],
-        const [SwitchPort(key: '1', label: 'A', selectedAntennaKey: '1')],
-      );
+  void reportSwitchState() =>
+      sink.reportSwitchState(const [SwitchAntenna(key: '1', name: 'Hex')], const [SwitchPort(key: '1', label: 'A', selectedAntennaKey: '1')]);
 
   @override
   void setFrequency(double freqKHz) => log.add('setFrequency:$freqKHz');
@@ -273,7 +267,6 @@ class _FakeDriver extends EquipmentDriver {
   @override
   String get name => 'Fake Radio';
 
-
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
     final session = _FakeSession(sink, log)..teardownThrows = teardownThrows;
@@ -313,37 +306,32 @@ class _PlainDriver extends EquipmentDriver {
 }
 
 EquipmentModel _plainModel(EquipmentTransport transport) => EquipmentModel(
-      key: 'plain',
-      category: kCategoryTransceiver,
-      name: () => 'Plain Radio',
-      variants: [
-        EquipmentVariant(key: 'plain-type', driver: const _PlainDriver(), transport: transport, defaultConfig: const {'host': ''}),
-      ],
-    );
+  key: 'plain',
+  category: kCategoryTransceiver,
+  name: () => 'Plain Radio',
+  variants: [
+    EquipmentVariant(key: 'plain-type', driver: const _PlainDriver(), transport: transport, defaultConfig: const {'host': ''}),
+  ],
+);
 
 /// A keyer of its own — a Winkeyer stand-in on the fake transport.
 EquipmentModel _keyerModel(EquipmentDriver driver, EquipmentTransport transport) => EquipmentModel(
-      key: 'fake-keyer',
-      category: kCategoryKeyer,
-      name: () => 'Fake Keyer',
-      variants: [
-        EquipmentVariant(key: 'keyer-type', driver: driver, transport: transport, defaultConfig: const {'host': ''}),
-      ],
-    );
+  key: 'fake-keyer',
+  category: kCategoryKeyer,
+  name: () => 'Fake Keyer',
+  variants: [
+    EquipmentVariant(key: 'keyer-type', driver: driver, transport: transport, defaultConfig: const {'host': ''}),
+  ],
+);
 
 EquipmentModel _fakeModel(EquipmentDriver driver, EquipmentTransport transport) => EquipmentModel(
-      key: 'fake',
-      category: kCategoryTransceiver,
-      name: () => 'Fake Radio',
-      variants: [
-        EquipmentVariant(
-          key: 'fake-type',
-          driver: driver,
-          transport: transport,
-          defaultConfig: const {'host': ''},
-        ),
-      ],
-    );
+  key: 'fake',
+  category: kCategoryTransceiver,
+  name: () => 'Fake Radio',
+  variants: [
+    EquipmentVariant(key: 'fake-type', driver: driver, transport: transport, defaultConfig: const {'host': ''}),
+  ],
+);
 
 // ----------------------------------------------------------------- setup
 
@@ -378,10 +366,7 @@ void main() {
   late CatService cat;
   late RadioService radio;
 
-  Future<CatService> makeService({
-    void Function(String event, [Map<String, Object?> properties])? onTrack,
-    Duration? idleRetryFirst,
-  }) async {
+  Future<CatService> makeService({void Function(String event, [Map<String, Object?> properties])? onTrack, Duration? idleRetryFirst}) async {
     settings = SettingsService(await SharedPreferences.getInstance());
     log = [];
     transport = _FakeTransport();
@@ -415,8 +400,7 @@ void main() {
     cat = await makeService();
   });
 
-  Future<EquipmentNode> addRadio({String host = 'radio.local'}) =>
-      cat.addNode(typeKey: 'fake-type', name: 'Left Radio', config: {'host': host});
+  Future<EquipmentNode> addRadio({String host = 'radio.local'}) => cat.addNode(typeKey: 'fake-type', name: 'Left Radio', config: {'host': host});
 
   /// Connects and lands the connection, returning it.
   Future<_FakeConnection> connectAndLand(EquipmentNode node) async {
@@ -436,8 +420,7 @@ void main() {
       cat = await makeService(onTrack: (event, [props = const {}]) => tracked.add((event, props)));
     }
 
-    Iterable<Map<String, Object?>> only(String event) =>
-        tracked.where((e) => e.$1 == event).map((e) => e.$2);
+    Iterable<Map<String, Object?>> only(String event) => tracked.where((e) => e.$1 == event).map((e) => e.$2);
 
     test('radio_connected reports once per radio, however often it reconnects', () async {
       // The trap: the idle retry pokes a radio every 30s rising to every 8
@@ -464,16 +447,13 @@ void main() {
       final node = await addRadio(host: 'secret-host.invalid');
       final connecting = cat.connect(node.uuid);
       await pumpEventQueue();
-      transport.attempts.last.completer.completeError(
-        TimeoutException('no reply from secret-host.invalid'),
-      );
+      transport.attempts.last.completer.completeError(TimeoutException('no reply from secret-host.invalid'));
       await connecting;
 
       final props = only('radio_connect_failed').single;
       expect(props['reason'], 'timeout');
       expect(props['name'], 'Left Radio');
-      expect(props.values.join(' '), isNot(contains('secret-host')),
-          reason: 'no config value or error text may reach the payload');
+      expect(props.values.join(' '), isNot(contains('secret-host')), reason: 'no config value or error text may reach the payload');
     });
 
     test('radio_added records whether discovery or the form found it', () async {
@@ -485,12 +465,7 @@ void main() {
       expect(only('radio_added').single['name'], 'Left Radio');
 
       tracked.clear();
-      await cat.addDiscovered(const DiscoveredEquipment(
-        typeKey: 'fake-type',
-        id: 'disco-1',
-        name: 'Found Radio',
-        config: {'host': 'found.local'},
-      ));
+      await cat.addDiscovered(const DiscoveredEquipment(typeKey: 'fake-type', id: 'disco-1', name: 'Found Radio', config: {'host': 'found.local'}));
       expect(only('radio_added').single['via'], 'discovery');
       expect(only('radio_added').single['name'], 'Found Radio');
     });
@@ -551,8 +526,7 @@ void main() {
       // has to pick it up from there.
       await pumpWithRadioOff();
 
-      expect(transport.attempts.length, greaterThan(afterDrop),
-          reason: 'nothing tried again once the drop burst was spent');
+      expect(transport.attempts.length, greaterThan(afterDrop), reason: 'nothing tried again once the drop burst was spent');
     });
 
     /// How long the next connect attempt actually takes to show up.
@@ -629,8 +603,7 @@ void main() {
     /// assertion exactly when the retry is most broken.
     Future<void> awaitAttemptAfter(int since) async {
       await timeToNextAttempt(seen: since);
-      expect(transport.attempts.length, greaterThan(since),
-          reason: 'no connect attempt arrived at all — the retry is not running');
+      expect(transport.attempts.length, greaterThan(since), reason: 'no connect attempt arrived at all — the retry is not running');
     }
 
     /// How soon a tune must get the retry moving again — derived from the
@@ -679,15 +652,23 @@ void main() {
       // measurements puts the decision on the smaller of them — tens of
       // milliseconds — and scheduling noise moves that far more,
       // proportionally, than it moves the large one.
-      expect(afterTuning, lessThan(tuningDeadline),
-          reason: 'tuning an absent radio left the operator waiting out the backoff '
-              '(${afterTuning.inMilliseconds}ms, deadline ${tuningDeadline.inMilliseconds}ms)');
+      expect(
+        afterTuning,
+        lessThan(tuningDeadline),
+        reason:
+            'tuning an absent radio left the operator waiting out the backoff '
+            '(${afterTuning.inMilliseconds}ms, deadline ${tuningDeadline.inMilliseconds}ms)',
+      );
       // Without this the deadline could quietly stop meaning anything: if the
       // backed-off wait ever shrank below it, the test would pass whether or
       // not tuning shortened a thing.
-      expect(backedOff, greaterThan(tuningDeadline * 2),
-          reason: 'the backoff no longer grows far enough past the deadline for this '
-              'test to be able to fail (${backedOff.inMilliseconds}ms)');
+      expect(
+        backedOff,
+        greaterThan(tuningDeadline * 2),
+        reason:
+            'the backoff no longer grows far enough past the deadline for this '
+            'test to be able to fail (${backedOff.inMilliseconds}ms)',
+      );
     });
 
     test('tuning continuously does not starve the retry it just shortened', () async {
@@ -710,8 +691,7 @@ void main() {
         await pumpEventQueue();
       }
 
-      expect(transport.attempts.length, greaterThan(seen),
-          reason: 'continuous tuning pushed the retry out for ever; the radio was never tried');
+      expect(transport.attempts.length, greaterThan(seen), reason: 'continuous tuning pushed the retry out for ever; the radio was never tried');
     });
 
     test('a startup burst that finds the radio off hands over to the loop', () async {
@@ -735,8 +715,7 @@ void main() {
 
       await pumpWithRadioOff();
 
-      expect(transport.attempts.length, greaterThan(afterBurst),
-          reason: 'the app started with the radio off and then gave up for the whole session');
+      expect(transport.attempts.length, greaterThan(afterBurst), reason: 'the app started with the radio off and then gave up for the whole session');
     });
 
     test('connecting a DIFFERENT rig does not reset the designated radio\'s backoff', () async {
@@ -768,9 +747,13 @@ void main() {
       await failEveryPendingAttempt();
       final afterOther = await timeToNextAttempt();
 
-      expect(afterOther * 2, greaterThan(backedOff),
-          reason: 'connecting an unrelated rig collapsed radio1\'s backoff '
-              '(${afterOther.inMilliseconds}ms vs ${backedOff.inMilliseconds}ms)');
+      expect(
+        afterOther * 2,
+        greaterThan(backedOff),
+        reason:
+            'connecting an unrelated rig collapsed radio1\'s backoff '
+            '(${afterOther.inMilliseconds}ms vs ${backedOff.inMilliseconds}ms)',
+      );
     });
 
     test('tuning does not start connecting a radio nobody has switched on', () async {
@@ -786,8 +769,7 @@ void main() {
       radio.setVfo('vfoA', freq: 14074.0, mode: 'USB', origin: VfoOrigin.user);
       await pumpWithRadioOff();
 
-      expect(transport.attempts.length, before,
-          reason: 'typing a frequency started dialling a radio that was never connected');
+      expect(transport.attempts.length, before, reason: 'typing a frequency started dialling a radio that was never connected');
     });
 
     test('tuning does NOT start a retry for a radio switched off by hand', () async {
@@ -802,8 +784,7 @@ void main() {
       radio.setVfo('vfoA', freq: 14074.0, mode: 'USB', origin: VfoOrigin.user);
       await pumpWithRadioOff();
 
-      expect(transport.attempts.length, afterDisconnect,
-          reason: 'tuning switched a deliberately disconnected radio back on');
+      expect(transport.attempts.length, afterDisconnect, reason: 'tuning switched a deliberately disconnected radio back on');
     });
 
     test('a DELIBERATE disconnect is never undone by the retry', () async {
@@ -815,8 +796,7 @@ void main() {
       final afterDisconnect = transport.attempts.length;
       await pumpWithRadioOff();
 
-      expect(transport.attempts.length, afterDisconnect,
-          reason: 'Disconnect must stay disconnected');
+      expect(transport.attempts.length, afterDisconnect, reason: 'Disconnect must stay disconnected');
       expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
     });
 
@@ -840,8 +820,7 @@ void main() {
       final atDisconnect = transport.attempts.length;
       await pumpWithRadioOff();
 
-      expect(transport.attempts.length, atDisconnect,
-          reason: 'the running loop ignored the operator');
+      expect(transport.attempts.length, atDisconnect, reason: 'the running loop ignored the operator');
     });
 
     test('a manual Connect that succeeds ends the loop', () async {
@@ -864,8 +843,7 @@ void main() {
 
       final afterManual = transport.attempts.length;
       await pumpWithRadioOff();
-      expect(transport.attempts.length, afterManual,
-          reason: 'the loop kept trying a radio that is already connected');
+      expect(transport.attempts.length, afterManual, reason: 'the loop kept trying a radio that is already connected');
     });
 
     test('a drop on a node that is NOT designated starts nothing', () async {
@@ -882,8 +860,7 @@ void main() {
       await pumpEventQueue();
       await pumpWithRadioOff();
 
-      expect(transport.attempts.length, before,
-          reason: 'a non-designated drop pulled the designated radio into a retry');
+      expect(transport.attempts.length, before, reason: 'a non-designated drop pulled the designated radio into a retry');
     });
 
     test('asking to connect again resumes retrying', () async {
@@ -940,8 +917,7 @@ void main() {
 
       final afterRecovery = transport.attempts.length;
       await pumpWithRadioOff();
-      expect(transport.attempts.length, afterRecovery,
-          reason: 'a connected radio must not keep being reconnected');
+      expect(transport.attempts.length, afterRecovery, reason: 'a connected radio must not keep being reconnected');
     });
   });
 
@@ -959,8 +935,7 @@ void main() {
       connection.dropRemotely();
       await pumpEventQueue();
 
-      expect(transport.attempts.length, greaterThan(attemptsBefore),
-          reason: 'nothing tried to get the radio back');
+      expect(transport.attempts.length, greaterThan(attemptsBefore), reason: 'nothing tried to get the radio back');
     });
 
     test('a DELIBERATE disconnect is never undone', () async {
@@ -981,8 +956,7 @@ void main() {
       await cat.disconnect(node.uuid);
       await pumpEventQueue();
 
-      expect(transport.attempts.length, attemptsBefore,
-          reason: 'Disconnect must stay disconnected');
+      expect(transport.attempts.length, attemptsBefore, reason: 'Disconnect must stay disconnected');
       expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
     });
 
@@ -1003,8 +977,7 @@ void main() {
       second.dropRemotely();
       await pumpEventQueue();
 
-      expect(transport.attempts.length, afterFirst,
-          reason: 'the cooldown must suppress a second burst');
+      expect(transport.attempts.length, afterFirst, reason: 'the cooldown must suppress a second burst');
     });
 
     test('a node that is not radio1 is left alone', () async {
@@ -1092,7 +1065,6 @@ void main() {
   group('a peer\'s radio in the Main VFO list (HALO-416)', () {
     const pick = PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-1', radioName: 'IC-705');
 
-
     test('the two pointers are exclusive, both ways round', () async {
       final local = await addRadio();
       expect(cat.radio1, LocalRadio(local.uuid));
@@ -1123,8 +1095,7 @@ void main() {
       final reloaded = await makeService();
       addTearDown(reloaded.dispose);
       expect(reloaded.radio1, const PeerRadio(pick));
-      expect((reloaded.radio1 as PeerRadio).selection.radioName, 'IC-705',
-          reason: 'the name is all a picker has to show while the peer is away');
+      expect((reloaded.radio1 as PeerRadio).selection.radioName, 'IC-705', reason: 'the name is all a picker has to show while the peer is away');
     });
 
     test('the main VFO is one slot, holding whichever kind was picked', () async {
@@ -1176,7 +1147,9 @@ void main() {
       await loaded.setRadio1(const PeerRadio(pick));
 
       final blob = jsonDecode((await SharedPreferences.getInstance()).getString('stationEquipment')!);
-      expect(blob['mainVfo'], {'peer': {'deviceId': 'device-a', 'radioId': 'rig-1', 'radioName': 'IC-705'}});
+      expect(blob['mainVfo'], {
+        'peer': {'deviceId': 'device-a', 'radioId': 'rig-1', 'radioName': 'IC-705'},
+      });
       expect(blob.containsKey('radio1'), isFalse, reason: 'one slot on disk too, or the pair can disagree again');
       expect(blob.containsKey('remoteRadio1'), isFalse);
     });
@@ -1188,7 +1161,11 @@ void main() {
           'radio1': 'b-uuid',
           'remoteRadio1': {'deviceId': 'device-a', 'radioId': 'rig-1'},
           'nodes': {
-            'b-uuid': {'typeKey': 'fake-type', 'name': 'Right Radio', 'config': {'host': 'b.local'}},
+            'b-uuid': {
+              'typeKey': 'fake-type',
+              'name': 'Right Radio',
+              'config': {'host': 'b.local'},
+            },
           },
         }),
       });
@@ -1256,8 +1233,7 @@ void main() {
       // and it reads `vfoA` — a VFO this rig is not attached to. A peer
       // driving the shack's OTHER rig goes through tuneOfferedRadio instead.
       final other = await addRadio(host: 'a.local');
-      final designated = await cat.addNode(
-          typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      final designated = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
       expect(cat.radio1, LocalRadio(designated.uuid), reason: 'newest wins, so `other` is not radio1');
       await connectAndLand(other);
       log.clear();
@@ -1382,7 +1358,11 @@ void main() {
           'version': 1,
           'radio1': 'a-uuid-that-is-not-here',
           'nodes': {
-            'b-uuid': {'typeKey': 'fake-type', 'name': 'Right Radio', 'config': {'host': 'b.local'}},
+            'b-uuid': {
+              'typeKey': 'fake-type',
+              'name': 'Right Radio',
+              'config': {'host': 'b.local'},
+            },
           },
         }),
       });
@@ -1404,7 +1384,11 @@ void main() {
           'radio1': 'radio-uuid',
           'designated': {'antenna': 'ant-uuid', 'key': null},
           'nodes': {
-            'radio-uuid': {'typeKey': 'fake-type', 'name': 'Radio', 'config': {'host': 'a.local'}},
+            'radio-uuid': {
+              'typeKey': 'fake-type',
+              'name': 'Radio',
+              'config': {'host': 'a.local'},
+            },
             'ant-uuid': {'typeKey': 'antenna', 'name': 'Dipole', 'config': {}},
           },
         }),
@@ -1460,8 +1444,16 @@ void main() {
             'other-radio': {'antenna': null},
           },
           'nodes': {
-            'radio-uuid': {'typeKey': 'fake-type', 'name': 'Radio', 'config': {'host': 'a.local'}},
-            'other-radio': {'typeKey': 'fake-type', 'name': 'Other', 'config': {'host': 'b.local'}},
+            'radio-uuid': {
+              'typeKey': 'fake-type',
+              'name': 'Radio',
+              'config': {'host': 'a.local'},
+            },
+            'other-radio': {
+              'typeKey': 'fake-type',
+              'name': 'Other',
+              'config': {'host': 'b.local'},
+            },
             'ant-uuid': {'typeKey': 'antenna', 'name': 'Dipole', 'config': {}},
           },
         }),
@@ -1487,8 +1479,7 @@ void main() {
   });
 
   group('antenna/key designation (HALO-263 follow-up)', () {
-    Future<EquipmentNode> addAntenna({String name = 'Dipole'}) =>
-        cat.addNode(typeKey: antennaModel.variants.first.key, name: name);
+    Future<EquipmentNode> addAntenna({String name = 'Dipole'}) => cat.addNode(typeKey: antennaModel.variants.first.key, name: name);
     Future<EquipmentNode> addKey({String name = 'Bug'}) => cat.addNode(typeKey: keyModel.variants.first.key, name: name);
 
     test('the newest antenna added is designated, same rule as radio1', () async {
@@ -1758,11 +1749,7 @@ void main() {
       await pumpEventQueue();
 
       expect(cat.stateFor(node.uuid).keyerSpeed, 7, reason: 'it is still shown');
-      expect(
-        cat.nodes.firstWhere((n) => n.uuid == node.uuid).config[keyerSpeedConfigKey],
-        isNull,
-        reason: 'but never written to the node',
-      );
+      expect(cat.nodes.firstWhere((n) => n.uuid == node.uuid).config[keyerSpeedConfigKey], isNull, reason: 'but never written to the node');
     });
 
     test('equipment that can be asked its speed stores nothing', () async {
@@ -2262,8 +2249,7 @@ void main() {
       stale.dropRemotely();
       await pumpEventQueue();
 
-      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected,
-          reason: 'the live connection is still up');
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected, reason: 'the live connection is still up');
 
       // Dropping the live one now starts a reconnect, because this node is
       // radio1 — so it does NOT settle on `disconnected`. What this test is
@@ -2271,8 +2257,7 @@ void main() {
       // must not clobber the connection that replaced it.
       live.dropRemotely();
       await pumpEventQueue();
-      expect(cat.stateFor(node.uuid).status, isNot(EquipmentStatus.connected),
-          reason: 'the live connection really did go away');
+      expect(cat.stateFor(node.uuid).status, isNot(EquipmentStatus.connected), reason: 'the live connection really did go away');
     });
 
     test('a stale session cannot write state', () async {
@@ -2284,8 +2269,7 @@ void main() {
       // The old session's poll timer fires once more before it's collected.
       staleSession.reportFromItsOwnTimer(const VfoReading(freqKHz: 7123, mode: 'LSB'));
       await pumpEventQueue();
-      expect(cat.stateFor(node.uuid).vfo, const VfoReading(),
-          reason: 'a superseded session must not report readings');
+      expect(cat.stateFor(node.uuid).vfo, const VfoReading(), reason: 'a superseded session must not report readings');
     });
 
     test('disconnect cancels an attempt still in flight', () async {
@@ -2553,8 +2537,11 @@ void main() {
       await failEveryAttempt();
       await burst;
 
-      expect(prefs.getStringList(autoConnectInFlightKey), isNull,
-          reason: 'a radio that is merely switched off would hold itself off every launch after this one');
+      expect(
+        prefs.getStringList(autoConnectInFlightKey),
+        isNull,
+        reason: 'a radio that is merely switched off would hold itself off every launch after this one',
+      );
     });
 
     test('the node the last launch was holding is left alone, and says why', () async {
@@ -2563,13 +2550,14 @@ void main() {
       await service.reconnectDesignatedRadio();
       await pumpEventQueue();
 
-      expect(transport.attempts, isEmpty,
-          reason: 'the launch repeated the very call the previous one did not come back from');
+      expect(transport.attempts, isEmpty, reason: 'the launch repeated the very call the previous one did not come back from');
       expect(service.stateFor(heldUuid).status, EquipmentStatus.error);
-      expect(service.stateFor(heldUuid).error, t.settings.station.autoConnectHeld,
-          reason: 'a radio that is simply absent from the panel, with no reason given, is the worse bug');
-      expect(service.autoConnectHeldNodes.single.uuid, heldUuid,
-          reason: 'boot has nothing to name in its notice');
+      expect(
+        service.stateFor(heldUuid).error,
+        t.settings.station.autoConnectHeld,
+        reason: 'a radio that is simply absent from the panel, with no reason given, is the worse bug',
+      );
+      expect(service.autoConnectHeldNodes.single.uuid, heldUuid, reason: 'boot has nothing to name in its notice');
     });
 
     test('a second attempt on the same node does not erase the first one\'s mark', () async {
@@ -2593,8 +2581,7 @@ void main() {
       // The first attempt loses and returns; the second is still in there.
       transport.attempts.first.completer.completeError(StateError('superseded'));
       await pumpEventQueue();
-      expect(prefs.getStringList(autoConnectInFlightKey), [heldUuid],
-          reason: 'the attempt that returned erased the mark of the one still inside the call');
+      expect(prefs.getStringList(autoConnectInFlightKey), [heldUuid], reason: 'the attempt that returned erased the mark of the one still inside the call');
 
       await failEveryAttempt();
       await first;
@@ -2623,8 +2610,7 @@ void main() {
       await failEveryAttempt();
       await burst;
 
-      expect(service.stateFor(heldUuid).status, EquipmentStatus.error,
-          reason: 'the node ended in a state nothing describes');
+      expect(service.stateFor(heldUuid).status, EquipmentStatus.error, reason: 'the node ended in a state nothing describes');
     });
 
     test('a Connect the operator pressed lifts the hold, this launch and the next', () async {
@@ -2633,14 +2619,12 @@ void main() {
 
       final connecting = service.connect(heldUuid);
       await pumpEventQueue();
-      expect(transport.attempts, hasLength(1),
-          reason: 'the hold blocked the deliberate act that is meant to be the way out of it');
+      expect(transport.attempts, hasLength(1), reason: 'the hold blocked the deliberate act that is meant to be the way out of it');
       transport.attempts.last.completer.complete(_FakeConnection('c1', log));
       await connecting;
 
       expect(service.autoConnectHeldNodes, isEmpty);
-      expect(prefs.getStringList(autoConnectInFlightKey), isNull,
-          reason: 'the hold outlived the Connect that lifted it, and comes back on the next launch');
+      expect(prefs.getStringList(autoConnectInFlightKey), isNull, reason: 'the hold outlived the Connect that lifted it, and comes back on the next launch');
     });
   });
 }

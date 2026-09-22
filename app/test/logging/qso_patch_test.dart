@@ -13,18 +13,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/tools/qso_patch.dart';
 
 Map<String, dynamic> _qso() => {
-      'band': '20m',
-      'mode': 'CW',
-      'their': {
-        'call': 'W1AW',
-        'sent': '599',
-        'guess': {'name': 'Hiram'},
-      },
-      'our': {'call': 'N0DEV', 'sent': '599'},
-      'refs': [
-        {'type': 'cqww', 'theirZone': '5'},
-      ],
-    };
+  'band': '20m',
+  'mode': 'CW',
+  'their': {
+    'call': 'W1AW',
+    'sent': '599',
+    'guess': {'name': 'Hiram'},
+  },
+  'our': {'call': 'N0DEV', 'sent': '599'},
+  'refs': [
+    {'type': 'cqww', 'theirZone': '5'},
+  ],
+};
 
 void main() {
   test('a one-field patch to `their` leaves the rest of `their` alone', () {
@@ -132,12 +132,7 @@ void main() {
         ],
       }, owner: 'cqww');
 
-      expect((merged['refs'] as List).single, {
-        'type': 'cqww',
-        'theirZone': '5',
-        'serial': 42,
-        'theirExchange': 'ARRL',
-      });
+      expect((merged['refs'] as List).single, {'type': 'cqww', 'theirZone': '5', 'serial': 42, 'theirExchange': 'ARRL'});
     });
 
     test('an extension cannot touch another activity\'s ref', () {

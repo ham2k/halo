@@ -110,15 +110,11 @@ class ExtensionRelevance {
 
   static String? _valueProblem(String key, Object? value) {
     if (key == 'ituRegions') {
-      return value is num && ituRegionCodes.contains(value.toInt()) && value == value.toInt()
-          ? null
-          : 'is not an ITU region (${ituRegionCodes.join(', ')})';
+      return value is num && ituRegionCodes.contains(value.toInt()) && value == value.toInt() ? null : 'is not an ITU region (${ituRegionCodes.join(', ')})';
     }
     if (value is! String || value.trim().isEmpty) return 'is not a non-empty string';
     if (key == 'entities') {
-      return _entityPattern.hasMatch(value.toUpperCase())
-          ? null
-          : "is not a DXCC entity prefix (letters, digits and '/', with an optional leading '*')";
+      return _entityPattern.hasMatch(value.toUpperCase()) ? null : "is not a DXCC entity prefix (letters, digits and '/', with an optional leading '*')";
     }
     if (key == 'countries') {
       return _countryPattern.hasMatch(value.toLowerCase()) ? null : 'is not a two-letter ISO country code';
@@ -161,25 +157,25 @@ class ExtensionRelevance {
   /// repository — so for that path this leniency rests on a cross-repo
   /// contract rather than on anything this tree enforces.
   factory ExtensionRelevance.fromJson(Map<String, dynamic> json) => ExtensionRelevance(
-        entities: _stringList(json['entities']),
-        countries: _stringList(json['countries']),
-        continents: _stringList(json['continents']),
-        ituRegions: _intList(json['ituRegions']),
-        dates: _stringList(json['dates']),
-        interests: _stringList(json['interests']),
-      );
+    entities: _stringList(json['entities']),
+    countries: _stringList(json['countries']),
+    continents: _stringList(json['continents']),
+    ituRegions: _intList(json['ituRegions']),
+    dates: _stringList(json['dates']),
+    interests: _stringList(json['interests']),
+  );
 
   /// The manifest shape back, with only the lists that carry something: a
   /// round trip of `{"countries": ["us"]}` yields exactly that, not five
   /// empty siblings.
   Map<String, dynamic> toJson() => {
-        if (entities.isNotEmpty) 'entities': entities,
-        if (countries.isNotEmpty) 'countries': countries,
-        if (continents.isNotEmpty) 'continents': continents,
-        if (ituRegions.isNotEmpty) 'ituRegions': ituRegions,
-        if (dates.isNotEmpty) 'dates': dates,
-        if (interests.isNotEmpty) 'interests': interests,
-      };
+    if (entities.isNotEmpty) 'entities': entities,
+    if (countries.isNotEmpty) 'countries': countries,
+    if (continents.isNotEmpty) 'continents': continents,
+    if (ituRegions.isNotEmpty) 'ituRegions': ituRegions,
+    if (dates.isNotEmpty) 'dates': dates,
+    if (interests.isNotEmpty) 'interests': interests,
+  };
 
   /// Whether any of [dates] starts within [window] of [now].
   ///
@@ -224,12 +220,8 @@ class ExtensionRelevance {
 
   /// [matches] over a snapshot. A null snapshot is an operator nothing is
   /// known about, which a gated list fails and a worldwide one admits.
-  bool matchesOperator(OperatorGeo? operator) => matches(
-        entityPrefix: operator?.entityPrefix,
-        countryCode: operator?.countryCode,
-        continent: operator?.continent,
-        ituRegion: operator?.ituRegion,
-      );
+  bool matchesOperator(OperatorGeo? operator) =>
+      matches(entityPrefix: operator?.entityPrefix, countryCode: operator?.countryCode, continent: operator?.continent, ituRegion: operator?.ituRegion);
 }
 
 /// How near an extension is to mattering, lowest first — the one order the
@@ -249,11 +241,7 @@ class ExtensionRelevance {
 /// QSO party three days out is worth surfacing to somebody who has not
 /// decided yet, while the state it runs in is true all year and says nothing
 /// about now.
-int relevanceBand(
-  ExtensionRelevance? relevance, {
-  required OperatorGeo? operator,
-  required DateTime now,
-}) {
+int relevanceBand(ExtensionRelevance? relevance, {required OperatorGeo? operator, required DateTime now}) {
   if (relevance == null) return 2;
   if (relevance.startsWithin(kRelevanceSoon, now)) return 0;
   // Worldwide is not "here": it gates on nothing, so it says nothing about
@@ -288,13 +276,7 @@ const kRelevanceJustPast = Duration(days: 3);
 /// [relevanceBand] does not read it — it ranks by what the author declared,
 /// and these carry no claim to rank above a genuine match. It decides
 /// membership of the suggestions, not their order.
-const kAlwaysSuggested = {
-  'ham2k-pota',
-  'ham2k-sota',
-  'ham2k-wwff',
-  'ham2k-llota',
-  'ham2k-wwbota',
-};
+const kAlwaysSuggested = {'ham2k-pota', 'ham2k-sota', 'ham2k-wwff', 'ham2k-llota', 'ham2k-wwbota'};
 
 /// The four derived values the app knows about the operator's own callsign —
 /// what [ExtensionRelevance.matches] takes, and what the catalog request
@@ -312,11 +294,11 @@ class OperatorGeo {
   /// The catalog's operator-geo query parameters, only for the values known —
   /// an absent parameter is "unknown" to the catalog, an empty one is not.
   Map<String, String> toQueryParameters() => {
-        if (entityPrefix != null && entityPrefix!.isNotEmpty) 'entity': entityPrefix!,
-        if (countryCode != null && countryCode!.isNotEmpty) 'country': countryCode!,
-        if (continent != null && continent!.isNotEmpty) 'continent': continent!,
-        if (ituRegion != null) 'itu': '$ituRegion',
-      };
+    if (entityPrefix != null && entityPrefix!.isNotEmpty) 'entity': entityPrefix!,
+    if (countryCode != null && countryCode!.isNotEmpty) 'country': countryCode!,
+    if (continent != null && continent!.isNotEmpty) 'continent': continent!,
+    if (ituRegion != null) 'itu': '$ituRegion',
+  };
 
   /// A value: the panel compares the snapshot it ranked by against the one
   /// FlagsService holds now, to know whether a refresh changed anything.
@@ -336,5 +318,4 @@ List<String> _stringList(dynamic value) => value is List ? value.whereType<Strin
 
 /// `ituRegions` as JSON numbers, whatever an encoder made of them: `2` and
 /// `2.0` both mean region 2 — the notices reader's `(r as num).toInt()`.
-List<int> _intList(dynamic value) =>
-    value is List ? value.whereType<num>().map((n) => n.toInt()).toList() : const [];
+List<int> _intList(dynamic value) => value is List ? value.whereType<num>().map((n) => n.toInt()).toList() : const [];

@@ -229,23 +229,12 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (widget.phone)
-                _VoicePill(cat: widget.cat, services: widget.services)
-              else
-                _KeyerSpeedPill(cat: widget.cat, services: widget.services),
-              if (widget.enterSends) ...[
-                const SizedBox(width: Space.sm),
-                _EnterSendsPill(cat: widget.cat),
-              ],
+              if (widget.phone) _VoicePill(cat: widget.cat, services: widget.services) else _KeyerSpeedPill(cat: widget.cat, services: widget.services),
+              if (widget.enterSends) ...[const SizedBox(width: Space.sm), _EnterSendsPill(cat: widget.cat)],
               const SizedBox(width: Space.md),
               Expanded(
                 child: ListenableBuilder(
-                  listenable: Listenable.merge([
-                    widget.cat.cwProgress,
-                    widget.cat.voiceActivity,
-                    widget.cat.keyerRepeat,
-                    widget.cat.keyerRepeatActive,
-                  ]),
+                  listenable: Listenable.merge([widget.cat.cwProgress, widget.cat.voiceActivity, widget.cat.keyerRepeat, widget.cat.keyerRepeatActive]),
                   builder: (context, _) {
                     final progress = widget.cat.cwProgress.value;
                     final voice = widget.cat.voiceActivity.value;
@@ -269,11 +258,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                         Visibility(
                           visible: !widget.phone && progress == null && voice == null && !waiting,
                           maintainState: true,
-                          child: _MessageButtons(
-                            services: widget.services,
-                            onSendMessage: widget.onSendMessage,
-                            templateContext: widget.templateContext,
-                          ),
+                          child: _MessageButtons(services: widget.services, onSendMessage: widget.onSendMessage, templateContext: widget.templateContext),
                         ),
                         Visibility(
                           visible: widget.phone && progress == null && voice == null && !waiting,
@@ -283,10 +268,8 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                         // animation from its own beginning — while a re-report of
                         // the SAME message (the queue behind it changed) keeps the
                         // animation where it is.
-                        if (progress != null)
-                          _CwProgressView(key: ValueKey(progress.id), progress: progress, cat: widget.cat),
-                        if (voice != null && progress == null)
-                          _VoiceActivityView(activity: voice, cat: widget.cat, services: widget.services),
+                        if (progress != null) _CwProgressView(key: ValueKey(progress.id), progress: progress, cat: widget.cat),
+                        if (voice != null && progress == null) _VoiceActivityView(activity: voice, cat: widget.cat, services: widget.services),
                         // The wait between a repeat and the next send. Only
                         // while nothing is keying: the moment the message
                         // goes again its own bar takes the slot back.
@@ -440,9 +423,11 @@ class _MessageButtonsState extends State<_MessageButtons> {
       final text = rendered[i].text;
       if (text != null) results[numbers[i]] = (template: labels[i], text: text.trim());
     }
-    setState(() => _rendered
-      ..clear()
-      ..addAll(results));
+    setState(
+      () => _rendered
+        ..clear()
+        ..addAll(results),
+    );
   }
 
   String _labelFor(int n, String key) {
@@ -479,7 +464,10 @@ class _MessageButtonsState extends State<_MessageButtons> {
                     padding: const EdgeInsets.only(right: Space.sm),
                     child: Material(
                       color: Colors.transparent,
-                      shape: RoundedRectangleBorder(borderRadius: borderRadius, side: BorderSide(color: color)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: borderRadius,
+                        side: BorderSide(color: color),
+                      ),
                       child: InkWell(
                         borderRadius: borderRadius,
                         onTap: enabled ? () => widget.onSendMessage!(n) : null,
@@ -500,12 +488,7 @@ class _MessageButtonsState extends State<_MessageButtons> {
                               const SizedBox(width: Space.xs),
                               Text(
                                 _labelFor(n, m.key(n: n)),
-                                style: TextStyle(
-                                  fontFamily: 'RobotoCondensed',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: color,
-                                ),
+                                style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: color),
                               ),
                             ],
                           ),
@@ -556,7 +539,10 @@ class _VoiceButtons extends StatelessWidget {
                     padding: const EdgeInsets.only(right: Space.sm),
                     child: Material(
                       color: Colors.transparent,
-                      shape: RoundedRectangleBorder(borderRadius: borderRadius, side: BorderSide(color: color)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: borderRadius,
+                        side: BorderSide(color: color),
+                      ),
                       child: InkWell(
                         borderRadius: borderRadius,
                         onTap: enabled ? () => cat.playVoiceMemory(n) : null,
@@ -576,12 +562,7 @@ class _VoiceButtons extends StatelessWidget {
                               const SizedBox(width: Space.xs),
                               Text(
                                 voiceMessageLabelFor(cat, n, m.key(n: n)),
-                                style: TextStyle(
-                                  fontFamily: 'RobotoCondensed',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: color,
-                                ),
+                                style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: color),
                               ),
                             ],
                           ),
@@ -659,7 +640,10 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
     if (widget.activity.recording) return;
     final millis = widget.cat.voiceMessageDuration(widget.activity.memory);
     if (millis <= 0) return;
-    _controller = AnimationController(vsync: this, duration: Duration(milliseconds: millis))..forward();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: millis),
+    )..forward();
   }
 
   @override
@@ -680,11 +664,7 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
     final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          activity.recording ? MdiIcons.recordCircleOutline : MdiIcons.play,
-          size: 16,
-          color: activity.recording ? theme.colorScheme.error : style.color,
-        ),
+        Icon(activity.recording ? MdiIcons.recordCircleOutline : MdiIcons.play, size: 16, color: activity.recording ? theme.colorScheme.error : style.color),
         const SizedBox(width: Space.xs),
         Flexible(
           child: Text(
@@ -713,24 +693,26 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
           // way the CW message's is — the stack takes its width from the row.
           child: Stack(
             children: [
-              Padding(padding: const EdgeInsets.only(bottom: Space.xxs * 2), child: row),
+              Padding(
+                padding: const EdgeInsets.only(bottom: Space.xxs * 2),
+                child: row,
+              ),
               Positioned(
                 left: 0,
                 right: 0,
                 bottom: 0,
                 height: Space.xxs,
                 child: controller == null
-                    ? LinearProgressIndicator(
-                        minHeight: Space.xxs,
-                        backgroundColor: color.withValues(alpha: 0.25),
-                        color: color,
-                      )
+                    ? LinearProgressIndicator(minHeight: Space.xxs, backgroundColor: color.withValues(alpha: 0.25), color: color)
                     : AnimatedBuilder(
                         animation: controller,
                         builder: (context, _) => Stack(
                           children: [
                             Container(color: color.withValues(alpha: 0.25)),
-                            FractionallySizedBox(widthFactor: controller.value, child: Container(color: color)),
+                            FractionallySizedBox(
+                              widthFactor: controller.value,
+                              child: Container(color: color),
+                            ),
                           ],
                         ),
                       ),
@@ -784,12 +766,7 @@ class _VoicePill extends StatelessWidget {
                   const SizedBox(width: Space.xs),
                   Text(
                     context.t.settings.radio.voiceMessages.pill,
-                    style: TextStyle(
-                      fontFamily: 'RobotoCondensed',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: foreground,
-                    ),
+                    style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: foreground),
                   ),
                 ],
               ),
@@ -825,9 +802,7 @@ class _KeyerSpeedPill extends StatelessWidget {
       builder: (context, _) {
         final speed = cat.keyerSpeed;
         final enabled = cat.canKeyCw;
-        final label = speed == null
-            ? context.t.settings.radio.keyerSpeed.pillUnknown
-            : context.t.settings.radio.keyerSpeed.pill(wpm: speed);
+        final label = speed == null ? context.t.settings.radio.keyerSpeed.pillUnknown : context.t.settings.radio.keyerSpeed.pill(wpm: speed);
         var foreground = theme.colorScheme.onTertiaryContainer;
         var background = poloColors.tertiaryLight;
         if (!enabled) {
@@ -852,12 +827,7 @@ class _KeyerSpeedPill extends StatelessWidget {
                   const SizedBox(width: Space.xs),
                   Text(
                     label,
-                    style: TextStyle(
-                      fontFamily: 'RobotoCondensed',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: foreground,
-                    ),
+                    style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: foreground),
                   ),
                 ],
               ),
@@ -902,8 +872,8 @@ class _EnterSendsPill extends StatelessWidget {
         final label = !esm.on
             ? strings.pillOff
             : esm.running
-                ? strings.pillRun
-                : strings.pillSp;
+            ? strings.pillRun
+            : strings.pillSp;
         var foreground = theme.colorScheme.onTertiaryContainer;
         var background = poloColors.tertiaryLight;
         if (!esm.on) {
@@ -924,12 +894,7 @@ class _EnterSendsPill extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
                 child: Text(
                   label,
-                  style: TextStyle(
-                    fontFamily: 'RobotoCondensed',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: foreground,
-                  ),
+                  style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: foreground),
                 ),
               ),
             ),
@@ -946,11 +911,10 @@ class _EnterSendsPill extends StatelessWidget {
 /// the dialog too: the keyer area is where the message is then watched. The speed is clamped to what radio1's
 /// keyer accepts, and what shows afterwards is what the radio reports back,
 /// never the typed value assumed.
-Future<void> showKeyerSpeedDialog(BuildContext context, CatService cat, {required HaLoServices services}) =>
-    showHaloDialog<void>(
-      context: context,
-      builder: (context) => _KeyerSpeedDialog(cat: cat, services: services),
-    );
+Future<void> showKeyerSpeedDialog(BuildContext context, CatService cat, {required HaLoServices services}) => showHaloDialog<void>(
+  context: context,
+  builder: (context) => _KeyerSpeedDialog(cat: cat, services: services),
+);
 
 class _KeyerSpeedDialog extends StatefulWidget {
   final CatService cat;
@@ -1099,9 +1063,7 @@ class _KeyerSpeedDialogState extends State<_KeyerSpeedDialog> {
         ],
       ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-      actions: [
-        FilledButton(onPressed: _save, child: Text(context.t.common.save)),
-      ],
+      actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
     );
   }
 }
@@ -1156,9 +1118,7 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
             // character), the estimate otherwise.
             final reported = progress.sentCount;
             final sent = reported ?? progress.sentAt(progress.total * _controller.value);
-            final fraction = reported == null
-                ? _controller.value
-                : (progress.text.isEmpty ? 1.0 : reported / progress.text.length);
+            final fraction = reported == null ? _controller.value : (progress.text.isEmpty ? 1.0 : reported / progress.text.length);
             // The text sizes the stack, and the bar is positioned across
             // its full width — so the bar is exactly as wide as the message
             // above it, and no wider under a short one. (An IntrinsicWidth
@@ -1170,15 +1130,20 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
                 Padding(
                   padding: const EdgeInsets.only(bottom: Space.xxs * 2),
                   child: Text.rich(
-                    TextSpan(children: [
-                      // Sent characters at full weight, the rest faded: the
-                      // boundary between them is the cursor.
-                      TextSpan(text: progress.text.substring(0, sent), style: style.copyWith(fontWeight: FontWeight.bold)),
-                      TextSpan(
-                        text: progress.text.substring(sent),
-                        style: style.copyWith(color: color.withValues(alpha: 0.55)),
-                      ),
-                    ]),
+                    TextSpan(
+                      children: [
+                        // Sent characters at full weight, the rest faded: the
+                        // boundary between them is the cursor.
+                        TextSpan(
+                          text: progress.text.substring(0, sent),
+                          style: style.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(
+                          text: progress.text.substring(sent),
+                          style: style.copyWith(color: color.withValues(alpha: 0.55)),
+                        ),
+                      ],
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     softWrap: false,
@@ -1207,11 +1172,7 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Flexible(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: widget.cat.stopCw,
-                    child: current,
-                  ),
+                  child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: widget.cat.stopCw, child: current),
                 ),
                 // Outside `current`, like the queue behind it and for the
                 // same reason: the bar is as wide as the message it paces,
@@ -1236,12 +1197,7 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
                               GestureDetector(
                                 behavior: HitTestBehavior.opaque,
                                 onTap: () => widget.cat.dropQueuedCw(progress.pendingIds[index]),
-                                child: Text(
-                                  ' · $text',
-                                  style: style.copyWith(color: color.withValues(alpha: 0.4)),
-                                  maxLines: 1,
-                                  softWrap: false,
-                                ),
+                                child: Text(' · $text', style: style.copyWith(color: color.withValues(alpha: 0.4)), maxLines: 1, softWrap: false),
                               ),
                           ],
                         ),

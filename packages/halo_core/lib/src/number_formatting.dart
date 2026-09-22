@@ -134,9 +134,7 @@ num? parseLocalizedNumber(String text) {
 /// `14,285` and re-parses to `14285` is fine, but one the operator then edits
 /// mid-group is not.
 String formatLocalizedNumber(num value) {
-  final text = value is int || value == value.roundToDouble() && value.abs() < 1e15
-      ? value.toInt().toString()
-      : value.toString();
+  final text = value is int || value == value.roundToDouble() && value.abs() < 1e15 ? value.toInt().toString() : value.toString();
   final decimal = NumberFormatting.instance.decimalSeparator;
   return decimal == '.' ? text : text.replaceAll('.', decimal);
 }

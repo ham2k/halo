@@ -68,10 +68,7 @@ class InformationPanel extends StatelessWidget {
     // absent until the first rescore completes.
     final scoring = operation.localData['scoring'] as Map<String, dynamic>?;
     final scorerKeys = orderedScorerKeys(scoring);
-    final duplicateCount =
-        ((operationSummaryFor(scoring, 'core')?['qsoCount'] as Map?)?['duplicates'] as num?)
-            ?.toInt() ??
-        0;
+    final duplicateCount = ((operationSummaryFor(scoring, 'core')?['qsoCount'] as Map?)?['duplicates'] as num?)?.toInt() ?? 0;
     // A single-day operation's per-day breakdown would just restate the
     // totals below it — the split only earns its place once there's more
     // than one day to tell apart.
@@ -95,19 +92,16 @@ class InformationPanel extends StatelessWidget {
         // The stats' "since last" segment is now-relative — re-derive once a
         // second (scoped to these lines) so it doesn't sit stale between QSO
         // stream updates.
-        OncePerSecond(builder: (context, _) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final line in operationStatsLines(context, qsos)) Text(line, style: theme.textTheme.bodyMedium),
-          ],
-        )),
+        OncePerSecond(
+          builder: (context, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [for (final line in operationStatsLines(context, qsos)) Text(line, style: theme.textTheme.bodyMedium)],
+          ),
+        ),
         if (daySections.length > 1) ..._daySummaries(context, daySections),
         if (scoringWidgets.isNotEmpty) ...[
           const SizedBox(height: Space.xl),
-          Text(
-            context.t.loggingPanel.scoring,
-            style: theme.textTheme.titleSmall,
-          ),
+          Text(context.t.loggingPanel.scoring, style: theme.textTheme.titleSmall),
           ...scoringWidgets,
           if (duplicateCount > 0) Text('${context.t.loggingPanel.duplicates}: ${formatNumber(duplicateCount)}'),
         ],
@@ -133,21 +127,23 @@ class InformationPanel extends StatelessWidget {
       final scores = (section['scores'] as Map?)?.cast<String, dynamic>() ?? const {};
       final count = ((scores['core.qsoCount'] as Map?)?['count'] as num?)?.toInt() ?? 0;
 
-      widgets.add(Padding(
-        padding: const EdgeInsets.only(top: Space.xl, bottom: Space.sm),
-        child: Text.rich(
-          TextSpan(
-            style: theme.textTheme.bodyMedium,
-            children: [
-              TextSpan(
-                text: '${dayFormat.format(DateTime.fromMillisecondsSinceEpoch(dayMillis, isUtc: true))}: ',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              TextSpan(text: count == 1 ? t.qsoCountOne : t.qsoCountOther(count: count)),
-            ],
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(top: Space.xl, bottom: Space.sm),
+          child: Text.rich(
+            TextSpan(
+              style: theme.textTheme.bodyMedium,
+              children: [
+                TextSpan(
+                  text: '${dayFormat.format(DateTime.fromMillisecondsSinceEpoch(dayMillis, isUtc: true))}: ',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(text: count == 1 ? t.qsoCountOne : t.qsoCountOther(count: count)),
+              ],
+            ),
           ),
         ),
-      ));
+      );
 
       final dayTallies = Map<String, dynamic>.fromEntries(
         scores.entries.where((entry) {
@@ -179,11 +175,9 @@ class InformationPanel extends StatelessWidget {
     // (docs/design/activities.md §4) and still scores, so fall back to the
     // hunting control's own accent.
     final refs = operation.refs.cast<Map<String, dynamic>?>();
-    final ref = refs.firstWhere((r) => r?['type'] == scorerKey, orElse: () => null) ??
-        refs.firstWhere(
-          (r) => (r?['type'] as String?)?.startsWith(scorerKey) ?? false,
-          orElse: () => null,
-        );
+    final ref =
+        refs.firstWhere((r) => r?['type'] == scorerKey, orElse: () => null) ??
+        refs.firstWhere((r) => (r?['type'] as String?)?.startsWith(scorerKey) ?? false, orElse: () => null);
     // Each extension's own declared accent (same color `activityRefIcon`
     // tints its icon with) rather than one shared tertiary for every
     // scorer — falls back to a plain grey when the extension declares none.
@@ -191,8 +185,8 @@ class InformationPanel extends StatelessWidget {
     // only when there is no ref: a control declares the HUNTING type
     // ('pota'), while an activating operation's ref carries the activation one
     // ('potaActivation'), so the commoner case would otherwise be the grey one.
-    final iconColor = colorForRefType(activityControls, ref?['type'] as String?,
-            code: ref == null ? null : refCodeOf(ref)) ??
+    final iconColor =
+        colorForRefType(activityControls, ref?['type'] as String?, code: ref == null ? null : refCodeOf(ref)) ??
         colorForRefType(activityControls, scorerKey) ??
         theme.colorScheme.onSurfaceVariant;
 
@@ -205,11 +199,7 @@ class InformationPanel extends StatelessWidget {
   /// `onSurfaceVariant` icons) and every other scorer's (`_scorerSummary`,
   /// tinted with its own accent color). `qsoCount` is always skipped: its
   /// count is already the "N QSOs" line in the stats block above.
-  List<Widget> _tallyRows(
-    BuildContext context,
-    Map<String, dynamic> summary,
-    Color iconColor,
-  ) {
+  List<Widget> _tallyRows(BuildContext context, Map<String, dynamic> summary, Color iconColor) {
     final theme = Theme.of(context);
     final widgets = <Widget>[];
     for (final entry in summary.entries) {
@@ -226,24 +216,25 @@ class InformationPanel extends StatelessWidget {
 
       if (label == null || label.isEmpty) continue;
 
-      widgets.add(Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (tally['icon'] is String) ...[
-            // `titleSmall`'s cap-height sits a couple of pixels below the
-            // icon's own top edge — nudged down so the icon's optical center
-            // lines up with the title's baseline instead of its bounding box.
-            Padding(
-              padding: const EdgeInsets.only(top: Space.xxs),
-              child: Icon(resolveIconName(tally['icon'] as String), size: 16, color: iconColor),
-            ),
-            const SizedBox(width: Space.sm),
+      widgets.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (tally['icon'] is String) ...[
+              // `titleSmall`'s cap-height sits a couple of pixels below the
+              // icon's own top edge — nudged down so the icon's optical center
+              // lines up with the title's baseline instead of its bounding box.
+              Padding(
+                padding: const EdgeInsets.only(top: Space.xxs),
+                child: Icon(resolveIconName(tally['icon'] as String), size: 16, color: iconColor),
+              ),
+              const SizedBox(width: Space.sm),
+            ],
+            Expanded(child: Text(label, style: theme.textTheme.titleSmall)),
+            if (score != null && score.isNotEmpty) Text(score, style: theme.textTheme.titleMedium?.copyWith(fontFamily: 'RobotoMono')),
           ],
-          Expanded(child: Text(label, style: theme.textTheme.titleSmall)),
-          if (score != null && score.isNotEmpty)
-            Text(score, style: theme.textTheme.titleMedium?.copyWith(fontFamily: 'RobotoMono')),
-        ],
-      ));
+        ),
+      );
 
       if (detail != null && detail.isNotEmpty) {
         widgets.add(_tallyDetail(context, detail, isGrid: tally['grid'] == true));
@@ -267,31 +258,33 @@ class InformationPanel extends StatelessWidget {
   Widget _tallyDetail(BuildContext context, String detail, {required bool isGrid}) {
     final theme = Theme.of(context);
     final bodyStyle = theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-    final styleSheet = withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
-      p: isGrid
-          ? bodyStyle.copyWith(
-              fontFamily: 'RobotoMono',
-              fontSize: 12,
-              // Dimmer than onSurfaceVariant alone — a code still open should
-              // all but recede next to a worked one's full-strength strikethrough.
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-            )
-          : bodyStyle,
-      // The codes still open are the default paragraph color, dimmed above;
-      // a worked one is struck through AND set back to full strength, so the
-      // grid reads at a glance as done versus still needed rather than
-      // everything competing at the same weight. `null` when not a grid
-      // leaves the theme's own `del` style alone (`copyWith`'s `del ?? this.del`).
-      del: isGrid
-          ? bodyStyle.copyWith(
-              fontFamily: 'RobotoMono',
-              fontSize: 12,
-              color: theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-              decoration: TextDecoration.lineThrough,
-            )
-          : null,
-    ));
+    final styleSheet = withEmojiFallback(
+      MarkdownStyleSheet.fromTheme(theme).copyWith(
+        p: isGrid
+            ? bodyStyle.copyWith(
+                fontFamily: 'RobotoMono',
+                fontSize: 12,
+                // Dimmer than onSurfaceVariant alone — a code still open should
+                // all but recede next to a worked one's full-strength strikethrough.
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              )
+            : bodyStyle,
+        // The codes still open are the default paragraph color, dimmed above;
+        // a worked one is struck through AND set back to full strength, so the
+        // grid reads at a glance as done versus still needed rather than
+        // everything competing at the same weight. `null` when not a grid
+        // leaves the theme's own `del` style alone (`copyWith`'s `del ?? this.del`).
+        del: isGrid
+            ? bodyStyle.copyWith(
+                fontFamily: 'RobotoMono',
+                fontSize: 12,
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+                decoration: TextDecoration.lineThrough,
+              )
+            : null,
+      ),
+    );
     return Padding(
       padding: const EdgeInsets.only(top: Space.xs),
       child: MarkdownBody(data: detail, softLineBreak: true, styleSheet: styleSheet),

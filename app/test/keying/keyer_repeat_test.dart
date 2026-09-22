@@ -36,11 +36,7 @@ void main() {
   });
 
   Future<void> connectPlaceholder() async {
-    final node = await cat.addNode(
-      typeKey: 'placeholder-radio',
-      name: 'Bench Rig',
-      config: placeholderRadioModel.variants.single.defaultConfig,
-    );
+    final node = await cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
     await cat.connect(node.uuid);
     addTearDown(() => cat.disconnect(node.uuid));
   }

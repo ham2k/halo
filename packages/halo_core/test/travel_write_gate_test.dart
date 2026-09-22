@@ -71,7 +71,7 @@ void main() {
 
       await operations.saveData(Operation(uuid: op.uuid, data: {...op.data, 'userTitle': 'Field Day'}));
       final qso = await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'}
+        'their': {'call': 'W1AW'},
       });
       await qsos.update(Qso(uuid: qso.uuid, operationUuid: op.uuid, data: {...qso.data, 'notes': 'x'}));
       await qsos.softDelete(qso);
@@ -86,12 +86,8 @@ void main() {
       final op = await operations.create(stationCall: 'KI2D');
       travel();
 
-      await expectLater(
-        operations.saveData(Operation(uuid: op.uuid, data: {...op.data, 'userTitle': 'changed'})),
-        throwsA(isA<WriteRefused>()),
-      );
-      expect((await operations.get(op.uuid))!.userTitle, isNot('changed'),
-          reason: 'the refusal must leave the row untouched, not throw after writing');
+      await expectLater(operations.saveData(Operation(uuid: op.uuid, data: {...op.data, 'userTitle': 'changed'})), throwsA(isA<WriteRefused>()));
+      expect((await operations.get(op.uuid))!.userTitle, isNot('changed'), reason: 'the refusal must leave the row untouched, not throw after writing');
     });
 
     test('deleting a real operation is refused too', () async {
@@ -107,7 +103,7 @@ void main() {
       travel();
       await expectLater(
         qsos.add(op.uuid, {
-          'their': {'call': 'W1AW'}
+          'their': {'call': 'W1AW'},
         }),
         throwsA(isA<WriteRefused>()),
       );
@@ -117,13 +113,10 @@ void main() {
     test('editing and deleting an existing real contact are refused', () async {
       final op = await operations.create(stationCall: 'KI2D');
       final qso = await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'}
+        'their': {'call': 'W1AW'},
       });
       travel();
-      await expectLater(
-        qsos.update(Qso(uuid: qso.uuid, operationUuid: op.uuid, data: {...qso.data, 'notes': 'x'})),
-        throwsA(isA<WriteRefused>()),
-      );
+      await expectLater(qsos.update(Qso(uuid: qso.uuid, operationUuid: op.uuid, data: {...qso.data, 'notes': 'x'})), throwsA(isA<WriteRefused>()));
       await expectLater(qsos.softDelete(qso), throwsA(isA<WriteRefused>()));
     });
 
@@ -131,14 +124,17 @@ void main() {
       final op = await operations.create(stationCall: 'KI2D');
       travel();
       await expectLater(
-        qsos.writeBatch(operationUuid: op.uuid, inserts: [
-          {
-            'their': {'call': 'W1AW'}
-          },
-          {
-            'their': {'call': 'K1ABC'}
-          },
-        ]),
+        qsos.writeBatch(
+          operationUuid: op.uuid,
+          inserts: [
+            {
+              'their': {'call': 'W1AW'},
+            },
+            {
+              'their': {'call': 'K1ABC'},
+            },
+          ],
+        ),
         throwsA(isA<WriteRefused>()),
       );
       expect(await qsos.watchForOperation(op.uuid).first, isEmpty);
@@ -157,12 +153,17 @@ void main() {
       travel();
       const smuggled = {
         'our': {'call': 'KI2D/TEST'},
-        'their': {'call': 'W1AW'}
+        'their': {'call': 'W1AW'},
       };
 
       await expectLater(qsos.add(op.uuid, {...smuggled}), throwsA(isA<WriteRefused>()));
       await expectLater(
-        qsos.writeBatch(operationUuid: op.uuid, inserts: [{...smuggled}]),
+        qsos.writeBatch(
+          operationUuid: op.uuid,
+          inserts: [
+            {...smuggled},
+          ],
+        ),
         throwsA(isA<WriteRefused>()),
       );
       expect(await qsos.watchForOperation(op.uuid).first, isEmpty);
@@ -181,11 +182,17 @@ void main() {
       travel();
 
       await expectLater(
-        qsos.update(Qso(uuid: loose.uuid, operationUuid: '', data: {
-          ...loose.data,
-          'our': {'call': 'KI2D/TEST'},
-          'startAtMillis': 1,
-        })),
+        qsos.update(
+          Qso(
+            uuid: loose.uuid,
+            operationUuid: '',
+            data: {
+              ...loose.data,
+              'our': {'call': 'KI2D/TEST'},
+              'startAtMillis': 1,
+            },
+          ),
+        ),
         throwsA(isA<WriteRefused>()),
       );
       expect((await qsos.get(loose.uuid))!.data['startAtMillis'], 1780000000000);
@@ -194,14 +201,20 @@ void main() {
     test('deleting a real contact cannot be unlocked by the snapshot either', () async {
       final op = await operations.create(stationCall: 'KI2D');
       final qso = await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'}
+        'their': {'call': 'W1AW'},
       });
       travel();
       await expectLater(
-        qsos.softDelete(Qso(uuid: qso.uuid, operationUuid: op.uuid, data: {
-          ...qso.data,
-          'our': {'call': 'KI2D/TEST'},
-        })),
+        qsos.softDelete(
+          Qso(
+            uuid: qso.uuid,
+            operationUuid: op.uuid,
+            data: {
+              ...qso.data,
+              'our': {'call': 'KI2D/TEST'},
+            },
+          ),
+        ),
         throwsA(isA<WriteRefused>()),
       );
       expect((await qsos.get(qso.uuid))!.deleted, isFalse);
@@ -215,7 +228,7 @@ void main() {
 
       await operations.saveData(Operation(uuid: op.uuid, data: {...op.data, 'userTitle': 'Travelled'}));
       final qso = await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'}
+        'their': {'call': 'W1AW'},
       });
       await qsos.update(Qso(uuid: qso.uuid, operationUuid: op.uuid, data: {...qso.data, 'notes': 'x'}));
       expect((await operations.get(op.uuid))!.userTitle, 'Travelled');
@@ -238,7 +251,7 @@ void main() {
       await expectLater(
         qsos.add('', {
           'our': {'call': 'KI2D'},
-          'their': {'call': 'W1AW'}
+          'their': {'call': 'W1AW'},
         }),
         throwsA(isA<WriteRefused>()),
       );
@@ -251,10 +264,7 @@ void main() {
       // make this one write its own permission slip, and every write after it.
       final op = await operations.create(stationCall: 'KI2D');
       travel();
-      await expectLater(
-        operations.saveData(Operation(uuid: op.uuid, data: {...op.data, 'stationCall': 'KI2D/TEST'})),
-        throwsA(isA<WriteRefused>()),
-      );
+      await expectLater(operations.saveData(Operation(uuid: op.uuid, data: {...op.data, 'stationCall': 'KI2D/TEST'})), throwsA(isA<WriteRefused>()));
       expect((await operations.get(op.uuid))!.isTestOperation, isFalse);
     });
 
@@ -264,10 +274,7 @@ void main() {
       // next write, with no way back short of ending travel.
       final op = await operations.create(stationCall: 'KI2D/T');
       travel();
-      await expectLater(
-        operations.saveData(Operation(uuid: op.uuid, data: {...op.data, 'stationCall': 'KI2D'})),
-        throwsA(isA<WriteRefused>()),
-      );
+      await expectLater(operations.saveData(Operation(uuid: op.uuid, data: {...op.data, 'stationCall': 'KI2D'})), throwsA(isA<WriteRefused>()));
       expect((await operations.get(op.uuid))!.isTestOperation, isTrue);
     });
 
@@ -275,12 +282,11 @@ void main() {
       travel();
       final op = await operations.create(stationCall: 'KI2D');
       expect(op.stationCall, 'KI2D/TEST');
-      expect(op.isTestOperation, isTrue,
-          reason: 'created unmarked it would be unwritable by the very gate that let it exist');
+      expect(op.isTestOperation, isTrue, reason: 'created unmarked it would be unwritable by the very gate that let it exist');
       // And it is immediately usable, which is the whole point of marking
       // rather than refusing.
       await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'}
+        'their': {'call': 'W1AW'},
       });
     });
 
@@ -304,7 +310,7 @@ void main() {
       final op = await operations.create(stationCall: '');
       expect(op.isTestOperation, isTrue);
       await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'}
+        'their': {'call': 'W1AW'},
       });
     });
   });
@@ -353,7 +359,7 @@ void main() {
     test('testQsosWithoutOperation finds them, and nothing else', () async {
       final op = await operations.create(stationCall: 'KI2D/T');
       await qsos.add(op.uuid, {
-        'their': {'call': 'IN-AN-OP'}
+        'their': {'call': 'IN-AN-OP'},
       });
       final loose = await qsos.add('', {
         'our': {'call': 'KI2D/TEST'},
@@ -365,9 +371,13 @@ void main() {
       });
 
       final found = await qsos.testQsosWithoutOperation();
-      expect(found.map((q) => q.uuid), [loose.uuid],
-          reason: 'a contact inside an operation is that operation\'s to purge, and a '
-              'loose contact with a REAL call is not test data at all');
+      expect(
+        found.map((q) => q.uuid),
+        [loose.uuid],
+        reason:
+            'a contact inside an operation is that operation\'s to purge, and a '
+            'loose contact with a REAL call is not test data at all',
+      );
     });
 
     test('purging them tombstones rather than deleting, so the removal syncs', () async {
@@ -383,15 +393,11 @@ void main() {
       expect(row.deleted, isTrue);
       expect(row.purged, isTrue);
       // `synced` is a column rather than a model field, so read it directly.
-      final synced = (await db
-              .customSelect('SELECT synced FROM qsos WHERE uuid = ?',
-                  variables: [Variable.withString(loose.uuid)])
-              .getSingle())
-          .read<bool>('synced');
-      expect(synced, isFalse,
-          reason: 'a purge the other devices never hear about leaves the contact alive there');
-      expect(await qsos.testQsosWithoutOperation(), isEmpty,
-          reason: 'and it must not be offered for purging twice');
+      final synced = (await db.customSelect('SELECT synced FROM qsos WHERE uuid = ?', variables: [Variable.withString(loose.uuid)]).getSingle()).read<bool>(
+        'synced',
+      );
+      expect(synced, isFalse, reason: 'a purge the other devices never hear about leaves the contact alive there');
+      expect(await qsos.testQsosWithoutOperation(), isEmpty, reason: 'and it must not be offered for purging twice');
     });
 
     test('the orphan sweep collects them once the tombstone has synced', () async {
@@ -403,8 +409,7 @@ void main() {
         'their': {'call': 'W1AW'},
       });
       await qsos.purgeQsos([loose.uuid]);
-      expect(await qsos.hardDeletePurgedOrphans(), 0,
-          reason: 'not while the tombstone is still unsynced — the other devices need it first');
+      expect(await qsos.hardDeletePurgedOrphans(), 0, reason: 'not while the tombstone is still unsynced — the other devices need it first');
 
       await qsos.markSynced([(await qsos.get(loose.uuid))!]);
       expect(await qsos.hardDeletePurgedOrphans(), 1);
@@ -464,7 +469,7 @@ void main() {
       // its contacts with it unless they were purged too.
       final op = await operations.create(stationCall: 'KI2D');
       final qso = await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'}
+        'their': {'call': 'W1AW'},
       });
       await qsos.markSynced([(await qsos.get(qso.uuid))!]);
       await operations.hardDeleteOperation(op.uuid);
@@ -501,11 +506,9 @@ void main() {
         },
       ]);
 
-      expect(await qsos.purgeQsos(nominated), 1,
-          reason: 'only the row that still qualifies, and the count is what was written');
+      expect(await qsos.purgeQsos(nominated), 1, reason: 'only the row that still qualifies, and the count is what was written');
       expect((await qsos.get(stillLoose.uuid))!.purged, isTrue);
-      expect((await qsos.get(adopted.uuid))!.purged, isFalse,
-          reason: 'it belongs to an operation now, so it is that operation\'s to purge');
+      expect((await qsos.get(adopted.uuid))!.purged, isFalse, reason: 'it belongs to an operation now, so it is that operation\'s to purge');
     });
 
     test('a purge for a contact this device never had creates nothing', () async {

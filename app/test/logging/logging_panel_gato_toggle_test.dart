@@ -36,20 +36,13 @@ void main() {
   });
 
   Widget wrap(Widget child) => TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: SizedBox(width: 400, height: 800, child: child),
-          ),
-        ),
-      );
+    child: MaterialApp(
+      home: Scaffold(body: SizedBox(width: 400, height: 800, child: child)),
+    ),
+  );
 
-  LoggingPanel panel() => LoggingPanel(
-        operation: operation,
-        services: services,
-        qsos: const [],
-        loggingControls: const [],
-        onCommandAction: (action, [params]) async {},
-      );
+  LoggingPanel panel() =>
+      LoggingPanel(operation: operation, services: services, qsos: const [], loggingControls: const [], onCommandAction: (action, [params]) async {});
 
   testWidgets('turning the experiment off after mount does not leak the cat listener past dispose', (tester) async {
     await services.settings.setExperimentEnabled('gato', true);
@@ -65,10 +58,7 @@ void main() {
     // A leaked listener would call setState() on the now-disposed panel the
     // next time anything touches CatService — addNode is a real trigger,
     // not just a bare notifyListeners() a mock could paper over.
-    await expectLater(
-      () => services.cat.addNode(typeKey: 'kenwood-serial', name: 'Test Radio'),
-      returnsNormally,
-    );
+    await expectLater(() => services.cat.addNode(typeKey: 'kenwood-serial', name: 'Test Radio'), returnsNormally);
   });
 
   testWidgets('turning the experiment on while mounted starts reflecting live CAT state', (tester) async {
@@ -98,12 +88,7 @@ void main() {
     // panel follows its VFO. Asking `cat.radio1 != null` here answers "is it
     // LOCAL", which reads the Radio control as unconfigured while the
     // Station dialog above it names the rig.
-    await services.cat.setRadio1(const PeerRadio(PeerRadioSelection(
-      deviceId: 'device-a',
-      radioId: 'rig-1',
-      deviceName: "VE1SK's iPad",
-      radioName: 'FTDX10',
-    )));
+    await services.cat.setRadio1(const PeerRadio(PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-1', deviceName: "VE1SK's iPad", radioName: 'FTDX10')));
     await tester.pump();
 
     expect(controls().radio.hasConfiguredRadio, isTrue);
@@ -113,9 +98,7 @@ void main() {
     // permanent alarm about a radio that is working fine.
     expect(controls().radio.radioConnected, isFalse, reason: 'nobody is offering it yet');
 
-    services.peerRemoteRadios.setOffers('device-a', "VE1SK's iPad", const [
-      PeerRadioOffer(id: 'rig-1', name: 'FTDX10'),
-    ]);
+    services.peerRemoteRadios.setOffers('device-a', "VE1SK's iPad", const [PeerRadioOffer(id: 'rig-1', name: 'FTDX10')]);
     await tester.pump();
 
     expect(controls().radio.radioConnected, isTrue);

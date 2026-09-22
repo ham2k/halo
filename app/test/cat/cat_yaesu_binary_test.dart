@@ -450,10 +450,7 @@ void main() {
     test('the capture prints the raw TX byte only when it is switched on', () {
       fakeAsync((async) {
         final sink = _FakeSink();
-        final session = YaesuBinarySession(sink, config: const {
-          telemetryIntervalConfigKey: 200,
-          yaesuBinaryMeterCaptureConfigKey: true,
-        });
+        final session = YaesuBinarySession(sink, config: const {telemetryIntervalConfigKey: 200, yaesuBinaryMeterCaptureConfigKey: true});
         session.startUpdates();
         session.feed([0x00, 0x70, 0x74, 0x00, 0x01]);
         async.elapse(const Duration(milliseconds: 200));

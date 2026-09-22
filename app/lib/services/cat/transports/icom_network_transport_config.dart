@@ -18,30 +18,20 @@ mixin IcomNetworkTransportConfig implements EquipmentTransport {
   Set<String> get secretFields => const {'password'};
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [
-        if (!overrides.containsKey('host')) hostConfigElement(),
-        if (!overrides.containsKey('username'))
-          {
-            'type': 'field',
-            'fieldType': 'text',
-            'key': 'username',
-            'label': t.settings.station.radioUser,
-            'description': t.settings.station.radioLoginDescription,
-          },
-        if (!overrides.containsKey('password'))
-          {
-            // 'secret' is the app's obscured field type; CatService routes
-            // this one to the keychain.
-            'type': 'field',
-            'fieldType': 'secret',
-            'key': 'password',
-            'label': t.settings.station.radioPass,
-          },
-      ];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    if (!overrides.containsKey('host')) hostConfigElement(),
+    if (!overrides.containsKey('username'))
+      {'type': 'field', 'fieldType': 'text', 'key': 'username', 'label': t.settings.station.radioUser, 'description': t.settings.station.radioLoginDescription},
+    if (!overrides.containsKey('password'))
+      {
+        // 'secret' is the app's obscured field type; CatService routes
+        // this one to the keychain.
+        'type': 'field',
+        'fieldType': 'secret',
+        'key': 'password',
+        'label': t.settings.station.radioPass,
+      },
+  ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
@@ -51,9 +41,7 @@ mixin IcomNetworkTransportConfig implements EquipmentTransport {
       case 'username':
         // A blank username fails at login with a timeout that looks like a
         // network problem, so catch it in the editor.
-        return stringFromConfig({...config, key: value}, key).trim().isEmpty
-            ? t.settings.station.radioUserRequired
-            : null;
+        return stringFromConfig({...config, key: value}, key).trim().isEmpty ? t.settings.station.radioUserRequired : null;
       default:
         return null;
     }
@@ -61,10 +49,10 @@ mixin IcomNetworkTransportConfig implements EquipmentTransport {
 
   @override
   Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
-        'host': trimmedHost(config),
-        'username': stringFromConfig(config, 'username').trim(),
-        'password': stringFromConfig(config, 'password'),
-      };
+    'host': trimmedHost(config),
+    'username': stringFromConfig(config, 'username').trim(),
+    'password': stringFromConfig(config, 'password'),
+  };
 
   @override
   String describeTarget(Map<String, dynamic> config) => trimmedHost(config);

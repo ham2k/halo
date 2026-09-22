@@ -12,19 +12,14 @@ import 'package:halo_core/halo_core.dart';
 import 'package:test/test.dart';
 
 const _serial = SequenceDescriptor(refType: 'cqwpx', field: 'serial', key: 'cqwpx/serial');
-const _perBand = SequenceDescriptor(
-  refType: 'test',
-  field: 'serial',
-  key: 'test/serial',
-  scope: ['band'],
-);
+const _perBand = SequenceDescriptor(refType: 'test', field: 'serial', key: 'test/serial', scope: ['band']);
 
 Map<String, dynamic> _qsoData({String call = 'N0CALL', String band = '20m', List? refs}) => {
-      'band': band,
-      'mode': 'CW',
-      'their': {'call': call},
-      'refs': ?refs,
-    };
+  'band': band,
+  'mode': 'CW',
+  'their': {'call': call},
+  'refs': ?refs,
+};
 
 int? _serialOf(Qso qso, {String type = 'cqwpx'}) {
   for (final ref in qso.refs) {
@@ -95,9 +90,11 @@ void main() {
   test('an operator-typed number is kept, and the counter jumps past it', () async {
     final typed = await qsos.add(
       op,
-      _qsoData(refs: [
-        {'type': 'cqwpx', 'serial': 57},
-      ]),
+      _qsoData(
+        refs: [
+          {'type': 'cqwpx', 'serial': 57},
+        ],
+      ),
       serialSequences: [_serial],
     );
     expect(_serialOf(typed), 57, reason: 'what they sent on the air wins over what we would have picked');
@@ -108,8 +105,16 @@ void main() {
 
   test('a band-scoped sequence numbers each band separately', () async {
     final a = await qsos.add(op, _qsoData(band: '20m'), serialSequences: [_perBand]);
-    final b = await qsos.add(op, _qsoData(call: 'W1AW', band: '40m'), serialSequences: [_perBand]);
-    final c = await qsos.add(op, _qsoData(call: 'K1ABC', band: '20m'), serialSequences: [_perBand]);
+    final b = await qsos.add(
+      op,
+      _qsoData(call: 'W1AW', band: '40m'),
+      serialSequences: [_perBand],
+    );
+    final c = await qsos.add(
+      op,
+      _qsoData(call: 'K1ABC', band: '20m'),
+      serialSequences: [_perBand],
+    );
 
     expect(_serialOf(a, type: 'test'), 1);
     expect(_serialOf(b, type: 'test'), 1);
@@ -121,16 +126,22 @@ void main() {
     // can still change band before pressing Enter. Resolving the label at
     // commit is what makes that safe.
     await qsos.add(op, _qsoData(band: '20m'), serialSequences: [_perBand]);
-    final moved = await qsos.add(op, _qsoData(call: 'W1AW', band: '15m'), serialSequences: [_perBand]);
+    final moved = await qsos.add(
+      op,
+      _qsoData(call: 'W1AW', band: '15m'),
+      serialSequences: [_perBand],
+    );
     expect(_serialOf(moved, type: 'test'), 1);
   });
 
   test('a serial ref coexists with the contest exchange already on it', () async {
     final qso = await qsos.add(
       op,
-      _qsoData(refs: [
-        {'type': 'cqwpx', 'exchange': '05'},
-      ]),
+      _qsoData(
+        refs: [
+          {'type': 'cqwpx', 'exchange': '05'},
+        ],
+      ),
       serialSequences: [_serial],
     );
     final ref = qso.refs.firstWhere((r) => r['type'] == 'cqwpx');
@@ -171,17 +182,19 @@ void main() {
     final first = await qsos.add(op, _qsoData(), serialSequences: [_serial]);
     expect(await sequences.peek(op, request), 2);
 
-    await qsos.update(Qso(
-      uuid: first.uuid,
-      operationUuid: op,
-      data: {
-        ..._qsoData(),
-        'uuid': first.uuid,
-        'refs': [
-          {'type': 'cqwpx', 'serial': 500},
-        ],
-      },
-    ));
+    await qsos.update(
+      Qso(
+        uuid: first.uuid,
+        operationUuid: op,
+        data: {
+          ..._qsoData(),
+          'uuid': first.uuid,
+          'refs': [
+            {'type': 'cqwpx', 'serial': 500},
+          ],
+        },
+      ),
+    );
 
     expect(await sequences.peek(op, request), 501, reason: 'the hand-edited number must not be re-issued');
   });
@@ -213,9 +226,15 @@ void main() {
     await qsos.add(op, _qsoData(), serialSequences: [_serial]);
     expect(await sequences.peek(op, request), 2);
 
-    await qsos.add(op, _qsoData(call: 'K1ABC', refs: [
-      {'type': 'cqwpx', 'serial': 77},
-    ]));
+    await qsos.add(
+      op,
+      _qsoData(
+        call: 'K1ABC',
+        refs: [
+          {'type': 'cqwpx', 'serial': 77},
+        ],
+      ),
+    );
 
     expect(await sequences.peek(op, request), 78);
   });
@@ -279,7 +298,11 @@ void main() {
       'kind': 'serial',
       'refType': 'cqwpx',
       'field': 'serial',
-      'sequence': {'key': 'serial', 'scope': ['band'], 'start': 5},
+      'sequence': {
+        'key': 'serial',
+        'scope': ['band'],
+        'start': 5,
+      },
     }, extensionKey: 'cqwpx');
     expect(good, isNotNull);
     expect(good!.key, 'cqwpx/serial', reason: 'namespaced so two contests never share a counter');
@@ -290,10 +313,7 @@ void main() {
     // against a wrong label.
     expect(SequenceDescriptor.fromInput({'kind': 'text', 'refType': 'x', 'field': 'y'}, extensionKey: 'x'), isNull);
     expect(SequenceDescriptor.fromInput({'kind': 'serial', 'refType': 'x'}, extensionKey: 'x'), isNull);
-    expect(
-      SequenceDescriptor.fromInput({'kind': 'serial', 'refType': 'x', 'field': 'y', 'sequence': {}}, extensionKey: 'x'),
-      isNull,
-    );
+    expect(SequenceDescriptor.fromInput({'kind': 'serial', 'refType': 'x', 'field': 'y', 'sequence': {}}, extensionKey: 'x'), isNull);
   });
 
   group('the duplicate-serial mark (docs/design/contests.md §5.8.1)', () {
@@ -304,7 +324,12 @@ void main() {
       await qsos.add(op, _qsoData(), serialSequences: [_serial]);
       final again = await qsos.add(
         op,
-        _qsoData(call: 'W1AW', refs: [{'type': 'cqwpx', 'serial': 1}]),
+        _qsoData(
+          call: 'W1AW',
+          refs: [
+            {'type': 'cqwpx', 'serial': 1},
+          ],
+        ),
         serialSequences: [_serial],
       );
       expect(_serialOf(again), 1);
@@ -315,7 +340,12 @@ void main() {
       await qsos.add(op, _qsoData(), serialSequences: [_serial]);
       final shown = await qsos.add(
         op,
-        _qsoData(call: 'W1AW', refs: [{'type': 'cqwpx', 'serial': 2}]),
+        _qsoData(
+          call: 'W1AW',
+          refs: [
+            {'type': 'cqwpx', 'serial': 2},
+          ],
+        ),
         serialSequences: [_serial],
       );
       expect(shown.serialConflict, isFalse);

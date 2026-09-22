@@ -30,11 +30,7 @@ import 'package:ham2k_logger/services/update_service.dart';
 import 'package:ham2k_logger/views/update_check_row.dart';
 
 class _FakeUpdateCheckService extends UpdateCheckService {
-  _FakeUpdateCheckService({
-    this.outcome = UpdateCheckOutcome.upToDate,
-    this.throwOnCheck = false,
-    this.destination,
-  });
+  _FakeUpdateCheckService({this.outcome = UpdateCheckOutcome.upToDate, this.throwOnCheck = false, this.destination});
 
   final UpdateCheckOutcome outcome;
   final bool throwOnCheck;
@@ -99,13 +95,14 @@ void main() {
   });
 
   Future<void> pumpRow(WidgetTester tester, HaLoServices services) => tester.pumpWidget(
-        TranslationProvider(
-          child: MaterialApp(home: Scaffold(body: UpdateCheckRow(services: services))),
-        ),
-      );
+    TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(body: UpdateCheckRow(services: services)),
+      ),
+    ),
+  );
 
-  testWidgets('is not shown when no update mechanism applies to this build (the OSS default, off the web)',
-      (tester) async {
+  testWidgets('is not shown when no update mechanism applies to this build (the OSS default, off the web)', (tester) async {
     final services = await _makeServices();
     addTearDown(services.db.close);
 
@@ -139,8 +136,7 @@ void main() {
     expect(find.text('An update has been downloaded. Restart to apply it.'), findsOneWidget);
   });
 
-  testWidgets('an unexpected exception from a check does not leave the row stuck on "Checking…" forever',
-      (tester) async {
+  testWidgets('an unexpected exception from a check does not leave the row stuck on "Checking…" forever', (tester) async {
     final updateCheck = _FakeUpdateCheckService(throwOnCheck: true);
     final services = await _makeServices(updateCheck: updateCheck);
     addTearDown(services.db.close);
@@ -188,10 +184,7 @@ void main() {
   testWidgets('a scheme nothing on the device handles is logged, not left as a silent dead tap', (tester) async {
     launcher = _RecordingLauncher(handles: false);
     UrlLauncherPlatform.instance = launcher;
-    final updateCheck = _FakeUpdateCheckService(
-      outcome: UpdateCheckOutcome.updateAvailable,
-      destination: Uri.parse('itms-beta://'),
-    );
+    final updateCheck = _FakeUpdateCheckService(outcome: UpdateCheckOutcome.updateAvailable, destination: Uri.parse('itms-beta://'));
     final services = await _makeServices(updateCheck: updateCheck);
     addTearDown(services.db.close);
 
@@ -206,8 +199,7 @@ void main() {
     expect(find.text('Update available'), findsOneWidget);
   });
 
-  testWidgets('an update the mechanism handles itself keeps the re-check tap (Sparkle owns its own UI)',
-      (tester) async {
+  testWidgets('an update the mechanism handles itself keeps the re-check tap (Sparkle owns its own UI)', (tester) async {
     final updateCheck = _FakeUpdateCheckService(outcome: UpdateCheckOutcome.updateAvailable);
     final services = await _makeServices(updateCheck: updateCheck);
     addTearDown(services.db.close);

@@ -127,9 +127,9 @@ class DatabaseSnapshotService {
   }
 
   Future<List<File>> _strayTemps(Directory dir) async => [
-        await for (final entry in dir.list())
-          if (entry is File && p.basename(entry.path).endsWith(kSnapshotTempSuffix)) entry,
-      ];
+    await for (final entry in dir.list())
+      if (entry is File && p.basename(entry.path).endsWith(kSnapshotTempSuffix)) entry,
+  ];
 }
 
 const kSnapshotPrefix = '$kDatabaseName-';

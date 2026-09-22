@@ -52,38 +52,26 @@ class _CannedExtensions extends ExtensionService {
 
   @override
   Future<List<Map<String, dynamic>>> getCommandCatalog() async => [
-        {'command': 'DEVMODE', 'describe': 'Toggle developer mode', 'category': 'Developer'},
-        {
-          'command': 'NOTE',
-          'params': '<text>',
-          'describe': 'Add a note to the log',
-          'category': 'Log annotations',
-          'needsOperation': true,
-          'expectsParams': true,
-        },
-        {'command': 'SYNCALL', 'describe': 'Sync all operations now', 'category': 'Sync'},
-        // Advertised in the catalog AND currently unrunnable, so a query for it
-        // puts an error and a result row on screen together. Deliberately NOT
-        // `needsOperation` — the palette drops those entirely with no operation
-        // open, which would empty the list and hide the very collision this
-        // models (the real shape is SYNCALL erroring while sync is disabled).
-        {'command': 'WIPEDB', 'describe': 'Erase the local database', 'category': 'Developer'},
-        // The ranking pair: "SET" is in SETUP's NAME and in 20M's
-        // DESCRIPTION, and the name match has to win. Also the only two
-        // `suggest` entries, so the empty-field samples are deterministic:
-        // DEVMODE and SYNCALL stand in for the commands that must never be
-        // volunteered.
-        {'command': 'SETUP', 'describe': 'Open the setup screen', 'category': 'App', 'suggest': true},
-        {'command': '20M', 'describe': 'Set the band to **20m**', 'category': 'Radio', 'suggest': true},
-      ];
+    {'command': 'DEVMODE', 'describe': 'Toggle developer mode', 'category': 'Developer'},
+    {'command': 'NOTE', 'params': '<text>', 'describe': 'Add a note to the log', 'category': 'Log annotations', 'needsOperation': true, 'expectsParams': true},
+    {'command': 'SYNCALL', 'describe': 'Sync all operations now', 'category': 'Sync'},
+    // Advertised in the catalog AND currently unrunnable, so a query for it
+    // puts an error and a result row on screen together. Deliberately NOT
+    // `needsOperation` — the palette drops those entirely with no operation
+    // open, which would empty the list and hide the very collision this
+    // models (the real shape is SYNCALL erroring while sync is disabled).
+    {'command': 'WIPEDB', 'describe': 'Erase the local database', 'category': 'Developer'},
+    // The ranking pair: "SET" is in SETUP's NAME and in 20M's
+    // DESCRIPTION, and the name match has to win. Also the only two
+    // `suggest` entries, so the empty-field samples are deterministic:
+    // DEVMODE and SYNCALL stand in for the commands that must never be
+    // volunteered.
+    {'command': 'SETUP', 'describe': 'Open the setup screen', 'category': 'App', 'suggest': true},
+    {'command': '20M', 'describe': 'Set the band to **20m**', 'category': 'Radio', 'suggest': true},
+  ];
 
   @override
-  Future<Map<String, dynamic>?> interpretCommand(
-    String input, [
-    Map<String, dynamic>? operation,
-    Map<String, dynamic>? qso,
-    bool execute = false,
-  ]) async {
+  Future<Map<String, dynamic>?> interpretCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
     final trimmed = input.trim().toUpperCase();
     interpretCalls++;
     if (execute) {
@@ -95,7 +83,9 @@ class _CannedExtensions extends ExtensionService {
         'describe': 'Activate developer mode?',
         'confirm': 'Developer mode activated',
         'commands': [
-          {'updateSettings': {'developerMode': true}},
+          {
+            'updateSettings': {'developerMode': true},
+          },
         ],
       };
     }
@@ -113,7 +103,9 @@ class _CannedExtensions extends ExtensionService {
         'describe': 'Change band to **20m**?',
         'confirm': 'Band set to **20m**',
         'commands': [
-          {'setVfo': {'band': '20m'}},
+          {
+            'setVfo': {'band': '20m'},
+          },
         ],
       };
     }
@@ -143,7 +135,9 @@ class _CannedExtensions extends ExtensionService {
         'describe': 'Change Thing to On?',
         'confirm': 'Thing set to On',
         'commands': [
-          {'updateSetting': {'key': 'noSuchThing', 'value': true}},
+          {
+            'updateSetting': {'key': 'noSuchThing', 'value': true},
+          },
         ],
       };
     }
@@ -169,8 +163,7 @@ class _CannedExtensions extends ExtensionService {
 
   /// A `command` hook answering again, later, for an input it already
   /// interpreted.
-  void pushInterpretation(String input, Map<String, dynamic> interpretation) =>
-      _pushes.add({'input': input, 'interpretation': interpretation});
+  void pushInterpretation(String input, Map<String, dynamic> interpretation) => _pushes.add({'input': input, 'interpretation': interpretation});
 
   /// Each lookup pass, in order, as ('CALL', online) — so a test can assert
   /// the offline pass really does run first, and that a caret move causes no
@@ -235,7 +228,9 @@ class _CannedExtensions extends ExtensionService {
         'lon': -72.727,
       },
       'lookups': const [
-        {'notes': ['ARRL co-founder']},
+        {
+          'notes': ['ARRL co-founder'],
+        },
       ],
     };
   }
@@ -254,21 +249,20 @@ Future<HaLoServices> _services(WidgetTester tester) async {
 /// that closing it (which the dialog does itself after running a command)
 /// behaves as it does in the app.
 Future<void> _pumpDialog(WidgetTester tester, HaLoServices services, {bool settle = true}) async {
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(
-      theme: buildHaLoTheme(Brightness.light),
-      home: Builder(
-        builder: (context) => Scaffold(
-          body: Center(
-            child: ElevatedButton(
-              onPressed: () => showCommandDialog(context, services),
-              child: const Text('open'),
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(onPressed: () => showCommandDialog(context, services), child: const Text('open')),
             ),
           ),
         ),
       ),
     ),
-  ));
+  );
   await tester.tap(find.text('open'));
   if (settle) await _settle(tester);
 }
@@ -310,11 +304,7 @@ Future<void> _unmount(WidgetTester tester) async {
 /// Opens a command-context entry the way `OperationView` does, optionally with
 /// a logging-panel dispatcher attached. Returns the entry so a test can close
 /// it again and check what the palette sees afterwards.
-OperationCommandContext _openOperation(
-  HaLoServices services,
-  String uuid, {
-  CommandActionsDispatcher? dispatch,
-}) {
+OperationCommandContext _openOperation(HaLoServices services, String uuid, {CommandActionsDispatcher? dispatch}) {
   final entry = services.openOperationContext(uuid);
   entry.operation = {'uuid': uuid};
   entry.dispatch = dispatch;
@@ -595,11 +585,7 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await _settle(tester);
 
-    expect(
-      tester.widget<TextField>(find.byType(TextField)).controller!.text,
-      'W1AW',
-      reason: 'the callsign must survive Enter',
-    );
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'W1AW', reason: 'the callsign must survive Enter');
     expect(find.byType(CallInfoPanel), findsOneWidget, reason: 'and so must its lookup');
     expect(find.text('Looking up callsign…'), findsNothing, reason: 'no spinner once the lookup is done');
     expect(find.text('Try'), findsNothing, reason: 'suggestions are for an EMPTY field');
@@ -629,21 +615,20 @@ void main() {
   testWidgets('Escape closes the dialog', (tester) async {
     final services = await _services(tester);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: Center(
-              child: ElevatedButton(
-                onPressed: () => showCommandDialog(context, services),
-                child: const Text('open'),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(onPressed: () => showCommandDialog(context, services), child: const Text('open')),
               ),
             ),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.tap(find.text('open'));
     await tester.pump();
@@ -706,9 +691,13 @@ void main() {
     // matters is that the action reaches a dispatcher.
     final services = await _services(tester);
     final dispatched = <List<dynamic>>[];
-    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
-      dispatched.add(actions);
-    });
+    _openOperation(
+      services,
+      'op-1',
+      dispatch: (actions, {bool skipOnlineLookup = false}) async {
+        dispatched.add(actions);
+      },
+    );
 
     await _pumpDialog(tester, services);
     await tester.enterText(find.byType(TextField), '20M');
@@ -717,7 +706,9 @@ void main() {
     await _settle(tester);
 
     expect(dispatched, hasLength(1));
-    expect(dispatched.single.single, {'setVfo': {'band': '20m'}});
+    expect(dispatched.single.single, {
+      'setVfo': {'band': '20m'},
+    });
 
     await _unmount(tester);
   });
@@ -728,9 +719,13 @@ void main() {
     // the rest forwarded — would reorder them, so the panel gets all of it.
     final services = await _services(tester);
     final dispatched = <List<dynamic>>[];
-    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
-      dispatched.add(actions);
-    });
+    _openOperation(
+      services,
+      'op-1',
+      dispatch: (actions, {bool skipOnlineLookup = false}) async {
+        dispatched.add(actions);
+      },
+    );
 
     await _pumpDialog(tester, services);
     await tester.enterText(find.byType(TextField), 'DEV');
@@ -741,7 +736,9 @@ void main() {
     // DEVMODE is app-scoped, and it STILL goes through the panel's
     // dispatcher — which handles those too — rather than being peeled off.
     expect(dispatched, hasLength(1));
-    expect(dispatched.single.single, {'updateSettings': {'developerMode': true}});
+    expect(dispatched.single.single, {
+      'updateSettings': {'developerMode': true},
+    });
 
     await _unmount(tester);
   });
@@ -886,9 +883,13 @@ void main() {
     final services = await _services(tester);
 
     final dispatchedByA = <List<dynamic>>[];
-    final a = _openOperation(services, 'op-A', dispatch: (actions, {bool skipOnlineLookup = false}) async {
-      dispatchedByA.add(actions);
-    });
+    final a = _openOperation(
+      services,
+      'op-A',
+      dispatch: (actions, {bool skipOnlineLookup = false}) async {
+        dispatchedByA.add(actions);
+      },
+    );
     expect(services.currentOperationContext, {'uuid': 'op-A'});
 
     final b = _openOperation(services, 'op-B', dispatch: (actions, {bool skipOnlineLookup = false}) async {});
@@ -904,7 +905,9 @@ void main() {
     await _settle(tester);
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await _settle(tester);
-    expect(dispatchedByA.single.single, {'setVfo': {'band': '20m'}});
+    expect(dispatchedByA.single.single, {
+      'setVfo': {'band': '20m'},
+    });
 
     services.closeOperationContext(a);
     expect(services.currentOperationContext, isNull);
@@ -973,12 +976,9 @@ void main() {
     // pops out and back in on every character.
     await tester.enterText(find.byType(TextField), 'SET lt');
     await tester.pump();
-    expect(find.textContaining('Nothing matches'), findsNothing,
-        reason: 'the hook has not answered yet; the card must wait rather than guess');
-    expect(find.text('No setting matches that'), findsOneWidget,
-        reason: 'the previous line holds the card open until this keystroke answers');
-    expect(tester.widgetList(find.byType(Material)).length, cardBefore,
-        reason: 'the card must not unmount and remount between keystrokes');
+    expect(find.textContaining('Nothing matches'), findsNothing, reason: 'the hook has not answered yet; the card must wait rather than guess');
+    expect(find.text('No setting matches that'), findsOneWidget, reason: 'the previous line holds the card open until this keystroke answers');
+    expect(tester.widgetList(find.byType(Material)).length, cardBefore, reason: 'the card must not unmount and remount between keystrokes');
 
     // Once it lands, the hook's own wording is what shows.
     await _settle(tester);
@@ -997,8 +997,11 @@ void main() {
     await tester.enterText(find.byType(TextField), 'WIPEDB');
     await _settle(tester);
 
-    expect(find.text('WIPEDB needs an open operation'), findsOneWidget,
-        reason: 'the catalog row for WIPEDB is on screen, and the error must not hide behind it');
+    expect(
+      find.text('WIPEDB needs an open operation'),
+      findsOneWidget,
+      reason: 'the catalog row for WIPEDB is on screen, and the error must not hide behind it',
+    );
     await _unmount(tester);
   });
 
@@ -1017,10 +1020,8 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await _settle(tester);
 
-    expect(find.text('Thing set to On'), findsNothing,
-        reason: 'the write failed; the confirm must not be the last word');
-    expect(find.textContaining('noSuchThing'), findsOneWidget,
-        reason: "the action's own account of the failure is what the operator gets");
+    expect(find.text('Thing set to On'), findsNothing, reason: 'the write failed; the confirm must not be the last word');
+    expect(find.textContaining('noSuchThing'), findsOneWidget, reason: "the action's own account of the failure is what the operator gets");
     final posted = services.statusBar.items.map((i) => i.text).toList();
     expect(posted, isNot(contains('Thing set to On')));
     await _unmount(tester);
@@ -1087,11 +1088,15 @@ void main() {
     // app-scoped actions by calling runCommandAction with ITS state — code
     // reached only through `currentCommandDispatch`, never through anything
     // the palette passed in.
-    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
-      for (final _ in actions) {
-        await runCommandAction(services, 'syncAll', null);
-      }
-    });
+    _openOperation(
+      services,
+      'op-1',
+      dispatch: (actions, {bool skipOnlineLookup = false}) async {
+        for (final _ in actions) {
+          await runCommandAction(services, 'syncAll', null);
+        }
+      },
+    );
     await _pumpDialog(tester, services);
 
     await tester.enterText(find.byType(TextField), 'SYNCALL');
@@ -1099,8 +1104,11 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await _settle(tester);
 
-    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget,
-        reason: 'the panel dispatched it, and the answer still comes back to where it was typed');
+    expect(
+      find.text(_t(tester).commands.enableSyncFirst),
+      findsOneWidget,
+      reason: 'the panel dispatched it, and the answer still comes back to where it was typed',
+    );
     expect(services.statusBar.items, isEmpty);
     await _unmount(tester);
   });
@@ -1114,10 +1122,14 @@ void main() {
     // started.
     final services = await _services(tester);
     final gate = Completer<void>();
-    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
-      await gate.future;
-      await runCommandAction(services, 'syncAll', null);
-    });
+    _openOperation(
+      services,
+      'op-1',
+      dispatch: (actions, {bool skipOnlineLookup = false}) async {
+        await gate.future;
+        await runCommandAction(services, 'syncAll', null);
+      },
+    );
     await _pumpDialog(tester, services);
 
     await tester.enterText(find.byType(TextField), 'SYNCALL');
@@ -1147,9 +1159,13 @@ void main() {
     // answer and reads success. Only the action knows which it is, so it says
     // so and the line renders what it was told.
     final services = await _services(tester);
-    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
-      await runCommandAction(services, 'syncAll', null);
-    });
+    _openOperation(
+      services,
+      'op-1',
+      dispatch: (actions, {bool skipOnlineLookup = false}) async {
+        await runCommandAction(services, 'syncAll', null);
+      },
+    );
     await _pumpDialog(tester, services);
 
     await tester.enterText(find.byType(TextField), 'SYNCALL');
@@ -1158,8 +1174,7 @@ void main() {
     await _settle(tester);
 
     expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget);
-    expect(find.byIcon(MdiIcons.alertCircle), findsOneWidget,
-        reason: 'the error affordance the message line already has, for the message that needs it');
+    expect(find.byIcon(MdiIcons.alertCircle), findsOneWidget, reason: 'the error affordance the message line already has, for the message that needs it');
     await _unmount(tester);
   });
 
@@ -1169,10 +1184,14 @@ void main() {
     // the operator's next move is to spot the refused one again, and a line
     // saying it worked is what stops them.
     final services = await _services(tester);
-    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
-      await runCommandAction(services, 'syncAll', null); // fails: sync is off
-      await runCommandAction(services, 'devSentry', {'message': 'ok'}); // succeeds
-    });
+    _openOperation(
+      services,
+      'op-1',
+      dispatch: (actions, {bool skipOnlineLookup = false}) async {
+        await runCommandAction(services, 'syncAll', null); // fails: sync is off
+        await runCommandAction(services, 'devSentry', {'message': 'ok'}); // succeeds
+      },
+    );
     await _pumpDialog(tester, services);
 
     await tester.enterText(find.byType(TextField), 'SYNCALL');
@@ -1180,11 +1199,9 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await _settle(tester);
 
-    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget,
-        reason: 'the failure is still the answer after a later action succeeded');
+    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget, reason: 'the failure is still the answer after a later action succeeded');
     expect(find.byIcon(MdiIcons.alertCircle), findsOneWidget);
-    expect(services.statusBar.items, isEmpty,
-        reason: 'and the suppressed success does not go contradict it somewhere else');
+    expect(services.statusBar.items, isEmpty, reason: 'and the suppressed success does not go contradict it somewhere else');
     await _unmount(tester);
   });
 
@@ -1197,10 +1214,14 @@ void main() {
     // batch has to say to the status bar behind an unrelated screen.
     final services = await _services(tester);
     final gate = Completer<void>();
-    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
-      await runCommandAction(services, 'syncAll', null);
-      await gate.future; // a second, slower action in the same batch
-    });
+    _openOperation(
+      services,
+      'op-1',
+      dispatch: (actions, {bool skipOnlineLookup = false}) async {
+        await runCommandAction(services, 'syncAll', null);
+        await gate.future; // a second, slower action in the same batch
+      },
+    );
     await _pumpDialog(tester, services);
 
     await tester.enterText(find.byType(TextField), 'SYNCALL');
@@ -1211,8 +1232,7 @@ void main() {
 
     await tester.pump(const Duration(seconds: 8));
     expect(find.byType(CommandDialog), findsOneWidget, reason: 'the batch has not finished');
-    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget,
-        reason: "the first action's word must still be there when the batch ends");
+    expect(find.text(_t(tester).commands.enableSyncFirst), findsOneWidget, reason: "the first action's word must still be there when the batch ends");
 
     gate.complete();
     await _settle(tester);
@@ -1229,10 +1249,14 @@ void main() {
     // rejected write is left holding the optimistic confirm.
     final services = await _services(tester);
     final gate = Completer<void>();
-    _openOperation(services, 'op-1', dispatch: (actions, {bool skipOnlineLookup = false}) async {
-      await gate.future;
-      await runCommandAction(services, 'syncAll', null);
-    });
+    _openOperation(
+      services,
+      'op-1',
+      dispatch: (actions, {bool skipOnlineLookup = false}) async {
+        await gate.future;
+        await runCommandAction(services, 'syncAll', null);
+      },
+    );
     await _pumpDialog(tester, services);
 
     await tester.enterText(find.byType(TextField), 'SYNCALL');
@@ -1246,8 +1270,7 @@ void main() {
 
     gate.complete();
     await _settle(tester);
-    expect(services.statusBar.items.map((i) => i.text), contains(_t(tester).commands.enableSyncFirst),
-        reason: 'the palette is gone; the message is not');
+    expect(services.statusBar.items.map((i) => i.text), contains(_t(tester).commands.enableSyncFirst), reason: 'the palette is gone; the message is not');
     await _unmount(tester);
   });
 
@@ -1291,8 +1314,11 @@ void main() {
     await _settle(tester);
 
     expect(find.byType(CommandDialog), findsNothing);
-    expect((services.extensions as _CannedExtensions).executed.where((c) => c == 'DEVMODE').length, 1,
-        reason: 'dismissing is not re-running the command that just ran');
+    expect(
+      (services.extensions as _CannedExtensions).executed.where((c) => c == 'DEVMODE').length,
+      1,
+      reason: 'dismissing is not re-running the command that just ran',
+    );
     await _unmount(tester);
   });
 
@@ -1401,16 +1427,14 @@ void main() {
     await tester.enterText(find.byType(TextField), '20M');
     await _settle(tester);
 
-    expect(find.textContaining('Change band to'), findsOneWidget,
-        reason: 'shown once, as the typed row\'s subtitle — not twice');
+    expect(find.textContaining('Change band to'), findsOneWidget, reason: 'shown once, as the typed row\'s subtitle — not twice');
     await _unmount(tester);
   });
 }
 
 /// This tree's translations — the app's own strings, so a test asserting on a
 /// message the app composed can't drift from it by transcribing it.
-Translations _t(WidgetTester tester) =>
-    TranslationProvider.of(tester.element(find.byType(MaterialApp))).translations;
+Translations _t(WidgetTester tester) => TranslationProvider.of(tester.element(find.byType(MaterialApp))).translations;
 
 /// The size the message line actually renders [text] at. Read off the
 /// RichText the markdown body builds: the style is set on a

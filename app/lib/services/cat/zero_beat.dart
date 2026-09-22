@@ -84,18 +84,8 @@ double applyZeroBeatOffset(double freqKHz, int offsetHz) => ((freqKHz * 1000).ro
 /// changes no frequency at all: the operator reads the number off the screen
 /// and dials it in, so an offset would hand them digits to hand-tune for no
 /// benefit and leave the log claiming a frequency they never transmitted on.
-bool shouldAvoidZeroBeat({
-  required bool enabled,
-  required bool radioConnected,
-  required String? mode,
-  required double? freqKHz,
-}) =>
-    enabled &&
-    radioConnected &&
-    freqKHz != null &&
-    freqKHz >= _lowestOffsettableKHz &&
-    mode != null &&
-    superModeForMode(mode) == 'CW';
+bool shouldAvoidZeroBeat({required bool enabled, required bool radioConnected, required String? mode, required double? freqKHz}) =>
+    enabled && radioConnected && freqKHz != null && freqKHz >= _lowestOffsettableKHz && mode != null && superModeForMode(mode) == 'CW';
 
 /// [qso] — a suggestion map — with its CW frequency moved off the spot, or
 /// [qso] itself when nothing should move. [draw] is `Random().nextDouble()`.
@@ -120,12 +110,7 @@ Map<String, dynamic> zeroBeatSuggestion(
   required double draw,
 }) {
   final freqKHz = asQsonNum(qso['freq'])?.toDouble();
-  if (!shouldAvoidZeroBeat(
-    enabled: enabled,
-    radioConnected: radioConnected,
-    mode: asQsonString(qso['mode']),
-    freqKHz: freqKHz,
-  )) {
+  if (!shouldAvoidZeroBeat(enabled: enabled, radioConnected: radioConnected, mode: asQsonString(qso['mode']), freqKHz: freqKHz)) {
     return qso;
   }
   final offsetHz = zeroBeatOffsetHz(rangeHz, draw);
@@ -170,24 +155,13 @@ class ZeroBeatOffsetter {
 
   /// The spot [qso] came from, as far as "the same spot" goes: a different
   /// frequency or mode for the same call is a different thing to tune to.
-  static String _keyFor(Map<String, dynamic> qso) =>
-      '${(qso['their'] as Map?)?['call']}|${qso['freq']}|${qso['mode']}';
+  static String _keyFor(Map<String, dynamic> qso) => '${(qso['their'] as Map?)?['call']}|${qso['freq']}|${qso['mode']}';
 
-  Map<String, dynamic> apply(
-    Map<String, dynamic> qso, {
-    required bool enabled,
-    required bool radioConnected,
-    required double rangeHz,
-  }) {
+  Map<String, dynamic> apply(Map<String, dynamic> qso, {required bool enabled, required bool radioConnected, required double rangeHz}) {
     // Gate BEFORE drawing, so a spot that will never be offset — phone, no
     // radio, feature off — spends no slot. Otherwise browsing a spot list
     // evicts the very draw this exists to keep.
-    if (!shouldAvoidZeroBeat(
-      enabled: enabled,
-      radioConnected: radioConnected,
-      mode: asQsonString(qso['mode']),
-      freqKHz: asQsonNum(qso['freq'])?.toDouble(),
-    )) {
+    if (!shouldAvoidZeroBeat(enabled: enabled, radioConnected: radioConnected, mode: asQsonString(qso['mode']), freqKHz: asQsonNum(qso['freq'])?.toDouble())) {
       return qso;
     }
     final key = _keyFor(qso);
@@ -198,12 +172,6 @@ class ZeroBeatOffsetter {
     final draw = _draws.remove(key) ?? _nextDraw();
     _draws[key] = draw;
     if (_draws.length > _maxRemembered) _draws.remove(_draws.keys.first);
-    return zeroBeatSuggestion(
-      qso,
-      enabled: enabled,
-      radioConnected: radioConnected,
-      rangeHz: rangeHz,
-      draw: draw,
-    );
+    return zeroBeatSuggestion(qso, enabled: enabled, radioConnected: radioConnected, rangeHz: rangeHz, draw: draw);
   }
 }

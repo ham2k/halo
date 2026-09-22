@@ -38,21 +38,12 @@ import 'package:meta/meta.dart' show visibleForTesting;
 
 import 'src/js_engine.dart';
 
-export 'src/engine_runtime.dart'
-    show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
+export 'src/engine_runtime.dart' show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
 // `show`n rather than exported wholesale: this library is imported unprefixed
 // across the app, and a bare `stringsIn` in its public surface turns any
 // same-named helper written later into an ambiguous-import error reported at
 // the use site, nowhere near the cause.
-export 'src/scoring_priority.dart'
-    show
-        Scorer,
-        judgesWorkedBefore,
-        kWorkedBeforeAlerts,
-        kWorkedBeforeNotices,
-        refTypesOf,
-        scorersFor,
-        withoutWorkedBefore;
+export 'src/scoring_priority.dart' show Scorer, judgesWorkedBefore, kWorkedBeforeAlerts, kWorkedBeforeNotices, refTypesOf, scorersFor, withoutWorkedBefore;
 
 typedef HostCallHandler = Future<dynamic> Function(String method, Map<String, dynamic> params);
 
@@ -72,12 +63,7 @@ class HookCallSample {
   /// synchronously and there is no queue to wait in.
   final int queueMicros;
 
-  const HookCallSample({
-    required this.label,
-    required this.totalMillis,
-    required this.jsMillis,
-    this.queueMicros = 0,
-  });
+  const HookCallSample({required this.label, required this.totalMillis, required this.jsMillis, this.queueMicros = 0});
 }
 
 /// The worst and typical queue wait seen for one hook label — see
@@ -90,12 +76,7 @@ class QueueWaitStat {
   final int worstMicros;
   final int totalMicros;
 
-  const QueueWaitStat({
-    required this.label,
-    required this.calls,
-    required this.worstMicros,
-    required this.totalMicros,
-  });
+  const QueueWaitStat({required this.label, required this.calls, required this.worstMicros, required this.totalMicros});
 
   int get meanMicros => calls == 0 ? 0 : totalMicros ~/ calls;
 
@@ -121,12 +102,7 @@ List<QueueWaitStat> summarizeQueueWaits(List<HookCallSample> samples) {
   }
   final stats = [
     for (final entry in calls.entries)
-      QueueWaitStat(
-        label: entry.key,
-        calls: entry.value,
-        worstMicros: worst[entry.key] ?? 0,
-        totalMicros: total[entry.key] ?? 0,
-      ),
+      QueueWaitStat(label: entry.key, calls: entry.value, worstMicros: worst[entry.key] ?? 0, totalMicros: total[entry.key] ?? 0),
   ];
   stats.sort((a, b) => b.worstMicros.compareTo(a.worstMicros));
   return stats;
@@ -234,12 +210,7 @@ class ExtensionHost {
   final List<ReceivePort> _isolatePorts = [];
   _HostCore? _inProcessCore;
 
-  ExtensionHost._({
-    required this.runningInIsolate,
-    required this.engine,
-    required this.loadMillis,
-    this.onHostCall,
-  });
+  ExtensionHost._({required this.runningInIsolate, required this.engine, required this.loadMillis, this.onHostCall});
 
   Stream<String> get logs => _logs.stream;
 
@@ -308,6 +279,7 @@ class ExtensionHost {
     Map<String, List<String>> fetchAllowlists = const {},
     String? userAgent,
     Set<String> userAgentOverrides = const {},
+
     /// The app clock's travel state at boot. Passed in rather than pushed
     /// afterwards so extensions ACTIVATE on the app's clock — see
     /// [ClockTravelState] and [setClockTravel].
@@ -326,19 +298,24 @@ class ExtensionHost {
       } catch (e) {
         // Fall through to in-process mode; the spike wants to know when this
         // happens, so surface it loudly on the first log line.
-        final host = await _startInProcess(
-            kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, clock, httpClient);
+        final host = await _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, clock, httpClient);
         host._log('WARN isolate mode failed ($e), running in-process');
         return host;
       }
     }
-    return _startInProcess(
-        kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, clock, httpClient);
+    return _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, clock, httpClient);
   }
 
-  static Future<ExtensionHost> _startInIsolate(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall,
-      Map<String, List<String>> fetchAllowlists, String? userAgent, Set<String> userAgentOverrides,
-      Map<String, Map<String, String>> secrets, ClockTravelState clock) async {
+  static Future<ExtensionHost> _startInIsolate(
+    String kernelSource,
+    List<ExtensionBundle> extensions,
+    HostCallHandler? onHostCall,
+    Map<String, List<String>> fetchAllowlists,
+    String? userAgent,
+    Set<String> userAgentOverrides,
+    Map<String, Map<String, String>> secrets,
+    ClockTravelState clock,
+  ) async {
     final fromIsolate = ReceivePort();
     final onError = ReceivePort();
     final onExit = ReceivePort();
@@ -362,9 +339,7 @@ class ExtensionHost {
     }
 
     onError.listen((message) {
-      final desc = message is List
-          ? [for (final part in message) '$part'].where((s) => s.isNotEmpty).join('\n')
-          : '$message';
+      final desc = message is List ? [for (final part in message) '$part'].where((s) => s.isNotEmpty).join('\n') : '$message';
       fatal('extension isolate error: $desc');
     });
     onExit.listen((_) => fatal('extension isolate exited unexpectedly'));
@@ -374,7 +349,9 @@ class ExtensionHost {
       _HostIsolateInit(
         mainPort: fromIsolate.sendPort,
         kernelSource: kernelSource,
-        bundles: [for (final p in extensions) [p.key, p.source]],
+        bundles: [
+          for (final p in extensions) [p.key, p.source],
+        ],
         fetchAllowlists: fetchAllowlists,
         secrets: secrets,
         userAgent: userAgent,
@@ -419,12 +396,7 @@ class ExtensionHost {
       rethrow;
     }
 
-    host = ExtensionHost._(
-      runningInIsolate: true,
-      engine: readyMsg['engine'] as String,
-      loadMillis: readyMsg['loadMillis'] as int,
-      onHostCall: onHostCall,
-    );
+    host = ExtensionHost._(runningInIsolate: true, engine: readyMsg['engine'] as String, loadMillis: readyMsg['loadMillis'] as int, onHostCall: onHostCall);
     host._isolate = isolate;
     host._toIsolate = toIsolate;
     host._isolatePorts.addAll([fromIsolate, onError, onExit]);
@@ -432,31 +404,35 @@ class ExtensionHost {
     return host;
   }
 
-  static Future<ExtensionHost> _startInProcess(String kernelSource, List<ExtensionBundle> extensions, HostCallHandler? onHostCall,
-      Map<String, List<String>> fetchAllowlists, String? userAgent, Set<String> userAgentOverrides,
-      Map<String, Map<String, String>> secrets, ClockTravelState clock, [http.Client? httpClient]) async {
+  static Future<ExtensionHost> _startInProcess(
+    String kernelSource,
+    List<ExtensionBundle> extensions,
+    HostCallHandler? onHostCall,
+    Map<String, List<String>> fetchAllowlists,
+    String? userAgent,
+    Set<String> userAgentOverrides,
+    Map<String, Map<String, String>> secrets,
+    ClockTravelState clock, [
+    http.Client? httpClient,
+  ]) async {
     final earlyMessages = <Map<String, dynamic>>[];
     ExtensionHost? host;
     final core = _HostCore(
-        fetchAllowlists: fetchAllowlists,
-        secrets: secrets,
-        httpClient: httpClient,
-        userAgent: userAgent,
-        userAgentOverrides: userAgentOverrides,
-        emit: (msg) {
-          if (host == null) {
-            earlyMessages.add(msg);
-          } else {
-            host._onCoreMessage(msg);
-          }
-        });
-    final loadMillis = await core.init(kernelSource, extensions, clock: clock);
-    host = ExtensionHost._(
-      runningInIsolate: false, 
-      engine: core.engineDescription, 
-      loadMillis: loadMillis,
-      onHostCall: onHostCall,
+      fetchAllowlists: fetchAllowlists,
+      secrets: secrets,
+      httpClient: httpClient,
+      userAgent: userAgent,
+      userAgentOverrides: userAgentOverrides,
+      emit: (msg) {
+        if (host == null) {
+          earlyMessages.add(msg);
+        } else {
+          host._onCoreMessage(msg);
+        }
+      },
     );
+    final loadMillis = await core.init(kernelSource, extensions, clock: clock);
+    host = ExtensionHost._(runningInIsolate: false, engine: core.engineDescription, loadMillis: loadMillis, onHostCall: onHostCall);
     host._inProcessCore = core;
     earlyMessages.forEach(host._onCoreMessage);
     return host;
@@ -466,13 +442,7 @@ class ExtensionHost {
   /// `category` (optionally narrowed to a specific hook `key`).
   ///
   /// `args` must be JSON-encodable. Returns the hook's JSON result.
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) {
+  Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) {
     return _send('invoke', '$category.$method', {
       'category': category,
       'key': key,
@@ -522,15 +492,21 @@ class ExtensionHost {
     // reads partials under is provably the one the call was sent under.
     final id = _nextId++;
     try {
-      final result = await _send('invokeAll', '$category.$method*', {
-        'category': category,
-        'method': method,
-        // Encoded by the core — see invokeHook.
-        'args': args ?? const <String, Object?>{},
-        // Narration is not free — it puts every hook's result on the bridge a
-        // second time — so it is requested only by a caller that will keep it.
-        'wantsPartials': partialOnTimeout,
-      }, timeout, id: id);
+      final result = await _send(
+        'invokeAll',
+        '$category.$method*',
+        {
+          'category': category,
+          'method': method,
+          // Encoded by the core — see invokeHook.
+          'args': args ?? const <String, Object?>{},
+          // Narration is not free — it puts every hook's result on the bridge a
+          // second time — so it is requested only by a caller that will keep it.
+          'wantsPartials': partialOnTimeout,
+        },
+        timeout,
+        id: id,
+      );
       return (result as List).cast<Map<dynamic, dynamic>>().map((e) => e.cast<String, dynamic>()).toList();
     } on HookTimeoutException {
       // Only a timeout salvages. A runtime that died, or a fan-out the kernel
@@ -619,17 +595,14 @@ class ExtensionHost {
     final token = _nextId++;
     final completer = Completer<void>();
     _pendingReloads[token] = completer;
-    _dispatch({
-      'type': 'reloadBundle',
-      'token': token,
-      'key': bundle.key,
-      'source': bundle.source,
-      'domains': ?domains,
-    });
-    return completer.future.timeout(timeout, onTimeout: () {
-      _pendingReloads.remove(token);
-      throw HookTimeoutException('reloading ${bundle.key} timed out after ${timeout.inMilliseconds}ms');
-    });
+    _dispatch({'type': 'reloadBundle', 'token': token, 'key': bundle.key, 'source': bundle.source, 'domains': ?domains});
+    return completer.future.timeout(
+      timeout,
+      onTimeout: () {
+        _pendingReloads.remove(token);
+        throw HookTimeoutException('reloading ${bundle.key} timed out after ${timeout.inMilliseconds}ms');
+      },
+    );
   }
 
   /// Reload tokens awaiting their `reloadComplete`. Separate from [_pending]
@@ -654,17 +627,8 @@ class ExtensionHost {
   /// another isolate or a worker, so it has to be PUSHED: send it whenever it
   /// changes and again whenever a runtime boots or is replaced, or a restarted
   /// engine silently reverts every extension to real time.
-  void setClockTravel({
-    required int anchorRealMillis,
-    required int anchorVirtualMillis,
-    required double speed,
-  }) {
-    _dispatch({
-      'type': 'setClockTravel',
-      'anchorRealMillis': anchorRealMillis,
-      'anchorVirtualMillis': anchorVirtualMillis,
-      'speed': speed,
-    });
+  void setClockTravel({required int anchorRealMillis, required int anchorVirtualMillis, required double speed}) {
+    _dispatch({'type': 'setClockTravel', 'anchorRealMillis': anchorRealMillis, 'anchorVirtualMillis': anchorVirtualMillis, 'speed': speed});
   }
 
   void _onCoreMessage(Map<String, dynamic> msg) {
@@ -680,12 +644,14 @@ class ExtensionHost {
         if (completer == null) return; // timed out; drop the late result
         if (flight != null) {
           flight.$2.stop();
-          samples.add(HookCallSample(
-            label: flight.$1,
-            totalMillis: flight.$2.elapsedMilliseconds,
-            jsMillis: (msg['jsMillis'] as num?)?.toInt() ?? 0,
-            queueMicros: (msg['queueMicros'] as num?)?.toInt() ?? 0,
-          ));
+          samples.add(
+            HookCallSample(
+              label: flight.$1,
+              totalMillis: flight.$2.elapsedMilliseconds,
+              jsMillis: (msg['jsMillis'] as num?)?.toInt() ?? 0,
+              queueMicros: (msg['queueMicros'] as num?)?.toInt() ?? 0,
+            ),
+          );
           if (samples.length > _maxSamples) samples.removeAt(0);
         }
         _partials.remove(id);
@@ -714,18 +680,14 @@ class ExtensionHost {
         final completer = _pendingReloads.remove(msg['token']);
         if (completer == null || completer.isCompleted) return; // already timed out
         if (msg['ok'] == false) {
-          completer.completeError(
-              ExtensionHostException('reloading bundle failed: ${msg['error'] ?? 'unknown error'}'));
+          completer.completeError(ExtensionHostException('reloading bundle failed: ${msg['error'] ?? 'unknown error'}'));
         } else {
           completer.complete();
         }
       case 'updateInterpretation':
         final input = msg['input'] as String?;
         if (input == null) return;
-        _interpretationUpdates.add({
-          'input': input,
-          'interpretation': ((msg['interpretation'] as Map?) ?? const {}).cast<String, dynamic>(),
-        });
+        _interpretationUpdates.add({'input': input, 'interpretation': ((msg['interpretation'] as Map?) ?? const {}).cast<String, dynamic>()});
       case 'hostCall':
         final callId = msg['callId'] as int;
         final method = msg['method'] as String;
@@ -782,12 +744,7 @@ class ExtensionHost {
     if (_inProcessCore != null) {
       _inProcessCore!.handleHostCallResponse(callId, ok, result);
     } else {
-      _toIsolate?.send({
-        'type': 'hostCallResponse',
-        'callId': callId,
-        'ok': ok,
-        'result': result,
-      });
+      _toIsolate?.send({'type': 'hostCallResponse', 'callId': callId, 'ok': ok, 'result': result});
     }
   }
 
@@ -878,6 +835,7 @@ class _HostIsolateInit {
   final String kernelSource;
   final List<List<String>> bundles;
   final Map<String, List<String>> fetchAllowlists;
+
   /// Extension key → its own build-time API key, resolved host-side.
   final Map<String, Map<String, String>> secrets;
   final String? userAgent;
@@ -909,20 +867,17 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
   init.mainPort.send({'type': 'port', 'port': receive.sendPort});
 
   final core = _HostCore(
-      emit: init.mainPort.send,
-      fetchAllowlists: init.fetchAllowlists,
-      secrets: init.secrets,
-      userAgent: init.userAgent,
-      userAgentOverrides: init.userAgentOverrides);
+    emit: init.mainPort.send,
+    fetchAllowlists: init.fetchAllowlists,
+    secrets: init.secrets,
+    userAgent: init.userAgent,
+    userAgentOverrides: init.userAgentOverrides,
+  );
   try {
     final loadMillis = await core.init(
       init.kernelSource,
       [for (final b in init.bundles) ExtensionBundle(key: b[0], source: b[1])],
-      clock: ClockTravelState(
-        anchorRealMillis: init.clockAnchorRealMillis,
-        anchorVirtualMillis: init.clockAnchorVirtualMillis,
-        speed: init.clockSpeed,
-      ),
+      clock: ClockTravelState(anchorRealMillis: init.clockAnchorRealMillis, anchorVirtualMillis: init.clockAnchorVirtualMillis, speed: init.clockSpeed),
     );
     init.mainPort.send({'type': 'ready', 'loadMillis': loadMillis, 'engine': core.engineDescription});
   } catch (e, st) {
@@ -934,11 +889,7 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
     final msg = (message as Map).cast<String, dynamic>();
     if (msg['type'] == 'dispose') break;
     if (msg['type'] == 'hostCallResponse') {
-      core.handleHostCallResponse(
-        msg['callId'] as int,
-        msg['ok'] as bool,
-        msg['result'],
-      );
+      core.handleHostCallResponse(msg['callId'] as int, msg['ok'] as bool, msg['result']);
     } else {
       core.handle(msg);
     }
@@ -1022,29 +973,27 @@ class _HostCore {
   /// work, and logging it would bury the waits that cost a visible pause.
   static const _defaultSlowQueueMillis = 100;
 
-  static const _slowQueueMicros =
-      (_slowHookMillisOverride > 0 ? _slowHookMillisOverride : _defaultSlowQueueMillis) * 1000;
+  static const _slowQueueMicros = (_slowHookMillisOverride > 0 ? _slowHookMillisOverride : _defaultSlowQueueMillis) * 1000;
 
   /// Measuring never stops (see [_noteQueueWait]); only the reporting is
   /// gated, so a release build sweeping the threshold down reports the same
   /// numbers it was already computing.
   static const _reportsSlowQueue = _slowHookMillisOverride > 0 || kDebugMode;
 
-  _HostCore(
-      {required this.emit,
-      Map<String, List<String>> fetchAllowlists = const {},
-      this.secrets = const {},
-      this.userAgent,
-      this.userAgentOverrides = const {},
-      http.Client? httpClient})
-      : fetchAllowlists = Map.of(fetchAllowlists),
-        _http = httpClient ?? http.Client(),
-        _ownsHttpClient = httpClient == null;
+  _HostCore({
+    required this.emit,
+    Map<String, List<String>> fetchAllowlists = const {},
+    this.secrets = const {},
+    this.userAgent,
+    this.userAgentOverrides = const {},
+    http.Client? httpClient,
+  }) : fetchAllowlists = Map.of(fetchAllowlists),
+       _http = httpClient ?? http.Client(),
+       _ownsHttpClient = httpClient == null;
 
   String get engineDescription => _js.engineDescription;
 
-  Future<int> init(String kernelSource, List<ExtensionBundle> bundles,
-      {ClockTravelState clock = const ClockTravelState.real()}) async {
+  Future<int> init(String kernelSource, List<ExtensionBundle> bundles, {ClockTravelState clock = const ClockTravelState.real()}) async {
     final stopwatch = Stopwatch()..start();
     _js = createEngineRuntime();
     _js.onMessage(_onPoloMessage);
@@ -1089,8 +1038,7 @@ class _HostCore {
           if (msg['type'] == 'invoke') {
             _js.invoke(id, msg['category'] as String, msg['key'] as String?, msg['method'] as String, argsJson);
           } else {
-            _js.invokeAll(id, msg['category'] as String, msg['method'] as String, argsJson,
-                wantsPartials: msg['wantsPartials'] == true);
+            _js.invokeAll(id, msg['category'] as String, msg['method'] as String, argsJson, wantsPartials: msg['wantsPartials'] == true);
           }
           // Only once an eval has actually begun: a call that failed above
           // never reached the engine, and naming it as what the NEXT slow
@@ -1139,11 +1087,7 @@ class _HostCore {
         }
       case 'setClockTravel':
         try {
-          _js.setClockTravel(
-            msg['anchorRealMillis'] as int,
-            msg['anchorVirtualMillis'] as int,
-            (msg['speed'] as num).toDouble(),
-          );
+          _js.setClockTravel(msg['anchorRealMillis'] as int, msg['anchorVirtualMillis'] as int, (msg['speed'] as num).toDouble());
         } catch (e) {
           // Reported as FATAL, not merely logged: unlike every other message
           // here, a failure means the app and its extensions now disagree about
@@ -1206,7 +1150,8 @@ class _HostCore {
       final behind = _lastEvalLabel;
       emit({
         'type': 'log',
-        'message': 'SLOW-QUEUE $label waited ${waited ~/ 1000}ms'
+        'message':
+            'SLOW-QUEUE $label waited ${waited ~/ 1000}ms'
             '${behind == null ? '' : ' (behind $behind)'}',
       });
     }
@@ -1260,11 +1205,7 @@ class _HostCore {
       case 'updateInterpretation':
         emit(msg);
       case 'hostCall':
-        _handleHostCall(
-          (msg['callId'] as num).toInt(),
-          msg['method'] as String,
-          ((msg['params'] ?? const <String, dynamic>{}) as Map).cast<String, dynamic>(),
-        );
+        _handleHostCall((msg['callId'] as num).toInt(), msg['method'] as String, ((msg['params'] ?? const <String, dynamic>{}) as Map).cast<String, dynamic>());
     }
   }
 
@@ -1290,12 +1231,7 @@ class _HostCore {
         default:
           final completer = Completer<dynamic>();
           _pendingHostCalls[callId] = completer;
-          emit({
-            'type': 'hostCall',
-            'callId': callId,
-            'method': method,
-            'params': params,
-          });
+          emit({'type': 'hostCall', 'callId': callId, 'method': method, 'params': params});
           result = await completer.future;
       }
     } catch (e) {
@@ -1404,8 +1340,7 @@ class _HostCore {
         }
       }
     }
-    throw ExtensionHostException(
-        "fetch blocked: '$host' is not in extension '${extensionKey ?? 'unknown'}'s declared domains");
+    throw ExtensionHostException("fetch blocked: '$host' is not in extension '${extensionKey ?? 'unknown'}'s declared domains");
   }
 
   Future<Map<String, Object?>> _hostFetch(Map<String, dynamic> params) async {
@@ -1436,10 +1371,9 @@ class _HostCore {
     // reading a slow body.
     final requested = (params['timeout'] as num?)?.toInt();
     final spent = Stopwatch()..start();
-    Duration remaining(Duration ceiling) =>
-        remainingFetchTimeout(requested: requested, elapsed: spent.elapsed, ceiling: ceiling);
+    Duration remaining(Duration ceiling) => remainingFetchTimeout(requested: requested, elapsed: spent.elapsed, ceiling: ceiling);
 
-    for (var attempt = 0;; attempt++) {
+    for (var attempt = 0; ; attempt++) {
       final request = http.Request(method, uri)..headers.addAll(headers);
       if (effectiveUA != null) request.headers['User-Agent'] = effectiveUA;
       if (body != null) request.body = body;

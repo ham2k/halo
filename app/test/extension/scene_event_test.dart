@@ -49,13 +49,7 @@ class _ScenePanels extends PanelService {
   }
 }
 
-const _panel = PanelDefinition(
-  id: 'ext:rig:face',
-  title: 'Rig',
-  source: PanelSource.extension,
-  hookKey: 'rig',
-  panelKey: 'face',
-);
+const _panel = PanelDefinition(id: 'ext:rig:face', title: 'Rig', source: PanelSource.extension, hookKey: 'rig', panelKey: 'face');
 
 void main() {
   setUp(ErrorReportingService.resetFailureStreaks);

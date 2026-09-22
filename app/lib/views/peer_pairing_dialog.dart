@@ -19,8 +19,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 /// glance, and short enough to sit on a row beside a name. Every surface
 /// that shows an id shortens it the same way, or the operator would be
 /// comparing two different things across the two devices.
-String shortPeerDeviceId(String deviceId) =>
-    deviceId.length <= 8 ? deviceId : deviceId.substring(0, 8);
+String shortPeerDeviceId(String deviceId) => deviceId.length <= 8 ? deviceId : deviceId.substring(0, 8);
 
 /// Returns true when the operator allows the device, false when they decline,
 /// and null when they dismiss it — a dismissal is deliberately NOT an allow.
@@ -29,12 +28,7 @@ String shortPeerDeviceId(String deviceId) =>
 /// what tells the operator WHICH nearby device this might be — "on your local
 /// network" and "nearby, over Bluetooth" narrow it to different sets of boxes,
 /// and the warning has to name the same set it is warning about.
-Future<bool?> showPeerPairingDialog(
-  BuildContext context, {
-  required String deviceName,
-  required String deviceId,
-  required bool viaBluetooth,
-}) {
+Future<bool?> showPeerPairingDialog(BuildContext context, {required String deviceName, required String deviceId, required bool viaBluetooth}) {
   return showHaloDialog<bool>(
     context: context,
     // A stray tap outside must not answer a security question. Dismissing is
@@ -59,22 +53,11 @@ Future<bool?> showPeerPairingDialog(
             // shows for this one.
             SelectableText(shortPeerDeviceId(deviceId), style: haloMonoStyle(dialogContext, fontSize: 12)),
             const SizedBox(height: Space.xl),
-            Text(
-              viaBluetooth ? t.pairWarningBle : t.pairWarning,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
+            Text(viaBluetooth ? t.pairWarningBle : t.pairWarning, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ],
         ),
-        cancel: TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: Text(t.reject),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(t.allow),
-          ),
-        ],
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(t.reject)),
+        actions: [FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(t.allow))],
       );
     },
   );

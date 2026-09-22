@@ -44,7 +44,8 @@ const _setupControl = {
 /// its decorateRef hook gives that ref.
 class _ContestExtensions extends ExtensionServiceWithFakeHost {
   _ContestExtensions()
-      : super(FakeExtensionHost({
+    : super(
+        FakeExtensionHost({
           // Stands in for simple-contest's own decorateRef: label the ref with
           // the contest identifier so the Activities row has something to show.
           'ref:simple-contest:null:decorateRef': (Object? args) {
@@ -52,7 +53,8 @@ class _ContestExtensions extends ExtensionServiceWithFakeHost {
             final id = ref['contestIdentifier'] as String?;
             return {...ref, if (id != null && id.isNotEmpty) 'shortLabel': id};
           },
-        }));
+        }),
+      );
 
   /// A field the control only offers once the operation carries the ref. Stands
   /// in for the State Parks setup, which asks Ohio for the park it is in, a
@@ -61,10 +63,7 @@ class _ContestExtensions extends ExtensionServiceWithFakeHost {
   static const _refDependentField = {'type': 'field', 'fieldType': 'text', 'key': 'mode', 'label': 'Mode'};
 
   @override
-  Future<ControlsResult> operationControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async {
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async {
     final refs = (operationData['refs'] as List?)?.cast<Map>() ?? const <Map>[];
     final control = Map<String, dynamic>.from(_setupControl);
     if (refs.any((ref) => ref['type'] == 'simple-contest')) {
@@ -83,29 +82,26 @@ Future<(HaLoServices, Operation)> _setUp(List<Map<String, dynamic>> refs) async 
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
   final extensions = _ContestExtensions()..settings = settings;
-  return (
-    HaLoServices(db, settings, extensions: extensions),
-    Operation(uuid: 'op-1', data: {'refs': refs}),
-  );
+  return (HaLoServices(db, settings, extensions: extensions), Operation(uuid: 'op-1', data: {'refs': refs}));
 }
 
-Future<void> _pumpPane(WidgetTester tester, HaLoServices services, Operation operation,
-    {ValueChanged<Operation>? onChanged}) async {
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(
-      home: Scaffold(
-        body: OperationSheet(services: services, operation: operation, onOperationChanged: onChanged),
+Future<void> _pumpPane(WidgetTester tester, HaLoServices services, Operation operation, {ValueChanged<Operation>? onChanged}) async {
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: OperationSheet(services: services, operation: operation, onOperationChanged: onChanged),
+        ),
       ),
     ),
-  ));
+  );
   await tester.pumpAndSettle();
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('an existing contest ref opens its setup form pre-filled, and saves back onto the ref',
-      (tester) async {
+  testWidgets('an existing contest ref opens its setup form pre-filled, and saves back onto the ref', (tester) async {
     final (services, operation) = await _setUp([
       {'type': 'simple-contest', 'contestIdentifier': 'CQ-WW-SSB', 'exchange': '59 001', 'shortLabel': 'CQ-WW-SSB'},
     ]);
@@ -139,8 +135,7 @@ void main() {
     expect(refs.single['contestIdentifier'], 'CQ-WW-SSB');
   });
 
-  testWidgets('adding the ref rebuilds the controls, so its own form is complete right away',
-      (tester) async {
+  testWidgets('adding the ref rebuilds the controls, so its own form is complete right away', (tester) async {
     // A setup form can only ask what the ref it configures makes sense of: the
     // State Parks form asks Ohio for the park it is in, a power class and an
     // entry category, and an operation with no event chosen for none of them.
@@ -168,11 +163,7 @@ void main() {
     // no trip out of the panel in between.
     await tester.tap(find.text('CQ-WW-SSB'));
     await tester.pumpAndSettle();
-    expect(
-      find.widgetWithText(TextField, 'Mode'),
-      findsOneWidget,
-      reason: 'the form was rebuilt against the ref that now exists',
-    );
+    expect(find.widgetWithText(TextField, 'Mode'), findsOneWidget, reason: 'the form was rebuilt against the ref that now exists');
   });
 
   testWidgets('cancelling the setup form leaves the ref untouched', (tester) async {

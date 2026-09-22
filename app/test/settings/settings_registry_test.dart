@@ -40,8 +40,20 @@ void main() {
     });
 
     test('list form works the same as the comma-separated string form', () {
-      expect(elementMatchesEnvironment({'type': 'field', 'environment': ['ios', 'android']}), isTrue);
-      expect(elementMatchesEnvironment({'type': 'field', 'environment': ['-ios']}), isFalse);
+      expect(
+        elementMatchesEnvironment({
+          'type': 'field',
+          'environment': ['ios', 'android'],
+        }),
+        isTrue,
+      );
+      expect(
+        elementMatchesEnvironment({
+          'type': 'field',
+          'environment': ['-ios'],
+        }),
+        isFalse,
+      );
     });
 
     test('mixing whitelist and blacklist tokens fails open (invalid combination)', () {
@@ -68,8 +80,20 @@ void main() {
     });
 
     test('a list of targets matches any member', () {
-      expect(elementMatchesTarget({'type': 'field', 'target': ['logging', 'data-files']}, 'data-files'), isTrue);
-      expect(elementMatchesTarget({'type': 'field', 'target': ['logging', 'data-files']}, 'common'), isFalse);
+      expect(
+        elementMatchesTarget({
+          'type': 'field',
+          'target': ['logging', 'data-files'],
+        }, 'data-files'),
+        isTrue,
+      );
+      expect(
+        elementMatchesTarget({
+          'type': 'field',
+          'target': ['logging', 'data-files'],
+        }, 'common'),
+        isFalse,
+      );
     });
 
     test('the "-extended" bucket is just another target string, not special-cased here', () {

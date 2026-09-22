@@ -19,26 +19,17 @@ void main() {
     });
 
     test('different devices keep their own keys, in enumeration order', () {
-      expect(
-        assignWebSerialPortKeys([(0x10C4, 0xEA70), (0x0403, 0x6001)]),
-        ['4292:60016', '1027:24577'],
-      );
+      expect(assignWebSerialPortKeys([(0x10C4, 0xEA70), (0x0403, 0x6001)]), ['4292:60016', '1027:24577']);
     });
 
     // Web Serial exposes nothing else to tell two identical devices apart
     // by — this is the best the API allows, not a design choice.
     test('two identical devices get disambiguated with a #n suffix', () {
-      expect(
-        assignWebSerialPortKeys([(0x10C4, 0xEA70), (0x10C4, 0xEA70), (0x10C4, 0xEA70)]),
-        ['4292:60016', '4292:60016#2', '4292:60016#3'],
-      );
+      expect(assignWebSerialPortKeys([(0x10C4, 0xEA70), (0x10C4, 0xEA70), (0x10C4, 0xEA70)]), ['4292:60016', '4292:60016#2', '4292:60016#3']);
     });
 
     test('a repeat after a different device in between still keys correctly', () {
-      expect(
-        assignWebSerialPortKeys([(0x10C4, 0xEA70), (0x0403, 0x6001), (0x10C4, 0xEA70)]),
-        ['4292:60016', '1027:24577', '4292:60016#2'],
-      );
+      expect(assignWebSerialPortKeys([(0x10C4, 0xEA70), (0x0403, 0x6001), (0x10C4, 0xEA70)]), ['4292:60016', '1027:24577', '4292:60016#2']);
     });
   });
 

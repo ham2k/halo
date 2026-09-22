@@ -34,17 +34,10 @@ import '../services/update_service.dart' show currentCodePush;
 /// [edition]/[build]/[sha]/[codePush] default to this process's values and
 /// exist only so tests can reach the other cells of that matrix: compile-time
 /// constants can't be faked from a test binary.
-String buildDetails({
-  Edition edition = kEdition,
-  int build = kBuildNumber,
-  String sha = kGitSha,
-  int? codePush,
-}) {
+String buildDetails({Edition edition = kEdition, int build = kBuildNumber, String sha = kGitSha, int? codePush}) {
   codePush ??= currentCodePush;
   final namesItsBuildNumber = edition != Edition.dev || codePush != null;
-  final label = namesItsBuildNumber
-      ? t.versionLabel.build(build: codePush == null ? '$build' : '$build.$codePush')
-      : shaLabel(sha);
+  final label = namesItsBuildNumber ? t.versionLabel.build(build: codePush == null ? '$build' : '$build.$codePush') : shaLabel(sha);
   return label.isEmpty ? '' : '($label)';
 }
 
@@ -85,16 +78,12 @@ String versionDetailLine() {
 /// stage — where upper-casing puts the same word on both lines and a reader
 /// can't tell the product's stage from this build's pre-release counter. Case
 /// is what keeps the two apart.
-String versionQualifiers({
-  PublicVersion version = kPublicVersionInfo,
-  String stageLabel = kStageLabel,
-}) {
+String versionQualifiers({PublicVersion version = kPublicVersionInfo, String stageLabel = kStageLabel}) {
   final parts = version.displayParts(stageLabel: stageLabel);
   final preReleaseLabel = parts.preReleaseLabel;
   return [
     if (parts.patch != null) t.versionLabel.patch(patch: parts.patch.toString()),
-    if (preReleaseLabel != null)
-      '${_preReleaseLabel(preReleaseLabel, stageLabel: stageLabel)} ${parts.preReleaseCounter}',
+    if (preReleaseLabel != null) '${_preReleaseLabel(preReleaseLabel, stageLabel: stageLabel)} ${parts.preReleaseCounter}',
   ].join(' ');
 }
 
@@ -108,16 +97,9 @@ String versionQualifiers({
 /// release for most of a cycle, and against those this function and the
 /// canonical name are the same string whether or not it renders the qualifiers
 /// at all.
-String localizedVersionName({
-  PublicVersion version = kPublicVersionInfo,
-  String stageLabel = kStageLabel,
-}) {
+String localizedVersionName({PublicVersion version = kPublicVersionInfo, String stageLabel = kStageLabel}) {
   final parts = version.displayParts(stageLabel: stageLabel);
-  return [
-    parts.mainName,
-    parts.stageLabel,
-    versionQualifiers(version: version, stageLabel: stageLabel),
-  ].where((part) => part.isNotEmpty).join(' ');
+  return [parts.mainName, parts.stageLabel, versionQualifiers(version: version, stageLabel: stageLabel)].where((part) => part.isNotEmpty).join(' ');
 }
 
 /// `Patch 1 PRE 1 (build 130)` — everything about this build that isn't in
@@ -149,10 +131,7 @@ String versionBuildLine({
 }) {
   final parts = <String>[
     versionQualifiers(version: version, stageLabel: stageLabel),
-    if (bareBuildNumber)
-      '(${t.versionLabel.build(build: build.toString())})'
-    else
-      buildDetails(edition: edition, build: build, sha: sha, codePush: codePush),
+    if (bareBuildNumber) '(${t.versionLabel.build(build: build.toString())})' else buildDetails(edition: edition, build: build, sha: sha, codePush: codePush),
   ];
   return parts.where((part) => part.isNotEmpty).join(' ');
 }
@@ -225,10 +204,7 @@ class VersionLabel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: crossAxisAlignment,
-          children: [
-            _oneLine(kVersionMainName, style, textAlign),
-            if (buildLine.isNotEmpty) _oneLine(buildLine, detailStyle, textAlign),
-          ],
+          children: [_oneLine(kVersionMainName, style, textAlign), if (buildLine.isNotEmpty) _oneLine(buildLine, detailStyle, textAlign)],
         ),
       );
     }
@@ -239,10 +215,7 @@ class VersionLabel extends StatelessWidget {
       final base = style ?? DefaultTextStyle.of(context).style;
       final firstLineStyle = boldFirstLine ? base.copyWith(fontWeight: FontWeight.bold) : base;
       // The detail line reads as secondary: normal weight, two points smaller.
-      final detailStyle = base.copyWith(
-        fontWeight: FontWeight.normal,
-        fontSize: (base.fontSize ?? 14) - 2,
-      );
+      final detailStyle = base.copyWith(fontWeight: FontWeight.normal, fontSize: (base.fontSize ?? 14) - 2);
       // The name the OPERATOR reads, in their language — the canonical English
       // spelling still reaches the clipboard (versionDetailsText), notice-rule
       // matching and the extension host, which must not vary by locale.
@@ -267,6 +240,5 @@ class VersionLabel extends StatelessWidget {
   /// [text] as ONE unwrappable line — these lines sit under a brand mark over a
   /// photo, where a wrap reads as a layout bug. Narrow panes are handled by the
   /// block-level [FittedBox] above, not by wrapping.
-  Widget _oneLine(String text, TextStyle? lineStyle, TextAlign textAlign) =>
-      Text(text, style: lineStyle, textAlign: textAlign, maxLines: 1, softWrap: false);
+  Widget _oneLine(String text, TextStyle? lineStyle, TextAlign textAlign) => Text(text, style: lineStyle, textAlign: textAlign, maxLines: 1, softWrap: false);
 }

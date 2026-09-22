@@ -283,25 +283,14 @@ class ScoringService {
       // operation. A user with dozens of extensions enabled never pays for the
       // ones this operation doesn't reference (docs/design/contests.md §5.1).
       final scopes = await extensions.getScoringScopes();
-      final scorers = ExtensionService.scorersFor(
-        operation.data,
-        scopes,
-        segments: segmented,
-        alsoRefTypes: huntedRefTypes,
-      );
+      final scorers = ExtensionService.scorersFor(operation.data, scopes, segments: segmented, alsoRefTypes: huntedRefTypes);
       if (scorers.isEmpty) return;
 
       final cachedScoring = operation.localData['scoring'] as Map<String, dynamic>?;
       final resume = full || !_foldedFully.contains(uuid)
           ? null
-          : resolveScoringResume(
-              scoring: cachedScoring,
-              operationUpdatedAtMillis: operation.updatedAtMillis,
-              qsos: all,
-            );
-      final append = resume != null &&
-          resume.tail.isNotEmpty &&
-          scorers.every((scorer) => resume.checkpoints.containsKey(scorer.key));
+          : resolveScoringResume(scoring: cachedScoring, operationUpdatedAtMillis: operation.updatedAtMillis, qsos: all);
+      final append = resume != null && resume.tail.isNotEmpty && scorers.every((scorer) => resume.checkpoints.containsKey(scorer.key));
 
       final payload = {
         ...qsonPayloadFor(operation: operation, qsos: append ? const [] : qsoList),
@@ -314,19 +303,16 @@ class ScoringService {
       // Independent per-scorer calls — a contest scorer that throws must not
       // cost the operation its core scoring, so each result is collected on its
       // own and a failed one is simply absent below.
-      final results = await Future.wait(scorers.map((scorer) async {
-        final resumedFrom = append ? resume.checkpoints[scorer.key] : null;
-        final result = await extensions.scoreQsos(
-          scorerKey: scorer.key,
-          args: {
-            ...payload,
-            'ref': ?scorer.ref,
-            'resumeFrom': ?resumedFrom?.sheet,
-            'resumeDay': ?resumedFrom?.day,
-          },
-        );
-        return (key: scorer.key, fallback: scorer.fallback, result: result);
-      }));
+      final results = await Future.wait(
+        scorers.map((scorer) async {
+          final resumedFrom = append ? resume.checkpoints[scorer.key] : null;
+          final result = await extensions.scoreQsos(
+            scorerKey: scorer.key,
+            args: {...payload, 'ref': ?scorer.ref, 'resumeFrom': ?resumedFrom?.sheet, 'resumeDay': ?resumedFrom?.day},
+          );
+          return (key: scorer.key, fallback: scorer.fallback, result: result);
+        }),
+      );
       // On a full pass a scorer that failed is absent from every contact
       // alike; on a tail it would be absent from the newest contact alone.
       if (append && results.any((entry) => entry.result == null)) return _run(uuid, full: true);
@@ -382,17 +368,13 @@ class ScoringService {
       for (final entry in fallbackScores.entries) {
         final judged = judgedByOther.contains(entry.key);
         for (final verdict in entry.value.entries) {
-          final value = judged
-              ? withoutWorkedBefore(verdict.value as Map)
-              : verdict.value;
+          final value = judged ? withoutWorkedBefore(verdict.value as Map) : verdict.value;
           if (value == null) continue;
           (scoresByUuid[entry.key] ??= <String, dynamic>{})[verdict.key] = value;
         }
       }
 
-      await qsos.updateScoreCache({
-        for (final entry in scoresByUuid.entries) entry.key: jsonEncode(entry.value),
-      });
+      await qsos.updateScoreCache({for (final entry in scoresByUuid.entries) entry.key: jsonEncode(entry.value)});
       await operations.updateLocalData(operation.uuid, {'scoring': scoringByScorer});
       if (!append) _foldedFully.add(uuid);
     } catch (e, st) {

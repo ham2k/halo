@@ -8,21 +8,13 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
   Widget host(NumberKeys keys) => MaterialApp(
-        home: Scaffold(body: Align(alignment: Alignment.bottomCenter, child: keys)),
-      );
+    home: Scaffold(
+      body: Align(alignment: Alignment.bottomCenter, child: keys),
+    ),
+  );
 
-  NumberKeys make({
-    required ValueChanged<String> onKey,
-    String? extraKey,
-    bool vibrate = true,
-  }) =>
-      NumberKeys(
-        onKey: onKey,
-        extraKey: extraKey,
-        vibrate: vibrate,
-        backgroundColor: const Color(0xFF202020),
-        foregroundColor: const Color(0xFFF0F0F0),
-      );
+  NumberKeys make({required ValueChanged<String> onKey, String? extraKey, bool vibrate = true}) =>
+      NumberKeys(onKey: onKey, extraKey: extraKey, vibrate: vibrate, backgroundColor: const Color(0xFF202020), foregroundColor: const Color(0xFFF0F0F0));
 
   testWidgets('renders 0–9 plus the extra key and reports each tap', (tester) async {
     final pressed = <String>[];
@@ -43,24 +35,16 @@ void main() {
     expect(find.text('/'), findsNothing);
     expect(find.text('.'), findsNothing);
     // Exactly the ten digits, each its own tappable key.
-    expect(
-      find.descendant(of: find.byType(NumberKeys), matching: find.byType(InkWell)),
-      findsNWidgets(10),
-    );
+    expect(find.descendant(of: find.byType(NumberKeys), matching: find.byType(InkWell)), findsNWidgets(10));
   });
 
   testWidgets('vibrate flag gates the haptic on each press', (tester) async {
     final haptics = <String?>[];
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      (call) async {
-        if (call.method == 'HapticFeedback.vibrate') haptics.add(call.arguments as String?);
-        return null;
-      },
-    );
-    addTearDown(
-      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null),
-    );
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'HapticFeedback.vibrate') haptics.add(call.arguments as String?);
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
 
     await tester.pumpWidget(host(make(onKey: (_) {}, extraKey: null, vibrate: false)));
     await tester.tap(find.text('1'));

@@ -30,16 +30,17 @@ void main() {
   // not leave it stuck for the next one.
   tearDown(() => testerOverlayCovering.value = false);
 
-  testWidgets(
-      'shows the caution tape, the standing warning, the RUNNING build, and every pending build\'s changes; '
+  testWidgets('shows the caution tape, the standing warning, the RUNNING build, and every pending build\'s changes; '
       'Continue triggers onDismiss exactly once', (tester) async {
     var dismissCount = 0;
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: TesterOverlayView(entries: entries, release: null, onDismiss: () => dismissCount++),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: TesterOverlayView(entries: entries, release: null, onDismiss: () => dismissCount++),
+        ),
       ),
-    ));
+    );
 
     expect(find.byType(Ham2kBrandMark), findsOneWidget);
     expect(find.byType(CautionTape), findsOneWidget);
@@ -82,11 +83,13 @@ void main() {
   testWidgets('the notes are scrollable in place — no expand/collapse — and tapping them dismisses', (tester) async {
     var dismissCount = 0;
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: TesterOverlayView(entries: entries, release: null, onDismiss: () => dismissCount++),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: TesterOverlayView(entries: entries, release: null, onDismiss: () => dismissCount++),
+        ),
       ),
-    ));
+    );
 
     // The band starts (and stays) readable and genuinely scrollable — a
     // regression back to the release overlay's collapsed, scroll-locked
@@ -113,14 +116,16 @@ void main() {
   });
 
   testWidgets('the panel is pinned to the light theme in dark mode', (tester) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        darkTheme: buildHaLoTheme(Brightness.dark),
-        themeMode: ThemeMode.dark,
-        home: TesterOverlayView(entries: entries, release: null, onDismiss: () {}),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          darkTheme: buildHaLoTheme(Brightness.dark),
+          themeMode: ThemeMode.dark,
+          home: TesterOverlayView(entries: entries, release: null, onDismiss: () {}),
+        ),
       ),
-    ));
+    );
 
     // The whole subtree is pinned to the light theme, not forced color by
     // color — without the pin, anything NOT in the forced list (markdown
@@ -140,11 +145,13 @@ void main() {
     var dismissCount = 0;
     expect(testerOverlayCovering.value, isFalse);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: TesterOverlayView(entries: entries, release: null, onDismiss: () => dismissCount++),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: TesterOverlayView(entries: entries, release: null, onDismiss: () => dismissCount++),
+        ),
       ),
-    ));
+    );
     await tester.pump();
 
     // Global HardwareKeyboard handlers (onboarding's Enter shortcut, the
@@ -191,12 +198,14 @@ void main() {
     // ever agreed on cardColor this test could not fail.
     expect(light.cardColor, isNot(dark.cardColor));
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        theme: dark,
-        home: TesterOverlayView(entries: entries, release: null, onDismiss: () {}),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: dark,
+          home: TesterOverlayView(entries: entries, release: null, onDismiss: () {}),
+        ),
       ),
-    ));
+    );
 
     final sheet = tester.widget<MarkdownBody>(find.byType(MarkdownBody)).styleSheet!;
     expect((sheet.codeblockDecoration as BoxDecoration).color, light.cardColor);

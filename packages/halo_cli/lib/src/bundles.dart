@@ -55,30 +55,30 @@ class BundleEntry {
   });
 
   factory BundleEntry.fromJson(Map<String, dynamic> json) => BundleEntry(
-        key: json['key'] as String,
-        file: json['file'] as String? ?? '${json['key']}.js',
-        domains: ((json['domains'] as List?) ?? const []).cast<String>(),
-        // A stale index without metadata degrades to "everything core", the
-        // same fail-safe the app takes: nothing gets silently disabled.
-        core: json['core'] as bool? ?? true,
-        enabledByDefault: json['enabledByDefault'] as bool? ?? true,
-        requiresLocation: json['requiresLocation'] as bool? ?? false,
-        allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
-        name: json['name'] as String? ?? json['key'] as String,
-        category: json['category'] as String?,
-        hooks: ((json['hooks'] as List?) ?? const []).cast<String>(),
-        fromDevServer: json['fromDevServer'] as bool? ?? false,
-      );
+    key: json['key'] as String,
+    file: json['file'] as String? ?? '${json['key']}.js',
+    domains: ((json['domains'] as List?) ?? const []).cast<String>(),
+    // A stale index without metadata degrades to "everything core", the
+    // same fail-safe the app takes: nothing gets silently disabled.
+    core: json['core'] as bool? ?? true,
+    enabledByDefault: json['enabledByDefault'] as bool? ?? true,
+    requiresLocation: json['requiresLocation'] as bool? ?? false,
+    allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
+    name: json['name'] as String? ?? json['key'] as String,
+    category: json['category'] as String?,
+    hooks: ((json['hooks'] as List?) ?? const []).cast<String>(),
+    fromDevServer: json['fromDevServer'] as bool? ?? false,
+  );
 
   Map<String, Object?> toJson() => {
-        'key': key,
-        'name': name,
-        if (category != null) 'category': category,
-        'core': core,
-        'enabledByDefault': enabledByDefault,
-        if (domains.isNotEmpty) 'domains': domains,
-        if (hooks.isNotEmpty) 'declaredHooks': hooks,
-      };
+    'key': key,
+    'name': name,
+    if (category != null) 'category': category,
+    'core': core,
+    'enabledByDefault': enabledByDefault,
+    if (domains.isNotEmpty) 'domains': domains,
+    if (hooks.isNotEmpty) 'declaredHooks': hooks,
+  };
 }
 
 /// The built bundle directory: `index.json` plus the sources beside it.
@@ -121,8 +121,10 @@ class BundleIndex {
     final Object? decoded = jsonDecode(indexFile.readAsStringSync());
     final entries = decoded is Map ? decoded['extensions'] : null;
     if (decoded is! Map || entries is! List) {
-      throw BundlesNotBuilt('index.json is malformed (no `extensions` list): ${indexFile.path}\n'
-          '${_buildHint(directory)}');
+      throw BundlesNotBuilt(
+        'index.json is malformed (no `extensions` list): ${indexFile.path}\n'
+        '${_buildHint(directory)}',
+      );
     }
     return BundleIndex(
       directory: directory,
@@ -157,21 +159,21 @@ class BundleIndex {
       try {
         ping = jsonDecode(await get('ping')) as Map<String, dynamic>;
       } catch (e) {
-        throw DevServerUnreachable('could not reach an extension dev server at $base — $e\n'
-            'Start one with `npm run dev` in extensions/.');
+        throw DevServerUnreachable(
+          'could not reach an extension dev server at $base — $e\n'
+          'Start one with `npm run dev` in extensions/.',
+        );
       }
       if (ping['server'] != 'halo-ext-dev') {
         throw DevServerUnreachable('$base is not a HaLo extension dev server');
       }
       if ((ping['protocol'] as num?)?.toInt() != devServerProtocol) {
-        throw DevServerUnreachable(
-            'dev server speaks protocol ${ping['protocol']}, this build speaks $devServerProtocol');
+        throw DevServerUnreachable('dev server speaks protocol ${ping['protocol']}, this build speaks $devServerProtocol');
       }
 
       final index = jsonDecode(await get('index.json')) as Map<String, dynamic>;
       final served = <BundleEntry>[
-        for (final entry in ((index['extensions'] as List?) ?? const []).cast<Map<String, dynamic>>())
-          BundleEntry.fromJson({...entry, 'fromDevServer': true}),
+        for (final entry in ((index['extensions'] as List?) ?? const []).cast<Map<String, dynamic>>()) BundleEntry.fromJson({...entry, 'fromDevServer': true}),
       ];
       for (final entry in served) {
         _devSources[entry.key] = await get(entry.file);
@@ -179,10 +181,7 @@ class BundleIndex {
 
       final byKey = {for (final entry in served) entry.key: entry};
       final unplaced = {...byKey.keys}..removeAll(extensions.map((e) => e.key));
-      extensions = [
-        for (final entry in extensions) byKey[entry.key] ?? entry,
-        for (final key in unplaced) byKey[key]!,
-      ];
+      extensions = [for (final entry in extensions) byKey[entry.key] ?? entry, for (final key in unplaced) byKey[key]!];
     } finally {
       if (httpClient == null) client.close();
     }
@@ -231,8 +230,7 @@ class BundleIndex {
     return null;
   }
 
-  static String _buildHint(Directory? directory) =>
-      'Run `npm run build` in extensions/, or scripts/test.sh, which builds them first.\n';
+  static String _buildHint(Directory? directory) => 'Run `npm run build` in extensions/, or scripts/test.sh, which builds them first.\n';
 }
 
 /// The dev-server protocol this build speaks (extensions/dev-server.mjs).

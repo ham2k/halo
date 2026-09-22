@@ -31,8 +31,7 @@ void main() {
     await settings.setExperimentEnabled('esm', true);
     expect(names(), ['Default', 'POTA', 'ESM Messages']);
     expect(settings.cwMessageSetName, 'ESM Messages', reason: 'ESM keys by position; the Default is not laid out for it');
-    expect([for (var n = 1; n <= 8; n++) settings.cwMessage(n)],
-        ['CQ DE {{op.call}} K', '5NN', 'TU', '{{op.call}}', '{{qso.call}}', '', '', 'AGN?']);
+    expect([for (var n = 1; n <= 8; n++) settings.cwMessage(n)], ['CQ DE {{op.call}} K', '5NN', 'TU', '{{op.call}}', '{{qso.call}}', '', '', 'AGN?']);
   });
 
   test('sets the operator already has are kept, and in order', () async {
@@ -45,7 +44,10 @@ void main() {
 
   test('it is added once, ever — a deleted set stays deleted', () async {
     await settings.setExperimentEnabled('esm', true);
-    final kept = [for (final set in settings.cwMessageSets) if (set.name != 'ESM Messages') set];
+    final kept = [
+      for (final set in settings.cwMessageSets)
+        if (set.name != 'ESM Messages') set,
+    ];
     await settings.setCwMessageSets(kept, active: 'Default');
 
     await settings.setExperimentEnabled('esm', false);

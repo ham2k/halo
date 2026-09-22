@@ -39,8 +39,7 @@ const _uuidGenerator = Uuid();
 /// of what's currently on screen, resolving [ThemeMode.system] against the
 /// current [platformBrightness] so the first press flips what the user sees.
 ThemeMode toggledThemeMode(ThemeMode current, Brightness platformBrightness) {
-  final showingDark =
-      current == ThemeMode.dark || (current == ThemeMode.system && platformBrightness == Brightness.dark);
+  final showingDark = current == ThemeMode.dark || (current == ThemeMode.system && platformBrightness == Brightness.dark);
   return showingDark ? ThemeMode.light : ThemeMode.dark;
 }
 
@@ -382,10 +381,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
       _profilesKey,
       jsonEncode({
         ..._profilesData,
-        profileId: {
-          ..._profile(profileId).data,
-          for (final entry in fields.entries) entry.key: entry.value.trim(),
-        },
+        profileId: {..._profile(profileId).data, for (final entry in fields.entries) entry.key: entry.value.trim()},
       }),
     );
     notifyListeners();
@@ -825,7 +821,10 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
     final taken = sets.any((set) => set.name == esm.name);
     await updateSettingsGroup(radioGroup, {
       'esmMessageSetOffered': true,
-      if (!taken) cwMessageSetsKey: [for (final set in [...sets, esm]) set.toJson()],
+      if (!taken)
+        cwMessageSetsKey: [
+          for (final set in [...sets, esm]) set.toJson(),
+        ],
       if (!taken) cwMessageSetKey: esm.name,
     });
   }
@@ -870,11 +869,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
       _onboardingKey,
       jsonEncode({
         ...onboardingStates,
-        OnboardingFlows.firstUse: {
-          'shownCount': 1,
-          'firstShownAtMillis': now,
-          'lastShownAtMillis': now,
-        },
+        OnboardingFlows.firstUse: {'shownCount': 1, 'firstShownAtMillis': now, 'lastShownAtMillis': now},
       }),
     );
     notifyListeners();
@@ -989,8 +984,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// `HomeNavigationRail.widthFor`.
   bool get homeNavExpanded => (settingValue(generalGroup, _homeNavExpandedKey) as bool?) ?? false;
 
-  Future<void> setHomeNavExpanded(bool value) =>
-      setSettingValue(generalGroup, _homeNavExpandedKey, value);
+  Future<void> setHomeNavExpanded(bool value) => setSettingValue(generalGroup, _homeNavExpandedKey, value);
 
   String get locale => (settingValue(generalGroup, _localeKey) as String?) ?? 'en';
 
@@ -1063,8 +1057,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// setting. Same default as app-polo's `useCompactFileNames`.
   bool get useCompactFileNames => (settingValue(exportsGroup, 'useCompactFileNames') as bool?) ?? false;
 
-  Future<void> setUseCompactFileNames(bool value) =>
-      setSettingValue(exportsGroup, 'useCompactFileNames', value);
+  Future<void> setUseCompactFileNames(bool value) => setSettingValue(exportsGroup, 'useCompactFileNames', value);
 
   /// Whether exports may carry the operator's private notes about the stations
   /// they worked — names, towns, gridsquares, QSO notes.
@@ -1076,8 +1069,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// being complete is the whole point of it.
   bool get includePrivateData => (settingValue(exportsGroup, 'includePrivateData') as bool?) ?? false;
 
-  Future<void> setIncludePrivateData(bool value) =>
-      setSettingValue(exportsGroup, 'includePrivateData', value);
+  Future<void> setIncludePrivateData(bool value) => setSettingValue(exportsGroup, 'includePrivateData', value);
 
   /// Smart VFO Snap: whether a knob turn on the connected radio settles on a
   /// round frequency (app/lib/services/cat/vfo_snap.dart).
@@ -1134,7 +1126,10 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   List<CwMessageSet> get cwMessageSets {
     final stored = settingValue(radioGroup, cwMessageSetsKey);
     if (stored is List && stored.isNotEmpty) {
-      final sets = [for (final entry in stored) if (entry is Map) CwMessageSet.fromJson(entry.cast<String, dynamic>())];
+      final sets = [
+        for (final entry in stored)
+          if (entry is Map) CwMessageSet.fromJson(entry.cast<String, dynamic>()),
+      ];
       if (sets.isNotEmpty) return sets;
     }
     return CwMessageSet.seeded(_legacyCwMessageSet());
@@ -1143,12 +1138,8 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// The pre-sets messages as a set, or null when there were none — every
   /// field empty is an install that never wrote one, not a set of blanks.
   CwMessageSet? _legacyCwMessageSet() {
-    final messages = [
-      for (var n = 1; n <= cwMessageCount; n++) (settingValue(radioGroup, cwMessageKey(n)) as String?) ?? '',
-    ];
-    final labels = [
-      for (var n = 1; n <= cwMessageCount; n++) (settingValue(radioGroup, cwMessageLabelKey(n)) as String?) ?? '',
-    ];
+    final messages = [for (var n = 1; n <= cwMessageCount; n++) (settingValue(radioGroup, cwMessageKey(n)) as String?) ?? ''];
+    final labels = [for (var n = 1; n <= cwMessageCount; n++) (settingValue(radioGroup, cwMessageLabelKey(n)) as String?) ?? ''];
     if (messages.every((text) => text.trim().isEmpty)) return null;
     return CwMessageSet(name: t.settings.radio.cwMessages.setSaved, messages: messages, labels: labels);
   }
@@ -1194,8 +1185,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// [Duration.zero] for no repeat. Only message 1 repeats: it is the CQ,
   /// and a repeating exchange or report would key over the contact it is
   /// answering (docs/design/cat.md § CW keying).
-  Duration get cwRepeatDelay =>
-      Duration(seconds: int.tryParse((settingValue(radioGroup, 'cwRepeatDelay') as String?) ?? '') ?? 0);
+  Duration get cwRepeatDelay => Duration(seconds: int.tryParse((settingValue(radioGroup, 'cwRepeatDelay') as String?) ?? '') ?? 0);
 
   Future<void> setCwRepeatDelay(int seconds) => setSettingValue(radioGroup, 'cwRepeatDelay', '$seconds');
 
@@ -1224,8 +1214,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
 
   int voiceMessageDuration(int n) => (settingValue(radioGroup, voiceMessageDurationKey(n)) as num?)?.round() ?? 0;
 
-  Future<void> setVoiceMessageDuration(int n, int millis) =>
-      setSettingValue(radioGroup, voiceMessageDurationKey(n), millis);
+  Future<void> setVoiceMessageDuration(int n, int millis) => setSettingValue(radioGroup, voiceMessageDurationKey(n), millis);
 
   /// Whether the logging panel's keyer area is showing. A setting rather
   /// than session state: an operator who opened the strip wants it there
@@ -1248,8 +1237,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
 
   /// The voice counterpart of [cwRepeatDelay], and the same rule: only
   /// memory 1 repeats, because it is the CQ.
-  Duration get voiceRepeatDelay =>
-      Duration(seconds: int.tryParse((settingValue(radioGroup, 'voiceRepeatDelay') as String?) ?? '') ?? 0);
+  Duration get voiceRepeatDelay => Duration(seconds: int.tryParse((settingValue(radioGroup, 'voiceRepeatDelay') as String?) ?? '') ?? 0);
 
   Future<void> setVoiceRepeatDelay(int seconds) => setSettingValue(radioGroup, 'voiceRepeatDelay', '$seconds');
 
@@ -1292,11 +1280,9 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// the one with a real cost at either end: too short chops a slow move into
   /// pieces that each measure as a fine adjustment, too long leaves the
   /// frequency jumping after the operator has moved on to the callsign field.
-  Duration get smartVfoSnapDebounce =>
-      Duration(milliseconds: _radioNumber('smartVfoSnapDebounceMs', smartVfoSnapDebounceOptions, '300').round());
+  Duration get smartVfoSnapDebounce => Duration(milliseconds: _radioNumber('smartVfoSnapDebounceMs', smartVfoSnapDebounceOptions, '300').round());
 
-  double get smartVfoSnapLongMoveKHz =>
-      _radioNumber('smartVfoSnapLongMoveKHz', smartVfoSnapLongMoveOptions, '2');
+  double get smartVfoSnapLongMoveKHz => _radioNumber('smartVfoSnapLongMoveKHz', smartVfoSnapLongMoveOptions, '2');
 
   double get smartVfoSnapMinMoveKHz => _radioNumber('smartVfoSnapMinMoveKHz', smartVfoSnapMinMoveOptions, '0.2');
 
@@ -1340,11 +1326,9 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// Off by default, for the same reason as [includePrivateData]: most
   /// exports go to a park, a contest sponsor, or an uploader, none of which
   /// asked which radio worked the contact.
-  bool get includeStationInfoInAdif =>
-      (settingValue(stationInfoGroup, 'includeStationInfoInAdif') as bool?) ?? false;
+  bool get includeStationInfoInAdif => (settingValue(stationInfoGroup, 'includeStationInfoInAdif') as bool?) ?? false;
 
-  Future<void> setIncludeStationInfoInAdif(bool value) =>
-      setSettingValue(stationInfoGroup, 'includeStationInfoInAdif', value);
+  Future<void> setIncludeStationInfoInAdif(bool value) => setSettingValue(stationInfoGroup, 'includeStationInfoInAdif', value);
 
   /// Which of `rig`/`power`/`antenna`/`key` to record. Defaults to just the
   /// two most operators already have exactly one of — antenna and key are
@@ -1356,8 +1340,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
     return value is List ? value.whereType<String>().toSet() : defaultStationInfoTrackedFields.toSet();
   }
 
-  Future<void> setStationInfoTrackedFields(Set<String> fields) =>
-      setSettingValue(stationInfoGroup, 'trackedFields', fields.toList());
+  Future<void> setStationInfoTrackedFields(Set<String> fields) => setSettingValue(stationInfoGroup, 'trackedFields', fields.toList());
 
   /// The power the operator was running, in watts, from before power moved
   /// onto the VFO ([Vfo.power], persisted by `RadioService`). Read once, by
@@ -1397,6 +1380,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   // Logging settings, defaults matching app-polo.
   bool get leftieMode => _loggingBool('leftieMode', false);
   bool get showBearing => _loggingBool('showBearing', false);
+
   /// Renders a bearing as "45° / 225°" — the great-circle bearing back to
   /// us, which is not simply +180° on a long path. Read only while
   /// [showBearing] is on; the registry offers it only then.
@@ -1488,8 +1472,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
     return NumberFormatStyle.locale;
   }
 
-  Future<void> setNumberFormatStyle(NumberFormatStyle style) =>
-      setSettingValue(generalGroup, _numberFormatKey, style.name);
+  Future<void> setNumberFormatStyle(NumberFormatStyle style) => setSettingValue(generalGroup, _numberFormatKey, style.name);
 
   /// How many characters a locator is shown with, app-wide — see
   /// [GridPrecision], which is where the resolved answer lives.
@@ -1503,8 +1486,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
     return GridPrecision.six;
   }
 
-  Future<void> setGridPrecision(GridPrecision precision) =>
-      setSettingValue(generalGroup, _gridPrecisionKey, precision.name);
+  Future<void> setGridPrecision(GridPrecision precision) => setSettingValue(generalGroup, _gridPrecisionKey, precision.name);
 
   /// The operator's Layout Density choice. [DensityPreference.auto] by
   /// default, which is what makes the height ladder the normal behaviour and
@@ -1514,8 +1496,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
     return DensityPreference.values.firstWhere((e) => e.name == value, orElse: () => DensityPreference.auto);
   }
 
-  Future<void> setDensityPreference(DensityPreference preference) =>
-      setSettingValue(generalGroup, _layoutDensityKey, preference.name);
+  Future<void> setDensityPreference(DensityPreference preference) => setSettingValue(generalGroup, _layoutDensityKey, preference.name);
 
   /// The MapLibre basemap choice (see map_panel.dart). [MapStyle.automatic]
   /// by default, which keeps the existing light/dark-aware basemap; any

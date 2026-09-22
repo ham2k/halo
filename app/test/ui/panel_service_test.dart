@@ -10,13 +10,7 @@ import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 
 void main() {
-  Map<String, dynamic> entry({
-    String? hookKey = 'wx',
-    String? key = 'forecast',
-    String? title = 'Forecast',
-    Object? on,
-    Object? form,
-  }) => {
+  Map<String, dynamic> entry({String? hookKey = 'wx', String? key = 'forecast', String? title = 'Forecast', Object? on, Object? form}) => {
     'hookKey': ?hookKey,
     'key': ?key,
     'title': ?title,
@@ -40,13 +34,15 @@ void main() {
   });
 
   test('junk in a trigger or form list costs only the junk', () {
-    final panel = PanelDefinition.fromExtensionEntry(entry(
-      on: ['operation', 42, 'tick:30'],
-      form: [
-        {'key': 'units'},
-        'not a field',
-      ],
-    ))!;
+    final panel = PanelDefinition.fromExtensionEntry(
+      entry(
+        on: ['operation', 42, 'tick:30'],
+        form: [
+          {'key': 'units'},
+          'not a field',
+        ],
+      ),
+    )!;
     expect(panel.triggers, ['operation', 'tick:30']);
     expect(panel.formFields.length, 1);
   });
@@ -54,12 +50,17 @@ void main() {
   test('a panel with no form and no settings target offers no settings', () {
     // What decides whether a gear appears beside it in Layout Setup.
     expect(PanelDefinition.fromExtensionEntry(entry())!.hasSettings, isFalse);
-    expect(PanelDefinition.fromExtensionEntry(entry(form: [{'key': 'units'}]))!.hasSettings, isTrue);
     expect(
-      const PanelDefinition(id: 'logging', title: 'QSOs', source: PanelSource.native, settingsTarget: 'logging')
-          .hasSettings,
+      PanelDefinition.fromExtensionEntry(
+        entry(
+          form: [
+            {'key': 'units'},
+          ],
+        ),
+      )!.hasSettings,
       isTrue,
     );
+    expect(const PanelDefinition(id: 'logging', title: 'QSOs', source: PanelSource.native, settingsTarget: 'logging').hasSettings, isTrue);
   });
 
   test('re-registering an identical native panel notifies nobody', () {

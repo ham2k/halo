@@ -28,8 +28,7 @@ import '../support/halo_test_support.dart';
 Future<HaLoServices> _services(Map<String, dynamic> mockHookResults) =>
     _servicesWithExtensions(ExtensionServiceWithFakeHost(FakeExtensionHost(mockHookResults)));
 
-Future<HaLoServices> _servicesWithExtensions(ExtensionService extensions) async =>
-    (await makeHaLoServices(extensions: extensions)).services;
+Future<HaLoServices> _servicesWithExtensions(ExtensionService extensions) async => (await makeHaLoServices(extensions: extensions)).services;
 
 Map<String, dynamic> _panelEntry({required String panelKey, required String kind}) => {
   'key': panelKey,
@@ -38,21 +37,23 @@ Map<String, dynamic> _panelEntry({required String panelKey, required String kind
 };
 
 Future<void> _openDialog(WidgetTester tester, HaLoServices services, {String target = 'logging'}) async {
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(
-      // A Scaffold ancestor, not just the bare button: an action element's
-      // result banner goes through ScaffoldMessenger.showSnackBar, which
-      // asserts there's a Scaffold to present it on.
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => ElevatedButton(
-            onPressed: () => showSettingsForTarget(context, services: services, target: target, title: 'Test Settings'),
-            child: const Text('open'),
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        // A Scaffold ancestor, not just the bare button: an action element's
+        // result banner goes through ScaffoldMessenger.showSnackBar, which
+        // asserts there's a Scaffold to present it on.
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => showSettingsForTarget(context, services: services, target: target, title: 'Test Settings'),
+              child: const Text('open'),
+            ),
           ),
         ),
       ),
     ),
-  ));
+  );
   await tester.tap(find.text('open'));
   await tester.pumpAndSettle();
 }
@@ -66,15 +67,7 @@ void main() {
       'settingsPanel:myext:getDefinition': {
         'title': 'My Extension',
         'elements': [
-          {
-            'type': 'field',
-            'fieldType': 'checkbox',
-            'key': 'sendSpots',
-            'label': 'Send Spots',
-            'icon': 'radio',
-            'value': false,
-            'target': 'logging',
-          },
+          {'type': 'field', 'fieldType': 'checkbox', 'key': 'sendSpots', 'label': 'Send Spots', 'icon': 'radio', 'value': false, 'target': 'logging'},
         ],
       },
     });
@@ -107,15 +100,7 @@ void main() {
       'settingsPanel:dynext:getDefinition': {
         'title': 'Dynamic Extension',
         'elements': [
-          {
-            'type': 'field',
-            'fieldType': 'checkbox',
-            'key': 'liveFlag',
-            'label': 'Live Flag',
-            'icon': 'flag',
-            'value': false,
-            'target': 'logging',
-          },
+          {'type': 'field', 'fieldType': 'checkbox', 'key': 'liveFlag', 'label': 'Live Flag', 'icon': 'flag', 'value': false, 'target': 'logging'},
         ],
       },
     });
@@ -133,10 +118,7 @@ void main() {
 
   testWidgets('two panels declaring the same field key stay independent — no cross-panel misrouting', (tester) async {
     final services = await _services({
-      'settingsPanel:*:getPanels': [
-        _panelEntry(panelKey: 'panelA', kind: 'simple'),
-        _panelEntry(panelKey: 'panelB', kind: 'simple'),
-      ],
+      'settingsPanel:*:getPanels': [_panelEntry(panelKey: 'panelA', kind: 'simple'), _panelEntry(panelKey: 'panelB', kind: 'simple')],
       'settingsPanel:panelA:getDefinition': {
         'title': 'Panel A',
         'elements': [
@@ -200,48 +182,48 @@ void main() {
     await tester.tap(button);
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Cache cleared'),
-      findsOneWidget,
-      reason: 'the result banner proves the tap actually reached runSettingsAction, not a dead button',
-    );
+    expect(find.text('Cache cleared'), findsOneWidget, reason: 'the result banner proves the tap actually reached runSettingsAction, not a dead button');
   });
 
   testWidgets("an action's state is scoped to its own panel — no other panel's or core's keys leak in", (tester) async {
     // Records the `state` the action call actually received, to pin the
     // cross-panel scoping fix above.
     Map<String, dynamic>? capturedState;
-    final services = await _servicesWithExtensions(ExtensionServiceWithFakeHost(FakeExtensionHost({
-      'settingsPanel:*:getPanels': [
-        {
-          'key': 'panelA',
-          'ok': true,
-          'value': {'panelKey': 'panelA', 'hookKey': 'panelA', 'extensionKey': 'panelA', 'title': 'Panel A', 'kind': 'simple', 'order': 0},
-        },
-        {
-          'key': 'panelB',
-          'ok': true,
-          'value': {'panelKey': 'panelB', 'hookKey': 'panelB', 'extensionKey': 'panelB', 'title': 'Panel B', 'kind': 'simple', 'order': 1},
-        },
-      ],
-      'settingsPanel:panelA:getDefinition': {
-        'title': 'Panel A',
-        'elements': [
-          {'type': 'field', 'fieldType': 'checkbox', 'key': 'flagA', 'label': 'Flag A', 'icon': 'flag', 'value': false, 'target': 'logging'},
-        ],
-      },
-      'settingsPanel:panelB:getDefinition': {
-        'title': 'Panel B',
-        'elements': [
-          {'type': 'field', 'fieldType': 'checkbox', 'key': 'flagB', 'label': 'Flag B', 'icon': 'flag', 'value': false, 'target': 'logging'},
-          {'type': 'action', 'key': 'clearCache', 'label': 'Clear Cache', 'method': 'clearCache', 'target': 'logging'},
-        ],
-      },
-      'settingsPanel:panelB:clearCache': (Object? args) {
-        capturedState = (args as Map)['state'] as Map<String, dynamic>;
-        return 'cleared';
-      },
-    })));
+    final services = await _servicesWithExtensions(
+      ExtensionServiceWithFakeHost(
+        FakeExtensionHost({
+          'settingsPanel:*:getPanels': [
+            {
+              'key': 'panelA',
+              'ok': true,
+              'value': {'panelKey': 'panelA', 'hookKey': 'panelA', 'extensionKey': 'panelA', 'title': 'Panel A', 'kind': 'simple', 'order': 0},
+            },
+            {
+              'key': 'panelB',
+              'ok': true,
+              'value': {'panelKey': 'panelB', 'hookKey': 'panelB', 'extensionKey': 'panelB', 'title': 'Panel B', 'kind': 'simple', 'order': 1},
+            },
+          ],
+          'settingsPanel:panelA:getDefinition': {
+            'title': 'Panel A',
+            'elements': [
+              {'type': 'field', 'fieldType': 'checkbox', 'key': 'flagA', 'label': 'Flag A', 'icon': 'flag', 'value': false, 'target': 'logging'},
+            ],
+          },
+          'settingsPanel:panelB:getDefinition': {
+            'title': 'Panel B',
+            'elements': [
+              {'type': 'field', 'fieldType': 'checkbox', 'key': 'flagB', 'label': 'Flag B', 'icon': 'flag', 'value': false, 'target': 'logging'},
+              {'type': 'action', 'key': 'clearCache', 'label': 'Clear Cache', 'method': 'clearCache', 'target': 'logging'},
+            ],
+          },
+          'settingsPanel:panelB:clearCache': (Object? args) {
+            capturedState = (args as Map)['state'] as Map<String, dynamic>;
+            return 'cleared';
+          },
+        }),
+      ),
+    );
 
     await _openDialog(tester, services);
     // Toggle panelA's own field so the dialog's combined _values map holds
@@ -263,7 +245,8 @@ void main() {
     expect(
       capturedState,
       {'flagB': false},
-      reason: "panelB's action must see its own field bare-keyed and nothing else — not panelA's namespaced "
+      reason:
+          "panelB's action must see its own field bare-keyed and nothing else — not panelA's namespaced "
           'key, not a missing/renamed flagB',
     );
   });
@@ -343,19 +326,21 @@ void main() {
     // showAccountDialogByKey (unlike _ExtensionSettingsPanel's own
     // _manageAccount) opens on the app's root navigator, not this test's
     // local context — needs the same navigatorKey main.dart wires up.
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () => showSettingsForTarget(context, services: services, target: 'logging', title: 'Test Settings'),
-              child: const Text('open'),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showSettingsForTarget(context, services: services, target: 'logging', title: 'Test Settings'),
+                child: const Text('open'),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
@@ -377,7 +362,8 @@ void main() {
     expect(
       find.widgetWithText(TextButton, 'Manage'),
       findsOneWidget,
-      reason: 'the target dialog reloaded on its own once the account pane closed — Connect became Manage '
+      reason:
+          'the target dialog reloaded on its own once the account pane closed — Connect became Manage '
           'without any unrelated field edit or restart forcing a refresh',
     );
   });
@@ -423,18 +409,20 @@ void main() {
 
   group('HALO-151: showSettingsForKeys', () {
     Future<void> openByKeys(WidgetTester tester, HaLoServices services, List<String> keys) async {
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () => showSettingsForKeys(context, services: services, keys: keys, title: 'Pick one'),
-                child: const Text('open'),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => showSettingsForKeys(context, services: services, keys: keys, title: 'Pick one'),
+                  child: const Text('open'),
+                ),
               ),
             ),
           ),
         ),
-      ));
+      );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
     }
@@ -448,8 +436,11 @@ void main() {
       await openByKeys(tester, services, ['showGridField']);
 
       expect(find.text(t.operation.menu.showGridField), findsOneWidget);
-      expect(find.text(t.operation.menu.showRstFields), findsNothing,
-          reason: 'a sibling in the same group must not come along — the command named one setting');
+      expect(
+        find.text(t.operation.menu.showRstFields),
+        findsNothing,
+        reason: 'a sibling in the same group must not come along — the command named one setting',
+      );
     });
 
     testWidgets('the named setting commits through its real path', (tester) async {
@@ -459,10 +450,7 @@ void main() {
       expect(services.settings.showGridField, isFalse);
 
       await openByKeys(tester, services, ['showGridField']);
-      final toggle = find.descendant(
-        of: find.widgetWithText(ListTile, t.operation.menu.showGridField),
-        matching: find.byType(Switch),
-      );
+      final toggle = find.descendant(of: find.widgetWithText(ListTile, t.operation.menu.showGridField), matching: find.byType(Switch));
       await tester.ensureVisible(toggle);
       // The scroll ensureVisible starts needs a frame before a tap can be
       // aimed: in a sliver viewport the rows move on the NEXT layout, and a
@@ -529,4 +517,3 @@ class _AccountAwareExtensionService extends ExtensionServiceWithFakeHost {
   @override
   Future<Map<String, String>> getAccountCredentials(String kvKey) async => const {};
 }
-

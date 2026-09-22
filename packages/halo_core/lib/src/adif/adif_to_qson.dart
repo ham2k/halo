@@ -72,12 +72,7 @@ class AdifRecord {
   /// imported.
   final List<AdifRecordProblem> problems;
 
-  const AdifRecord({
-    required this.number,
-    required this.fields,
-    required this.qso,
-    this.problems = const [],
-  });
+  const AdifRecord({required this.number, required this.fields, required this.qso, this.problems = const []});
 }
 
 /// A parsed ADIF file.
@@ -98,12 +93,7 @@ class AdifLog {
   /// file order. These are the same objects that appear in [qsos].
   final List<AdifRecord> warnings;
 
-  const AdifLog({
-    required this.headers,
-    required this.qsos,
-    required this.errors,
-    required this.warnings,
-  });
+  const AdifLog({required this.headers, required this.qsos, required this.errors, required this.warnings});
 }
 
 /// Parses ADIF text into QSON. Convenience wrapper over [parseAdifLogBytes];
@@ -333,10 +323,7 @@ Map<String, dynamic> _qsoFrom(Map<String, String> f, bool genericQsl) {
   _set(f, qso, 'tx_pwr', 'power', num.tryParse);
   _set(f, their, 'rx_pwr', 'power', num.tryParse);
 
-  final notes = _present(f['notes']) ??
-      _present(f['notes_intl']) ??
-      _present(f['comment']) ??
-      _present(f['comment_intl']);
+  final notes = _present(f['notes']) ?? _present(f['notes_intl']) ?? _present(f['comment']) ?? _present(f['comment_intl']);
   if (notes != null) qso['notes'] = notes;
 
   final qsl = _qslFrom(f, genericQsl);
@@ -494,13 +481,7 @@ double? parseAdifCoordinate(String raw, {required bool latitude}) {
 /// Absent stays absent — writing an explicit null would make "the file didn't
 /// say" indistinguishable from "the file said nothing", which is what a merge
 /// against an existing QSO turns on.
-void _set(
-  Map<String, String> src,
-  Map<String, dynamic> dest,
-  String field,
-  String destField, [
-  Object? Function(String)? convert,
-]) {
+void _set(Map<String, String> src, Map<String, dynamic> dest, String field, String destField, [Object? Function(String)? convert]) {
   final raw = _present(src[field]) ?? _present(src['${field}_intl']);
   if (raw == null) return;
   final value = convert == null ? raw : convert(raw);
@@ -590,14 +571,7 @@ int? _dateMillis(String value) {
   return DateTime.tryParse('${value.replaceFirst(' ', 'T')}Z')?.millisecondsSinceEpoch;
 }
 
-const _namedEntities = {
-  'amp': '&',
-  'lt': '<',
-  'gt': '>',
-  'quot': '"',
-  'apos': "'",
-  'nbsp': ' ',
-};
+const _namedEntities = {'amp': '&', 'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'", 'nbsp': ' '};
 
 /// Undoes the HTML escaping some loggers apply to `_INTL` and free-text
 /// fields. Named entities are limited to the handful an escaper actually

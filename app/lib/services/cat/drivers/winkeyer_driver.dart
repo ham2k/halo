@@ -144,7 +144,6 @@ class WinkeyerDriver extends EquipmentDriver {
   @override
   String get name => 'K1EL WinKeyer';
 
-
   @override
   bool get canKeyCw => true;
 
@@ -159,41 +158,35 @@ class WinkeyerDriver extends EquipmentDriver {
   /// getting the first wrong is silence while getting the second wrong keys
   /// a transmitter, so both are asked rather than guessed.
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [
-        // An overridden key is pinned by the entry and never the operator's
-        // to answer, so it shows no field — the contract every other driver
-        // with a config field keeps.
-        if (!overrides.containsKey(winkeyerKeyPortConfigKey)) {
-          'type': 'field',
-          'fieldType': 'select',
-          'key': winkeyerKeyPortConfigKey,
-          'label': t.settings.station.winkeyerKeyPort,
-          'description': t.settings.station.winkeyerKeyPortDescription,
-          'options': [
-            {'value': '1', 'label': t.settings.station.winkeyerKeyPortLabel(n: 1)},
-            {'value': '2', 'label': t.settings.station.winkeyerKeyPortLabel(n: 2)},
-          ],
-        },
-        if (!overrides.containsKey(winkeyerPttConfigKey)) {
-          'type': 'field',
-          'fieldType': 'checkbox',
-          'key': winkeyerPttConfigKey,
-          'label': t.settings.station.winkeyerPtt,
-          'description': t.settings.station.winkeyerPttDescription,
-        },
-      ];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    // An overridden key is pinned by the entry and never the operator's
+    // to answer, so it shows no field — the contract every other driver
+    // with a config field keeps.
+    if (!overrides.containsKey(winkeyerKeyPortConfigKey))
+      {
+        'type': 'field',
+        'fieldType': 'select',
+        'key': winkeyerKeyPortConfigKey,
+        'label': t.settings.station.winkeyerKeyPort,
+        'description': t.settings.station.winkeyerKeyPortDescription,
+        'options': [
+          {'value': '1', 'label': t.settings.station.winkeyerKeyPortLabel(n: 1)},
+          {'value': '2', 'label': t.settings.station.winkeyerKeyPortLabel(n: 2)},
+        ],
+      },
+    if (!overrides.containsKey(winkeyerPttConfigKey))
+      {
+        'type': 'field',
+        'fieldType': 'checkbox',
+        'key': winkeyerPttConfigKey,
+        'label': t.settings.station.winkeyerPtt,
+        'description': t.settings.station.winkeyerPttDescription,
+      },
+  ];
 
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => WinkeyerSession(
-        sink,
-        keyPort: winkeyerKeyPortFromConfig(config),
-        ptt: winkeyerPttFromConfig(config),
-        speed: winkeyerSpeedFromConfig(config),
-      );
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
+      WinkeyerSession(sink, keyPort: winkeyerKeyPortFromConfig(config), ptt: winkeyerPttFromConfig(config), speed: winkeyerSpeedFromConfig(config));
 }
 
 /// The speed the operator last picked on this keyer, or [defaultCwSpeedWpm]
@@ -209,11 +202,11 @@ int winkeyerSpeedFromConfig(Map<String, dynamic> config) {
 /// an entry that PINS this in its overrides carries whatever the catalogue
 /// wrote, and the catalogue writes config values as strings.
 bool winkeyerPttFromConfig(Map<String, dynamic> config) => switch (config[winkeyerPttConfigKey]) {
-      final bool on => on,
-      'true' => true,
-      'false' => false,
-      _ => false,
-    };
+  final bool on => on,
+  'true' => true,
+  'false' => false,
+  _ => false,
+};
 
 /// The stored key port, or [winkeyerDefaultKeyPort] for anything that isn't
 /// one of the two the hardware has — an entry saved before the field
@@ -239,18 +232,12 @@ class WinkeyerSession implements CwKeyerSession {
   final int keyPort;
   final bool ptt;
 
-  WinkeyerSession(
-    this._sink, {
-    this.keyPort = winkeyerDefaultKeyPort,
-    this.ptt = false,
-    this._speed = defaultCwSpeedWpm,
-  });
+  WinkeyerSession(this._sink, {this.keyPort = winkeyerDefaultKeyPort, this.ptt = false, this._speed = defaultCwSpeedWpm});
 
   /// The PINCFG byte this session asserts. Sidetone stays off: the boxes
   /// that have a speaker are keyed next to the operator's own rig, and a
   /// second sidetone against the radio's is worse than none.
-  int get _pinConfig =>
-      (keyPort == 2 ? _pinKeyPort2 : _pinKeyPort1) | (ptt ? _pinPtt : 0);
+  int get _pinConfig => (keyPort == 2 ? _pinKeyPort2 : _pinKeyPort1) | (ptt ? _pinPtt : 0);
 
   int _nextId = 1;
   final _pending = <_Message>[];
@@ -450,16 +437,18 @@ class WinkeyerSession implements CwKeyerSession {
   void _reportCurrent() {
     final current = _current;
     if (current == null) return;
-    _sink.reportCwProgress(CwSendProgress(
-      id: current.id,
-      text: current.text,
-      // The timeline is still worth having — a view that only knows the
-      // estimate can pace by it — but [sentCount] is what this keyer shows.
-      characterEnds: _currentEnds,
-      sentCount: _echoed,
-      pending: [for (final m in _pending) m.text],
-      pendingIds: [for (final m in _pending) m.id],
-    ));
+    _sink.reportCwProgress(
+      CwSendProgress(
+        id: current.id,
+        text: current.text,
+        // The timeline is still worth having — a view that only knows the
+        // estimate can pace by it — but [sentCount] is what this keyer shows.
+        characterEnds: _currentEnds,
+        sentCount: _echoed,
+        pending: [for (final m in _pending) m.text],
+        pendingIds: [for (final m in _pending) m.id],
+      ),
+    );
   }
 
   @override

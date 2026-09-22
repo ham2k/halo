@@ -29,23 +29,18 @@ class _FakeExtensions extends ExtensionService {
   final List<Map<String, dynamic>> board;
 
   @override
-  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>
-      getSpots() async =>
-      (
-        items: board,
-        succeeded: board.map((s) => s['hookKey'] as String? ?? 'unknown').toSet().toList(),
-        unreachable: const <String>[],
-        failed: const <String>[],
-      );
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async => (
+    items: board,
+    succeeded: board.map((s) => s['hookKey'] as String? ?? 'unknown').toSet().toList(),
+    unreachable: const <String>[],
+    failed: const <String>[],
+  );
 
   @override
   Future<Map<String, String>> getSpotSourceNames() async => const {'test': 'Test Source'};
 
   @override
-  Future<ControlsResult> loggingControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
+  Future<ControlsResult> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
       (controls: const <Map<String, dynamic>>[], loadFailed: false);
 
   @override
@@ -55,19 +50,18 @@ class _FakeExtensions extends ExtensionService {
     required Map<String, dynamic> operation,
     bool online = true,
     bool recentContext = false,
-  }) async =>
-      null;
+  }) async => null;
 }
 
 Map<String, dynamic> _spot(String call, {double freq = 14250.0}) => {
-      'their': {'call': call},
-      'freq': freq,
-      'band': '20m',
-      'mode': 'SSB',
-      'refs': const <Map<String, dynamic>>[],
-      'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test'},
-      'hookKey': 'test',
-    };
+  'their': {'call': call},
+  'freq': freq,
+  'band': '20m',
+  'mode': 'SSB',
+  'refs': const <Map<String, dynamic>>[],
+  'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test'},
+  'hookKey': 'test',
+};
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -86,17 +80,16 @@ void main() {
     // round trip in this file are on screen at once.
     await settings.setLayoutData(
       LayoutKeys.operationDock,
-      DockSplit(Axis.horizontal, [
-        DockGroup(['logging']),
-        DockGroup(['spots']),
-      ], [2, 1]).toJson(),
+      DockSplit(
+        Axis.horizontal,
+        [
+          DockGroup(['logging']),
+          DockGroup(['spots']),
+        ],
+        [2, 1],
+      ).toJson(),
     );
-    await settings.setSpottingFilters({
-      'bandFilter': 'any',
-      'modeFilter': 'any',
-      'sortBy': 'frequency',
-      'groupByBand': true,
-    });
+    await settings.setSpottingFilters({'bandFilter': 'any', 'modeFilter': 'any', 'sortBy': 'frequency', 'groupByBand': true});
   });
 
   tearDown(() async => db.close());
@@ -108,15 +101,15 @@ void main() {
     tester.view.physicalSize = const Size(1400, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final services = HaLoServices(
-      db,
-      settings,
-      extensions: _FakeExtensions([_spot('K1ABC'), _spot('W2DEF', freq: 14260.0)]),
-    );
+    final services = HaLoServices(db, settings, extensions: _FakeExtensions([_spot('K1ABC'), _spot('W2DEF', freq: 14260.0)]));
     final operation = await services.operations.create(stationCall: 'N0CALL');
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: OperationView(services: services, operationUuid: operation.uuid)),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ),
+    );
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
@@ -130,8 +123,7 @@ void main() {
   /// [call]'s row IN THE SPOTS LIST. Scoped, because once the fields hold that
   /// station the logging panel shows the same text — an unscoped finder starts
   /// matching two widgets the moment the gesture works.
-  Finder rowFor(String call) =>
-      find.descendant(of: find.byType(SpotsPanel), matching: find.text(call));
+  Finder rowFor(String call) => find.descendant(of: find.byType(SpotsPanel), matching: find.text(call));
 
   /// Drags [call]'s row right far enough to rest open, and releases.
   Future<void> slideOpen(WidgetTester tester, String call) async {
@@ -146,16 +138,13 @@ void main() {
     }
   }
 
-  String callField(WidgetTester tester) =>
-      tester.widget<TextField>(find.widgetWithText(TextField, 'Their call').first).controller?.text ?? '';
+  String callField(WidgetTester tester) => tester.widget<TextField>(find.widgetWithText(TextField, 'Their call').first).controller?.text ?? '';
 
   /// Open rows, counted by the action icon each one reveals — scoped to the
   /// spots list, because the logging panel's own submit button carries the
   /// very same glyph (deliberately: the gesture ends in the act that button
   /// performs), and counting it makes an empty list look like an open row.
-  int openRows(WidgetTester tester) => tester
-      .widgetList(find.descendant(of: find.byType(SpotsPanel), matching: find.byIcon(MdiIcons.upload)))
-      .length;
+  int openRows(WidgetTester tester) => tester.widgetList(find.descendant(of: find.byType(SpotsPanel), matching: find.byIcon(MdiIcons.upload))).length;
 
   testWidgets('a peek fills the logging fields', (tester) async {
     await pumpOperation(tester);

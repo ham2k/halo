@@ -37,9 +37,12 @@ class ScoreCommand extends ScoreCommandBase {
     // up to the parent parser for an option a subcommand does not define, and
     // one declaration cannot disagree with itself about the default.
     argParser
-      ..addOption('key',
-          help: 'Look at ONE scorer, raw and unmerged (core, cqww, fd…). '
-              'Omitted, the scorers this operation needs are selected and merged as the app merges them.')
+      ..addOption(
+        'key',
+        help:
+            'Look at ONE scorer, raw and unmerged (core, cqww, fd…). '
+            'Omitted, the scorers this operation needs are selected and merged as the app merges them.',
+      )
       ..addOption('ref', help: 'The contest ref this scorer scopes to, as JSON.');
 
     addSubcommand(_ScoreSummariesCommand());
@@ -51,8 +54,7 @@ class ScoreCommand extends ScoreCommandBase {
   Object? part(Map<String, Object?> result) => result;
 
   @override
-  String markdown(Map<String, Object?> result) =>
-      scoreMarkdown(result, qsos: qsos, scorerKey: scorerKey);
+  String markdown(Map<String, Object?> result) => scoreMarkdown(result, qsos: qsos, scorerKey: scorerKey);
 }
 
 /// The operation-wide tallies (`operationSummary`).
@@ -66,8 +68,7 @@ class _ScoreSummariesCommand extends ScoreCommandBase {
   Object? part(Map<String, Object?> result) => result['operationSummary'];
 
   @override
-  String markdown(Map<String, Object?> result) =>
-      scoreSummariesMarkdown((result['operationSummary'] as Map?)?.cast<String, Object?>() ?? const {});
+  String markdown(Map<String, Object?> result) => scoreSummariesMarkdown((result['operationSummary'] as Map?)?.cast<String, Object?>() ?? const {});
 }
 
 /// The 24h UTC day buckets (`daySections`).
@@ -82,9 +83,9 @@ class _ScoreSectionsCommand extends ScoreCommandBase {
 
   @override
   String markdown(Map<String, Object?> result) => scoreSectionsMarkdown([
-        for (final section in (result['daySections'] as List? ?? const []))
-          if (section is Map) section.cast<String, Object?>(),
-      ]);
+    for (final section in (result['daySections'] as List? ?? const []))
+      if (section is Map) section.cast<String, Object?>(),
+  ]);
 }
 
 /// The per-QSO verdicts (`qsoScores`).
@@ -98,10 +99,7 @@ class _ScoreQsosCommand extends ScoreCommandBase {
   Object? part(Map<String, Object?> result) => result['qsoScores'];
 
   @override
-  String markdown(Map<String, Object?> result) => scoreQsosMarkdown(
-        (result['qsoScores'] as Map?)?.cast<String, Object?>() ?? const {},
-        qsos: qsos,
-      );
+  String markdown(Map<String, Object?> result) => scoreQsosMarkdown((result['qsoScores'] as Map?)?.cast<String, Object?>() ?? const {}, qsos: qsos);
 }
 
 /// Shared by `score` and its subcommands: run the scorer once, print the part
@@ -155,15 +153,9 @@ abstract class ScoreCommandBase extends ExtCommand {
                 segments: segmentsOf(op, contacts),
                 extraArgs: onlineArgs,
                 timeout: hookTimeout,
-              )
+              ),
             }
-          : await scoreOperation(
-              runtime.host,
-              operation: op,
-              qsos: contacts,
-              extraArgs: onlineArgs,
-              timeout: hookTimeout,
-            );
+          : await scoreOperation(runtime.host, operation: op, qsos: contacts, extraArgs: onlineArgs, timeout: hookTimeout);
 
       // One scorer keeps the bare result it always printed; several are keyed
       // by scorer, the shape the app caches them in.
@@ -177,10 +169,7 @@ abstract class ScoreCommandBase extends ExtCommand {
         // reaches for BECAUSE a scorer is misbehaving, so the failure is
         // passed through whichever view they asked for.
         emit(
-          {
-            for (final entry in scored.entries)
-              entry.key: entry.value['error'] == null ? part(entry.value) : entry.value,
-          },
+          {for (final entry in scored.entries) entry.key: entry.value['error'] == null ? part(entry.value) : entry.value},
           // Each scorer's section under its own heading: in a merged pass the
           // parts alone would run together with nothing saying whose they are.
           markdown: () => [
@@ -192,5 +181,4 @@ abstract class ScoreCommandBase extends ExtCommand {
       return 0;
     });
   }
-
 }

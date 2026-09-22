@@ -9,32 +9,34 @@ import 'package:test/test.dart';
 
 void main() {
   Map<String, dynamic> draft({Object? lookups, String call = 'KN2X'}) => {
-        'their': {
-          'call': call,
-          'sent': '59',
-          'guess': {'name': 'John', 'state': 'NY'},
-          'lookups': ?lookups,
-        },
-        'our': {'call': 'K2SUL', 'sent': '59'},
-        'freq': 14025.0,
-        'band': '20m',
-        'mode': 'CW',
-      };
+    'their': {
+      'call': call,
+      'sent': '59',
+      'guess': {'name': 'John', 'state': 'NY'},
+      'lookups': ?lookups,
+    },
+    'our': {'call': 'K2SUL', 'sent': '59'},
+    'freq': 14025.0,
+    'band': '20m',
+    'mode': 'CW',
+  };
 
   /// Encode and decode, as a real link does.
   PeerQsoDraftPayload? roundTrip(PeerMessage message) => PeerMessage.decode(message.encode())?.qsoDraftOrNull;
 
   test('the draft survives the wire', () {
-    final payload = roundTrip(PeerMessage.qsoDraft(
-      qso: draft(),
-      operationUuid: 'op-1',
-      fields: const [
-        PeerDraftFieldPayload(key: 'call', label: 'Call', value: 'KN2X'),
-        PeerDraftFieldPayload(key: 'sent', label: 'Sent', hint: '59'),
-      ],
-      position: '2',
-      operatorCall: 'KI2D',
-    ))!;
+    final payload = roundTrip(
+      PeerMessage.qsoDraft(
+        qso: draft(),
+        operationUuid: 'op-1',
+        fields: const [
+          PeerDraftFieldPayload(key: 'call', label: 'Call', value: 'KN2X'),
+          PeerDraftFieldPayload(key: 'sent', label: 'Sent', hint: '59'),
+        ],
+        position: '2',
+        operatorCall: 'KI2D',
+      ),
+    )!;
     expect((payload.qso['their'] as Map)['call'], 'KN2X');
     expect((payload.qso['their'] as Map)['guess'], {'name': 'John', 'state': 'NY'});
     expect(payload.qso['band'], '20m');
@@ -53,12 +55,16 @@ void main() {
   // nothing on the receiving end reads it, and it would ride the wire on
   // every keystroke that changed anything.
   test('the lookup evidence is left behind', () {
-    final payload = roundTrip(PeerMessage.qsoDraft(
-      operationUuid: 'op-1',
-      qso: draft(lookups: [
-        {'source': 'qrz', 'name': 'John', 'padding': 'x' * 4096},
-      ]),
-    ))!;
+    final payload = roundTrip(
+      PeerMessage.qsoDraft(
+        operationUuid: 'op-1',
+        qso: draft(
+          lookups: [
+            {'source': 'qrz', 'name': 'John', 'padding': 'x' * 4096},
+          ],
+        ),
+      ),
+    )!;
     expect((payload.qso['their'] as Map).containsKey('lookups'), isFalse);
     // The guess it produced is what the panel actually shows, so stripping
     // the evidence must not take the answer with it.
@@ -71,9 +77,11 @@ void main() {
   // sides of that comparison together, and the panel watching it would
   // silently stop updating.
   test('stripping never reaches into the caller\'s draft', () {
-    final original = draft(lookups: [
-      {'source': 'qrz'},
-    ]);
+    final original = draft(
+      lookups: [
+        {'source': 'qrz'},
+      ],
+    );
     PeerMessage.qsoDraft(qso: original, operationUuid: 'op-1');
     expect((original['their'] as Map).containsKey('lookups'), isTrue);
   });
@@ -81,7 +89,12 @@ void main() {
   // How a position says it has just logged or wiped. A reader that rejected
   // this would leave the last contact on screen for good.
   test('a draft with no callsign is a real draft', () {
-    final payload = roundTrip(PeerMessage.qsoDraft(qso: draft(call: ''), operationUuid: 'op-1'))!;
+    final payload = roundTrip(
+      PeerMessage.qsoDraft(
+        qso: draft(call: ''),
+        operationUuid: 'op-1',
+      ),
+    )!;
     expect((payload.qso['their'] as Map)['call'], '');
   });
 
@@ -137,11 +150,13 @@ void main() {
   // under the name its own extension gave it — that is what putting the row
   // on the wire buys over deriving it at the far end.
   test('a control this build knows nothing about still arrives named', () {
-    final payload = roundTrip(PeerMessage.qsoDraft(
-      qso: draft(),
-      operationUuid: 'op-1',
-      fields: const [PeerDraftFieldPayload(key: 'wfd_class', label: 'Class', value: '3A')],
-    ))!;
+    final payload = roundTrip(
+      PeerMessage.qsoDraft(
+        qso: draft(),
+        operationUuid: 'op-1',
+        fields: const [PeerDraftFieldPayload(key: 'wfd_class', label: 'Class', value: '3A')],
+      ),
+    )!;
     expect(payload.fields.single.label, 'Class');
     expect(payload.fields.single.value, '3A');
   });

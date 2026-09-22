@@ -26,20 +26,9 @@ import 'cat_ascii_codec.dart';
 ///
 /// `8` is deliberately absent: it is unassigned on most of the line, and
 /// guessing it would be inventing a mode.
-const kenwoodModeCodes = <String, String>{
-  'LSB': '1',
-  'USB': '2',
-  'CW': '3',
-  'FM': '4',
-  'AM': '5',
-  'RTTY': '6',
-  'CW-R': '7',
-  'RTTY-R': '9',
-};
+const kenwoodModeCodes = <String, String>{'LSB': '1', 'USB': '2', 'CW': '3', 'FM': '4', 'AM': '5', 'RTTY': '6', 'CW-R': '7', 'RTTY-R': '9'};
 
-final Map<String, String> _modeNamesByCode = {
-  for (final entry in kenwoodModeCodes.entries) entry.value: entry.key,
-};
+final Map<String, String> _modeNamesByCode = {for (final entry in kenwoodModeCodes.entries) entry.value: entry.key};
 
 String? kenwoodModeForCode(String code) => _modeNamesByCode[code];
 
@@ -85,8 +74,7 @@ String buildKenwoodReadPowerCommand() => 'PC;';
 
 /// `PC100;` → 100. Null unless it's exactly three digits, the same
 /// discipline [parseKenwoodFrequencyParams] applies to `FA`.
-int? parseKenwoodPowerParams(String params) =>
-    RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
+int? parseKenwoodPowerParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
 
 /// `FA00014250000;` → 14250000 Hz. Null unless it is exactly eleven digits —
 /// a truncated or over-long response is not a frequency.
@@ -99,8 +87,7 @@ int? parseKenwoodFrequencyParams(String params) {
 /// leading selector would be speaking Yaesu, so only the single-character
 /// form is accepted rather than "the last character", which would quietly
 /// mis-read anything unexpected.
-String? parseKenwoodModeParams(String params) =>
-    params.length == 1 ? kenwoodModeForCode(params) : null;
+String? parseKenwoodModeParams(String params) => params.length == 1 ? kenwoodModeForCode(params) : null;
 
 /// The frequency at the head of an `IF` packet.
 ///
@@ -162,7 +149,11 @@ String? parseKenwoodInfoModeAt(String params, int offset) {
 bool? parseKenwoodInfoTransmittingBeforeMode(String params, int modeOffset) {
   final offset = modeOffset - 1;
   if (offset < 0 || offset >= params.length) return null;
-  return switch (params[offset]) { '0' => false, '1' => true, _ => null };
+  return switch (params[offset]) {
+    '0' => false,
+    '1' => true,
+    _ => null,
+  };
 }
 
 /// Kenwood's Auto-Information has two levels, and the difference matters:
@@ -195,19 +186,19 @@ const kenwoodKeyerMaxChars = 24;
 /// [text] must already be sanitized (cw_send_queue.dart) and at most
 /// [kenwoodKeyerMaxChars] long.
 String buildKenwoodSendCwCommand(KenwoodCwDialect dialect, String text) => switch (dialect) {
-      KenwoodCwDialect.kenwood => 'KY ${text.padRight(kenwoodKeyerMaxChars)};',
-      KenwoodCwDialect.elecraft => 'KY $text;',
-    };
+  KenwoodCwDialect.kenwood => 'KY ${text.padRight(kenwoodKeyerMaxChars)};',
+  KenwoodCwDialect.elecraft => 'KY $text;',
+};
 
 String buildKenwoodStopCwCommand(KenwoodCwDialect dialect) => switch (dialect) {
-      KenwoodCwDialect.kenwood => 'KY0;',
-      KenwoodCwDialect.elecraft => 'KY @;',
-    };
+  KenwoodCwDialect.kenwood => 'KY0;',
+  KenwoodCwDialect.elecraft => 'KY @;',
+};
 
 ({int min, int max}) kenwoodKeyerSpeedRange(KenwoodCwDialect dialect) => switch (dialect) {
-      KenwoodCwDialect.kenwood => (min: 4, max: 60),
-      KenwoodCwDialect.elecraft => (min: 8, max: 50),
-    };
+  KenwoodCwDialect.kenwood => (min: 4, max: 60),
+  KenwoodCwDialect.elecraft => (min: 8, max: 50),
+};
 
 /// `KS;` reads the keyer speed; the answer is `KSnnn;` on both dialects.
 String buildKenwoodReadKeyerSpeedCommand() => 'KS;';
@@ -250,8 +241,7 @@ String buildKenwoodStopVoiceCommand() => 'PB0;';
 String buildKenwoodReadVoicePlaybackCommand() => 'PB;';
 
 /// `PBn` → n. Null for anything but a single digit.
-int? parseKenwoodVoicePlaybackParams(String params) =>
-    RegExp(r'^\d$').hasMatch(params) ? int.tryParse(params) : null;
+int? parseKenwoodVoicePlaybackParams(String params) => RegExp(r'^\d$').hasMatch(params) ? int.tryParse(params) : null;
 
 String buildK4ReadDigitalAudioCommand() => 'DA;';
 
@@ -286,10 +276,7 @@ const _kxMsgSwitch = 11;
 const _kxDigitSwitches = {1: 19, 2: 27};
 
 /// A tap of MSG then of the digit: two commands, in this order.
-List<String> buildKxPlayVoiceCommands(int n) => [
-      'SWT$_kxMsgSwitch;',
-      'SWT${_kxDigitSwitches[n.clamp(1, kxVoiceMemoryCount)]};',
-    ];
+List<String> buildKxPlayVoiceCommands(int n) => ['SWT$_kxMsgSwitch;', 'SWT${_kxDigitSwitches[n.clamp(1, kxVoiceMemoryCount)]};'];
 
 /// `RX;` — "terminates transmit in all modes, including message play".
 String buildKxStopVoiceCommand() => 'RX;';
@@ -298,8 +285,11 @@ String buildKxStopVoiceCommand() => 'RX;';
 /// programmer's reference offers to learn a message has ended.
 String buildElecraftReadTransmitQueryCommand() => 'TQ;';
 
-bool? parseElecraftTransmitQueryParams(String params) =>
-    switch (params) { '0' => false, '1' => true, _ => null };
+bool? parseElecraftTransmitQueryParams(String params) => switch (params) {
+  '0' => false,
+  '1' => true,
+  _ => null,
+};
 
 /// Re-exported so a driver needs one import for the whole protocol.
 typedef KenwoodFramer = AsciiCatFramer;

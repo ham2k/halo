@@ -47,29 +47,25 @@ void main() {
       final d = WallClock.delayToBoundary(periodMs: 5000, nowMillis: nowMillis(), speed: 1.0);
 
       final panels = _Panels();
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: DockPaneVisibility(
-              visible: true,
-              child: ExtensionPanel(
-                panel: const PanelDefinition(
-                  id: 'ext:text:custom',
-                  title: 'Custom Text',
-                  source: PanelSource.extension,
-                  hookKey: 'text',
-                  panelKey: 'custom',
-                ),
-                panels: panels,
-                renderContext: PanelRenderContext(
-                  operation: Operation(uuid: 'op-1', data: const {'stationCall': 'N0DEV'}),
-                  qsoCount: 0,
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: DockPaneVisibility(
+                visible: true,
+                child: ExtensionPanel(
+                  panel: const PanelDefinition(id: 'ext:text:custom', title: 'Custom Text', source: PanelSource.extension, hookKey: 'text', panelKey: 'custom'),
+                  panels: panels,
+                  renderContext: PanelRenderContext(
+                    operation: Operation(uuid: 'op-1', data: const {'stationCall': 'N0DEV'}),
+                    qsoCount: 0,
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 2));
       await tester.pump();
@@ -88,7 +84,11 @@ class _Panels extends PanelService {
   @override
   Future<Map<String, dynamic>?> render(PanelDefinition panel, Map<String, dynamic> args) async {
     renders.add(args['reason'] as String);
-    return {'kind': 'markdown', 'content': 'ok', 'triggers': const ['tick:5']};
+    return {
+      'kind': 'markdown',
+      'content': 'ok',
+      'triggers': const ['tick:5'],
+    };
   }
 }
 
@@ -98,19 +98,9 @@ class _Src implements PanelExtensionSource {
   @override
   Future<List<Map<String, dynamic>>?> getExtensionPanels() async => const [];
   @override
-  Future<Map<String, dynamic>?> renderPanel({
-    required String hookKey,
-    required String panelKey,
-    required Map<String, dynamic> args,
-  }) async => null;
+  Future<Map<String, dynamic>?> renderPanel({required String hookKey, required String panelKey, required Map<String, dynamic> args}) async => null;
   @override
-  Future<Map<String, dynamic>> readPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async => const {};
+  Future<Map<String, dynamic>> readPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async => const {};
   @override
-  Future<void> forgetPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async {}
+  Future<void> forgetPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async {}
 }

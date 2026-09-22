@@ -167,9 +167,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
         // `ref:<type>` handler follows (docs/extensions/hooks.md §ref:<type>)
         // and which a contest's own type (`arrlDx`) cannot collide with.
         if ((asQsonString(ref['type']) ?? '').endsWith('Activation'))
-          [asQsonString(ref['ref']), asQsonString(ref['name'])]
-              .where((s) => s != null && s.trim().isNotEmpty)
-              .join(' '),
+          [asQsonString(ref['ref']), asQsonString(ref['name'])].where((s) => s != null && s.trim().isNotEmpty).join(' '),
     ].where((s) => s.isNotEmpty).toList();
     if (places.isEmpty) return null;
     return context.t.callInfo.fromOperation(where: places.join(', '));
@@ -219,9 +217,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     if (approximate) distStr = '~$distStr';
     final bearing = widget.services.settings.showBearing ? bearingOnEarthDeg(ourLoc, resolved.location).round() : null;
     // The great-circle bearing back to us — not bearing + 180° on a long path.
-    final reverse = bearing != null && widget.services.settings.showReverseBearing
-        ? bearingOnEarthDeg(resolved.location, ourLoc).round()
-        : null;
+    final reverse = bearing != null && widget.services.settings.showReverseBearing ? bearingOnEarthDeg(resolved.location, ourLoc).round() : null;
 
     // Point "to" the guess's location (city/state, or the more specific
     // portable location — e.g. a hunted POTA park — when there is one; see
@@ -234,15 +230,15 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       final phrase = bearing == null
           ? t.distanceTo(distance: distStr)
           : reverse == null
-              ? t.distanceBearingTo(distance: distStr, bearing: bearing)
-              : t.distanceBearingsTo(distance: distStr, bearing: bearing, reverse: reverse);
+          ? t.distanceBearingTo(distance: distStr, bearing: bearing)
+          : t.distanceBearingsTo(distance: distStr, bearing: bearing, reverse: reverse);
       return '$phrase $label';
     }
     return bearing == null
         ? t.distanceAway(distance: distStr)
         : reverse == null
-            ? t.distanceBearingAway(distance: distStr, bearing: bearing)
-            : t.distanceBearingsAway(distance: distStr, bearing: bearing, reverse: reverse);
+        ? t.distanceBearingAway(distance: distStr, bearing: bearing)
+        : t.distanceBearingsAway(distance: distStr, bearing: bearing, reverse: reverse);
   }
 
   String _fmtHistoryTime(int? millis) {
@@ -270,8 +266,14 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     final distance = _distanceLine(context);
 
     final history = _history ?? const <Qso>[];
-    final thisOp = [for (final q in history) if (q.operationUuid == widget.operation.uuid) q];
-    final otherOps = [for (final q in history) if (q.operationUuid != widget.operation.uuid) q];
+    final thisOp = [
+      for (final q in history)
+        if (q.operationUuid == widget.operation.uuid) q,
+    ];
+    final otherOps = [
+      for (final q in history)
+        if (q.operationUuid != widget.operation.uuid) q,
+    ];
 
     return ListView(
       shrinkWrap: widget.shrinkWrap,
@@ -309,11 +311,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
                           : Text.rich(
                               TextSpan(
                                 children: [
-                                  flagSpan(
-                                    flag,
-                                    style: theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16),
-                                    shadows: glyphGlow(theme),
-                                  ),
+                                  flagSpan(flag, style: theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16), shadows: glyphGlow(theme)),
                                   TextSpan(text: ' $country', style: theme.textTheme.bodyLarge),
                                 ],
                               ),
@@ -327,11 +325,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 if (image != null) _buildImage(theme, image),
-                ActionChip(
-                  avatar: const Icon(MdiIcons.earth, size: 18),
-                  label: Text(t.qrz),
-                  onPressed: _openQrz,
-                ),
+                ActionChip(avatar: const Icon(MdiIcons.earth, size: 18), label: Text(t.qrz), onPressed: _openQrz),
               ],
             ),
           ],
@@ -350,10 +344,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
             child: Wrap(spacing: 6, runSpacing: 6, children: _pills(context)),
           ),
 
-        if (notes.isNotEmpty) ...[
-          _sectionTitle(theme, t.notes),
-          for (final (i, note) in notes.indexed) _noteRow(theme, note, first: i == 0),
-        ],
+        if (notes.isNotEmpty) ...[_sectionTitle(theme, t.notes), for (final (i, note) in notes.indexed) _noteRow(theme, note, first: i == 0)],
 
         if (thisOp.isNotEmpty) ...[
           _sectionTitle(theme, thisOp.length == 1 ? t.thisOpCountOne : t.thisOpCountOther(count: thisOp.length)),
@@ -417,10 +408,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
             Positioned(
               right: 0,
               bottom: 0,
-              child: IconButton.filledTonal(
-                icon: const Icon(MdiIcons.eyeOff, size: 18),
-                onPressed: () => setState(() => _showImage = false),
-              ),
+              child: IconButton.filledTonal(icon: const Icon(MdiIcons.eyeOff, size: 18), onPressed: () => setState(() => _showImage = false)),
             ),
           ],
         ),
@@ -432,23 +420,23 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
   /// so the layout doesn't move, saying which of "no photo" and "the photo
   /// didn't load" happened.
   Widget _imageUnavailable(ThemeData theme) => Container(
-        width: _thumbnailMaxWidth,
-        height: _thumbnailMaxHeight,
-        color: theme.colorScheme.surfaceContainerHighest,
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(MdiIcons.imageOff, size: 28, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(height: Space.xs),
-            Text(
-              context.t.callInfo.imageUnavailable,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          ],
+    width: _thumbnailMaxWidth,
+    height: _thumbnailMaxHeight,
+    color: theme.colorScheme.surfaceContainerHighest,
+    alignment: Alignment.center,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(MdiIcons.imageOff, size: 28, color: theme.colorScheme.onSurfaceVariant),
+        const SizedBox(height: Space.xs),
+        Text(
+          context.t.callInfo.imageUnavailable,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
-      );
+      ],
+    ),
+  );
 
   /// Once per URL, not once per build: `errorBuilder` runs on every rebuild of
   /// a failed image, and this panel rebuilds on every keystroke in the call
@@ -468,27 +456,27 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
   /// the image itself, and a pane's own scroll view would hand it unbounded
   /// height (docs/design/layouts.md).
   Future<void> _openImageViewer(String image) => showModalPane<void>(
-        context,
-        title: widget.call,
-        closeLabel: context.t.common.close,
-        scrollable: false,
-        builder: (context) => Center(
-          child: InteractiveViewer(
-            child: Image.network(
-              image,
-              fit: BoxFit.contain,
-              semanticLabel: context.t.callInfo.photo,
-              // Reported here too: a photo whose thumbnail loaded and whose
-              // full-size fetch does not is the same unanswerable bug report
-              // the thumbnail's own handler exists to prevent.
-              errorBuilder: (context, error, stack) {
-                _reportImageFailure(image, error);
-                return _imageUnavailable(Theme.of(context));
-              },
-            ),
-          ),
+    context,
+    title: widget.call,
+    closeLabel: context.t.common.close,
+    scrollable: false,
+    builder: (context) => Center(
+      child: InteractiveViewer(
+        child: Image.network(
+          image,
+          fit: BoxFit.contain,
+          semanticLabel: context.t.callInfo.photo,
+          // Reported here too: a photo whose thumbnail loaded and whose
+          // full-size fetch does not is the same unanswerable bug report
+          // the thumbnail's own handler exists to prevent.
+          errorBuilder: (context, error, stack) {
+            _reportImageFailure(image, error);
+            return _imageUnavailable(Theme.of(context));
+          },
         ),
-      );
+      ),
+    ),
+  );
 
   List<Widget> _pills(BuildContext context) {
     final theme = Theme.of(context);
@@ -498,17 +486,11 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
         decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(3)),
-        child: Text(
-          scoreNoticeLabel(context, key),
-          style: theme.textTheme.labelSmall?.copyWith(color: fg),
-        ),
+        child: Text(scoreNoticeLabel(context, key), style: theme.textTheme.labelSmall?.copyWith(color: fg)),
       );
     }
 
-    return [
-      for (final key in widget.alertKeys) pill(key, alert: true),
-      for (final key in widget.noticeKeys) pill(key, alert: false),
-    ];
+    return [for (final key in widget.alertKeys) pill(key, alert: true), for (final key in widget.noticeKeys) pill(key, alert: false)];
   }
 
   /// One note: its marker glowed as its own glyph, like the logging panel's
@@ -539,11 +521,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
           : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                flagGlyph(
-                  parts.marker!,
-                  fontSize: theme.textTheme.bodyMedium?.fontSize ?? flagGlyphDefaultFontSize,
-                  shadows: glyphGlow(theme),
-                ),
+                flagGlyph(parts.marker!, fontSize: theme.textTheme.bodyMedium?.fontSize ?? flagGlyphDefaultFontSize, shadows: glyphGlow(theme)),
                 const SizedBox(width: Space.xs),
                 Expanded(child: body),
               ],
@@ -552,9 +530,9 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
   }
 
   Widget _sectionTitle(ThemeData theme, String text) => Padding(
-        padding: const EdgeInsets.only(top: Space.xl, bottom: Space.xs),
-        child: Text(text, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-      );
+    padding: const EdgeInsets.only(top: Space.xl, bottom: Space.xs),
+    child: Text(text, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+  );
 
   Widget _historyRow(ThemeData theme, Qso qso) {
     final ourCall = qso.ourCall;
@@ -562,9 +540,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     // operation can hold several, and a contact carries exactly one of them,
     // so a field-vs-call comparison marks every row of a multi-call operation
     // as made under some other station.
-    final withCall = (ourCall.isNotEmpty && !widget.operation.stationCalls.contains(ourCall))
-        ? context.t.callInfo.withCall(call: ourCall)
-        : null;
+    final withCall = (ourCall.isNotEmpty && !widget.operation.stationCalls.contains(ourCall)) ? context.t.callInfo.withCall(call: ourCall) : null;
     final parts = [
       if (qso.band != null) qso.band!,
       // The sideband belongs to where you are — see [displayMode]. This line

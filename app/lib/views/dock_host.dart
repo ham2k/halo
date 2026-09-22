@@ -100,12 +100,7 @@ class DockLayoutKeys {
   /// The view's own options — scale and density for everything in it.
   final String viewOptions;
 
-  const DockLayoutKeys({
-    required this.spec,
-    required this.state,
-    required this.paneOptions,
-    required this.viewOptions,
-  });
+  const DockLayoutKeys({required this.spec, required this.state, required this.paneOptions, required this.viewOptions});
 }
 
 /// Hosts a [DockLayoutView] on behalf of a root view.
@@ -196,9 +191,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
 
   /// Whether [id] shows its header right now, resolving the operator's own
   /// choice against this view's default.
-  bool _showsHeader(String id) =>
-      (paneOptions[id] ?? PaneLayoutOptions.none)
-          .showsHeader(byDefault: !defaultHeaderlessModules.contains(id));
+  bool _showsHeader(String id) => (paneOptions[id] ?? PaneLayoutOptions.none).showsHeader(byDefault: !defaultHeaderlessModules.contains(id));
 
   // ------------------------------------------------------------------- state
 
@@ -225,16 +218,14 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// whichever is drawn: an edit spans them (see [startLayoutEditing]), and
   /// the class not on screen still holds a draft that Save must commit.
   late final Map<DockLayoutClass, _DockClassState> _dockClasses = {
-    for (final layoutClass in DockLayoutClass.values)
-      layoutClass: _DockClassState(dockServices.settings, dockKeysFor(layoutClass)),
+    for (final layoutClass in DockLayoutClass.values) layoutClass: _DockClassState(dockServices.settings, dockKeysFor(layoutClass)),
   };
 
   /// The class being drawn. Every unqualified accessor below reads this one.
   _DockClassState get _active => _dockClasses[dockLayoutClass]!;
 
   /// The class that is not being drawn.
-  DockLayoutClass get _otherClass =>
-      dockLayoutClass == DockLayoutClass.wide ? DockLayoutClass.narrow : DockLayoutClass.wide;
+  DockLayoutClass get _otherClass => dockLayoutClass == DockLayoutClass.wide ? DockLayoutClass.narrow : DockLayoutClass.wide;
 
   /// The class NOT being drawn — the other half of the same edit.
   _DockClassState get _inactive => _dockClasses[_otherClass]!;
@@ -311,8 +302,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
 
   /// Every id waiting to be forgotten, in either class — what a new placement
   /// must not be handed. See [_instanceIdsInEveryDock] for the same argument.
-  Iterable<String> get _allPendingForgets =>
-      _dockClasses.values.expand((klass) => klass.pendingForgets);
+  Iterable<String> get _allPendingForgets => _dockClasses.values.expand((klass) => klass.pendingForgets);
 
   /// What each panel most recently called itself, which is what tells two
   /// placements of one panel apart.
@@ -376,7 +366,10 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   String _equipmentDescriptorKey() {
     final cat = dockServices.cat;
     return [
-      switch (cat.radio1) { LocalRadio(:final uuid) => uuid, _ => '' },
+      switch (cat.radio1) {
+        LocalRadio(:final uuid) => uuid,
+        _ => '',
+      },
       for (final node in cat.nodes) '${node.uuid}:${cat.displayNameFor(node)}',
     ].join('|');
   }
@@ -457,9 +450,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       persisted = persisted?.without(id);
     }
     final resolved = layoutClass ?? dockLayoutClass;
-    klass.spec = persisted != null && _hasNoDuplicates(klass, resolved, persisted)
-        ? persisted
-        : buildDefaultDockSpec(resolved);
+    klass.spec = persisted != null && _hasNoDuplicates(klass, resolved, persisted) ? persisted : buildDefaultDockSpec(resolved);
   }
 
   /// Modules a saved arrangement may name that this view does not offer as
@@ -518,8 +509,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     // arrangement a module listed twice is.
     final modules = [...spec.collectModules(), ...spec.collectContainerIds()];
     if (modules.length == modules.toSet().length) return true;
-    debugPrint(
-        '[layout] saved $dockView ${layoutClass.name} arrangement lists a module twice; falling back to the default');
+    debugPrint('[layout] saved $dockView ${layoutClass.name} arrangement lists a module twice; falling back to the default');
     klass.showingRecoveredDefault = true;
     klass.recoveredDefaultSpec = buildDefaultDockSpec(layoutClass);
     // The class is in the key: one arrangement being unreadable says nothing
@@ -584,9 +574,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       // Nested containers too: a pane inside one is in whatever tab set the
       // container holds, and answering 1 for it offers to hide a header that
       // is a tab strip — which is not this pane's to hide.
-      DockGroup(:final modules, :final nested) => modules.contains(id)
-          ? modules.length
-          : nested.values.map(sizeIn).nonNulls.firstOrNull,
+      DockGroup(:final modules, :final nested) => modules.contains(id) ? modules.length : nested.values.map(sizeIn).nonNulls.firstOrNull,
       DockSplit(:final children) => children.map(sizeIn).nonNulls.firstOrNull,
     };
     return dockSpec == null ? 1 : sizeIn(dockSpec!) ?? 1;
@@ -699,8 +687,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
 
   void bumpSheet() => _sheetRevision?.value++;
 
-  void _dropPressFocusCapture() =>
-      WidgetsBinding.instance.addPostFrameCallback((_) => _focusAtPress = null);
+  void _dropPressFocusCapture() => WidgetsBinding.instance.addPostFrameCallback((_) => _focusAtPress = null);
 
   /// Restores focus a frame later: the panes are still excluded from traversal
   /// during the build that ends edit mode, and a request made then is refused.
@@ -818,9 +805,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     final dropped = <_DockClassState, Set<String>>{};
     final restoredSpecs = <_DockClassState, DockNode>{};
     for (final klass in _dockClasses.values) {
-      final spec = klass == _active
-          ? activeSpec
-          : (klass.specSnapshot == null ? null : DockNode.fromJson(klass.specSnapshot!));
+      final spec = klass == _active ? activeSpec : (klass.specSnapshot == null ? null : DockNode.fromJson(klass.specSnapshot!));
       if (spec == null) {
         // The same impossibility the active class asserts on, and worse here:
         // the loop below clears every class's snapshot, so a silent skip
@@ -995,10 +980,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         // Resolved against the PANE's own height, not the window's — the
         // ceiling `resolve` puts on a roomier pick is about whether the rows
         // fit, and what they have to fit in here is this pane.
-        builder: (context, constraints) => LayoutDensityScope(
-          density: preference.resolve(constraints.maxHeight),
-          child: inner,
-        ),
+        builder: (context, constraints) => LayoutDensityScope(density: preference.resolve(constraints.maxHeight), child: inner),
       );
     }
     if (options.fontScaleValue case final scale?) {
@@ -1025,8 +1007,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// extension is not in it either.
   bool get _hasPanelExtensions {
     final extensions = dockServices.extensions;
-    return extensions.availableExtensions
-        .any((info) => !info.core && info.hooks.contains('panel') && extensions.isExtensionAvailable(info));
+    return extensions.availableExtensions.any((info) => !info.core && info.hooks.contains('panel') && extensions.isExtensionAvailable(info));
   }
 
   double? get _addPanelButtonRightInset {
@@ -1059,9 +1040,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     // A plain-form extension panel's settings embed as an
     // [EmbeddedPanelSettingsForm]; a pane the VIEW answers for natively is
     // reached through a target instead and builds its own form above.
-    final embeddablePanel = _panelSettingsOverride(context, id) == null && panel != null && panel.formFields.isNotEmpty
-        ? panel
-        : null;
+    final embeddablePanel = _panelSettingsOverride(context, id) == null && panel != null && panel.formFields.isNotEmpty ? panel : null;
     return IconButton(
       icon: Icon(
         MdiIcons.viewDashboardEdit,
@@ -1075,95 +1054,93 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         // opened. Against a snapshot that never moves, an edit landing back on
         // the value the dialog opened with reads as "already this" and is
         // dropped, even after a real commit moved it away and back.
-        final panelConfig = embeddablePanel != null
-            ? Map<String, dynamic>.of(await dockServices.panels.configFor(embeddablePanel))
-            : null;
+        final panelConfig = embeddablePanel != null ? Map<String, dynamic>.of(await dockServices.panels.configFor(embeddablePanel)) : null;
         if (!context.mounted) return;
-        unawaited(showPaneLayoutOptions(
-        context,
-        paneTitle: options.title ?? defaultTitle,
-        defaultTitle: defaultTitle,
-        // The header is the tab strip once a pane shares a group, so hiding it
-        // is not on offer there — nor for a CONTAINER at all, whose tab is the
-        // only thing naming it and the only handle for moving or removing it.
-        // A toggle that wrote a setting nothing reads would be worse than none.
-        inTabset: groupSizeOf(id) > 1 || isDockContainerId(id),
-        // A container's subtree is rendered by the DOCK, not through this
-        // view's per-pane wrapper, so these three would be stored and never
-        // read. Its title still is — that comes from `dockTitles`.
-        showSizeFields: !isDockContainerId(id),
-        headerByDefault: !defaultHeaderlessModules.contains(id),
-        developerMode: dockServices.settings.developerMode,
-        current: options,
-        resetTitle: _t.resetPaneConfirm(panel: options.title ?? defaultTitle),
-        resetBody: _t.resetPaneConfirmBody,
-        onReset: () => setState(() => paneOptions.remove(id)),
-        // The keyboard/screen-reader route to what the delete target does: a
-        // drag cannot be made without a pointer, and Restore Defaults is the
-        // whole arrangement. Absent for the last pane, which the dock refuses
-        // to remove — an empty dock has no tab left to drag anything back
-        // with — and for a pinned one, which it refuses for its own reasons
-        // (see [pinnedModuleIds]); an offered Remove that silently did nothing
-        // would be worse than none.
-        onDelete: _canRemove(id)
-            ? () {
-                final dock = dockKey.currentState;
-                // NOT asserted-impossible: the dialog this button lives in is
-                // a route, which outlives the dock across a breakpoint that
-                // crosses the two-pane threshold and unmounts it — same
-                // condition [openAddPanelSheet] and `onAdd` guard against.
-                if (dock == null) return;
-                // No forget here: the dock reports every module it actually
-                // dropped through `onModuleDeleted`, which is one id for a
-                // pane and several for a container.
-                dock.removeModule(id);
+        unawaited(
+          showPaneLayoutOptions(
+            context,
+            paneTitle: options.title ?? defaultTitle,
+            defaultTitle: defaultTitle,
+            // The header is the tab strip once a pane shares a group, so hiding it
+            // is not on offer there — nor for a CONTAINER at all, whose tab is the
+            // only thing naming it and the only handle for moving or removing it.
+            // A toggle that wrote a setting nothing reads would be worse than none.
+            inTabset: groupSizeOf(id) > 1 || isDockContainerId(id),
+            // A container's subtree is rendered by the DOCK, not through this
+            // view's per-pane wrapper, so these three would be stored and never
+            // read. Its title still is — that comes from `dockTitles`.
+            showSizeFields: !isDockContainerId(id),
+            headerByDefault: !defaultHeaderlessModules.contains(id),
+            developerMode: dockServices.settings.developerMode,
+            current: options,
+            resetTitle: _t.resetPaneConfirm(panel: options.title ?? defaultTitle),
+            resetBody: _t.resetPaneConfirmBody,
+            onReset: () => setState(() => paneOptions.remove(id)),
+            // The keyboard/screen-reader route to what the delete target does: a
+            // drag cannot be made without a pointer, and Restore Defaults is the
+            // whole arrangement. Absent for the last pane, which the dock refuses
+            // to remove — an empty dock has no tab left to drag anything back
+            // with — and for a pinned one, which it refuses for its own reasons
+            // (see [pinnedModuleIds]); an offered Remove that silently did nothing
+            // would be worse than none.
+            onDelete: _canRemove(id)
+                ? () {
+                    final dock = dockKey.currentState;
+                    // NOT asserted-impossible: the dialog this button lives in is
+                    // a route, which outlives the dock across a breakpoint that
+                    // crosses the two-pane threshold and unmounts it — same
+                    // condition [openAddPanelSheet] and `onAdd` guard against.
+                    if (dock == null) return;
+                    // No forget here: the dock reports every module it actually
+                    // dropped through `onModuleDeleted`, which is one id for a
+                    // pane and several for a container.
+                    dock.removeModule(id);
+                  }
+                : null,
+            // Hiding a pane's header takes the tab action with it, and that is the
+            // only other way to a panel's own settings.
+            //
+            // No `actions` / no `type: 'action'` elements in any of these: an
+            // action here would need a route of its own to signal "done" by
+            // closing, and this embed has none — it lives inside the pane layout
+            // options dialog, not behind a route it owns.
+            panelSettingsBuilder:
+                _panelSettingsOverride(context, id) ??
+                (embeddablePanel != null && panelConfig != null
+                    ? (builderContext) => EmbeddedPanelSettingsForm(
+                        fields: embeddablePanel.formFields.where((field) => field['type'] != 'action').toList(),
+                        initial: panelConfig,
+                        developerMode: dockServices.settings.developerMode,
+                        onFieldChange: (key, value, state) async {
+                          final field = embeddablePanel.formFields.firstWhere((f) => f['key'] == key, orElse: () => const {});
+                          if (sameConfigValue(value, panelConfig[key], field['value'])) return;
+                          await dockServices.extensions.commitSettingsFieldValue(
+                            kind: 'simple',
+                            hookKey: embeddablePanel.hookKey ?? embeddablePanel.id,
+                            panelKey: embeddablePanel.id,
+                            fieldKey: key,
+                            value: value,
+                            state: state,
+                            isSecret: field['fieldType'] == 'secret',
+                          );
+                          // Keeps the no-op check above comparing against what
+                          // was actually last committed.
+                          panelConfig[key] = value;
+                          dockServices.panels.markConfigChanged(embeddablePanel.id);
+                        },
+                      )
+                    : null),
+            onChanged: (next) => setState(() {
+              // Dropped rather than stored empty, so a layout carries options only
+              // for the panes that actually have any.
+              if (next.isEmpty) {
+                paneOptions.remove(id);
+              } else {
+                paneOptions[id] = next;
               }
-            : null,
-        // Hiding a pane's header takes the tab action with it, and that is the
-        // only other way to a panel's own settings.
-        //
-        // No `actions` / no `type: 'action'` elements in any of these: an
-        // action here would need a route of its own to signal "done" by
-        // closing, and this embed has none — it lives inside the pane layout
-        // options dialog, not behind a route it owns.
-        panelSettingsBuilder: _panelSettingsOverride(context, id) ??
-            (embeddablePanel != null && panelConfig != null
-                ? (builderContext) => EmbeddedPanelSettingsForm(
-                      fields: embeddablePanel.formFields.where((field) => field['type'] != 'action').toList(),
-                      initial: panelConfig,
-                      developerMode: dockServices.settings.developerMode,
-                      onFieldChange: (key, value, state) async {
-                        final field = embeddablePanel.formFields.firstWhere(
-                          (f) => f['key'] == key,
-                          orElse: () => const {},
-                        );
-                        if (sameConfigValue(value, panelConfig[key], field['value'])) return;
-                        await dockServices.extensions.commitSettingsFieldValue(
-                          kind: 'simple',
-                          hookKey: embeddablePanel.hookKey ?? embeddablePanel.id,
-                          panelKey: embeddablePanel.id,
-                          fieldKey: key,
-                          value: value,
-                          state: state,
-                          isSecret: field['fieldType'] == 'secret',
-                        );
-                        // Keeps the no-op check above comparing against what
-                        // was actually last committed.
-                        panelConfig[key] = value;
-                        dockServices.panels.markConfigChanged(embeddablePanel.id);
-                      },
-                    )
-                : null),
-        onChanged: (next) => setState(() {
-          // Dropped rather than stored empty, so a layout carries options only
-          // for the panes that actually have any.
-          if (next.isEmpty) {
-            paneOptions.remove(id);
-          } else {
-            paneOptions[id] = next;
-          }
-        }),
-        ));
+            }),
+          ),
+        );
       },
     );
   }
@@ -1191,10 +1168,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                   builder: (dialogContext) => HaloDialog(
                     title: Text(panel.title),
                     content: RemoteScreenSettingsRow(panelId: panel.id, services: dockServices),
-                    cancel: TextButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(),
-                      child: Text(dialogContext.t.common.done),
-                    ),
+                    cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(dialogContext.t.common.done)),
                   ),
                 )
               : showPanelSettings(buttonContext, services: dockServices, panel: panel),
@@ -1207,12 +1181,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// counterpart of [buildPanelSettingsButton] for a pane the VIEW answers
   /// for natively (through its own [nativePanelSettingsForm] override)
   /// rather than through `formFields`.
-  Widget buildTargetSettingsButton(
-    BuildContext context, {
-    required String target,
-    required String title,
-    List<TargetDialogAction> actions = const [],
-  }) {
+  Widget buildTargetSettingsButton(BuildContext context, {required String target, required String title, List<TargetDialogAction> actions = const []}) {
     final theme = Theme.of(context);
     return Builder(
       builder: (buttonContext) => IconButton(
@@ -1221,13 +1190,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
           semanticLabel: MaterialLocalizations.of(context).showMenuTooltip,
         ),
-        onPressed: () => showSettingsForTarget(
-          buttonContext,
-          services: dockServices,
-          target: target,
-          title: title,
-          actions: actions,
-        ),
+        onPressed: () => showSettingsForTarget(buttonContext, services: dockServices, target: target, title: title, actions: actions),
       ),
     );
   }
@@ -1243,27 +1206,25 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     return IconButton(
       // The same glyph a pane's options carry, because it is the same kind of
       // thing one level up. What tells them apart is where they are.
-      icon: Icon(
-        MdiIcons.viewDashboardEdit,
-        color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
-        semanticLabel: _t.viewOptions,
+      icon: Icon(MdiIcons.viewDashboardEdit, color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary, semanticLabel: _t.viewOptions),
+      onPressed: () => unawaited(
+        showPaneLayoutOptions(
+          context,
+          paneTitle: viewOptions.title ?? _t.viewName,
+          defaultTitle: _t.viewName,
+          inTabset: false,
+          // A view has no header of its own to hide, and this one is the app's,
+          // so its name is not the operator's to change.
+          showHeaderField: false,
+          titleEnabled: false,
+          developerMode: dockServices.settings.developerMode,
+          current: viewOptions,
+          onChanged: (next) => setState(() => viewOptions = next),
+          resetTitle: _t.resetViewConfirm,
+          resetBody: _t.resetViewConfirmBody,
+          onReset: restoreLayoutDefaults,
+        ),
       ),
-      onPressed: () => unawaited(showPaneLayoutOptions(
-        context,
-        paneTitle: viewOptions.title ?? _t.viewName,
-        defaultTitle: _t.viewName,
-        inTabset: false,
-        // A view has no header of its own to hide, and this one is the app's,
-        // so its name is not the operator's to change.
-        showHeaderField: false,
-        titleEnabled: false,
-        developerMode: dockServices.settings.developerMode,
-        current: viewOptions,
-        onChanged: (next) => setState(() => viewOptions = next),
-        resetTitle: _t.resetViewConfirm,
-        resetBody: _t.resetViewConfirmBody,
-        onReset: restoreLayoutDefaults,
-      )),
     );
   }
 
@@ -1401,10 +1362,8 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           valueListenable: revision,
           // A context from inside the route, so the buttons resolve their
           // theme and their locale where they are actually drawn.
-          builder: (headerContext, _, _) => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [...layoutHeaderControls(headerContext, inSheet: true), windowsCaptionSpacer(context)],
-          ),
+          builder: (headerContext, _, _) =>
+              Row(mainAxisSize: MainAxisSize.min, children: [...layoutHeaderControls(headerContext, inSheet: true), windowsCaptionSpacer(context)]),
         ),
         // A mirror of the operation sheet's top row, because this sheet hangs
         // off the opposite end of the same header: the title against the edge
@@ -1423,10 +1382,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         trailing: Builder(
           builder: (buttonContext) => IconButton(
             icon: Icon(MdiIcons.check, semanticLabel: t.done),
-            style: IconButton.styleFrom(
-              backgroundColor: fabAccentColor,
-              foregroundColor: Theme.of(buttonContext).colorScheme.onPrimary,
-            ),
+            style: IconButton.styleFrom(backgroundColor: fabAccentColor, foregroundColor: Theme.of(buttonContext).colorScheme.onPrimary),
             onPressed: () => Navigator.of(buttonContext).pop(),
           ),
         ),
@@ -1435,9 +1391,8 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           builder: (context, _, _) {
             final extensions = dockServices.extensions;
             final locale = LocaleSettings.currentLocale.languageCode;
-            String? extensionName(String? key) => key == null
-                ? null
-                : extensions.availableExtensions.where((info) => info.key == key).firstOrNull?.nameFor(locale);
+            String? extensionName(String? key) =>
+                key == null ? null : extensions.availableExtensions.where((info) => info.key == key).firstOrNull?.nameFor(locale);
             // Re-read per build: the dock can go out from under an open sheet
             // (a resize past a breakpoint), and the list is then about an
             // arrangement that is not on screen. Falling back to the draft
@@ -1470,35 +1425,25 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
               // it could not load it) — the same rule [_hasPanelExtensions] uses.
               enableable: [
                 for (final info in extensions.availableExtensions)
-                  if (!info.core &&
-                      info.hooks.contains('panel') &&
-                      extensions.isExtensionAvailable(info) &&
-                      !extensions.isExtensionEnabled(info))
-                    info,
+                  if (!info.core && info.hooks.contains('panel') && extensions.isExtensionAvailable(info) && !extensions.isExtensionEnabled(info)) info,
               ],
               installable: switch (catalogTier.entries) {
                 final entries? => orderedCatalogEntries(
-                    [
-                      for (final entry in entries)
-                        if (entry.hooks.contains('panel') &&
-                            !extensions.availableExtensions.any((info) => info.key == entry.key))
-                          entry,
-                    ],
-                    dockServices.flags.operatorGeo,
-                    locale,
-                  ),
+                  [
+                    for (final entry in entries)
+                      if (entry.hooks.contains('panel') && !extensions.availableExtensions.any((info) => info.key == entry.key)) entry,
+                  ],
+                  dockServices.flags.operatorGeo,
+                  locale,
+                ),
                 null => const [],
               },
-              onSearch: CatalogTier.shownFor(dockServices)
-                  ? () => catalogTier.ensureFetched(dockServices, bumpSheet)
-                  : null,
+              onSearch: CatalogTier.shownFor(dockServices) ? () => catalogTier.ensureFetched(dockServices, bumpSheet) : null,
               onEnableExtension: (info) => _gainPanelExtension(() async {
                 await extensions.setExtensionEnabled(info.key, true);
                 return true;
               }),
-              onInstallExtension: (entry) => _gainPanelExtension(
-                () => installCatalogExtension(context, services: dockServices, entry: entry),
-              ),
+              onInstallExtension: (entry) => _gainPanelExtension(() => installCatalogExtension(context, services: dockServices, entry: entry)),
               onAdd: (id) {
                 // Adding an instanceable panel places a NEW one rather than
                 // re-adding the descriptor: its id is what its config is stored
@@ -1523,11 +1468,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                       // pane that arrives holding the last one's notes — and
                       // the save then spares it, seeing the id back in the
                       // arrangement.
-                      ? PanelService.nextInstanceId(id, [
-                          ...dock.modules,
-                          ..._allPendingForgets,
-                          ..._instanceIdsInEveryDock(),
-                        ])
+                      ? PanelService.nextInstanceId(id, [...dock.modules, ..._allPendingForgets, ..._instanceIdsInEveryDock()])
                       : id,
                 );
               },
@@ -1593,18 +1534,14 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// panel whose only real control IS an action would show nothing but its
   /// stored value. Registered centrally rather than in each view's switch,
   /// the same reason [registerSharedDashboardPanels] is.
-  WidgetBuilder? _panelSettingsOverride(BuildContext context, String id) =>
-      nativePanelSettingsForm(context, id) ?? sharedDashboardPanelSettings(context, id);
+  WidgetBuilder? _panelSettingsOverride(BuildContext context, String id) => nativePanelSettingsForm(context, id) ?? sharedDashboardPanelSettings(context, id);
 
   /// The shared dashboard panels that answer for their own settings. Only
   /// Remote Screen does: its source is picked from a live catalog of what
   /// other devices offer, which is a dialog rather than a form field.
   WidgetBuilder? sharedDashboardPanelSettings(BuildContext context, String id) {
     if (PanelDefinition.descriptorIdOf(id) != remoteScreenPanelId) return null;
-    return (builderContext) => RemoteScreenSettingsRow(
-          panelId: id,
-          services: dockServices,
-        );
+    return (builderContext) => RemoteScreenSettingsRow(panelId: id, services: dockServices);
   }
 
   /// Clock, Weather, Solar, Web Site, Radio and Remote Screen: the native
@@ -1617,19 +1554,10 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// [operationGrid] and [isEnteringQso] are the two things only an operation
   /// has: null outside the Operation view, which leaves Weather to its own
   /// configured location and Web Site to reload strictly on schedule.
-  Map<String, Widget> sharedDashboardPanes(
-    List<String> inLayout, {
-    String? operationGrid,
-    bool Function()? isEnteringQso,
-  }) => {
+  Map<String, Widget> sharedDashboardPanes(List<String> inLayout, {String? operationGrid, bool Function()? isEnteringQso}) => {
     for (final id in inLayout)
       if (PanelDefinition.descriptorIdOf(id) == clockPanelId)
-        id: ClockPanel(
-          key: ValueKey('panel-$id'),
-          panelId: id,
-          panels: dockServices.panels,
-          onTitle: (title) => onPanelTitle(id, title),
-        )
+        id: ClockPanel(key: ValueKey('panel-$id'), panelId: id, panels: dockServices.panels, onTitle: (title) => onPanelTitle(id, title))
       else if (PanelDefinition.descriptorIdOf(id) == weatherPanelId)
         id: WeatherPanel(
           key: ValueKey('panel-$id'),
@@ -1653,12 +1581,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           isEnteringQso: isEnteringQso,
         )
       else if (PanelDefinition.descriptorIdOf(id) == radioPanelId)
-        id: RadioPanel(
-          key: ValueKey('panel-$id'),
-          panelId: id,
-          services: dockServices,
-          onTitle: (title) => onPanelTitle(id, title),
-        )
+        id: RadioPanel(key: ValueKey('panel-$id'), panelId: id, services: dockServices, onTitle: (title) => onPanelTitle(id, title))
       else if (PanelDefinition.descriptorIdOf(id) == remoteScreenPanelId)
         id: Builder(
           builder: (paneContext) => RemoteScreenPanel(
@@ -1671,15 +1594,8 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
             // also does, but it is not always reachable — the pane layout
             // options' embedded form strips `type: 'action'` elements, which
             // leaves this panel's settings as a bare target string.
-            onChooseSource: () => unawaited(
-              chooseRemoteScreenFor(paneContext, services: dockServices, panelId: id),
-            ),
-            onSaveView: (zoom, pan) => unawaited(saveRemoteScreenView(
-              services: dockServices,
-              panelId: id,
-              zoom: zoom,
-              pan: pan,
-            )),
+            onChooseSource: () => unawaited(chooseRemoteScreenFor(paneContext, services: dockServices, panelId: id)),
+            onSaveView: (zoom, pan) => unawaited(saveRemoteScreenView(services: dockServices, panelId: id, zoom: zoom, pan: pan)),
           ),
         ),
   };
@@ -1698,276 +1614,251 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     final t = context.t.operation;
     final service = dockServices.panels;
     const sharedViews = {PanelViews.home, PanelViews.operation, PanelViews.logs};
-    service.registerNative(PanelDefinition(
-      id: clockPanelId,
-      title: t.tabs.clock,
-      description: t.layout.panels.clockDescription,
-      icon: 'clock-outline',
-      source: PanelSource.native,
-      views: sharedViews,
-      // The one native pane an operator plausibly wants several of: a UTC
-      // clock beside the DX's local time is the whole point of it.
-      multiple: true,
-      formFields: [
-        {
-          'type': 'field',
-          'key': clockFaceKey,
-          'fieldType': 'select',
-          'label': t.layout.panels.clockFace,
-          'value': clockFaceLcd,
-          'options': [
-            {'label': t.layout.panels.clockFaceLcd, 'value': clockFaceLcd},
-            {'label': t.layout.panels.clockFaceAnalog, 'value': clockFaceAnalog},
-          ],
-        },
-        {
-          'type': 'field',
-          'key': clockZoneKey,
-          'fieldType': 'select',
-          // `icon` is what puts this behind a full-list dialog rather than an
-          // inline dropdown — 341 zones in a ten-row popup is not a picker.
-          // The dialog searches past twenty options.
-          'icon': 'earth',
-          'label': t.layout.panels.clockZone,
-          'value': utcZoneId,
-          'options': clockZoneOptions(
-            utcLabel: t.layout.panels.clockZoneUtc,
-            deviceLabel: t.layout.panels.clockZoneDevice,
-          ),
-        },
-        {
-          'type': 'field',
-          'key': clockShowSecondsKey,
-          'fieldType': 'checkbox',
-          'label': t.layout.panels.clockShowSeconds,
-          'value': true,
-        },
-      ],
-    ));
-    service.registerNative(PanelDefinition(
-      id: weatherPanelId,
-      title: t.tabs.weather,
-      description: t.layout.panels.weatherDescription,
-      icon: 'weather-partly-cloudy',
-      source: PanelSource.native,
-      views: sharedViews,
-      // Instanceable so a placement in Home, in an operation and in the Logs
-      // view are three independent locations rather than one shared config
-      // — the same reason Clock is (see its own comment below). Unlike
-      // Clock, an operator plausibly wants only one at a time; `multiple`
-      // exists for the cross-view case, not to invite several in one dock.
-      multiple: true,
-      formFields: [
-        {
-          'type': 'field',
-          'key': weatherUseOperationLocationKey,
-          'fieldType': 'checkbox',
-          'label': t.layout.panels.weatherUseOperationLocation,
-          'value': true,
-        },
-        {
-          'type': 'field',
-          'key': weatherLocationKey,
-          'fieldType': 'text',
-          'label': t.layout.panels.weatherLocation,
-          'description': t.layout.panels.weatherLocationDescription,
-          'value': '',
-          // Deliberately never hidden by `visibleWhen`, even though it's
-          // read only while [weatherUseOperationLocationKey] is off — a
-          // config predating that checkbox never wrote it, so an existing
-          // override's checkbox state is INFERRED (`_useOperationLocation`)
-          // rather than read back, and can disagree with what the form
-          // shows. A hidden field would put the one control that explains
-          // — or fixes — that disagreement out of reach.
-        },
-      ],
-    ));
-    service.registerNative(PanelDefinition(
-      id: solarPanelId,
-      title: t.tabs.solar,
-      description: t.layout.panels.solarDescription,
-      icon: 'white-balance-sunny',
-      source: PanelSource.native,
-      views: sharedViews,
-      // Instanceable for the cross-view case only, like Weather: a placement
-      // in Home and one in an operation are independent locations. Two in one
-      // dock would be the same numbers twice — there is nothing to configure
-      // that would make them differ.
-      multiple: true,
-      // Nothing to configure. The pane's own size decides what it shows.
-      formFields: [],
-    ));
-    service.registerNative(PanelDefinition(
-      id: websitePanelId,
-      title: t.tabs.website,
-      description: t.layout.panels.websiteDescription,
-      icon: 'web',
-      source: PanelSource.native,
-      views: sharedViews,
-      multiple: true,
-      formFields: [
-        {
-          'type': 'field',
-          'key': websiteUrlKey,
-          // No `url` fieldType exists, and an unknown one renders as nothing
-          // at all — no field, no error, no log.
-          'fieldType': 'text',
-          'label': t.layout.panels.websiteUrl,
-          'placeholder': 'https://…',
-          'value': '',
-        },
-        {
-          'type': 'field',
-          'key': websiteRefreshKey,
-          'fieldType': 'select',
-          'label': t.layout.panels.websiteRefresh,
-          // `0`, not null: a null-valued select cannot tell "dismissed" from
-          // "picked null". Ints survive the config's JSON round-trip as ints,
-          // which is what the dropdown's `value ==` needs.
-          'value': 0,
-          'options': [
-            {'label': t.layout.panels.websiteRefreshNever, 'value': 0},
-            {'label': t.layout.panels.websiteRefresh1, 'value': 1},
-            {'label': t.layout.panels.websiteRefresh5, 'value': 5},
-            {'label': t.layout.panels.websiteRefresh15, 'value': 15},
-          ],
-        },
-        {
-          'type': 'field',
-          'key': websiteTitleKey,
-          'fieldType': 'text',
-          'label': t.layout.panels.websiteTitle,
-          'value': '',
-        },
-        // Live only because `showPanelSettings` passes `onAction`; without
-        // that this button renders disabled.
-        {
-          'type': 'action',
-          'key': 'refreshNow',
-          'label': t.layout.panels.websiteRefreshNow,
-          'method': panelRefreshMethod,
-        },
-      ],
-    ));
-    // Registered only with the CAT experiment on, and re-registered whenever
-    // CatService notifies — see [_onEquipmentChanged], which is what keeps
-    // the radio picker's options and the Automatic option's name current.
-    if (dockServices.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) {
-      final cat = dockServices.cat;
-      final designated = switch (cat.radio1) { LocalRadio(:final uuid) => cat.nodeFor(uuid), _ => null };
-      service.registerNative(PanelDefinition(
-        id: radioPanelId,
-        title: t.tabs.radio,
-        description: t.layout.panels.radioDescription,
-        icon: 'radio',
+    service.registerNative(
+      PanelDefinition(
+        id: clockPanelId,
+        title: t.tabs.clock,
+        description: t.layout.panels.clockDescription,
+        icon: 'clock-outline',
         source: PanelSource.native,
         views: sharedViews,
-        // A two-radio shack wants both front panels side by side, which is
-        // the case this exists for — and, as with Clock and Weather, a
-        // placement in Home and one in an operation are independent
-        // locations rather than one shared config.
+        // The one native pane an operator plausibly wants several of: a UTC
+        // clock beside the DX's local time is the whole point of it.
         multiple: true,
-        // Frequency, mode and power on a row that has to stay legible: the
-        // seven-segment readout scales down with the pane, but below this
-        // the digits stop being readable across a room, which is the only
-        // reason to have a rig's display on screen at all.
-        minWidth: 3,
-        minHeight: 2,
         formFields: [
           {
             'type': 'field',
-            'key': radioNodeKey,
+            'key': clockFaceKey,
             'fieldType': 'select',
-            'label': t.layout.panels.radioRadio,
-            'value': radioNodeAuto,
+            'label': t.layout.panels.clockFace,
+            'value': clockFaceLcd,
             'options': [
-              {
-                // The label carries the designated radio's NAME, so the
-                // settings row reads "Radio: VFO A — Left Radio" and the
-                // operator can see which rig Automatic currently means
-                // without opening Station Configuration to find out.
-                'label': designated == null
-                    ? t.layout.panels.radioAutoNone
-                    : t.layout.panels.radioAutoNamed(name: cat.displayNameFor(designated)),
-                'value': radioNodeAuto,
-              },
-              for (final node in cat.nodes)
-                if (cat.typeFor(node)?.category == kCategoryTransceiver)
-                  {'label': cat.displayNameFor(node), 'value': node.uuid},
+              {'label': t.layout.panels.clockFaceLcd, 'value': clockFaceLcd},
+              {'label': t.layout.panels.clockFaceAnalog, 'value': clockFaceAnalog},
             ],
           },
           {
             'type': 'field',
-            'key': radioStyleKey,
+            'key': clockZoneKey,
             'fieldType': 'select',
-            'label': t.layout.panels.radioStyle,
-            'value': radioStyleLcd,
-            'options': [
-              {'label': t.layout.panels.radioStyleLcd, 'value': radioStyleLcd},
-              {'label': t.layout.panels.radioStyleModern, 'value': radioStyleModern},
-            ],
+            // `icon` is what puts this behind a full-list dialog rather than an
+            // inline dropdown — 341 zones in a ten-row popup is not a picker.
+            // The dialog searches past twenty options.
+            'icon': 'earth',
+            'label': t.layout.panels.clockZone,
+            'value': utcZoneId,
+            'options': clockZoneOptions(utcLabel: t.layout.panels.clockZoneUtc, deviceLabel: t.layout.panels.clockZoneDevice),
+          },
+          {'type': 'field', 'key': clockShowSecondsKey, 'fieldType': 'checkbox', 'label': t.layout.panels.clockShowSeconds, 'value': true},
+        ],
+      ),
+    );
+    service.registerNative(
+      PanelDefinition(
+        id: weatherPanelId,
+        title: t.tabs.weather,
+        description: t.layout.panels.weatherDescription,
+        icon: 'weather-partly-cloudy',
+        source: PanelSource.native,
+        views: sharedViews,
+        // Instanceable so a placement in Home, in an operation and in the Logs
+        // view are three independent locations rather than one shared config
+        // — the same reason Clock is (see its own comment below). Unlike
+        // Clock, an operator plausibly wants only one at a time; `multiple`
+        // exists for the cross-view case, not to invite several in one dock.
+        multiple: true,
+        formFields: [
+          {
+            'type': 'field',
+            'key': weatherUseOperationLocationKey,
+            'fieldType': 'checkbox',
+            'label': t.layout.panels.weatherUseOperationLocation,
+            'value': true,
+          },
+          {
+            'type': 'field',
+            'key': weatherLocationKey,
+            'fieldType': 'text',
+            'label': t.layout.panels.weatherLocation,
+            'description': t.layout.panels.weatherLocationDescription,
+            'value': '',
+            // Deliberately never hidden by `visibleWhen`, even though it's
+            // read only while [weatherUseOperationLocationKey] is off — a
+            // config predating that checkbox never wrote it, so an existing
+            // override's checkbox state is INFERRED (`_useOperationLocation`)
+            // rather than read back, and can disagree with what the form
+            // shows. A hidden field would put the one control that explains
+            // — or fixes — that disagreement out of reach.
           },
         ],
-      ));
+      ),
+    );
+    service.registerNative(
+      PanelDefinition(
+        id: solarPanelId,
+        title: t.tabs.solar,
+        description: t.layout.panels.solarDescription,
+        icon: 'white-balance-sunny',
+        source: PanelSource.native,
+        views: sharedViews,
+        // Instanceable for the cross-view case only, like Weather: a placement
+        // in Home and one in an operation are independent locations. Two in one
+        // dock would be the same numbers twice — there is nothing to configure
+        // that would make them differ.
+        multiple: true,
+        // Nothing to configure. The pane's own size decides what it shows.
+        formFields: [],
+      ),
+    );
+    service.registerNative(
+      PanelDefinition(
+        id: websitePanelId,
+        title: t.tabs.website,
+        description: t.layout.panels.websiteDescription,
+        icon: 'web',
+        source: PanelSource.native,
+        views: sharedViews,
+        multiple: true,
+        formFields: [
+          {
+            'type': 'field',
+            'key': websiteUrlKey,
+            // No `url` fieldType exists, and an unknown one renders as nothing
+            // at all — no field, no error, no log.
+            'fieldType': 'text',
+            'label': t.layout.panels.websiteUrl,
+            'placeholder': 'https://…',
+            'value': '',
+          },
+          {
+            'type': 'field',
+            'key': websiteRefreshKey,
+            'fieldType': 'select',
+            'label': t.layout.panels.websiteRefresh,
+            // `0`, not null: a null-valued select cannot tell "dismissed" from
+            // "picked null". Ints survive the config's JSON round-trip as ints,
+            // which is what the dropdown's `value ==` needs.
+            'value': 0,
+            'options': [
+              {'label': t.layout.panels.websiteRefreshNever, 'value': 0},
+              {'label': t.layout.panels.websiteRefresh1, 'value': 1},
+              {'label': t.layout.panels.websiteRefresh5, 'value': 5},
+              {'label': t.layout.panels.websiteRefresh15, 'value': 15},
+            ],
+          },
+          {'type': 'field', 'key': websiteTitleKey, 'fieldType': 'text', 'label': t.layout.panels.websiteTitle, 'value': ''},
+          // Live only because `showPanelSettings` passes `onAction`; without
+          // that this button renders disabled.
+          {'type': 'action', 'key': 'refreshNow', 'label': t.layout.panels.websiteRefreshNow, 'method': panelRefreshMethod},
+        ],
+      ),
+    );
+    // Registered only with the CAT experiment on, and re-registered whenever
+    // CatService notifies — see [_onEquipmentChanged], which is what keeps
+    // the radio picker's options and the Automatic option's name current.
+    if (dockServices.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) {
+      final cat = dockServices.cat;
+      final designated = switch (cat.radio1) {
+        LocalRadio(:final uuid) => cat.nodeFor(uuid),
+        _ => null,
+      };
+      service.registerNative(
+        PanelDefinition(
+          id: radioPanelId,
+          title: t.tabs.radio,
+          description: t.layout.panels.radioDescription,
+          icon: 'radio',
+          source: PanelSource.native,
+          views: sharedViews,
+          // A two-radio shack wants both front panels side by side, which is
+          // the case this exists for — and, as with Clock and Weather, a
+          // placement in Home and one in an operation are independent
+          // locations rather than one shared config.
+          multiple: true,
+          // Frequency, mode and power on a row that has to stay legible: the
+          // seven-segment readout scales down with the pane, but below this
+          // the digits stop being readable across a room, which is the only
+          // reason to have a rig's display on screen at all.
+          minWidth: 3,
+          minHeight: 2,
+          formFields: [
+            {
+              'type': 'field',
+              'key': radioNodeKey,
+              'fieldType': 'select',
+              'label': t.layout.panels.radioRadio,
+              'value': radioNodeAuto,
+              'options': [
+                {
+                  // The label carries the designated radio's NAME, so the
+                  // settings row reads "Radio: VFO A — Left Radio" and the
+                  // operator can see which rig Automatic currently means
+                  // without opening Station Configuration to find out.
+                  'label': designated == null ? t.layout.panels.radioAutoNone : t.layout.panels.radioAutoNamed(name: cat.displayNameFor(designated)),
+                  'value': radioNodeAuto,
+                },
+                for (final node in cat.nodes)
+                  if (cat.typeFor(node)?.category == kCategoryTransceiver) {'label': cat.displayNameFor(node), 'value': node.uuid},
+              ],
+            },
+            {
+              'type': 'field',
+              'key': radioStyleKey,
+              'fieldType': 'select',
+              'label': t.layout.panels.radioStyle,
+              'value': radioStyleLcd,
+              'options': [
+                {'label': t.layout.panels.radioStyleLcd, 'value': radioStyleLcd},
+                {'label': t.layout.panels.radioStyleModern, 'value': radioStyleModern},
+              ],
+            },
+          ],
+        ),
+      );
     }
     // Registered only with the experiment on. A saved arrangement holding one
     // of these then falls to the missing-panel placeholder rather than
     // vanishing, which is the same deal an uninstalled extension's panel
     // gets — the operator keeps their arrangement and is told.
-    if (dockServices.settings.experimentEnabled('remote') /* stored key, see experiments.yaml */) {
-      service.registerNative(PanelDefinition(
-        id: remoteScreenPanelId,
-        title: t.tabs.remoteScreen,
-        description: t.layout.panels.remoteScreenDescription,
-        icon: 'monitor-share',
-        source: PanelSource.native,
-        views: sharedViews,
-        multiple: true,
-        // A screen is unreadable in a three-unit pane, and unlike a clock
-        // there is no smaller rendering to fall back to.
-        minWidth: 3,
-        minHeight: 4,
-        formFields: [
-          // An ACTION, never a select. The options would have to be the live
-          // catalog of what peers offer, which arrives asynchronously and
-          // turns over as devices come and go — nothing re-registers this
-          // descriptor when it does, so a select would show whatever was on
-          // offer the moment the view mounted.
-          {
-            'type': 'action',
-            'key': 'chooseScreen',
-            'label': t.layout.panels.remoteScreenChoose,
-            'method': remoteScreenChooseMethod,
-          },
-          // What the action writes, shown so the operator can see what is
-          // stored and clear it without a second control.
-          {
-            'type': 'field',
-            'key': remoteScreenTargetKey,
-            'fieldType': 'text',
-            'label': t.layout.panels.remoteScreenTarget,
-            'value': '',
-          },
-          // How the operator framed the picture. Declared, though no form
-          // ever renders them: `forgetInstanceConfig` forgets only DECLARED
-          // fields, so an undeclared zoom would outlive the pane that set it
-          // and be inherited by whatever is placed in that slot next. Both
-          // routes to this panel's settings are its own widget, so these are
-          // never shown.
-          {'type': 'field', 'key': remoteScreenZoomKey, 'fieldType': 'number', 'label': '', 'value': 1.0},
-          {'type': 'field', 'key': remoteScreenPanXKey, 'fieldType': 'number', 'label': '', 'value': 0.0},
-          {'type': 'field', 'key': remoteScreenPanYKey, 'fieldType': 'number', 'label': '', 'value': 0.0},
-          // Declared for the same reason, and rendered by the same widget:
-          // how much of the link this pane may spend on its picture.
-          {
-            'type': 'field',
-            'key': remoteScreenDetailKey,
-            'fieldType': 'number',
-            'label': '',
-            'value': remoteScreenDetailDefault,
-          },
-        ],
-      ));
+    if (dockServices.settings.experimentEnabled('remote') /* stored key, see experiments.yaml */ ) {
+      service.registerNative(
+        PanelDefinition(
+          id: remoteScreenPanelId,
+          title: t.tabs.remoteScreen,
+          description: t.layout.panels.remoteScreenDescription,
+          icon: 'monitor-share',
+          source: PanelSource.native,
+          views: sharedViews,
+          multiple: true,
+          // A screen is unreadable in a three-unit pane, and unlike a clock
+          // there is no smaller rendering to fall back to.
+          minWidth: 3,
+          minHeight: 4,
+          formFields: [
+            // An ACTION, never a select. The options would have to be the live
+            // catalog of what peers offer, which arrives asynchronously and
+            // turns over as devices come and go — nothing re-registers this
+            // descriptor when it does, so a select would show whatever was on
+            // offer the moment the view mounted.
+            {'type': 'action', 'key': 'chooseScreen', 'label': t.layout.panels.remoteScreenChoose, 'method': remoteScreenChooseMethod},
+            // What the action writes, shown so the operator can see what is
+            // stored and clear it without a second control.
+            {'type': 'field', 'key': remoteScreenTargetKey, 'fieldType': 'text', 'label': t.layout.panels.remoteScreenTarget, 'value': ''},
+            // How the operator framed the picture. Declared, though no form
+            // ever renders them: `forgetInstanceConfig` forgets only DECLARED
+            // fields, so an undeclared zoom would outlive the pane that set it
+            // and be inherited by whatever is placed in that slot next. Both
+            // routes to this panel's settings are its own widget, so these are
+            // never shown.
+            {'type': 'field', 'key': remoteScreenZoomKey, 'fieldType': 'number', 'label': '', 'value': 1.0},
+            {'type': 'field', 'key': remoteScreenPanXKey, 'fieldType': 'number', 'label': '', 'value': 0.0},
+            {'type': 'field', 'key': remoteScreenPanYKey, 'fieldType': 'number', 'label': '', 'value': 0.0},
+            // Declared for the same reason, and rendered by the same widget:
+            // how much of the link this pane may spend on its picture.
+            {'type': 'field', 'key': remoteScreenDetailKey, 'fieldType': 'number', 'label': '', 'value': remoteScreenDetailDefault},
+          ],
+        ),
+      );
     }
   }
 
@@ -2096,8 +1987,6 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       },
     );
   }
-
-
 }
 
 /// One view's arrangement for one [DockLayoutClass]: the tree, its state, its
@@ -2109,9 +1998,9 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
 /// which nothing on screen would say.
 class _DockClassState {
   _DockClassState(SettingsService settings, this.keys)
-      : state = DockState.fromJson(settings.layoutData(keys.state)),
-        paneOptions = PaneLayoutOptions.mapFromJson(settings.layoutData(keys.paneOptions)),
-        viewOptions = PaneLayoutOptions.fromJson(settings.layoutData(keys.viewOptions));
+    : state = DockState.fromJson(settings.layoutData(keys.state)),
+      paneOptions = PaneLayoutOptions.mapFromJson(settings.layoutData(keys.paneOptions)),
+      viewOptions = PaneLayoutOptions.fromJson(settings.layoutData(keys.viewOptions));
 
   final DockLayoutKeys keys;
 

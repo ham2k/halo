@@ -88,12 +88,7 @@ class KeyerRepeat {
   /// Re-arming inside a chain keeps the deadline the chain started with, so
   /// five minutes is five minutes from the first send and not a limit that
   /// each repeat pushes further away.
-  void arm({
-    required Duration delay,
-    required String text,
-    required void Function() send,
-    int? memory,
-  }) {
+  void arm({required Duration delay, required String text, required void Function() send, int? memory}) {
     if (delay <= Duration.zero) return;
     _timer?.cancel();
     _timer = null;

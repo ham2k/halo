@@ -16,8 +16,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart'
-    show kIsWeb, kReleaseMode;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show SemanticsBinding;
@@ -102,15 +101,12 @@ void runHaLoApp({
   // binding initialized outside the zone that runApp runs in trips
   // Flutter's zone-mismatch warning, and on web uncaught async errors are
   // only catchable by the zone, not PlatformDispatcher.onError.
-  unawaited(ErrorReportingService.run(
-    () => _mainBody(
-        launchArguments: launchArguments,
-        metrics: metrics,
-        purchases: purchases,
-        updates: updates,
-        updateCheck: updateCheck),
-    backend: errorReporting,
-  ));
+  unawaited(
+    ErrorReportingService.run(
+      () => _mainBody(launchArguments: launchArguments, metrics: metrics, purchases: purchases, updates: updates, updateCheck: updateCheck),
+      backend: errorReporting,
+    ),
+  );
 }
 
 /// Whether a dev flag passed as a dart-define or an environment variable is
@@ -212,138 +208,140 @@ void _mainBody({
   final servicesFuture = bootstrap(metrics: metrics, purchases: purchases, updates: updates, updateCheck: updateCheck);
   runApp(TranslationProvider(child: BootGate(servicesFuture: servicesFuture)));
 
-  servicesFuture.then((services) async {
-    // One app_started per launch, with the UI preferences app-polo's
-    // matching event carries (consent-gated inside track, like everything).
-    services.track('app_started', {
-      'language': services.settings.locale,
-      // The EFFECTIVE scheme, not the ThemeMode: the enum interpolates to
-      // "ThemeMode.dark", and `system` describes the setting rather than what
-      // the user is actually looking at. app-polo reports the same way.
-      'colorScheme': switch (services.settings.themeMode) {
-        ThemeMode.dark => 'dark',
-        ThemeMode.light => 'light',
-        ThemeMode.system =>
-          WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark
-              ? 'dark'
-              : 'light',
-      },
-      'fontScale': services.settings.fontScale.name,
-    });
-    ErrorReportingService.attachStatusBar(services.statusBar);
-    ErrorReportingService.attachSettings(services.settings);
-    BuildFreshnessService(statusBar: services.statusBar).start();
+  servicesFuture
+      .then((services) async {
+        // One app_started per launch, with the UI preferences app-polo's
+        // matching event carries (consent-gated inside track, like everything).
+        services.track('app_started', {
+          'language': services.settings.locale,
+          // The EFFECTIVE scheme, not the ThemeMode: the enum interpolates to
+          // "ThemeMode.dark", and `system` describes the setting rather than what
+          // the user is actually looking at. app-polo reports the same way.
+          'colorScheme': switch (services.settings.themeMode) {
+            ThemeMode.dark => 'dark',
+            ThemeMode.light => 'light',
+            ThemeMode.system => WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark ? 'dark' : 'light',
+          },
+          'fontScale': services.settings.fontScale.name,
+        });
+        ErrorReportingService.attachStatusBar(services.statusBar);
+        ErrorReportingService.attachSettings(services.settings);
+        BuildFreshnessService(statusBar: services.statusBar).start();
 
-    // Names a spot source that stops answering. Cached after the first
-    // successful fetch — a hook's `sourceName` is static per build — but
-    // retried while the cache is still empty, which is what makes it correct
-    // no matter when the runtime came up: `start()` is fire-and-forget, its
-    // first attempt can fail and be retried by `_scheduleRestart`, and the
-    // fan-out has a 5s timeout of its own on a cold launch. Any of those
-    // would otherwise leave every message naming `sota` rather than
-    // SOTAWatch, permanently. Only ever reached when an outage is being
-    // reported, so the retry costs nothing on a healthy run.
-    // One shared future, not a map plus an emptiness check: the reporter
-    // resolves every down source at once, so N separate lookups would all
-    // find the cache empty and fire N concurrent fan-outs over the runtime —
-    // at the exact moment it is already struggling with an outage.
-    Future<Map<String, String>>? spotSourceNames;
-    attachSpotsStatusReporter(
-      spots: services.spots,
-      statusBar: services.statusBar,
-      disabledSources: () => services.settings.disabledSpotSources,
-      disabledSourcesChanges: services.settings,
-      nameFor: (hookKey) async {
-        final names = await (spotSourceNames ??= services.extensions.getSpotSourceNames());
-        // A fan-out that answered nothing is not an answer worth keeping —
-        // drop it so the next outage asks again instead of naming every
-        // source by its raw hook key for the rest of the session.
-        if (names.isEmpty) spotSourceNames = null;
-        return names[hookKey] ?? hookKey;
-      },
-    );
+        // Names a spot source that stops answering. Cached after the first
+        // successful fetch — a hook's `sourceName` is static per build — but
+        // retried while the cache is still empty, which is what makes it correct
+        // no matter when the runtime came up: `start()` is fire-and-forget, its
+        // first attempt can fail and be retried by `_scheduleRestart`, and the
+        // fan-out has a 5s timeout of its own on a cold launch. Any of those
+        // would otherwise leave every message naming `sota` rather than
+        // SOTAWatch, permanently. Only ever reached when an outage is being
+        // reported, so the retry costs nothing on a healthy run.
+        // One shared future, not a map plus an emptiness check: the reporter
+        // resolves every down source at once, so N separate lookups would all
+        // find the cache empty and fire N concurrent fan-outs over the runtime —
+        // at the exact moment it is already struggling with an outage.
+        Future<Map<String, String>>? spotSourceNames;
+        attachSpotsStatusReporter(
+          spots: services.spots,
+          statusBar: services.statusBar,
+          disabledSources: () => services.settings.disabledSpotSources,
+          disabledSourcesChanges: services.settings,
+          nameFor: (hookKey) async {
+            final names = await (spotSourceNames ??= services.extensions.getSpotSourceNames());
+            // A fan-out that answered nothing is not an answer worth keeping —
+            // drop it so the next outage asks again instead of naming every
+            // source by its raw hook key for the rest of the session.
+            if (names.isEmpty) spotSourceNames = null;
+            return names[hookKey] ?? hookKey;
+          },
+        );
 
-    // Is this install out of date, and in which of the three ways? One
-    // evaluation, at most one verdict per launch (services/staleness.dart).
-    // Evaluated here so an expired build still nags with no network, and again
-    // after each flags refresh once the server-driven signals have arrived.
-    services.staleness.start();
-    // Check for an over-the-air Dart patch on the device's selected track
-    // (docs/releases.md §4). Fire-and-forget on purpose: this makes a network
-    // call the Shorebird package warns can be slow, so it must NOT gate startup
-    // — a downloaded patch applies on the *next* restart regardless. No-ops in
-    // any build without the Shorebird engine. When one IS downloaded, prompt the
-    // user to restart to apply it (desktop gets a "Restart now" button).
-    unawaited(services.updates.checkAndApply().then((updated) {
-      if (updated) showPatchReadyNotice(services.statusBar, const RestartService());
-    }));
+        // Is this install out of date, and in which of the three ways? One
+        // evaluation, at most one verdict per launch (services/staleness.dart).
+        // Evaluated here so an expired build still nags with no network, and again
+        // after each flags refresh once the server-driven signals have arrived.
+        services.staleness.start();
+        // Check for an over-the-air Dart patch on the device's selected track
+        // (docs/releases.md §4). Fire-and-forget on purpose: this makes a network
+        // call the Shorebird package warns can be slow, so it must NOT gate startup
+        // — a downloaded patch applies on the *next* restart regardless. No-ops in
+        // any build without the Shorebird engine. When one IS downloaded, prompt the
+        // user to restart to apply it (desktop gets a "Restart now" button).
+        unawaited(
+          services.updates.checkAndApply().then((updated) {
+            if (updated) showPatchReadyNotice(services.statusBar, const RestartService());
+          }),
+        );
 
-    // Deliberately AFTER the update machinery above, and guarded. This parses
-    // hand-edited server JSON, writes prefs and schedules a dialog — none of
-    // which may cost the operator the code-push download it is about to tell
-    // them to restart for, nor the deep links wired below.
-    try {
-      services.staleness.evaluate();
-    } catch (e, stack) {
-      debugPrint('[staleness] evaluation failed: $e\n$stack');
-    }
-
-    // Desktop binary self-update: point Sparkle/WinSparkle at this build's
-    // per-edition appcast and run a background check (docs/releases.md §3.2).
-    // Fire-and-forget; no-op off desktop / in debug / for the Dev edition.
-    // The preference reaches the updater HERE or not at all: everything it
-    // configures is before-init only, and start() is what runs first.
-    unawaited(const AutoUpdateService().start(
-      automaticChecks: services.settings.automaticUpdateChecks,
-    ));
-
-    listenForDeepLinks(services);
-    listenForOpenedExtensionFiles(services);
-    // Windows and Linux deliver an opened document as an argument to a FRESH
-    // process, so there is no callback to wait for — it is simply already
-    // here. An instance that is already running gets nothing, which is the
-    // same limitation their deep links have.
-    // The first only. Several would stack consent dialogs on top of each
-    // other, which is exactly what the drop target refuses for the same
-    // reason.
-    final bundleArg = launchArguments.where((a) => a.toLowerCase().endsWith('.h2kext')).firstOrNull;
-    if (bundleArg != null) openInstallExtension(services, Uri.file(bundleArg));
-
-    // Wire window.__halo.resetFixture() to a real reset now that services
-    // exist — only in dev/web where the bridge is installed.
-    if (DevBridge.instance.installed) {
-      DevBridge.instance.resetFixtureHandler = () => resetDevFixture(services);
-    }
-
-    // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
-    // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
-    // into the most recent operation.
-    // Read as a STRING, not with `bool.fromEnvironment`, which recognizes only
-    // the literals "true" and "false" — every other value, `=1` included,
-    // reads as false. Both this flag's documented spellings use `=1`
-    // (DEVELOPMENT.md), so the dart-define half silently did nothing: the app
-    // launched, printed `openFirstOp=false`, and looked like the flag had been
-    // dropped rather than mis-typed. The env-var half below always worked,
-    // which is what kept it hidden.
-    const openFirstOpDefine = String.fromEnvironment('POLO_OPEN_FIRST_OP');
-    final openFirstOp = isDevFlagSet(openFirstOpDefine) ||
-        (!kIsWeb && isDevFlagSet(Platform.environment['POLO_OPEN_FIRST_OP'] ?? ''));
-    debugPrint('[boot] openFirstOp=$openFirstOp (define="$openFirstOpDefine")');
-    if (openFirstOp) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-        final operations = await services.operations.watchAll().first;
-        if (operations.isNotEmpty) {
-          unawaited(navigatorKey.currentState?.push(MaterialPageRoute<void>(
-            builder: (_) => OperationView(services: services, operationUuid: operations.first.uuid),
-          )));
+        // Deliberately AFTER the update machinery above, and guarded. This parses
+        // hand-edited server JSON, writes prefs and schedules a dialog — none of
+        // which may cost the operator the code-push download it is about to tell
+        // them to restart for, nor the deep links wired below.
+        try {
+          services.staleness.evaluate();
+        } catch (e, stack) {
+          debugPrint('[staleness] evaluation failed: $e\n$stack');
         }
+
+        // Desktop binary self-update: point Sparkle/WinSparkle at this build's
+        // per-edition appcast and run a background check (docs/releases.md §3.2).
+        // Fire-and-forget; no-op off desktop / in debug / for the Dev edition.
+        // The preference reaches the updater HERE or not at all: everything it
+        // configures is before-init only, and start() is what runs first.
+        unawaited(const AutoUpdateService().start(automaticChecks: services.settings.automaticUpdateChecks));
+
+        listenForDeepLinks(services);
+        listenForOpenedExtensionFiles(services);
+        // Windows and Linux deliver an opened document as an argument to a FRESH
+        // process, so there is no callback to wait for — it is simply already
+        // here. An instance that is already running gets nothing, which is the
+        // same limitation their deep links have.
+        // The first only. Several would stack consent dialogs on top of each
+        // other, which is exactly what the drop target refuses for the same
+        // reason.
+        final bundleArg = launchArguments.where((a) => a.toLowerCase().endsWith('.h2kext')).firstOrNull;
+        if (bundleArg != null) openInstallExtension(services, Uri.file(bundleArg));
+
+        // Wire window.__halo.resetFixture() to a real reset now that services
+        // exist — only in dev/web where the bridge is installed.
+        if (DevBridge.instance.installed) {
+          DevBridge.instance.resetFixtureHandler = () => resetDevFixture(services);
+        }
+
+        // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
+        // SIMCTL_CHILD_POLO_OPEN_FIRST_OP=1 simctl launch ...) to jump straight
+        // into the most recent operation.
+        // Read as a STRING, not with `bool.fromEnvironment`, which recognizes only
+        // the literals "true" and "false" — every other value, `=1` included,
+        // reads as false. Both this flag's documented spellings use `=1`
+        // (DEVELOPMENT.md), so the dart-define half silently did nothing: the app
+        // launched, printed `openFirstOp=false`, and looked like the flag had been
+        // dropped rather than mis-typed. The env-var half below always worked,
+        // which is what kept it hidden.
+        const openFirstOpDefine = String.fromEnvironment('POLO_OPEN_FIRST_OP');
+        final openFirstOp = isDevFlagSet(openFirstOpDefine) || (!kIsWeb && isDevFlagSet(Platform.environment['POLO_OPEN_FIRST_OP'] ?? ''));
+        debugPrint('[boot] openFirstOp=$openFirstOp (define="$openFirstOpDefine")');
+        if (openFirstOp) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await Future<void>.delayed(const Duration(milliseconds: 300));
+            final operations = await services.operations.watchAll().first;
+            if (operations.isNotEmpty) {
+              unawaited(
+                navigatorKey.currentState?.push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => OperationView(services: services, operationUuid: operations.first.uuid),
+                  ),
+                ),
+              );
+            }
+          });
+        }
+      })
+      .catchError((Object error, StackTrace stackTrace) {
+        // BootGate's own catchError (below) is what surfaces this to the user;
+        // this one only exists so bootstrap() failing doesn't also throw an
+        // unrelated unhandled-rejection for the openFirstOp dev nicety above.
+        debugPrint('[boot] bootstrap() failed: $error');
       });
-    }
-  }).catchError((Object error, StackTrace stackTrace) {
-    // BootGate's own catchError (below) is what surfaces this to the user;
-    // this one only exists so bootstrap() failing doesn't also throw an
-    // unrelated unhandled-rejection for the openFirstOp dev nicety above.
-    debugPrint('[boot] bootstrap() failed: $error');
-  });
 }

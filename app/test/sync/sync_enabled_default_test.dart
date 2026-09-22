@@ -22,10 +22,10 @@ void main() {
   /// the default profile carries an `operatorCall` key (even a blank one,
   /// from skipping onboarding).
   Map<String, Object> profiledPrefs(String call) => {
-        'profiles': jsonEncode({
-          'default': {'operatorCall': call},
-        }),
-      };
+    'profiles': jsonEncode({
+      'default': {'operatorCall': call},
+    }),
+  };
 
   group('seedSyncEnabledDefault', () {
     test('a new install starts with sync on', () async {

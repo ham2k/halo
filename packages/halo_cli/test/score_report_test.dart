@@ -11,14 +11,7 @@ import 'package:halo_cli/src/score_report.dart';
 import 'package:test/test.dart';
 
 void main() {
-  const qsoCount = {
-    'key': 'qsoCount',
-    'total': 44,
-    'count': 44,
-    'duplicates': 0,
-    'label': '44 QSOs',
-    'summary': '44',
-  };
+  const qsoCount = {'key': 'qsoCount', 'total': 44, 'count': 44, 'duplicates': 0, 'label': '44 QSOs', 'summary': '44'};
   const dxcc = {
     'key': 'dxcc',
     'total': 4,
@@ -61,7 +54,7 @@ void main() {
           'total': 3,
           'entities': {'ZZ': 2, 'AA': 2, 'MM': 9},
           'label': '3 entities',
-        }
+        },
       });
       expect(md, contains('entities: MM 9, AA 2, ZZ 2'));
     });
@@ -70,7 +63,7 @@ void main() {
       expect(scoreSummariesMarkdown(const {'qsoCount': qsoCount}), isNot(contains('duplicate')));
       expect(
         scoreSummariesMarkdown(const {
-          'qsoCount': {'total': 43, 'duplicates': 1, 'label': '43 QSOs'}
+          'qsoCount': {'total': 43, 'duplicates': 1, 'label': '43 QSOs'},
         }),
         contains('1 duplicate'),
       );
@@ -84,7 +77,7 @@ void main() {
           'total': 12,
           'label': '12 Zones',
           'zones': {'5': 30, '8': 2},
-        }
+        },
       });
       expect(md, contains('`zones`'));
       expect(md, contains('12 Zones'));
@@ -104,12 +97,12 @@ void main() {
         {
           'day': 1784073600000,
           'count': 44,
-          'scores': {'qsoCount': qsoCount}
+          'scores': {'qsoCount': qsoCount},
         },
         {
           'day': 1784160000000,
           'count': 3,
-          'scores': {'qsoCount': qsoCount, 'dxcc': dxcc}
+          'scores': {'qsoCount': qsoCount, 'dxcc': dxcc},
         },
       ]);
       expect(md, contains('| Day (UTC) | QSOs | `qsoCount` | `dxcc` |'));
@@ -120,35 +113,47 @@ void main() {
     test('the day is the UTC bucket it is, not a local date', () {
       // Day sections are 24h UTC buckets by convention; rendering them in the
       // local zone would shift a late-evening activation onto the wrong day.
-      expect(scoreSectionsMarkdown(const [
-        {'day': 1784073600000, 'count': 1, 'scores': {}}
-      ]), contains('2026-07-15'));
+      expect(
+        scoreSectionsMarkdown(const [
+          {'day': 1784073600000, 'count': 1, 'scores': {}},
+        ]),
+        contains('2026-07-15'),
+      );
     });
   });
 
   group('qsos', () {
     const scores = {
-      'q1': {'value': 1, 'notices': ['newState']},
-      'q2': {'value': 0, 'alerts': ['duplicate']},
+      'q1': {
+        'value': 1,
+        'notices': ['newState'],
+      },
+      'q2': {
+        'value': 0,
+        'alerts': ['duplicate'],
+      },
     };
 
     test('joins the verdicts to the log, since a uuid table says nothing', () {
-      final md = scoreQsosMarkdown(scores, qsos: const [
-        {
-          'uuid': 'q1',
-          'startAtMillis': 1784154300000,
-          'band': '20m',
-          'mode': 'SSB',
-          'their': {'call': 'N2JIM'}
-        },
-        {
-          'uuid': 'q2',
-          'startAtMillis': 1784154360000,
-          'band': '20m',
-          'mode': 'SSB',
-          'their': {'call': 'N2JIM'}
-        },
-      ]);
+      final md = scoreQsosMarkdown(
+        scores,
+        qsos: const [
+          {
+            'uuid': 'q1',
+            'startAtMillis': 1784154300000,
+            'band': '20m',
+            'mode': 'SSB',
+            'their': {'call': 'N2JIM'},
+          },
+          {
+            'uuid': 'q2',
+            'startAtMillis': 1784154360000,
+            'band': '20m',
+            'mode': 'SSB',
+            'their': {'call': 'N2JIM'},
+          },
+        ],
+      );
       expect(md, contains('| Time (UTC) | Call | Band | Mode | Points | Notices |'));
       expect(md, contains('N2JIM'));
       expect(md, contains('newState'));
@@ -166,11 +171,17 @@ void main() {
     test('a QSO the log does not carry leaves blanks, not a crash', () {
       // The log and the verdicts can disagree — a caller may score one file
       // and pass another. Better a blank row than an exception.
-      final md = scoreQsosMarkdown(const {
-        'missing': {'value': 1}
-      }, qsos: const [
-        {'uuid': 'other', 'their': {'call': 'W1AW'}}
-      ]);
+      final md = scoreQsosMarkdown(
+        const {
+          'missing': {'value': 1},
+        },
+        qsos: const [
+          {
+            'uuid': 'other',
+            'their': {'call': 'W1AW'},
+          },
+        ],
+      );
       expect(md, contains('| 1 |'));
     });
   });
@@ -179,7 +190,7 @@ void main() {
     // Extension-supplied text lands in these cells; an unescaped pipe would
     // silently add a column and misalign every row after it.
     final md = scoreSummariesMarkdown(const {
-      'odd': {'total': 1, 'label': 'a | b'}
+      'odd': {'total': 1, 'label': 'a | b'},
     });
     expect(md, contains(r'a \| b'));
   });

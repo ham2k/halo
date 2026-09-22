@@ -29,8 +29,7 @@ Map<String, (int, int)> _tables(Uint8List font) {
   final numTables = data.getUint16(4);
   return {
     for (var i = 0; i < numTables; i++)
-      String.fromCharCodes(font.sublist(12 + i * 16, 12 + i * 16 + 4)):
-          (data.getUint32(12 + i * 16 + 8), data.getUint32(12 + i * 16 + 12)),
+      String.fromCharCodes(font.sublist(12 + i * 16, 12 + i * 16 + 4)): (data.getUint32(12 + i * 16 + 8), data.getUint32(12 + i * 16 + 12)),
   };
 }
 

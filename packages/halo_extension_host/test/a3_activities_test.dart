@@ -32,8 +32,7 @@ void main() {
   /// No `secrets` go in: the three key-gated awards carry their own keys as
   /// constants now, so an injected value would be ignored and a test asserting
   /// on one would be asserting about the harness.
-  Future<ExtensionHost> hostFor(String key,
-      {http.Client? client, List<String> domains = const []}) async {
+  Future<ExtensionHost> hostFor(String key, {http.Client? client, List<String> domains = const []}) async {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
       extensions: [ExtensionBundle(key: key, source: bundleSource(key))],
@@ -55,8 +54,7 @@ void main() {
       final rec = recorder('[]');
       final host = await hostFor('wwff', client: rec.client, domains: ['wwff.co', 'spots.wwff.co']);
 
-      await host.invokeHook('spots', key: 'wwff', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20));
+      await host.invokeHook('spots', key: 'wwff', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
 
       // Asserted as "present and non-empty", never against the literal: the
       // value lives in one place and a copy here would be a second one to
@@ -74,8 +72,15 @@ void main() {
       final rec = recorder('[]');
       final host = await hostFor('wwff', client: rec.client, domains: ['wwff.co', 'spots.wwff.co']);
 
-      final ref = await host.invokeHook('ref:wwffActivation', method: 'validateRef',
-          args: {'ref': {'type': 'wwffActivation', 'ref': 'kff-0001'}}) as Map;
+      final ref =
+          await host.invokeHook(
+                'ref:wwffActivation',
+                method: 'validateRef',
+                args: {
+                  'ref': {'type': 'wwffActivation', 'ref': 'kff-0001'},
+                },
+              )
+              as Map;
       expect(ref['valid'], true);
       expect(ref['normalized'], 'KFF-0001');
       expect(rec.sent, isEmpty);
@@ -89,9 +94,7 @@ void main() {
       // `getDefinition` is a fan-out, not a single-hook call — DataFileManager
       // reaches it the same way.
       final entries = await host.invokeHookAll('dataFile', method: 'getDefinition');
-      final tota = entries
-          .map((e) => (e['value'] as Map))
-          .firstWhere((d) => d['key'] == 'tota-all-towers');
+      final tota = entries.map((e) => (e['value'] as Map)).firstWhere((d) => d['key'] == 'tota-all-towers');
       // `url` is a function resolved per refresh, not a static string. Asserted
       // on the PARAMETER rather than the value, which lives in one place.
       expect(tota['url'], contains('key='));
@@ -100,20 +103,16 @@ void main() {
   });
 
   group('data files', () {
-    Future<List<Map<String, dynamic>>> mapRows(
-        String ext, String dfKey, String method, String argName, List<dynamic> rows) async {
+    Future<List<Map<String, dynamic>>> mapRows(String ext, String dfKey, String method, String argName, List<dynamic> rows) async {
       final host = await hostFor(ext);
-      final result = await host.invokeHook('dataFile', key: dfKey, method: method,
-          args: {argName: rows}, timeout: const Duration(seconds: 20)) as List;
+      final result = await host.invokeHook('dataFile', key: dfKey, method: method, args: {argName: rows}, timeout: const Duration(seconds: 20)) as List;
       return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
     }
 
     test('wwff keeps active parks and resolves the DXCC entity prefix', () async {
       final entries = await mapRows('wwff', 'wwff-all-parks', 'mapCsvBatch', 'rows', [
-        {'reference': 'KFF-0001', 'name': 'Acadia', 'status': 'active', 'latitude': '44.35',
-         'longitude': '-68.21', 'iaruLocator': 'FN54VH', 'dxccEnum': '291'},
-        {'reference': 'KFF-9999', 'name': 'Retired', 'status': 'deleted', 'latitude': '44.0',
-         'longitude': '-68.0', 'dxccEnum': '291'},
+        {'reference': 'KFF-0001', 'name': 'Acadia', 'status': 'active', 'latitude': '44.35', 'longitude': '-68.21', 'iaruLocator': 'FN54VH', 'dxccEnum': '291'},
+        {'reference': 'KFF-9999', 'name': 'Retired', 'status': 'deleted', 'latitude': '44.0', 'longitude': '-68.0', 'dxccEnum': '291'},
       ]);
 
       expect(entries.map((e) => e['key']), ['KFF-0001']);
@@ -167,12 +166,14 @@ void main() {
     test('wwff reads spot times in SECONDS', () async {
       // The only feed in the port publishing epoch seconds; treated as millis
       // every spot would land in January 1970.
-      final rec = recorder('[{"activator":"w1aw","reference":"KFF-0001","frequency_khz":14285,'
-          '"mode":"ssb","spot_time":1782000000,"remarks":"up 5","spotter":"g1abc"}]');
+      final rec = recorder(
+        '[{"activator":"w1aw","reference":"KFF-0001","frequency_khz":14285,'
+        '"mode":"ssb","spot_time":1782000000,"remarks":"up 5","spotter":"g1abc"}]',
+      );
       final host = await hostFor('wwff', client: rec.client, domains: ['wwff.co', 'spots.wwff.co']);
 
-      final spots = (await host.invokeHook('spots', key: 'wwff', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20)) as List).cast<Map>();
+      final spots = (await host.invokeHook('spots', key: 'wwff', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)) as List)
+          .cast<Map>();
 
       expect(spots.single['freq'], 14285);
       expect((spots.single['spot'] as Map)['timeInMillis'], 1782000000000);
@@ -181,16 +182,18 @@ void main() {
 
     test('llota drops spots whose comments say QRT', () async {
       // Showing an operator who has packed up is worse than showing nothing.
-      final rec = recorder('['
-          '{"id":1,"callsign":"W1AW","reference":"LLUS-0001","reference_name":"Placid",'
-          '"frequency":14285,"mode":"SSB","updated_at":"2026-07-01T12:00:00Z","comments":"QRT now"},'
-          '{"id":2,"callsign":"K2ABC","reference":"LLUS-0002","reference_name":"George",'
-          '"frequency":7120,"mode":"SSB","updated_at":"2026-07-01T12:05:00Z"}'
-          ']');
+      final rec = recorder(
+        '['
+        '{"id":1,"callsign":"W1AW","reference":"LLUS-0001","reference_name":"Placid",'
+        '"frequency":14285,"mode":"SSB","updated_at":"2026-07-01T12:00:00Z","comments":"QRT now"},'
+        '{"id":2,"callsign":"K2ABC","reference":"LLUS-0002","reference_name":"George",'
+        '"frequency":7120,"mode":"SSB","updated_at":"2026-07-01T12:05:00Z"}'
+        ']',
+      );
       final host = await hostFor('llota', client: rec.client, domains: ['llota.app']);
 
-      final spots = (await host.invokeHook('spots', key: 'llota', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20)) as List).cast<Map>();
+      final spots = (await host.invokeHook('spots', key: 'llota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)) as List)
+          .cast<Map>();
 
       expect(spots.length, 1);
       expect((spots.single['their'] as Map)['call'], 'K2ABC');
@@ -202,21 +205,32 @@ void main() {
     // LLOTA is POTA-shaped: one record per hunted lake, and the award's own
     // field names the single lake that record is for.
     final host = await hostFor('llota');
-    final combos = (await host.invokeHook('adifFields', key: 'llota',
-        method: 'fieldCombinationsForOneQSO', args: {
-      'qso': {
-        'their': {'call': 'W1AW'},
-        'refs': [
-          {'type': 'llota', 'ref': 'LLUS-9001'},
-          {'type': 'llota', 'ref': 'LLUS-9002'},
-        ],
-      },
-      'operation': {'refs': [{'type': 'llotaActivation', 'ref': 'LLUS-0001'}]},
-    }, timeout: const Duration(seconds: 20)) as List).cast<List>();
+    final combos =
+        (await host.invokeHook(
+                  'adifFields',
+                  key: 'llota',
+                  method: 'fieldCombinationsForOneQSO',
+                  args: {
+                    'qso': {
+                      'their': {'call': 'W1AW'},
+                      'refs': [
+                        {'type': 'llota', 'ref': 'LLUS-9001'},
+                        {'type': 'llota', 'ref': 'LLUS-9002'},
+                      ],
+                    },
+                    'operation': {
+                      'refs': [
+                        {'type': 'llotaActivation', 'ref': 'LLUS-0001'},
+                      ],
+                    },
+                  },
+                  timeout: const Duration(seconds: 20),
+                )
+                as List)
+            .cast<List>();
 
     expect(combos.length, 2);
-    String valueOf(List fields, String name) =>
-        (fields.cast<Map>().firstWhere((f) => f['name'] == name))['value'] as String;
+    String valueOf(List fields, String name) => (fields.cast<Map>().firstWhere((f) => f['name'] == name))['value'] as String;
     expect(valueOf(combos[0], 'LLOTA_REF'), 'LLUS-9001');
     expect(valueOf(combos[1], 'LLOTA_REF'), 'LLUS-9002');
     expect(valueOf(combos[0], 'MY_LLOTA_REF'), 'LLUS-0001');
@@ -226,22 +240,42 @@ void main() {
     // Unlike LLOTA — app-polo registers no combinations for WWFF at all.
     final host = await hostFor('wwff');
     expect(
-      await host.invokeHook('adifFields', key: 'wwff', method: 'fieldCombinationsForOneQSO',
-          args: {'qso': {'refs': <Map>[]}, 'operation': {'refs': <Map>[]}},
-          timeout: const Duration(seconds: 20)),
+      await host.invokeHook(
+        'adifFields',
+        key: 'wwff',
+        method: 'fieldCombinationsForOneQSO',
+        args: {
+          'qso': {'refs': <Map>[]},
+          'operation': {'refs': <Map>[]},
+        },
+        timeout: const Duration(seconds: 20),
+      ),
       isNull,
     );
 
-    final fields = (await host.invokeHook('adifFields', key: 'wwff', method: 'fieldsForOneQSO', args: {
-      'qso': {
-        'their': {'call': 'W1AW'},
-        'refs': [
-          {'type': 'wwff', 'ref': 'KFF-9001'},
-          {'type': 'wwff', 'ref': 'KFF-9002'},
-        ],
-      },
-      'operation': {'refs': [{'type': 'wwffActivation', 'ref': 'KFF-0001'}]},
-    }, timeout: const Duration(seconds: 20)) as List).cast<Map>();
+    final fields =
+        (await host.invokeHook(
+                  'adifFields',
+                  key: 'wwff',
+                  method: 'fieldsForOneQSO',
+                  args: {
+                    'qso': {
+                      'their': {'call': 'W1AW'},
+                      'refs': [
+                        {'type': 'wwff', 'ref': 'KFF-9001'},
+                        {'type': 'wwff', 'ref': 'KFF-9002'},
+                      ],
+                    },
+                    'operation': {
+                      'refs': [
+                        {'type': 'wwffActivation', 'ref': 'KFF-0001'},
+                      ],
+                    },
+                  },
+                  timeout: const Duration(seconds: 20),
+                )
+                as List)
+            .cast<Map>();
 
     final wwffRef = fields.firstWhere((f) => f['name'] == 'WWFF_REF');
     expect(wwffRef['value'], 'KFF-9001,KFF-9002');

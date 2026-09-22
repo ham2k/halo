@@ -33,11 +33,7 @@
 /// Neither input is mutated: the caller's QSO may be the one a call-list batch
 /// is still iterating over, so writing through would leak one call's exchange
 /// onto the next.
-Map<String, dynamic> mergeQsoPatch(
-  Map<String, dynamic> qso,
-  Map<String, dynamic> patch, {
-  required String owner,
-}) {
+Map<String, dynamic> mergeQsoPatch(Map<String, dynamic> qso, Map<String, dynamic> patch, {required String owner}) {
   if (patch.isEmpty) return qso;
 
   final merged = Map<String, dynamic>.from(qso);
@@ -55,10 +51,7 @@ Map<String, dynamic> mergeQsoPatch(
 
     if ((key == 'our' || key == 'their') && value is Map) {
       final existing = merged[key];
-      merged[key] = {
-        if (existing is Map) ...existing.cast<String, dynamic>(),
-        ...value.cast<String, dynamic>(),
-      };
+      merged[key] = {if (existing is Map) ...existing.cast<String, dynamic>(), ...value.cast<String, dynamic>()};
     } else {
       merged[key] = value;
     }

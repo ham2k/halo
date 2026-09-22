@@ -25,8 +25,7 @@ const double qsoRefIconGap = 6;
 /// The marker a QSO row wears when the contact carries a note, or null when
 /// it carries none — the Notes chip's own glyph, so the row and the control
 /// that writes the note agree.
-Widget? qsoNotesMarker(Qso qso, {Color? color}) =>
-    qso.hasNotes ? Icon(notesChipIcon, size: qsoNotesMarkerSize, color: color) : null;
+Widget? qsoNotesMarker(Qso qso, {Color? color}) => qso.hasNotes ? Icon(notesChipIcon, size: qsoNotesMarkerSize, color: color) : null;
 
 /// [qsoNotesMarker]'s extent, for a caller that has to budget the width it
 /// then lays out.
@@ -58,10 +57,7 @@ Map<String, ({int count, String? code})> qsoRefCountsByType(Qso qso, List<Map<St
     final claimed = !claimedTypes.contains(type) && controlForRef(controls, type: type, code: code) != null;
     if (claimed) claimedTypes.add(type);
     final previous = counts[type];
-    counts[type] = (
-      count: (previous?.count ?? 0) + 1,
-      code: previous == null || claimed ? code : previous.code,
-    );
+    counts[type] = (count: (previous?.count ?? 0) + 1, code: previous == null || claimed ? code : previous.code);
   }
   return counts;
 }
@@ -105,13 +101,7 @@ class QsoRowBadges extends StatelessWidget {
   /// RST beside it, not in a per-control accent.
   final TextStyle dimStyle;
 
-  const QsoRowBadges({
-    super.key,
-    required this.qso,
-    required this.refCounts,
-    required this.activityControls,
-    required this.dimStyle,
-  });
+  const QsoRowBadges({super.key, required this.qso, required this.refCounts, required this.activityControls, required this.dimStyle});
 
   @override
   Widget build(BuildContext context) {
@@ -121,10 +111,7 @@ class QsoRowBadges extends StatelessWidget {
       children: [
         // A serial another position also sent: the number stands, and the
         // row says it is not alone.
-        if (qso.serialConflict) ...[
-          Icon(MdiIcons.alert, size: 14, color: Theme.of(context).colorScheme.error),
-          const SizedBox(width: qsoRefIconGap),
-        ],
+        if (qso.serialConflict) ...[Icon(MdiIcons.alert, size: 14, color: Theme.of(context).colorScheme.error), const SizedBox(width: qsoRefIconGap)],
         for (final entry in refCounts.entries) ...[
           // An unrecognized type (its extension isn't installed/loaded right
           // now) gets a small pale-red question-mark marker instead of the
@@ -133,23 +120,15 @@ class QsoRowBadges extends StatelessWidget {
           // known-type icon stays bespoke, using the row's neutral foreground
           // rather than a per-control accent (#354).
           if (isUnknownRefType(activityControls, entry.key, code: entry.value.code))
-            activityRefIcon(activityControls, entry.key,
-                code: entry.value.code, iconSize: 10, avatarRadius: qsoRefIconWidth / 2)
+            activityRefIcon(activityControls, entry.key, code: entry.value.code, iconSize: 10, avatarRadius: qsoRefIconWidth / 2)
           else
-            Icon(
-              resolveIconName(iconForRefType(activityControls, entry.key, code: entry.value.code)),
-              size: 14,
-              color: dimStyle.color,
-            ),
+            Icon(resolveIconName(iconForRefType(activityControls, entry.key, code: entry.value.code)), size: 14, color: dimStyle.color),
           if (entry.value.count > 1) Text('×${entry.value.count}', style: dimStyle.copyWith(fontSize: 11)),
           const SizedBox(width: qsoRefIconGap),
         ],
         // Last, so it sits against the signal reports and the exchange
         // whatever else the row carries.
-        if (notesMarker != null) ...[
-          notesMarker,
-          const SizedBox(width: qsoRefIconGap),
-        ],
+        if (notesMarker != null) ...[notesMarker, const SizedBox(width: qsoRefIconGap)],
       ],
     );
   }

@@ -61,7 +61,8 @@ Map<String, dynamic> benchQsoData(int i, DateTime start) {
   // rather than every contact being trivially new.
   final callIndex = i % 20 == 19 ? (i ~/ 2) : i;
   final prefix = _benchPrefixes[callIndex % _benchPrefixes.length];
-  final call = '$prefix${callIndex % 9}${String.fromCharCode(65 + callIndex % 26)}'
+  final call =
+      '$prefix${callIndex % 9}${String.fromCharCode(65 + callIndex % 26)}'
       '${String.fromCharCode(65 + (callIndex ~/ 26) % 26)}'
       '${String.fromCharCode(65 + (callIndex ~/ 676) % 26)}';
   return {
@@ -257,7 +258,8 @@ class BenchCleanupFailed implements Exception {
   final Object? benchError;
 
   @override
-  String toString() => 'BenchCleanupFailed: the benchmark operation is still in the log — '
+  String toString() =>
+      'BenchCleanupFailed: the benchmark operation is still in the log — '
       'run PURGETESTS ($cause)${benchError == null ? '' : '; the run itself failed with: $benchError'}';
 }
 
@@ -282,12 +284,18 @@ class BenchResult {
   /// True when the run was long enough for its slope to mean anything.
   bool get verdictIsTrustworthy => qsoCount >= kVerdictNeedsQsos;
 
-  List<BenchPhase> get culprits => [for (final p in phases) if (p.growsWithTheLog(bands)) p];
+  List<BenchPhase> get culprits => [
+    for (final p in phases)
+      if (p.growsWithTheLog(bands)) p,
+  ];
 
   /// Phases that ran but measured nothing. Reported separately because
   /// "nothing scales with the log" over an unmeasured phase is a clean bill of
   /// health for a run that did not happen.
-  List<BenchPhase> get unmeasured => [for (final p in phases) if (p.warning != null) p];
+  List<BenchPhase> get unmeasured => [
+    for (final p in phases)
+      if (p.warning != null) p,
+  ];
 
   /// One line, for a command response or a status message — both of which are
   /// capped at a single line.
@@ -337,18 +345,17 @@ class BenchResult {
   /// because the endpoints are a summary and this is the evidence.
   String get plainReport {
     final ceiling = phases.isEmpty ? 0.0 : phases.first.expectedIfLinear(bands);
-    final out = <String>[
-      '$qsoCount QSOs, $bands bands. Proportional to the log = ${ceiling.toStringAsFixed(1)}x growth.',
-      '',
-    ];
+    final out = <String>['$qsoCount QSOs, $bands bands. Proportional to the log = ${ceiling.toStringAsFixed(1)}x growth.', ''];
     for (final p in phases) {
       out.add('${p.label}, ms: ${p.perBand.map((v) => v.toStringAsFixed(3)).join(', ')}');
       out.add('  -> ${p.verdict(bands).replaceAll('**', '')}${p.note == null ? '' : ' [${p.note}]'}');
     }
     out.add('');
-    out.add(verdictIsTrustworthy
-        ? (culprits.isEmpty ? 'No per-contact phase grows with the log.' : 'FOUND: ${culprits.map((p) => p.name).join(', ')}')
-        : 'SMOKE RUN — needs $kVerdictNeedsQsos QSOs for a verdict.');
+    out.add(
+      verdictIsTrustworthy
+          ? (culprits.isEmpty ? 'No per-contact phase grows with the log.' : 'FOUND: ${culprits.map((p) => p.name).join(', ')}')
+          : 'SMOKE RUN — needs $kVerdictNeedsQsos QSOs for a verdict.',
+    );
     return out.join('\n');
   }
 }
@@ -401,15 +408,9 @@ Future<BenchResult> runContestBench({
   final sampleEvery = (band ~/ 40).clamp(1, 1 << 30);
 
   final insert = BenchPhase('insert');
-  final fingerprint = BenchPhase(
-    'rescore fingerprint',
-    note: 'on the UI isolate, every stream emission — this one costs frames',
-  );
+  final fingerprint = BenchPhase('rescore fingerprint', note: 'on the UI isolate, every stream emission — this one costs frames');
   final rescore = BenchPhase('full scoring pass', growsWithLog: true, per: 'pass');
-  final readBack = BenchPhase(
-    'read back + decode',
-    note: 'decoded off the UI isolate above 200 rows, so this costs battery, not frames',
-  );
+  final readBack = BenchPhase('read back + decode', note: 'decoded off the UI isolate above 200 rows, so this costs battery, not frames');
   // `online: false` is the app's own offline mode: every lookup hook is asked
   // to stay local — call history, call notes, cached data files — which is what
   // makes this reproducible and free of an 8-second network timeout per call.
@@ -418,10 +419,7 @@ Future<BenchResult> runContestBench({
   //
   // Worth watching as the log grows rather than assumed flat, because the
   // offline sources query the log itself.
-  final lookup = BenchPhase(
-    'offline lookup',
-    note: 'the pipeline\'s cost with its sources finding nothing — see the doc on runContestBench',
-  );
+  final lookup = BenchPhase('offline lookup', note: 'the pipeline\'s cost with its sources finding nothing — see the doc on runContestBench');
   final phases = [insert, fingerprint, rescore, readBack, lookup];
 
   final operation = await operations.create(stationCall: 'N0DEV/T', userTitle: 'Benchmark');
@@ -436,15 +434,17 @@ Future<BenchResult> runContestBench({
   var scoredPasses = 0;
   String? lastScoreStamp;
   try {
-    await operations.saveData(Operation(
-      uuid: operation.uuid,
-      data: {
-        ...operation.data,
-        'refs': [
-          {'type': 'cqww', 'mode': 'SSB', 'ourZone': '5'},
-        ],
-      },
-    ));
+    await operations.saveData(
+      Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [
+            {'type': 'cqww', 'mode': 'SSB', 'ourZone': '5'},
+          ],
+        },
+      ),
+    );
     final scored = (await operations.get(operation.uuid))!;
 
     // Without a contest scorer selected this measures an operation nothing
@@ -457,9 +457,7 @@ Future<BenchResult> runContestBench({
       // canned result in microseconds and report the pipeline as nearly free.
       // An environment variable is enough to turn it on, and a developer with
       // it exported is exactly this command's audience.
-      throw BenchNotConfigured(
-        'Lookups are stubbed (HALO_STUB_LOOKUPS) — the lookup phase would measure a canned answer.',
-      );
+      throw BenchNotConfigured('Lookups are stubbed (HALO_STUB_LOOKUPS) — the lookup phase would measure a canned answer.');
     }
 
     final scorers = ExtensionService.scorersFor(scored.data, await extensions.getScoringScopes());
@@ -495,12 +493,7 @@ Future<BenchResult> runContestBench({
         final data = benchQsoData(benchLookupIndex(i, qsoCount), start);
         final call = benchLookupCall(i, qsoCount);
         final sw5 = Stopwatch()..start();
-        final answer = await extensions.lookupCall(
-          call,
-          qso: data,
-          operation: scored.data,
-          online: false,
-        );
+        final answer = await extensions.lookupCall(call, qso: data, operation: scored.data, online: false);
         lookup.record(sw5.elapsedMicroseconds);
         lookupSamples++;
         // Null means the pipeline did not run at all — a dead runtime, the one

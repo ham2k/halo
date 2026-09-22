@@ -171,12 +171,7 @@ class _AtomicWriteFile extends ForwardingFileSystemEntity<File, io.File> with Fo
   Link wrapLink(io.Link delegate) => fileSystem.link(delegate.path);
 
   @override
-  void writeAsStringSync(
-    String contents, {
-    io.FileMode mode = io.FileMode.write,
-    Encoding encoding = utf8,
-    bool flush = false,
-  }) {
+  void writeAsStringSync(String contents, {io.FileMode mode = io.FileMode.write, Encoding encoding = utf8, bool flush = false}) {
     // An append has nothing to replace and no half-written state to avoid.
     if (mode != io.FileMode.write) {
       return delegate.writeAsStringSync(contents, mode: mode, encoding: encoding, flush: flush);

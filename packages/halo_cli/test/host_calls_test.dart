@@ -18,29 +18,23 @@ void main() {
     ],
   );
 
-  CliHostCalls host({
-    LogContext log = LogContext.empty,
-    ({double lat, double lon})? location,
-    Set<String> locationAllowlist = const {},
-  }) =>
-      CliHostCalls(
-        config: CliConfig(),
-        index: index,
-        log: log,
-        location: location,
-        locationAllowlist: locationAllowlist,
-      );
+  CliHostCalls host({LogContext log = LogContext.empty, ({double lat, double lon})? location, Set<String> locationAllowlist = const {}}) =>
+      CliHostCalls(config: CliConfig(), index: index, log: log, location: location, locationAllowlist: locationAllowlist);
 
   group('--qson', () {
     test('supplies both halves of the log from one file', () {
       // The shape PoLo exports and every coarse hook already takes, so a real
       // exported log is usable unedited.
-      final log = LogContext.resolve(qson: const {
-        'operation': {'uuid': 'op-1', 'stationCall': 'N0DEV'},
-        'qsos': [
-          {'their': {'call': 'W1AW'}}
-        ],
-      });
+      final log = LogContext.resolve(
+        qson: const {
+          'operation': {'uuid': 'op-1', 'stationCall': 'N0DEV'},
+          'qsos': [
+            {
+              'their': {'call': 'W1AW'},
+            },
+          ],
+        },
+      );
       expect(log.operation?['stationCall'], 'N0DEV');
       expect(log.qsos, hasLength(1));
     });
@@ -53,7 +47,9 @@ void main() {
         qson: const {
           'operation': {'uuid': 'op-1', 'stationCall': 'N0DEV'},
           'qsos': [
-            {'their': {'call': 'W1AW'}}
+            {
+              'their': {'call': 'W1AW'},
+            },
           ],
         },
         operation: const {'uuid': 'op-2', 'stationCall': 'KI2D'},
@@ -71,9 +67,11 @@ void main() {
       // access". Handing over a QSON file is granting access, so a file
       // listing no contacts describes an empty log — but an operation on its
       // own is not a claim to have supplied the log's contents.
-      final fromQson = LogContext.resolve(qson: const {
-        'operation': {'uuid': 'op-1'}
-      });
+      final fromQson = LogContext.resolve(
+        qson: const {
+          'operation': {'uuid': 'op-1'},
+        },
+      );
       expect(fromQson.operation, isNotNull);
       expect(fromQson.qsos, isEmpty);
 
@@ -88,8 +86,10 @@ void main() {
     test('something that is not a log is refused, naming what one looks like', () {
       // The likely mistakes are a bare operation or a bare QSO array, and
       // neither announces itself.
-      expect(() => LogContext.resolve(qson: const {'uuid': 'op-1', 'stationCall': 'N0DEV'}),
-          throwsA(isA<QsonShapeError>().having((e) => e.message, 'message', contains('operation'))));
+      expect(
+        () => LogContext.resolve(qson: const {'uuid': 'op-1', 'stationCall': 'N0DEV'}),
+        throwsA(isA<QsonShapeError>().having((e) => e.message, 'message', contains('operation'))),
+      );
       expect(() => LogContext.resolve(qson: const {'qsos': 'not an array'}), throwsA(isA<QsonShapeError>()));
       expect(() => LogContext.resolve(qson: const {'operation': 'not an object'}), throwsA(isA<QsonShapeError>()));
     });
@@ -103,16 +103,25 @@ void main() {
       // rule read an empty log as a missing one.
       expect(await host().call('getQsos', {'operationUuid': 'op-1'}), isNull);
 
-      final withLog = host(log: const LogContext(operation: {'uuid': 'op-1'}, qsos: []));
+      final withLog = host(
+        log: const LogContext(operation: {'uuid': 'op-1'}, qsos: []),
+      );
       expect(await withLog.call('getQsos', {'operationUuid': 'op-1'}), isEmpty);
     });
 
     test('a request for a DIFFERENT operation is a miss, not a substitution', () async {
       // The CLI holds one operation. Answering with it regardless of the uuid
       // asked for would let a hook believe it read the log it named.
-      final calls = host(log: const LogContext(operation: {'uuid': 'op-1'}, qsos: [
-        {'their': {'call': 'KI2D'}}
-      ]));
+      final calls = host(
+        log: const LogContext(
+          operation: {'uuid': 'op-1'},
+          qsos: [
+            {
+              'their': {'call': 'KI2D'},
+            },
+          ],
+        ),
+      );
       expect(await calls.call('getQsos', {'operationUuid': 'op-2'}), isNull);
       expect(await calls.call('getOperation', {'uuid': 'op-2'}), isNull);
       expect(await calls.call('getOperation', {'uuid': 'op-1'}), containsPair('uuid', 'op-1'));
@@ -122,12 +131,25 @@ void main() {
       // The app never hands a hook a deleted QSO; a CLI replay of an
       // exported log that did would score or export contacts the operator
       // removed.
-      final calls = host(log: const LogContext(operation: {'uuid': 'op-1'}, qsos: [
-        {'their': {'call': 'KI2D'}},
-        {'their': {'call': 'W1AW'}, 'deleted': true},
-        {'their': {'call': 'N0CALL'}, 'deleted': 1},
-        {'band': 'event', 'eventKind': 'break'},
-      ]));
+      final calls = host(
+        log: const LogContext(
+          operation: {'uuid': 'op-1'},
+          qsos: [
+            {
+              'their': {'call': 'KI2D'},
+            },
+            {
+              'their': {'call': 'W1AW'},
+              'deleted': true,
+            },
+            {
+              'their': {'call': 'N0CALL'},
+              'deleted': 1,
+            },
+            {'band': 'event', 'eventKind': 'break'},
+          ],
+        ),
+      );
       final result = await calls.call('getQsos', {'operationUuid': 'op-1'}) as List;
       expect(result.map((qso) => ((qso as Map)['their'] as Map?)?['call']), ['KI2D', null]);
     });
@@ -135,25 +157,16 @@ void main() {
 
   group('getSpotsForCall', () {
     Map<String, Object?> spot(String call, {required int ageMinutes}) => {
-          'their': {'call': call},
-          'spot': {
-            'timeInMillis':
-                DateTime.now().millisecondsSinceEpoch - ageMinutes * Duration.millisecondsPerMinute,
-          },
-        };
+      'their': {'call': call},
+      'spot': {'timeInMillis': DateTime.now().millisecondsSinceEpoch - ageMinutes * Duration.millisecondsPerMinute},
+    };
 
     test('filters by callsign and by the spot\'s OWN age', () async {
       // The age is measured on `spot.timeInMillis`, not on when the host
       // fetched it — a stale spot replayed into a fresh cache is still stale,
       // and spot-history pulling a two-hour-old park into the QSO being
       // logged is exactly the wrong answer.
-      final calls = host(
-        log: LogContext(spots: [
-          spot('KI2D', ageMinutes: 5),
-          spot('KI2D', ageMinutes: 120),
-          spot('N0CALL', ageMinutes: 5),
-        ]),
-      );
+      final calls = host(log: LogContext(spots: [spot('KI2D', ageMinutes: 5), spot('KI2D', ageMinutes: 120), spot('N0CALL', ageMinutes: 5)]));
       final result = await calls.call('getSpotsForCall', {'call': 'ki2d', 'maxAgeMinutes': 30});
       expect(result, hasLength(1));
     });
@@ -166,20 +179,23 @@ void main() {
 
     test('filters by callsign, case-insensitively, most recent first', () async {
       final calls = host(
-        log: const LogContext(operation: {'uuid': 'op-1'}, qsos: [
-          {
-            'their': {'call': 'KI2D'},
-            'startAtMillis': 1000,
-          },
-          {
-            'their': {'call': 'W1AW'},
-            'startAtMillis': 2000,
-          },
-          {
-            'their': {'call': 'KI2D'},
-            'startAtMillis': 3000,
-          },
-        ]),
+        log: const LogContext(
+          operation: {'uuid': 'op-1'},
+          qsos: [
+            {
+              'their': {'call': 'KI2D'},
+              'startAtMillis': 1000,
+            },
+            {
+              'their': {'call': 'W1AW'},
+              'startAtMillis': 2000,
+            },
+            {
+              'their': {'call': 'KI2D'},
+              'startAtMillis': 3000,
+            },
+          ],
+        ),
       );
       final result = await calls.call('getHistoryForCall', {'call': 'ki2d'}) as List;
       expect(result, hasLength(2));
@@ -188,17 +204,20 @@ void main() {
 
     test('an event marker never stands in as a "most recent QSO"', () async {
       final calls = host(
-        log: const LogContext(operation: {'uuid': 'op-1'}, qsos: [
-          {
-            'their': {'call': 'KI2D'},
-            'startAtMillis': 1000,
-          },
-          {
-            'their': {'call': 'KI2D'},
-            'band': 'event',
-            'startAtMillis': 2000,
-          },
-        ]),
+        log: const LogContext(
+          operation: {'uuid': 'op-1'},
+          qsos: [
+            {
+              'their': {'call': 'KI2D'},
+              'startAtMillis': 1000,
+            },
+            {
+              'their': {'call': 'KI2D'},
+              'band': 'event',
+              'startAtMillis': 2000,
+            },
+          ],
+        ),
       );
       final result = await calls.call('getHistoryForCall', {'call': 'KI2D'}) as List;
       expect(result, hasLength(1));
@@ -207,22 +226,25 @@ void main() {
 
     test('a deleted QSO is not history, in any client\'s spelling of deleted', () async {
       final calls = host(
-        log: const LogContext(operation: {'uuid': 'op-1'}, qsos: [
-          {
-            'their': {'call': 'KI2D'},
-            'startAtMillis': 1000,
-          },
-          {
-            'their': {'call': 'KI2D'},
-            'deleted': true,
-            'startAtMillis': 2000,
-          },
-          {
-            'their': {'call': 'KI2D'},
-            'deleted': 1,
-            'startAtMillis': 3000,
-          },
-        ]),
+        log: const LogContext(
+          operation: {'uuid': 'op-1'},
+          qsos: [
+            {
+              'their': {'call': 'KI2D'},
+              'startAtMillis': 1000,
+            },
+            {
+              'their': {'call': 'KI2D'},
+              'deleted': true,
+              'startAtMillis': 2000,
+            },
+            {
+              'their': {'call': 'KI2D'},
+              'deleted': 1,
+              'startAtMillis': 3000,
+            },
+          ],
+        ),
       );
       final result = await calls.call('getHistoryForCall', {'call': 'KI2D'}) as List;
       expect(result.map((qso) => (qso as Map)['startAtMillis']), [1000]);
@@ -256,7 +278,7 @@ void main() {
               'their': {'call': 'KI2D'},
               'startAtMillis': 0,
               'refs': [
-                {'type': 'cwt'}
+                {'type': 'cwt'},
               ],
             },
             for (var i = 1; i <= 6; i++)
@@ -279,7 +301,7 @@ void main() {
           operation: {
             'uuid': 'op-1',
             'refs': [
-              {'type': 'potaActivation', 'ref': 'FR-0999'}
+              {'type': 'potaActivation', 'ref': 'FR-0999'},
             ],
           },
           qsos: [
@@ -297,8 +319,7 @@ void main() {
           ],
         ),
       );
-      final result =
-          await calls.call('getHistoryForCall', {'call': 'KI2D', 'refType': 'potaActivation', 'refPrefix': 'FR-'}) as List;
+      final result = await calls.call('getHistoryForCall', {'call': 'KI2D', 'refType': 'potaActivation', 'refPrefix': 'FR-'}) as List;
       expect(result.map((qso) => (qso as Map)['startAtMillis']), [1]);
     });
 
@@ -310,7 +331,7 @@ void main() {
         log: const LogContext(
           operation: {
             'refs': [
-              {'type': 'potaActivation', 'ref': 'US-1234'}
+              {'type': 'potaActivation', 'ref': 'US-1234'},
             ],
           },
           qsos: [
@@ -330,7 +351,7 @@ void main() {
           operation: {
             'uuid': 'op-1',
             'refs': [
-              {'type': 'potaActivation', 'ref': 'US-1111'}
+              {'type': 'potaActivation', 'ref': 'US-1111'},
             ],
           },
           qsos: [
@@ -345,7 +366,7 @@ void main() {
                 'event': 'break',
                 'operation': {
                   'refs': [
-                    {'type': 'potaActivation', 'ref': 'CA-2222'}
+                    {'type': 'potaActivation', 'ref': 'CA-2222'},
                   ],
                 },
               },
@@ -358,16 +379,17 @@ void main() {
         ),
       );
       Future<List<Object?>> starts(Map<String, dynamic> options) async => [
-            for (final qso in await calls.call('getHistoryForCall', {'call': 'KI2D', ...options}) as List)
-              (qso as Map)['startAtMillis'],
-          ];
+        for (final qso in await calls.call('getHistoryForCall', {'call': 'KI2D', ...options}) as List) (qso as Map)['startAtMillis'],
+      ];
       expect(await starts({'refPrefix': 'CA-', 'refsSegmentAware': true}), [30]);
       expect(await starts({'refPrefix': 'US-', 'refsSegmentAware': true}), [10]);
       expect(await starts({'refPrefix': 'US-'}), [30, 10]);
     });
 
     test('a malformed option throws rather than answering unfiltered', () async {
-      final calls = host(log: const LogContext(operation: {'uuid': 'op-1'}, qsos: []));
+      final calls = host(
+        log: const LogContext(operation: {'uuid': 'op-1'}, qsos: []),
+      );
       await expectLater(calls.call('getHistoryForCall', {'call': 'KI2D', 'band': 20}), throwsFormatException);
     });
 
@@ -384,8 +406,7 @@ void main() {
       // quietly gains the device's position here would be running with
       // permissions it does not have in the product.
       expect(
-        () => host(location: (lat: 1, lon: 2), locationAllowlist: const {'annotation-commands'})
-            .call('getLocation', {'extensionKey': 'pota'}),
+        () => host(location: (lat: 1, lon: 2), locationAllowlist: const {'annotation-commands'}).call('getLocation', {'extensionKey': 'pota'}),
         throwsA(isA<HostCallRefused>()),
       );
     });
@@ -393,8 +414,7 @@ void main() {
     test('answers a declared extension, and answers null with no fix', () async {
       const allowed = {'annotation-commands'};
       final withFix = host(location: (lat: 41.7, lon: -74.5), locationAllowlist: allowed);
-      expect(await withFix.call('getLocation', {'extensionKey': 'annotation-commands'}),
-          {'latitude': 41.7, 'longitude': -74.5});
+      expect(await withFix.call('getLocation', {'extensionKey': 'annotation-commands'}), {'latitude': 41.7, 'longitude': -74.5});
 
       final withoutFix = host(locationAllowlist: allowed);
       expect(await withoutFix.call('getLocation', {'extensionKey': 'annotation-commands'}), isNull);

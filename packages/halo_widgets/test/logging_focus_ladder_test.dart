@@ -41,7 +41,11 @@ class _Harness {
         (key: 'sent', label: 'Sent', focus: sentFocus, controller: sent, hint: null),
         if (withGrid) (key: 'grid', label: 'Grid', focus: gridFocus, controller: grid, hint: null),
       ],
-      expandedFocusFor: (key) => switch (key) { 'time' => timeField.$1, 'radio' => freqField.$1, _ => null },
+      expandedFocusFor: (key) => switch (key) {
+        'time' => timeField.$1,
+        'radio' => freqField.$1,
+        _ => null,
+      },
       expandedFieldOrderFor: (key) => switch (key) {
         'time' => [timeField, dateField],
         'radio' => [freqField],
@@ -77,9 +81,7 @@ class _Harness {
       focus.addListener(() {
         if (!focus.hasFocus) return;
         ladder.notePrimaryFocus(focus);
-        controller.selection = TextSelection.collapsed(
-          offset: ladder.takePendingCaretOffset(focus, controller) ?? controller.text.length,
-        );
+        controller.selection = TextSelection.collapsed(offset: ladder.takePendingCaretOffset(focus, controller) ?? controller.text.length);
       });
     }
     for (final node in [callFocus, sentFocus, gridFocus]) {
@@ -88,38 +90,51 @@ class _Harness {
   }
 
   Widget build() => MaterialApp(
-        home: Scaffold(
-          body: Column(
+    home: Scaffold(
+      body: Column(
+        children: [
+          Row(
             children: [
-              Row(children: [
-                for (final (node, key) in [(ladder.pillFocusFor('time'), 'time'), (ladder.pillFocusFor('radio'), 'radio'), (ladder.pillFocusFor('more'), 'more')])
-                  Focus(focusNode: node, child: Text(key)),
-              ]),
-              Focus(
-                canRequestFocus: false,
-                skipTraversal: true,
-                onKeyEvent: (node, event) => selected == null ? KeyEventResult.ignored : ladder.onExpandedKeyEvent(selected!, event),
-                child: Row(children: [
-                  for (final (node, controller) in [timeField, dateField, freqField])
-                    SizedBox(width: 80, child: TextField(focusNode: node, controller: controller)),
-                ]),
-              ),
-              Row(children: [
-                // Keyed, so a field leaving the row is a real unmount rather
-                // than an element reused for its neighbour — which is what
-                // the panel's own row does, and what detaches the node.
-                for (final (node, controller) in [(callFocus, call), (sentFocus, sent), if (withGrid) (gridFocus, grid)])
+              for (final (node, key) in [(ladder.pillFocusFor('time'), 'time'), (ladder.pillFocusFor('radio'), 'radio'), (ladder.pillFocusFor('more'), 'more')])
+                Focus(focusNode: node, child: Text(key)),
+            ],
+          ),
+          Focus(
+            canRequestFocus: false,
+            skipTraversal: true,
+            onKeyEvent: (node, event) => selected == null ? KeyEventResult.ignored : ladder.onExpandedKeyEvent(selected!, event),
+            child: Row(
+              children: [
+                for (final (node, controller) in [timeField, dateField, freqField])
                   SizedBox(
-                    key: ValueKey(node.debugLabel),
                     width: 80,
                     child: TextField(focusNode: node, controller: controller),
                   ),
-                SizedBox(key: const ValueKey('event'), width: 80, child: TextField(focusNode: eventTextFocus)),
-              ]),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              // Keyed, so a field leaving the row is a real unmount rather
+              // than an element reused for its neighbour — which is what
+              // the panel's own row does, and what detaches the node.
+              for (final (node, controller) in [(callFocus, call), (sentFocus, sent), if (withGrid) (gridFocus, grid)])
+                SizedBox(
+                  key: ValueKey(node.debugLabel),
+                  width: 80,
+                  child: TextField(focusNode: node, controller: controller),
+                ),
+              SizedBox(
+                key: const ValueKey('event'),
+                width: 80,
+                child: TextField(focusNode: eventTextFocus),
+              ),
             ],
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 
   void dispose() {
     ladder.dispose();
@@ -147,8 +162,7 @@ void main() {
     h.dispose();
   });
 
-  testWidgets('an arrow at the edge of a value travels to the neighbour, and the caret keeps its direction',
-      (tester) async {
+  testWidgets('an arrow at the edge of a value travels to the neighbour, and the caret keeps its direction', (tester) async {
     final h = _Harness()..wireCaretRule();
     await tester.pumpWidget(h.build());
     h.callFocus.requestFocus();
@@ -205,8 +219,7 @@ void main() {
     h.dispose();
   });
 
-  testWidgets('on the pills, Left/Right wrap the strip and open what they land on; more never opens',
-      (tester) async {
+  testWidgets('on the pills, Left/Right wrap the strip and open what they land on; more never opens', (tester) async {
     final h = _Harness()..wireCaretRule();
     await tester.pumpWidget(h.build());
     // `more` never opens, so its pill is the one place the keyboard rests.
@@ -228,8 +241,7 @@ void main() {
     h.dispose();
   });
 
-  testWidgets('Tab inside an open control walks its fields, then crosses to the next pill\'s first field',
-      (tester) async {
+  testWidgets('Tab inside an open control walks its fields, then crosses to the next pill\'s first field', (tester) async {
     final h = _Harness()..wireCaretRule();
     await tester.pumpWidget(h.build());
     h.ladder.crossToPill('time', fromStart: true);
@@ -263,8 +275,7 @@ void main() {
     h.dispose();
   });
 
-  testWidgets('Up from a control hands the keyboard to the QSO list, or falls back to the last field',
-      (tester) async {
+  testWidgets('Up from a control hands the keyboard to the QSO list, or falls back to the last field', (tester) async {
     final h = _Harness()..wireCaretRule();
     var handedUp = 0;
     h.navigateToQsoList = () {
@@ -283,8 +294,7 @@ void main() {
     h.dispose();
   });
 
-  testWidgets('a remembered field that is gone falls back to Call; an event row falls back to its text',
-      (tester) async {
+  testWidgets('a remembered field that is gone falls back to Call; an event row falls back to its text', (tester) async {
     final h = _Harness()..wireCaretRule();
     await tester.pumpWidget(h.build());
     h.gridFocus.requestFocus();

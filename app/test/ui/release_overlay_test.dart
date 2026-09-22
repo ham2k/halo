@@ -13,12 +13,7 @@ import 'package:ham2k_logger/views/release_overlay.dart';
 import 'package:ham2k_logger/views/version_label.dart';
 
 void main() {
-  const release = ReleaseNotesEntry(
-    version: '26.8.0',
-    name: "August '26",
-    photoCaption: 'M1SDH at GB-4724',
-    changes: ['First change', 'Second change'],
-  );
+  const release = ReleaseNotesEntry(version: '26.8.0', name: "August '26", photoCaption: 'M1SDH at GB-4724', changes: ['First change', 'Second change']);
 
   testWidgets('a short viewport does not overflow the photo', (tester) async {
     // The header (brand mark, credits, two version lines) sits in a
@@ -30,9 +25,13 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: ReleaseOverlayView(release: release, onDismiss: () {})),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: ReleaseOverlayView(release: release, onDismiss: () {}),
+        ),
+      ),
+    );
 
     expect(tester.takeException(), isNull);
   });
@@ -48,13 +47,13 @@ void main() {
         tester.view.physicalSize = size;
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.reset);
-        await tester.pumpWidget(TranslationProvider(
-          child: MaterialApp(
-            home: Scaffold(
-              body: Builder(builder: (context) => overlayVersionHeader(context, logoWidth: 180)),
+        await tester.pumpWidget(
+          TranslationProvider(
+            child: MaterialApp(
+              home: Scaffold(body: Builder(builder: (context) => overlayVersionHeader(context, logoWidth: 180))),
             ),
           ),
-        ));
+        );
         expect(tester.takeException(), isNull);
         return tester.getRect(find.byType(Ham2kBrandMark));
       }
@@ -75,16 +74,17 @@ void main() {
     });
   });
 
-  testWidgets(
-      'shows the brand mark, release name, caption, and "What\'s new in this release" changes; '
+  testWidgets('shows the brand mark, release name, caption, and "What\'s new in this release" changes; '
       'Continue triggers onDismiss exactly once', (tester) async {
     var dismissCount = 0;
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: ReleaseOverlayView(release: release, onDismiss: () => dismissCount++),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: ReleaseOverlayView(release: release, onDismiss: () => dismissCount++),
+        ),
       ),
-    ));
+    );
 
     expect(find.byType(Ham2kBrandMark), findsOneWidget);
     // Anchored to the TOP of the photo. Asserted at this (roomy) viewport
@@ -123,11 +123,13 @@ void main() {
   testWidgets('tapping the notes area expands it (scrollable) without triggering onDismiss', (tester) async {
     var dismissCount = 0;
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: ReleaseOverlayView(release: release, onDismiss: () => dismissCount++),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: ReleaseOverlayView(release: release, onDismiss: () => dismissCount++),
+        ),
       ),
-    ));
+    );
 
     // Collapsed: scrolling is disabled (the view itself only exists so the
     // notes' natural height doesn't overflow a clipped, fixed-height band —
@@ -144,15 +146,15 @@ void main() {
   });
 
   testWidgets('expanding the notes fades the caption out, collapsing fades it back in', (tester) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: ReleaseOverlayView(release: release, onDismiss: () {}),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: ReleaseOverlayView(release: release, onDismiss: () {}),
+        ),
       ),
-    ));
+    );
 
-    AnimatedOpacity captionOpacity() => tester.widget(
-          find.ancestor(of: find.text('M1SDH at GB-4724'), matching: find.byType(AnimatedOpacity)),
-        );
+    AnimatedOpacity captionOpacity() => tester.widget(find.ancestor(of: find.text('M1SDH at GB-4724'), matching: find.byType(AnimatedOpacity)));
     expect(captionOpacity().opacity, 1);
 
     await tester.tap(find.textContaining("What's new in this release"));
@@ -167,11 +169,13 @@ void main() {
   testWidgets('tapping the view outside the notes area and the Continue button dismisses it', (tester) async {
     var dismissCount = 0;
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: ReleaseOverlayView(release: release, onDismiss: () => dismissCount++),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: ReleaseOverlayView(release: release, onDismiss: () => dismissCount++),
+        ),
       ),
-    ));
+    );
 
     // The version name sits above the notes band, over the bare photo — not
     // covered by the notes' or Continue's own tap targets, so it must fall
@@ -182,14 +186,16 @@ void main() {
   });
 
   testWidgets('the notes text stays black in dark mode — this panel ignores the app theme', (tester) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        darkTheme: buildHaLoTheme(Brightness.dark),
-        themeMode: ThemeMode.dark,
-        home: ReleaseOverlayView(release: release, onDismiss: () {}),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          darkTheme: buildHaLoTheme(Brightness.dark),
+          themeMode: ThemeMode.dark,
+          home: ReleaseOverlayView(release: release, onDismiss: () {}),
+        ),
       ),
-    ));
+    );
 
     final styleSheet = tester.widget<MarkdownBody>(find.byType(MarkdownBody)).styleSheet!;
     expect(styleSheet.p!.color, Colors.black);
@@ -230,12 +236,14 @@ void main() {
     // ever agreed on cardColor this test could not fail.
     expect(light.cardColor, isNot(dark.cardColor));
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        theme: dark,
-        home: ReleaseOverlayView(release: release, onDismiss: () {}),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: dark,
+          home: ReleaseOverlayView(release: release, onDismiss: () {}),
+        ),
       ),
-    ));
+    );
 
     final sheet = tester.widget<MarkdownBody>(find.byType(MarkdownBody)).styleSheet!;
     expect((sheet.codeblockDecoration as BoxDecoration).color, light.cardColor);

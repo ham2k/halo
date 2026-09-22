@@ -28,7 +28,7 @@ void main() {
 
   testWidgets('pressing Cmd+Shift+L toggles the app language/locale', (tester) async {
     final services = await makeServices();
-    
+
     // Initial locale should be 'en'
     expect(services.settings.locale, 'en');
 

@@ -306,8 +306,11 @@ void main() {
       }, backend: reports);
 
       expect(settings.extensionsMigrated, isFalse);
-      expect(reports.exceptions.map((e) => e.error).whereType<UpgradeLeftNoRuntime>(), isNotEmpty,
-          reason: 'the rate is the only way to tell one bad download from a broken release');
+      expect(
+        reports.exceptions.map((e) => e.error).whereType<UpgradeLeftNoRuntime>(),
+        isNotEmpty,
+        reason: 'the rate is the only way to tell one bad download from a broken release',
+      );
     });
   });
 
@@ -336,14 +339,7 @@ void main() {
       final extensions = _OneBadBundle('ham2k-wca')
         ..settings = settings
         ..debugSetAvailableExtensions(const [
-          ExtensionInfo(
-            key: 'ham2k-wca',
-            file: 'ham2k-wca.js',
-            source: ExtensionSource.installed,
-            core: false,
-            name: 'WCA',
-            version: '0.2.1',
-          ),
+          ExtensionInfo(key: 'ham2k-wca', file: 'ham2k-wca.js', source: ExtensionSource.installed, core: false, name: 'WCA', version: '0.2.1'),
         ]);
 
       expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.done);
@@ -370,14 +366,7 @@ void main() {
         ..settings = settings
         ..debugSetAvailableExtensions(const [
           ExtensionInfo(key: 'ham2k-lookup', file: 'ham2k-lookup.js', core: false, name: 'Lookup', version: '0.0.1'),
-          ExtensionInfo(
-            key: 'ham2k-lookup',
-            file: 'ham2k-lookup.js',
-            source: ExtensionSource.installed,
-            core: false,
-            name: 'Lookup',
-            version: '0.2.1',
-          ),
+          ExtensionInfo(key: 'ham2k-lookup', file: 'ham2k-lookup.js', source: ExtensionSource.installed, core: false, name: 'Lookup', version: '0.2.1'),
         ]);
 
       expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.done);
@@ -397,14 +386,7 @@ void main() {
       final extensions = _OneBadBundle('ham2k-wca', staysBroken: true)
         ..settings = settings
         ..debugSetAvailableExtensions(const [
-          ExtensionInfo(
-            key: 'ham2k-wca',
-            file: 'ham2k-wca.js',
-            source: ExtensionSource.installed,
-            core: false,
-            name: 'WCA',
-            version: '0.2.1',
-          ),
+          ExtensionInfo(key: 'ham2k-wca', file: 'ham2k-wca.js', source: ExtensionSource.installed, core: false, name: 'WCA', version: '0.2.1'),
         ]);
 
       await withErrorHooks(() async {
@@ -426,14 +408,7 @@ void main() {
         ..settings = settings
         ..debugSetAvailableExtensions(const [
           ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'POTA'),
-          ExtensionInfo(
-            key: 'ham2k-pota',
-            file: 'ham2k-pota.js',
-            source: ExtensionSource.installed,
-            core: false,
-            name: 'POTA',
-            version: '0.2.1',
-          ),
+          ExtensionInfo(key: 'ham2k-pota', file: 'ham2k-pota.js', source: ExtensionSource.installed, core: false, name: 'POTA', version: '0.2.1'),
         ]);
 
       expect(refusedExtensionNames(extensions), isEmpty);
@@ -449,14 +424,7 @@ void main() {
       final extensions = _OneBadBundle('ham2k-wca', staysBroken: true)
         ..settings = settings
         ..debugSetAvailableExtensions(const [
-          ExtensionInfo(
-            key: 'ham2k-wca',
-            file: 'ham2k-wca.js',
-            source: ExtensionSource.installed,
-            core: false,
-            name: 'WCA',
-            version: '0.2.1',
-          ),
+          ExtensionInfo(key: 'ham2k-wca', file: 'ham2k-wca.js', source: ExtensionSource.installed, core: false, name: 'WCA', version: '0.2.1'),
         ]);
 
       await withErrorHooks(() async {
@@ -510,7 +478,9 @@ void main() {
           file: 'qp.js',
           core: false,
           name: 'QSO Parties',
-          translations: {'es': {'name': 'Concursos Estatales'}},
+          translations: {
+            'es': {'name': 'Concursos Estatales'},
+          },
         ),
       ]);
 
@@ -523,23 +493,17 @@ void main() {
     // answered: the record is permanent, the upgrade then withdraws the
     // built-in, and the operator is told the catalog has no replacement.
     ExtensionInfo builtIn(String key) => ExtensionInfo(key: key, file: '$key.js', core: false, name: key);
-    const preloaded = ExtensionInfo(
-        key: 'ham2k-pota', file: 'ham2k-pota.js', source: ExtensionSource.installed, core: false, name: 'POTA');
+    const preloaded = ExtensionInfo(key: 'ham2k-pota', file: 'ham2k-pota.js', source: ExtensionSource.installed, core: false, name: 'POTA');
 
-    Future<({bool landed, bool complete})> adopt(
-      SettingsService settings,
-      CatalogService catalog, {
-      required List<String> enabled,
-    }) =>
-        adoptCatalogTwins(
-          store: InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {}),
-          settings: settings,
-          catalog: catalog,
-          available: [builtIn('pota'), preloaded, for (final key in enabled) builtIn(key)],
-          isEnabled: (info) => info.key == 'pota' || enabled.contains(info.key),
-          recordInstall: (_, {required fresh}) async => fail('nothing here installs'),
-          copySecrets: ({required from, required to}) async {},
-        );
+    Future<({bool landed, bool complete})> adopt(SettingsService settings, CatalogService catalog, {required List<String> enabled}) => adoptCatalogTwins(
+      store: InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {}),
+      settings: settings,
+      catalog: catalog,
+      available: [builtIn('pota'), preloaded, for (final key in enabled) builtIn(key)],
+      isEnabled: (info) => info.key == 'pota' || enabled.contains(info.key),
+      recordInstall: (_, {required fresh}) async => fail('nothing here installs'),
+      copySecrets: ({required from, required to}) async {},
+    );
 
     test('a built-in with no twin is answered without asking, and finishes the upgrade', () async {
       // `qp` is served one extension per party. Asking the listing for
@@ -592,19 +556,12 @@ void main() {
     // hands the key a disabled-since date while its twin is running — seven
     // days on, the purge deletes the running extension's downloaded data.
     const asset = ExtensionInfo(key: 'ham2k-lookup', file: 'ham2k-lookup.js', core: false, name: 'Lookup');
-    const installed = ExtensionInfo(
-      key: 'ham2k-lookup',
-      file: 'ham2k-lookup.js',
-      core: false,
-      name: 'Lookup',
-      source: ExtensionSource.installed,
-    );
+    const installed = ExtensionInfo(key: 'ham2k-lookup', file: 'ham2k-lookup.js', core: false, name: 'Lookup', source: ExtensionSource.installed);
     bool assetIsLive(ExtensionInfo info) => info.source == ExtensionSource.asset;
 
     test('a key with two entries is judged by the one that is live', () async {
       final settings = await _settings();
-      await updateExtensionDisabledSince(
-          settings: settings, available: const [asset, installed], isActive: assetIsLive);
+      await updateExtensionDisabledSince(settings: settings, available: const [asset, installed], isActive: assetIsLive);
       expect(settings.extensionDisabledSince, isEmpty);
     });
 
@@ -613,17 +570,14 @@ void main() {
       // above pins. This one holds the other way round, so a later change to
       // how the two lists are merged cannot quietly bring the stamp back.
       final settings = await _settings();
-      await updateExtensionDisabledSince(
-          settings: settings, available: const [installed, asset], isActive: assetIsLive);
+      await updateExtensionDisabledSince(settings: settings, available: const [installed, asset], isActive: assetIsLive);
       expect(settings.extensionDisabledSince, isEmpty);
     });
 
     test('a key with no live entry is still stamped', () async {
       final settings = await _settings();
-      await updateExtensionDisabledSince(
-          settings: settings, available: const [asset, installed], isActive: (_) => false);
+      await updateExtensionDisabledSince(settings: settings, available: const [asset, installed], isActive: (_) => false);
       expect(settings.extensionDisabledSince.keys, ['ham2k-lookup']);
     });
-
   });
 }

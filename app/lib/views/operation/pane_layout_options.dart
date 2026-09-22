@@ -60,12 +60,7 @@ class PaneLayoutOptions {
 
   static const none = PaneLayoutOptions();
 
-  bool get isEmpty =>
-      (title == null || title!.isEmpty) &&
-      showHeader == null &&
-      fontScale == null &&
-      density == null &&
-      themeMode == null;
+  bool get isEmpty => (title == null || title!.isEmpty) && showHeader == null && fontScale == null && density == null && themeMode == null;
 
   /// Whether this pane shows its header, given what the VIEW does by default
   /// for panes nobody has expressed an opinion about.
@@ -179,27 +174,32 @@ Future<void> showPaneLayoutOptions(
   required bool developerMode,
   required PaneLayoutOptions current,
   required ValueChanged<PaneLayoutOptions> onChanged,
+
   /// Puts everything this dialog governs back to the defaults — for a pane
   /// that is its own entry, for the view its own AND every pane's. Called
   /// only after the operator has confirmed, and the caller owns the whole
   /// clearing: the dialog resets what it is SHOWING and nothing else.
   required VoidCallback onReset,
+
   /// What the confirmation says is about to be thrown away. Supplied rather
   /// than derived, because the two cases differ by more than a noun.
   required String resetTitle,
   required String resetBody,
+
   /// False for a VIEW's own options: a view has no header of its own to hide,
   /// and its name is the app's rather than the operator's until there are
   /// views they made themselves.
   bool showHeaderField = true,
   bool headerByDefault = true,
   bool titleEnabled = true,
+
   /// False where the three size overrides would be stored and never read — a
   /// nested container, whose subtree the dock renders itself rather than
   /// through the host's per-pane wrapper. A select that writes a setting
   /// nothing applies is worse than an absent one: the operator sets it, sees
   /// nothing, and stops trusting the other two.
   bool showSizeFields = true,
+
   /// The PANEL's own settings, embedded under a "Panel Settings" heading —
   /// a different thing from the rest of this dialog, which is about the
   /// pane's PLACE in the layout. Offered here because hiding a pane's header
@@ -209,6 +209,7 @@ Future<void> showPaneLayoutOptions(
   /// caller's closure can capture whatever config it just read; null for a
   /// panel with no settings of its own.
   WidgetBuilder? panelSettingsBuilder,
+
   /// Takes the pane out of the arrangement, and closes this dialog with it —
   /// there is nothing left to have options about. Null for the view's own
   /// options, and for the last pane standing, which the dock refuses to
@@ -305,16 +306,8 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
       builder: (dialogContext) => HaloDialog(
         title: Text(widget.resetTitle),
         content: Text(widget.resetBody),
-        cancel: TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: Text(context.t.common.cancel),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.t.operation.layout.resetOptions),
-          ),
-        ],
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(context.t.common.cancel)),
+        actions: [FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(context.t.operation.layout.resetOptions))],
       ),
     );
     if (confirmed != true || !mounted) return;
@@ -359,126 +352,120 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-              // Show Header rides beside Title rather than below it: the two
-              // are both about the pane's header (what it says, whether
-              // it's there at all), and the row reads as one decision
-              // instead of two.
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _titleController,
-                      // Greyed rather than hidden for a built-in view: an
-                      // operator looking for the setting finds it and is
-                      // told it does not apply, instead of hunting for
-                      // something that was never there.
-                      enabled: widget.titleEnabled,
-                      decoration: poloFieldDecoration(context, t.paneTitle, hintText: widget.defaultTitle),
-                      onChanged: (value) =>
-                          _apply(_options.copyWith(title: value.trim().isEmpty ? null : value.trim())),
-                    ),
-                  ),
-                  if (widget.showHeaderField) ...[
-                    const SizedBox(width: Space.lg),
-                    // Flexible rather than natural width: Spanish's
-                    // "Mostrar encabezado" (and any label, at a high font
-                    // scale) can outgrow what Title leaves it in a
-                    // maxDialogWidth-capped pane, and the label ellipsizes
-                    // rather than forcing the row to overflow.
-                    Flexible(
-                      child: Opacity(
-                        // Greyed rather than hidden while the pane shares a
-                        // group: the header is the tab strip then, and
-                        // hiding it would strand the other panes.
-                        opacity: widget.inTabset ? 0.38 : 1,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Checkbox(
-                              // Resolved against the VIEW's default, because
-                              // `showHeader` is tri-state: a pane nobody has
-                              // expressed an opinion about is shown as the
-                              // view will actually draw it — checked on the
-                              // Operation view, unchecked on Home — rather
-                              // than as an assumed `true` the pane contradicts.
-                              value: _options.showsHeader(byDefault: widget.headerByDefault),
-                              onChanged: widget.inTabset
-                                  ? null
-                                  : (value) =>
-                                        _apply(_options.copyWith(showHeader: value ?? widget.headerByDefault)),
-                            ),
-                            Flexible(
-                              child: Text(t.paneShowHeader, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ),
-                          ],
-                        ),
+                // Show Header rides beside Title rather than below it: the two
+                // are both about the pane's header (what it says, whether
+                // it's there at all), and the row reads as one decision
+                // instead of two.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _titleController,
+                        // Greyed rather than hidden for a built-in view: an
+                        // operator looking for the setting finds it and is
+                        // told it does not apply, instead of hunting for
+                        // something that was never there.
+                        enabled: widget.titleEnabled,
+                        decoration: poloFieldDecoration(context, t.paneTitle, hintText: widget.defaultTitle),
+                        onChanged: (value) => _apply(_options.copyWith(title: value.trim().isEmpty ? null : value.trim())),
                       ),
                     ),
-                  ],
-                ],
-              ),
-              // A greyed control with no reason reads as broken, not
-              // unavailable — the same failure mode Show Header's own
-              // tabset case would be without this.
-              if (!widget.titleEnabled || (widget.showHeaderField && widget.inTabset))
-                Padding(
-                  padding: const EdgeInsets.only(top: Space.xs),
-                  child: Text(
-                    !widget.titleEnabled ? t.viewTitleBuiltIn : t.paneShowHeaderTabset,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ),
-              if (widget.showSizeFields) ...[
-              const SizedBox(height: Space.xl),
-              // Font Scale, Layout Density and Theme, side by side — three
-              // per-pane overrides an operator reaches for together, not three
-              // separate decisions.
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _overrideSelect(
-                    label: context.t.settings.fontScale,
-                    // The resolved enum's own name, not the raw stored
-                    // string: fontScaleValue already applies the
-                    // unrecognized-degrades-to-inherit rule, so the select
-                    // doesn't have to re-derive it.
-                    value: _options.fontScaleValue?.name,
-                    options: [
-                      for (final scale in FontScale.selectableValues)
-                        (value: scale.name, label: context.t['settings.fontScaleOpts.${scale.name}'] as String),
-                    ],
-                    onChanged: (value) => _apply(_options.copyWith(fontScale: value)),
-                  )),
-                  const SizedBox(width: Space.md),
-                  Expanded(child: _overrideSelect(
-                    label: context.t.settings.layoutDensity,
-                    value: _options.densityValue?.name,
-                    options: [
-                      for (final preference in DensityPreference.selectableValues)
-                        (
-                          value: preference.name,
-                          label: context.t['settings.layoutDensityOpts.${preference.name}'] as String,
+                    if (widget.showHeaderField) ...[
+                      const SizedBox(width: Space.lg),
+                      // Flexible rather than natural width: Spanish's
+                      // "Mostrar encabezado" (and any label, at a high font
+                      // scale) can outgrow what Title leaves it in a
+                      // maxDialogWidth-capped pane, and the label ellipsizes
+                      // rather than forcing the row to overflow.
+                      Flexible(
+                        child: Opacity(
+                          // Greyed rather than hidden while the pane shares a
+                          // group: the header is the tab strip then, and
+                          // hiding it would strand the other panes.
+                          opacity: widget.inTabset ? 0.38 : 1,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                // Resolved against the VIEW's default, because
+                                // `showHeader` is tri-state: a pane nobody has
+                                // expressed an opinion about is shown as the
+                                // view will actually draw it — checked on the
+                                // Operation view, unchecked on Home — rather
+                                // than as an assumed `true` the pane contradicts.
+                                value: _options.showsHeader(byDefault: widget.headerByDefault),
+                                onChanged: widget.inTabset ? null : (value) => _apply(_options.copyWith(showHeader: value ?? widget.headerByDefault)),
+                              ),
+                              Flexible(child: Text(t.paneShowHeader, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            ],
+                          ),
                         ),
+                      ),
                     ],
-                    onChanged: (value) => _apply(_options.copyWith(density: value)),
-                  )),
-                  const SizedBox(width: Space.md),
-                  Expanded(child: _overrideSelect(
-                    label: context.t.settings.theme.title,
-                    // themeBrightness is null for anything but exactly
-                    // 'light'/'dark', so a non-null result means themeMode
-                    // is already one of this select's own options.
-                    value: _options.themeBrightness == null ? null : _options.themeMode,
-                    options: [
-                      (value: 'light', label: context.t.settings.theme.light),
-                      (value: 'dark', label: context.t.settings.theme.dark),
+                  ],
+                ),
+                // A greyed control with no reason reads as broken, not
+                // unavailable — the same failure mode Show Header's own
+                // tabset case would be without this.
+                if (!widget.titleEnabled || (widget.showHeaderField && widget.inTabset))
+                  Padding(
+                    padding: const EdgeInsets.only(top: Space.xs),
+                    child: Text(
+                      !widget.titleEnabled ? t.viewTitleBuiltIn : t.paneShowHeaderTabset,
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                if (widget.showSizeFields) ...[
+                  const SizedBox(height: Space.xl),
+                  // Font Scale, Layout Density and Theme, side by side — three
+                  // per-pane overrides an operator reaches for together, not three
+                  // separate decisions.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _overrideSelect(
+                          label: context.t.settings.fontScale,
+                          // The resolved enum's own name, not the raw stored
+                          // string: fontScaleValue already applies the
+                          // unrecognized-degrades-to-inherit rule, so the select
+                          // doesn't have to re-derive it.
+                          value: _options.fontScaleValue?.name,
+                          options: [
+                            for (final scale in FontScale.selectableValues)
+                              (value: scale.name, label: context.t['settings.fontScaleOpts.${scale.name}'] as String),
+                          ],
+                          onChanged: (value) => _apply(_options.copyWith(fontScale: value)),
+                        ),
+                      ),
+                      const SizedBox(width: Space.md),
+                      Expanded(
+                        child: _overrideSelect(
+                          label: context.t.settings.layoutDensity,
+                          value: _options.densityValue?.name,
+                          options: [
+                            for (final preference in DensityPreference.selectableValues)
+                              (value: preference.name, label: context.t['settings.layoutDensityOpts.${preference.name}'] as String),
+                          ],
+                          onChanged: (value) => _apply(_options.copyWith(density: value)),
+                        ),
+                      ),
+                      const SizedBox(width: Space.md),
+                      Expanded(
+                        child: _overrideSelect(
+                          label: context.t.settings.theme.title,
+                          // themeBrightness is null for anything but exactly
+                          // 'light'/'dark', so a non-null result means themeMode
+                          // is already one of this select's own options.
+                          value: _options.themeBrightness == null ? null : _options.themeMode,
+                          options: [(value: 'light', label: context.t.settings.theme.light), (value: 'dark', label: context.t.settings.theme.dark)],
+                          onChanged: (value) => _apply(_options.copyWith(themeMode: value)),
+                        ),
+                      ),
                     ],
-                    onChanged: (value) => _apply(_options.copyWith(themeMode: value)),
-                  )),
+                  ),
                 ],
-              ),
-              ],
               ],
             ),
           ),
@@ -547,11 +534,7 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
                         remove();
                       },
                       icon: const Icon(MdiIcons.trashCanOutline, size: 18),
-                      label: Text(
-                        context.t.operation.layout.removePane,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      label: Text(context.t.operation.layout.removePane, maxLines: 1, overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 Flexible(
@@ -562,11 +545,7 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
                     // glyph rather than a warning one.
                     onPressed: () => unawaited(_confirmReset()),
                     icon: const Icon(MdiIcons.undo, size: 18),
-                    label: Text(
-                      context.t.operation.layout.resetOptions,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    label: Text(context.t.operation.layout.resetOptions, maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                 ),
               ],
@@ -640,13 +619,7 @@ class EmbeddedPanelSettingsForm extends StatefulWidget {
   /// persist a whole config rather than one field at a time.
   final Future<void> Function(String key, dynamic value, Map<String, dynamic> state) onFieldChange;
 
-  const EmbeddedPanelSettingsForm({
-    super.key,
-    required this.fields,
-    required this.initial,
-    required this.developerMode,
-    required this.onFieldChange,
-  });
+  const EmbeddedPanelSettingsForm({super.key, required this.fields, required this.initial, required this.developerMode, required this.onFieldChange});
 
   @override
   State<EmbeddedPanelSettingsForm> createState() => _EmbeddedPanelSettingsFormState();

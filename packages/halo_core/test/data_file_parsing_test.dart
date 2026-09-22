@@ -18,8 +18,7 @@ void main() {
       // delimiter alone shifts every later column by one, so the mapper reads
       // the latitude out of the state column and the row lands somewhere in
       // the ocean.
-      expect(parseCsvRow('US-1234,"Smith, John State Park",US-NY', ','),
-          ['US-1234', 'Smith, John State Park', 'US-NY']);
+      expect(parseCsvRow('US-1234,"Smith, John State Park",US-NY', ','), ['US-1234', 'Smith, John State Park', 'US-NY']);
     });
 
     test('an unquoted row splits on every delimiter', () {
@@ -46,22 +45,24 @@ void main() {
   group('resolveRootPath', () {
     test('walks object keys', () {
       expect(
-          resolveRootPath({
-            'data': {'rows': 1}
-          }, 'data.rows'),
-          1);
+        resolveRootPath({
+          'data': {'rows': 1},
+        }, 'data.rows'),
+        1,
+      );
       expect(
-          resolveRootPath({
-            'metadata': {'version': '1.0'},
-            'results': [
-              {'id': 1},
-              {'id': 2}
-            ],
-          }, 'results'),
-          [
+        resolveRootPath({
+          'metadata': {'version': '1.0'},
+          'results': [
             {'id': 1},
-            {'id': 2}
-          ]);
+            {'id': 2},
+          ],
+        }, 'results'),
+        [
+          {'id': 1},
+          {'id': 2},
+        ],
+      );
     });
 
     test('a numeric segment indexes a list', () {
@@ -69,7 +70,7 @@ void main() {
       // Without list indexing their rows are simply unreachable.
       final payload = jsonDecode('[{"m":1},{"m":2},{"data":[{"WCA":"G-00001"}]}]');
       expect(resolveRootPath(payload, '2.data'), [
-        {'WCA': 'G-00001'}
+        {'WCA': 'G-00001'},
       ]);
     });
 
@@ -82,15 +83,17 @@ void main() {
       expect(resolveRootPath({'a': 1}, 'nonexistent.path'), isNull);
       // A non-numeric or negative segment against a list is a miss too.
       expect(
-          resolveRootPath([
-            {'data': 1}
-          ], 'data'),
-          isNull);
+        resolveRootPath([
+          {'data': 1},
+        ], 'data'),
+        isNull,
+      );
       expect(
-          resolveRootPath([
-            {'data': 1}
-          ], '-1.data'),
-          isNull);
+        resolveRootPath([
+          {'data': 1},
+        ], '-1.data'),
+        isNull,
+      );
     });
 
     test('an empty path returns the whole payload', () {
@@ -142,8 +145,7 @@ void main() {
       // bytes yields "JÃ¦rstrendene".
       expect(latin1.decode(utf8Bytes), 'JÃ¦rstrendene');
       expect(decodeDataFileBody(utf8Bytes, encoding: resolveDataFileEncoding(null, 'text/csv')), 'Jærstrendene');
-      expect(decodeDataFileBody(utf8.encode('Parque Nacional Doñana'), encoding: resolveDataFileEncoding(null, 'text/csv')),
-          'Parque Nacional Doñana');
+      expect(decodeDataFileBody(utf8.encode('Parque Nacional Doñana'), encoding: resolveDataFileEncoding(null, 'text/csv')), 'Parque Nacional Doñana');
     });
 
     test('a declared latin1/iso-8859-1 encoding decodes a genuinely latin1 file', () {
@@ -169,10 +171,7 @@ void main() {
       // list is `tower.php?key=<secret>` — and `debugPrint` is not stripped
       // from release builds, so logging the URL whole would put a real secret
       // in the device log on every refresh.
-      expect(
-        redactUrlForLog('https://www.rozhledny.eu/apidata/tower.php?key=s3cret'),
-        'https://www.rozhledny.eu/apidata/tower.php?…',
-      );
+      expect(redactUrlForLog('https://www.rozhledny.eu/apidata/tower.php?key=s3cret'), 'https://www.rozhledny.eu/apidata/tower.php?…');
     });
 
     test('enough is kept to say WHICH file was fetched', () {

@@ -83,8 +83,7 @@ Future<List<TesterNotesEntry>>? _testerNotesFuture;
 /// asset resolves to no entries — a rejected future here would both surface
 /// a startup error and stay cached, poisoning every later call.
 Future<List<TesterNotesEntry>> loadTesterNotes() {
-  return _testerNotesFuture ??=
-      rootBundle.loadString('assets/tester-notes.yaml').then(parseTesterNotesYaml).catchError((Object error) {
+  return _testerNotesFuture ??= rootBundle.loadString('assets/tester-notes.yaml').then(parseTesterNotesYaml).catchError((Object error) {
     debugPrint('[tester-notes] unavailable: $error');
     return const <TesterNotesEntry>[];
   });

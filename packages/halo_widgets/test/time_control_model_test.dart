@@ -13,14 +13,12 @@ import 'package:halo_widgets/src/logging_controls_time.dart';
 
 class _Harness {
   Qso? editingQso;
+
   /// Only its populating bracket is read by the model under test; the
   /// draft's own data paths are never asked, so it has nothing to read.
   late final draft = QsoDraft(config: () => throw UnsupportedError('the draft is not read here'));
   int notifications = 0;
-  late final model = TimeControlModel(
-    config: () => (editingQso: editingQso),
-    draft: draft,
-  )..addListener(() => notifications++);
+  late final model = TimeControlModel(config: () => (editingQso: editingQso), draft: draft)..addListener(() => notifications++);
 }
 
 void main() {
@@ -44,8 +42,7 @@ void main() {
     h.model.seedFields();
     final text = h.model.timeController.text;
     h.model.timeController.selection = const TextSelection.collapsed(offset: 0);
-    expect(h.model.manualStartAtMillis, DateTime.utc(2020, 1, 1, 0, 0).millisecondsSinceEpoch,
-        reason: 'the controller notified for a selection change only');
+    expect(h.model.manualStartAtMillis, DateTime.utc(2020, 1, 1, 0, 0).millisecondsSinceEpoch, reason: 'the controller notified for a selection change only');
     h.model.timeController.text = '12:34';
     h.model.dateController.text = '2026-09-10';
     expect(h.model.manualStartAtMillis, DateTime.utc(2026, 9, 10, 12, 34).millisecondsSinceEpoch);

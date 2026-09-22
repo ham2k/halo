@@ -142,8 +142,7 @@ class TabFramePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(TabFramePainter oldDelegate) =>
-      oldDelegate.selected != selected || oldDelegate.isFirst != isFirst || oldDelegate.isLast != isLast;
+  bool shouldRepaint(TabFramePainter oldDelegate) => oldDelegate.selected != selected || oldDelegate.isFirst != isFirst || oldDelegate.isLast != isLast;
 }
 
 /// The rest of the outline: the pane body's leading, trailing and bottom
@@ -162,10 +161,7 @@ class PaneFramePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     const half = editingFrameWidth / 2;
     if (!topFromStrip) {
-      canvas.drawRect(
-        Rect.fromLTRB(half, half, size.width - half, size.height - half),
-        _editingFramePaint,
-      );
+      canvas.drawRect(Rect.fromLTRB(half, half, size.width - half, size.height - half), _editingFramePaint);
       return;
     }
     // Starts at y = 0, which is the strip's own bottom edge — the horizontal

@@ -45,13 +45,7 @@ List<File> _uiSources() {
       fail('expected ${root.path} to exist — run this suite from the app package (cwd: ${Directory.current.path})');
     }
   }
-  return [
-    for (final root in roots)
-      ...root
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.dart') && !f.path.endsWith('.g.dart')),
-  ];
+  return [for (final root in roots) ...root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart') && !f.path.endsWith('.g.dart'))];
 }
 
 /// The source with `//` and `/* */` comments blanked, keeping every offset so
@@ -131,8 +125,10 @@ void main() {
         // did not check, and a scanner that skips in silence reports success
         // for exactly the files it failed to read.
         if (close == -1) {
-          fail('${file.path}:${_lineOf(source, open)} — could not balance this footer call, so it went '
-              'unchecked. Fix the parser rather than leaving a dialog unscanned.');
+          fail(
+            '${file.path}:${_lineOf(source, open)} — could not balance this footer call, so it went '
+            'unchecked. Fix the parser rather than leaving a dialog unscanned.',
+          );
         }
         final body = source.substring(open, close);
 
@@ -197,8 +193,10 @@ void main() {
         final open = call.end - 1;
         final close = _matchingBracket(source, open);
         if (close == -1) {
-          fail('${file.path}:${_lineOf(source, open)} — could not balance this footer call, so it went '
-              'unchecked. Fix the parser rather than leaving a dialog unscanned.');
+          fail(
+            '${file.path}:${_lineOf(source, open)} — could not balance this footer call, so it went '
+            'unchecked. Fix the parser rather than leaving a dialog unscanned.',
+          );
         }
         final body = source.substring(open, close);
         for (final token in banned) {
@@ -230,10 +228,6 @@ void main() {
       }
     }
 
-    expect(
-      offenders,
-      isEmpty,
-      reason: 'Use HaloDialog (with showHaloDialog) instead of AlertDialog.\n\n${offenders.join('\n')}',
-    );
+    expect(offenders, isEmpty, reason: 'Use HaloDialog (with showHaloDialog) instead of AlertDialog.\n\n${offenders.join('\n')}');
   });
 }

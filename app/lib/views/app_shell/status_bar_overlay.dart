@@ -150,8 +150,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
     super.dispose();
   }
 
-  late final bool _gatoEnabled =
-      widget.services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */;
+  late final bool _gatoEnabled = widget.services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */;
 
   /// The permanent statuses, in the order they take the trailing edge of the
   /// bar.
@@ -177,7 +176,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
       // linked a device is not told "0 devices" — the feature is one they do
       // not use — and a status whose action lands on a panel Settings is
       // hiding is worse than no status.
-      if (widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */)
+      if (widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ )
         for (final linked in [widget.services.peerService.linkedDeviceIds])
           if (linked.isNotEmpty)
             for (final connected in [linked.where(widget.services.peerService.hasSession).length])
@@ -212,44 +211,42 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
         for (final name in [widget.services.radio1Name])
           if (name != null)
             StatusBarPermaData(
-                  key: 'radio1',
-                  icon: MdiIcons.cat,
-                  // Name AND state, in the Station panel's own words
-                  // ([equipmentStatusLabel]): the name alone answers "which
-                  // rig", which is the question the operator already knows the
-                  // answer to — "is it talking to me" is the one they open the
-                  // bar for.
-                  //
-                  // A peer's rig has no EquipmentState to label, and the
-                  // question is the same one anyway: whether it is there.
-                  text: switch (widget.services.cat.radio1) {
-                    LocalRadio(:final uuid) =>
-                      '$name: ${equipmentStatusLabel(context, widget.services.cat.stateFor(uuid))}',
-                    _ => '$name: ${widget.services.radio1IsLive ? t.settings.station.statusConnected : t.settings.station.peerRadioNotAvailable}',
-                  },
-                  // The Radio control's own quick-access pane, not the full
-                  // Station Configuration page — the same one tapping the
-                  // logging row's Radio chip opens, so the two ways in do not
-                  // land somewhere different.
-                  onTap: () {
-                    final navigatorContext = navigatorKey.currentContext;
-                    if (navigatorContext == null) {
-                      // Two gestures deep — the menu opened, an entry chosen —
-                      // so a silent no-op here is the operator's action
-                      // disappearing. It means the chrome outlived the
-                      // navigator, which is worth knowing about.
-                      debugPrint('[status-bar] no navigator for the radio status');
-                      return;
-                    }
-                    showStationConfigDialog(navigatorContext, widget.services);
-                  },
-                ),
+              key: 'radio1',
+              icon: MdiIcons.cat,
+              // Name AND state, in the Station panel's own words
+              // ([equipmentStatusLabel]): the name alone answers "which
+              // rig", which is the question the operator already knows the
+              // answer to — "is it talking to me" is the one they open the
+              // bar for.
+              //
+              // A peer's rig has no EquipmentState to label, and the
+              // question is the same one anyway: whether it is there.
+              text: switch (widget.services.cat.radio1) {
+                LocalRadio(:final uuid) => '$name: ${equipmentStatusLabel(context, widget.services.cat.stateFor(uuid))}',
+                _ => '$name: ${widget.services.radio1IsLive ? t.settings.station.statusConnected : t.settings.station.peerRadioNotAvailable}',
+              },
+              // The Radio control's own quick-access pane, not the full
+              // Station Configuration page — the same one tapping the
+              // logging row's Radio chip opens, so the two ways in do not
+              // land somewhere different.
+              onTap: () {
+                final navigatorContext = navigatorKey.currentContext;
+                if (navigatorContext == null) {
+                  // Two gestures deep — the menu opened, an entry chosen —
+                  // so a silent no-op here is the operator's action
+                  // disappearing. It means the chrome outlived the
+                  // navigator, which is worth knowing about.
+                  debugPrint('[status-bar] no navigator for the radio status');
+                  return;
+                }
+                showStationConfigDialog(navigatorContext, widget.services);
+              },
+            ),
       ],
     ];
   }
 
-  String _signatureOf(StatusBarService statusBar) =>
-      statusBar.items.map((item) => '${item.key}@${item.updatedAt.microsecondsSinceEpoch}').join(',');
+  String _signatureOf(StatusBarService statusBar) => statusBar.items.map((item) => '${item.key}@${item.updatedAt.microsecondsSinceEpoch}').join(',');
 
   /// Restarts the linger whenever the ITEMS changed. The service also
   /// notifies for notices, which have their own stack and must not hold the
@@ -307,21 +304,13 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
   /// callback because this is decided inside `build`, and reporting there is a
   /// side effect during layout.
   void _reportSqueeze(BottomChromeBudget bottom) {
-    final gave = [
-      if (!bottom.showFooter) 'the status footer',
-      if (!bottom.showNumbersRow) 'the numbers row',
-      if (!bottom.seatsNotice) 'a readable notice',
-    ];
+    final gave = [if (!bottom.showFooter) 'the status footer', if (!bottom.showNumbersRow) 'the numbers row', if (!bottom.seatsNotice) 'a readable notice'];
     final detail = gave.isEmpty ? null : gave.join(' and ');
     if (detail == _lastSqueeze) return;
     _lastSqueeze = detail;
     if (detail == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ErrorReportingService.report(
-        BottomChromeSqueezed('no room above the keyboard for $detail'),
-        StackTrace.current,
-        context: 'bottom-chrome',
-      );
+      ErrorReportingService.report(BottomChromeSqueezed('no room above the keyboard for $detail'), StackTrace.current, context: 'bottom-chrome');
     });
   }
 
@@ -385,10 +374,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
               icon: notice.icon,
               title: notice.title,
               text: notice.text,
-              actions: [
-                for (final action in notice.actions)
-                  StatusBarActionData(label: action.label, onTap: action.onTap),
-              ],
+              actions: [for (final action in notice.actions) StatusBarActionData(label: action.label, onTap: action.onTap)],
               createdAt: notice.createdAt,
             ),
         ];
@@ -538,35 +524,26 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
                 // element off every node and that element takes the click
                 // before any hit test runs, so a scrim that only absorbed
                 // POINTERS would be clicked straight through.
-                ? ModalBarrier(
-                    color: haloBarrierColor(context),
-                    dismissible: true,
-                    onDismiss: () => setState(() => _footerExpanded = false),
-                  )
+                ? ModalBarrier(color: haloBarrierColor(context), dismissible: true, onDismiss: () => setState(() => _footerExpanded = false))
                 : null,
             chrome: [
               for (final piece in [
-              if (notices.isNotEmpty)
-                NoticeStack(
-                  notices: notices,
-                  onDismiss: statusBar.dismissNotice,
-                  maxHeight: bottom.noticeMax,
-                  dismissLabel: context.t.common.dismiss,
-                ),
-              if (bottom.showFooter)
-                StatusBarFooter(
-                  items: footerItems,
-                  perma: perma,
-                  showWhenEmpty: !keyboardUp,
-                  // See [_closeListIfUnopenable]: the flag behind this is
-                  // cleared rather than masked, so a list the band took away
-                  // does not come back by itself when the band does.
-                  expanded: listOpen,
-                  onExpandedChanged: (expanded) => setState(() => _footerExpanded = expanded),
-                  onDismiss: statusBar.clear,
-                  maxExpandedHeight: bottom.footerMax,
-                  dismissLabel: context.t.common.dismiss,
-                ),
+                if (notices.isNotEmpty)
+                  NoticeStack(notices: notices, onDismiss: statusBar.dismissNotice, maxHeight: bottom.noticeMax, dismissLabel: context.t.common.dismiss),
+                if (bottom.showFooter)
+                  StatusBarFooter(
+                    items: footerItems,
+                    perma: perma,
+                    showWhenEmpty: !keyboardUp,
+                    // See [_closeListIfUnopenable]: the flag behind this is
+                    // cleared rather than masked, so a list the band took away
+                    // does not come back by itself when the band does.
+                    expanded: listOpen,
+                    onExpandedChanged: (expanded) => setState(() => _footerExpanded = expanded),
+                    onDismiss: statusBar.clear,
+                    maxExpandedHeight: bottom.footerMax,
+                    dismissLabel: context.t.common.dismiss,
+                  ),
               ])
                 // Modal means modal. The chrome is drawn OUTSIDE the
                 // Navigator (it owns the bottom of the window across every
@@ -601,9 +578,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
                 SizedBox(
                   width: double.infinity,
                   height: keyboardInset,
-                  child: ColoredBox(
-                    color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
-                  ),
+                  child: ColoredBox(color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary),
                 ),
             ],
           ),

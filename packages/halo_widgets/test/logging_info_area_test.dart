@@ -20,27 +20,26 @@ Widget _host({
   List<String> stats = const ['3 QSOs'],
   VoidCallback? onCallInfoTap,
   VoidCallback? onOperationInfoTap,
-}) =>
-    MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => LoggingInfoArea(
-            theme: Theme.of(context),
-            warnings: warnings,
-            message: message,
-            callInfo: callInfo,
-            locationLine: null,
-            gridOnlyLine: gridOnlyLine,
-            statsLines: () => stats,
-            noticeLabel: null,
-            workedBeforeLabel: null,
-            onCallInfoTap: onCallInfoTap,
-            onOperationInfoTap: onOperationInfoTap,
-            onOpenLink: null,
-          ),
-        ),
+}) => MaterialApp(
+  home: Scaffold(
+    body: Builder(
+      builder: (context) => LoggingInfoArea(
+        theme: Theme.of(context),
+        warnings: warnings,
+        message: message,
+        callInfo: callInfo,
+        locationLine: null,
+        gridOnlyLine: gridOnlyLine,
+        statsLines: () => stats,
+        noticeLabel: null,
+        workedBeforeLabel: null,
+        onCallInfoTap: onCallInfoTap,
+        onOperationInfoTap: onOperationInfoTap,
+        onOpenLink: null,
       ),
-    );
+    ),
+  ),
+);
 
 const _w1aw = CallInfoData(call: 'W1AW');
 
@@ -88,17 +87,16 @@ void main() {
   // same pill above the statistics opens the operation. A command message over
   // a call in hand is the trap: the host holds no call info while a message has
   // the space, so routing that tap to the call would open nothing.
-  testWidgets('a tap anywhere opens the call detail while the call shows, the operation info otherwise',
-      (tester) async {
+  testWidgets('a tap anywhere opens the call detail while the call shows, the operation info otherwise', (tester) async {
     var callTaps = 0, operationTaps = 0;
     Widget host({CallInfoData? callInfo, String? message, String? gridOnlyLine}) => _host(
-          callInfo: callInfo,
-          message: message,
-          gridOnlyLine: gridOnlyLine,
-          warnings: const ['No Band'],
-          onCallInfoTap: () => callTaps++,
-          onOperationInfoTap: () => operationTaps++,
-        );
+      callInfo: callInfo,
+      message: message,
+      gridOnlyLine: gridOnlyLine,
+      warnings: const ['No Band'],
+      onCallInfoTap: () => callTaps++,
+      onOperationInfoTap: () => operationTaps++,
+    );
 
     await tester.pumpWidget(host(callInfo: _w1aw));
     await tester.tap(_w1awPanel);

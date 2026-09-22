@@ -69,8 +69,7 @@ class EventFieldRow extends StatelessWidget {
     final label = kind?.toUpperCase() ?? 'EVENT';
     // Tinted against the panel's accent — tertiary while composing, secondary
     // while editing — which is the ambient theme the panel builds the row under.
-    final textStyle = mainFieldStyle(context, fontWeight: FontWeight.w500)
-        .copyWith(color: Theme.of(context).colorScheme.onTertiaryContainer);
+    final textStyle = mainFieldStyle(context, fontWeight: FontWeight.w500).copyWith(color: Theme.of(context).colorScheme.onTertiaryContainer);
 
     Widget trailing;
     if (kind == 'note' || kind == 'todo') {
@@ -92,10 +91,7 @@ class EventFieldRow extends StatelessWidget {
         // a prefix icon without asking it for a baseline.
         decoration: kind == 'todo'
             ? decoration.copyWith(
-                prefixIcon: Checkbox(
-                  value: todoDone,
-                  onChanged: enabled ? (value) => onTodoDoneChanged(value ?? false) : null,
-                ),
+                prefixIcon: Checkbox(value: todoDone, onChanged: enabled ? (value) => onTodoDoneChanged(value ?? false) : null),
               )
             : decoration,
         onSubmitted: (_) => onSubmitted(),
@@ -129,24 +125,17 @@ class EventFieldRow extends StatelessWidget {
   /// `initialValue` only applies once per State, so a field showing a
   /// different event's text after a selection change (same widget position,
   /// new `editingQso`) needs a new key to pick it up.
-  Widget _chromelessValueField(
-    BuildContext context, {
-    required String keySuffix,
-    required String value,
-    required TextStyle style,
-  }) =>
-      TextFormField(
-        key: ValueKey('event-$keySuffix-$value'),
-        initialValue: value,
-        readOnly: true,
-        enabled: false,
-        maxLines: 1,
-        style: style,
-        decoration: mainFieldDecoration(context, '', horizontalPadding: materialFilledInputGap).copyWith(
-          filled: false,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-        ),
-      );
+  Widget _chromelessValueField(BuildContext context, {required String keySuffix, required String value, required TextStyle style}) => TextFormField(
+    key: ValueKey('event-$keySuffix-$value'),
+    initialValue: value,
+    readOnly: true,
+    enabled: false,
+    maxLines: 1,
+    style: style,
+    decoration: mainFieldDecoration(
+      context,
+      '',
+      horizontalPadding: materialFilledInputGap,
+    ).copyWith(filled: false, border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none),
+  );
 }

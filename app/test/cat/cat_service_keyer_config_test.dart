@@ -28,11 +28,7 @@ void main() {
   test('a generic Icom keys only when its node says so, and the pick follows an edit', () async {
     final cat = services.cat;
     final type = EquipmentRegistry().typeFor('icom-generic-serial')!;
-    final node = await cat.addNode(
-      typeKey: 'icom-generic-serial',
-      name: 'Mystery Icom',
-      config: {...type.defaultConfig, 'port': '/dev/tty.fake'},
-    );
+    final node = await cat.addNode(typeKey: 'icom-generic-serial', name: 'Mystery Icom', config: {...type.defaultConfig, 'port': '/dev/tty.fake'});
     expect(cat.keyerCandidates, isEmpty, reason: 'prefilled off: not offered as the key in use');
     expect(cat.designatedKeyIsKeyer, isFalse, reason: 'and not designated by default either');
 

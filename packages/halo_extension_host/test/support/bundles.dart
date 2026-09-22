@@ -41,16 +41,20 @@ String bundleSource(String key) {
   return _sourceCache.putIfAbsent(key, () {
     final file = bundleFile(key);
     if (!file.existsSync()) {
-      fail('extension bundle not built: $key.js\n'
-          'Run `npm run build` in extensions/, or use scripts/test.sh, which builds them first.');
+      fail(
+        'extension bundle not built: $key.js\n'
+        'Run `npm run build` in extensions/, or use scripts/test.sh, which builds them first.',
+      );
     }
     final source = file.readAsStringSync();
     if (source.isEmpty) {
       // An interrupted build leaves a zero-length file behind. Left alone it
       // surfaces later as a hook that simply never registers, which reads as
       // an extension bug rather than a build one.
-      fail('extension bundle is empty: $key.js (interrupted build?)\n'
-          'Run `npm run build` in extensions/, or use scripts/test.sh, which builds them first.');
+      fail(
+        'extension bundle is empty: $key.js (interrupted build?)\n'
+        'Run `npm run build` in extensions/, or use scripts/test.sh, which builds them first.',
+      );
     }
     return source;
   });
@@ -104,8 +108,10 @@ void requireBundles() {
 void _checkBundlesAreFresh() {
   final kernel = bundleFile('kernel');
   if (!kernel.existsSync()) {
-    fail('extension bundles not built: kernel.js\n'
-        'Run `npm run build` in extensions/, or use scripts/test.sh, which builds them first.');
+    fail(
+      'extension bundles not built: kernel.js\n'
+      'Run `npm run build` in extensions/, or use scripts/test.sh, which builds them first.',
+    );
   }
   if (!_extensionSources.existsSync()) return;
 
@@ -114,8 +120,10 @@ void _checkBundlesAreFresh() {
 
   final builtAt = kernel.statSync().modified;
   if (newestSource.isAfter(builtAt)) {
-    fail('extension bundles are STALE — sources changed after the last build.\n'
-        'Run `npm run build` in extensions/, or use scripts/test.sh, which builds them first.');
+    fail(
+      'extension bundles are STALE — sources changed after the last build.\n'
+      'Run `npm run build` in extensions/, or use scripts/test.sh, which builds them first.',
+    );
   }
 }
 
@@ -191,15 +199,8 @@ final Map<String, Future<ExtensionHost>> _sharedHosts = {};
 /// It also lets one config be deliberately split across several hosts: a test
 /// whose failure mode is a hung runtime wants its own, so the next test does
 /// not inherit it.
-Future<ExtensionHost> sharedHost(
-  List<String> keys, {
-  HostCallHandler? onHostCall,
-  String? cacheKey,
-}) {
-  final id = [
-    keys.join(','),
-    if (cacheKey != null) cacheKey else if (onHostCall != null) 'h${identityHashCode(onHostCall)}',
-  ].join('|');
+Future<ExtensionHost> sharedHost(List<String> keys, {HostCallHandler? onHostCall, String? cacheKey}) {
+  final id = [keys.join(','), if (cacheKey != null) cacheKey else if (onHostCall != null) 'h${identityHashCode(onHostCall)}'].join('|');
 
   // The Future is cached, not the resolved host: caching after the await is
   // check-then-act, and two concurrent callers would each boot one, with the

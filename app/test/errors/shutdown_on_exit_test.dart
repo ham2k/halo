@@ -95,8 +95,7 @@ void main() {
       // ErrorPolicy from uploading them as sync and peer defects.
       expect(ErrorPolicy.appIsExiting, isTrue);
       await expectLater(services.db.customSelect('SELECT 1').get(), throwsA(isA<StateError>()));
-      expect(lastQuitStage(services.settings.prefs), isNull,
-          reason: 'a close that finished must not leave the next boot reporting a lost write');
+      expect(lastQuitStage(services.settings.prefs), isNull, reason: 'a close that finished must not leave the next boot reporting a lost write');
 
       // Still here, seconds later, with a database that cannot be reopened —
       // which is what a refused exit looks like from inside. The flag has to
@@ -132,8 +131,7 @@ void main() {
       ErrorPolicy.appIsExiting = true;
       expect(ErrorPolicy.decide(thrown!).disposition, ErrorDisposition.logOnly);
       ErrorPolicy.appIsExiting = false;
-      expect(ErrorPolicy.decide(thrown).disposition, ErrorDisposition.notify,
-          reason: 'the same failure mid-session is a defect');
+      expect(ErrorPolicy.decide(thrown).disposition, ErrorDisposition.notify, reason: 'the same failure mid-session is a defect');
     });
   });
 
@@ -234,8 +232,6 @@ void main() {
 
       expect(lastQuitStage(services.settings.prefs), isNull);
     });
-
-
   });
 
   group('the stage mark', () {
@@ -250,9 +246,7 @@ void main() {
       // the last step that SUCCEEDED, which cannot tell a quit that died in
       // the next step from a clean one that got that far.
       late final _StageRecordingCat cat;
-      final harness = await makeHaLoServices(
-        cat: (settings) => cat = _StageRecordingCat(settings),
-      );
+      final harness = await makeHaLoServices(cat: (settings) => cat = _StageRecordingCat(settings));
 
       await tearDownForExit(harness.services);
 
@@ -271,10 +265,7 @@ void main() {
       // past: with a close that succeeds, the ordinary clean-quit clear wipes
       // the stale step too and the assertion holds whether the refusal is
       // handled or not.
-      final harness = await makeHaLoServices(
-        prefs: {quitStageKey: QuitStage.cat.name},
-        db: _ClosingFailsDatabase(),
-      );
+      final harness = await makeHaLoServices(prefs: {quitStageKey: QuitStage.cat.name}, db: _ClosingFailsDatabase());
       final previous = SharedPreferencesStorePlatform.instance;
       addTearDown(() => SharedPreferencesStorePlatform.instance = previous);
       SharedPreferencesStorePlatform.instance = _RefusingStore();

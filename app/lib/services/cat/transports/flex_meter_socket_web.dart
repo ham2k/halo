@@ -5,10 +5,6 @@ import 'dart:typed_data';
 /// Browsers have no UDP sockets; a missing receive meter remains unavailable.
 class FlexMeterSocket {
   int get port => 0;
-  static Future<FlexMeterSocket?> open(
-    String host,
-    void Function(Uint8List) onData,
-    void Function(Object, StackTrace) onError,
-  ) async => null;
+  static Future<FlexMeterSocket?> open(String host, void Function(Uint8List) onData, void Function(Object, StackTrace) onError) async => null;
   void close() {}
 }

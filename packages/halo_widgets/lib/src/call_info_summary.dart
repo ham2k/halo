@@ -92,10 +92,7 @@ Widget noticePill(ThemeData theme, String label, {required NoticeLevel level}) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
     decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(3)),
-    child: Text(
-      label,
-      style: theme.textTheme.labelSmall?.copyWith(color: foreground),
-    ),
+    child: Text(label, style: theme.textTheme.labelSmall?.copyWith(color: foreground)),
   );
 }
 
@@ -105,10 +102,7 @@ Widget noticePill(ThemeData theme, String label, {required NoticeLevel level}) {
 /// ranges as the extension's `LEADING_EMOJI`, exactly: a marker the
 /// extension reports for the QSO row must be found here too, or the row
 /// shows one and the note line shows none.
-final _leadingEmoji = RegExp(
-  r'^[\u{1F000}-\u{1FFFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{200D}\u{FE0F}]+',
-  unicode: true,
-);
+final _leadingEmoji = RegExp(r'^[\u{1F000}-\u{1FFFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{200D}\u{FE0F}]+', unicode: true);
 
 /// A call note split into its marker run and the prose after it — the
 /// marker null when the note has none. Every place that paints a note's
@@ -138,12 +132,7 @@ List<Shadow> glyphGlow(ThemeData theme) {
 ///
 /// No [Align]: the logging panel's info-area container top-left-aligns and
 /// animates this, and an Align here would fight that.
-Widget infoIconRows(
-  ThemeData theme, {
-  required IconData icon,
-  required Color iconColor,
-  required List<Widget> children,
-}) {
+Widget infoIconRows(ThemeData theme, {required IconData icon, required Color iconColor, required List<Widget> children}) {
   return Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -153,11 +142,7 @@ Widget infoIconRows(
       ),
       const SizedBox(width: Space.sm),
       Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: children,
-        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: children),
       ),
     ],
   );
@@ -294,17 +279,9 @@ class CallInfoSummary extends StatelessWidget {
   /// move to line 3, left-aligned under it (measured with a TextPainter — the
   /// app scales at the root, so logical-pixel measurements match what's
   /// painted).
-  Widget _buildNoticesAndNote(
-    BuildContext context,
-    ThemeData theme,
-    List<_Notice> notices,
-    ({String text, bool isNote})? nameInfo,
-  ) {
+  Widget _buildNoticesAndNote(BuildContext context, ThemeData theme, List<_Notice> notices, ({String text, bool isNote})? nameInfo) {
     final pillsRow = <Widget>[
-      for (var i = 0; i < notices.length; i++) ...[
-        if (i > 0) const SizedBox(width: Space.xs),
-        noticePill(theme, notices[i].label, level: notices[i].level),
-      ],
+      for (var i = 0; i < notices.length; i++) ...[if (i > 0) const SizedBox(width: Space.xs), noticePill(theme, notices[i].label, level: notices[i].level)],
     ];
     final note = nameInfo == null ? null : _buildNoteOrName(context, theme, nameInfo);
 
@@ -324,9 +301,7 @@ class CallInfoSummary extends StatelessWidget {
       pillsWidth += _measureTextWidth(context, notices[i].label, pillStyle) + Space.sm * 2; // noticePill's padding
       if (i > 0) pillsWidth += Space.xs; // the inter-pill SizedBox in pillsRow
     }
-    final noteWidth = nameInfo!.isNote
-        ? _measureNoteWidth(context, theme, nameInfo.text, noteStyle)
-        : _measureTextWidth(context, nameInfo.text, noteStyle);
+    final noteWidth = nameInfo!.isNote ? _measureNoteWidth(context, theme, nameInfo.text, noteStyle) : _measureTextWidth(context, nameInfo.text, noteStyle);
     const gap = 8.0;
 
     return LayoutBuilder(
@@ -335,21 +310,28 @@ class CallInfoSummary extends StatelessWidget {
           // Fits: note leads, pills trail.
           return Row(
             crossAxisAlignment: CrossAxisAlignment.center,
-            children: [Flexible(child: note), const SizedBox(width: gap), ...pillsRow],
+            children: [
+              Flexible(child: note),
+              const SizedBox(width: gap),
+              ...pillsRow,
+            ],
           );
         }
         // Doesn't fit: note on its own line, pills stacked below.
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
-          children: [note, const SizedBox(height: Space.xxs), Row(children: pillsRow)],
+          children: [
+            note,
+            const SizedBox(height: Space.xxs),
+            Row(children: pillsRow),
+          ],
         );
       },
     );
   }
 
-  double _measureTextWidth(BuildContext context, String text, TextStyle? style) =>
-      spansWidth(context, [TextSpan(text: text)], style);
+  double _measureTextWidth(BuildContext context, String text, TextStyle? style) => spansWidth(context, [TextSpan(text: text)], style);
 
   /// The note's width, built from exactly what [_buildNoteOrName] paints: the
   /// same [_noteParts] split and the same styles.
@@ -359,12 +341,7 @@ class CallInfoSummary extends StatelessWidget {
   double _measureNoteWidth(BuildContext context, ThemeData theme, String text, TextStyle? noteStyle) {
     final parts = _noteParts(text);
     final fontSize = noteStyle?.fontSize ?? flagGlyphDefaultFontSize;
-    final spans = inlineMarkdownSpans(
-      parts.markdown,
-      baseFontSize: fontSize,
-      linkStyle: _noteLinkStyle(theme),
-      codeStyle: _noteCodeStyle(context, fontSize),
-    );
+    final spans = inlineMarkdownSpans(parts.markdown, baseFontSize: fontSize, linkStyle: _noteLinkStyle(theme), codeStyle: _noteCodeStyle(context, fontSize));
     var width = spansWidth(context, spans, noteStyle);
     // Names the same rung the rendered gap does — see the pill measurement above.
     if (parts.lead != null) {
@@ -379,13 +356,13 @@ class CallInfoSummary extends StatelessWidget {
   /// under-measures the note by a glyph per flag, and the row then picks the
   /// wrong wrap branch — while looking correct in every note that has none.
   TextStyle? _noteTextStyle(ThemeData theme) => theme.textTheme.bodyMedium?.copyWith(
-        color: foregroundColor,
-        fontWeight: FontWeight.w600,
-        // A note carries emoji past its leading cluster — a flag naming a
-        // country mid-sentence. Roboto resolves none of them on web
-        // (theme.dart's emojiFontFamily).
-        fontFamilyFallback: const [emojiFontFamily],
-      );
+    color: foregroundColor,
+    fontWeight: FontWeight.w600,
+    // A note carries emoji past its leading cluster — a flag naming a
+    // country mid-sentence. Roboto resolves none of them on web
+    // (theme.dart's emojiFontFamily).
+    fontFamilyFallback: const [emojiFontFamily],
+  );
 
   /// The note split the way it paints: the leading emoji cluster, which gets its
   /// own glowed glyph, and the markdown for everything after it.
@@ -400,16 +377,13 @@ class CallInfoSummary extends StatelessWidget {
 
   /// `code` in a note, matching MarkdownStyleSheet.fromTheme's own code style
   /// — without this, backticks vanish and the run reads as ordinary prose.
-  TextStyle _noteCodeStyle(BuildContext context, double fontSize) =>
-      haloMonoStyle(context, fontSize: fontSize * 0.85);
+  TextStyle _noteCodeStyle(BuildContext context, double fontSize) => haloMonoStyle(context, fontSize: fontSize * 0.85);
 
   /// A link blue tuned per theme so the note's socials/URLs read clearly on the
   /// area's fill — darker on light, lighter on dark. Shared with
   /// [_measureNoteWidth], so the measurement styles links the way they paint.
-  TextStyle _noteLinkStyle(ThemeData theme) => TextStyle(
-        color: linkColor ?? (theme.brightness == Brightness.dark ? Colors.blue.shade200 : Colors.blue.shade800),
-        fontWeight: FontWeight.w600,
-      );
+  TextStyle _noteLinkStyle(ThemeData theme) =>
+      TextStyle(color: linkColor ?? (theme.brightness == Brightness.dark ? Colors.blue.shade200 : Colors.blue.shade800), fontWeight: FontWeight.w600);
 
   /// Line 2: the plain name, or the note rendered as markdown with its leading
   /// emoji cluster glowed (emoji only, not the prose).
@@ -447,10 +421,7 @@ class CallInfoSummary extends StatelessWidget {
         // than textStyle's Roboto, or it renders as nothing at all — same as
         // call_info_panel.dart's flag Text.
         flagGlyph(parts.lead!, fontSize: textStyle?.fontSize ?? 14, shadows: glyphGlow(theme)),
-        if (markdown != null) ...[
-          const SizedBox(width: Space.xs),
-          Flexible(child: markdown),
-        ],
+        if (markdown != null) ...[const SizedBox(width: Space.xs), Flexible(child: markdown)],
       ],
     );
   }

@@ -19,18 +19,18 @@ void main() {
   requireBundles();
 
   Map<String, dynamic> qso(int i, String call, {String band = '20m', int day = 28}) => {
-        'uuid': 'q$i',
-        'startAtMillis': DateTime.utc(2026, 3, day, 12, i).millisecondsSinceEpoch,
-        'band': band,
-        'mode': 'CW',
-        'our': {'call': 'N0DEV'},
-        'their': {'call': call},
-      };
+    'uuid': 'q$i',
+    'startAtMillis': DateTime.utc(2026, 3, day, 12, i).millisecondsSinceEpoch,
+    'band': band,
+    'mode': 'CW',
+    'our': {'call': 'N0DEV'},
+    'their': {'call': call},
+  };
 
   Map<String, dynamic> segment(int fromMillis, List<Map<String, dynamic>> refs) => {
-        'fromMillis': fromMillis,
-        'operation': {'uuid': 'op', 'stationCall': 'N0DEV', 'refs': refs},
-      };
+    'fromMillis': fromMillis,
+    'operation': {'uuid': 'op', 'stationCall': 'N0DEV', 'refs': refs},
+  };
 
   const dawnOfTime = -4611686018427387904; // -1 << 62, as SegmentedOperation writes it
   const cqwwCW = {'type': 'cqww', 'mode': 'CW'};
@@ -38,13 +38,7 @@ void main() {
 
   Future<Map<String, dynamic>?> score(Map<String, dynamic> args) async {
     final host = await sharedHost(['cqww']);
-    final result = await host.invokeHook(
-      'scoring',
-      key: 'cqww',
-      method: 'scoreQsos',
-      args: args,
-      timeout: const Duration(seconds: 20),
-    ) as Map?;
+    final result = await host.invokeHook('scoring', key: 'cqww', method: 'scoreQsos', args: args, timeout: const Duration(seconds: 20)) as Map?;
     return result?.cast<String, dynamic>();
   }
 
@@ -120,9 +114,7 @@ void main() {
     // falls inside an SSB segment. All of them are SSB, so all must count —
     // which only holds if the harness re-resolved the ref per segment rather
     // than passing the one selection handed it.
-    final qsos = [qso(0, 'DL1ABC', band: '20m'), qso(10, 'JA1ABC', band: '20m')]
-        .map((q) => {...q, 'mode': 'SSB'})
-        .toList();
+    final qsos = [qso(0, 'DL1ABC', band: '20m'), qso(10, 'JA1ABC', band: '20m')].map((q) => {...q, 'mode': 'SSB'}).toList();
 
     final result = await score({
       'operation': {
@@ -226,24 +218,26 @@ void main() {
     // seeing every QSO however the segments are drawn — otherwise segmenting a
     // log would silently switch off the scoring every operation depends on.
     final host = await sharedHost(['scoring']);
-    final result = await host.invokeHook(
-      'scoring',
-      key: 'core',
-      method: 'scoreQsos',
-      args: {
-        'operation': {
-          'uuid': 'op',
-          'stationCall': 'N0DEV',
-          'refs': [park],
-        },
-        'qsos': [qso(0, 'DL1ABC'), qso(10, 'JA1ABC')],
-        'segments': [
-          segment(dawnOfTime, [park]),
-          segment(DateTime.utc(2026, 3, 28, 12, 10).millisecondsSinceEpoch, [cqwwCW]),
-        ],
-      },
-      timeout: const Duration(seconds: 20),
-    ) as Map?;
+    final result =
+        await host.invokeHook(
+              'scoring',
+              key: 'core',
+              method: 'scoreQsos',
+              args: {
+                'operation': {
+                  'uuid': 'op',
+                  'stationCall': 'N0DEV',
+                  'refs': [park],
+                },
+                'qsos': [qso(0, 'DL1ABC'), qso(10, 'JA1ABC')],
+                'segments': [
+                  segment(dawnOfTime, [park]),
+                  segment(DateTime.utc(2026, 3, 28, 12, 10).millisecondsSinceEpoch, [cqwwCW]),
+                ],
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map?;
 
     expect((result!['qsoScores'] as Map).keys.toSet(), {'q0', 'q10'});
   }, timeout: const Timeout(Duration(seconds: 60)));
@@ -268,26 +262,20 @@ void main() {
     /// Ohio runs 80-10m, so 20m; ten QSOs is POTA's activation threshold, which
     /// is what makes a park count toward the multiplier.
     List<Map<String, dynamic>> tenQsos(int from, {int day = 12}) => [
-          for (var i = 0; i < 10; i++)
-            {
-              'uuid': 'q${from + i}',
-              'startAtMillis': DateTime.utc(2026, 9, day, 14, from + i).millisecondsSinceEpoch,
-              'band': '20m',
-              'mode': 'CW',
-              'our': {'call': 'N0DEV'},
-              'their': {'call': 'W${from + i}AW'},
-            },
-        ];
+      for (var i = 0; i < 10; i++)
+        {
+          'uuid': 'q${from + i}',
+          'startAtMillis': DateTime.utc(2026, 9, day, 14, from + i).millisecondsSinceEpoch,
+          'band': '20m',
+          'mode': 'CW',
+          'our': {'call': 'N0DEV'},
+          'their': {'call': 'W${from + i}AW'},
+        },
+    ];
 
     Future<Map<String, dynamic>?> scoreStateparks(Map<String, dynamic> args) async {
       final host = await sharedHost(['stateparks']);
-      final result = await host.invokeHook(
-        'scoring',
-        key: 'stateparks',
-        method: 'scoreQsos',
-        args: args,
-        timeout: const Duration(seconds: 20),
-      ) as Map?;
+      final result = await host.invokeHook('scoring', key: 'stateparks', method: 'scoreQsos', args: args, timeout: const Duration(seconds: 20)) as Map?;
       return result?.cast<String, dynamic>();
     }
 
@@ -407,31 +395,35 @@ void main() {
         onHostCall: (method, params) async => method == 'getQsos' ? log : null,
       );
       addTearDown(host.dispose);
-      final result = await host.invokeHook(
-        'scoring',
-        key: 'cqww',
-        method: 'scoreQso',
-        args: {
-          // The CURRENT segment, which is what the host now sends.
-          'operation': {
-            'uuid': 'op',
-            'stationCall': 'N0DEV',
-            'refs': [cqwwCW],
-          },
-          'qso': qso(20, 'W1AW'),
-          'ref': cqwwCW,
-          'segments': ?segments,
-        },
-        timeout: const Duration(seconds: 20),
-      ) as Map?;
+      final result =
+          await host.invokeHook(
+                'scoring',
+                key: 'cqww',
+                method: 'scoreQso',
+                args: {
+                  // The CURRENT segment, which is what the host now sends.
+                  'operation': {
+                    'uuid': 'op',
+                    'stationCall': 'N0DEV',
+                    'refs': [cqwwCW],
+                  },
+                  'qso': qso(20, 'W1AW'),
+                  'ref': cqwwCW,
+                  'segments': ?segments,
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map?;
       return result?.cast<String, dynamic>();
     }
 
     test('does not call a pre-contest contact a duplicate', () async {
-      final result = await live(segments: [
-        segment(dawnOfTime, [park]),
-        segment(breakAt, [cqwwCW]),
-      ]);
+      final result = await live(
+        segments: [
+          segment(dawnOfTime, [park]),
+          segment(breakAt, [cqwwCW]),
+        ],
+      );
       expect(
         (result!['alerts'] as List),
         isNot(contains('duplicate')),
@@ -443,10 +435,12 @@ void main() {
       // The same log with the contest running throughout: now the earlier
       // W1AW IS a contest QSO and the candidate is a dupe. Without this the
       // test above would pass on a scorer that had simply stopped working.
-      final result = await live(segments: [
-        segment(dawnOfTime, [cqwwCW]),
-        segment(breakAt, [cqwwCW]),
-      ]);
+      final result = await live(
+        segments: [
+          segment(dawnOfTime, [cqwwCW]),
+          segment(breakAt, [cqwwCW]),
+        ],
+      );
       expect((result!['alerts'] as List), contains('duplicate'));
     }, timeout: const Timeout(Duration(seconds: 60)));
 

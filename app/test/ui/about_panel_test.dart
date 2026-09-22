@@ -27,23 +27,12 @@ import 'package:ham2k_logger/views/version_label.dart';
 
 import '../support/halo_test_support.dart';
 
-const _testRelease = ReleaseNotesEntry(
-  version: '26.8.0',
-  name: "August '26",
-  photoCaption: 'M1SDH at GB-4724',
-  changes: ['First change', 'Second change'],
-);
+const _testRelease = ReleaseNotesEntry(version: '26.8.0', name: "August '26", photoCaption: 'M1SDH at GB-4724', changes: ['First change', 'Second change']);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  PackageInfo.setMockInitialValues(
-    appName: 'Ham2K Logger',
-    packageName: 'com.ham2k.halo.prod',
-    version: '0.1.0',
-    buildNumber: '260807291',
-    buildSignature: '',
-  );
+  PackageInfo.setMockInitialValues(appName: 'Ham2K Logger', packageName: 'com.ham2k.halo.prod', version: '0.1.0', buildNumber: '260807291', buildSignature: '');
 
   testWidgets('shows the version row and a Release Notes preview; '
       'tapping the preview opens the full text in a Modal Pane', (tester) async {
@@ -91,8 +80,7 @@ void main() {
     expect(find.text('Release Notes'), findsNWidgets(2));
   });
 
-  testWidgets('Notices & Messages is not a sidebar panel; tapping it in About opens the notice history (issue #183)',
-      (tester) async {
+  testWidgets('Notices & Messages is not a sidebar panel; tapping it in About opens the notice history (issue #183)', (tester) async {
     setReleaseNotesForTesting([_testRelease]);
     setTesterNotesForTesting(const []);
 
@@ -138,7 +126,11 @@ void main() {
     });
     addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
 
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: SettingsView(services: services)),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(ListTile, 'About'));
@@ -163,8 +155,7 @@ void main() {
     expect(find.text('Copied version details to clipboard'), findsOneWidget);
   });
 
-  testWidgets('tapping the wordmark opens a photo+wordmark modal with the caption but no notes or Continue button',
-      (tester) async {
+  testWidgets('tapping the wordmark opens a photo+wordmark modal with the caption but no notes or Continue button', (tester) async {
     setReleaseNotesForTesting([_testRelease]);
     setTesterNotesForTesting(const []);
 
@@ -176,7 +167,11 @@ void main() {
 
     // The modal's top section reuses ReleaseOverlayView's credits line,
     // which needs a TranslationProvider ancestor.
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: SettingsView(services: services)),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(ListTile, 'About'));
@@ -203,10 +198,7 @@ void main() {
     // credits KI2D too, on its Credits row, but as a plain Text, so a bare
     // textContaining would match either and pass with the modal missing it.
     expect(
-      find.byWidgetPredicate(
-        (w) => w is Text && (w.textSpan?.toPlainText() ?? '').contains('KI2D'),
-        description: 'the modal credits line',
-      ),
+      find.byWidgetPredicate((w) => w is Text && (w.textSpan?.toPlainText() ?? '').contains('KI2D'), description: 'the modal credits line'),
       findsOneWidget,
     );
     // The modal shows the release line over its build line, matching the

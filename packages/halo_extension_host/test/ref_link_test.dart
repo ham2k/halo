@@ -19,15 +19,17 @@ import 'support/bundles.dart';
 void main() {
   requireBundles();
 
-  Future<ExtensionHost> startHost() => sharedHost(
-        ['wca', 'pota', 'sota', 'pga', 'cqww', 'arrl-vhf-tests'],
-        onHostCall: nullHostCall,
-      );
+  Future<ExtensionHost> startHost() => sharedHost(['wca', 'pota', 'sota', 'pga', 'cqww', 'arrl-vhf-tests'], onHostCall: nullHostCall);
 
   Future<Map?> linkFor(String type, String? ref) async {
     final host = await startHost();
-    final result = await host.invokeHook('ref:$type',
-        method: 'linkForRef', args: {'ref': {'type': type, 'ref': ?ref}});
+    final result = await host.invokeHook(
+      'ref:$type',
+      method: 'linkForRef',
+      args: {
+        'ref': {'type': type, 'ref': ?ref},
+      },
+    );
     return result as Map?;
   }
 
@@ -71,10 +73,7 @@ void main() {
       // The summit path carries the association and region as path segments,
       // so SOTA's slash goes through unescaped — percent-encoding it here
       // would 404 on a page that exists.
-      expect(
-        (await linkFor('sotaActivation', 've6/hc-255'))?['url'],
-        'https://www.sotadata.org.uk/en/summit/VE6/HC-255',
-      );
+      expect((await linkFor('sotaActivation', 've6/hc-255'))?['url'], 'https://www.sotadata.org.uk/en/summit/VE6/HC-255');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a hunted reference links the same way an activated one does', () async {
@@ -96,14 +95,8 @@ void main() {
     test('a contest family links to the chosen event\'s own rules', () async {
       // ARRL's VHF events do not share one rules document: January runs under
       // the VHF rules and the 10 GHz contest under its own.
-      expect(
-        (await linkFor('arrl-vhf-tests', 'ARRL-VHF-JAN'))?['url'],
-        'https://contests.arrl.org/ContestRules/JanJunSep-VHF-Rules.pdf',
-      );
-      expect(
-        (await linkFor('arrl-vhf-tests', 'ARRL-10G-AUG'))?['url'],
-        'https://contests.arrl.org/ContestRules/10-GHz-Rules.pdf',
-      );
+      expect((await linkFor('arrl-vhf-tests', 'ARRL-VHF-JAN'))?['url'], 'https://contests.arrl.org/ContestRules/JanJunSep-VHF-Rules.pdf');
+      expect((await linkFor('arrl-vhf-tests', 'ARRL-10G-AUG'))?['url'], 'https://contests.arrl.org/ContestRules/10-GHz-Rules.pdf');
       // No event picked yet: there is no one document to send them to.
       expect(await linkFor('arrl-vhf-tests', null), isNull);
     }, timeout: const Timeout(Duration(seconds: 60)));

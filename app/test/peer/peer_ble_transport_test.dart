@@ -31,11 +31,7 @@ import 'package:ham2k_logger/services/peer/ble/peer_ble_transport.dart';
 import '../support/peer_ble_fakes.dart';
 
 /// Polls until [condition] holds — same rationale as peer_service_test.
-Future<void> waitFor(
-  String what,
-  FutureOr<bool> Function() condition, {
-  Duration timeout = const Duration(seconds: 10),
-}) async {
+Future<void> waitFor(String what, FutureOr<bool> Function() condition, {Duration timeout = const Duration(seconds: 10)}) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
     if (await condition()) return;
@@ -138,8 +134,7 @@ void main() {
     a.connectedIds = ['bbbbbbbb-1111-2222-3333-444444444444'];
     world.tick(to: a.gateway);
     await Future<void>.delayed(const Duration(milliseconds: 300));
-    expect(a.gateway.connectCalls, 0,
-        reason: 'a BLE dial here could only be duplicate-closed; the hint exists to skip it');
+    expect(a.gateway.connectCalls, 0, reason: 'a BLE dial here could only be duplicate-closed; the hint exists to skip it');
   });
 
   test('the head start: no dial before the delay, a dial after it', () async {
@@ -163,8 +158,7 @@ void main() {
     a.links.clear();
     world.tick(to: a.gateway);
     await Future<void>.delayed(const Duration(milliseconds: 300));
-    expect(a.gateway.connectCalls, 1,
-        reason: 'redialling immediately after a young close is the churn loop the backoff exists for');
+    expect(a.gateway.connectCalls, 1, reason: 'redialling immediately after a young close is the churn loop the backoff exists for');
   });
 
   test('a mute peer times the handshake out instead of handing over a dead link', () async {
@@ -186,8 +180,7 @@ void main() {
   });
 
   test('a radio problem is reported, not swallowed', () async {
-    a.gateway.readiness = const PeerBleReadiness(
-        canCentral: false, canPeripheral: false, problem: 'Bluetooth is turned off');
+    a.gateway.readiness = const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'Bluetooth is turned off');
     await a.transport.start();
     expect(a.status, 'Bluetooth is turned off');
     // And recovery: the radio comes back, availability fires, roles start.
@@ -220,8 +213,7 @@ void main() {
     // No availability event, no switch toggle — the retry backoff alone
     // must bring the role up, or one refused scan means BLE is off until
     // the operator notices and flips something.
-    await waitFor('the retry to start the scan', () => a.gateway.scanning,
-        timeout: const Duration(seconds: 10));
+    await waitFor('the retry to start the scan', () => a.gateway.scanning, timeout: const Duration(seconds: 10));
     expect(a.status, isNull);
   });
 
@@ -229,8 +221,7 @@ void main() {
     // The trap this pins: the plugin's peripheral manager reports `unknown`
     // to the query that CREATED it and emits no event on settling, so
     // waiting for the availability stream here waits forever.
-    a.gateway.readiness = const PeerBleReadiness(
-        canCentral: true, canPeripheral: false, problem: 'cannot announce (unknown)', transient: true);
+    a.gateway.readiness = const PeerBleReadiness(canCentral: true, canPeripheral: false, problem: 'cannot announce (unknown)', transient: true);
     await a.transport.start();
     expect(a.gateway.advertising, isFalse);
     expect(a.status, contains('cannot announce'));
@@ -238,8 +229,7 @@ void main() {
     a.gateway.readiness = const PeerBleReadiness(canCentral: true, canPeripheral: true);
     // Deliberately NO availability event: the retry backoff alone must
     // re-prepare and bring the advertise role up.
-    await waitFor('the retry to start advertising', () => a.gateway.advertising,
-        timeout: const Duration(seconds: 10));
+    await waitFor('the retry to start advertising', () => a.gateway.advertising, timeout: const Duration(seconds: 10));
     expect(a.status, isNull);
   });
 
@@ -248,8 +238,7 @@ void main() {
     expect(a.gateway.lastPrepareRequestedPermission, isTrue);
     a.gateway.availability.add(null);
     await waitFor('the re-prepare', () => a.gateway.prepareCalls >= 2);
-    expect(a.gateway.lastPrepareRequestedPermission, isFalse,
-        reason: 'a Bluetooth blip must never pop a permission dialog the operator did not invite');
+    expect(a.gateway.lastPrepareRequestedPermission, isFalse, reason: 'a Bluetooth blip must never pop a permission dialog the operator did not invite');
   });
 
   test('the keepalive clock does NOT time travel', () {
@@ -269,8 +258,11 @@ void main() {
     final before = link.now();
     AppClock.instance.travel(delta: const Duration(days: 3));
     addTearDown(AppClock.instance.reset);
-    expect((link.now() - before).abs(), lessThan(const Duration(minutes: 1).inMilliseconds),
-        reason: 'a protocol timeout reads the real clock (docs/design/time.md §1)');
+    expect(
+      (link.now() - before).abs(),
+      lessThan(const Duration(minutes: 1).inMilliseconds),
+      reason: 'a protocol timeout reads the real clock (docs/design/time.md §1)',
+    );
   });
 
   test('keepalive: a silent peer is dropped, a pinging one is kept', () {

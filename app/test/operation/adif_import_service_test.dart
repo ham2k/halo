@@ -30,9 +30,7 @@ class _RecordingHost implements ExtensionHost {
     Duration timeout = const Duration(seconds: 10),
     bool partialOnTimeout = false,
   }) async {
-    final records = ((args as Map)['records'] as List)
-        .map((r) => ((r as Map)['fields'] as Map).cast<String, String>())
-        .toList();
+    final records = ((args as Map)['records'] as List).map((r) => ((r as Map)['fields'] as Map).cast<String, String>()).toList();
     batchSizes.add(records.length);
     return [
       for (final entry in replies.entries) {'ok': true, 'key': entry.key, 'value': entry.value(records)},
@@ -70,7 +68,11 @@ class _MixedFailureHost implements ExtensionHost {
     // has to be genuinely clean for the test to mean anything.
     final count = ((args as Map)['records'] as List).length;
     return [
-      {'ok': true, 'key': 'pota', 'value': [for (var i = 0; i < count; i++) null]},
+      {
+        'ok': true,
+        'key': 'pota',
+        'value': [for (var i = 0; i < count; i++) null],
+      },
     ];
   }
 
@@ -79,26 +81,33 @@ class _MixedFailureHost implements ExtensionHost {
 }
 
 List<AdifRecord> _records(int count) => [
-      for (var i = 0; i < count; i++)
-        AdifRecord(number: i + 1, fields: {'call': 'W$i'}, qso: <String, dynamic>{'their': {}}),
-    ];
+  for (var i = 0; i < count; i++) AdifRecord(number: i + 1, fields: {'call': 'W$i'}, qso: <String, dynamic>{'their': {}}),
+];
 
-List<Map<String, dynamic>> _refs(AdifRecord record) =>
-    ((record.qso['refs'] as List?) ?? const []).cast<Map<String, dynamic>>();
+List<Map<String, dynamic>> _refs(AdifRecord record) => ((record.qso['refs'] as List?) ?? const []).cast<Map<String, dynamic>>();
 
 void main() {
   test('applies each hook\'s refs to the matching record', () async {
     final host = _RecordingHost({
       'pota': (records) => [
-            for (final r in records) r['call'] == 'W1' ? {'refs': [{'type': 'pota', 'ref': 'K-1'}]} : null,
-          ],
+        for (final r in records)
+          r['call'] == 'W1'
+              ? {
+                  'refs': [
+                    {'type': 'pota', 'ref': 'K-1'},
+                  ],
+                }
+              : null,
+      ],
     });
 
     final records = _records(3);
     await AdifImportService(host).applyHooks(records);
 
     expect(_refs(records[0]), isEmpty);
-    expect(_refs(records[1]), [{'type': 'pota', 'ref': 'K-1'}]);
+    expect(_refs(records[1]), [
+      {'type': 'pota', 'ref': 'K-1'},
+    ]);
     expect(_refs(records[2]), isEmpty);
   });
 
@@ -106,8 +115,22 @@ void main() {
     // A park-to-park contact made during a summit activation carries both
     // programs' references; neither hook may overwrite the other's.
     final host = _RecordingHost({
-      'pota': (records) => [for (final _ in records) {'refs': [{'type': 'pota', 'ref': 'K-1'}]}],
-      'sota': (records) => [for (final _ in records) {'refs': [{'type': 'sota', 'ref': 'W2/GC-001'}]}],
+      'pota': (records) => [
+        for (final _ in records)
+          {
+            'refs': [
+              {'type': 'pota', 'ref': 'K-1'},
+            ],
+          },
+      ],
+      'sota': (records) => [
+        for (final _ in records)
+          {
+            'refs': [
+              {'type': 'sota', 'ref': 'W2/GC-001'},
+            ],
+          },
+      ],
     });
 
     final records = _records(1);
@@ -123,8 +146,22 @@ void main() {
     // Duplicates would be scored and exported twice, so the same reference
     // arriving from two hooks must land once.
     final host = _RecordingHost({
-      'pota': (records) => [for (final _ in records) {'refs': [{'type': 'pota', 'ref': 'K-1'}]}],
-      'legacy': (records) => [for (final _ in records) {'refs': [{'type': 'pota', 'ref': 'K-1'}]}],
+      'pota': (records) => [
+        for (final _ in records)
+          {
+            'refs': [
+              {'type': 'pota', 'ref': 'K-1'},
+            ],
+          },
+      ],
+      'legacy': (records) => [
+        for (final _ in records)
+          {
+            'refs': [
+              {'type': 'pota', 'ref': 'K-1'},
+            ],
+          },
+      ],
     });
 
     final records = _records(1);
@@ -138,7 +175,13 @@ void main() {
     // own empties out would silently shift every later record's references
     // onto the wrong QSO — a corruption that looks like a successful import.
     final host = _RecordingHost({
-      'buggy': (records) => [{'refs': [{'type': 'pota', 'ref': 'K-1'}]}],
+      'buggy': (records) => [
+        {
+          'refs': [
+            {'type': 'pota', 'ref': 'K-1'},
+          ],
+        },
+      ],
     });
 
     final records = _records(3);
@@ -148,7 +191,9 @@ void main() {
   });
 
   test('splits a large log into batches instead of one giant crossing', () async {
-    final host = _RecordingHost({'pota': (records) => [for (final _ in records) null]});
+    final host = _RecordingHost({
+      'pota': (records) => [for (final _ in records) null],
+    });
 
     await AdifImportService(host).applyHooks(_records(1200));
 
@@ -202,15 +247,22 @@ void main() {
     // Persisting it would put {type: pota} on the operator's QSO.
     final host = _RecordingHost({
       'pota': (records) => [
-            for (final _ in records)
-              {'refs': [{'type': 'pota'}, {'type': 'pota', 'ref': 'K-1'}]},
-          ],
+        for (final _ in records)
+          {
+            'refs': [
+              {'type': 'pota'},
+              {'type': 'pota', 'ref': 'K-1'},
+            ],
+          },
+      ],
     });
 
     final records = _records(1);
     final outcome = await AdifImportService(host).applyHooks(records);
 
-    expect(_refs(records[0]), [{'type': 'pota', 'ref': 'K-1'}]);
+    expect(_refs(records[0]), [
+      {'type': 'pota', 'ref': 'K-1'},
+    ]);
     expect(outcome.failedHooks, contains('pota'));
   });
 
@@ -247,7 +299,14 @@ void main() {
     // Guards every assertion above: if everything degraded, none of it would
     // mean anything.
     final host = _RecordingHost({
-      'pota': (records) => [for (final _ in records) {'refs': [{'type': 'pota', 'ref': 'K-1'}]}],
+      'pota': (records) => [
+        for (final _ in records)
+          {
+            'refs': [
+              {'type': 'pota', 'ref': 'K-1'},
+            ],
+          },
+      ],
     });
 
     final outcome = await AdifImportService(host).applyHooks(_records(2));
@@ -268,10 +327,9 @@ class _FailingHookHost implements ExtensionHost {
     Object? args,
     Duration timeout = const Duration(seconds: 10),
     bool partialOnTimeout = false,
-  }) async =>
-      [
-        {'key': 'pota', 'ok': false, 'error': 'TypeError: normalize is not a function'},
-      ];
+  }) async => [
+    {'key': 'pota', 'ok': false, 'error': 'TypeError: normalize is not a function'},
+  ];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -285,8 +343,7 @@ class _ThrowingHost implements ExtensionHost {
     Object? args,
     Duration timeout = const Duration(seconds: 10),
     bool partialOnTimeout = false,
-  }) async =>
-      throw ExtensionHostException('runtime is dead');
+  }) async => throw ExtensionHostException('runtime is dead');
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

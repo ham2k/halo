@@ -21,7 +21,6 @@ class AntennaDriver extends TypeOnlyEquipmentDriver {
   @override
   String get name => 'Antenna';
 
-
   @override
   String get typeFieldKey => 'antennaType';
 

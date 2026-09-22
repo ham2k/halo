@@ -38,15 +38,11 @@ class _ExtensionsWithAccountData extends ExtensionServiceWithFakeHost {
 /// [fetchAccountData] lets a test hold the fetch open (or fail it) to exercise
 /// the panel's in-flight and error states; by default it completes at once
 /// with [accountData].
-Future<HaLoServices> makeServices(
-  Map<String, dynamic>? accountData, {
-  Future<Map<String, dynamic>?> Function()? fetchAccountData,
-}) async {
+Future<HaLoServices> makeServices(Map<String, dynamic>? accountData, {Future<Map<String, dynamic>?> Function()? fetchAccountData}) async {
   SharedPreferences.setMockInitialValues({'flutter.syncEnabled': true});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
-  final extensions = _ExtensionsWithAccountData(fetchAccountData ?? (() async => accountData))
-    ..settings = settings;
+  final extensions = _ExtensionsWithAccountData(fetchAccountData ?? (() async => accountData))..settings = settings;
   return HaLoServices(db, settings, extensions: extensions);
 }
 
@@ -56,7 +52,11 @@ Future<void> openSyncPanel(WidgetTester tester, HaLoServices services) async {
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(home: SettingsView(services: services)),
+    ),
+  );
   await tester.pumpAndSettle();
   // `.first`: the sidebar's entry. The Settings panel showing beside it
   // carries a band of the same name.

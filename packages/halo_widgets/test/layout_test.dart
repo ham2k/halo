@@ -44,13 +44,17 @@ void main() {
       // larger font scale reflows to narrower layouts. ShirtSize must read
       // MediaQuery, not the physical view.
       late ShirtSize size;
-      await tester.pumpWidget(MediaQuery(
-        data: const MediaQueryData(size: Size(800, 600)),
-        child: Builder(builder: (context) {
-          size = ShirtSize.of(context);
-          return const SizedBox();
-        }),
-      ));
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(size: Size(800, 600)),
+          child: Builder(
+            builder: (context) {
+              size = ShirtSize.of(context);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
       expect(size, ShirtSize.l);
     });
   });
@@ -73,6 +77,5 @@ void main() {
       expect(paneDividerWidth(), 9.0);
       expect(paneDividerWidth(editing: true), 16.0);
     });
-
   });
 }

@@ -233,17 +233,9 @@ const _minShaEntryLength = 6;
 /// unset variable serializes `[""]`, and honouring that would broadcast a
 /// commit-targeted notice to every build at once, or mute one for all of them.
 bool _shaMatches(List<String> shas, String appSha) =>
-    appSha.isNotEmpty &&
-    shas.any((sha) =>
-        sha.length >= _minShaEntryLength && (appSha.startsWith(sha) || sha.startsWith(appSha)));
+    appSha.isNotEmpty && shas.any((sha) => sha.length >= _minShaEntryLength && (appSha.startsWith(sha) || sha.startsWith(appSha)));
 
-bool _passes(
-  Map<String, dynamic> notice,
-  NoticeContext ctx, {
-  required DateTime now,
-  required int segment,
-  required Set<String> seenUnique,
-}) {
+bool _passes(Map<String, dynamic> notice, NoticeContext ctx, {required DateTime now, required int segment, required Set<String> seenUnique}) {
   final key = notice['key'] as String?;
   if (key != null && ctx.dismissedKeys.contains(key)) return false;
 
@@ -402,23 +394,23 @@ String _applyTemplate(String input, Map<String, dynamic> data) {
 }
 
 Map<String, dynamic> _templateData(NoticeContext ctx) => {
-      'operator': {
-        'baseCall': ctx.baseCall,
-        'call': ctx.call,
-        'entityPrefix': ctx.entityPrefix,
-        'continent': ctx.continent,
-        'countryCode': ctx.countryCode,
-        'ituRegion': ctx.ituRegion,
-      },
-      'app': {
-        'version': ctx.appVersion,
-        'versionName': ctx.appVersionName,
-        'build': ctx.appBuild,
-        'codePush': ctx.appCodePush,
-        'sha': ctx.appSha,
-        'platform': ctx.platform,
-      },
-    };
+  'operator': {
+    'baseCall': ctx.baseCall,
+    'call': ctx.call,
+    'entityPrefix': ctx.entityPrefix,
+    'continent': ctx.continent,
+    'countryCode': ctx.countryCode,
+    'ituRegion': ctx.ituRegion,
+  },
+  'app': {
+    'version': ctx.appVersion,
+    'versionName': ctx.appVersionName,
+    'build': ctx.appBuild,
+    'codePush': ctx.appCodePush,
+    'sha': ctx.appSha,
+    'platform': ctx.platform,
+  },
+};
 
 Object? _deepCopy(Object? node) {
   if (node is Map) {

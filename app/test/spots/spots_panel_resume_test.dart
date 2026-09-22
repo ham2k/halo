@@ -43,8 +43,8 @@ class _FakeExtensions extends ExtensionService {
   }
 
   @override
-  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>
-      getSpots() async => (items: board, succeeded: const ['test'], unreachable: const <String>[], failed: const <String>[]);
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async =>
+      (items: board, succeeded: const ['test'], unreachable: const <String>[], failed: const <String>[]);
 
   @override
   Future<void> start() async {}
@@ -55,14 +55,14 @@ class _FakeExtensions extends ExtensionService {
 }
 
 Map<String, dynamic> _spot(String call) => {
-      'their': {'call': call},
-      'freq': 14250.0,
-      'band': '20m',
-      'mode': 'SSB',
-      'refs': const <Map<String, dynamic>>[],
-      'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test'},
-      'hookKey': 'test',
-    };
+  'their': {'call': call},
+  'freq': 14250.0,
+  'band': '20m',
+  'mode': 'SSB',
+  'refs': const <Map<String, dynamic>>[],
+  'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test'},
+  'hookKey': 'test',
+};
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -82,16 +82,28 @@ void main() {
     final operations = OperationsRepository(db);
     final qsos = QsosRepository(db);
     final created = await operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
-    final folded = await qsos.add(created.uuid, {'their': {'call': 'W1AW'}, 'band': '20m', 'mode': 'SSB', 'startAtMillis': 1000});
+    final folded = await qsos.add(created.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': 1000,
+    });
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 2)));
-    final since = await qsos.add(created.uuid, {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB', 'startAtMillis': 2000});
+    final since = await qsos.add(created.uuid, {
+      'their': {'call': 'K1ABC'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': 2000,
+    });
     // The last rescore's cache: it folded the first contact; the second is
     // the station just worked, which the rescore's own debounce has not yet
     // caught up with.
     await operations.updateLocalData(created.uuid, {
       'scoring': {
         'core': {
-          'scoresheet': const {'worked': ['W1AW']},
+          'scoresheet': const {
+            'worked': ['W1AW'],
+          },
           'scoresheetDay': 0,
           'checkpoint': {
             'digest': checkpointDigestOf([folded]),
@@ -105,20 +117,16 @@ void main() {
     final operation = (await operations.get(created.uuid))!;
     final log = await qsos.forOperation(created.uuid);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        home: Scaffold(
-          body: SpotsPanel(
-            operation: operation,
-            services: services,
-            logRevision: 'r1',
-            visible: ValueNotifier(true),
-            qsos: log,
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Scaffold(
+            body: SpotsPanel(operation: operation, services: services, logRevision: 'r1', visible: ValueNotifier(true), qsos: log),
           ),
         ),
       ),
-    ));
+    );
     // The spots refresh, then the scoring debounce.
     for (var i = 0; i < 40; i++) {
       await tester.pump(const Duration(milliseconds: 100));
@@ -127,7 +135,9 @@ void main() {
     expect(extensions.resumes, isNotEmpty, reason: 'a board with a spot scores it');
     final resume = extensions.resumes.last;
     expect(resume, isNotNull, reason: 'the log is the checkpoint plus one contact: a resume, not a cold fold');
-    expect(resume!.checkpoints['core']?.sheet, const {'worked': ['W1AW']});
+    expect(resume!.checkpoints['core']?.sheet, const {
+      'worked': ['W1AW'],
+    });
     expect(resume.tail.map((q) => q['uuid']), [since.uuid], reason: 'the station just worked travels as the tail');
 
     await tester.pumpWidget(const SizedBox());

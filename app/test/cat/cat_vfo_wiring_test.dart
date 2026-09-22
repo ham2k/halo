@@ -58,9 +58,11 @@ class _GatedTransport extends EquipmentTransport {
     final completer = Completer<EquipmentConnection>();
     pending.add(completer);
     cancels.add(cancel);
-    unawaited(cancel.whenCancelled.then((_) {
-      if (!completer.isCompleted) completer.completeError(const CatCancelledException());
-    }));
+    unawaited(
+      cancel.whenCancelled.then((_) {
+        if (!completer.isCompleted) completer.completeError(const CatCancelledException());
+      }),
+    );
     return completer.future;
   }
 
@@ -73,8 +75,7 @@ class _RefusingTransport extends EquipmentTransport {
   @override
   String get key => 'fake';
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async =>
-      throw const SocketException('Connection refused');
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async => throw const SocketException('Connection refused');
 }
 
 class _FakeTransport extends EquipmentTransport {
@@ -108,8 +109,7 @@ class _FakeSession implements TransceiverSession {
 
   _FakeSession(this.sink);
 
-  void radioReports({double? freqKHz, String? mode}) =>
-      sink.report(VfoReading(freqKHz: freqKHz, mode: mode));
+  void radioReports({double? freqKHz, String? mode}) => sink.report(VfoReading(freqKHz: freqKHz, mode: mode));
 
   /// An acknowledgement with nothing in it — a FlexRadio's `R` line to a ping.
   void radioAnswers() => sink.reportAlive();
@@ -153,6 +153,7 @@ class _FakeDriver extends EquipmentDriver {
   String get key => 'fake-driver';
   @override
   String get name => 'Fake Radio';
+
   /// What the manager actually handed the driver — not what the user typed.
   final configs = <Map<String, dynamic>>[];
 
@@ -166,21 +167,21 @@ class _FakeDriver extends EquipmentDriver {
 }
 
 EquipmentModel _fakeModel(EquipmentDriver driver, EquipmentTransport transport) => EquipmentModel(
-      key: 'fake',
-      category: kCategoryTransceiver,
-      name: () => 'Fake Radio',
-      variants: [
-        EquipmentVariant(
-          key: 'fake-type',
-          driver: driver,
-          transport: transport,
-          // Exercises the same "the pairing hands the driver something the
-          // user never typed" path the IC-705's network variant uses for its
-          // controller address — here just a marker the test can look for.
-          overrides: const {'injectedByType': 'yes'},
-        ),
-      ],
-    );
+  key: 'fake',
+  category: kCategoryTransceiver,
+  name: () => 'Fake Radio',
+  variants: [
+    EquipmentVariant(
+      key: 'fake-type',
+      driver: driver,
+      transport: transport,
+      // Exercises the same "the pairing hands the driver something the
+      // user never typed" path the IC-705's network variant uses for its
+      // controller address — here just a marker the test can look for.
+      overrides: const {'injectedByType': 'yes'},
+    ),
+  ],
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -201,10 +202,7 @@ void main() {
     cat = CatService(
       settings,
       radio: radio,
-      registry: EquipmentRegistry(
-        models: [_fakeModel(driver, transport)],
-        transports: {'fake': transport},
-      ),
+      registry: EquipmentRegistry(models: [_fakeModel(driver, transport)], transports: {'fake': transport}),
     );
   });
 
@@ -433,8 +431,7 @@ void main() {
         expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
 
         async.elapse(const Duration(seconds: 31));
-        expect(cat.stateFor(node.uuid).stale, isTrue,
-            reason: 'green with nothing behind it is the failure, not the success');
+        expect(cat.stateFor(node.uuid).stale, isTrue, reason: 'green with nothing behind it is the failure, not the success');
       });
     });
 
@@ -457,8 +454,7 @@ void main() {
 
         // Still connected, still keepalive-healthy, saying nothing.
         async.elapse(const Duration(seconds: 31));
-        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected,
-            reason: 'silent is not the same as disconnected');
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected, reason: 'silent is not the same as disconnected');
         expect(cat.stateFor(node.uuid).stale, isTrue);
 
         // And one word from the radio clears it — including a repeat, since
@@ -490,8 +486,7 @@ void main() {
         session().radioAnswers();
         async.flushMicrotasks();
         expect(cat.stateFor(node.uuid).stale, isFalse);
-        expect(cat.stateFor(node.uuid).vfo.freqKHz, 14074,
-            reason: 'life is not a reading; the VFO must be exactly what the radio last said');
+        expect(cat.stateFor(node.uuid).vfo.freqKHz, 14074, reason: 'life is not a reading; the VFO must be exactly what the radio last said');
 
         // And it re-arms the watch rather than merely clearing the mark.
         async.elapse(const Duration(seconds: 31));
@@ -514,9 +509,7 @@ void main() {
 
       expect(statuses, contains(EquipmentStatus.disconnecting));
       expect(statuses.last, EquipmentStatus.disconnected);
-      expect(statuses.indexOf(EquipmentStatus.disconnecting),
-          lessThan(statuses.lastIndexOf(EquipmentStatus.disconnected)),
-          reason: 'and in that order');
+      expect(statuses.indexOf(EquipmentStatus.disconnecting), lessThan(statuses.lastIndexOf(EquipmentStatus.disconnected)), reason: 'and in that order');
     });
 
     test('the driver is handed the config the TYPE supplies, not the raw one', () async {
@@ -535,10 +528,7 @@ void main() {
       // A manager that asked "is this the IC-705 type?" would write THIS
       // type's secret into the plain prefs blob, silently — which is the
       // whole failure mode, and no IC-705 test can catch it.
-      final node = await cat.addNode(
-        typeKey: 'fake-type',
-        config: {'host': 'radio.local', 'apiKey': 'super-secret'},
-      );
+      final node = await cat.addNode(typeKey: 'fake-type', config: {'host': 'radio.local', 'apiKey': 'super-secret'});
 
       expect(cat.nodes.single.config.containsKey('apiKey'), isFalse);
       expect(settings.stationEquipment.toString(), isNot(contains('super-secret')));
@@ -649,8 +639,7 @@ void main() {
       // in precisely the cases where radio1 ends up abandoned anyway. This
       // transport lands the reconnect, so the burst has actually brought the
       // radio back by here — which is the outcome worth pinning.
-      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected,
-          reason: 'radio1 must not be left abandoned after a drop');
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected, reason: 'radio1 must not be left abandoned after a drop');
     });
 
     test('a reconnect does not inherit the previous session echo guard', () async {
@@ -757,8 +746,7 @@ void main() {
       session().radioReports(freqKHz: 14074, mode: 'USB');
       await pumpEventQueue();
 
-      expect(session().commands, ['freq:14074.0', 'mode:USB', 'freq:14074.0'],
-          reason: 'the confirmation is not a new command');
+      expect(session().commands, ['freq:14074.0', 'mode:USB', 'freq:14074.0'], reason: 'the confirmation is not a new command');
       expect(radio.vfoA.freq, 14074);
     });
 
@@ -937,10 +925,7 @@ void main() {
       final failing = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
-        registry: EquipmentRegistry(
-          models: [_fakeModel(driver, _RefusingTransport())],
-          transports: {'fake': _RefusingTransport()},
-        ),
+        registry: EquipmentRegistry(models: [_fakeModel(driver, _RefusingTransport())], transports: {'fake': _RefusingTransport()}),
         reconnectDelay: Duration.zero,
       );
       addTearDown(failing.dispose);
@@ -965,10 +950,7 @@ void main() {
       final failing = CatService(
         SettingsService(await SharedPreferences.getInstance()),
         radio: radio,
-        registry: EquipmentRegistry(
-          models: [_fakeModel(driver, _RefusingTransport())],
-          transports: {'fake': _RefusingTransport()},
-        ),
+        registry: EquipmentRegistry(models: [_fakeModel(driver, _RefusingTransport())], transports: {'fake': _RefusingTransport()}),
         reconnectDelay: Duration.zero,
       );
       addTearDown(failing.dispose);

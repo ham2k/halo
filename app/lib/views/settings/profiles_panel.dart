@@ -63,12 +63,7 @@ class _ProfilesPanelState extends State<ProfilesPanel> {
     // "this callsign has no entity" — the first-run path, where a US operator
     // opening Settings early would otherwise never be offered a section.
     await widget.services.extensions.start();
-    final info = await widget.services.extensions.lookupCall(
-      call,
-      qso: const {},
-      operation: const {},
-      online: false,
-    );
+    final info = await widget.services.extensions.lookupCall(call, qso: const {}, operation: const {}, online: false);
     if (!mounted || request != _resolveRequest) return;
     final prefix = (info?['guess'] as Map<String, dynamic>?)?['entityPrefix'] as String?;
     if (prefix == null) {
@@ -119,9 +114,7 @@ class _ProfilesPanelState extends State<ProfilesPanel> {
     final result = await showHaloDialog<Map<String, String>>(
       context: context,
       builder: (context) => _PersonalInfoDialog(
-        initial: {
-          for (final key in _personalInfoKeys) key: (profile.data[key] as String?) ?? '',
-        },
+        initial: {for (final key in _personalInfoKeys) key: (profile.data[key] as String?) ?? ''},
         sectionLabel: sectionLabel,
         focusKey: focusKey,
       ),
@@ -165,24 +158,13 @@ class _ProfilesPanelState extends State<ProfilesPanel> {
               // The rows' own inset, off the ambient ListTileTheme — it
               // carries the grab-strip clearance and the pane's centring,
               // neither of which a hand-written inset here would have.
-              padding: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero)
-                  .add(const EdgeInsets.only(bottom: Space.xs)),
-              child: Text(
-                t.personalInfoNote,
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
+              padding: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero).add(const EdgeInsets.only(bottom: Space.xs)),
+              child: Text(t.personalInfoNote, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             ),
             _fieldTile('operatorName', t.name, profile.operatorName, MdiIcons.cardAccountDetails, sectionLabel),
             _fieldTile('operatorEmail', t.email, profile.operatorEmail, MdiIcons.email, sectionLabel),
             _fieldTile('operatorClub', t.club, profile.operatorClub, MdiIcons.accountGroup, sectionLabel),
-            if (sectionLabel != null)
-              _fieldTile(
-                'operatorSection',
-                sectionLabel,
-                profile.operatorSection,
-                MdiIcons.mapMarkerRadius,
-                sectionLabel,
-              ),
+            if (sectionLabel != null) _fieldTile('operatorSection', sectionLabel, profile.operatorSection, MdiIcons.mapMarkerRadius, sectionLabel),
           ],
         );
       },
@@ -217,12 +199,9 @@ class _PersonalInfoDialog extends StatefulWidget {
 }
 
 class _PersonalInfoDialogState extends State<_PersonalInfoDialog> {
-  late final Map<String, TextEditingController> _controllers = {
-    for (final key in _visibleKeys) key: TextEditingController(text: widget.initial[key] ?? ''),
-  };
+  late final Map<String, TextEditingController> _controllers = {for (final key in _visibleKeys) key: TextEditingController(text: widget.initial[key] ?? '')};
 
-  List<String> get _visibleKeys =>
-      widget.sectionLabel == null ? _personalInfoKeys.where((k) => k != 'operatorSection').toList() : _personalInfoKeys;
+  List<String> get _visibleKeys => widget.sectionLabel == null ? _personalInfoKeys.where((k) => k != 'operatorSection').toList() : _personalInfoKeys;
 
   @override
   void dispose() {
@@ -276,9 +255,7 @@ class _PersonalInfoDialogState extends State<_PersonalInfoDialog> {
         ],
       ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-      actions: [
-        FilledButton(onPressed: _save, child: Text(context.t.common.save)),
-      ],
+      actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
     );
   }
 }

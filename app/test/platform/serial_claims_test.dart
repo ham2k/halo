@@ -11,7 +11,6 @@
 // wire the way they do on a LAN. Nothing here touches a database: `peek` is
 // a counter the test owns.
 
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/peer/serial_claims.dart';
@@ -20,11 +19,9 @@ const _op = 'op-1';
 const _descriptor = SequenceDescriptor(refType: 'cqwpx', field: 'ourSerial', key: 'cqwpx/serial');
 const _perBand = SequenceDescriptor(refType: 'r1vhf', field: 'serial', key: 'r1vhf/serial', scope: ['band']);
 
-SequenceRequest _request({String band = '20m'}) =>
-    _descriptor.requestFor(Qso(uuid: '', operationUuid: _op, data: {'band': band, 'mode': 'CW'}));
+SequenceRequest _request({String band = '20m'}) => _descriptor.requestFor(Qso(uuid: '', operationUuid: _op, data: {'band': band, 'mode': 'CW'}));
 
-SequenceRequest _bandRequest(String band) =>
-    _perBand.requestFor(Qso(uuid: '', operationUuid: _op, data: {'band': band, 'mode': 'CW'}));
+SequenceRequest _bandRequest(String band) => _perBand.requestFor(Qso(uuid: '', operationUuid: _op, data: {'band': band, 'mode': 'CW'}));
 
 /// A LAN of [SerialClaims], delivering with a one-turn delay — or holding a
 /// device's outbound traffic back entirely, for the straggler cases.
@@ -44,7 +41,10 @@ class _Lan {
     final service = SerialClaims(
       localDeviceId: deviceId,
       peek: (_, _) async => counter,
-      livePeers: () => [for (final id in devices.keys) if (id != deviceId && !offline.contains(id)) id],
+      livePeers: () => [
+        for (final id in devices.keys)
+          if (id != deviceId && !offline.contains(id)) id,
+      ],
       send: (to, message) => _send(deviceId, to, message),
       ackTimeout: ackTimeout,
       committedGrace: const Duration(milliseconds: 200),
@@ -301,7 +301,9 @@ void main() {
     a.snapshotTo('b');
     await lan.settle();
     expect(await b.claim(_op, _request()), 2);
-    expect(b.peerClaimsFor(_op, _request().label), {'a': {1}});
+    expect(b.peerClaimsFor(_op, _request().label), {
+      'a': {1},
+    });
   });
 
   test('a peer whose session drops keeps its hold, and a claim waiting on it stops waiting', () async {
@@ -346,7 +348,9 @@ void main() {
     a.release(_op, committed: {_request(): 1});
     expect(await a.claim(_op, _request()), 2);
     await lan.settle();
-    expect(b.peerClaimsFor(_op, _request().label), {'a': {1, 2}});
+    expect(b.peerClaimsFor(_op, _request().label), {
+      'a': {1, 2},
+    });
     expect(await b.claim(_op, _request()), 3);
   });
 
@@ -364,11 +368,14 @@ void main() {
     a.release(_op, committed: {_request(): 1});
     // b showed 1 before hearing anything, lost, and kept it — its mark lands
     // after a's QSO is in the database.
-    a.onPeerClaims('b', PeerSerialClaimsPayload(
-      operationUuid: _op,
-      seq: 1,
-      claims: [PeerSerialClaim(label: _request().label, number: 1, conflicted: true)],
-    ));
+    a.onPeerClaims(
+      'b',
+      PeerSerialClaimsPayload(
+        operationUuid: _op,
+        seq: 1,
+        claims: [PeerSerialClaim(label: _request().label, number: 1, conflicted: true)],
+      ),
+    );
     expect(marked, [(_op, _request().label, 1)]);
   });
 
@@ -383,7 +390,9 @@ void main() {
     expect(a.localClaimsFor('op-2'), isEmpty);
     // Peers are not told (their sessions are about to drop) — b's knowledge
     // is stale until a is re-established, which is the cost accepted.
-    expect(b.peerClaimsFor(_op, _request().label), {'a': {1}});
+    expect(b.peerClaimsFor(_op, _request().label), {
+      'a': {1},
+    });
   });
 
   test('claims for another operation are answered but never compete', () async {

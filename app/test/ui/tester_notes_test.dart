@@ -71,7 +71,8 @@ void main() {
   });
 
   test('the accumulation key stays invisible until the release cut names it', () {
-    const accumulating = '''
+    const accumulating =
+        '''
 $kUpcomingTesterNotesKey:
   changes:
     - "Merged, not yet shipped"
@@ -103,8 +104,7 @@ $kUpcomingTesterNotesKey:
     final source = File('assets/tester-notes.yaml').readAsStringSync();
     final entries = parseTesterNotesYaml(source);
     expect(entries, isNotEmpty, reason: 'assets/tester-notes.yaml parses to no entries at all');
-    expect(entries.first.build, lessThanOrEqualTo(kBuildNumber),
-        reason: 'an entry above kBuildNumber means a build number was typed by hand');
+    expect(entries.first.build, lessThanOrEqualTo(kBuildNumber), reason: 'an entry above kBuildNumber means a build number was typed by hand');
 
     // Whatever state the file is in — mid-cycle with notes under `upcoming`,
     // or freshly cut with none — the next cut must be able to name them. This

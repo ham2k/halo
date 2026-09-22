@@ -120,8 +120,7 @@ class SolarReading {
     this.wind = const [],
   });
 
-  SolarReading withSeries({List<SolarPoint>? flux, List<SolarPoint>? kp, List<SolarPoint>? wind}) =>
-      SolarReading(
+  SolarReading withSeries({List<SolarPoint>? flux, List<SolarPoint>? kp, List<SolarPoint>? wind}) => SolarReading(
     solarFlux: solarFlux,
     sunspots: sunspots,
     aIndex: aIndex,
@@ -170,9 +169,8 @@ class SolarReading {
 ///
 /// [web] is overridable only so a test can pin both forms; `kIsWeb` itself
 /// is a const and cannot be.
-Uri solarConditionsUrl({bool web = kIsWeb}) => web
-    ? Uri.parse('https://services.ham2k.net/www.hamqsl.com/solarxml.php')
-    : Uri.parse('https://www.hamqsl.com/solarxml.php');
+Uri solarConditionsUrl({bool web = kIsWeb}) =>
+    web ? Uri.parse('https://services.ham2k.net/www.hamqsl.com/solarxml.php') : Uri.parse('https://www.hamqsl.com/solarxml.php');
 
 /// F10.7 as OBSERVED, three times a day.
 ///
@@ -196,8 +194,7 @@ Uri solarKpSeriesUrl() => Uri.parse('https://services.swpc.noaa.gov/products/noa
 ///
 /// A week is the longest SWPC publishes for this series; there is no 30-day
 /// product at any cadence.
-Uri solarWindHistoryUrl() =>
-    Uri.parse('https://services.swpc.noaa.gov/products/geospace/propagated-solar-wind.json');
+Uri solarWindHistoryUrl() => Uri.parse('https://services.swpc.noaa.gov/products/geospace/propagated-solar-wind.json');
 
 /// How often the big file is worth re-fetching, on the REAL clock.
 ///
@@ -212,8 +209,7 @@ const Duration solarWindHistoryInterval = Duration(hours: 6);
 /// The cheap half of the pair: fetched every round and merged into the week
 /// above, so the recent end stays current without asking for the megabyte
 /// again.
-Uri solarWindSeriesUrl() =>
-    Uri.parse('https://services.swpc.noaa.gov/products/geospace/propagated-solar-wind-1-hour.json');
+Uri solarWindSeriesUrl() => Uri.parse('https://services.swpc.noaa.gov/products/geospace/propagated-solar-wind-1-hour.json');
 
 /// Every flat `<tag>text</tag>` pair in hamqsl's solar XML, trimmed.
 ///
@@ -231,9 +227,7 @@ final _bandPattern = RegExp(r'<band\s+name="([^"]*)"\s+time="([^"]*)"\s*>([^<]*)
 /// all, which is the single field the panel's headline is built from and the
 /// only one whose absence means the answer was not a reading.
 SolarReading? parseSolarReading(String body, {required DateTime fetchedAtUtc}) {
-  final scalars = <String, String>{
-    for (final match in _tagPattern.allMatches(body)) match.group(1)!: match.group(2)!.trim(),
-  };
+  final scalars = <String, String>{for (final match in _tagPattern.allMatches(body)) match.group(1)!: match.group(2)!.trim()};
   final solarFlux = _toInt(scalars['solarflux']);
   if (solarFlux == null) return null;
 
@@ -276,14 +270,7 @@ List<BandConditions> _parseBands(String body) {
     }
     if (!order.contains(name)) order.add(name);
   }
-  return [
-    for (final name in order)
-      (
-        band: name,
-        day: day[name] ?? BandRating.unknown,
-        night: night[name] ?? BandRating.unknown,
-      ),
-  ];
+  return [for (final name in order) (band: name, day: day[name] ?? BandRating.unknown, night: night[name] ?? BandRating.unknown)];
 }
 
 /// SWPC's daily flux: `[{"time_tag":"2026-08-24T20:00:00","flux":143}, …]`.
@@ -344,10 +331,7 @@ List<SolarPoint> parseSolarWindSeries(String body) {
 /// hour. Preferring the fresher reading at every shared stamp keeps the
 /// recent end current without losing the week behind it.
 List<SolarPoint> mergeSeries(List<SolarPoint> base, List<SolarPoint> fresher) {
-  final byStamp = <DateTime, double>{
-    for (final point in base) point.utc: point.value,
-    for (final point in fresher) point.utc: point.value,
-  };
+  final byStamp = <DateTime, double>{for (final point in base) point.utc: point.value, for (final point in fresher) point.utc: point.value};
   final merged = [for (final entry in byStamp.entries) (utc: entry.key, value: entry.value)];
   merged.sort((a, b) => a.utc.compareTo(b.utc));
   return merged;
@@ -391,13 +375,7 @@ List<SolarPoint> averageIntoBuckets(List<SolarPoint> points, [Duration bucket = 
   }
 
   final starts = sums.keys.toList()..sort();
-  return [
-    for (final start in starts)
-      (
-        utc: DateTime.fromMillisecondsSinceEpoch(start, isUtc: true),
-        value: sums[start]! / counts[start]!,
-      ),
-  ];
+  return [for (final start in starts) (utc: DateTime.fromMillisecondsSinceEpoch(start, isUtc: true), value: sums[start]! / counts[start]!)];
 }
 
 List<SolarPoint> _parseSeries(String body, String field) {

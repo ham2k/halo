@@ -81,37 +81,36 @@ void main() {
     // test that varies the spec across pumps has to vary this too, or it
     // silently measures the first spec twice.
     Key? key,
-  }) =>
-      MaterialApp(
-        home: Scaffold(
-          body: DockLayoutView(
-            key: key,
-            initialSpec: spec,
-            initialState: initialState,
-            onStateChanged: onStateChanged,
-            titles: titles ?? const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie'},
-            children: children ??
-                const {
-                  'a': SizedBox.expand(key: Key('pane-a')),
-                  'b': SizedBox.expand(key: Key('pane-b')),
-                  'c': SizedBox.expand(key: Key('pane-c')),
-                },
-            tabActions: tabActions,
-            editingPaneControls: editingPaneControls,
-            headerlessModules: headerlessModules,
-            moduleMinimumSizes: moduleMinimumSizes,
-            onModuleDeleted: onModuleDeleted,
-            pinnedModuleIds: pinnedModuleIds,
-            editing: editing,
-            onSpecChanged: onChanged,
-          ),
-        ),
-      );
+  }) => MaterialApp(
+    home: Scaffold(
+      body: DockLayoutView(
+        key: key,
+        initialSpec: spec,
+        initialState: initialState,
+        onStateChanged: onStateChanged,
+        titles: titles ?? const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie'},
+        children:
+            children ?? const {'a': SizedBox.expand(key: Key('pane-a')), 'b': SizedBox.expand(key: Key('pane-b')), 'c': SizedBox.expand(key: Key('pane-c'))},
+        tabActions: tabActions,
+        editingPaneControls: editingPaneControls,
+        headerlessModules: headerlessModules,
+        moduleMinimumSizes: moduleMinimumSizes,
+        onModuleDeleted: onModuleDeleted,
+        pinnedModuleIds: pinnedModuleIds,
+        editing: editing,
+        onSpecChanged: onChanged,
+      ),
+    ),
+  );
 
-  DockNode twoGroups() => DockSplit(Axis.horizontal, [
-    DockGroup(['a']),
-    DockGroup(['b', 'c']),
-  ], [1, 1]);
+  DockNode twoGroups() => DockSplit(
+    Axis.horizontal,
+    [
+      DockGroup(['a']),
+      DockGroup(['b', 'c']),
+    ],
+    [1, 1],
+  );
 
   testWidgets('a boundary held against a pane floor pays back its overshoot before moving', (tester) async {
     // The rule ResizableSplitView states on its own `_dragPosition`: travel
@@ -124,11 +123,13 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(harness(
-      spec: twoGroups(),
-      // Floors Bravo at 300, so the boundary pins well short of the window.
-      moduleMinimumSizes: const {'b': Size(300, 0)},
-    ));
+    await tester.pumpWidget(
+      harness(
+        spec: twoGroups(),
+        // Floors Bravo at 300, so the boundary pins well short of the window.
+        moduleMinimumSizes: const {'b': Size(300, 0)},
+      ),
+    );
     await tester.pumpAndSettle();
 
     double paneAWidth() => tester.getSize(find.byKey(const Key('pane-a'))).width;
@@ -239,7 +240,12 @@ void main() {
     addTearDown(tester.view.reset);
 
     const scale = 1.5;
-    await tester.pumpWidget(UiScale(scale: scale, child: harness(spec: twoGroups())));
+    await tester.pumpWidget(
+      UiScale(
+        scale: scale,
+        child: harness(spec: twoGroups()),
+      ),
+    );
     await tester.pumpAndSettle();
 
     double paneAWidth() => tester.getSize(find.byKey(const Key('pane-a'))).width;
@@ -252,8 +258,7 @@ void main() {
     await tester.pump();
 
     // 90 global pixels is 60 in the scaled layout space the pane is measured in.
-    expect(paneAWidth(), closeTo(before - 90 / scale, 1.5),
-        reason: 'the boundary follows the pointer, not the pointer times the scale');
+    expect(paneAWidth(), closeTo(before - 90 / scale, 1.5), reason: 'the boundary follows the pointer, not the pointer times the scale');
 
     await gesture.up();
     await tester.pump();
@@ -273,10 +278,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(harness(
-      spec: twoGroups(),
-      moduleMinimumSizes: const {'b': Size(300, 0)},
-    ));
+    await tester.pumpWidget(harness(spec: twoGroups(), moduleMinimumSizes: const {'b': Size(300, 0)}));
     await tester.pumpAndSettle();
 
     double paneAWidth() => tester.getSize(find.byKey(const Key('pane-a'))).width;
@@ -312,13 +314,21 @@ void main() {
   }
 
   test('spec round-trips through JSON', () {
-    final spec = DockSplit(Axis.horizontal, [
-      DockGroup(['a']),
-      DockSplit(Axis.vertical, [
-        DockGroup(['b', 'c'], selected: 1),
-        DockGroup(['d']),
-      ], [2, 1]),
-    ], [3, 2]);
+    final spec = DockSplit(
+      Axis.horizontal,
+      [
+        DockGroup(['a']),
+        DockSplit(
+          Axis.vertical,
+          [
+            DockGroup(['b', 'c'], selected: 1),
+            DockGroup(['d']),
+          ],
+          [2, 1],
+        ),
+      ],
+      [3, 2],
+    );
     final revived = DockNode.fromJson(spec.toJson())!;
     expect(revived.toJson(), spec.toJson());
     expect(revived.collectModules(), ['a', 'b', 'c', 'd']);
@@ -348,10 +358,19 @@ void main() {
       // Headerless, so the pane's own box IS the group's — a headed group at
       // the floor spends all of it on the header and leaves its content zero,
       // which is the floor doing its job but measures nothing here.
-      await tester.pumpWidget(harness(
-        spec: DockSplit(Axis.vertical, [DockGroup(['a']), DockGroup(['b'])], [9, 1]),
-        headerlessModules: const {'a', 'b'},
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockSplit(
+            Axis.vertical,
+            [
+              DockGroup(['a']),
+              DockGroup(['b']),
+            ],
+            [9, 1],
+          ),
+          headerlessModules: const {'a', 'b'},
+        ),
+      );
       await tester.pumpAndSettle();
 
       // Resolved from INSIDE the pane, not at the dock's root: the floor is
@@ -361,11 +380,7 @@ void main() {
       // bounded the layout.
       final floor = dockPaneUnit(tester.element(find.byKey(const Key('pane-b'))));
       final short = tester.getSize(find.byKey(const Key('pane-b')));
-      expect(
-        short.height,
-        greaterThanOrEqualTo(floor - 0.5),
-        reason: 'the weaker side of a 9:1 split must still reach the floor, not the 1/10 it asked for',
-      );
+      expect(short.height, greaterThanOrEqualTo(floor - 0.5), reason: 'the weaker side of a 9:1 split must still reach the floor, not the 1/10 it asked for');
       // Taken from the pane that had room, not conjured: the run still fills.
       expect(tester.getSize(find.byKey(const Key('pane-a'))).height, greaterThan(short.height));
     });
@@ -375,7 +390,14 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
-      final spec = DockSplit(Axis.vertical, [DockGroup(['a']), DockGroup(['b'])], [9, 1]);
+      final spec = DockSplit(
+        Axis.vertical,
+        [
+          DockGroup(['a']),
+          DockGroup(['b']),
+        ],
+        [9, 1],
+      );
       await tester.pumpWidget(harness(spec: spec, headerlessModules: const {'a', 'b'}));
       await tester.pumpAndSettle();
       final resting = tester.getSize(find.byKey(const Key('pane-b')));
@@ -384,12 +406,7 @@ void main() {
       // takes a chrome height out of a pane already at its floor, and the
       // group's Column overflows for as long as the operator is rearranging —
       // the one moment it must not.
-      await tester.pumpWidget(harness(
-        key: const Key('editing'),
-        spec: spec,
-        headerlessModules: const {'a', 'b'},
-        editing: true,
-      ));
+      await tester.pumpWidget(harness(key: const Key('editing'), spec: spec, headerlessModules: const {'a', 'b'}, editing: true));
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull, reason: 'no overflow on entering edit mode');
@@ -417,13 +434,21 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(harness(
-        spec: DockSplit(Axis.horizontal, [DockGroup(['a']), DockGroup(['b'])], [200, 1]),
-        headerlessModules: const {'b'},
-        editing: true,
-        editingPaneControls: (context, id) =>
-            IconButton(key: Key('opts-$id'), icon: const Icon(Icons.tune), onPressed: () {}),
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockSplit(
+            Axis.horizontal,
+            [
+              DockGroup(['a']),
+              DockGroup(['b']),
+            ],
+            [200, 1],
+          ),
+          headerlessModules: const {'b'},
+          editing: true,
+          editingPaneControls: (context, id) => IconButton(key: Key('opts-$id'), icon: const Icon(Icons.tune), onPressed: () {}),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
@@ -461,11 +486,20 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(harness(
-        spec: DockSplit(Axis.horizontal, [DockGroup(['a']), DockGroup(['b'])], [200, 1]),
-        headerlessModules: const {'a', 'b'},
-        moduleMinimumSizes: const {'b': Size(300, 0)},
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockSplit(
+            Axis.horizontal,
+            [
+              DockGroup(['a']),
+              DockGroup(['b']),
+            ],
+            [200, 1],
+          ),
+          headerlessModules: const {'a', 'b'},
+          moduleMinimumSizes: const {'b': Size(300, 0)},
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(
@@ -486,13 +520,26 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(harness(
-        spec: DockSplit(Axis.vertical, [
-          DockGroup(['a']),
-          DockSplit(Axis.vertical, [DockGroup(['b']), DockGroup(['c'])], [1, 1]),
-        ], [3, 1]),
-        headerlessModules: const {'a', 'b', 'c'},
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockSplit(
+            Axis.vertical,
+            [
+              DockGroup(['a']),
+              DockSplit(
+                Axis.vertical,
+                [
+                  DockGroup(['b']),
+                  DockGroup(['c']),
+                ],
+                [1, 1],
+              ),
+            ],
+            [3, 1],
+          ),
+          headerlessModules: const {'a', 'b', 'c'},
+        ),
+      );
       await tester.pumpAndSettle();
 
       final unit = dockPaneUnit(tester.element(find.byType(DockLayoutView)));
@@ -522,10 +569,12 @@ void main() {
   testWidgets("a tab-action always shows for a standalone module's own header", (tester) async {
     // Group 'a' has one module — solo modules are always their own group's
     // selected tab, so an action registered for 'a' shows unconditionally.
-    await tester.pumpWidget(harness(
-      spec: twoGroups(),
-      tabActions: {'a': (context) => const Icon(MdiIcons.tune, key: Key('action-a'))},
-    ));
+    await tester.pumpWidget(
+      harness(
+        spec: twoGroups(),
+        tabActions: {'a': (context) => const Icon(MdiIcons.tune, key: Key('action-a'))},
+      ),
+    );
     expect(find.byKey(const Key('action-a')), findsOneWidget);
   });
 
@@ -533,10 +582,12 @@ void main() {
     // Group ['b', 'c'] starts with 'b' selected (index 0) — 'c's action must
     // stay hidden until 'c' becomes the active tab, since the group's header
     // has no room to show every tab's own action at once.
-    await tester.pumpWidget(harness(
-      spec: twoGroups(),
-      tabActions: {'c': (context) => const Icon(MdiIcons.tune, key: Key('action-c'))},
-    ));
+    await tester.pumpWidget(
+      harness(
+        spec: twoGroups(),
+        tabActions: {'c': (context) => const Icon(MdiIcons.tune, key: Key('action-c'))},
+      ),
+    );
     expect(find.byKey(const Key('action-c')), findsNothing);
 
     await tester.tap(find.text('Charlie'));
@@ -546,11 +597,9 @@ void main() {
 
   /// The strip a tab sits in: the group header's own Material, the nearest
   /// one above the tab (TabChrome brings no Material of its own).
-  Rect stripAround(WidgetTester tester, String label) =>
-      tester.getRect(find.ancestor(of: find.text(label), matching: find.byType(Material)).first);
+  Rect stripAround(WidgetTester tester, String label) => tester.getRect(find.ancestor(of: find.text(label), matching: find.byType(Material)).first);
 
-  Rect tabRect(WidgetTester tester, String label) =>
-      tester.getRect(find.ancestor(of: find.text(label), matching: find.byType(TabChrome)).first);
+  Rect tabRect(WidgetTester tester, String label) => tester.getRect(find.ancestor(of: find.text(label), matching: find.byType(TabChrome)).first);
 
   testWidgets('tabs divide the strip evenly and fill its height', (tester) async {
     await tester.pumpWidget(harness(spec: twoGroups()));
@@ -564,8 +613,7 @@ void main() {
     expect(bravo.height, strip.height, reason: 'a tab fills the strip so its indicator lands on the strip floor');
     expect(charlie.bottom, strip.bottom);
 
-    expect(bravo.width, moreOrLessEquals(charlie.width),
-        reason: 'tabs share the strip like a stock TabBar, not at natural widths');
+    expect(bravo.width, moreOrLessEquals(charlie.width), reason: 'tabs share the strip like a stock TabBar, not at natural widths');
     expect(bravo.width + charlie.width, moreOrLessEquals(strip.width), reason: 'and between them they fill it');
 
     // A group of ONE is not a tab bar at all — see the next test.
@@ -577,10 +625,7 @@ void main() {
     // is what this catches: one long module name would then push every tab
     // in the group off the pane's edge, leaving the operator to discover
     // that a strip they cannot see the end of scrolls.
-    await tester.pumpWidget(harness(
-      spec: twoGroups(),
-      titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie and a great deal more name than fits'},
-    ));
+    await tester.pumpWidget(harness(spec: twoGroups(), titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie and a great deal more name than fits'}));
     final strip = stripAround(tester, 'Bravo');
     final bravo = tabRect(tester, 'Bravo');
     final charlie = tabRect(tester, 'Charlie and a great deal more name than fits');
@@ -593,8 +638,7 @@ void main() {
     // operator nothing.
     final label = tester.getRect(find.text('Charlie and a great deal more name than fits'));
     expect(label.width, greaterThan(0));
-    expect(charlie.contains(label.topLeft) && charlie.contains(label.bottomRight), isTrue,
-        reason: 'and inside its own tab, not painted over the neighbour');
+    expect(charlie.contains(label.topLeft) && charlie.contains(label.bottomRight), isTrue, reason: 'and inside its own tab, not painted over the neighbour');
   });
 
   testWidgets('a group of one renders as a pane title, not a tab', (tester) async {
@@ -615,10 +659,10 @@ void main() {
 
   testWidgets("a module's name and action sit together at the tab's leading edge", (tester) async {
     Widget withAction(int selected, Key key) => harness(
-          key: key,
-          spec: DockGroup(['b', 'c'], selected: selected),
-          tabActions: {'b': (context) => IconButton(icon: const Icon(MdiIcons.tune), onPressed: () {})},
-        );
+      key: key,
+      spec: DockGroup(['b', 'c'], selected: selected),
+      tabActions: {'b': (context) => IconButton(icon: const Icon(MdiIcons.tune), onPressed: () {})},
+    );
 
     await tester.pumpWidget(withAction(0, const ValueKey(0)));
     final bravoTab = tabRect(tester, 'Bravo');
@@ -691,12 +735,7 @@ void main() {
         key: key,
         spec: DockGroup(['a', 'b', 'c', 'd'], selected: selected),
         titles: const {'a': 'INFO', 'b': 'SPOTS', 'c': 'More', 'd': 'Weather'},
-        children: const {
-          'a': SizedBox.expand(),
-          'b': SizedBox.expand(),
-          'c': SizedBox.expand(),
-          'd': SizedBox.expand(),
-        },
+        children: const {'a': SizedBox.expand(), 'b': SizedBox.expand(), 'c': SizedBox.expand(), 'd': SizedBox.expand()},
         tabActions: {'d': (context) => IconButton(onPressed: () {}, icon: const Icon(MdiIcons.tune))},
       );
 
@@ -724,8 +763,7 @@ void main() {
       // And with room to spare the action keeps its full tap target: the slot
       // yields only where the name would otherwise go short, so a slot pinned
       // at its glyph everywhere is as wrong as one that never shrinks.
-      expect(tester.getSize(find.byType(IconButton)).width,
-          moreOrLessEquals(LayoutDensity.chromeHeightOf(tester.element(find.byType(DockLayoutView)))));
+      expect(tester.getSize(find.byType(IconButton)).width, moreOrLessEquals(LayoutDensity.chromeHeightOf(tester.element(find.byType(DockLayoutView)))));
     });
   });
 
@@ -773,17 +811,21 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(harness(
-        spec: DockGroup(['b', 'c']),
-        tabActions: {'b': (context) => IconButton(onPressed: () {}, icon: const Icon(MdiIcons.tune))},
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockGroup(['b', 'c']),
+          tabActions: {'b': (context) => IconButton(onPressed: () {}, icon: const Icon(MdiIcons.tune))},
+        ),
+      );
 
       final floor = _threeLetterWidth(tester, bold: false) + Space.lg + Space.sm + Space.xxs * 2 + _glyphSlot;
-      expect(tabRect(tester, 'Bravo').width, moreOrLessEquals(floor),
-          reason: "the scrolling floor holds the action's smallest slot");
+      expect(tabRect(tester, 'Bravo').width, moreOrLessEquals(floor), reason: "the scrolling floor holds the action's smallest slot");
       expect(tabRect(tester, 'Charlie').width, moreOrLessEquals(floor), reason: 'and every tab gets the same one');
-      expect(tester.getSize(find.text('Bravo')).width, greaterThanOrEqualTo(_threeLetterWidth(tester, bold: false)),
-          reason: 'so the selected tab still names its pane');
+      expect(
+        tester.getSize(find.text('Bravo')).width,
+        greaterThanOrEqualTo(_threeLetterWidth(tester, bold: false)),
+        reason: 'so the selected tab still names its pane',
+      );
       // The glyph gets the whole slot. Measured on the ICON, not the button:
       // the button is the SizedBox's width whatever theme it carries, while
       // an IconButton's own 8pt-a-side padding leaves a 24pt icon 16pt to
@@ -827,8 +869,7 @@ void main() {
     });
   });
 
-  testWidgets('an ambient device inset reaches only the group whose edge is at that physical edge (issue #205)',
-      (tester) async {
+  testWidgets('an ambient device inset reaches only the group whose edge is at that physical edge (issue #205)', (tester) async {
     final areas = <String, PaneSafeArea>{};
     Widget capture(String id) => Builder(
       builder: (context) {
@@ -837,11 +878,15 @@ void main() {
       },
     );
 
-    final spec = DockSplit(Axis.horizontal, [
-      DockGroup(['a']),
-      DockGroup(['b']),
-      DockGroup(['c']),
-    ], [1, 1, 1]);
+    final spec = DockSplit(
+      Axis.horizontal,
+      [
+        DockGroup(['a']),
+        DockGroup(['b']),
+        DockGroup(['c']),
+      ],
+      [1, 1, 1],
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -891,10 +936,14 @@ void main() {
     // — it must use a position-correct Builder context for its tab strip's
     // padding, not DockLayoutView's own outer `State.context` (which would
     // give every group in the tree the SAME padding regardless of position).
-    final spec = DockSplit(Axis.horizontal, [
-      DockGroup(['a']),
-      DockGroup(['b']),
-    ], [1, 1]);
+    final spec = DockSplit(
+      Axis.horizontal,
+      [
+        DockGroup(['a']),
+        DockGroup(['b']),
+      ],
+      [1, 1],
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -905,7 +954,10 @@ void main() {
             child: DockLayoutView(
               initialSpec: spec,
               titles: const {'a': 'Alpha', 'b': 'Bravo'},
-              children: const {'a': SizedBox.expand(key: Key('pane-a')), 'b': SizedBox.expand(key: Key('pane-b'))},
+              children: const {
+                'a': SizedBox.expand(key: Key('pane-a')),
+                'b': SizedBox.expand(key: Key('pane-b')),
+              },
             ),
           ),
         ),
@@ -940,11 +992,7 @@ void main() {
     final spec = twoGroups();
     DockNode? reportedSpec;
     DockState? reportedState;
-    await tester.pumpWidget(harness(
-      spec: spec,
-      onChanged: (s) => reportedSpec = s,
-      onStateChanged: (s) => reportedState = s,
-    ));
+    await tester.pumpWidget(harness(spec: spec, onChanged: (s) => reportedSpec = s, onStateChanged: (s) => reportedState = s));
     await tester.tap(find.text('Charlie'));
     await tester.pump();
 
@@ -959,25 +1007,39 @@ void main() {
 
   testWidgets('a group opens on its remembered module, and on its first without one', (tester) async {
     final spec = twoGroups();
-    await tester.pumpWidget(harness(spec: spec, initialState: const DockState(selected: {'c'})));
+    await tester.pumpWidget(
+      harness(
+        spec: spec,
+        initialState: const DockState(selected: {'c'}),
+      ),
+    );
     await tester.pump();
     expect(((spec as DockSplit).children[1] as DockGroup).selected, 1);
 
     // Keyed by module id rather than by index or position, so state survives
     // the dock being rearranged underneath it: the same module stays on top
     // wherever it ends up.
-    final moved = DockSplit(Axis.horizontal, [
-      DockGroup(['a', 'c']),
-      DockGroup(['b']),
-    ], [1, 1]);
-    await tester.pumpWidget(harness(spec: moved, initialState: const DockState(selected: {'c'}), key: UniqueKey()));
+    final moved = DockSplit(
+      Axis.horizontal,
+      [
+        DockGroup(['a', 'c']),
+        DockGroup(['b']),
+      ],
+      [1, 1],
+    );
+    await tester.pumpWidget(
+      harness(
+        spec: moved,
+        initialState: const DockState(selected: {'c'}),
+        key: UniqueKey(),
+      ),
+    );
     await tester.pump();
     expect((moved.children[0] as DockGroup).selected, 1, reason: "'c' is on top of whichever group holds it");
 
     // And a definition carries no selection at all, so an arrangement with
     // nothing remembered opens on its first tab.
-    expect((DockNode.fromJson(twoGroups().toJson()) as DockSplit).children[1], isA<DockGroup>()
-        .having((g) => g.selected, 'selected', 0));
+    expect((DockNode.fromJson(twoGroups().toJson()) as DockSplit).children[1], isA<DockGroup>().having((g) => g.selected, 'selected', 0));
   });
 
   testWidgets('removeModule drops a pane, prunes what it empties, and reports', (tester) async {
@@ -1058,15 +1120,12 @@ void main() {
   testWidgets('a group publishes which of its panes is on top', (tester) async {
     final visibility = <String, bool>{};
     Widget probe(String id) => Builder(
-          builder: (context) {
-            visibility[id] = DockPaneVisibility.of(context);
-            return SizedBox.expand(key: Key('pane-$id'));
-          },
-        );
-    await tester.pumpWidget(harness(
-      spec: DockGroup(['a', 'b']),
-      children: {'a': probe('a'), 'b': probe('b')},
-    ));
+      builder: (context) {
+        visibility[id] = DockPaneVisibility.of(context);
+        return SizedBox.expand(key: Key('pane-$id'));
+      },
+    );
+    await tester.pumpWidget(harness(spec: DockGroup(['a', 'b']), children: {'a': probe('a'), 'b': probe('b')}));
 
     // Every pane in a group stays MOUNTED so in-progress input survives a
     // tab switch, which means a pane that costs something to keep current —
@@ -1083,12 +1142,16 @@ void main() {
 
   testWidgets('a pane outside a dock counts as visible', (tester) async {
     late bool visible;
-    await tester.pumpWidget(MaterialApp(
-      home: Builder(builder: (context) {
-        visible = DockPaneVisibility.of(context);
-        return const SizedBox.shrink();
-      }),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            visible = DockPaneVisibility.of(context);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
     // The fixed layouts and every test build panes with no dock above them;
     // defaulting to invisible would stop them working.
     expect(visible, isTrue);
@@ -1098,21 +1161,23 @@ void main() {
     final spec = twoGroups();
     final key = GlobalKey<DockLayoutViewState>();
     DockNode? reported;
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: DockLayoutView(
-          key: key,
-          initialSpec: spec,
-          titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie'},
-          children: const {
-            'a': SizedBox.expand(key: Key('pane-a')),
-            'b': SizedBox.expand(key: Key('pane-b')),
-            'c': SizedBox.expand(key: Key('pane-c')),
-          },
-          onSpecChanged: (s) => reported = s,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DockLayoutView(
+            key: key,
+            initialSpec: spec,
+            titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie'},
+            children: const {
+              'a': SizedBox.expand(key: Key('pane-a')),
+              'b': SizedBox.expand(key: Key('pane-b')),
+              'c': SizedBox.expand(key: Key('pane-c')),
+            },
+            onSpecChanged: (s) => reported = s,
+          ),
         ),
       ),
-    ));
+    );
     key.currentState!.revealModule('c');
     await tester.pump();
     expect(((spec as DockSplit).children[1] as DockGroup).selected, 1);
@@ -1132,9 +1197,7 @@ void main() {
     // binding's default target platform is) a transparent, wider grab strip
     // is stacked over it, carrying the same cursor and the same callbacks.
     // Dragging the bar's centre goes through that strip, which is the point.
-    final divider = find
-        .byWidgetPredicate((w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight)
-        .first;
+    final divider = find.byWidgetPredicate((w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight).first;
     await tester.drag(divider, const Offset(-40, 0));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
@@ -1190,11 +1253,21 @@ void main() {
     DockNode? reported;
     // Three panes in a row: dropping beside the middle one must not move the
     // outer two, which are no part of what was dropped on.
-    await tester.pumpWidget(harness(
-      spec: DockSplit(Axis.horizontal, [DockGroup(['a']), DockGroup(['b']), DockGroup(['c'])], [1, 1, 1]),
-      onChanged: (s) => reported = s,
-      editing: true,
-    ));
+    await tester.pumpWidget(
+      harness(
+        spec: DockSplit(
+          Axis.horizontal,
+          [
+            DockGroup(['a']),
+            DockGroup(['b']),
+            DockGroup(['c']),
+          ],
+          [1, 1, 1],
+        ),
+        onChanged: (s) => reported = s,
+        editing: true,
+      ),
+    );
     final bravoPane = tester.getRect(find.byKey(const Key('pane-b')));
     await dragTab(tester, 'Charlie', Offset(bravoPane.left + 20, bravoPane.center.dy));
     await tester.pumpAndSettle();
@@ -1316,10 +1389,7 @@ void main() {
       // nothing app-specific guarding this once a drag genuinely starts (see
       // the test below), so this is the floor a fumbled click rests on.
       final dock = tester.getRect(find.byType(DockLayoutView));
-      final gesture = await tester.startGesture(
-        Offset(dock.center.dx - 4, dock.top + 8),
-        kind: PointerDeviceKind.mouse,
-      );
+      final gesture = await tester.startGesture(Offset(dock.center.dx - 4, dock.top + 8), kind: PointerDeviceKind.mouse);
       await gesture.moveBy(const Offset(2, 2));
       await tester.pump();
       expect(find.byIcon(MdiIcons.trashCanOutline), findsNothing);
@@ -1346,13 +1416,7 @@ void main() {
       DockNode? reported;
       final deleted = <String>[];
       final key = GlobalKey<DockLayoutViewState>();
-      await tester.pumpWidget(harness(
-        spec: twoGroups(),
-        editing: true,
-        onChanged: (s) => reported = s,
-        onModuleDeleted: deleted.add,
-        key: key,
-      ));
+      await tester.pumpWidget(harness(spec: twoGroups(), editing: true, onChanged: (s) => reported = s, onModuleDeleted: deleted.add, key: key));
 
       // Nothing to aim at until something is in the air — deleting is a
       // journey with the pane already in hand, not a button sitting on every
@@ -1377,10 +1441,7 @@ void main() {
       final gesture = await tester.startGesture(tester.getCenter(find.text('Charlie').first));
       await gesture.moveBy(const Offset(0, 90));
       await tester.pump();
-      final circle = tester.getRect(find.ancestor(
-        of: find.byIcon(MdiIcons.trashCanOutline),
-        matching: find.byType(AnimatedContainer),
-      ));
+      final circle = tester.getRect(find.ancestor(of: find.byIcon(MdiIcons.trashCanOutline), matching: find.byType(AnimatedContainer)));
       // Flush with the window's edge, a notch or status bar covers the part
       // of the circle a pane thrown upwards is aimed at.
       expect(circle.top, 40 + Space.md);
@@ -1439,12 +1500,9 @@ void main() {
 
       Future<(double showing, double other)> widthsAt(double width) async {
         tester.view.physicalSize = Size(width, 600);
-        await tester.pumpWidget(harness(
-          spec: DockGroup(['a', 'b', 'c']),
-          editing: true,
-          editingPaneControls: (context, id) => const Icon(MdiIcons.tune),
-          key: ValueKey(width),
-        ));
+        await tester.pumpWidget(
+          harness(spec: DockGroup(['a', 'b', 'c']), editing: true, editingPaneControls: (context, id) => const Icon(MdiIcons.tune), key: ValueKey(width)),
+        );
         await tester.pumpAndSettle();
         return (tabRect(tester, 'Alpha').width, tabRect(tester, 'Bravo').width);
       }
@@ -1510,12 +1568,9 @@ void main() {
 
       for (final width in [200.0, 160.0, 140.0, 120.0, 100.0, 80.0, 60.0]) {
         tester.view.physicalSize = Size(width, 600);
-        await tester.pumpWidget(harness(
-          spec: DockGroup(['a', 'b', 'c']),
-          editing: true,
-          editingPaneControls: (context, id) => const Icon(MdiIcons.tune),
-          key: ValueKey(width),
-        ));
+        await tester.pumpWidget(
+          harness(spec: DockGroup(['a', 'b', 'c']), editing: true, editingPaneControls: (context, id) => const Icon(MdiIcons.tune), key: ValueKey(width)),
+        );
         await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull, reason: 'at ${width}pt');
@@ -1532,12 +1587,12 @@ void main() {
 
     testWidgets('editing packs handle, name and action together at the leading edge', (tester) async {
       Widget withAction({required bool editing}) => harness(
-            spec: DockGroup(['a', 'b']),
-            editing: editing,
-            tabActions: {'a': (context) => const Icon(MdiIcons.tune, key: Key('action-a'))},
-            editingPaneControls: (context, id) => const Icon(MdiIcons.tune, key: Key('action-a')),
-            key: ValueKey(editing),
-          );
+        spec: DockGroup(['a', 'b']),
+        editing: editing,
+        tabActions: {'a': (context) => const Icon(MdiIcons.tune, key: Key('action-a'))},
+        editingPaneControls: (context, id) => const Icon(MdiIcons.tune, key: Key('action-a')),
+        key: ValueKey(editing),
+      );
 
       // Being READ: the name at the leading edge with the action after it.
       await tester.pumpWidget(withAction(editing: false));
@@ -1563,11 +1618,11 @@ void main() {
 
     testWidgets("a pane's controls move off its tab and into its editing band", (tester) async {
       Widget withBoth({required bool editing}) => harness(
-            spec: twoGroups(),
-            editing: editing,
-            tabActions: {'a': (context) => const Icon(MdiIcons.tune, key: Key('action-a'))},
-            editingPaneControls: (context, id) => Text('band-$id'),
-          );
+        spec: twoGroups(),
+        editing: editing,
+        tabActions: {'a': (context) => const Icon(MdiIcons.tune, key: Key('action-a'))},
+        editingPaneControls: (context, id) => Text('band-$id'),
+      );
 
       await tester.pumpWidget(withBoth(editing: false));
       expect(find.byKey(const Key('action-a')), findsOneWidget);
@@ -1614,9 +1669,7 @@ void main() {
       final snapshot = spec.toJson();
       await tester.pumpWidget(harness(spec: spec, editing: true));
 
-      final divider = find
-          .byWidgetPredicate((w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight)
-          .first;
+      final divider = find.byWidgetPredicate((w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight).first;
       await tester.drag(divider, const Offset(-100, 0));
       await tester.pumpAndSettle();
 
@@ -1671,19 +1724,13 @@ void main() {
       // And the strip on the centre line stays dead, so a drag the operator
       // thought better of still has somewhere to land.
       expect(dockNestRegionAt(const Offset(150, 150), size), isNull);
-      expect(dockSplitRegionAt(const Offset(150, 110), size), isNull,
-          reason: 'the two answer over disjoint geometry, so no drop can be both');
+      expect(dockSplitRegionAt(const Offset(150, 110), size), isNull, reason: 'the two answer over disjoint geometry, so no drop can be both');
     });
 
     testWidgets('a drop below a pane\'s centre turns its TAB into a container', (tester) async {
       DockNode? reported;
       final key = GlobalKey<DockLayoutViewState>();
-      await tester.pumpWidget(harness(
-        spec: DockGroup(['a', 'b', 'c'], selected: 2),
-        onChanged: (s) => reported = s,
-        editing: true,
-        key: key,
-      ));
+      await tester.pumpWidget(harness(spec: DockGroup(['a', 'b', 'c'], selected: 2), onChanged: (s) => reported = s, editing: true, key: key));
       final pane = tester.getRect(find.byKey(const Key('pane-c')));
 
       await dragTab(tester, 'Alpha', Offset(pane.center.dx, pane.center.dy + pane.height * 0.12));
@@ -1699,25 +1746,40 @@ void main() {
       final container = group.nested[containerId]! as DockSplit;
       expect(container.axis, Axis.vertical);
       // Dropped BELOW, so the tab that was showing stays on top of it.
-      expect(container.children.map((c) => c.collectModules()).toList(), [['c'], ['a']]);
+      expect(container.children.map((c) => c.collectModules()).toList(), [
+        ['c'],
+        ['a'],
+      ]);
       expect(group.selected, 1, reason: 'a drop that lands behind an unselected tab looks like nothing happened');
-      expect(key.currentState!.modules, ['b', 'c', 'a'],
-          reason: 'a container names no panel, so the panes inside it are what the host builds');
+      expect(key.currentState!.modules, ['b', 'c', 'a'], reason: 'a container names no panel, so the panes inside it are what the host builds');
     });
 
     testWidgets('a container down to one module hands its slot back', (tester) async {
       final key = GlobalKey<DockLayoutViewState>();
       final dropped = <String>[];
       DockNode? reported;
-      await tester.pumpWidget(harness(
-        spec: DockGroup(['b', 'n1'], nested: {
-          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
-        }, selected: 1),
-        editing: true,
-        onChanged: (s) => reported = s,
-        onModuleDeleted: dropped.add,
-        key: key,
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockGroup(
+            ['b', 'n1'],
+            nested: {
+              'n1': DockSplit(
+                Axis.vertical,
+                [
+                  DockGroup(['c']),
+                  DockGroup(['a']),
+                ],
+                [1, 1],
+              ),
+            },
+            selected: 1,
+          ),
+          editing: true,
+          onChanged: (s) => reported = s,
+          onModuleDeleted: dropped.add,
+          key: key,
+        ),
+      );
 
       expect(key.currentState!.removeModule('a'), isTrue);
       await tester.pumpAndSettle();
@@ -1734,15 +1796,27 @@ void main() {
       final key = GlobalKey<DockLayoutViewState>();
       final dropped = <String>[];
       DockNode? reported;
-      await tester.pumpWidget(harness(
-        spec: DockGroup(['b', 'n1'], nested: {
-          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
-        }),
-        editing: true,
-        onChanged: (s) => reported = s,
-        onModuleDeleted: dropped.add,
-        key: key,
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockGroup(
+            ['b', 'n1'],
+            nested: {
+              'n1': DockSplit(
+                Axis.vertical,
+                [
+                  DockGroup(['c']),
+                  DockGroup(['a']),
+                ],
+                [1, 1],
+              ),
+            },
+          ),
+          editing: true,
+          onChanged: (s) => reported = s,
+          onModuleDeleted: dropped.add,
+          key: key,
+        ),
+      );
 
       expect(key.currentState!.removeModule('n1'), isTrue);
       await tester.pumpAndSettle();
@@ -1755,9 +1829,19 @@ void main() {
     });
 
     test('containers round-trip, and a spec written before them reads unchanged', () {
-      final spec = DockGroup(['b', 'n1'], nested: {
-        'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a', 'd'])], [1, 1]),
-      });
+      final spec = DockGroup(
+        ['b', 'n1'],
+        nested: {
+          'n1': DockSplit(
+            Axis.vertical,
+            [
+              DockGroup(['c']),
+              DockGroup(['a', 'd']),
+            ],
+            [1, 1],
+          ),
+        },
+      );
       final revived = DockNode.fromJson(spec.toJson())! as DockGroup;
       expect(revived.toJson(), spec.toJson());
       expect(revived.collectModules(), ['b', 'c', 'a', 'd']);
@@ -1772,16 +1856,32 @@ void main() {
 
     testWidgets('a band drop inside a container keeps the pane it is moving', (tester) async {
       final key = GlobalKey<DockLayoutViewState>();
-      await tester.pumpWidget(harness(
-        spec: DockSplit(Axis.horizontal, [
-          DockGroup(['b']),
-          DockGroup(['n1'], nested: {
-            'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
-          }),
-        ], [1, 1]),
-        editing: true,
-        key: key,
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockSplit(
+            Axis.horizontal,
+            [
+              DockGroup(['b']),
+              DockGroup(
+                ['n1'],
+                nested: {
+                  'n1': DockSplit(
+                    Axis.vertical,
+                    [
+                      DockGroup(['c']),
+                      DockGroup(['a']),
+                    ],
+                    [1, 1],
+                  ),
+                },
+              ),
+            ],
+            [1, 1],
+          ),
+          editing: true,
+          key: key,
+        ),
+      );
       final inner = tester.getRect(find.byKey(const Key('pane-c')));
 
       // The groups inside a container draw their own bands, so this is an
@@ -1790,8 +1890,7 @@ void main() {
       // placement that quietly fails is a placement that deletes.
       await dragTab(tester, 'Bravo', Offset(inner.center.dx, inner.bottom - 8));
 
-      expect(key.currentState!.modules, unorderedEquals(['b', 'c', 'a']),
-          reason: 'wherever it ended up, no pane may go missing');
+      expect(key.currentState!.modules, unorderedEquals(['b', 'c', 'a']), reason: 'wherever it ended up, no pane may go missing');
       // The set alone is the same whether the drop landed, was silently
       // restored, or never arrived — so the SHAPE is what says which. Bravo
       // was dropped on the bottom band of the container's top pane, so it
@@ -1799,20 +1898,32 @@ void main() {
       // Bravo's own group emptied and the split around it collapsed, so the
       // container is now the whole tree — with Bravo between Charlie and
       // Alpha, which is where the bottom band of Charlie's pane put it.
-      expect(key.currentState!.spec.collectModules(), ['c', 'b', 'a'],
-          reason: 'a restore-instead-of-place regression leaves Bravo back in its own group');
+      expect(key.currentState!.spec.collectModules(), ['c', 'b', 'a'], reason: 'a restore-instead-of-place regression leaves Bravo back in its own group');
       expect(key.currentState!.spec.collectContainerIds().length, 1);
     });
 
     testWidgets('a two-pane container can be reordered from the inside', (tester) async {
       final key = GlobalKey<DockLayoutViewState>();
-      await tester.pumpWidget(harness(
-        spec: DockGroup(['b', 'n1'], nested: {
-          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
-        }, selected: 1),
-        editing: true,
-        key: key,
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockGroup(
+            ['b', 'n1'],
+            nested: {
+              'n1': DockSplit(
+                Axis.vertical,
+                [
+                  DockGroup(['c']),
+                  DockGroup(['a']),
+                ],
+                [1, 1],
+              ),
+            },
+            selected: 1,
+          ),
+          editing: true,
+          key: key,
+        ),
+      );
       final top = tester.getRect(find.byKey(const Key('pane-c')));
 
       // Two panes is what a nest BUILDS, so this is the arrangement an
@@ -1823,29 +1934,39 @@ void main() {
       await dragTab(tester, 'Alpha', Offset(top.center.dx, top.top + 8));
 
       final container = (key.currentState!.spec as DockGroup).nested['n1']!;
-      expect(container.collectModules(), ['a', 'c'],
-          reason: 'dropped on the TOP band, so Alpha is now above Charlie');
+      expect(container.collectModules(), ['a', 'c'], reason: 'dropped on the TOP band, so Alpha is now above Charlie');
       expect(container, isA<DockSplit>(), reason: 'still stacked, not tabbed');
-      expect(key.currentState!.spec.collectContainerIds(), ['n1'],
-          reason: 'and it is the same container, not a rebuilt one');
+      expect(key.currentState!.spec.collectContainerIds(), ['n1'], reason: 'and it is the same container, not a rebuilt one');
     });
 
     testWidgets("a container's two panes can be tabbed together", (tester) async {
       final key = GlobalKey<DockLayoutViewState>();
-      await tester.pumpWidget(harness(
-        spec: DockGroup(['b', 'n1'], nested: {
-          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
-        }, selected: 1),
-        editing: true,
-        key: key,
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockGroup(
+            ['b', 'n1'],
+            nested: {
+              'n1': DockSplit(
+                Axis.vertical,
+                [
+                  DockGroup(['c']),
+                  DockGroup(['a']),
+                ],
+                [1, 1],
+              ),
+            },
+            selected: 1,
+          ),
+          editing: true,
+          key: key,
+        ),
+      );
 
       // The same collapse, reached through the tab strip instead of a band.
       await dragTab(tester, 'Alpha', tester.getCenter(find.text('Charlie')));
 
       final container = (key.currentState!.spec as DockGroup).nested['n1']!;
-      expect(container.collectModules(), ['a', 'c'],
-          reason: 'Alpha took the position it was dropped at, ahead of Charlie');
+      expect(container.collectModules(), ['a', 'c'], reason: 'Alpha took the position it was dropped at, ahead of Charlie');
       expect(container, isA<DockGroup>(), reason: 'one group of two tabs, not a split any more');
       // A container holding ONE group of several tabs stays a container: that
       // is a tab set the operator built, and folding it into the outer strip
@@ -1856,15 +1977,28 @@ void main() {
     testWidgets('a drop onto something inside what is being dragged changes nothing', (tester) async {
       final key = GlobalKey<DockLayoutViewState>();
       DockNode? reported;
-      await tester.pumpWidget(harness(
-        spec: DockGroup(['b', 'n1'], nested: {
-          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
-        }, selected: 1),
-        titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'n1': 'More'},
-        onChanged: (s) => reported = s,
-        editing: true,
-        key: key,
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockGroup(
+            ['b', 'n1'],
+            nested: {
+              'n1': DockSplit(
+                Axis.vertical,
+                [
+                  DockGroup(['c']),
+                  DockGroup(['a']),
+                ],
+                [1, 1],
+              ),
+            },
+            selected: 1,
+          ),
+          titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'n1': 'More'},
+          onChanged: (s) => reported = s,
+          editing: true,
+          key: key,
+        ),
+      );
       final inner = tester.getRect(find.byKey(const Key('pane-c')));
 
       // A container's contents are on screen while its tab shows, and that tab
@@ -1885,23 +2019,39 @@ void main() {
 
     testWidgets('an abandoned drop leaves the selected tabs where they were', (tester) async {
       final key = GlobalKey<DockLayoutViewState>();
-      await tester.pumpWidget(harness(
-        spec: DockSplit(Axis.horizontal, [
-          DockGroup(['b', 'c'], selected: 1),
-          DockGroup(['n1'], nested: {
-            'n1': DockSplit(Axis.vertical, [DockGroup(['a']), DockGroup(['d'])], [1, 1]),
-          }),
-        ], [1, 1]),
-        children: const {
-          'a': SizedBox.expand(key: Key('pane-a')),
-          'b': SizedBox.expand(key: Key('pane-b')),
-          'c': SizedBox.expand(key: Key('pane-c')),
-          'd': SizedBox.expand(key: Key('pane-d')),
-        },
-        titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'd': 'Delta', 'n1': 'More'},
-        editing: true,
-        key: key,
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockSplit(
+            Axis.horizontal,
+            [
+              DockGroup(['b', 'c'], selected: 1),
+              DockGroup(
+                ['n1'],
+                nested: {
+                  'n1': DockSplit(
+                    Axis.vertical,
+                    [
+                      DockGroup(['a']),
+                      DockGroup(['d']),
+                    ],
+                    [1, 1],
+                  ),
+                },
+              ),
+            ],
+            [1, 1],
+          ),
+          children: const {
+            'a': SizedBox.expand(key: Key('pane-a')),
+            'b': SizedBox.expand(key: Key('pane-b')),
+            'c': SizedBox.expand(key: Key('pane-c')),
+            'd': SizedBox.expand(key: Key('pane-d')),
+          },
+          titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'd': 'Delta', 'n1': 'More'},
+          editing: true,
+          key: key,
+        ),
+      );
       final inner = tester.getRect(find.byKey(const Key('pane-a')));
 
       // The restore point is a DEFINITION, and a definition carries no
@@ -1910,20 +2060,31 @@ void main() {
       // near the drop.
       await dragTab(tester, 'Delta', Offset(inner.center.dx, inner.center.dy + inner.height * 0.12));
 
-      expect(DockState.of(key.currentState!.spec).selected, contains('c'),
-          reason: 'Charlie was on top before the drop and nothing the operator did moved it');
+      expect(DockState.of(key.currentState!.spec).selected, contains('c'), reason: 'Charlie was on top before the drop and nothing the operator did moved it');
     });
 
     testWidgets('a pin reaches inside a container', (tester) async {
       final key = GlobalKey<DockLayoutViewState>();
-      await tester.pumpWidget(harness(
-        spec: DockGroup(['b', 'n1'], nested: {
-          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
-        }),
-        editing: true,
-        pinnedModuleIds: const {'a'},
-        key: key,
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockGroup(
+            ['b', 'n1'],
+            nested: {
+              'n1': DockSplit(
+                Axis.vertical,
+                [
+                  DockGroup(['c']),
+                  DockGroup(['a']),
+                ],
+                [1, 1],
+              ),
+            },
+          ),
+          editing: true,
+          pinnedModuleIds: const {'a'},
+          key: key,
+        ),
+      );
 
       // Nesting a pinned pane puts it behind a tab that is not itself pinned.
       // A guard reading only the dragged id would let that tab carry it to the
@@ -1933,17 +2094,33 @@ void main() {
     });
 
     testWidgets('no delete target for a drag the dock would refuse', (tester) async {
-      await tester.pumpWidget(harness(
-        spec: DockSplit(Axis.horizontal, [
-          DockGroup(['b']),
-          DockGroup(['nested#1'], nested: {
-            'nested#1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
-          }),
-        ], [1, 1]),
-        titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'nested#1': 'More'},
-        pinnedModuleIds: const {'a'},
-        editing: true,
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockSplit(
+            Axis.horizontal,
+            [
+              DockGroup(['b']),
+              DockGroup(
+                ['nested#1'],
+                nested: {
+                  'nested#1': DockSplit(
+                    Axis.vertical,
+                    [
+                      DockGroup(['c']),
+                      DockGroup(['a']),
+                    ],
+                    [1, 1],
+                  ),
+                },
+              ),
+            ],
+            [1, 1],
+          ),
+          titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'nested#1': 'More'},
+          pinnedModuleIds: const {'a'},
+          editing: true,
+        ),
+      );
 
       // A pinned tab is never draggable, but the container tab it ends up
       // behind IS — so this is the drag that reaches a target the drop would
@@ -1977,12 +2154,25 @@ void main() {
           return SizedBox.expand(key: Key('pane-$id'));
         },
       );
-      await tester.pumpWidget(harness(
-        spec: DockGroup(['b', 'n1'], nested: {
-          'n1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
-        }, selected: 0),
-        children: {'a': probe('a'), 'b': probe('b'), 'c': probe('c')},
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockGroup(
+            ['b', 'n1'],
+            nested: {
+              'n1': DockSplit(
+                Axis.vertical,
+                [
+                  DockGroup(['c']),
+                  DockGroup(['a']),
+                ],
+                [1, 1],
+              ),
+            },
+            selected: 0,
+          ),
+          children: {'a': probe('a'), 'b': probe('b'), 'c': probe('c')},
+        ),
+      );
 
       expect(visible['b'], isTrue, reason: 'the showing tab');
       expect(visible['c'], isFalse, reason: 'on top of a container whose own tab is not showing');
@@ -1991,23 +2181,39 @@ void main() {
 
     testWidgets('nesting a container never mints its own id twice', (tester) async {
       final key = GlobalKey<DockLayoutViewState>();
-      await tester.pumpWidget(harness(
-        spec: DockSplit(Axis.horizontal, [
-          DockGroup(['b', 'nested#1'], nested: {
-            'nested#1': DockSplit(Axis.vertical, [DockGroup(['c']), DockGroup(['a'])], [1, 1]),
-          }),
-          DockGroup(['d']),
-        ], [1, 1]),
-        children: const {
-          'a': SizedBox.expand(key: Key('pane-a')),
-          'b': SizedBox.expand(key: Key('pane-b')),
-          'c': SizedBox.expand(key: Key('pane-c')),
-          'd': SizedBox.expand(key: Key('pane-d')),
-        },
-        titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'd': 'Delta', 'nested#1': 'More'},
-        editing: true,
-        key: key,
-      ));
+      await tester.pumpWidget(
+        harness(
+          spec: DockSplit(
+            Axis.horizontal,
+            [
+              DockGroup(
+                ['b', 'nested#1'],
+                nested: {
+                  'nested#1': DockSplit(
+                    Axis.vertical,
+                    [
+                      DockGroup(['c']),
+                      DockGroup(['a']),
+                    ],
+                    [1, 1],
+                  ),
+                },
+              ),
+              DockGroup(['d']),
+            ],
+            [1, 1],
+          ),
+          children: const {
+            'a': SizedBox.expand(key: Key('pane-a')),
+            'b': SizedBox.expand(key: Key('pane-b')),
+            'c': SizedBox.expand(key: Key('pane-c')),
+            'd': SizedBox.expand(key: Key('pane-d')),
+          },
+          titles: const {'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'd': 'Delta', 'nested#1': 'More'},
+          editing: true,
+          key: key,
+        ),
+      );
       final delta = tester.getRect(find.byKey(const Key('pane-d')));
 
       // The container is DETACHED before the new one is named, so its own id
@@ -2027,13 +2233,18 @@ void main() {
       // twice — and a group with a repeated id hands one widget to two tabs,
       // where `indexOf` always finds the first, so selection and every drop
       // path act on the wrong one.
-      final revived = DockNode.fromJson({
-        'type': 'group',
-        'modules': ['a', 'nested#1'],
-        'nested': {
-          'nested#1': {'type': 'group', 'modules': ['a']},
-        },
-      })! as DockGroup;
+      final revived =
+          DockNode.fromJson({
+                'type': 'group',
+                'modules': ['a', 'nested#1'],
+                'nested': {
+                  'nested#1': {
+                    'type': 'group',
+                    'modules': ['a'],
+                  },
+                },
+              })!
+              as DockGroup;
       expect(revived.modules, ['a']);
       expect(revived.nested, isEmpty);
     });
@@ -2042,10 +2253,12 @@ void main() {
       // A hand-edited or truncated spec. The slot would otherwise render as a
       // missing panel nobody could explain — there is no panel by that name,
       // and never was.
-      final revived = DockNode.fromJson({
-        'type': 'group',
-        'modules': ['a', 'nested#1'],
-      })! as DockGroup;
+      final revived =
+          DockNode.fromJson({
+                'type': 'group',
+                'modules': ['a', 'nested#1'],
+              })!
+              as DockGroup;
       expect(revived.modules, ['a']);
     });
   });
@@ -2093,11 +2306,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final bar = tester.getRect(find.byType(SolidPaneDivider));
-    await tester.timedDragFrom(
-      Offset(bar.left - paneDividerTouchSlop() + 1, bar.center.dy),
-      const Offset(-100, 0),
-      const Duration(milliseconds: 100),
-    );
+    await tester.timedDragFrom(Offset(bar.left - paneDividerTouchSlop() + 1, bar.center.dy), const Offset(-100, 0), const Duration(milliseconds: 100));
     await tester.pumpAndSettle();
 
     expect(spec.weights[0], lessThan(spec.weights[1]), reason: 'the press short of the bar still grabbed it');
@@ -2112,9 +2321,7 @@ void main() {
     // binding's default target platform is) a transparent, wider grab strip
     // is stacked over it, carrying the same cursor and the same callbacks.
     // Dragging the bar's centre goes through that strip, which is the point.
-    final divider = find
-        .byWidgetPredicate((w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight)
-        .first;
+    final divider = find.byWidgetPredicate((w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight).first;
     await tester.drag(divider, const Offset(-100, 0));
     await tester.pumpAndSettle();
     expect(spec.weights[0], lessThan(spec.weights[1]));
@@ -2156,10 +2363,14 @@ void main() {
     // fingertip target is unchanged. Measuring the rendered bar (rather than
     // the constant) is what catches an extent that widens for the divider
     // while the panes are still laid out against the narrow one.
-    final spec = DockSplit(Axis.horizontal, [
-      DockGroup(['a']),
-      DockGroup(['b']),
-    ], [1, 1]);
+    final spec = DockSplit(
+      Axis.horizontal,
+      [
+        DockGroup(['a']),
+        DockGroup(['b']),
+      ],
+      [1, 1],
+    );
     await tester.pumpWidget(harness(spec: spec));
     await tester.pumpAndSettle();
     final viewing = tester.getRect(find.byType(SolidPaneDivider));
@@ -2194,11 +2405,15 @@ void main() {
 
     await tester.pumpWidget(
       harness(
-        spec: DockSplit(Axis.horizontal, [
-          DockGroup(['a']),
-          DockGroup(['b']),
-          DockGroup(['c']),
-        ], [1, 2, 3]),
+        spec: DockSplit(
+          Axis.horizontal,
+          [
+            DockGroup(['a']),
+            DockGroup(['b']),
+            DockGroup(['c']),
+          ],
+          [1, 2, 3],
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -2244,8 +2459,14 @@ void main() {
                 'type': 'split',
                 'axis': 'h',
                 'children': [
-                  {'type': 'group', 'modules': ['a']},
-                  {'type': 'group', 'modules': ['b']},
+                  {
+                    'type': 'group',
+                    'modules': ['a'],
+                  },
+                  {
+                    'type': 'group',
+                    'modules': ['b'],
+                  },
                 ],
                 'weights': [1, 0.000001],
               })!,
@@ -2280,9 +2501,6 @@ class _CounterState extends State<_Counter> {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: () => setState(() => _count++),
-      child: Text('${widget.label}: $_count'),
-    );
+    return TextButton(onPressed: () => setState(() => _count++), child: Text('${widget.label}: $_count'));
   }
 }

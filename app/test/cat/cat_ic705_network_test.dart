@@ -21,8 +21,7 @@ import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/transports/icom_network_protocol.dart';
 import 'package:ham2k_logger/services/cat/transports/icom_network_transport.dart';
-import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.dart'
-    show IcomLoginTimeout, IcomLoginRejected, IcomCredentialsMissing;
+import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.dart' show IcomLoginTimeout, IcomLoginRejected, IcomCredentialsMissing;
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -57,10 +56,16 @@ void main() {
 
     test('the audio fields are populated, because zeroes are rejected', () {
       final packet = buildRequestStreams(
-        local: 1, remote: 2, innerSeq: 0,
-        authId: List.filled(6, 0), a8ReplyId: List.filled(16, 0),
-        username: 'op', ourSerialPort: 1000, ourAudioPort: 1001,
-        audioSampleRate: icomAudioSampleRate, txBufferMs: icomTxBufferMs,
+        local: 1,
+        remote: 2,
+        innerSeq: 0,
+        authId: List.filled(6, 0),
+        a8ReplyId: List.filled(16, 0),
+        username: 'op',
+        ourSerialPort: 1000,
+        ourAudioPort: 1001,
+        audioSampleRate: icomAudioSampleRate,
+        txBufferMs: icomTxBufferMs,
       );
       // 48000 = 0xBB80. Zeroed, the radio answers 0x50 with 0xffff.
       expect(packet.sublist(116, 120), [0, 0, 0xbb, 0x80]);
@@ -80,8 +85,7 @@ void main() {
       // point: a test that recomputed the mask would pass against the bug.
       for (final counter in [0, 1, 255, 256, 65534, 65535, 65536, 65537, 131071, 131072]) {
         final stamped = icomStampSequence(List<int>.filled(16, 0), counter);
-        expect(icomReadSequence(stamped.packet), stamped.key,
-            reason: 'counter $counter: the key must equal what the radio quotes back');
+        expect(icomReadSequence(stamped.packet), stamped.key, reason: 'counter $counter: the key must equal what the radio quotes back');
         expect(stamped.key, lessThanOrEqualTo(0xFFFF));
       }
 
@@ -94,8 +98,7 @@ void main() {
 
       // Short input is rejected rather than throwing a RangeError out of a
       // UDP receive handler: these are public helpers parsing network input.
-      expect(icomReadSequence(List<int>.filled(4, 0)), -1,
-          reason: 'a truncated datagram must be ignorable, not fatal');
+      expect(icomReadSequence(List<int>.filled(4, 0)), -1, reason: 'a truncated datagram must be ignorable, not fatal');
       expect(() => icomStampSequence(List<int>.filled(4, 0), 1), throwsArgumentError);
 
       // And it still stamps the bytes the radio actually reads.
@@ -117,18 +120,28 @@ void main() {
       }
 
       test('a pair is inclusive at both ends', () {
-        expect(icomRetransmitRange(request([
-          [7, 10]
-        ]), limit: 128), [7, 8, 9, 10]);
+        expect(
+          icomRetransmitRange(
+            request([
+              [7, 10],
+            ]),
+            limit: 128,
+          ),
+          [7, 8, 9, 10],
+        );
       });
 
       test('several pairs are all asked for', () {
         expect(
-            icomRetransmitRange(request([
+          icomRetransmitRange(
+            request([
               [1, 2],
-              [9, 9]
-            ]), limit: 128),
-            [1, 2, 9]);
+              [9, 9],
+            ]),
+            limit: 128,
+          ),
+          [1, 2, 9],
+        );
       });
 
       test('a reversed pair contributes nothing', () {
@@ -136,16 +149,20 @@ void main() {
         // the start. Worth pinning anyway: rewriting the loop with `!=` or a
         // computed count would turn (5, 3) into a run past 65535.
         expect(
-            icomRetransmitRange(request([
+          icomRetransmitRange(
+            request([
               [5, 3],
-              [4, 4]
-            ]), limit: 128),
-            [4]);
+              [4, 4],
+            ]),
+            limit: 128,
+          ),
+          [4],
+        );
       });
 
       test('a trailing partial pair is ignored, not read past the end', () {
         final b = request([
-          [1, 1]
+          [1, 1],
         ])..addAll([0x02, 0x00]); // two bytes: half a pair
         expect(icomRetransmitRange(b, limit: 128), [1]);
       });
@@ -167,10 +184,13 @@ void main() {
       test('the bound counts across pairs, not within each one', () {
         // Two pairs of 100 each are 200 sequence numbers; a per-pair bound
         // would wave both through.
-        final asked = icomRetransmitRange(request([
-          [0, 99],
-          [200, 299]
-        ]), limit: 128);
+        final asked = icomRetransmitRange(
+          request([
+            [0, 99],
+            [200, 299],
+          ]),
+          limit: 128,
+        );
         expect(asked.length, 128);
       });
     });
@@ -189,8 +209,10 @@ void main() {
         b[20] = 0x02;
         b[48] = b[49] = b[50] = m;
         b[64] = b64;
-        b[66] = 0xc3; b[67] = 0x52;
-        b[70] = 0xc3; b[71] = 0x53;
+        b[66] = 0xc3;
+        b[67] = 0x52;
+        b[70] = 0xc3;
+        b[71] = 0x53;
         return b;
       }
 
@@ -218,8 +240,10 @@ void main() {
         b[20] = 0x02;
         b[48] = b[49] = b[50] = m;
         b[64] = b64;
-        b[66] = 0xc3; b[67] = 0x52; // the radio's serial port echo, 50002
-        b[70] = 0xc3; b[71] = 0x53; // and audio, 50003
+        b[66] = 0xc3;
+        b[67] = 0x52; // the radio's serial port echo, 50002
+        b[70] = 0xc3;
+        b[71] = 0x53; // and audio, 50003
         return b;
       }
 
@@ -230,28 +254,31 @@ void main() {
 
       // THE BUG: an auth failure has zeros at the port echo, so any guard
       // keyed on 0xffff there reports success. This must not.
-      final authFail = answer(m: 0xff)..[66] = 0..[67] = 0..[70] = 0..[71] = 0;
-      expect(readStreamAnswer(authFail), isNot(IcomStreamAnswer.accepted),
-          reason: 'zeros at the port echo must not read as acceptance');
+      final authFail = answer(m: 0xff)
+        ..[66] = 0
+        ..[67] = 0
+        ..[70] = 0
+        ..[71] = 0;
+      expect(readStreamAnswer(authFail), isNot(IcomStreamAnswer.accepted), reason: 'zeros at the port echo must not read as acceptance');
 
       // An answer we do not recognise is a failure, never optimism.
       expect(readStreamAnswer(answer(m: 0x7f)), IcomStreamAnswer.unknown);
       expect(readStreamAnswer(answer(b64: 0x99)), IcomStreamAnswer.unknown);
-      expect(readStreamAnswer(List<int>.filled(40, 0)), IcomStreamAnswer.unknown,
-          reason: 'a short packet must not crash or be accepted');
+      expect(readStreamAnswer(List<int>.filled(40, 0)), IcomStreamAnswer.unknown, reason: 'a short packet must not crash or be accepted');
 
       // The port echo is corroboration: a header that says "accepted" while
       // the serial echo is zero or 0xffff is not something we understand, and
       // must not be rounded up to success. Replacing the old 0xffff hunt with
       // the 48..50 discriminator briefly dropped this check entirely.
-      final noEcho = answer()..[66] = 0..[67] = 0;
-      expect(readStreamAnswer(noEcho), IcomStreamAnswer.unknown,
-          reason: 'accepted-looking header with no serial port echoed back');
-      final refusedEcho = answer()..[66] = 0xff..[67] = 0xff;
-      expect(readStreamAnswer(refusedEcho), IcomStreamAnswer.unknown,
-          reason: '0xffff in the serial echo is not an acceptance');
+      final noEcho = answer()
+        ..[66] = 0
+        ..[67] = 0;
+      expect(readStreamAnswer(noEcho), IcomStreamAnswer.unknown, reason: 'accepted-looking header with no serial port echoed back');
+      final refusedEcho = answer()
+        ..[66] = 0xff
+        ..[67] = 0xff;
+      expect(readStreamAnswer(refusedEcho), IcomStreamAnswer.unknown, reason: '0xffff in the serial echo is not an acceptance');
     });
-
 
     test('CI-V datagram and payload lengths use their full width', () {
       // The datagram length is LE32 and the CI-V length LE16; both were written
@@ -282,10 +309,10 @@ void main() {
       // after 3s, and reported as "the radio may still be holding a previous
       // session". A race, presenting as a stateful radio bug.
       List<int> loginAnswer(int seqLo, int seqHi) => [
-            0x60, 0x00, 0x00, 0x00, 0x00, 0x00, seqLo, seqHi, //
-            0xe3, 0x83, 0xf0, 0xa4, 0xcc, 0xee, 0x00, 0x00, //
-            ...List.filled(80, 0),
-          ];
+        0x60, 0x00, 0x00, 0x00, 0x00, 0x00, seqLo, seqHi, //
+        0xe3, 0x83, 0xf0, 0xa4, 0xcc, 0xee, 0x00, 0x00, //
+        ...List.filled(80, 0),
+      ];
 
       // isLoginAnswer is the predicate login() itself passes to _expect. Do
       // NOT restate the condition here: the first version of this test did,
@@ -390,7 +417,10 @@ void main() {
       // Fields only: the form also carries a divider and the troubleshooting
       // note, which have no key and ask the operator for nothing.
       expect(
-        [for (final e in elements) if (e['type'] == 'field') e['key']],
+        [
+          for (final e in elements)
+            if (e['type'] == 'field') e['key'],
+        ],
         ['host', 'username', 'password', telemetryIntervalConfigKey],
       );
       final password = elements.firstWhere((e) => e['key'] == 'password');
@@ -432,8 +462,11 @@ void main() {
       // copyWith-ing the old one, and that is what keeps a note about a
       // connection that is gone off the row. Nothing else clears it.
       const carried = EquipmentState(status: EquipmentStatus.connected, diagnostic: 'IF mode offset 21 (learned)');
-      expect(carried.copyWith(stale: true).diagnostic, 'IF mode offset 21 (learned)',
-          reason: 'a stale link is the same connection, still saying the same thing');
+      expect(
+        carried.copyWith(stale: true).diagnostic,
+        'IF mode offset 21 (learned)',
+        reason: 'a stale link is the same connection, still saying the same thing',
+      );
       expect(const EquipmentState(status: EquipmentStatus.disconnected).diagnostic, isNull);
     });
 
@@ -467,11 +500,7 @@ void main() {
     tearDown(() => cat.dispose());
 
     test('the password goes to the keychain and out of the stored config', () async {
-      final node = await cat.addNode(typeKey: 'ic705-network', config: {
-        'host': '10.0.0.9',
-        'username': 'op',
-        'password': 'hunter2',
-      });
+      final node = await cat.addNode(typeKey: 'ic705-network', config: {'host': '10.0.0.9', 'username': 'op', 'password': 'hunter2'});
 
       // What the editor collected minus the secret.
       expect(cat.nodes.single.config['host'], '10.0.0.9');
@@ -494,17 +523,17 @@ void main() {
       test('a password submitted on the serial pairing never reaches the blob', () async {
         // Exactly what the editor produces when the operator types the radio
         // password and then switches Connection to USB serial before saving.
-        final node = await cat.addNode(typeKey: 'ic705-serial', config: {
-          'port': '/dev/cu.usbserial',
-          'civAddress': 'A4',
-          'username': 'op',
-          'password': 'hunter2',
-        });
+        final node = await cat.addNode(
+          typeKey: 'ic705-serial',
+          config: {'port': '/dev/cu.usbserial', 'civAddress': 'A4', 'username': 'op', 'password': 'hunter2'},
+        );
 
-        expect(cat.nodes.single.config.containsKey('password'), isFalse,
-            reason: 'SerialTransport declares no secretFields, but the value is still a credential');
-        expect(settings.stationEquipment.toString(), isNot(contains('hunter2')),
-            reason: 'a radio password in the plain prefs JSON');
+        expect(
+          cat.nodes.single.config.containsKey('password'),
+          isFalse,
+          reason: 'SerialTransport declares no secretFields, but the value is still a credential',
+        );
+        expect(settings.stationEquipment.toString(), isNot(contains('hunter2')), reason: 'a radio password in the plain prefs JSON');
         // Not dropped either — switching back to WiFi has to find it.
         expect(await settings.equipmentSecret(node.uuid, 'password'), 'hunter2');
         // And what the pairing genuinely needs is untouched.
@@ -512,11 +541,7 @@ void main() {
       });
 
       test('the placeholder still shows for a secret the current pairing does not declare', () async {
-        final node = await cat.addNode(typeKey: 'ic705-network', config: {
-          'host': '10.0.0.9',
-          'username': 'op',
-          'password': 'hunter2',
-        });
+        final node = await cat.addNode(typeKey: 'ic705-network', config: {'host': '10.0.0.9', 'username': 'op', 'password': 'hunter2'});
         // The operator moves the same radio onto its USB cable.
         await cat.updateNode(cat.nodes.single.copyWith(typeKey: 'ic705-serial'));
 
@@ -527,26 +552,21 @@ void main() {
       });
 
       test('removing a re-typed node still takes its password with it', () async {
-        final node = await cat.addNode(typeKey: 'ic705-network', config: {
-          'host': '10.0.0.9',
-          'username': 'op',
-          'password': 'hunter2',
-        });
+        final node = await cat.addNode(typeKey: 'ic705-network', config: {'host': '10.0.0.9', 'username': 'op', 'password': 'hunter2'});
         await cat.updateNode(cat.nodes.single.copyWith(typeKey: 'ic705-serial'));
 
         await cat.removeNode(node.uuid);
 
-        expect(await settings.equipmentSecret(node.uuid, 'password'), isNull,
-            reason: 'the node is gone and nothing left can name the field that held its password');
+        expect(
+          await settings.equipmentSecret(node.uuid, 'password'),
+          isNull,
+          reason: 'the node is gone and nothing left can name the field that held its password',
+        );
       });
     });
 
     test('the editor can tell a password exists without being given it', () async {
-      final node = await cat.addNode(typeKey: 'ic705-network', config: {
-        'host': '10.0.0.9',
-        'username': 'op',
-        'password': 'hunter2',
-      });
+      final node = await cat.addNode(typeKey: 'ic705-network', config: {'host': '10.0.0.9', 'username': 'op', 'password': 'hunter2'});
 
       // The editor renders a placeholder from THIS, so it must report which
       // fields are populated and nothing else. Returning the value — even to
@@ -559,10 +579,7 @@ void main() {
 
       // A node with no secret stored reports nothing, so the Add flow and a
       // never-configured radio show a plain empty field.
-      final bare = await cat.addNode(typeKey: 'ic705-network', config: {
-        'host': '10.0.0.11',
-        'username': 'op',
-      });
+      final bare = await cat.addNode(typeKey: 'ic705-network', config: {'host': '10.0.0.11', 'username': 'op'});
       expect(await cat.storedSecretFields(bare.uuid), isEmpty);
 
       // And a type with no secrets at all never reports one.
@@ -584,31 +601,19 @@ void main() {
     // bullets. It was removed rather than left as false assurance.
 
     test('saving the editor without retyping the password keeps it', () async {
-      final node = await cat.addNode(typeKey: 'ic705-network', config: {
-        'host': '10.0.0.9',
-        'username': 'op',
-        'password': 'hunter2',
-      });
+      final node = await cat.addNode(typeKey: 'ic705-network', config: {'host': '10.0.0.9', 'username': 'op', 'password': 'hunter2'});
 
       // The editor shows secrets blank; an empty value means "unchanged",
       // not "clear it" — otherwise every unrelated edit silently unpairs
       // the radio.
-      await cat.updateNode(cat.nodes.single.copyWith(config: {
-        'host': '10.0.0.10',
-        'username': 'op',
-        'password': '',
-      }));
+      await cat.updateNode(cat.nodes.single.copyWith(config: {'host': '10.0.0.10', 'username': 'op', 'password': ''}));
 
       expect(cat.nodes.single.config['host'], '10.0.0.10');
       expect(await settings.equipmentSecret(node.uuid, 'password'), 'hunter2');
     });
 
     test('removing the node takes its password with it', () async {
-      final node = await cat.addNode(typeKey: 'ic705-network', config: {
-        'host': '10.0.0.9',
-        'username': 'op',
-        'password': 'hunter2',
-      });
+      final node = await cat.addNode(typeKey: 'ic705-network', config: {'host': '10.0.0.9', 'username': 'op', 'password': 'hunter2'});
       await cat.removeNode(node.uuid);
 
       // The keychain entry outlives the prefs blob unless it is deleted.
@@ -634,11 +639,7 @@ void main() {
     addTearDown(cat.dispose);
 
     await expectLater(
-      cat.addNode(typeKey: 'ic705-network', config: {
-        'host': '10.0.0.9',
-        'username': 'op',
-        'password': 'hunter2',
-      }),
+      cat.addNode(typeKey: 'ic705-network', config: {'host': '10.0.0.9', 'username': 'op', 'password': 'hunter2'}),
       throwsA(isA<EquipmentSecretNotStored>()),
     );
 
@@ -661,9 +662,13 @@ void main() {
     // apart from a busy radio. Confirmed on hardware: a wrong password is
     // refused explicitly. So the copy now rules the password OUT instead of
     // leading with it, and this asserts that it says so.
-    expect(text, contains('refused explicitly'),
-        reason: 'a wrong password is confirmed to produce a refusal, not silence, so the '
-            'operator should not be sent to re-check it when they see a timeout');
+    expect(
+      text,
+      contains('refused explicitly'),
+      reason:
+          'a wrong password is confirmed to produce a refusal, not silence, so the '
+          'operator should not be sent to re-check it when they see a timeout',
+    );
 
     // Speculative advice that was built on a bug that was ours. If any of it
     // comes back, this fails.
@@ -734,10 +739,7 @@ void main() {
 
     test('a session built from it addresses the radio as 0xE1', () {
       final sink = _CountingSink();
-      final session = const IcomCivDriver().createSession(
-        sink,
-        type.driverConfig({'host': '10.0.0.9', 'username': 'op'}),
-      ) as IcomCivSession;
+      final session = const IcomCivDriver().createSession(sink, type.driverConfig({'host': '10.0.0.9', 'username': 'op'})) as IcomCivSession;
       expect(session.controllerAddress, 0xE1);
 
       // Which is what ends up in the `from` byte on the wire.

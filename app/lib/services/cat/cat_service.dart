@@ -152,7 +152,6 @@ String uniqueEquipmentName(String base, Iterable<String> taken) {
   return '$base $n';
 }
 
-
 class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStation {
   final SettingsService _settings;
   final EquipmentRegistry registry;
@@ -265,25 +264,28 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// not ask again.
   final Set<String> _provenThisSession = {};
 
-  CatService(this._settings,
-      {EquipmentRegistry? registry,
-      this._radio,
-      this._onTrack,
-      this.reconnectDelay = _defaultReconnectDelay,
-      this.now = realNowUtc,
-      this.idleRetryFirst = _idleRetryFirst,
-      this.staleAfter = catStaleAfter})
-      : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
-        registry = registry ?? EquipmentRegistry() {
+  CatService(
+    this._settings, {
+    EquipmentRegistry? registry,
+    this._radio,
+    this._onTrack,
+    this.reconnectDelay = _defaultReconnectDelay,
+    this.now = realNowUtc,
+    this.idleRetryFirst = _idleRetryFirst,
+    this.staleAfter = catStaleAfter,
+  }) : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
+       registry = registry ?? EquipmentRegistry() {
     _load();
     // The meter calibration tables (drivers/info/), read once. Not awaited
     // by anything: a session asks for its table each time it converts a
     // reading, so one built before this lands simply starts converting when
     // it does — and the panel is told, so a radio's meter slots appear
     // rather than waiting for the next notification of their own.
-    unawaited(MeterCalibrations.instance.load().then((_) {
-      if (!_disposed) notifyListeners();
-    }));
+    unawaited(
+      MeterCalibrations.instance.load().then((_) {
+        if (!_disposed) notifyListeners();
+      }),
+    );
     _lastSeenVfoPower = _radio?.vfoA.power;
     _radio?.addListener(_onVfoChanged);
   }
@@ -306,13 +308,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     if (track == null) return;
     final type = registry.typeFor(node.typeKey);
     final name = node.name.isNotEmpty ? node.name : (type?.driver.name ?? node.typeKey);
-    track(event, {
-      'radio': node.typeKey,
-      'transport': type?.transportKey,
-      'driver': type?.driver.key,
-      'name': _trackedName(name),
-      ...extra,
-    });
+    track(event, {'radio': node.typeKey, 'transport': type?.transportKey, 'driver': type?.driver.key, 'name': _trackedName(name), ...extra});
   }
 
   /// The name field has no length limit in the editor, unlike every other
@@ -322,8 +318,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// operators see everywhere, not a telemetry one.
   static const _maxTrackedNameLength = 60;
 
-  static String _trackedName(String name) =>
-      name.length <= _maxTrackedNameLength ? name : name.substring(0, _maxTrackedNameLength);
+  static String _trackedName(String name) => name.length <= _maxTrackedNameLength ? name : name.substring(0, _maxTrackedNameLength);
 
   /// A bounded classification, never the exception's text: `'$e'` routinely
   /// carries the port path or host that failed. Matched on the type NAME for
@@ -374,8 +369,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// The baud rate a failed serial attempt was using — deliberately the ONE
   /// config value that goes out. A mismatch is the classic cause of a silent
   /// port, the set of rates is small and fixed, and it identifies nobody.
-  Map<String, Object?> _baudExtra(Map<String, dynamic> config) =>
-      config['baudRate'] == null ? const {} : {'baud': config['baudRate']};
+  Map<String, Object?> _baudExtra(Map<String, dynamic> config) => config['baudRate'] == null ? const {} : {'baud': config['baudRate']};
 
   /// First failure per node per session only — see [_trackedFailed]. Not
   /// re-armed by a later success on purpose: a flapping rig would otherwise
@@ -399,20 +393,16 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// prunes the stored value: it matches nothing, costs one string, and a
   /// launch is the wrong moment to start rewriting preferences to tidy up.
   List<EquipmentNode> get autoConnectHeldNodes => [
-        for (final uuid in _autoConnectHeld)
-          if (_autoConnectTargets.contains(uuid))
-            ?_nodes[uuid],
-      ];
+    for (final uuid in _autoConnectHeld)
+      if (_autoConnectTargets.contains(uuid)) ?_nodes[uuid],
+  ];
 
   /// The nodes an automatic reconnect aims at: radio1, and the key in use when
   /// it is a device of its own. Both are what the app depends on, and neither
   /// should wait for a button.
   Set<String> get _autoConnectTargets {
     final keyer = designatedFor(kCategoryKey);
-    return {
-      ?_localRadio1,
-      if (keyer != null && _isDesignatedKeyerDevice(keyer)) keyer,
-    };
+    return {?_localRadio1, if (keyer != null && _isDesignatedKeyerDevice(keyer)) keyer};
   }
 
   @override
@@ -452,9 +442,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// Everything reaching for a runtime, a session or an [EquipmentNode]
   /// wants this; [radio1] is the role itself.
   String? get _localRadio1 => switch (_radio1) {
-        LocalRadio(:final uuid) => uuid,
-        _ => null,
-      };
+    LocalRadio(:final uuid) => uuid,
+    _ => null,
+  };
 
   /// Whether [uuid] is the local node filling the role — a peer pick is no
   /// node of this station's, so it answers false for every uuid.
@@ -471,9 +461,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// looked up.
   @override
   PeerRadioSelection? get followedPeerRadio => switch (_radio1) {
-        PeerRadio(:final selection) => selection,
-        _ => null,
-      };
+    PeerRadio(:final selection) => selection,
+    _ => null,
+  };
 
   /// Points `vfoA` at a radio — this device's own, a peer's, or None. One
   /// setter because there is one slot: every pick is a statement about the
@@ -491,7 +481,13 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       //
       // The incoming side is null for a peer pick, and rightly: there is no
       // local runtime to clear, and the outgoing one still needs clearing.
-      for (final id in [outgoing, switch (next) { LocalRadio(:final uuid) => uuid, _ => null }]) {
+      for (final id in [
+        outgoing,
+        switch (next) {
+          LocalRadio(:final uuid) => uuid,
+          _ => null,
+        },
+      ]) {
         if (id != null) {
           _runtimes[id]?.lastSent = null;
           _runtimes[id]?.lastSentPower = null;
@@ -520,31 +516,30 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
 
   @override
   List<PeerRadioOffer> get offeredRadios => [
-        for (final node in _nodes.values)
-          if (registry.typeFor(node.typeKey)?.category == kCategoryTransceiver &&
-              stateFor(node.uuid).status == EquipmentStatus.connected)
-            PeerRadioOffer(
-              id: node.uuid,
-              name: node.name,
-              // CW is the STATION's answer, the same for every radio it
-              // offers: a request is keyed by whatever this device keys
-              // with, which may be a paddle-side keyer rather than the rig
-              // named. Voice is the RADIO's, because the audio is in it.
-              //
-              // What this device keys with ITSELF, never [canKeyCw]: a
-              // station whose own radio1 is some third device's rig keys
-              // nothing here, and offering that as keyable would advertise a
-              // relay nothing implements.
-              //
-              // All of it behind this device's own keying experiment: a
-              // station whose operator has no keyer area and no Escape
-              // handler must not be keyed from elsewhere, because nothing
-              // here could stop it.
-              keysCw: _keyingEnabled && _keying.keysCwLocally,
-              voiceMemories: _keyingEnabled ? (_keying.voiceKeyerFor(node.uuid)?.voiceMemoryCount ?? 0) : 0,
-              recordsVoice: _keyingEnabled && (_keying.voiceKeyerFor(node.uuid)?.canRecordVoice ?? false),
-            ),
-      ];
+    for (final node in _nodes.values)
+      if (registry.typeFor(node.typeKey)?.category == kCategoryTransceiver && stateFor(node.uuid).status == EquipmentStatus.connected)
+        PeerRadioOffer(
+          id: node.uuid,
+          name: node.name,
+          // CW is the STATION's answer, the same for every radio it
+          // offers: a request is keyed by whatever this device keys
+          // with, which may be a paddle-side keyer rather than the rig
+          // named. Voice is the RADIO's, because the audio is in it.
+          //
+          // What this device keys with ITSELF, never [canKeyCw]: a
+          // station whose own radio1 is some third device's rig keys
+          // nothing here, and offering that as keyable would advertise a
+          // relay nothing implements.
+          //
+          // All of it behind this device's own keying experiment: a
+          // station whose operator has no keyer area and no Escape
+          // handler must not be keyed from elsewhere, because nothing
+          // here could stop it.
+          keysCw: _keyingEnabled && _keying.keysCwLocally,
+          voiceMemories: _keyingEnabled ? (_keying.voiceKeyerFor(node.uuid)?.voiceMemoryCount ?? 0) : 0,
+          recordsVoice: _keyingEnabled && (_keying.voiceKeyerFor(node.uuid)?.canRecordVoice ?? false),
+        ),
+  ];
 
   @override
   void noteOffer(String deviceId, String deviceName, List<PeerRadioOffer> radios) {
@@ -563,12 +558,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       // which is why [PeerRadioSelection] compares only the ids. Written
       // through rather than held in memory: the name is wanted precisely
       // when the peer is not here to state it, relaunches included.
-      _radio1 = PeerRadio(PeerRadioSelection(
-        deviceId: deviceId,
-        radioId: radio.id,
-        deviceName: deviceName,
-        radioName: radio.name,
-      ));
+      _radio1 = PeerRadio(PeerRadioSelection(deviceId: deviceId, radioId: radio.id, deviceName: deviceName, radioName: radio.name));
       unawaited(_save());
       notifyListeners();
       return;
@@ -634,7 +624,6 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     return _keying.statusForOfferedRadio(radioId);
   }
 
-
   /// Keys, stops, or sets a speed on this device's own station for a peer —
   /// through the same funnels a local function key takes, and only for a
   /// radio this device is currently offering.
@@ -653,7 +642,6 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     if (!offeredRadios.any((radio) => radio.id == request.radioId)) return;
     _keying.handleRequest(request);
   }
-
 
   /// The far side's account of what the picked radio is keying. Dropped
   /// unless it is about the radio this operator picked — a device offering
@@ -680,13 +668,11 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     final selection = followedPeerRadio;
     final deviceId = selection?.deviceId;
     final radioId = selection?.radioId;
-    if (!_keying.adoptPeer(
-        _peerKeying.offerFor(deviceId, radioId), _peerKeying.statusFor(deviceId, radioId))) {
+    if (!_keying.adoptPeer(_peerKeying.offerFor(deviceId, radioId), _peerKeying.statusFor(deviceId, radioId))) {
       return;
     }
     notifyListeners();
   }
-
 
   /// That peer's radios are out of reach — it left. The PICK stands, the
   /// same as it does for tuning: what goes is only what it could do, so the
@@ -725,10 +711,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// Whose picks [designatedFor] and [setDesignated] are talking about:
   /// whatever is driving `vfoA` right now.
   String _designationKey() => switch (_radio1) {
-        LocalRadio(:final uuid) => uuid,
-        PeerRadio(:final selection) => peerRadioValue(selection),
-        null => _noRadioKey,
-      };
+    LocalRadio(:final uuid) => uuid,
+    PeerRadio(:final selection) => peerRadioValue(selection),
+    null => _noRadioKey,
+  };
 
   String? designatedFor(String category) {
     final picks = _designated[_designationKey()];
@@ -747,7 +733,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// here, because what keys there is not a node of this station to name.
   String? _defaultDesignation(String category) {
     if (category != kCategoryKey) return null;
-    if (!_settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return null;
+    if (!_settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return null;
     final uuid = _localRadio1;
     if (uuid == null) return null;
     final node = _nodes[uuid];
@@ -766,8 +752,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
 
   /// Writes a pick for the radio in use without saving or notifying — the
   /// shared half of [setDesignated] and the rules [addNode] applies.
-  void _designateNow(String category, String? uuid) =>
-      (_designated[_designationKey()] ??= {})[category] = uuid;
+  void _designateNow(String category, String? uuid) => (_designated[_designationKey()] ??= {})[category] = uuid;
 
   Future<void> setDesignated(String category, String? uuid) async {
     final previousUuid = designatedFor(category);
@@ -876,12 +861,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
 
   /// Arms message 1 to go again [delay] after the one now keying finishes —
   /// see [KeyerRepeat.arm], which is where the five-minute limit lives.
-  void armKeyerRepeat({
-    required Duration delay,
-    required String text,
-    required void Function() send,
-    int? memory,
-  }) =>
+  void armKeyerRepeat({required Duration delay, required String text, required void Function() send, int? memory}) =>
       _repeat.arm(delay: delay, text: text, send: send, memory: memory);
 
   /// Ends the chain — every stop the operator can make lands here.
@@ -895,12 +875,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// speed, the memories. The API stays HERE: every surface that keys reads
   /// this service and nothing below it, whether the rig answering is plugged
   /// in here or on a peer's desk.
-  late final _keying = CatKeying(
-    station: this,
-    settings: _settings,
-    chain: _repeat,
-    peer: _peerKeying,
-  );
+  late final _keying = CatKeying(station: this, settings: _settings, chain: _repeat, peer: _peerKeying);
 
   bool get canKeyCw => _keying.canKeyCw;
   bool get designatedKeyIsKeyer => _keying.designatedKeyIsKeyer;
@@ -974,8 +949,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   bool get peerOffersCwKeying => _peerKeying.keysCw;
 
   @override
-  bool isKeyerNode(EquipmentNode node) =>
-      typeFor(node)?.category == kCategoryKeyer || _radioKeysCw(node);
+  bool isKeyerNode(EquipmentNode node) => typeFor(node)?.category == kCategoryKeyer || _radioKeysCw(node);
 
   @override
   EquipmentSession? connectedSession(String uuid) {
@@ -1147,22 +1121,22 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   }
 
   Future<void> _save() => _settings.setStationEquipment({
-        'version': _storageVersion,
-        // Always, null included, so the blob states what is true rather than
-        // leaving None to be inferred from a missing key.
-        //
-        // NOT load-bearing, and worth saying so: nothing derives the main
-        // VFO, so an absent key and a stored null both read as None —
-        // writing `if (_radio1 != null)` would behave identically and fail
-        // no test, and that is correct rather than a hole in the tests.
-        'mainVfo': switch (_radio1) {
-          LocalRadio(:final uuid) => {'radio': uuid},
-          PeerRadio(:final selection) => {'peer': selection.toJson()},
-          null => null,
-        },
-        'designated': _designated,
-        'nodes': {for (final node in _nodes.values) node.uuid: node.toJson()},
-      });
+    'version': _storageVersion,
+    // Always, null included, so the blob states what is true rather than
+    // leaving None to be inferred from a missing key.
+    //
+    // NOT load-bearing, and worth saying so: nothing derives the main
+    // VFO, so an absent key and a stored null both read as None —
+    // writing `if (_radio1 != null)` would behave identically and fail
+    // no test, and that is correct rather than a hole in the tests.
+    'mainVfo': switch (_radio1) {
+      LocalRadio(:final uuid) => {'radio': uuid},
+      PeerRadio(:final selection) => {'peer': selection.toJson()},
+      null => null,
+    },
+    'designated': _designated,
+    'nodes': {for (final node in _nodes.values) node.uuid: node.toJson()},
+  });
 
   /// What to call a new node of [typeKey] — the radio's own name, numbered
   /// if the shack already has one.
@@ -1175,15 +1149,14 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   ///
   /// [EquipmentModel.suggestedName], not [EquipmentModel.name]: a model whose
   /// catalogue entry is a description says separately what to call the rig.
-  String suggestedNameFor(String typeKey) => uniqueEquipmentName(
-        registry.typeFor(typeKey)?.model.suggestedName ?? typeKey,
-        _nodes.values.map((node) => node.name),
-      );
+  String suggestedNameFor(String typeKey) =>
+      uniqueEquipmentName(registry.typeFor(typeKey)?.model.suggestedName ?? typeKey, _nodes.values.map((node) => node.name));
 
   Future<EquipmentNode> addNode({
     required String typeKey,
     String name = '',
     Map<String, dynamic> config = const {},
+
     /// How the operator got here: `discovery` when the Add dialog found the
     /// radio itself, `manual` when they filled the form. The gap between
     /// these and radio_connected is what says a pairing is configurable but
@@ -1394,10 +1367,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       final type = registry.typeFor(node.typeKey);
       if (type != null) configured.add(_targetKey(type, node.config));
     }
-    return [
-      for (final found in _discovered.values)
-        ?_offerFor(found, configured),
-    ];
+    return [for (final found in _discovered.values) ?_offerFor(found, configured)];
   }
 
   /// [found] as it should be added next, or null when every channel it
@@ -1454,8 +1424,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     // A node stored before the channel setting existed names none, and is
     // tracking the driver's first — the same fallback the driver itself
     // applies when it reads the config.
-    final channel =
-        channelKey == null ? '' : '|$channelKey=${merged[channelKey] ?? type.driver.channelValues.first}';
+    final channel = channelKey == null ? '' : '|$channelKey=${merged[channelKey] ?? type.driver.channelValues.first}';
     final target = type.targetFor(config);
     return '${type.key}|${target.entries.map((e) => '${e.key}=${e.value}').join(',')}$channel';
   }
@@ -1479,17 +1448,19 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     for (final type in registry.types) {
       final stream = type.discover();
       if (stream == null) continue;
-      _discoverySubscriptions.add(stream.listen(
-        (found) {
-          _discovered[_discoveryKey(found)] = found;
-          notifyListeners();
-        },
-        onError: (Object e, StackTrace st) {
-          ErrorReportingService.report(e, st, context: 'cat:discovery:${type.key}');
-          _discoveryError = '$e';
-          notifyListeners();
-        },
-      ));
+      _discoverySubscriptions.add(
+        stream.listen(
+          (found) {
+            _discovered[_discoveryKey(found)] = found;
+            notifyListeners();
+          },
+          onError: (Object e, StackTrace st) {
+            ErrorReportingService.report(e, st, context: 'cat:discovery:${type.key}');
+            _discoveryError = '$e';
+            notifyListeners();
+          },
+        ),
+      );
     }
     notifyListeners();
   }
@@ -1515,8 +1486,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   }
 
   /// Adds a discovered device as configured equipment, with no typing.
-  Future<EquipmentNode> addDiscovered(DiscoveredEquipment found) =>
-      addNode(typeKey: found.typeKey, name: found.name, config: found.config, via: 'discovery');
+  Future<EquipmentNode> addDiscovered(DiscoveredEquipment found) => addNode(typeKey: found.typeKey, name: found.name, config: found.config, via: 'discovery');
 
   // -------------------------------------------------------------- runtime
 
@@ -1558,8 +1528,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     // but only when there is something to lift, so an ordinary Connect never
     // waits on a preferences write.
     if (_autoConnectHeld.remove(uuid)) {
-      await _writeAutoConnectMark(
-          () => clearAutoConnectMark(_settings.prefs, uuid), 'cat:clear-auto-connect');
+      await _writeAutoConnectMark(() => clearAutoConnectMark(_settings.prefs, uuid), 'cat:clear-auto-connect');
       onAutoConnectHoldLifted?.call();
     }
     // The backoff belongs to the designated radio's loop, so only that radio's
@@ -1585,10 +1554,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     final node = _nodes[uuid];
     if (node == null) return _ConnectOutcome.failed;
     if (_autoConnectHeld.contains(uuid)) {
-      _setState(
-        uuid,
-        EquipmentState(status: EquipmentStatus.error, error: t.settings.station.autoConnectHeld),
-      );
+      _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: t.settings.station.autoConnectHeld));
       // Through the same first-failure-per-node de-dup as a real connect
       // failure: how often this fires in the field is the only measure of how
       // often a launch is actually dying inside a connect, which is the thing
@@ -1680,14 +1646,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       invalid = type.validate(config);
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:validate-config');
-      _setState(
-        uuid,
-        EquipmentState(
-          status: EquipmentStatus.error,
-          error: t.settings.station.configUnreadable,
-          errorDetail: '$e',
-        ),
-      );
+      _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: t.settings.station.configUnreadable, errorDetail: '$e'));
       _trackFailure(node, 'invalid_config', extra: _baudExtra(config));
       return _ConnectOutcome.failed;
     }
@@ -1729,10 +1688,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       final reason = _failureReason(e);
       final friendly = _friendlyConnectError(reason, e);
       final raw = '$e';
-      _setState(
-        uuid,
-        EquipmentState(status: EquipmentStatus.error, error: friendly, errorDetail: friendly == raw ? null : raw),
-      );
+      _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: friendly, errorDetail: friendly == raw ? null : raw));
       _trackFailure(node, reason, extra: _baudExtra(config));
       return _ConnectOutcome.failed;
     }
@@ -1796,8 +1752,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
         // by a dB or more between samples, so it would notify for as long as
         // the radio is connected — and what reads it, an extension's
         // `readRadio`, polls the state rather than listening for it.
-        _setState(uuid, state.copyWith(telemetry: telemetry),
-            notify: meter != RadioMeter.signalDbm && previous?.value != value);
+        _setState(uuid, state.copyWith(telemetry: telemetry), notify: meter != RadioMeter.signalDbm && previous?.value != value);
       },
       onCwProgress: (progress) {
         if (runtime.connection != connection) return;
@@ -1885,33 +1840,35 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       }
     });
 
-    unawaited(connection.closed.then((_) {
-      // A stale connection's close must not clobber a live one's status.
-      if (runtime.connection != connection) return;
-      // NOTE on deliberate disconnects: there is no guard for them here, and
-      // none is needed. _teardown calls _closeSession FIRST, which sets
-      // runtime.connection = null, and only then closes the connection — so a
-      // disconnect the operator asked for exits at the guard above and never
-      // reaches this line. A `status == disconnecting` check here would be
-      // dead code for the same reason. If teardown's ordering ever changes,
-      // the test 'a DELIBERATE disconnect is never undone' is what will
-      // catch it.
-      // The driver keeps its own timers (FlexRadio resyncs every 60s, the
-      // CI-V drivers poll every 5s). Dropping the session without tearing
-      // it down leaves them ticking for the life of the process — once per
-      // drop — each one retaining its sink and this dead connection.
-      unawaited(_closeSession(runtime));
-      _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnected));
-      _autoReconnectAfterDrop(uuid);
-      // And keep trying slowly afterwards, in case that burst is spent before
-      // the radio is back.
-      //
-      // Unconditional on purpose. A guard on which node dropped would be
-      // dead code: [_scheduleIdleRetry] reads the nodes it covers itself and
-      // stops on the first tick if each is connected or absent, so the guard
-      // could not change any outcome. One place decides, and it is the loop.
-      _scheduleIdleRetry();
-    }));
+    unawaited(
+      connection.closed.then((_) {
+        // A stale connection's close must not clobber a live one's status.
+        if (runtime.connection != connection) return;
+        // NOTE on deliberate disconnects: there is no guard for them here, and
+        // none is needed. _teardown calls _closeSession FIRST, which sets
+        // runtime.connection = null, and only then closes the connection — so a
+        // disconnect the operator asked for exits at the guard above and never
+        // reaches this line. A `status == disconnecting` check here would be
+        // dead code for the same reason. If teardown's ordering ever changes,
+        // the test 'a DELIBERATE disconnect is never undone' is what will
+        // catch it.
+        // The driver keeps its own timers (FlexRadio resyncs every 60s, the
+        // CI-V drivers poll every 5s). Dropping the session without tearing
+        // it down leaves them ticking for the life of the process — once per
+        // drop — each one retaining its sink and this dead connection.
+        unawaited(_closeSession(runtime));
+        _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnected));
+        _autoReconnectAfterDrop(uuid);
+        // And keep trying slowly afterwards, in case that burst is spent before
+        // the radio is back.
+        //
+        // Unconditional on purpose. A guard on which node dropped would be
+        // dead code: [_scheduleIdleRetry] reads the nodes it covers itself and
+        // stops on the first tick if each is connected or absent, so the guard
+        // could not change any outcome. One place decides, and it is the loop.
+        _scheduleIdleRetry();
+      }),
+    );
 
     _setState(uuid, const EquipmentState(status: EquipmentStatus.connected));
     if (_trackedConnected.add(uuid)) _trackRadio('radio_connected', node);
@@ -2000,22 +1957,24 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       // Double first, so a failure that arrives after this fire still leaves
       // the next wait longer than this one.
       _idleRetryDelay = _idleRetryDelay * 2 > _idleRetryMax ? _idleRetryMax : _idleRetryDelay * 2;
-      unawaited(Future.wait(open.map(_autoConnect)).then((outcomes) {
-        if (outcomes.every((outcome) => outcome == _ConnectOutcome.connected)) {
-          _idleRetryDelay = idleRetryFirst;
-          // CANCEL, not just forget. There is an async gap above while the
-          // connect runs, and _scheduleIdleRetry may have been called during
-          // it — a drop on any node calls it. Nulling alone would leave that
-          // timer pending and unreachable: dispose() could no longer stop it,
-          // and if the radio drops again before it fires it runs a second
-          // retry chain alongside the real one, doubling the connect rate
-          // against the radio whose backoff exists to prevent exactly that.
-          _idleRetryTimer?.cancel();
-          _idleRetryTimer = null;
-          return;
-        }
-        _scheduleIdleRetry();
-      }));
+      unawaited(
+        Future.wait(open.map(_autoConnect)).then((outcomes) {
+          if (outcomes.every((outcome) => outcome == _ConnectOutcome.connected)) {
+            _idleRetryDelay = idleRetryFirst;
+            // CANCEL, not just forget. There is an async gap above while the
+            // connect runs, and _scheduleIdleRetry may have been called during
+            // it — a drop on any node calls it. Nulling alone would leave that
+            // timer pending and unreachable: dispose() could no longer stop it,
+            // and if the radio drops again before it fires it runs a second
+            // retry chain alongside the real one, doubling the connect rate
+            // against the radio whose backoff exists to prevent exactly that.
+            _idleRetryTimer?.cancel();
+            _idleRetryTimer = null;
+            return;
+          }
+          _scheduleIdleRetry();
+        }),
+      );
     });
   }
 
@@ -2068,8 +2027,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
 
   /// radio1, and the key in use when it is a device of its own: both are
   /// what the app depends on, and neither should wait for a button.
-  Future<void> reconnectDesignatedRadio() async =>
-      Future.wait(_autoConnectTargets.map(_reconnectWithRetries)).then((_) {});
+  Future<void> reconnectDesignatedRadio() async => Future.wait(_autoConnectTargets.map(_reconnectWithRetries)).then((_) {});
 
   Future<void> _reconnectWithRetries(String? uuid) async {
     if (uuid == null || !_nodes.containsKey(uuid)) return;
@@ -2314,11 +2272,13 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// earned a snap.
   void _settleSnap() {
     _snapTimer = null;
-    final target = _snapper.settle(VfoSnapTuning(
-      longMoveKHz: _settings.smartVfoSnapLongMoveKHz,
-      minMoveKHz: _settings.smartVfoSnapMinMoveKHz,
-      minSpeedKHzPerSec: _settings.smartVfoSnapMinSpeed,
-    ));
+    final target = _snapper.settle(
+      VfoSnapTuning(
+        longMoveKHz: _settings.smartVfoSnapLongMoveKHz,
+        minMoveKHz: _settings.smartVfoSnapMinMoveKHz,
+        minSpeedKHzPerSec: _settings.smartVfoSnapMinSpeed,
+      ),
+    );
     // Settled first, so the movement is consumed either way: switching the
     // setting off during a turn must not leave a burst behind to be settled
     // by whatever reading follows it being switched back on.
@@ -2392,7 +2352,13 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     }
 
     final vfo = radio.vfoA;
-    tuneNode(uuid, VfoReading(freqKHz: vfo.freq, mode: resolveSideband(vfo.mode, vfo.freq, band: vfo.band)));
+    tuneNode(
+      uuid,
+      VfoReading(
+        freqKHz: vfo.freq,
+        mode: resolveSideband(vfo.mode, vfo.freq, band: vfo.band),
+      ),
+    );
     // Only a CHANGE of the app's power is a command to the radio. Every VFO
     // notification arrives here — a typed frequency, a band pick — and a
     // remembered power sent on the first of them would re-assert a value
@@ -2505,11 +2471,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     // gone is playing nothing, which a peer following it has to be told.
     for (final entry in _runtimes.entries) {
       if (!identical(entry.value, runtime)) continue;
-      _keying.forgetNode(
-        entry.key,
-        wasKeyInUse: entry.key == keyInUse,
-        wasRadio1: entry.key == _localRadio1,
-      );
+      _keying.forgetNode(entry.key, wasKeyInUse: entry.key == keyInUse, wasRadio1: entry.key == _localRadio1);
     }
     // A pending snap belongs to the session that reported the movement. It
     // has nowhere to be sent now, and the next session's first reading is a
@@ -2684,8 +2646,7 @@ class _NodeSink implements EquipmentSink {
   void reportChannels(List<EquipmentChannel> channels) => onChannels(channels);
 
   @override
-  void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) =>
-      onSwitchState(antennas, ports);
+  void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) => onSwitchState(antennas, ports);
 
   @override
   void reportAlive() => onAlive();

@@ -189,7 +189,8 @@ Uri weatherRequestUrl(WeatherPlace place, {required bool fahrenheit}) {
     // Kept in step with the temperature rather than left at the API's
     // defaults: °F beside km/h is nobody's convention.
     'wind_speed_unit': fahrenheit ? 'mph' : 'kmh',
-    'current': 'temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,'
+    'current':
+        'temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,'
         'wind_direction_10m,weather_code,is_day',
     'hourly': 'temperature_2m,weather_code,precipitation_probability,is_day',
     'daily': 'sunrise,sunset',
@@ -218,11 +219,7 @@ Uri weatherRequestUrl(WeatherPlace place, {required bool fahrenheit}) {
 /// [fahrenheit] is what the request ASKED for, and is used only where the
 /// response failed to label its own units — `89°` beside a wind speed with no
 /// unit at all is a reading an operator can misread by 32 degrees.
-WeatherReading? parseWeatherReading(
-  String body, {
-  required DateTime fetchedAtUtc,
-  required bool fahrenheit,
-}) {
+WeatherReading? parseWeatherReading(String body, {required DateTime fetchedAtUtc, required bool fahrenheit}) {
   final Object? decoded;
   try {
     decoded = jsonDecode(body);
@@ -284,14 +281,16 @@ List<WeatherHour> _parseHours(Object? hourly, Duration offset) {
   for (var i = 0; i < times.length; i++) {
     final utc = _utcFromEpochSeconds(_toInt(times[i]));
     if (utc == null) continue;
-    hours.add(WeatherHour(
-      utc: utc,
-      localHour: utc.add(offset).hour,
-      temperature: _toDouble(_at(temperatures, i)),
-      code: _toInt(_at(codes, i)),
-      isDay: (_toInt(_at(isDay, i)) ?? 1) != 0,
-      precipitationChance: _toInt(_at(chances, i)),
-    ));
+    hours.add(
+      WeatherHour(
+        utc: utc,
+        localHour: utc.add(offset).hour,
+        temperature: _toDouble(_at(temperatures, i)),
+        code: _toInt(_at(codes, i)),
+        isDay: (_toInt(_at(isDay, i)) ?? 1) != 0,
+        precipitationChance: _toInt(_at(chances, i)),
+      ),
+    );
   }
   return hours;
 }
@@ -300,9 +299,7 @@ List<DateTime> _parseTimes(Object? daily, String key) {
   if (daily is! Map<String, dynamic>) return const [];
   final values = daily[key];
   if (values is! List) return const [];
-  return [
-    for (final value in values) ?_utcFromEpochSeconds(_toInt(value)),
-  ];
+  return [for (final value in values) ?_utcFromEpochSeconds(_toInt(value))];
 }
 
 List<Object?> _listOrEmpty(Object? value) => value is List ? value : const [];

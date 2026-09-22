@@ -7,12 +7,8 @@ extension ExportPreferences on SettingsService {
   Map<String, dynamic> exportTypeOverrides(String type) =>
       Map<String, dynamic>.from((settingValue(SettingsService.exportsGroup, 'type:$type') as Map?) ?? const {});
 
-  Map<String, dynamic> get exportGlobalSettings => {
-    'includePrivateData': includePrivateData,
-    ...exportTypeOverrides('default'),
-  };
+  Map<String, dynamic> get exportGlobalSettings => {'includePrivateData': includePrivateData, ...exportTypeOverrides('default')};
 
   Future<void> setExportTypeSetting(String type, String key, dynamic value) =>
       setSettingValue(SettingsService.exportsGroup, 'type:$type', {...exportTypeOverrides(type), key: value});
-
 }

@@ -112,8 +112,7 @@ void main() {
       // scores grow with query length, so comparing them ACROSS queries
       // always favours the longer one. settings_command.dart divides by query
       // length for exactly this reason.
-      expect(score('zerobeatn', 'Avoid Zero-Beating on Spots')!,
-          greaterThan(score('zerobeat', 'Avoid Zero-Beating on Spots')!));
+      expect(score('zerobeatn', 'Avoid Zero-Beating on Spots')!, greaterThan(score('zerobeat', 'Avoid Zero-Beating on Spots')!));
     });
   });
 }

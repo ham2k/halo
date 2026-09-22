@@ -34,14 +34,11 @@ List<Map<String, dynamic>> zipCsvRows(dynamic args) {
     // untouched. Mirrored here so this helper stays a faithful stand-in rather
     // than throwing an opaque cast error the day a fixture needs that path.
     return [
-      for (final row in (args['rows'] as List)) {for (var j = 0; j < (row as List).length; j++) '$j': row[j]}
+      for (final row in (args['rows'] as List)) {for (var j = 0; j < (row as List).length; j++) '$j': row[j]},
     ];
   }
   return [
-    for (final row in (args['rows'] as List))
-      {
-        for (var j = 0; j < headers.length && j < (row as List).length; j++) headers[j]: row[j],
-      }
+    for (final row in (args['rows'] as List)) {for (var j = 0; j < headers.length && j < (row as List).length; j++) headers[j]: row[j]},
   ];
 }
 
@@ -60,11 +57,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     extensions = ExtensionService();
-    manager = DataFileManager(
-      lookups: lookups,
-      extensions: extensions,
-      prefs: prefs,
-    );
+    manager = DataFileManager(lookups: lookups, extensions: extensions, prefs: prefs);
   });
 
   tearDown(() async {
@@ -72,10 +65,7 @@ void main() {
   });
 
   test('DataFileManager: resolveDownloadUrl logic', () {
-    expect(
-      manager.resolveDownloadUrl('https://www.dropbox.com/s/abcdef/file.csv?dl=0'),
-      'https://www.dropbox.com/s/abcdef/file.csv?dl=1&raw=1',
-    );
+    expect(manager.resolveDownloadUrl('https://www.dropbox.com/s/abcdef/file.csv?dl=0'), 'https://www.dropbox.com/s/abcdef/file.csv?dl=1&raw=1');
     expect(
       manager.resolveDownloadUrl('https://drive.google.com/file/d/123456_789/view?usp=sharing'),
       'https://drive.google.com/uc?id=123456_789&export=download',
@@ -145,8 +135,7 @@ void main() {
       expect(result, contains(t.dataFiles.downloadFailedWebHint));
     });
 
-    test('the same failure phrased in Firefox/Safari wording still gets the hint — checked by TYPE, not message text',
-        () {
+    test('the same failure phrased in Firefox/Safari wording still gets the hint — checked by TYPE, not message text', () {
       // The whole point of matching on `error is http.ClientException` rather
       // than the literal string 'Failed to fetch' (Chromium/V8's own
       // wording): a non-Chromium browser's identical underlying failure is
@@ -184,12 +173,9 @@ void main() {
             'maxAgeInDays': 10,
             'fetchType': 'csv',
             'category': 'test_category',
-            'csvOptions': {
-              'hasHeaders': true,
-              'delimiter': ',',
-            },
-          }
-        }
+            'csvOptions': {'hasHeaders': true, 'delimiter': ','},
+          },
+        },
       ],
       'dataFile:test-csv-file:mapCsvBatch': (args) {
         return zipCsvRows(args).map((row) {
@@ -202,17 +188,13 @@ void main() {
             'data': {'note': 'Mapped in test'},
           };
         }).toList();
-      }
+      },
     };
 
     final mockHost = FakeExtensionHost(mockResults);
     final mockExtensions = MockExtensionService(mockHost);
 
-    final managerWithMock = TestDataFileManager(
-      lookups: lookups,
-      extensions: mockExtensions,
-      prefs: prefs,
-    );
+    final managerWithMock = TestDataFileManager(lookups: lookups, extensions: mockExtensions, prefs: prefs);
 
     managerWithMock.mockDownloadBody = '''id,title,latitude,longitude
 REF-001,Summit One,45.12,-122.34
@@ -223,10 +205,7 @@ REF-002,Summit Two,45.56,-122.78
       'key': 'test-csv-file',
       'fetchType': 'csv',
       'category': 'test_category',
-      'csvOptions': {
-        'hasHeaders': true,
-        'delimiter': ',',
-      },
+      'csvOptions': {'hasHeaders': true, 'delimiter': ','},
       'url': 'https://example.com/test.csv',
     };
 
@@ -250,15 +229,12 @@ REF-002,Summit Two,45.56,-122.78
     // at the end of the run swept every row this run had not stamped, wiping
     // the whole category. Failing loudly is what keeps the last good copy of a
     // 181k-row list on disk when an extension update breaks its mapper.
-    await lookups.insertLookupBatch([
-      LookupRow(category: 'fragile_category', key: 'KEEP-1', name: 'Previously imported', updated: 1),
-    ]);
+    await lookups.insertLookupBatch([LookupRow(category: 'fragile_category', key: 'KEEP-1', name: 'Previously imported', updated: 1)]);
 
     final host = FakeExtensionHost({
       'dataFile:fragile-csv:mapCsvBatch': (args) => {'error': 'mapper blew up'}, // a Map, not a List
     });
-    final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)
-      ..mockDownloadBody = 'ref,name\nR-1,Fresh\n';
+    final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)..mockDownloadBody = 'ref,name\nR-1,Fresh\n';
 
     await expectLater(
       m.processDataFile('fragile-csv', {
@@ -294,17 +270,13 @@ REF-002,Summit Two,45.56,-122.78
             'data': {'note': 'Mapped in test'},
           };
         }).toList();
-      }
+      },
     };
 
     final mockHost = FakeExtensionHost(mockResults);
     final mockExtensions = MockExtensionService(mockHost);
 
-    final managerWithMock = TestDataFileManager(
-      lookups: lookups,
-      extensions: mockExtensions,
-      prefs: prefs,
-    );
+    final managerWithMock = TestDataFileManager(lookups: lookups, extensions: mockExtensions, prefs: prefs);
 
     managerWithMock.mockDownloadBody = jsonEncode({
       'G/LD-001': {'name': 'Scafell Pike', 'lat': 54.45, 'lon': -3.21},
@@ -315,9 +287,7 @@ REF-002,Summit Two,45.56,-122.78
       'key': 'test-json-file',
       'fetchType': 'json',
       'category': 'test_json_category',
-      'jsonOptions': {
-        'rootPath': '',
-      },
+      'jsonOptions': {'rootPath': ''},
       'url': 'https://example.com/test.json',
     };
 
@@ -370,11 +340,7 @@ REF-002,Summit Two,45.56,-122.78
     final mockHost = FakeExtensionHost(mockResults);
     final mockExtensions = MockExtensionService(mockHost);
 
-    final managerWithMock = TestDataFileManager(
-      lookups: lookups,
-      extensions: mockExtensions,
-      prefs: prefs,
-    );
+    final managerWithMock = TestDataFileManager(lookups: lookups, extensions: mockExtensions, prefs: prefs);
     managerWithMock.mockDownloadBody = 'id,title\nGOOD-1,Something\n';
 
     final matched = await managerWithMock.syncAllDataFiles();
@@ -390,20 +356,10 @@ REF-002,Summit Two,45.56,-122.78
 
   test('DataFileManager: processDataFile raises a persistent notice and rethrows on a download failure', () async {
     final statusBar = StatusBarService(prefs);
-    final managerWithMock = TestDataFileManager(
-      lookups: lookups,
-      extensions: extensions,
-      prefs: prefs,
-      statusBar: statusBar,
-    )..mockDownloadError = Exception('ClientException: Failed to fetch, uri=https://example.com/notes.txt');
+    final managerWithMock = TestDataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, statusBar: statusBar)
+      ..mockDownloadError = Exception('ClientException: Failed to fetch, uri=https://example.com/notes.txt');
 
-    final def = {
-      'key': 'my-custom-file',
-      'name': 'My Custom File',
-      'url': 'https://example.com/notes.txt',
-      'fetchType': 'raw',
-      'category': 'call-notes',
-    };
+    final def = {'key': 'my-custom-file', 'name': 'My Custom File', 'url': 'https://example.com/notes.txt', 'fetchType': 'raw', 'category': 'call-notes'};
 
     await expectLater(
       managerWithMock.processDataFile('my-custom-file', def),
@@ -425,20 +381,10 @@ REF-002,Summit Two,45.56,-122.78
     // while every lookup misses — and leaves the progress bar in the footer
     // with nobody left to clear it.
     final statusBar = StatusBarService(prefs);
-    final managerWithMock = TestDataFileManager(
-      lookups: lookups,
-      extensions: _HostlessExtensionService(),
-      prefs: prefs,
-      statusBar: statusBar,
-    )..mockDownloadBody = 'anything at all';
+    final managerWithMock = TestDataFileManager(lookups: lookups, extensions: _HostlessExtensionService(), prefs: prefs, statusBar: statusBar)
+      ..mockDownloadBody = 'anything at all';
 
-    final def = {
-      'key': 'parks',
-      'name': 'All Parks',
-      'url': 'https://example.com/parks.txt',
-      'fetchType': 'raw',
-      'category': 'parks',
-    };
+    final def = {'key': 'parks', 'name': 'All Parks', 'url': 'https://example.com/parks.txt', 'fetchType': 'raw', 'category': 'parks'};
 
     await expectLater(
       managerWithMock.processDataFile('parks', def, showProgress: true),
@@ -449,8 +395,7 @@ REF-002,Summit Two,45.56,-122.78
     expect(statusBar.itemForKey('dataFile:parks'), isNull, reason: 'the progress line is left spinning forever');
   });
 
-  test(
-      'DataFileManager: a malformed definition (missing url/fetchType) still raises a notice, not a silent throw', () async {
+  test('DataFileManager: a malformed definition (missing url/fetchType) still raises a notice, not a silent throw', () async {
     // _fetchDefinitions only checks that `value` is a Map — an extension's
     // getDefinition() could still return one missing url/fetchType. Before
     // this fix, def['url'] as String threw BEFORE the try block that shows
@@ -464,12 +409,14 @@ REF-002,Summit Two,45.56,-122.78
     await expectLater(managerWithMock.processDataFile('malformed-file', malformedDef), throwsA(isA<TypeError>()));
 
     final notice = statusBar.activeNotices.singleWhere((n) => n.key == 'dataFile:malformed-file');
-    expect(notice.title, t.dataFiles.downloadFailedTitle(name: 'Malformed File'),
-        reason: 'some notice must show — even a generically-labeled one beats total silence');
+    expect(
+      notice.title,
+      t.dataFiles.downloadFailedTitle(name: 'Malformed File'),
+      reason: 'some notice must show — even a generically-labeled one beats total silence',
+    );
   });
 
-  test(
-      'DataFileManager: a failure AFTER a successful download (JSON parsing) gets a distinct "processing failed" '
+  test('DataFileManager: a failure AFTER a successful download (JSON parsing) gets a distinct "processing failed" '
       'notice, not "download failed"', () async {
     final statusBar = StatusBarService(prefs);
     final managerWithMock = TestDataFileManager(
@@ -494,13 +441,15 @@ REF-002,Summit Two,45.56,-122.78
     await expectLater(managerWithMock.processDataFile('my-json-file', def), throwsA(isA<FormatException>()));
 
     final notice = statusBar.activeNotices.singleWhere((n) => n.key == 'dataFile:my-json-file');
-    expect(notice.title, t.dataFiles.processingFailedTitle(name: 'My JSON File'),
-        reason: 'the download itself succeeded — mislabeling this "download failed" would misdiagnose a config bug as a network one');
+    expect(
+      notice.title,
+      t.dataFiles.processingFailedTitle(name: 'My JSON File'),
+      reason: 'the download itself succeeded — mislabeling this "download failed" would misdiagnose a config bug as a network one',
+    );
     expect(notice.title, isNot(t.dataFiles.downloadFailedTitle(name: 'My JSON File')));
   });
 
-  test('DataFileManager: a download failure during syncAllDataFiles (the background/boot/onboarding path) also raises a notice',
-      () async {
+  test('DataFileManager: a download failure during syncAllDataFiles (the background/boot/onboarding path) also raises a notice', () async {
     // syncAllDataFiles is what app boot, onboarding completion, and "Update
     // All" call — not just an explicit per-file Refresh tap. This proves the
     // same processDataFile notice fires through THAT path too, not only when
@@ -522,12 +471,8 @@ REF-002,Summit Two,45.56,-122.78
         },
       ],
     });
-    final managerWithMock = TestDataFileManager(
-      lookups: lookups,
-      extensions: MockExtensionService(mockHost),
-      prefs: prefs,
-      statusBar: statusBar,
-    )..mockDownloadError = Exception('ClientException: Failed to fetch, uri=https://example.com/flaky.txt');
+    final managerWithMock = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(mockHost), prefs: prefs, statusBar: statusBar)
+      ..mockDownloadError = Exception('ClientException: Failed to fetch, uri=https://example.com/flaky.txt');
 
     // syncAllDataFiles isolates each entry's failure (per its own doc
     // comment) rather than letting it propagate — so this must not throw.
@@ -567,15 +512,10 @@ REF-002,Summit Two,45.56,-122.78
             },
           },
         ],
-        'dataFile:sweep-file:mapCsvBatch': (args) =>
-            zipCsvRows(args).map((row) => {'key': row['ref'], 'name': row['name']}).toList(),
+        'dataFile:sweep-file:mapCsvBatch': (args) => zipCsvRows(args).map((row) => {'key': row['ref'], 'name': row['name']}).toList(),
       });
-      m = TestDataFileManager(
-        lookups: lookups,
-        extensions: MockExtensionService(mockHost),
-        prefs: prefs,
-        statusBar: statusBar,
-      )..mockDownloadBody = 'ref,name\nS-1,Swept\n';
+      m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(mockHost), prefs: prefs, statusBar: statusBar)
+        ..mockDownloadBody = 'ref,name\nS-1,Swept\n';
       // itemForKey after the fact can't tell "never posted" from "posted and
       // cleared", so record every key that ever appears.
       postedKeys = {};
@@ -662,11 +602,10 @@ REF-002,Summit Two,45.56,-122.78
         },
       ],
       'dataFile:future-csv:mapCsvBatch': (args) => [
-            for (final r in zipCsvRows(args)) {'key': r['ref'], 'name': r['name']},
-          ],
+        for (final r in zipCsvRows(args)) {'key': r['ref'], 'name': r['name']},
+      ],
     });
-    final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)
-      ..mockDownloadBody = 'ref,name\nF-1,Fetched\n';
+    final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)..mockDownloadBody = 'ref,name\nF-1,Fetched\n';
 
     // A year ahead — well inside the 30-day window if the age is read as-is.
     final future = DateTime.now().add(const Duration(days: 365)).millisecondsSinceEpoch;
@@ -674,10 +613,8 @@ REF-002,Summit Two,45.56,-122.78
 
     await m.syncAllDataFiles();
 
-    expect((await lookups.getLookup('future_category', 'F-1'))?.name, 'Fetched',
-        reason: 'the file must have been re-fetched, not skipped as fresh');
-    expect(prefs.getInt('data_file_updated_future-csv'), lessThan(future),
-        reason: 'and the future stamp must have been replaced');
+    expect((await lookups.getLookup('future_category', 'F-1'))?.name, 'Fetched', reason: 'the file must have been re-fetched, not skipped as fresh');
+    expect(prefs.getInt('data_file_updated_future-csv'), lessThan(future), reason: 'and the future stamp must have been replaced');
   });
 
   test('DataFileManager: refreshDataFile force-fetches one file, stamps its time, and reports unknown keys', () async {
@@ -698,20 +635,15 @@ REF-002,Summit Two,45.56,-122.78
         },
       ],
       'dataFile:refresh-csv:mapCsvBatch': (args) => [
-            for (final r in zipCsvRows(args)) {'key': r['ref'], 'name': r['name']},
-          ],
+        for (final r in zipCsvRows(args)) {'key': r['ref'], 'name': r['name']},
+      ],
     });
-    final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)
-      ..mockDownloadBody = 'ref,name\nR-1,Refreshed\n';
+    final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)..mockDownloadBody = 'ref,name\nR-1,Refreshed\n';
 
     final stampedAt = await m.refreshDataFile('refresh-csv');
     expect(stampedAt, isNotNull, reason: 'returns the stamped last-download time');
     expect((await lookups.getLookup('refresh_category', 'R-1'))?.name, 'Refreshed');
-    expect(
-      prefs.getInt('data_file_updated_refresh-csv'),
-      stampedAt!.millisecondsSinceEpoch,
-      reason: 'returned time matches what was persisted',
-    );
+    expect(prefs.getInt('data_file_updated_refresh-csv'), stampedAt!.millisecondsSinceEpoch, reason: 'returned time matches what was persisted');
 
     expect(await m.refreshDataFile('does-not-exist'), isNull, reason: 'unknown key');
   });
@@ -741,15 +673,11 @@ REF-002,Summit Two,45.56,-122.78
           },
         ],
         'dataFile:pota-all-parks:mapCsvBatch': (args) => [
-              for (final r in zipCsvRows(args)) {'key': r['ref'], 'name': r['name']},
-            ],
+          for (final r in zipCsvRows(args)) {'key': r['ref'], 'name': r['name']},
+        ],
       });
-      final m = TestDataFileManager(
-        lookups: lookups,
-        extensions: MockExtensionService(host),
-        prefs: prefs,
-        statusBar: statusBar,
-      )..mockDownloadBody = 'ref,name\nUS-0001,A Park\n';
+      final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs, statusBar: statusBar)
+        ..mockDownloadBody = 'ref,name\nUS-0001,A Park\n';
       await m.syncAllDataFiles();
       return m;
     }
@@ -761,10 +689,7 @@ REF-002,Summit Two,45.56,-122.78
 
       final now = DateTime.fromMillisecondsSinceEpoch(1000 * 24 * 3600 * 1000);
       // Disabled 8 days ago → past the 7-day grace.
-      await m.purgeStaleExtensionData(
-        {'pota': now.subtract(const Duration(days: 8)).millisecondsSinceEpoch},
-        now: now,
-      );
+      await m.purgeStaleExtensionData({'pota': now.subtract(const Duration(days: 8)).millisecondsSinceEpoch}, now: now);
 
       expect(await lookups.getLookup('pota', 'US-0001'), isNull, reason: 'stale data purged');
       expect(prefs.getString('data_file_ownership'), isNot(contains('pota')), reason: 'ownership pruned');
@@ -777,10 +702,7 @@ REF-002,Summit Two,45.56,-122.78
     test('keeps data of an extension disabled within the grace period', () async {
       final m = await syncPotaDataFile();
       final now = DateTime.fromMillisecondsSinceEpoch(1000 * 24 * 3600 * 1000);
-      await m.purgeStaleExtensionData(
-        {'pota': now.subtract(const Duration(days: 3)).millisecondsSinceEpoch},
-        now: now,
-      );
+      await m.purgeStaleExtensionData({'pota': now.subtract(const Duration(days: 3)).millisecondsSinceEpoch}, now: now);
       expect(await lookups.getLookup('pota', 'US-0001'), isNotNull, reason: 'recent disable keeps data');
     });
 
@@ -791,9 +713,7 @@ REF-002,Summit Two,45.56,-122.78
     });
   });
 
-  test(
-      'syncAllDataFiles purges a still-enabled extension\'s OLD key once it stops registering it',
-      () async {
+  test('syncAllDataFiles purges a still-enabled extension\'s OLD key once it stops registering it', () async {
     // call-notes derives a customFiles entry's dataFile key (and, in this
     // fixture, its lookup category) from its URL, so editing the URL changes
     // both — the extension itself stays enabled and loaded the whole time.
@@ -801,34 +721,30 @@ REF-002,Summit Two,45.56,-122.78
     // key's own resync happens to reinsert the same row" (the two share a
     // category in the real extension, but that's incidental to this fix).
     Map<String, dynamic> definitionFor(String key) => {
-          'key': key,
-          'ok': true,
-          'value': {
-            'key': key,
-            'extensionKey': 'call-notes',
-            'name': 'Custom Notes',
-            'description': '',
-            'url': 'https://example.com/notes.txt',
-            'fetchType': 'csv',
-            'category': key,
-          },
-        };
+      'key': key,
+      'ok': true,
+      'value': {
+        'key': key,
+        'extensionKey': 'call-notes',
+        'name': 'Custom Notes',
+        'description': '',
+        'url': 'https://example.com/notes.txt',
+        'fetchType': 'csv',
+        'category': key,
+      },
+    };
 
     final host = FakeExtensionHost({
       'dataFile:*:getDefinition': [definitionFor('custom-old')],
       'dataFile:custom-old:mapCsvBatch': (args) => [
-            for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
-          ],
+        for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
+      ],
       'dataFile:custom-new:mapCsvBatch': (args) => [
-            for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
-          ],
+        for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
+      ],
     });
-    final m = TestDataFileManager(
-      lookups: lookups,
-      extensions: MockExtensionService(host),
-      prefs: prefs,
-      statusBar: StatusBarService(prefs),
-    )..mockDownloadBody = 'call,note\nKI2D,Test Note\n';
+    final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs, statusBar: StatusBarService(prefs))
+      ..mockDownloadBody = 'call,note\nKI2D,Test Note\n';
 
     await m.syncAllDataFiles();
     expect(await lookups.getLookup('custom-old', 'KI2D'), isNotNull);
@@ -840,8 +756,7 @@ REF-002,Summit Two,45.56,-122.78
     host.stubs['dataFile:*:getDefinition'] = [definitionFor('custom-new')];
     await m.syncAllDataFiles();
 
-    expect(prefs.getString('data_file_ownership'), isNot(contains('custom-old')),
-        reason: 'the old key\'s ownership record must not linger forever');
+    expect(prefs.getString('data_file_ownership'), isNot(contains('custom-old')), reason: 'the old key\'s ownership record must not linger forever');
     expect(prefs.getInt('data_file_updated_custom-old'), isNull, reason: 'orphaned prefs cleaned up');
     expect(await lookups.getLookup('custom-old', 'KI2D'), isNull, reason: 'orphaned lookup rows cleaned up');
     expect(await lookups.getLookup('custom-new', 'KI2D'), isNotNull, reason: 'the new key registers and syncs normally');
@@ -854,33 +769,29 @@ REF-002,Summit Two,45.56,-122.78
     // is a stale cache file, the cost of purging is destroying data that
     // cannot be re-downloaded offline.
     Map<String, dynamic> definitionFor(String key) => {
-          'key': key,
-          'ok': true,
-          'value': {
-            'key': key,
-            'extensionKey': 'call-notes',
-            'name': 'Custom Notes',
-            'description': '',
-            'url': 'https://example.com/notes.txt',
-            'fetchType': 'csv',
-            'category': key,
-          },
-        };
+      'key': key,
+      'ok': true,
+      'value': {
+        'key': key,
+        'extensionKey': 'call-notes',
+        'name': 'Custom Notes',
+        'description': '',
+        'url': 'https://example.com/notes.txt',
+        'fetchType': 'csv',
+        'category': key,
+      },
+    };
 
     Future<(TestDataFileManager, FakeExtensionHost, MockExtensionService)> seeded() async {
       final host = FakeExtensionHost({
         'dataFile:*:getDefinition': [definitionFor('custom-old')],
         'dataFile:custom-old:mapCsvBatch': (args) => [
-              for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
-            ],
+          for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
+        ],
       });
       final extensions = MockExtensionService(host);
-      final m = TestDataFileManager(
-        lookups: lookups,
-        extensions: extensions,
-        prefs: prefs,
-        statusBar: StatusBarService(prefs),
-      )..mockDownloadBody = 'call,note\nKI2D,Test Note\n';
+      final m = TestDataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, statusBar: StatusBarService(prefs))
+        ..mockDownloadBody = 'call,note\nKI2D,Test Note\n';
       await m.syncAllDataFiles();
       expect(prefs.getInt('data_file_updated_custom-old'), isNotNull);
       return (m, host, extensions);
@@ -897,11 +808,10 @@ REF-002,Summit Two,45.56,-122.78
         {'key': 'broken', 'ok': false, 'error': 'url() threw'},
       ];
       host.stubs['dataFile:custom-new:mapCsvBatch'] = (args) => [
-            for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
-          ];
+        for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
+      ];
       await m.syncAllDataFiles();
-      expect(prefs.getInt('data_file_updated_custom-old'), isNotNull,
-          reason: 'a transient hook failure must never cost cached data');
+      expect(prefs.getInt('data_file_updated_custom-old'), isNotNull, reason: 'a transient hook failure must never cost cached data');
       expect(await lookups.getLookup('custom-old', 'KI2D'), isNotNull);
     });
 
@@ -911,22 +821,20 @@ REF-002,Summit Two,45.56,-122.78
       // from the snapshot — exactly the shape the purge exists for.
       host.stubs['dataFile:*:getDefinition'] = [definitionFor('custom-new')];
       host.stubs['dataFile:custom-new:mapCsvBatch'] = (args) => [
-            for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
-          ];
+        for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
+      ];
       // Boot proceeded past the bounded activation wait: registrations may
       // be missing (call-notes registers custom files only after its own
       // internal await), so a missing key proves nothing...
       extensions.activationIncompleteOverride = true;
       await m.syncAllDataFiles();
-      expect(prefs.getInt('data_file_updated_custom-old'), isNotNull,
-          reason: 'a partial registration set must never cost cached data');
+      expect(prefs.getInt('data_file_updated_custom-old'), isNotNull, reason: 'a partial registration set must never cost cached data');
 
       // ...but once activation settles, a clean pass purges normally — the
       // guard defers the cleanup, it does not disable it.
       extensions.activationIncompleteOverride = false;
       await m.syncAllDataFiles();
-      expect(prefs.getInt('data_file_updated_custom-old'), isNull,
-          reason: 'the guard must not turn the purge into dead code');
+      expect(prefs.getInt('data_file_updated_custom-old'), isNull, reason: 'the guard must not turn the purge into dead code');
     });
   });
 
@@ -940,11 +848,7 @@ REF-002,Summit Two,45.56,-122.78
     // may carry registrations the running pass predates).
     final host = FakeExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]});
     final extensions = MockExtensionService(host);
-    final m = _SyncCountingDataFileManager(
-      lookups: lookups,
-      extensions: extensions,
-      prefs: prefs,
-    );
+    final m = _SyncCountingDataFileManager(lookups: lookups, extensions: extensions, prefs: prefs);
 
     extensions.runtimeGeneration.value++;
     await pumpEventQueue();
@@ -969,48 +873,45 @@ REF-002,Summit Two,45.56,-122.78
     // ClientException. The retry must strip the conditional header AND drop
     // the stored ETag, or the very next sync re-arms the same failure.
     setUp(() {
-      PackageInfo.setMockInitialValues(
-          appName: 'test', packageName: 'test', version: '1.0', buildNumber: '1', buildSignature: '');
+      PackageInfo.setMockInitialValues(appName: 'test', packageName: 'test', version: '1.0', buildNumber: '1', buildSignature: '');
     });
 
     // A fresh client per factory call: the manager closes its client after
     // every fetch, so a factory that hands back the same instance only works
     // while MockClient.close() stays a no-op.
     DataFileManager buildManager({required bool isWeb, required Future<http.Response> Function(http.Request) handler}) =>
-        DataFileManager(
-          lookups: lookups,
-          extensions: extensions,
-          prefs: prefs,
-          httpClientFactory: () => http.MockClient(handler),
-          isWeb: isWeb,
-        );
+        DataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, httpClientFactory: () => http.MockClient(handler), isWeb: isWeb);
 
     test('on web, a failed conditional GET retries unconditionally, drops the ETag, and stops conditioning', () async {
       await prefs.setString('data_file_etag_hams', '"abc"');
       final requests = <http.Request>[];
       final m = buildManager(
-          isWeb: true,
-          handler: (request) async {
-            requests.add(request);
-            if (request.headers.containsKey('If-None-Match')) {
-              throw http.ClientException('NetworkError when attempting to fetch resource.', request.url);
-            }
-            // The etag header is the trap: a preflight-hostile host DOES
-            // serve ETags on plain GETs, and re-storing this one would
-            // re-arm the identical failure on the next sync.
-            return http.Response('CONTENT', 200, headers: {'etag': '"fresh"'});
-          });
+        isWeb: true,
+        handler: (request) async {
+          requests.add(request);
+          if (request.headers.containsKey('If-None-Match')) {
+            throw http.ClientException('NetworkError when attempting to fetch resource.', request.url);
+          }
+          // The etag header is the trap: a preflight-hostile host DOES
+          // serve ETags on plain GETs, and re-storing this one would
+          // re-arm the identical failure on the next sync.
+          return http.Response('CONTENT', 200, headers: {'etag': '"fresh"'});
+        },
+      );
 
       final body = await m.downloadFile('hams', 'https://example.com/f.txt');
 
       expect(body, 'CONTENT', reason: 'the retry must surface the file, not the preflight failure');
       expect(requests, hasLength(2));
       expect(requests.last.headers.containsKey('If-None-Match'), isFalse);
-      expect(prefs.getString('data_file_etag_hams'), isNull,
-          reason: 'a kept or re-stored ETag re-arms the identical failure on the next sync');
-      expect(prefs.getBool('data_file_skip_conditional_hams'), isTrue,
-          reason: 'without the skip mark, the next unconditional 200 stores an ETag and the '
-              'fail-and-refetch cycle resumes one sync later');
+      expect(prefs.getString('data_file_etag_hams'), isNull, reason: 'a kept or re-stored ETag re-arms the identical failure on the next sync');
+      expect(
+        prefs.getBool('data_file_skip_conditional_hams'),
+        isTrue,
+        reason:
+            'without the skip mark, the next unconditional 200 stores an ETag and the '
+            'fail-and-refetch cycle resumes one sync later',
+      );
 
       // The next sync must be unconditional outright — no failed attempt,
       // no retry.
@@ -1018,8 +919,7 @@ REF-002,Summit Two,45.56,-122.78
       expect(again, 'CONTENT');
       expect(requests, hasLength(3));
       expect(requests.last.headers.containsKey('If-None-Match'), isFalse);
-      expect(prefs.getString('data_file_etag_hams'), isNull,
-          reason: 'a skip-marked key must not accumulate ETags it will never send');
+      expect(prefs.getString('data_file_etag_hams'), isNull, reason: 'a skip-marked key must not accumulate ETags it will never send');
     });
 
     test('on native, a failed conditional GET rethrows without retrying', () async {
@@ -1028,34 +928,29 @@ REF-002,Summit Two,45.56,-122.78
       await prefs.setString('data_file_etag_hams', '"abc"');
       var calls = 0;
       final m = buildManager(
-          isWeb: false,
-          handler: (request) async {
-            calls++;
-            throw http.ClientException('Connection failed', request.url);
-          });
-
-      await expectLater(
-        m.downloadFile('hams', 'https://example.com/f.txt'),
-        throwsA(isA<http.ClientException>()),
+        isWeb: false,
+        handler: (request) async {
+          calls++;
+          throw http.ClientException('Connection failed', request.url);
+        },
       );
+
+      await expectLater(m.downloadFile('hams', 'https://example.com/f.txt'), throwsA(isA<http.ClientException>()));
       expect(calls, 1);
-      expect(prefs.getString('data_file_etag_hams'), '"abc"',
-          reason: 'a native failure says nothing about the ETag being poisonous');
+      expect(prefs.getString('data_file_etag_hams'), '"abc"', reason: 'a native failure says nothing about the ETag being poisonous');
     });
 
     test('on web with no cached ETag, a failure rethrows — there is no conditional header to strip', () async {
       var calls = 0;
       final m = buildManager(
-          isWeb: true,
-          handler: (request) async {
-            calls++;
-            throw http.ClientException('Failed to fetch', request.url);
-          });
-
-      await expectLater(
-        m.downloadFile('hams', 'https://example.com/f.txt'),
-        throwsA(isA<http.ClientException>()),
+        isWeb: true,
+        handler: (request) async {
+          calls++;
+          throw http.ClientException('Failed to fetch', request.url);
+        },
       );
+
+      await expectLater(m.downloadFile('hams', 'https://example.com/f.txt'), throwsA(isA<http.ClientException>()));
       expect(calls, 1, reason: 'retrying an unconditional request repeats the identical failure');
     });
 
@@ -1065,19 +960,19 @@ REF-002,Summit Two,45.56,-122.78
       // 304'd.
       await prefs.setString('data_file_etag_hams', '"abc"');
       final m = buildManager(
-          isWeb: true,
-          handler: (request) async {
-            throw http.ClientException('Failed to fetch', request.url);
-          });
-
-      await expectLater(
-        m.downloadFile('hams', 'https://example.com/f.txt'),
-        throwsA(isA<http.ClientException>()),
+        isWeb: true,
+        handler: (request) async {
+          throw http.ClientException('Failed to fetch', request.url);
+        },
       );
-      expect(prefs.getString('data_file_etag_hams'), '"abc"',
-          reason: 'the ETag must survive to earn a 304 once the network returns');
-      expect(prefs.getBool('data_file_skip_conditional_hams'), isNot(isTrue),
-          reason: 'only a SUCCESSFUL unconditional retry proves the host is preflight-hostile');
+
+      await expectLater(m.downloadFile('hams', 'https://example.com/f.txt'), throwsA(isA<http.ClientException>()));
+      expect(prefs.getString('data_file_etag_hams'), '"abc"', reason: 'the ETag must survive to earn a 304 once the network returns');
+      expect(
+        prefs.getBool('data_file_skip_conditional_hams'),
+        isNot(isTrue),
+        reason: 'only a SUCCESSFUL unconditional retry proves the host is preflight-hostile',
+      );
     });
 
     test('a processing failure drops the stored ETag so the next sync cannot 304 past it', () async {
@@ -1085,14 +980,9 @@ REF-002,Summit Two,45.56,-122.78
       // a body this device never ingested: kept, the next sync's
       // conditional GET answers 304, reads as "unchanged", and the file is
       // stamped fresh for maxAgeDays with the data still missing.
-      final m = buildManager(
-          isWeb: false,
-          handler: (request) async => http.Response('not json at all', 200, headers: {'etag': '"e1"'}));
+      final m = buildManager(isWeb: false, handler: (request) async => http.Response('not json at all', 200, headers: {'etag': '"e1"'}));
 
-      await expectLater(
-        m.processDataFile('bad', {'url': 'https://example.com/f.json', 'fetchType': 'json'}, notifyOnFailure: false),
-        throwsA(anything),
-      );
+      await expectLater(m.processDataFile('bad', {'url': 'https://example.com/f.json', 'fetchType': 'json'}, notifyOnFailure: false), throwsA(anything));
       expect(prefs.getString('data_file_etag_bad'), isNull);
     });
   });
@@ -1101,19 +991,18 @@ REF-002,Summit Two,45.56,-122.78
     // Without a ceiling on client.send, one unresponsive host stalls a sync
     // pass forever — nothing downstream (notices, follow-up syncs, RELOAD
     // completion) ever runs.
-    PackageInfo.setMockInitialValues(
-        appName: 'test', packageName: 'test', version: '1.0', buildNumber: '1', buildSignature: '');
+    PackageInfo.setMockInitialValues(appName: 'test', packageName: 'test', version: '1.0', buildNumber: '1', buildSignature: '');
     fakeAsync((fake) {
-      final m = DataFileManager(
-        lookups: lookups,
-        extensions: extensions,
-        prefs: prefs,
-        httpClientFactory: _HangingClient.new,
-      );
+      final m = DataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, httpClientFactory: _HangingClient.new);
       Object? caught;
-      m.downloadFile('hams', 'https://example.com/f.txt').then<void>((_) {}, onError: (Object e) {
-        caught = e;
-      });
+      m
+          .downloadFile('hams', 'https://example.com/f.txt')
+          .then<void>(
+            (_) {},
+            onError: (Object e) {
+              caught = e;
+            },
+          );
       fake.elapse(DataFileManager.headersTimeout + const Duration(seconds: 1));
       fake.flushMicrotasks();
       expect(caught, isA<TimeoutException>());
@@ -1137,9 +1026,13 @@ REF-002,Summit Two,45.56,-122.78
       offline.add(false);
       await pumpEventQueue();
       expect(m.syncCalls, 1);
-      expect(m.notifyFlags.single, isFalse,
-          reason: 'a reconnect is unattended, like the boot sync — failure notices on every '
-              'flaky-network recovery would be pure noise');
+      expect(
+        m.notifyFlags.single,
+        isFalse,
+        reason:
+            'a reconnect is unattended, like the boot sync — failure notices on every '
+            'flaky-network recovery would be pure noise',
+      );
       await offline.close();
     });
 
@@ -1182,12 +1075,7 @@ REF-002,Summit Two,45.56,-122.78
           },
         ],
       });
-      final m = _BlockingDownloadManager(
-        lookups: lookups,
-        extensions: MockExtensionService(host),
-        prefs: prefs,
-        offlineChanges: offline.stream,
-      );
+      final m = _BlockingDownloadManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs, offlineChanges: offline.stream);
 
       m.blockDownload = Completer<void>();
       final direct = m.syncAllDataFiles(notifyOnFailure: false);
@@ -1196,15 +1084,13 @@ REF-002,Summit Two,45.56,-122.78
 
       offline.add(false);
       await pumpEventQueue();
-      expect(m.downloadCalls, 1,
-          reason: 'the reconnect pass must queue behind the direct pass, not race it');
+      expect(m.downloadCalls, 1, reason: 'the reconnect pass must queue behind the direct pass, not race it');
 
       m.blockDownload!.complete();
       m.blockDownload = null;
       await direct;
       await pumpEventQueue();
-      expect(m.downloadCalls, 1,
-          reason: 'the serialized follow-up pass sees the fresh stamp and age-skips the file');
+      expect(m.downloadCalls, 1, reason: 'the serialized follow-up pass sees the fresh stamp and age-skips the file');
       await offline.close();
     });
 
@@ -1232,11 +1118,7 @@ REF-002,Summit Two,45.56,-122.78
   });
   group('a replaced runtime re-loads the raw cache (HALO-429)', () {
     test('a generation tick loads the cache BEFORE syncing', () async {
-      final manager = _RecordingDataFileManager(
-        lookups: lookups,
-        extensions: MockExtensionService(FakeExtensionHost(const {})),
-        prefs: prefs,
-      );
+      final manager = _RecordingDataFileManager(lookups: lookups, extensions: MockExtensionService(FakeExtensionHost(const {})), prefs: prefs);
 
       manager.extensions.runtimeGeneration.value++;
       await pumpEventQueue();
@@ -1250,11 +1132,7 @@ REF-002,Summit Two,45.56,-122.78
     });
 
     test('rapid replacements still coalesce to one follow-up pass', () async {
-      final manager = _RecordingDataFileManager(
-        lookups: lookups,
-        extensions: MockExtensionService(FakeExtensionHost(const {})),
-        prefs: prefs,
-      );
+      final manager = _RecordingDataFileManager(lookups: lookups, extensions: MockExtensionService(FakeExtensionHost(const {})), prefs: prefs);
 
       manager.blockNextSync = Completer<void>();
       manager.extensions.runtimeGeneration.value++;
@@ -1273,11 +1151,8 @@ REF-002,Summit Two,45.56,-122.78
     });
 
     test('a failing re-load still lets the sync run, and does not escape', () async {
-      final manager = _RecordingDataFileManager(
-        lookups: lookups,
-        extensions: MockExtensionService(FakeExtensionHost(const {})),
-        prefs: prefs,
-      )..loadThrows = true;
+      final manager = _RecordingDataFileManager(lookups: lookups, extensions: MockExtensionService(FakeExtensionHost(const {})), prefs: prefs)
+        ..loadThrows = true;
 
       manager.extensions.runtimeGeneration.value++;
       await pumpEventQueue();
@@ -1293,17 +1168,17 @@ REF-002,Summit Two,45.56,-122.78
     test('a host that died mid-pass stops the loop instead of reporting each file', () async {
       final host = FakeExtensionHost({
         'dataFile:*:getDefinition': [
-          {'ok': true, 'value': {'key': 'one', 'fetchType': 'raw'}},
-          {'ok': true, 'value': {'key': 'two', 'fetchType': 'raw'}},
+          {
+            'ok': true,
+            'value': {'key': 'one', 'fetchType': 'raw'},
+          },
+          {
+            'ok': true,
+            'value': {'key': 'two', 'fetchType': 'raw'},
+          },
         ],
-      })
-        ..dead = true;
-      final manager = DataFileManager(
-        lookups: lookups,
-        extensions: MockExtensionService(host),
-        prefs: prefs,
-        isWeb: false,
-      );
+      })..dead = true;
+      final manager = DataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs, isWeb: false);
 
       // Returns without touching the filesystem at all. The guard has to
       // precede `appDataDirectory()`, not just the import loop: a pass whose
@@ -1314,7 +1189,6 @@ REF-002,Summit Two,45.56,-122.78
       await manager.loadRawDataFiles();
     });
   });
-
 }
 
 class _SyncCountingDataFileManager extends DataFileManager {
@@ -1322,13 +1196,7 @@ class _SyncCountingDataFileManager extends DataFileManager {
   final notifyFlags = <bool>[];
   Completer<void>? blockNextSync;
 
-  _SyncCountingDataFileManager({
-    required super.lookups,
-    required super.extensions,
-    required super.prefs,
-    super.offlineChanges,
-    super.isOffline,
-  });
+  _SyncCountingDataFileManager({required super.lookups, required super.extensions, required super.prefs, super.offlineChanges, super.isOffline});
 
   @override
   Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) async {
@@ -1353,12 +1221,7 @@ class _BlockingDownloadManager extends DataFileManager {
   int downloadCalls = 0;
   Completer<void>? blockDownload;
 
-  _BlockingDownloadManager({
-    required super.lookups,
-    required super.extensions,
-    required super.prefs,
-    super.offlineChanges,
-  });
+  _BlockingDownloadManager({required super.lookups, required super.extensions, required super.prefs, super.offlineChanges});
 
   @override
   Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
@@ -1367,7 +1230,6 @@ class _BlockingDownloadManager extends DataFileManager {
     if (block != null) await block.future;
     return null;
   }
-
 }
 
 /// A service whose runtime is gone — what every caller sees between a
@@ -1419,12 +1281,7 @@ class TestDataFileManager extends DataFileManager {
   /// — simulates a real network/CORS failure without an actual HTTP call.
   Object? mockDownloadError;
 
-  TestDataFileManager({
-    required super.lookups,
-    required super.extensions,
-    required super.prefs,
-    super.statusBar,
-  });
+  TestDataFileManager({required super.lookups, required super.extensions, required super.prefs, super.statusBar});
 
   @override
   Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {

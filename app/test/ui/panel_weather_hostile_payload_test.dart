@@ -21,11 +21,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/views/operation/weather/weather_reading.dart';
 
 void main() {
-  WeatherReading? parse(Object? body) => parseWeatherReading(
-    body is String ? body : jsonEncode(body),
-    fetchedAtUtc: DateTime.utc(2026, 8, 8, 22, 44),
-    fahrenheit: true,
-  );
+  WeatherReading? parse(Object? body) =>
+      parseWeatherReading(body is String ? body : jsonEncode(body), fetchedAtUtc: DateTime.utc(2026, 8, 8, 22, 44), fahrenheit: true);
 
   Map<String, Object?> wellFormed({Map<String, Object?> overrides = const {}}) => {
     'utc_offset_seconds': -14400,
@@ -48,16 +45,24 @@ void main() {
       // `as String?` is the natural spelling and is exactly what must not be
       // in the parse: it throws `_TypeError` on this body.
       expect(
-        () => parse(wellFormed(overrides: {
-          'current_units': {'temperature_2m': 1, 'wind_speed_10m': 2},
-          'timezone_abbreviation': 7,
-        })),
+        () => parse(
+          wellFormed(
+            overrides: {
+              'current_units': {'temperature_2m': 1, 'wind_speed_10m': 2},
+              'timezone_abbreviation': 7,
+            },
+          ),
+        ),
         returnsNormally,
       );
-      final reading = parse(wellFormed(overrides: {
-        'current_units': {'temperature_2m': 1, 'wind_speed_10m': 2},
-        'timezone_abbreviation': 7,
-      }));
+      final reading = parse(
+        wellFormed(
+          overrides: {
+            'current_units': {'temperature_2m': 1, 'wind_speed_10m': 2},
+            'timezone_abbreviation': 7,
+          },
+        ),
+      );
       expect(reading, isNotNull);
       expect(reading!.timezoneAbbreviation, isNull);
       // Falls back to what the REQUEST asked for, so a reading is never
@@ -67,9 +72,13 @@ void main() {
     });
 
     test('strings where numbers are expected', () {
-      final reading = parse(wellFormed(overrides: {
-        'current': {'temperature_2m': 70, 'relative_humidity_2m': '47', 'wind_speed_10m': 'calm'},
-      }));
+      final reading = parse(
+        wellFormed(
+          overrides: {
+            'current': {'temperature_2m': 70, 'relative_humidity_2m': '47', 'wind_speed_10m': 'calm'},
+          },
+        ),
+      );
       expect(reading, isNotNull);
       expect(reading!.humidity, isNull);
       expect(reading.windSpeed, isNull);
@@ -80,7 +89,9 @@ void main() {
         {'current_units': 5},
         {'hourly': 'none'},
         {'daily': 3},
-        {'hourly': {'time': 'nope'}},
+        {
+          'hourly': {'time': 'nope'},
+        },
       ]) {
         expect(() => parse(wellFormed(overrides: broken)), returnsNormally, reason: '$broken');
       }
@@ -92,23 +103,31 @@ void main() {
       // `DateTime.fromMillisecondsSinceEpoch` throws RangeError past
       // ±8.64e12 seconds — a feed that switched to microseconds reaches that
       // from a field this reads without complaint.
-      final reading = parse(wellFormed(overrides: {
-        'hourly': {
-          'time': [1786161600, 99999999999999, 1786165200],
-          'temperature_2m': [70, 71, 72],
-        },
-      }));
+      final reading = parse(
+        wellFormed(
+          overrides: {
+            'hourly': {
+              'time': [1786161600, 99999999999999, 1786165200],
+              'temperature_2m': [70, 71, 72],
+            },
+          },
+        ),
+      );
       expect(reading, isNotNull);
       expect(reading!.hours, hasLength(2));
     });
 
     test('a sunrise past what DateTime can hold is dropped, not fatal', () {
-      final reading = parse(wellFormed(overrides: {
-        'daily': {
-          'sunrise': [99999999999999],
-          'sunset': [1786233320],
-        },
-      }));
+      final reading = parse(
+        wellFormed(
+          overrides: {
+            'daily': {
+              'sunrise': [99999999999999],
+              'sunset': [1786233320],
+            },
+          },
+        ),
+      );
       expect(reading, isNotNull);
       expect(reading!.sunrises, isEmpty);
       expect(reading.sunsets, hasLength(1));

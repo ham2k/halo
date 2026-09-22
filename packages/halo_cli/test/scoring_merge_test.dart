@@ -37,28 +37,21 @@ const _activation = {
   ],
 };
 
-Map<String, Object?> _qso(
-  String uuid, {
-  required int at,
-  String call = 'W1AW',
-  String band = '20m',
-  String mode = 'SSB',
-  List<String> parks = const [],
-}) =>
-    {
-      'uuid': uuid,
-      'their': {'call': call},
-      'band': band,
-      'mode': mode,
-      'startAtMillis': at,
-      'refs': [for (final park in parks) {'type': 'pota', 'ref': park}],
-    };
+Map<String, Object?> _qso(String uuid, {required int at, String call = 'W1AW', String band = '20m', String mode = 'SSB', List<String> parks = const []}) => {
+  'uuid': uuid,
+  'their': {'call': call},
+  'band': band,
+  'mode': mode,
+  'startAtMillis': at,
+  'refs': [
+    for (final park in parks) {'type': 'pota', 'ref': park},
+  ],
+};
 
 Map<String, Object?>? _verdictFor(Map<String, Map<String, Object?>> scored, String scorer, String uuid) =>
     ((scored[scorer]?['qsoScores'] as Map?)?[uuid] as Map?)?.cast<String, Object?>();
 
-List<String> _alertsOf(Map<String, Object?>? verdict) =>
-    ((verdict?['alerts'] as List?) ?? const []).cast<String>();
+List<String> _alertsOf(Map<String, Object?>? verdict) => ((verdict?['alerts'] as List?) ?? const []).cast<String>();
 
 void main() {
   late BundleIndex index;
@@ -71,19 +64,20 @@ void main() {
   tearDown(() async => runtime?.stop());
 
   /// Core scoring plus POTA, and nothing else — the pair whose rules disagree.
-  Future<ExtRuntime> start({Set<String> only = const {'scoring', 'pota'}}) async =>
-      runtime = await ExtRuntime.start(
-        index: index,
-        config: CliConfig(settings: const {}),
-        only: only,
-      );
+  Future<ExtRuntime> start({Set<String> only = const {'scoring', 'pota'}}) async => runtime = await ExtRuntime.start(
+    index: index,
+    config: CliConfig(settings: const {}),
+    only: only,
+  );
 
   test('the log selects POTA, and core comes last as the fallback', () async {
     await start();
     final scored = await scoreOperation(
       runtime!.host,
       operation: _operation,
-      qsos: [_qso('a', at: _at, parks: const ['US-1234'])],
+      qsos: [
+        _qso('a', at: _at, parks: const ['US-1234']),
+      ],
     );
     // Keyed by scorer, in priority order: what the app caches, and what an
     // operator comparing the two reads.
@@ -106,8 +100,7 @@ void main() {
     // BECAUSE it awarded it park credit, and asserting the outcome without it
     // would pass just as well if POTA had started overruling core for free.
     expect(_verdictFor(merged, 'pota', 'packed-up')?['value'], greaterThan(0));
-    expect(_alertsOf(_verdictFor(merged, 'core', 'packed-up')), isNot(contains('duplicate')),
-        reason: 'POTA credited this contact; core must not strike it');
+    expect(_alertsOf(_verdictFor(merged, 'core', 'packed-up')), isNot(contains('duplicate')), reason: 'POTA credited this contact; core must not strike it');
 
     // And the reason it yielded is a RULING, not silence: POTA reports the
     // dupe test it ran, which is what `judgesWorkedBefore` reads.
@@ -163,9 +156,7 @@ void main() {
     ];
 
     final merged = await scoreOperation(runtime!.host, operation: _operation, qsos: log);
-    final alerts = [
-      for (final scorer in merged.keys) ..._alertsOf(_verdictFor(merged, scorer, 'again')),
-    ];
+    final alerts = [for (final scorer in merged.keys) ..._alertsOf(_verdictFor(merged, scorer, 'again'))];
     expect(alerts, contains('duplicate'));
   });
 
@@ -181,8 +172,7 @@ void main() {
 
     final merged = await scoreOperation(runtime!.host, operation: _operation, qsos: log);
     final first = _verdictFor(merged, 'core', 'at-park');
-    expect(((first?['notices'] as List?) ?? const []), contains('newDXCC'),
-        reason: 'nothing else in the app reports a new entity');
+    expect(((first?['notices'] as List?) ?? const []), contains('newDXCC'), reason: 'nothing else in the app reports a new entity');
   });
 
   // The hole a bare "did it answer?" test leaves, against the real contest
@@ -201,15 +191,11 @@ void main() {
         {'type': 'cqww', 'mode': 'SSB', 'ourZone': '5'},
       ],
     };
-    final log = [
-      _qso('warc-1', at: _at, call: 'W3QRP', band: '30m'),
-      _qso('warc-2', at: _at + 60 * 1000, call: 'W3QRP', band: '30m'),
-    ];
+    final log = [_qso('warc-1', at: _at, call: 'W3QRP', band: '30m'), _qso('warc-2', at: _at + 60 * 1000, call: 'W3QRP', band: '30m')];
 
     final merged = await scoreOperation(runtime!.host, operation: operation, qsos: log);
     expect(_alertsOf(_verdictFor(merged, 'cqww', 'warc-2')), contains('invalidBand'));
-    expect(_alertsOf(_verdictFor(merged, 'core', 'warc-2')), contains('duplicate'),
-        reason: 'CQ WW ruled on the band, not on whether this station was worked');
+    expect(_alertsOf(_verdictFor(merged, 'core', 'warc-2')), contains('duplicate'), reason: 'CQ WW ruled on the band, not on whether this station was worked');
   });
 
   // A deleted `break` row opens no segment: the app never sees deleted rows at
@@ -260,7 +246,9 @@ void main() {
     final scored = await scoreOperation(
       _StubHost(failing: const {'pota'}),
       operation: _activation,
-      qsos: [_qso('a', at: _at, parks: const ['US-1234'])],
+      qsos: [
+        _qso('a', at: _at, parks: const ['US-1234']),
+      ],
     );
     expect(scored['pota']?['error'], contains('boom'));
     expect((scored['core']?['qsoScores'] as Map?)?.keys, ['a']);
@@ -280,31 +268,26 @@ class _StubHost implements ExtensionHost {
     Object? args,
     Duration timeout = const Duration(seconds: 10),
     bool partialOnTimeout = false,
-  }) async =>
-      [
-        {'key': 'core', 'ok': true, 'value': 'always'},
-        {
-          'key': 'pota',
-          'ok': true,
-          'value': {
-            'refTypes': ['potaActivation', 'pota'],
-            'huntingRefTypes': ['pota'],
-          },
-        },
-      ];
+  }) async => [
+    {'key': 'core', 'ok': true, 'value': 'always'},
+    {
+      'key': 'pota',
+      'ok': true,
+      'value': {
+        'refTypes': ['potaActivation', 'pota'],
+        'huntingRefTypes': ['pota'],
+      },
+    },
+  ];
 
   @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
+  Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     if (failing.contains(key)) throw Exception('boom');
     final qsos = ((args as Map)['qsos'] as List).cast<Map<String, Object?>>();
     return {
-      'qsoScores': {for (final qso in qsos) qso['uuid'] as String: {'value': 1}},
+      'qsoScores': {
+        for (final qso in qsos) qso['uuid'] as String: {'value': 1},
+      },
       'daySections': const [],
       'operationSummary': const {},
     };

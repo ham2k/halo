@@ -55,18 +55,13 @@ class CatalogTier {
   /// under the experiment while that section is still gated. Off, the tier is
   /// absent and nothing is fetched: a section that is not built must not be
   /// asking the catalog anything.
-  static bool shownFor(HaLoServices services) =>
-      InstalledExtensions.isSupported && services.settings.experimentEnabled(kCatalogExperiment);
+  static bool shownFor(HaLoServices services) => InstalledExtensions.isSupported && services.settings.experimentEnabled(kCatalogExperiment);
 
   /// Catalog entries claiming any of [refs], minus [alreadyOffered]. What
   /// answers an operation opened long after the extension that wrote its
   /// references left the app — the catalog carries each entry's manifest
   /// `hooks`, so a claim is readable without a byte of its code running.
-  List<CatalogEntry> matchingRefs(
-    HaLoServices services,
-    Iterable<({String type, String? code})> refs, {
-    required Set<String> alreadyOffered,
-  }) {
+  List<CatalogEntry> matchingRefs(HaLoServices services, Iterable<({String type, String? code})> refs, {required Set<String> alreadyOffered}) {
     final listing = entries;
     if (listing == null || refs.isEmpty || !shownFor(services)) return const [];
     final available = {for (final info in services.extensions.availableExtensions) info.key};
@@ -82,11 +77,7 @@ class CatalogTier {
 
   /// What [input] matches, or empty while the listing has not arrived. The
   /// candidates are read off the box exactly as the two tiers above read it.
-  List<CatalogEntry> matching(
-    HaLoServices services,
-    ({String search, String key}) candidates, {
-    required bool keyOnly,
-  }) {
+  List<CatalogEntry> matching(HaLoServices services, ({String search, String key}) candidates, {required bool keyOnly}) {
     final listing = entries;
     if (listing == null || !shownFor(services)) return const [];
     return catalogExtensionsMatching(
@@ -143,9 +134,7 @@ List<CatalogEntry> catalogExtensionsMatching(
   if (search.isEmpty) return const [];
   final matched = [
     for (final entry in entries)
-      if (!availableKeys.contains(entry.key) &&
-          (entry.key.toLowerCase() == key || (!keyOnly && entry.matchesSearch(search, locale: locale))))
-        entry,
+      if (!availableKeys.contains(entry.key) && (entry.key.toLowerCase() == key || (!keyOnly && entry.matchesSearch(search, locale: locale)))) entry,
   ];
   return orderedCatalogEntries(matched, operatorGeo, locale);
 }
@@ -197,18 +186,9 @@ class InstallExtensionRow extends StatelessWidget {
 /// shows, over bytes checked against the listing's hash — so false covers a
 /// cancel and a refusal the flow has already explained, as well as an install
 /// that went wrong underneath it.
-Future<bool> installCatalogExtension(
-  BuildContext context, {
-  required HaLoServices services,
-  required CatalogEntry entry,
-}) async {
+Future<bool> installCatalogExtension(BuildContext context, {required HaLoServices services, required CatalogEntry entry}) async {
   try {
-    final name = await installFromCatalog(
-      context,
-      services: services,
-      release: entry.release,
-      commit: (bundle) => services.extensions.installBundle(bundle),
-    );
+    final name = await installFromCatalog(context, services: services, release: entry.release, commit: (bundle) => services.extensions.installBundle(bundle));
     if (name == null) return false;
     // A fresh catalog install drops the operator's stored override, so the
     // extension lands on whatever its manifest defaults to — which an author

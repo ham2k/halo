@@ -86,8 +86,7 @@ void main() {
       expect(buildKenwoodSetModeCommand('USB'), 'MD2;');
       expect(buildKenwoodSetModeCommand('CW'), 'MD3;');
       expect(parseKenwoodModeParams('2'), 'USB');
-      expect(parseKenwoodModeParams('02'), isNull,
-          reason: 'a two-character answer is Yaesu framing, not a Kenwood mode');
+      expect(parseKenwoodModeParams('02'), isNull, reason: 'a two-character answer is Yaesu framing, not a Kenwood mode');
     });
 
     test('a mode the radio has no code for sends nothing', () {
@@ -104,7 +103,15 @@ void main() {
     });
 
     test('the IF frequency is read from the head, which is stable across the line', () {
-      expect(parseKenwoodInfoFrequency('00014250000' '0000' '+00000' '00'), 14250000);
+      expect(
+        parseKenwoodInfoFrequency(
+          '00014250000'
+          '0000'
+          '+00000'
+          '00',
+        ),
+        14250000,
+      );
       expect(parseKenwoodInfoFrequency('0001425'), isNull, reason: 'truncated');
     });
 
@@ -126,21 +133,36 @@ void main() {
       // A mode code is one character and frequencies are full of them: '1'
       // is LSB and also the first digit of 14 MHz. Skipping the frequency
       // field is what keeps the search honest.
-      const params = '00014250000' '0000' '+00000' '2';
+      const params =
+          '00014250000'
+          '0000'
+          '+00000'
+          '2';
       expect(kenwoodModeOffsetIn(params, '2'), params.length - 1);
     });
 
     test('an ambiguous packet teaches nothing rather than guessing', () {
       // Two fields hold the code. Picking either would be a coin flip whose
       // wrong side is silent and permanent.
-      const params = '00014250000' '2000' '+00000' '2';
+      const params =
+          '00014250000'
+          '2000'
+          '+00000'
+          '2';
       expect(kenwoodModeOffsetIn(params, '2'), isNull);
     });
 
     test('a code that appears nowhere teaches nothing', () {
       // The radio moved between the MD answer and this packet, or this is
       // not a layout we understand.
-      expect(kenwoodModeOffsetIn('00014250000' '0000', '7'), isNull);
+      expect(
+        kenwoodModeOffsetIn(
+          '00014250000'
+              '0000',
+          '7',
+        ),
+        isNull,
+      );
     });
   });
 
@@ -227,14 +249,22 @@ void main() {
     test('IF reports its frequency immediately, and no mode until the offset is known', () {
       // The safe half of the packet is usable from the first one. The unsafe
       // half waits for evidence.
-      receive('IF00014250000' '0000' '+00000' '2;');
+      receive(
+        'IF00014250000'
+        '0000'
+        '+00000'
+        '2;',
+      );
       expect(sink.readings.single.freqKHz, 14250.0);
       expect(sink.readings.single.mode, isNull, reason: 'nothing has confirmed where the mode lives yet');
       expect(session.modeOffset, isNull);
     });
 
     test('two IF packets agreeing against fresh MD answers settle the offset', () {
-      const tail = '0000' '+00000' '2';
+      const tail =
+          '0000'
+          '+00000'
+          '2';
       // Each IF has to be matched against its OWN MD answer, or two packets
       // from a single reading would "agree" without proving anything.
       receive('MD2;IF00014250000$tail;');
@@ -245,7 +275,12 @@ void main() {
 
       // And from here IF alone carries the mode.
       sink.readings.clear();
-      receive('IF00014260000' '0000' '+00000' '3;');
+      receive(
+        'IF00014260000'
+        '0000'
+        '+00000'
+        '3;',
+      );
       expect(sink.readings.single.freqKHz, 14260.0);
       expect(sink.readings.single.mode, 'CW');
     });
@@ -256,23 +291,47 @@ void main() {
       // and it is read against the same offset the mode is. Getting it from
       // an offset of its own would be a second unverified guess about a
       // layout this driver deliberately refuses to guess about once.
-      const rx = '0000' '+0000' '0';
-      const tx = '0000' '+0000' '1';
-      receive('MD2;IF00014250000$rx' '2;');
-      receive('MD2;IF00014255000$rx' '2;');
+      const rx =
+          '0000'
+          '+0000'
+          '0';
+      const tx =
+          '0000'
+          '+0000'
+          '1';
+      receive(
+        'MD2;IF00014250000$rx'
+        '2;',
+      );
+      receive(
+        'MD2;IF00014255000$rx'
+        '2;',
+      );
       expect(session.modeOffset, 21, reason: 'the offset has to be settled before the flag can be located');
       // Not from the packet that SETTLED the offset: that one is read with
       // the offset it had on arrival, which is none — the same rule the
       // mode itself follows here.
       expect(sink.txReports, isEmpty);
 
-      receive('IF00014255000$rx' '2;');
+      receive(
+        'IF00014255000$rx'
+        '2;',
+      );
       expect(sink.txReports, [false]);
-      receive('IF00014255000$tx' '2;');
+      receive(
+        'IF00014255000$tx'
+        '2;',
+      );
       expect(sink.txReports, [false, true]);
-      receive('IF00014255000$tx' '2;');
+      receive(
+        'IF00014255000$tx'
+        '2;',
+      );
       expect(sink.txReports, [false, true], reason: 'still transmitting is not news');
-      receive('IF00014255000$rx' '2;');
+      receive(
+        'IF00014255000$rx'
+        '2;',
+      );
       expect(sink.txReports, [false, true, false]);
     });
 
@@ -281,7 +340,13 @@ void main() {
       // there is no character to read — and reading one anyway would report
       // a digit out of the clarifier offset as the PTT, which decides
       // whether an antenna relay may move.
-      receive('IF00014250000' '0000' '+0000' '1' '2;');
+      receive(
+        'IF00014250000'
+        '0000'
+        '+0000'
+        '1'
+        '2;',
+      );
       expect(session.modeOffset, isNull);
       expect(sink.txReports, isEmpty);
     });
@@ -289,18 +354,30 @@ void main() {
     test('an IF with no MD before it teaches nothing', () {
       // Mutation check: drop the `_pendingModeCode = null` and this passes
       // while the offset gets confirmed by evidence that was never fresh.
-      const tail = '0000' '+00000' '2';
+      const tail =
+          '0000'
+          '+00000'
+          '2';
       receive('MD2;IF00014250000$tail;');
       receive('IF00014255000$tail;');
-      expect(session.modeOffset, isNull,
-          reason: 'the second packet was never matched against a reading of its own');
+      expect(session.modeOffset, isNull, reason: 'the second packet was never matched against a reading of its own');
     });
 
     test('disagreeing sightings restart the count rather than averaging', () {
       // A layout that looks like one offset once and another the next time is
       // not a layout we have understood.
-      receive('MD2;IF00014250000' '0000' '+00000' '2;');
-      receive('MD3;IF00014250000' '0003' '+00000' '9;');
+      receive(
+        'MD2;IF00014250000'
+        '0000'
+        '+00000'
+        '2;',
+      );
+      receive(
+        'MD3;IF00014250000'
+        '0003'
+        '+00000'
+        '9;',
+      );
       expect(session.modeOffset, isNull);
     });
 
@@ -320,7 +397,16 @@ void main() {
       // What a SPECIFIC radio built on this driver gets: its definition
       // already knows the layout, so nothing has to be worked out.
       final known = KenwoodSession(sink, declaredModeOffset: 21)..startUpdates();
-      known.handleData(Uint8List.fromList(ascii.encode('IF00014250000' '0000' '+00000' '2;')));
+      known.handleData(
+        Uint8List.fromList(
+          ascii.encode(
+            'IF00014250000'
+            '0000'
+            '+00000'
+            '2;',
+          ),
+        ),
+      );
 
       expect(sink.readings.single.mode, 'USB', reason: 'no learning period for a radio we already know');
       expect(known.modeOffset, 21);
@@ -333,7 +419,16 @@ void main() {
       // only place that could ever notice. It reaches a developer through the
       // row's devMode line rather than needing the radio on a bench.
       final wrong = KenwoodSession(sink, declaredModeOffset: 15);
-      wrong.handleData(Uint8List.fromList(ascii.encode('MD2;IF00014250000' '0000' '+00000' '2;')));
+      wrong.handleData(
+        Uint8List.fromList(
+          ascii.encode(
+            'MD2;IF00014250000'
+            '0000'
+            '+00000'
+            '2;',
+          ),
+        ),
+      );
 
       expect(sink.diagnostics, contains('IF mode offset 15 declared, radio says 21'));
     });
@@ -345,16 +440,33 @@ void main() {
       // answer is USB. Keep reading at the declared index and every later
       // packet reports LSB, silently, for the whole connection.
       final wrong = KenwoodSession(sink, declaredModeOffset: 14);
-      wrong.handleData(Uint8List.fromList(ascii.encode('MD2;IF00014250000' '0001' '+00000' '2;')));
+      wrong.handleData(
+        Uint8List.fromList(
+          ascii.encode(
+            'MD2;IF00014250000'
+            '0001'
+            '+00000'
+            '2;',
+          ),
+        ),
+      );
 
       expect(sink.diagnostics, contains('IF mode offset 14 declared, radio says 21'));
-      expect(sink.readings.last.mode, 'USB',
-          reason: 'the wrong reading is corrected from where the radio says the mode is');
+      expect(sink.readings.last.mode, 'USB', reason: 'the wrong reading is corrected from where the radio says the mode is');
 
       // A further packet with no fresh MD to lean on: mode now comes from
       // MD; alone, which is slower and right, rather than from an index the
       // radio has already contradicted.
-      wrong.handleData(Uint8List.fromList(ascii.encode('IF00014250000' '0001' '+00000' '2;')));
+      wrong.handleData(
+        Uint8List.fromList(
+          ascii.encode(
+            'IF00014250000'
+            '0001'
+            '+00000'
+            '2;',
+          ),
+        ),
+      );
       expect(sink.readings.last.mode, isNull, reason: 'nothing is read at the discredited index');
     });
 
@@ -363,7 +475,16 @@ void main() {
       // packet forever would add nothing — and it writes through to the row.
       final known = KenwoodSession(sink, declaredModeOffset: 15);
       for (var i = 0; i < 4; i++) {
-        known.handleData(Uint8List.fromList(ascii.encode('MD2;IF00014250000' '0000' '+00000' '2;')));
+        known.handleData(
+          Uint8List.fromList(
+            ascii.encode(
+              'MD2;IF00014250000'
+              '0000'
+              '+00000'
+              '2;',
+            ),
+          ),
+        );
       }
       expect(sink.diagnostics.where((d) => d!.contains('radio says')), hasLength(1));
     });

@@ -34,11 +34,13 @@ void main() {
     final HaLoHarness(:services) = await makeHaLoServices();
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // 1000 logical px → L: split layout with the Info tab, logging pane
@@ -112,17 +114,19 @@ void main() {
     await settings.setLayoutData(LayoutKeys.operationNarrowDockState, const DockState(selected: {'spots'}).toJson());
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(
-          services: services,
-          operationUuid: operation.uuid,
-          initialSuggestedQso: const {
-            'their': {'call': 'W1AW'},
-          },
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(
+            services: services,
+            operationUuid: operation.uuid,
+            initialSuggestedQso: const {
+              'their': {'call': 'W1AW'},
+            },
+          ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(TextField, 'W1AW').hitTestable(), findsOneWidget);
@@ -139,11 +143,13 @@ void main() {
     const longTitle = 'A Very Long Operation Title That Would Have Been Ellipsized Before';
     final operation = await services.operations.create(stationCall: 'KI2D', userTitle: longTitle);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
@@ -166,11 +172,13 @@ void main() {
     final HaLoHarness(:services) = await makeHaLoServices();
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('operationHeaderGrab')), findsNothing);
@@ -203,11 +211,13 @@ void main() {
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(OperationSheet), findsNothing);
@@ -232,11 +242,13 @@ void main() {
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // Used to stretch to fill the AppBar's whole remaining width (an
@@ -264,11 +276,13 @@ void main() {
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // The BUTTON: the Spots pane draws this glyph too, as a filter label.
@@ -293,116 +307,110 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
-  testWidgets(
-    'the tune icon opens a target-built dialog: extended settings stay hidden until "show more"',
-    (tester) async {
-      // HALO-55: the popup menu was replaced by settings_target_dialog.dart's
-      // showSettingsForTarget(target: 'logging'). Fields the old menu never
-      // had (leftieMode etc., declared target: 'logging-extended') must not
-      // clutter the dialog by default, but must be reachable via "show more
-      // settings". (core_settings_groups_test.dart pins that those fields
-      // actually commit through to SettingsService — a live Switch's own
-      // animation mid-rebuild isn't stable to drive from a widget test.)
-      tester.view.physicalSize = const Size(430, 800);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-      final HaLoHarness(:services, :settings) = await makeHaLoServices();
-      await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-      final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
+  testWidgets('the tune icon opens a target-built dialog: extended settings stay hidden until "show more"', (tester) async {
+    // HALO-55: the popup menu was replaced by settings_target_dialog.dart's
+    // showSettingsForTarget(target: 'logging'). Fields the old menu never
+    // had (leftieMode etc., declared target: 'logging-extended') must not
+    // clutter the dialog by default, but must be reachable via "show more
+    // settings". (core_settings_groups_test.dart pins that those fields
+    // actually commit through to SettingsService — a live Switch's own
+    // animation mid-rebuild isn't stable to drive from a widget test.)
+    tester.view.physicalSize = const Size(430, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-      await tester.pumpWidget(TranslationProvider(
+    await tester.pumpWidget(
+      TranslationProvider(
         child: MaterialApp(
           home: OperationView(services: services, operationUuid: operation.uuid),
         ),
-      ));
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(MdiIcons.tune));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(MdiIcons.tune));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Show RST fields'), findsOneWidget, reason: 'target: "logging" base elements show upfront');
-      expect(
-        find.text('Leftie Mode'),
-        findsNothing,
-        reason: 'target: "logging-extended" elements start hidden behind "show more"',
-      );
+    expect(find.text('Show RST fields'), findsOneWidget, reason: 'target: "logging" base elements show upfront');
+    expect(find.text('Leftie Mode'), findsNothing, reason: 'target: "logging-extended" elements start hidden behind "show more"');
 
-      // The Actions section and the "Relevant Settings" header push it
-      // below the fold at this narrow test size — scroll it into view
-      // before tapping, or the geometric tap lands on whatever's still
-      // visible at that (now-stale) offset instead.
-      await tester.ensureVisible(find.text('Show more settings'));
-      // The scroll ensureVisible starts needs a frame before a tap can be
-      // aimed: in a sliver viewport the rows move on the NEXT layout, and a
-      // tap placed from the old one lands on whatever was there before.
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Show more settings'));
-      await tester.pumpAndSettle();
-      expect(find.text('Leftie Mode'), findsOneWidget, reason: 'revealed once "show more" is tapped');
+    // The Actions section and the "Relevant Settings" header push it
+    // below the fold at this narrow test size — scroll it into view
+    // before tapping, or the geometric tap lands on whatever's still
+    // visible at that (now-stale) offset instead.
+    await tester.ensureVisible(find.text('Show more settings'));
+    // The scroll ensureVisible starts needs a frame before a tap can be
+    // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+    // tap placed from the old one lands on whatever was there before.
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Show more settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Leftie Mode'), findsOneWidget, reason: 'revealed once "show more" is tapped');
 
-      await tester.pumpWidget(const SizedBox());
-      await tester.pump(const Duration(seconds: 5));
-    },
-  );
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
 
-  testWidgets(
-    'toggling a field revealed via "show more" commits cleanly (regression, HALO-55)',
-    (tester) async {
-      // A live incident, not a hypothetical: toggling Leftie Mode from this
-      // dialog threw `identical(childRenderObject, parentRenderObject)`.
-      // Traced (by bypassing every layer of this dialog one at a time,
-      // down to calling SettingsService.setSettingValue directly while the
-      // dialog sat open) to the logging panel's submit button — leftie
-      // mode moves it between the entry row's first and last slot, and
-      // without a stable Key on the widget actually sitting in
-      // Row.children (only an inner AspectRatio had one), Flutter treated
-      // the move as unmount-one/mount-another. Harmless on its own; fatal
-      // while a Dialog route was simultaneously open and running its own
-      // semantics pass. Fixed at the source (the KeyedSubtree
-      // LoggingEntryRow wraps the button in) — this test exercises the
-      // actual dialog path that crashed, not the underlying Row.
-      tester.view.physicalSize = const Size(430, 800);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-      final HaLoHarness(:services, :settings) = await makeHaLoServices();
-      await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-      final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
+  testWidgets('toggling a field revealed via "show more" commits cleanly (regression, HALO-55)', (tester) async {
+    // A live incident, not a hypothetical: toggling Leftie Mode from this
+    // dialog threw `identical(childRenderObject, parentRenderObject)`.
+    // Traced (by bypassing every layer of this dialog one at a time,
+    // down to calling SettingsService.setSettingValue directly while the
+    // dialog sat open) to the logging panel's submit button — leftie
+    // mode moves it between the entry row's first and last slot, and
+    // without a stable Key on the widget actually sitting in
+    // Row.children (only an inner AspectRatio had one), Flutter treated
+    // the move as unmount-one/mount-another. Harmless on its own; fatal
+    // while a Dialog route was simultaneously open and running its own
+    // semantics pass. Fixed at the source (the KeyedSubtree
+    // LoggingEntryRow wraps the button in) — this test exercises the
+    // actual dialog path that crashed, not the underlying Row.
+    tester.view.physicalSize = const Size(430, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-      await tester.pumpWidget(TranslationProvider(
+    await tester.pumpWidget(
+      TranslationProvider(
         child: MaterialApp(
           home: OperationView(services: services, operationUuid: operation.uuid),
         ),
-      ));
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(MdiIcons.tune));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(MdiIcons.tune));
+    await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Show more settings'));
-      // The scroll ensureVisible starts needs a frame before a tap can be
-      // aimed: in a sliver viewport the rows move on the NEXT layout, and a
-      // tap placed from the old one lands on whatever was there before.
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Show more settings'));
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Show more settings'));
+    // The scroll ensureVisible starts needs a frame before a tap can be
+    // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+    // tap placed from the old one lands on whatever was there before.
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Show more settings'));
+    await tester.pumpAndSettle();
 
-      expect(settings.leftieMode, isFalse);
-      final leftieSwitch = find.descendant(of: find.widgetWithText(ListTile, 'Leftie Mode'), matching: find.byType(Switch));
-      await tester.ensureVisible(leftieSwitch);
-      // The scroll ensureVisible starts needs a frame before a tap can be
-      // aimed: in a sliver viewport the rows move on the NEXT layout, and a
-      // tap placed from the old one lands on whatever was there before.
-      await tester.pumpAndSettle();
-      await tester.tap(leftieSwitch);
-      await tester.pumpAndSettle();
+    expect(settings.leftieMode, isFalse);
+    final leftieSwitch = find.descendant(of: find.widgetWithText(ListTile, 'Leftie Mode'), matching: find.byType(Switch));
+    await tester.ensureVisible(leftieSwitch);
+    // The scroll ensureVisible starts needs a frame before a tap can be
+    // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+    // tap placed from the old one lands on whatever was there before.
+    await tester.pumpAndSettle();
+    await tester.tap(leftieSwitch);
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull, reason: 'the semantics-tree assertion used to fire exactly here');
-      expect(settings.leftieMode, isTrue);
+    expect(tester.takeException(), isNull, reason: 'the semantics-tree assertion used to fire exactly here');
+    expect(settings.leftieMode, isTrue);
 
-      await tester.pumpWidget(const SizedBox());
-      await tester.pump(const Duration(seconds: 5));
-    },
-  );
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
 
   testWidgets('the header dots animate back on close, not an instant snap to their resting place', (tester) async {
     tester.view.physicalSize = const Size(1000, 800);
@@ -412,11 +420,13 @@ void main() {
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // The control reserves a fixed width (the header title must not shift as
@@ -430,9 +440,7 @@ void main() {
     // keep animating underneath for the close transition this test pins.
     final control = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_HeaderDotsControl');
     double progress() {
-      final paint = tester.widget<CustomPaint>(
-        find.descendant(of: control, matching: find.byType(CustomPaint)),
-      );
+      final paint = tester.widget<CustomPaint>(find.descendant(of: control, matching: find.byType(CustomPaint)));
       return (paint.painter as dynamic).progress as double;
     }
 
@@ -475,11 +483,13 @@ void main() {
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     final acceptButton = find.widgetWithText(FilledButton, 'OK');
@@ -531,18 +541,22 @@ void main() {
     // A stub root beneath it, not `home: OperationView(...)` directly —
     // the chevron's own action is popping the view, which needs somewhere
     // to pop TO; the root route of a Navigator refuses to pop at all.
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Builder(
-          builder: (context) => ElevatedButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => OperationView(services: services, operationUuid: operation.uuid)),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => OperationView(services: services, operationUuid: operation.uuid),
+                ),
+              ),
+              child: const Text('open'),
             ),
-            child: const Text('open'),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
@@ -631,11 +645,13 @@ void main() {
       final HaLoHarness(:services) = await makeHaLoServices();
       final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: OperationView(services: services, operationUuid: operation.uuid),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: OperationView(services: services, operationUuid: operation.uuid),
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
     }
 
@@ -687,28 +703,33 @@ void main() {
     // fan-out key: 'ref:<type>:<key>:<method>', key null here since the hook
     // call passes none) with an "at" fragment — the same shape a real
     // activity extension (e.g. POTA) returns.
-    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({
-      'ref:pota/activation:null:suggestOperationTitle': {'at': 'K-1234'},
-    }))
-      ..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(
+      FakeExtensionHost({
+        'ref:pota/activation:null:suggestOperationTitle': {'at': 'K-1234'},
+      }),
+    )..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
     final created = await services.operations.create(stationCall: 'N0CALL');
-    await services.operations.saveData(Operation(
-      uuid: created.uuid,
-      data: {
-        ...created.data,
-        'refs': [
-          {'type': 'pota/activation', 'ref': 'K-1234'},
-        ],
-      },
-    ));
+    await services.operations.saveData(
+      Operation(
+        uuid: created.uuid,
+        data: {
+          ...created.data,
+          'refs': [
+            {'type': 'pota/activation', 'ref': 'K-1234'},
+          ],
+        },
+      ),
+    );
     final operation = (await services.operations.get(created.uuid))!;
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // The ref-generated suggestion has already been cached (retitleOperation
@@ -741,11 +762,13 @@ void main() {
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(
@@ -783,21 +806,19 @@ void main() {
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     final button = find.widgetWithIcon(IconButton, MdiIcons.tune);
     expect(button, findsOneWidget, reason: 'the QSOs tab is on top in the narrow arrangement');
     final chromeHeight = LayoutDensity.chromeHeightOf(tester.element(button));
-    expect(
-      tester.getSize(button).height,
-      chromeHeight,
-      reason: 'the indicator must not take its width out of the tab\'s own control',
-    );
+    expect(tester.getSize(button).height, chromeHeight, reason: 'the indicator must not take its width out of the tab\'s own control');
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
@@ -815,9 +836,13 @@ void main() {
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: OperationView(services: services, operationUuid: operation.uuid)),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('N0CALL Op'));
@@ -837,8 +862,7 @@ void main() {
     // catches: the AppBar's row rebuilds with the view no matter what, so a
     // copy that never hears about the new title leaves exactly one labeled
     // group behind — and disagrees with the row it is standing on.
-    expect(find.text('Exports'), findsNothing,
-        reason: "the widened ref line priced the labels out of BOTH rows, the sheet's copy included");
+    expect(find.text('Exports'), findsNothing, reason: "the widened ref line priced the labels out of BOTH rows, the sheet's copy included");
 
     // Paired with positives, because `findsNothing` alone also passes if the
     // tap closed the sheet, or tore the trailing row down, or the row failed
@@ -856,7 +880,8 @@ void main() {
 /// operation controls.
 class _SuggestingExtensions extends ExtensionServiceWithFakeHost {
   _SuggestingExtensions()
-      : super(FakeExtensionHost({
+    : super(
+        FakeExtensionHost({
           'activity:*:suggest': [
             {
               'key': 'pota',
@@ -870,17 +895,14 @@ class _SuggestingExtensions extends ExtensionServiceWithFakeHost {
                   // title line for the title control to get any wider at all.
                   'shortLabel': 'POTA US-0001 A Very Long Park Name',
                   'name': 'Some Park',
-                }
+                },
               ],
             },
           ],
-        }));
+        }),
+      );
 
   @override
-  Future<ControlsResult> operationControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
       (controls: const <Map<String, dynamic>>[], loadFailed: false);
-
 }

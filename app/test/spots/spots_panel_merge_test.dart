@@ -6,33 +6,35 @@ import 'package:halo_core/halo_core.dart' show bands;
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
 
-Map<String, dynamic> _spot({
-  required String call,
-  double? freq,
-  String? band,
-  String? mode,
-  List<Map<String, dynamic>>? refs,
-  required int timeInMillis,
-}) =>
-    {
-      'their': {'call': call},
-      'freq': ?freq,
-      'band': ?band,
-      'mode': ?mode,
-      'refs': ?refs,
-      'spot': {'timeInMillis': timeInMillis, 'source': 'test'},
-    };
+Map<String, dynamic> _spot({required String call, double? freq, String? band, String? mode, List<Map<String, dynamic>>? refs, required int timeInMillis}) => {
+  'their': {'call': call},
+  'freq': ?freq,
+  'band': ?band,
+  'mode': ?mode,
+  'refs': ?refs,
+  'spot': {'timeInMillis': timeInMillis, 'source': 'test'},
+};
 
 void main() {
   group('mergeSpotsByCallAndFreq', () {
     test('same call, close freq and time merges refs into one spot', () {
       final spots = [
-        _spot(call: 'K1ABC', freq: 14285.0, refs: [
-          {'type': 'pota', 'ref': 'K-0001'},
-        ], timeInMillis: 1000),
-        _spot(call: 'K1ABC', freq: 14285.2, refs: [
-          {'type': 'pota', 'ref': 'K-0002'},
-        ], timeInMillis: 2000),
+        _spot(
+          call: 'K1ABC',
+          freq: 14285.0,
+          refs: [
+            {'type': 'pota', 'ref': 'K-0001'},
+          ],
+          timeInMillis: 1000,
+        ),
+        _spot(
+          call: 'K1ABC',
+          freq: 14285.2,
+          refs: [
+            {'type': 'pota', 'ref': 'K-0002'},
+          ],
+          timeInMillis: 2000,
+        ),
       ];
 
       final merged = mergeSpotsByCallAndFreq(spots);
@@ -42,46 +44,31 @@ void main() {
     });
 
     test('same call, freq just past the 0.5kHz tolerance stays separate', () {
-      final spots = [
-        _spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 1000),
-        _spot(call: 'K1ABC', freq: 14285.51, timeInMillis: 2000),
-      ];
+      final spots = [_spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 1000), _spot(call: 'K1ABC', freq: 14285.51, timeInMillis: 2000)];
 
       expect(mergeSpotsByCallAndFreq(spots), hasLength(2));
     });
 
     test('same call, freq just under the 0.5kHz tolerance still merges', () {
-      final spots = [
-        _spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 1000),
-        _spot(call: 'K1ABC', freq: 14285.49, timeInMillis: 2000),
-      ];
+      final spots = [_spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 1000), _spot(call: 'K1ABC', freq: 14285.49, timeInMillis: 2000)];
 
       expect(mergeSpotsByCallAndFreq(spots), hasLength(1));
     });
 
     test('same call, just past the 30min tolerance stays separate', () {
-      final spots = [
-        _spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 0),
-        _spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 30 * 60 * 1000 + 1),
-      ];
+      final spots = [_spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 0), _spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 30 * 60 * 1000 + 1)];
 
       expect(mergeSpotsByCallAndFreq(spots), hasLength(2));
     });
 
     test('same call, exactly at the 30min tolerance still merges', () {
-      final spots = [
-        _spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 0),
-        _spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 30 * 60 * 1000),
-      ];
+      final spots = [_spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 0), _spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 30 * 60 * 1000)];
 
       expect(mergeSpotsByCallAndFreq(spots), hasLength(1));
     });
 
     test('different calls never merge', () {
-      final spots = [
-        _spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 1000),
-        _spot(call: 'W1XYZ', freq: 14285.0, timeInMillis: 1000),
-      ];
+      final spots = [_spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 1000), _spot(call: 'W1XYZ', freq: 14285.0, timeInMillis: 1000)];
 
       expect(mergeSpotsByCallAndFreq(spots), hasLength(2));
     });
@@ -175,12 +162,24 @@ void main() {
 
     test('different ref sets never merge, even at the same frequency', () {
       final spots = [
-        _spot(call: 'K1ABC', freq: 14285.0, mode: 'SSB', refs: [
-          {'type': 'pota', 'ref': 'K-0001'},
-        ], timeInMillis: 1000),
-        _spot(call: 'W1XYZ', freq: 14285.0, mode: 'SSB', refs: [
-          {'type': 'pota', 'ref': 'K-0002'},
-        ], timeInMillis: 1000),
+        _spot(
+          call: 'K1ABC',
+          freq: 14285.0,
+          mode: 'SSB',
+          refs: [
+            {'type': 'pota', 'ref': 'K-0001'},
+          ],
+          timeInMillis: 1000,
+        ),
+        _spot(
+          call: 'W1XYZ',
+          freq: 14285.0,
+          mode: 'SSB',
+          refs: [
+            {'type': 'pota', 'ref': 'K-0002'},
+          ],
+          timeInMillis: 1000,
+        ),
       ];
 
       expect(mergeSpotsByFreqAndRefs(spots), hasLength(2));
@@ -273,10 +272,7 @@ void main() {
     });
 
     test('a missing frequency sorts as 0, ahead of any real frequency', () {
-      final spots = [
-        _spot(call: 'K1ABC', freq: 7100.0, timeInMillis: 1000),
-        _spot(call: 'W1XYZ', timeInMillis: 1000),
-      ];
+      final spots = [_spot(call: 'K1ABC', freq: 7100.0, timeInMillis: 1000), _spot(call: 'W1XYZ', timeInMillis: 1000)];
 
       final sorted = sortSpots(spots, 'frequency');
 
@@ -284,10 +280,7 @@ void main() {
     });
 
     test('does not mutate the input list', () {
-      final spots = [
-        _spot(call: 'K1ABC', freq: 21000.0, timeInMillis: 1000),
-        _spot(call: 'W1XYZ', freq: 7100.0, timeInMillis: 1000),
-      ];
+      final spots = [_spot(call: 'K1ABC', freq: 21000.0, timeInMillis: 1000), _spot(call: 'W1XYZ', freq: 7100.0, timeInMillis: 1000)];
       final original = [...spots];
 
       sortSpots(spots, 'frequency');
@@ -322,10 +315,7 @@ void main() {
       final sections = sectionSpots(spots, callsWithNotes: {});
 
       expect(sections.map((s) => s.key), ['40m', '20m']);
-      expect(
-        sections.firstWhere((s) => s.key == '20m').spots.map((s) => (s['their'] as Map)['call']),
-        ['K1ABC', 'N2BBB'],
-      );
+      expect(sections.firstWhere((s) => s.key == '20m').spots.map((s) => (s['their'] as Map)['call']), ['K1ABC', 'N2BBB']);
     });
 
     test('groupByBand: false produces one flat "spots" section, not band groups', () {
@@ -341,17 +331,11 @@ void main() {
       final sections = sectionSpots(spots, callsWithNotes: {}, groupByBand: false);
 
       expect(sections.map((s) => s.key), ['spots']);
-      expect(
-        sections.single.spots.map((s) => (s['their'] as Map)['call']),
-        ['K1ABC', 'W1XYZ', 'N2BBB'],
-      );
+      expect(sections.single.spots.map((s) => (s['their'] as Map)['call']), ['K1ABC', 'W1XYZ', 'N2BBB']);
     });
 
     test('groupByBand: false still pins a "notes" section ahead of the flat "spots" section', () {
-      final spots = [
-        _spot(call: 'K1ABC', band: '20m', timeInMillis: 2000),
-        _spot(call: 'W1XYZ', band: '40m', timeInMillis: 1000),
-      ];
+      final spots = [_spot(call: 'K1ABC', band: '20m', timeInMillis: 2000), _spot(call: 'W1XYZ', band: '40m', timeInMillis: 1000)];
 
       final sections = sectionSpots(spots, callsWithNotes: {'W1XYZ'}, groupByBand: false);
 
@@ -367,10 +351,7 @@ void main() {
     });
 
     test('callsWithNotes prepends a "notes" section without removing those spots from their band section', () {
-      final spots = [
-        _spot(call: 'K1ABC', band: '20m', timeInMillis: 1000),
-        _spot(call: 'W1XYZ', band: '40m', timeInMillis: 1000),
-      ];
+      final spots = [_spot(call: 'K1ABC', band: '20m', timeInMillis: 1000), _spot(call: 'W1XYZ', band: '40m', timeInMillis: 1000)];
 
       final sections = sectionSpots(spots, callsWithNotes: {'K1ABC'});
 
@@ -404,10 +385,7 @@ void main() {
     test('selfSpots pin a "self" section ahead of everything, "notes" included', () {
       // The self section is where the operator finds their own announcement to
       // tap back to — anything sorting above it (even the notes pin) buries it.
-      final spots = [
-        _spot(call: 'K1ABC', band: '20m', timeInMillis: 1000),
-        _spot(call: 'W1XYZ', band: '40m', timeInMillis: 1000),
-      ];
+      final spots = [_spot(call: 'K1ABC', band: '20m', timeInMillis: 1000), _spot(call: 'W1XYZ', band: '40m', timeInMillis: 1000)];
       final self = [_spot(call: 'N0CALL', band: '30m', timeInMillis: 2000)];
 
       final sections = sectionSpots(spots, selfSpots: self, callsWithNotes: {'K1ABC'});
@@ -483,10 +461,7 @@ void main() {
     });
 
     test('never carries spot-only metadata (icon, spot.*) into the suggestion', () {
-      final spot = {
-        ..._spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 1000),
-        'icon': 'pine-tree',
-      };
+      final spot = {..._spot(call: 'K1ABC', freq: 14285.0, timeInMillis: 1000), 'icon': 'pine-tree'};
 
       final suggested = suggestedQsoFromSpot(spot);
 
@@ -571,7 +546,8 @@ void main() {
 
   group('spotPassesContinentFilter (#316)', () {
     // Resolver from a per-call continent map, mirroring _callNotes.
-    String? Function(String) continentOf(Map<String, String?> byCall) => (c) => byCall[c];
+    String? Function(String) continentOf(Map<String, String?> byCall) =>
+        (c) => byCall[c];
     final continents = continentOf({'K1ABC': 'NA', 'W1XYZ': 'NA', 'DL1ABC': 'EU', 'JA1ABC': 'AS'});
 
     test('single-op spot on a disabled continent is hidden', () {
@@ -620,9 +596,7 @@ void main() {
   });
 
   group('spotsOnEnabledBands', () {
-    List<Map<String, dynamic>> spotsOn(List<String?> bandList) => [
-          for (final band in bandList) _spot(call: 'K1ABC', band: band, timeInMillis: 1000),
-        ];
+    List<Map<String, dynamic>> spotsOn(List<String?> bandList) => [for (final band in bandList) _spot(call: 'K1ABC', band: band, timeInMillis: 1000)];
     List<String?> bandsOf(List<Map<String, dynamic>> spots) => [for (final s in spots) s['band'] as String?];
 
     // The operator configured 40m and 20m; a 15m spot is not theirs to work,
@@ -647,49 +621,31 @@ void main() {
     // The dropdown is the settings list first: this is the whole bug report —
     // 40m/20m enabled, 19 bands offered.
     test('offers the enabled bands, not the whole band table', () {
-      expect(
-        spotsFilterBandOptions(enabledBands: {'40m', '20m'}, bandSpotCounts: {}, selected: 'auto'),
-        ['40m', '20m'],
-      );
+      expect(spotsFilterBandOptions(enabledBands: {'40m', '20m'}, bandSpotCounts: {}, selected: 'auto'), ['40m', '20m']);
     });
 
     // Spots on a non-enabled band still reach the screen under an explicit
     // pick, so the band must remain selectable or those spots are unfilterable.
     test('adds a non-enabled band that currently has spots', () {
-      expect(
-        spotsFilterBandOptions(enabledBands: {'40m'}, bandSpotCounts: {'15m': 3}, selected: 'auto'),
-        ['40m', '15m'],
-      );
+      expect(spotsFilterBandOptions(enabledBands: {'40m'}, bandSpotCounts: {'15m': 3}, selected: 'auto'), ['40m', '15m']);
     });
 
     test('a non-enabled band with zero spots stays out', () {
-      expect(
-        spotsFilterBandOptions(enabledBands: {'40m'}, bandSpotCounts: {'15m': 0}, selected: 'auto'),
-        ['40m'],
-      );
+      expect(spotsFilterBandOptions(enabledBands: {'40m'}, bandSpotCounts: {'15m': 0}, selected: 'auto'), ['40m']);
     });
 
     // A filter persisted before its band was disabled: dropping it would leave
     // the dropdown showing something other than what is actually filtering.
     test('keeps the selected band even when disabled and spotless', () {
-      expect(
-        spotsFilterBandOptions(enabledBands: {'40m'}, bandSpotCounts: {}, selected: '15m'),
-        ['40m', '15m'],
-      );
+      expect(spotsFilterBandOptions(enabledBands: {'40m'}, bandSpotCounts: {}, selected: '15m'), ['40m', '15m']);
     });
 
     test('orders options by the band table, not by how they qualified', () {
-      expect(
-        spotsFilterBandOptions(enabledBands: {'10m', '80m'}, bandSpotCounts: {'160m': 2}, selected: '40m'),
-        ['160m', '80m', '40m', '10m'],
-      );
+      expect(spotsFilterBandOptions(enabledBands: {'10m', '80m'}, bandSpotCounts: {'160m': 2}, selected: '40m'), ['160m', '80m', '40m', '10m']);
     });
 
     test('an empty enabled list offers every band', () {
-      expect(
-        spotsFilterBandOptions(enabledBands: {}, bandSpotCounts: {}, selected: 'auto'),
-        hasLength(bands.length),
-      );
+      expect(spotsFilterBandOptions(enabledBands: {}, bandSpotCounts: {}, selected: 'auto'), hasLength(bands.length));
     });
   });
 
@@ -699,10 +655,7 @@ void main() {
       // key in spotsBySource at all, so listing only those keys erases it
       // from the filter — the operator cannot see it was even consulted, and
       // reads a board missing every SOTA spot as a quiet afternoon.
-      expect(
-        spotsFilterSourceList(withSpots: ['pota'], unavailable: ['sota'], failed: ['wwbota']),
-        ['pota', 'sota', 'wwbota'],
-      );
+      expect(spotsFilterSourceList(withSpots: ['pota'], unavailable: ['sota'], failed: ['wwbota']), ['pota', 'sota', 'wwbota']);
     });
 
     test('a source named in two of the inputs appears once', () {
@@ -710,20 +663,14 @@ void main() {
       // view — nothing in the signature stops them overlapping — so the
       // dedupe is the function's own guarantee, not a property inherited
       // from how SpotsService happens to populate them today.
-      expect(
-        spotsFilterSourceList(withSpots: ['pota', 'sota'], unavailable: ['sota'], failed: const []),
-        ['pota', 'sota'],
-      );
+      expect(spotsFilterSourceList(withSpots: ['pota', 'sota'], unavailable: ['sota'], failed: const []), ['pota', 'sota']);
     });
 
     test('healthy sources alone are unchanged', () {
       // The everyday case must not gain rows: an absent source means
       // "answered, nothing to offer", and that is the signal the marker
       // stands against.
-      expect(
-        spotsFilterSourceList(withSpots: ['sota', 'pota'], unavailable: const [], failed: const []),
-        ['pota', 'sota'],
-      );
+      expect(spotsFilterSourceList(withSpots: ['sota', 'pota'], unavailable: const [], failed: const []), ['pota', 'sota']);
     });
   });
 }

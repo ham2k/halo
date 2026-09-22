@@ -128,12 +128,8 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   }
 
   @override
-  Future<void> load(String kernelSource, List<ExtensionBundle> bundles,
-      {ClockTravelState clock = const ClockTravelState.real()}) async {
-    final blob = web.Blob(
-      [_bootstrapJs.toJS].toJS,
-      web.BlobPropertyBag(type: 'application/javascript'),
-    );
+  Future<void> load(String kernelSource, List<ExtensionBundle> bundles, {ClockTravelState clock = const ClockTravelState.real()}) async {
+    final blob = web.Blob([_bootstrapJs.toJS].toJS, web.BlobPropertyBag(type: 'application/javascript'));
     final url = web.URL.createObjectURL(blob);
     _blobUrl = url;
     final worker = web.Worker(url.toJS);
@@ -167,15 +163,12 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
     _send({
       'kind': 'load',
       'kernelSource': kernelSource,
-      'bundles': [for (final b in bundles) {'key': b.key, 'source': b.source}],
+      'bundles': [
+        for (final b in bundles) {'key': b.key, 'source': b.source},
+      ],
       // Applied by the bootstrap between the kernel and the bundles, so the
       // sandbox's Date is already on the app's clock when they evaluate.
-      if (!clock.isReal)
-        'clock': {
-          'anchorRealMillis': clock.anchorRealMillis,
-          'anchorVirtualMillis': clock.anchorVirtualMillis,
-          'speed': clock.speed,
-        },
+      if (!clock.isReal) 'clock': {'anchorRealMillis': clock.anchorRealMillis, 'anchorVirtualMillis': clock.anchorVirtualMillis, 'speed': clock.speed},
     });
     // On failure, _HostCore.init disposes us before rethrowing.
     await ready.future.timeout(const Duration(seconds: 30));
@@ -191,36 +184,17 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
 
   @override
   void invoke(int id, String category, String? key, String method, String argsJson) {
-    _send({
-      'kind': 'invoke',
-      'id': id,
-      'category': category,
-      'key': key,
-      'method': method,
-      'argsJson': argsJson,
-    });
+    _send({'kind': 'invoke', 'id': id, 'category': category, 'key': key, 'method': method, 'argsJson': argsJson});
   }
 
   @override
   void invokeAll(int id, String category, String method, String argsJson, {bool wantsPartials = false}) {
-    _send({
-      'kind': 'invokeAll',
-      'id': id,
-      'category': category,
-      'method': method,
-      'argsJson': argsJson,
-      'wantsPartials': wantsPartials,
-    });
+    _send({'kind': 'invokeAll', 'id': id, 'category': category, 'method': method, 'argsJson': argsJson, 'wantsPartials': wantsPartials});
   }
 
   @override
   void hostResponse(int callId, bool ok, String resultJson) {
-    _send({
-      'kind': 'hostResponse',
-      'callId': callId,
-      'ok': ok,
-      'resultJson': resultJson,
-    });
+    _send({'kind': 'hostResponse', 'callId': callId, 'ok': ok, 'resultJson': resultJson});
   }
 
   @override
@@ -230,12 +204,7 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
 
   @override
   void setClockTravel(int anchorRealMillis, int anchorVirtualMillis, double speed) {
-    _send({
-      'kind': 'setClockTravel',
-      'anchorRealMillis': anchorRealMillis,
-      'anchorVirtualMillis': anchorVirtualMillis,
-      'speed': speed,
-    });
+    _send({'kind': 'setClockTravel', 'anchorRealMillis': anchorRealMillis, 'anchorVirtualMillis': anchorVirtualMillis, 'speed': speed});
   }
 
   void _send(Map<String, dynamic> payload) {

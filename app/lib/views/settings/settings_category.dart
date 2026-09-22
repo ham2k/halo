@@ -22,8 +22,7 @@ import '../settings_view.dart';
 /// An element's own key where it has one, its type otherwise: headers and
 /// dividers carry no key, and two of them in a row are interchangeable for
 /// this purpose — what matters is that one appeared or went away.
-int settingsRowIdentity(List<Map<String, dynamic>> elements) =>
-    Object.hashAll([for (final el in elements) el['key'] ?? el['type']]);
+int settingsRowIdentity(List<Map<String, dynamic>> elements) => Object.hashAll([for (final el in elements) el['key'] ?? el['type']]);
 
 /// One CATEGORY of the Settings panel — a declared group, an extension's
 /// whole panel, or Common Preferences — as a collapsible band of rows.
@@ -112,11 +111,9 @@ Widget settingsCategorySliver(
 
 /// What the chevron and the title are drawn in — the section band's own
 /// accent, so the shelf and the headings on it agree.
-Color _accent(BuildContext context) =>
-    SectionHeader.titleStyle(context).color ?? Theme.of(context).colorScheme.onSurface;
+Color _accent(BuildContext context) => SectionHeader.titleStyle(context).color ?? Theme.of(context).colorScheme.onSurface;
 
 /// The centring only: the band runs to the pane's edges like every row does,
 /// while the chevron and title follow the pane's centring so they land
 /// beside the rows below rather than out in the gutter of a wide window.
-EdgeInsetsGeometry _headerInset(BuildContext context) =>
-    EdgeInsets.symmetric(horizontal: settingsRowCentering(settingsPaneWidth(context)));
+EdgeInsetsGeometry _headerInset(BuildContext context) => EdgeInsets.symmetric(horizontal: settingsRowCentering(settingsPaneWidth(context)));

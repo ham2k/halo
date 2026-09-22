@@ -142,10 +142,7 @@ String normalizeSettingTerm(String text) => normalizeFuzzyQuery(text);
 /// [developerMode] gates `devMode: true` elements exactly as FormRenderer
 /// does — passed in rather than read here so a test can build both views of
 /// the catalog without mutating app state.
-Future<List<SettingsCatalogEntry>> buildSettingsCatalog(
-  HaLoServices services, {
-  required bool developerMode,
-}) async {
+Future<List<SettingsCatalogEntry>> buildSettingsCatalog(HaLoServices services, {required bool developerMode}) async {
   final entries = <SettingsCatalogEntry>[];
   for (final scanned in await scanSettings(services)) {
     final el = scanned.element;
@@ -156,21 +153,23 @@ Future<List<SettingsCatalogEntry>> buildSettingsCatalog(
     final fieldType = el['fieldType'];
     if (label is! String || fieldType is! String || scanned.key.isEmpty) continue;
     final rawAliases = el['aliases'];
-    entries.add(SettingsCatalogEntry(
-      key: scanned.key,
-      bareKey: scanned.fieldRoute?.fieldKey ?? scanned.key,
-      label: label,
-      description: el['description'] is String ? el['description'] as String : null,
-      aliases: switch (rawAliases) {
-        String s => [s],
-        List<dynamic> l => l.whereType<String>().toList(),
-        _ => const <String>[],
-      },
-      section: scanned.sectionTitle,
-      fieldType: fieldType,
-      value: declaredSettingValue(el),
-      options: (el['options'] as List?)?.whereType<Map<dynamic, dynamic>>().map((o) => o.cast<String, dynamic>()).toList() ?? const [],
-    ));
+    entries.add(
+      SettingsCatalogEntry(
+        key: scanned.key,
+        bareKey: scanned.fieldRoute?.fieldKey ?? scanned.key,
+        label: label,
+        description: el['description'] is String ? el['description'] as String : null,
+        aliases: switch (rawAliases) {
+          String s => [s],
+          List<dynamic> l => l.whereType<String>().toList(),
+          _ => const <String>[],
+        },
+        section: scanned.sectionTitle,
+        fieldType: fieldType,
+        value: declaredSettingValue(el),
+        options: (el['options'] as List?)?.whereType<Map<dynamic, dynamic>>().map((o) => o.cast<String, dynamic>()).toList() ?? const [],
+      ),
+    );
   }
   return entries;
 }
@@ -290,11 +289,7 @@ typedef SettingMatch = ({SettingsCatalogEntry entry, int score, bool viaDescript
 /// that reliably separates "these words ARE the setting's name" from "these
 /// words happen to be scattered through it". `settings_command.dart` splits a
 /// typed name from a typed value on it.
-bool settingNameBeginsWith(
-  SettingsCatalogEntry entry,
-  String query, {
-  SettingCommandKind kind = SettingCommandKind.set,
-}) {
+bool settingNameBeginsWith(SettingsCatalogEntry entry, String query, {SettingCommandKind kind = SettingCommandKind.set}) {
   final term = normalizeSettingTerm(query);
   if (term.isEmpty) return false;
   return _matchTermsFor(entry, kind).any((name) => normalizeSettingTerm(name).startsWith(term));
@@ -310,11 +305,7 @@ bool settingNameBeginsWith(
 /// `reportCW` (an alias of `defaultReportCW`, merely starting with it). A
 /// caller deciding whether a query really picked one setting out has to ask
 /// this as well, or those two read as a tie.
-bool settingNameEquals(
-  SettingsCatalogEntry entry,
-  String query, {
-  SettingCommandKind kind = SettingCommandKind.set,
-}) {
+bool settingNameEquals(SettingsCatalogEntry entry, String query, {SettingCommandKind kind = SettingCommandKind.set}) {
   final term = normalizeSettingTerm(query);
   if (term.isEmpty) return false;
   return _matchTermsFor(entry, kind).any((name) => normalizeSettingTerm(name) == term);
@@ -339,11 +330,7 @@ bool settingNameEquals(
 ///
 /// Ties are NOT broken arbitrarily: when two candidates score the same, the
 /// caller is expected to ask rather than guess (settings_command.dart).
-List<SettingMatch> rankSettings(
-  String query,
-  List<SettingsCatalogEntry> entries, {
-  SettingCommandKind kind = SettingCommandKind.set,
-}) {
+List<SettingMatch> rankSettings(String query, List<SettingsCatalogEntry> entries, {SettingCommandKind kind = SettingCommandKind.set}) {
   final q = normalizeFuzzyQuery(query);
   if (q.isEmpty) return const [];
 
@@ -404,9 +391,8 @@ final class UnparsedSettingValue extends SettingValueParse {
 }
 
 /// "one of: …", listing a select's options by the names the operator sees.
-String _optionsExpected(SettingsCatalogEntry entry) => t.commands.settingExpectsOneOf(
-      choices: entry.options.map((o) => o['label'] ?? o['value']).whereType<String>().join(', '),
-    );
+String _optionsExpected(SettingsCatalogEntry entry) =>
+    t.commands.settingExpectsOneOf(choices: entry.options.map((o) => o['label'] ?? o['value']).whereType<String>().join(', '));
 
 /// Every word accepted for a boolean, in every locale the app ships — not
 /// just the one that happens to be active.
@@ -451,10 +437,7 @@ SettingValueParse parseSettingValue(SettingsCatalogEntry entry, String raw) {
       // trailing token is absorbed into the name by _splitArgs), but this is a
       // public entry point.
       if (q.isEmpty) return UnparsedSettingValue(_optionsExpected(entry));
-      for (final matcher in [
-        (String s) => normalizeSettingTerm(s) == q,
-        (String s) => normalizeSettingTerm(s).startsWith(q),
-      ]) {
+      for (final matcher in [(String s) => normalizeSettingTerm(s) == q, (String s) => normalizeSettingTerm(s).startsWith(q)]) {
         for (final option in entry.options) {
           final optionValue = option['value'];
           final optionLabel = option['label'];

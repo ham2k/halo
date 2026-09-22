@@ -20,6 +20,7 @@ class TabChrome extends StatelessWidget {
   final String semanticLabel;
   final VoidCallback onTap;
   final Widget Function(BuildContext context, Color labelColor) builder;
+
   /// The selection indicator's thickness, shared by every tab strip in the
   /// app — the two hand-rolled ones through [TabChrome] and the wide split's
   /// stock `TabBar` through its `indicatorWeight`. One value, because the
@@ -58,10 +59,7 @@ class TabChrome extends StatelessWidget {
   }) {
     return BoxDecoration(
       border: Border(
-        bottom: BorderSide(
-          color: selected ? (tabTheme.indicatorColor ?? labelColor) : Colors.transparent,
-          width: indicatorWidth,
-        ),
+        bottom: BorderSide(color: selected ? (tabTheme.indicatorColor ?? labelColor) : Colors.transparent, width: indicatorWidth),
       ),
     );
   }

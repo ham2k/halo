@@ -55,8 +55,7 @@ void main() {
       builtInKeys: () => const {},
       hostSharedModules: const {'i18next': '23.11.5'},
       rootOverride: root,
-      reservedPrefixAllowed: (key) =>
-          BundleProvenance.fromJson(settings.extensionInstalledFrom[key])?.isReservedPrefixAllowed ?? false,
+      reservedPrefixAllowed: (key) => BundleProvenance.fromJson(settings.extensionInstalledFrom[key])?.isReservedPrefixAllowed ?? false,
     );
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))
       ..settings = settings
@@ -65,8 +64,10 @@ void main() {
     return (extensions, settings, store);
   }
 
-  Future<InspectedBundle> fromCatalog(InstalledExtensions store, List<int> bytes, String version) =>
-      store.inspect(bytes, provenance: BundleProvenance(host: kCatalogHost, sha256: sha256Hex(bytes), version: version));
+  Future<InspectedBundle> fromCatalog(InstalledExtensions store, List<int> bytes, String version) => store.inspect(
+    bytes,
+    provenance: BundleProvenance(host: kCatalogHost, sha256: sha256Hex(bytes), version: version),
+  );
 
   test('a fresh catalog install turns the switch on; an update leaves it where the operator put it', () async {
     // The fresh case is the built-in that moved to the catalog: switched off
@@ -112,8 +113,7 @@ void main() {
         'ki2d-my-clock': {'version': '1.2.3', 'note': 'It uploads the whole log.'},
       },
     };
-    const info = ExtensionInfo(
-        key: 'ki2d-my-clock', file: 'index.js', core: false, name: 'Clock', source: ExtensionSource.installed, version: '1.2.3');
+    const info = ExtensionInfo(key: 'ki2d-my-clock', file: 'index.js', core: false, name: 'Clock', source: ExtensionSource.installed, version: '1.2.3');
 
     test('does not run whatever the switch says', () async {
       // The switch is the operator's intent and the revocation is not theirs
@@ -127,8 +127,7 @@ void main() {
       expect(extensions.isExtensionEnabled(info), isFalse);
       expect(extensions.isExtensionActive(info), isFalse);
       // Another version of the same key is not what was revoked.
-      const other = ExtensionInfo(
-          key: 'ki2d-my-clock', file: 'index.js', core: false, name: 'Clock', source: ExtensionSource.installed, version: '1.2.4');
+      const other = ExtensionInfo(key: 'ki2d-my-clock', file: 'index.js', core: false, name: 'Clock', source: ExtensionSource.installed, version: '1.2.4');
       expect(extensions.isExtensionRevoked(other), isFalse);
       expect(extensions.isExtensionEnabled(other), isTrue);
       await settings.setExtensionOverrides({'ki2d-my-clock': false});
@@ -160,8 +159,7 @@ void main() {
     const refused = {
       'extensionRefused': {'ki2d-my-clock': '1.2.3'},
     };
-    const info = ExtensionInfo(
-        key: 'ki2d-my-clock', file: 'index.js', core: false, name: 'Clock', source: ExtensionSource.installed, version: '1.2.3');
+    const info = ExtensionInfo(key: 'ki2d-my-clock', file: 'index.js', core: false, name: 'Clock', source: ExtensionSource.installed, version: '1.2.3');
 
     test('stays listed, and stays out of the runtime', () async {
       // Unavailable would hide the row, and the row is the one place an

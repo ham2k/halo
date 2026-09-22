@@ -26,8 +26,7 @@ class MapZoomController {
   /// builds its controller with the pane and hands it to whichever backend
   /// the platform picks, so the rows above the map can call this during the
   /// frame before that backend's State has wired itself up.
-  void moveTo(double latitude, double longitude, {double zoom = closeUpZoom}) =>
-      onMoveTo?.call(latitude, longitude, zoom);
+  void moveTo(double latitude, double longitude, {double zoom = closeUpZoom}) => onMoveTo?.call(latitude, longitude, zoom);
 
   /// Close enough to read one reference's surroundings — a summit's
   /// activation zone frames at roughly half the pane at this level, where

@@ -13,9 +13,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 
 Map<String, dynamic> op(String stationCall, {String? multiIdentifier}) => {
-      'stationCall': stationCall,
-      if (multiIdentifier != null) 'local': {'multiIdentifier': multiIdentifier},
-    };
+  'stationCall': stationCall,
+  if (multiIdentifier != null) 'local': {'multiIdentifier': multiIdentifier},
+};
 
 void main() {
   test('an ordinary operation spots under its own call, untouched', () {
@@ -46,7 +46,13 @@ void main() {
   test('a position that arrived as a number rather than a string still works', () {
     // It crosses the extension bridge, where a cast would throw inside the
     // spot path and surface as a generic error naming nothing.
-    expect(spotCallForSelfSpot({'stationCall': 'KI2D', 'local': {'multiIdentifier': 2}}), 'KI2D/OP2');
+    expect(
+      spotCallForSelfSpot({
+        'stationCall': 'KI2D',
+        'local': {'multiIdentifier': 2},
+      }),
+      'KI2D/OP2',
+    );
   });
 
   test('an operation with no station call at all stays empty', () {

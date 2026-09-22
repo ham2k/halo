@@ -20,17 +20,10 @@ class _SampleExtensionService extends ExtensionService {
   @override
   ExtensionHost get host => sampleHost;
   @override
-  Future<Map<String, dynamic>> readPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async => {};
+  Future<Map<String, dynamic>> readPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async => {};
 
   @override
-  Future<Map<String, dynamic>?> panelEvent({
-    required String hookKey,
-    required String panelKey,
-    required Map<String, dynamic> args,
-  }) {
+  Future<Map<String, dynamic>?> panelEvent({required String hookKey, required String panelKey, required Map<String, dynamic> args}) {
     events++;
     return super.panelEvent(hookKey: hookKey, panelKey: panelKey, args: args);
   }
@@ -62,12 +55,7 @@ void main() {
     final radio = panels['ext:k2hrc-svg-scenes:radio#1']!;
     final other = panels['ext:k2hrc-svg-scenes:radio#2']!;
     final weather = panels['ext:k2hrc-svg-scenes:weather#1']!;
-    const args = <String, dynamic>{
-      'operation': <String, dynamic>{},
-      'config': <String, dynamic>{},
-      'qsoCount': 0,
-      'reason': 'test',
-    };
+    const args = <String, dynamic>{'operation': <String, dynamic>{}, 'config': <String, dynamic>{}, 'qsoCount': 0, 'reason': 'test'};
     final content = PanelContent.fromJson(await panels.render(radio, args))!;
     expect(content.kind, 'svgScene');
     expect(content.scene!.values['reported'], 14074);
@@ -93,11 +81,7 @@ void main() {
       TranslationProvider(
         child: MaterialApp(
           home: Scaffold(
-            body: ExtensionPanel(
-              panel: panels['ext:k2hrc-svg-scenes:radio#1']!,
-              panels: panels,
-              renderContext: const PanelRenderContext(),
-            ),
+            body: ExtensionPanel(panel: panels['ext:k2hrc-svg-scenes:radio#1']!, panels: panels, renderContext: const PanelRenderContext()),
           ),
         ),
       ),

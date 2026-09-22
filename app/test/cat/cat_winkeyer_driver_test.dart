@@ -121,11 +121,7 @@ void main() {
     // on a dead carrier for a whole message and key nothing.
     List<int> pinConfigFor({int? keyPort, bool? ptt}) {
       final probe = _FakeSink();
-      final s = WinkeyerSession(
-        probe,
-        keyPort: keyPort ?? winkeyerDefaultKeyPort,
-        ptt: ptt ?? false,
-      );
+      final s = WinkeyerSession(probe, keyPort: keyPort ?? winkeyerDefaultKeyPort, ptt: ptt ?? false);
       openHost(s);
       s.teardown();
       return probe.sent.firstWhere((b) => b.isNotEmpty && b.first == 0x09);
@@ -143,11 +139,7 @@ void main() {
       for (final ptt in [true, false]) {
         for (final port in [1, 2]) {
           final pin = pinConfigFor(keyPort: port, ptt: ptt);
-          expect(
-            pin[1] & (0x08 | 0x04),
-            isNonZero,
-            reason: 'port $port with ptt=$ptt left the keyer with no key output',
-          );
+          expect(pin[1] & (0x08 | 0x04), isNonZero, reason: 'port $port with ptt=$ptt left the keyer with no key output');
         }
       }
     });
@@ -326,8 +318,7 @@ void main() {
       async.elapse(winkeyerStatusPoll);
       expect(sink.sent.last, [0x15]);
       feed([0xC0]);
-      expect(sink.keyerSpeeds, [defaultCwSpeedWpm, 20, 20],
-          reason: 'the status reply is the keyer saying it is there');
+      expect(sink.keyerSpeeds, [defaultCwSpeedWpm, 20, 20], reason: 'the status reply is the keyer saying it is there');
       async.elapse(winkeyerStatusPoll);
       expect(sink.sent.last, [0x15]);
       session.stopUpdates();
@@ -390,8 +381,7 @@ void main() {
   test('the PTT flag reads the string spelling an override would carry', () {
     expect(winkeyerPttFromConfig(const {}), isFalse);
     expect(winkeyerPttFromConfig(const {winkeyerPttConfigKey: true}), isTrue);
-    expect(winkeyerPttFromConfig(const {winkeyerPttConfigKey: 'true'}), isTrue,
-        reason: 'the catalogue writes config values as strings');
+    expect(winkeyerPttFromConfig(const {winkeyerPttConfigKey: 'true'}), isTrue, reason: 'the catalogue writes config values as strings');
     expect(winkeyerPttFromConfig(const {winkeyerPttConfigKey: 'false'}), isFalse);
   });
 
@@ -406,8 +396,7 @@ void main() {
       feed([0xC0]);
       async.elapse(winkeyerAnswerTimeout * 3);
       expect(sink.problems.whereType<String>(), isNotEmpty, reason: 'the operator is told');
-      expect(sink.sent.any((b) => b.isNotEmpty && b.first == 0x09), isFalse,
-          reason: 'and nothing was configured, because host mode never opened');
+      expect(sink.sent.any((b) => b.isNotEmpty && b.first == 0x09), isFalse, reason: 'and nothing was configured, because host mode never opened');
     });
   });
 
@@ -445,17 +434,13 @@ void main() {
     // operator's choice silently becomes the default.
     final element = driver.configElements().firstWhere((e) => e['key'] == winkeyerKeyPortConfigKey);
     final ports = [
-      for (final option in element['options'] as List)
-        winkeyerKeyPortFromConfig({winkeyerKeyPortConfigKey: (option as Map)['value']}),
+      for (final option in element['options'] as List) winkeyerKeyPortFromConfig({winkeyerKeyPortConfigKey: (option as Map)['value']}),
     ];
     expect(ports, [1, 2], reason: 'each option selects its own port');
   });
 
   test('an entry that pins the key port is not asked about it', () {
-    expect(
-      const WinkeyerDriver().configElements(overrides: {winkeyerKeyPortConfigKey: '2'}).map((e) => e['key']),
-      isNot(contains(winkeyerKeyPortConfigKey)),
-    );
+    expect(const WinkeyerDriver().configElements(overrides: {winkeyerKeyPortConfigKey: '2'}).map((e) => e['key']), isNot(contains(winkeyerKeyPortConfigKey)));
   });
 
   test('a status reply restates the speed, which after connect is always known', () {
@@ -466,8 +451,7 @@ void main() {
       // Counted, not just inspected: the connect-time set already put one
       // speed in the list, so a `last` check passes with the restatement
       // deleted — the very thing this test names.
-      expect(sink.keyerSpeeds, [defaultCwSpeedWpm, defaultCwSpeedWpm],
-          reason: 'the poll answer is a sign of life, and there is always a speed to restate');
+      expect(sink.keyerSpeeds, [defaultCwSpeedWpm, defaultCwSpeedWpm], reason: 'the poll answer is a sign of life, and there is always a speed to restate');
     });
   });
 

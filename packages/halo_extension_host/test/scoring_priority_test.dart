@@ -76,18 +76,46 @@ void main() {
     });
 
     test('the worked-before vocabulary is a ruling', () {
-      expect(judgesWorkedBefore(const {'alerts': ['duplicate']}), isTrue);
+      expect(
+        judgesWorkedBefore(const {
+          'alerts': ['duplicate'],
+        }),
+        isTrue,
+      );
       for (final notice in kWorkedBeforeNotices) {
-        expect(judgesWorkedBefore({'notices': [notice]}), isTrue, reason: notice);
+        expect(
+          judgesWorkedBefore({
+            'notices': [notice],
+          }),
+          isTrue,
+          reason: notice,
+        );
       }
     });
 
     // The distinction the whole rule turns on. A validity check that returned
     // above the scorer's dupe test has ruled on nothing.
     test('answering without ruling is not a ruling', () {
-      expect(judgesWorkedBefore(const {'value': 0, 'alerts': ['invalidBand']}), isFalse);
-      expect(judgesWorkedBefore(const {'value': 0, 'alerts': ['missingExchange']}), isFalse);
-      expect(judgesWorkedBefore(const {'notices': ['newDXCC']}), isFalse);
+      expect(
+        judgesWorkedBefore(const {
+          'value': 0,
+          'alerts': ['invalidBand'],
+        }),
+        isFalse,
+      );
+      expect(
+        judgesWorkedBefore(const {
+          'value': 0,
+          'alerts': ['missingExchange'],
+        }),
+        isFalse,
+      );
+      expect(
+        judgesWorkedBefore(const {
+          'notices': ['newDXCC'],
+        }),
+        isFalse,
+      );
       expect(judgesWorkedBefore(const {'value': 1}), isFalse);
       expect(judgesWorkedBefore(const {}), isFalse);
     });
@@ -106,7 +134,10 @@ void main() {
           'notices': ['newBand', 'newDXCC'],
           'alerts': ['duplicate'],
         }),
-        {'value': 1, 'notices': ['newDXCC']},
+        {
+          'value': 1,
+          'notices': ['newDXCC'],
+        },
       );
     });
 
@@ -114,14 +145,29 @@ void main() {
     // not a claim about a prior contact, so they travel through.
     test('an unknown key is not swallowed', () {
       expect(
-        withoutWorkedBefore(const {'value': 3, 'mult': 'K', 'alerts': ['duplicate']}),
+        withoutWorkedBefore(const {
+          'value': 3,
+          'mult': 'K',
+          'alerts': ['duplicate'],
+        }),
         {'value': 3, 'mult': 'K'},
       );
     });
 
     test('nothing left means no entry at all, rather than an empty one', () {
-      expect(withoutWorkedBefore(const {'dupe': true, 'alerts': ['duplicate']}), isNull);
-      expect(withoutWorkedBefore(const {'notices': ['newRef']}), isNull);
+      expect(
+        withoutWorkedBefore(const {
+          'dupe': true,
+          'alerts': ['duplicate'],
+        }),
+        isNull,
+      );
+      expect(
+        withoutWorkedBefore(const {
+          'notices': ['newRef'],
+        }),
+        isNull,
+      );
     });
   });
 }

@@ -31,6 +31,7 @@ const spotsUnavailableKey = 'spots-unavailable';
 VoidCallback attachSpotsStatusReporter({
   required SpotsService spots,
   required StatusBarService statusBar,
+
   /// Display name for a hook key ("SOTAWatch" for `sota`), falling back to
   /// the key itself.
   ///
@@ -42,6 +43,7 @@ VoidCallback attachSpotsStatusReporter({
   /// after one attempt leaves every message naming `sota` instead of
   /// SOTAWatch — the exact thing this parameter exists to avoid.
   required Future<String> Function(String hookKey) nameFor,
+
   /// Hook keys the operator has switched off in the Spots Panel's source
   /// filter. An outage in a source they opted out of asks nothing of them,
   /// so it never reaches the footer — the fetch itself still runs (the
@@ -51,6 +53,7 @@ VoidCallback attachSpotsStatusReporter({
   /// A getter, read on every evaluation, because the set lives in the
   /// panel's persisted filter state and changes while an outage is up.
   required Set<String> Function() disabledSources,
+
   /// Fires when [disabledSources] may have changed, so disabling a source
   /// that is currently named retracts the message right then — the only way
   /// an operator has to shoo it away — rather than on the next fetch cycle.
@@ -76,8 +79,7 @@ VoidCallback attachSpotsStatusReporter({
 
   /// Display names for [keys], sorted and joined — sorted so the same outage
   /// reads the same way whichever order the hooks settled in.
-  Future<String> namesOf(Set<String> keys) async =>
-      ((await Future.wait(keys.map(nameFor))).toList()..sort()).join(', ');
+  Future<String> namesOf(Set<String> keys) async => ((await Future.wait(keys.map(nameFor))).toList()..sort()).join(', ');
 
   Future<void> onChange() async {
     // Set equality, not list equality: the same two sources in the other
@@ -88,21 +90,14 @@ VoidCallback attachSpotsStatusReporter({
     // that must post, and the settings listener re-runs this with the spot
     // sets untouched.
     final disabled = disabledSources();
-    final current = (
-      unavailable: spots.unavailableSources.toSet().difference(disabled),
-      failed: spots.failedSources.toSet().difference(disabled),
-    );
-    if (reported != null &&
-        setEquals(reported!.unavailable, current.unavailable) &&
-        setEquals(reported!.failed, current.failed)) {
+    final current = (unavailable: spots.unavailableSources.toSet().difference(disabled), failed: spots.failedSources.toSet().difference(disabled));
+    if (reported != null && setEquals(reported!.unavailable, current.unavailable) && setEquals(reported!.failed, current.failed)) {
       return;
     }
     // Checked against `resolving`, not just `reported`: `reported` cannot
     // advance until the message is up, so during the await only this guard
     // stops a re-entry over the same sets from superseding its own resolve.
-    if (resolving != null &&
-        setEquals(resolving!.unavailable, current.unavailable) &&
-        setEquals(resolving!.failed, current.failed)) {
+    if (resolving != null && setEquals(resolving!.unavailable, current.unavailable) && setEquals(resolving!.failed, current.failed)) {
       return;
     }
     final mine = ++generation;
@@ -159,9 +154,11 @@ VoidCallback attachSpotsStatusReporter({
     // escapes this unawaited call to ErrorPolicy, which has no rule for it
     // and defaults to notifying — so a footer line the operator could have
     // ignored becomes an error card instead.
-    unawaited(onChange().catchError((Object e, StackTrace s) {
-      debugPrint('[spots] could not report unavailable sources: $e\n$s');
-    }));
+    unawaited(
+      onChange().catchError((Object e, StackTrace s) {
+        debugPrint('[spots] could not report unavailable sources: $e\n$s');
+      }),
+    );
   }
 
   spots.addListener(listener);

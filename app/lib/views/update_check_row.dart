@@ -28,8 +28,7 @@ import '../services/update_check_service.dart';
 /// width like every other divider in the panel — if it were nested inside
 /// here instead, it would get capped to idealPaneWidth along with the row
 /// itself, visibly narrower than its neighbors.
-bool updateCheckAppliesTo(HaLoServices services) =>
-    services.updateCheck.isApplicable(updates: services.updates);
+bool updateCheckAppliesTo(HaLoServices services) => services.updateCheck.isApplicable(updates: services.updates);
 
 class UpdateCheckRow extends StatefulWidget {
   final HaLoServices services;
@@ -63,10 +62,7 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
     var outcome = _outcome;
     Uri? destination;
     try {
-      outcome = await widget.services.updateCheck.check(
-        updates: widget.services.updates,
-        statusBar: widget.services.statusBar,
-      );
+      outcome = await widget.services.updateCheck.check(updates: widget.services.updates, statusBar: widget.services.statusBar);
       // Inside the same try, not after it: this reaches the same
       // distribution-specific APIs (a store lookup runs a platform channel),
       // and a throw out here would strand the row on the spinner just as
@@ -130,11 +126,7 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
       title: Text(context.t.updates.checkForUpdates),
       subtitle: Text(subtitle),
       trailing: _checking
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
           // Once there is somewhere to go, going there IS the action —
           // re-checking would only confirm what the row already says.
           : Icon(destination == null ? MdiIcons.refresh : MdiIcons.openInNew),

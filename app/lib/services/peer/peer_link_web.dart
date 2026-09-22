@@ -7,13 +7,7 @@ import 'package:halo_core/halo_core.dart';
 
 import 'peer_link_types.dart';
 
-Future<PeerLinkServer> bindPeerLinkServer({int port = 0}) =>
-    throw UnsupportedError('Peer links need dart:io');
+Future<PeerLinkServer> bindPeerLinkServer({int port = 0}) => throw UnsupportedError('Peer links need dart:io');
 
-Future<PeerLink> dialPeerLink(
-  String address,
-  int port, {
-  Duration timeout = const Duration(seconds: 5),
-  String? mediaTicket,
-}) =>
+Future<PeerLink> dialPeerLink(String address, int port, {Duration timeout = const Duration(seconds: 5), String? mediaTicket}) =>
     throw UnsupportedError('Peer links need dart:io');

@@ -25,7 +25,6 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 
-
 import '../support/halo_test_support.dart';
 
 void main() {
@@ -47,10 +46,7 @@ void main() {
   /// The home layer's bottom chrome, measured from the footer's top edge: how
   /// tall Quick Lookup is, and how far the Settings glyph sits above the band —
   /// plus the footer's own height, which is what pins the strip on SOMEBODY.
-  Future<({double lookupHeight, double settingsGap, double footerHeight, bool drawn})> measure(
-    WidgetTester tester, {
-    required double inset,
-  }) async {
+  Future<({double lookupHeight, double settingsGap, double footerHeight, bool drawn})> measure(WidgetTester tester, {required double inset}) async {
     final dpr = tester.view.devicePixelRatio;
     tester.view.physicalSize = Size(390 * dpr, 844 * dpr);
     tester.view.padding = FakeViewPadding(bottom: inset * dpr);
@@ -64,12 +60,14 @@ void main() {
     // The overlay in the position `MaterialApp.builder` gives it — above the
     // routes, wrapping the navigator the home view lives in, which is what
     // puts the rail and Quick Lookup inside its reach.
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        builder: (context, child) => StatusBarOverlay(services: services, child: child!),
-        home: HomeView(services: services),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          builder: (context, child) => StatusBarOverlay(services: services, child: child!),
+          home: HomeView(services: services),
+        ),
       ),
-    ));
+    );
     // Fixed pumps rather than `pumpAndSettle`: the chrome carries a
     // once-a-second clock, so a settle here waits for a tree that never goes
     // quiet. Two frames plus the footer's own grow/switch animations is what
@@ -81,13 +79,7 @@ void main() {
     final result = (
       lookupHeight: tester.getSize(find.byType(HomeQuickLookup)).height,
       // The rail's cog, not Home's own header one — both are on screen.
-      settingsGap: footerTop -
-          tester
-              .getBottomLeft(find.descendant(
-                of: find.byType(HomeNavigationRail),
-                matching: find.byIcon(MdiIcons.cogOutline),
-              ))
-              .dy,
+      settingsGap: footerTop - tester.getBottomLeft(find.descendant(of: find.byType(HomeNavigationRail), matching: find.byIcon(MdiIcons.cogOutline))).dy,
       footerHeight: tester.getSize(find.byType(StatusBarFooter)).height,
       drawn: footerTop < tester.getSize(find.byType(StatusBarOverlay)).height,
     );
@@ -101,8 +93,7 @@ void main() {
     return result;
   }
 
-  testWidgets('with the footer drawn, neither Quick Lookup nor the Settings cap holds the home indicator',
-      (tester) async {
+  testWidgets('with the footer drawn, neither Quick Lookup nor the Settings cap holds the home indicator', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
       final withIndicator = await measure(tester, inset: indicator);
@@ -111,18 +102,26 @@ void main() {
       // Asserted out here rather than inside `measure`: a failure there would
       // skip the teardown below it and bury the real cause under a pending
       // drift timer.
-      expect(withIndicator.drawn && without.drawn, isTrue,
-          reason: 'the footer must be drawn, or none of these reserves is under test');
+      expect(withIndicator.drawn && without.drawn, isTrue, reason: 'the footer must be drawn, or none of these reserves is under test');
       // The other half of the invariant, and the half the relative
       // measurements below cannot see: SOMETHING still holds the indicator.
       // Drop the footer's own `SafeArea` and every assertion after this one
       // stays green while its rows sit in the indicator.
-      expect(withIndicator.footerHeight - without.footerHeight, moreOrLessEquals(indicator, epsilon: 0.5),
-          reason: 'the footer is the one holding the strip now, so it is the one that grows by it');
-      expect(withIndicator.lookupHeight, moreOrLessEquals(without.lookupHeight, epsilon: 0.5),
-          reason: 'Quick Lookup must not grow by the indicator the footer below it is already holding');
-      expect(withIndicator.settingsGap, moreOrLessEquals(without.settingsGap, epsilon: 0.5),
-          reason: 'the rail\'s Settings cap must not lift its glyph by that same indicator');
+      expect(
+        withIndicator.footerHeight - without.footerHeight,
+        moreOrLessEquals(indicator, epsilon: 0.5),
+        reason: 'the footer is the one holding the strip now, so it is the one that grows by it',
+      );
+      expect(
+        withIndicator.lookupHeight,
+        moreOrLessEquals(without.lookupHeight, epsilon: 0.5),
+        reason: 'Quick Lookup must not grow by the indicator the footer below it is already holding',
+      );
+      expect(
+        withIndicator.settingsGap,
+        moreOrLessEquals(without.settingsGap, epsilon: 0.5),
+        reason: 'the rail\'s Settings cap must not lift its glyph by that same indicator',
+      );
       // Not a pair of zeroes agreeing with each other: the icon really is
       // above the band and the bar really has a height.
       expect(without.lookupHeight, greaterThan(0));

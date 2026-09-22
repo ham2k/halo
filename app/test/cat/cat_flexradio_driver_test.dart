@@ -24,16 +24,13 @@ import 'package:ham2k_logger/services/cat/transports/flex_meter_socket.dart';
 
 const _handshakeLines = ['V1.4.0.0', 'H5AC2F980'];
 const _radioStatusLine = 'S5AC2F980|radio slices=3 panadapters=3 lineout_gain=60 nickname=RadioRoom callsign=N0CALL';
-const _sliceStatusLine =
-    'S5AC2F980|slice 0 in_use=1 sample_rate=24000 RF_frequency=14.074000 client_handle=0x1C61D553 index_letter=A mode=DIGU wide=0';
+const _sliceStatusLine = 'S5AC2F980|slice 0 in_use=1 sample_rate=24000 RF_frequency=14.074000 client_handle=0x1C61D553 index_letter=A mode=DIGU wide=0';
 const _sliceStatusLineWithDecimals =
     'S5AC2F980|slice 0 in_use=1 sample_rate=24000 RF_frequency=14.071820 client_handle=0x1C61D553 index_letter=A mode=CW wide=0';
 const _otherSliceStatusLine = 'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 mode=USB';
 const _transmitStatusLine = 'S5AC2F980|transmit tune=0 show_tx_in_waterfall=0 rfpower=75 tunepower=10';
-const _sliceBStatusLine =
-    'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 client_handle=0x9F0012AB index_letter=B mode=LSB wide=0';
-const _clientConnectedLine =
-    'S5AC2F980|client 0x9F0012AB connected client_id=42 local_ptt=0 program=SmartSDR-Win station=SHACK-PC';
+const _sliceBStatusLine = 'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 client_handle=0x9F0012AB index_letter=B mode=LSB wide=0';
+const _clientConnectedLine = 'S5AC2F980|client 0x9F0012AB connected client_id=42 local_ptt=0 program=SmartSDR-Win station=SHACK-PC';
 const _clientDisconnectedLine = 'S5AC2F980|client 0x9F0012AB disconnected forced=0';
 
 class _FakeSink implements EquipmentSink {
@@ -650,9 +647,7 @@ void main() {
 
     test('reads the configured slice, and ignores the others', () {
       sliceB.feed('$_sliceStatusLine\n$_sliceBStatusLine\n');
-      expect(sink.readings, [
-        const VfoReading(freqKHz: 7123, mode: 'LSB'),
-      ], reason: 'slice 0 is another slice now, not the tracked one');
+      expect(sink.readings, [const VfoReading(freqKHz: 7123, mode: 'LSB')], reason: 'slice 0 is another slice now, not the tracked one');
     });
 
     // Read and write must name the SAME slice: a node watching B while

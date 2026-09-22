@@ -64,8 +64,7 @@ void main() {
     h.model.dispose();
   });
 
-  testWidgets('a retained command holds the input mode through the keystrokes that type its parameters',
-      (tester) async {
+  testWidgets('a retained command holds the input mode through the keystrokes that type its parameters', (tester) async {
     final h = _Harness();
     h.answer = (input) => input == 'NOTE' ? {'expectsParams': true, 'mixedCase': true} : null;
     h.text = 'NOTE';
@@ -79,8 +78,7 @@ void main() {
     expect(h.model.mixedCase, isTrue, reason: 'the retained mode survives the per-keystroke reset');
     h.model.scheduleDescribe();
     await tester.pump(const Duration(milliseconds: 150));
-    expect(h.model.expectsParams, isTrue,
-        reason: 'a null answer does not snap back while the text holds characters the callsign filter would strip');
+    expect(h.model.expectsParams, isTrue, reason: 'a null answer does not snap back while the text holds characters the callsign filter would strip');
 
     h.text = 'W1AW';
     h.model.scheduleDescribe();
@@ -89,8 +87,7 @@ void main() {
     h.model.dispose();
   });
 
-  testWidgets('a message reaches the host only when it changes, and a confirmation clears itself',
-      (tester) async {
+  testWidgets('a message reaches the host only when it changes, and a confirmation clears itself', (tester) async {
     final h = _Harness();
     h.text = 'RELOAD';
     h.model.showError('No such thing');
@@ -106,8 +103,7 @@ void main() {
     h.model.dispose();
   });
 
-  testWidgets('an error shown after a confirmation owns the slot: the confirmation timer must not clear it',
-      (tester) async {
+  testWidgets('an error shown after a confirmation owns the slot: the confirmation timer must not clear it', (tester) async {
     final h = _Harness();
     h.model.commandExecuted(confirm: 'Done');
     h.model.showError('Failed');
@@ -141,8 +137,14 @@ void main() {
     final updates = StreamController<Map<String, dynamic>>();
     h.model.bind(updates.stream);
     h.text = 'SOLAR';
-    updates.add({'input': 'SOLAR', 'interpretation': {'describe': 'SFI 150'}});
-    updates.add({'input': 'WX', 'interpretation': {'describe': 'Rain'}});
+    updates.add({
+      'input': 'SOLAR',
+      'interpretation': {'describe': 'SFI 150'},
+    });
+    updates.add({
+      'input': 'WX',
+      'interpretation': {'describe': 'Rain'},
+    });
     await tester.pump();
     expect(h.model.message, 'SFI 150');
     // Closed with the listener still attached: a controller nobody listens
@@ -154,39 +156,35 @@ void main() {
   group('Enter on the call field', () {
     /// The panel's side of [CommandInterpretationModel.runOnEnter]: its
     /// double-log guard, its field, its actions, its failure channel.
-    ({
-      Future<bool> Function() enter,
-      List<String> log,
-      void Function() setLogging,
-    }) wire(_Harness h, {Object? throwOnDispatch}) {
+    ({Future<bool> Function() enter, List<String> log, void Function() setLogging}) wire(_Harness h, {Object? throwOnDispatch}) {
       final log = <String>[];
       var logging = false;
       Future<bool> enter() => h.model.runOnEnter(
-            alreadyLogging: () => logging,
-            whileLogging: (body) async {
-              log.add('logging on');
-              logging = true;
-              try {
-                await body();
-              } finally {
-                logging = false;
-                log.add('logging off');
-              }
-            },
-            clearField: () {
-              log.add('cleared');
-              // The real field's listener reads a programmatic clear as a
-              // keystroke, which drops the message.
-              h.model.keystroke();
-            },
-            dispatch: (commands, {required skipOnlineLookup}) async {
-              log.add('dispatch ${commands.join(',')} skipOnline=$skipOnlineLookup');
-              if (throwOnDispatch != null) {
-                log.add('failed: $throwOnDispatch');
-                return;
-              }
-            },
-          );
+        alreadyLogging: () => logging,
+        whileLogging: (body) async {
+          log.add('logging on');
+          logging = true;
+          try {
+            await body();
+          } finally {
+            logging = false;
+            log.add('logging off');
+          }
+        },
+        clearField: () {
+          log.add('cleared');
+          // The real field's listener reads a programmatic clear as a
+          // keystroke, which drops the message.
+          h.model.keystroke();
+        },
+        dispatch: (commands, {required skipOnlineLookup}) async {
+          log.add('dispatch ${commands.join(',')} skipOnline=$skipOnlineLookup');
+          if (throwOnDispatch != null) {
+            log.add('failed: $throwOnDispatch');
+            return;
+          }
+        },
+      );
       return (enter: enter, log: log, setLogging: () => logging = true);
     }
 
@@ -200,8 +198,7 @@ void main() {
       h.model.dispose();
     });
 
-    test('a command that cannot run here shows why and keeps the text; one awaiting parameters falls through',
-        () async {
+    test('a command that cannot run here shows why and keeps the text; one awaiting parameters falls through', () async {
       final h = _Harness();
       final w = wire(h);
       h.answer = (input) => {'error': 'Not while editing'};
@@ -217,16 +214,18 @@ void main() {
       h.model.dispose();
     });
 
-    test('an executable command is re-interpreted for execution, clears the field, confirms and dispatches',
-        () async {
+    test('an executable command is re-interpreted for execution, clears the field, confirms and dispatches', () async {
       final h = _Harness();
       final w = wire(h);
       h.answer = (input) => {'describe': 'Tune'};
-      h.answerForExecution = (input) => {'commands': ['setVfo'], 'confirm': 'Tuned', 'skipOnlineLookup': true};
+      h.answerForExecution = (input) => {
+        'commands': ['setVfo'],
+        'confirm': 'Tuned',
+        'skipOnlineLookup': true,
+      };
       h.text = '14285';
       expect(await w.enter(), isTrue);
-      expect(h.interpreted, ['14285', '14285 execute'],
-          reason: "the preview's commands may be a cheap placeholder; the run asks again with execute");
+      expect(h.interpreted, ['14285', '14285 execute'], reason: "the preview's commands may be a cheap placeholder; the run asks again with execute");
       expect(w.log, ['logging on', 'cleared', 'dispatch setVfo skipOnline=true', 'logging off']);
       expect(h.model.message, 'Tuned');
       h.model.dispose();
@@ -235,7 +234,9 @@ void main() {
     test('a dispatch that fails is the panel\'s to report; the bracket still closes', () async {
       final h = _Harness();
       final w = wire(h, throwOnDispatch: StateError('disk full'));
-      h.answer = (input) => {'commands': ['addQso']};
+      h.answer = (input) => {
+        'commands': ['addQso'],
+      };
       h.text = 'SEED';
       expect(await w.enter(), isTrue);
       expect(w.log.last, 'logging off');
@@ -246,7 +247,9 @@ void main() {
     test('nothing to consider while editing, with an empty field, or without an interpreter', () async {
       final h = _Harness();
       final w = wire(h);
-      h.answer = (input) => {'commands': ['setVfo']};
+      h.answer = (input) => {
+        'commands': ['setVfo'],
+      };
       h.text = '';
       expect(await w.enter(), isFalse);
       h.text = '14285';
@@ -264,7 +267,9 @@ void main() {
       // in flight for it.
       h.answer = (input) {
         h.text = 'W1AW';
-        return {'commands': ['setVfo']};
+        return {
+          'commands': ['setVfo'],
+        };
       };
       h.text = '14285';
       expect(await w.enter(), isTrue);
@@ -275,7 +280,9 @@ void main() {
       // is not seen.
       h.answer = (input) {
         w.setLogging();
-        return {'commands': ['setVfo']};
+        return {
+          'commands': ['setVfo'],
+        };
       };
       h.text = '7200';
       expect(await w.enter(), isTrue, reason: 'the racing Enter is dropped, not run twice');
@@ -291,7 +298,9 @@ void main() {
       // Enter's own interpretation is what changes the field here.
       h.answerForExecution = (input) {
         h.text = 'W1AW';
-        return {'commands': ['setVfo']};
+        return {
+          'commands': ['setVfo'],
+        };
       };
       h.text = '14285';
       expect(await w.enter(), isTrue);

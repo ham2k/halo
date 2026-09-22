@@ -101,13 +101,13 @@ const mapDefaultStyleUrlDark = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-
 /// OpenFreeMap doesn't have). Callers only reach this for a non-[MapStyle.automatic]
 /// pick — automatic keeps using [mapDefaultStyleUrl]/[mapDefaultStyleUrlDark].
 String mapLibreStyleUrl(MapStyle style) => switch (style) {
-      MapStyle.automatic => mapDefaultStyleUrl,
-      MapStyle.liberty => 'https://tiles.openfreemap.org/styles/liberty',
-      MapStyle.bright => 'https://tiles.openfreemap.org/styles/bright',
-      MapStyle.positron => 'https://tiles.openfreemap.org/styles/positron',
-      MapStyle.voyager => 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-      MapStyle.darkMatter => mapDefaultStyleUrlDark,
-    };
+  MapStyle.automatic => mapDefaultStyleUrl,
+  MapStyle.liberty => 'https://tiles.openfreemap.org/styles/liberty',
+  MapStyle.bright => 'https://tiles.openfreemap.org/styles/bright',
+  MapStyle.positron => 'https://tiles.openfreemap.org/styles/positron',
+  MapStyle.voyager => 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+  MapStyle.darkMatter => mapDefaultStyleUrlDark,
+};
 
 /// Whether the basemap actually on screen is dark-toned. Marker fills,
 /// strokes and great-circle lines contrast against the TILES, not against
@@ -115,10 +115,10 @@ String mapLibreStyleUrl(MapStyle style) => switch (style) {
 /// app's theme is doing; only [MapStyle.automatic] follows [appIsDark],
 /// because that's the one pick whose tiles do.
 bool mapStyleIsDark(MapStyle style, {required bool appIsDark}) => switch (style) {
-      MapStyle.automatic => appIsDark,
-      MapStyle.darkMatter => true,
-      MapStyle.liberty || MapStyle.bright || MapStyle.positron || MapStyle.voyager => false,
-    };
+  MapStyle.automatic => appIsDark,
+  MapStyle.darkMatter => true,
+  MapStyle.liberty || MapStyle.bright || MapStyle.positron || MapStyle.voyager => false,
+};
 
 /// A dark, starry backdrop for the MapLibre container div — CSS rather than
 /// a GL style property, since MapLibre's globe has no style-level fog

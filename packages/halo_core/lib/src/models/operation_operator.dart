@@ -71,15 +71,12 @@ String normalizedMultiIdentifier(String raw) {
 /// What the QSO editor keys its Position field on: a plain single-operator
 /// operation has no seats to choose between, and offering the field there is
 /// offering a number that means nothing.
-bool operationHasPositions(Operation operation) =>
-    multiIdentifierFor(operation).isNotEmpty ||
-    operation.data.keys.any((key) => _positionSlot.hasMatch(key));
+bool operationHasPositions(Operation operation) => multiIdentifierFor(operation).isNotEmpty || operation.data.keys.any((key) => _positionSlot.hasMatch(key));
 
 final _positionSlot = RegExp(r'^operator[1-9][0-9]*$');
 
 /// This device's position in [operation], canonical — `''` for none.
-String multiIdentifierFor(Operation operation) =>
-    normalizedMultiIdentifier(asQsonString(operation.localData[multiIdentifierKey]) ?? '');
+String multiIdentifierFor(Operation operation) => normalizedMultiIdentifier(asQsonString(operation.localData[multiIdentifierKey]) ?? '');
 
 /// [qso] stamped with who was at the key and which position logged it.
 ///

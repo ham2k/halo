@@ -43,8 +43,7 @@ void main() {
   });
 
   Future<Map<String, dynamic>?> interpret(String input) async {
-    final entries = await services.extensions.host!
-        .invokeHookAll('command', method: 'interpret', args: {'input': input});
+    final entries = await services.extensions.host!.invokeHookAll('command', method: 'interpret', args: {'input': input});
     for (final entry in entries) {
       if (entry['ok'] == true && entry['value'] is Map) {
         return (entry['value'] as Map).cast<String, dynamic>();
@@ -69,8 +68,9 @@ void main() {
       final result = await interpret('SET ZEROBEAT');
       expect(result, isNotNull);
       expect(result!['describe'], isA<String>());
-      expect(actionOf(result, 'openSettings')?['keys'], ['avoidZeroBeat'],
-          reason: 'no value was given, so Enter should open the setting rather than change anything');
+      expect(actionOf(result, 'openSettings')?['keys'], [
+        'avoidZeroBeat',
+      ], reason: 'no value was given, so Enter should open the setting rather than change anything');
     });
 
     test('a value that parses becomes an updateSetting carrying the coerced value', () async {
@@ -103,8 +103,7 @@ void main() {
       await settings.setAvoidZeroBeat(true);
       final result = await interpret('SET ZEROBEAT Y');
       expect(result?['confirm'], isA<String>());
-      expect(result!['confirm'], result['describe'],
-          reason: 'the same words before and after Enter — nothing happened in between');
+      expect(result!['confirm'], result['describe'], reason: 'the same words before and after Enter — nothing happened in between');
     });
 
     test('a value already in place is reported, not re-written', () async {
@@ -116,8 +115,7 @@ void main() {
       // found. Pin the match down before reading anything into the silence.
       expect(result!['expectsParams'], isNot(isTrue), reason: 'the setting must actually have been found');
       expect(result['describe'], isA<String>());
-      expect(result['commands'], isNull,
-          reason: 'confirming a change that did not happen is how confirmations stop being believed');
+      expect(result['commands'], isNull, reason: 'confirming a change that did not happen is how confirmations stop being believed');
     });
 
     test('an unmatched name stays a command awaiting input, never a callsign', () async {
@@ -144,8 +142,7 @@ void main() {
       expect(keys, isNotNull);
       expect(keys!.first, 'defaultReport', reason: 'the preview names the best match, so it must lead the list');
       expect(keys.length, greaterThan(1));
-      expect(keys, containsAll(['showRSTFields', 'jumpAfterRST']),
-          reason: 'these match "rst" too and the Settings search box lists them — so must this');
+      expect(keys, containsAll(['showRSTFields', 'jumpAfterRST']), reason: 'these match "rst" too and the Settings search box lists them — so must this');
     });
 
     test('a single-match query still opens just that setting', () async {
@@ -161,8 +158,7 @@ void main() {
       final result = await interpret('SET SHOW');
       final keys = actionOf(result, 'openSettings')?['keys'];
       expect(keys, isA<List>());
-      expect((keys as List).length, greaterThan(1),
-          reason: 'an ambiguous query must list its candidates rather than silently taking the first');
+      expect((keys as List).length, greaterThan(1), reason: 'an ambiguous query must list its candidates rather than silently taking the first');
     });
 
     test('an exact alias resolves a query that would otherwise tie', () async {
@@ -226,12 +222,15 @@ void main() {
         }
       }
       for (final command in ['SET', 'SHOW', 'HIDE']) {
-        expect(listed, contains(command), reason: 'a command absent from the catalog is undiscoverable — the '
-            'palette is where someone who does not know the syntax finds it');
-        expect(listed[command]!['expectsParams'], isTrue,
-            reason: 'picking $command from the palette must leave the field open, not run a bare $command');
-        expect(listed[command]!['suggest'], isNot(isTrue),
-            reason: 'these change settings, so they stay out of the empty-field "Try" samples (HALO-87)');
+        expect(
+          listed,
+          contains(command),
+          reason:
+              'a command absent from the catalog is undiscoverable — the '
+              'palette is where someone who does not know the syntax finds it',
+        );
+        expect(listed[command]!['expectsParams'], isTrue, reason: 'picking $command from the palette must leave the field open, not run a bare $command');
+        expect(listed[command]!['suggest'], isNot(isTrue), reason: 'these change settings, so they stay out of the empty-field "Try" samples (HALO-87)');
       }
     });
   });
@@ -248,8 +247,7 @@ void main() {
 
       await settings.setDeveloperMode(true);
       final after = await interpret('SET SNAPDEBOUNCE');
-      expect(after?['expectsParams'], isNot(isTrue),
-          reason: 'the same query must resolve once developer mode makes the setting real');
+      expect(after?['expectsParams'], isNot(isTrue), reason: 'the same query must resolve once developer mode makes the setting real');
     });
 
     test('a group that declines to contribute takes its settings out of reach', () async {

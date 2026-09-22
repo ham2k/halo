@@ -42,12 +42,7 @@ class ExportService {
   /// channel.
   final AndroidFileSave androidFileSave;
 
-  ExportService({
-    required this.extensions,
-    required this.qsos,
-    required this.settings,
-    this.androidFileSave = const AndroidFileSave(),
-  });
+  ExportService({required this.extensions, required this.qsos, required this.settings, this.androidFileSave = const AndroidFileSave()});
 
   /// Raw QSON dump (the same payload every hook receives), offered only in
   /// developer mode — same as app-polo's devMode extension. Generated here in
@@ -58,8 +53,7 @@ class ExportService {
   /// Whether [option] is that dump. Public because the panel marks it in the
   /// dev-mode accent, which is a theme colour rather than the hex string an
   /// extension declares — so the option map can't carry it.
-  bool isQsonOption(Map<String, dynamic> option) =>
-      option['hookKey'] == _qsonHookKey && option['exportType'] == _qsonExportType;
+  bool isQsonOption(Map<String, dynamic> option) => option['hookKey'] == _qsonHookKey && option['exportType'] == _qsonExportType;
 
   Map<String, dynamic> _qsonOptionFor(Operation operation) {
     final date = (operation.startAtMax ?? nowUtc()).toIso8601String().substring(0, 10);
@@ -72,9 +66,7 @@ class ExportService {
     // out here because this option never crosses the bridge. The uuid stays
     // in both: two dumps of the same operation on the same day are exactly
     // what a developer comparing them needs to tell apart.
-    final filename = settings.useCompactFileNames
-        ? '$call-${date.replaceAll('-', '')}-$shortUuid.qson'
-        : '$date $call $shortUuid.qson';
+    final filename = settings.useCompactFileNames ? '$call-${date.replaceAll('-', '')}-$shortUuid.qson' : '$date $call $shortUuid.qson';
     return {
       'hookKey': _qsonHookKey,
       'exportType': _qsonExportType,
@@ -137,11 +129,7 @@ class ExportService {
   /// a per-REFERENCE export exists (§5.1.4's other half, which nothing yet
   /// needs), one export covers the type, and quietly dropping half the log
   /// would be worse than covering both.
-  List<Qso> _qsosForOption(
-    Map<String, dynamic> option,
-    List<Qso> qsoList,
-    SegmentedOperation segmented,
-  ) {
+  List<Qso> _qsosForOption(Map<String, dynamic> option, List<Qso> qsoList, SegmentedOperation segmented) {
     final refType = option['refType'];
     if (refType is! String || refType.isEmpty) return qsoList;
 
@@ -256,12 +244,7 @@ class ExportService {
   /// contact carries its own segment's answer for everything a hook would
   /// otherwise read off the base operation ([_stampSegment]) — and carries the
   /// segments themselves, for what a contact's `our` block cannot say.
-  Map<String, dynamic> _payloadAs(
-    String stationCall,
-    Operation operation,
-    List<Qso> qsoList,
-    SegmentedOperation segmented,
-  ) {
+  Map<String, dynamic> _payloadAs(String stationCall, Operation operation, List<Qso> qsoList, SegmentedOperation segmented) {
     final payload = qsonPayloadFor(operation: operation, qsos: qsoList);
     // The calls of every SEGMENT, not the base operation's: a log that changed
     // call at a `break` has more than one even when the operation itself names
@@ -299,53 +282,50 @@ class ExportService {
     final types = await extensions.exportTypeSettings(settings.exportGlobalSettings, settings.exportTypeOverrides);
     final settingsByType = {for (final type in types) type['exportType']: type['settings']};
 
-    final perCall = await Future.wait(calls.map((call) async {
-      final payload = _payloadAs(call, operation, log.qsos, log.segmented);
+    final perCall = await Future.wait(
+      calls.map((call) async {
+        final payload = _payloadAs(call, operation, log.qsos, log.segmented);
 
-      // Hooks are asked about every ref ANY segment carries, not just the base's.
-      // Each contest's `suggestExportOptions` opens with
-      // `if (!refOfType(args.operation, TYPE)) return []`, so a contest that
-      // ended at a break — its ref living on in the segments while the operation
-      // has moved on — would otherwise be offered no Cabrillo at all, for a log
-      // that is half contest QSOs.
-      //
-      // The same asymmetry `ScoringService` fixed for scorers by handing
-      // `scorersFor` the segments (§5.1.3): an operation is scored as a contest
-      // it can no longer be exported as, which is worse than either alone.
-      if (log.segmented.isSegmented) {
-        (payload['operation'] as Map<String, dynamic>)['refs'] = log.segmented.allRefs;
-      }
+        // Hooks are asked about every ref ANY segment carries, not just the base's.
+        // Each contest's `suggestExportOptions` opens with
+        // `if (!refOfType(args.operation, TYPE)) return []`, so a contest that
+        // ended at a break — its ref living on in the segments while the operation
+        // has moved on — would otherwise be offered no Cabrillo at all, for a log
+        // that is half contest QSOs.
+        //
+        // The same asymmetry `ScoringService` fixed for scorers by handing
+        // `scorersFor` the segments (§5.1.3): an operation is scored as a contest
+        // it can no longer be exported as, which is worse than either alone.
+        if (log.segmented.isSegmented) {
+          (payload['operation'] as Map<String, dynamic>)['refs'] = log.segmented.allRefs;
+        }
 
-      var options = await extensions.getExportOptions({
-        ...payload,
-        'compactFilenames': settings.useCompactFileNames,
-      });
-      final registered = [
-        for (final option in options)
-          if (settingsByType.containsKey(option['exportType']))
-            {
-              ...option,
-              'exportSettings': settingsByType[option['exportType']],
-              // Match generation's activity and station scope. A hook may
-              // narrow it further, as a hunter log does, and supplies its count.
-              'qsoCount': option['qsoCount'] ??
-                  (_payloadAs(call, operation, _qsosForOption(option, log.qsos, log.segmented), log.segmented)['qsos'] as List).length,
-            },
-      ];
-      if (registered.isNotEmpty) {
-        final prepared = await extensions.prepareExports({
-          ...payload,
-          'options': registered,
-          'compactFilenames': settings.useCompactFileNames,
-        });
-        var index = 0;
-        options = [for (final option in options)
-          if (settingsByType.containsKey(option['exportType'])) prepared[index++] else option];
-      }
-      return [
-        for (final option in options) {...option, 'stationCall': call},
-      ];
-    }));
+        var options = await extensions.getExportOptions({...payload, 'compactFilenames': settings.useCompactFileNames});
+        final registered = [
+          for (final option in options)
+            if (settingsByType.containsKey(option['exportType']))
+              {
+                ...option,
+                'exportSettings': settingsByType[option['exportType']],
+                // Match generation's activity and station scope. A hook may
+                // narrow it further, as a hunter log does, and supplies its count.
+                'qsoCount':
+                    option['qsoCount'] ?? (_payloadAs(call, operation, _qsosForOption(option, log.qsos, log.segmented), log.segmented)['qsos'] as List).length,
+              },
+        ];
+        if (registered.isNotEmpty) {
+          final prepared = await extensions.prepareExports({...payload, 'options': registered, 'compactFilenames': settings.useCompactFileNames});
+          var index = 0;
+          options = [
+            for (final option in options)
+              if (settingsByType.containsKey(option['exportType'])) prepared[index++] else option,
+          ];
+        }
+        return [
+          for (final option in options) {...option, 'stationCall': call},
+        ];
+      }),
+    );
 
     final options = [for (final group in perCall) ...group];
     if (settings.developerMode) {
@@ -360,10 +340,7 @@ class ExportService {
   /// Generates file content for the given (previously listed) options.
   /// Returns one `{filename, mimeType, content}` map per option, in the same
   /// order.
-  Future<List<Map<String, dynamic>>> generateExports(
-    Operation operation,
-    List<Map<String, dynamic>> selectedOptions,
-  ) async {
+  Future<List<Map<String, dynamic>>> generateExports(Operation operation, List<Map<String, dynamic>> selectedOptions) async {
     final host = extensions.host;
     if (host == null && selectedOptions.any((o) => !isQsonOption(o))) {
       throw ExportException('Extension runtime is not ready yet — try again in a moment.');
@@ -376,83 +353,84 @@ class ExportService {
     // Independent per-option calls (each produces its own file) — no
     // ordering dependency, so run them concurrently rather than paying for
     // N sequential bridge round-trips.
-    final results = await Future.wait(selectedOptions.map((option) async {
-      if (isQsonOption(option)) {
-        return {
-          'filename': _qsonOptionFor(operation)['filename'],
-          'mimeType': 'application/json',
-          'content': jsonEncode(payload),
-        };
-      }
-      final scoped = _qsosForOption(option, log.qsos, log.segmented);
-      // Rebuilt for the SAME call the option was listed under, so the file
-      // matches what the panel offered. Falling back to the operation's first
-      // call covers an option that predates the fan-out (or a caller passing
-      // one by hand, as the tests do).
-      final call = option['stationCall'] as String? ?? operation.stationCalls.first;
-      final args = _payloadAs(call, operation, scoped, log.segmented);
-      // Same reason `getExportOptions` patches the refs above: a hook offered an
-      // option off a ref that lives only in a segment has to be able to READ
-      // that ref when it writes the file. Without it the two halves of one
-      // contract see different operations — the option is offered, then
-      // generated against a base operation that no longer carries the activity.
-      // For a contest that produced a file with no content and no name; for
-      // `activityExportHook`, which throws when it can't find the reference its
-      // exportKey names, it produces an outright export failure.
-      //
-      // NARROWER than the options call, deliberately. That one has to show every
-      // hook every ref, since it is asking who has anything to offer. Here the
-      // option has already named the type it covers, so only that type's segment
-      // refs are added, on top of the operation's own. Swapping in the whole set
-      // would hand a plain ADIF — no refType at all — every segment's refs, and
-      // `adifFields` would stamp a later segment's park onto every earlier QSO.
-      final optionRefType = option['refType'];
-      if (log.segmented.isSegmented && optionRefType is String && optionRefType.isNotEmpty) {
-        final refs = [...?(args['operation'] as Map<String, dynamic>)['refs'] as List?];
-        final present = {
-          for (final ref in refs)
-            if (ref is Map) '${ref['type']}\u0000${ref['ref']}',
-        };
-        for (final ref in log.segmented.allRefs.where((r) => r['type'] == optionRefType)) {
-          if (present.add('${ref['type']}\u0000${ref['ref']}')) refs.add(ref);
+    final results = await Future.wait(
+      selectedOptions.map((option) async {
+        if (isQsonOption(option)) {
+          return {'filename': _qsonOptionFor(operation)['filename'], 'mimeType': 'application/json', 'content': jsonEncode(payload)};
         }
-        (args['operation'] as Map<String, dynamic>)['refs'] = refs;
-      }
-      final result = await host!.invokeHook(
-        'export',
-        key: option['hookKey'] as String?,
-        method: 'generateExport',
-        args: {
-          ...args,
-          'exportType': option['exportType'],
-          'exportKey': option['exportKey'] ?? option['exportType'],
-          'compactFilenames': settings.useCompactFileNames,
-          'exportSettings': option['exportSettings'],
-          'exportData': option['exportData'],
-          'exportTitle': option['exportTitle'],
-          if (option['format'] == null || option['format'] == 'adif') ...{
-            'includeLookupData': (option['exportSettings'] as Map?)?['includeLookupData'] ?? true,
-            'includePrivateData': (option['exportSettings'] as Map?)?['includePrivateData'] ??
-                (option['alwaysIncludePrivateData'] == true || settings.includePrivateData),
-          },
-        },
-        timeout: const Duration(seconds: 30),
-      ) as Map;
-      final file = result.cast<String, dynamic>();
+        final scoped = _qsosForOption(option, log.qsos, log.segmented);
+        // Rebuilt for the SAME call the option was listed under, so the file
+        // matches what the panel offered. Falling back to the operation's first
+        // call covers an option that predates the fan-out (or a caller passing
+        // one by hand, as the tests do).
+        final call = option['stationCall'] as String? ?? operation.stationCalls.first;
+        final args = _payloadAs(call, operation, scoped, log.segmented);
+        // Same reason `getExportOptions` patches the refs above: a hook offered an
+        // option off a ref that lives only in a segment has to be able to READ
+        // that ref when it writes the file. Without it the two halves of one
+        // contract see different operations — the option is offered, then
+        // generated against a base operation that no longer carries the activity.
+        // For a contest that produced a file with no content and no name; for
+        // `activityExportHook`, which throws when it can't find the reference its
+        // exportKey names, it produces an outright export failure.
+        //
+        // NARROWER than the options call, deliberately. That one has to show every
+        // hook every ref, since it is asking who has anything to offer. Here the
+        // option has already named the type it covers, so only that type's segment
+        // refs are added, on top of the operation's own. Swapping in the whole set
+        // would hand a plain ADIF — no refType at all — every segment's refs, and
+        // `adifFields` would stamp a later segment's park onto every earlier QSO.
+        final optionRefType = option['refType'];
+        if (log.segmented.isSegmented && optionRefType is String && optionRefType.isNotEmpty) {
+          final refs = [...?(args['operation'] as Map<String, dynamic>)['refs'] as List?];
+          final present = {
+            for (final ref in refs)
+              if (ref is Map) '${ref['type']}\u0000${ref['ref']}',
+          };
+          for (final ref in log.segmented.allRefs.where((r) => r['type'] == optionRefType)) {
+            if (present.add('${ref['type']}\u0000${ref['ref']}')) refs.add(ref);
+          }
+          (args['operation'] as Map<String, dynamic>)['refs'] = refs;
+        }
+        final result =
+            await host!.invokeHook(
+                  'export',
+                  key: option['hookKey'] as String?,
+                  method: 'generateExport',
+                  args: {
+                    ...args,
+                    'exportType': option['exportType'],
+                    'exportKey': option['exportKey'] ?? option['exportType'],
+                    'compactFilenames': settings.useCompactFileNames,
+                    'exportSettings': option['exportSettings'],
+                    'exportData': option['exportData'],
+                    'exportTitle': option['exportTitle'],
+                    if (option['format'] == null || option['format'] == 'adif') ...{
+                      'includeLookupData': (option['exportSettings'] as Map?)?['includeLookupData'] ?? true,
+                      'includePrivateData':
+                          (option['exportSettings'] as Map?)?['includePrivateData'] ??
+                          (option['alwaysIncludePrivateData'] == true || settings.includePrivateData),
+                    },
+                  },
+                  timeout: const Duration(seconds: 30),
+                )
+                as Map;
+        final file = result.cast<String, dynamic>();
 
-      // The panel already showed the operator a filename — the one the option
-      // carried — so that is the name the file gets. A hook recomputing it
-      // sees a DIFFERENT input: `generateExport` is handed only the QSOs its
-      // refType covers, so a park activated after a break dates its file from
-      // the first contact after the break, while the listing dated it from the
-      // start of the log. Both are defensible; disagreeing in front of the
-      // user is not.
-      final offered = option['filename'];
-      if (offered is String && offered.isNotEmpty) {
-        return {...file, 'filename': offered};
-      }
-      return file;
-    }));
+        // The panel already showed the operator a filename — the one the option
+        // carried — so that is the name the file gets. A hook recomputing it
+        // sees a DIFFERENT input: `generateExport` is handed only the QSOs its
+        // refType covers, so a park activated after a break dates its file from
+        // the first contact after the break, while the listing dated it from the
+        // start of the log. Both are defensible; disagreeing in front of the
+        // user is not.
+        final offered = option['filename'];
+        if (offered is String && offered.isNotEmpty) {
+          return {...file, 'filename': offered};
+        }
+        return file;
+      }),
+    );
     return results;
   }
 
@@ -489,8 +467,7 @@ class ExportService {
   /// where the operator put anything, so there it is the list of FILENAMES —
   /// and a caller phrasing that as a destination says the files went to their
   /// own names. Everywhere else it is a path or a directory.
-  Future<({String location, int count, bool namesFiles})?> saveToDisk(
-      List<Map<String, dynamic>> files) async {
+  Future<({String location, int count, bool namesFiles})?> saveToDisk(List<Map<String, dynamic>> files) async {
     if (files.isEmpty) return null;
 
     // Android has no `file_selector` save at all — `getSaveLocation` throws
@@ -534,9 +511,7 @@ class ExportService {
         // Names what already landed, as the Android loop does: a failure on
         // the third of four leaves two on disk, and an error mentioning only
         // the third sends the operator looking for files they already have.
-        throw ExportException(
-          written.isEmpty ? '$e' : '$e — ${written.join(', ')} had already been saved',
-        );
+        throw ExportException(written.isEmpty ? '$e' : '$e — ${written.join(', ')} had already been saved');
       }
       written.add(filenames[i]);
     }
@@ -553,21 +528,15 @@ class ExportService {
   /// saved three files, and a write that fails on the third leaves two on
   /// disk — the operator has to be told which, in both cases, or they go
   /// looking for files that aren't there and re-export ones that are.
-  Future<({String location, int count, bool namesFiles})?> _saveOnAndroid(
-      List<Map<String, dynamic>> files) async {
+  Future<({String location, int count, bool namesFiles})?> _saveOnAndroid(List<Map<String, dynamic>> files) async {
     final names = _uniqueFilenames(files);
     final saved = <String>[];
     for (var i = 0; i < files.length; i++) {
       final String? name;
       try {
-        name = await androidFileSave.saveFile(
-          filename: names[i],
-          content: files[i]['content'] as String,
-        );
+        name = await androidFileSave.saveFile(filename: names[i], content: files[i]['content'] as String);
       } catch (e) {
-        throw ExportException(
-          saved.isEmpty ? '$e' : '$e — ${saved.join(', ')} had already been saved',
-        );
+        throw ExportException(saved.isEmpty ? '$e' : '$e — ${saved.join(', ')} had already been saved');
       }
       // Cancelling one dialog abandons the files still to come, rather than
       // asking again for every one of them.
@@ -592,11 +561,7 @@ class ExportService {
     if (files.isEmpty) return;
     final filenames = _uniqueFilenames(files);
     for (var i = 0; i < files.length; i++) {
-      downloadFile(
-        filename: filenames[i],
-        content: files[i]['content'] as String,
-        mimeType: files[i]['mimeType'] as String?,
-      );
+      downloadFile(filename: filenames[i], content: files[i]['content'] as String, mimeType: files[i]['mimeType'] as String?);
     }
   }
 
@@ -621,9 +586,7 @@ class ExportService {
       await File(path).writeAsString(files[i]['content'] as String);
       paths.add(XFile(path, mimeType: files[i]['mimeType'] as String?));
     }
-    final result = await SharePlus.instance.share(
-      ShareParams(files: paths, sharePositionOrigin: sharePositionOrigin),
-    );
+    final result = await SharePlus.instance.share(ShareParams(files: paths, sharePositionOrigin: sharePositionOrigin));
     return result.status != ShareResultStatus.dismissed;
   }
 }

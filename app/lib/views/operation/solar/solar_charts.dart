@@ -95,11 +95,7 @@ const double solarMinWindSpan = 100;
 /// Empty path and no points for fewer than two values: a single observation
 /// is not a trend, and drawing it as a flat line across the pane would claim
 /// a month of data the panel does not have.
-({Path path, List<Offset> points}) solarLine(
-  List<double> values,
-  Size size, {
-  double minSpan = solarMinFluxSpan,
-}) {
+({Path path, List<Offset> points}) solarLine(List<double> values, Size size, {double minSpan = solarMinFluxSpan}) {
   if (values.length < 2 || size.width <= 0 || size.height <= 0) {
     return (path: Path(), points: const []);
   }
@@ -115,11 +111,7 @@ const double solarMinWindSpan = 100;
   final bottom = size.height - _padding;
 
   final points = <Offset>[
-    for (final (index, value) in values.indexed)
-      Offset(
-        size.width * index / (values.length - 1),
-        bottom - ((value - lo) / (hi - lo)) * (bottom - top),
-      ),
+    for (final (index, value) in values.indexed) Offset(size.width * index / (values.length - 1), bottom - ((value - lo) / (hi - lo)) * (bottom - top)),
   ];
 
   final path = Path()..moveTo(points.first.dx, points.first.dy);
@@ -155,12 +147,7 @@ List<Rect> solarBars(List<double> values, Size size) {
         // "quiet" and "no reading" are different, and the second is drawn by
         // there being no bar at all.
         final height = math.max(1.0, size.height * (value.clamp(0, solarKpCeiling) / solarKpCeiling));
-        return Rect.fromLTWH(
-          column * index + (column - width) / 2,
-          size.height - height,
-          width,
-          height,
-        );
+        return Rect.fromLTWH(column * index + (column - width) / 2, size.height - height, width, height);
       }(),
   ];
 }
@@ -232,7 +219,10 @@ class _LabelDrawer {
         children: [
           // The reading is what the pointer was asking for; the date is what
           // qualifies it.
-          TextSpan(text: metric, style: const TextStyle(fontWeight: FontWeight.w700)),
+          TextSpan(
+            text: metric,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
           TextSpan(text: '\n$detail'),
         ],
       ),
@@ -255,17 +245,9 @@ class _LabelDrawer {
     final rightmost = math.max(0.0, size.width - painter.width - margin);
     for (final below in [preferBelow, !preferBelow]) {
       final top = below ? anchor.dy + gap : anchor.dy - gap - painter.height;
-      final rect = Rect.fromLTWH(
-        left.clamp(math.min(margin, rightmost), rightmost),
-        top,
-        painter.width,
-        painter.height,
-      );
+      final rect = Rect.fromLTWH(left.clamp(math.min(margin, rightmost), rightmost), top, painter.width, painter.height);
       if (rect.top < 0 || rect.bottom > size.height) continue;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect.inflate(3), const Radius.circular(2)),
-        Paint()..color = plate,
-      );
+      canvas.drawRRect(RRect.fromRectAndRadius(rect.inflate(3), const Radius.circular(2)), Paint()..color = plate);
       painter.paint(canvas, rect.topLeft);
       return;
     }
@@ -424,11 +406,7 @@ class SolarKpChartPainter extends CustomPainter {
     }
 
     for (final (index, rect) in solarBars(values, size).indexed) {
-      final bar = RRect.fromRectAndCorners(
-        rect,
-        topLeft: const Radius.circular(1.5),
-        topRight: const Radius.circular(1.5),
-      );
+      final bar = RRect.fromRectAndCorners(rect, topLeft: const Radius.circular(1.5), topRight: const Radius.circular(1.5));
       canvas.drawRRect(bar, Paint()..color = solarKColor(values[index]));
       // Outlined rather than recoloured: every bar's colour already MEANS
       // something here, and a hover that changed one would be saying the

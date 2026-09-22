@@ -35,8 +35,7 @@ void main() {
       async.elapse(const Duration(minutes: 16));
       expect(wakeLock.activeReasons, isNot(contains(WakeReason.syncBackfill)));
       wakeLock.onBackfillProgress(const SyncProgress(backfilling: true, qsosTotal: 42, qsosLeft: 30));
-      expect(wakeLock.activeReasons, isNot(contains(WakeReason.syncBackfill)),
-          reason: 'the same counts again are repetition, not progress');
+      expect(wakeLock.activeReasons, isNot(contains(WakeReason.syncBackfill)), reason: 'the same counts again are repetition, not progress');
 
       wakeLock.onBackfillProgress(const SyncProgress(backfilling: true, qsosTotal: 42, qsosLeft: 20));
       expect(wakeLock.activeReasons, contains(WakeReason.syncBackfill));

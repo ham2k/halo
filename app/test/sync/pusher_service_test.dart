@@ -27,11 +27,7 @@ class _FakeServer {
   StreamChannel<dynamic> get local => _controller.local;
 
   void send(String event, {String? channel, Object? data}) {
-    _controller.foreign.sink.add(jsonEncode({
-      'event': event,
-      'channel': ?channel,
-      'data': data is String ? data : jsonEncode(data ?? const {}),
-    }));
+    _controller.foreign.sink.add(jsonEncode({'event': event, 'channel': ?channel, 'data': data is String ? data : jsonEncode(data ?? const {})}));
   }
 
   void establish() => send('pusher:connection_established', data: {'socket_id': '1.1'});
@@ -254,10 +250,7 @@ void main() {
         async.flushMicrotasks();
         servers[0].establish();
         async.flushMicrotasks();
-        expect(
-          servers[0].sentByClient.map((m) => (m['data'] as Map)['channel']),
-          containsAll(['client-abc', 'account-def']),
-        );
+        expect(servers[0].sentByClient.map((m) => (m['data'] as Map)['channel']), containsAll(['client-abc', 'account-def']));
 
         servers[0].disconnect();
         async.flushMicrotasks();

@@ -26,5 +26,4 @@ class SettingsPaneWidth extends InheritedWidget {
 
 /// The width `_buildPanelContent` (settings_view.dart) published, or the window's where a panel is
 /// rendered outside it (a test pumping one directly).
-double settingsPaneWidth(BuildContext context) =>
-    context.dependOnInheritedWidgetOfExactType<SettingsPaneWidth>()?.width ?? MediaQuery.sizeOf(context).width;
+double settingsPaneWidth(BuildContext context) => context.dependOnInheritedWidgetOfExactType<SettingsPaneWidth>()?.width ?? MediaQuery.sizeOf(context).width;

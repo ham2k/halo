@@ -50,8 +50,7 @@ import 'halo_services.dart';
 /// intercepted here rather than reaching that switch. Every real call site
 /// (home, ⌘K, the logging panel) has a BuildContext to pass; omitting it
 /// only degrades those two commands.
-Future<bool> runCommandAction(HaLoServices services, String action,
-    [Map<String, dynamic>? params, BuildContext? context]) async {
+Future<bool> runCommandAction(HaLoServices services, String action, [Map<String, dynamic>? params, BuildContext? context]) async {
   // A statement switch rather than an expression: only one arm runs, but the
   // analyzer reads an expression's arms in sequence and sees the second
   // arm's `context` as used after the first arm's await.

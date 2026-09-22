@@ -132,8 +132,7 @@ void main() {
       final sw = Stopwatch()..start();
       final r = js.eval("while (true) { sendMessage('c','m') }");
       expect(r.ok, isFalse);
-      expect(sw.elapsedMilliseconds, lessThan(1000),
-          reason: 'the budget must hold on the re-entrant path, not just the simple one');
+      expect(sw.elapsedMilliseconds, lessThan(1000), reason: 'the budget must hold on the re-entrant path, not just the simple one');
     });
 
     test('the memory limit trips instead of taking the process down', () {
@@ -187,8 +186,7 @@ void main() {
       final sw = Stopwatch()..start();
       final r = js.eval('({ toString() { while (true) {} } })');
       expect(r.ok, isFalse);
-      expect(sw.elapsedMilliseconds, lessThan(2000),
-          reason: 'coercion must run inside the same budget as the eval');
+      expect(sw.elapsedMilliseconds, lessThan(2000), reason: 'coercion must run inside the same budget as the eval');
     });
   });
 
@@ -232,7 +230,8 @@ void main() {
     // Re-throws anything that is not the stack guard, so a recursion that
     // stopped for some other reason comes back as ok == false rather than as a
     // smaller number that would silently move every bound derived from it.
-    const measureDepth = '(function(){ let d=0; function r(){ d++; r() }'
+    const measureDepth =
+        '(function(){ let d=0; function r(){ d++; r() }'
         ' try { r() } catch(e){ if (!/stack/i.test(String(e))) throw e }'
         ' return d })()';
     const stack = 512 * 1024;
@@ -279,9 +278,13 @@ void main() {
     // Measured on macOS arm64: 116 of 535 when gated, exactly 535 when not.
     // Half the budget sits far outside both regimes, so the bound discriminates
     // without depending on the absolute numbers.
-    expect(nestedDepth, lessThan(fullBudget ~/ 2),
-        reason: 'the nested eval got a fresh stack budget — the depth gate on '
-            'JS_UpdateStackTop is gone, and two budgets overflow the real stack');
+    expect(
+      nestedDepth,
+      lessThan(fullBudget ~/ 2),
+      reason:
+          'the nested eval got a fresh stack budget — the depth gate on '
+          'JS_UpdateStackTop is gone, and two budgets overflow the real stack',
+    );
   });
 
   test('dispose from inside the host callback defers instead of crashing', () {
@@ -359,8 +362,7 @@ void main() {
       if (js.pump() == 0) break;
     }
     expect(js.eval("'alive'").text, 'alive', reason: 'the engine must survive the re-entry');
-    expect(seen.where((m) => m.contains('a')).length, 1,
-        reason: 'each rejection is reported exactly once, not once per nesting level');
+    expect(seen.where((m) => m.contains('a')).length, 1, reason: 'each rejection is reported exactly once, not once per nesting level');
   });
 
   test('a rejection reason whose toString floods the tracker cannot corrupt it', () {
@@ -371,9 +373,7 @@ void main() {
     // the adjacent text pointers, and the next flush passed a JSObject* to
     // strlen and free(). Reachable from extension JS with no host involved.
     js.onSend((_, _) {});
-    final r = js.eval(
-      "Promise.reject({ toString() { for (let i = 0; i < 40; i++) Promise.reject(i); return 'flood' } })",
-    );
+    final r = js.eval("Promise.reject({ toString() { for (let i = 0; i < 40; i++) Promise.reject(i); return 'flood' } })");
     expect(r.ok, isTrue);
     for (var i = 0; i < 200; i++) {
       if (js.pump() == 0) break;
@@ -402,9 +402,11 @@ void main() {
     js.onSend((channel, message) {
       if (channel == 'polo:unhandledRejection') seen.add(message);
     });
-    js.eval('const ps = []; '
-        'for (let i = 0; i < 40; i++) ps.push(Promise.reject(i)); '
-        'ps.forEach((p) => p.catch(() => {}))');
+    js.eval(
+      'const ps = []; '
+      'for (let i = 0; i < 40; i++) ps.push(Promise.reject(i)); '
+      'ps.forEach((p) => p.catch(() => {}))',
+    );
     for (var i = 0; i < 300; i++) {
       if (js.pump() == 0) break;
     }

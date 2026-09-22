@@ -164,8 +164,7 @@ void main() {
 
       final sent = extensions.optionRequests.single['qsos'] as List;
       expect(sent, hasLength(1), reason: 'nothing is dropped when there is only one callsign');
-      expect(((sent.single as Map)['our'] as Map)['call'], 'OTHERCALL',
-          reason: 'the logged operator call is left alone, not rewritten');
+      expect(((sent.single as Map)['our'] as Map)['call'], 'OTHERCALL', reason: 'the logged operator call is left alone, not rewritten');
     });
 
     test('the comma-separated field parses into one call per submission', () async {
@@ -221,8 +220,7 @@ void main() {
       // by a station that was not on the air for them.
       final byCall = {
         for (final request in extensions.optionRequests)
-          ((request['operation'] as Map)['stationCall'] as String):
-              ((request['qsos'] as List).map((qso) => ((qso as Map)['their'] as Map)['call']).toList()),
+          ((request['operation'] as Map)['stationCall'] as String): ((request['qsos'] as List).map((qso) => ((qso as Map)['their'] as Map)['call']).toList()),
       };
       expect(byCall['N0CALL'], ['DL1ABC']);
       expect(byCall['W1AW'], ['K1ABC']);
@@ -238,7 +236,8 @@ void main() {
       expect(
         extensions.optionRequests.map((r) => (r['operation'] as Map)['stationCall']),
         ['N0CALL', 'W1AW'],
-        reason: 'each hook call sees a single-station operation, so filenames and '
+        reason:
+            'each hook call sees a single-station operation, so filenames and '
             'ADIF/Cabrillo callsign fields name the right one without the hooks knowing',
       );
     });
@@ -250,9 +249,8 @@ void main() {
       await service.getExportOptions(await multiOp());
 
       List<String?> ourCalls(int index) => [
-            for (final qso in extensions.optionRequests[index]['qsos'] as List)
-              ((qso as Map)['our'] as Map)['call'] as String?,
-          ];
+        for (final qso in extensions.optionRequests[index]['qsos'] as List) ((qso as Map)['our'] as Map)['call'] as String?,
+      ];
       expect(ourCalls(0), everyElement('N0CALL'));
       expect(ourCalls(1), everyElement('W1AW'), reason: "W1AW's log is W1AW's, not a copy of N0CALL's");
     });
@@ -291,16 +289,10 @@ void main() {
   group('filename form', () {
     test('the QSON dump takes both forms, so developer mode is not an exception', () async {
       await settings.setDeveloperMode(true);
-      expect(
-        (await exports.getExportOptions(operation)).single['filename'],
-        '2026-07-15 N0CALL ${operation.uuid.split('-').first}.qson',
-      );
+      expect((await exports.getExportOptions(operation)).single['filename'], '2026-07-15 N0CALL ${operation.uuid.split('-').first}.qson');
 
       await settings.setUseCompactFileNames(true);
-      expect(
-        (await exports.getExportOptions(operation)).single['filename'],
-        'N0CALL-20260715-${operation.uuid.split('-').first}.qson',
-      );
+      expect((await exports.getExportOptions(operation)).single['filename'], 'N0CALL-20260715-${operation.uuid.split('-').first}.qson');
     });
 
     test('the setting reaches the hooks that list options AND the ones that generate', () async {
@@ -371,11 +363,7 @@ void main() {
     // dates it from a different first QSO than the listing did.
     test('the name the panel offered wins over the one the hook returns', () async {
       final qsos = QsosRepository(db);
-      final service = ExportService(
-        extensions: _ExtensionsWithHost(_CapturingHost()),
-        qsos: qsos,
-        settings: settings,
-      );
+      final service = ExportService(extensions: _ExtensionsWithHost(_CapturingHost()), qsos: qsos, settings: settings);
 
       final files = await service.generateExports(operation, [
         {'hookKey': 'cqww', 'exportType': 'cabrillo', 'filename': '2026-07-15 N0CALL for CQ-WW-CW.log'},
@@ -387,11 +375,7 @@ void main() {
 
     test('a hook that offers no name still gets the one it generates', () async {
       final qsos = QsosRepository(db);
-      final service = ExportService(
-        extensions: _ExtensionsWithHost(_CapturingHost()),
-        qsos: qsos,
-        settings: settings,
-      );
+      final service = ExportService(extensions: _ExtensionsWithHost(_CapturingHost()), qsos: qsos, settings: settings);
 
       final files = await service.generateExports(operation, [
         {'hookKey': 'cqww', 'exportType': 'cabrillo'},
@@ -419,12 +403,17 @@ void main() {
       sliced = ExportService(extensions: _ExtensionsWithHost(host), qsos: qsos, settings: settings);
 
       final created = await operations.create(stationCall: 'N0CALL');
-      await operations.saveData(Operation(uuid: created.uuid, data: {
-        ...created.data,
-        'refs': [
-          {'type': 'cqww', 'mode': 'CW'},
-        ],
-      }));
+      await operations.saveData(
+        Operation(
+          uuid: created.uuid,
+          data: {
+            ...created.data,
+            'refs': [
+              {'type': 'cqww', 'mode': 'CW'},
+            ],
+          },
+        ),
+      );
 
       final start = DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch;
       await qsos.add(created.uuid, {
@@ -455,9 +444,8 @@ void main() {
     });
 
     List<String> callsSentTo(int callIndex) => [
-          for (final qso in ((host.calls[callIndex]['args'] as Map)['qsos'] as List))
-            ((qso as Map)['their'] as Map)['call'] as String,
-        ];
+      for (final qso in ((host.calls[callIndex]['args'] as Map)['qsos'] as List)) ((qso as Map)['their'] as Map)['call'] as String,
+    ];
 
     test('prepared template counts match generation scope for each activity', () async {
       final extension = _RegisteredCountExtensions(host);
@@ -479,24 +467,14 @@ void main() {
       final operations = OperationsRepository(db);
       final qsos = QsosRepository(db);
       final created = await operations.create(stationCall: 'N0CALL');
-      await operations.saveData(Operation(uuid: created.uuid, data: {
-        ...created.data,
-        'state': 'CA',
-        'county': 'Marin',
-        'grid': 'CM87ss',
-      }));
+      await operations.saveData(Operation(uuid: created.uuid, data: {...created.data, 'state': 'CA', 'county': 'Marin', 'grid': 'CM87ss'}));
 
       final start = DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch;
       await qsos.add(created.uuid, {
         'their': {'call': 'BEFORE'},
         'startAtMillis': start,
       });
-      await qsos.addEvent(
-        created.uuid,
-        kind: 'break',
-        atMillis: start + 1000,
-        operation: {'state': 'NV', 'county': 'Washoe', 'grid': 'DM09'},
-      );
+      await qsos.addEvent(created.uuid, kind: 'break', atMillis: start + 1000, operation: {'state': 'NV', 'county': 'Washoe', 'grid': 'DM09'});
       await qsos.add(created.uuid, {
         'their': {'call': 'AFTER'},
         'startAtMillis': start + 2000,
@@ -506,12 +484,8 @@ void main() {
         {'hookKey': 'adif', 'exportType': 'adif'},
       ]);
 
-      final sent = ((host.calls.last['args'] as Map)['qsos'] as List)
-          .cast<Map>()
-          .where((qso) => qso['their'] != null)
-          .toList();
-      Map ourOf(String call) =>
-          sent.firstWhere((qso) => (qso['their'] as Map)['call'] == call)['our'] as Map;
+      final sent = ((host.calls.last['args'] as Map)['qsos'] as List).cast<Map>().where((qso) => qso['their'] != null).toList();
+      Map ourOf(String call) => sent.firstWhere((qso) => (qso['their'] as Map)['call'] == call)['our'] as Map;
 
       expect(ourOf('BEFORE')['state'], 'CA');
       expect(ourOf('BEFORE')['county'], 'Marin');
@@ -535,7 +509,9 @@ void main() {
       final operations = OperationsRepository(db);
       final qsos = QsosRepository(db);
       final created = await operations.create(stationCall: 'N0CALL');
-      await qsos.add(created.uuid, {'their': {'call': 'ONLY'}});
+      await qsos.add(created.uuid, {
+        'their': {'call': 'ONLY'},
+      });
 
       await sliced.generateExports((await operations.get(created.uuid))!, [
         {'hookKey': 'adif', 'exportType': 'adif'},
@@ -553,12 +529,7 @@ void main() {
       await operations.saveData(Operation(uuid: created.uuid, data: {...created.data, 'state': 'CA'}));
 
       final start = DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch;
-      await qsos.addEvent(
-        created.uuid,
-        kind: 'break',
-        atMillis: start,
-        operation: {'state': 'NV', 'grid': 'DM09'},
-      );
+      await qsos.addEvent(created.uuid, kind: 'break', atMillis: start, operation: {'state': 'NV', 'grid': 'DM09'});
       await qsos.add(created.uuid, {
         'their': {'call': 'ROVING'},
         'our': {'grid': 'DM09ab', 'lat': 39.5, 'lon': -119.8},
@@ -569,9 +540,7 @@ void main() {
         {'hookKey': 'adif', 'exportType': 'adif'},
       ]);
 
-      final our = ((host.calls.last['args'] as Map)['qsos'] as List)
-          .cast<Map>()
-          .firstWhere((qso) => qso['their'] != null)['our'] as Map;
+      final our = ((host.calls.last['args'] as Map)['qsos'] as List).cast<Map>().firstWhere((qso) => qso['their'] != null)['our'] as Map;
       expect(our['grid'], 'DM09ab');
       expect(our['lat'], 39.5);
       // The segment's grid must not arrive beside the contact's own coordinate.
@@ -583,11 +552,7 @@ void main() {
         {'hookKey': 'cqww', 'exportType': 'cabrillo', 'refType': 'cqww'},
       ]);
 
-      expect(
-        callsSentTo(0),
-        ['IN1CONTEST'],
-        reason: 'the contest ended at the break, so the later QSO is not its to claim',
-      );
+      expect(callsSentTo(0), ['IN1CONTEST'], reason: 'the contest ended at the break, so the later QSO is not its to claim');
 
       // And it is handed the option's OWN type's refs, deduped — not every ref
       // every segment carried. Without the narrowing this reads ['cqww', 'pota'],
@@ -628,12 +593,17 @@ void main() {
       final start = DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch;
 
       // The contest lives only in the start event; the operation itself is a park.
-      await operations.saveData(Operation(uuid: created.uuid, data: {
-        ...created.data,
-        'refs': [
-          {'type': 'pota', 'ref': 'US-0001'},
-        ],
-      }));
+      await operations.saveData(
+        Operation(
+          uuid: created.uuid,
+          data: {
+            ...created.data,
+            'refs': [
+              {'type': 'pota', 'ref': 'US-0001'},
+            ],
+          },
+        ),
+      );
       await repo.addEvent(
         created.uuid,
         kind: 'start',
@@ -658,10 +628,7 @@ void main() {
       // The hook is asked about every ref ANY segment carries, so the contest
       // gets its chance to offer a Cabrillo.
       final asked = (extensions.optionRequests.single['operation'] as Map)['refs'] as List;
-      expect(
-        [for (final ref in asked) (ref as Map)['type']],
-        containsAll(<String>['pota', 'cqww']),
-      );
+      expect([for (final ref in asked) (ref as Map)['type']], containsAll(<String>['pota', 'cqww']));
 
       // ...and it must still SEE that ref when it writes the file. Both halves
       // of one contract, and they were asymmetric: the options call patched the
@@ -675,10 +642,7 @@ void main() {
         {'hookKey': 'cqww', 'exportType': 'cabrillo', 'refType': 'cqww'},
       ]);
       final given = ((extensions.host as _CapturingHost).calls.single['args'] as Map)['operation'] as Map;
-      expect(
-        [for (final ref in (given['refs'] as List)) (ref as Map)['type']],
-        containsAll(<String>['pota', 'cqww']),
-      );
+      expect([for (final ref in (given['refs'] as List)) (ref as Map)['type']], containsAll(<String>['pota', 'cqww']));
     });
 
     test('an export that names no refType keeps the operation’s own refs', () async {
@@ -711,12 +675,17 @@ void main() {
       final created = await operations.create(stationCall: 'N0CALL');
       final start = DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch;
 
-      await operations.saveData(Operation(uuid: created.uuid, data: {
-        ...created.data,
-        'refs': [
-          {'type': 'cqww', 'mode': 'CW'},
-        ],
-      }));
+      await operations.saveData(
+        Operation(
+          uuid: created.uuid,
+          data: {
+            ...created.data,
+            'refs': [
+              {'type': 'cqww', 'mode': 'CW'},
+            ],
+          },
+        ),
+      );
       // Every QSO lives after an override that does NOT carry cqww.
       await repo.addEvent(
         created.uuid,
@@ -736,11 +705,7 @@ void main() {
       });
 
       final capturing = _CapturingHost();
-      final service = ExportService(
-        extensions: _ExtensionsWithHost(capturing),
-        qsos: repo,
-        settings: settings,
-      );
+      final service = ExportService(extensions: _ExtensionsWithHost(capturing), qsos: repo, settings: settings);
       await service.generateExports((await operations.get(created.uuid))!, [
         {'hookKey': 'cqww', 'exportType': 'cabrillo', 'refType': 'cqww'},
       ]);
@@ -753,12 +718,17 @@ void main() {
       final operations = OperationsRepository(db);
       final qsos = QsosRepository(db);
       final plain = await operations.create(stationCall: 'N0CALL');
-      await operations.saveData(Operation(uuid: plain.uuid, data: {
-        ...plain.data,
-        'refs': [
-          {'type': 'cqww', 'mode': 'CW'},
-        ],
-      }));
+      await operations.saveData(
+        Operation(
+          uuid: plain.uuid,
+          data: {
+            ...plain.data,
+            'refs': [
+              {'type': 'cqww', 'mode': 'CW'},
+            ],
+          },
+        ),
+      );
       for (final call in ['ONE', 'TWO']) {
         await qsos.add(plain.uuid, {
           'their': {'call': call},
@@ -782,8 +752,7 @@ void main() {
   // side of the extension bridge, so a Dart-only search comes up clean while
   // REG1TEST's RCall and ADIF's OPERATORS quietly name the wrong operator.
   group('the operator reaches an export hook', () {
-    Map<String, dynamic> operationIn(Map<String, dynamic> payload) =>
-        (payload['operation'] as Map).cast<String, dynamic>();
+    Map<String, dynamic> operationIn(Map<String, dynamic> payload) => (payload['operation'] as Map).cast<String, dynamic>();
 
     test("the seat's operator is what an export sees, not the operation's", () {
       final payload = qsonPayloadFor(
@@ -824,7 +793,10 @@ void main() {
         operation: Operation(
           uuid: 'u',
           data: {'stationCall': 'K2SUL'},
-          localData: const {'operatorCall': 'W2ABC', 'scoring': {'huge': 'blob'}},
+          localData: const {
+            'operatorCall': 'W2ABC',
+            'scoring': {'huge': 'blob'},
+          },
         ),
         qsos: const [],
       );
@@ -846,12 +818,7 @@ void main() {
       // what makes the DESKTOP case below reachable — not this one.
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       saver = _FakeAndroidFileSave();
-      service = ExportService(
-        extensions: ExtensionService(),
-        qsos: QsosRepository(db),
-        settings: settings,
-        androidFileSave: saver,
-      );
+      service = ExportService(extensions: ExtensionService(), qsos: QsosRepository(db), settings: settings, androidFileSave: saver);
     });
 
     tearDown(() => debugDefaultTargetPlatformOverride = null);
@@ -862,14 +829,13 @@ void main() {
       ]);
 
       expect(saver.asked, [
-        {'filename': 'N0CALL.adi', 'content': 'ADIF'}
+        {'filename': 'N0CALL.adi', 'content': 'ADIF'},
       ]);
       // The platform renames around a collision, so the name it reports back is
       // the one the panel has to show — not the one we asked for.
       expect(saved?.location, 'saved-N0CALL.adi');
       expect(saved?.count, 1);
-      expect(saved?.namesFiles, isTrue,
-          reason: 'the SAF never says WHERE, so this names the files themselves');
+      expect(saved?.namesFiles, isTrue, reason: 'the SAF never says WHERE, so this names the files themselves');
     });
 
     test('every OTHER platform still goes to file_selector', () async {
@@ -921,8 +887,7 @@ void main() {
       // number, and "3 files saved" over two names sends the operator looking
       // for one that was never written.
       expect(saved?.count, 2);
-      expect(saver.asked.map((f) => f['filename']), ['A.adi', 'B.adi'],
-          reason: 'the abandoned file is not offered again after the cancel');
+      expect(saver.asked.map((f) => f['filename']), ['A.adi', 'B.adi'], reason: 'the abandoned file is not offered again after the cancel');
     });
 
     test('cancelling the first dialog is a null answer, not a failure', () async {
@@ -946,12 +911,10 @@ void main() {
           {'filename': 'B.adi', 'content': 'b'},
           {'filename': 'C.adi', 'content': 'c'},
         ]),
-        throwsA(isA<ExportException>().having((e) => e.toString(), 'message',
-            allOf(contains('No space left'), contains('saved-A.adi, saved-B.adi')))),
+        throwsA(isA<ExportException>().having((e) => e.toString(), 'message', allOf(contains('No space left'), contains('saved-A.adi, saved-B.adi')))),
       );
     });
   });
-
 }
 
 /// Captures what each `generateExport` call was handed, and answers with a
@@ -960,13 +923,7 @@ class _CapturingHost implements ExtensionHost {
   final List<Map<String, dynamic>> calls = [];
 
   @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
+  Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     calls.add({'key': key, 'method': method, 'args': args});
     return {'filename': '$key.txt', 'mimeType': 'text/plain', 'content': ''};
   }
@@ -988,7 +945,6 @@ class _ExtensionsWithHost extends ExtensionService {
   @override
   Future<List<Map<String, dynamic>>> exportTypeSettings(Map<String, dynamic> global, Map<String, dynamic> Function(String) overrides) async => [];
 
-
   @override
   Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async {
     optionRequests.add(args);
@@ -1000,8 +956,6 @@ class _ExtensionsWithHost extends ExtensionService {
 
   @override
   Future<void> start() async {}
-
-
 }
 
 class _RegisteredCountExtensions extends _ExtensionsWithHost {
@@ -1020,8 +974,7 @@ class _RegisteredCountExtensions extends _ExtensionsWithHost {
   ];
 
   @override
-  Future<List<Map<String, dynamic>>> prepareExports(Map<String, dynamic> args) async =>
-      (args['options'] as List).cast<Map<String, dynamic>>();
+  Future<List<Map<String, dynamic>>> prepareExports(Map<String, dynamic> args) async => (args['options'] as List).cast<Map<String, dynamic>>();
 }
 
 /// Stands in for the platform channel, recording what the Android save flow

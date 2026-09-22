@@ -63,7 +63,9 @@ void main() {
       // A band list one short of the rungs would leave the last rung
       // unreachable by Auto, silently.
       expect(LayoutDensity.bands.length, LayoutDensity.values.length - 1);
-      final reached = {for (final b in [0.0, ...LayoutDensity.bands]) LayoutDensity.forHeight(b)};
+      final reached = {
+        for (final b in [0.0, ...LayoutDensity.bands]) LayoutDensity.forHeight(b),
+      };
       expect(reached, LayoutDensity.values.toSet());
     });
 
@@ -130,9 +132,7 @@ void main() {
       // What the operator actually experiences: on one window, each pick
       // produces its own layout. Nothing here may collapse two together.
       const height = 900.0;
-      final reached = {
-        for (final p in DensityPreference.values.where((p) => p != DensityPreference.auto)) p.resolve(height),
-      };
+      final reached = {for (final p in DensityPreference.values.where((p) => p != DensityPreference.auto)) p.resolve(height)};
       expect(reached, LayoutDensity.values.toSet());
     });
 
@@ -216,11 +216,7 @@ void main() {
             if (start != DensityPreference.auto) {
               final before = LayoutDensity.values.byName(start.name).index;
               final after = LayoutDensity.values.byName(next.name).index;
-              expect(
-                denser ? after < before : after > before,
-                isTrue,
-                reason: '$start at $height moved the wrong way (denser: $denser)',
-              );
+              expect(denser ? after < before : after > before, isTrue, reason: '$start at $height moved the wrong way (denser: $denser)');
             }
           }
         }
@@ -257,14 +253,18 @@ void main() {
       final sources = <String>[];
       for (final root in [Directory('lib'), Directory('../../app/lib')]) {
         if (!root.existsSync()) {
-          fail('expected ${root.path} to exist — run this suite from the halo_widgets package '
-              '(cwd: ${Directory.current.path})');
+          fail(
+            'expected ${root.path} to exist — run this suite from the halo_widgets package '
+            '(cwd: ${Directory.current.path})',
+          );
         }
-        sources.addAll(root
-            .listSync(recursive: true)
-            .whereType<File>()
-            .where((f) => f.path.endsWith('.dart') && !f.path.endsWith('density.dart'))
-            .map((f) => f.readAsStringSync()));
+        sources.addAll(
+          root
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where((f) => f.path.endsWith('.dart') && !f.path.endsWith('density.dart'))
+              .map((f) => f.readAsStringSync()),
+        );
       }
       final unread = _metrics.keys.where((m) => !sources.any((s) => s.contains('.$m'))).toList();
       expect(unread, isEmpty, reason: 'these metrics are declared but nothing reads them: $unread');
@@ -287,11 +287,7 @@ void main() {
         for (var i = 0; i < LayoutDensity.values.length - 1; i++) {
           final tighter = LayoutDensity.values[i];
           final roomier = LayoutDensity.values[i + 1];
-          expect(
-            read(tighter.metrics),
-            lessThan(read(roomier.metrics)),
-            reason: '${entry.key}: $tighter must be strictly denser than $roomier',
-          );
+          expect(read(tighter.metrics), lessThan(read(roomier.metrics)), reason: '${entry.key}: $tighter must be strictly denser than $roomier');
         }
       }
     });
@@ -350,16 +346,15 @@ void main() {
       for (var i = 0; i < LayoutDensity.values.length - 1; i++) {
         final tighter = LayoutDensity.values[i].chipVisualDensity;
         final roomier = LayoutDensity.values[i + 1].chipVisualDensity;
-        expect(
-          tighter.vertical,
-          lessThan(roomier.vertical),
-          reason: '${LayoutDensity.values[i]} must compress chips more than ${LayoutDensity.values[i + 1]}',
-        );
+        expect(tighter.vertical, lessThan(roomier.vertical), reason: '${LayoutDensity.values[i]} must compress chips more than ${LayoutDensity.values[i + 1]}');
       }
       for (final density in LayoutDensity.values) {
         final v = density.chipVisualDensity;
-        expect(v.vertical, inInclusiveRange(VisualDensity.minimumDensity, VisualDensity.maximumDensity),
-            reason: '$density is outside the range VisualDensity silently clamps to');
+        expect(
+          v.vertical,
+          inInclusiveRange(VisualDensity.minimumDensity, VisualDensity.maximumDensity),
+          reason: '$density is outside the range VisualDensity silently clamps to',
+        );
         expect(v.horizontal, inInclusiveRange(VisualDensity.minimumDensity, VisualDensity.maximumDensity));
       }
     });
@@ -429,9 +424,7 @@ void main() {
             home: LayoutDensityScope(
               density: density,
               child: Scaffold(
-                body: Builder(
-                  builder: (context) => TextField(decoration: poloFieldDecoration(context, 'Their call')),
-                ),
+                body: Builder(builder: (context) => TextField(decoration: poloFieldDecoration(context, 'Their call'))),
               ),
             ),
           ),

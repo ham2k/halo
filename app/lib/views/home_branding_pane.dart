@@ -41,10 +41,7 @@ class BrandingPane extends StatelessWidget {
           builder: (context, snapshot) {
             final release = snapshot.data?.firstOrNull;
             if (release == null) return const SizedBox.shrink();
-            return ReleasePhoto(
-              imageAssetPath: release.imageAssetPath,
-              errorBuilder: (_, _, _) => const SizedBox.shrink(),
-            );
+            return ReleasePhoto(imageAssetPath: release.imageAssetPath, errorBuilder: (_, _, _) => const SizedBox.shrink());
           },
         ),
         // A scrim, not a tint on the text: the photo is a real photograph and
@@ -57,11 +54,7 @@ class BrandingPane extends StatelessWidget {
         // from a flat fill. Heavier in dark mode, where the text is light and
         // a bright photo is what would swallow it.
         Positioned.fill(
-          child: ColoredBox(
-            color: theme.colorScheme.surface.withValues(
-              alpha: theme.brightness == Brightness.dark ? 0.62 : 0.55,
-            ),
-          ),
+          child: ColoredBox(color: theme.colorScheme.surface.withValues(alpha: theme.brightness == Brightness.dark ? 0.62 : 0.55)),
         ),
         _brandingContent(context, theme),
       ],
@@ -82,76 +75,70 @@ class BrandingPane extends StatelessWidget {
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SvgPicture.asset(ham2kSquareLogoAsset, width: 234),
-          const SizedBox(height: Space.xs),
-          // The square mark already says "Ham2K", so per the branding rules
-          // (docs/design/user-interface.md) only the product name — "Power
-          // Logger" or "Portable Logger" — goes below it.
-          // Outlined the way the brand lockup's name is (About, the release
-          // overlay), because this one stands over the same arbitrary release
-          // photo and can't rely on the scrim alone.
-          Ham2kOutlinedShadowText(
-            text: ham2kProductName,
-            style: (theme.textTheme.headlineSmall ?? const TextStyle()).copyWith(
-              fontFamily: 'RobotoSlab',
-              fontWeight: FontWeight.w800,
-              fontSize: (theme.textTheme.headlineSmall?.fontSize ?? 24) * 1.56,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(ham2kSquareLogoAsset, width: 234),
+            const SizedBox(height: Space.xs),
+            // The square mark already says "Ham2K", so per the branding rules
+            // (docs/design/user-interface.md) only the product name — "Power
+            // Logger" or "Portable Logger" — goes below it.
+            // Outlined the way the brand lockup's name is (About, the release
+            // overlay), because this one stands over the same arbitrary release
+            // photo and can't rely on the scrim alone.
+            Ham2kOutlinedShadowText(
+              text: ham2kProductName,
+              style: (theme.textTheme.headlineSmall ?? const TextStyle()).copyWith(
+                fontFamily: 'RobotoSlab',
+                fontWeight: FontWeight.w800,
+                fontSize: (theme.textTheme.headlineSmall?.fontSize ?? 24) * 1.56,
+              ),
+              color: Colors.grey.shade900,
             ),
-            color: Colors.grey.shade900,
-          ),
-          // Edition badge below the name, centered, a bit smaller (Regular has
-          // none). Pinned by WIDTH, so the badge spans the same measure under
-          // the name whichever edition's wordmark it is. It stands over the
-          // release photo like the splash lockup, so it wears the same shadow.
-          if (ham2kEditionBadgeAsset != null) ...[
-            const SizedBox(height: Space.md),
-            Ham2kEditionBadge(width: 130, shadows: ham2kEditionBadgeShadows),
-          ],
-          // A free-form dev label (DEV_LABEL) — marks which dev build/session is
-          // running; absent in release builds. Unlike the header (where it takes the
-          // badge's place), here it's shown alongside it, between the badge and the
-          // version name.
-          if (devLabel.isNotEmpty) ...[
-            const SizedBox(height: Space.md),
-            // Slanted by hand, not by `FontStyle.italic`: the bundled
-            // RobotoSlab is a variable font with a weight axis and no italic
-            // face, so asking for italic renders upright. Negative skew leans
-            // the top right — y grows downward, so the shift has to shrink
-            // with y.
-            Transform(
-              transform: Matrix4.skewX(-0.2),
-              alignment: Alignment.center,
-              child: Text(
-                devLabel,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontFamily: 'RobotoSlab',
-                  fontWeight: FontWeight.w700,
-                  fontSize: (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2,
-                  color: theme.colorScheme.onSurface,
+            // Edition badge below the name, centered, a bit smaller (Regular has
+            // none). Pinned by WIDTH, so the badge spans the same measure under
+            // the name whichever edition's wordmark it is. It stands over the
+            // release photo like the splash lockup, so it wears the same shadow.
+            if (ham2kEditionBadgeAsset != null) ...[const SizedBox(height: Space.md), Ham2kEditionBadge(width: 130, shadows: ham2kEditionBadgeShadows)],
+            // A free-form dev label (DEV_LABEL) — marks which dev build/session is
+            // running; absent in release builds. Unlike the header (where it takes the
+            // badge's place), here it's shown alongside it, between the badge and the
+            // version name.
+            if (devLabel.isNotEmpty) ...[
+              const SizedBox(height: Space.md),
+              // Slanted by hand, not by `FontStyle.italic`: the bundled
+              // RobotoSlab is a variable font with a weight axis and no italic
+              // face, so asking for italic renders upright. Negative skew leans
+              // the top right — y grows downward, so the shift has to shrink
+              // with y.
+              Transform(
+                transform: Matrix4.skewX(-0.2),
+                alignment: Alignment.center,
+                child: Text(
+                  devLabel,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontFamily: 'RobotoSlab',
+                    fontWeight: FontWeight.w700,
+                    fontSize: (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
               ),
+            ],
+            const SizedBox(height: Space.xl),
+            // The release name, without the edition qualifier (the edition is
+            // already shown by the badge SVG above), over its patch and build
+            // line — a bug report from a release build is the one that most
+            // needs to say which build it came from.
+            VersionLabel(
+              nameAndBuild: true,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2,
+                color: theme.colorScheme.onSurface,
+              ),
+              detailStyle: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700, color: theme.colorScheme.onSurfaceVariant),
             ),
           ],
-          const SizedBox(height: Space.xl),
-          // The release name, without the edition qualifier (the edition is
-          // already shown by the badge SVG above), over its patch and build
-          // line — a bug report from a release build is the one that most
-          // needs to say which build it came from.
-          VersionLabel(
-            nameAndBuild: true,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize: (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2,
-              color: theme.colorScheme.onSurface,
-            ),
-            detailStyle: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
         ),
       ),
     );

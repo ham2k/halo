@@ -18,17 +18,12 @@ typedef TemplatePreview = Future<String?> Function(String template, Map<String, 
 class TemplateEditorScope extends InheritedWidget {
   final TemplatePreview preview;
   const TemplateEditorScope({super.key, required this.preview, required super.child});
-  static TemplatePreview? of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<TemplateEditorScope>()?.preview;
+  static TemplatePreview? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<TemplateEditorScope>()?.preview;
   @override
   bool updateShouldNotify(TemplateEditorScope oldWidget) => preview != oldWidget.preview;
 }
 
-Future<String?> showTextTemplateEditor(
-  BuildContext context, {
-  required Map<String, dynamic> field,
-  required String value,
-}) => showHaloDialog<String>(
+Future<String?> showTextTemplateEditor(BuildContext context, {required Map<String, dynamic> field, required String value}) => showHaloDialog<String>(
   context: context,
   builder: (_) => _TextTemplateEditor(field: field, value: value, preview: TemplateEditorScope.of(context)),
 );
@@ -47,14 +42,7 @@ Map<String, dynamic> templateSampleFor(Map<String, dynamic> field) {
         {'type': 'potaActivation', 'ref': 'US-1234'},
       ],
     },
-    'log': {
-      'station': 'N0CALL',
-      'ref': 'US-1234',
-      'refName': 'Example Park',
-      'activity': 'POTA',
-      'format': 'adif',
-      'extension': 'adi',
-    },
+    'log': {'station': 'N0CALL', 'ref': 'US-1234', 'refName': 'Example Park', 'activity': 'POTA', 'format': 'adif', 'extension': 'adi'},
     if (adif)
       'qso': {
         'their': {'call': 'W1AW', 'name': 'Alex', 'sent': '59'},
@@ -155,10 +143,7 @@ class _TextTemplateEditorState extends State<_TextTemplateEditor> {
         Wrap(
           spacing: Space.xs,
           runSpacing: Space.xs,
-          children: [
-            for (final example in examples)
-              ActionChip(label: Text(example), onPressed: () => _insert(attribute ? '{{ $example }}' : example)),
-          ],
+          children: [for (final example in examples) ActionChip(label: Text(example), onPressed: () => _insert(attribute ? '{{ $example }}' : example))],
         ),
     ],
   );
@@ -215,7 +200,9 @@ class _TextTemplateEditorState extends State<_TextTemplateEditor> {
                                   child: SelectableText(
                                     _result == null
                                         ? (_pending ? '' : labels.unavailable)
-                                        : _result!.isEmpty ? labels.empty : _result!,
+                                        : _result!.isEmpty
+                                        ? labels.empty
+                                        : _result!,
                                     minLines: 2,
                                     maxLines: 2,
                                   ),
@@ -223,11 +210,9 @@ class _TextTemplateEditorState extends State<_TextTemplateEditor> {
                               ),
                               if (_pending)
                                 const Positioned(
-                                  top: 0, right: 0,
-                                  child: SizedBox(
-                                    width: Space.lg, height: Space.lg,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  ),
+                                  top: 0,
+                                  right: 0,
+                                  child: SizedBox(width: Space.lg, height: Space.lg, child: CircularProgressIndicator(strokeWidth: 2)),
                                 ),
                             ],
                           ),
@@ -243,10 +228,7 @@ class _TextTemplateEditorState extends State<_TextTemplateEditor> {
             contentPadding: const EdgeInsets.symmetric(horizontal: Space.lg),
             child: InkWell(
               onTap: () => setState(() => _showDocs = !_showDocs),
-              child: CategoryBand(
-                labels.docs,
-                leading: Icon(_showDocs ? MdiIcons.chevronDown : MdiIcons.chevronRight),
-              ),
+              child: CategoryBand(labels.docs, leading: Icon(_showDocs ? MdiIcons.chevronDown : MdiIcons.chevronRight)),
             ),
           ),
           if (_showDocs)
@@ -320,17 +302,11 @@ class _TextTemplateEditorState extends State<_TextTemplateEditor> {
         ],
       ),
       destructive: widget.field.containsKey('defaultValue')
-          ? TextButton(
-              onPressed: () => _controller.text = widget.field['defaultValue']?.toString() ?? '',
-              child: Text(context.t.templateEditor.reset),
-            )
+          ? TextButton(onPressed: () => _controller.text = widget.field['defaultValue']?.toString() ?? '', child: Text(context.t.templateEditor.reset))
           : null,
       cancel: TextButton(onPressed: () => Navigator.pop(context), child: Text(context.t.common.cancel)),
       actions: [
-        FilledButton(
-          onPressed: _pending || _error != null ? null : () => Navigator.pop(context, _controller.text),
-          child: Text(context.t.common.save),
-        ),
+        FilledButton(onPressed: _pending || _error != null ? null : () => Navigator.pop(context, _controller.text), child: Text(context.t.common.save)),
       ],
     );
   }

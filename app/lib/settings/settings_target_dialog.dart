@@ -59,15 +59,14 @@ Future<void> showSettingsForTarget(
   required String target,
   required String title,
   List<TargetDialogAction> actions = const [],
-}) =>
-    _showSettingsDialog(
-      context,
-      services: services,
-      title: title,
-      actions: actions,
-      inBase: (scanned) => elementMatchesTarget(scanned.element, target),
-      inExtended: (scanned) => elementMatchesTarget(scanned.element, '$target-extended'),
-    );
+}) => _showSettingsDialog(
+  context,
+  services: services,
+  title: title,
+  actions: actions,
+  inBase: (scanned) => elementMatchesTarget(scanned.element, target),
+  inExtended: (scanned) => elementMatchesTarget(scanned.element, '$target-extended'),
+);
 
 /// The same target-scoped settings form [showSettingsForTarget] renders
 /// inside its own dialog, as a plain widget — for a caller that wants to
@@ -75,11 +74,7 @@ Future<void> showSettingsForTarget(
 /// "Panel Settings" section, for a native panel whose settings are more
 /// than [PanelDefinition.formFields] can express) instead of opening a
 /// second dialog over it.
-Widget settingsFormForTarget({
-  required HaLoServices services,
-  required String target,
-  List<TargetDialogAction> actions = const [],
-}) => _TargetSettingsForm(
+Widget settingsFormForTarget({required HaLoServices services, required String target, List<TargetDialogAction> actions = const []}) => _TargetSettingsForm(
   services: services,
   inBase: (scanned) => elementMatchesTarget(scanned.element, target),
   inExtended: (scanned) => elementMatchesTarget(scanned.element, '$target-extended'),
@@ -102,12 +97,7 @@ Widget settingsFormForTarget({
 /// command's preview line names that first one — listing them in
 /// settings-screen order instead would put the setting the operator was just
 /// told about somewhere down the list.
-Future<void> showSettingsForKeys(
-  BuildContext context, {
-  required HaLoServices services,
-  required List<String> keys,
-  required String title,
-}) {
+Future<void> showSettingsForKeys(BuildContext context, {required HaLoServices services, required List<String> keys, required String title}) {
   final rank = {for (var i = 0; i < keys.length; i++) keys[i]: i};
   return _showSettingsDialog(
     context,
@@ -316,10 +306,12 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
           baseScanned.sort(order);
           extendedScanned.sort(order);
         }
-        Map<String, dynamic> render(ScannedSetting scanned) =>
-            widget.stripVisibleWhen && scanned.element.containsKey('visibleWhen')
-                ? {for (final e in scanned.element.entries) if (e.key != 'visibleWhen') e.key: e.value}
-                : scanned.element;
+        Map<String, dynamic> render(ScannedSetting scanned) => widget.stripVisibleWhen && scanned.element.containsKey('visibleWhen')
+            ? {
+                for (final e in scanned.element.entries)
+                  if (e.key != 'visibleWhen') e.key: e.value,
+              }
+            : scanned.element;
         final base = [for (final scanned in baseScanned) render(scanned)];
         final extended = [for (final scanned in extendedScanned) render(scanned)];
         if (mounted) {
@@ -464,72 +456,66 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     final base = _baseElements;
     final extended = _extendedElements;
     if (base == null || extended == null) {
-      return const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()));
+      return const Padding(
+        padding: EdgeInsets.all(Space.xxl),
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
     return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Settings lead, and scroll in their own bounded region — no
-          // "Relevant Settings" label above them; with Actions moved below,
-          // there is no sibling section left for the name to distinguish
-          // them from. Flexible, not Expanded, so a short settings list (no
-          // extended fields, or already showing them) sizes to its own
-          // content and leaves Actions directly beneath it; only a list
-          // long enough to reach the dialog's own height limit clips and
-          // scrolls, instead of pushing Actions off the bottom.
-          Flexible(
-            // AnimatedSize around the VIEWPORT, which shrink-wraps its
-            // slivers: the height it animates is the form's own, so the
-            // extended fields still arrive with a growing pane rather than a
-            // jump — and the form stays slivers, which is what lets a section
-            // band inside it pin.
-            child: AnimatedSize(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              child: CustomScrollView(
-                shrinkWrap: true,
-                slivers: [
-                  // One FormRenderer whose element list grows, not two
-                  // separate FormRenderer widgets swapped/composited — the
-                  // extended fields are simply spliced into the same array
-                  // once _showExtended flips, so they're absent from the
-                  // tree (and from find.text in a test) until then.
-                  _buildFormRenderer([
-                    ...base,
-                    if (_showExtended) ...extended,
-                  ]),
-                  if (!_showExtended && extended.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: Space.xs),
-                        child: TextButton(
-                          onPressed: () => setState(() => _showExtended = true),
-                          child: Text(context.t.settings.showMoreSettings),
-                        ),
-                      ),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Settings lead, and scroll in their own bounded region — no
+        // "Relevant Settings" label above them; with Actions moved below,
+        // there is no sibling section left for the name to distinguish
+        // them from. Flexible, not Expanded, so a short settings list (no
+        // extended fields, or already showing them) sizes to its own
+        // content and leaves Actions directly beneath it; only a list
+        // long enough to reach the dialog's own height limit clips and
+        // scrolls, instead of pushing Actions off the bottom.
+        Flexible(
+          // AnimatedSize around the VIEWPORT, which shrink-wraps its
+          // slivers: the height it animates is the form's own, so the
+          // extended fields still arrive with a growing pane rather than a
+          // jump — and the form stays slivers, which is what lets a section
+          // band inside it pin.
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: CustomScrollView(
+              shrinkWrap: true,
+              slivers: [
+                // One FormRenderer whose element list grows, not two
+                // separate FormRenderer widgets swapped/composited — the
+                // extended fields are simply spliced into the same array
+                // once _showExtended flips, so they're absent from the
+                // tree (and from find.text in a test) until then.
+                _buildFormRenderer([...base, if (_showExtended) ...extended]),
+                if (!_showExtended && extended.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: Space.xs),
+                      child: TextButton(onPressed: () => setState(() => _showExtended = true), child: Text(context.t.settings.showMoreSettings)),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
-          // Caller-supplied, not a declared setting — never routed through
-          // elementMatchesTarget, so it can't be mistaken for one. Banded
-          // and trailing, the same shape a Panel Settings section takes in
-          // the pane layout options dialog.
-          if (widget.actions.isNotEmpty) ...[
-            SectionHeader(context.t.operation.menu.actionsSection),
-            for (final action in widget.actions)
-              ListTile(
-                leading: Icon(resolveIconName(action.icon)),
-                title: Text(
-                  action.label,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                onTap: action.onTap,
-              ),
-          ],
+        ),
+        // Caller-supplied, not a declared setting — never routed through
+        // elementMatchesTarget, so it can't be mistaken for one. Banded
+        // and trailing, the same shape a Panel Settings section takes in
+        // the pane layout options dialog.
+        if (widget.actions.isNotEmpty) ...[
+          SectionHeader(context.t.operation.menu.actionsSection),
+          for (final action in widget.actions)
+            ListTile(
+              leading: Icon(resolveIconName(action.icon)),
+              title: Text(action.label, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+              onTap: action.onTap,
+            ),
+        ],
       ],
     );
   }

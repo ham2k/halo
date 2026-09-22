@@ -34,19 +34,25 @@ void main() {
     addTearDown(subscription.cancel);
 
     // scoreQsos renders tally labels, which is what builds a translator.
-    final result = await host.invokeHook('scoring', key: 'core', method: 'scoreQsos', args: {
-      'operation': {'uuid': 'op', 'stationCall': 'N0DEV', 'refs': <Map<String, dynamic>>[]},
-      'qsos': [
-        {
-          'uuid': 'q',
-          'startAtMillis': 0,
-          'band': '20m',
-          'mode': 'CW',
-          'our': {'call': 'N0DEV'},
-          'their': {'call': 'DL1ABC'},
-        }
-      ],
-    }, timeout: const Duration(seconds: 30));
+    final result = await host.invokeHook(
+      'scoring',
+      key: 'core',
+      method: 'scoreQsos',
+      args: {
+        'operation': {'uuid': 'op', 'stationCall': 'N0DEV', 'refs': <Map<String, dynamic>>[]},
+        'qsos': [
+          {
+            'uuid': 'q',
+            'startAtMillis': 0,
+            'band': '20m',
+            'mode': 'CW',
+            'our': {'call': 'N0DEV'},
+            'their': {'call': 'DL1ABC'},
+          },
+        ],
+      },
+      timeout: const Duration(seconds: 30),
+    );
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     // FIRST prove the code under test actually ran. Without this the test is
@@ -56,17 +62,23 @@ void main() {
     // Labels are what force i18next to build a translator, which is the whole
     // thing being checked for silence.
     final summary = (result as Map?)?['operationSummary'] as Map?;
-    expect(summary, isNotNull,
-        reason: 'scoreQsos returned no operationSummary, so nothing rendered a '
-            'label and the silence below proves nothing');
+    expect(
+      summary,
+      isNotNull,
+      reason:
+          'scoreQsos returned no operationSummary, so nothing rendered a '
+          'label and the silence below proves nothing',
+    );
     final labelled = summary!.values.whereType<Map>().where((e) => e['label'] is String && (e['label'] as String).isNotEmpty);
-    expect(labelled, isNotEmpty,
-        reason: 'no tally in the summary carried a label, so no translator was '
-            'built: ${const JsonEncoder.withIndent('  ').convert(summary)}');
+    expect(
+      labelled,
+      isNotEmpty,
+      reason:
+          'no tally in the summary carried a label, so no translator was '
+          'built: ${const JsonEncoder.withIndent('  ').convert(summary)}',
+    );
 
-    expect(logs.where((l) => l.contains('pluralResolver')), isEmpty,
-        reason: 'i18next must not report the missing Intl on every translator build');
-    expect(logs.where((l) => l.contains('ERROR')), isEmpty,
-        reason: 'a routine hook call should produce no ERROR log at all');
+    expect(logs.where((l) => l.contains('pluralResolver')), isEmpty, reason: 'i18next must not report the missing Intl on every translator build');
+    expect(logs.where((l) => l.contains('ERROR')), isEmpty, reason: 'a routine hook call should produce no ERROR log at all');
   }, timeout: const Timeout(Duration(seconds: 90)));
 }

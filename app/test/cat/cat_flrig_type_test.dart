@@ -24,8 +24,7 @@ void main() {
   });
 
   test('defaults to an flrig on the same machine, on flrig\'s own port', () {
-    expect(type.defaultConfig['host'], '127.0.0.1',
-        reason: 'flrig usually runs beside the logger; a remote instance is the exception');
+    expect(type.defaultConfig['host'], '127.0.0.1', reason: 'flrig usually runs beside the logger; a remote instance is the exception');
     expect(type.defaultConfig['port'], FlrigDriver.defaultPort);
     expect(FlrigDriver.defaultPort, 12345, reason: "flrig's default XML-RPC port");
   });

@@ -33,31 +33,30 @@ Future<bool> undeleteOperationWithQsos({
   required OperationsRepository operations,
   required QsosRepository qsos,
   required String uuid,
-}) =>
-    db.transaction(() async {
-      final tombstone = await operations.get(uuid);
-      if (!await operations.undelete(uuid)) return false;
-      final stamp = asQsonNum(tombstone?.data['updatedAtMillis'])?.toInt();
-      if (stamp == null) return true;
-      final rows = await (db.select(db.qsos)
-            ..where((q) => q.operation.equals(uuid) & q.deleted.equals(true) & q.updatedAtMillis.equals(stamp)))
-          .get();
-      // One counter refresh and one change notice for the lot, as in
-      // `QsosRepository.purgeForOperation` — an app-polo delete takes every
-      // QSO of the operation, so this is the whole log at once.
-      final now = realNowMillis();
-      for (final row in rows) {
-        final qso = qsoFromRow(row);
-        await (db.update(db.qsos)..where((q) => q.uuid.equals(row.uuid))).write(QsosCompanion(
-          deleted: const Value(false),
-          synced: const Value(false),
-          // The column must mirror the data's own stamp, or `markSynced`'s
-          // comparison fails forever and the row re-pushes in a loop.
-          data: Value(encodeQsoData({...qso.data, 'updatedAtMillis': now}, 'qsos:undeleteForOperation')),
-          updatedAtMillis: Value(now),
-        ));
-      }
-      await qsos.refreshOperationCounters(uuid);
-      qsos.onChange?.call();
-      return true;
-    });
+}) => db.transaction(() async {
+  final tombstone = await operations.get(uuid);
+  if (!await operations.undelete(uuid)) return false;
+  final stamp = asQsonNum(tombstone?.data['updatedAtMillis'])?.toInt();
+  if (stamp == null) return true;
+  final rows = await (db.select(db.qsos)..where((q) => q.operation.equals(uuid) & q.deleted.equals(true) & q.updatedAtMillis.equals(stamp))).get();
+  // One counter refresh and one change notice for the lot, as in
+  // `QsosRepository.purgeForOperation` — an app-polo delete takes every
+  // QSO of the operation, so this is the whole log at once.
+  final now = realNowMillis();
+  for (final row in rows) {
+    final qso = qsoFromRow(row);
+    await (db.update(db.qsos)..where((q) => q.uuid.equals(row.uuid))).write(
+      QsosCompanion(
+        deleted: const Value(false),
+        synced: const Value(false),
+        // The column must mirror the data's own stamp, or `markSynced`'s
+        // comparison fails forever and the row re-pushes in a loop.
+        data: Value(encodeQsoData({...qso.data, 'updatedAtMillis': now}, 'qsos:undeleteForOperation')),
+        updatedAtMillis: Value(now),
+      ),
+    );
+  }
+  await qsos.refreshOperationCounters(uuid);
+  qsos.onChange?.call();
+  return true;
+});

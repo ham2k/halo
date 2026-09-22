@@ -28,11 +28,7 @@ import 'winsparkle_config.dart';
 
 /// Signature of [configureWinSparkleBeforeInit], so a test can stand in for it
 /// — see [AutoUpdateService.debugConfigureWinSparkle].
-typedef WinSparkleConfigurator = bool Function({
-  required String buildVersion,
-  required int checkIntervalSeconds,
-  required bool automaticChecks,
-});
+typedef WinSparkleConfigurator = bool Function({required String buildVersion, required int checkIntervalSeconds, required bool automaticChecks});
 
 /// Outcome of a [AutoUpdateService.checkSilently] call.
 enum SparkleCheckResult { upToDate, updateAvailable, error }
@@ -102,10 +98,7 @@ class AutoUpdateService {
   /// Base URL of the update host (Cloudflare R2 behind updates.ham2k.net).
   /// Overridable at build time for staging via
   /// `--dart-define=HALO_UPDATES_BASE_URL=…`.
-  static const _baseUrl = String.fromEnvironment(
-    'HALO_UPDATES_BASE_URL',
-    defaultValue: 'https://updates.ham2k.net',
-  );
+  static const _baseUrl = String.fromEnvironment('HALO_UPDATES_BASE_URL', defaultValue: 'https://updates.ham2k.net');
 
   /// How often the native updater re-checks in the background. Sparkle's floor
   /// is one hour; anything lower is clamped.
@@ -122,8 +115,7 @@ class AutoUpdateService {
     if (kDebugMode && debugSupportedOverride != null) return debugSupportedOverride!;
     if (kIsWeb || kDebugMode) return false;
     if (kEdition == Edition.dev) return false; // Dev has no appcast (§2.6).
-    return defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.windows;
+    return defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows;
   }
 
   /// The R2 prefix segment for this build's feed. Names the VARIANT, not just
@@ -136,9 +128,7 @@ class AutoUpdateService {
   /// already installed asking for the old one - which 404s, silently, forever.
   /// The old path must keep serving this same appcast until those installs have
   /// taken an update; see LEGACY_APPCAST_PREFIXES in app_dist/ci/build-macos.sh.
-  String get _platform => defaultTargetPlatform == TargetPlatform.windows
-      ? 'windows-x64'
-      : 'macos-universal';
+  String get _platform => defaultTargetPlatform == TargetPlatform.windows ? 'windows-x64' : 'macos-universal';
 
   /// The per-edition, per-platform appcast, e.g.
   /// `https://updates.ham2k.net/halo-next/macos/appcast.xml`. The path is
@@ -169,8 +159,7 @@ class AutoUpdateService {
   /// platform, so the About panel knows whether to offer the switch at all.
   /// Windows only: macOS has no binding for it here and Sparkle asks the user
   /// directly, so a switch there would be a control that changes nothing.
-  bool get ownsAutomaticCheckSetting =>
-      isSupported && defaultTargetPlatform == TargetPlatform.windows;
+  bool get ownsAutomaticCheckSetting => isSupported && defaultTargetPlatform == TargetPlatform.windows;
 
   /// Configures the native updater — the Windows-only settings the plugin
   /// exposes no channel for, the feed URL, and the scheduled-check interval —
@@ -198,11 +187,7 @@ class AutoUpdateService {
       // before-init only (winsparkle_config_io.dart says which and why).
       // No-op off Windows, where the plugin leaves nothing unexposed.
       final configure = (kDebugMode ? debugConfigureWinSparkle : null) ?? configureWinSparkleBeforeInit;
-      final configured = configure(
-        buildVersion: kBuildNumber.toString(),
-        checkIntervalSeconds: _checkIntervalSeconds,
-        automaticChecks: _automaticChecks,
-      );
+      final configured = configure(buildVersion: kBuildNumber.toString(), checkIntervalSeconds: _checkIntervalSeconds, automaticChecks: _automaticChecks);
 
       await autoUpdater.setFeedURL(feedUrl);
 
@@ -310,10 +295,7 @@ class AutoUpdateService {
       await autoUpdater.checkForUpdates(inBackground: true);
       // The native updater always fires a terminal event, but don't hang
       // forever on a wedged plugin/offline box.
-      return await listener.result.timeout(
-        const Duration(seconds: 20),
-        onTimeout: () => SparkleCheckResult.error,
-      );
+      return await listener.result.timeout(const Duration(seconds: 20), onTimeout: () => SparkleCheckResult.error);
     } catch (e, st) {
       debugPrint('[auto-update] silent check failed for $feedUrl: $e');
       ErrorReportingService.report(e, st, context: 'auto-update:check-silently');

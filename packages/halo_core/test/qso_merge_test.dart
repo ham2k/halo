@@ -18,40 +18,30 @@ Map<String, dynamic> _qso({
   String at = '2024-07-23T12:00:00Z',
   Map<String, dynamic>? theirExtra,
   Map<String, dynamic>? extra,
-}) =>
-    {
-      'our': {'call': our},
-      'their': {'call': their, ...?theirExtra},
-      'band': band,
-      'mode': mode,
-      'startAtMillis': _at(at),
-      ...?extra,
-    };
+}) => {
+  'our': {'call': our},
+  'their': {'call': their, ...?theirExtra},
+  'band': band,
+  'mode': mode,
+  'startAtMillis': _at(at),
+  ...?extra,
+};
 
 void main() {
   group('qsosAreSameContact', () {
     test('the same contact logged twice, minutes apart, matches', () {
-      expect(
-        qsosAreSameContact(_qso(at: '2024-07-23T12:00:00Z'), _qso(at: '2024-07-23T12:04:30Z')),
-        isTrue,
-      );
+      expect(qsosAreSameContact(_qso(at: '2024-07-23T12:00:00Z'), _qso(at: '2024-07-23T12:04:30Z')), isTrue);
     });
 
     test('the window slides, it does not bucket', () {
       // app-polo rounds into fixed 5-minute buckets, so these two land either
       // side of 12:05 and never match — while 12:00 and 12:04 do. Two minutes
       // apart is one contact under any reading.
-      expect(
-        qsosAreSameContact(_qso(at: '2024-07-23T12:04:00Z'), _qso(at: '2024-07-23T12:06:00Z')),
-        isTrue,
-      );
+      expect(qsosAreSameContact(_qso(at: '2024-07-23T12:04:00Z'), _qso(at: '2024-07-23T12:06:00Z')), isTrue);
     });
 
     test('beyond five minutes is a different contact', () {
-      expect(
-        qsosAreSameContact(_qso(at: '2024-07-23T12:00:00Z'), _qso(at: '2024-07-23T12:05:01Z')),
-        isFalse,
-      );
+      expect(qsosAreSameContact(_qso(at: '2024-07-23T12:00:00Z'), _qso(at: '2024-07-23T12:05:01Z')), isFalse);
     });
 
     test('the sideband spellings are one mode', () {
@@ -119,13 +109,21 @@ void main() {
       // treat the call it is discarding as a difference.
       expect(qsosAreSameContact(_qso(our: 'W1AW/P'), _qso(our: 'KI2D')), isFalse);
       expect(
-        qsosAreSameContact(_qso(our: 'W1AW/P'), _qso(our: 'KI2D'), stationCall: 'KI2D'),
+        qsosAreSameContact(
+          _qso(our: 'W1AW/P'),
+          _qso(our: 'KI2D'),
+          stationCall: 'KI2D',
+        ),
         isTrue,
       );
     });
 
     test('the merged record belongs to the imposed station', () {
-      final merged = mergeQsos(_qso(our: 'KI2D'), _qso(our: 'W1AW/P'), stationCall: 'KI2D');
+      final merged = mergeQsos(
+        _qso(our: 'KI2D'),
+        _qso(our: 'W1AW/P'),
+        stationCall: 'KI2D',
+      );
 
       expect((merged['our'] as Map)['call'], 'KI2D');
     });
@@ -133,9 +131,11 @@ void main() {
     test('qsoForStation replaces the call and keeps the rest of `our`', () {
       // Who was at the key is a different fact from which callsign went out.
       final rewritten = qsoForStation(
-        _qso(extra: {
-          'our': {'call': 'W1AW/P', 'operatorCall': 'W1AW', 'grid': 'FN31'},
-        }),
+        _qso(
+          extra: {
+            'our': {'call': 'W1AW/P', 'operatorCall': 'W1AW', 'grid': 'FN31'},
+          },
+        ),
         'KI2D',
       );
 
@@ -151,16 +151,7 @@ void main() {
     });
 
     test('foreignStationCalls lists what is about to be rewritten, once each', () {
-      final calls = foreignStationCalls(
-        [
-          _qso(our: 'W1AW'),
-          _qso(our: 'W1AW/P'),
-          _qso(our: 'W1AW'),
-          _qso(our: 'KI2D'),
-          _qso(our: 'ki2d'),
-        ],
-        'KI2D',
-      );
+      final calls = foreignStationCalls([_qso(our: 'W1AW'), _qso(our: 'W1AW/P'), _qso(our: 'W1AW'), _qso(our: 'KI2D'), _qso(our: 'ki2d')], 'KI2D');
 
       // Order first seen, so the warning reads the way the file does. The
       // operation's own call — in either case — is not a surprise.
@@ -295,10 +286,7 @@ void main() {
 
   group('mergeQsos', () {
     test('the newer value wins where both have one', () {
-      final merged = mergeQsos(
-        _qso(theirExtra: {'grid': 'FN31'}),
-        _qso(theirExtra: {'grid': 'FN31pr'}),
-      );
+      final merged = mergeQsos(_qso(theirExtra: {'grid': 'FN31'}), _qso(theirExtra: {'grid': 'FN31pr'}));
 
       expect((merged['their'] as Map)['grid'], 'FN31pr');
     });
@@ -318,10 +306,7 @@ void main() {
     });
 
     test('an empty value does not overwrite a real one', () {
-      final merged = mergeQsos(
-        _qso(theirExtra: {'name': 'Hiram'}),
-        _qso(theirExtra: {'name': ''}),
-      );
+      final merged = mergeQsos(_qso(theirExtra: {'name': 'Hiram'}), _qso(theirExtra: {'name': ''}));
 
       expect((merged['their'] as Map)['name'], 'Hiram');
     });
@@ -342,16 +327,20 @@ void main() {
       // POTA n-fers: the extension declares allowsMultiple, and the caller
       // passes that declaration through.
       final merged = mergeQsos(
-        _qso(extra: {
-          'refs': [
-            {'type': 'pota', 'ref': 'K-1'},
-          ],
-        }),
-        _qso(extra: {
-          'refs': [
-            {'type': 'pota', 'ref': 'K-2'},
-          ],
-        }),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'pota', 'ref': 'K-1'},
+            ],
+          },
+        ),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'pota', 'ref': 'K-2'},
+            ],
+          },
+        ),
         multiRefTypes: {'pota'},
       );
 
@@ -366,16 +355,20 @@ void main() {
       // reads refs by type with indexWhere, so a second would be invisible
       // to it anyway.
       final merged = mergeQsos(
-        _qso(extra: {
-          'refs': [
-            {'type': 'contest', 'ref': 'OLD-ONE'},
-          ],
-        }),
-        _qso(extra: {
-          'refs': [
-            {'type': 'contest', 'ref': 'ARRL-DX-CW'},
-          ],
-        }),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'contest', 'ref': 'OLD-ONE'},
+            ],
+          },
+        ),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'contest', 'ref': 'ARRL-DX-CW'},
+            ],
+          },
+        ),
       );
 
       expect(merged['refs'], [
@@ -387,16 +380,20 @@ void main() {
       // The default is "stack nothing" — a caller that forgets to pass the
       // declarations gets the conservative answer, not the permissive one.
       final merged = mergeQsos(
-        _qso(extra: {
-          'refs': [
-            {'type': 'pota', 'ref': 'K-1'},
-          ],
-        }),
-        _qso(extra: {
-          'refs': [
-            {'type': 'pota', 'ref': 'K-2'},
-          ],
-        }),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'pota', 'ref': 'K-1'},
+            ],
+          },
+        ),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'pota', 'ref': 'K-2'},
+            ],
+          },
+        ),
       );
 
       expect(merged['refs'], [
@@ -406,16 +403,20 @@ void main() {
 
     test('refs of different types both survive regardless of stacking', () {
       final merged = mergeQsos(
-        _qso(extra: {
-          'refs': [
-            {'type': 'sota', 'ref': 'W2/GC-001'},
-          ],
-        }),
-        _qso(extra: {
-          'refs': [
-            {'type': 'contest', 'ref': 'ARRL-DX-CW'},
-          ],
-        }),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'sota', 'ref': 'W2/GC-001'},
+            ],
+          },
+        ),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'contest', 'ref': 'ARRL-DX-CW'},
+            ],
+          },
+        ),
       );
 
       expect(merged['refs'], [
@@ -425,11 +426,13 @@ void main() {
     });
 
     test('the same ref on both sides lands once, stacking or not', () {
-      Map<String, dynamic> same() => _qso(extra: {
-            'refs': [
-              {'type': 'pota', 'ref': 'K-1'},
-            ],
-          });
+      Map<String, dynamic> same() => _qso(
+        extra: {
+          'refs': [
+            {'type': 'pota', 'ref': 'K-1'},
+          ],
+        },
+      );
 
       expect(mergeQsos(same(), same(), multiRefTypes: {'pota'})['refs'], hasLength(1));
       expect(mergeQsos(same(), same())['refs'], hasLength(1));
@@ -439,12 +442,16 @@ void main() {
       // `their` and `our` are maps, and replacing one wholesale is how the
       // older record's fields get lost even when the top level looks merged.
       final merged = mergeQsos(
-        _qso(extra: {
-          'our': {'call': 'N0DEV', 'grid': 'FN20', 'sent': '59'},
-        }),
-        _qso(extra: {
-          'our': {'call': 'N0DEV/P'},
-        }),
+        _qso(
+          extra: {
+            'our': {'call': 'N0DEV', 'grid': 'FN20', 'sent': '59'},
+          },
+        ),
+        _qso(
+          extra: {
+            'our': {'call': 'N0DEV/P'},
+          },
+        ),
       );
 
       expect(merged['our'], {'call': 'N0DEV/P', 'grid': 'FN20', 'sent': '59'});
@@ -456,16 +463,20 @@ void main() {
       // Replacing wholesale would discard the number the operator sent on the
       // air, which is the same mistake per-field precedence exists to avoid.
       final merged = mergeQsos(
-        _qso(extra: {
-          'refs': [
-            {'type': 'contest', 'ref': 'ARRL-DX-CW', 'serial': 42, 'ourSerial': 17},
-          ],
-        }),
-        _qso(extra: {
-          'refs': [
-            {'type': 'contest', 'ref': 'ARRL-DX-CW'},
-          ],
-        }),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'contest', 'ref': 'ARRL-DX-CW', 'serial': 42, 'ourSerial': 17},
+            ],
+          },
+        ),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'contest', 'ref': 'ARRL-DX-CW'},
+            ],
+          },
+        ),
       );
 
       expect(merged['refs'], [
@@ -475,17 +486,21 @@ void main() {
 
     test('a stacking ref merges with its own counterpart, not another', () {
       final merged = mergeQsos(
-        _qso(extra: {
-          'refs': [
-            {'type': 'pota', 'ref': 'K-1', 'name': 'First Park'},
-            {'type': 'pota', 'ref': 'K-2', 'name': 'Second Park'},
-          ],
-        }),
-        _qso(extra: {
-          'refs': [
-            {'type': 'pota', 'ref': 'K-2'},
-          ],
-        }),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'pota', 'ref': 'K-1', 'name': 'First Park'},
+              {'type': 'pota', 'ref': 'K-2', 'name': 'Second Park'},
+            ],
+          },
+        ),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'pota', 'ref': 'K-2'},
+            ],
+          },
+        ),
         multiRefTypes: {'pota'},
       );
 
@@ -501,16 +516,20 @@ void main() {
       // avoids, because the result looks like real data and the serial feeds
       // the high-water mark and the export.
       final merged = mergeQsos(
-        _qso(extra: {
-          'refs': [
-            {'type': 'sota', 'ref': 'W2/GC-001', 'name': 'Mount Greylock', 'ourSerial': 42},
-          ],
-        }),
-        _qso(extra: {
-          'refs': [
-            {'type': 'sota', 'ref': 'W7/XX-999'},
-          ],
-        }),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'sota', 'ref': 'W2/GC-001', 'name': 'Mount Greylock', 'ourSerial': 42},
+            ],
+          },
+        ),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'sota', 'ref': 'W7/XX-999'},
+            ],
+          },
+        ),
       );
 
       expect(merged['refs'], [
@@ -522,12 +541,14 @@ void main() {
       // A malformed ref has no type to dedupe on. Skipping the check outright
       // doubles it on every merge, so a re-run of an import grows the stored
       // record without bound.
-      Map<String, dynamic> record() => _qso(extra: {
-            'refs': [
-              {'ref': 'x'},
-              {'type': 'pota', 'ref': 'K-1'},
-            ],
-          });
+      Map<String, dynamic> record() => _qso(
+        extra: {
+          'refs': [
+            {'ref': 'x'},
+            {'type': 'pota', 'ref': 'K-1'},
+          ],
+        },
+      );
 
       var merged = mergeQsos(record(), record());
       expect(merged['refs'], hasLength(2));
@@ -539,16 +560,20 @@ void main() {
     test('two DIFFERENT malformed refs both survive', () {
       // Guards the dedupe above from collapsing distinct ones.
       final merged = mergeQsos(
-        _qso(extra: {
-          'refs': [
-            {'ref': 'x'},
-          ],
-        }),
-        _qso(extra: {
-          'refs': [
-            {'ref': 'y'},
-          ],
-        }),
+        _qso(
+          extra: {
+            'refs': [
+              {'ref': 'x'},
+            ],
+          },
+        ),
+        _qso(
+          extra: {
+            'refs': [
+              {'ref': 'y'},
+            ],
+          },
+        ),
       );
 
       expect(merged['refs'], hasLength(2));
@@ -556,16 +581,20 @@ void main() {
 
     test('the newer ref still wins a field both sides carry', () {
       final merged = mergeQsos(
-        _qso(extra: {
-          'refs': [
-            {'type': 'contest', 'ref': 'ARRL-DX-CW', 'serial': 1},
-          ],
-        }),
-        _qso(extra: {
-          'refs': [
-            {'type': 'contest', 'ref': 'ARRL-DX-CW', 'serial': 99},
-          ],
-        }),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'contest', 'ref': 'ARRL-DX-CW', 'serial': 1},
+            ],
+          },
+        ),
+        _qso(
+          extra: {
+            'refs': [
+              {'type': 'contest', 'ref': 'ARRL-DX-CW', 'serial': 99},
+            ],
+          },
+        ),
       );
 
       expect(((merged['refs'] as List).single as Map)['serial'], 99);
@@ -574,10 +603,7 @@ void main() {
     test('a whitespace-only value does not erase a real one', () {
       // The ADIF mapper strips a trailing run before this sees it, but QSON
       // import and sync reach the same code without that pass.
-      final merged = mergeQsos(
-        _qso(theirExtra: {'name': 'Hiram'}),
-        _qso(theirExtra: {'name': '   '}),
-      );
+      final merged = mergeQsos(_qso(theirExtra: {'name': 'Hiram'}), _qso(theirExtra: {'name': '   '}));
 
       expect((merged['their'] as Map)['name'], 'Hiram');
     });
@@ -589,8 +615,30 @@ void main() {
       final typeless = {'ref': 'x'};
       final typed = {'type': 'pota', 'ref': 'K-9'};
 
-      final olderHasIt = mergeQsos(_qso(extra: {'refs': [typeless]}), _qso(extra: {'refs': [typed]}));
-      final newerHasIt = mergeQsos(_qso(extra: {'refs': [typed]}), _qso(extra: {'refs': [typeless]}));
+      final olderHasIt = mergeQsos(
+        _qso(
+          extra: {
+            'refs': [typeless],
+          },
+        ),
+        _qso(
+          extra: {
+            'refs': [typed],
+          },
+        ),
+      );
+      final newerHasIt = mergeQsos(
+        _qso(
+          extra: {
+            'refs': [typed],
+          },
+        ),
+        _qso(
+          extra: {
+            'refs': [typeless],
+          },
+        ),
+      );
 
       expect(olderHasIt['refs'], hasLength(2));
       expect(newerHasIt['refs'], hasLength(2));
@@ -599,9 +647,11 @@ void main() {
     test('a map only the older record carries is copied, not shared', () {
       // A shallow copy shares exactly the keys the newer side does NOT have —
       // those are never visited again, so they stay pointing at the input.
-      final older = _qso(extra: {
-        'event': {'kind': 'break'},
-      });
+      final older = _qso(
+        extra: {
+          'event': {'kind': 'break'},
+        },
+      );
       final newer = _qso();
 
       final merged = mergeQsos(older, newer);
@@ -613,11 +663,13 @@ void main() {
     test('merged refs are copies, not the input ref objects', () {
       // The import preview holds the log record and the merged candidate side
       // by side; editing one must not rewrite the other.
-      final older = _qso(extra: {
-        'refs': [
-          {'type': 'pota', 'ref': 'K-1'},
-        ],
-      });
+      final older = _qso(
+        extra: {
+          'refs': [
+            {'type': 'pota', 'ref': 'K-1'},
+          ],
+        },
+      );
 
       final merged = mergeQsos(older, _qso());
       ((merged['refs'] as List).first as Map)['ref'] = 'MUTATED';
@@ -686,19 +738,35 @@ void main() {
 
     test('refs are one value: an edited ref list wins wholesale, an untouched one keeps current', () {
       final base = {
-        'refs': [{'type': 'pota', 'ref': 'US-0001'}],
+        'refs': [
+          {'type': 'pota', 'ref': 'US-0001'},
+        ],
       };
       final current = {
-        'refs': [{'type': 'pota', 'ref': 'US-0002'}],
+        'refs': [
+          {'type': 'pota', 'ref': 'US-0002'},
+        ],
       };
-      final untouched = mergeConcurrentEdit(base: base, current: current, edited: {
-        'refs': [{'type': 'pota', 'ref': 'US-0001'}],
-      });
+      final untouched = mergeConcurrentEdit(
+        base: base,
+        current: current,
+        edited: {
+          'refs': [
+            {'type': 'pota', 'ref': 'US-0001'},
+          ],
+        },
+      );
       expect((untouched['refs'] as List).single, {'type': 'pota', 'ref': 'US-0002'});
 
-      final editedWins = mergeConcurrentEdit(base: base, current: current, edited: {
-        'refs': [{'type': 'pota', 'ref': 'US-0003'}],
-      });
+      final editedWins = mergeConcurrentEdit(
+        base: base,
+        current: current,
+        edited: {
+          'refs': [
+            {'type': 'pota', 'ref': 'US-0003'},
+          ],
+        },
+      );
       expect((editedWins['refs'] as List).single, {'type': 'pota', 'ref': 'US-0003'});
     });
 

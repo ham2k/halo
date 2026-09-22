@@ -87,55 +87,25 @@ class SecondaryControlCatalog {
   /// snapshot down, so one call can never pair descriptors from one
   /// configuration with the order or the hidden set of another.
   List<ControlDescriptor> _descriptors(ControlCatalogConfig config) => [
-      ControlDescriptor(
-        key: 'time',
-        icon: timeChipIcon,
-        label: t.loggingControls.timeControl,
-        mandatory: true,
-      ),
-      ControlDescriptor(
-        key: 'radio',
-        icon: config.radioIcon,
-        label: t.loggingControls.radioControl,
-        mandatory: true,
-      ),
-      if (config.hasPowerStore)
+    ControlDescriptor(key: 'time', icon: timeChipIcon, label: t.loggingControls.timeControl, mandatory: true),
+    ControlDescriptor(key: 'radio', icon: config.radioIcon, label: t.loggingControls.radioControl, mandatory: true),
+    if (config.hasPowerStore) ControlDescriptor(key: 'power', icon: powerChipIcon, label: t.loggingControls.powerControl, defaultHidden: true),
+    if (config.canSpot) ControlDescriptor(key: 'spotting', icon: spottingChipIcon, label: t.loggingControls.spottingControl),
+    for (final control in config.activityControls)
+      if ((control['input'] as Map?)?['kind'] == 'refList')
         ControlDescriptor(
-          key: 'power',
-          icon: powerChipIcon,
-          label: t.loggingControls.powerControl,
-          defaultHidden: true,
+          key: control['key'] as String,
+          icon: resolveIconName(control['icon'] as String?),
+          label: (control['label'] as String?) ?? control['key'] as String,
+          activityControl: control,
         ),
-      if (config.canSpot)
-        ControlDescriptor(
-          key: 'spotting',
-          icon: spottingChipIcon,
-          label: t.loggingControls.spottingControl,
-        ),
-      for (final control in config.activityControls)
-        if ((control['input'] as Map?)?['kind'] == 'refList')
-          ControlDescriptor(
-            key: control['key'] as String,
-            icon: resolveIconName(control['icon'] as String?),
-            label: (control['label'] as String?) ?? control['key'] as String,
-            activityControl: control,
-          ),
-      // Beside More, and off until the operator has been asked: a note
-      // per contact is a thing few operators keep, and the ones who do
-      // know to go looking for it. The More pane edits the same value for
-      // everyone else.
-      ControlDescriptor(
-        key: 'notes',
-        icon: notesChipIcon,
-        label: t.loggingControls.notesControl,
-        defaultHidden: true,
-      ),
-      ControlDescriptor(
-        key: 'more',
-        icon: moreChipIcon,
-        label: t.loggingControls.more,
-      ),
-    ];
+    // Beside More, and off until the operator has been asked: a note
+    // per contact is a thing few operators keep, and the ones who do
+    // know to go looking for it. The More pane edits the same value for
+    // everyone else.
+    ControlDescriptor(key: 'notes', icon: notesChipIcon, label: t.loggingControls.notesControl, defaultHidden: true),
+    ControlDescriptor(key: 'more', icon: moreChipIcon, label: t.loggingControls.more),
+  ];
 
   /// Whether this control stays out of the row. A [ControlDescriptor
   /// .defaultHidden] control is out until the operator has been asked —
@@ -266,10 +236,7 @@ Future<(List<String>, Set<String>)?> showControlSettingsDialog(BuildContext cont
                 if (byKey[key] case final descriptor?)
                   ListTile(
                     key: ValueKey(key),
-                    leading: ReorderableDragStartListener(
-                      index: index,
-                      child: const Icon(MdiIcons.dragHorizontalVariant),
-                    ),
+                    leading: ReorderableDragStartListener(index: index, child: const Icon(MdiIcons.dragHorizontalVariant)),
                     title: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -283,29 +250,21 @@ Future<(List<String>, Set<String>)?> showControlSettingsDialog(BuildContext cont
                       onChanged: descriptor.mandatory
                           ? null
                           : (checked) => setDialogState(() {
-                                final updated = Set<String>.from(hidden);
-                                if (checked == true) {
-                                  updated.remove(key);
-                                } else {
-                                  updated.add(key);
-                                }
-                                hidden = updated;
-                              }),
+                              final updated = Set<String>.from(hidden);
+                              if (checked == true) {
+                                updated.remove(key);
+                              } else {
+                                updated.add(key);
+                              }
+                              hidden = updated;
+                            }),
                     ),
                   ),
             ],
           ),
         ),
-        cancel: TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(t.common.cancel),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop((order, hidden)),
-            child: Text(t.common.save),
-          ),
-        ],
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.cancel)),
+        actions: [FilledButton(onPressed: () => Navigator.of(dialogContext).pop((order, hidden)), child: Text(t.common.save))],
       ),
     ),
   );

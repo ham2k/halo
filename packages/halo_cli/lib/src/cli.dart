@@ -31,34 +31,32 @@ import 'runtime.dart';
 
 /// Runs one invocation and returns the process exit code.
 Future<int> runHaloExt(List<String> argv) async {
-  final runner = CommandRunner<int>(
-    'halo-ext',
-    'Run HaLo extension hooks outside the app: JSON in, JSON out.',
-  );
+  final runner = CommandRunner<int>('halo-ext', 'Run HaLo extension hooks outside the app: JSON in, JSON out.');
 
   runner.argParser
-    ..addFlag('verbose',
-        abbr: 'v', negatable: false, help: 'Narrate host calls and extension logs on stderr.')
+    ..addFlag('verbose', abbr: 'v', negatable: false, help: 'Narrate host calls and extension logs on stderr.')
     ..addFlag('compact', negatable: false, help: 'One-line JSON output instead of indented.')
-    ..addFlag('md',
-        negatable: false,
-        help: 'Render as markdown instead of JSON, for commands that have a report to render.')
-    ..addFlag('offline',
-        negatable: false, help: 'Tell hooks the device is offline (HookContext.online = false).')
-    ..addFlag('all-extensions',
-        negatable: false, help: 'Also load extensions that are off by default.')
+    ..addFlag('md', negatable: false, help: 'Render as markdown instead of JSON, for commands that have a report to render.')
+    ..addFlag('offline', negatable: false, help: 'Tell hooks the device is offline (HookContext.online = false).')
+    ..addFlag('all-extensions', negatable: false, help: 'Also load extensions that are off by default.')
     ..addOption('bundles', help: 'Directory holding index.json and the built bundles.')
-    ..addOption('dev-server',
-        help: 'Take extensions from a running `npm run dev` instead of the built bundles,\n'
-            'e.g. --dev-server 127.0.0.1:8787. Overlays what that server serves onto\n'
-            'the built ones (it serves no kernel). Dev extensions get no secrets.')
+    ..addOption(
+      'dev-server',
+      help:
+          'Take extensions from a running `npm run dev` instead of the built bundles,\n'
+          'e.g. --dev-server 127.0.0.1:8787. Overlays what that server serves onto\n'
+          'the built ones (it serves no kernel). Dev extensions get no secrets.',
+    )
     ..addOption('config', help: 'Config file (default: ${CliConfig.defaultPath}).')
     ..addOption('cache', help: 'Cache directory for downloaded reference data.')
     ..addMultiOption('only', help: 'Load only these extensions (repeatable, comma-separated).')
     ..addMultiOption('exclude', help: 'Do not load these extensions.')
-    ..addOption('qson',
-        help: 'A whole log — {operation, qsos} — as a file path, - for stdin, or inline JSON. '
-            'A QSON file as PoLo exports one works unedited; --op/--qsos override its halves.')
+    ..addOption(
+      'qson',
+      help:
+          'A whole log — {operation, qsos} — as a file path, - for stdin, or inline JSON. '
+          'A QSON file as PoLo exports one works unedited; --op/--qsos override its halves.',
+    )
     ..addOption('op', help: 'Operation: a file path, - for stdin, or inline JSON.')
     ..addOption('qso', help: 'A single QSO: a file path, - for stdin, or inline JSON.')
     ..addOption('qsos', help: 'QSOs as a JSON array: a file path, - for stdin, or inline JSON.')
@@ -125,8 +123,7 @@ abstract class ExtCommand extends Command<int> {
   /// This operator's settings, accounts and secrets. Loaded once, and
   /// available to commands that never boot a runtime — forgetting an
   /// account's credentials must work even for an extension since disabled.
-  late final CliConfig config =
-      CliConfig.load(path: globalResults!.option('config'), mustExist: !createsConfig);
+  late final CliConfig config = CliConfig.load(path: globalResults!.option('config'), mustExist: !createsConfig);
 
   bool get verbose => globalResults!.flag('verbose');
   bool get compact => globalResults!.flag('compact');
@@ -170,8 +167,7 @@ abstract class ExtCommand extends Command<int> {
   /// The single in-progress QSO, from `--qso`.
   late final Map<String, Object?>? qsoArg = readJsonMapArg(globalResults!.option('qso'), label: '--qso');
 
-  late final List<Map<String, Object?>> spotsArg =
-      readJsonListArg(globalResults!.option('spots'), label: '--spots') ?? const [];
+  late final List<Map<String, Object?>> spotsArg = readJsonListArg(globalResults!.option('spots'), label: '--spots') ?? const [];
 
   /// A JSON-valued option of this SUBcommand (as opposed to the global ones
   /// above), e.g. `score --ref`.
@@ -187,8 +183,10 @@ abstract class ExtCommand extends Command<int> {
   void emit(Object? value, {String Function()? markdown}) {
     if (!markdownWanted) return writeJson(value, compact: compact);
     if (markdown == null) {
-      throw CliUsageError('--md is not supported by `$name` — it has no report to render, '
-          'only the hook result. Drop --md, or pipe the JSON somewhere.');
+      throw CliUsageError(
+        '--md is not supported by `$name` — it has no report to render, '
+        'only the hook result. Drop --md, or pipe the JSON somewhere.',
+      );
     }
     stdout.writeln(markdown());
   }
@@ -201,9 +199,7 @@ abstract class ExtCommand extends Command<int> {
 
   /// Boots everything this command asked for, runs [body], and tears down.
   Future<int> withRuntime(Future<int> Function(ExtRuntime runtime) body) async {
-    final index = BundleIndex.load(
-      dir: globalResults!.option('bundles') != null ? Directory(globalResults!.option('bundles')!) : null,
-    );
+    final index = BundleIndex.load(dir: globalResults!.option('bundles') != null ? Directory(globalResults!.option('bundles')!) : null);
     final devServer = globalResults!.option('dev-server');
     if (devServer != null && devServer.isNotEmpty) {
       await index.overlayDevServer(normalizeDevServerUrl(devServer));
@@ -243,8 +239,10 @@ abstract class ExtCommand extends Command<int> {
     // Cold cache, in the one place it can be said before a hook answers
     // empty and looks like a bug in the hook.
     if (warnsOnColdCache && lookups != null && !await lookups.hasAnyData) {
-      stderr.writeln('halo-ext: the reference-data cache is empty — park/summit lookups and '
-          'suggestions will come back empty. Run `halo-ext data-files sync`.');
+      stderr.writeln(
+        'halo-ext: the reference-data cache is empty — park/summit lookups and '
+        'suggestions will come back empty. Run `halo-ext data-files sync`.',
+      );
     }
     if (verbose) {
       for (final line in runtime.host.logLines) {
@@ -275,24 +273,13 @@ abstract class ExtCommand extends Command<int> {
   }
 
   /// Calls one hook, folding in the flags every hook call honors.
-  Future<dynamic> invoke(
-    ExtRuntime runtime,
-    String category, {
-    String? key,
-    required String method,
-    Map<String, Object?> args = const {},
-  }) =>
+  Future<dynamic> invoke(ExtRuntime runtime, String category, {String? key, required String method, Map<String, Object?> args = const {}}) =>
       runtime.host.invokeHook(category, key: key, method: method, args: _withOnline(args), timeout: hookTimeout);
 
   /// Calls every hook in a category. The per-source `{key, ok, value|error}`
   /// envelope is passed through rather than flattened: which source answered,
   /// and which one failed, is most of what a caller is asking.
-  Future<List<Map<String, dynamic>>> invokeAll(
-    ExtRuntime runtime,
-    String category, {
-    required String method,
-    Map<String, Object?> args = const {},
-  }) =>
+  Future<List<Map<String, dynamic>>> invokeAll(ExtRuntime runtime, String category, {required String method, Map<String, Object?> args = const {}}) =>
       runtime.host.invokeHookAll(category, method: method, args: _withOnline(args), timeout: hookTimeout);
 
   /// The flag every hook call carries, on its own — for a caller that builds

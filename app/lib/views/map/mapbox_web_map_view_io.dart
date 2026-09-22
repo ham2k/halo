@@ -21,17 +21,18 @@ class MapboxWebMapView extends StatelessWidget {
   final MapZoomController? zoomController;
   final ValueChanged<String>? onMarkerTap;
 
-  const MapboxWebMapView(
-      {super.key,
-      required this.markers,
-      this.lines = const [],
-      this.shapes = const [],
-      required this.projection,
-      required this.isDark,
-      required this.styleUrl,
-      required this.styleUrlDark,
-      this.zoomController,
-      this.onMarkerTap});
+  const MapboxWebMapView({
+    super.key,
+    required this.markers,
+    this.lines = const [],
+    this.shapes = const [],
+    required this.projection,
+    required this.isDark,
+    required this.styleUrl,
+    required this.styleUrlDark,
+    this.zoomController,
+    this.onMarkerTap,
+  });
 
   @override
   Widget build(BuildContext context) => throw UnsupportedError('MapboxWebMapView is only available on the web');

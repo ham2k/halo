@@ -48,12 +48,18 @@ void main() {
     });
 
     late BuildContext context;
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Builder(builder: (c) {
-        context = c;
-        return const Scaffold();
-      })),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (c) {
+              context = c;
+              return const Scaffold();
+            },
+          ),
+        ),
+      ),
+    );
 
     final outcome = runCommandAction(services, 'syncAll', null, context);
     await tester.pump();

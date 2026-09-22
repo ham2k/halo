@@ -15,8 +15,7 @@ class PeerTrustStore {
   PeerTrustStore(this.db);
 
   Future<bool> isTrusted(String peerDeviceId) async {
-    final row = await (db.select(db.peerTrust)..where((p) => p.peerDeviceId.equals(peerDeviceId)))
-        .getSingleOrNull();
+    final row = await (db.select(db.peerTrust)..where((p) => p.peerDeviceId.equals(peerDeviceId))).getSingleOrNull();
     return row != null;
   }
 
@@ -28,14 +27,17 @@ class PeerTrustStore {
   /// to look back at. Real time, not the app clock: this outlives the session
   /// (docs/design/time.md).
   Future<void> trust(String peerDeviceId, {required String name}) async {
-    final existing = await (db.select(db.peerTrust)..where((p) => p.peerDeviceId.equals(peerDeviceId)))
-        .getSingleOrNull();
-    await db.into(db.peerTrust).insertOnConflictUpdate(PeerTrustCompanion.insert(
-          peerDeviceId: peerDeviceId,
-          name: name,
-          pairedAtMillis: existing?.pairedAtMillis ?? realNowMillis(),
-          lastSeenAtMillis: Value(existing?.lastSeenAtMillis),
-        ));
+    final existing = await (db.select(db.peerTrust)..where((p) => p.peerDeviceId.equals(peerDeviceId))).getSingleOrNull();
+    await db
+        .into(db.peerTrust)
+        .insertOnConflictUpdate(
+          PeerTrustCompanion.insert(
+            peerDeviceId: peerDeviceId,
+            name: name,
+            pairedAtMillis: existing?.pairedAtMillis ?? realNowMillis(),
+            lastSeenAtMillis: Value(existing?.lastSeenAtMillis),
+          ),
+        );
   }
 
   /// Withdraws trust. The peer's `PeerCursors` rows are deliberately left
@@ -47,15 +49,12 @@ class PeerTrustStore {
   }
 
   Future<void> markSeen(String peerDeviceId) async {
-    await (db.update(db.peerTrust)..where((p) => p.peerDeviceId.equals(peerDeviceId)))
-        .write(PeerTrustCompanion(lastSeenAtMillis: Value(realNowMillis())));
+    await (db.update(db.peerTrust)..where((p) => p.peerDeviceId.equals(peerDeviceId))).write(PeerTrustCompanion(lastSeenAtMillis: Value(realNowMillis())));
   }
 
-  Future<List<PeerTrustRow>> all() =>
-      (db.select(db.peerTrust)..orderBy([(p) => OrderingTerm(expression: p.name)])).get();
+  Future<List<PeerTrustRow>> all() => (db.select(db.peerTrust)..orderBy([(p) => OrderingTerm(expression: p.name)])).get();
 
   /// Reactive, for a "paired devices" list that has to reflect a pair or
   /// revoke happening elsewhere in the app.
-  Stream<List<PeerTrustRow>> watchAll() =>
-      (db.select(db.peerTrust)..orderBy([(p) => OrderingTerm(expression: p.name)])).watch();
+  Stream<List<PeerTrustRow>> watchAll() => (db.select(db.peerTrust)..orderBy([(p) => OrderingTerm(expression: p.name)])).watch();
 }

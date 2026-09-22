@@ -253,10 +253,7 @@ void main() {
       final center = gridToLocation('FN31pr')!;
       expect(isGridCenter(GridLocation(center.latitude + 1e-12, center.longitude), 'FN31pr'), isTrue);
       double toAdifAndBack(double v) => (v * 60000).round() / 60000;
-      expect(
-        isGridCenter(GridLocation(toAdifAndBack(center.latitude), toAdifAndBack(center.longitude)), 'FN31pr'),
-        isTrue,
-      );
+      expect(isGridCenter(GridLocation(toAdifAndBack(center.latitude), toAdifAndBack(center.longitude)), 'FN31pr'), isTrue);
     });
 
     test('the tolerance scales with the square, never a fixed number of degrees', () {

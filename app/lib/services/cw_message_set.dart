@@ -26,16 +26,14 @@ class CwMessageSet {
 
   static List<String> _padded(dynamic value) {
     final list = value is List ? [for (final entry in value) entry is String ? entry : ''] : <String>[];
-    return [
-      for (var i = 0; i < SettingsService.cwMessageCount; i++) i < list.length ? list[i] : '',
-    ];
+    return [for (var i = 0; i < SettingsService.cwMessageCount; i++) i < list.length ? list[i] : ''];
   }
 
   factory CwMessageSet.fromJson(Map<String, dynamic> json) => CwMessageSet(
-        name: (json['name'] as String?)?.trim().isNotEmpty == true ? json['name'] as String : '?',
-        messages: _padded(json['messages']),
-        labels: _padded(json['labels']),
-      );
+    name: (json['name'] as String?)?.trim().isNotEmpty == true ? json['name'] as String : '?',
+    messages: _padded(json['messages']),
+    labels: _padded(json['labels']),
+  );
 
   Map<String, dynamic> toJson() => {'name': name, 'messages': messages, 'labels': labels};
 
@@ -43,17 +41,11 @@ class CwMessageSet {
 
   String label(int n) => n >= 1 && n <= labels.length ? labels[n - 1] : '';
 
-  CwMessageSet withMessage(int n, String value) => CwMessageSet(
-        name: name,
-        messages: [for (var i = 0; i < messages.length; i++) i == n - 1 ? value : messages[i]],
-        labels: labels,
-      );
+  CwMessageSet withMessage(int n, String value) =>
+      CwMessageSet(name: name, messages: [for (var i = 0; i < messages.length; i++) i == n - 1 ? value : messages[i]], labels: labels);
 
-  CwMessageSet withLabel(int n, String value) => CwMessageSet(
-        name: name,
-        messages: messages,
-        labels: [for (var i = 0; i < labels.length; i++) i == n - 1 ? value : labels[i]],
-      );
+  CwMessageSet withLabel(int n, String value) =>
+      CwMessageSet(name: name, messages: messages, labels: [for (var i = 0; i < labels.length; i++) i == n - 1 ? value : labels[i]]);
 
   CwMessageSet renamed(String value) => CwMessageSet(name: value, messages: messages, labels: labels);
 
@@ -65,19 +57,10 @@ class CwMessageSet {
   /// seeds' layout: the Default's F2 answers a caller in one key, which is
   /// what an operator keying by hand wants and what ESM's split would break.
   static CwMessageSet esm() {
-    List<String> pad(Map<int, String> entries) => [
-          for (var n = 1; n <= SettingsService.cwMessageCount; n++) entries[n] ?? '',
-        ];
+    List<String> pad(Map<int, String> entries) => [for (var n = 1; n <= SettingsService.cwMessageCount; n++) entries[n] ?? ''];
     return CwMessageSet(
       name: t.settings.radio.cwMessages.setEsm,
-      messages: pad({
-        1: 'CQ DE {{op.call}} K',
-        2: '5NN',
-        3: 'TU',
-        4: '{{op.call}}',
-        5: '{{qso.call}}',
-        8: 'AGN?',
-      }),
+      messages: pad({1: 'CQ DE {{op.call}} K', 2: '5NN', 3: 'TU', 4: '{{op.call}}', 5: '{{qso.call}}', 8: 'AGN?'}),
       labels: pad({1: 'CQ', 2: '5NN', 3: 'TU', 4: '{{op.call}}', 5: '{{qso.call}}', 8: 'AGN?'}),
     );
   }
@@ -90,22 +73,12 @@ class CwMessageSet {
   /// nothing about what the function keys send.
   static List<CwMessageSet> seeded(CwMessageSet? saved) {
     final m = t.settings.radio.cwMessages;
-    List<String> pad(Map<int, String> entries) => [
-          for (var n = 1; n <= SettingsService.cwMessageCount; n++) entries[n] ?? '',
-        ];
+    List<String> pad(Map<int, String> entries) => [for (var n = 1; n <= SettingsService.cwMessageCount; n++) entries[n] ?? ''];
     final defaults = CwMessageSet(
       name: m.setDefault,
       messages: pad({1: 'CQ DE {{op.call}} K', 2: '{{qso.call}} UR 5NN TU', 4: '{{op.call}}'}),
       labels: pad({1: 'CQ', 2: '5NN', 4: '{{op.call}}'}),
     );
-    return [
-      ?saved,
-      defaults,
-      CwMessageSet(
-        name: m.setPota,
-        messages: defaults.withMessage(1, 'CQ POTA DE {{op.call}} K').messages,
-        labels: defaults.labels,
-      ),
-    ];
+    return [?saved, defaults, CwMessageSet(name: m.setPota, messages: defaults.withMessage(1, 'CQ POTA DE {{op.call}} K').messages, labels: defaults.labels)];
   }
 }

@@ -53,13 +53,7 @@ extension type SerialPort._(JSObject _) implements JSObject {
 
 @JS()
 extension type SerialOptions._(JSObject _) implements JSObject {
-  external factory SerialOptions({
-    required int baudRate,
-    int dataBits,
-    int stopBits,
-    String parity,
-    String flowControl,
-  });
+  external factory SerialOptions({required int baudRate, int dataBits, int stopBits, String parity, String flowControl});
 }
 
 @JS()

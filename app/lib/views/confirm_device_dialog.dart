@@ -31,8 +31,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 Future<bool?> showConfirmDeviceDialog(
   BuildContext context, {
   required Future<Map<String, dynamic>?> Function(String challengeToken) findByCode,
-  required Future<Map<String, dynamic>?> Function({required String clientUuid, required String challengeToken})
-      findByClient,
+  required Future<Map<String, dynamic>?> Function({required String clientUuid, required String challengeToken}) findByClient,
   required Future<Map<String, dynamic>?> Function({required String clientUuid, String? challengeToken}) approve,
   String? clientUuid,
   String? challengeToken,
@@ -41,20 +40,14 @@ Future<bool?> showConfirmDeviceDialog(
     context,
     title: context.t.confirmDevice.title,
     closeLabel: context.t.common.close,
-    builder: (context) => ConfirmDevicePane(
-      findByCode: findByCode,
-      findByClient: findByClient,
-      approve: approve,
-      clientUuid: clientUuid,
-      challengeToken: challengeToken,
-    ),
+    builder: (context) =>
+        ConfirmDevicePane(findByCode: findByCode, findByClient: findByClient, approve: approve, clientUuid: clientUuid, challengeToken: challengeToken),
   );
 }
 
 class ConfirmDevicePane extends StatefulWidget {
   final Future<Map<String, dynamic>?> Function(String challengeToken) findByCode;
-  final Future<Map<String, dynamic>?> Function({required String clientUuid, required String challengeToken})
-      findByClient;
+  final Future<Map<String, dynamic>?> Function({required String clientUuid, required String challengeToken}) findByClient;
   final Future<Map<String, dynamic>?> Function({required String clientUuid, String? challengeToken}) approve;
 
   /// Set together when the pane opens from a `link_client` deep link: the
@@ -62,14 +55,7 @@ class ConfirmDevicePane extends StatefulWidget {
   final String? clientUuid;
   final String? challengeToken;
 
-  const ConfirmDevicePane({
-    super.key,
-    required this.findByCode,
-    required this.findByClient,
-    required this.approve,
-    this.clientUuid,
-    this.challengeToken,
-  });
+  const ConfirmDevicePane({super.key, required this.findByCode, required this.findByClient, required this.approve, this.clientUuid, this.challengeToken});
 
   @override
   State<ConfirmDevicePane> createState() => _ConfirmDevicePaneState();
@@ -205,10 +191,7 @@ class _ConfirmDevicePaneState extends State<ConfirmDevicePane> {
         if (_request != null) _buildConfirmation(context) else _buildCodeEntry(context),
         if (_error != null) ...[
           const SizedBox(height: Space.lg),
-          Text(
-            _error!,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.error),
-          ),
+          Text(_error!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.error)),
         ],
         if (_busy) ...[const SizedBox(height: Space.lg), const Center(child: CircularProgressIndicator())],
         const SizedBox(height: Space.xxl),
@@ -252,10 +235,7 @@ class _ConfirmDevicePaneState extends State<ConfirmDevicePane> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          context.t.confirmDevice.areYouSure(device: device ?? context.t.confirmDevice.unnamedDevice),
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text(context.t.confirmDevice.areYouSure(device: device ?? context.t.confirmDevice.unnamedDevice), style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: Space.lg),
         Text(context.t.confirmDevice.grantWarning),
       ],

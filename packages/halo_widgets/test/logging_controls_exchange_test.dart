@@ -54,19 +54,14 @@ void main() {
     };
 
     Widget hostFor(Operation op, List<Map<String, dynamic>> controls, {QsosRepository? repo}) => MaterialApp(
-          home: Scaffold(
-            body: LoggingControls(
-              log: LogHooks(
-                operation: op,
-                qsosRepository: repo ?? qsos,
-              ),
-              radio: baseRadio(),
-              activities: ActivityHooks(
-                activityControls: controls,
-              ),
-            ),
-          ),
-        );
+      home: Scaffold(
+        body: LoggingControls(
+          log: LogHooks(operation: op, qsosRepository: repo ?? qsos),
+          radio: baseRadio(),
+          activities: ActivityHooks(activityControls: controls),
+        ),
+      ),
+    );
 
     testWidgets('an exchange field is hidden when the operation is not running that contest', (tester) async {
       await tester.pumpWidget(hostFor(operation, const [exchange]));
@@ -124,20 +119,18 @@ void main() {
         ],
       });
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            session: LoggingSession(
-              editingQso: existing,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: const [exchange],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: existing),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: const [exchange]),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       expect(find.widgetWithText(TextField, 'Exch'), findsNothing);
 
@@ -156,32 +149,21 @@ void main() {
     // An activity's last chance to project data it owns into generic QSON
     // fields. It has to run on EVERY save path — a QSO decorated only when
     // logged one way would export differently depending on how it was typed.
-    Widget hostWith(
-      Future<Map<String, dynamic>> Function(Map<String, dynamic>, Map<String, dynamic>) decorate, {
-      Qso? editing,
-      List<Qso> log = const [],
-    }) =>
+    Widget hostWith(Future<Map<String, dynamic>> Function(Map<String, dynamic>, Map<String, dynamic>) decorate, {Qso? editing, List<Qso> log = const []}) =>
         MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              log: LogHooks(
-                operation: operation,
-                qsos: log,
-                qsosRepository: qsos,
-                decorateQsoBeforeSave: decorate,
-              ),
-              session: LoggingSession(
-                editingQso: editing,
-              ),
+              log: LogHooks(operation: operation, qsos: log, qsosRepository: qsos, decorateQsoBeforeSave: decorate),
+              session: LoggingSession(editingQso: editing),
               radio: baseRadio(),
             ),
           ),
         );
 
     Future<Map<String, dynamic>> addExchange(Map<String, dynamic> qso, Map<String, dynamic> _) async => {
-          ...qso,
-          'their': {...(qso['their'] as Map?)?.cast<String, dynamic>() ?? {}, 'exchange': 'ZN5'},
-        };
+      ...qso,
+      'their': {...(qso['their'] as Map?)?.cast<String, dynamic>() ?? {}, 'exchange': 'ZN5'},
+    };
 
     testWidgets('decorates a single logged QSO', (tester) async {
       await tester.pumpWidget(hostWith(addExchange));
@@ -257,6 +239,7 @@ void main() {
         seen.add(refs.isEmpty ? null : (refs.first as Map)['location'] as String?);
         return qso;
       }
+
       Future<void> untilSeen(int count) async {
         for (var i = 0; i < 50 && seen.length < count; i++) {
           await tester.pump(const Duration(milliseconds: 10));
@@ -285,12 +268,13 @@ void main() {
 
     testWidgets('a QSO still saves when no decorator is wired', (tester) async {
       // Every test and tooling path leaves it null; saving must not depend on it.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-        )),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(log: baseLog(), radio: baseRadio()),
+          ),
+        ),
+      );
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -314,20 +298,17 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: LogHooks(
-            operation: running(['simple-contest']),
-            qsosRepository: qsos,
-          ),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['simple-contest']), qsosRepository: qsos),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Exch'), 'MA 042');
     await tester.pump();
@@ -360,34 +341,23 @@ void main() {
     ];
 
     List<Map<String, dynamic>> controlsWith(Map<String, dynamic> extra) => [
-          {
-            'key': 'qp/county',
-            'label': 'County',
-            'icon': 'flag-checkered',
-            'input': {
-              'kind': 'options',
-              'refType': 'qp',
-              'field': 'county',
-              'options': counties,
-              ...extra,
-            },
-          },
-        ];
+      {
+        'key': 'qp/county',
+        'label': 'County',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'options', 'refType': 'qp', 'field': 'county', 'options': counties, ...extra},
+      },
+    ];
 
     Widget hostWithExtra({Map<String, dynamic> extra = const {}}) => MaterialApp(
-          home: Scaffold(
-            body: LoggingControls(
-              log: LogHooks(
-                operation: running(['qp']),
-                qsosRepository: qsos,
-              ),
-              radio: baseRadio(),
-              activities: ActivityHooks(
-                activityControls: controlsWith(extra),
-              ),
-            ),
-          ),
-        );
+      home: Scaffold(
+        body: LoggingControls(
+          log: LogHooks(operation: running(['qp']), qsosRepository: qsos),
+          radio: baseRadio(),
+          activities: ActivityHooks(activityControls: controlsWith(extra)),
+        ),
+      ),
+    );
 
     testWidgets('is a primary field, so it saves onto the ref like any exchange', (tester) async {
       await tester.pumpWidget(hostWithExtra());
@@ -452,11 +422,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
       await tester.pumpAndSettle();
 
-      expect(
-        tester.widget<TextField>(find.widgetWithText(TextField, 'County')).controller?.text,
-        'CUY',
-        reason: 'the partial "CU" was completed from the set',
-      );
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'County')).controller?.text, 'CUY', reason: 'the partial "CU" was completed from the set');
       expect(
         tester.widget<TextField>(find.widgetWithText(TextField, 'County')).focusNode?.hasFocus,
         isFalse,
@@ -486,8 +452,7 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'ZZ');
       await tester.pump();
 
-      InputDecoration decoration() =>
-          tester.widget<TextField>(find.widgetWithText(TextField, 'County')).decoration!;
+      InputDecoration decoration() => tester.widget<TextField>(find.widgetWithText(TextField, 'County')).decoration!;
       final errorColor = Theme.of(tester.element(find.widgetWithText(TextField, 'County'))).colorScheme.error;
 
       // The field's own underline carries the tint. NOT `errorText`: a decorator
@@ -511,10 +476,7 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'ZZ');
       await tester.pump();
 
-      expect(
-        tester.widget<TextField>(find.widgetWithText(TextField, 'County')).decoration?.errorText,
-        isNull,
-      );
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'County')).decoration?.errorText, isNull);
     });
 
     testWidgets('minCharsForSuggestions holds the line back until it is useful', (tester) async {
@@ -562,11 +524,7 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<TextField>(find.widgetWithText(TextField, 'County')).controller?.text,
-        'SH',
-        reason: 'shown, not accepted',
-      );
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'County')).controller?.text, 'SH', reason: 'shown, not accepted');
     });
 
     testWidgets('the offers float over the fields as a menu, the best row nearest the field', (tester) async {
@@ -625,10 +583,9 @@ void main() {
       // applied when its layer paints and the render box still reports
       // unpositioned geometry here.
       final follower = tester.widget<CompositedTransformFollower>(menu);
-      final target = tester.widget<CompositedTransformTarget>(find.ancestor(
-        of: find.widgetWithText(TextField, 'County'),
-        matching: find.byType(CompositedTransformTarget),
-      ));
+      final target = tester.widget<CompositedTransformTarget>(
+        find.ancestor(of: find.widgetWithText(TextField, 'County'), matching: find.byType(CompositedTransformTarget)),
+      );
       expect(follower.link, same(target.link), reason: 'anchored to the exchange field, not the panel');
       expect(follower.targetAnchor, Alignment.topLeft);
       expect(follower.followerAnchor, Alignment.bottomLeft);
@@ -728,11 +685,7 @@ void main() {
         'CUY',
         reason: 'leaving the field forward is the same statement Space makes',
       );
-      expect(
-        tester.widget<TextField>(find.widgetWithText(TextField, 'County')).focusNode?.hasFocus,
-        isFalse,
-        reason: 'and Tab still traverses',
-      );
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'County')).focusNode?.hasFocus, isFalse, reason: 'and Tab still traverses');
 
       // Shift+Tab is stepping BACK to a field the operator may return to, so it
       // leaves the partial value alone.
@@ -894,32 +847,29 @@ void main() {
       // On an existing QSO nothing else is repainting the panel — the callsign
       // isn't being typed — so without a focus listener the offer never appeared
       // while Space would still have rewritten the field.
-      final existing = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'their': {'call': 'W1AW'},
-            'startAtMillis': 1000000,
-            'freq': 7100,
-            'mode': 'SSB',
-            'refs': [
-              {'type': 'qp', 'county': 'CUY'},
-            ],
-          })))!;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['qp']),
-              qsosRepository: qsos,
-            ),
-            session: LoggingSession(
-              editingQso: existing,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: controlsWith(const {}),
+      final existing = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': 1000000,
+          'freq': 7100,
+          'mode': 'SSB',
+          'refs': [
+            {'type': 'qp', 'county': 'CUY'},
+          ],
+        }),
+      ))!;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['qp']), qsosRepository: qsos),
+              session: LoggingSession(editingQso: existing),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controlsWith(const {})),
             ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(
@@ -938,12 +888,15 @@ void main() {
       // one exchange. Every value is checked, and the suggestion line and Space
       // act on the one the cursor is in — accepting a suggestion for the second
       // county must never rewrite the first, which the operator typed.
-      Widget lineHost() => hostWithExtra(extra: const {'multiValue': {'separator': '/'}});
+      Widget lineHost() => hostWithExtra(
+        extra: const {
+          'multiValue': {'separator': '/'},
+        },
+      );
 
       testWidgets('both values are checked, not just the last', (tester) async {
         await tester.pumpWidget(lineHost());
-        InputDecoration decoration() =>
-            tester.widget<TextField>(find.widgetWithText(TextField, 'County')).decoration!;
+        InputDecoration decoration() => tester.widget<TextField>(find.widgetWithText(TextField, 'County')).decoration!;
 
         await tester.enterText(find.widgetWithText(TextField, 'County'), 'CUY/WAS');
         await tester.pump();
@@ -979,10 +932,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.space);
         await tester.pumpAndSettle();
 
-        expect(
-          tester.widget<TextField>(find.widgetWithText(TextField, 'County')).controller?.text,
-          'CUY/WAS',
-        );
+        expect(tester.widget<TextField>(find.widgetWithText(TextField, 'County')).controller?.text, 'CUY/WAS');
       });
 
       testWidgets('a borrowed prefix beats a same-named county in another state', (tester) async {
@@ -997,32 +947,31 @@ void main() {
           {'code': 'ORDES', 'name': 'Deschutes OR'},
           {'code': 'ORJEF', 'name': 'Jefferson OR'},
         ];
-        await tester.pumpWidget(MaterialApp(
-          home: Scaffold(
-            body: LoggingControls(
-              log: LogHooks(
-                operation: running(['qp']),
-                qsosRepository: qsos,
-              ),
-              radio: baseRadio(),
-              activities: ActivityHooks(
-                activityControls: [
-                  {
-                    'key': 'qp/county',
-                    'label': 'County',
-                    'input': {
-                      'kind': 'options',
-                      'refType': 'qp',
-                      'field': 'county',
-                      'options': jeffersons,
-                      'multiValue': {'separator': '/', 'inheritPrefix': 2},
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LoggingControls(
+                log: LogHooks(operation: running(['qp']), qsosRepository: qsos),
+                radio: baseRadio(),
+                activities: ActivityHooks(
+                  activityControls: [
+                    {
+                      'key': 'qp/county',
+                      'label': 'County',
+                      'input': {
+                        'kind': 'options',
+                        'refType': 'qp',
+                        'field': 'county',
+                        'options': jeffersons,
+                        'multiValue': {'separator': '/', 'inheritPrefix': 2},
+                      },
                     },
-                  },
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ));
+        );
 
         await tester.tap(find.widgetWithText(TextField, 'County'));
         await tester.pump();
@@ -1065,32 +1014,35 @@ void main() {
       'icon': 'flag-checkered',
       'input': {'kind': 'text', 'refType': 'c', 'field': 'exchange'},
     };
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: LogHooks(operation: running(['c']), qsosRepository: qsos),
-          radio: baseRadio(),
-          lookups: LookupHooks(
-            lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
-                {'guess': online ? {'state': 'MA'} : <String, dynamic>{}},
-          ),
-          activities: ActivityHooks(
-            activityControls: const [exchange],
-            // The hint is whatever state the QSO carries when asked — the shape
-            // a QSO party's control takes.
-            refreshActivityControls: (qso) async {
-              final state = ((qso['their'] as Map?)?['guess'] as Map?)?['state'] as String?;
-              return [
-                {
-                  ...exchange,
-                  'input': {...exchange['input'] as Map, 'placeholder': ?state},
-                },
-              ];
-            },
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+            radio: baseRadio(),
+            lookups: LookupHooks(
+              lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
+                'guess': online ? {'state': 'MA'} : <String, dynamic>{},
+              },
+            ),
+            activities: ActivityHooks(
+              activityControls: const [exchange],
+              // The hint is whatever state the QSO carries when asked — the shape
+              // a QSO party's control takes.
+              refreshActivityControls: (qso) async {
+                final state = ((qso['their'] as Map?)?['guess'] as Map?)?['state'] as String?;
+                return [
+                  {
+                    ...exchange,
+                    'input': {...exchange['input'] as Map, 'placeholder': ?state},
+                  },
+                ];
+              },
+            ),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1WA');
     await tester.pumpAndSettle();
@@ -1109,33 +1061,33 @@ void main() {
     /// A contest that suggests `CA` for W6ABC and cannot fetch at all for
     /// anybody else — the refresh a withdrawal must not depend on.
     Future<void> pumpPanel(WidgetTester tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(operation: running(['c']), qsosRepository: qsos),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
-                  {'guess': <String, dynamic>{}},
-            ),
-            activities: ActivityHooks(
-              activityControls: const [exchange],
-              refreshActivityControls: (qso) async => (qso['their'] as Map?)?['call'] == 'W6ABC'
-                  ? [
-                      {
-                        ...exchange,
-                        'input': {...exchange['input'] as Map, 'suggestedValue': 'CA'},
-                      },
-                    ]
-                  : null,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {'guess': <String, dynamic>{}},
+              ),
+              activities: ActivityHooks(
+                activityControls: const [exchange],
+                refreshActivityControls: (qso) async => (qso['their'] as Map?)?['call'] == 'W6ABC'
+                    ? [
+                        {
+                          ...exchange,
+                          'input': {...exchange['input'] as Map, 'suggestedValue': 'CA'},
+                        },
+                      ]
+                    : null,
+              ),
             ),
           ),
         ),
-      ));
+      );
     }
 
-    String exch(WidgetTester tester) =>
-        tester.widget<TextField>(find.widgetWithText(TextField, 'Exch')).controller!.text;
+    String exch(WidgetTester tester) => tester.widget<TextField>(find.widgetWithText(TextField, 'Exch')).controller!.text;
 
     testWidgets('is taken back when the call is corrected, even if nothing is fetched for the new one', (tester) async {
       // Correcting W6ABC to K2XYZ whose refresh fails: nothing refreshes, so a
@@ -1184,25 +1136,20 @@ void main() {
       Future<List<Map<String, dynamic>>?> Function(Map<String, dynamic>) refresh, {
       List<Map<String, dynamic>> panelControls = const [],
     }) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['c']),
-              qsosRepository: qsos,
-            ),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
-                  {'guess': <String, dynamic>{}},
-            ),
-            activities: ActivityHooks(
-              activityControls: panelControls,
-              refreshActivityControls: refresh,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {'guess': <String, dynamic>{}},
+              ),
+              activities: ActivityHooks(activityControls: panelControls, refreshActivityControls: refresh),
             ),
           ),
         ),
-      ));
+      );
     }
 
     testWidgets('a later failure keeps what an earlier refresh fetched', (tester) async {
@@ -1220,8 +1167,7 @@ void main() {
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC');
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget,
-          reason: 'a refresh that could not fetch must not blank the QSO in progress');
+      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget, reason: 'a refresh that could not fetch must not blank the QSO in progress');
     });
 
     testWidgets('an empty answer still means the activities want no controls', (tester) async {
@@ -1230,10 +1176,7 @@ void main() {
       // Keyed on the callsign, not on how many times it was asked: a call is
       // refreshed once per lookup pass, and a counter would read the second
       // pass for W1AW as the answer for K1ABC.
-      await pumpTyping(
-        tester,
-        (qso) async => (qso['their'] as Map?)?['call'] == 'W1AW' ? [exchange] : const [],
-      );
+      await pumpTyping(tester, (qso) async => (qso['their'] as Map?)?['call'] == 'W1AW' ? [exchange] : const []);
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pumpAndSettle();
@@ -1256,38 +1199,34 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.widgetWithText(TextField, 'Exch'), findsNothing, reason: 'nothing configured yet');
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['c']),
-              qsosRepository: qsos,
-            ),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
-                  {'guess': <String, dynamic>{}},
-            ),
-            activities: ActivityHooks(
-              activityControls: const [exchange],
-              // A real per-QSO refresh reads the same operation data the
-              // operation-level one does, so it agrees once the ref exists —
-              // this isn't the fixed-forever-empty callback pumpTyping's other
-              // tests use, because a resolved lookup re-fires this on the ref
-              // add (see the test below), and that has to see the new field
-              // too rather than race the operation-level fetch to install it.
-              refreshActivityControls: (_) async => const [exchange],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {'guess': <String, dynamic>{}},
+              ),
+              activities: ActivityHooks(
+                activityControls: const [exchange],
+                // A real per-QSO refresh reads the same operation data the
+                // operation-level one does, so it agrees once the ref exists —
+                // this isn't the fixed-forever-empty callback pumpTyping's other
+                // tests use, because a resolved lookup re-fires this on the ref
+                // add (see the test below), and that has to see the new field
+                // too rather than race the operation-level fetch to install it.
+                refreshActivityControls: (_) async => const [exchange],
+              ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget,
-          reason: "the operation's own refresh must not be shadowed by the stale per-QSO one");
+      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget, reason: "the operation's own refresh must not be shadowed by the stale per-QSO one");
     });
 
-    testWidgets('a per-QSO refresh already in flight when a ref is added cannot reshadow it on return',
-        (tester) async {
+    testWidgets('a per-QSO refresh already in flight when a ref is added cannot reshadow it on return', (tester) async {
       // Distinct from the test above: there the stale refresh had already
       // LANDED before the ref was added. Here it's still IN FLIGHT — issued
       // before, resolving after. Two guards stop it here, because the ref add
@@ -1316,29 +1255,27 @@ void main() {
       // refresh #1 is still pending. Per the fix above, that also re-issues
       // a refresh (#2) against the new activityControls, since a lookup is
       // already resolved for the active call.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['c']),
-              qsosRepository: qsos,
-            ),
-            radio: baseRadio(),
-            lookups: LookupHooks(
-              lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
-                  {'guess': <String, dynamic>{}},
-            ),
-            activities: ActivityHooks(
-              activityControls: const [exchange],
-              refreshActivityControls: (_) {
-                final completer = Completer<List<Map<String, dynamic>>?>();
-                completers.add(completer);
-                return completer.future;
-              },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {'guess': <String, dynamic>{}},
+              ),
+              activities: ActivityHooks(
+                activityControls: const [exchange],
+                refreshActivityControls: (_) {
+                  final completer = Completer<List<Map<String, dynamic>>?>();
+                  completers.add(completer);
+                  return completer.future;
+                },
+              ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       expect(completers, hasLength(staleCount + 1), reason: 'adding the ref re-issued a refresh for the resolved lookup');
 
@@ -1352,8 +1289,7 @@ void main() {
         stale.complete(const []);
       }
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget,
-          reason: 'the stale refresh landing late must not blank the field the fresh one just set');
+      expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget, reason: 'the stale refresh landing late must not blank the field the fresh one just set');
     });
   });
 
@@ -1372,23 +1308,15 @@ void main() {
     ];
 
     Widget clearingHost({Qso? editing}) => MaterialApp(
-          home: Scaffold(
-            body: LoggingControls(
-              log: LogHooks(
-                operation: running(['c']),
-                qsosRepository: qsos,
-                qsos: editing == null ? const [] : [editing],
-              ),
-              session: LoggingSession(
-                editingQso: editing,
-              ),
-              radio: baseRadio(),
-              activities: ActivityHooks(
-                activityControls: clearingControls,
-              ),
-            ),
-          ),
-        );
+      home: Scaffold(
+        body: LoggingControls(
+          log: LogHooks(operation: running(['c']), qsosRepository: qsos, qsos: editing == null ? const [] : [editing]),
+          session: LoggingSession(editingQso: editing),
+          radio: baseRadio(),
+          activities: ActivityHooks(activityControls: clearingControls),
+        ),
+      ),
+    );
 
     testWidgets('a field never filled in leaves no trace on the ref', (tester) async {
       await tester.pumpWidget(clearingHost());
@@ -1460,19 +1388,14 @@ void main() {
     QsosRepository allocating() => QsosRepository(db, sequences: SequencesRepository(db));
 
     Widget hostWith(QsosRepository repo) => MaterialApp(
-          home: Scaffold(
-            body: LoggingControls(
-              log: LogHooks(
-                operation: running(['cqwpx']),
-                qsosRepository: repo,
-              ),
-              radio: baseRadio(),
-              activities: ActivityHooks(
-                activityControls: controls,
-              ),
-            ),
-          ),
-        );
+      home: Scaffold(
+        body: LoggingControls(
+          log: LogHooks(operation: running(['cqwpx']), qsosRepository: repo),
+          radio: baseRadio(),
+          activities: ActivityHooks(activityControls: controls),
+        ),
+      ),
+    );
 
     testWidgets('shows the number the sequence will issue, and logs it', (tester) async {
       final repo = allocating();
@@ -1530,21 +1453,17 @@ void main() {
     testWidgets('a wipe lets go of the number and shows none again', (tester) async {
       final repo = allocating();
       final source = RecordingSerialSource(repo.sequences!);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['cqwpx']),
-              qsosRepository: repo,
-              serialNumbers: source,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: controls,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['cqwpx']), qsosRepository: repo, serialNumbers: source),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
             ),
           ),
         ),
-      ));
+      );
       await startContact(tester);
       await pumpUntilSerial(tester, 'Our #');
       expect(source.claims, 1);
@@ -1561,29 +1480,23 @@ void main() {
       // two positions would send one number with neither record marked.
       final repo = allocating();
       final source = RecordingSerialSource(repo.sequences!, gate: Completer<void>());
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['cqwpx']),
-              qsosRepository: repo,
-              serialNumbers: source,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: controls,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['cqwpx']), qsosRepository: repo, serialNumbers: source),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
             ),
           ),
         ),
-      ));
+      );
       await startContact(tester, 'W1AW');
       await tester.pump(const Duration(milliseconds: 20));
-      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '',
-          reason: 'the claim is still settling');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '', reason: 'the claim is still settling');
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump(const Duration(milliseconds: 20));
-      expect(await tester.runAsync(() => repo.watchForOperation(operation.uuid).first), isEmpty,
-          reason: 'nothing committed while the number is unsettled');
+      expect(await tester.runAsync(() => repo.watchForOperation(operation.uuid).first), isEmpty, reason: 'nothing committed while the number is unsettled');
 
       // The peers answer: the number lands in the field and the commit goes
       // through with it.
@@ -1600,21 +1513,17 @@ void main() {
       // is about to send.
       final repo = allocating();
       final source = RecordingSerialSource(repo.sequences!);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['cqwpx']),
-              qsosRepository: repo,
-              serialNumbers: source,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: controls,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['cqwpx']), qsosRepository: repo, serialNumbers: source),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
             ),
           ),
         ),
-      ));
+      );
       await startContact(tester, 'W1');
       await pumpUntilSerial(tester, 'Our #');
       expect(source.releases, 0);
@@ -1628,21 +1537,17 @@ void main() {
     testWidgets('leaving the panel mid-contact lets the number go', (tester) async {
       final repo = allocating();
       final source = RecordingSerialSource(repo.sequences!);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['cqwpx']),
-              qsosRepository: repo,
-              serialNumbers: source,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: controls,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['cqwpx']), qsosRepository: repo, serialNumbers: source),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
             ),
           ),
         ),
-      ));
+      );
       await startContact(tester);
       await pumpUntilSerial(tester, 'Our #');
       await tester.pumpWidget(const SizedBox());
@@ -1654,21 +1559,17 @@ void main() {
       // wearing the mark is what tells the operator two stations sent it.
       final repo = allocating();
       final source = RecordingSerialSource(repo.sequences!, conflicted: {1});
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['cqwpx']),
-              qsosRepository: repo,
-              serialNumbers: source,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: controls,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['cqwpx']), qsosRepository: repo, serialNumbers: source),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
             ),
           ),
         ),
-      ));
+      );
       await startContact(tester, 'W1AW');
       await pumpUntilSerial(tester, 'Our #');
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -1678,8 +1579,9 @@ void main() {
         {'type': 'cqwpx', 'ourSerial': 1},
       ]);
       expect(logged.single.serialConflict, isTrue);
-      expect(source.committed.map((request, number) => MapEntry(request.label, number)), {'cqwpx/serial': 1},
-          reason: 'the source is told what the log now holds');
+      expect(source.committed.map((request, number) => MapEntry(request.label, number)), {
+        'cqwpx/serial': 1,
+      }, reason: 'the source is told what the log now holds');
     });
 
     testWidgets('a number the operator types over the preview is what gets logged', (tester) async {
@@ -1726,10 +1628,7 @@ void main() {
 
       final logged = await waitForQsos(tester, 3, repository: repo);
       expect(logged, hasLength(3));
-      final serials = [
-        for (final qso in logged)
-          (qso.refs.firstWhere((r) => r['type'] == 'cqwpx')['ourSerial'] as num).toInt(),
-      ]..sort();
+      final serials = [for (final qso in logged) (qso.refs.firstWhere((r) => r['type'] == 'cqwpx')['ourSerial'] as num).toInt()]..sort();
       expect(serials, [1, 2, 3], reason: 'three stations worked, three numbers sent');
     });
 
@@ -1750,11 +1649,17 @@ void main() {
 
       // A second writer on the same operation takes 1 while this QSO is being
       // composed. `peek` is deliberately not a reservation.
-      await tester.runAsync(() => repo.add(
-            operation.uuid,
-            {'their': {'call': 'DL1ABC'}, 'band': '20m', 'mode': 'CW'},
-            serialSequences: const [descriptor],
-          ));
+      await tester.runAsync(
+        () => repo.add(
+          operation.uuid,
+          {
+            'their': {'call': 'DL1ABC'},
+            'band': '20m',
+            'mode': 'CW',
+          },
+          serialSequences: const [descriptor],
+        ),
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
@@ -1762,11 +1667,7 @@ void main() {
 
       final logged = await waitForQsos(tester, 2, repository: repo);
       final ours = logged.firstWhere((q) => q.theirCall == 'W1AW');
-      expect(
-        ours.refs.single['ourSerial'],
-        1,
-        reason: 'what the operator was shown and sent — not the next free number',
-      );
+      expect(ours.refs.single['ourSerial'], 1, reason: 'what the operator was shown and sent — not the next free number');
     });
 
     testWidgets('editing a logged QSO shows ITS number, not the next one', (tester) async {
@@ -1778,33 +1679,36 @@ void main() {
       final repo = allocating();
       final first = await repo.add(
         operation.uuid,
-        {'their': {'call': 'W1AW'}, 'band': '20m', 'mode': 'CW'},
+        {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'CW',
+        },
         serialSequences: const [descriptor],
       );
       await repo.add(
         operation.uuid,
-        {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'CW'},
+        {
+          'their': {'call': 'K1ABC'},
+          'band': '20m',
+          'mode': 'CW',
+        },
         serialSequences: const [descriptor],
       );
       expect((first.refs.single['ourSerial'] as num).toInt(), 1);
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['cqwpx']),
-              qsosRepository: repo,
-            ),
-            session: LoggingSession(
-              editingQso: first,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: controls,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['cqwpx']), qsosRepository: repo),
+              session: LoggingSession(editingQso: first),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump(const Duration(milliseconds: 50));
       await tester.pump();
 
@@ -1835,23 +1739,18 @@ void main() {
         'mode': 'CW',
       });
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['cqwpx']),
-              qsosRepository: repo,
-            ),
-            session: LoggingSession(
-              editingQso: plain,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: controls,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['cqwpx']), qsosRepository: repo),
+              session: LoggingSession(editingQso: plain),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump(const Duration(milliseconds: 50));
       await tester.pump();
 
@@ -1904,23 +1803,18 @@ void main() {
         serialSequences: const [descriptor],
       );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['cqwpx']),
-              qsosRepository: repo,
-            ),
-            session: LoggingSession(
-              editingQso: qso,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: both,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['cqwpx']), qsosRepository: repo),
+              session: LoggingSession(editingQso: qso),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: both),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump(const Duration(milliseconds: 50));
       await tester.pump();
 
@@ -1944,19 +1838,14 @@ void main() {
       // while every construct-with-controls test here still passed.
       final repo = allocating();
       Widget hostControls(List<Map<String, dynamic>> active) => MaterialApp(
-            home: Scaffold(
-              body: LoggingControls(
-                log: LogHooks(
-                  operation: running(['cqwpx']),
-                  qsosRepository: repo,
-                ),
-                radio: baseRadio(),
-                activities: ActivityHooks(
-                  activityControls: active,
-                ),
-              ),
-            ),
-          );
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['cqwpx']), qsosRepository: repo),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: active),
+          ),
+        ),
+      );
 
       await tester.pumpWidget(hostControls(const []));
       await tester.pump();
@@ -1971,20 +1860,17 @@ void main() {
     testWidgets('with no sequences wired up, the field stays empty rather than showing a fake number', (tester) async {
       // A bare repository (tests, tooling, an import path) allocates nothing.
       // Showing "1" there would be a number that never reaches the log.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: LogHooks(
-              operation: running(['cqwpx']),
-              qsosRepository: qsos,
-            ),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: controls,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['cqwpx']), qsosRepository: qsos),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '');
     });
@@ -2009,18 +1895,17 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: LoggingControls(
-        log: LogHooks(
-          operation: running(['c']),
-          qsosRepository: qsos,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
+          ),
         ),
-        radio: baseRadio(),
-        activities: ActivityHooks(
-          activityControls: controls,
-        ),
-      )),
-    ));
+      ),
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'St'), 'ma');
     await tester.pump();
@@ -2065,23 +1950,18 @@ void main() {
       ],
     });
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: LogHooks(
-            operation: running(['c']),
-            qsosRepository: qsos,
-          ),
-          session: LoggingSession(
-            editingQso: existing,
-          ),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+            session: LoggingSession(editingQso: existing),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
 
     // The saved value is restored into the field...
@@ -2116,20 +1996,17 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: LogHooks(
-            operation: running(['simple-contest']),
-            qsosRepository: qsos,
-          ),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['simple-contest']), qsosRepository: qsos),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Exch'), 'MA');
     await tester.pump();
@@ -2157,17 +2034,17 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
     await openControl(tester, MdiIcons.pineTree);
 
     await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
@@ -2204,22 +2081,20 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
     await openControl(tester, MdiIcons.pineTree);
 
-    ChoiceChip potaChip() => tester.widget<ChoiceChip>(
-          find.ancestor(of: find.text('✓ POTA'), matching: find.byType(ChoiceChip)).first,
-        );
+    ChoiceChip potaChip() => tester.widget<ChoiceChip>(find.ancestor(of: find.text('✓ POTA'), matching: find.byType(ChoiceChip)).first);
 
     final scheme = Theme.of(tester.element(find.byType(LoggingControls))).colorScheme;
 
@@ -2231,8 +2106,7 @@ void main() {
     // is the ONLY thing that can report this.
     await openControl(tester, MdiIcons.pineTree);
     expect(
-      tester.widget<ChoiceChip>(find.ancestor(of: find.text('✓ POTA'), matching: find.byType(ChoiceChip)).first)
-          .backgroundColor,
+      tester.widget<ChoiceChip>(find.ancestor(of: find.text('✓ POTA'), matching: find.byType(ChoiceChip)).first).backgroundColor,
       scheme.errorContainer,
       reason: 'closed chip alerts',
     );
@@ -2245,8 +2119,7 @@ void main() {
     expect(potaChip().selectedColor, isNot(scheme.error));
   });
 
-  testWidgets("activity control's chip icon accents to the extension's color once a reference is entered (issue #187)",
-      (tester) async {
+  testWidgets("activity control's chip icon accents to the extension's color once a reference is entered (issue #187)", (tester) async {
     const controls = [
       {
         'key': 'pota/hunter',
@@ -2257,17 +2130,17 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
 
     // No reference yet: the icon stays the default theme color, not the
     // extension's accent — the accent marks a filled-in field.
@@ -2296,8 +2169,7 @@ void main() {
     expect(find.text('✓ POTA'), findsOneWidget);
   });
 
-  testWidgets('activity control chip label gets a check per reference, or a check plus count past two (issue #187 follow-up)',
-      (tester) async {
+  testWidgets('activity control chip label gets a check per reference, or a check plus count past two (issue #187 follow-up)', (tester) async {
     const controls = [
       {
         'key': 'pota/hunter',
@@ -2308,17 +2180,17 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
 
     // No reference yet: plain label.
     expect(find.text('POTA'), findsOneWidget);
@@ -2348,17 +2220,17 @@ void main() {
       },
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          activities: ActivityHooks(
-            activityControls: controls,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
           ),
         ),
       ),
-    ));
+    );
     await openControl(tester, MdiIcons.pineTree);
 
     await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234, US-5678');

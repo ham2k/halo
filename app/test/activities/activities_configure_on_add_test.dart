@@ -46,21 +46,9 @@ const _parkControl = {
   'input': {'kind': 'refList', 'refType': 'pota'},
 };
 
-const _contestSuggestion = {
-  'type': 'fd',
-  'ref': '2027',
-  'program': 'Contest',
-  'label': 'ARRL Field Day 2027',
-  'shortLabel': 'FD 2027',
-};
+const _contestSuggestion = {'type': 'fd', 'ref': '2027', 'program': 'Contest', 'label': 'ARRL Field Day 2027', 'shortLabel': 'FD 2027'};
 
-const _parkSuggestion = {
-  'type': 'pota',
-  'ref': 'US-0001',
-  'label': 'POTA US-0001',
-  'shortLabel': 'POTA US-0001',
-  'name': 'Some Park',
-};
+const _parkSuggestion = {'type': 'pota', 'ref': 'US-0001', 'label': 'POTA US-0001', 'shortLabel': 'POTA US-0001', 'name': 'Some Park'};
 
 /// The add flow's extensions. The activity hooks offer [suggestions] through
 /// the fake host; the controls fetch and `decorateRef` are overridden because
@@ -68,11 +56,13 @@ const _parkSuggestion = {
 /// decoration with a callback that runs while the hook is in flight.
 class _AddFlowExtensions extends ExtensionServiceWithFakeHost {
   _AddFlowExtensions({required this.controls, required List<Map<String, dynamic>> suggestions})
-      : super(FakeExtensionHost({
+    : super(
+        FakeExtensionHost({
           'activity:*:suggest': [
             {'key': 'fd', 'ok': true, 'value': suggestions},
           ],
-        }));
+        }),
+      );
 
   final List<Map<String, dynamic>> controls;
 
@@ -81,12 +71,8 @@ class _AddFlowExtensions extends ExtensionServiceWithFakeHost {
   bool controlsFail = false;
 
   @override
-  Future<ControlsResult> operationControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
       controlsFail ? (controls: const <Map<String, dynamic>>[], loadFailed: true) : (controls: controls, loadFailed: false);
-
 
   /// Stands in for the contest's own decorateRef. The identity keys have to
   /// survive or the saved row can't be found again to replace.
@@ -110,10 +96,7 @@ class _AddFlowExtensions extends ExtensionServiceWithFakeHost {
   }
 }
 
-Future<(HaLoServices, Operation)> _harness({
-  required List<Map<String, dynamic>> controls,
-  required List<Map<String, dynamic>> suggestions,
-}) async {
+Future<(HaLoServices, Operation)> _harness({required List<Map<String, dynamic>> controls, required List<Map<String, dynamic>> suggestions}) async {
   SharedPreferences.setMockInitialValues({});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
@@ -121,19 +104,16 @@ Future<(HaLoServices, Operation)> _harness({
   return (HaLoServices(db, settings, extensions: extensions), Operation(uuid: 'op-1', data: const {'refs': []}));
 }
 
-Future<void> _pumpSheet(WidgetTester tester, HaLoServices services, Operation operation,
-    {void Function(Operation)? onChanged}) async {
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(
-      home: Scaffold(
-        body: OperationSheet(
-          services: services,
-          operation: operation,
-          onOperationChanged: onChanged,
+Future<void> _pumpSheet(WidgetTester tester, HaLoServices services, Operation operation, {void Function(Operation)? onChanged}) async {
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: OperationSheet(services: services, operation: operation, onOperationChanged: onChanged),
         ),
       ),
     ),
-  ));
+  );
   await tester.pumpAndSettle();
 }
 
@@ -141,10 +121,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('tapping a contest suggestion opens its setup form', (tester) async {
-    final (services, operation) = await _harness(
-      controls: const [_contestControl],
-      suggestions: const [_contestSuggestion],
-    );
+    final (services, operation) = await _harness(controls: const [_contestControl], suggestions: const [_contestSuggestion]);
     await _pumpSheet(tester, services, operation);
 
     await tester.tap(find.text('ARRL Field Day 2027').first);
@@ -161,10 +138,7 @@ void main() {
     // a type with no form looks like. Read as the latter, the contest saves
     // unconfigured, no dialog appears, and `refTypeIsEditable(null)` renders
     // the row inert, so nothing on screen offers a way back to the setup.
-    final (services, operation) = await _harness(
-      controls: const [_contestControl],
-      suggestions: const [_contestSuggestion],
-    );
+    final (services, operation) = await _harness(controls: const [_contestControl], suggestions: const [_contestSuggestion]);
     (services.extensions as _AddFlowExtensions).controlsFail = true;
     await _pumpSheet(tester, services, operation);
 
@@ -183,10 +157,7 @@ void main() {
 
   testWidgets('cancelling the setup form leaves the activity added', (tester) async {
     Operation? latest;
-    final (services, operation) = await _harness(
-      controls: const [_contestControl],
-      suggestions: const [_contestSuggestion],
-    );
+    final (services, operation) = await _harness(controls: const [_contestControl], suggestions: const [_contestSuggestion]);
     await _pumpSheet(tester, services, operation, onChanged: (op) => latest = op);
 
     await tester.tap(find.text('ARRL Field Day 2027').first);
@@ -212,10 +183,7 @@ void main() {
 
   testWidgets('submitting the form writes the exchange back, decorated', (tester) async {
     Operation? latest;
-    final (services, operation) = await _harness(
-      controls: const [_contestControl],
-      suggestions: const [_contestSuggestion],
-    );
+    final (services, operation) = await _harness(controls: const [_contestControl], suggestions: const [_contestSuggestion]);
     await _pumpSheet(tester, services, operation, onChanged: (op) => latest = op);
 
     await tester.tap(find.text('ARRL Field Day 2027').first);
@@ -241,10 +209,7 @@ void main() {
 
   testWidgets('an activity added while decorateRef is in flight is not clobbered', (tester) async {
     Operation? latest;
-    final (services, operation) = await _harness(
-      controls: const [_contestControl, _parkControl],
-      suggestions: const [_contestSuggestion, _parkSuggestion],
-    );
+    final (services, operation) = await _harness(controls: const [_contestControl, _parkControl], suggestions: const [_contestSuggestion, _parkSuggestion]);
     await _pumpSheet(tester, services, operation, onChanged: (op) => latest = op);
 
     // The setup dialog closes before `decorateRef` is asked anything, and that
@@ -254,15 +219,17 @@ void main() {
     final extensions = services.extensions as _AddFlowExtensions;
     extensions.onDecorate = () {
       final sheet = tester.state<OperationSheetState>(find.byType(OperationSheet));
-      sheet.updateOperation(Operation(
-        uuid: 'op-1',
-        data: {
-          'refs': [
-            ...latest!.refs,
-            {'type': 'pota', 'ref': 'US-0001', 'shortLabel': 'POTA US-0001'},
-          ],
-        },
-      ));
+      sheet.updateOperation(
+        Operation(
+          uuid: 'op-1',
+          data: {
+            'refs': [
+              ...latest!.refs,
+              {'type': 'pota', 'ref': 'US-0001', 'shortLabel': 'POTA US-0001'},
+            ],
+          },
+        ),
+      );
     };
 
     await tester.tap(find.text('ARRL Field Day 2027').first);
@@ -281,10 +248,7 @@ void main() {
 
   testWidgets('a plain reference suggestion adds without prompting', (tester) async {
     Operation? latest;
-    final (services, operation) = await _harness(
-      controls: const [_parkControl],
-      suggestions: const [_parkSuggestion],
-    );
+    final (services, operation) = await _harness(controls: const [_parkControl], suggestions: const [_parkSuggestion]);
     await _pumpSheet(tester, services, operation, onChanged: (op) => latest = op);
 
     await tester.tap(find.text('POTA US-0001').first);

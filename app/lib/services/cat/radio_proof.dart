@@ -33,18 +33,13 @@ const provenRadiosKey = 'cat:provenRadios';
 List<String> provenRadioMarks(SharedPreferences prefs) => prefs.getStringList(provenRadiosKey) ?? const [];
 
 /// Whether [node] has already been reported working under its CURRENT config.
-bool isRadioProven(SharedPreferences prefs, EquipmentNode node, EquipmentRegistry registry) =>
-    provenRadioMarks(prefs).contains(radioProofMark(node, registry));
+bool isRadioProven(SharedPreferences prefs, EquipmentNode node, EquipmentRegistry registry) => provenRadioMarks(prefs).contains(radioProofMark(node, registry));
 
 /// Records [node] as reported. Replaces any mark this node had under an older
 /// config rather than accumulating one per setting it ever worked under: what
 /// the app needs to know is whether THIS configuration has been reported, and
 /// a list that only grows is a preference file that only grows.
-Future<void> markRadioProven(
-  SharedPreferences prefs,
-  EquipmentNode node,
-  EquipmentRegistry registry,
-) async {
+Future<void> markRadioProven(SharedPreferences prefs, EquipmentNode node, EquipmentRegistry registry) async {
   final mark = radioProofMark(node, registry);
   final marks = provenRadioMarks(prefs);
   if (marks.contains(mark)) return;
@@ -74,8 +69,7 @@ Future<void> clearRadioProof(SharedPreferences prefs, String uuid) async {
 }
 
 /// `<uuid>:<fingerprint>` — what a mark is.
-String radioProofMark(EquipmentNode node, EquipmentRegistry registry) =>
-    '${node.uuid}:${_fingerprint(node, registry)}';
+String radioProofMark(EquipmentNode node, EquipmentRegistry registry) => '${node.uuid}:${_fingerprint(node, registry)}';
 
 /// The settings this radio is talking under, as eight hex characters.
 ///
@@ -89,10 +83,7 @@ String _fingerprint(EquipmentNode node, EquipmentRegistry registry) {
     for (final key in node.config.keys)
       if (!secrets.contains(key)) key,
   ]..sort();
-  final payload = [
-    node.typeKey,
-    for (final key in keys) '$key=${node.config[key]}',
-  ].join(' ');
+  final payload = [node.typeKey, for (final key in keys) '$key=${node.config[key]}'].join(' ');
   return sha256.convert(utf8.encode(payload)).toString().substring(0, 8);
 }
 

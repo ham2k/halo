@@ -19,17 +19,16 @@ import 'package:ham2k_logger/views/operation/layout_sheet.dart';
 
 void main() {
   Widget harness(List<LayoutPanelEntry> available, {void Function(String)? onAdd}) => TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(body: LayoutSheet(available: available, onAdd: onAdd)),
-        ),
-      );
+    child: MaterialApp(
+      home: Scaffold(
+        body: LayoutSheet(available: available, onAdd: onAdd),
+      ),
+    ),
+  );
 
   testWidgets('adding a panel reports which one', (tester) async {
     final added = <String>[];
-    await tester.pumpWidget(harness(
-      const [LayoutPanelEntry(id: 'spots', title: 'Spots'), LayoutPanelEntry(id: 'map', title: 'Map')],
-      onAdd: added.add,
-    ));
+    await tester.pumpWidget(harness(const [LayoutPanelEntry(id: 'spots', title: 'Spots'), LayoutPanelEntry(id: 'map', title: 'Map')], onAdd: added.add));
 
     expect(find.text('Spots'), findsOneWidget);
     // Without this sheet, Reset Layout is the only way back from a removal —
@@ -42,13 +41,12 @@ void main() {
   });
 
   testWidgets('search narrows by name AND by description', (tester) async {
-    await tester.pumpWidget(harness(
-      const [
+    await tester.pumpWidget(
+      harness(const [
         LayoutPanelEntry(id: 'wx', title: 'Weather', description: "Conditions where you're operating"),
         LayoutPanelEntry(id: 'clock', title: 'Clock', description: 'UTC and a zone or two'),
-      ],
-      onAdd: (_) {},
-    ));
+      ], onAdd: (_) {}),
+    );
 
     await tester.enterText(find.byType(TextField), 'clo');
     await tester.pump();
@@ -87,9 +85,7 @@ void main() {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>';
 
     testWidgets('the thumbnail opens the preview at pane scale', (tester) async {
-      await tester.pumpWidget(harness(
-        const [LayoutPanelEntry(id: 'wx', title: 'Weather', description: 'Today and tomorrow', preview: svg)],
-      ));
+      await tester.pumpWidget(harness(const [LayoutPanelEntry(id: 'wx', title: 'Weather', description: 'Today and tomorrow', preview: svg)]));
 
       // 40pt says a panel HAS a preview; it does not say what the panel looks
       // like, which is the entire question when choosing one to add.
@@ -107,11 +103,13 @@ void main() {
     });
 
     testWidgets('a preview that draws nothing offers no tap', (tester) async {
-      await tester.pumpWidget(harness(
-        // A remote URL: refused outright, since this sheet renders offline
-        // and fetching one would beacon on merely opening the panel list.
-        const [LayoutPanelEntry(id: 'wx', title: 'Weather', preview: 'https://example.com/wx.png')],
-      ));
+      await tester.pumpWidget(
+        harness(
+          // A remote URL: refused outright, since this sheet renders offline
+          // and fetching one would beacon on merely opening the panel list.
+          const [LayoutPanelEntry(id: 'wx', title: 'Weather', preview: 'https://example.com/wx.png')],
+        ),
+      );
 
       // Without the canDraw check the row would still offer a preview
       // control, and tapping it would open an empty pane — worse than no
@@ -134,13 +132,7 @@ void main() {
   });
 
   group('extensions that would add panels', () {
-    const scratchpad = ExtensionInfo(
-      key: 'scratchpad',
-      file: 'scratchpad.js',
-      core: false,
-      name: 'Scratchpad',
-      keywords: ['notes'],
-    );
+    const scratchpad = ExtensionInfo(key: 'scratchpad', file: 'scratchpad.js', core: false, name: 'Scratchpad', keywords: ['notes']);
     final almanac = CatalogEntry(
       key: 'almanac',
       name: 'Almanac',
@@ -156,22 +148,21 @@ void main() {
       Future<bool> Function(ExtensionInfo)? onEnable,
       Future<bool> Function(CatalogEntry)? onInstall,
       VoidCallback? onSearch,
-    }) =>
-        TranslationProvider(
-          child: MaterialApp(
-            home: Scaffold(
-              body: LayoutSheet(
-                available: available,
-                onAdd: (_) {},
-                enableable: const [scratchpad],
-                installable: [almanac],
-                onSearch: onSearch,
-                onEnableExtension: onEnable ?? (_) async => true,
-                onInstallExtension: onInstall ?? (_) async => true,
-              ),
-            ),
+    }) => TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: LayoutSheet(
+            available: available,
+            onAdd: (_) {},
+            enableable: const [scratchpad],
+            installable: [almanac],
+            onSearch: onSearch,
+            onEnableExtension: onEnable ?? (_) async => true,
+            onInstallExtension: onInstall ?? (_) async => true,
           ),
-        );
+        ),
+      ),
+    );
 
     testWidgets('are offered only for a search that matches them', (tester) async {
       var searches = 0;
@@ -198,16 +189,18 @@ void main() {
 
     testWidgets("gaining one lands the search on the extension's panels", (tester) async {
       final enabled = <String>[];
-      await tester.pumpWidget(offering(
-        // Already in the list, as the host's rebuild would put it: a panel
-        // whose title says nothing about the word that found its extension.
-        available: const [LayoutPanelEntry(id: 'ext:scratchpad:pad', title: 'Pad', extensionName: 'Scratchpad')],
-        onEnable: (info) async {
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-          enabled.add(info.key);
-          return true;
-        },
-      ));
+      await tester.pumpWidget(
+        offering(
+          // Already in the list, as the host's rebuild would put it: a panel
+          // whose title says nothing about the word that found its extension.
+          available: const [LayoutPanelEntry(id: 'ext:scratchpad:pad', title: 'Pad', extensionName: 'Scratchpad')],
+          onEnable: (info) async {
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+            enabled.add(info.key);
+            return true;
+          },
+        ),
+      );
 
       await tester.enterText(find.byType(TextField), 'notes');
       await tester.pump();

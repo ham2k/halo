@@ -227,6 +227,7 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
     TextCapitalization textCapitalization = TextCapitalization.none,
     TextInputFormatter? filter,
     String? hintText,
+
     /// Only for a field that tracks whether the operator has touched it.
     /// Typing already reaches the controller's own listeners, so a field with
     /// nothing extra to record omits this rather than passing a no-op.
@@ -264,30 +265,30 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
   /// field gap along from it. Reversing the pair alone would carry the wide
   /// gap into the middle of it.
   List<MainField> _rstMainFields(BuildContext context) => [
-        for (final (index, field) in widget.rstFields.indexed)
-          (
-            gapBefore: index == 0 ? mainFieldGroupGap : mainFieldGap,
-            minWidth: fixedFieldMinWidth,
-            focusNode: field.focus,
-            build: (width, padding, duration) => _fixedField(
-              context,
-              controller: field.controller,
-              focusNode: field.focus,
-              label: field.label,
-              width: width,
-              padding: padding,
-              duration: duration,
-              // Letters are legitimate in RSTs (CW's "5NN" shorthand, aurora
-              // "59A") and the Edit QSO pane accepts them — a digits-only
-              // filter here would silently strip a pane-saved letter on the
-              // next keystroke, since filtering formatters re-run over the
-              // whole text.
-              keyboardType: widget.numericKeyboardType,
-              filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
-              hintText: widget.rstPlaceholder,
-            ),
-          ),
-      ];
+    for (final (index, field) in widget.rstFields.indexed)
+      (
+        gapBefore: index == 0 ? mainFieldGroupGap : mainFieldGap,
+        minWidth: fixedFieldMinWidth,
+        focusNode: field.focus,
+        build: (width, padding, duration) => _fixedField(
+          context,
+          controller: field.controller,
+          focusNode: field.focus,
+          label: field.label,
+          width: width,
+          padding: padding,
+          duration: duration,
+          // Letters are legitimate in RSTs (CW's "5NN" shorthand, aurora
+          // "59A") and the Edit QSO pane accepts them — a digits-only
+          // filter here would silently strip a pane-saved letter on the
+          // next keystroke, since filtering formatters re-run over the
+          // whole text.
+          keyboardType: widget.numericKeyboardType,
+          filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
+          hintText: widget.rstPlaceholder,
+        ),
+      ),
+  ];
 
   /// The main logging fields that follow the callsign, in row order.
   ///
@@ -300,62 +301,62 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
   /// The callsign is deliberately not here: it is `Expanded` over whatever
   /// these leave it, and it is never squeezed.
   List<MainField> _trailingMainFields(BuildContext context) => [
-        ..._rstMainFields(context),
-        // Contest exchanges, inline right after the RSTs.
-        for (final control in widget.textControls)
-          (
-            gapBefore: mainFieldGap,
-            minWidth: exchangeFieldMinWidth,
-            focusNode: widget.exchange.focusFor(control['key'] as String),
-            build: (width, padding, duration) => ExchangeField(
-              model: widget.exchange,
-              control: control,
-              enabled: widget.enabled,
-              width: width,
-              padding: padding,
-              duration: duration,
-              virtualSpace: widget.virtualSpace,
-              numericKeyboardType: widget.numericKeyboardType,
-              onSubmitted: widget.onExchangeSubmitted,
-            ),
-          ),
-        if (widget.state case final state?)
-          (
-            gapBefore: mainFieldGroupGap,
-            minWidth: fixedFieldMinWidth,
-            focusNode: state.focus,
-            build: (width, padding, duration) => _fixedField(
-              context,
-              controller: state.controller,
-              focusNode: state.focus,
-              label: t.qsoEditForm.theirState,
-              width: width,
-              padding: padding,
-              duration: duration,
-              textCapitalization: TextCapitalization.characters,
-              hintText: widget.stateHint,
-              onChanged: widget.onStateChanged,
-            ),
-          ),
-        if (widget.grid case final grid?)
-          (
-            gapBefore: mainFieldGroupGap,
-            minWidth: fixedFieldMinWidth,
-            focusNode: grid.focus,
-            build: (width, padding, duration) => _fixedField(
-              context,
-              controller: grid.controller,
-              focusNode: grid.focus,
-              label: t.qsoEditForm.theirGrid,
-              width: width,
-              padding: padding,
-              duration: duration,
-              textCapitalization: TextCapitalization.characters,
-              hintText: widget.gridHint,
-              onChanged: widget.onGridChanged,
-            ),
-          ),
-      ];
+    ..._rstMainFields(context),
+    // Contest exchanges, inline right after the RSTs.
+    for (final control in widget.textControls)
+      (
+        gapBefore: mainFieldGap,
+        minWidth: exchangeFieldMinWidth,
+        focusNode: widget.exchange.focusFor(control['key'] as String),
+        build: (width, padding, duration) => ExchangeField(
+          model: widget.exchange,
+          control: control,
+          enabled: widget.enabled,
+          width: width,
+          padding: padding,
+          duration: duration,
+          virtualSpace: widget.virtualSpace,
+          numericKeyboardType: widget.numericKeyboardType,
+          onSubmitted: widget.onExchangeSubmitted,
+        ),
+      ),
+    if (widget.state case final state?)
+      (
+        gapBefore: mainFieldGroupGap,
+        minWidth: fixedFieldMinWidth,
+        focusNode: state.focus,
+        build: (width, padding, duration) => _fixedField(
+          context,
+          controller: state.controller,
+          focusNode: state.focus,
+          label: t.qsoEditForm.theirState,
+          width: width,
+          padding: padding,
+          duration: duration,
+          textCapitalization: TextCapitalization.characters,
+          hintText: widget.stateHint,
+          onChanged: widget.onStateChanged,
+        ),
+      ),
+    if (widget.grid case final grid?)
+      (
+        gapBefore: mainFieldGroupGap,
+        minWidth: fixedFieldMinWidth,
+        focusNode: grid.focus,
+        build: (width, padding, duration) => _fixedField(
+          context,
+          controller: grid.controller,
+          focusNode: grid.focus,
+          label: t.qsoEditForm.theirGrid,
+          width: width,
+          padding: padding,
+          duration: duration,
+          textCapitalization: TextCapitalization.characters,
+          hintText: widget.gridHint,
+          onChanged: widget.onGridChanged,
+        ),
+      ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -364,108 +365,106 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
     // IntrinsicHeight asks its whole subtree one. Out here it sees exactly
     // the width the Row will get, which is all `resolveMainFieldLayout`
     // needs.
-    return LayoutBuilder(builder: (context, constraints) {
-      final command = widget.command;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final command = widget.command;
 
-      // An event/annotation row has no callsign or exchange — just a kind
-      // label and, for NOTE/TODO, the text (and done state) the annotation
-      // commands wrote. Swap the whole main-fields row for that instead of
-      // running it through `_trailingMainFields`/`resolveMainFieldLayout`,
-      // which only make sense for a QSO's field set.
-      if (widget.eventFields case final eventFields?) {
-        _watchFields(const []);
-        return _withButton([Expanded(child: eventFields)], gapScale: 1);
-      }
+        // An event/annotation row has no callsign or exchange — just a kind
+        // label and, for NOTE/TODO, the text (and done state) the annotation
+        // commands wrote. Swap the whole main-fields row for that instead of
+        // running it through `_trailingMainFields`/`resolveMainFieldLayout`,
+        // which only make sense for a QSO's field set.
+        if (widget.eventFields case final eventFields?) {
+          _watchFields(const []);
+          return _withButton([Expanded(child: eventFields)], gapScale: 1);
+        }
 
-      final trailingFields = _trailingMainFields(context);
-      _watchFields(trailingFields);
-      final (layout: fieldLayout, :squeezed) = resolveMainFieldLayout(
-        fields: trailingFields,
-        maxWidth: constraints.maxWidth,
-        buttonWidth: widget.buttonWidth,
-        floors: mainFieldFloors(context),
-      );
-      _squeezed = squeezed;
-      final widthDuration = _widthDuration(constraints.maxWidth, widget.buttonWidth);
+        final trailingFields = _trailingMainFields(context);
+        _watchFields(trailingFields);
+        final (layout: fieldLayout, :squeezed) = resolveMainFieldLayout(
+          fields: trailingFields,
+          maxWidth: constraints.maxWidth,
+          buttonWidth: widget.buttonWidth,
+          floors: mainFieldFloors(context),
+        );
+        _squeezed = squeezed;
+        final widthDuration = _widthDuration(constraints.maxWidth, widget.buttonWidth);
 
-      return _withButton(gapScale: fieldLayout.gapScale, [
-            Expanded(
-              // #236: stable id for agent/browser tooling.
-              child: semanticId(
-                'field.call',
-                TextField(
-                  controller: widget.call.controller,
-                  focusNode: widget.call.focus,
-                  // Desktop platforms (see selectAllOnFocus's default)
-                  // select-all on focus by default, which runs *after* the
-                  // panel's own focus listener and silently overwrites its
-                  // cursor-at-end placement — this is the only way to
-                  // actually suppress it.
-                  selectAllOnFocus: false,
-                  enabled: widget.enabled,
-                  // The callsign field is the default focus — except on
-                  // mobile with no physical keyboard, where the view starts
-                  // unfocused so the operator isn't met with a virtual
-                  // keyboard covering half the screen
-                  // (docs/design/logging-fields.md). Read per build, not
-                  // watched: the channel's answer normally beats navigation
-                  // into an operation, and losing that race only costs one
-                  // tap.
-                  autofocus: !isMobilePlatform || hardwareKeyboardAttached.value,
-                  autocorrect: command.mixedCase,
-                  enableSuggestions: command.mixedCase,
-                  // A command awaiting parameters (expectsParams) switches
-                  // the field to free-text entry — spaces allowed, no
-                  // callsign character restriction — but stays
-                  // uppercase-only unless the command itself declared
-                  // `mixedCase: true` (e.g. NOTE, whose parameter is free
-                  // prose): all logging input is uppercase unless explicitly
-                  // mixed-case.
-                  textCapitalization: command.mixedCase ? TextCapitalization.sentences : TextCapitalization.characters,
-                  // In command free-text modes a space is a literal parameter
-                  // character, so those modes take the narrower interceptor:
-                  // it stands aside for every space but the double-space that
-                  // leaves the field. Normal callsign mode routes every space
-                  // to focus/command handling. Asked via
-                  // [CommandInterpretationModel.fieldAcceptsSpaces], the same
-                  // getter the panel's Space handler uses to decide the exit —
-                  // the two must never disagree about the field's mode.
-                  inputFormatters: !command.fieldAcceptsSpaces
-                      ? [
-                          widget.virtualSpace,
-                          FilteringTextInputFormatter.allow(RegExp('[$callsignCharacters]')),
-                          if (isMobilePlatform) MobileDotToSlashFormatter(),
-                          const UpperCaseTextFormatter(),
-                        ]
-                      : command.mixedCase
-                          ? [widget.commandVirtualSpace]
-                          : [widget.commandVirtualSpace, const UpperCaseTextFormatter()],
-                  style: mainFieldStyle(context, fontWeight: FontWeight.w500),
-                  decoration: mainFieldDecoration(
-                    context,
-                    t.loggingControls.theirCall,
-                    horizontalPadding: fieldLayout.fieldPadding,
-                  ),
-                  // `onChanged`, not the controller: it hears only what the
-                  // operator entered, never the panel's own writes.
-                  onChanged: widget.onCallTyped == null ? null : (_) => widget.onCallTyped!(),
-                  onEditingComplete: () => finishEditingWithoutBlur(widget.call.controller),
-                  onSubmitted: (_) => widget.onSubmitted(),
-                ),
+        return _withButton(gapScale: fieldLayout.gapScale, [
+          Expanded(
+            // #236: stable id for agent/browser tooling.
+            child: semanticId(
+              'field.call',
+              TextField(
+                controller: widget.call.controller,
+                focusNode: widget.call.focus,
+                // Desktop platforms (see selectAllOnFocus's default)
+                // select-all on focus by default, which runs *after* the
+                // panel's own focus listener and silently overwrites its
+                // cursor-at-end placement — this is the only way to
+                // actually suppress it.
+                selectAllOnFocus: false,
+                enabled: widget.enabled,
+                // The callsign field is the default focus — except on
+                // mobile with no physical keyboard, where the view starts
+                // unfocused so the operator isn't met with a virtual
+                // keyboard covering half the screen
+                // (docs/design/logging-fields.md). Read per build, not
+                // watched: the channel's answer normally beats navigation
+                // into an operation, and losing that race only costs one
+                // tap.
+                autofocus: !isMobilePlatform || hardwareKeyboardAttached.value,
+                autocorrect: command.mixedCase,
+                enableSuggestions: command.mixedCase,
+                // A command awaiting parameters (expectsParams) switches
+                // the field to free-text entry — spaces allowed, no
+                // callsign character restriction — but stays
+                // uppercase-only unless the command itself declared
+                // `mixedCase: true` (e.g. NOTE, whose parameter is free
+                // prose): all logging input is uppercase unless explicitly
+                // mixed-case.
+                textCapitalization: command.mixedCase ? TextCapitalization.sentences : TextCapitalization.characters,
+                // In command free-text modes a space is a literal parameter
+                // character, so those modes take the narrower interceptor:
+                // it stands aside for every space but the double-space that
+                // leaves the field. Normal callsign mode routes every space
+                // to focus/command handling. Asked via
+                // [CommandInterpretationModel.fieldAcceptsSpaces], the same
+                // getter the panel's Space handler uses to decide the exit —
+                // the two must never disagree about the field's mode.
+                inputFormatters: !command.fieldAcceptsSpaces
+                    ? [
+                        widget.virtualSpace,
+                        FilteringTextInputFormatter.allow(RegExp('[$callsignCharacters]')),
+                        if (isMobilePlatform) MobileDotToSlashFormatter(),
+                        const UpperCaseTextFormatter(),
+                      ]
+                    : command.mixedCase
+                    ? [widget.commandVirtualSpace]
+                    : [widget.commandVirtualSpace, const UpperCaseTextFormatter()],
+                style: mainFieldStyle(context, fontWeight: FontWeight.w500),
+                decoration: mainFieldDecoration(context, t.loggingControls.theirCall, horizontalPadding: fieldLayout.fieldPadding),
+                // `onChanged`, not the controller: it hears only what the
+                // operator entered, never the panel's own writes.
+                onChanged: widget.onCallTyped == null ? null : (_) => widget.onCallTyped!(),
+                onEditingComplete: () => finishEditingWithoutBlur(widget.call.controller),
+                onSubmitted: (_) => widget.onSubmitted(),
               ),
             ),
-            // Declared and sized in `_trailingMainFields` /
-            // `resolveMainFieldLayout` above, so the row and the width
-            // arithmetic can't disagree about which fields are on and how
-            // much room they take. The gaps carry the same scale as the
-            // padding inside the fields — they are given up together, as one
-            // concession.
-            for (var i = 0; i < trailingFields.length; i++) ...[
-              SizedBox(width: trailingFields[i].gapBefore * fieldLayout.gapScale),
-              trailingFields[i].build(fieldLayout.widths[i], fieldLayout.fieldPadding, widthDuration),
-            ],
-      ]);
-    });
+          ),
+          // Declared and sized in `_trailingMainFields` /
+          // `resolveMainFieldLayout` above, so the row and the width
+          // arithmetic can't disagree about which fields are on and how
+          // much room they take. The gaps carry the same scale as the
+          // padding inside the fields — they are given up together, as one
+          // concession.
+          for (var i = 0; i < trailingFields.length; i++) ...[
+            SizedBox(width: trailingFields[i].gapBefore * fieldLayout.gapScale),
+            trailingFields[i].build(fieldLayout.widths[i], fieldLayout.fieldPadding, widthDuration),
+          ],
+        ]);
+      },
+    );
   }
 
   /// The row's frame around [fields]: the log button at the trailing end, or

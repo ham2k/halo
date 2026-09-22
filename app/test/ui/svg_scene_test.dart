@@ -31,8 +31,7 @@ Map<String, dynamic> document({double value = 0, bool local = false, bool pulse 
       'y': 60,
       'width': 40,
       'height': 40,
-      'svg':
-          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#00ff00"/></svg>',
+      'svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#00ff00"/></svg>',
       if (pulse) 'pulse': {'periodMs': 1000, 'minOpacity': 0.3},
     },
   ],
@@ -192,14 +191,7 @@ void main() {
       {
         ...document(),
         'layers': [
-          {
-            'id': 'bad',
-            'x': 0,
-            'y': 0,
-            'width': 10,
-            'height': 10,
-            'svg': '<svg><image href="https://example.com/pixel"/></svg>',
-          },
+          {'id': 'bad', 'x': 0, 'y': 0, 'width': 10, 'height': 10, 'svg': '<svg><image href="https://example.com/pixel"/></svg>'},
         ],
       },
     ]) {
@@ -221,7 +213,10 @@ void main() {
     expect(changed.scene, isNot(same(first.scene)));
     expect(changed.scene!.values['v'], 5);
     expect(
-      () => PanelContent.fromJson({'kind': 'svgScene', 'scene': {...document(), 'version': 9}}, previous: first),
+      () => PanelContent.fromJson({
+        'kind': 'svgScene',
+        'scene': {...document(), 'version': 9},
+      }, previous: first),
       throwsFormatException,
     );
   });

@@ -23,26 +23,20 @@ import 'package:ham2k_logger/views/settings_view.dart';
 
 import '../support/halo_test_support.dart';
 
-Map<String, dynamic> _panelEntry({
-  required String panelKey,
-  required String title,
-  bool sidebar = true,
-  bool dataFilesSection = false,
-}) =>
-    {
-      'key': panelKey,
-      'ok': true,
-      'value': {
-        'panelKey': panelKey,
-        'hookKey': panelKey,
-        'extensionKey': panelKey,
-        'title': title,
-        'kind': 'dynamic',
-        'order': 0,
-        'sidebar': sidebar,
-        'dataFilesSection': dataFilesSection,
-      },
-    };
+Map<String, dynamic> _panelEntry({required String panelKey, required String title, bool sidebar = true, bool dataFilesSection = false}) => {
+  'key': panelKey,
+  'ok': true,
+  'value': {
+    'panelKey': panelKey,
+    'hookKey': panelKey,
+    'extensionKey': panelKey,
+    'title': title,
+    'kind': 'dynamic',
+    'order': 0,
+    'sidebar': sidebar,
+    'dataFilesSection': dataFilesSection,
+  },
+};
 
 Future<HaLoServices> _pumpDataFiles(WidgetTester tester, {required List<Map<String, dynamic>> panels}) async {
   tester.view.physicalSize = const Size(1000, 1400);
@@ -79,9 +73,13 @@ Future<HaLoServices> _pumpDataFiles(WidgetTester tester, {required List<Map<Stri
   final extensions = ExtensionServiceWithFakeHost(mockHost)..settings = settings;
   final services = HaLoServices(db, settings, extensions: extensions);
 
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(home: SettingsView(services: services, initialPanel: 'accounts')),
-  ));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: SettingsView(services: services, initialPanel: 'accounts'),
+      ),
+    ),
+  );
   await tester.pumpAndSettle();
   return services;
 }
@@ -89,12 +87,14 @@ Future<HaLoServices> _pumpDataFiles(WidgetTester tester, {required List<Map<Stri
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('dataFilesSection: true keeps a panel out of the top-level nav and shows it under the data sources instead',
-      (tester) async {
-    await _pumpDataFiles(tester, panels: [
-      _panelEntry(panelKey: 'call-notes', title: 'Callsign Notes', sidebar: false, dataFilesSection: true),
-      _panelEntry(panelKey: 'radio-commands', title: 'Radio Commands'), // sidebar: true, the default
-    ]);
+  testWidgets('dataFilesSection: true keeps a panel out of the top-level nav and shows it under the data sources instead', (tester) async {
+    await _pumpDataFiles(
+      tester,
+      panels: [
+        _panelEntry(panelKey: 'call-notes', title: 'Callsign Notes', sidebar: false, dataFilesSection: true),
+        _panelEntry(panelKey: 'radio-commands', title: 'Radio Commands'), // sidebar: true, the default
+      ],
+    );
 
     expect(find.text(t.settings.offlineData.extensionsSection), findsOneWidget);
     // call-notes (sidebar: false, dataFilesSection: true): only the data
@@ -103,21 +103,23 @@ void main() {
     // radio-commands (sidebar: true, the default; dataFilesSection: false):
     // only its own sidebar entry — NOT also duplicated under the data sources'
     // Extensions section.
-    expect(find.text('Radio Commands'), findsOneWidget,
-        reason: 'a sidebar:true panel already has its own nav entry; the data sources must not list it a second time');
+    expect(
+      find.text('Radio Commands'),
+      findsOneWidget,
+      reason: 'a sidebar:true panel already has its own nav entry; the data sources must not list it a second time',
+    );
   });
 
-  testWidgets(
-      'sidebar: false alone does NOT show a panel under the data sources — dataFilesSection must be set explicitly', (tester) async {
+  testWidgets('sidebar: false alone does NOT show a panel under the data sources — dataFilesSection must be set explicitly', (tester) async {
     // The regression this fix closed: a panel opting out of the sidebar for
     // some reason unrelated to data files (radio-commands is a stand-in for
     // one) used to be swept into the data sources anyway, just because
     // it shared `sidebar: false` with call-notes.
-    await _pumpDataFiles(tester, panels: [
-      _panelEntry(panelKey: 'radio-commands', title: 'Radio Commands', sidebar: false),
-    ]);
-    expect(find.text(t.settings.offlineData.extensionsSection), findsNothing,
-        reason: 'sidebar: false without dataFilesSection: true must not appear here');
+    await _pumpDataFiles(
+      tester,
+      panels: [_panelEntry(panelKey: 'radio-commands', title: 'Radio Commands', sidebar: false)],
+    );
+    expect(find.text(t.settings.offlineData.extensionsSection), findsNothing, reason: 'sidebar: false without dataFilesSection: true must not appear here');
     expect(find.text('Radio Commands'), findsNothing, reason: 'nor anywhere else on this screen');
   });
 
@@ -127,18 +129,25 @@ void main() {
   });
 
   testWidgets('hides the "Extensions" section when nothing has dataFilesSection: true', (tester) async {
-    await _pumpDataFiles(tester, panels: [
-      _panelEntry(panelKey: 'radio-commands', title: 'Radio Commands'),
-    ]);
-    expect(find.text(t.settings.offlineData.extensionsSection), findsNothing,
-        reason: 'nothing here opted into the data sources section, so there is nothing left for it to show');
+    await _pumpDataFiles(
+      tester,
+      panels: [_panelEntry(panelKey: 'radio-commands', title: 'Radio Commands')],
+    );
+    expect(
+      find.text(t.settings.offlineData.extensionsSection),
+      findsNothing,
+      reason: 'nothing here opted into the data sources section, so there is nothing left for it to show',
+    );
   });
 
   testWidgets('tapping a data sources row opens that extension\'s own settings panel', (tester) async {
-    await _pumpDataFiles(tester, panels: [
-      _panelEntry(panelKey: 'call-notes', title: 'Callsign Notes', sidebar: false, dataFilesSection: true),
-      _panelEntry(panelKey: 'radio-commands', title: 'Radio Commands', sidebar: false, dataFilesSection: true),
-    ]);
+    await _pumpDataFiles(
+      tester,
+      panels: [
+        _panelEntry(panelKey: 'call-notes', title: 'Callsign Notes', sidebar: false, dataFilesSection: true),
+        _panelEntry(panelKey: 'radio-commands', title: 'Radio Commands', sidebar: false, dataFilesSection: true),
+      ],
+    );
 
     final row = find.text('Radio Commands');
     await tester.ensureVisible(row);

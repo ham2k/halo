@@ -134,8 +134,7 @@ void main() {
         final release = Completer<void>();
         unawaited(HangWatchdog.guard(() => release.future));
         async.elapse(watchdogSilence * 3);
-        expect(said.where((m) => m == watchdogPing).length, greaterThan(3),
-            reason: 'the guarded call went quiet while it was still running');
+        expect(said.where((m) => m == watchdogPing).length, greaterThan(3), reason: 'the guarded call went quiet while it was still running');
         release.complete();
         async.flushMicrotasks();
       });
@@ -144,10 +143,7 @@ void main() {
     test('a call that throws still puts the watchdog away', () async {
       // Otherwise one failed connect leaves the process a heartbeat away from
       // being killed for the rest of the session.
-      await expectLater(
-        HangWatchdog.guard(() async => throw StateError('the port is gone')),
-        throwsStateError,
-      );
+      await expectLater(HangWatchdog.guard(() async => throw StateError('the port is gone')), throwsStateError);
       expect(said.last, watchdogDisarm);
     });
 

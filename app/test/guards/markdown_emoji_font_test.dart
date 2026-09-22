@@ -58,17 +58,12 @@ List<File> _sources() {
   // gap is silent where a missing root is loud.
   final roots = [
     Directory('lib'),
-    ...Directory('../packages').listSync().whereType<Directory>().map((d) => Directory('${d.path}/lib')).where(
-          (d) => d.existsSync(),
-        ),
+    ...Directory('../packages').listSync().whereType<Directory>().map((d) => Directory('${d.path}/lib')).where((d) => d.existsSync()),
   ];
   if (!roots.first.existsSync()) {
     fail('expected lib/ to exist — run this suite from the app package (cwd: ${Directory.current.path})');
   }
-  return [
-    for (final root in roots)
-      ...root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart')),
-  ];
+  return [for (final root in roots) ...root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart'))];
 }
 
 /// [source] with every `//` comment body blanked, so prose that discusses the
@@ -207,9 +202,7 @@ void main() {
           final definition = bound(name);
           if (_emojiAware.hasMatch(definition)) return true;
           if (hops == 0 || definition.isEmpty) return false;
-          return RegExp(r'\b([A-Za-z_][A-Za-z0-9_]*)\s*\(')
-              .allMatches(definition)
-              .any((m) => covered(m.group(1)!, hops: hops - 1));
+          return RegExp(r'\b([A-Za-z_][A-Za-z0-9_]*)\s*\(').allMatches(definition).any((m) => covered(m.group(1)!, hops: hops - 1));
         }
 
         // `inlineMarkdownSpans` builds spans; it resolves no glyph itself. The
@@ -249,7 +242,8 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: 'These markdown renders do not reach the emoji font, so a flag or pictograph in\n'
+      reason:
+          'These markdown renders do not reach the emoji font, so a flag or pictograph in\n'
           'that markdown is invisible on web and shows as letters on Windows:\n'
           '${offenders.map((p) => '  $p').join('\n')}\n'
           '\n'
@@ -291,7 +285,8 @@ void main() {
     expect(
       overridden,
       isEmpty,
-      reason: 'withEmojiFallback() is overridden by a later copyWith here, which drops the\n'
+      reason:
+          'withEmojiFallback() is overridden by a later copyWith here, which drops the\n'
           'fallback it just added:\n'
           '${overridden.map((p) => '  $p').join('\n')}\n'
           '\n'
@@ -300,10 +295,6 @@ void main() {
 
     // An exemption for a file that no longer renders markdown is stale, and a
     // stale exemption is how one silently starts covering something else.
-    expect(
-      _exempt.keys.toSet().difference(exemptSeen),
-      isEmpty,
-      reason: 'These files are exempted but no longer render markdown — drop them from _exempt.',
-    );
+    expect(_exempt.keys.toSet().difference(exemptSeen), isEmpty, reason: 'These files are exempted but no longer render markdown — drop them from _exempt.');
   });
 }

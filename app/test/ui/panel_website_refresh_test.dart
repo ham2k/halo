@@ -38,20 +38,21 @@ void main() {
     await tester.pump(by);
   }
 
-  
   PanelService serviceWith(Map<String, dynamic> config) {
     final service = PanelService(FakePanelExtensions(configs: {'website#1': config}));
-    service.registerNative(const PanelDefinition(
-      id: websitePanelId,
-      title: 'Web Site',
-      source: PanelSource.native,
-      multiple: true,
-      formFields: [
-        {'type': 'field', 'key': websiteUrlKey, 'fieldType': 'text'},
-        {'type': 'field', 'key': websiteRefreshKey, 'fieldType': 'select'},
-        {'type': 'field', 'key': websiteTitleKey, 'fieldType': 'text'},
-      ],
-    ));
+    service.registerNative(
+      const PanelDefinition(
+        id: websitePanelId,
+        title: 'Web Site',
+        source: PanelSource.native,
+        multiple: true,
+        formFields: [
+          {'type': 'field', 'key': websiteUrlKey, 'fieldType': 'text'},
+          {'type': 'field', 'key': websiteRefreshKey, 'fieldType': 'select'},
+          {'type': 'field', 'key': websiteTitleKey, 'fieldType': 'text'},
+        ],
+      ),
+    );
     return service;
   }
 
@@ -65,32 +66,34 @@ void main() {
     List<int>? reloads,
   }) async {
     final log = reloads ?? <int>[];
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: DockPaneVisibility(
-            visible: visible,
-            child: WebsitePanel(
-              panelId: 'website#1',
-              panels: service,
-              autoRefresh: true,
-              // `InAppWebView` asserts a platform implementation is
-              // registered and none is under `flutter test`, so the pane
-              // draws its message instead. The SCHEDULE is the same code
-              // either way — it is gated on the URL, the interval, dock
-              // visibility and lifecycle, none of which the platform
-              // touches. What no widget test can cover is the reload
-              // reaching a real page.
-              webviewSupported: false,
-              now: () => fakeNow,
-              onTitle: onTitle,
-              isEnteringQso: isEnteringQso,
-              onReload: () => log.add(log.length + 1),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: DockPaneVisibility(
+              visible: visible,
+              child: WebsitePanel(
+                panelId: 'website#1',
+                panels: service,
+                autoRefresh: true,
+                // `InAppWebView` asserts a platform implementation is
+                // registered and none is under `flutter test`, so the pane
+                // draws its message instead. The SCHEDULE is the same code
+                // either way — it is gated on the URL, the interval, dock
+                // visibility and lifecycle, none of which the platform
+                // touches. What no widget test can cover is the reload
+                // reaching a real page.
+                webviewSupported: false,
+                now: () => fakeNow,
+                onTitle: onTitle,
+                isEnteringQso: isEnteringQso,
+                onReload: () => log.add(log.length + 1),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
     await tester.pump();
     return log;
@@ -223,10 +226,7 @@ void main() {
 
     testWidgets('is the operator’s own name when they gave one', (tester) async {
       final titles = <String?>[];
-      final service = serviceWith({
-        websiteUrlKey: 'https://www.dxheat.com/dxc/',
-        websiteTitleKey: 'DX Heat',
-      });
+      final service = serviceWith({websiteUrlKey: 'https://www.dxheat.com/dxc/', websiteTitleKey: 'DX Heat'});
       await pump(tester, service: service, onTitle: titles.add);
       expect(titles, ['DX Heat']);
       await tester.pumpWidget(const SizedBox());

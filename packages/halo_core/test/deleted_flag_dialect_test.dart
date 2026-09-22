@@ -135,8 +135,9 @@ void main() {
       // record that ties with it describes a world that has not seen it. The
       // push settles which one wins; a repair here would pre-empt it.
       final op = await operations.create(stationCall: 'VK1AO');
-      await (db.update(db.operations)..where((row) => row.uuid.equals(op.uuid)))
-          .write(const OperationsCompanion(synced: Value(false), updatedAtMillis: Value(1000)));
+      await (db.update(
+        db.operations,
+      )..where((row) => row.uuid.equals(op.uuid))).write(const OperationsCompanion(synced: Value(false), updatedAtMillis: Value(1000)));
 
       await operations.mergeFromSync([
         {'uuid': op.uuid, 'stationCall': 'VK1AO', 'updatedAtMillis': 1000, 'deleted': 1},

@@ -90,8 +90,7 @@ void main() {
         'placeholderSwr',
         telemetryIntervalConfigKey,
       });
-      expect(type.validate(type.defaultConfig), isNull,
-          reason: 'the prefilled form must be submittable as it opens');
+      expect(type.validate(type.defaultConfig), isNull, reason: 'the prefilled form must be submittable as it opens');
     });
 
     test('every numeric knob is prefilled, because a blank one is refused', () {
@@ -102,17 +101,10 @@ void main() {
       // the operator did set; refusing it without a prefill would make an
       // untouched form refuse to submit. This is the reachable case, not the
       // String 'abc' the form can never produce.
-      const numericKeys = [
-        'placeholderConnectDelay',
-        'placeholderDropAfter',
-        'placeholderReplyDelay',
-        'placeholderPower',
-        'placeholderFreq',
-      ];
+      const numericKeys = ['placeholderConnectDelay', 'placeholderDropAfter', 'placeholderReplyDelay', 'placeholderPower', 'placeholderFreq'];
       for (final key in numericKeys) {
         expect(type.defaultConfig, contains(key), reason: '$key would open blank and refuse to submit');
-        expect(type.validate({...type.defaultConfig, key: null}), isNotNull,
-            reason: '$key accepts the null an unparseable entry arrives as');
+        expect(type.validate({...type.defaultConfig, key: null}), isNotNull, reason: '$key accepts the null an unparseable entry arrives as');
       }
       expect(type.validate({...type.defaultConfig, 'placeholderConnectDelay': -1}), isNotNull);
       expect(type.validate({...type.defaultConfig, 'placeholderFreq': 0}), isNotNull);
@@ -143,9 +135,7 @@ void main() {
       final sink = sinkFor();
       // A transceiver's session, so the tuning half of the interface is
       // reachable — createSession answers with the connection half alone.
-      final session =
-          const PlaceholderRadioDriver().createSession(sink, type.driverConfig(type.defaultConfig))
-              as TransceiverSession;
+      final session = const PlaceholderRadioDriver().createSession(sink, type.driverConfig(type.defaultConfig)) as TransceiverSession;
       session.startUpdates();
       expect(sink.readings.last, const VfoReading(freqKHz: 7200.0, mode: 'LSB'));
       expect(sink.watts.last, 75);
@@ -200,8 +190,7 @@ void main() {
     test('a reply delay defers the reading rather than dropping it', () {
       fakeAsync((async) {
         final sink = sinkFor();
-        final session =
-            const PlaceholderRadioDriver().createSession(sink, {'placeholderReplyDelay': 500}) as TransceiverSession;
+        final session = const PlaceholderRadioDriver().createSession(sink, {'placeholderReplyDelay': 500}) as TransceiverSession;
         session.setFrequency(10136.0);
         expect(sink.readings, isEmpty, reason: 'the whole point of the knob is the round trip taking time');
         async.elapse(const Duration(milliseconds: 500));
@@ -219,8 +208,7 @@ void main() {
       // the meter strip and the SWR alert are ever reachable by hand.
       fakeAsync((async) {
         final sink = _RecordingSink();
-        final session = const PlaceholderRadioDriver()
-            .createSession(sink, {...type.defaultConfig, 'placeholderSwr': 2.4}) as CwKeyerSession;
+        final session = const PlaceholderRadioDriver().createSession(sink, {...type.defaultConfig, 'placeholderSwr': 2.4}) as CwKeyerSession;
         session.startUpdates();
         expect(sink.txReports, [false], reason: 'a rig that KNOWS it is receiving says so');
 
@@ -234,8 +222,7 @@ void main() {
 
         final duringFirstPoll = sink.meterReports.length;
         async.elapse(const Duration(milliseconds: 250));
-        expect(sink.meterReports.length, greaterThan(duringFirstPoll),
-            reason: 'the meters are re-read for as long as the message keys');
+        expect(sink.meterReports.length, greaterThan(duringFirstPoll), reason: 'the meters are re-read for as long as the message keys');
 
         // Long enough for any message to finish keying.
         async.elapse(const Duration(minutes: 1));
@@ -253,8 +240,7 @@ void main() {
       // happened — and the strip is the thing these readings exist to feed.
       fakeAsync((async) {
         final sink = _RecordingSink();
-        final session = const PlaceholderRadioDriver()
-            .createSession(sink, type.driverConfig(type.defaultConfig)) as VoiceKeyerSession;
+        final session = const PlaceholderRadioDriver().createSession(sink, type.driverConfig(type.defaultConfig)) as VoiceKeyerSession;
         (session as EquipmentSession).startUpdates();
         sink.txReports.clear();
 
@@ -277,15 +263,8 @@ void main() {
       // to cross it nobody — tester or developer — can check that the alert
       // renders at all.
       expect(placeholderRadioDefaultSwr, lessThan(swrAlertThreshold));
-      expect(
-        const PlaceholderRadioDriver().validateField('placeholderSwr', 2.5, const {}),
-        isNull,
-      );
-      expect(
-        const PlaceholderRadioDriver().validateField('placeholderSwr', 0.5, const {}),
-        isNotNull,
-        reason: 'an SWR below 1 is not a match, it is a typo',
-      );
+      expect(const PlaceholderRadioDriver().validateField('placeholderSwr', 2.5, const {}), isNull);
+      expect(const PlaceholderRadioDriver().validateField('placeholderSwr', 0.5, const {}), isNotNull, reason: 'an SWR below 1 is not a match, it is a typo');
     });
   });
 
@@ -294,10 +273,7 @@ void main() {
       // Untagged, ErrorPolicy treats a connect failure as a bug of ours and
       // reports it — so a knob meant to exercise the silent retry loop would
       // instead exercise the crash backend.
-      expect(
-        () => const PlaceholderTransport().connect({'placeholderFailConnect': true}, cancel: CatCancelToken()),
-        throwsA(isA<CatUnreachable>()),
-      );
+      expect(() => const PlaceholderTransport().connect({'placeholderFailConnect': true}, cancel: CatCancelToken()), throwsA(isA<CatUnreachable>()));
     });
 
     test('a cancelled connect gives up instead of holding the attempt open', () async {
@@ -363,9 +339,13 @@ void main() {
     /// spinner while it looks for a FlexRadio, and an animation that never
     /// ends is a settle that never arrives.
     Future<void> openAddDialog(WidgetTester tester) async {
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(home: Scaffold(body: StationPanel(services: services))),
-      ));
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(body: StationPanel(services: services)),
+          ),
+        ),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       await tester.tap(find.text(t.settings.station.add));

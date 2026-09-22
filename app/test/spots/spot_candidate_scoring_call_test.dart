@@ -25,13 +25,7 @@ class _RecordingHost implements ExtensionHost {
   _RecordingHost(this.results);
 
   @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
+  Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     calls.add((category: category, key: key, method: method, args: args));
     final result = results['$category:$key:$method'];
     // A hook that throws is stored as the exception itself — the failure this
@@ -75,16 +69,15 @@ class _ServiceWithHost extends ExtensionService {
 
 /// A host answering `scoreCandidates` with [verdicts], for the core scorer
 /// (scope `always`, so it applies to every operation).
-_RecordingHost _host(Map<String, dynamic> verdicts) =>
-    _RecordingHost({'scoring:core:scoreCandidates': verdicts});
+_RecordingHost _host(Map<String, dynamic> verdicts) => _RecordingHost({'scoring:core:scoreCandidates': verdicts});
 
 Map<String, dynamic> _candidate(String call) => {
-      'their': {'call': call},
-      'band': '20m',
-      'mode': 'SSB',
-      'refs': const <Map<String, dynamic>>[],
-      'startAtMillis': 1735689600000,
-    };
+  'their': {'call': call},
+  'band': '20m',
+  'mode': 'SSB',
+  'refs': const <Map<String, dynamic>>[],
+  'startAtMillis': 1735689600000,
+};
 
 void main() {
   setUp(ErrorReportingService.resetFailureStreaks);
@@ -92,22 +85,20 @@ void main() {
 
   test('the operation reaching the scorer carries the uuid', () async {
     final host = _host({
-      'k1abc': {'notices': const [], 'alerts': const ['duplicate']},
+      'k1abc': {
+        'notices': const [],
+        'alerts': const ['duplicate'],
+      },
     });
     final service = _ServiceWithHost(host);
 
     // The shape the Spots Panel has: an operation's `data`, which holds the
     // station call and refs but NOT the uuid.
-    await service.scoreCandidates(
-      operation: const {'stationCall': 'N0DEV'},
-      operationUuid: 'op-1',
-      candidates: {'k1abc': _candidate('K1ABC')},
-    );
+    await service.scoreCandidates(operation: const {'stationCall': 'N0DEV'}, operationUuid: 'op-1', candidates: {'k1abc': _candidate('K1ABC')});
 
     final call = host.calls.firstWhere((c) => c.method == 'scoreCandidates');
     final operation = (call.args as Map)['operation'] as Map;
-    expect(operation['uuid'], 'op-1',
-        reason: 'without the uuid the harness reads an empty log and no spot is ever a duplicate');
+    expect(operation['uuid'], 'op-1', reason: 'without the uuid the harness reads an empty log and no spot is ever a duplicate');
     // Folded in, not substituted for — the scorers still need the rest.
     expect(operation['stationCall'], 'N0DEV');
   });
@@ -119,9 +110,7 @@ void main() {
     await service.scoreCandidates(
       operation: const {'stationCall': 'N0DEV'},
       operationUuid: 'op-1',
-      candidates: {
-        for (var i = 0; i < 25; i++) 'c$i': _candidate('W${i}ABC'),
-      },
+      candidates: {for (var i = 0; i < 25; i++) 'c$i': _candidate('W${i}ABC')},
     );
 
     final scoring = host.calls.where((c) => c.method == 'scoreCandidates').toList();
@@ -131,8 +120,14 @@ void main() {
 
   test('verdicts come back keyed by the caller\'s own candidate keys', () async {
     final host = _host({
-      'worked': {'notices': const [], 'alerts': const ['duplicate']},
-      'fresh': {'notices': const ['newBand'], 'alerts': const []},
+      'worked': {
+        'notices': const [],
+        'alerts': const ['duplicate'],
+      },
+      'fresh': {
+        'notices': const ['newBand'],
+        'alerts': const [],
+      },
     });
     final service = _ServiceWithHost(host);
 
@@ -152,7 +147,10 @@ void main() {
   test('a candidate with nothing to report is absent from the result', () async {
     final host = _host({
       'quiet': {'notices': const [], 'alerts': const []},
-      'loud': {'notices': const [], 'alerts': const ['duplicate']},
+      'loud': {
+        'notices': const [],
+        'alerts': const ['duplicate'],
+      },
     });
     final service = _ServiceWithHost(host);
 
@@ -178,15 +176,27 @@ void main() {
       operationUuid: 'op-1',
       candidates: {'a': _candidate('K1ABC')},
       resume: (
-        checkpoints: {'core': (sheet: const {'workedByCall': {}}, day: 86400000)},
-        tail: [const {'uuid': 'c', 'their': {'call': 'K1ABC'}}],
+        checkpoints: {
+          'core': (sheet: const {'workedByCall': {}}, day: 86400000),
+        },
+        tail: [
+          const {
+            'uuid': 'c',
+            'their': {'call': 'K1ABC'},
+          },
+        ],
       ),
     );
 
     final args = host.calls.firstWhere((c) => c.method == 'scoreCandidates').args as Map;
     expect(args['resumeFrom'], const {'workedByCall': {}});
     expect(args['resumeDay'], 86400000);
-    expect(args['qsos'], [const {'uuid': 'c', 'their': {'call': 'K1ABC'}}]);
+    expect(args['qsos'], [
+      const {
+        'uuid': 'c',
+        'their': {'call': 'K1ABC'},
+      },
+    ]);
   });
 
   // Omitting it must send NO `resumeFrom` at all rather than a null one: the
@@ -196,11 +206,7 @@ void main() {
     final host = _host(const <String, dynamic>{});
     final service = _ServiceWithHost(host);
 
-    await service.scoreCandidates(
-      operation: const {'stationCall': 'N0DEV'},
-      operationUuid: 'op-1',
-      candidates: {'a': _candidate('K1ABC')},
-    );
+    await service.scoreCandidates(operation: const {'stationCall': 'N0DEV'}, operationUuid: 'op-1', candidates: {'a': _candidate('K1ABC')});
 
     final args = host.calls.firstWhere((c) => c.method == 'scoreCandidates').args as Map;
     expect(args.containsKey('resumeFrom'), isFalse);
@@ -212,11 +218,7 @@ void main() {
   test('a runtime with no scorers returns null, not an empty map', () async {
     final service = _ServiceWithHost(_RecordingHost(const {}), scopes: const {});
 
-    final result = await service.scoreCandidates(
-      operation: const {'stationCall': 'N0DEV'},
-      operationUuid: 'op-1',
-      candidates: {'a': _candidate('K1ABC')},
-    );
+    final result = await service.scoreCandidates(operation: const {'stationCall': 'N0DEV'}, operationUuid: 'op-1', candidates: {'a': _candidate('K1ABC')});
 
     expect(result, isNull);
   });
@@ -228,15 +230,11 @@ void main() {
     // runtime still starting — so the board kept every strike the dead
     // scorer had last put there.
     test('returns an empty map, not the null that means "keep the old verdicts"', () async {
-      final service = _ServiceWithHost(
-        _RecordingHost({'scoring:core:scoreCandidates': Exception('scorer blew up')}),
-      );
+      final service = _ServiceWithHost(_RecordingHost({'scoring:core:scoreCandidates': Exception('scorer blew up')}));
 
-      final result = await withScoringBackend(() => service.scoreCandidates(
-            operation: const {'stationCall': 'N0DEV'},
-            operationUuid: 'op-1',
-            candidates: {'worked': _candidate('K1ABC')},
-          ));
+      final result = await withScoringBackend(
+        () => service.scoreCandidates(operation: const {'stationCall': 'N0DEV'}, operationUuid: 'op-1', candidates: {'worked': _candidate('K1ABC')}),
+      );
 
       expect(result, isNotNull, reason: 'null would leave the board struck through by a scorer that is gone');
       expect(result, isEmpty, reason: 'no duplicate alert survives, so every spot reads available');
@@ -249,18 +247,19 @@ void main() {
       final service = _ServiceWithHost(
         _RecordingHost({
           'scoring:core:scoreCandidates': {
-            'worked': {'notices': const [], 'alerts': const ['duplicate']},
+            'worked': {
+              'notices': const [],
+              'alerts': const ['duplicate'],
+            },
           },
           'scoring:contest:scoreCandidates': Exception('contest scorer blew up'),
         }),
         scopes: const {'core': 'always', 'contest': 'always'},
       );
 
-      final result = await withScoringBackend(() => service.scoreCandidates(
-            operation: const {'stationCall': 'N0DEV'},
-            operationUuid: 'op-1',
-            candidates: {'worked': _candidate('K1ABC')},
-          ));
+      final result = await withScoringBackend(
+        () => service.scoreCandidates(operation: const {'stationCall': 'N0DEV'}, operationUuid: 'op-1', candidates: {'worked': _candidate('K1ABC')}),
+      );
 
       expect(result?['worked']?['alerts'], ['duplicate']);
     });
@@ -269,18 +268,12 @@ void main() {
     // open. Reporting each one would send a four-hour activation's worth of
     // identical events for one broken extension.
     test('reports once, however many passes fail', () async {
-      final service = _ServiceWithHost(
-        _RecordingHost({'scoring:core:scoreCandidates': Exception('scorer blew up')}),
-      );
+      final service = _ServiceWithHost(_RecordingHost({'scoring:core:scoreCandidates': Exception('scorer blew up')}));
       final backend = FakeErrorReportingBackend();
 
       await withErrorHooks(() async {
         for (var pass = 0; pass < 3; pass++) {
-          await service.scoreCandidates(
-            operation: const {'stationCall': 'N0DEV'},
-            operationUuid: 'op-1',
-            candidates: {'worked': _candidate('K1ABC')},
-          );
+          await service.scoreCandidates(operation: const {'stationCall': 'N0DEV'}, operationUuid: 'op-1', candidates: {'worked': _candidate('K1ABC')});
         }
       }, backend: backend);
 
@@ -295,24 +288,21 @@ void main() {
     // invisible for the rest of the session.
     test('a scorer that recovers and breaks again is reported again', () async {
       final backend = FakeErrorReportingBackend();
-      final broken = _ServiceWithHost(
-        _RecordingHost({'scoring:core:scoreCandidates': Exception('scorer blew up')}),
-      );
+      final broken = _ServiceWithHost(_RecordingHost({'scoring:core:scoreCandidates': Exception('scorer blew up')}));
       final working = _ServiceWithHost(
         _RecordingHost({
           'scoring:core:scoreCandidates': {
-            'worked': {'notices': const [], 'alerts': const ['duplicate']},
+            'worked': {
+              'notices': const [],
+              'alerts': const ['duplicate'],
+            },
           },
         }),
       );
 
       await withErrorHooks(() async {
         for (final service in [broken, working, broken]) {
-          await service.scoreCandidates(
-            operation: const {'stationCall': 'N0DEV'},
-            operationUuid: 'op-1',
-            candidates: {'worked': _candidate('K1ABC')},
-          );
+          await service.scoreCandidates(operation: const {'stationCall': 'N0DEV'}, operationUuid: 'op-1', candidates: {'worked': _candidate('K1ABC')});
         }
       }, backend: backend);
 

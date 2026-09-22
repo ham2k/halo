@@ -36,13 +36,7 @@ const civDefaultControllerAddress = 0xE0;
 /// Default CI-V addresses, per radio. The IC-705 ships as 0xA4; the others
 /// are here because the codec is model-agnostic and the driver takes the
 /// address as configuration.
-const civRadioAddresses = <String, int>{
-  'IC-705': 0xA4,
-  'IC-7300': 0x94,
-  'IC-9700': 0xA2,
-  'IC-7610': 0x98,
-  'IC-905': 0xAC,
-};
+const civRadioAddresses = <String, int>{'IC-705': 0xA4, 'IC-7300': 0x94, 'IC-9700': 0xA2, 'IC-7610': 0x98, 'IC-905': 0xAC};
 
 class CivCommand {
   /// Unsolicited frequency announcement (transceive).
@@ -104,9 +98,7 @@ const civModeCodes = <String, int>{
   'DV': 0x17,
 };
 
-final Map<int, String> _modeNamesByCode = {
-  for (final entry in civModeCodes.entries) entry.value: entry.key,
-};
+final Map<int, String> _modeNamesByCode = {for (final entry in civModeCodes.entries) entry.value: entry.key};
 
 String? civModeNameForCode(int code) => _modeNamesByCode[code];
 
@@ -121,10 +113,7 @@ int? civCodeForModeName(String? name) => name == null ? null : civModeCodes[name
 List<int> encodeBcdFrequency(int freqHz) {
   final digits = freqHz.abs().toString().padLeft(10, '0');
   final trimmed = digits.substring(digits.length - 10);
-  return [
-    for (var i = 8; i >= 0; i -= 2)
-      (int.parse(trimmed[i]) << 4) | int.parse(trimmed[i + 1]),
-  ];
+  return [for (var i = 8; i >= 0; i -= 2) (int.parse(trimmed[i]) << 4) | int.parse(trimmed[i + 1])];
 }
 
 /// Null for anything that isn't valid BCD — a nibble above 9 means the
@@ -158,22 +147,17 @@ const civKeyerSpeedMax = 48;
 /// within one step of the radio's own table at every speed (hamlib's
 /// `cw_lookup` for the same command lists 84 for 20 WPM against 85 here).
 int civLevelForKeyerSpeed(int wpm) =>
-    ((wpm.clamp(civKeyerSpeedMin, civKeyerSpeedMax) - civKeyerSpeedMin) * 255 / (civKeyerSpeedMax - civKeyerSpeedMin))
-        .round();
+    ((wpm.clamp(civKeyerSpeedMin, civKeyerSpeedMax) - civKeyerSpeedMin) * 255 / (civKeyerSpeedMax - civKeyerSpeedMin)).round();
 
 /// The inverse of [civLevelForKeyerSpeed], rounded to a whole WPM.
-int civKeyerSpeedForLevel(int level) =>
-    civKeyerSpeedMin + (level.clamp(0, 255) * (civKeyerSpeedMax - civKeyerSpeedMin) / 255).round();
+int civKeyerSpeedForLevel(int level) => civKeyerSpeedMin + (level.clamp(0, 255) * (civKeyerSpeedMax - civKeyerSpeedMin) / 255).round();
 
 /// A 0x14-family level: two BCD bytes, MOST-significant pair first (the
 /// opposite byte order from [encodeBcdFrequency]) — 0000-0255 standing for
 /// 0-100% of whatever the level in question maxes out at.
 List<int> encodeCivLevel(int value) {
   final digits = value.clamp(0, 255).toString().padLeft(4, '0');
-  return [
-    (int.parse(digits[0]) << 4) | int.parse(digits[1]),
-    (int.parse(digits[2]) << 4) | int.parse(digits[3]),
-  ];
+  return [(int.parse(digits[0]) << 4) | int.parse(digits[1]), (int.parse(digits[2]) << 4) | int.parse(digits[3])];
 }
 
 /// Null for anything that isn't exactly two valid-BCD bytes.
@@ -212,12 +196,7 @@ class CivFrame {
   bool isFor(int controllerAddress) => to == controllerAddress || to == civBroadcastAddress;
 
   @override
-  bool operator ==(Object other) =>
-      other is CivFrame &&
-      other.to == to &&
-      other.from == from &&
-      other.command == command &&
-      _sameBytes(other.data, data);
+  bool operator ==(Object other) => other is CivFrame && other.to == to && other.from == from && other.command == command && _sameBytes(other.data, data);
 
   @override
   int get hashCode => Object.hash(to, from, command, Object.hashAll(data));
@@ -236,54 +215,37 @@ bool _sameBytes(List<int> a, List<int> b) {
   return true;
 }
 
-List<int> buildCivFrame({
-  required int to,
-  int from = civDefaultControllerAddress,
-  required int command,
-  List<int> data = const [],
-}) =>
-    [civPreamble, civPreamble, to, from, command, ...data, civTerminator];
+List<int> buildCivFrame({required int to, int from = civDefaultControllerAddress, required int command, List<int> data = const []}) => [
+  civPreamble,
+  civPreamble,
+  to,
+  from,
+  command,
+  ...data,
+  civTerminator,
+];
 
 List<int> buildReadFrequencyFrame({required int to, int from = civDefaultControllerAddress}) =>
     buildCivFrame(to: to, from: from, command: CivCommand.readFrequency);
 
-List<int> buildReadModeFrame({required int to, int from = civDefaultControllerAddress}) =>
-    buildCivFrame(to: to, from: from, command: CivCommand.readMode);
+List<int> buildReadModeFrame({required int to, int from = civDefaultControllerAddress}) => buildCivFrame(to: to, from: from, command: CivCommand.readMode);
 
-List<int> buildSetFrequencyFrame({
-  required int to,
-  int from = civDefaultControllerAddress,
-  required int freqHz,
-}) =>
+List<int> buildSetFrequencyFrame({required int to, int from = civDefaultControllerAddress, required int freqHz}) =>
     buildCivFrame(to: to, from: from, command: CivCommand.setFrequency, data: encodeBcdFrequency(freqHz));
 
 /// [filter] is deliberately optional and omitted by default. polo always
 /// sent `01`, which silently forced the operator's filter to FIL1 every
 /// time the mode changed. Sending the mode alone leaves it alone.
-List<int>? buildSetModeFrame({
-  required int to,
-  int from = civDefaultControllerAddress,
-  required String? mode,
-  int? filter,
-}) {
+List<int>? buildSetModeFrame({required int to, int from = civDefaultControllerAddress, required String? mode, int? filter}) {
   final code = civCodeForModeName(mode);
   if (code == null) return null;
-  return buildCivFrame(
-    to: to,
-    from: from,
-    command: CivCommand.setMode,
-    data: [code, ?filter],
-  );
+  return buildCivFrame(to: to, from: from, command: CivCommand.setMode, data: [code, ?filter]);
 }
 
 List<int> buildReadPowerLevelFrame({required int to, int from = civDefaultControllerAddress}) =>
     buildCivFrame(to: to, from: from, command: CivCommand.readSetLevel, data: [civLevelRfPower]);
 
-List<int> buildSetPowerLevelFrame({
-  required int to,
-  int from = civDefaultControllerAddress,
-  required int level,
-}) =>
+List<int> buildSetPowerLevelFrame({required int to, int from = civDefaultControllerAddress, required int level}) =>
     buildCivFrame(to: to, from: from, command: CivCommand.readSetLevel, data: [civLevelRfPower, ...encodeCivLevel(level)]);
 
 /// `frame.data` from a 0x14 reply, once it's been confirmed to be the RF
@@ -294,13 +256,8 @@ int? parsePowerLevelData(List<int> data) => data.length < 3 ? null : decodeCivLe
 List<int> buildReadKeyerSpeedFrame({required int to, int from = civDefaultControllerAddress}) =>
     buildCivFrame(to: to, from: from, command: CivCommand.readSetLevel, data: [civLevelKeyerSpeed]);
 
-List<int> buildSetKeyerSpeedFrame({
-  required int to,
-  int from = civDefaultControllerAddress,
-  required int level,
-}) =>
-    buildCivFrame(
-        to: to, from: from, command: CivCommand.readSetLevel, data: [civLevelKeyerSpeed, ...encodeCivLevel(level)]);
+List<int> buildSetKeyerSpeedFrame({required int to, int from = civDefaultControllerAddress, required int level}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.readSetLevel, data: [civLevelKeyerSpeed, ...encodeCivLevel(level)]);
 
 /// `frame.data` from a 0x14 reply already confirmed to be the keyer-speed
 /// sub-command — the same two BCD bytes as [parsePowerLevelData].
@@ -336,7 +293,11 @@ List<int> buildReadTransmitStatusFrame({required int to, int from = civDefaultCo
 /// 0x01 (transmitting). Null for any other sub-command or a short reply.
 bool? parseTransmitStatusData(List<int> data) {
   if (data.length < 2 || data[0] != 0x00) return null;
-  return switch (data[1]) { 0x00 => false, 0x01 => true, _ => null };
+  return switch (data[1]) {
+    0x00 => false,
+    0x01 => true,
+    _ => null,
+  };
 }
 
 /// The DC input meter — a 0-255 reading like every other meter, NOT a
@@ -380,11 +341,7 @@ const civMeterAlc = 0x13;
 /// parses frames; what a number in one stands for is data, and data that
 /// gets edited far more often than this.
 
-List<int> buildReadMeterFrame({
-  required int to,
-  int from = civDefaultControllerAddress,
-  required int meterId,
-}) =>
+List<int> buildReadMeterFrame({required int to, int from = civDefaultControllerAddress, required int meterId}) =>
     buildCivFrame(to: to, from: from, command: CivCommand.readMeter, data: [meterId]);
 
 /// `frame.data` from a 0x15 reply, once it's been confirmed to be the
@@ -469,10 +426,5 @@ CivFrame? parseCivFrame(List<int> frame) {
   if (frame[0] != civPreamble || frame[1] != civPreamble) return null;
   if (frame.last != civTerminator) return null;
 
-  return CivFrame(
-    to: frame[2],
-    from: frame[3],
-    command: frame[4],
-    data: frame.sublist(5, frame.length - 1),
-  );
+  return CivFrame(to: frame[2], from: frame[3], command: frame[4], data: frame.sublist(5, frame.length - 1));
 }

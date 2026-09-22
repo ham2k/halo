@@ -68,22 +68,17 @@ void main() {
   });
 
   Widget wrap(Widget child) => TranslationProvider(
-        child: MaterialApp(home: Scaffold(body: child)),
-      );
+    child: MaterialApp(home: Scaffold(body: child)),
+  );
 
   Future<void> pumpPanel(WidgetTester tester, List<Qso> qsos) async {
-    await tester.pumpWidget(wrap(LoggingPanel(
-      operation: operation,
-      services: services,
-      qsos: qsos,
-      loggingControls: const [],
-      onCommandAction: (action, [params]) async {},
-    )));
+    await tester.pumpWidget(
+      wrap(LoggingPanel(operation: operation, services: services, qsos: qsos, loggingControls: const [], onCommandAction: (action, [params]) async {})),
+    );
     await tester.pump(const Duration(milliseconds: 100));
   }
 
-  TextField callField(WidgetTester tester) =>
-      tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+  TextField callField(WidgetTester tester) => tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
 
   /// The callsign the compose form is currently loaded with — which is how a
   /// selection shows up from the outside: arrowing onto a row populates the
@@ -111,8 +106,7 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('Arrow Up from the pills selects the newest QSO without taking the keyboard into the fields',
-      (tester) async {
+  testWidgets('Arrow Up from the pills selects the newest QSO without taking the keyboard into the fields', (tester) async {
     await pumpPanel(tester, [older, newer]);
     expect(loadedCall(tester), isEmpty);
 
@@ -128,10 +122,8 @@ void main() {
     await drainLookupQueueTimer(tester);
   });
 
-  testWidgets(
-      'Up and Down walk the log; Down past the newest row hands the keyboard back to the pills, opening the '
-      'remembered one, and deselects back to the new QSO being composed',
-      (tester) async {
+  testWidgets('Up and Down walk the log; Down past the newest row hands the keyboard back to the pills, opening the '
+      'remembered one, and deselects back to the new QSO being composed', (tester) async {
     await pumpPanel(tester, [older, newer]);
     await enterList(tester);
     expect(loadedCall(tester), 'K1ABC');
@@ -167,9 +159,7 @@ void main() {
     await drainLookupQueueTimer(tester);
   });
 
-  testWidgets(
-      'a second Down landing before the deferred hand-off fires does not steal focus back to the pills',
-      (tester) async {
+  testWidgets('a second Down landing before the deferred hand-off fires does not steal focus back to the pills', (tester) async {
     await pumpPanel(tester, [older, newer]);
     await enterList(tester);
     expect(loadedCall(tester), 'K1ABC');
@@ -190,14 +180,11 @@ void main() {
     // Down's now-stale callback.
     expect(loadedCall(tester), 'K1ABC');
     expect(focusedPill(tester), isNull);
-    expect(find.widgetWithText(TextField, 'Time (UTC)'), findsNothing,
-        reason: 'the stale callback must not have opened the remembered pill either');
+    expect(find.widgetWithText(TextField, 'Time (UTC)'), findsNothing, reason: 'the stale callback must not have opened the remembered pill either');
     await drainLookupQueueTimer(tester);
   });
 
-  testWidgets(
-      'Down past the newest row restores the callsign typed before arrowing up, not a blank form',
-      (tester) async {
+  testWidgets('Down past the newest row restores the callsign typed before arrowing up, not a blank form', (tester) async {
     await pumpPanel(tester, [older, newer]);
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'N0DRAFT');
     await tester.pump();
@@ -213,8 +200,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
     await tester.pump();
 
-    expect(loadedCall(tester), 'N0DRAFT',
-        reason: 'the draft the operator was composing must come back, not a blank form');
+    expect(loadedCall(tester), 'N0DRAFT', reason: 'the draft the operator was composing must come back, not a blank form');
     await drainLookupQueueTimer(tester);
   });
 
@@ -247,11 +233,13 @@ void main() {
     Future<List<Qso>> longLog() async {
       final list = <Qso>[];
       for (var i = 1; i <= 40; i++) {
-        list.add(await services.qsos.add(operation.uuid, {
-          'their': {'call': 'K${i}HAM', 'sent': '59'},
-          'mode': 'SSB',
-          'startAtMillis': 1000 + i * 60000,
-        }));
+        list.add(
+          await services.qsos.add(operation.uuid, {
+            'their': {'call': 'K${i}HAM', 'sent': '59'},
+            'mode': 'SSB',
+            'startAtMillis': 1000 + i * 60000,
+          }),
+        );
       }
       return list;
     }
@@ -385,8 +373,7 @@ void main() {
     await drainLookupQueueTimer(tester);
   });
 
-  testWidgets('Enter on a row restores the field the operator was in before arrowing up, not always Call',
-      (tester) async {
+  testWidgets('Enter on a row restores the field the operator was in before arrowing up, not always Call', (tester) async {
     // enterList always starts from Call, which happens to be Enter's own
     // fallback too — coincidentally passing even a hardcoded "always Call"
     // implementation. This starts from a different main field to actually
@@ -407,8 +394,11 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump();
 
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).focusNode?.hasFocus, isTrue,
-        reason: 'Enter is "resume editing where I left off", not "start fresh" — that\'s Escape\'s job');
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).focusNode?.hasFocus,
+      isTrue,
+      reason: 'Enter is "resume editing where I left off", not "start fresh" — that\'s Escape\'s job',
+    );
     expect(callField(tester).focusNode?.hasFocus, isFalse);
     expect(loadedCall(tester), 'W1AW');
     await drainLookupQueueTimer(tester);

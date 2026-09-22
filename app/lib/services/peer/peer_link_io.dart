@@ -133,11 +133,7 @@ class WebSocketPeerLinkServer implements PeerLinkServer {
 /// static factory on the implementation cannot be swapped for a fake.
 Future<PeerLinkServer> bindPeerLinkServer({int port = 0}) async {
   final server = await HttpServer.bind(InternetAddress.anyIPv4, port, shared: false);
-  return WebSocketPeerLinkServer._(
-    server,
-    StreamController<PeerLink>.broadcast(),
-    StreamController<PeerMediaConnection>.broadcast(),
-  );
+  return WebSocketPeerLinkServer._(server, StreamController<PeerLink>.broadcast(), StreamController<PeerMediaConnection>.broadcast());
 }
 
 /// Dials [address]:[port].
@@ -145,34 +141,31 @@ Future<PeerLinkServer> bindPeerLinkServer({int port = 0}) async {
 /// [timeout] bounds the whole attempt: a peer that has left the network
 /// answers neither a SYN nor a close, and the OS default connect timeout is
 /// long enough that a discovery loop would pile up attempts behind it.
-Future<PeerLink> dialPeerLink(
-  String address,
-  int port, {
-  Duration timeout = const Duration(seconds: 5),
-  String? mediaTicket,
-}) async {
+Future<PeerLink> dialPeerLink(String address, int port, {Duration timeout = const Duration(seconds: 5), String? mediaTicket}) async {
   var timedOut = false;
   // A media link goes to the same host and port as the control one — same
   // bound socket, same beacon — and is told apart by its path alone.
   final url = mediaTicket == null
       ? 'ws://$address:$port'
       : 'ws://$address:$port${WebSocketPeerLinkServer.mediaPath}'
-          '?ticket=${Uri.encodeQueryComponent(mediaTicket)}';
+            '?ticket=${Uri.encodeQueryComponent(mediaTicket)}';
   final pending = WebSocket.connect(url);
   // `.timeout()` fails the future it returns; it does NOT cancel the connect
   // underneath. A slow peer that answers afterwards would leave an open
   // socket nothing holds — and an accepted session on the far side for a
   // link this side already gave up on — so the late arrival is closed.
-  unawaited(pending.then(
-    (socket) async {
+  unawaited(
+    pending.then((socket) async {
       if (timedOut) await socket.close();
+    }, onError: (Object _) {}),
+  );
+  final socket = await pending.timeout(
+    timeout,
+    onTimeout: () {
+      timedOut = true;
+      throw TimeoutException('peer dial to $address:$port timed out', timeout);
     },
-    onError: (Object _) {},
-  ));
-  final socket = await pending.timeout(timeout, onTimeout: () {
-    timedOut = true;
-    throw TimeoutException('peer dial to $address:$port timed out', timeout);
-  });
+  );
   if (mediaTicket != null) socket.pingInterval = WebSocketPeerLinkServer.mediaPingInterval;
   return WebSocketPeerLink(socket);
 }

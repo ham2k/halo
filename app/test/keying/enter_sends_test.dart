@@ -31,11 +31,13 @@ class _TemplateExtensions extends ExtensionService {
   Future<void> start() async {}
 
   @override
-  Future<String?> renderTemplate(String template,
-          {Map<String, dynamic>? operation, Map<String, dynamic>? qso, int? qsoCount, Map<String, dynamic>? log}) async =>
-      template
-          .replaceAll('{{qso.call}}', ((qso?['their'] as Map?)?['call'] as String?) ?? '')
-          .replaceAll('{{op.call}}', 'KI2D');
+  Future<String?> renderTemplate(
+    String template, {
+    Map<String, dynamic>? operation,
+    Map<String, dynamic>? qso,
+    int? qsoCount,
+    Map<String, dynamic>? log,
+  }) async => template.replaceAll('{{qso.call}}', ((qso?['their'] as Map?)?['call'] as String?) ?? '').replaceAll('{{op.call}}', 'KI2D');
 }
 
 void main() {
@@ -57,18 +59,18 @@ void main() {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final node = await services.cat.addNode(
-      typeKey: 'placeholder-radio',
-      name: 'Bench Rig',
-      config: placeholderRadioModel.variants.single.defaultConfig,
-    );
+    final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
     rig = node.uuid;
     await tester.runAsync(() => services.cat.connect(rig));
     addTearDown(() => services.cat.disconnect(rig));
     final operation = await services.operations.create(stationCall: 'KI2D');
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: OperationView(services: services, operationUuid: operation.uuid)),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -82,8 +84,7 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   }
 
-  EnterSends? enterSends(WidgetTester tester) =>
-      tester.widget<LoggingControls>(find.byType(LoggingControls)).session.enterSends?.call();
+  EnterSends? enterSends(WidgetTester tester) => tester.widget<LoggingControls>(find.byType(LoggingControls)).session.enterSends?.call();
 
   const cwDraft = {
     'their': {'call': 'W1AW'},
@@ -155,10 +156,13 @@ void main() {
     // the Enter's snapshot or the thanks goes out with no call in it.
     await pumpOperation(tester);
     services.cat.setEnterSends(on: true);
-    enterSends(tester)!.send([EsmMessage.hisCall], const {
-      'their': {'call': 'K1ABC'},
-      'mode': 'CW',
-    });
+    enterSends(tester)!.send(
+      [EsmMessage.hisCall],
+      const {
+        'their': {'call': 'K1ABC'},
+        'mode': 'CW',
+      },
+    );
     await tester.pump();
     await tester.pump();
     expect(services.cat.cwProgress.value?.text, 'K1ABC');

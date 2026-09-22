@@ -23,10 +23,7 @@ void main() {
 
   /// The half-strength wrapper app-polo's deleted row has, if [title]'s row
   /// sits in one.
-  Finder fade(String title) => find.ancestor(
-        of: row(title),
-        matching: find.byWidgetPredicate((w) => w is Opacity && w.opacity == 0.5),
-      );
+  Finder fade(String title) => find.ancestor(of: row(title), matching: find.byWidgetPredicate((w) => w is Opacity && w.opacity == 0.5));
 
   bool struckThrough(WidgetTester tester, String title) {
     final spans = <InlineSpan>[];
@@ -47,7 +44,11 @@ void main() {
     final gone = await services.operations.create(stationCall: 'N0DEV', userTitle: 'Gone');
     await services.operations.softDelete(gone.uuid);
 
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: HomeView(services: services)),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(row('Alive'), findsOneWidget);

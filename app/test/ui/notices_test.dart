@@ -27,23 +27,22 @@ void main() {
     String platform = 'macos',
     Set<String> dismissedKeys = const {},
     DateTime? now,
-  }) =>
-      NoticeContext(
-        baseCall: baseCall,
-        call: call,
-        entityPrefix: entityPrefix,
-        continent: continent,
-        countryCode: countryCode,
-        ituRegion: ituRegion,
-        appVersion: appVersion,
-        appVersionName: "August '26",
-        appBuild: appBuild,
-        appCodePush: appCodePush,
-        appSha: appSha,
-        platform: platform,
-        dismissedKeys: dismissedKeys,
-        now: now ?? DateTime.utc(2026, 8, 1),
-      );
+  }) => NoticeContext(
+    baseCall: baseCall,
+    call: call,
+    entityPrefix: entityPrefix,
+    continent: continent,
+    countryCode: countryCode,
+    ituRegion: ituRegion,
+    appVersion: appVersion,
+    appVersionName: "August '26",
+    appBuild: appBuild,
+    appCodePush: appCodePush,
+    appSha: appSha,
+    platform: platform,
+    dismissedKeys: dismissedKeys,
+    now: now ?? DateTime.utc(2026, 8, 1),
+  );
 
   List<String> keys(List<EvaluatedNotice> ns) => ns.map((n) => n.key).toList();
 
@@ -61,23 +60,43 @@ void main() {
   group('version and build filters', () {
     test('versions match by startsWith', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'versions': ['26.8']},
-        {'key': 'b', 'text': 'x', 'versions': ['26.7']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'versions': ['26.8'],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'versions': ['26.7'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(appVersion: '26.8.0'))), ['a']);
     });
 
     test('exceptVersions hides a matching version', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'exceptVersions': ['26.8']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'exceptVersions': ['26.8'],
+        },
       ];
       expect(evaluateNotices(notices, ctx(appVersion: '26.8.0')), isEmpty);
     });
 
     test('builds match exactly', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'builds': ['1234']},
-        {'key': 'b', 'text': 'x', 'builds': ['9999']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'builds': ['1234'],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'builds': ['9999'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(appBuild: '1234'))), ['a']);
     });
@@ -90,16 +109,32 @@ void main() {
       // nobody tripped. A code push never alters the binary, so the rule must
       // still reach the install.
       final notices = [
-        {'key': 'a', 'text': 'x', 'builds': ['1234']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'builds': ['1234'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(appBuild: '1234', appCodePush: '2'))), ['a']);
     });
 
     test('codePushes match exactly, and exceptCodePushes withholds one push from a wider notice', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'codePushes': ['2']},
-        {'key': 'b', 'text': 'x', 'codePushes': ['3']},
-        {'key': 'c', 'text': 'x', 'exceptCodePushes': ['2']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'codePushes': ['2'],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'codePushes': ['3'],
+        },
+        {
+          'key': 'c',
+          'text': 'x',
+          'exceptCodePushes': ['2'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(appCodePush: '2'))), ['a']);
       expect(keys(evaluateNotices(notices, ctx(appCodePush: '3'))), ['b', 'c']);
@@ -111,8 +146,16 @@ void main() {
       // treating it as matchable would fire a push-targeted notice at all of
       // them at once.
       final notices = [
-        {'key': 'a', 'text': 'x', 'codePushes': ['2']},
-        {'key': 'b', 'text': 'x', 'exceptCodePushes': ['2']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'codePushes': ['2'],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'exceptCodePushes': ['2'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(appCodePush: ''))), ['b']);
     });
@@ -124,10 +167,26 @@ void main() {
       // silently matches nothing there, and the author sees only an absent
       // notice. A longer rule than the build's SHA must still not match.
       final notices = [
-        {'key': 'screen', 'text': 'x', 'shas': ['ee78b41']},
-        {'key': 'exact', 'text': 'x', 'shas': ['ee78b41e2']},
-        {'key': 'whole', 'text': 'x', 'shas': ['ee78b41e2f0a1b2c3d4e5f60718293a4b5c6d7e8']},
-        {'key': 'other', 'text': 'x', 'shas': ['deadbeefc0ffee']},
+        {
+          'key': 'screen',
+          'text': 'x',
+          'shas': ['ee78b41'],
+        },
+        {
+          'key': 'exact',
+          'text': 'x',
+          'shas': ['ee78b41e2'],
+        },
+        {
+          'key': 'whole',
+          'text': 'x',
+          'shas': ['ee78b41e2f0a1b2c3d4e5f60718293a4b5c6d7e8'],
+        },
+        {
+          'key': 'other',
+          'text': 'x',
+          'shas': ['deadbeefc0ffee'],
+        },
       ];
       // All three lengths name the same commit, so all three reach the build:
       // seven off a screen, nine as baked, and the forty a rule author pastes
@@ -142,15 +201,27 @@ void main() {
       // loudly, but an over-broad `exceptShas` WITHHOLDS a notice from a slice
       // of the fleet and leaves nothing on anyone's screen to report.
       final notices = [
-        {'key': 'stub', 'text': 'x', 'shas': ['ee7']},
-        {'key': 'muted', 'text': 'x', 'exceptShas': ['ee7']},
+        {
+          'key': 'stub',
+          'text': 'x',
+          'shas': ['ee7'],
+        },
+        {
+          'key': 'muted',
+          'text': 'x',
+          'exceptShas': ['ee7'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(appSha: 'ee78b41e2'))), ['muted']);
     });
 
     test('exceptShas mutes by prefix too, so a screen-read SHA can withhold a notice', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'exceptShas': ['ee78b41']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'exceptShas': ['ee78b41'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(appSha: 'ee78b41e2'))), isEmpty);
       expect(keys(evaluateNotices(notices, ctx(appSha: 'deadbeef1'))), ['a']);
@@ -161,9 +232,21 @@ void main() {
       // what the hosted web app and every preview deploy are — so this is the
       // only way to name one of them.
       final notices = [
-        {'key': 'a', 'text': 'x', 'shas': ['04e3d1']},
-        {'key': 'b', 'text': 'x', 'shas': ['deadbe']},
-        {'key': 'c', 'text': 'x', 'exceptShas': ['04e3d1']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'shas': ['04e3d1'],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'shas': ['deadbe'],
+        },
+        {
+          'key': 'c',
+          'text': 'x',
+          'exceptShas': ['04e3d1'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(appSha: '04e3d1'))), ['a']);
       expect(keys(evaluateNotices(notices, ctx(appSha: 'deadbe'))), ['b', 'c']);
@@ -173,8 +256,16 @@ void main() {
       // Every local build bakes in no SHA. Treating '' as a matchable value
       // would make one `shas` typo hit every developer's machine at once.
       final notices = [
-        {'key': 'a', 'text': 'x', 'shas': ['04e3d1']},
-        {'key': 'b', 'text': 'x', 'exceptShas': ['04e3d1']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'shas': ['04e3d1'],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'exceptShas': ['04e3d1'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(appSha: ''))), ['b']);
     });
@@ -185,8 +276,16 @@ void main() {
       // OSS and non-CI build at once — or, for exceptShas, mute one for all
       // of them. Both are silent: nobody authoring the file sees it happen.
       final notices = [
-        {'key': 'a', 'text': 'x', 'shas': ['']},
-        {'key': 'b', 'text': 'x', 'exceptShas': ['']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'shas': [''],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'exceptShas': [''],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(appSha: ''))), ['b']);
       expect(keys(evaluateNotices(notices, ctx(appSha: '04e3d1'))), ['b']);
@@ -196,8 +295,16 @@ void main() {
   group('platform filter', () {
     test('only shows on listed platforms', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'platforms': ['ios', 'android']},
-        {'key': 'b', 'text': 'x', 'platforms': ['macos']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'platforms': ['ios', 'android'],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'platforms': ['macos'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(platform: 'macos'))), ['b']);
     });
@@ -217,8 +324,16 @@ void main() {
   group('callsign filters', () {
     test('calls matches the base call', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'calls': ['ki2d']},
-        {'key': 'b', 'text': 'x', 'calls': ['w1aw']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'calls': ['ki2d'],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'calls': ['w1aw'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(baseCall: 'KI2D'))), ['a']);
     });
@@ -251,40 +366,80 @@ void main() {
   group('geo filters', () {
     test('entities match the DXCC entity prefix', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'entities': ['K']},
-        {'key': 'b', 'text': 'x', 'entities': ['G']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'entities': ['K'],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'entities': ['G'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(entityPrefix: 'K'))), ['a']);
     });
 
     test('continents match', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'continents': ['NA']},
-        {'key': 'b', 'text': 'x', 'continents': ['EU']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'continents': ['NA'],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'continents': ['EU'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(continent: 'NA'))), ['a']);
     });
 
     test('countries match by lowercase ISO code (HALO-52)', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'countries': ['us']},
-        {'key': 'b', 'text': 'x', 'countries': ['au']},
+        {
+          'key': 'a',
+          'text': 'x',
+          'countries': ['us'],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'countries': ['au'],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(countryCode: 'us'))), ['a']);
     });
 
     test('ituRegions match by number (HALO-52)', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'ituRegions': [2]},
-        {'key': 'b', 'text': 'x', 'ituRegions': [1, 3]},
+        {
+          'key': 'a',
+          'text': 'x',
+          'ituRegions': [2],
+        },
+        {
+          'key': 'b',
+          'text': 'x',
+          'ituRegions': [1, 3],
+        },
       ];
       expect(keys(evaluateNotices(notices, ctx(ituRegion: 2))), ['a']);
     });
 
     test('countries/ituRegions fail closed when the operator\'s own value is unknown', () {
       final notices = [
-        {'key': 'c', 'text': 'x', 'countries': ['us']},
-        {'key': 'i', 'text': 'x', 'ituRegions': [2]},
+        {
+          'key': 'c',
+          'text': 'x',
+          'countries': ['us'],
+        },
+        {
+          'key': 'i',
+          'text': 'x',
+          'ituRegions': [2],
+        },
         {'key': 'ok', 'text': 'x'},
       ];
       expect(keys(evaluateNotices(notices, ctx(countryCode: null, ituRegion: null))), ['ok']);
@@ -331,7 +486,12 @@ void main() {
 
     test('a non-matching earlier same-key notice does not shadow a later match', () {
       final notices = [
-        {'key': 'k', 'text': 'x', 'title': 'nomatch', 'versions': ['99.0']},
+        {
+          'key': 'k',
+          'text': 'x',
+          'title': 'nomatch',
+          'versions': ['99.0'],
+        },
         {'key': 'k', 'text': 'x', 'title': 'match'},
       ];
       final result = evaluateNotices(notices, ctx(appVersion: '26.8.0'));
@@ -399,7 +559,13 @@ void main() {
 
     test('expands actionLabel shorthand into actions', () {
       final notices = [
-        {'key': 'a', 'text': 'x', 'action': 'link', 'actionLabel': 'Open', 'actionArgs': {'url': 'https://x'}},
+        {
+          'key': 'a',
+          'text': 'x',
+          'action': 'link',
+          'actionLabel': 'Open',
+          'actionArgs': {'url': 'https://x'},
+        },
       ];
       final action = evaluateNotices(notices, ctx()).single.actions.single;
       expect(action['action'], 'link');

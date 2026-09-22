@@ -63,9 +63,7 @@ Duration telemetryFloor({required int cycleBytes, int? baudRate}) {
   if (baudRate == null || baudRate <= 0) return kTelemetryFloorFast;
   final wireMillis = cycleBytes * _bitsPerByte * 1000 / baudRate;
   final millis = (wireMillis / _dutyCycle).ceil();
-  return millis < kTelemetryFloorFast.inMilliseconds
-      ? kTelemetryFloorFast
-      : Duration(milliseconds: millis);
+  return millis < kTelemetryFloorFast.inMilliseconds ? kTelemetryFloorFast : Duration(milliseconds: millis);
 }
 
 /// What a node should be polled at: what the operator asked for, never
@@ -79,16 +77,10 @@ Duration telemetryFloor({required int cycleBytes, int? baudRate}) {
 /// Called once per cadence, with that cadence's own cycle: the TX watch is a
 /// single short exchange and the meter read is several, so on a slow link
 /// the same stated interval is affordable for one and not the other.
-Duration telemetryIntervalFor(
-  Map<String, dynamic> config, {
-  required int cycleBytes,
-  int? baudRate,
-}) {
+Duration telemetryIntervalFor(Map<String, dynamic> config, {required int cycleBytes, int? baudRate}) {
   final floor = telemetryFloor(cycleBytes: cycleBytes, baudRate: baudRate);
   final asked = _millisFromConfig(config[telemetryIntervalConfigKey]);
-  final wanted = asked == null
-      ? (kTelemetryInterval > floor ? kTelemetryInterval : floor)
-      : Duration(milliseconds: asked);
+  final wanted = asked == null ? (kTelemetryInterval > floor ? kTelemetryInterval : floor) : Duration(milliseconds: asked);
   return wanted < floor ? floor : wanted;
 }
 
@@ -136,11 +128,7 @@ class TelemetryPoller {
 
   bool _watching = false;
 
-  TelemetryPoller({
-    required this.onPoll,
-    this.idleInterval = kTelemetryInterval,
-    this.txInterval = kTelemetryInterval,
-  });
+  TelemetryPoller({required this.onPoll, this.idleInterval = kTelemetryInterval, this.txInterval = kTelemetryInterval});
 
   bool get isRunning => _timer != null;
 

@@ -31,24 +31,17 @@ void main() {
     ],
   };
 
-  Future<Map<String, dynamic>?> typeAndSave(
-    WidgetTester tester,
-    String text, {
-    Map<String, dynamic> initialState = const {},
-  }) async {
+  Future<Map<String, dynamic>?> typeAndSave(WidgetTester tester, String text, {Map<String, dynamic> initialState = const {}}) async {
     Map<String, dynamic>? submitted;
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: FormRenderer(
-            formDefinition: definition,
-            initialState: initialState,
-            onSubmit: (values) => submitted = values,
-            onCancel: () {},
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: FormRenderer(formDefinition: definition, initialState: initialState, onSubmit: (values) => submitted = values, onCancel: () {}),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     if (text.isNotEmpty) {
       await tester.enterText(find.widgetWithText(TextField, 'Power'), text);
@@ -61,8 +54,7 @@ void main() {
     return submitted;
   }
 
-  String shownText(WidgetTester tester) =>
-      tester.widget<TextField>(find.widgetWithText(TextField, 'Power')).controller!.text;
+  String shownText(WidgetTester tester) => tester.widget<TextField>(find.widgetWithText(TextField, 'Power')).controller!.text;
 
   testWidgets('under period conventions, either decimal key works', (tester) async {
     expect(await typeAndSave(tester, '1.5'), containsPair('power', 1.5));
@@ -91,8 +83,7 @@ void main() {
   testWidgets('a stored value is shown in the operator\'s own conventions', (tester) async {
     NumberFormatting.instance.configure(decimal: ',', grouping: '.', locale: 'es_ES');
     await typeAndSave(tester, '', initialState: const {'power': 1.5});
-    expect(shownText(tester), '1,5',
-        reason: 'showing "1.5" would make the first edit of an untouched value unparseable');
+    expect(shownText(tester), '1,5', reason: 'showing "1.5" would make the first edit of an untouched value unparseable');
   });
 
   testWidgets('and what it shows is what it reads back', (tester) async {
@@ -101,8 +92,7 @@ void main() {
     final shown = shownText(tester);
     // Re-typing exactly what the field displays must give the value back —
     // opening a form and saving it unchanged must not move the number.
-    expect(await typeAndSave(tester, shown, initialState: const {'power': 12.25}),
-        containsPair('power', 12.25));
+    expect(await typeAndSave(tester, shown, initialState: const {'power': 12.25}), containsPair('power', 12.25));
   });
 
   testWidgets('a whole number grows no fraction on the way to the field', (tester) async {

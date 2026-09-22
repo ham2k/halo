@@ -23,11 +23,7 @@ import '../support/peer_network_fakes.dart';
 /// about rather than on a guessed sleep. Real sockets and timers are
 /// involved, so there is no fixed number of pumps that is both reliable and
 /// quick.
-Future<void> waitFor(
-  String what,
-  FutureOr<bool> Function() condition, {
-  Duration timeout = const Duration(seconds: 20),
-}) async {
+Future<void> waitFor(String what, FutureOr<bool> Function() condition, {Duration timeout = const Duration(seconds: 20)}) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
     if (await condition()) return;
@@ -111,34 +107,35 @@ void main() {
 
   test('two devices discover each other, pair once, and sync both ways', () async {
     final op = await sharedOperation();
-    await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}, 'band': '20m'});
+    await deviceA.qsos.add(op, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+    });
 
     await deviceA.service.setOpenOperation(op);
     await deviceB.service.setOpenOperation(op);
 
     // Discovery is by broadcast beacon; nobody told either side the other
     // exists.
-    await waitFor('each side to see the other', () =>
-        deviceA.service.peers.containsKey('device-b') && deviceB.service.peers.containsKey('device-a'));
+    await waitFor('each side to see the other', () => deviceA.service.peers.containsKey('device-b') && deviceB.service.peers.containsKey('device-a'));
 
     // Neither has paired before, so both should be waiting on their operator.
-    await waitFor('both to ask for pairing',
-        () => deviceA.service.pendingPairing != null && deviceB.service.pendingPairing != null);
-    expect(deviceB.service.pendingPairing!.session!.peer!.deviceName, 'Laptop',
-        reason: 'the prompt has to be able to say WHICH device is asking');
+    await waitFor('both to ask for pairing', () => deviceA.service.pendingPairing != null && deviceB.service.pendingPairing != null);
+    expect(deviceB.service.pendingPairing!.session!.peer!.deviceName, 'Laptop', reason: 'the prompt has to be able to say WHICH device is asking');
 
     await deviceA.service.acceptPairing('device-b');
     await deviceB.service.acceptPairing('device-a');
 
-    await waitFor('A\'s QSO to reach B',
-        () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
+    await waitFor('A\'s QSO to reach B', () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
     expect((await deviceB.qsos.watchForOperation(op).first).single.theirCall, 'W1AW');
 
     // And the reverse direction, live, with no reconnect.
-    await deviceB.qsos.add(op, {'their': {'call': 'K1ABC'}, 'band': '40m'});
+    await deviceB.qsos.add(op, {
+      'their': {'call': 'K1ABC'},
+      'band': '40m',
+    });
     await deviceB.service.pushLocal();
-    await waitFor('B\'s QSO to reach A',
-        () async => (await deviceA.qsos.watchForOperation(op).first).length == 2);
+    await waitFor('B\'s QSO to reach A', () async => (await deviceA.qsos.watchForOperation(op).first).length == 2);
 
     final onA = await deviceA.qsos.watchForOperation(op).first;
     expect(onA.map((q) => q.theirCall).toSet(), {'W1AW', 'K1ABC'});
@@ -150,15 +147,15 @@ void main() {
     await deviceB.service.trust.trust('device-a', name: 'Laptop');
     await deviceA.service.setOpenOperation(op);
     await deviceB.service.setOpenOperation(op);
-    await waitFor('the link to go live',
-        () => deviceA.service.peers['device-b']?.session?.state == PeerSessionState.live);
+    await waitFor('the link to go live', () => deviceA.service.peers['device-b']?.session?.state == PeerSessionState.live);
 
     // The whole point: log it and touch nothing else. No scanNow, no
     // pushLocal — just the repository write an operator's Enter key makes.
-    await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}});
+    await deviceA.qsos.add(op, {
+      'their': {'call': 'W1AW'},
+    });
 
-    await waitFor('the QSO to arrive on its own',
-        () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
+    await waitFor('the QSO to arrive on its own', () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
     expect((await deviceB.qsos.watchForOperation(op).first).single.theirCall, 'W1AW');
   });
 
@@ -166,18 +163,17 @@ void main() {
     final op = await sharedOperation();
     await deviceA.service.setOpenOperation(op);
     await deviceB.service.setOpenOperation(op);
-    await waitFor('pairing prompts',
-        () => deviceA.service.pendingPairing != null && deviceB.service.pendingPairing != null);
+    await waitFor('pairing prompts', () => deviceA.service.pendingPairing != null && deviceB.service.pendingPairing != null);
     await deviceA.service.acceptPairing('device-b');
     await deviceB.service.acceptPairing('device-a');
-    await waitFor('the link to go live', () =>
-        deviceA.service.peers['device-b']?.session?.state == PeerSessionState.live);
+    await waitFor('the link to go live', () => deviceA.service.peers['device-b']?.session?.state == PeerSessionState.live);
 
-    await deviceA.qsos.add(op, {'their': {'call': 'EA4XYZ'}});
+    await deviceA.qsos.add(op, {
+      'their': {'call': 'EA4XYZ'},
+    });
     await deviceA.service.pushLocal();
 
-    await waitFor('the new QSO to arrive',
-        () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
+    await waitFor('the new QSO to arrive', () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
     expect((await deviceB.qsos.watchForOperation(op).first).single.theirCall, 'EA4XYZ');
   });
 
@@ -185,13 +181,14 @@ void main() {
     final op = await sharedOperation();
     await deviceA.service.trust.trust('device-b', name: 'Phone');
     await deviceB.service.trust.trust('device-a', name: 'Laptop');
-    await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}});
+    await deviceA.qsos.add(op, {
+      'their': {'call': 'W1AW'},
+    });
 
     await deviceA.service.setOpenOperation(op);
     await deviceB.service.setOpenOperation(op);
 
-    await waitFor('sync with no operator involvement',
-        () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
+    await waitFor('sync with no operator involvement', () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
     expect(deviceA.service.pendingPairing, isNull);
     expect(deviceB.service.pendingPairing, isNull);
   });
@@ -205,8 +202,7 @@ void main() {
     final op = await sharedOperation();
     await deviceA.service.setOpenOperation(op);
     await deviceB.service.setOpenOperation(op);
-    await waitFor('pairing prompts',
-        () => deviceA.service.pendingPairing != null && deviceB.service.pendingPairing != null);
+    await waitFor('pairing prompts', () => deviceA.service.pendingPairing != null && deviceB.service.pendingPairing != null);
     expect(deviceA.service.linkedDeviceIds, isEmpty);
 
     await deviceA.service.acceptPairing('device-b');
@@ -240,17 +236,16 @@ void main() {
     final opB = (await deviceB.operations.create(stationCall: "KI2D", userTitle: "B")).uuid;
     await deviceA.service.trust.trust('device-b', name: 'Phone');
     await deviceB.service.trust.trust('device-a', name: 'Laptop');
-    await deviceA.qsos.add(opA, {'their': {'call': 'W1AW'}});
+    await deviceA.qsos.add(opA, {
+      'their': {'call': 'W1AW'},
+    });
 
     await deviceA.service.setOpenOperation(opA);
     await deviceB.service.setOpenOperation(opB);
 
-    await waitFor("A's operation to reach B",
-        () async => (await deviceB.qsos.watchForOperation(opA).first).isNotEmpty);
-    expect((await deviceB.operations.get(opA))?.userTitle, 'A',
-        reason: 'the operation record travels with its log, or B has QSOs under nothing');
-    expect(await deviceB.qsos.watchForOperation(opB).first, isEmpty,
-        reason: "A's contact must not land under the operation B has open");
+    await waitFor("A's operation to reach B", () async => (await deviceB.qsos.watchForOperation(opA).first).isNotEmpty);
+    expect((await deviceB.operations.get(opA))?.userTitle, 'A', reason: 'the operation record travels with its log, or B has QSOs under nothing');
+    expect(await deviceB.qsos.watchForOperation(opB).first, isEmpty, reason: "A's contact must not land under the operation B has open");
   });
 
   test('an unseen operation does not cross to a device on another account', () async {
@@ -262,13 +257,14 @@ void main() {
     final opA = (await deviceA.operations.create(stationCall: "KI2D", userTitle: "A")).uuid;
     await deviceA.service.trust.trust('device-b', name: 'Phone');
     await deviceB.service.trust.trust('device-a', name: 'Laptop');
-    await deviceA.qsos.add(opA, {'their': {'call': 'W1AW'}});
+    await deviceA.qsos.add(opA, {
+      'their': {'call': 'W1AW'},
+    });
 
     await deviceA.service.setOpenOperation(opA);
     await deviceB.service.setOpenOperation(null);
 
-    await waitFor('the pair to establish',
-        () => deviceB.service.peers['device-a']?.session?.state == PeerSessionState.connected);
+    await waitFor('the pair to establish', () => deviceB.service.peers['device-a']?.session?.state == PeerSessionState.connected);
     // Time for a wrong catch-up to have delivered before the negative.
     await Future<void>.delayed(const Duration(seconds: 1));
     expect(await deviceB.operations.get(opA), isNull);
@@ -282,21 +278,27 @@ void main() {
     final op = await sharedOperation();
     await deviceA.service.trust.trust('device-b', name: 'Phone');
     await deviceB.service.trust.trust('device-a', name: 'Laptop');
-    await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}});
+    await deviceA.qsos.add(op, {
+      'their': {'call': 'W1AW'},
+    });
 
     await deviceA.service.setOpenOperation(null);
     await deviceB.service.setOpenOperation(null);
-    await waitFor('the pair to establish with neither side in an operation',
-        () => deviceB.service.peers['device-a']?.session?.state == PeerSessionState.connected);
+    await waitFor(
+      'the pair to establish with neither side in an operation',
+      () => deviceB.service.peers['device-a']?.session?.state == PeerSessionState.connected,
+    );
     final sessionBefore = deviceB.service.peers['device-a']!.session;
 
     await deviceA.service.setOpenOperation(op);
 
-    await waitFor('the backlog to arrive over the existing session',
-        () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
+    await waitFor('the backlog to arrive over the existing session', () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
     expect((await deviceB.qsos.watchForOperation(op).first).single.theirCall, 'W1AW');
-    expect(identical(deviceB.service.peers['device-a']!.session, sessionBefore), isTrue,
-        reason: 'the SAME session must carry it — reconnecting would defeat device-bound sessions');
+    expect(
+      identical(deviceB.service.peers['device-a']!.session, sessionBefore),
+      isTrue,
+      reason: 'the SAME session must carry it — reconnecting would defeat device-bound sessions',
+    );
   });
 
   test('accepting stops asking, even while the other side has not answered', () async {
@@ -313,13 +315,14 @@ void main() {
 
     expect(deviceB.service.pendingPairing, isNull);
     await Future<void>.delayed(const Duration(seconds: 2));
-    expect(deviceB.service.pendingPairing, isNull,
-        reason: 'beacons keep arriving; an operator who has answered must not be asked again');
+    expect(deviceB.service.pendingPairing, isNull, reason: 'beacons keep arriving; an operator who has answered must not be asked again');
   });
 
   test('declining leaves the peer un-trusted and stops asking', () async {
     final op = await sharedOperation();
-    await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}});
+    await deviceA.qsos.add(op, {
+      'their': {'call': 'W1AW'},
+    });
     await deviceA.service.setOpenOperation(op);
     await deviceB.service.setOpenOperation(op);
     await waitFor('B to be asked', () => deviceB.service.pendingPairing != null);
@@ -340,8 +343,7 @@ void main() {
     await deviceB.service.trust.trust('device-a', name: 'Laptop');
     await deviceA.service.setOpenOperation(op);
     await deviceB.service.setOpenOperation(op);
-    await waitFor('the link to go live',
-        () => deviceA.service.peers['device-b']?.session?.state == PeerSessionState.live);
+    await waitFor('the link to go live', () => deviceA.service.peers['device-b']?.session?.state == PeerSessionState.live);
 
     await deviceB.service.revokeTrust('device-a');
     expect(await deviceB.service.trust.isTrusted('device-a'), isFalse);
@@ -381,8 +383,7 @@ void main() {
     };
     await deviceA.service.setOpenOperation(op);
     await deviceB.service.setOpenOperation(op);
-    await waitFor('the link to go live',
-        () => deviceB.service.peers['device-a']?.session?.state == PeerSessionState.live);
+    await waitFor('the link to go live', () => deviceB.service.peers['device-a']?.session?.state == PeerSessionState.live);
     await waitFor('B to report the connection', () => events.isNotEmpty);
 
     // Revoking trust drops the session — the operator did that, and being
@@ -405,13 +406,11 @@ void main() {
     await waitFor('peers to find each other', () => deviceA.service.peers.isNotEmpty);
 
     await deviceA.service.setEnabled(false);
-    expect(deviceA.service.running, isFalse,
-        reason: 'the switch is the whole consent — off means nothing is announced or connected');
+    expect(deviceA.service.running, isFalse, reason: 'the switch is the whole consent — off means nothing is announced or connected');
     expect(deviceA.service.peers, isEmpty);
 
     await deviceA.service.setEnabled(true);
-    await waitFor('sharing to resume without reopening the operation',
-        () => deviceA.service.peers.isNotEmpty);
+    await waitFor('sharing to resume without reopening the operation', () => deviceA.service.peers.isNotEmpty);
   });
 
   test('the master switch releases every socket, so it can be turned back on', () async {
@@ -434,8 +433,7 @@ void main() {
     // in-memory segment no later bind can fail: "starting again works" is
     // evidence on real sockets and none at all here, so a teardown that
     // leaked both would look identical without this.
-    await waitFor('A\'s sockets to be released',
-        () => lan.openSockets == othersSockets && lan.openLinkServers == othersServers);
+    await waitFor('A\'s sockets to be released', () => lan.openSockets == othersSockets && lan.openLinkServers == othersServers);
 
     await deviceA.service.setEnabled(true);
     await waitFor('discovery to work a second time', () => deviceA.service.peers.isNotEmpty);
@@ -451,20 +449,21 @@ void main() {
     await deviceB.service.trust.trust('device-a', name: 'Laptop');
     await deviceA.service.setOpenOperation(op);
     await deviceB.service.setOpenOperation(op);
-    await waitFor('the link to go live',
-        () => deviceA.service.peers['device-b']?.session?.state == PeerSessionState.live);
+    await waitFor('the link to go live', () => deviceA.service.peers['device-b']?.session?.state == PeerSessionState.live);
 
     // BOTH: closing on one side alone only stops what that side serves —
     // the peer is still in the operation, and still feeding it across.
     await deviceA.service.setOpenOperation(null);
     await deviceB.service.setOpenOperation(null);
-    await waitFor('both sides to idle at connected', () =>
-        deviceA.service.peers['device-b']?.session?.state == PeerSessionState.connected &&
-        deviceB.service.peers['device-a']?.session?.state == PeerSessionState.connected);
+    await waitFor(
+      'both sides to idle at connected',
+      () =>
+          deviceA.service.peers['device-b']?.session?.state == PeerSessionState.connected &&
+          deviceB.service.peers['device-a']?.session?.state == PeerSessionState.connected,
+    );
 
     // And back: the same pair resumes syncing with no prompt and no redial.
     await deviceB.service.setOpenOperation(op);
-    await waitFor('the sync to resume', () =>
-        deviceA.service.peers['device-b']?.session?.state == PeerSessionState.live);
+    await waitFor('the sync to resume', () => deviceA.service.peers['device-b']?.session?.state == PeerSessionState.live);
   });
 }

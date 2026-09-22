@@ -22,17 +22,14 @@ void main() {
   });
 
   Widget host() => TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => TextButton(
-                onPressed: () => showCwMessagesDialog(context, services),
-                child: const Text('open'),
-              ),
-            ),
-          ),
+    child: MaterialApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(onPressed: () => showCwMessagesDialog(context, services), child: const Text('open')),
         ),
-      );
+      ),
+    ),
+  );
 
   testWidgets('one row per key, labelled where a label exists, the message underneath', (tester) async {
     await services.settings.setCwMessage(1, 'CQ CQ DE {{ op.call }} K');
@@ -49,7 +46,8 @@ void main() {
     // "(empty)" are the ones the seeds left alone — not all seven others.
     final set = services.settings.activeCwMessageSet;
     final empties = [
-      for (var n = 1; n <= SettingsService.cwMessageCount; n++) if (set.message(n).trim().isEmpty) n,
+      for (var n = 1; n <= SettingsService.cwMessageCount; n++)
+        if (set.message(n).trim().isEmpty) n,
     ];
     expect(empties, isNotEmpty);
     expect(find.text('(empty)'), findsNWidgets(empties.length), reason: 'the unset ones say so');
@@ -150,9 +148,7 @@ void main() {
 
   testWidgets('messages written before sets existed become a set of their own, and stay in use', (tester) async {
     // What an upgrade finds: the pre-sets keys, under their own storage.
-    SharedPreferences.setMockInitialValues({
-      'settings.radio': '{"cwMessage1":"CQ DE N0CALL K","cwMessageLabel1":"MY CQ"}',
-    });
+    SharedPreferences.setMockInitialValues({'settings.radio': '{"cwMessage1":"CQ DE N0CALL K","cwMessageLabel1":"MY CQ"}'});
     final settings = SettingsService(await SharedPreferences.getInstance());
     expect(settings.cwMessageSets.map((set) => set.name), ['My Messages', 'Default', 'POTA']);
     // FIRST, and therefore active: an upgrade must not change what the

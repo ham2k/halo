@@ -43,10 +43,7 @@ void main() {
       // edge is a tolerance, not a comparison — this pair is the corner of
       // FN31 and must not read as contradicting it.
       final cell = gridCell('FN31')!;
-      final corner = GridLocation(
-        cell.center.latitude + cell.latSize / 2,
-        cell.center.longitude + cell.lonSize / 2,
-      );
+      final corner = GridLocation(cell.center.latitude + cell.latSize / 2, cell.center.longitude + cell.lonSize / 2);
       final fields = <String, dynamic>{'grid': 'FN31', 'lat': corner.latitude, 'lon': corner.longitude};
       expect(repairStatedLocation(fields), isFalse);
     });
@@ -106,15 +103,8 @@ void main() {
       // Half a step is the most that rounding can move a stored value.
       const grid = 'FN31pr55aa';
       final cell = gridCell(grid)!;
-      final overTheEdge = GridLocation(
-        cell.center.latitude + cell.latSize / 2 + 1 / 120000,
-        cell.center.longitude + cell.lonSize / 2 + 1 / 120000,
-      );
-      final fields = <String, dynamic>{
-        'grid': grid,
-        'lat': overTheEdge.latitude,
-        'lon': overTheEdge.longitude,
-      };
+      final overTheEdge = GridLocation(cell.center.latitude + cell.latSize / 2 + 1 / 120000, cell.center.longitude + cell.lonSize / 2 + 1 / 120000);
+      final fields = <String, dynamic>{'grid': grid, 'lat': overTheEdge.latitude, 'lon': overTheEdge.longitude};
       expect(repairStatedLocation(fields), isFalse);
     });
 
@@ -140,14 +130,7 @@ void main() {
 
     test('an operation relocated by a grid-only peer measures from the new square', () async {
       await operations.mergeFromSync([
-        {
-          'uuid': 'op',
-          'stationCall': 'N0DEV',
-          'grid': 'FN31pr',
-          'lat': 41.7292,
-          'lon': -72.7292,
-          'updatedAtMillis': 1000,
-        },
+        {'uuid': 'op', 'stationCall': 'N0DEV', 'grid': 'FN31pr', 'lat': 41.7292, 'lon': -72.7292, 'updatedAtMillis': 1000},
       ]);
       expect((await operations.get('op'))!.location?.latitude, 41.7292, reason: 'sanity: the fix is kept');
 
@@ -174,6 +157,5 @@ void main() {
       expect(stored.grid, isNull);
       expect(stored.location, isNull);
     });
-
   });
 }

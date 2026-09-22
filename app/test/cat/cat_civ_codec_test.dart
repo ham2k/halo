@@ -53,27 +53,18 @@ void main() {
   group('frames', () {
     test('a read-frequency frame, byte for byte', () {
       // FE FE <radio> <controller> 03 FD, to an IC-705 at its default address.
-      expect(
-        buildReadFrequencyFrame(to: 0xA4),
-        [0xFE, 0xFE, 0xA4, 0xE0, 0x03, 0xFD],
-      );
+      expect(buildReadFrequencyFrame(to: 0xA4), [0xFE, 0xFE, 0xA4, 0xE0, 0x03, 0xFD]);
     });
 
     test('a set-frequency frame carries the BCD payload', () {
-      expect(
-        buildSetFrequencyFrame(to: 0xA4, freqHz: 14074000),
-        [0xFE, 0xFE, 0xA4, 0xE0, 0x05, 0x00, 0x40, 0x07, 0x14, 0x00, 0xFD],
-      );
+      expect(buildSetFrequencyFrame(to: 0xA4, freqHz: 14074000), [0xFE, 0xFE, 0xA4, 0xE0, 0x05, 0x00, 0x40, 0x07, 0x14, 0x00, 0xFD]);
     });
 
     test('set-mode omits the filter byte unless asked', () {
       // polo always sent `01`, which forced the operator's filter to FIL1
       // on every mode change. The mode alone leaves the filter alone.
       expect(buildSetModeFrame(to: 0xA4, mode: 'USB'), [0xFE, 0xFE, 0xA4, 0xE0, 0x06, 0x01, 0xFD]);
-      expect(
-        buildSetModeFrame(to: 0xA4, mode: 'USB', filter: 2),
-        [0xFE, 0xFE, 0xA4, 0xE0, 0x06, 0x01, 0x02, 0xFD],
-      );
+      expect(buildSetModeFrame(to: 0xA4, mode: 'USB', filter: 2), [0xFE, 0xFE, 0xA4, 0xE0, 0x06, 0x01, 0x02, 0xFD]);
     });
 
     test('an unknown mode builds nothing rather than a malformed frame', () {
@@ -144,10 +135,7 @@ void main() {
   group('framing', () {
     test('splits several frames out of one chunk', () {
       final framer = CivFramer();
-      final frames = framer.add([
-        ...buildReadFrequencyFrame(to: 0xA4),
-        ...buildReadModeFrame(to: 0xA4),
-      ]);
+      final frames = framer.add([...buildReadFrequencyFrame(to: 0xA4), ...buildReadModeFrame(to: 0xA4)]);
       expect(frames.map((f) => f.command), [CivCommand.readFrequency, CivCommand.readMode]);
     });
 

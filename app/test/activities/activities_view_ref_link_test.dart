@@ -25,11 +25,13 @@ import '../support/halo_test_support.dart';
 /// exercised against the real bundles in halo_extension_host's `ref_link_test`.
 class _LinkingExtensionService extends ExtensionServiceWithFakeHost {
   _LinkingExtensionService(this.links, {List<Map<String, dynamic>> suggestions = const [], this.throwsFor})
-      : super(FakeExtensionHost({
+    : super(
+        FakeExtensionHost({
           'activity:*:suggest': [
             {'key': 'pota', 'ok': true, 'value': suggestions},
           ],
-        }));
+        }),
+      );
 
   final Map<String, RefLink> links;
 
@@ -42,7 +44,6 @@ class _LinkingExtensionService extends ExtensionServiceWithFakeHost {
     if (ref['ref'] == throwsFor) throw StateError('linkForRef blew up');
     return links[ref['ref']];
   }
-
 }
 
 void main() {
@@ -51,37 +52,33 @@ void main() {
   Future<void> pumpSheet(WidgetTester tester, ExtensionService extensions) async {
     final HaLoHarness(:services) = await makeHaLoServices(extensions: extensions);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: OperationSheet(
-            services: services,
-            operation: Operation(
-              uuid: 'op-123',
-              data: {
-                'refs': [
-                  {'type': 'potaActivation', 'ref': 'US-0370', 'name': 'A Park'},
-                  {'type': 'pgaActivation', 'ref': 'AB12', 'name': 'A Gmina'},
-                ],
-              },
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: OperationSheet(
+              services: services,
+              operation: Operation(
+                uuid: 'op-123',
+                data: {
+                  'refs': [
+                    {'type': 'potaActivation', 'ref': 'US-0370', 'name': 'A Park'},
+                    {'type': 'pgaActivation', 'ref': 'AB12', 'name': 'A Gmina'},
+                  ],
+                },
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
-  Finder rowFor(String reference) => find.ancestor(
-        of: find.text(reference),
-        matching: find.byType(ListTile),
-      );
+  Finder rowFor(String reference) => find.ancestor(of: find.text(reference), matching: find.byType(ListTile));
 
   testWidgets('a ref with a link gets a web button, outside Remove', (tester) async {
-    await pumpSheet(
-      tester,
-      _LinkingExtensionService({'US-0370': const RefLink(url: 'https://pota.app/#/park/US-0370', label: 'POTA US-0370')}),
-    );
+    await pumpSheet(tester, _LinkingExtensionService({'US-0370': const RefLink(url: 'https://pota.app/#/park/US-0370', label: 'POTA US-0370')}));
 
     final row = rowFor('US-0370');
     final web = find.descendant(of: row, matching: find.byIcon(MdiIcons.web));
@@ -136,23 +133,14 @@ void main() {
     // button is in a different list, not a different place.
     final selected = rowFor('US-0370');
     final selectedWeb = find.descendant(of: selected, matching: find.byIcon(MdiIcons.web));
-    expect(
-      tester.getRect(row).right - tester.getRect(web).right,
-      closeTo(tester.getRect(selected).right - tester.getRect(selectedWeb).right, 0.5),
-    );
+    expect(tester.getRect(row).right - tester.getRect(web).right, closeTo(tester.getRect(selected).right - tester.getRect(selectedWeb).right, 0.5));
   });
 
   testWidgets('one ref that blows up does not cost the others their links', (tester) async {
     // `Future.wait` completes with the FIRST error and discards the values the
     // other entries already resolved, so an unguarded fan-out would leave the
     // whole sheet with no buttons because of one bad ref.
-    await pumpSheet(
-      tester,
-      _LinkingExtensionService(
-        {'US-0370': const RefLink(url: 'https://pota.app/#/park/US-0370')},
-        throwsFor: 'AB12',
-      ),
-    );
+    await pumpSheet(tester, _LinkingExtensionService({'US-0370': const RefLink(url: 'https://pota.app/#/park/US-0370')}, throwsFor: 'AB12'));
 
     expect(find.descendant(of: rowFor('US-0370'), matching: find.byIcon(MdiIcons.web)), findsOneWidget);
     expect(find.descendant(of: rowFor('AB12'), matching: find.byIcon(MdiIcons.web)), findsNothing);
@@ -162,10 +150,7 @@ void main() {
     // One of the two refs links and the other does not, in one operation: a
     // cache keyed by row index rather than by reference would put PGA's row
     // under POTA's answer.
-    await pumpSheet(
-      tester,
-      _LinkingExtensionService({'AB12': const RefLink(url: 'https://example.test/AB12')}),
-    );
+    await pumpSheet(tester, _LinkingExtensionService({'AB12': const RefLink(url: 'https://example.test/AB12')}));
 
     expect(find.descendant(of: rowFor('AB12'), matching: find.byIcon(MdiIcons.web)), findsOneWidget);
     expect(find.descendant(of: rowFor('US-0370'), matching: find.byIcon(MdiIcons.web)), findsNothing);

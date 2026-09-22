@@ -109,11 +109,11 @@ Widget overlayCreditsText(String text, TextStyle style) {
 /// About photo modal, and the onboarding overlay — one source of truth so
 /// the brand header reads at the same scale on all three.
 TextStyle? overlayVersionLabelStyle(ThemeData theme) => theme.textTheme.titleMedium?.copyWith(
-      fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) * 2,
-      fontWeight: FontWeight.bold,
-      color: Colors.white,
-      shadows: _creditsAndVersionShadows,
-    );
+  fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) * 2,
+  fontWeight: FontWeight.bold,
+  color: Colors.white,
+  shadows: _creditsAndVersionShadows,
+);
 
 /// The header the photo overlays share — brand mark, credits, and the version's
 /// two lines — pinned to the TOP of the photo, above the notes band.
@@ -166,12 +166,7 @@ Widget overlayVersionHeader(BuildContext context, {required double logoWidth, bo
               // The RUNNING build's version, not the notes entry's `name` — all
               // three overlays name what the reader is running, and the notes
               // below say which release they describe.
-              VersionLabel(
-                nameAndBuild: true,
-                style: overlayVersionLabelStyle(theme),
-                detailStyle: creditsStyle,
-                bareBuildNumber: bareBuildNumber,
-              ),
+              VersionLabel(nameAndBuild: true, style: overlayVersionLabelStyle(theme), detailStyle: creditsStyle, bareBuildNumber: bareBuildNumber),
             ],
           ),
         ),
@@ -180,11 +175,8 @@ Widget overlayVersionHeader(BuildContext context, {required double logoWidth, bo
   );
 }
 
-TextStyle overlayCreditsStyle(ThemeData theme) => TextStyle(
-      fontSize: (overlayVersionLabelStyle(theme)?.fontSize ?? 32) * 0.75 * 0.85,
-      color: Colors.white,
-      shadows: _creditsAndVersionShadows,
-    );
+TextStyle overlayCreditsStyle(ThemeData theme) =>
+    TextStyle(fontSize: (overlayVersionLabelStyle(theme)?.fontSize ?? 32) * 0.75 * 0.85, color: Colors.white, shadows: _creditsAndVersionShadows);
 
 class ReleaseOverlayView extends StatefulWidget {
   final ReleaseNotesEntry release;
@@ -214,12 +206,7 @@ class _ReleaseOverlayViewState extends State<ReleaseOverlayView> {
     // pins a theme may read one.
     return Theme(
       data: buildHaLoTheme(Brightness.light),
-      child: _ReleaseOverlayContent(
-        release: widget.release,
-        onDismiss: widget.onDismiss,
-        expanded: _expanded,
-        onToggleExpanded: _toggleExpanded,
-      ),
+      child: _ReleaseOverlayContent(release: widget.release, onDismiss: widget.onDismiss, expanded: _expanded, onToggleExpanded: _toggleExpanded),
     );
   }
 }
@@ -232,12 +219,7 @@ class _ReleaseOverlayContent extends StatelessWidget {
   final bool expanded;
   final VoidCallback onToggleExpanded;
 
-  const _ReleaseOverlayContent({
-    required this.release,
-    required this.onDismiss,
-    required this.expanded,
-    required this.onToggleExpanded,
-  });
+  const _ReleaseOverlayContent({required this.release, required this.onDismiss, required this.expanded, required this.onToggleExpanded});
 
   @override
   Widget build(BuildContext context) {
@@ -253,24 +235,18 @@ class _ReleaseOverlayContent extends StatelessWidget {
     // Flutter's default TextTheme picks for the (fixed, but still
     // technically light) `theme` above.
     final notesFontSize = (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2;
-    final notesStyleSheet = withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
-      p: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
-      listBullet: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
-      strong: theme.textTheme.bodyMedium?.copyWith(
-        fontSize: notesFontSize * 1.15,
-        fontWeight: FontWeight.bold,
-        color: Colors.black,
+    final notesStyleSheet = withEmojiFallback(
+      MarkdownStyleSheet.fromTheme(theme).copyWith(
+        p: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
+        listBullet: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
+        strong: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize * 1.15, fontWeight: FontWeight.bold, color: Colors.black),
       ),
-    ));
+    );
 
     // "What's new in this release" is bold via markdown's `**...**` rather
     // than a separate Text, so `strong` above is the only place its
     // size/weight is set.
-    final notesLines = <String>[
-      "**What's new in this release**",
-      '',
-      ...release.changes.map((change) => '- $change'),
-    ];
+    final notesLines = <String>["**What's new in this release**", '', ...release.changes.map((change) => '- $change')];
     final notesMarkdown = notesLines.join('\n');
 
     return Material(
@@ -337,10 +313,7 @@ class _ReleaseOverlayContent extends StatelessWidget {
                             child: Text(
                               release.photoCaption,
                               textAlign: TextAlign.center,
-                              style: creditsStyle.copyWith(
-                                fontFamily: 'RobotoMono',
-                                fontSize: creditsStyle.fontSize! * 0.85,
-                              ),
+                              style: creditsStyle.copyWith(fontFamily: 'RobotoMono', fontSize: creditsStyle.fontSize! * 0.85),
                             ),
                           ),
                         ),
@@ -468,20 +441,9 @@ Widget wideModalChrome({required BuildContext context, required Widget child, re
             child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.85),
-                    blurRadius: 22,
-                    spreadRadius: 2,
-                  ),
-                ],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.85), blurRadius: 22, spreadRadius: 2)],
               ),
-              child: Material(
-                elevation: 0,
-                borderRadius: BorderRadius.circular(28),
-                clipBehavior: Clip.antiAlias,
-                child: child,
-              ),
+              child: Material(elevation: 0, borderRadius: BorderRadius.circular(28), clipBehavior: Clip.antiAlias, child: child),
             ),
           ),
         ),
@@ -598,11 +560,7 @@ class _PhotoWordmarkBody extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (release != null)
-              ReleasePhoto(
-                imageAssetPath: release!.imageAssetPath,
-                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-              ),
+            if (release != null) ReleasePhoto(imageAssetPath: release!.imageAssetPath, errorBuilder: (context, error, stackTrace) => const SizedBox.shrink()),
             SafeArea(
               bottom: false,
               child: Padding(

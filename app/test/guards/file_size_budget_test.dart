@@ -43,17 +43,17 @@ const _slack = 100;
 const _ceilings = <String, int>{
   // Above the budget by the maintainer's answer, not by drift. HALO-673 is
   // the extraction; this number comes down with it.
-  '../packages/halo_widgets/lib/src/logging_controls.dart': 4009,
-  'lib/services/extension_service.dart': 3842,
-  'lib/views/operation/spots_panel.dart': 3647,
-  'lib/views/operation_view.dart': 3252,
-  'lib/views/operation/activities_view.dart': 3071,
+  '../packages/halo_widgets/lib/src/logging_controls.dart': 3890,
+  'lib/services/extension_service.dart': 3596,
+  'lib/views/operation/spots_panel.dart': 3498,
+  'lib/views/operation_view.dart': 3117,
+  'lib/views/operation/activities_view.dart': 2955,
   '../packages/halo_widgets/lib/src/form_renderer.dart': 2737,
   'lib/views/logs_view.dart': 2701,
   'lib/services/cat/cat_service.dart': 2628,
-  'lib/views/station_panel.dart': 2030,
+  'lib/views/station_panel.dart': 1915,
   'lib/views/dock_host.dart': 2094,
-  '../packages/halo_widgets/lib/src/qso_list.dart': 1993,
+  '../packages/halo_widgets/lib/src/qso_list.dart': 1822,
   'lib/services/halo_services.dart': 1987,
   '../packages/halo_widgets/lib/src/dock_layout.dart': 1817,
   'lib/views/home_view.dart': 1684,
@@ -84,13 +84,7 @@ List<File> _sources() {
     // mirror by design, so it counts only where it exists.
     if (Directory('../app_dist/lib').existsSync()) Directory('../app_dist/lib'),
   ];
-  return [
-    for (final root in roots)
-      ...root
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.dart') && !f.path.endsWith('.g.dart')),
-  ];
+  return [for (final root in roots) ...root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart') && !f.path.endsWith('.g.dart'))];
 }
 
 void main() {
@@ -108,8 +102,10 @@ void main() {
       }
       seen.add(file.path);
       if (lines > ceiling + _slack) {
-        grew.add('${file.path}: $lines lines, ceiling $ceiling — split it, or move what you are adding '
-            'to where it belongs. Do not raise the ceiling: if you think it has to move, stop and ask.');
+        grew.add(
+          '${file.path}: $lines lines, ceiling $ceiling — split it, or move what you are adding '
+          'to where it belongs. Do not raise the ceiling: if you think it has to move, stop and ask.',
+        );
       } else if (lines <= _budget) {
         stale.add('${file.path}: now $lines lines, under the budget — remove it from the list');
       } else if (lines <= ceiling - _slack) {
@@ -120,7 +116,8 @@ void main() {
     expect(
       [...grew, ...unlisted, ...stale, ...gone],
       isEmpty,
-      reason: 'The file-size budget is $_budget lines, and a listed file may not grow past its ceiling by more than $_slack.\n'
+      reason:
+          'The file-size budget is $_budget lines, and a listed file may not grow past its ceiling by more than $_slack.\n'
           'Split the file, or move what you are adding to where it belongs.\n'
           'Found:\n${[...grew, ...unlisted, ...stale, ...gone].join('\n')}',
     );

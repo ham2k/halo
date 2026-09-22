@@ -18,38 +18,43 @@ void main() {
   final contactAt = DateTime.utc(2026, 7, 1, 14, 30, 15);
 
   Map<String, dynamic> qsoHunting(List<String> parks) => {
-        'uuid': 'q1',
-        'our': {'call': 'N0DEV', 'sent': '59'},
-        'their': {'call': 'W1AW', 'sent': '59'},
-        'band': '20m',
-        'mode': 'SSB',
-        'startAtMillis': contactAt.millisecondsSinceEpoch,
-        'refs': [for (final park in parks) {'type': 'pota', 'ref': park}],
-      };
+    'uuid': 'q1',
+    'our': {'call': 'N0DEV', 'sent': '59'},
+    'their': {'call': 'W1AW', 'sent': '59'},
+    'band': '20m',
+    'mode': 'SSB',
+    'startAtMillis': contactAt.millisecondsSinceEpoch,
+    'refs': [
+      for (final park in parks) {'type': 'pota', 'ref': park},
+    ],
+  };
 
   Future<String> exportAdif(List<String> activating, Map<String, dynamic> qso) async {
     final host = await sharedHost(['adif', 'pota']);
-    final result = await host.invokeHook(
-      'export',
-      key: 'adif',
-      method: 'generateExport',
-      args: {
-        'operation': {
-          'uuid': 'op',
-          'stationCall': 'N0DEV',
-          'refs': [for (final park in activating) {'type': 'potaActivation', 'ref': park}],
-        },
-        'qsos': [qso],
-        'exportType': 'adif',
-      },
-      timeout: const Duration(seconds: 20),
-    ) as Map?;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': {
+                  'uuid': 'op',
+                  'stationCall': 'N0DEV',
+                  'refs': [
+                    for (final park in activating) {'type': 'potaActivation', 'ref': park},
+                  ],
+                },
+                'qsos': [qso],
+                'exportType': 'adif',
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map?;
     return (result!['content'] as String);
   }
 
   /// Record bodies, without the header block.
-  List<String> recordsIn(String adif) =>
-      adif.split('<EOR>').where((part) => part.contains('<CALL:')).toList();
+  List<String> recordsIn(String adif) => adif.split('<EOR>').where((part) => part.contains('<CALL:')).toList();
 
   test('a two-park P2P is written as two records, one per park', () async {
     final adif = await exportAdif(['US-0001'], qsoHunting(['US-9001', 'US-9002']));

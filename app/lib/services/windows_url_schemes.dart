@@ -53,10 +53,7 @@ const sharedUrlSchemes = <String, String>{
 /// containing a space into two arguments (and `app_links` reads `argv[1]`
 /// only, so it would see a truncated URL), while an unquoted exe path breaks
 /// on the space in `Program Files`.
-List<SchemeRegistryValue> schemeRegistryValues({
-  required String exePath,
-  required String edition,
-}) {
+List<SchemeRegistryValue> schemeRegistryValues({required String exePath, required String edition}) {
   final values = <SchemeRegistryValue>[];
   final command = '"$exePath" "%1"';
   void add(String scheme, String label) {
@@ -83,15 +80,15 @@ List<SchemeRegistryValue> schemeRegistryValues({
 /// that has MOVED repoints its schemes, and a prompt no one can see would
 /// hang the app instead.
 List<String> regAddArguments(SchemeRegistryValue value) => [
-      'add',
-      'HKCU\\Software\\Classes\\${value.key}',
-      if (value.name.isNotEmpty) ...['/v', value.name] else '/ve',
-      '/t',
-      'REG_SZ',
-      '/d',
-      value.data,
-      '/f',
-    ];
+  'add',
+  'HKCU\\Software\\Classes\\${value.key}',
+  if (value.name.isNotEmpty) ...['/v', value.name] else '/ve',
+  '/t',
+  'REG_SZ',
+  '/d',
+  value.data,
+  '/f',
+];
 
 /// Schemes a Ham2K logger may have registered once and must not hold now.
 ///
@@ -102,11 +99,7 @@ const staleUrlSchemes = <String>['com.ham2k.polo', 'com.ham2k.polo.auth'];
 
 /// Removes [scheme] and everything under it. `/f` so an absent key is not a
 /// prompt on a machine with nobody watching.
-List<String> regDeleteArguments(String scheme) => [
-      'delete',
-      'HKCU\\Software\\Classes\\$scheme',
-      '/f',
-    ];
+List<String> regDeleteArguments(String scheme) => ['delete', 'HKCU\\Software\\Classes\\$scheme', '/f'];
 
 /// Points every scheme in the catalog at THIS executable.
 ///

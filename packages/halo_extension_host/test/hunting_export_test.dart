@@ -20,21 +20,25 @@ void main() {
   requireBundles();
 
   Map<String, dynamic> operation({List<String> activating = const []}) => {
-        'uuid': 'op',
-        'stationCall': 'N0DEV',
-        'title': 'Summit run',
-        'refs': [for (final ref in activating) {'type': 'sotaActivation', 'ref': ref}],
-      };
+    'uuid': 'op',
+    'stationCall': 'N0DEV',
+    'title': 'Summit run',
+    'refs': [
+      for (final ref in activating) {'type': 'sotaActivation', 'ref': ref},
+    ],
+  };
 
   Map<String, dynamic> qso(String call, {List<String> hunted = const []}) => {
-        'uuid': 'q-$call',
-        'our': {'call': 'N0DEV', 'sent': '59'},
-        'their': {'call': call, 'sent': '59'},
-        'band': '20m',
-        'mode': 'SSB',
-        'startAtMillis': DateTime.utc(2026, 7, 1, 12).millisecondsSinceEpoch,
-        'refs': [for (final ref in hunted) {'type': 'sota', 'ref': ref}],
-      };
+    'uuid': 'q-$call',
+    'our': {'call': 'N0DEV', 'sent': '59'},
+    'their': {'call': call, 'sent': '59'},
+    'band': '20m',
+    'mode': 'SSB',
+    'startAtMillis': DateTime.utc(2026, 7, 1, 12).millisecondsSinceEpoch,
+    'refs': [
+      for (final ref in hunted) {'type': 'sota', 'ref': ref},
+    ],
+  };
 
   Future<ExtensionHost> startHost() => sharedHost(['adif', 'sota']);
 
@@ -42,24 +46,34 @@ void main() {
     final host = await sharedHost(['adif', 'sota', 'templates']);
     final payload = {
       'operation': operation(),
-      'qsos': [qso('W0ABC', hunted: ['W7A/LC-001']), qso('W1AW')],
+      'qsos': [
+        qso('W0ABC', hunted: ['W7A/LC-001']),
+        qso('W1AW'),
+      ],
     };
     final options = await host.invokeHook('export', key: 'sota-hunter', method: 'suggestExportOptions', args: payload) as List;
-    final prepared = await host.invokeHook('template', key: 'templates', method: 'prepareExports', args: {
-      ...payload,
-      'options': [{
-        ...options.single as Map,
-        'exportSettings': {
-          'filenameTemplate': '{{ op.qsoCount }} QSOs',
-          'titleTemplate': '{{ op.qsoCount }} contacts',
-          'adifQslMessageTemplate': '{{ op.qsoCount }} contacts',
-        },
-      }],
-    }) as List;
+    final prepared =
+        await host.invokeHook(
+              'template',
+              key: 'templates',
+              method: 'prepareExports',
+              args: {
+                ...payload,
+                'options': [
+                  {
+                    ...options.single as Map,
+                    'exportSettings': {
+                      'filenameTemplate': '{{ op.qsoCount }} QSOs',
+                      'titleTemplate': '{{ op.qsoCount }} contacts',
+                      'adifQslMessageTemplate': '{{ op.qsoCount }} contacts',
+                    },
+                  },
+                ],
+              },
+            )
+            as List;
     final selected = prepared.single as Map;
-    final result = await host.invokeHook('export', key: 'sota-hunter', method: 'generateExport', args: {
-      ...payload, ...selected,
-    }) as Map;
+    final result = await host.invokeHook('export', key: 'sota-hunter', method: 'generateExport', args: {...payload, ...selected}) as Map;
     expect(selected['filename'], '1 QSOs.adi');
     expect(selected['exportTitle'], '1 contacts');
     expect(result['content'], contains('ADIF export for 1 contacts'));
@@ -69,16 +83,21 @@ void main() {
 
   test('hunting a summit offers a hunter export', () async {
     final host = await startHost();
-    final options = (await host.invokeHook(
-      'export',
-      key: 'sota-hunter',
-      method: 'suggestExportOptions',
-      args: {
-        'operation': operation(),
-        'qsos': [qso('W0ABC', hunted: ['W7A/LC-001'])],
-      },
-      timeout: const Duration(seconds: 20),
-    ) as List).cast<Map>();
+    final options =
+        (await host.invokeHook(
+                  'export',
+                  key: 'sota-hunter',
+                  method: 'suggestExportOptions',
+                  args: {
+                    'operation': operation(),
+                    'qsos': [
+                      qso('W0ABC', hunted: ['W7A/LC-001']),
+                    ],
+                  },
+                  timeout: const Duration(seconds: 20),
+                )
+                as List)
+            .cast<Map>();
 
     expect(options.length, 1);
     expect(options.first['label'], 'SOTA Hunter Log');
@@ -99,16 +118,18 @@ void main() {
 
   test('an operation that hunted nothing offers no hunter export', () async {
     final host = await startHost();
-    final options = await host.invokeHook(
-      'export',
-      key: 'sota-hunter',
-      method: 'suggestExportOptions',
-      args: {
-        'operation': operation(),
-        'qsos': [qso('W0ABC')],
-      },
-      timeout: const Duration(seconds: 20),
-    ) as List;
+    final options =
+        await host.invokeHook(
+              'export',
+              key: 'sota-hunter',
+              method: 'suggestExportOptions',
+              args: {
+                'operation': operation(),
+                'qsos': [qso('W0ABC')],
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as List;
 
     expect(options, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
@@ -118,16 +139,20 @@ void main() {
     // An operation activating a summit already owes an activator log for any
     // summit-to-summit contact it made; offering a hunter log alongside it
     // would submit those same contacts a second time.
-    final options = await host.invokeHook(
-      'export',
-      key: 'sota-hunter',
-      method: 'suggestExportOptions',
-      args: {
-        'operation': operation(activating: ['W7A/LC-002']),
-        'qsos': [qso('W0ABC', hunted: ['W7A/LC-001'])],
-      },
-      timeout: const Duration(seconds: 20),
-    ) as List;
+    final options =
+        await host.invokeHook(
+              'export',
+              key: 'sota-hunter',
+              method: 'suggestExportOptions',
+              args: {
+                'operation': operation(activating: ['W7A/LC-002']),
+                'qsos': [
+                  qso('W0ABC', hunted: ['W7A/LC-001']),
+                ],
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as List;
 
     expect(options, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
@@ -146,7 +171,9 @@ void main() {
         method: 'generateExport',
         args: {
           'operation': operation(activating: ['W7A/LC-002']),
-          'qsos': [qso('W0ABC', hunted: ['W7A/LC-001'])],
+          'qsos': [
+            qso('W0ABC', hunted: ['W7A/LC-001']),
+          ],
           'exportType': 'sota-hunter',
         },
         timeout: const Duration(seconds: 20),
@@ -157,21 +184,23 @@ void main() {
 
   test('the hunter file claims every summit worked, and only the ones hunted', () async {
     final host = await startHost();
-    final result = await host.invokeHook(
-      'export',
-      key: 'sota-hunter',
-      method: 'generateExport',
-      args: {
-        'operation': operation(),
-        'qsos': [
-          qso('W0ABC', hunted: ['W7A/LC-001']),
-          qso('W1XYZ', hunted: ['W7A/LC-003']),
-          qso('W2NUL'), // worked, but nothing hunted — must not appear
-        ],
-        'exportType': 'sota-hunter',
-      },
-      timeout: const Duration(seconds: 20),
-    ) as Map;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'sota-hunter',
+              method: 'generateExport',
+              args: {
+                'operation': operation(),
+                'qsos': [
+                  qso('W0ABC', hunted: ['W7A/LC-001']),
+                  qso('W1XYZ', hunted: ['W7A/LC-003']),
+                  qso('W2NUL'), // worked, but nothing hunted — must not appear
+                ],
+                'exportType': 'sota-hunter',
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
     final content = result['content'] as String;
 
     expect(content, contains('<SOTA_REF:10>W7A/LC-001'));
@@ -192,7 +221,9 @@ void main() {
         method: 'generateExport',
         args: {
           'operation': operation(),
-          'qsos': [qso('W0ABC', hunted: ['W7A/LC-001'])],
+          'qsos': [
+            qso('W0ABC', hunted: ['W7A/LC-001']),
+          ],
           'exportType': 'adif',
         },
         timeout: const Duration(seconds: 20),
@@ -208,24 +239,26 @@ void main() {
     final host = await startHost();
 
     Future<String> adifFor({required bool includePrivateData}) async {
-      final result = await host.invokeHook(
-        'export',
-        key: 'sota-hunter',
-        method: 'generateExport',
-        args: {
-          'operation': operation(),
-          'qsos': [
-            {
-              ...qso('W0ABC', hunted: ['W7A/LC-001']),
-              'their': {'call': 'W0ABC', 'sent': '59', 'name': 'Alice', 'grid': 'EM79'},
-              'notes': 'met at Hamvention',
-            },
-          ],
-          'exportType': 'sota-hunter',
-          'includePrivateData': includePrivateData,
-        },
-        timeout: const Duration(seconds: 20),
-      ) as Map;
+      final result =
+          await host.invokeHook(
+                'export',
+                key: 'sota-hunter',
+                method: 'generateExport',
+                args: {
+                  'operation': operation(),
+                  'qsos': [
+                    {
+                      ...qso('W0ABC', hunted: ['W7A/LC-001']),
+                      'their': {'call': 'W0ABC', 'sent': '59', 'name': 'Alice', 'grid': 'EM79'},
+                      'notes': 'met at Hamvention',
+                    },
+                  ],
+                  'exportType': 'sota-hunter',
+                  'includePrivateData': includePrivateData,
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
       return result['content'] as String;
     }
 

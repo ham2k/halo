@@ -38,13 +38,11 @@ class InboundCaptureRepository {
   /// independent socket callbacks (`InboundQsoListenerService`'s handlers
   /// fire-and-forget via `unawaited`), so a check-then-insert has a real race
   /// window between them — the index is what actually makes this atomic.
-  Future<InboundCaptureRow> capture({
-    required String source,
-    required String dedupeKey,
-    required Map<String, dynamic> qsoData,
-  }) async {
+  Future<InboundCaptureRow> capture({required String source, required String dedupeKey, required Map<String, dynamic> qsoData}) async {
     final uuid = uuidGenerator.v4();
-    await db.into(db.inboundCaptures).insert(
+    await db
+        .into(db.inboundCaptures)
+        .insert(
           InboundCapturesCompanion.insert(
             uuid: uuid,
             source: source,
@@ -76,18 +74,18 @@ class InboundCaptureRepository {
   /// sources: "Listen for other apps" is one feature to the operator, not
   /// one per protocol, so its pending list is one list, not one per source.
   /// [source] survives on the row (and the dedupe key) purely as metadata.
-  Stream<List<InboundCaptureRow>> watchPending() => (db.select(db.inboundCaptures)
-        ..where((c) => c.addedToOperation.isNull())
-        ..orderBy([(c) => OrderingTerm.asc(c.receivedAtMillis)]))
-      .watch();
+  Stream<List<InboundCaptureRow>> watchPending() =>
+      (db.select(db.inboundCaptures)
+            ..where((c) => c.addedToOperation.isNull())
+            ..orderBy([(c) => OrderingTerm.asc(c.receivedAtMillis)]))
+          .watch();
 
   /// Marks [uuids] as added to [operationUuid]. Kept rather than deleted, so
   /// a re-arriving duplicate broadcast is still recognized by its dedupe key
   /// instead of being queued a second time.
   Future<void> markAdded(Iterable<String> uuids, String operationUuid) async {
     if (uuids.isEmpty) return;
-    await (db.update(db.inboundCaptures)..where((c) => c.uuid.isIn(uuids)))
-        .write(InboundCapturesCompanion(addedToOperation: Value(operationUuid)));
+    await (db.update(db.inboundCaptures)..where((c) => c.uuid.isIn(uuids))).write(InboundCapturesCompanion(addedToOperation: Value(operationUuid)));
     onChange?.call();
   }
 

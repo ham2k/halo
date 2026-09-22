@@ -74,10 +74,7 @@ class ScreenSourceTile extends StatelessWidget {
                     // kind's glyph rather than a spinner that would have the
                     // whole grid flickering.
                     if (image == null)
-                      Center(
-                        child: Icon(iconForScreenSourceKind(source.kind),
-                            color: theme.colorScheme.onSurfaceVariant),
-                      )
+                      Center(child: Icon(iconForScreenSourceKind(source.kind), color: theme.colorScheme.onSurfaceVariant))
                     else
                       Image.memory(image, fit: BoxFit.contain, gaplessPlayback: true),
                     if (showCheckbox)
@@ -95,19 +92,13 @@ class ScreenSourceTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      source.name,
-                      maxLines: subtitle == null ? 2 : 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall,
-                    ),
+                    Text(source.name, maxLines: subtitle == null ? 2 : 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall),
                     if (subtitle != null)
                       Text(
                         subtitle!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelSmall
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),
                   ],
                 ),
@@ -121,7 +112,7 @@ class ScreenSourceTile extends StatelessWidget {
 }
 
 IconData iconForScreenSourceKind(String kind) => switch (kind) {
-      PeerScreenSourceKind.display => MdiIcons.monitor,
-      PeerScreenSourceKind.app => MdiIcons.applicationOutline,
-      _ => MdiIcons.windowMaximize,
-    };
+  PeerScreenSourceKind.display => MdiIcons.monitor,
+  PeerScreenSourceKind.app => MdiIcons.applicationOutline,
+  _ => MdiIcons.windowMaximize,
+};

@@ -84,30 +84,17 @@ void main() {
       // The storm this prevents is real and cheap to cause: SettingsService
       // notifies on every background sync write, each one reaches the panel,
       // and with no reading in hand every one of them would open a request.
-      expect(
-        due(readingKey: null, reading: null, attemptedAtReal: real, realNow: real.add(const Duration(seconds: 30))),
-        isFalse,
-      );
+      expect(due(readingKey: null, reading: null, attemptedAtReal: real, realNow: real.add(const Duration(seconds: 30))), isFalse);
     });
 
     test('and is retried once the floor passes', () {
-      expect(
-        due(readingKey: null, reading: null, attemptedAtReal: real, realNow: real.add(const Duration(seconds: 61))),
-        isTrue,
-      );
+      expect(due(readingKey: null, reading: null, attemptedAtReal: real, realNow: real.add(const Duration(seconds: 61))), isTrue);
     });
 
     test('the floor is measured on REAL time, so travelling the app clock is not a burst', () {
       // `now` a day ahead would make the reading stale by every other rule
       // here; the floor still holds, because it paces a third-party service.
-      expect(
-        due(
-          attemptedAtReal: real,
-          realNow: real.add(const Duration(seconds: 5)),
-          now: app.add(const Duration(days: 1)),
-        ),
-        isFalse,
-      );
+      expect(due(attemptedAtReal: real, realNow: real.add(const Duration(seconds: 5)), now: app.add(const Duration(days: 1))), isFalse);
     });
   });
 
@@ -133,11 +120,7 @@ void main() {
       // ago can stop describing "the next eight hours" without anything
       // being wrong with it.
       expect(
-        due(
-          reading: readingAt(app, hoursAhead: 12),
-          now: app.add(const Duration(hours: 11)),
-          attemptedAtReal: real.subtract(const Duration(minutes: 5)),
-        ),
+        due(reading: readingAt(app, hoursAhead: 12), now: app.add(const Duration(hours: 11)), attemptedAtReal: real.subtract(const Duration(minutes: 5))),
         isTrue,
       );
     });

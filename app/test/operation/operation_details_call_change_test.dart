@@ -41,31 +41,17 @@ void main() {
     operation = await operations.create(stationCall: 'N0DEV', userTitle: 'Field day');
   });
 
-  Future<void> logContact(
-    String theirCall, {
-    String ourCall = 'N0DEV',
-    String? operatorCall,
-    String? position,
-  }) async {
+  Future<void> logContact(String theirCall, {String ourCall = 'N0DEV', String? operatorCall, String? position}) async {
     await qsos.add(operation.uuid, {
       'their': {'call': theirCall},
-      'our': {
-        'call': ourCall,
-        'operatorCall': ?operatorCall,
-        'multiIdentifier': ?position,
-      },
+      'our': {'call': ourCall, 'operatorCall': ?operatorCall, 'multiIdentifier': ?position},
       'band': '20m',
       'mode': 'SSB',
       'startAtMillis': 1721736000000,
     });
   }
 
-  Future<void> openDialog(
-    WidgetTester tester, {
-    bool developerMode = false,
-    String ownCall = '',
-    bool suggestDefaultOperator = true,
-  }) async {
+  Future<void> openDialog(WidgetTester tester, {bool developerMode = false, String ownCall = '', bool suggestDefaultOperator = true}) async {
     // The dialog reads all three from settings now, so the test states them
     // there rather than passing them in.
     if (developerMode) await settings.setDeveloperMode(true);
@@ -74,19 +60,23 @@ void main() {
       await settings.setSettingValue(SettingsService.loggingGroup, 'suggestDefaultOperator', false);
     }
     var opened = false;
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Builder(builder: (context) {
-          if (!opened) {
-            opened = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) async {
-              await editOperationDetails(context, services, operation);
-            });
-          }
-          return const SizedBox.shrink();
-        }),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              if (!opened) {
+                opened = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  await editOperationDetails(context, services, operation);
+                });
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
@@ -144,10 +134,7 @@ void main() {
       // The dialog says each contact records its own operator. An operator
       // left in the operation's data would go on stamping every new contact
       // behind that statement, from a field too disabled to take it out.
-      await operations.saveData(Operation(
-        uuid: operation.uuid,
-        data: {...operation.data, 'operatorCall': 'W2XYZ'},
-      ));
+      await operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'operatorCall': 'W2XYZ'}));
       operation = (await operations.get(operation.uuid))!;
       await openDialog(tester);
       await tester.enterText(stationField(), 'N0DEV, W1AW');
@@ -177,10 +164,7 @@ void main() {
       await (db.delete(db.qsos)..where((q) => q.uuid.equals(vanished))).go();
       await save(tester);
 
-      expect(
-        services.statusBar.activeNotices.map((notice) => notice.text),
-        contains(t.dialogs.callChange.restampShortfall(written: 1, planned: 2)),
-      );
+      expect(services.statusBar.activeNotices.map((notice) => notice.text), contains(t.dialogs.callChange.restampShortfall(written: 1, planned: 2)));
     });
 
     testWidgets('Enter with an empty station callsign discards nothing', (tester) async {
@@ -238,10 +222,7 @@ void main() {
       // says nothing — clearing the operator on the operation leaves the
       // contacts that recorded one alone.
       await logContact('W1AW', operatorCall: 'KI2D');
-      await operations.saveData(Operation(
-        uuid: operation.uuid,
-        data: {...operation.data, 'operatorCall': 'KI2D'},
-      ));
+      await operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'operatorCall': 'KI2D'}));
       operation = (await operations.get(operation.uuid))!;
       await openDialog(tester);
       await tester.enterText(operatorField(), '');
@@ -276,8 +257,11 @@ void main() {
       await openDialog(tester, developerMode: true);
       await tester.enterText(operatorField(), 'W2XYZ');
       await tester.pumpAndSettle();
-      expect(find.text(t.dialogs.callChange.operatorRestamp(count: 1, typed: 'W2XYZ')), findsOneWidget,
-          reason: 'only seat 2 has a contact this device may speak for');
+      expect(
+        find.text(t.dialogs.callChange.operatorRestamp(count: 1, typed: 'W2XYZ')),
+        findsOneWidget,
+        reason: 'only seat 2 has a contact this device may speak for',
+      );
       await tester.tap(find.byType(Checkbox));
       await save(tester);
 
@@ -323,10 +307,7 @@ void main() {
       // An emptied operator is an answer. Refilling it on the next open means
       // opening the dialog to fix a title silently re-adds the name they
       // removed, on the following Save.
-      await operations.saveData(Operation(
-        uuid: operation.uuid,
-        data: {...operation.data, 'operatorCall': ''},
-      ));
+      await operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'operatorCall': ''}));
       operation = (await operations.get(operation.uuid))!;
       await openDialog(tester, ownCall: 'KI2D');
 

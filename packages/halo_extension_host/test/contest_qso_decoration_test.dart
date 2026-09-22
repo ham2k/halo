@@ -133,8 +133,11 @@ void main() {
 
     for (final key in ['r1-vhf-tests', 'rsgb-vhf-tests']) {
       test('$key: the serial alone, our grid is not repeated on every row', () async {
-        final patch = await patchFor(key, {'ref': key == 'r1-vhf-tests' ? 'R1-VHF-SUB1-MARCH' : 'RSGB-BACKPACKERS-1'},
-            {'ourSerial': 42, 'theirSerial': '117', 'grid': 'JO01ab'});
+        final patch = await patchFor(
+          key,
+          {'ref': key == 'r1-vhf-tests' ? 'R1-VHF-SUB1-MARCH' : 'RSGB-BACKPACKERS-1'},
+          {'ourSerial': 42, 'theirSerial': '117', 'grid': 'JO01ab'},
+        );
         expect((patch!['our'] as Map)['exchange'], '42');
         expect((patch['their'] as Map)['exchange'], '117 JO01AB');
       }, timeout: const Timeout(Duration(seconds: 60)));
@@ -230,7 +233,11 @@ void main() {
     });
 
     test('a call the country file cannot place is left empty, not invented', () async {
-      final patch = await patchFor({'band': '20m', 'mode': 'CW', 'their': {'call': ''}});
+      final patch = await patchFor({
+        'band': '20m',
+        'mode': 'CW',
+        'their': {'call': ''},
+      });
       expect(patch, isNull, reason: 'nothing typed and nothing to guess');
     });
 
@@ -340,15 +347,14 @@ void main() {
       final offline = await patchFor({'call': 'W1AW'});
       final offlineRef = (offline['refs'] as List).single as Map;
       expect(offlineRef['name'], 'BOB');
-      expect(
-        offlineRef.containsKey('location'),
-        isFalse,
-        reason: 'unknown is not a decision — stamping it would freeze the blank forever',
-      );
+      expect(offlineRef.containsKey('location'), isFalse, reason: 'unknown is not a decision — stamping it would freeze the blank forever');
 
       // Later the lookup resolves their state and the QSO is saved again: the
       // multiplier is picked up, which only works because nothing was stamped.
-      final enriched = await patchFor({'call': 'W1AW', 'guess': {'state': 'CT'}});
+      final enriched = await patchFor({
+        'call': 'W1AW',
+        'guess': {'state': 'CT'},
+      });
       expect(((enriched['refs'] as List).single as Map)['location'], 'CT');
       expect((enriched['their'] as Map)['exchange'], 'BOB CT');
     });
@@ -371,7 +377,12 @@ void main() {
                 {'type': 'stateparks', 'ref': 'OHSP'},
               ],
             },
-            'qso': {'band': '40m', 'mode': 'CW', 'their': {'call': 'W1AW'}, 'refs': refs},
+            'qso': {
+              'band': '40m',
+              'mode': 'CW',
+              'their': {'call': 'W1AW'},
+              'refs': refs,
+            },
           },
         );
         final hit = entries.where((e) => e['ok'] == true && e['value'] is Map).toList();
@@ -411,7 +422,11 @@ void main() {
           'qso': {
             'band': '20m',
             'mode': 'CW',
-            'their': {'call': 'W1AW', 'state': 'CT', 'guess': {'name': 'Hiram'}},
+            'their': {
+              'call': 'W1AW',
+              'state': 'CT',
+              'guess': {'name': 'Hiram'},
+            },
             'refs': [
               {'type': 'naqp', 'name': ''},
             ],

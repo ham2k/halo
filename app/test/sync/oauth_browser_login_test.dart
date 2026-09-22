@@ -31,8 +31,7 @@ Future<void> _settle(WidgetTester tester) async {
 
 /// The strings as the body itself resolves them — asserting on literals here
 /// would pin English into a test of behaviour.
-Translations _t(WidgetTester tester) =>
-    TranslationProvider.of(tester.element(find.byType(MaterialApp))).translations;
+Translations _t(WidgetTester tester) => TranslationProvider.of(tester.element(find.byType(MaterialApp))).translations;
 
 void main() {
   group('oauthUsesWebhookRelay', () {
@@ -57,11 +56,7 @@ void main() {
 
     test('macOS, Android and iOS take the code home as a deep link', () {
       for (final platform in [TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS]) {
-        expect(
-          oauthUsesWebhookRelay(isWeb: false, platform: platform),
-          isFalse,
-          reason: '$platform registers com.ham2k.*.auth:// and needs no relay',
-        );
+        expect(oauthUsesWebhookRelay(isWeb: false, platform: platform), isFalse, reason: '$platform registers com.ham2k.*.auth:// and needs no relay');
       }
     });
   });
@@ -84,32 +79,34 @@ void main() {
       final launched = <Uri>[];
       final authUri = Uri.parse('https://sso.example.org/auth?state=$_state');
 
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: OAuthBrowserLoginBody(
-              authUri: authUri,
-              expectedState: _state,
-              webhookEvents: pings ?? const Stream.empty(),
-              fetchWebhookEvents: () async => fetch?.call() ?? const [],
-              onCode: codes.add,
-              onError: errors.add,
-              onCancel: () => cancels.add(null),
-              launcher: (uri) async {
-                launched.add(uri);
-                return launchSucceeds;
-              },
-              // Defaults long enough that the poll tick never fires
-              // during a test — every check below is driven by the
-              // initial immediate check in initState or by `pings`,
-              // not by the timer, so the two triggers stay
-              // independently controllable. A test about the polling
-              // itself passes its own.
-              pollInterval: pollInterval,
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: OAuthBrowserLoginBody(
+                authUri: authUri,
+                expectedState: _state,
+                webhookEvents: pings ?? const Stream.empty(),
+                fetchWebhookEvents: () async => fetch?.call() ?? const [],
+                onCode: codes.add,
+                onError: errors.add,
+                onCancel: () => cancels.add(null),
+                launcher: (uri) async {
+                  launched.add(uri);
+                  return launchSucceeds;
+                },
+                // Defaults long enough that the poll tick never fires
+                // during a test — every check below is driven by the
+                // initial immediate check in initState or by `pings`,
+                // not by the timer, so the two triggers stay
+                // independently controllable. A test about the polling
+                // itself passes its own.
+                pollInterval: pollInterval,
+              ),
             ),
           ),
         ),
-      ));
+      );
       // Not pumpAndSettle: the body shows an indeterminate
       // CircularProgressIndicator, whose animation never settles. Bounded
       // pumps instead — enough to run initState's async check.
@@ -269,23 +266,25 @@ void main() {
       // fetch is left null rather than wired to an empty list.
       final launched = <Uri>[];
       final codes = <String>[];
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: OAuthBrowserLoginBody(
-              authUri: Uri.parse('https://sso.example.org/auth?state=$_state'),
-              onCode: codes.add,
-              onError: (_) {},
-              onCancel: () {},
-              launcher: (uri) async {
-                launched.add(uri);
-                return true;
-              },
-              pollInterval: const Duration(milliseconds: 1),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: OAuthBrowserLoginBody(
+                authUri: Uri.parse('https://sso.example.org/auth?state=$_state'),
+                onCode: codes.add,
+                onError: (_) {},
+                onCancel: () {},
+                launcher: (uri) async {
+                  launched.add(uri);
+                  return true;
+                },
+                pollInterval: const Duration(milliseconds: 1),
+              ),
             ),
           ),
         ),
-      ));
+      );
       await _settle(tester);
       // Well past several poll intervals: a timer left armed in this mode
       // would have fired by now, and firing means dereferencing a null hook.
@@ -303,10 +302,14 @@ void main() {
       // "the operator hasn't finished yet", which is what the waiting line
       // claims and what it would go on claiming forever.
       var calls = 0;
-      await pump(tester, fetch: () {
-        calls++;
-        throw StateError('relay unreachable');
-      }, pollInterval: const Duration(milliseconds: 10));
+      await pump(
+        tester,
+        fetch: () {
+          calls++;
+          throw StateError('relay unreachable');
+        },
+        pollInterval: const Duration(milliseconds: 10),
+      );
       // Three consecutive failures: one dropped request is what polling is for.
       await tester.pump(const Duration(milliseconds: 40));
       await tester.pump();
@@ -321,19 +324,21 @@ void main() {
       // redirect, or the operator finished on another device. Nothing here can
       // tell that from a slow password, so the body waits a good while — and
       // then says what the operator can actually do about it.
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: OAuthBrowserLoginBody(
-              authUri: Uri.parse('https://sso.example.org/auth?state=$_state'),
-              onCode: (_) {},
-              onError: (_) {},
-              onCancel: () {},
-              launcher: (uri) async => true,
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: OAuthBrowserLoginBody(
+                authUri: Uri.parse('https://sso.example.org/auth?state=$_state'),
+                onCode: (_) {},
+                onError: (_) {},
+                onCancel: () {},
+                launcher: (uri) async => true,
+              ),
             ),
           ),
         ),
-      ));
+      );
       await _settle(tester);
       expect(find.text(_t(tester).settings.accounts.relayLoginWaiting), findsOneWidget);
 

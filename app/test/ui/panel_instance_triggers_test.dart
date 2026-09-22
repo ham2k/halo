@@ -165,21 +165,11 @@ class _StubSource implements PanelExtensionSource {
   ];
 
   @override
-  Future<Map<String, dynamic>?> renderPanel({
-    required String hookKey,
-    required String panelKey,
-    required Map<String, dynamic> args,
-  }) async => null;
+  Future<Map<String, dynamic>?> renderPanel({required String hookKey, required String panelKey, required Map<String, dynamic> args}) async => null;
 
   @override
-  Future<Map<String, dynamic>> readPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async => const {};
+  Future<Map<String, dynamic>> readPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async => const {};
 
   @override
-  Future<void> forgetPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async {}
+  Future<void> forgetPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async {}
 }

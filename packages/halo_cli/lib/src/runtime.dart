@@ -46,8 +46,7 @@ class ExtRuntime {
   }) async {
     final selected = <BundleEntry>[
       for (final entry in index.extensions)
-        if (only.isNotEmpty ? only.contains(entry.key) : _enabled(entry, config, all) && !exclude.contains(entry.key))
-          entry,
+        if (only.isNotEmpty ? only.contains(entry.key) : _enabled(entry, config, all) && !exclude.contains(entry.key)) entry,
     ];
 
     if (only.isNotEmpty) {
@@ -87,9 +86,12 @@ class ExtRuntime {
     // fire-and-forget, so a hook an extension registers after its own first
     // await (call-notes waits on host.getSettings) would not exist yet. A
     // single command that raced that would report the hook as missing.
-    await host.activated.timeout(const Duration(seconds: 10), onTimeout: () {
-      stderr.writeln('halo-ext: warning — extension activation did not settle within 10s, continuing');
-    });
+    await host.activated.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        stderr.writeln('halo-ext: warning — extension activation did not settle within 10s, continuing');
+      },
+    );
 
     return ExtRuntime(host: host, index: index, loaded: selected);
   }
@@ -104,9 +106,9 @@ class ExtRuntime {
   /// resolved here, once, so the host holds only that subset and needs no
   /// policy of its own. Same rule the app applies (extensionMaySeeSecret).
   static Map<String, String> _secretsFor(String key, CliConfig config) => {
-        for (final entry in config.secrets.entries)
-          if (entry.value.isNotEmpty && extensionMaySeeSecret(key, entry.key)) entry.key: entry.value,
-      };
+    for (final entry in config.secrets.entries)
+      if (entry.value.isNotEmpty && extensionMaySeeSecret(key, entry.key)) entry.key: entry.value,
+  };
 
   Future<void> stop() => host.dispose();
 }
@@ -118,8 +120,7 @@ class ExtRuntime {
 /// app doing it — see docs/design/network.md. The version comes from the
 /// app's own version.dart when we can see it (an in-repo run), since that is
 /// the code these bundles were built beside.
-String cliUserAgent(BundleIndex index) =>
-    'Ham2K halo-ext/${cliVersion(index)} (${Platform.operatingSystem} cli)';
+String cliUserAgent(BundleIndex index) => 'Ham2K halo-ext/${cliVersion(index)} (${Platform.operatingSystem} cli)';
 
 /// The version halo-ext reports, from the app's own version.dart when this is
 /// an in-repo run — that is the code these bundles were built beside — and

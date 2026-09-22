@@ -28,16 +28,14 @@ void main() {
     };
 
     Widget hostWithPota() => MaterialApp(
-          home: Scaffold(
-            body: LoggingControls(
-              log: baseLog(),
-              radio: baseRadio(),
-              activities: ActivityHooks(
-                activityControls: const [potaControl],
-              ),
-            ),
-          ),
-        );
+      home: Scaffold(
+        body: LoggingControls(
+          log: baseLog(),
+          radio: baseRadio(),
+          activities: ActivityHooks(activityControls: const [potaControl]),
+        ),
+      ),
+    );
 
     testWidgets('an activity ref field takes focus when its chip is tapped', (tester) async {
       await tester.pumpWidget(hostWithPota());
@@ -56,20 +54,14 @@ void main() {
       await tester.pumpWidget(host());
       await openControl(tester, MdiIcons.radio);
 
-      expect(
-        tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).focusNode?.hasFocus,
-        isTrue,
-      );
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).focusNode?.hasFocus, isTrue);
     });
 
     testWidgets('the Time control focuses the time field', (tester) async {
       await tester.pumpWidget(host());
       await openControl(tester, MdiIcons.clockOutline);
 
-      expect(
-        tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)')).focusNode?.hasFocus,
-        isTrue,
-      );
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)')).focusNode?.hasFocus, isTrue);
     });
 
     testWidgets('collapsing returns the cursor to the primary field it came from', (tester) async {
@@ -90,11 +82,7 @@ void main() {
       expect(field('Frequency').focusNode!.hasFocus, isTrue);
 
       await openControl(tester, MdiIcons.radio); // same chip again — collapse
-      expect(
-        field('Rcvd').focusNode!.hasFocus,
-        isTrue,
-        reason: 'collapsing must resume where logging left off, not jump to Call',
-      );
+      expect(field('Rcvd').focusNode!.hasFocus, isTrue, reason: 'collapsing must resume where logging left off, not jump to Call');
     });
 
     testWidgets('collapsing returns to the last primary field even if the tap blurred it first', (tester) async {
@@ -131,10 +119,7 @@ void main() {
       await openControl(tester, MdiIcons.radio);
       await openControl(tester, MdiIcons.radio);
 
-      expect(
-        tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode?.hasFocus,
-        isTrue,
-      );
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode?.hasFocus, isTrue);
     });
 
     testWidgets('switching between two activity controls keeps each ref field working', (tester) async {
@@ -157,17 +142,17 @@ void main() {
           'input': {'kind': 'refList', 'refType': 'sota', 'pattern': r'[A-Z0-9/]+-[0-9]{3}'},
         },
       ];
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: controls,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
             ),
           ),
         ),
-      ));
+      );
 
       await openControl(tester, MdiIcons.pineTree);
       await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
@@ -262,8 +247,7 @@ void main() {
       await tester.pump();
 
       expect(tester.widget<TextField>(notes).controller!.text, 'Ran 5W');
-      expect(find.text('✓ Notes'), findsOneWidget,
-          reason: 'the space went through the same change path as a typed character');
+      expect(find.text('✓ Notes'), findsOneWidget, reason: 'the space went through the same change path as a typed character');
     });
 
     testWidgets('the first letter is capitalized wherever the note is typed', (tester) async {
@@ -281,8 +265,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.widgetWithText(TextField, 'Notes').last, 'second time this week');
       await tester.pump();
-      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes').last).controller!.text,
-          'Second time this week');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes').last).controller!.text, 'Second time this week');
     });
 
     testWidgets('the chip says whether this contact carries one', (tester) async {
@@ -307,10 +290,12 @@ void main() {
         'mode': 'SSB',
         'notes': 'Second time this week',
       });
-      await tester.pumpWidget(host(
-        session: LoggingSession(editingQso: existing),
-        strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes']),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: existing),
+          strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes']),
+        ),
+      );
       await tester.pump();
       await openControl(tester, MdiIcons.noteOutline);
 
@@ -319,8 +304,11 @@ void main() {
       await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes'])));
       await tester.pump();
       await openControl(tester, MdiIcons.noteOutline);
-      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text, isEmpty,
-          reason: 'a note belongs to the contact it was written about, not to the entry row');
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text,
+        isEmpty,
+        reason: 'a note belongs to the contact it was written about, not to the entry row',
+      );
     });
 
     testWidgets('a note deleted from a logged contact stays deleted', (tester) async {
@@ -335,10 +323,12 @@ void main() {
         'mode': 'SSB',
         'notes': 'Ran 5W to a wire',
       });
-      await tester.pumpWidget(host(
-        session: LoggingSession(editingQso: existing),
-        strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes']),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: existing),
+          strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes']),
+        ),
+      );
       await tester.pump();
       await openControl(tester, MdiIcons.noteOutline);
 
@@ -352,8 +342,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 10));
         saved = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!.single;
       }
-      expect(saved.data['notes'], '',
-          reason: 'the empty string is what a deliberate clear stores — an absent key would be re-filled');
+      expect(saved.data['notes'], '', reason: 'the empty string is what a deliberate clear stores — an absent key would be re-filled');
     });
 
     testWidgets('a contact that never had a note is not rewritten as having an empty one', (tester) async {
@@ -366,10 +355,12 @@ void main() {
         'band': '20m',
         'mode': 'SSB',
       });
-      await tester.pumpWidget(host(
-        session: LoggingSession(editingQso: existing),
-        strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes']),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: existing),
+          strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes']),
+        ),
+      );
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '57');
       await tester.pump();
@@ -449,10 +440,7 @@ void main() {
       // ...but the Radio control itself was not force-opened by it.
       await openControl(tester, MdiIcons.radio);
       expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
-      expect(
-        tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text,
-        '14285',
-      );
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14285');
     });
 
     // A manual time that can never read as the wall clock: with a hard-coded
@@ -460,8 +448,7 @@ void main() {
     // happens to be exactly that, and enterText of the literal is a no-op
     // (no override fires) when the reseeded field already holds it.
     final manualDt = DateTime.now().toUtc().add(const Duration(hours: 6));
-    final manualTime =
-        '${manualDt.hour.toString().padLeft(2, '0')}:${manualDt.minute.toString().padLeft(2, '0')}';
+    final manualTime = '${manualDt.hour.toString().padLeft(2, '0')}:${manualDt.minute.toString().padLeft(2, '0')}';
 
     testWidgets('Time control sets a manual timestamp used at log time; Now resets it', (tester) async {
       await tester.pumpWidget(host());
@@ -476,10 +463,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
 
       final logged = await waitForQsos(tester, 1);
-      expect(
-        DateTime.fromMillisecondsSinceEpoch(logged.single.startAtMillis!, isUtc: true),
-        DateTime.utc(2026, 1, 2, manualDt.hour, manualDt.minute),
-      );
+      expect(DateTime.fromMillisecondsSinceEpoch(logged.single.startAtMillis!, isUtc: true), DateTime.utc(2026, 1, 2, manualDt.hour, manualDt.minute));
 
       // Wipe resets to automatic timestamping for the next QSO.
       await openControl(tester, MdiIcons.clockOutline);
@@ -536,9 +520,8 @@ void main() {
       expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
     });
 
-    ChoiceChip timeChip(WidgetTester tester) => tester.widget<ChoiceChip>(
-          find.ancestor(of: find.byIcon(MdiIcons.clockOutline), matching: find.byType(ChoiceChip)),
-        );
+    ChoiceChip timeChip(WidgetTester tester) =>
+        tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.clockOutline), matching: find.byType(ChoiceChip)));
 
     testWidgets('Time chip shows a live clock, not a static "now" label', (tester) async {
       await tester.pumpWidget(host());
@@ -548,12 +531,7 @@ void main() {
       // what makes it a clock rather than a snapshot.
       expect(timeChip(tester).label, isA<OncePerSecond>());
 
-      String summary() => tester
-          .widget<Text>(find.descendant(
-            of: find.byWidget(timeChip(tester).label),
-            matching: find.byType(Text),
-          ))
-          .data!;
+      String summary() => tester.widget<Text>(find.descendant(of: find.byWidget(timeChip(tester).label), matching: find.byType(Text))).data!;
 
       // HH:MM:SSz — a real clock, matching app-polo's "17:06:49z" reference.
       // (Not asserting the value changes across a pump: DateTime.now() reads
@@ -588,17 +566,17 @@ void main() {
         },
       );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            session: LoggingSession(
-              editingQso: existingQso,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: existingQso),
+              radio: baseRadio(),
             ),
-            radio: baseRadio(),
           ),
         ),
-      ));
+      );
 
       // Shows the existing QSO's own time — static, not a live clock, with
       // an explicit :00 seconds since the stored value has none.
@@ -627,22 +605,19 @@ void main() {
           'input': {'kind': 'refList', 'refType': 'pota', 'placeholder': 'US-1234', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
         },
       ];
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
-            activities: ActivityHooks(
-              activityControls: controls,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
             ),
           ),
         ),
-      ));
+      );
 
-      ChoiceChip potaChip() => tester.widget<ChoiceChip>(find.ancestor(
-            of: find.byIcon(MdiIcons.pineTree),
-            matching: find.byType(ChoiceChip),
-          ));
+      ChoiceChip potaChip() => tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.pineTree), matching: find.byType(ChoiceChip)));
       expect(potaChip().side, BorderSide.none);
 
       await openControl(tester, MdiIcons.pineTree);
@@ -654,20 +629,16 @@ void main() {
     });
 
     testWidgets('chips match app-polo LoggerChip styling: tertiary family, rounded rectangle', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: baseRadio(),
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Scaffold(
+            body: LoggingControls(log: baseLog(), radio: baseRadio()),
           ),
         ),
-      ));
+      );
 
-      final chip = tester.widget<ChoiceChip>(find.ancestor(
-        of: find.byIcon(MdiIcons.radio),
-        matching: find.byType(ChoiceChip),
-      ));
+      final chip = tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.radio), matching: find.byType(ChoiceChip)));
       expect(chip.backgroundColor, HaLoColors.light.tertiaryLight);
       expect(chip.selectedColor, const Color(0xFF964900)); // colorScheme.tertiary
       expect(chip.shape, isA<RoundedRectangleBorder>());
@@ -676,10 +647,7 @@ void main() {
       // The whole panel — not just the chips — carries the tertiary tint.
       // (ChoiceChip has its own internal Material for ink effects, so we
       // match by fill color instead of "closest Material ancestor.")
-      expect(
-        find.byWidgetPredicate((w) => w is Material && w.color == const Color(0xFFFFDCC6)),
-        findsOneWidget,
-      );
+      expect(find.byWidgetPredicate((w) => w is Material && w.color == const Color(0xFFFFDCC6)), findsOneWidget);
     });
 
     // A pill that looks exactly like every other one is how a contact gets
@@ -689,22 +657,19 @@ void main() {
     testWidgets('the Radio chip fills with the error pair when there is no band', (tester) async {
       final untuned = FakeVfoStore()..setVfo('vfoA', mode: 'SSB');
       final theme = buildHaLoTheme(Brightness.light);
-      await tester.pumpWidget(MaterialApp(
-        theme: theme,
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: RadioHookup(
-              radioService: untuned,
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: RadioHookup(radioService: untuned),
             ),
           ),
         ),
-      ));
+      );
 
-      final chip = tester.widget<ChoiceChip>(find.ancestor(
-        of: find.byIcon(MdiIcons.radio),
-        matching: find.byType(ChoiceChip),
-      ));
+      final chip = tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.radio), matching: find.byType(ChoiceChip)));
       expect(chip.backgroundColor, theme.colorScheme.errorContainer);
       expect(chip.selectedColor, theme.colorScheme.error);
     });
@@ -716,22 +681,19 @@ void main() {
       expect(bandForFrequency(5000), isNull, reason: 'fixture assumes 5000 kHz is not a ham band');
       final offBand = FakeVfoStore()..setVfo('vfoA', freq: 5000, mode: 'SSB');
       final theme = buildHaLoTheme(Brightness.light);
-      await tester.pumpWidget(MaterialApp(
-        theme: theme,
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: RadioHookup(
-              radioService: offBand,
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: RadioHookup(radioService: offBand),
             ),
           ),
         ),
-      ));
+      );
 
-      final chip = tester.widget<ChoiceChip>(find.ancestor(
-        of: find.byIcon(MdiIcons.radio),
-        matching: find.byType(ChoiceChip),
-      ));
+      final chip = tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.radio), matching: find.byType(ChoiceChip)));
       expect(chip.backgroundColor, theme.colorScheme.errorContainer);
     });
 
@@ -742,21 +704,18 @@ void main() {
       expect(bandForFrequency(7250), '40m', reason: 'fixture assumes 7250 kHz names a band');
       final theme = buildHaLoTheme(Brightness.light);
       Widget panel(int ituRegion) => MaterialApp(
-            theme: theme,
-            home: Scaffold(
-              body: LoggingControls(
-                log: baseLog(),
-                radio: RadioHookup(
-                  radioService: FakeVfoStore()..setVfo('vfoA', freq: 7250, mode: 'SSB'),
-                  ourItuRegion: ituRegion,
-                ),
-              ),
+        theme: theme,
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: RadioHookup(
+              radioService: FakeVfoStore()..setVfo('vfoA', freq: 7250, mode: 'SSB'),
+              ourItuRegion: ituRegion,
             ),
-          );
-      ChoiceChip radioChip() => tester.widget<ChoiceChip>(find.ancestor(
-            of: find.byIcon(MdiIcons.radio),
-            matching: find.byType(ChoiceChip),
-          ));
+          ),
+        ),
+      );
+      ChoiceChip radioChip() => tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.radio), matching: find.byType(ChoiceChip)));
 
       await tester.pumpWidget(panel(1));
       expect(radioChip().backgroundColor, theme.colorScheme.errorContainer);
@@ -772,26 +731,32 @@ void main() {
     testWidgets('out of band shows in the pill only — never as the mode', (tester) async {
       // The pill's OOB is a warning, not a mode: it must not reach the Mode
       // field (which is what gets logged) nor the Mode menu's options.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: RadioHookup(
-              radioService: FakeVfoStore()..setVfo('vfoA', freq: 14074, mode: 'SSB'),
-              ourItuRegion: 1,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: RadioHookup(radioService: FakeVfoStore()..setVfo('vfoA', freq: 14074, mode: 'SSB'), ourItuRegion: 1),
             ),
           ),
         ),
-      ));
+      );
       await openControl(tester, MdiIcons.radio);
 
       await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '7250');
       await tester.pump();
-      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB',
-          reason: 'the out-of-band marker is not a mode guess — the mode stays where it was');
-      expect(find.text('${fmtFreq(7250)} • OOB'), findsOneWidget,
-          reason: 'the warning lands on the keystroke — an out-of-band frequency guesses no mode, '
-              'so nothing about the mode changes to trigger the rebuild that paints it');
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text,
+        'SSB',
+        reason: 'the out-of-band marker is not a mode guess — the mode stays where it was',
+      );
+      expect(
+        find.text('${fmtFreq(7250)} • OOB'),
+        findsOneWidget,
+        reason:
+            'the warning lands on the keystroke — an out-of-band frequency guesses no mode, '
+            'so nothing about the mode changes to trigger the rebuild that paints it',
+      );
 
       await tester.tap(find.widgetWithText(TextField, 'Mode'));
       await tester.pumpAndSettle();

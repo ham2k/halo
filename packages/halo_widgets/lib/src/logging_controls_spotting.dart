@@ -28,13 +28,7 @@ import 'theme.dart';
 /// What the model reads from the panel's live configuration — re-read on
 /// every use, because the hooks, the edited QSO and the operation all change
 /// under a mounted panel.
-typedef SpottingConfig = ({
-  SendSpot? sendSpot,
-  SuggestSpotSources? suggestSpotSources,
-  VfoStore? radioService,
-  Qso? editingQso,
-  Operation operation,
-});
+typedef SpottingConfig = ({SendSpot? sendSpot, SuggestSpotSources? suggestSpotSources, VfoStore? radioService, Qso? editingQso, Operation operation});
 
 /// The Spotting control's summary, button text and enabled state, resolved
 /// once per build from the state machine in [SpottingControlModel.state].
@@ -87,7 +81,6 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   bool _sending = false;
   bool get sending => _sending;
 
-
   @override
   void dispose() {
     _statusClearTimer?.cancel();
@@ -112,39 +105,19 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       final tooOld = ageMillis == null || ageMillis > staleAfter.inMilliseconds;
       final summary = t.loggingControls.spottingControl;
       if (tooOld) {
-        return (
-          summary: summary,
-          buttonLabel: t.loggingControls.spotTooLate(call: call),
-          enabled: false,
-          showComment: false,
-        );
+        return (summary: summary, buttonLabel: t.loggingControls.spotTooLate(call: call), enabled: false, showComment: false);
       }
       final freqLabel = editingQso.freq == null ? '' : fmtFreq(editingQso.freq!);
-      return (
-        summary: summary,
-        buttonLabel: t.loggingControls.spotOtherAt(call: call, freq: freqLabel),
-        enabled: true,
-        showComment: true,
-      );
+      return (summary: summary, buttonLabel: t.loggingControls.spotOtherAt(call: call, freq: freqLabel), enabled: true, showComment: true);
     }
 
     final summary = t.loggingControls.spottingSelfControl;
     final vfoFreq = cfg.radioService?.vfoA.freq;
     if (vfoFreq == null) {
-      return (
-        summary: summary,
-        buttonLabel: t.loggingControls.spotNoFreq,
-        enabled: false,
-        showComment: false,
-      );
+      return (summary: summary, buttonLabel: t.loggingControls.spotNoFreq, enabled: false, showComment: false);
     }
     final freqLabel = fmtFreq(vfoFreq);
-    return (
-      summary: summary,
-      buttonLabel: t.loggingControls.spotSelfAt(freq: freqLabel),
-      enabled: true,
-      showComment: true,
-    );
+    return (summary: summary, buttonLabel: t.loggingControls.spotSelfAt(freq: freqLabel), enabled: true, showComment: true);
   }
 
   /// The operation as a spot sees it: its shared data plus `local`, this
@@ -239,13 +212,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
 /// The Spotting control's expanded row: the comment field, the send button,
 /// and one status icon per source on offer.
 class SpottingControlFields extends StatelessWidget {
-  const SpottingControlFields({
-    super.key,
-    required this.model,
-    required this.state,
-    required this.theme,
-    required this.colors,
-  });
+  const SpottingControlFields({super.key, required this.model, required this.state, required this.theme, required this.colors});
 
   final SpottingControlModel model;
 
@@ -273,8 +240,7 @@ class SpottingControlFields extends StatelessWidget {
               // Explicitly mixed-case, like Name/Notes: a spot comment is
               // free prose for other operators, not logging data.
               style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
-              decoration: poloFieldDecoration(context, t.loggingControls.spotComment,
-                  labelColor: theme.colorScheme.onTertiaryContainer),
+              decoration: poloFieldDecoration(context, t.loggingControls.spotComment, labelColor: theme.colorScheme.onTertiaryContainer),
             ),
           ),
         const SizedBox(width: Space.sm),
@@ -285,9 +251,7 @@ class SpottingControlFields extends StatelessWidget {
             disabledBackgroundColor: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.4),
           ),
           onPressed: state.enabled && !model.sending ? model.send : null,
-          icon: model.sending
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(MdiIcons.handWave),
+          icon: model.sending ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(MdiIcons.handWave),
           label: Text(state.buttonLabel),
         ),
         // Up to 3 source-status icons per column, wrapping into another

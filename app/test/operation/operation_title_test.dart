@@ -24,69 +24,59 @@ void main() {
     // device would.
     bool cachedAsEmpty = false,
     String stationCall = '',
-  }) =>
-      Operation(
-        uuid: 'u',
-        data: {
-          'stationCall': stationCall,
-          'userTitle': userTitle,
-          'title': title,
-          if (hasRefs)
-            'refs': [
-              {'type': 'pota/activation', 'ref': 'K-1234'},
-            ],
-        },
-        localData: cachedAsEmpty
-            ? const {'titleSuggestion': null}
-            : (titleSuggestion == null ? const {} : {'titleSuggestion': titleSuggestion}),
-      );
+  }) => Operation(
+    uuid: 'u',
+    data: {
+      'stationCall': stationCall,
+      'userTitle': userTitle,
+      'title': title,
+      if (hasRefs)
+        'refs': [
+          {'type': 'pota/activation', 'ref': 'K-1234'},
+        ],
+    },
+    localData: cachedAsEmpty ? const {'titleSuggestion': null} : (titleSuggestion == null ? const {} : {'titleSuggestion': titleSuggestion}),
+  );
 
   Future<String> titleFor(WidgetTester tester, Operation operation) async {
     late String result;
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Builder(builder: (context) {
-        result = displayTitleFor(context, operation);
-        return const SizedBox();
-      })),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              result = displayTitleFor(context, operation);
+              return const SizedBox();
+            },
+          ),
+        ),
+      ),
+    );
     return result;
   }
 
   testWidgets("the user's own title leads, with the generated title appended after it", (tester) async {
-    final title = await titleFor(
-      tester,
-      operation(userTitle: 'My Custom Title', titleSuggestion: {'at': 'K-1234', 'for': '', 'title': '', 'subtitle': ''}),
-    );
+    final title = await titleFor(tester, operation(userTitle: 'My Custom Title', titleSuggestion: {'at': 'K-1234', 'for': '', 'title': '', 'subtitle': ''}));
     expect(title, 'My Custom Title at K-1234');
   });
 
-  testWidgets("the user's own title alone, with no trailing space, when there's no suggestion to append",
-      (tester) async {
+  testWidgets("the user's own title alone, with no trailing space, when there's no suggestion to append", (tester) async {
     final title = await titleFor(tester, operation(userTitle: 'My Custom Title'));
     expect(title, 'My Custom Title');
   });
 
   testWidgets('an "at" suggestion becomes a localized "at X" when there is no user title', (tester) async {
-    final title = await titleFor(
-      tester,
-      operation(titleSuggestion: {'at': 'K-1234', 'for': '', 'title': '', 'subtitle': ''}),
-    );
+    final title = await titleFor(tester, operation(titleSuggestion: {'at': 'K-1234', 'for': '', 'title': '', 'subtitle': ''}));
     expect(title, 'at K-1234', reason: 'must use the "at" joiner word from strings.g.dart, not raw concatenation');
   });
 
   testWidgets('a "for" suggestion becomes a localized "for X"', (tester) async {
-    final title = await titleFor(
-      tester,
-      operation(titleSuggestion: {'for': 'Field Day', 'at': '', 'title': '', 'subtitle': ''}),
-    );
+    final title = await titleFor(tester, operation(titleSuggestion: {'for': 'Field Day', 'at': '', 'title': '', 'subtitle': ''}));
     expect(title, 'for Field Day');
   });
 
   testWidgets('plain title, for, and at fragments compose in that order', (tester) async {
-    final title = await titleFor(
-      tester,
-      operation(titleSuggestion: {'title': 'Special Event', 'for': 'Field Day', 'at': 'K-1234', 'subtitle': ''}),
-    );
+    final title = await titleFor(tester, operation(titleSuggestion: {'title': 'Special Event', 'for': 'Field Day', 'at': 'K-1234', 'subtitle': ''}));
     expect(title, 'Special Event for Field Day at K-1234');
   });
 
@@ -95,8 +85,7 @@ void main() {
     expect(title, 'General Operation');
   });
 
-  testWidgets('falls back to the synced generated title when this device has no local suggestion cache yet',
-      (tester) async {
+  testWidgets('falls back to the synced generated title when this device has no local suggestion cache yet', (tester) async {
     // A freshly-synced operation (from another device, or PoLo) has no
     // localData on this device — without this fallback it would show
     // "General Operation" until someone opens it here to recompute the cache.
@@ -107,11 +96,7 @@ void main() {
   testWidgets('the live local cache wins over the synced title once this device has recomputed it', (tester) async {
     final title = await titleFor(
       tester,
-      operation(
-        title: 'stale synced title',
-        hasRefs: true,
-        titleSuggestion: {'for': 'Field Day', 'at': 'K-5678', 'title': '', 'subtitle': ''},
-      ),
+      operation(title: 'stale synced title', hasRefs: true, titleSuggestion: {'for': 'Field Day', 'at': 'K-5678', 'title': '', 'subtitle': ''}),
     );
     expect(title, 'for Field Day at K-5678');
   });
@@ -121,8 +106,7 @@ void main() {
     expect(title, 'My Custom Title for Field Day');
   });
 
-  testWidgets('ignores the synced title on a ref-less operation, since PoLo writes its own placeholder text there',
-      (tester) async {
+  testWidgets('ignores the synced title on a ref-less operation, since PoLo writes its own placeholder text there', (tester) async {
     // PoLo sets data.title to its OWN localized "General Operation" (or
     // "New Operation" for a brand new one) when an operation has no refs
     // (operationsDB.js, setOperationData.js) — never a real ref-derived
@@ -151,8 +135,7 @@ void main() {
     expect(title, 'for Field Day at K-1234');
   });
 
-  testWidgets('a subtitle-only cache is a real live suggestion, not a reason to fall back to the stale synced title',
-      (tester) async {
+  testWidgets('a subtitle-only cache is a real live suggestion, not a reason to fall back to the stale synced title', (tester) async {
     // A live cache with only subtitle set (title/for/at all empty — a shape
     // every current suggestOperationTitle hook produces alongside "at"/"for",
     // but the merge logic allows on its own) renders as '' via
@@ -160,11 +143,7 @@ void main() {
     // up-to-date answer", not get mistaken for "no cache yet".
     final title = await titleFor(
       tester,
-      operation(
-        title: 'stale synced title',
-        hasRefs: true,
-        titleSuggestion: {'title': '', 'for': '', 'at': '', 'subtitle': 'Some Park'},
-      ),
+      operation(title: 'stale synced title', hasRefs: true, titleSuggestion: {'title': '', 'for': '', 'at': '', 'subtitle': 'Some Park'}),
     );
     expect(title, 'General Operation');
   });
@@ -185,10 +164,7 @@ void main() {
     });
 
     testWidgets('a /TEST station call appends "Testing" to a generated title', (tester) async {
-      final title = await titleFor(
-        tester,
-        operation(stationCall: 'KI2D/TEST', titleSuggestion: {'at': 'K-1234', 'for': '', 'title': '', 'subtitle': ''}),
-      );
+      final title = await titleFor(tester, operation(stationCall: 'KI2D/TEST', titleSuggestion: {'at': 'K-1234', 'for': '', 'title': '', 'subtitle': ''}));
       expect(title, 'at K-1234 Testing');
     });
 
@@ -207,10 +183,10 @@ void main() {
     // no position, `operator2` at position 2 — which is where the header
     // reads it from.
     Operation withCalls(String stationCall, {String operatorCall = '', String position = ''}) => Operation(
-          uuid: 'u',
-          data: {'stationCall': stationCall, operatorCallKeyFor(position): operatorCall},
-          localData: position.isEmpty ? const {} : {'multiIdentifier': position},
-        );
+      uuid: 'u',
+      data: {'stationCall': stationCall, operatorCallKeyFor(position): operatorCall},
+      localData: position.isEmpty ? const {} : {'multiIdentifier': position},
+    );
 
     test('a station logged by its own licensee names nobody new', () {
       expect(headerCallsignFor(withCalls('KI2D', operatorCall: 'KI2D')), 'KI2D');

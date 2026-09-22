@@ -15,9 +15,7 @@ class GridLocation {
   /// Value equality so map data built from locations (marker/line lists)
   /// can be compared with `listEquals` to tell rebuilds from real changes.
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is GridLocation && latitude == other.latitude && longitude == other.longitude);
+  bool operator ==(Object other) => identical(this, other) || (other is GridLocation && latitude == other.latitude && longitude == other.longitude);
 
   @override
   int get hashCode => Object.hash(latitude, longitude);
@@ -102,10 +100,7 @@ GridCell? gridCell(String? grid) {
 /// A well-formed Maidenhead locator: field pair, square digits, then
 /// optional subsquare pair, extended-square digits, and sub-subsquare pair
 /// (4, 6, 8, or 10 characters), any case.
-final _gridShape = RegExp(
-  r'^[A-R]{2}[0-9]{2}(?:[A-X]{2}(?:[0-9]{2}(?:[A-X]{2})?)?)?$',
-  caseSensitive: false,
-);
+final _gridShape = RegExp(r'^[A-R]{2}[0-9]{2}(?:[A-X]{2}(?:[0-9]{2}(?:[A-X]{2})?)?)?$', caseSensitive: false);
 
 /// Whether [grid] is a well-formed Maidenhead locator — 4, 6, 8 or 10
 /// characters, in the right alternation of letter pairs and digit pairs.
@@ -264,8 +259,7 @@ enum GridPrecision {
 /// is SHOWN as, and what is stored as the grid beside it. The coordinate
 /// itself is stored whole either way; only how finely the app SPEAKS about it
 /// is a setting.
-String gridForLocation(double lat, double lon) =>
-    GridPrecision.current == GridPrecision.eight ? locationToGrid8(lat, lon) : locationToGrid6(lat, lon);
+String gridForLocation(double lat, double lon) => GridPrecision.current == GridPrecision.eight ? locationToGrid8(lat, lon) : locationToGrid6(lat, lon);
 
 /// The locator to SHOW for a record — derived from its coordinate when it has
 /// one, at the operator's [GridPrecision]; otherwise its stored [grid] as
@@ -355,8 +349,7 @@ bool gridCellContains(GridCell cell, GridLocation location) {
     return size / 2 + (margin > _adifCoordinateStep ? margin : _adifCoordinateStep);
   }
 
-  return (location.latitude - cell.center.latitude).abs() <= reach(cell.latSize) &&
-      (location.longitude - cell.center.longitude).abs() <= reach(cell.lonSize);
+  return (location.latitude - cell.center.latitude).abs() <= reach(cell.latSize) && (location.longitude - cell.center.longitude).abs() <= reach(cell.lonSize);
 }
 
 /// The coordinate to store beside a locator the operator has just STATED —

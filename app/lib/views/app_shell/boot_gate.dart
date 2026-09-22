@@ -47,11 +47,7 @@ class _BootGateState extends State<BootGate> with SingleTickerProviderStateMixin
 
   late final AnimationController _fadeController = AnimationController(vsync: this, duration: _transitionDuration)..value = 1;
 
-  Widget _currentChild = const MaterialApp(
-    key: ValueKey('splash'),
-    debugShowCheckedModeBanner: false,
-    home: SplashScreen(),
-  );
+  Widget _currentChild = const MaterialApp(key: ValueKey('splash'), debugShowCheckedModeBanner: false, home: SplashScreen());
   Widget? _previousChild;
 
   /// Bounds how long [initState] waits for the onboarding photo (see below)
@@ -86,51 +82,57 @@ class _BootGateState extends State<BootGate> with SingleTickerProviderStateMixin
     // showing: `loadReleaseNotes` caches its result, and the release-overlay
     // gate reads the same asset unconditionally on every boot anyway.
     final releaseNotes = loadReleaseNotes();
-    widget.servicesFuture.then((services) async {
-      if (!mounted) return;
-      if (onboardingWillShow(services)) {
-        try {
-          await _prepareOnboardingPhoto(releaseNotes).timeout(_onboardingPhotoTimeout, onTimeout: () {});
-        } catch (error, stackTrace) {
-          // Best-effort, same "fine to arrive late, or never" tolerance as
-          // _OnboardingGateState._show() itself — a broken/missing
-          // release-notes asset or photo must not block boot. Caught here
-          // rather than left to the `.catchError` below, which would
-          // otherwise mislabel it as `bootstrap()` failing and take down
-          // the whole app instead of just onboarding's photo.
-          debugPrint('[boot] onboarding photo prep failed (not a bootstrap() failure): $error\n$stackTrace');
-        }
-      }
-      if (!mounted) return;
-      // Wrapped separately from the `.catchError` below: that one exists to
-      // catch `bootstrap()` itself failing, and without this try/catch it
-      // would also swallow an unrelated error thrown by `_switchTo` here,
-      // mislabeling it as a boot failure in the debug log.
-      try {
-        _switchTo(HaLoApp(key: const ValueKey('app'), services: services));
-      } catch (error, stackTrace) {
-        debugPrint('[boot] unexpected error building HaLoApp (not a bootstrap() failure): $error\n$stackTrace');
-        ErrorReportingService.report(error, stackTrace, context: 'boot:build-app');
-        _switchTo(MaterialApp(
-          key: const ValueKey('boot-error'),
-          debugShowCheckedModeBanner: false,
-          home: BootErrorScreen(error: error),
-        ));
-      }
-    }).catchError((Object error, StackTrace stackTrace) {
-      // Fail loud: runApp() happens before bootstrap() resolves, so an
-      // unhandled rejection here would strand the user
-      // on the splash screen forever with no visible error.
-      debugPrint('[boot] bootstrap() failed: $error\n$stackTrace');
-      ErrorReportingService.report(error, stackTrace, context: 'boot:bootstrap');
-      if (mounted) {
-        _switchTo(MaterialApp(
-          key: const ValueKey('boot-error'),
-          debugShowCheckedModeBanner: false,
-          home: BootErrorScreen(error: error),
-        ));
-      }
-    });
+    widget.servicesFuture
+        .then((services) async {
+          if (!mounted) return;
+          if (onboardingWillShow(services)) {
+            try {
+              await _prepareOnboardingPhoto(releaseNotes).timeout(_onboardingPhotoTimeout, onTimeout: () {});
+            } catch (error, stackTrace) {
+              // Best-effort, same "fine to arrive late, or never" tolerance as
+              // _OnboardingGateState._show() itself — a broken/missing
+              // release-notes asset or photo must not block boot. Caught here
+              // rather than left to the `.catchError` below, which would
+              // otherwise mislabel it as `bootstrap()` failing and take down
+              // the whole app instead of just onboarding's photo.
+              debugPrint('[boot] onboarding photo prep failed (not a bootstrap() failure): $error\n$stackTrace');
+            }
+          }
+          if (!mounted) return;
+          // Wrapped separately from the `.catchError` below: that one exists to
+          // catch `bootstrap()` itself failing, and without this try/catch it
+          // would also swallow an unrelated error thrown by `_switchTo` here,
+          // mislabeling it as a boot failure in the debug log.
+          try {
+            _switchTo(HaLoApp(key: const ValueKey('app'), services: services));
+          } catch (error, stackTrace) {
+            debugPrint('[boot] unexpected error building HaLoApp (not a bootstrap() failure): $error\n$stackTrace');
+            ErrorReportingService.report(error, stackTrace, context: 'boot:build-app');
+            _switchTo(
+              MaterialApp(
+                key: const ValueKey('boot-error'),
+                debugShowCheckedModeBanner: false,
+                home: BootErrorScreen(error: error),
+              ),
+            );
+          }
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          // Fail loud: runApp() happens before bootstrap() resolves, so an
+          // unhandled rejection here would strand the user
+          // on the splash screen forever with no visible error.
+          debugPrint('[boot] bootstrap() failed: $error\n$stackTrace');
+          ErrorReportingService.report(error, stackTrace, context: 'boot:bootstrap');
+          if (mounted) {
+            _switchTo(
+              MaterialApp(
+                key: const ValueKey('boot-error'),
+                debugShowCheckedModeBanner: false,
+                home: BootErrorScreen(error: error),
+              ),
+            );
+          }
+        });
   }
 
   void _switchTo(Widget next) {

@@ -83,6 +83,4 @@ const _editionDefine = String.fromEnvironment('HALO_EDITION', defaultValue: 'dev
 /// The [Edition] this binary was built as. An unrecognized value falls back to
 /// [Edition.dev] rather than throwing, so a mis-set define degrades to the
 /// safe, non-distributed edition instead of breaking the build.
-const Edition kEdition = _editionDefine == 'prod'
-    ? Edition.prod
-    : (_editionDefine == 'next' ? Edition.next : Edition.dev);
+const Edition kEdition = _editionDefine == 'prod' ? Edition.prod : (_editionDefine == 'next' ? Edition.next : Edition.dev);

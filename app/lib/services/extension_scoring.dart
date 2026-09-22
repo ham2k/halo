@@ -81,20 +81,11 @@ mixin ExtensionScoring {
   /// One scorer's batched pass over an operation's QSOs. [resumeFrom] hands back
   /// that scorer's cached end-of-log scoresheet so only [qsos] — a tail — needs
   /// replaying; omit it for a full pass.
-  Future<Map<String, dynamic>?> scoreQsos({
-    required String scorerKey,
-    required Map<String, dynamic> args,
-  }) async {
+  Future<Map<String, dynamic>?> scoreQsos({required String scorerKey, required Map<String, dynamic> args}) async {
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook(
-        'scoring',
-        key: scorerKey,
-        method: 'scoreQsos',
-        args: args,
-        timeout: const Duration(seconds: 10),
-      );
+      final result = await host.invokeHook('scoring', key: scorerKey, method: 'scoreQsos', args: args, timeout: const Duration(seconds: 10));
       if (result is! Map) return null;
       ErrorReportingService.recordSuccess(_scorerFailureKey(scorerKey, 'scoreQsos'));
       return result.cast<String, dynamic>();
@@ -151,11 +142,7 @@ mixin ExtensionScoring {
     final host = this.host;
     if (host == null) return null;
 
-    final scorers = priority.scorersFor(
-      operation,
-      await getScoringScopes(),
-      alsoRefTypes: {...huntedRefTypes, ...priority.refTypesOf(qso)},
-    );
+    final scorers = priority.scorersFor(operation, await getScoringScopes(), alsoRefTypes: {...huntedRefTypes, ...priority.refTypesOf(qso)});
     if (scorers.isEmpty) return null;
 
     // Sorted by scorer key so the merged notice/alert order is stable —
@@ -172,42 +159,42 @@ mixin ExtensionScoring {
     final fallbackAlerts = SplayTreeSet<String>();
     var judgedByOther = false;
 
-    await Future.wait(scorers.map((scorer) async {
-      try {
-        final checkpoint = resume?.checkpoints[scorer.key];
-        final tail = resume?.tail;
-        final result = await host.invokeHook(
-          'scoring',
-          key: scorer.key,
-          method: 'scoreQso',
-          args: {
-            'operation': operation,
-            'qso': qso,
-            'excludeUuid': ?excludeUuid,
-            'ref': ?scorer.ref,
-            'segments': ?segments,
-            // Absent, not null, without one: the harness branches on the key's
-            // presence, and a null would resume from nothing.
-            'resumeFrom': ?checkpoint?.sheet,
-            'resumeDay': ?checkpoint?.day,
-            if (checkpoint != null && tail != null && tail.isNotEmpty) 'qsos': tail,
-          },
-          timeout: const Duration(seconds: 4),
-        );
-        if (result is! Map) return;
-        any = true;
-        ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, 'scoreQso'));
-        if (!scorer.fallback && judgesWorkedBefore(result)) judgedByOther = true;
-        (scorer.fallback ? fallbackNotices : notices)
-            .addAll(((result['notices'] as List?) ?? const []).whereType<String>());
-        (scorer.fallback ? fallbackAlerts : alerts)
-            .addAll(((result['alerts'] as List?) ?? const []).whereType<String>());
-      } catch (e, stackTrace) {
-        // A scorer that FAILED judged nothing, so the fallback speaks for this
-        // QSO after all rather than the row going bare.
-        _reportScorerFailure(scorer.key, 'scoreQso', e, stackTrace);
-      }
-    }));
+    await Future.wait(
+      scorers.map((scorer) async {
+        try {
+          final checkpoint = resume?.checkpoints[scorer.key];
+          final tail = resume?.tail;
+          final result = await host.invokeHook(
+            'scoring',
+            key: scorer.key,
+            method: 'scoreQso',
+            args: {
+              'operation': operation,
+              'qso': qso,
+              'excludeUuid': ?excludeUuid,
+              'ref': ?scorer.ref,
+              'segments': ?segments,
+              // Absent, not null, without one: the harness branches on the key's
+              // presence, and a null would resume from nothing.
+              'resumeFrom': ?checkpoint?.sheet,
+              'resumeDay': ?checkpoint?.day,
+              if (checkpoint != null && tail != null && tail.isNotEmpty) 'qsos': tail,
+            },
+            timeout: const Duration(seconds: 4),
+          );
+          if (result is! Map) return;
+          any = true;
+          ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, 'scoreQso'));
+          if (!scorer.fallback && judgesWorkedBefore(result)) judgedByOther = true;
+          (scorer.fallback ? fallbackNotices : notices).addAll(((result['notices'] as List?) ?? const []).whereType<String>());
+          (scorer.fallback ? fallbackAlerts : alerts).addAll(((result['alerts'] as List?) ?? const []).whereType<String>());
+        } catch (e, stackTrace) {
+          // A scorer that FAILED judged nothing, so the fallback speaks for this
+          // QSO after all rather than the row going bare.
+          _reportScorerFailure(scorer.key, 'scoreQso', e, stackTrace);
+        }
+      }),
+    );
 
     if (!any) return null;
     if (judgedByOther) {
@@ -263,10 +250,7 @@ mixin ExtensionScoring {
     final scorers = priority.scorersFor(
       withUuid,
       await getScoringScopes(),
-      alsoRefTypes: {
-        ...huntedRefTypes,
-        for (final candidate in candidates.values) ...priority.refTypesOf(candidate),
-      },
+      alsoRefTypes: {...huntedRefTypes, for (final candidate in candidates.values) ...priority.refTypesOf(candidate)},
     );
     if (scorers.isEmpty) return null;
 
@@ -293,52 +277,51 @@ mixin ExtensionScoring {
     // doesn't — and the board must not keep showing the last one it had.
     var failed = false;
 
-    await Future.wait(scorers.map((scorer) async {
-      try {
-        final checkpoint = resume?.checkpoints[scorer.key];
-        final tail = resume?.tail;
-        final result = await host.invokeHook(
-          'scoring',
-          key: scorer.key,
-          method: 'scoreCandidates',
-          args: {
-            'operation': withUuid,
-            'candidates': payload,
-            'ref': ?scorer.ref,
-            'segments': ?segments,
-            // As scoreQso's: absent, not null, without a checkpoint, and the
-            // tail only beside one.
-            'resumeFrom': ?checkpoint?.sheet,
-            'resumeDay': ?checkpoint?.day,
-            if (checkpoint != null && tail != null && tail.isNotEmpty) 'qsos': tail,
-          },
-          // Longer than scoreQso's: this folds the whole log once and then
-          // scores every candidate, where that scores one.
-          timeout: const Duration(seconds: 20),
-        );
-        if (result is! Map) return;
-        any = true;
-        ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, 'scoreCandidates'));
-        for (final entry in result.entries) {
-          final key = entry.key;
-          final value = entry.value;
-          if (key is! String || value is! Map) continue;
-          if (!scorer.fallback && judgesWorkedBefore(value)) judgedByOther.add(key);
-          final target = scorer.fallback ? fallbackMerged : merged;
-          final into = target.putIfAbsent(
-            key,
-            () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()),
+    await Future.wait(
+      scorers.map((scorer) async {
+        try {
+          final checkpoint = resume?.checkpoints[scorer.key];
+          final tail = resume?.tail;
+          final result = await host.invokeHook(
+            'scoring',
+            key: scorer.key,
+            method: 'scoreCandidates',
+            args: {
+              'operation': withUuid,
+              'candidates': payload,
+              'ref': ?scorer.ref,
+              'segments': ?segments,
+              // As scoreQso's: absent, not null, without a checkpoint, and the
+              // tail only beside one.
+              'resumeFrom': ?checkpoint?.sheet,
+              'resumeDay': ?checkpoint?.day,
+              if (checkpoint != null && tail != null && tail.isNotEmpty) 'qsos': tail,
+            },
+            // Longer than scoreQso's: this folds the whole log once and then
+            // scores every candidate, where that scores one.
+            timeout: const Duration(seconds: 20),
           );
-          into.notices.addAll(((value['notices'] as List?) ?? const []).whereType<String>());
-          into.alerts.addAll(((value['alerts'] as List?) ?? const []).whereType<String>());
+          if (result is! Map) return;
+          any = true;
+          ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, 'scoreCandidates'));
+          for (final entry in result.entries) {
+            final key = entry.key;
+            final value = entry.value;
+            if (key is! String || value is! Map) continue;
+            if (!scorer.fallback && judgesWorkedBefore(value)) judgedByOther.add(key);
+            final target = scorer.fallback ? fallbackMerged : merged;
+            final into = target.putIfAbsent(key, () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()));
+            into.notices.addAll(((value['notices'] as List?) ?? const []).whereType<String>());
+            into.alerts.addAll(((value['alerts'] as List?) ?? const []).whereType<String>());
+          }
+        } catch (e, stackTrace) {
+          // Per-scorer, like scoreQso: a contest scorer that throws must not cost
+          // the spots their core dupe marking.
+          failed = true;
+          _reportScorerFailure(scorer.key, 'scoreCandidates', e, stackTrace);
         }
-      } catch (e, stackTrace) {
-        // Per-scorer, like scoreQso: a contest scorer that throws must not cost
-        // the spots their core dupe marking.
-        failed = true;
-        _reportScorerFailure(scorer.key, 'scoreCandidates', e, stackTrace);
-      }
-    }));
+      }),
+    );
 
     // A failure returns the surviving scorers' verdicts — an EMPTY map when
     // the only scorer was the one that failed — rather than null. Null means
@@ -350,27 +333,17 @@ mixin ExtensionScoring {
     if (!any && !failed) return null;
     for (final entry in fallbackMerged.entries) {
       final judged = judgedByOther.contains(entry.key);
-      final notices = judged
-          ? entry.value.notices.where((n) => !kWorkedBeforeNotices.contains(n))
-          : entry.value.notices;
-      final alerts = judged
-          ? entry.value.alerts.where((a) => !kWorkedBeforeAlerts.contains(a))
-          : entry.value.alerts;
+      final notices = judged ? entry.value.notices.where((n) => !kWorkedBeforeNotices.contains(n)) : entry.value.notices;
+      final alerts = judged ? entry.value.alerts.where((a) => !kWorkedBeforeAlerts.contains(a)) : entry.value.alerts;
       if (notices.isEmpty && alerts.isEmpty) continue;
-      final into = merged.putIfAbsent(
-        entry.key,
-        () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()),
-      );
+      final into = merged.putIfAbsent(entry.key, () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()));
       into.notices.addAll(notices);
       into.alerts.addAll(alerts);
     }
     return {
       for (final entry in merged.entries)
         if (entry.value.notices.isNotEmpty || entry.value.alerts.isNotEmpty)
-          entry.key: {
-            'notices': entry.value.notices.toList(),
-            'alerts': entry.value.alerts.toList(),
-          },
+          entry.key: {'notices': entry.value.notices.toList(), 'alerts': entry.value.alerts.toList()},
     };
   }
 }

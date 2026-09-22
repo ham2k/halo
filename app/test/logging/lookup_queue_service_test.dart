@@ -50,21 +50,24 @@ void main() {
     Duration? waitBudget,
     bool Function()? isOffline,
     Stream<bool>? offlineChanges,
-  }) =>
-      LookupQueueService(
-        lookup: lookup,
-        qsos: qsos,
-        operations: operations,
-        statusBar: statusBar,
-        lookupReady: lookupReady,
-        isOffline: isOffline,
-        offlineChanges: offlineChanges,
-        runtimeWaitBudget: waitBudget ?? const Duration(seconds: 20),
-      );
+  }) => LookupQueueService(
+    lookup: lookup,
+    qsos: qsos,
+    operations: operations,
+    statusBar: statusBar,
+    lookupReady: lookupReady,
+    isOffline: isOffline,
+    offlineChanges: offlineChanges,
+    runtimeWaitBudget: waitBudget ?? const Duration(seconds: 20),
+  );
 
   test('processes queued QSOs one at a time and merges guess/lookups onto the stored record', () async {
-    final a = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
-    final b = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
+    final a = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    final b = await qsos.add(operation.uuid, {
+      'their': {'call': 'K1ABC'},
+    });
 
     final order = <String>[];
     var concurrent = 0, maxConcurrent = 0;
@@ -77,7 +80,7 @@ void main() {
       return {
         'guess': {'name': 'Name for $call'},
         'lookups': [
-          {'source': 'test', 'name': 'Name for $call'}
+          {'source': 'test', 'name': 'Name for $call'},
         ],
       };
     });
@@ -107,8 +110,12 @@ void main() {
     // A cast there does not degrade one field — it throws out of the queue
     // run, so the QSO stays bare AND every call queued behind it is stranded.
     // Same class of bug as the model getters; see qson_values.dart.
-    final bad = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
-    final after = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
+    final bad = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    final after = await qsos.add(operation.uuid, {
+      'their': {'call': 'K1ABC'},
+    });
 
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       if (call == 'W1AW') {
@@ -118,7 +125,9 @@ void main() {
           'lookups': 'not-a-list',
         };
       }
-      return {'guess': {'name': 'Name for $call'}};
+      return {
+        'guess': {'name': 'Name for $call'},
+      };
     });
 
     queue.enqueue(bad);
@@ -140,18 +149,19 @@ void main() {
   });
 
   test('merges onto the freshest record: an edit made while the lookup was in flight survives', () async {
-    final qso = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}, 'freq': 7100.0});
+    final qso = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+      'freq': 7100.0,
+    });
 
     // The lookup fn itself edits the QSO before returning — simulating the
     // operator changing the record while the network round-trip is running.
     final editingQueue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       final current = (await qsos.get(qso['uuid'] as String))!;
-      await qsos.update(Qso(
-        uuid: current.uuid,
-        operationUuid: current.operationUuid,
-        data: {...current.data, 'notes': 'edited mid-lookup'},
-      ));
-      return {'guess': {'name': 'ARRL HQ'}};
+      await qsos.update(Qso(uuid: current.uuid, operationUuid: current.operationUuid, data: {...current.data, 'notes': 'edited mid-lookup'}));
+      return {
+        'guess': {'name': 'ARRL HQ'},
+      };
     });
 
     editingQueue.enqueue(qso);
@@ -163,7 +173,9 @@ void main() {
   });
 
   test('a result for a callsign corrected mid-flight is discarded, not stamped onto the new call', () async {
-    final qso = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
+    final qso = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+    });
 
     // The operator fixes a busted call while the (slow) lookup runs: the
     // returned data belongs to the OLD call and must not decorate the new
@@ -171,15 +183,19 @@ void main() {
     // the wrong station's name with no visible hint.
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       final current = (await qsos.get(qso['uuid'] as String))!;
-      await qsos.update(Qso(
-        uuid: current.uuid,
-        operationUuid: current.operationUuid,
-        data: {
-          ...current.data,
-          'their': {...(current.data['their'] as Map).cast<String, dynamic>(), 'call': 'K9ABC'},
-        },
-      ));
-      return {'guess': {'name': 'W1AW Station'}};
+      await qsos.update(
+        Qso(
+          uuid: current.uuid,
+          operationUuid: current.operationUuid,
+          data: {
+            ...current.data,
+            'their': {...(current.data['their'] as Map).cast<String, dynamic>(), 'call': 'K9ABC'},
+          },
+        ),
+      );
+      return {
+        'guess': {'name': 'W1AW Station'},
+      };
     });
 
     queue.enqueue(qso);
@@ -197,14 +213,16 @@ void main() {
     // disagrees with the QSO is a result that got mixed up in flight and must
     // never decorate this record — displays fall back to their.guess, so a
     // crossed merge would silently show the wrong station.
-    final qso = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
+    final qso = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+    });
 
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       // A well-formed result, but for a different station than asked for.
       return {
         'guess': {'call': 'K1ABC', 'name': 'Wrong Station'},
         'lookups': [
-          {'source': 'test', 'call': 'K1ABC', 'name': 'Wrong Station'}
+          {'source': 'test', 'call': 'K1ABC', 'name': 'Wrong Station'},
         ],
       };
     });
@@ -250,9 +268,7 @@ void main() {
       // last-write-wins merge — so it must be skipped.
       return {
         'guess': Map<String, dynamic>.from(enriched['guess'] as Map),
-        'lookups': [
-          for (final l in enriched['lookups'] as List) Map<String, dynamic>.from(l as Map),
-        ],
+        'lookups': [for (final l in enriched['lookups'] as List) Map<String, dynamic>.from(l as Map)],
       };
     });
 
@@ -322,7 +338,9 @@ void main() {
     var calls = 0;
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       calls += 1;
-      return {'guess': {'name': 'Refetched'}};
+      return {
+        'guess': {'name': 'Refetched'},
+      };
     });
 
     queue.enqueue(qso);
@@ -351,7 +369,9 @@ void main() {
     var calls = 0;
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       calls += 1;
-      return {'guess': {'name': 'Refetched'}};
+      return {
+        'guess': {'name': 'Refetched'},
+      };
     });
 
     queue.enqueue(qso);
@@ -377,7 +397,9 @@ void main() {
     var calls = 0;
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       calls += 1;
-      return {'guess': {'name': 'From QRZ'}};
+      return {
+        'guess': {'name': 'From QRZ'},
+      };
     });
 
     queue.enqueue(qso);
@@ -433,7 +455,9 @@ void main() {
     var calls = 0;
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       calls += 1;
-      return {'guess': {'name': 'Refreshed'}};
+      return {
+        'guess': {'name': 'Refreshed'},
+      };
     });
 
     // Unlike the explicit "Lookup all QSOs" refresh (which forces), a
@@ -446,16 +470,26 @@ void main() {
   });
 
   test('a deleted QSO is left alone, and a failed or empty lookup does not stall the queue', () async {
-    final deleted = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
-    final failing = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
-    final empty = await qsos.add(operation.uuid, {'their': {'call': 'N2XYZ'}});
-    final ok = await qsos.add(operation.uuid, {'their': {'call': 'W2AAA'}});
+    final deleted = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    final failing = await qsos.add(operation.uuid, {
+      'their': {'call': 'K1ABC'},
+    });
+    final empty = await qsos.add(operation.uuid, {
+      'their': {'call': 'N2XYZ'},
+    });
+    final ok = await qsos.add(operation.uuid, {
+      'their': {'call': 'W2AAA'},
+    });
 
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       if (call == 'W1AW') fail('deleted QSOs must not be looked up');
       if (call == 'K1ABC') throw StateError('network down');
       if (call == 'N2XYZ') return null;
-      return {'guess': {'name': 'Fine'}};
+      return {
+        'guess': {'name': 'Fine'},
+      };
     });
 
     await qsos.softDelete(deleted);
@@ -472,15 +506,21 @@ void main() {
   });
 
   test('dedupes a QSO still waiting in the queue, but a re-request for one already in flight runs again', () async {
-    final a = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
-    final b = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
+    final a = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    final b = await qsos.add(operation.uuid, {
+      'their': {'call': 'K1ABC'},
+    });
     final event = await qsos.addEvent(operation.uuid, kind: 'start', atMillis: 1000);
 
     final calls = <String>[];
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       calls.add(call);
       await Future<void>.delayed(const Duration(milliseconds: 5));
-      return {'guess': {'name': 'ARRL HQ'}};
+      return {
+        'guess': {'name': 'ARRL HQ'},
+      };
     });
 
     queue.enqueue(a); // starts processing immediately (in flight)
@@ -496,7 +536,9 @@ void main() {
   });
 
   test('holds processing while the extension runtime is not ready instead of burning the queue on null lookups', () async {
-    final qso = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
+    final qso = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+    });
 
     var ready = false;
     var readyWhenCalled = false;
@@ -505,7 +547,9 @@ void main() {
     final queue = service(
       (call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
         readyWhenCalled = ready;
-        return {'guess': {'name': 'ARRL HQ'}};
+        return {
+          'guess': {'name': 'ARRL HQ'},
+        };
       },
       lookupReady: () => ready,
       waitBudget: const Duration(seconds: 5),
@@ -524,12 +568,16 @@ void main() {
   test('a batch over the threshold reports progress and completes it when the queue drains', () async {
     final batch = [
       for (final call in ['W1AW', 'K1ABC', 'N0CALL', 'VE3XYZ'])
-        await qsos.add(operation.uuid, {'their': {'call': call}}),
+        await qsos.add(operation.uuid, {
+          'their': {'call': call},
+        }),
     ];
 
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
-      return {'guess': {'name': 'ARRL HQ'}};
+      return {
+        'guess': {'name': 'ARRL HQ'},
+      };
     });
 
     // Four — one over the threshold, so the smallest batch that reports.
@@ -542,13 +590,21 @@ void main() {
   });
 
   test('plain enqueue() never touches the status bar, even with several queued together', () async {
-    final a = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
-    final b = await qsos.add(operation.uuid, {'their': {'call': 'K1ABC'}});
-    final c = await qsos.add(operation.uuid, {'their': {'call': 'N0CALL'}});
+    final a = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    final b = await qsos.add(operation.uuid, {
+      'their': {'call': 'K1ABC'},
+    });
+    final c = await qsos.add(operation.uuid, {
+      'their': {'call': 'N0CALL'},
+    });
 
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
-      return {'guess': {'name': 'ARRL HQ'}};
+      return {
+        'guess': {'name': 'ARRL HQ'},
+      };
     });
 
     // Ordinary background enrichment — a callsign typed into the logging
@@ -570,12 +626,16 @@ void main() {
   test('a batch at the threshold stays silent, whoever asked for it', () async {
     final batch = [
       for (final call in ['W1AW', 'K1ABC', 'N0CALL'])
-        await qsos.add(operation.uuid, {'their': {'call': call}}),
+        await qsos.add(operation.uuid, {
+          'their': {'call': call},
+        }),
     ];
 
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
-      return {'guess': {'name': 'ARRL HQ'}};
+      return {
+        'guess': {'name': 'ARRL HQ'},
+      };
     });
 
     // Three is the boundary, and this is the same call the "Lookup all QSOs"
@@ -602,12 +662,16 @@ void main() {
     ];
     final fresh = [
       for (final call in ['VE3XYZ', 'G0ABC'])
-        await qsos.add(operation.uuid, {'their': {'call': call}}),
+        await qsos.add(operation.uuid, {
+          'their': {'call': call},
+        }),
     ];
 
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
-      return {'guess': {'name': 'ARRL HQ'}};
+      return {
+        'guess': {'name': 'ARRL HQ'},
+      };
     });
 
     // Five QSOs in, but force: false skips the three already enriched, so
@@ -621,15 +685,21 @@ void main() {
   });
 
   test('a silent lookup in flight alongside a progress-worthy batch does not inflate its count', () async {
-    final silent = await qsos.add(operation.uuid, {'their': {'call': 'W1AW'}});
+    final silent = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+    });
     final tracked = [
       for (final call in ['K1ABC', 'N0CALL', 'VE3XYZ', 'G0ABC'])
-        await qsos.add(operation.uuid, {'their': {'call': call}}),
+        await qsos.add(operation.uuid, {
+          'their': {'call': call},
+        }),
     ];
 
     final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
-      return {'guess': {'name': 'ARRL HQ'}};
+      return {
+        'guess': {'name': 'ARRL HQ'},
+      };
     });
 
     queue.enqueue(silent);
@@ -643,7 +713,9 @@ void main() {
   test('a batch held by an outage keeps its counters and completes on reconnect', () async {
     final batch = [
       for (final call in ['W1AW', 'K1ABC', 'N0CALL', 'VE3XYZ'])
-        await qsos.add(operation.uuid, {'their': {'call': call}}),
+        await qsos.add(operation.uuid, {
+          'their': {'call': call},
+        }),
     ];
 
     var offline = false;
@@ -657,7 +729,9 @@ void main() {
         // Go offline partway through, so the drain's `break` leaves tracked
         // entries queued and the status item sitting below 1.0.
         if (lookups == 2) offline = true;
-        return {'guess': {'name': 'ARRL HQ'}};
+        return {
+          'guess': {'name': 'ARRL HQ'},
+        };
       },
       isOffline: () => offline,
       offlineChanges: offlineController.stream,

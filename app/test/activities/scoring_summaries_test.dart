@@ -83,12 +83,22 @@ void main() {
     final twoContests = <String, dynamic>{
       'aaa-contest': {
         'daySections': [
-          {'day': 1, 'scores': {'contest': {'key': 'contest', 'summary': 'A'}}},
+          {
+            'day': 1,
+            'scores': {
+              'contest': {'key': 'contest', 'summary': 'A'},
+            },
+          },
         ],
       },
       'zzz-contest': {
         'daySections': [
-          {'day': 1, 'scores': {'contest': {'key': 'contest', 'summary': 'Z'}}},
+          {
+            'day': 1,
+            'scores': {
+              'contest': {'key': 'contest', 'summary': 'Z'},
+            },
+          },
         ],
       },
     };
@@ -132,7 +142,9 @@ void main() {
     // Old cached blobs are regenerable (scoring is never load-bearing), so the
     // right behaviour is to degrade quietly until the next rescore lands.
     final flat = <String, dynamic>{
-      'operationSummary': {'qsoCount': {'key': 'qsoCount', 'total': 4}},
+      'operationSummary': {
+        'qsoCount': {'key': 'qsoCount', 'total': 4},
+      },
       'daySections': [
         {'day': 1, 'scores': {}},
       ],

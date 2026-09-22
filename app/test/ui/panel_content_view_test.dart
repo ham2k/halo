@@ -13,11 +13,18 @@ import 'package:ham2k_logger/views/operation/panel_content_view.dart';
 
 void main() {
   Future<void> pump(WidgetTester tester, {PanelContent? content, String? error}) => tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: PanelContentView(content: content, error: error))),
-      );
+    MaterialApp(
+      home: Scaffold(
+        body: PanelContentView(content: content, error: error),
+      ),
+    ),
+  );
 
   testWidgets('markdown renders as markdown, not as its source text', (tester) async {
-    await pump(tester, content: const PanelContent(kind: 'markdown', content: '# Title\n\nbody'));
+    await pump(
+      tester,
+      content: const PanelContent(kind: 'markdown', content: '# Title\n\nbody'),
+    );
     expect(find.byType(MarkdownBody), findsOneWidget);
   });
 
@@ -35,7 +42,10 @@ void main() {
   });
 
   testWidgets('an unknown kind says so instead of rendering blank', (tester) async {
-    await pump(tester, content: const PanelContent(kind: 'pdf', content: '...'));
+    await pump(
+      tester,
+      content: const PanelContent(kind: 'pdf', content: '...'),
+    );
     expect(find.textContaining('pdf'), findsOneWidget);
   });
 
@@ -49,10 +59,7 @@ void main() {
     });
 
     test('a well-formed payload round-trips', () {
-      expect(
-        PanelContent.fromJson({'kind': 'svg', 'content': '<svg/>'}),
-        const PanelContent(kind: 'svg', content: '<svg/>'),
-      );
+      expect(PanelContent.fromJson({'kind': 'svg', 'content': '<svg/>'}), const PanelContent(kind: 'svg', content: '<svg/>'));
     });
   });
 }

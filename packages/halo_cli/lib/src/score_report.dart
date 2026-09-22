@@ -22,11 +22,7 @@ import 'dart:convert';
 const _tallyScalars = {'key', 'for', 'icon', 'total', 'count', 'label', 'summary', 'longSummary'};
 
 /// The whole result: summaries, then sections, then per-QSO scores.
-String scoreMarkdown(
-  Map<String, Object?> result, {
-  List<Map<String, Object?>>? qsos,
-  String? scorerKey,
-}) {
+String scoreMarkdown(Map<String, Object?> result, {List<Map<String, Object?>>? qsos, String? scorerKey}) {
   final parts = [
     if (scorerKey != null) '# Score — `$scorerKey`',
     scoreSummariesMarkdown(_mapOf(result['operationSummary'])),
@@ -39,18 +35,9 @@ String scoreMarkdown(
 /// The operation's tallies — one row per tally the scorer reports.
 String scoreSummariesMarkdown(Map<String, Object?> summary) {
   if (summary.isEmpty) return '## Summary\n\n_No tallies._';
-  return '## Summary\n\n${_table(
-    headers: const ['Tally', 'Total', 'Detail'],
-    align: const [_Align.left, _Align.right, _Align.left],
-    rows: [
-      for (final entry in summary.entries)
-        [
-          '`${entry.key}`',
-          _totalOf(_mapOf(entry.value)),
-          _detailOf(_mapOf(entry.value)),
-        ],
-    ],
-  )}';
+  return '## Summary\n\n${_table(headers: const ['Tally', 'Total', 'Detail'], align: const [_Align.left, _Align.right, _Align.left], rows: [
+    for (final entry in summary.entries) ['`${entry.key}`', _totalOf(_mapOf(entry.value)), _detailOf(_mapOf(entry.value))],
+  ])}';
 }
 
 /// One row per day section (24h UTC buckets, the convention every scorer
@@ -68,18 +55,9 @@ String scoreSectionsMarkdown(List<Map<String, Object?>> sections) {
     }
   }
 
-  return '## Sections\n\n${_table(
-    headers: ['Day (UTC)', 'QSOs', for (final key in tallyKeys) '`$key`'],
-    align: [_Align.left, _Align.right, for (final _ in tallyKeys) _Align.left],
-    rows: [
-      for (final section in sections)
-        [
-          _utcDate(section['day']),
-          '${section['count'] ?? ''}',
-          for (final key in tallyKeys) _detailOf(_mapOf(_mapOf(section['scores'])[key])),
-        ],
-    ],
-  )}';
+  return '## Sections\n\n${_table(headers: ['Day (UTC)', 'QSOs', for (final key in tallyKeys) '`$key`'], align: [_Align.left, _Align.right, for (final _ in tallyKeys) _Align.left], rows: [
+    for (final section in sections) [_utcDate(section['day']), '${section['count'] ?? ''}', for (final key in tallyKeys) _detailOf(_mapOf(_mapOf(section['scores'])[key]))],
+  ])}';
 }
 
 /// Per-QSO verdicts, joined to the log when it was supplied.
@@ -96,42 +74,28 @@ String scoreQsosMarkdown(Map<String, Object?> qsoScores, {List<Map<String, Objec
   };
   final joined = byUuid.isNotEmpty;
 
-  return '## QSOs\n\n${_table(
-    headers: [
-      if (joined) ...['Time (UTC)', 'Call', 'Band', 'Mode'] else 'QSO',
-      'Points',
-      'Notices',
-    ],
-    align: [
-      if (joined) ...[_Align.left, _Align.left, _Align.left, _Align.left] else _Align.left,
-      _Align.right,
-      _Align.left,
-    ],
-    rows: [
-      for (final entry in qsoScores.entries)
-        () {
-          final verdict = _mapOf(entry.value);
-          final qso = byUuid[entry.key];
-          return [
-            if (joined) ...[
-              _utcTime(qso?['startAtMillis']),
-              '${_mapOf(qso?['their'])['call'] ?? ''}',
-              '${qso?['band'] ?? ''}',
-              '${qso?['mode'] ?? ''}',
-            ] else
-              '`${entry.key}`',
-            '${verdict['value'] ?? ''}',
-            // Notices and alerts share a column, alerts marked: they differ in
-            // severity, not in kind, and a scorer emits few enough of either
-            // that two columns would be mostly empty.
-            [
-              ..._stringsOf(verdict['notices']),
-              ..._stringsOf(verdict['alerts']).map((alert) => '**$alert**'),
-            ].join(', '),
-          ];
-        }(),
-    ],
-  )}';
+  return '## QSOs\n\n${_table(headers: [
+    if (joined) ...['Time (UTC)', 'Call', 'Band', 'Mode'] else 'QSO',
+    'Points',
+    'Notices',
+  ], align: [
+    if (joined) ...[_Align.left, _Align.left, _Align.left, _Align.left] else _Align.left,
+    _Align.right,
+    _Align.left,
+  ], rows: [
+    for (final entry in qsoScores.entries) () {
+        final verdict = _mapOf(entry.value);
+        final qso = byUuid[entry.key];
+        return [
+          if (joined) ...[_utcTime(qso?['startAtMillis']), '${_mapOf(qso?['their'])['call'] ?? ''}', '${qso?['band'] ?? ''}', '${qso?['mode'] ?? ''}'] else '`${entry.key}`',
+          '${verdict['value'] ?? ''}',
+          // Notices and alerts share a column, alerts marked: they differ in
+          // severity, not in kind, and a scorer emits few enough of either
+          // that two columns would be mostly empty.
+          [..._stringsOf(verdict['notices']), ..._stringsOf(verdict['alerts']).map((alert) => '**$alert**')].join(', '),
+        ];
+      }(),
+  ])}';
 }
 
 /// A tally's headline number. `total` is what every scorer sets; `count` is
@@ -159,8 +123,7 @@ String _detailOf(Map<String, Object?> tally) {
         _breakdown(entry.key, (entry.value as Map).cast<String, Object?>()),
     // Only when there are any: every operation carries a duplicates field,
     // and "0 duplicates" on every row is noise.
-    if (tally['duplicates'] case final num duplicates when duplicates > 0)
-      '$duplicates duplicate${duplicates == 1 ? '' : 's'}',
+    if (tally['duplicates'] case final num duplicates when duplicates > 0) '$duplicates duplicate${duplicates == 1 ? '' : 's'}',
   ];
 
   return [if (said.isNotEmpty) said, ...breakdowns].join(' · ');
@@ -183,11 +146,7 @@ enum _Align { left, right }
 
 /// A GitHub-flavored table. Cells are escaped for `|` only — everything else
 /// in them is the scorer's own markdown and must survive intact.
-String _table({
-  required List<String> headers,
-  required List<List<String>> rows,
-  required List<_Align> align,
-}) {
+String _table({required List<String> headers, required List<List<String>> rows, required List<_Align> align}) {
   final buffer = StringBuffer()
     ..writeln('| ${headers.map(_escape).join(' | ')} |')
     ..writeln('|${align.map((a) => a == _Align.right ? '---:' : '---').map((rule) => '$rule|').join()}');
@@ -199,22 +158,19 @@ String _table({
 
 String _escape(String cell) => cell.replaceAll('|', r'\|').replaceAll('\n', ' ');
 
-String _utcDate(Object? millis) => millis is num
-    ? DateTime.fromMillisecondsSinceEpoch(millis.toInt(), isUtc: true).toIso8601String().substring(0, 10)
-    : '';
+String _utcDate(Object? millis) => millis is num ? DateTime.fromMillisecondsSinceEpoch(millis.toInt(), isUtc: true).toIso8601String().substring(0, 10) : '';
 
-String _utcTime(Object? millis) => millis is num
-    ? DateTime.fromMillisecondsSinceEpoch(millis.toInt(), isUtc: true).toIso8601String().substring(11, 16)
-    : '';
+String _utcTime(Object? millis) => millis is num ? DateTime.fromMillisecondsSinceEpoch(millis.toInt(), isUtc: true).toIso8601String().substring(11, 16) : '';
 
 num _num(Object? value) => value is num ? value : 0;
 
-Map<String, Object?> _mapOf(Object? value) =>
-    value is Map ? value.cast<String, Object?>() : const <String, Object?>{};
+Map<String, Object?> _mapOf(Object? value) => value is Map ? value.cast<String, Object?>() : const <String, Object?>{};
 
-List<Map<String, Object?>> _listOf(Object? value) =>
-    value is List ? [for (final entry in value) if (entry is Map) entry.cast<String, Object?>()] : const [];
-
-List<String> _stringsOf(Object? value) => value is List
-    ? [for (final entry in value) entry is String ? entry : jsonEncode(entry)]
+List<Map<String, Object?>> _listOf(Object? value) => value is List
+    ? [
+        for (final entry in value)
+          if (entry is Map) entry.cast<String, Object?>(),
+      ]
     : const [];
+
+List<String> _stringsOf(Object? value) => value is List ? [for (final entry in value) entry is String ? entry : jsonEncode(entry)] : const [];

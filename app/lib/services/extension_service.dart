@@ -87,12 +87,7 @@ typedef ControlsResult = ({List<Map<String, dynamic>> controls, bool loadFailed}
 enum ControlsLoadState { loading, loaded, failed }
 
 /// What one `invokeHookAll` fan-out actually produced, split by outcome.
-typedef HookPartition = ({
-  List<Map<String, dynamic>> items,
-  List<String> succeeded,
-  List<String> unreachable,
-  List<({String key, String? error})> failed,
-});
+typedef HookPartition = ({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<({String key, String? error})> failed});
 
 /// The partition of a fan-out that never happened — no hooks ran, so nothing
 /// succeeded and nothing is in trouble.
@@ -261,8 +256,7 @@ String spotCallForSelfSpot(Map<String, dynamic> operation) {
   // Probed, not cast, like the identifier below: this operation blob crossed
   // the extension bridge, and a cast that throws here takes the spot with it.
   final stationCall = asQsonString(operation['stationCall']) ?? '';
-  final withTest =
-      Operation(uuid: '', data: operation).isTestOperation ? _spotCallForTestOperation(stationCall) : stationCall;
+  final withTest = Operation(uuid: '', data: operation).isTestOperation ? _spotCallForTestOperation(stationCall) : stationCall;
   final local = operation['local'];
   // `toString()`, not a cast: this arrives across the extension bridge, where
   // a number would throw inside the spot path and surface as a generic
@@ -323,7 +317,6 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
 
   static const _keychainAccountName = 'Ham2K Logger';
 
-
   final _secureStorage = const FlutterSecureStorage(
     mOptions: MacOsOptions(
       // FILE keychain on macOS. The data-protection keychain needs the RESTRICTED
@@ -335,9 +328,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       usesDataProtectionKeychain: false,
       accountName: _keychainAccountName,
     ),
-    iOptions: IOSOptions(
-      accountName: _keychainAccountName,
-    ),
+    iOptions: IOSOptions(accountName: _keychainAccountName),
   );
 
   /// Per-account iCloud Keychain sync flag (`kSecAttrSynchronizable`), keyed
@@ -401,9 +392,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       if (accounts == null) return;
       _accountSynchronizable
         ..clear()
-        ..addEntries(accounts
-            .where((a) => a['kvKey'] is String)
-            .map((a) => MapEntry(a['kvKey'] as String, a['synchronizable'] == true)));
+        ..addEntries(accounts.where((a) => a['kvKey'] is String).map((a) => MapEntry(a['kvKey'] as String, a['synchronizable'] == true)));
     } catch (e) {
       debugPrint('[extensions] refreshAccountSynchronizable failed: $e');
     } finally {
@@ -440,10 +429,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// refresh deadlocks and times out, leaving the flag map empty for the
   /// whole session — so the bypass is never worse, and unlike the deadlock
   /// the flags are correct a moment later.
-  Future<({MacOsOptions mOptions, IOSOptions iOptions})> _accountKeychainOptions(
-    String kvKey, {
-    bool fromHostCall = false,
-  }) async {
+  Future<({MacOsOptions mOptions, IOSOptions iOptions})> _accountKeychainOptions(String kvKey, {bool fromHostCall = false}) async {
     final wouldDeadlock = fromHostCall && _refreshingAccountSynchronizable;
     if (!wouldDeadlock && !_accountSyncReady.isCompleted && (_starting != null || _host != null)) {
       await _accountSyncReady.future;
@@ -460,10 +446,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         accountName: _keychainAccountName,
         synchronizable: false,
       ),
-      iOptions: IOSOptions(
-        accountName: _keychainAccountName,
-        synchronizable: declared,
-      ),
+      iOptions: IOSOptions(accountName: _keychainAccountName, synchronizable: declared),
     );
   }
 
@@ -566,13 +549,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// means the fan-out never happened — no host, or `invokeHookAll` itself
   /// throwing — which a caller cannot otherwise tell from every hook
   /// answering with nothing.
-  Future<
-      ({
-        List<Map<String, dynamic>> items,
-        List<String> succeeded,
-        List<String> unreachable,
-        List<String> failed
-      })> _collectHookResults(
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> _collectHookResults(
     String category, {
     required String method,
     required Object? args,
@@ -582,22 +559,13 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   }) async {
     final host = this.host;
     if (host == null) {
-      return (
-        items: const <Map<String, dynamic>>[],
-        succeeded: const <String>[],
-        unreachable: const <String>[],
-        failed: const <String>[],
-      );
+      return (items: const <Map<String, dynamic>>[], succeeded: const <String>[], unreachable: const <String>[], failed: const <String>[]);
     }
     var parts = emptyHookPartition;
     try {
-      parts = partitionHookEntries(await host.invokeHookAll(
-        category,
-        method: method,
-        args: args,
-        timeout: const Duration(seconds: 10),
-        partialOnTimeout: partialOnTimeout,
-      ));
+      parts = partitionHookEntries(
+        await host.invokeHookAll(category, method: method, args: args, timeout: const Duration(seconds: 10), partialOnTimeout: partialOnTimeout),
+      );
     } catch (e) {
       debugPrint('[extensions] $debugLabel failed: $e');
     }
@@ -626,12 +594,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         threshold: failureThreshold,
       );
     }
-    return (
-      items: parts.items,
-      succeeded: parts.succeeded,
-      unreachable: parts.unreachable,
-      failed: [for (final f in parts.failed) f.key],
-    );
+    return (items: parts.items, succeeded: parts.succeeded, unreachable: parts.unreachable, failed: [for (final f in parts.failed) f.key]);
   }
 
   /// Consecutive failures before a spot source is worth uploading, well above
@@ -657,13 +620,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// Hooks that don't implement
   /// `suggestExportOptions` are silently absent from the list.
   Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async =>
-      (await _collectHookResults(
-        'export',
-        method: 'suggestExportOptions',
-        args: args,
-        debugLabel: 'getExportOptions',
-      ))
-          .items;
+      (await _collectHookResults('export', method: 'suggestExportOptions', args: args, debugLabel: 'getExportOptions')).items;
 
   /// A shared type is listed once, using the highest-priority registration.
   Future<List<Map<String, dynamic>>> getExportTypes() async {
@@ -671,17 +628,19 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     return host == null ? [] : collectExportTypes(host);
   }
 
-  Future<List<Map<String, dynamic>>> exportTypeSettings(
-    Map<String, dynamic> global,
-    Map<String, dynamic> Function(String type) overrides,
-  ) async {
+  Future<List<Map<String, dynamic>>> exportTypeSettings(Map<String, dynamic> global, Map<String, dynamic> Function(String type) overrides) async {
     if (host == null) return [];
     final definitions = await getExportTypes();
-    final result = await host!.invokeHook('template', key: 'templates', method: 'exportSettings', args: {
-      'definitions': definitions,
-      'global': global,
-      'overrides': {for (final definition in definitions) definition['exportType'] as String: overrides(definition['exportType'] as String)},
-    });
+    final result = await host!.invokeHook(
+      'template',
+      key: 'templates',
+      method: 'exportSettings',
+      args: {
+        'definitions': definitions,
+        'global': global,
+        'overrides': {for (final definition in definitions) definition['exportType'] as String: overrides(definition['exportType'] as String)},
+      },
+    );
     return (result as List? ?? []).map((value) => Map<String, dynamic>.from(value as Map)).toList();
   }
 
@@ -696,10 +655,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// when `qso` is omitted, `isOtherSpotEnabled` otherwise; hooks that don't
   /// implement the relevant method, or report `enabled: false`, are
   /// silently absent — same convention as `getExportOptions`.
-  Future<List<Map<String, dynamic>>> suggestSpotSources({
-    required Map<String, dynamic> operation,
-    Map<String, dynamic>? qso,
-  }) async {
+  Future<List<Map<String, dynamic>>> suggestSpotSources({required Map<String, dynamic> operation, Map<String, dynamic>? qso}) async {
     final host = this.host;
     if (host == null) return const [];
     final method = qso == null ? 'isSelfSpotEnabled' : 'isOtherSpotEnabled';
@@ -736,13 +692,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// caller holding previous spots whether a source's silence is news. All
   /// three lists empty means the fan-out itself never ran — no extension
   /// host, or `invokeHookAll` throwing — and says nothing about any feed.
-  Future<
-      ({
-        List<Map<String, dynamic>> items,
-        List<String> succeeded,
-        List<String> unreachable,
-        List<String> failed
-      })> getSpots() async {
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async {
     final parts = await _collectHookResults(
       'spots',
       method: 'fetchSpots',
@@ -751,12 +701,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       partialOnTimeout: true,
       failureThreshold: _spotSourceFailureThreshold,
     );
-    return (
-      items: validSpots(parts.items),
-      succeeded: parts.succeeded,
-      unreachable: parts.unreachable,
-      failed: parts.failed,
-    );
+    return (items: validSpots(parts.items), succeeded: parts.succeeded, unreachable: parts.unreachable, failed: parts.failed);
   }
 
   /// `{hookKey: sourceName}` for every `spots` hook, for the Spots Panel's
@@ -814,11 +759,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       // Probed, not cast, like [spotCallForSelfSpot] above: this QSO blob
       // crossed the extension bridge, and a cast that throws here is outside
       // the per-source guard below, so it takes every source's spot with it.
-      final spotMode = displayMode(
-        asQsonString(qso['mode']),
-        freqKHz: asQsonNum(qso['freq'])?.toDouble(),
-        band: asQsonString(qso['band']),
-      );
+      final spotMode = displayMode(asQsonString(qso['mode']), freqKHz: asQsonNum(qso['freq'])?.toDouble(), band: asQsonString(qso['band']));
       if (spotMode != qso['mode']) spotQso = {...qso, 'mode': spotMode};
     }
     final args = qso == null
@@ -833,21 +774,17 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
             'comment': comment,
           }
         : {'qso': spotQso, 'comment': comment, 'spotterCall': spotterCall};
-    final entries = await Future.wait(sources.map((source) async {
-      final hookKey = source['hookKey'] as String?;
-      try {
-        final result = await host.invokeHook(
-          'spots',
-          key: hookKey,
-          method: method,
-          args: args,
-          timeout: const Duration(seconds: 15),
-        ) as Map;
-        return MapEntry(hookKey ?? '', result.cast<String, dynamic>());
-      } catch (e) {
-        return MapEntry(hookKey ?? '', <String, dynamic>{'ok': false, 'message': e.toString()});
-      }
-    }));
+    final entries = await Future.wait(
+      sources.map((source) async {
+        final hookKey = source['hookKey'] as String?;
+        try {
+          final result = await host.invokeHook('spots', key: hookKey, method: method, args: args, timeout: const Duration(seconds: 15)) as Map;
+          return MapEntry(hookKey ?? '', result.cast<String, dynamic>());
+        } catch (e) {
+          return MapEntry(hookKey ?? '', <String, dynamic>{'ok': false, 'message': e.toString()});
+        }
+      }),
+    );
     for (final entry in entries) {
       debugPrint('[spots] $method via ${entry.key}: ${entry.value}');
       final userMessage = entry.value['userMessage'];
@@ -862,13 +799,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     final host = this.host;
     if (host == null) return t.extensionService.runtimeNotReady;
     try {
-      final dynamic res = await host.invokeHook(
-        'account',
-        key: accountKey,
-        method: 'testCredentials',
-        args: credentials,
-        timeout: const Duration(seconds: 10),
-      );
+      final dynamic res = await host.invokeHook('account', key: accountKey, method: 'testCredentials', args: credentials, timeout: const Duration(seconds: 10));
       return res is String ? res : res?.toString() ?? '';
     } catch (e) {
       return t.extensionService.testFailed(error: e);
@@ -920,12 +851,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   Future<void> setAccountCredentials(String kvKey, Map<String, String> credentials) async {
     final o = await _accountKeychainOptions(kvKey);
     final encoded = jsonEncode(credentials);
-    await _secureStorage.write(
-      key: 'account_creds_$kvKey',
-      value: encoded,
-      mOptions: o.mOptions,
-      iOptions: o.iOptions,
-    );
+    await _secureStorage.write(key: 'account_creds_$kvKey', value: encoded, mOptions: o.mOptions, iOptions: o.iOptions);
     // Any stored session was derived from the OLD credentials — e.g. OAuth
     // tokens refreshed from a previous login — and could keep acting as the
     // previous account if left behind.
@@ -968,11 +894,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// (docs/design/time.md §6).
   ClockTravelState _clockTravelState() {
     final clock = AppClock.instance;
-    return ClockTravelState(
-      anchorRealMillis: clock.anchorRealMillis,
-      anchorVirtualMillis: clock.anchorVirtualMillis,
-      speed: clock.speed,
-    );
+    return ClockTravelState(anchorRealMillis: clock.anchorRealMillis, anchorVirtualMillis: clock.anchorVirtualMillis, speed: clock.speed);
   }
 
   /// Pushes a CHANGE of travel into a running sandbox. Registered as an
@@ -993,11 +915,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       debugPrint('[extensions] clock travel not pushed: no runtime yet (re-pushed once it boots)');
       return;
     }
-    host.setClockTravel(
-      anchorRealMillis: clock.anchorRealMillis,
-      anchorVirtualMillis: clock.anchorVirtualMillis,
-      speed: clock.speed,
-    );
+    host.setClockTravel(anchorRealMillis: clock.anchorRealMillis, anchorVirtualMillis: clock.anchorVirtualMillis, speed: clock.speed);
   }
 
   /// Drops the kernel's cached HookContext so the next hook call sees fresh
@@ -1060,12 +978,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       return null;
     }
     try {
-      final entries = await host.invokeHookAll(
-        'panel',
-        method: 'getPanels',
-        args: const <String, dynamic>{},
-        timeout: const Duration(seconds: 10),
-      );
+      final entries = await host.invokeHookAll('panel', method: 'getPanels', args: const <String, dynamic>{}, timeout: const Duration(seconds: 10));
       final results = <Map<String, dynamic>>[];
       for (final entry in entries) {
         // One hook failing is that hook's panels lost, not the catalog's —
@@ -1101,21 +1014,11 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// looking at the pane, and a panel that can't answer promptly should say
   /// so rather than hold a repaint.
   @override
-  Future<Map<String, dynamic>?> renderPanel({
-    required String hookKey,
-    required String panelKey,
-    required Map<String, dynamic> args,
-  }) async {
+  Future<Map<String, dynamic>?> renderPanel({required String hookKey, required String panelKey, required Map<String, dynamic> args}) async {
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook(
-        'panel',
-        key: hookKey,
-        method: 'render',
-        args: {...args, 'panelKey': panelKey},
-        timeout: const Duration(seconds: 5),
-      );
+      final result = await host.invokeHook('panel', key: hookKey, method: 'render', args: {...args, 'panelKey': panelKey}, timeout: const Duration(seconds: 5));
       if (result is! Map) return null;
       return result.cast<String, dynamic>();
     } catch (e) {
@@ -1125,15 +1028,10 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   }
 
   @override
-  Future<Map<String, dynamic>?> panelEvent({
-    required String hookKey,
-    required String panelKey,
-    required Map<String, dynamic> args,
-  }) async {
+  Future<Map<String, dynamic>?> panelEvent({required String hookKey, required String panelKey, required Map<String, dynamic> args}) async {
     final host = this.host;
     if (host == null) throw StateError('Extension runtime unavailable');
-    final result = await host.invokeHook('panel',
-        key: hookKey, method: 'onEvent', args: {...args, 'panelKey': panelKey}, timeout: const Duration(seconds: 5));
+    final result = await host.invokeHook('panel', key: hookKey, method: 'onEvent', args: {...args, 'panelKey': panelKey}, timeout: const Duration(seconds: 5));
     return result is Map ? result.cast<String, dynamic>() : null;
   }
 
@@ -1156,13 +1054,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       'template',
       key: 'templates',
       method: 'render',
-      args: {
-        'template': template,
-        'operation': ?operation,
-        'qso': ?qso,
-        'qsoCount': ?qsoCount,
-        'log': ?log,
-      },
+      args: {'template': template, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount, 'log': ?log},
       timeout: const Duration(seconds: 2),
     );
     if (result is! Map) return null;
@@ -1186,12 +1078,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       'template',
       key: 'templates',
       method: 'renderMany',
-      args: {
-        'templates': templates,
-        'operation': ?operation,
-        'qso': ?qso,
-        'qsoCount': ?qsoCount,
-      },
+      args: {'templates': templates, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount},
       timeout: const Duration(seconds: 2),
     );
     if (result is! Map || result['results'] is! List) return null;
@@ -1205,19 +1092,12 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// storage a Tier 1 settings panel's fields use, under the panel's id, so
   /// a panel's form needs no persistence code of its own.
   @override
-  Future<Map<String, dynamic>> readPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async {
+  Future<Map<String, dynamic>> readPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async {
     final values = <String, dynamic>{};
     for (final field in fields) {
       final key = field['key'] as String?;
       if (key == null) continue;
-      final stored = await _readSettingsValue(
-        panelKey: panelKey,
-        fieldKey: key,
-        isSecret: field['fieldType'] == 'secret',
-      );
+      final stored = await _readSettingsValue(panelKey: panelKey, fieldKey: key, isSecret: field['fieldType'] == 'secret');
       if (stored != null) values[key] = stored;
     }
     return values;
@@ -1234,11 +1114,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// overlaid for them. `fieldType: 'account'` fields are resolved here
   /// regardless of tier — neither tier can know live account connection
   /// status itself, since that's entirely host-owned (see AccountHook).
-  Future<Map<String, dynamic>?> getSettingsPanelDefinition({
-    required String hookKey,
-    required String panelKey,
-    required String kind,
-  }) async {
+  Future<Map<String, dynamic>?> getSettingsPanelDefinition({required String hookKey, required String panelKey, required String kind}) async {
     final host = this.host;
     if (host == null) return null;
     try {
@@ -1510,12 +1386,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// method — it's resolved against whatever extra property the extension
   /// put on its registered panel object (see docs/extensions/settings.md's
   /// "The action element").
-  Future<String?> runSettingsAction({
-    required String hookKey,
-    required String panelKey,
-    required String method,
-    required Map<String, dynamic> state,
-  }) async {
+  Future<String?> runSettingsAction({required String hookKey, required String panelKey, required String method, required Map<String, dynamic> state}) async {
     final host = this.host;
     if (host == null) return t.extensionService.runtimeNotReady;
     try {
@@ -1655,8 +1526,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       // never starts.
       final settingsForStamps = settings;
       if (settingsForStamps != null) {
-        await updateExtensionDisabledSince(
-          settings: settingsForStamps, available: availableExtensions, isActive: isExtensionActive);
+        await updateExtensionDisabledSince(settings: settingsForStamps, available: availableExtensions, isActive: isExtensionActive);
       }
       // The manifest's declared host-call capabilities (`requiresLocation`,
       // `requiresRadio*`; see extensions/build-config.mjs).
@@ -1726,10 +1596,13 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       // activation must degrade boot, not stall it forever.
       var settled = true;
       final booting = _host!;
-      await booting.activated.timeout(const Duration(seconds: 5), onTimeout: () {
-        debugPrint('[extensions] activation did not complete within 5s — continuing anyway');
-        settled = false;
-      });
+      await booting.activated.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint('[extensions] activation did not complete within 5s — continuing anyway');
+          settled = false;
+        },
+      );
       _activationIncomplete = !settled;
       if (!settled) {
         // The wait is bounded so a hung extension degrades boot instead of
@@ -1739,12 +1612,16 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         // stands down on it (the data-file purge, the panel catalog) would
         // stay stood down for the session. Identity-checked: a runtime
         // replaced meanwhile owns this flag now.
-        unawaited(booting.activated.then((_) {
-          if (!identical(_host, booting)) return;
-          debugPrint('[extensions] activation completed late; the hook set is whole after all');
-          _activationIncomplete = false;
-          runtimeGeneration.value++;
-        }).catchError((_) {}));
+        unawaited(
+          booting.activated
+              .then((_) {
+                if (!identical(_host, booting)) return;
+                debugPrint('[extensions] activation completed late; the hook set is whole after all');
+                _activationIncomplete = false;
+                runtimeGeneration.value++;
+              })
+              .catchError((_) {}),
+        );
       }
       // Re-pushed unconditionally, after the host is live: the `clock:` argument
       // above was read BEFORE loading the bundles, so a DEVTT during those
@@ -1793,8 +1670,14 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
 
   /// The catalog's copy of every withdrawn built-in the operator had ON.
   Future<({bool landed, bool complete})> adoptTwins() => adoptCatalogTwins(
-      store: _installed, settings: settings, catalog: catalog, available: availableExtensions,
-      isEnabled: isExtensionEnabled, recordInstall: _recordInstall, copySecrets: copyExtensionSecrets);
+    store: _installed,
+    settings: settings,
+    catalog: catalog,
+    available: availableExtensions,
+    isEnabled: isExtensionEnabled,
+    recordInstall: _recordInstall,
+    copySecrets: copyExtensionSecrets,
+  );
 
   /// Installs the `.h2kext` bundles the app ships (HALO-581), and answers
   /// whether anything landed — the caller re-reads the store when it did.
@@ -1810,7 +1693,10 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     return installShippedExtensions(
       store: store,
       settings: currentSettings,
-      installedVersions: {for (final info in availableExtensions) if (info.isInstalled) info.key: info.version},
+      installedVersions: {
+        for (final info in availableExtensions)
+          if (info.isInstalled) info.key: info.version,
+      },
       recordInstall: (bundle, {required bool fresh}) => _recordInstall(bundle, fresh: fresh),
       copySecrets: copyExtensionSecrets,
     );
@@ -1826,14 +1712,19 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     final fresh = !await store.isInstalled(bundle.key);
     // Only on a FRESH install of catalog bytes: an update has its own state
     // already, and a file install of a `ham2k-` key never reaches here.
-    final carried = fresh &&
+    final carried =
+        fresh &&
         bundle.provenance != null &&
         await carryPredecessorRecords(
-            key: bundle.key,
-            settings: settings,
-            // What the app SHIPS, not what it offers — see predecessorBuiltInKey.
-          builtInKeys: {for (final i in availableExtensions) if (i.source == ExtensionSource.asset) i.key},
-            copySecrets: copyExtensionSecrets);
+          key: bundle.key,
+          settings: settings,
+          // What the app SHIPS, not what it offers — see predecessorBuiltInKey.
+          builtInKeys: {
+            for (final i in availableExtensions)
+              if (i.source == ExtensionSource.asset) i.key,
+          },
+          copySecrets: copyExtensionSecrets,
+        );
     await store.install(bundle);
     // `fresh` drops a stale on/off choice; one just carried is not stale.
     await _recordInstall(bundle, fresh: fresh && !carried);
@@ -1878,8 +1769,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   Future<void> uninstallExtension(String key) async {
     await _requireInstalledStore().uninstall(key);
     await settings?.forgetExtension(key);
-    await forgetExtensionKeychainItems(_secureStorage, key,
-        deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
+    await forgetExtensionKeychainItems(_secureStorage, key, deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
     _availableExtensions = null;
     statusBar?.clearNamespace(key);
     await restartRuntime();
@@ -1926,9 +1816,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   Future<List<ExtensionInfo>> loadAvailableExtensions({Map<String, dynamic>? index}) async {
     if (_availableExtensions != null) return _availableExtensions!;
     final parsed = index ?? jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
-    final fromAssets = [
-      for (final entry in (parsed['extensions'] as List).cast<Map<String, dynamic>>()) ExtensionInfo.fromJson(entry),
-    ];
+    final fromAssets = [for (final entry in (parsed['extensions'] as List).cast<Map<String, dynamic>>()) ExtensionInfo.fromJson(entry)];
     _hostSharedModules = ((parsed['sharedModules'] as Map?) ?? const {}).cast<String, String>();
     // Built from the asset index, because what an installed bundle may NOT
     // call itself is exactly what the app already ships.
@@ -1939,12 +1827,14 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
             // Read live, not captured, and only what the app is OFFERING: the
             // catalog experiment withdraws every non-core built-in, and the
             // bundle pre-loaded for `ham2k-lookup` is one the app also ships.
-            builtInKeys: () => {for (final info in fromAssets) if (isBuiltInOffered(info)) info.key},
+            builtInKeys: () => {
+              for (final info in fromAssets)
+                if (isBuiltInOffered(info)) info.key,
+            },
             hostSharedModules: _hostSharedModules,
             // Read live too: the record is written by installBundle and
             // cleared by uninstall, and the store outlives both.
-            reservedPrefixAllowed: (String key) =>
-                BundleProvenance.fromJson(settings?.extensionInstalledFrom[key])?.isReservedPrefixAllowed ?? false,
+            reservedPrefixAllowed: (String key) => BundleProvenance.fromJson(settings?.extensionInstalledFrom[key])?.isReservedPrefixAllowed ?? false,
           ))
         : null;
     // A damaged store must not cost the operator the app's own extensions.
@@ -1959,10 +1849,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       // ErrorPolicy exists to prevent (docs/design/error-reporting.md).
       ErrorReportingService.report(e, stack, context: 'installed-extensions:list');
     }
-    return _availableExtensions = mergeDevExtensions(
-      [...fromAssets, ...fromDisk],
-      [for (final entry in _devBundles.values) entry.info],
-    );
+    return _availableExtensions = mergeDevExtensions([...fromAssets, ...fromDisk], [for (final entry in _devBundles.values) entry.info]);
   }
 
   /// The already-loaded metadata, or empty before [loadAvailableExtensions]
@@ -2115,10 +2002,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// intent only — whether the extension actually loads also requires
   /// [isExtensionAvailable].
   bool isExtensionEnabled(ExtensionInfo info) =>
-      info.core ||
-      (!isExtensionRevoked(info) &&
-          !isExtensionRefused(info) &&
-          (settings?.extensionOverrides[info.key] ?? info.enabledByDefault));
+      info.core || (!isExtensionRevoked(info) && !isExtensionRefused(info) && (settings?.extensionOverrides[info.key] ?? info.enabledByDefault));
 
   /// Whether the INSTALLED version of [info] is one the engine would not
   /// evaluate (`SettingsService.extensionRefused`).
@@ -2184,11 +2068,13 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     // map only, every one of those loads BESIDE its restored built-in the
     // moment the experiment goes off — two bundles under one key for lookup,
     // and two registrations of `ref:wca` for the rest.
-    final shipped = {for (final i in availableExtensions) if (i.source == ExtensionSource.asset) i.key};
+    final shipped = {
+      for (final i in availableExtensions)
+        if (i.source == ExtensionSource.asset) i.key,
+    };
     final replaces = shipped.contains(info.key) ? info.key : predecessorBuiltInKey(info.key, shipped);
     if (replaces == null) return false;
-    return availableExtensions
-        .any((other) => other.key == replaces && other.source == ExtensionSource.asset && isBuiltInOffered(other));
+    return availableExtensions.any((other) => other.key == replaces && other.source == ExtensionSource.asset && isBuiltInOffered(other));
   }
 
   /// Whether [info] is offered at all: every experiment its manifest
@@ -2234,8 +2120,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     // set: without this, an EXP preview within the kernel cache's TTL of a
     // flip still offers the direction the flip just took.
     invalidateHookContext();
-    await updateExtensionDisabledSince(
-        settings: currentSettings, available: availableExtensions, isActive: isExtensionActive);
+    await updateExtensionDisabledSince(settings: currentSettings, available: availableExtensions, isActive: isExtensionActive);
     final desired = {
       for (final info in availableExtensions)
         if (isExtensionActive(info)) info.key,
@@ -2253,8 +2138,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     final host = this.host;
     if (host == null) return const [];
     try {
-      final result = await host.invokeHook('runtime',
-          key: 'kernel', method: 'listExtensions', timeout: const Duration(seconds: 2));
+      final result = await host.invokeHook('runtime', key: 'kernel', method: 'listExtensions', timeout: const Duration(seconds: 2));
       return result is List ? result.cast<Map<dynamic, dynamic>>().map((e) => e.cast<String, dynamic>()).toList() : const [];
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] listActiveExtensions failed: $e');
@@ -2376,7 +2260,10 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       clearGenerationStatus(
         statusBar: statusBar,
         dying: dying,
-        returning: {for (final info in availableExtensions) if (isExtensionActive(info)) info.key},
+        returning: {
+          for (final info in availableExtensions)
+            if (isExtensionActive(info)) info.key,
+        },
       );
       await start();
       if (_host != null) {
@@ -2433,12 +2320,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         final o = await _accountKeychainOptions(kvKey, fromHostCall: true);
         final session = params['session'] as Map<dynamic, dynamic>;
         final encoded = jsonEncode(session);
-        await _secureStorage.write(
-          key: 'account_session_$kvKey',
-          value: encoded,
-          mOptions: o.mOptions,
-          iOptions: o.iOptions,
-        );
+        await _secureStorage.write(key: 'account_session_$kvKey', value: encoded, mOptions: o.mOptions, iOptions: o.iOptions);
         final current = _accountItems.current(kvKey);
         if (current == null) return null;
         // The write went through, so a remembered failure no longer holds;
@@ -2470,8 +2352,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
           // to one of those keys (the EXP preview says "Enable"/"Disable"
           // rather than "Toggle"). Private entries included: EXP accepts them.
           'experiments': [
-            for (final experiment in await loadExperiments())
-              {'key': experiment.key, 'name': experiment.name, 'aliases': experiment.aliases},
+            for (final experiment in await loadExperiments()) {'key': experiment.key, 'name': experiment.name, 'aliases': experiment.aliases},
           ],
           // Machine-facing: extensions put this in ADIF PROGRAMID, a spot's
           // source, etc. — so the fixed, platform-agnostic "Ham2K Logger", not
@@ -2555,9 +2436,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         return value is String ? value : null;
       case 'translateAll':
         final keys = (params['keys'] as List).cast<String>();
-        return {
-          for (final key in keys) key: (t[key] is String ? t[key] : null),
-        };
+        return {for (final key in keys) key: (t[key] is String ? t[key] : null)};
       case 'getOperation':
         final uuid = params['uuid'] as String;
         final operation = await operations?.get(uuid);
@@ -2585,10 +2464,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         final call = params['call'] as String?;
         final maxAgeMinutes = params['maxAgeMinutes'];
         if (call == null || spots == null) return const <Map<String, dynamic>>[];
-        return spots!.spotsForCall(
-          call,
-          maxAge: Duration(minutes: maxAgeMinutes is num ? maxAgeMinutes.toInt() : 30),
-        );
+        return spots!.spotsForCall(call, maxAge: Duration(minutes: maxAgeMinutes is num ? maxAgeMinutes.toInt() : 30));
       case 'getHistoryForCall':
         // Backs `call-history`'s `ctx.getHistoryForCall` — cross-operation,
         // unlike `getQsos`, so it reads `qsos` directly rather than through
@@ -2625,19 +2501,20 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         final query = params['query'] as String;
         final subCategory = params['subCategory'] as String?;
         final activeOnly = params['activeOnly'] as bool? ?? false;
-        final list =
-            await lookups?.queryLookups(category, query, subCategory: subCategory, activeOnly: activeOnly) ?? const [];
+        final list = await lookups?.queryLookups(category, query, subCategory: subCategory, activeOnly: activeOnly) ?? const [];
         return list
-            .map((row) => {
-                  'category': row.category,
-                  'subCategory': row.subCategory,
-                  'key': row.key,
-                  'name': row.name,
-                  'data': row.data != null ? jsonDecode(row.data!) : null,
-                  'lat': row.lat,
-                  'lon': row.lon,
-                  'flags': row.flags,
-                })
+            .map(
+              (row) => {
+                'category': row.category,
+                'subCategory': row.subCategory,
+                'key': row.key,
+                'name': row.name,
+                'data': row.data != null ? jsonDecode(row.data!) : null,
+                'lat': row.lat,
+                'lon': row.lon,
+                'flags': row.flags,
+              },
+            )
             .toList();
       case 'dbLookupSelectByLocation':
         final category = params['category'] as String;
@@ -2645,19 +2522,20 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         final lon = (params['lon'] as num).toDouble();
         final delta = (params['delta'] as num).toDouble();
         final activeOnly = params['activeOnly'] as bool? ?? false;
-        final list =
-            await lookups?.queryLookupsByLocation(category, lat, lon, delta, activeOnly: activeOnly) ?? const [];
+        final list = await lookups?.queryLookupsByLocation(category, lat, lon, delta, activeOnly: activeOnly) ?? const [];
         return list
-            .map((row) => {
-                  'category': row.category,
-                  'subCategory': row.subCategory,
-                  'key': row.key,
-                  'name': row.name,
-                  'data': row.data != null ? jsonDecode(row.data!) : null,
-                  'lat': row.lat,
-                  'lon': row.lon,
-                  'flags': row.flags,
-                })
+            .map(
+              (row) => {
+                'category': row.category,
+                'subCategory': row.subCategory,
+                'key': row.key,
+                'name': row.name,
+                'data': row.data != null ? jsonDecode(row.data!) : null,
+                'lat': row.lat,
+                'lon': row.lon,
+                'flags': row.flags,
+              },
+            )
             .toList();
       case 'getLocation':
         // One-shot device GPS fix (SDK's `host.getLocation()`) — e.g. WEATHER
@@ -2667,9 +2545,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         // same allowlist shape as host.fetch's `domains`.
         final extensionKey = params['extensionKey'] as String?;
         if (!_location.allows(extensionKey)) {
-          throw ExtensionHostException(
-            "getLocation blocked: extension '${extensionKey ?? 'unknown'}' does not declare requiresLocation",
-          );
+          throw ExtensionHostException("getLocation blocked: extension '${extensionKey ?? 'unknown'}' does not declare requiresLocation");
         }
         final position = await location?.getCurrentPosition();
         return position == null ? null : {'latitude': position.latitude, 'longitude': position.longitude};
@@ -2710,12 +2586,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
                 'form',
                 key: formId,
                 method: 'validateField',
-                args: {
-                  'formId': formId,
-                  'fieldKey': fieldKey,
-                  'value': value,
-                  'state': currentState,
-                },
+                args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
               );
               return res as String?;
             } catch (e) {
@@ -2728,12 +2599,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
                 'form',
                 key: formId,
                 method: 'transformField',
-                args: {
-                  'formId': formId,
-                  'fieldKey': fieldKey,
-                  'value': value,
-                  'state': currentState,
-                },
+                args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
               );
               return res;
             } catch (_) {
@@ -2746,12 +2612,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
                 'form',
                 key: formId,
                 method: 'onChangeField',
-                args: {
-                  'formId': formId,
-                  'fieldKey': fieldKey,
-                  'value': value,
-                  'state': currentState,
-                },
+                args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
               );
               if (res is Map) {
                 return res.cast<String, dynamic>();
@@ -2768,12 +2629,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         presentResultMessage(params, ns: params['ns'] as String? ?? 'extensions');
         return null;
       case 'statusBarSetMessage':
-        statusBar?.setMessage(
-          key: _namespacedKey(params),
-          icon: params['icon'] as String?,
-          title: params['title'] as String?,
-          text: params['text'] as String?,
-        );
+        statusBar?.setMessage(key: _namespacedKey(params), icon: params['icon'] as String?, title: params['title'] as String?, text: params['text'] as String?);
         return null;
       case 'statusBarSetProgress':
         statusBar?.setProgress(
@@ -2835,8 +2691,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// in a dev build, [lookupCall] returns a fixed canned result instead of
   /// invoking the (network/credentialed) lookup extensions. `debugEnvFlag`
   /// returns '' in release, so this can never engage there.
-  static final bool stubLookups =
-      debugEnvFlag(const String.fromEnvironment('HALO_STUB_LOOKUPS'), 'HALO_STUB_LOOKUPS').isNotEmpty;
+  static final bool stubLookups = debugEnvFlag(const String.fromEnvironment('HALO_STUB_LOOKUPS'), 'HALO_STUB_LOOKUPS').isNotEmpty;
 
   /// Runs the full lookup pipeline for one callsign — the hardcoded
   /// callsign-annotation pre-step plus every registered `lookup` hook
@@ -2988,13 +2843,12 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     Map<String, dynamic> scopes, {
     SegmentedOperation? segments,
     Set<String> alsoRefTypes = const {},
-  }) =>
-      priority.scorersFor(
-        operation,
-        scopes,
-        segmentRefs: segments == null ? null : [for (final segment in segments.segments) segment.refs],
-        alsoRefTypes: alsoRefTypes,
-      );
+  }) => priority.scorersFor(
+    operation,
+    scopes,
+    segmentRefs: segments == null ? null : [for (final segment in segments.segments) segment.refs],
+    alsoRefTypes: alsoRefTypes,
+  );
 
   /// The activity reference types appearing on [qsos] — what an operation is
   /// HUNTING, as opposed to the refs on the operation itself, which is what it
@@ -3004,10 +2858,10 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// parse; callers that hold the log (a rescore, the logging panel) pay
   /// nothing extra for it.
   static Set<String> huntedRefTypesOf(Iterable<Qso> qsos) => {
-        for (final qso in qsos)
-          for (final ref in qso.refs)
-            if (ref['type'] case final String type) type,
-      };
+    for (final qso in qsos)
+      for (final ref in qso.refs)
+        if (ref['type'] case final String type) type,
+  };
 
   /// The reference types on one QSO-shaped map — a candidate being scored,
   /// which is not a [Qso] yet (the callsign being typed, a spot).
@@ -3020,24 +2874,14 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// actually running a complete interpretation — see CommandHook.interpret's
   /// `execute` doc (extensions/sdk/src/types.ts). Every other call (the
   /// typing-debounce describe preview) should leave it false.
-  Future<Map<String, dynamic>?> interpretCommand(
-    String input, [
-    Map<String, dynamic>? operation,
-    Map<String, dynamic>? qso,
-    bool execute = false,
-  ]) async {
+  Future<Map<String, dynamic>?> interpretCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
     final host = this.host;
     if (host == null || input.isEmpty) return null;
     try {
       final entries = await host.invokeHookAll(
         'command',
         method: 'interpret',
-        args: {
-          'input': input,
-          'operation': ?operation,
-          'qso': ?qso,
-          if (execute) 'execute': true,
-        },
+        args: {'input': input, 'operation': ?operation, 'qso': ?qso, if (execute) 'execute': true},
         // The describe preview must stay snappy (it reruns on every
         // keystroke pause), but the one execute call is where hooks do
         // real work — SEED's log read + lookups, SOLAR/WEATHER's network
@@ -3154,19 +2998,16 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// future, so a caller arriving mid-boot waits for the same start everyone
   /// else is waiting for rather than triggering a second one — and a deep
   /// link that cold-launches the app arrives before boot has finished.
-  Future<({Map<String, ({String? activationType, String? huntingType})> byKey, bool loadFailed})>
-      activityRefTypes({Map<String, dynamic> operationData = const {}}) async {
+  Future<({Map<String, ({String? activationType, String? huntingType})> byKey, bool loadFailed})> activityRefTypes({
+    Map<String, dynamic> operationData = const {},
+  }) async {
     await start();
-    final results = await Future.wait([
-      operationControls(operationData),
-      loggingControls(operationData),
-    ]);
+    final results = await Future.wait([operationControls(operationData), loggingControls(operationData)]);
     final activation = _refTypesByExtensionKey(results[0].controls);
     final hunting = _refTypesByExtensionKey(results[1].controls);
     return (
       byKey: {
-        for (final key in {...activation.keys, ...hunting.keys})
-          key: (activationType: activation[key], huntingType: hunting[key]),
+        for (final key in {...activation.keys, ...hunting.keys}) key: (activationType: activation[key], huntingType: hunting[key]),
       },
       loadFailed: results[0].loadFailed || results[1].loadFailed,
     );
@@ -3206,10 +3047,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// Skipped when the operation carries no refs — ordinary logging is the
   /// common case and must not pay a bridge crossing per QSO for a hook only
   /// contests implement.
-  Future<Map<String, dynamic>> decorateQsoBeforeSave(
-    Map<String, dynamic> qsoData,
-    Map<String, dynamic> operationData,
-  ) async {
+  Future<Map<String, dynamic>> decorateQsoBeforeSave(Map<String, dynamic> qsoData, Map<String, dynamic> operationData) async {
     final host = this.host;
     if (host == null) return qsoData;
     final refs = operationData['refs'];
@@ -3231,11 +3069,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         // and no other (see `mergeQsoPatch`). An entry with no key can still
         // project into `their`/`our`, but writes no ref at all.
         final owner = entry['key'];
-        merged = mergeQsoPatch(
-          merged,
-          (entry['value'] as Map).cast<String, dynamic>(),
-          owner: owner is String ? owner : '',
-        );
+        merged = mergeQsoPatch(merged, (entry['value'] as Map).cast<String, dynamic>(), owner: owner is String ? owner : '');
       }
       return merged;
     } on ExtensionHostException catch (e) {
@@ -3244,11 +3078,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     }
   }
 
-  Future<ControlsResult> _collectControls(
-    String method,
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async {
+  Future<ControlsResult> _collectControls(String method, Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async {
     final host = this.host;
     // No host is a failure, not an empty answer: the runtime is dead or
     // still starting (see ErrorPolicy's `extension-runtime-dead`), and the
@@ -3366,9 +3196,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     // park two kilometres away and one eight kilometres away rank the same
     // from a square's centre, and this ordering is what the operator reads as
     // "nearby".
-    final gridLocation = locationFromLatLon(operationData['lat'], operationData['lon']) ??
-        gridToLocation(operationData['grid'] as String?) ??
-        fallbackLocation;
+    final gridLocation = locationFromLatLon(operationData['lat'], operationData['lon']) ?? gridToLocation(operationData['grid'] as String?) ?? fallbackLocation;
     final callsign = (operationData['stationCall'] as String?)?.isNotEmpty == true
         ? operationData['stationCall'] as String
         : settings?.activeProfile.operatorCall;
@@ -3379,12 +3207,12 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     // extension that keeps itself out of the nearby list still has to answer
     // when it is the one being asked.
     Map<String, dynamic> argsSearchingFor(String? term, {bool scoped = false}) => {
-          'operation': operationData,
-          if (gridLocation != null) 'location': {'lat': gridLocation.latitude, 'lon': gridLocation.longitude},
-          if (callsign != null && callsign.isNotEmpty) 'callsign': callsign,
-          if (term != null && term.isNotEmpty) 'searchTerm': term,
-          if (scoped) 'scoped': true,
-        };
+      'operation': operationData,
+      if (gridLocation != null) 'location': {'lat': gridLocation.latitude, 'lon': gridLocation.longitude},
+      if (callsign != null && callsign.isNotEmpty) 'callsign': callsign,
+      if (term != null && term.isNotEmpty) 'searchTerm': term,
+      if (scoped) 'scoped': true,
+    };
 
     try {
       if (activityKeys != null) {
@@ -3395,18 +3223,12 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         final entries = await Future.wait([
           for (final key in activityKeys)
             host
-                .invokeHook(
-                  'activity',
-                  key: key,
-                  method: 'suggest',
-                  args: argsSearchingFor(searchTerm, scoped: true),
-                  timeout: const Duration(seconds: 5),
-                )
+                .invokeHook('activity', key: key, method: 'suggest', args: argsSearchingFor(searchTerm, scoped: true), timeout: const Duration(seconds: 5))
                 .then((value) => <String, dynamic>{'key': key, 'ok': true, 'value': value})
                 .onError<ExtensionHostException>((e, _) {
-              debugPrint('[extensions] scoped activity hook $key failed: $e');
-              return <String, dynamic>{'key': key, 'ok': false, 'error': '$e'};
-            }),
+                  debugPrint('[extensions] scoped activity hook $key failed: $e');
+                  return <String, dynamic>{'key': key, 'ok': false, 'error': '$e'};
+                }),
         ]);
         return (suggestions: mergeActivitySuggestions(entries), allSourcesFailed: allActivitySourcesFailed(entries));
       }
@@ -3418,44 +3240,36 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       // count, so it contributes one — the caller has to be able to tell
       // "nobody could answer" from "nobody had anything".
       var fanOutFailed = false;
-      final preferred = Future.wait([
-        for (final key in preferredKeys ?? const <String>[])
-          host
-              .invokeHook(
-                'activity',
-                key: key,
-                method: 'suggest',
-                args: argsSearchingFor(preferredSearchTerm),
-                timeout: const Duration(seconds: 5),
-              )
-              .then((value) => <String, dynamic>{'key': key, 'ok': true, 'value': value})
-              // Precedence is only an ordering: when a preferred hook fails,
-              // what the other extensions found is still the right answer.
-              .onError<ExtensionHostException>((e, _) {
-            debugPrint('[extensions] preferred activity hook $key failed: $e');
-            return <String, dynamic>{'key': key, 'ok': false, 'error': '$e'};
-          }),
-      ]).then((entries) => [
-            for (final entry in entries)
-              if (entry['ok'] == true) entry,
-          ]);
+      final preferred =
+          Future.wait([
+            for (final key in preferredKeys ?? const <String>[])
+              host
+                  .invokeHook('activity', key: key, method: 'suggest', args: argsSearchingFor(preferredSearchTerm), timeout: const Duration(seconds: 5))
+                  .then((value) => <String, dynamic>{'key': key, 'ok': true, 'value': value})
+                  // Precedence is only an ordering: when a preferred hook fails,
+                  // what the other extensions found is still the right answer.
+                  .onError<ExtensionHostException>((e, _) {
+                    debugPrint('[extensions] preferred activity hook $key failed: $e');
+                    return <String, dynamic>{'key': key, 'ok': false, 'error': '$e'};
+                  }),
+          ]).then(
+            (entries) => [
+              for (final entry in entries)
+                if (entry['ok'] == true) entry,
+            ],
+          );
 
       // The fan-out is ONE message under ONE timeout, so its failure takes
       // every hook with it — but not the preferred one, asked separately and
       // quite possibly already answered. Each side therefore degrades on its
       // own, and only a search where both failed comes back empty.
       final everyone = host
-          .invokeHookAll(
-            'activity',
-            method: 'suggest',
-            args: argsSearchingFor(searchTerm),
-            timeout: const Duration(seconds: 5),
-          )
+          .invokeHookAll('activity', method: 'suggest', args: argsSearchingFor(searchTerm), timeout: const Duration(seconds: 5))
           .onError<ExtensionHostException>((e, _) {
-        debugPrint('[extensions] activity suggestion fan-out failed: $e');
-        fanOutFailed = true;
-        return const [];
-      });
+            debugPrint('[extensions] activity suggestion fan-out failed: $e');
+            fanOutFailed = true;
+            return const [];
+          });
 
       final results = await Future.wait([preferred, everyone]);
       final preferredSet = preferredKeys?.toSet() ?? const <String>{};
@@ -3473,7 +3287,6 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true);
     }
   }
-
 
   /// The current LoFi account/device/client info, for display in Settings.
   /// Returns null if the runtime isn't up or the request failed (e.g. no
@@ -3516,11 +3329,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook(
-        'syncTransport',
-        method: 'linkClient',
-        args: {'email': ?email},
-      );
+      final result = await host.invokeHook('syncTransport', method: 'linkClient', args: {'email': ?email});
       return result is Map ? result.cast<String, dynamic>() : null;
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] syncLinkClient failed: $e');
@@ -3550,8 +3359,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// Both return `{'error': ..., 'error_status': ...}` for a rejection the
   /// operator can act on (the address is taken, nothing is pending), and
   /// null when the server couldn't be reached at all.
-  Future<Map<String, dynamic>?> syncSetAccountEmail(String email) =>
-      _syncTransportCall('setAccountEmail', {'email': email});
+  Future<Map<String, dynamic>?> syncSetAccountEmail(String email) => _syncTransportCall('setAccountEmail', {'email': email});
 
   Future<Map<String, dynamic>?> syncResendAccountEmail() => _syncTransportCall('resendAccountEmail', const {});
 
@@ -3559,30 +3367,20 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// confirming side of the flow [syncLinkClient] starts on the other
   /// device. Returns the server's `{'permissions': [...]}`; an expired or
   /// mistyped code simply yields an empty list.
-  Future<Map<String, dynamic>?> syncFindLinkRequest(String challengeToken) =>
-      _syncTransportCall('findLinkRequest', {'challenge_token': challengeToken});
+  Future<Map<String, dynamic>?> syncFindLinkRequest(String challengeToken) => _syncTransportCall('findLinkRequest', {'challenge_token': challengeToken});
 
   /// The same lookup for a request that arrived as a `link_client` deep
   /// link, which names the requesting device outright. Returns the server's
   /// `{'permission': ...}`, whose value is null when the link has expired.
-  Future<Map<String, dynamic>?> syncFindLinkRequestByClient({
-    required String clientUuid,
-    required String challengeToken,
-  }) =>
+  Future<Map<String, dynamic>?> syncFindLinkRequestByClient({required String clientUuid, required String challengeToken}) =>
       _syncTransportCall('findLinkRequestByClient', {'client': clientUuid, 'challenge_token': challengeToken});
 
   /// Grants a link request: the other device joins this account.
   /// [challengeToken] is what binds an orphaned (QR/deep-link) permission to
   /// this account, so it must be passed back for those; a request raised by
   /// email is already attached and ignores it.
-  Future<Map<String, dynamic>?> syncApproveLinkRequest({
-    required String clientUuid,
-    String? challengeToken,
-  }) =>
-      _syncTransportCall('approveLinkRequest', {
-        'client': clientUuid,
-        'challenge_token': ?challengeToken,
-      });
+  Future<Map<String, dynamic>?> syncApproveLinkRequest({required String clientUuid, String? challengeToken}) =>
+      _syncTransportCall('approveLinkRequest', {'client': clientUuid, 'challenge_token': ?challengeToken});
 
   /// Shared shape of the account/linking calls above: null when the runtime
   /// isn't up or the host call failed, the server's map otherwise —
@@ -3626,8 +3424,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook('syncTransport',
-          method: 'ensureClientRegistered', args: {'refreshWebhookToken': refreshWebhookToken});
+      final result = await host.invokeHook('syncTransport', method: 'ensureClientRegistered', args: {'refreshWebhookToken': refreshWebhookToken});
       if (result is! Map) return null;
       final map = result.cast<String, dynamic>();
       final pushChannelName = map['push_channel_name'] as String?;
@@ -3671,11 +3468,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// A transport that predates `submitReport` (or no transport at all) is
   /// reported as an error rather than as a silent no-op: the operator has just
   /// written a report and pressed Send.
-  Future<({String? ref, String? error})> submitReport({
-    required String title,
-    required String body,
-    required String kind,
-  }) async {
+  Future<({String? ref, String? error})> submitReport({required String title, required String body, required String kind}) async {
     final host = this.host;
     if (host == null) {
       debugPrint('[extensions] submitReport: no runtime');
@@ -3784,12 +3577,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
 /// `domains` travels with the bundle, but the rest are start-time allowlists
 /// in the host ([ExtensionInfo.sameStartTimeCapabilities]).
 @visibleForTesting
-bool canHotSwapDevBundle({
-  required bool runtimeAlive,
-  required bool alreadyLoaded,
-  required bool alreadyDevServed,
-  required bool capabilitiesUnchanged,
-}) =>
+bool canHotSwapDevBundle({required bool runtimeAlive, required bool alreadyLoaded, required bool alreadyDevServed, required bool capabilitiesUnchanged}) =>
     runtimeAlive && alreadyLoaded && alreadyDevServed && capabilitiesUnchanged;
 
 /// The extensions the app offers with a dev server connected: each [dev] entry
@@ -3804,8 +3592,5 @@ List<ExtensionInfo> mergeDevExtensions(List<ExtensionInfo> fromAssets, List<Exte
   if (dev.isEmpty) return fromAssets;
   final byKey = {for (final info in dev) info.key: info};
   final unplaced = {...byKey.keys}..removeAll(fromAssets.map((info) => info.key));
-  return [
-    for (final info in fromAssets) byKey[info.key] ?? info,
-    for (final key in unplaced) byKey[key]!,
-  ];
+  return [for (final info in fromAssets) byKey[info.key] ?? info, for (final key in unplaced) byKey[key]!];
 }

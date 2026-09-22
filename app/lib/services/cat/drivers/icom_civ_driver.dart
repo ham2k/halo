@@ -109,7 +109,6 @@ class IcomCivDriver extends EquipmentDriver {
   @override
   String get name => 'Icom (CI-V)';
 
-
   /// Icom publishes ONE set of meter breakpoints for the current CI-V line,
   /// so the scale is the driver's rather than each entry's — unlike Yaesu,
   /// where every radio is aligned individually. An entry may still name
@@ -150,24 +149,23 @@ class IcomCivDriver extends EquipmentDriver {
   bool canKeyCwWith(Map<String, dynamic> config) => cwKeyerFromConfig(config, fallback: true);
 
   @override
-  int voiceMemoryCountWith(Map<String, dynamic> config) =>
-      voiceMemoriesFromConfig(config, fallback: 0).clamp(0, civVoiceMemoryCount);
+  int voiceMemoryCountWith(Map<String, dynamic> config) => voiceMemoriesFromConfig(config, fallback: 0).clamp(0, civVoiceMemoryCount);
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => IcomCivSession(
-        sink,
-        radioAddress: _addressOrFallback(config['civAddress'], civRadioAddresses['IC-705']!),
-        controllerAddress: _addressOrFallback(config['civControllerAddress'], civDefaultControllerAddress),
-        maxWatts: (config['maxWatts'] as num?) ?? _assumedMaxWatts,
-        batteryMaxWatts: config['batteryMaxWatts'] as num?,
-        // Absent means NONE, unlike the CW keyer: every named entry pins
-        // the count, so an absent key is a generic entry's node — one
-        // added before the field existed — and a generic knows no rig.
-        voiceMemories: voiceMemoriesFromConfig(config, fallback: 0).clamp(0, civVoiceMemoryCount),
-        voiceMemoryCeiling: voiceCeilingFromConfig(config),
-        config: config,
-        meterInfoKey: (config[meterInfoConfigKey] as String?) ?? defaultMeterInfoKey,
-      );
+    sink,
+    radioAddress: _addressOrFallback(config['civAddress'], civRadioAddresses['IC-705']!),
+    controllerAddress: _addressOrFallback(config['civControllerAddress'], civDefaultControllerAddress),
+    maxWatts: (config['maxWatts'] as num?) ?? _assumedMaxWatts,
+    batteryMaxWatts: config['batteryMaxWatts'] as num?,
+    // Absent means NONE, unlike the CW keyer: every named entry pins
+    // the count, so an absent key is a generic entry's node — one
+    // added before the field existed — and a generic knows no rig.
+    voiceMemories: voiceMemoriesFromConfig(config, fallback: 0).clamp(0, civVoiceMemoryCount),
+    voiceMemoryCeiling: voiceCeilingFromConfig(config),
+    config: config,
+    meterInfoKey: (config[meterInfoConfigKey] as String?) ?? defaultMeterInfoKey,
+  );
 
   /// `civControllerAddress`, `maxWatts` and `batteryMaxWatts` are read
   /// directly in [createSession] above, on every pairing, and never shown as
@@ -175,39 +173,35 @@ class IcomCivDriver extends EquipmentDriver {
   /// model's rated power), not settings.
   @override
   Set<String> get recognizedConfigKeys => {
-        ...super.recognizedConfigKeys,
-        meterInfoConfigKey,
-        'civControllerAddress',
-        'maxWatts',
-        'batteryMaxWatts',
-        cwKeyerConfigKey,
-        voiceMemoriesConfigKey,
-        voiceCeilingConfigKey,
-      };
+    ...super.recognizedConfigKeys,
+    meterInfoConfigKey,
+    'civControllerAddress',
+    'maxWatts',
+    'batteryMaxWatts',
+    cwKeyerConfigKey,
+    voiceMemoriesConfigKey,
+    voiceCeilingConfigKey,
+  };
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [
-        // A pairing that hardcodes the address (the IC-705's network type
-        // fixes it, since RS-BA1 only ever talks to the one radio it's
-        // paired with) has nothing to show here.
-        if (!overrides.containsKey('civAddress'))
-          {
-            'type': 'field',
-            'fieldType': 'text',
-            'key': 'civAddress',
-            'label': t.settings.station.civAddress,
-            'description': t.settings.station.civAddressDescription,
-          },
-        // The keyer facts, asked only where the entry did not pin them —
-        // the generic Icom — and only of a developer (docs/design/cat.md
-        // § Voice keying).
-        ...keyerConfigElements(overrides),
-        telemetryConfigElement(),
-      ];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    // A pairing that hardcodes the address (the IC-705's network type
+    // fixes it, since RS-BA1 only ever talks to the one radio it's
+    // paired with) has nothing to show here.
+    if (!overrides.containsKey('civAddress'))
+      {
+        'type': 'field',
+        'fieldType': 'text',
+        'key': 'civAddress',
+        'label': t.settings.station.civAddress,
+        'description': t.settings.station.civAddressDescription,
+      },
+    // The keyer facts, asked only where the entry did not pin them —
+    // the generic Icom — and only of a developer (docs/design/cat.md
+    // § Voice keying).
+    ...keyerConfigElements(overrides),
+    telemetryConfigElement(),
+  ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
@@ -347,8 +341,8 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     this.voiceMemoryCeiling = voiceActivityCeiling,
     Map<String, dynamic> config = const {},
     this._meterInfoKey,
-  })  : _config = config,
-        _baudRate = serialBaudRateOrNull(config);
+  }) : _config = config,
+       _baudRate = serialBaudRateOrNull(config);
 
   void _send(List<int> frame) => _sink.send(frame);
 
@@ -524,10 +518,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         // ceiling the SET level uses, battery cap included: a 10W radio
         // derated to 5W by its own battery is putting out at most 5W however
         // hard the meter swings.
-        _sink.reportMeter(
-          _metersByTable[table]!,
-          table == MeterTable.powerFraction ? _wattsForFraction(reading) : reading,
-        );
+        _sink.reportMeter(_metersByTable[table]!, table == MeterTable.powerFraction ? _wattsForFraction(reading) : reading);
 
       case CivCommand.transmitStatus:
         // Asked by two things now — the voice tracker, to learn when a
@@ -548,11 +539,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   }
 
   @override
-  void setFrequency(double freqKHz) => _send(buildSetFrequencyFrame(
-        to: radioAddress,
-        from: controllerAddress,
-        freqHz: (freqKHz * 1000).round(),
-      ));
+  void setFrequency(double freqKHz) => _send(buildSetFrequencyFrame(to: radioAddress, from: controllerAddress, freqHz: (freqKHz * 1000).round()));
 
   @override
   void setMode(String mode) {
@@ -563,11 +550,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   }
 
   @override
-  void setPower(num watts) => _send(buildSetPowerLevelFrame(
-        to: radioAddress,
-        from: controllerAddress,
-        level: _levelForWatts(watts, maxWatts),
-      ));
+  void setPower(num watts) => _send(buildSetPowerLevelFrame(to: radioAddress, from: controllerAddress, level: _levelForWatts(watts, maxWatts)));
 
   @override
   void sendCw(String text) => _cwQueue.enqueue(text);

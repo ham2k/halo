@@ -34,18 +34,30 @@ void main() {
     final created = await services.operations.create(stationCall: 'N0DEV');
     operation = Operation(uuid: created.uuid, data: {...created.data, 'grid': 'FN31pr'});
     await services.operations.saveData(operation);
-    await services.qsos.add(operation.uuid, {'their': {'call': 'KN2X'}, 'band': '3cm', 'startAtMillis': 10000});
-    await services.qsos.add(operation.uuid, {'their': {'call': 'W2ABC'}, 'band': '3cm', 'startAtMillis': 20000});
+    await services.qsos.add(operation.uuid, {
+      'their': {'call': 'KN2X'},
+      'band': '3cm',
+      'startAtMillis': 10000,
+    });
+    await services.qsos.add(operation.uuid, {
+      'their': {'call': 'W2ABC'},
+      'band': '3cm',
+      'startAtMillis': 20000,
+    });
   });
 
   Future<List<Qso>> rows() => services.qsos.forOperation(operation.uuid);
-  List<Qso> eventRows(List<Qso> all) => [for (final q in all) if (q.isEvent) q];
-  List<Qso> segmentRows(List<Qso> all) => [for (final q in all) if (q.isEvent && eventKindOpensSegment(q.eventKind)) q];
+  List<Qso> eventRows(List<Qso> all) => [
+    for (final q in all)
+      if (q.isEvent) q,
+  ];
+  List<Qso> segmentRows(List<Qso> all) => [
+    for (final q in all)
+      if (q.isEvent && eventKindOpensSegment(q.eventKind)) q,
+  ];
   String? overrideGrid(Qso row) => (row.event?['operation'] as Map?)?['grid'] as String?;
-  Future<CommandActionOutcome?> mark(String kind, {bool setLocation = false}) => services.handleCommandAction(
-        'markSegment',
-        {'kind': kind, 'uuid': operation.uuid, if (setLocation) 'setLocation': true},
-      );
+  Future<CommandActionOutcome?> mark(String kind, {bool setLocation = false}) =>
+      services.handleCommandAction('markSegment', {'kind': kind, 'uuid': operation.uuid, if (setLocation) 'setLocation': true});
 
   test('START puts a start row one second before the first contact, restating the operation', () async {
     expect(await mark('start'), isNull);
@@ -81,10 +93,17 @@ void main() {
     // (`ref:satellite` registers none), and the mock host answers for none
     // of them. Treating that as a failure would leave every segment row on
     // such an operation permanently without a description.
-    await services.operations.saveData(Operation(uuid: operation.uuid, data: {
-      ...operation.data,
-      'refs': [{'type': 'satellite', 'ref': 'AO-91'}],
-    }));
+    await services.operations.saveData(
+      Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [
+            {'type': 'satellite', 'ref': 'AO-91'},
+          ],
+        },
+      ),
+    );
     await mark('break');
     expect(segmentRows(await rows()).last.event!['description'], 'Now at FN31pr');
   });
@@ -96,16 +115,19 @@ void main() {
     await mark('break');
     expect(segmentRows(await rows()).last.event!['description'], 'Now at FN31pr');
 
-    final throwing = HaLoServices(
-      services.db,
-      services.settings,
-      extensions: ExtensionServiceWithFakeHost(_ThrowingTitleHost()),
+    final throwing = HaLoServices(services.db, services.settings, extensions: ExtensionServiceWithFakeHost(_ThrowingTitleHost()));
+    await throwing.operations.saveData(
+      Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [
+            {'type': 'pota', 'ref': 'US-0001'},
+          ],
+          'grid': 'FN20aa',
+        },
+      ),
     );
-    await throwing.operations.saveData(Operation(uuid: operation.uuid, data: {
-      ...operation.data,
-      'refs': [{'type': 'pota', 'ref': 'US-0001'}],
-      'grid': 'FN20aa',
-    }));
 
     final row = segmentRows(await rows()).last;
     expect((row.event!['operation'] as Map)['grid'], 'FN20aa');
@@ -117,15 +139,18 @@ void main() {
     // sentence, and nothing recomposes it: persisting the truncated line
     // would replace a good description with a worse one on every later
     // edit, on every device.
-    final throwing = HaLoServices(
-      services.db,
-      services.settings,
-      extensions: ExtensionServiceWithFakeHost(_ThrowingTitleHost()),
+    final throwing = HaLoServices(services.db, services.settings, extensions: ExtensionServiceWithFakeHost(_ThrowingTitleHost()));
+    await throwing.operations.saveData(
+      Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [
+            {'type': 'pota', 'ref': 'US-0001'},
+          ],
+        },
+      ),
     );
-    await throwing.operations.saveData(Operation(uuid: operation.uuid, data: {
-      ...operation.data,
-      'refs': [{'type': 'pota', 'ref': 'US-0001'}],
-    }));
     await throwing.handleCommandAction('markSegment', {'kind': 'break', 'uuid': operation.uuid});
     final written = segmentRows(await rows()).last;
     expect(written.event!.containsKey('description'), isFalse);
@@ -181,10 +206,17 @@ void main() {
     final unchanged = segmentRows(await rows()).last;
     expect(unchanged.data['updatedAtMillis'], before.data['updatedAtMillis'], reason: 'a no-op restamp is a revision every device would receive');
 
-    await services.operations.saveData(Operation(uuid: operation.uuid, data: {
-      ...operation.data,
-      'refs': [{'type': 'pota', 'ref': 'US-0001'}],
-    }));
+    await services.operations.saveData(
+      Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [
+            {'type': 'pota', 'ref': 'US-0001'},
+          ],
+        },
+      ),
+    );
     final restamped = segmentRows(await rows()).last;
     expect(((restamped.event!['operation'] as Map)['refs'] as List).single['ref'], 'US-0001');
   });
@@ -197,11 +229,16 @@ void main() {
     // wording until then.
     await mark('break');
     for (final row in segmentRows(await rows())) {
-      await services.qsos.update(Qso(
-        uuid: row.uuid,
-        operationUuid: row.operationUuid,
-        data: {...row.data, 'event': {...row.event!, 'description': 'at FN31pr'}},
-      ));
+      await services.qsos.update(
+        Qso(
+          uuid: row.uuid,
+          operationUuid: row.operationUuid,
+          data: {
+            ...row.data,
+            'event': {...row.event!, 'description': 'at FN31pr'},
+          },
+        ),
+      );
     }
     await services.operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'userTitle': 'Renamed'}));
 
@@ -217,9 +254,11 @@ void main() {
   });
 
   testWidgets('ROVERQTH: the location chosen afterwards lands on the operation AND the break, so only later contacts move', (tester) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(navigatorKey: navigatorKey, home: const Scaffold()),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(navigatorKey: navigatorKey, home: const Scaffold()),
+      ),
+    );
 
     final done = mark('break', setLocation: true);
     await tester.pumpAndSettle();
@@ -250,9 +289,11 @@ void main() {
   });
 
   testWidgets('ROVERQTH: cancelling the location screen leaves a break at the old square, which scores as before', (tester) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(navigatorKey: navigatorKey, home: const Scaffold()),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(navigatorKey: navigatorKey, home: const Scaffold()),
+      ),
+    );
 
     final done = mark('break', setLocation: true);
     await tester.pumpAndSettle();
@@ -273,13 +314,7 @@ class _ThrowingTitleHost extends FakeExtensionHost {
   _ThrowingTitleHost();
 
   @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
+  Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     if (method == 'suggestOperationTitle') throw StateError('hook is down');
     return super.invokeHook(category, key: key, method: method, args: args, timeout: timeout);
   }

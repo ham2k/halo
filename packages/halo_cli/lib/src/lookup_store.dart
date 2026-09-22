@@ -46,24 +46,19 @@ class LookupStore {
     return row.read<int>('present') == 1;
   }
 
-  Future<Map<String, Object?>?> selectOne(String category, String key) async =>
-      _toJson(await repository.getLookup(category, key));
+  Future<Map<String, Object?>?> selectOne(String category, String key) async => _toJson(await repository.getLookup(category, key));
 
-  Future<List<Map<String, Object?>>> selectAll(String category, String query, {bool activeOnly = false}) async =>
-      [for (final row in await repository.queryLookups(category, query, activeOnly: activeOnly)) _toJson(row)!];
+  Future<List<Map<String, Object?>>> selectAll(String category, String query, {bool activeOnly = false}) async => [
+    for (final row in await repository.queryLookups(category, query, activeOnly: activeOnly)) _toJson(row)!,
+  ];
 
-  Future<List<Map<String, Object?>>> selectByLocation(String category, double lat, double lon, double delta,
-          {bool activeOnly = false}) async =>
-      [
-        for (final row in await repository.queryLookupsByLocation(category, lat, lon, delta, activeOnly: activeOnly))
-          _toJson(row)!
-      ];
+  Future<List<Map<String, Object?>>> selectByLocation(String category, double lat, double lon, double delta, {bool activeOnly = false}) async => [
+    for (final row in await repository.queryLookupsByLocation(category, lat, lon, delta, activeOnly: activeOnly)) _toJson(row)!,
+  ];
 
   /// Row counts per category, for `data-files list`.
   Future<Map<String, int>> counts() async {
-    final rows = await db
-        .customSelect('SELECT category, COUNT(*) AS n FROM lookups GROUP BY category ORDER BY category')
-        .get();
+    final rows = await db.customSelect('SELECT category, COUNT(*) AS n FROM lookups GROUP BY category ORDER BY category').get();
     return {for (final row in rows) row.read<String>('category'): row.read<int>('n')};
   }
 

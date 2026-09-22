@@ -99,12 +99,7 @@ const watchdogDisarm = 'disarm';
 ///
 /// An expired deadline asks the question again over [grace] before answering
 /// it — see [watchdogGrace] for the case that makes the second look necessary.
-void runWatchdog(
-  Stream<Object?> messages, {
-  required Duration silence,
-  required Duration grace,
-  required void Function() onSilence,
-}) {
+void runWatchdog(Stream<Object?> messages, {required Duration silence, required Duration grace, required void Function() onSilence}) {
   Timer? deadline;
   var confirming = false;
   late void Function() expire;
@@ -149,20 +144,13 @@ class HangWatchdog {
   /// developer is reading. Killing the process there would make the debugger
   /// useless, and `flutter test` runs in debug too, where an armed watchdog
   /// would end the test runner rather than fail a test.
-  static bool get _wanted =>
-      kReleaseMode ||
-      kProfileMode ||
-      debugEnvFlag(const String.fromEnvironment('HANG_WATCHDOG'), 'HANG_WATCHDOG').isNotEmpty;
+  static bool get _wanted => kReleaseMode || kProfileMode || debugEnvFlag(const String.fromEnvironment('HANG_WATCHDOG'), 'HANG_WATCHDOG').isNotEmpty;
 
   /// Starts the watchdog for this process, once. Safe to call when it cannot
   /// run at all — on web there is no isolate to spawn and no process to end.
   static Future<void> start() async {
     if (_instance != null || kIsWeb || !_wanted) return;
-    final send = await spawnWatchdog(
-      silence: watchdogSilence,
-      grace: watchdogGrace,
-      exitCode: watchdogExitCode,
-    );
+    final send = await spawnWatchdog(silence: watchdogSilence, grace: watchdogGrace, exitCode: watchdogExitCode);
     if (send == null) {
       // Reported, not merely printed. This runs in release and profile builds,
       // where nobody is reading a console — so without this, a population of
@@ -170,8 +158,7 @@ class HangWatchdog {
       // nothing anywhere says so. The same argument the held auto-connect makes
       // for its own telemetry: a process ended by a wedge files no crash report
       // either.
-      ErrorReportingService.report(const WatchdogUnavailable(), StackTrace.current,
-          context: 'watchdog:spawn');
+      ErrorReportingService.report(const WatchdogUnavailable(), StackTrace.current, context: 'watchdog:spawn');
       return;
     }
     _instance = HangWatchdog(send);

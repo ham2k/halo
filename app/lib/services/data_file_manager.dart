@@ -59,15 +59,9 @@ class DataFileStatus {
 
   final DateTime? updatedAt;
 
-  DataFileStatus({
-    required this.key,
-    required this.name,
-    this.icon,
-    this.updatedAt,
-  });
+  DataFileStatus({required this.key, required this.name, this.icon, this.updatedAt});
 
-  DataFileStatus withUpdatedAt(DateTime updatedAt) =>
-      DataFileStatus(key: key, name: name, icon: icon, updatedAt: updatedAt);
+  DataFileStatus withUpdatedAt(DateTime updatedAt) => DataFileStatus(key: key, name: name, icon: icon, updatedAt: updatedAt);
 }
 
 /// An extension's `onRemoveRawData` did not run when its data file was
@@ -141,13 +135,16 @@ class DataFileManager {
     // (whose own explicit call happens before this listener is registered,
     // since HaLoServices constructs DataFileManager lazily after start).
     extensions.runtimeGeneration.addListener(_onRuntimeReplaced);
-    offlineChanges?.listen(_onOfflineChanged, onError: (Object e) {
-      // `ConnectivityService.offlineChanges` does not error today. Handled
-      // anyway because the alternative is an unhandled zone error — an
-      // operator notice and an upload — for a background signal whose correct
-      // degradation is simply "no reconnect resync".
-      debugPrint('[data-file] offline stream error: $e');
-    });
+    offlineChanges?.listen(
+      _onOfflineChanged,
+      onError: (Object e) {
+        // `ConnectivityService.offlineChanges` does not error today. Handled
+        // anyway because the alternative is an unhandled zone error — an
+        // operator notice and an upload — for a background signal whose correct
+        // degradation is simply "no reconnect resync".
+        debugPrint('[data-file] offline stream error: $e');
+      },
+    );
   }
 
   bool _syncRunning = false;
@@ -277,12 +274,14 @@ class DataFileManager {
       final key = def['key'] as String?;
       if (key == null) continue;
       final millis = prefs.getInt('data_file_updated_$key');
-      files.add(DataFileStatus(
-        key: key,
-        name: def['name'] as String? ?? key,
-        icon: def['icon'] as String?,
-        updatedAt: millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis),
-      ));
+      files.add(
+        DataFileStatus(
+          key: key,
+          name: def['name'] as String? ?? key,
+          icon: def['icon'] as String?,
+          updatedAt: millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis),
+        ),
+      );
     }
     files.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return files;
@@ -342,8 +341,7 @@ class DataFileManager {
       if (match != null) {
         u = 'https://docs.google.com/document/export?format=txt&id=${match.group(1)}';
       }
-    } else if (u.contains('gist.github.com/') &&
-        !(Uri.tryParse(u)?.pathSegments.contains('raw') ?? false)) {
+    } else if (u.contains('gist.github.com/') && !(Uri.tryParse(u)?.pathSegments.contains('raw') ?? false)) {
       // The share page itself is HTML, not the file's content — `/raw`
       // (no filename) redirects to the latest revision's raw content,
       // which is what every other branch above resolves to as well. The
@@ -361,9 +359,7 @@ class DataFileManager {
       if (match != null) {
         final owner = match.group(1);
         final hash = match.group(2);
-        u = owner != null
-            ? 'https://gist.githubusercontent.com/$owner/$hash/raw'
-            : 'https://gist.githubusercontent.com/$hash/raw';
+        u = owner != null ? 'https://gist.githubusercontent.com/$owner/$hash/raw' : 'https://gist.githubusercontent.com/$hash/raw';
       }
     }
     return u;
@@ -458,8 +454,7 @@ class DataFileManager {
   /// progress.
   static const bodyTimeout = Duration(minutes: 2);
 
-  Future<String?> _fetchAndDecode(String key, String resolvedUrl,
-      {String? etag, bool storeEtag = true, String? encoding}) async {
+  Future<String?> _fetchAndDecode(String key, String resolvedUrl, {String? etag, bool storeEtag = true, String? encoding}) async {
     final client = httpClientFactory();
     try {
       final request = http.Request('GET', Uri.parse(resolvedUrl));
@@ -516,8 +511,7 @@ class DataFileManager {
     // same not-yet-stamped timestamps and double-download every stale file,
     // and their interleaved [_batchWriteToDatabase] stale sweeps delete
     // each other's freshly written rows.
-    final pass = _syncTurn.then((_) => _syncAllDataFilesLocked(
-        force: force, categoryFilter: categoryFilter, notifyOnFailure: notifyOnFailure));
+    final pass = _syncTurn.then((_) => _syncAllDataFilesLocked(force: force, categoryFilter: categoryFilter, notifyOnFailure: notifyOnFailure));
     _syncTurn = pass.then((_) {}, onError: (_) {});
     return pass;
   }
@@ -543,67 +537,68 @@ class DataFileManager {
     await _purgeOrphanedKeys(entries);
 
     var matched = 0;
-    await Future.wait(entries.map((entry) async {
-      if (entry is! Map || entry['ok'] != true || entry['value'] == null) return;
+    await Future.wait(
+      entries.map((entry) async {
+        if (entry is! Map || entry['ok'] != true || entry['value'] == null) return;
 
-      // Everything below — including parsing `entry['value']` itself — is
-      // guarded in one block: a malformed definition from one extension
-      // must not throw out of this closure uncaught, or it takes down
-      // `Future.wait`'s overall result for every other (well-formed) data
-      // file's caller too (e.g. the RELOAD command's completion notice).
-      try {
-        final def = Map<String, dynamic>.from(entry['value'] as Map);
-        final key = def['key'] as String;
-        final category = (def['category'] as String? ?? key).toUpperCase();
-        if (categoryFilter != null && category != categoryFilter) return;
-        matched++;
+        // Everything below — including parsing `entry['value']` itself — is
+        // guarded in one block: a malformed definition from one extension
+        // must not throw out of this closure uncaught, or it takes down
+        // `Future.wait`'s overall result for every other (well-formed) data
+        // file's caller too (e.g. the RELOAD command's completion notice).
+        try {
+          final def = Map<String, dynamic>.from(entry['value'] as Map);
+          final key = def['key'] as String;
+          final category = (def['category'] as String? ?? key).toUpperCase();
+          if (categoryFilter != null && category != categoryFilter) return;
+          matched++;
 
-        // Remember which extension owns this data file (and its lookup
-        // category) so the stale-data purge can find it later, when the
-        // extension is disabled and can no longer describe itself.
-        await _recordOwnership(key, def);
+          // Remember which extension owns this data file (and its lookup
+          // category) so the stale-data purge can find it later, when the
+          // extension is disabled and can no longer describe itself.
+          await _recordOwnership(key, def);
 
-        final maxAgeDays = def['maxAgeInDays'] as int? ?? 14;
-        final lastUpdateKey = 'data_file_updated_$key';
-        final lastUpdateTime = prefs.getInt(lastUpdateKey) ?? 0;
-        // Age on the APP clock, so travelling forward makes files look stale
-        // and refetches them — one of the thresholds this feature exists to
-        // test.
-        final age = nowMillis() - lastUpdateTime;
-        // Whether the stamp is in the FUTURE is a question about real time, and
-        // has to be asked on the real clock. A stamp genuinely ahead of real
-        // time cannot be judged (a device whose clock was wrong when it last
-        // synced), so the safe answer is to fetch — otherwise the file is frozen
-        // for as long as that stamp stands, which is forever, while Settings ›
-        // Offline Data reports "updated just now".
-        //
-        // Asking it on the travelled clock instead would make travelling
-        // BACKWARD put every file's real stamp in the future at once: the whole
-        // offline set — parks, summits, country files, tens of megabytes — would
-        // re-download on every sweep, and the fresh real stamp would still be in
-        // the travelled future, so the next sweep would do it again.
-        final unjudgeable = (realNowMillis() - lastUpdateTime).isNegative;
-        final isStale = unjudgeable || age > maxAgeDays * 24 * 60 * 60 * 1000;
+          final maxAgeDays = def['maxAgeInDays'] as int? ?? 14;
+          final lastUpdateKey = 'data_file_updated_$key';
+          final lastUpdateTime = prefs.getInt(lastUpdateKey) ?? 0;
+          // Age on the APP clock, so travelling forward makes files look stale
+          // and refetches them — one of the thresholds this feature exists to
+          // test.
+          final age = nowMillis() - lastUpdateTime;
+          // Whether the stamp is in the FUTURE is a question about real time, and
+          // has to be asked on the real clock. A stamp genuinely ahead of real
+          // time cannot be judged (a device whose clock was wrong when it last
+          // synced), so the safe answer is to fetch — otherwise the file is frozen
+          // for as long as that stamp stands, which is forever, while Settings ›
+          // Offline Data reports "updated just now".
+          //
+          // Asking it on the travelled clock instead would make travelling
+          // BACKWARD put every file's real stamp in the future at once: the whole
+          // offline set — parks, summits, country files, tens of megabytes — would
+          // re-download on every sweep, and the fresh real stamp would still be in
+          // the travelled future, so the next sweep would do it again.
+          final unjudgeable = (realNowMillis() - lastUpdateTime).isNegative;
+          final isStale = unjudgeable || age > maxAgeDays * 24 * 60 * 60 * 1000;
 
-        if (force || isStale || lastUpdateTime == 0) {
-          // Unattended passes (boot, reconnect — the notifyOnFailure:false
-          // callers) refresh quietly; a first download still narrates itself
-          // even then, because until it lands its feature simply isn't there.
-          await processDataFile(key, def,
-              force: force, notifyOnFailure: notifyOnFailure, showProgress: notifyOnFailure || lastUpdateTime == 0);
-          // Stamped REAL while the age above is judged on the app clock, which
-          // is what makes travel useful here without leaving a mess: travelling
-          // forward makes files look stale and refetches them, and the stamp it
-          // writes is still true once the clock is back. A travelled stamp would
-          // outlive the travel and read as fresh (or as "updated just now") for
-          // as long as it stood.
-          await prefs.setInt(lastUpdateKey, realNowMillis());
+          if (force || isStale || lastUpdateTime == 0) {
+            // Unattended passes (boot, reconnect — the notifyOnFailure:false
+            // callers) refresh quietly; a first download still narrates itself
+            // even then, because until it lands its feature simply isn't there.
+            await processDataFile(key, def, force: force, notifyOnFailure: notifyOnFailure, showProgress: notifyOnFailure || lastUpdateTime == 0);
+            // Stamped REAL while the age above is judged on the app clock, which
+            // is what makes travel useful here without leaving a mess: travelling
+            // forward makes files look stale and refetches them, and the stamp it
+            // writes is still true once the clock is back. A travelled stamp would
+            // outlive the travel and read as fresh (or as "updated just now") for
+            // as long as it stood.
+            await prefs.setInt(lastUpdateKey, realNowMillis());
+          }
+        } catch (e, stack) {
+          debugPrint('[data-file] Error processing data file entry ${entry['value']}: $e\n$stack');
+          ErrorReportingService.report(e, stack, context: 'data-files:process-entry');
         }
-      } catch (e, stack) {
-        debugPrint('[data-file] Error processing data file entry ${entry['value']}: $e\n$stack');
-        ErrorReportingService.report(e, stack, context: 'data-files:process-entry');
-      }
-    }));
+      }),
+    );
     return matched;
   }
 
@@ -630,8 +625,7 @@ class DataFileManager {
   /// progress even unattended ([syncAllDataFiles] decides per file): until it
   /// lands, its feature is missing, which is worth narrating. Failure notices
   /// are [notifyOnFailure]'s to gate, never this.
-  Future<void> processDataFile(String key, Map<String, dynamic> def,
-      {bool force = false, bool notifyOnFailure = true, bool showProgress = true}) async {
+  Future<void> processDataFile(String key, Map<String, dynamic> def, {bool force = false, bool notifyOnFailure = true, bool showProgress = true}) async {
     final label = _labelFor(key, def);
     final statusKey = 'dataFile:$key';
 
@@ -738,8 +732,16 @@ class DataFileManager {
       parsedRows.add(parsed);
     }
 
-    await _batchWriteToDatabase(key, category, _labelFor(key, def), 'mapCsvBatch', 'rows', parsedRows,
-        extraArgs: headers == null ? null : {'headers': headers}, showProgress: showProgress);
+    await _batchWriteToDatabase(
+      key,
+      category,
+      _labelFor(key, def),
+      'mapCsvBatch',
+      'rows',
+      parsedRows,
+      extraArgs: headers == null ? null : {'headers': headers},
+      showProgress: showProgress,
+    );
   }
 
   Future<void> _processJson(String key, Map<String, dynamic> def, String body, {required bool showProgress}) async {
@@ -761,8 +763,7 @@ class DataFileManager {
       throw FormatException('Resolved target at rootPath is neither Array nor Object');
     }
 
-    await _batchWriteToDatabase(key, category, _labelFor(key, def), 'mapJsonBatch', 'entries', entriesToProcess,
-        showProgress: showProgress);
+    await _batchWriteToDatabase(key, category, _labelFor(key, def), 'mapJsonBatch', 'entries', entriesToProcess, showProgress: showProgress);
   }
 
   Future<void> _processRaw(String key, Map<String, dynamic> def, String body, {required bool showProgress}) async {
@@ -780,11 +781,7 @@ class DataFileManager {
       'dataFile',
       key: key,
       method: 'rawToJSONData',
-      args: {
-        'body': body,
-        'url': def['url'],
-        'options': const <String, dynamic>{},
-      },
+      args: {'body': body, 'url': def['url'], 'options': const <String, dynamic>{}},
     );
 
     // 2. Cache processed JSON to local file
@@ -799,12 +796,7 @@ class DataFileManager {
     }
 
     // 3. Load processed data by calling onLoadRawData
-    await host.invokeHook(
-      'dataFile',
-      key: key,
-      method: 'onLoadRawData',
-      args: processedJson,
-    );
+    await host.invokeHook('dataFile', key: key, method: 'onLoadRawData', args: processedJson);
 
     if (!showProgress) return;
     final statusKey = 'dataFile:$key';
@@ -813,9 +805,7 @@ class DataFileManager {
     statusBar?.setProgress(
       key: statusKey,
       title: label,
-      text: count != null
-          ? t.dataFiles.importedRecords(count: count, label: label)
-          : t.dataFiles.importedData(label: label),
+      text: count != null ? t.dataFiles.importedRecords(count: count, label: label) : t.dataFiles.importedData(label: label),
       value: 1.0,
     );
   }
@@ -865,12 +855,7 @@ class DataFileManager {
             try {
               final content = await cacheFile.readAsString();
               final processedJson = jsonDecode(content);
-              await host.invokeHook(
-                'dataFile',
-                key: key,
-                method: 'onLoadRawData',
-                args: processedJson,
-              );
+              await host.invokeHook('dataFile', key: key, method: 'onLoadRawData', args: processedJson);
             } catch (e, st) {
               debugPrint('[data-file] Error loading raw cache file $key: $e');
               ErrorReportingService.report(e, st, context: 'data-files:load-raw-cache-file');
@@ -972,11 +957,7 @@ class DataFileManager {
   /// left untouched. [disabledSince] is `settings.extensionDisabledSince`.
   /// Runs at startup, after the runtime is up and the enabled extensions
   /// have refreshed their ownership records.
-  Future<void> purgeStaleExtensionData(
-    Map<String, int> disabledSince, {
-    Duration grace = const Duration(days: 7),
-    DateTime? now,
-  }) async {
+  Future<void> purgeStaleExtensionData(Map<String, int> disabledSince, {Duration grace = const Duration(days: 7), DateTime? now}) async {
     final cutoff = (now ?? nowLocal()).millisecondsSinceEpoch - grace.inMilliseconds;
     final staleExtensions = {
       for (final e in disabledSince.entries)
@@ -1145,17 +1126,19 @@ class DataFileManager {
         if (item is Map) {
           final entryKey = item['key'] as String?;
           if (entryKey != null) {
-            lookupRows.add(LookupRow(
-              category: category,
-              subCategory: item['subCategory'] as String?,
-              key: entryKey,
-              name: item['name'] as String?,
-              lat: (item['lat'] as num?)?.toDouble(),
-              lon: (item['lon'] as num?)?.toDouble(),
-              flags: item['flags'] as int?,
-              data: item['data'] != null ? jsonEncode(item['data']) : null,
-              updated: updatedFlag,
-            ));
+            lookupRows.add(
+              LookupRow(
+                category: category,
+                subCategory: item['subCategory'] as String?,
+                key: entryKey,
+                name: item['name'] as String?,
+                lat: (item['lat'] as num?)?.toDouble(),
+                lon: (item['lon'] as num?)?.toDouble(),
+                flags: item['flags'] as int?,
+                data: item['data'] != null ? jsonEncode(item['data']) : null,
+                updated: updatedFlag,
+              ),
+            );
           }
         }
       }
@@ -1170,8 +1153,11 @@ class DataFileManager {
 
     if (showProgress) {
       statusBar?.setProgress(
-          key: statusKey, title: label, text: t.dataFiles.importedRecords(count: imported, label: label), value: 1.0);
+        key: statusKey,
+        title: label,
+        text: t.dataFiles.importedRecords(count: imported, label: label),
+        value: 1.0,
+      );
     }
   }
-
 }

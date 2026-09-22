@@ -6,12 +6,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('PlatformVersions.project', () {
-    const v = PublicVersion(
-      main: MainVersion(year: 26, month: 8),
-      patch: 1,
-      preRelease: 1,
-      preReleaseLabel: 'alpha',
-    );
+    const v = PublicVersion(main: MainVersion(year: 26, month: 8), patch: 1, preRelease: 1, preReleaseLabel: 'alpha');
 
     test('projects one shared build number into every platform field', () {
       final p = PlatformVersions.project(publicVersion: v, build: 73);
@@ -42,17 +37,11 @@ void main() {
     test('rejects a build number that overflows the 16-bit desktop field', () {
       // The Windows/Linux FILEVERSION field is the tightest cap; guarding it
       // guards every platform.
-      expect(
-        () => PlatformVersions.project(publicVersion: v, build: 65536),
-        throwsArgumentError,
-      );
+      expect(() => PlatformVersions.project(publicVersion: v, build: 65536), throwsArgumentError);
     });
 
     test('rejects a non-positive build number', () {
-      expect(
-        () => PlatformVersions.project(publicVersion: v, build: 0),
-        throwsArgumentError,
-      );
+      expect(() => PlatformVersions.project(publicVersion: v, build: 0), throwsArgumentError);
     });
   });
 }

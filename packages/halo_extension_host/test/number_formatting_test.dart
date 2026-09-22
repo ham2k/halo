@@ -23,39 +23,44 @@ void main() {
 
   // Enough QSOs to cross the grouping threshold — the whole point is the comma.
   List<Map<String, dynamic>> qsos(int count) => [
-        for (var i = 0; i < count; i++)
-          {
-            'uuid': 'q$i',
-            'startAtMillis': DateTime.utc(2026, 3, 28, 12).millisecondsSinceEpoch + i * 1000,
-            'band': '20m',
-            'mode': 'CW',
-            'our': {'call': 'N0DEV'},
-            'their': {'call': 'DL${i}ABC'},
-          },
-      ];
+    for (var i = 0; i < count; i++)
+      {
+        'uuid': 'q$i',
+        'startAtMillis': DateTime.utc(2026, 3, 28, 12).millisecondsSinceEpoch + i * 1000,
+        'band': '20m',
+        'mode': 'CW',
+        'our': {'call': 'N0DEV'},
+        'their': {'call': 'DL${i}ABC'},
+      },
+  ];
 
   test('a four-figure tally is rendered with thousands separators', () async {
     final host = await sharedHost(['scoring']);
-    final result = await host.invokeHook(
-      'scoring',
-      key: 'core',
-      method: 'scoreQsos',
-      args: {
-        'operation': {'uuid': 'op', 'stationCall': 'N0DEV', 'refs': <Map<String, dynamic>>[]},
-        'qsos': qsos(1500),
-      },
-      timeout: const Duration(seconds: 60),
-    ) as Map?;
+    final result =
+        await host.invokeHook(
+              'scoring',
+              key: 'core',
+              method: 'scoreQsos',
+              args: {
+                'operation': {'uuid': 'op', 'stationCall': 'N0DEV', 'refs': <Map<String, dynamic>>[]},
+                'qsos': qsos(1500),
+              },
+              timeout: const Duration(seconds: 60),
+            )
+            as Map?;
 
     final qsoCount = (result!['operationSummary'] as Map)['qsoCount'] as Map;
     expect(qsoCount['total'], 1500, reason: 'sanity: the scorer counted them all');
 
     // The formatted strings are what a user actually reads.
     final rendered = '${qsoCount['label'] ?? ''} ${qsoCount['summary'] ?? ''}';
-    expect(rendered, contains('1,500'),
-        reason: 'without the toLocaleString polyfill this reads "1500" — the exact '
-            'regression the engine swap introduced on macOS and iOS');
-    expect(rendered, isNot(contains('1500 ')),
-        reason: 'the unseparated form must not survive anywhere in the rendered text');
+    expect(
+      rendered,
+      contains('1,500'),
+      reason:
+          'without the toLocaleString polyfill this reads "1500" — the exact '
+          'regression the engine swap introduced on macOS and iOS',
+    );
+    expect(rendered, isNot(contains('1500 ')), reason: 'the unseparated form must not survive anywhere in the rendered text');
   }, timeout: const Timeout(Duration(seconds: 120)));
 }

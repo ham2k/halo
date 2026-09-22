@@ -22,8 +22,7 @@ import 'settings_service.dart';
 import 'update_service.dart';
 
 class ShorebirdUpdateService implements UpdateService {
-  ShorebirdUpdateService(this._settings, {ShorebirdUpdater? updater})
-      : _updater = updater ?? ShorebirdUpdater();
+  ShorebirdUpdateService(this._settings, {ShorebirdUpdater? updater}) : _updater = updater ?? ShorebirdUpdater();
 
   final SettingsService _settings;
   final ShorebirdUpdater _updater;

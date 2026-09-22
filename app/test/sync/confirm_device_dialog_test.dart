@@ -55,11 +55,11 @@ Future<void> pumpPane(
 }
 
 Map<String, dynamic> pendingPermission({String client = 'client-2', String name = "Sebastián's iPhone"}) => {
-      'client': client,
-      'client_name': name,
-      'status': 'pending',
-      'level': 'owner',
-    };
+  'client': client,
+  'client_name': name,
+  'status': 'pending',
+  'level': 'owner',
+};
 
 void main() {
   testWidgets('a code names the device asking, and approving it links that client', (tester) async {
@@ -109,10 +109,7 @@ void main() {
   });
 
   testWidgets('a server rejection is shown verbatim rather than swallowed', (tester) async {
-    await pumpPane(
-      tester,
-      findByCode: (code) async => const {'error': 'Account not found', 'error_status': 404},
-    );
+    await pumpPane(tester, findByCode: (code) async => const {'error': 'Account not found', 'error_status': 404});
 
     await tester.enterText(find.byType(TextField), 'A1B2C3');
     await tester.tap(find.text(t.confirmDevice.lookUp));
@@ -138,9 +135,7 @@ void main() {
       tester,
       clientUuid: 'client-9',
       challengeToken: 'TOKEN9',
-      findByClient: ({required clientUuid, required challengeToken}) async => {
-        'permission': pendingPermission(client: clientUuid, name: 'PoLo on Android'),
-      },
+      findByClient: ({required clientUuid, required challengeToken}) async => {'permission': pendingPermission(client: clientUuid, name: 'PoLo on Android')},
       approve: ({required clientUuid, challengeToken}) async {
         approved.add((clientUuid: clientUuid, challengeToken: challengeToken));
         return {
@@ -204,11 +199,14 @@ void main() {
       tester,
       clientUuid: 'client-9',
       challengeToken: 'TOKEN9',
-      findByClient: ({required clientUuid, required challengeToken}) async =>
-          {'permission': pendingPermission(client: clientUuid, name: 'PoLo on Android')},
+      findByClient: ({required clientUuid, required challengeToken}) async => {'permission': pendingPermission(client: clientUuid, name: 'PoLo on Android')},
       approve: ({required clientUuid, challengeToken}) async {
         calls++;
-        return calls == 1 ? null : const {'permission': {'status': 'active'}};
+        return calls == 1
+            ? null
+            : const {
+                'permission': {'status': 'active'},
+              };
       },
     );
 
@@ -234,7 +232,9 @@ void main() {
       },
       approve: ({required clientUuid, challengeToken}) async {
         approvals++;
-        return const {'permission': {'status': 'active'}};
+        return const {
+          'permission': {'status': 'active'},
+        };
       },
     );
 
@@ -263,7 +263,9 @@ void main() {
       },
       approve: ({required clientUuid, challengeToken}) async {
         approved.add(clientUuid);
-        return const {'permission': {'status': 'active'}};
+        return const {
+          'permission': {'status': 'active'},
+        };
       },
     );
 

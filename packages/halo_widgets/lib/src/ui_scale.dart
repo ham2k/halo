@@ -32,8 +32,7 @@ class UiScale extends StatelessWidget {
   /// fixed-size controls (see platform_chrome.dart) — divide the fixed
   /// physical dimension by this to get the logical value that renders at that
   /// fixed size after the transform.
-  static double of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_UiScaleScope>()?.scale ?? 1.0;
+  static double of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<_UiScaleScope>()?.scale ?? 1.0;
 
   @override
   Widget build(BuildContext context) {
@@ -191,8 +190,7 @@ class PixelGrid {
 
   const PixelGrid(this.devicePixelsPerLogical);
 
-  static PixelGrid of(BuildContext context) =>
-      PixelGrid(UiScale.of(context) * MediaQuery.devicePixelRatioOf(context));
+  static PixelGrid of(BuildContext context) => PixelGrid(UiScale.of(context) * MediaQuery.devicePixelRatioOf(context));
 
   double snap(double value) => (value * devicePixelsPerLogical).roundToDouble() / devicePixelsPerLogical;
 
@@ -202,8 +200,7 @@ class PixelGrid {
 
   /// Snaps UP, never below one whole device pixel — for a thin line that must
   /// stay visible as well as crisp (rounding 0.4 device px to 0 erases it).
-  double snapUp(double value) =>
-      math.max(1.0, (value * devicePixelsPerLogical).ceilToDouble()) / devicePixelsPerLogical;
+  double snapUp(double value) => math.max(1.0, (value * devicePixelsPerLogical).ceilToDouble()) / devicePixelsPerLogical;
 }
 
 class _UiScaleScope extends InheritedWidget {

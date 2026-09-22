@@ -19,21 +19,19 @@ Map<String, dynamic> _data({
   String mode = 'SSB',
   Map<String, dynamic>? theirExtra,
   Map<String, dynamic>? extra,
-}) =>
-    {
-      'our': {'call': 'N0DEV'},
-      'their': {'call': their, ...?theirExtra},
-      'band': '20m',
-      'mode': mode,
-      'startAtMillis': _at(at),
-      ...?extra,
-    };
+}) => {
+  'our': {'call': 'N0DEV'},
+  'their': {'call': their, ...?theirExtra},
+  'band': '20m',
+  'mode': mode,
+  'startAtMillis': _at(at),
+  ...?extra,
+};
 
 AdifRecord _record(Map<String, dynamic> data, {int number = 1, List<AdifRecordProblem> problems = const []}) =>
     AdifRecord(number: number, fields: const {}, qso: data, problems: problems);
 
-Qso _logged(Map<String, dynamic> data, {String uuid = 'existing-1'}) =>
-    Qso(uuid: uuid, operationUuid: 'op', data: {...data, 'uuid': uuid});
+Qso _logged(Map<String, dynamic> data, {String uuid = 'existing-1'}) => Qso(uuid: uuid, operationUuid: 'op', data: {...data, 'uuid': uuid});
 
 void main() {
   test('a contact the log does not have is an addition', () {
@@ -57,7 +55,9 @@ void main() {
     test('a fold into a logged contact can lose a reference', () {
       final plan = planAdifImport(
         filename: 'f.adi',
-        records: [_record(_data(theirExtra: {'grid': 'FN31pr'}))],
+        records: [
+          _record(_data(theirExtra: {'grid': 'FN31pr'})),
+        ],
         existing: [_logged(_data())],
         stackingTypesUnknown: true,
       );
@@ -103,11 +103,7 @@ void main() {
     test('a plan that read the stacking set never warns', () {
       // The negative case: hardcoding the flag true would pass every test
       // above and warn on every clean import.
-      final plan = planAdifImport(
-        filename: 'f.adi',
-        records: [_record(_data())],
-        existing: [_logged(_data())],
-      );
+      final plan = planAdifImport(filename: 'f.adi', records: [_record(_data())], existing: [_logged(_data())]);
 
       expect(plan.mayDropReferences, isFalse);
     });
@@ -116,7 +112,9 @@ void main() {
   test('a contact already logged becomes a merge, keeping what only the log has', () {
     final plan = planAdifImport(
       filename: 'f.adi',
-      records: [_record(_data(theirExtra: {'grid': 'FN31pr'}))],
+      records: [
+        _record(_data(theirExtra: {'grid': 'FN31pr'})),
+      ],
       existing: [
         _logged(_data(theirExtra: {'name': 'Hiram', 'grid': 'FN31'})),
       ],
@@ -152,7 +150,9 @@ void main() {
   test('the merge keeps the existing record identity', () {
     final plan = planAdifImport(
       filename: 'f.adi',
-      records: [_record(_data(extra: {'uuid': 'from-the-file'}))],
+      records: [
+        _record(_data(extra: {'uuid': 'from-the-file'})),
+      ],
       existing: [_logged(_data(), uuid: 'in-the-log')],
     );
 
@@ -200,7 +200,9 @@ void main() {
       filename: 'f.adi',
       records: const [],
       existing: const [],
-      unusable: [_record(_data(), problems: [AdifRecordProblem.noCallsign])],
+      unusable: [
+        _record(_data(), problems: [AdifRecordProblem.noCallsign]),
+      ],
     );
 
     expect(plan.importCount, 0);
@@ -224,13 +226,7 @@ void main() {
   });
 
   test('a failed reference hook rides along on the plan', () {
-    final plan = planAdifImport(
-      filename: 'f.adi',
-      records: [_record(_data())],
-      existing: const [],
-      failedHooks: {'pota'},
-      recordsWithFailedHooks: 1,
-    );
+    final plan = planAdifImport(filename: 'f.adi', records: [_record(_data())], existing: const [], failedHooks: {'pota'}, recordsWithFailedHooks: 1);
 
     expect(plan.failedHooks, contains('pota'));
     expect(plan.recordsWithFailedHooks, 1);
@@ -240,25 +236,13 @@ void main() {
     // The distinction the summary's wording rests on. A named hook failing
     // leaves every other program's references intact, so the plan must not
     // report it the way it reports a batch that never ran at all.
-    final named = planAdifImport(
-      filename: 'f.adi',
-      records: [_record(_data())],
-      existing: const [],
-      failedHooks: {'pota'},
-      recordsWithFailedHooks: 1,
-    );
+    final named = planAdifImport(filename: 'f.adi', records: [_record(_data())], existing: const [], failedHooks: {'pota'}, recordsWithFailedHooks: 1);
 
     expect(named.refsUnavailable, isFalse);
   });
 
   test("the runtime never running is flagged by the '*' sentinel", () {
-    final dead = planAdifImport(
-      filename: 'f.adi',
-      records: [_record(_data())],
-      existing: const [],
-      failedHooks: {'*'},
-      recordsUnreachable: 1,
-    );
+    final dead = planAdifImport(filename: 'f.adi', records: [_record(_data())], existing: const [], failedHooks: {'*'}, recordsUnreachable: 1);
 
     expect(dead.refsUnavailable, isTrue);
   });
@@ -269,7 +253,9 @@ void main() {
 
     planAdifImport(
       filename: 'f.adi',
-      records: [_record(_data(theirExtra: {'grid': 'FN31'}))],
+      records: [
+        _record(_data(theirExtra: {'grid': 'FN31'})),
+      ],
       existing: [logged],
     );
 
@@ -306,11 +292,7 @@ void main() {
     // other device see those contacts as newer revisions.
     final logged = _logged(_data(theirExtra: {'name': 'Hiram'}));
 
-    final plan = planAdifImport(
-      filename: 'f.adi',
-      records: [_record(logged.data)],
-      existing: [logged],
-    );
+    final plan = planAdifImport(filename: 'f.adi', records: [_record(logged.data)], existing: [logged]);
 
     expect(plan.merges, isEmpty);
     expect(plan.additions, isEmpty);
@@ -329,11 +311,7 @@ void main() {
       // re-import.
       final undated = Map<String, dynamic>.from(_data())..remove('startAtMillis');
 
-      final plan = planAdifImport(
-        filename: 'f.adi',
-        records: [_record(undated)],
-        existing: const [],
-      );
+      final plan = planAdifImport(filename: 'f.adi', records: [_record(undated)], existing: const []);
 
       expect(plan.additions, isEmpty);
       expect(plan.undated, hasLength(1));
@@ -349,7 +327,9 @@ void main() {
         filename: 'f.adi',
         records: [_record(undated)],
         existing: const [],
-        unusable: [_record(_data(), problems: [AdifRecordProblem.noCallsign])],
+        unusable: [
+          _record(_data(), problems: [AdifRecordProblem.noCallsign]),
+        ],
       );
 
       expect(plan.unusable, hasLength(1));
@@ -362,7 +342,9 @@ void main() {
       // nothing during planning and writeBatch then defaults it to now.
       final plan = planAdifImport(
         filename: 'f.adi',
-        records: [_record({..._data(), 'startAtMillis': 'unknown'})],
+        records: [
+          _record({..._data(), 'startAtMillis': 'unknown'}),
+        ],
         existing: const [],
       );
 
@@ -372,16 +354,13 @@ void main() {
   });
 
   group('imposing the operation station call', () {
-    Map<String, dynamic> from(String our, {String at = '2024-07-23T12:00:00Z', String? name}) =>
-        {..._data(at: at, theirExtra: name == null ? null : {'name': name}), 'our': {'call': our}};
+    Map<String, dynamic> from(String our, {String at = '2024-07-23T12:00:00Z', String? name}) => {
+      ..._data(at: at, theirExtra: name == null ? null : {'name': name}),
+      'our': {'call': our},
+    };
 
     test('an addition is rewritten to the operation station', () {
-      final plan = planAdifImport(
-        filename: 'f.adi',
-        records: [_record(from('W1AW/P'))],
-        existing: const [],
-        stationCall: 'KI2D',
-      );
+      final plan = planAdifImport(filename: 'f.adi', records: [_record(from('W1AW/P'))], existing: const [], stationCall: 'KI2D');
 
       expect((plan.additions.single['our'] as Map)['call'], 'KI2D');
     });
@@ -451,12 +430,7 @@ void main() {
     });
 
     test('a file already under the operation station warns about nothing', () {
-      final plan = planAdifImport(
-        filename: 'f.adi',
-        records: [_record(from('KI2D'))],
-        existing: const [],
-        stationCall: 'KI2D',
-      );
+      final plan = planAdifImport(filename: 'f.adi', records: [_record(from('KI2D'))], existing: const [], stationCall: 'KI2D');
 
       expect(plan.foreignStations, isEmpty);
     });
@@ -464,7 +438,10 @@ void main() {
     test('a record whose callsign is not a string does not throw', () {
       // Bucketing reads their.call directly. A hard cast would fail the whole
       // import on a record the matcher would simply not match.
-      final odd = {..._data(), 'their': {'call': 42}};
+      final odd = {
+        ..._data(),
+        'their': {'call': 42},
+      };
 
       final plan = planAdifImport(filename: 'f.adi', records: [_record(odd)], existing: const []);
 
@@ -474,11 +451,7 @@ void main() {
     test('without a station call the file keeps its own', () {
       // The other importers this will serve — a whole-history import for
       // worked-before detection — must not rewrite anything.
-      final plan = planAdifImport(
-        filename: 'f.adi',
-        records: [_record(from('W1AW/P'))],
-        existing: const [],
-      );
+      final plan = planAdifImport(filename: 'f.adi', records: [_record(from('W1AW/P'))], existing: const []);
 
       expect((plan.additions.single['our'] as Map)['call'], 'W1AW/P');
       expect(plan.foreignStations, isEmpty);
@@ -487,12 +460,12 @@ void main() {
 
   group('operation-level references', () {
     Map<String, dynamic> hunting(String park, {required String at}) => {
-          ..._data(at: at),
-          'refs': [
-            {'type': 'potaActivation', 'ref': 'K-0001', 'for': 'operation'},
-            {'type': 'pota', 'ref': park},
-          ],
-        };
+      ..._data(at: at),
+      'refs': [
+        {'type': 'potaActivation', 'ref': 'K-0001', 'for': 'operation'},
+        {'type': 'pota', 'ref': park},
+      ],
+    };
 
     test('a tagged reference is lifted off the contacts', () {
       // ADIF writes the activation onto all 200 records of a park activation
@@ -553,18 +526,26 @@ void main() {
     final plan = planAdifImport(
       filename: 'f.adi',
       records: [
-        _record(_data(extra: {
-          'refs': [
-            {'type': 'pota', 'ref': 'K-2'},
-          ],
-        })),
+        _record(
+          _data(
+            extra: {
+              'refs': [
+                {'type': 'pota', 'ref': 'K-2'},
+              ],
+            },
+          ),
+        ),
       ],
       existing: [
-        _logged(_data(extra: {
-          'refs': [
-            {'type': 'pota', 'ref': 'K-1'},
-          ],
-        })),
+        _logged(
+          _data(
+            extra: {
+              'refs': [
+                {'type': 'pota', 'ref': 'K-1'},
+              ],
+            },
+          ),
+        ),
       ],
       multiRefTypes: {'pota'},
     );

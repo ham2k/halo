@@ -37,8 +37,7 @@ void main() {
     return GeneralSettingsGroup(settings, extensions);
   }
 
-  Future<List<Map<String, dynamic>>> elementsOf(SettingsService settings) async =>
-      (await generalGroup(settings)).buildElements();
+  Future<List<Map<String, dynamic>>> elementsOf(SettingsService settings) async => (await generalGroup(settings)).buildElements();
 
   /// The value the group would render for [key] right now — read back through
   /// `buildElements` rather than out of prefs, because that is what the row
@@ -73,7 +72,8 @@ void main() {
         expect(
           await renderedValue(settings, key),
           value,
-          reason: '"$key" renders a picker with no matching case in commit() — '
+          reason:
+              '"$key" renders a picker with no matching case in commit() — '
               'tapping "$value" would highlight and then snap back',
         );
       }

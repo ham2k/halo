@@ -27,9 +27,7 @@ const _protocolVersion = 1;
 enum DevServerState { disconnected, connecting, connected, failed }
 
 class ExtensionDevClient extends ChangeNotifier {
-  ExtensionDevClient({required this.extensions, http.Client? httpClient})
-      : _http = httpClient ?? http.Client(),
-        _ownsHttpClient = httpClient == null;
+  ExtensionDevClient({required this.extensions, http.Client? httpClient}) : _http = httpClient ?? http.Client(), _ownsHttpClient = httpClient == null;
 
   final ExtensionService extensions;
   final http.Client _http;
@@ -109,14 +107,12 @@ class ExtensionDevClient extends ChangeNotifier {
       if (protocol != _protocolVersion) {
         // Named in both directions rather than "incompatible": whichever side
         // is older, the person reading this is the one who can update it.
-        throw FormatException(
-            'dev server speaks protocol $protocol, this app speaks $_protocolVersion');
+        throw FormatException('dev server speaks protocol $protocol, this app speaks $_protocolVersion');
       }
 
       final index = await _getJson(base.resolve('index.json'));
       final infos = [
-        for (final entry in ((index['extensions'] as List?) ?? const []).cast<Map<String, dynamic>>())
-          ExtensionInfo.fromJson({...entry, 'source': 'dev'}),
+        for (final entry in ((index['extensions'] as List?) ?? const []).cast<Map<String, dynamic>>()) ExtensionInfo.fromJson({...entry, 'source': 'dev'}),
       ];
       if (infos.isEmpty) throw const FormatException('the dev server is serving no extensions');
 
@@ -190,8 +186,7 @@ class ExtensionDevClient extends ChangeNotifier {
   /// Subscribes to the server's Server-Sent Events stream. Each `data:` line
   /// is one JSON event; the blank line between events is ignored.
   void _listenForEvents(Uri base) {
-    final request = http.Request('GET', base.resolve('events'))
-      ..headers['accept'] = 'text/event-stream';
+    final request = http.Request('GET', base.resolve('events'))..headers['accept'] = 'text/event-stream';
     _events = _http
         .send(request)
         .asStream()
@@ -287,10 +282,11 @@ class ExtensionDevClient extends ChangeNotifier {
     _pendingLogLines.clear();
     // Fire and forget: a dev console that cannot be reached is not worth
     // failing anything over, and the lines are in the app's own log anyway.
-    unawaited(_http
-        .post(base.resolve('logs'),
-            headers: {'content-type': 'application/json'}, body: jsonEncode({'lines': lines}))
-        .catchError((Object _) => http.Response('', 599)));
+    unawaited(
+      _http
+          .post(base.resolve('logs'), headers: {'content-type': 'application/json'}, body: jsonEncode({'lines': lines}))
+          .catchError((Object _) => http.Response('', 599)),
+    );
   }
 
   Future<Map<String, dynamic>> _getJson(Uri url) async {

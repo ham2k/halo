@@ -36,13 +36,8 @@ class _FailsAfterFirst extends ExtensionServiceWithFakeHost {
   int calls = 0;
 
   @override
-  Future<ControlsResult> loggingControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
-      calls++ == 0
-          ? (controls: const [_exchangeControl], loadFailed: false)
-          : (controls: const <Map<String, dynamic>>[], loadFailed: true);
+  Future<ControlsResult> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
+      calls++ == 0 ? (controls: const [_exchangeControl], loadFailed: false) : (controls: const <Map<String, dynamic>>[], loadFailed: true);
 }
 
 /// Nothing configured yet (call 0, before the ref exists), then fails
@@ -60,10 +55,7 @@ class _FailsOnceThenRecovers extends ExtensionServiceWithFakeHost {
   int refCalls = 0;
 
   @override
-  Future<ControlsResult> loggingControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async {
+  Future<ControlsResult> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async {
     final refs = operationData['refs'];
     if (refs is! List || refs.isEmpty) return (controls: const <Map<String, dynamic>>[], loadFailed: false);
     if (refCalls++ == 0) return (controls: const <Map<String, dynamic>>[], loadFailed: true);
@@ -94,10 +86,7 @@ class _OutOfOrder extends ExtensionServiceWithFakeHost {
   final List<Completer<ControlsResult>> completers = [];
 
   @override
-  Future<ControlsResult> loggingControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) {
+  Future<ControlsResult> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) {
     final completer = Completer<ControlsResult>();
     completers.add(completer);
     return completer.future;
@@ -115,31 +104,43 @@ void main() {
     final HaLoHarness(:services) = await makeHaLoServices(extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pump();
     expect(extensions.completers, hasLength(1), reason: 'the initial fetch, from _initExtensionState');
 
     // Two ref edits, back to back, neither given a chance to see the other's
     // fetch resolve — each provokes its own `_refreshLoggingControls` call,
     // request IDs 2 and 3.
-    await services.operations.saveData(Operation(uuid: operation.uuid, data: {
-      ...operation.data,
-      'refs': [
-        {'type': 'c', 'ref': 'C-1'},
-      ],
-    }));
+    await services.operations.saveData(
+      Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [
+            {'type': 'c', 'ref': 'C-1'},
+          ],
+        },
+      ),
+    );
     await tester.pump();
-    await services.operations.saveData(Operation(uuid: operation.uuid, data: {
-      ...operation.data,
-      'refs': [
-        {'type': 'c', 'ref': 'C-1'},
-        {'type': 'c', 'ref': 'C-2'},
-      ],
-    }));
+    await services.operations.saveData(
+      Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [
+            {'type': 'c', 'ref': 'C-1'},
+            {'type': 'c', 'ref': 'C-2'},
+          ],
+        },
+      ),
+    );
     await tester.pump();
     expect(extensions.completers, hasLength(3));
 
@@ -151,8 +152,7 @@ void main() {
 
     extensions.completers[1].complete((controls: const [_exchangeControl1], loadFailed: false));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(TextField, 'Exch2'), findsOneWidget,
-        reason: 'the older request resolving late must not overwrite the newer result');
+    expect(find.widgetWithText(TextField, 'Exch2'), findsOneWidget, reason: 'the older request resolving late must not overwrite the newer result');
     expect(find.widgetWithText(TextField, 'Exch1'), findsNothing);
 
     // Drain the still-pending initial-fetch completer and any debounce
@@ -171,23 +171,30 @@ void main() {
     final HaLoHarness(:services) = await makeHaLoServices(extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(find.widgetWithText(TextField, 'Exch'), findsNothing, reason: 'no ref yet — nothing to fetch for');
 
     // Adding the ref is what the operator did by adding the contest — and,
     // in the scenario this guards, is racing a runtime restart the same
     // gesture (enabling the extension) kicked off.
-    await services.operations.saveData(Operation(uuid: operation.uuid, data: {
-      ...operation.data,
-      'refs': [
-        {'type': 'c', 'ref': 'C-1'},
-      ],
-    }));
+    await services.operations.saveData(
+      Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [
+            {'type': 'c', 'ref': 'C-1'},
+          ],
+        },
+      ),
+    );
     await tester.pumpAndSettle();
     expect(extensions.refCalls, 1, reason: 'the ref edit fetched, and lost the race');
     expect(find.widgetWithText(TextField, 'Exch'), findsNothing, reason: 'the failed fetch installed nothing');
@@ -198,8 +205,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(extensions.refCalls, 2, reason: 'the generation tick retried');
-    expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget,
-        reason: 'the retry succeeds once the runtime is back, without reopening the operation');
+    expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget, reason: 'the retry succeeds once the runtime is back, without reopening the operation');
 
     // Tear the tree down and drain the services' debounce timers, so the
     // binding's pending-timer invariant passes.
@@ -214,18 +220,25 @@ void main() {
     final extensions = _FailsAfterFirst();
     final HaLoHarness(:services) = await makeHaLoServices(extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
-    await services.operations.saveData(Operation(uuid: operation.uuid, data: {
-      ...operation.data,
-      'refs': [
-        {'type': 'c', 'ref': 'C-1'}
-      ],
-    }));
-
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
+    await services.operations.saveData(
+      Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [
+            {'type': 'c', 'ref': 'C-1'},
+          ],
+        },
       ),
-    ));
+    );
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget, reason: 'the first fetch answered');
@@ -233,18 +246,22 @@ void main() {
     // A ref edit is the trigger, and the only one — so the failure this
     // provokes is the last word on the panel's controls until the operation
     // is reopened.
-    await services.operations.saveData(Operation(uuid: operation.uuid, data: {
-      ...operation.data,
-      'refs': [
-        {'type': 'c', 'ref': 'C-1'},
-        {'type': 'c', 'ref': 'C-2'},
-      ],
-    }));
+    await services.operations.saveData(
+      Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [
+            {'type': 'c', 'ref': 'C-1'},
+            {'type': 'c', 'ref': 'C-2'},
+          ],
+        },
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(extensions.calls, greaterThan(1), reason: 'the ref edit really did re-fetch');
-    expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget,
-        reason: 'a fetch that failed says nothing about what the activities want');
+    expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget, reason: 'a fetch that failed says nothing about what the activities want');
 
     // Tear the tree down and drain the services' debounce timers, so the
     // binding's pending-timer invariant passes.

@@ -160,11 +160,7 @@ class ViewFocusGuard with WidgetsBindingObserver {
 
   /// Asks the platform for the view's focus when there is no node to restore.
   void _requestViewFocus(int viewId) {
-    WidgetsBinding.instance.platformDispatcher.requestViewFocusChange(
-      viewId: viewId,
-      state: ViewFocusState.focused,
-      direction: ViewFocusDirection.undefined,
-    );
+    WidgetsBinding.instance.platformDispatcher.requestViewFocusChange(viewId: viewId, state: ViewFocusState.focused, direction: ViewFocusDirection.undefined);
   }
 
   /// Says so when a restore did not take.

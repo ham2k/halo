@@ -173,7 +173,10 @@ void main() {
       // QSON is forward-compatible because unknown keys survive a round
       // trip. Normalizing a key we do not understand would rewrite a payload
       // whose shape is a newer client's business, not ours.
-      final normalized = normalizeQsoQson({'mode': true, 'somethingNewer': {'a': 1}});
+      final normalized = normalizeQsoQson({
+        'mode': true,
+        'somethingNewer': {'a': 1},
+      });
       expect(normalized['somethingNewer'], {'a': 1});
     });
 
@@ -201,7 +204,10 @@ void main() {
         'freq': 14074.0,
         'mode': 'FT8',
         'refs': const [],
-        'their': <dynamic, dynamic>{'call': 'W1AW', 'guess': {'name': 'Hiram'}},
+        'their': <dynamic, dynamic>{
+          'call': 'W1AW',
+          'guess': {'name': 'Hiram'},
+        },
       }, violations: violations);
       expect(violations, isEmpty);
     });
@@ -240,7 +246,9 @@ void main() {
       final violations = <QsonTypeViolation>[];
       normalizeQsoQson({
         'mode': true,
-        'their': {'guess': {'name': 7}},
+        'their': {
+          'guess': {'name': 7},
+        },
       }, violations: violations);
       expect(violations.map((v) => v.path), containsAll(['mode', 'their.guess.name']));
       expect(violations.first.toString(), isNot(contains('true')));

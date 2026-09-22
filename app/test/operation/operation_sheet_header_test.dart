@@ -68,17 +68,19 @@ void main() {
       await services.operations.updateLocalData(operation.uuid, {'multiIdentifier': multiIdentifier});
     }
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        // Around the navigator, not the home widget: the sheet is a pushed
-        // route, so a MediaQuery inside `home` would never reach it.
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScaler)),
-          child: child!,
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          // Around the navigator, not the home widget: the sheet is a pushed
+          // route, so a MediaQuery inside `home` would never reach it.
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScaler)),
+            child: child!,
+          ),
+          home: OperationView(services: services, operationUuid: operation.uuid),
         ),
-        home: OperationView(services: services, operationUuid: operation.uuid),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining(stationCall));
     await tester.pumpAndSettle();
@@ -121,8 +123,7 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
-  testWidgets('the operation pills keep the callsigns and pencil on the top line, shedding extras below',
-      (tester) async {
+  testWidgets('the operation pills keep the callsigns and pencil on the top line, shedding extras below', (tester) async {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     tester.view.physicalSize = const Size(1400, 900);
@@ -174,19 +175,13 @@ void main() {
       // The identity rides the top line: whatever else the width forces out,
       // the callsigns and the pencil are the row a reader's eye lands on
       // first, never pushed under the title and notes.
-      double topOf(Finder pill) =>
-          tester.getTopLeft(find.ancestor(of: pill, matching: find.byType(Container)).first).dy;
+      double topOf(Finder pill) => tester.getTopLeft(find.ancestor(of: pill, matching: find.byType(Container)).first).dy;
       final identityTop = topOf(station);
       expect(topOf(pencil), identityTop, reason: 'the pencil shares the station line, $at');
       if (operatorPill) {
         expect(topOf(operatorText), identityTop, reason: 'the operator shares the station line, $at');
       }
-      final tops = {
-        identityTop,
-        if (titlePill) topOf(titleText),
-        if (notesPill) topOf(notesIcon),
-        if (operatorPill) topOf(operatorText),
-      };
+      final tops = {identityTop, if (titlePill) topOf(titleText), if (notesPill) topOf(notesIcon), if (operatorPill) topOf(operatorText)};
       expect(tops.length, lessThanOrEqualTo(2), reason: 'the pills stay within two runs, $at');
       if (tops.length == 2) everTwoRuns = true;
       for (final top in tops) {
@@ -219,11 +214,14 @@ void main() {
     expect(find.descendant(of: sheet, matching: find.text('Op One')), findsOneWidget);
     expect(find.descendant(of: sheet, matching: find.byIcon(MdiIcons.fileDocument)), findsOneWidget);
     expect(find.descendant(of: sheet, matching: find.byIcon(MdiIcons.pencil)), findsOneWidget);
-    expect(find.descendant(of: sheet, matching: find.text('…')), findsNothing, reason: 'nothing was shed');
+    expect(
+      find.descendant(of: sheet, matching: find.text('…')),
+      findsNothing,
+      reason: 'nothing was shed',
+    );
 
     // One line: every pill shares the station's top edge.
-    double topOf(Finder pill) =>
-        tester.getTopLeft(find.ancestor(of: pill, matching: find.byType(Container)).first).dy;
+    double topOf(Finder pill) => tester.getTopLeft(find.ancestor(of: pill, matching: find.byType(Container)).first).dy;
     final identityTop = topOf(station);
     for (final pill in [
       find.descendant(of: sheet, matching: find.textContaining('Op: ')),

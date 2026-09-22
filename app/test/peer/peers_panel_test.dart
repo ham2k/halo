@@ -37,9 +37,13 @@ void main() {
   /// frames — pumpAndSettle waits out its full 10-minute budget and then
   /// fails, naming whatever test happened to be running.
   Future<void> pump(WidgetTester tester) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: PeersPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: PeersPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
   }
@@ -79,8 +83,7 @@ void main() {
         await peer.setEnabled(false);
         peer.dispose();
       });
-      return HaLoServices(db, settings,
-          extensions: ExtensionServiceWithFakeHost()..settings = settings, peerService: peer);
+      return HaLoServices(db, settings, extensions: ExtensionServiceWithFakeHost()..settings = settings, peerService: peer);
     }
 
     test('with the experiment off, an open operation and the switch on start nothing', () async {
@@ -112,8 +115,7 @@ void main() {
       await settings.setExperimentEnabled('p2p', false);
       withPeer.updatePeerSharing();
       await Future<void>.delayed(const Duration(milliseconds: 200));
-      expect(withPeer.peerService.running, isFalse,
-          reason: 'a device already on the network must leave it when the gate closes');
+      expect(withPeer.peerService.running, isFalse, reason: 'a device already on the network must leave it when the gate closes');
     });
   });
 
@@ -155,8 +157,7 @@ void main() {
 
     expect(find.text('Phone'), findsOneWidget);
     expect(find.text('6f1c2a90'), findsOneWidget);
-    expect(find.text(deviceId), findsNothing,
-        reason: 'the full id belongs to no row — it is what the short form replaces');
+    expect(find.text(deviceId), findsNothing, reason: 'the full id belongs to no row — it is what the short form replaces');
     expect(find.text(t.settings.peers.noPairedDevices), findsNothing);
     await unmount(tester);
   });
@@ -199,8 +200,7 @@ void main() {
     await tester.tap(find.text(t.common.cancel));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(await trust.isTrusted('device-b'), isTrue,
-        reason: 'cancelling a destructive confirm must not perform it');
+    expect(await trust.isTrusted('device-b'), isTrue, reason: 'cancelling a destructive confirm must not perform it');
 
     await tester.tap(find.byIcon(MdiIcons.close));
     await tester.pump();

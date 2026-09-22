@@ -17,8 +17,7 @@ import 'layout.dart';
 import 'mdi_icons.g.dart';
 import 'ui_scale.dart';
 
-bool get isMacOSChromelessWindow =>
-    !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+bool get isMacOSChromelessWindow => !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
 /// On Windows the runner strips the native title bar and frame the same way
 /// (custom-frame WM_NCCALCSIZE in win32_window.cpp), but unlike macOS there
@@ -26,8 +25,7 @@ bool get isMacOSChromelessWindow =>
 /// ([WindowsCaptionButtons], overlaid at the app root) and sit at the top
 /// RIGHT, so headers reserve trailing clearance ([windowsCaptionClearance])
 /// instead of leading.
-bool get isWindowsChromelessWindow =>
-    !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+bool get isWindowsChromelessWindow => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
 /// On Linux the runner (linux/runner/my_application.cc) installs an
 /// effectively invisible custom titlebar via `gtk_window_set_titlebar`
@@ -38,8 +36,7 @@ bool get isWindowsChromelessWindow =>
 /// controls are the same Flutter-drawn [WindowsCaptionButtons] at the top
 /// right — every place gated on [isWindowsChromelessWindow] below for that
 /// shared behavior also checks this.
-bool get isLinuxChromelessWindow =>
-    !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
+bool get isLinuxChromelessWindow => !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
 
 /// Horizontal space to reserve for the traffic-light buttons when
 /// [isMacOSChromelessWindow]. A PHYSICAL measurement: the native buttons are
@@ -73,8 +70,7 @@ class MacOSFullScreenScope extends InheritedWidget {
   const MacOSFullScreenScope({super.key, required this.isFullScreen, required super.child});
 
   /// False when no scope is above (tests, non-app embeddings).
-  static bool of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<MacOSFullScreenScope>()?.isFullScreen ?? false;
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<MacOSFullScreenScope>()?.isFullScreen ?? false;
 
   @override
   bool updateShouldNotify(MacOSFullScreenScope oldWidget) => oldWidget.isFullScreen != isFullScreen;
@@ -86,25 +82,20 @@ class MacOSFullScreenScope extends InheritedWidget {
 /// any custom leading layout (see [macOSAwareLeadingWidth]). Zero in native
 /// full screen, where the buttons leave the header for the system's
 /// auto-hiding titlebar overlay and leading content aligns with the edge.
-double macOSTrafficLightClearance(BuildContext context) => MacOSFullScreenScope.of(context)
-    ? 0
-    : (macOSTrafficLightInset + macOSTrafficLightGap) / UiScale.of(context);
+double macOSTrafficLightClearance(BuildContext context) =>
+    MacOSFullScreenScope.of(context) ? 0 : (macOSTrafficLightInset + macOSTrafficLightGap) / UiScale.of(context);
 
 /// True on desktop/windowed platforms (macOS, Windows, Linux) and web,
 /// false on mobile (iOS, Android). Drives the app's own OS-level naming and
 /// a few mobile-only layout adjustments — NOT AppBar title alignment, which
 /// is left-aligned everywhere (theme.dart's `centerTitle: false`).
 bool get isWindowedPlatform =>
-    kIsWeb ||
-    defaultTargetPlatform == TargetPlatform.macOS ||
-    defaultTargetPlatform == TargetPlatform.windows ||
-    defaultTargetPlatform == TargetPlatform.linux;
+    kIsWeb || defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux;
 
 /// True on iOS/Android — where on-screen keyboards make "/" awkward to type
 /// (the "." → "/" autocorrect for logging inputs) and other mobile-only
 /// input quirks apply.
-bool get isMobilePlatform =>
-    !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
+bool get isMobilePlatform => !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
 
 /// Whether a physical keyboard is attached, on the platforms where that is a
 /// question — fed by the app's HardwareKeyboardService over the
@@ -205,8 +196,7 @@ const String ham2kMachineName = 'Ham2K Logger';
 /// home_view.dart does for its logo), otherwise the title/back arrow render
 /// underneath the floating traffic lights. The back button's own width scales
 /// with the UI; the traffic-light clearance stays fixed physical.
-double? macOSAwareLeadingWidth(BuildContext context) =>
-    isMacOSChromelessWindow ? 48 + macOSTrafficLightClearance(context) : null;
+double? macOSAwareLeadingWidth(BuildContext context) => isMacOSChromelessWindow ? 48 + macOSTrafficLightClearance(context) : null;
 
 /// A `BackButton` with left padding reserved for the traffic-light buttons
 /// when [isMacOSChromelessWindow]. Pair with [macOSAwareLeadingWidth] as the
@@ -230,18 +220,20 @@ double? macOSAwareLeadingWidth(BuildContext context) =>
 /// fixed-size box beneath actually come out smaller.
 Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed, bool close = false, double? boxSize}) {
   Widget button = close
-      ? IconButton(
-          icon: const Icon(MdiIcons.chevronLeft),
-          onPressed: onPressed ?? () => Navigator.maybePop(context),
-        )
+      ? IconButton(icon: const Icon(MdiIcons.chevronLeft), onPressed: onPressed ?? () => Navigator.maybePop(context))
       : BackButton(onPressed: onPressed);
   if (boxSize != null) {
-    button = Align(child: SizedBox(width: boxSize, height: boxSize, child: button));
+    button = Align(
+      child: SizedBox(width: boxSize, height: boxSize, child: button),
+    );
   }
   return MouseRegion(
     cursor: SystemMouseCursors.click,
     child: isMacOSChromelessWindow
-        ? Padding(padding: EdgeInsets.only(left: macOSTrafficLightClearance(context)), child: button)
+        ? Padding(
+            padding: EdgeInsets.only(left: macOSTrafficLightClearance(context)),
+            child: button,
+          )
         : button,
   );
 }
@@ -430,8 +422,7 @@ class MacOSTrafficLightMask extends StatelessWidget {
     // static modal, so dropping the mask there loses nothing.
     return ListenableBuilder(
       listenable: Listenable.merge([modalBarrierIsVisible, _blurredModalRevision]),
-      builder: (context, child) =>
-          (modalBarrierIsVisible.value || _blurredModalDepth > 0) ? const SizedBox.shrink() : child!,
+      builder: (context, child) => (modalBarrierIsVisible.value || _blurredModalDepth > 0) ? const SizedBox.shrink() : child!,
       child: mask,
     );
   }
@@ -460,15 +451,11 @@ Widget? windowHeaderGestureArea() {
     // The native side takes over the pointer (WM_NCLBUTTONDOWN / gtk_window_
     // begin_move_drag enters the system move loop), so onPanStart is the
     // whole gesture.
-    onPanStart: (isWindowsChromelessWindow || isLinuxChromelessWindow)
-        ? (_) => _windowChromeChannel.invokeMethod('startWindowDrag')
-        : null,
+    onPanStart: (isWindowsChromelessWindow || isLinuxChromelessWindow) ? (_) => _windowChromeChannel.invokeMethod('startWindowDrag') : null,
     // Right-clicking a real Windows title bar opens the window system menu
     // (Restore/Move/Size/…); the native side shows it at the cursor. No
     // Linux equivalent wired up yet.
-    onSecondaryTap: isWindowsChromelessWindow
-        ? () => _windowChromeChannel.invokeMethod('showSystemMenu')
-        : null,
+    onSecondaryTap: isWindowsChromelessWindow ? () => _windowChromeChannel.invokeMethod('showSystemMenu') : null,
     child: const SizedBox.expand(),
   );
 }
@@ -492,8 +479,7 @@ const double windowsCaptionButtonWidth = 46;
 /// don't sit under the caption-button overlay when
 /// [isWindowsChromelessWindow] or [isLinuxChromelessWindow]; zero
 /// elsewhere, so it can be applied unconditionally as a trailing SizedBox.
-double windowsCaptionClearance(BuildContext context) =>
-    (isWindowsChromelessWindow || isLinuxChromelessWindow) ? 3 * windowsCaptionButtonWidth + 8 : 0;
+double windowsCaptionClearance(BuildContext context) => (isWindowsChromelessWindow || isLinuxChromelessWindow) ? 3 * windowsCaptionButtonWidth + 8 : 0;
 
 /// The trailing spacer every window-top AppBar puts at the END of its
 /// `actions` (adding one if it has none): it keeps action buttons — and,
@@ -513,8 +499,7 @@ Widget windowsCaptionSpacer(BuildContext context) => SizedBox(width: windowsCapt
 /// constraints, so it lays out at its natural size, then the whole thing
 /// scales down uniformly — but never up — only if that natural size is
 /// wider than the space this is given.
-Widget shrinkToFit(Widget child, {AlignmentGeometry alignment = Alignment.centerLeft}) =>
-    FittedBox(fit: BoxFit.scaleDown, alignment: alignment, child: child);
+Widget shrinkToFit(Widget child, {AlignmentGeometry alignment = Alignment.centerLeft}) => FittedBox(fit: BoxFit.scaleDown, alignment: alignment, child: child);
 
 /// Wraps an AppBar title/subtitle line so it reads the full text at a
 /// smaller size instead of truncating outright — use in place of
@@ -640,8 +625,8 @@ Size desktopMinimumWindowSize(double uiScale) {
   final double controls = isMacOSChromelessWindow
       ? macOSTrafficLightInset + macOSTrafficLightGap
       : (isWindowsChromelessWindow || isLinuxChromelessWindow)
-          ? (3 * windowsCaptionButtonWidth + 8) * uiScale
-          : 0;
+      ? (3 * windowsCaptionButtonWidth + 8) * uiScale
+      : 0;
   return Size(minWindowSize.width * uiScale + controls, minWindowSize.height * uiScale);
 }
 
@@ -660,8 +645,7 @@ class WindowsCaptionButtons extends StatelessWidget {
     final height = theme.appBarTheme.toolbarHeight ?? kToolbarHeight;
     // Header foreground color, so the glyphs read on the AppBar background
     // they float over.
-    final glyphColor = theme.appBarTheme.foregroundColor ??
-        (theme.brightness == Brightness.dark ? Colors.white : Colors.black);
+    final glyphColor = theme.appBarTheme.foregroundColor ?? (theme.brightness == Brightness.dark ? Colors.white : Colors.black);
 
     return SizedBox(
       height: height,
@@ -739,11 +723,7 @@ class _CaptionButtonState extends State<_CaptionButton> {
             height: double.infinity,
             color: _hovered ? hoverColor : Colors.transparent,
             alignment: Alignment.center,
-            child: Icon(
-              widget.icon,
-              size: 16,
-              color: _hovered ? (widget.hoverGlyphColor ?? widget.glyphColor) : widget.glyphColor,
-            ),
+            child: Icon(widget.icon, size: 16, color: _hovered ? (widget.hoverGlyphColor ?? widget.glyphColor) : widget.glyphColor),
           ),
         ),
       ),

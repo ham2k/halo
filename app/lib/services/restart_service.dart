@@ -49,30 +49,18 @@ class RestartService {
           // resolvedExecutable is <App>.app/Contents/MacOS/<bin>; the bundle is
           // three directories up. `open -n` forces a fresh instance.
           final app = File(Platform.resolvedExecutable).parent.parent.parent.path;
-          await Process.start(
-            'sh',
-            ['-c', 'while kill -0 $me 2>/dev/null; do sleep 0.1; done; open -n "$app"'],
-            mode: ProcessStartMode.detached,
-          );
+          await Process.start('sh', ['-c', 'while kill -0 $me 2>/dev/null; do sleep 0.1; done; open -n "$app"'], mode: ProcessStartMode.detached);
         case TargetPlatform.linux:
           final exe = Platform.resolvedExecutable;
-          await Process.start(
-            'sh',
-            ['-c', 'while kill -0 $me 2>/dev/null; do sleep 0.1; done; exec "$exe"'],
-            mode: ProcessStartMode.detached,
-          );
+          await Process.start('sh', ['-c', 'while kill -0 $me 2>/dev/null; do sleep 0.1; done; exec "$exe"'], mode: ProcessStartMode.detached);
         case TargetPlatform.windows:
           final exe = Platform.resolvedExecutable;
-          await Process.start(
-            'powershell',
-            [
-              '-NoProfile',
-              '-Command',
-              "while (Get-Process -Id $me -ErrorAction SilentlyContinue) "
-                  "{ Start-Sleep -Milliseconds 100 }; Start-Process '$exe'",
-            ],
-            mode: ProcessStartMode.detached,
-          );
+          await Process.start('powershell', [
+            '-NoProfile',
+            '-Command',
+            "while (Get-Process -Id $me -ErrorAction SilentlyContinue) "
+                "{ Start-Sleep -Milliseconds 100 }; Start-Process '$exe'",
+          ], mode: ProcessStartMode.detached);
         default:
           return;
       }
@@ -116,9 +104,11 @@ Future<void> quitThroughFramework(String logTag) async {
     // every way that matters to the line below. A `cancel` is the one that says
     // an observer (or an embedder with no exit channel, which reads the same)
     // turned it down, and only that one skipped the hook.
-    debugPrint(response == AppExitResponse.cancel
-        ? '[$logTag] the exit was refused; forcing it with the database still open'
-        : '[$logTag] the exit did not terminate this process; forcing it');
+    debugPrint(
+      response == AppExitResponse.cancel
+          ? '[$logTag] the exit was refused; forcing it with the database still open'
+          : '[$logTag] the exit did not terminate this process; forcing it',
+    );
   } catch (e) {
     debugPrint('[$logTag] the framework could not be asked to exit ($e); forcing it');
   } finally {

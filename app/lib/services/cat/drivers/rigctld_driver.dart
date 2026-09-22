@@ -103,27 +103,22 @@ class RigctldDriver extends EquipmentDriver {
   @override
   String get name => 'Hamlib rigctld';
 
-
   /// The levels Hamlib defines for these, all of them read-only meters. No
   /// ALC-free or SWR-free backend is excluded by declaring them: a level a
   /// backend does not implement answers `RPRT -11`, which this driver
   /// ignores like every other error, and the slot simply stays empty.
   @override
-  Set<RadioMeter> get telemetryMeters =>
-      const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.alc, RadioMeter.supplyVolts};
+  Set<RadioMeter> get telemetryMeters => const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.alc, RadioMeter.supplyVolts};
 
   /// The meter cadence, and nothing else: where the daemon is listening is
   /// the TCP transport's question.
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [telemetryConfigElement()];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    telemetryConfigElement(),
+  ];
 
   @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) =>
-      key == telemetryIntervalConfigKey ? validateTelemetryInterval(value) : null;
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) => key == telemetryIntervalConfigKey ? validateTelemetryInterval(value) : null;
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => RigctldSession(sink, config);
@@ -300,10 +295,7 @@ class RigctldSession implements TransceiverSession {
 
   /// Reports upward, and tells the poller whether the radio is moving.
   void _report(VfoReading reading) {
-    final merged = VfoReading(
-      freqKHz: reading.freqKHz ?? _lastReported?.freqKHz,
-      mode: reading.mode ?? _lastReported?.mode,
-    );
+    final merged = VfoReading(freqKHz: reading.freqKHz ?? _lastReported?.freqKHz, mode: reading.mode ?? _lastReported?.mode);
     // The FIRST reading is the answer to the question startUpdates just
     // asked, not the radio moving — see Ft891Session._report.
     final first = _lastReported == null;
@@ -332,8 +324,7 @@ class RigctldSession implements TransceiverSession {
   /// conversion — an ignored `RPRT` error here means the daemon/backend
   /// rejected the value outright, same as any other rejected set.
   @override
-  void setPower(num watts) =>
-      _send('L$_vfo RFPOWER ${(watts / _assumedMaxWatts).clamp(0, 1).toStringAsFixed(3)}');
+  void setPower(num watts) => _send('L$_vfo RFPOWER ${(watts / _assumedMaxWatts).clamp(0, 1).toStringAsFixed(3)}');
 
   @override
   void startUpdates() {
@@ -354,7 +345,6 @@ class RigctldSession implements TransceiverSession {
     _poller.stop();
     _telemetry.stop();
   }
-
 
   /// The poller's CURRENT cadence, not its floor: it runs fast while the
   /// dial is moving and eases off when it isn't, and a caller asking "how

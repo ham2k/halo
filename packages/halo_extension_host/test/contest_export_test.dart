@@ -24,8 +24,7 @@ import 'support/bundles.dart';
 /// table is enough: the satellite's BAND_RX is the only field that needs a
 /// match in it, and a hook that could not read the table at all now fails the
 /// export outright (activity_export_test.dart).
-Future<Object?> _noBirds(String method, Map<String, dynamic> params) async =>
-    method == 'dbLookupSelectAll' ? const [] : null;
+Future<Object?> _noBirds(String method, Map<String, dynamic> params) async => method == 'dbLookupSelectAll' ? const [] : null;
 
 void main() {
   requireBundles();
@@ -38,20 +37,13 @@ void main() {
   // recursion to guard against. Every OTHER contest belongs here — the list
   // has drifted twice, and a contest missing from it ships its delegation
   // untested.
-  const contests = [
-    'simple-contest', 'cqww', 'cqwpx', 'arrl-dx', 'iaru-hf', 'naqp', 'cwt', 'fd', 'wfd',
-    'arrl-vhf-tests', 'r1-vhf-tests', 'rsgb-vhf-tests',
-  ];
+  const contests = ['simple-contest', 'cqww', 'cqwpx', 'arrl-dx', 'iaru-hf', 'naqp', 'cwt', 'fd', 'wfd', 'arrl-vhf-tests', 'r1-vhf-tests', 'rsgb-vhf-tests'];
 
   /// The event a multi-event contest needs on its ref before it will export at
   /// all — its `generateExport` returns an empty file for an event it cannot
   /// resolve, which would make the assertions below pass while testing
   /// nothing. Contests with a single event ignore the value.
-  const eventKeys = {
-    'arrl-vhf-tests': 'ARRL-VHF-JUN',
-    'r1-vhf-tests': 'R1-VHF-SUB1-MARCH',
-    'rsgb-vhf-tests': 'RSGB-BACKPACKERS-1',
-  };
+  const eventKeys = {'arrl-vhf-tests': 'ARRL-VHF-JUN', 'r1-vhf-tests': 'R1-VHF-SUB1-MARCH', 'rsgb-vhf-tests': 'RSGB-BACKPACKERS-1'};
 
   /// `ref` names WHICH event for a contest that has several (stateparks
   /// contributes nothing without one); the rest ignore the extra keys.
@@ -62,21 +54,13 @@ void main() {
   /// case where the Cabrillo must fall back to the declared class for one header
   /// and emit nothing at all for the other.
   Map<String, dynamic> operationFor(String key, {String event = 'OHSP'}) => {
-        'uuid': 'op-1',
-        'stationCall': 'N0DEV',
-        'grid': 'EN91',
-        'refs': [
-          {
-            'type': key,
-            'mode': 'CW',
-            'exchange': '59 001',
-            'ref': event,
-            'ourPark': 'HOC',
-            'ourCategory': 'MPO',
-            'ourPower': 'HP',
-          },
-        ],
-      };
+    'uuid': 'op-1',
+    'stationCall': 'N0DEV',
+    'grid': 'EN91',
+    'refs': [
+      {'type': key, 'mode': 'CW', 'exchange': '59 001', 'ref': event, 'ourPark': 'HOC', 'ourCategory': 'MPO', 'ourPower': 'HP'},
+    ],
+  };
 
   List<Map<String, dynamic>> qsosFor(String key) => [
     for (var i = 0; i < 5; i++)
@@ -103,23 +87,25 @@ void main() {
       final contestOperation = operationFor(key, event: eventKeys[key] ?? 'OHSP');
       // A generous ceiling: the point is that it RETURNS, not how fast. Before
       // the fix this hung until the host's own timeout.
-      final result = await host.invokeHook(
-        'export',
-        key: key,
-        method: 'generateExport',
-        args: {
-          'operation': {
-            ...contestOperation,
-            'refs': [
-              ...(contestOperation['refs'] as List),
-              {'type': 'potaActivation', 'ref': 'US-0001'},
-            ],
-          },
-          'qsos': qsosFor(key),
-          'exportType': '$key-adif',
-        },
-        timeout: const Duration(seconds: 10),
-      ) as Map?;
+      final result =
+          await host.invokeHook(
+                'export',
+                key: key,
+                method: 'generateExport',
+                args: {
+                  'operation': {
+                    ...contestOperation,
+                    'refs': [
+                      ...(contestOperation['refs'] as List),
+                      {'type': 'potaActivation', 'ref': 'US-0001'},
+                    ],
+                  },
+                  'qsos': qsosFor(key),
+                  'exportType': '$key-adif',
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as Map?;
 
       expect(result, isNotNull, reason: 'the export must return, not spin');
       final content = result!['content'] as String?;
@@ -138,23 +124,25 @@ void main() {
     test('$key: the private-data flag survives the delegation', () async {
       final host = await sharedHost(['adif', key]);
       Future<String> adifFor({required bool includePrivateData}) async {
-        final result = await host.invokeHook(
-          'export',
-          key: key,
-          method: 'generateExport',
-          args: {
-            'operation': operationFor(key, event: eventKeys[key] ?? 'OHSP'),
-            'qsos': [
-              {
-                ...qsosFor(key).first,
-                'their': {'call': 'W0AW', 'name': 'Alice', 'city': 'Dayton'},
-              },
-            ],
-            'exportType': '$key-adif',
-            'includePrivateData': includePrivateData,
-          },
-          timeout: const Duration(seconds: 10),
-        ) as Map;
+        final result =
+            await host.invokeHook(
+                  'export',
+                  key: key,
+                  method: 'generateExport',
+                  args: {
+                    'operation': operationFor(key, event: eventKeys[key] ?? 'OHSP'),
+                    'qsos': [
+                      {
+                        ...qsosFor(key).first,
+                        'their': {'call': 'W0AW', 'name': 'Alice', 'city': 'Dayton'},
+                      },
+                    ],
+                    'exportType': '$key-adif',
+                    'includePrivateData': includePrivateData,
+                  },
+                  timeout: const Duration(seconds: 10),
+                )
+                as Map;
         return result['content'] as String;
       }
 
@@ -169,30 +157,28 @@ void main() {
   // nothing is silent. So a typo in either would be invisible without this.
   for (final key in ['fd', 'wfd']) {
     test('$key: the satellite fields it asked for are in the file', () async {
-      final host = await sharedHost(
-        ['adif', key, 'satellites'],
-        cacheKey: 'sat-birds-empty',
-        onHostCall: _noBirds,
-      );
-      final result = await host.invokeHook(
-        'export',
-        key: key,
-        method: 'generateExport',
-        args: {
-          'operation': operationFor(key),
-          'qsos': [
-            {
-              ...qsosFor(key).first,
-              'refs': [
-                ...(qsosFor(key).first['refs'] as List),
-                {'type': 'satellite', 'ref': 'SO-50'},
-              ],
-            },
-          ],
-          'exportType': '$key-adif',
-        },
-        timeout: const Duration(seconds: 10),
-      ) as Map;
+      final host = await sharedHost(['adif', key, 'satellites'], cacheKey: 'sat-birds-empty', onHostCall: _noBirds);
+      final result =
+          await host.invokeHook(
+                'export',
+                key: key,
+                method: 'generateExport',
+                args: {
+                  'operation': operationFor(key),
+                  'qsos': [
+                    {
+                      ...qsosFor(key).first,
+                      'refs': [
+                        ...(qsosFor(key).first['refs'] as List),
+                        {'type': 'satellite', 'ref': 'SO-50'},
+                      ],
+                    },
+                  ],
+                  'exportType': '$key-adif',
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as Map;
       final content = result['content'] as String;
 
       expect(content, contains('<CONTEST_ID:'), reason: 'still the contest\'s own log');
@@ -209,17 +195,15 @@ void main() {
     // 'adif' is what the core exporter answers for — the contest must not treat
     // it as "anything that isn't cabrillo" and delegate, which is the branch
     // the recursion lived in.
-    final result = await host.invokeHook(
-      'export',
-      key: 'cqwpx',
-      method: 'generateExport',
-      args: {
-        'operation': operationFor('cqwpx'),
-        'qsos': qsosFor('cqwpx'),
-        'exportType': 'adif',
-      },
-      timeout: const Duration(seconds: 10),
-    ) as Map?;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'cqwpx',
+              method: 'generateExport',
+              args: {'operation': operationFor('cqwpx'), 'qsos': qsosFor('cqwpx'), 'exportType': 'adif'},
+              timeout: const Duration(seconds: 10),
+            )
+            as Map?;
 
     expect(result, isNotNull);
     expect(result!['content'], isEmpty, reason: 'not an exportType this hook offers');
@@ -233,13 +217,16 @@ void main() {
     // field that never renders is indistinguishable from one never asked for.
     final host = await sharedHost(['stateparks']);
     Future<List<String>> fieldsFor(String event) async {
-      final controls = (await host.invokeHook(
-        'activity',
-        key: 'stateparks',
-        method: 'operationControls',
-        args: {'operation': operationFor('stateparks', event: event)},
-        timeout: const Duration(seconds: 10),
-      ) as List).cast<Map>();
+      final controls =
+          (await host.invokeHook(
+                    'activity',
+                    key: 'stateparks',
+                    method: 'operationControls',
+                    args: {'operation': operationFor('stateparks', event: event)},
+                    timeout: const Duration(seconds: 10),
+                  )
+                  as List)
+              .cast<Map>();
       final form = (controls.single['input'] as Map)['form'] as Map;
       return [
         for (final element in (form['elements'] as List).cast<Map>())
@@ -268,16 +255,21 @@ void main() {
     final host = await sharedHost(['stateparks']);
     Future<List<String>> keysFor(String event, {List<Map<String, dynamic>> parks = const []}) async {
       final base = operationFor('stateparks', event: event);
-      final options = await host.invokeHook(
-        'export',
-        key: 'stateparks',
-        method: 'suggestExportOptions',
-        args: {
-          'operation': {...base, 'refs': [...(base['refs'] as List), ...parks]},
-          'qsos': qsosFor('stateparks'),
-        },
-        timeout: const Duration(seconds: 10),
-      ) as List?;
+      final options =
+          await host.invokeHook(
+                'export',
+                key: 'stateparks',
+                method: 'suggestExportOptions',
+                args: {
+                  'operation': {
+                    ...base,
+                    'refs': [...(base['refs'] as List), ...parks],
+                  },
+                  'qsos': qsosFor('stateparks'),
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List?;
       if (event == 'TXSP' || event == 'GASP') {
         expect((options ?? []).map((o) => (o as Map)['exportType']), everyElement('stateparks-adif'));
       }
@@ -289,14 +281,11 @@ void main() {
       {'type': 'potaActivation', 'ref': 'US-3051'},
     ];
 
-    expect(await keysFor('OHSP', parks: twoParks), ['stateparks-cabrillo'],
-        reason: 'a Cabrillo covers the whole entry, however many parks it was from');
+    expect(await keysFor('OHSP', parks: twoParks), ['stateparks-cabrillo'], reason: 'a Cabrillo covers the whole entry, however many parks it was from');
     expect(await keysFor('FLSP', parks: twoParks), isEmpty);
     // One file per park, because the sponsor's filename names exactly one.
-    expect(await keysFor('TXSP', parks: twoParks),
-        ['stateparks-adif:US-2195', 'stateparks-adif:US-3051']);
-    expect(await keysFor('GASP', parks: twoParks),
-        ['stateparks-adif:US-2195', 'stateparks-adif:US-3051']);
+    expect(await keysFor('TXSP', parks: twoParks), ['stateparks-adif:US-2195', 'stateparks-adif:US-3051']);
+    expect(await keysFor('GASP', parks: twoParks), ['stateparks-adif:US-2195', 'stateparks-adif:US-3051']);
     // No park activated, nothing to name and nothing to submit.
     expect(await keysFor('TXSP'), isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
@@ -311,25 +300,27 @@ void main() {
     Future<List<Map>> optionsFor({required bool compact}) async {
       final base = operationFor('stateparks', event: 'GASP');
       return ((await host.invokeHook(
-        'export',
-        key: 'stateparks',
-        method: 'suggestExportOptions',
-        args: {
-          'operation': {
-            ...base,
-            'stationCall': 'W1RCP',
-            'refs': [...(base['refs'] as List), {'type': 'potaActivation', 'ref': 'US-2195'}],
-          },
-          'qsos': [
-            {
-              ...qsosFor('stateparks').first,
-              'startAtMillis': DateTime.utc(2026, 4, 18, 13, 30).millisecondsSinceEpoch,
-            },
-          ],
-          'compactFilenames': compact,
-        },
-        timeout: const Duration(seconds: 10),
-      ) as List).cast<Map>());
+                'export',
+                key: 'stateparks',
+                method: 'suggestExportOptions',
+                args: {
+                  'operation': {
+                    ...base,
+                    'stationCall': 'W1RCP',
+                    'refs': [
+                      ...(base['refs'] as List),
+                      {'type': 'potaActivation', 'ref': 'US-2195'},
+                    ],
+                  },
+                  'qsos': [
+                    {...qsosFor('stateparks').first, 'startAtMillis': DateTime.utc(2026, 4, 18, 13, 30).millisecondsSinceEpoch},
+                  ],
+                  'compactFilenames': compact,
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List)
+          .cast<Map>());
     }
 
     expect((await optionsFor(compact: false)).single['filename'], 'W1RCP@US-2195-20260418.adi');
@@ -348,34 +339,36 @@ void main() {
   test('the sponsor-named ADIF carries POTA\'s park fields as well as the contest\'s', () async {
     final host = await sharedHost(['adif', 'stateparks', 'pota']);
     final base = operationFor('stateparks', event: 'TXSP');
-    final result = await host.invokeHook(
-      'export',
-      key: 'stateparks',
-      method: 'generateExport',
-      args: {
-        'operation': {
-          ...base,
-          'stationCall': 'KE5CW',
-          'refs': [
-            ...(base['refs'] as List),
-            {'type': 'potaActivation', 'ref': 'US-3051'},
-            {'type': 'potaActivation', 'ref': 'US-3052'},
-          ],
-        },
-        'qsos': [
-          {
-            ...qsosFor('stateparks').first,
-            'refs': [
-              ...(qsosFor('stateparks').first['refs'] as List),
-              {'type': 'pota', 'ref': 'US-9001'},
-            ],
-          },
-        ],
-        'exportType': 'stateparks-adif',
-        'exportKey': 'stateparks-adif:US-3051',
-      },
-      timeout: const Duration(seconds: 10),
-    ) as Map;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'stateparks',
+              method: 'generateExport',
+              args: {
+                'operation': {
+                  ...base,
+                  'stationCall': 'KE5CW',
+                  'refs': [
+                    ...(base['refs'] as List),
+                    {'type': 'potaActivation', 'ref': 'US-3051'},
+                    {'type': 'potaActivation', 'ref': 'US-3052'},
+                  ],
+                },
+                'qsos': [
+                  {
+                    ...qsosFor('stateparks').first,
+                    'refs': [
+                      ...(qsosFor('stateparks').first['refs'] as List),
+                      {'type': 'pota', 'ref': 'US-9001'},
+                    ],
+                  },
+                ],
+                'exportType': 'stateparks-adif',
+                'exportKey': 'stateparks-adif:US-3051',
+              },
+              timeout: const Duration(seconds: 10),
+            )
+            as Map;
     final content = result['content'] as String;
 
     expect(content, contains('<MY_SIG_INFO:7>US-3051'), reason: 'the park Texas reads off the file');
@@ -412,48 +405,50 @@ void main() {
     // sponsor's checker rejects is not a failure any unit test can see, so the
     // header block and one QSO line are pinned verbatim.
     final host = await sharedHost(['stateparks']);
-    final result = await host.invokeHook(
-      'export',
-      key: 'stateparks',
-      method: 'generateExport',
-      args: {
-        'operation': operationFor('stateparks'),
-        'qsos': [
-          // Their park typed, as the exchange field writes it.
-          {
-            'uuid': 'q1',
-            'their': {'call': 'W1AW'},
-            'band': '40m',
-            'mode': 'CW',
-            'freq': 7035,
-            'startAtMillis': DateTime.utc(2026, 9, 12, 14, 5).millisecondsSinceEpoch,
-            'refs': [
-              {'type': 'stateparks', 'park': 'ALU'},
-            ],
-          },
-          // No park: a US station falls back to their state, per Ohio's rules.
-          {
-            'uuid': 'q2',
-            'their': {'call': 'K2DEF', 'state': 'PA', 'entityPrefix': 'K'},
-            'band': '40m',
-            'mode': 'SSB',
-            'freq': 7185,
-            'startAtMillis': DateTime.utc(2026, 9, 12, 14, 9).millisecondsSinceEpoch,
-          },
-          // Not in the US at all, and not in a park: DX.
-          {
-            'uuid': 'q3',
-            'their': {'call': 'DL1ABC', 'entityPrefix': 'DL'},
-            'band': '20m',
-            'mode': 'CW',
-            'freq': 14035,
-            'startAtMillis': DateTime.utc(2026, 9, 12, 15, 0).millisecondsSinceEpoch,
-          },
-        ],
-        'exportType': 'stateparks-cabrillo',
-      },
-      timeout: const Duration(seconds: 10),
-    ) as Map?;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'stateparks',
+              method: 'generateExport',
+              args: {
+                'operation': operationFor('stateparks'),
+                'qsos': [
+                  // Their park typed, as the exchange field writes it.
+                  {
+                    'uuid': 'q1',
+                    'their': {'call': 'W1AW'},
+                    'band': '40m',
+                    'mode': 'CW',
+                    'freq': 7035,
+                    'startAtMillis': DateTime.utc(2026, 9, 12, 14, 5).millisecondsSinceEpoch,
+                    'refs': [
+                      {'type': 'stateparks', 'park': 'ALU'},
+                    ],
+                  },
+                  // No park: a US station falls back to their state, per Ohio's rules.
+                  {
+                    'uuid': 'q2',
+                    'their': {'call': 'K2DEF', 'state': 'PA', 'entityPrefix': 'K'},
+                    'band': '40m',
+                    'mode': 'SSB',
+                    'freq': 7185,
+                    'startAtMillis': DateTime.utc(2026, 9, 12, 14, 9).millisecondsSinceEpoch,
+                  },
+                  // Not in the US at all, and not in a park: DX.
+                  {
+                    'uuid': 'q3',
+                    'their': {'call': 'DL1ABC', 'entityPrefix': 'DL'},
+                    'band': '20m',
+                    'mode': 'CW',
+                    'freq': 14035,
+                    'startAtMillis': DateTime.utc(2026, 9, 12, 15, 0).millisecondsSinceEpoch,
+                  },
+                ],
+                'exportType': 'stateparks-cabrillo',
+              },
+              timeout: const Duration(seconds: 10),
+            )
+            as Map?;
 
     expect(result, isNotNull);
     // The shared scheme (`exportFilename`), dated from the log's first QSO —
@@ -486,10 +481,7 @@ void main() {
     expect(qsoLines, hasLength(3));
     // Frequency, mode, date, time, then our call / our park / their call / their
     // park — column widths included, since a fixed-width format is the point.
-    expect(
-      qsoLines[0],
-      'QSO: 7035  CW 2026-09-12 1405 N0DEV              HOC          W1AW              ALU         ',
-    );
+    expect(qsoLines[0], 'QSO: 7035  CW 2026-09-12 1405 N0DEV              HOC          W1AW              ALU         ');
     expect(qsoLines[1], contains('PA'), reason: 'no park, so their state stands in');
     expect(qsoLines[1], contains('PH'), reason: 'Cabrillo collapses SSB to PH');
     expect(qsoLines[2], contains('DX'), reason: 'and a non-US station with no park is DX');

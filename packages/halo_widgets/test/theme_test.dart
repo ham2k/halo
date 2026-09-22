@@ -28,12 +28,16 @@ void main() {
   group('haloMonoStyle', () {
     testWidgets('uses RobotoMono with tabular figures', (tester) async {
       late TextStyle style;
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(builder: (context) {
-          style = haloMonoStyle(context, fontSize: 14, fontWeight: FontWeight.w500);
-          return const SizedBox();
-        }),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              style = haloMonoStyle(context, fontSize: 14, fontWeight: FontWeight.w500);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
 
       expect(style.fontFamily, 'RobotoMono');
       expect(style.fontFeatures, contains(const FontFeature.tabularFigures()));
@@ -55,15 +59,19 @@ void main() {
       // app's font-scale setting instead of linearly, like the rest of the
       // UI's un-pre-scaled text styles).
       late TextStyle style;
-      await tester.pumpWidget(MediaQuery(
-        data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
-        child: MaterialApp(
-          home: Builder(builder: (context) {
-            style = haloMonoStyle(context, fontSize: 14);
-            return const SizedBox();
-          }),
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) {
+                style = haloMonoStyle(context, fontSize: 14);
+                return const SizedBox();
+              },
+            ),
+          ),
         ),
-      ));
+      );
 
       expect(style.fontSize, 14.0);
     });
@@ -72,12 +80,7 @@ void main() {
   group('buildHaLoTheme', () {
     test('body text styles use Roboto with tabular figures', () {
       final theme = buildHaLoTheme(Brightness.light);
-      final styles = [
-        theme.textTheme.bodyLarge,
-        theme.textTheme.bodyMedium,
-        theme.textTheme.labelLarge,
-        theme.textTheme.titleMedium,
-      ];
+      final styles = [theme.textTheme.bodyLarge, theme.textTheme.bodyMedium, theme.textTheme.labelLarge, theme.textTheme.titleMedium];
       for (final style in styles) {
         expect(style!.fontFamily, 'Roboto', reason: '$style');
         expect(style.fontFeatures, contains(const FontFeature.tabularFigures()), reason: '$style');
@@ -107,11 +110,7 @@ void main() {
           'headlineSmall': t.headlineSmall,
         };
         styles.forEach((name, style) {
-          expect(
-            style!.fontFamilyFallback,
-            contains(emojiFontFamily),
-            reason: '$name ($brightness) drops the emoji fallback',
-          );
+          expect(style!.fontFamilyFallback, contains(emojiFontFamily), reason: '$name ($brightness) drops the emoji fallback');
         });
 
         // AppBar and DefaultTextStyle REPLACE the ambient style rather than
@@ -137,49 +136,45 @@ void main() {
       late double spaced;
       late double plain;
 
-      await tester.pumpWidget(MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        home: Scaffold(
-          body: Column(
-            children: [
-              Builder(
-                builder: (context) => Text('K1ABC', style: haloMonoStyle(context, fontSize: 14)),
-              ),
-              // Measurement folds in the ambient style for the same reason
-              // painting does, and letterSpacing is the probe for it:
-              // haloMonoStyle never sets one, so a helper that ignored the
-              // ambient style would measure these two identically. Glyph
-              // COVERAGE cannot be asserted here at all — the test
-              // environment's font maps every codepoint, so a flag measures
-              // the same width with the fallback and without it.
-              DefaultTextStyle.merge(
-                style: const TextStyle(letterSpacing: 8),
-                child: Builder(builder: (context) {
-                  spaced = textWidth(context, 'K1ABC', haloMonoStyle(context, fontSize: 14));
-                  return const SizedBox.shrink();
-                }),
-              ),
-              Builder(builder: (context) {
-                plain = textWidth(context, 'K1ABC', haloMonoStyle(context, fontSize: 14));
-                return const SizedBox.shrink();
-              }),
-            ],
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Scaffold(
+            body: Column(
+              children: [
+                Builder(builder: (context) => Text('K1ABC', style: haloMonoStyle(context, fontSize: 14))),
+                // Measurement folds in the ambient style for the same reason
+                // painting does, and letterSpacing is the probe for it:
+                // haloMonoStyle never sets one, so a helper that ignored the
+                // ambient style would measure these two identically. Glyph
+                // COVERAGE cannot be asserted here at all — the test
+                // environment's font maps every codepoint, so a flag measures
+                // the same width with the fallback and without it.
+                DefaultTextStyle.merge(
+                  style: const TextStyle(letterSpacing: 8),
+                  child: Builder(
+                    builder: (context) {
+                      spaced = textWidth(context, 'K1ABC', haloMonoStyle(context, fontSize: 14));
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ),
+                Builder(
+                  builder: (context) {
+                    plain = textWidth(context, 'K1ABC', haloMonoStyle(context, fontSize: 14));
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ],
+            ),
           ),
         ),
-      ));
+      );
 
       final painted = tester.renderObject<RenderParagraph>(find.byType(RichText).first).text.style!;
       expect(painted.fontFamily, 'RobotoMono', reason: 'the mono family still wins');
-      expect(
-        painted.fontFamilyFallback,
-        contains(emojiFontFamily),
-        reason: 'a bare TextStyle lost the ambient emoji fallback — every mono column with it',
-      );
-      expect(
-        spaced,
-        greaterThan(plain),
-        reason: 'textWidth ignored the ambient style, so it measures without the fallback that paints',
-      );
+      expect(painted.fontFamilyFallback, contains(emojiFontFamily), reason: 'a bare TextStyle lost the ambient emoji fallback — every mono column with it');
+      expect(spaced, greaterThan(plain), reason: 'textWidth ignored the ambient style, so it measures without the fallback that paints');
     });
 
     test('app bar title uses Roboto Slab at Black (w900), matching app-polo', () {
@@ -259,10 +254,7 @@ void main() {
       expect(overlay!.resolve({WidgetState.hovered}), isNotNull);
       expect(overlay.resolve({WidgetState.pressed}), isNotNull);
       // Pressed/focused reads more contrasting (higher alpha) than a mere hover.
-      expect(
-        overlay.resolve({WidgetState.pressed})!.a,
-        greaterThan(overlay.resolve({WidgetState.hovered})!.a),
-      );
+      expect(overlay.resolve({WidgetState.pressed})!.a, greaterThan(overlay.resolve({WidgetState.hovered})!.a));
     });
 
     test('repeated calls return the identical cached instance (HALO-77)', () {
@@ -291,8 +283,7 @@ void main() {
       }
     });
 
-    testWidgets('app bar action icons hold onPrimary through every frame of a theme animation (HALO-77)',
-        (tester) async {
+    testWidgets('app bar action icons hold onPrimary through every frame of a theme animation (HALO-77)', (tester) async {
       final mode = ValueNotifier<ThemeMode>(ThemeMode.light);
       await tester.pumpWidget(
         ValueListenableBuilder<ThemeMode>(
@@ -304,22 +295,15 @@ void main() {
             home: Scaffold(
               appBar: AppBar(
                 title: const Text('Home'),
-                actions: [
-                  IconButton(key: const Key('gear'), icon: const Icon(MdiIcons.cog), onPressed: () {}),
-                ],
+                actions: [IconButton(key: const Key('gear'), icon: const Icon(MdiIcons.cog), onPressed: () {})],
               ),
             ),
           ),
         ),
       );
 
-      Color iconColor() => tester
-          .widget<RichText>(find
-              .descendant(of: find.byKey(const Key('gear')), matching: find.byType(RichText))
-              .first)
-          .text
-          .style!
-          .color!;
+      Color iconColor() =>
+          tester.widget<RichText>(find.descendant(of: find.byKey(const Key('gear')), matching: find.byType(RichText)).first).text.style!.color!;
 
       // onPrimary is the same #F0F0F0 in both themes, so even mid-lerp the
       // icon must read as that color — anything darker means the empty
@@ -369,8 +353,7 @@ void main() {
       expect(darkColors.notice, const Color(0xFFFCF4A7));
       // The paper must stay far from the dark surface it sits on — a notice
       // that blends into the chrome is not a notice.
-      expect(_contrast(darkColors.notice, buildHaLoTheme(Brightness.dark).colorScheme.surface),
-          greaterThanOrEqualTo(7.0));
+      expect(_contrast(darkColors.notice, buildHaLoTheme(Brightness.dark).colorScheme.surface), greaterThanOrEqualTo(7.0));
     });
   });
 
@@ -418,16 +401,14 @@ void main() {
   // 4.5:1, a stroke or an indicator is a non-text UI component at 3:1.
   group('primary-as-foreground on the dark surface (HALO-167)', () {
     // What the disabled/hovered-free resting button actually paints.
-    Color? resolveForeground(ButtonStyle? style) =>
-        style?.foregroundColor?.resolve(const <WidgetState>{});
+    Color? resolveForeground(ButtonStyle? style) => style?.foregroundColor?.resolve(const <WidgetState>{});
 
     test('a bare TextButton clears AA text contrast in both brightnesses', () {
       for (final brightness in Brightness.values) {
         final theme = buildHaLoTheme(brightness);
         final foreground = resolveForeground(theme.textButtonTheme.style);
         expect(foreground, theme.extension<HaLoColors>()!.onSurfaceAccent, reason: '$brightness');
-        expect(_contrast(foreground!, theme.colorScheme.surface), greaterThanOrEqualTo(4.5),
-            reason: '$brightness');
+        expect(_contrast(foreground!, theme.colorScheme.surface), greaterThanOrEqualTo(4.5), reason: '$brightness');
       }
     });
 
@@ -444,8 +425,7 @@ void main() {
       for (final brightness in Brightness.values) {
         final theme = buildHaLoTheme(brightness);
         final band = theme.colorScheme.surfaceContainerHighest;
-        expect(_contrast(resolveForeground(theme.textButtonTheme.style)!, band),
-            greaterThanOrEqualTo(3.0), reason: '$brightness');
+        expect(_contrast(resolveForeground(theme.textButtonTheme.style)!, band), greaterThanOrEqualTo(3.0), reason: '$brightness');
       }
 
       // Light mode's footer already cleared AA and is deliberately untouched
@@ -454,17 +434,20 @@ void main() {
       final band = dark.colorScheme.surfaceContainerHighest;
       expect(_contrast(dark.colorScheme.primary, band), lessThan(2.0));
       expect(_contrast(resolveForeground(dark.textButtonTheme.style)!, band), greaterThan(3.0));
-      expect(_contrast(resolveForeground(buildHaLoTheme(Brightness.light).textButtonTheme.style)!,
-          buildHaLoTheme(Brightness.light).colorScheme.surfaceContainerHighest),
-          greaterThanOrEqualTo(4.5));
+      expect(
+        _contrast(
+          resolveForeground(buildHaLoTheme(Brightness.light).textButtonTheme.style)!,
+          buildHaLoTheme(Brightness.light).colorScheme.surfaceContainerHighest,
+        ),
+        greaterThanOrEqualTo(4.5),
+      );
     });
 
     test('a bare OutlinedButton clears AA, and its outline clears the 3:1 UI floor', () {
       for (final brightness in Brightness.values) {
         final theme = buildHaLoTheme(brightness);
         final surface = theme.colorScheme.surface;
-        expect(_contrast(resolveForeground(theme.outlinedButtonTheme.style)!, surface),
-            greaterThanOrEqualTo(4.5), reason: '$brightness');
+        expect(_contrast(resolveForeground(theme.outlinedButtonTheme.style)!, surface), greaterThanOrEqualTo(4.5), reason: '$brightness');
 
         // Focusing a button must not REDUCE the outline's contrast, which is
         // what M3's default does here: it swaps `outline` grey for `primary`.
@@ -472,14 +455,16 @@ void main() {
         final resting = side!.resolve(const <WidgetState>{})!.color;
         final focused = side.resolve(const {WidgetState.focused})!.color;
         expect(_contrast(focused, surface), greaterThanOrEqualTo(3.0), reason: '$brightness');
-        expect(_contrast(focused, surface), greaterThanOrEqualTo(_contrast(resting, surface)),
-            reason: '$brightness: focus cue is weaker than the resting outline');
+        expect(
+          _contrast(focused, surface),
+          greaterThanOrEqualTo(_contrast(resting, surface)),
+          reason: '$brightness: focus cue is weaker than the resting outline',
+        );
 
         // The other two states are Material's own, deliberately left alone —
         // overriding `side` at all means restating them.
         expect(resting, theme.colorScheme.outline, reason: '$brightness');
-        expect(side.resolve(const {WidgetState.disabled})!.color,
-            theme.colorScheme.onSurface.withValues(alpha: 0.12), reason: '$brightness');
+        expect(side.resolve(const {WidgetState.disabled})!.color, theme.colorScheme.onSurface.withValues(alpha: 0.12), reason: '$brightness');
       }
     });
 
@@ -490,16 +475,14 @@ void main() {
       // screen that looks frozen.
       for (final brightness in Brightness.values) {
         final theme = buildHaLoTheme(brightness);
-        expect(_contrast(theme.progressIndicatorTheme.color!, theme.colorScheme.surface),
-            greaterThanOrEqualTo(3.0), reason: '$brightness');
+        expect(_contrast(theme.progressIndicatorTheme.color!, theme.colorScheme.surface), greaterThanOrEqualTo(3.0), reason: '$brightness');
       }
     });
 
     test('the text cursor clears the 3:1 UI floor', () {
       for (final brightness in Brightness.values) {
         final theme = buildHaLoTheme(brightness);
-        expect(_contrast(theme.textSelectionTheme.cursorColor!, theme.colorScheme.surface),
-            greaterThanOrEqualTo(3.0), reason: '$brightness');
+        expect(_contrast(theme.textSelectionTheme.cursorColor!, theme.colorScheme.surface), greaterThanOrEqualTo(3.0), reason: '$brightness');
       }
     });
 
@@ -518,16 +501,14 @@ void main() {
       for (final background in [scheme.surface, scheme.tertiaryContainer, scheme.secondaryContainer]) {
         final materialWash = Color.alphaBlend(scheme.primary.withValues(alpha: 0.4), background);
         final accentWash = Color.alphaBlend(accent.withValues(alpha: 0.4), background);
-        expect(_contrast(scheme.onSurface, materialWash),
-            greaterThanOrEqualTo(_contrast(scheme.onSurface, accentWash)),
-            reason: 'accent wash would read better than Material\'s on $background');
+        expect(
+          _contrast(scheme.onSurface, materialWash),
+          greaterThanOrEqualTo(_contrast(scheme.onSurface, accentWash)),
+          reason: 'accent wash would read better than Material\'s on $background',
+        );
       }
       // …and Material's own clears AA on the tightest of them.
-      expect(
-        _contrast(scheme.onSurface,
-            Color.alphaBlend(scheme.primary.withValues(alpha: 0.4), scheme.secondaryContainer)),
-        greaterThanOrEqualTo(4.5),
-      );
+      expect(_contrast(scheme.onSurface, Color.alphaBlend(scheme.primary.withValues(alpha: 0.4), scheme.secondaryContainer)), greaterThanOrEqualTo(4.5));
     });
 
     // The ThemeData assertions above can all pass while the theme never
@@ -539,20 +520,21 @@ void main() {
     // — a button's foreground arrives through the DefaultTextStyle its
     // Material installs, so reading the widget's own style would assert
     // null == null and pass no matter what the theme said.
-    Color? paintedColor(WidgetTester tester, String label) =>
-        tester.renderObject<RenderParagraph>(find.text(label)).text.style?.color;
+    Color? paintedColor(WidgetTester tester, String label) => tester.renderObject<RenderParagraph>(find.text(label)).text.style?.color;
 
     testWidgets('a dialog footer\'s Cancel paints the accent, beside an unchanged Save', (tester) async {
       final theme = buildHaLoTheme(Brightness.dark);
-      await tester.pumpWidget(MaterialApp(
-        theme: theme,
-        home: Scaffold(
-          body: haloDialogFooterRow(
-            cancel: TextButton(onPressed: () {}, child: const Text('Cancel')),
-            actions: [FilledButton(onPressed: () {}, child: const Text('Save'))],
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: haloDialogFooterRow(
+              cancel: TextButton(onPressed: () {}, child: const Text('Cancel')),
+              actions: [FilledButton(onPressed: () {}, child: const Text('Save'))],
+            ),
           ),
         ),
-      ));
+      );
 
       expect(paintedColor(tester, 'Cancel'), theme.extension<HaLoColors>()!.onSurfaceAccent);
       // Save is untouched: it uses primary as a BACKGROUND under onPrimary, a
@@ -569,16 +551,18 @@ void main() {
       // post-it. A theme that overrode them would repaint a Remove button as
       // an ordinary Cancel.
       const destructive = Color(0xFFF79797);
-      await tester.pumpWidget(MaterialApp(
-        theme: buildHaLoTheme(Brightness.dark),
-        home: Scaffold(
-          body: TextButton(
-            style: TextButton.styleFrom(foregroundColor: destructive),
-            onPressed: () {},
-            child: const Text('Remove'),
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildHaLoTheme(Brightness.dark),
+          home: Scaffold(
+            body: TextButton(
+              style: TextButton.styleFrom(foregroundColor: destructive),
+              onPressed: () {},
+              child: const Text('Remove'),
+            ),
           ),
         ),
-      ));
+      );
 
       expect(paintedColor(tester, 'Remove'), destructive);
     });
@@ -592,19 +576,23 @@ void main() {
       for (final brightness in Brightness.values) {
         final theme = buildHaLoTheme(brightness);
         late InputDecoration decoration;
-        await tester.pumpWidget(MaterialApp(
-          // Keyed per brightness so the second iteration builds a fresh tree.
-          // Re-pumping the same one instead swaps the theme UNDER MaterialApp's
-          // AnimatedTheme, and the first frame of that lerp still reports the
-          // outgoing brightness while carrying the incoming surface — the
-          // decoration would be read mid-transition against the wrong surface.
-          key: ValueKey(brightness),
-          theme: theme,
-          home: Builder(builder: (context) {
-            decoration = poloFieldDecoration(context, 'Call');
-            return const SizedBox();
-          }),
-        ));
+        await tester.pumpWidget(
+          MaterialApp(
+            // Keyed per brightness so the second iteration builds a fresh tree.
+            // Re-pumping the same one instead swaps the theme UNDER MaterialApp's
+            // AnimatedTheme, and the first frame of that lerp still reports the
+            // outgoing brightness while carrying the incoming surface — the
+            // decoration would be read mid-transition against the wrong surface.
+            key: ValueKey(brightness),
+            theme: theme,
+            home: Builder(
+              builder: (context) {
+                decoration = poloFieldDecoration(context, 'Call');
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
 
         final side = (decoration.focusedBorder as UnderlineInputBorder).borderSide;
         // BOTH backgrounds a field actually sits on, because the underline's
@@ -612,8 +600,7 @@ void main() {
         // the tertiaryContainer tint under the logging panel's fields — the
         // one the comment names as the reason not to leave this to Material.
         for (final background in [theme.colorScheme.surface, theme.colorScheme.tertiaryContainer]) {
-          expect(_contrast(side.color, background), greaterThanOrEqualTo(3.0),
-              reason: '$brightness on $background');
+          expect(_contrast(side.color, background), greaterThanOrEqualTo(3.0), reason: '$brightness on $background');
         }
         // Not the theme's focus color either: primary would compete with that
         // tint, which is why this is spelled out rather than left to Material.
@@ -639,8 +626,7 @@ void main() {
         // The mechanism itself, so this test explains WHY rather than just
         // pinning null: an outlined field must keep its shape when focused.
         const outlined = InputDecoration(labelText: 'Search', border: OutlineInputBorder());
-        expect(outlined.applyDefaults(theme.inputDecorationTheme).focusedBorder,
-            isNot(isA<UnderlineInputBorder>()), reason: '$brightness');
+        expect(outlined.applyDefaults(theme.inputDecorationTheme).focusedBorder, isNot(isA<UnderlineInputBorder>()), reason: '$brightness');
       }
     });
 
@@ -653,12 +639,10 @@ void main() {
       for (final brightness in Brightness.values) {
         final theme = buildHaLoTheme(brightness);
         final scheme = theme.colorScheme;
-        Color? at(Set<WidgetState> states) =>
-            WidgetStateProperty.resolveAs<TextStyle?>(theme.inputDecorationTheme.floatingLabelStyle, states)?.color;
+        Color? at(Set<WidgetState> states) => WidgetStateProperty.resolveAs<TextStyle?>(theme.inputDecorationTheme.floatingLabelStyle, states)?.color;
 
         expect(at({WidgetState.focused}), theme.extension<HaLoColors>()!.onSurfaceAccent, reason: '$brightness');
-        expect(_contrast(at({WidgetState.focused})!, scheme.surface), greaterThanOrEqualTo(4.5),
-            reason: '$brightness');
+        expect(_contrast(at({WidgetState.focused})!, scheme.surface), greaterThanOrEqualTo(4.5), reason: '$brightness');
         expect(at({WidgetState.disabled}), scheme.onSurface.withValues(alpha: 0.38), reason: '$brightness');
         expect(at({WidgetState.error}), scheme.error, reason: '$brightness');
         expect(at({WidgetState.error, WidgetState.focused}), scheme.error, reason: '$brightness');
@@ -677,18 +661,14 @@ void main() {
     /// Keyed per call: re-pumping the same MaterialApp swaps the theme under
     /// its AnimatedTheme, and the first lerp frame still reports the outgoing
     /// brightness (see the poloFieldDecoration test above).
-    Future<InputBorder> resolve(
-      WidgetTester tester,
-      InputBorder base, {
-      required ThemeData appTheme,
-      ThemeData? pinned,
-      required String key,
-    }) async {
+    Future<InputBorder> resolve(WidgetTester tester, InputBorder base, {required ThemeData appTheme, ThemeData? pinned, required String key}) async {
       late InputBorder result;
-      Widget probe = Builder(builder: (context) {
-        result = haloFocusedBorder(base, context);
-        return const SizedBox();
-      });
+      Widget probe = Builder(
+        builder: (context) {
+          result = haloFocusedBorder(base, context);
+          return const SizedBox();
+        },
+      );
       if (pinned != null) probe = Theme(data: pinned, child: probe);
       await tester.pumpWidget(MaterialApp(key: ValueKey(key), theme: appTheme, home: probe));
       return result;
@@ -700,8 +680,7 @@ void main() {
       // to a bare line the moment it took focus, which is exactly what stopped
       // this being a theme slot.
       final rounded = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
-      final focused =
-          await resolve(tester, rounded, appTheme: buildHaLoTheme(Brightness.dark), key: 'shape');
+      final focused = await resolve(tester, rounded, appTheme: buildHaLoTheme(Brightness.dark), key: 'shape');
 
       expect(focused, isA<OutlineInputBorder>());
       expect((focused as OutlineInputBorder).borderRadius, rounded.borderRadius);
@@ -709,20 +688,17 @@ void main() {
       expect(focused.copyWith(borderSide: rounded.borderSide), rounded);
     });
 
-    testWidgets('carries the same high-contrast invariant as poloFieldDecoration, in BOTH brightnesses',
-        (tester) async {
+    testWidgets('carries the same high-contrast invariant as poloFieldDecoration, in BOTH brightnesses', (tester) async {
       for (final brightness in Brightness.values) {
         final theme = buildHaLoTheme(brightness);
-        final border =
-            await resolve(tester, const OutlineInputBorder(), appTheme: theme, key: 'contrast-$brightness');
+        final border = await resolve(tester, const OutlineInputBorder(), appTheme: theme, key: 'contrast-$brightness');
         final side = border.borderSide;
 
         // 3:1 is the non-text-contrast floor a focus indicator has to clear.
         // `primary` is 2.67:1 on the dark surface, which is the defect: a
         // field decorated by hand focused dark teal while the one beside it,
         // decorated by poloFieldDecoration, focused white.
-        expect(_contrast(side.color, theme.colorScheme.surface), greaterThanOrEqualTo(3.0),
-            reason: '$brightness');
+        expect(_contrast(side.color, theme.colorScheme.surface), greaterThanOrEqualTo(3.0), reason: '$brightness');
         expect(side.color, isNot(theme.colorScheme.primary), reason: '$brightness');
         // Same restoration as haloFocusedInputBorder: overriding focusedBorder
         // at all drops Material's 2.0 back to a plain BorderSide's 1.0.
@@ -736,13 +712,7 @@ void main() {
       // white, and a white 2px border on the overlay's white dialog is the
       // focus cue silently disappearing — nothing throws, nothing logs.
       final light = buildHaLoTheme(Brightness.light);
-      final border = await resolve(
-        tester,
-        const OutlineInputBorder(),
-        appTheme: buildHaLoTheme(Brightness.dark),
-        pinned: light,
-        key: 'pinned',
-      );
+      final border = await resolve(tester, const OutlineInputBorder(), appTheme: buildHaLoTheme(Brightness.dark), pinned: light, key: 'pinned');
 
       expect(_contrast(border.borderSide.color, light.colorScheme.surface), greaterThanOrEqualTo(3.0));
       expect(border.borderSide.color, isNot(Colors.white));
@@ -757,29 +727,27 @@ void main() {
       final node = FocusNode();
       addTearDown(node.dispose);
 
-      await tester.pumpWidget(MaterialApp(
-        theme: theme,
-        home: Scaffold(
-          body: Builder(builder: (context) {
-            return TextField(
-              focusNode: node,
-              decoration: InputDecoration(
-                border: border,
-                focusedBorder: haloFocusedBorder(border, context),
-              ),
-            );
-          }),
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                return TextField(
+                  focusNode: node,
+                  decoration: InputDecoration(border: border, focusedBorder: haloFocusedBorder(border, context)),
+                );
+              },
+            ),
+          ),
         ),
-      ));
+      );
       node.requestFocus();
       await tester.pumpAndSettle();
 
       // Rounded, so the border paints as an RRect — a plain rect here would
       // mean the shape was lost on the way to the canvas.
-      expect(
-        find.byType(InputDecorator),
-        paints..rrect(color: Colors.white, strokeWidth: 2.0),
-      );
+      expect(find.byType(InputDecorator), paints..rrect(color: Colors.white, strokeWidth: 2.0));
       expect(find.byType(InputDecorator), isNot(paints..rrect(color: theme.colorScheme.primary)));
     });
   });
@@ -792,14 +760,19 @@ void main() {
       late BoxConstraints constraints;
       late double screenHeight;
       late double headerHeight;
-      Widget probe = Builder(builder: (context) {
-        constraints = haloDialogConstraints(context);
-        screenHeight = MediaQuery.sizeOf(context).height;
-        headerHeight = Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight;
-        return const SizedBox.shrink();
-      });
+      Widget probe = Builder(
+        builder: (context) {
+          constraints = haloDialogConstraints(context);
+          screenHeight = MediaQuery.sizeOf(context).height;
+          headerHeight = Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight;
+          return const SizedBox.shrink();
+        },
+      );
       if (size != null) {
-        probe = MediaQuery(data: MediaQueryData(size: size), child: probe);
+        probe = MediaQuery(
+          data: MediaQueryData(size: size),
+          child: probe,
+        );
       }
       await tester.pumpWidget(MaterialApp(theme: buildHaLoTheme(Brightness.light), home: probe));
       return (constraints, screenHeight, headerHeight);

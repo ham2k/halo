@@ -21,17 +21,8 @@ void main() {
     return StatusBarService(await SharedPreferences.getInstance());
   }
 
-  BuildFreshnessService makeService({
-    required StatusBarService statusBar,
-    required String deployedSha,
-    String currentSha = 'aaa1111',
-    int statusCode = 200,
-  }) {
-    return BuildFreshnessService(
-      statusBar: statusBar,
-      currentSha: currentSha,
-      client: MockClient((request) async => http.Response(deployedSha, statusCode)),
-    );
+  BuildFreshnessService makeService({required StatusBarService statusBar, required String deployedSha, String currentSha = 'aaa1111', int statusCode = 200}) {
+    return BuildFreshnessService(statusBar: statusBar, currentSha: currentSha, client: MockClient((request) async => http.Response(deployedSha, statusCode)));
   }
 
   test('a matching deployed sha posts no notice', () async {
@@ -99,11 +90,7 @@ void main() {
 
   test('a network failure is swallowed, not thrown', () async {
     final statusBar = await makeStatusBar();
-    final service = BuildFreshnessService(
-      statusBar: statusBar,
-      currentSha: 'aaa1111',
-      client: MockClient((request) async => throw Exception('network down')),
-    );
+    final service = BuildFreshnessService(statusBar: statusBar, currentSha: 'aaa1111', client: MockClient((request) async => throw Exception('network down')));
 
     await service.check();
 

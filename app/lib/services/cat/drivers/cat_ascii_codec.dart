@@ -32,8 +32,7 @@ class AsciiCatCommand {
   const AsciiCatCommand(this.command, this.params);
 
   @override
-  bool operator ==(Object other) =>
-      other is AsciiCatCommand && other.command == command && other.params == params;
+  bool operator ==(Object other) => other is AsciiCatCommand && other.command == command && other.params == params;
 
   @override
   int get hashCode => Object.hash(command, params);
@@ -56,10 +55,7 @@ class AsciiCatFramer {
     final parts = text.split(';');
     // Whatever follows the last ';' is incomplete (or empty).
     _residual = parts.removeLast();
-    return [
-      for (final part in parts)
-        ?parseAsciiCatCommand('$part;'),
-    ];
+    return [for (final part in parts) ?parseAsciiCatCommand('$part;')];
   }
 
   /// Drops any partial command — for a fresh connection, so a truncated

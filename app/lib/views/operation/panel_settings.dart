@@ -44,11 +44,7 @@ bool sameConfigValue(Object? formValue, Object? stored, Object? declaredDefault)
   return formValue == null || formValue == false || formValue == '';
 }
 
-Future<void> showPanelSettings(
-  BuildContext context, {
-  required HaLoServices services,
-  required PanelDefinition panel,
-}) async {
+Future<void> showPanelSettings(BuildContext context, {required HaLoServices services, required PanelDefinition panel}) async {
   final current = await services.panels.configFor(panel);
   if (!context.mounted) return;
   final result = await showFormDialog(

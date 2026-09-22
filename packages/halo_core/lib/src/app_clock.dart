@@ -288,12 +288,7 @@ int realNowMillis() => AppClock.instance.realNow().millisecondsSinceEpoch;
 String _formatOffset(Duration delta) {
   final sign = delta.isNegative ? '-' : '+';
   final abs = delta.abs();
-  final units = <String, int>{
-    'd': abs.inDays,
-    'h': abs.inHours % 24,
-    'm': abs.inMinutes % 60,
-    's': abs.inSeconds % 60,
-  };
+  final units = <String, int>{'d': abs.inDays, 'h': abs.inHours % 24, 'm': abs.inMinutes % 60, 's': abs.inSeconds % 60};
   // Zero units are SKIPPED, never a reason to stop: `+1d 45m` has a zero hours
   // place between its two, and breaking there reports "+1d" for a clock 45
   // minutes further out than it says — understating the one number the status
@@ -308,8 +303,7 @@ String _formatOffset(Duration delta) {
 }
 
 /// `2` for 2.0, `0.5` for a half — no trailing `.0` on the common whole cases.
-String _formatSpeed(double speed) =>
-    speed == speed.roundToDouble() ? speed.toStringAsFixed(0) : speed.toString();
+String _formatSpeed(double speed) => speed == speed.roundToDouble() ? speed.toStringAsFixed(0) : speed.toString();
 
 /// A listener threw while being told about a change of travel.
 ///

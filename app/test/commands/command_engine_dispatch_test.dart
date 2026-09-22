@@ -145,11 +145,7 @@ void main() {
     final HaLoHarness(:services, :db, :settings) = await makeHaLoServices();
 
     final dispatched = <String>[];
-    final commandEngine = CommandEngine(
-      services: services,
-      operationContext: () => null,
-      runAction: (action, [params]) async => dispatched.add(action),
-    );
+    final commandEngine = CommandEngine(services: services, operationContext: () => null, runAction: (action, [params]) async => dispatched.add(action));
     addTearDown(commandEngine.dispose);
 
     expect(settings.developerMode, isFalse, reason: 'the assertion below means nothing if it starts true');
@@ -179,11 +175,7 @@ void main() {
     addTearDown(() => services.closeOperationContext(entry));
 
     final locally = <String>[];
-    final commandEngine = CommandEngine(
-      services: services,
-      operationContext: () => null,
-      runAction: (action, [params]) async => locally.add(action),
-    );
+    final commandEngine = CommandEngine(services: services, operationContext: () => null, runAction: (action, [params]) async => locally.add(action));
     addTearDown(commandEngine.dispose);
 
     await commandEngine.dispatchActions([

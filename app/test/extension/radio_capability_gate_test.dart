@@ -14,7 +14,8 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/panel_radio_service.dart';
 
-String probe(String key) => '''
+String probe(String key) =>
+    '''
   globalThis.__polo.defineExtension({
     key: '$key',
     name: '$key probe',
@@ -53,15 +54,7 @@ class FakeRadio extends Fake implements PanelRadioService {
 
 ({String source, ExtensionInfo info}) bundle(String key, {bool read = false, bool write = false}) => (
   source: probe(key),
-  info: ExtensionInfo(
-    key: key,
-    file: '$key.js',
-    source: ExtensionSource.dev,
-    core: true,
-    name: key,
-    requiresRadioRead: read,
-    requiresRadioWrite: write,
-  ),
+  info: ExtensionInfo(key: key, file: '$key.js', source: ExtensionSource.dev, core: true, name: key, requiresRadioRead: read, requiresRadioWrite: write),
 );
 
 void main() {
@@ -84,25 +77,15 @@ void main() {
   });
 
   Future<dynamic> call(String who, String method, [Map<String, dynamic> params = const {}]) =>
-      extensions.host!.invokeHook(
-        'bench',
-        key: who,
-        method: 'call',
-        args: {'method': method, 'params': params},
-        timeout: const Duration(seconds: 10),
-      );
+      extensions.host!.invokeHook('bench', key: who, method: 'call', args: {'method': method, 'params': params}, timeout: const Duration(seconds: 10));
 
-  Matcher blockedFor(String capability) =>
-      throwsA(isA<ExtensionHostException>().having((e) => e.toString(), 'message', contains(capability)));
+  Matcher blockedFor(String capability) => throwsA(isA<ExtensionHostException>().having((e) => e.toString(), 'message', contains(capability)));
 
   test('an extension that declares nothing can neither read nor command a radio', () async {
     await expectLater(call('plain', 'listRadios'), blockedFor('requiresRadioRead'));
     await expectLater(call('plain', 'readRadio'), blockedFor('requiresRadioRead'));
     await expectLater(call('plain', 'tuneRadio', {'id': 'a', 'frequencyHz': 7000000}), blockedFor('requiresRadioWrite'));
-    await expectLater(
-      call('plain', 'setRadioConnection', {'id': 'a', 'connected': false}),
-      blockedFor('requiresRadioWrite'),
-    );
+    await expectLater(call('plain', 'setRadioConnection', {'id': 'a', 'connected': false}), blockedFor('requiresRadioWrite'));
     expect(commands, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
@@ -124,10 +107,7 @@ void main() {
     // The kernel stamps the caller's own key over whatever the params carry.
     // If the radio calls were missing from its identity list, this argument
     // would arrive at the host as-is — and be believed.
-    await expectLater(
-      call('plain', 'tuneRadio', {'id': 'a', 'frequencyHz': 7000000, 'extensionKey': 'writer'}),
-      blockedFor('requiresRadioWrite'),
-    );
+    await expectLater(call('plain', 'tuneRadio', {'id': 'a', 'frequencyHz': 7000000, 'extensionKey': 'writer'}), blockedFor('requiresRadioWrite'));
     expect(commands, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
@@ -136,10 +116,7 @@ void main() {
     // and a bare prefix test is how: but `writer-themes` is a bundle of its
     // own, whose consent screen claimed nothing. Matched by prefix it would
     // retune the rig on `writer`'s say-so.
-    await expectLater(
-      call('writer-themes', 'tuneRadio', {'id': 'a', 'frequencyHz': 7000000}),
-      blockedFor('requiresRadioWrite'),
-    );
+    await expectLater(call('writer-themes', 'tuneRadio', {'id': 'a', 'frequencyHz': 7000000}), blockedFor('requiresRadioWrite'));
     await expectLater(call('writer-themes', 'listRadios'), blockedFor('requiresRadioRead'));
     expect(commands, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));

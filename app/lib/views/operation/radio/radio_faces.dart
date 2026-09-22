@@ -42,12 +42,7 @@ class RadioPalette {
   /// The units, mode and power annotations beside the frequency.
   final Color label;
 
-  const RadioPalette({
-    required this.face,
-    required this.ink,
-    this.ghost,
-    required this.label,
-  });
+  const RadioPalette({required this.face, required this.ink, this.ghost, required this.label});
 
   /// The same palette dimmed to [alpha] — what a radio that is not connected
   /// wears.
@@ -60,11 +55,11 @@ class RadioPalette {
   /// — and the last frequency the radio was on is the whole value of the off
   /// state.
   RadioPalette dimmed(double alpha) => RadioPalette(
-        face: face,
-        ink: ink.withValues(alpha: alpha),
-        ghost: ghost?.withValues(alpha: (ghost?.a ?? 1) * alpha),
-        label: label.withValues(alpha: alpha),
-      );
+    face: face,
+    ink: ink.withValues(alpha: alpha),
+    ghost: ghost?.withValues(alpha: (ghost?.a ?? 1) * alpha),
+    label: label.withValues(alpha: alpha),
+  );
 }
 
 /// One cell of the frequency readout: a digit, a blank, or a separator.
@@ -189,12 +184,10 @@ class RadioLcdPainter extends CustomPainter {
     canvas.restore();
   }
 
-  static bool isSeparator(Object cell) =>
-      cell == LcdCell.dot || cell == LcdCell.comma || cell == LcdCell.gap;
+  static bool isSeparator(Object cell) => cell == LcdCell.dot || cell == LcdCell.comma || cell == LcdCell.gap;
 
   @override
-  bool shouldRepaint(RadioLcdPainter old) =>
-      !listEquals(old.cells, cells) || old.palette.ink != palette.ink || old.palette.ghost != palette.ghost;
+  bool shouldRepaint(RadioLcdPainter old) => !listEquals(old.cells, cells) || old.palette.ink != palette.ink || old.palette.ghost != palette.ghost;
 }
 
 /// The LCD cells for [khz], at Hz precision — the frequency a radio is
@@ -212,9 +205,7 @@ class RadioLcdPainter extends CustomPainter {
 /// and simply sit wider. Reserving seven for them instead would spend a
 /// blank column on every operator who never leaves HF.
 List<Object> lcdCellsForFrequency(double? khz, {int digitsBeforeDot = 6}) {
-  final digits = khz == null
-      ? ' ' * digitsBeforeDot
-      : ((khz * 1000).round().abs() ~/ 1000).toString().padLeft(digitsBeforeDot, ' ');
+  final digits = khz == null ? ' ' * digitsBeforeDot : ((khz * 1000).round().abs() ~/ 1000).toString().padLeft(digitsBeforeDot, ' ');
 
   final cells = <Object>[];
   for (var i = 0; i < digits.length; i++) {
@@ -258,9 +249,9 @@ String powerText(num watts) {
 /// digits it may never have would push it away from that edge and leave a gap
 /// that reads as a fault.
 List<Object> lcdCellsForPower(num watts) => [
-      for (final char in powerText(watts).split(''))
-        if (char == '.') LcdCell.dot else if (char == '-') LcdCell.blank else int.parse(char),
-    ];
+  for (final char in powerText(watts).split(''))
+    if (char == '.') LcdCell.dot else if (char == '-') LcdCell.blank else int.parse(char),
+];
 
 /// How wide [cells] paints at [height], so a row can give the painter a box
 /// that fits the digits exactly.
@@ -353,13 +344,7 @@ class MeterBarPainter extends CustomPainter {
   final Color unlit;
   final Color alert;
 
-  const MeterBarPainter({
-    required this.fraction,
-    required this.lit,
-    required this.unlit,
-    required this.alert,
-    this.alertFrom,
-  });
+  const MeterBarPainter({required this.fraction, required this.lit, required this.unlit, required this.alert, this.alertFrom});
 
   /// A segment and the gap after it. Fixed, with the COUNT derived from the
   /// width — so a wide pane gets a finer bar rather than fatter blocks, and
@@ -373,9 +358,7 @@ class MeterBarPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
-    final count = ((size.width + _segmentGap) / (_segmentWidth + _segmentGap))
-        .floor()
-        .clamp(_minSegments, _maxSegments);
+    final count = ((size.width + _segmentGap) / (_segmentWidth + _segmentGap)).floor().clamp(_minSegments, _maxSegments);
     final width = (size.width - _segmentGap * (count - 1)) / count;
     if (width <= 0) return;
     final litCount = litSegments(fraction, count);
@@ -409,14 +392,9 @@ class MeterBarPainter extends CustomPainter {
   /// Whether segment [i] of [count] falls in the red zone. Measured at the
   /// segment's MIDDLE, so the segment straddling the threshold belongs to
   /// whichever side most of it is on.
-  static bool isAlertSegment(int i, int count, double? alertFrom) =>
-      alertFrom != null && (i + 0.5) / count >= alertFrom;
+  static bool isAlertSegment(int i, int count, double? alertFrom) => alertFrom != null && (i + 0.5) / count >= alertFrom;
 
   @override
   bool shouldRepaint(MeterBarPainter old) =>
-      old.fraction != fraction ||
-      old.alertFrom != alertFrom ||
-      old.lit != lit ||
-      old.unlit != unlit ||
-      old.alert != alert;
+      old.fraction != fraction || old.alertFrom != alertFrom || old.lit != lit || old.unlit != unlit || old.alert != alert;
 }

@@ -84,8 +84,7 @@ const _sixtyMetreHiKHz = 6000.0;
 /// moving band has to re-derive it (`RadioService.setVfo`). Which sideband a
 /// band runs is a property of where you are, not a preference to carry across
 /// a move.
-bool isSidebandMode(String? mode) =>
-    mode != null && const {'SSB', 'USB', 'LSB'}.contains(mode.toUpperCase());
+bool isSidebandMode(String? mode) => mode != null && const {'SSB', 'USB', 'LSB'}.contains(mode.toUpperCase());
 
 /// The sideband voice conventionally runs on, from [freqKHz] if there is one
 /// and from [band] otherwise, or **null** only when there is neither.
@@ -159,14 +158,7 @@ String? displayMode(String? mode, {double? freqKHz, String? band}) {
   return isUnexpectedSideband(mode, freqKHz: freqKHz, band: band) ? mode!.toUpperCase() : 'SSB';
 }
 
-typedef _BandPlanSegment = ({
-  double loKHz,
-  double hiKHz,
-  String? mode,
-  int priority,
-  List<int> regions,
-  List<String> countries,
-});
+typedef _BandPlanSegment = ({double loKHz, double hiKHz, String? mode, int priority, List<int> regions, List<String> countries});
 
 /// Guesses the mode for [khz] from the amateur radio band plan —
 /// the generous, worldwide segments (CW/Phone/Data sub-bands) where a
@@ -342,12 +334,7 @@ int _scopeRank(_BandPlanSegment segment, {required int? ituRegion, required Stri
 /// leaves [current] in place, making the scan's result depend only on
 /// [bandPlanModeSegments]' fixed order, never on comparator left/right
 /// argument order the way a sort comparator would.
-bool _isBetterModeMatch(
-  _BandPlanSegment candidate,
-  _BandPlanSegment current, {
-  required int? ituRegion,
-  required String? countryCode,
-}) {
+bool _isBetterModeMatch(_BandPlanSegment candidate, _BandPlanSegment current, {required int? ituRegion, required String? countryCode}) {
   if (candidate.priority != current.priority) return candidate.priority > current.priority;
   final candidateRank = _scopeRank(candidate, ituRegion: ituRegion, countryCode: countryCode);
   final currentRank = _scopeRank(current, ituRegion: ituRegion, countryCode: countryCode);
@@ -394,11 +381,7 @@ FreqParts freqDisplayParts(double khz, {required int hzDigits}) {
   final hzValue = totalHz % 1000;
   final hzString = hzValue.toString().padLeft(3, '0');
 
-  return FreqParts(
-    mhz: mhzWhole.toString(),
-    khz: khzWhole.toString().padLeft(3, '0'),
-    hz: hzDigits > 0 ? hzString.substring(0, hzDigits) : null,
-  );
+  return FreqParts(mhz: mhzWhole.toString(), khz: khzWhole.toString().padLeft(3, '0'), hz: hzDigits > 0 ? hzString.substring(0, hzDigits) : null);
 }
 
 /// How many Hz digits are needed to represent every QSO's frequency in the
@@ -432,9 +415,40 @@ const List<String> modes = ['SSB', 'CW', 'FT8', 'FT4', 'FM', 'AM', 'RTTY', 'DATA
 // system lists (app/lib/settings/system_lists.dart).
 
 const List<String> extendedBands = [
-  '2190m', '630m', '560m', '160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '11m', '10m', '6m', '5m',
-  '4m', '2m', '1.25m', '70cm', '33cm', '23cm', '13cm', '9cm', '6cm', '3cm', '1.25cm', '6mm', '4mm', '2.5mm', '2mm',
-  '1mm', 'submm', 'other',
+  '2190m',
+  '630m',
+  '560m',
+  '160m',
+  '80m',
+  '60m',
+  '40m',
+  '30m',
+  '20m',
+  '17m',
+  '15m',
+  '12m',
+  '11m',
+  '10m',
+  '6m',
+  '5m',
+  '4m',
+  '2m',
+  '1.25m',
+  '70cm',
+  '33cm',
+  '23cm',
+  '13cm',
+  '9cm',
+  '6cm',
+  '3cm',
+  '1.25cm',
+  '6mm',
+  '4mm',
+  '2.5mm',
+  '2mm',
+  '1mm',
+  'submm',
+  'other',
 ];
 
 /// Band names in wide use that are not what the band is called here. '75m' is
@@ -442,48 +456,287 @@ const List<String> extendedBands = [
 /// table calls '2190m' — typed either way, the operator means the same band.
 /// Mirrored by the radio-commands extension's own `parseBandCommand`, which
 /// reads the band list from the published lib rather than this snapshot.
-const Map<String, String> bandAliases = {
-  '75m': '80m',
-  '2200m': '2190m',
-};
+const Map<String, String> bandAliases = {'75m': '80m', '2200m': '2190m'};
 
-const List<String> popularBands = [
-  '160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '70cm',
-];
+const List<String> popularBands = ['160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '70cm'];
 
-const List<String> mainModes = [
-  'CW', 'SSB', 'AM', 'FM', 'FT8', 'FT4', 'RTTY',
-];
+const List<String> mainModes = ['CW', 'SSB', 'AM', 'FM', 'FT8', 'FT4', 'RTTY'];
 
 const List<String> popularModes = [
-  'CW', 'SSB', 'USB', 'LSB', 'FM', 'AM', 'FT8', 'FT4', 'FT2', 'RTTY', 'DIGITALVOICE', 'C4FM', 'DMR', 'DSTAR',
-  'FREEDV', 'M17', 'DYNAMIC', 'HELL', 'JT9', 'MFSK', 'MSK144', 'OLIVIA', 'PKT', 'PSK', 'SSTV', 'WSPR',
+  'CW',
+  'SSB',
+  'USB',
+  'LSB',
+  'FM',
+  'AM',
+  'FT8',
+  'FT4',
+  'FT2',
+  'RTTY',
+  'DIGITALVOICE',
+  'C4FM',
+  'DMR',
+  'DSTAR',
+  'FREEDV',
+  'M17',
+  'DYNAMIC',
+  'HELL',
+  'JT9',
+  'MFSK',
+  'MSK144',
+  'OLIVIA',
+  'PKT',
+  'PSK',
+  'SSTV',
+  'WSPR',
 ];
 
 const List<String> adifModes = [
-  '8PSK1000', '8PSK1000F', '8PSK1200F', '8PSK125', '8PSK125F', '8PSK125FL', '8PSK250', '8PSK250F', '8PSK250FL',
-  '8PSK500', '8PSK500F', 'AM', 'AMTORFEC', 'ARDOP', 'ASCI', 'ATV', 'C4FM', 'CHIP', 'CHIP128', 'CHIP64', 'CLO',
-  'CONTESTI', 'CW', 'DIGITALVOICE', 'DMR', 'DOM-M', 'DOM11', 'DOM16', 'DOM22', 'DOM4', 'DOM44', 'DOM5', 'DOM8',
-  'DOM88', 'DOMINO', 'DOMINOEX', 'DOMINOF', 'DSTAR', 'DYNAMIC', 'FAX', 'FM', 'FMHELL', 'FREEDATA', 'FREEDV', 'FSK',
-  'FSK31', 'FSK441', 'FSKH105', 'FSKH245', 'FSKHELL', 'FSQCALL', 'FST4', 'FST4W', 'FT2', 'FT4', 'FT8', 'GTOR', 'HELL',
-  'HELL80', 'HELLX5', 'HELLX9', 'HFSK', 'ISCAT', 'ISCAT-A', 'ISCAT-B', 'JS8', 'JT4', 'JT44', 'JT4A', 'JT4B', 'JT4C',
-  'JT4D', 'JT4E', 'JT4F', 'JT4G', 'JT65', 'JT65A', 'JT65B', 'JT65B2', 'JT65C', 'JT65C2', 'JT6M', 'JT9', 'JT9-1',
-  'JT9-10', 'JT9-2', 'JT9-30', 'JT9-5', 'JT9A', 'JT9B', 'JT9C', 'JT9D', 'JT9E', 'JT9E FAST', 'JT9F', 'JT9F FAST',
-  'JT9G', 'JT9G FAST', 'JT9H', 'JT9H FAST', 'JTMS', 'LSB', 'M17', 'MFSK', 'MFSK11', 'MFSK128 MFSK128L', 'MFSK16',
-  'MFSK22', 'MFSK31', 'MFSK32', 'MFSK4', 'MFSK64', 'MFSK64L', 'MFSK8', 'MSK144', 'MT63', 'MTONE', 'NAVTEX', 'ODFM',
-  'OLIVIA', 'OLIVIA 16/1000', 'OLIVIA 16/500', 'OLIVIA 32/1000', 'OLIVIA 4/125', 'OLIVIA 4/250', 'OLIVIA 8/250',
-  'OLIVIA 8/500', 'OPERA', 'OPERA-BEACON', 'OPERA-QSO', 'PAC', 'PAC2', 'PAC3', 'PAC4', 'PAX', 'PAX2', 'PCW', 'PKT',
-  'PSK', 'PSK10', 'PSK1000', 'PSK1000C2', 'PSK1000R', 'PSK1000RC2', 'PSK125', 'PSK125C12', 'PSK125R', 'PSK125RC10',
-  'PSK125RC12', 'PSK125RC16', 'PSK125RC4', 'PSK125RC5', 'PSK250', 'PSK250C6', 'PSK250R', 'PSK250RC2', 'PSK250RC3',
-  'PSK250RC5', 'PSK250RC6', 'PSK250RC7', 'PSK2K', 'PSK31', 'PSK500', 'PSK500C2', 'PSK500C4', 'PSK500R', 'PSK500RC2',
-  'PSK500RC3', 'PSK500RC4', 'PSK63', 'PSK63F', 'PSK63RC10', 'PSK63RC20', 'PSK63RC32', 'PSK63RC4', 'PSK63RC5',
-  'PSK800C2', 'PSK800RC2', 'PSKAM10', 'PSKAM31', 'PSKAM50', 'PSKFEC31', 'PSKHELL', 'Q15', 'Q65', 'QPSK125', 'QPSK250',
-  'QPSK31', 'QPSK500', 'QPSK63', 'QRA64', 'QRA64A', 'QRA64B', 'QRA64C', 'QRA64D', 'QRA64E', 'RIBBIT_PIX',
-  'RIBBIT_SMS', 'ROS', 'ROS-EME', 'ROS-HF', 'ROS-MF', 'RTTY', 'RTTYM', 'SCAMP_FAST', 'SCAMP_OO', 'SCAMP_OO_SLW',
-  'SCAMP_SLOW', 'SCAMP_VSLOW', 'SIM31', 'SITORB', 'SLOWHELL', 'SSB', 'SSTV', 'T10', 'THOR', 'THOR-M', 'THOR100',
-  'THOR11', 'THOR16', 'THOR22', 'THOR25X4', 'THOR4', 'THOR5', 'THOR50X1', 'THOR50X2', 'THOR8', 'THRB', 'THRBX',
-  'THRBX1', 'THRBX2', 'THRBX4', 'THROB1', 'THROB2', 'THROB4', 'TOR', 'USB', 'V4', 'VARA FM 1200', 'VARA FM 9600',
-  'VARA HF', 'VARA SATELLITE', 'VOI', 'WINMOR', 'WSPR',
+  '8PSK1000',
+  '8PSK1000F',
+  '8PSK1200F',
+  '8PSK125',
+  '8PSK125F',
+  '8PSK125FL',
+  '8PSK250',
+  '8PSK250F',
+  '8PSK250FL',
+  '8PSK500',
+  '8PSK500F',
+  'AM',
+  'AMTORFEC',
+  'ARDOP',
+  'ASCI',
+  'ATV',
+  'C4FM',
+  'CHIP',
+  'CHIP128',
+  'CHIP64',
+  'CLO',
+  'CONTESTI',
+  'CW',
+  'DIGITALVOICE',
+  'DMR',
+  'DOM-M',
+  'DOM11',
+  'DOM16',
+  'DOM22',
+  'DOM4',
+  'DOM44',
+  'DOM5',
+  'DOM8',
+  'DOM88',
+  'DOMINO',
+  'DOMINOEX',
+  'DOMINOF',
+  'DSTAR',
+  'DYNAMIC',
+  'FAX',
+  'FM',
+  'FMHELL',
+  'FREEDATA',
+  'FREEDV',
+  'FSK',
+  'FSK31',
+  'FSK441',
+  'FSKH105',
+  'FSKH245',
+  'FSKHELL',
+  'FSQCALL',
+  'FST4',
+  'FST4W',
+  'FT2',
+  'FT4',
+  'FT8',
+  'GTOR',
+  'HELL',
+  'HELL80',
+  'HELLX5',
+  'HELLX9',
+  'HFSK',
+  'ISCAT',
+  'ISCAT-A',
+  'ISCAT-B',
+  'JS8',
+  'JT4',
+  'JT44',
+  'JT4A',
+  'JT4B',
+  'JT4C',
+  'JT4D',
+  'JT4E',
+  'JT4F',
+  'JT4G',
+  'JT65',
+  'JT65A',
+  'JT65B',
+  'JT65B2',
+  'JT65C',
+  'JT65C2',
+  'JT6M',
+  'JT9',
+  'JT9-1',
+  'JT9-10',
+  'JT9-2',
+  'JT9-30',
+  'JT9-5',
+  'JT9A',
+  'JT9B',
+  'JT9C',
+  'JT9D',
+  'JT9E',
+  'JT9E FAST',
+  'JT9F',
+  'JT9F FAST',
+  'JT9G',
+  'JT9G FAST',
+  'JT9H',
+  'JT9H FAST',
+  'JTMS',
+  'LSB',
+  'M17',
+  'MFSK',
+  'MFSK11',
+  'MFSK128 MFSK128L',
+  'MFSK16',
+  'MFSK22',
+  'MFSK31',
+  'MFSK32',
+  'MFSK4',
+  'MFSK64',
+  'MFSK64L',
+  'MFSK8',
+  'MSK144',
+  'MT63',
+  'MTONE',
+  'NAVTEX',
+  'ODFM',
+  'OLIVIA',
+  'OLIVIA 16/1000',
+  'OLIVIA 16/500',
+  'OLIVIA 32/1000',
+  'OLIVIA 4/125',
+  'OLIVIA 4/250',
+  'OLIVIA 8/250',
+  'OLIVIA 8/500',
+  'OPERA',
+  'OPERA-BEACON',
+  'OPERA-QSO',
+  'PAC',
+  'PAC2',
+  'PAC3',
+  'PAC4',
+  'PAX',
+  'PAX2',
+  'PCW',
+  'PKT',
+  'PSK',
+  'PSK10',
+  'PSK1000',
+  'PSK1000C2',
+  'PSK1000R',
+  'PSK1000RC2',
+  'PSK125',
+  'PSK125C12',
+  'PSK125R',
+  'PSK125RC10',
+  'PSK125RC12',
+  'PSK125RC16',
+  'PSK125RC4',
+  'PSK125RC5',
+  'PSK250',
+  'PSK250C6',
+  'PSK250R',
+  'PSK250RC2',
+  'PSK250RC3',
+  'PSK250RC5',
+  'PSK250RC6',
+  'PSK250RC7',
+  'PSK2K',
+  'PSK31',
+  'PSK500',
+  'PSK500C2',
+  'PSK500C4',
+  'PSK500R',
+  'PSK500RC2',
+  'PSK500RC3',
+  'PSK500RC4',
+  'PSK63',
+  'PSK63F',
+  'PSK63RC10',
+  'PSK63RC20',
+  'PSK63RC32',
+  'PSK63RC4',
+  'PSK63RC5',
+  'PSK800C2',
+  'PSK800RC2',
+  'PSKAM10',
+  'PSKAM31',
+  'PSKAM50',
+  'PSKFEC31',
+  'PSKHELL',
+  'Q15',
+  'Q65',
+  'QPSK125',
+  'QPSK250',
+  'QPSK31',
+  'QPSK500',
+  'QPSK63',
+  'QRA64',
+  'QRA64A',
+  'QRA64B',
+  'QRA64C',
+  'QRA64D',
+  'QRA64E',
+  'RIBBIT_PIX',
+  'RIBBIT_SMS',
+  'ROS',
+  'ROS-EME',
+  'ROS-HF',
+  'ROS-MF',
+  'RTTY',
+  'RTTYM',
+  'SCAMP_FAST',
+  'SCAMP_OO',
+  'SCAMP_OO_SLW',
+  'SCAMP_SLOW',
+  'SCAMP_VSLOW',
+  'SIM31',
+  'SITORB',
+  'SLOWHELL',
+  'SSB',
+  'SSTV',
+  'T10',
+  'THOR',
+  'THOR-M',
+  'THOR100',
+  'THOR11',
+  'THOR16',
+  'THOR22',
+  'THOR25X4',
+  'THOR4',
+  'THOR5',
+  'THOR50X1',
+  'THOR50X2',
+  'THOR8',
+  'THRB',
+  'THRBX',
+  'THRBX1',
+  'THRBX2',
+  'THRBX4',
+  'THROB1',
+  'THROB2',
+  'THROB4',
+  'TOR',
+  'USB',
+  'V4',
+  'VARA FM 1200',
+  'VARA FM 9600',
+  'VARA HF',
+  'VARA SATELLITE',
+  'VOI',
+  'WINMOR',
+  'WSPR',
 ];
 
 /// Modes whose report is two digits (`59`) rather than three.
@@ -582,9 +835,7 @@ bool _isDigit(String s) => s.codeUnitAt(0) >= 0x30 && s.codeUnitAt(0) <= 0x39;
 /// Voice modes for [superModeForMode] — mirrors @ham2k/lib-operation-data's
 /// PHONE_MODES. Broader than [_phoneModes] (which is only the RST-default set),
 /// since super-mode grouping also treats the digital-voice modes as phone.
-const Set<String> superPhoneModes = {
-  'SSB', 'USB', 'LSB', 'FM', 'AM', 'DIGITALVOICE', 'C4FM', 'DMR', 'DSTAR', 'FREEDV', 'M17',
-};
+const Set<String> superPhoneModes = {'SSB', 'USB', 'LSB', 'FM', 'AM', 'DIGITALVOICE', 'C4FM', 'DMR', 'DSTAR', 'FREEDV', 'M17'};
 
 /// The "super mode" of [mode] — `'Phone'`, `'CW'`, or `'Digital'` — mirroring
 /// @ham2k/lib-operation-data's `superModeForMode` (which groups modes into
@@ -786,10 +1037,12 @@ String fmtFreqInput(double khz) {
 // each postindicator must be non-empty, so halo's call-stack separator
 // ("K1ABC//W1AW") isn't read as one callsign. The library's
 // SSID handling (`N0CALL-1`) is left out too — halo has no notion of one.
-final RegExp _callsignRegex = RegExp(r'^([A-Z0-9]+/)?'
-    r'([45]U[A-Z]*|[0-9][A-Z]{1,2}[0-9]|[ACDEHJLOPQSTUVXYZ][0-9]|[A-Z]{1,2}[0-9])'
-    r'[A-Z0-9]+'
-    r'(/[A-Z0-9]+)*$');
+final RegExp _callsignRegex = RegExp(
+  r'^([A-Z0-9]+/)?'
+  r'([45]U[A-Z]*|[0-9][A-Z]{1,2}[0-9]|[ACDEHJLOPQSTUVXYZ][0-9]|[A-Z]{1,2}[0-9])'
+  r'[A-Z0-9]+'
+  r'(/[A-Z0-9]+)*$',
+);
 
 /// Cheap plausibility check to enable the Log action — real callsign
 /// parsing (prefixes, DXCC, modifiers) is plugin territory.
@@ -815,27 +1068,22 @@ class Vfo {
 
   const Vfo({this.freq, this.band, this.mode, this.power});
 
-  factory Vfo.fromJson(Map<String, dynamic> json) => Vfo(
-        freq: (json['freq'] as num?)?.toDouble(),
-        band: json['band'] as String?,
-        mode: json['mode'] as String?,
-        power: json['power'] as num?,
-      );
+  factory Vfo.fromJson(Map<String, dynamic> json) =>
+      Vfo(freq: (json['freq'] as num?)?.toDouble(), band: json['band'] as String?, mode: json['mode'] as String?, power: json['power'] as num?);
 
   Map<String, dynamic> toJson() => {
-        if (freq != null) 'freq': freq,
-        if (band != null) 'band': band,
-        if (mode != null) 'mode': mode,
-        if (power != null) 'power': power,
-      };
+    if (freq != null) 'freq': freq,
+    if (band != null) 'band': band,
+    if (mode != null) 'mode': mode,
+    if (power != null) 'power': power,
+  };
 
   /// Value equality so a store can tell a real change from a restatement.
   /// A CAT-connected radio re-reports its state constantly — every status
   /// push, every periodic resync — and without this each one looks like a
   /// change worth notifying every listener and rewriting the prefs for.
   @override
-  bool operator ==(Object other) =>
-      other is Vfo && other.freq == freq && other.band == band && other.mode == mode && other.power == power;
+  bool operator ==(Object other) => other is Vfo && other.freq == freq && other.band == band && other.mode == mode && other.power == power;
 
   @override
   int get hashCode => Object.hash(freq, band, mode, power);
@@ -850,17 +1098,12 @@ class Vfo {
 /// doesn't need a dependency on the Flutter-only app package.
 abstract class VfoStore {
   Vfo get vfoA;
+
   /// `freq`/`band`/`mode`/`power` omitted leave that part unchanged.
   /// `clearFreq` explicitly clears the frequency (keeping the current band,
   /// or `band` if also given) — distinct from simply omitting `freq`, which
   /// is a no-op for it rather than a clear. `clearPower` is the same
   /// distinction for [Vfo.power]: an operator who empties the Power field is
   /// saying they don't know it, which is not the same as not mentioning it.
-  void setVfo(String key,
-      {double? freq,
-      String? band,
-      String? mode,
-      num? power,
-      bool clearFreq = false,
-      bool clearPower = false});
+  void setVfo(String key, {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false});
 }

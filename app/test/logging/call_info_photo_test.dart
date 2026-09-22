@@ -27,18 +27,20 @@ void main() {
   /// under test: without the placeholder below, this renders as no photo at
   /// all and the test could not tell the two apart either.
   Future<void> pumpPanel(WidgetTester tester, HaLoServices services, {String? image}) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: CallInfoPanel(
-            operation: const Operation(uuid: 'op-1', data: {'grid': 'FN31pr'}),
-            services: services,
-            call: 'W1AW',
-            guess: {'image': ?image},
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: CallInfoPanel(
+              operation: const Operation(uuid: 'op-1', data: {'grid': 'FN31pr'}),
+              services: services,
+              call: 'W1AW',
+              guess: {'image': ?image},
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
@@ -74,18 +76,20 @@ void main() {
     // is also what a slow photo on a real device looks like. Pumped without
     // settling so the error state has not landed yet.
     final services = await buildServices();
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: CallInfoPanel(
-            operation: const Operation(uuid: 'op-1', data: {'grid': 'FN31pr'}),
-            services: services,
-            call: 'W1AW',
-            guess: const {'image': 'https://example.test/w1aw.jpg'},
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: CallInfoPanel(
+              operation: const Operation(uuid: 'op-1', data: {'grid': 'FN31pr'}),
+              services: services,
+              call: 'W1AW',
+              guess: const {'image': 'https://example.test/w1aw.jpg'},
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
 
     final thumbnail = find.byType(InkWell);

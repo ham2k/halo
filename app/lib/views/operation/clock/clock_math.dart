@@ -51,12 +51,7 @@ Set<ClockSegment> segmentsForDigit(int? digit) {
 /// The 45° tips are the whole point: a plain rectangle reads as a font, and
 /// the diagonal notch where two segments meet is what makes it read as a
 /// physical display. [gap] is the unlit hairline between neighbours.
-Path segmentPath(
-  ClockSegment segment, {
-  required Size cellSize,
-  required double stroke,
-  double gap = 1.5,
-}) {
+Path segmentPath(ClockSegment segment, {required Size cellSize, required double stroke, double gap = 1.5}) {
   final w = cellSize.width;
   final h = cellSize.height;
   final t = stroke;

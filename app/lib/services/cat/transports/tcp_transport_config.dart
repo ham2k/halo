@@ -11,20 +11,10 @@ import 'config_field_helpers.dart';
 
 mixin TcpTransportConfig implements EquipmentTransport {
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [
-        if (!overrides.containsKey('host')) hostConfigElement(),
-        if (!overrides.containsKey('port'))
-          {
-            'type': 'field',
-            'fieldType': 'number',
-            'key': 'port',
-            'label': t.settings.station.port,
-          },
-      ];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    if (!overrides.containsKey('host')) hostConfigElement(),
+    if (!overrides.containsKey('port')) {'type': 'field', 'fieldType': 'number', 'key': 'port', 'label': t.settings.station.port},
+  ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
@@ -40,10 +30,7 @@ mixin TcpTransportConfig implements EquipmentTransport {
   }
 
   @override
-  Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
-        'host': trimmedHost(config),
-        'port': tcpPort(config),
-      };
+  Map<String, dynamic> targetFor(Map<String, dynamic> config) => {'host': trimmedHost(config), 'port': tcpPort(config)};
 
   @override
   String describeTarget(Map<String, dynamic> config) => '${trimmedHost(config)}:${tcpPort(config)}';

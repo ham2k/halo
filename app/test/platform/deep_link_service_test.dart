@@ -56,9 +56,7 @@ void main() {
 
   group('qsoRequest', () {
     test('carries the station, the radio state and the timestamp', () {
-      final qso = DeepLinkService.qsoRequest(
-        Uri.parse('com.ham2k:///qso?their.call=n0call&frequency=7200000&mode=cw&startAtMillis=1750000000000'),
-      );
+      final qso = DeepLinkService.qsoRequest(Uri.parse('com.ham2k:///qso?their.call=n0call&frequency=7200000&mode=cw&startAtMillis=1750000000000'));
       expect(qso?.calls, ['N0CALL']);
       expect(qso?.freqKHz, 7200);
       expect(qso?.mode, 'CW');
@@ -79,9 +77,7 @@ void main() {
     });
 
     test('reads hunted references as key/ref pairs, types unresolved', () {
-      final qso = DeepLinkService.qsoRequest(
-        Uri.parse('com.ham2k:///qso?their.call=N0CALL&their.refs=pota:US-1234,sota:W6%2FCT-006'),
-      );
+      final qso = DeepLinkService.qsoRequest(Uri.parse('com.ham2k:///qso?their.call=N0CALL&their.refs=pota:US-1234,sota:W6%2FCT-006'));
       // The key is the EXTENSION's, not a ref type: `pota` still has to become
       // `pota`/`potaActivation` via the host before anything is logged.
       expect(qso?.theirRefs, [(key: 'pota', ref: 'US-1234'), (key: 'sota', ref: 'W6/CT-006')]);
@@ -97,9 +93,7 @@ void main() {
 
   group('operationRequest', () {
     test('reads the references an activation is for', () {
-      final refs = DeepLinkService.operationRequest(
-        Uri.parse('com.ham2k:///operation?our.refs=pota:US-1234,sota:W6%2FCT-006'),
-      );
+      final refs = DeepLinkService.operationRequest(Uri.parse('com.ham2k:///operation?our.refs=pota:US-1234,sota:W6%2FCT-006'));
       expect(refs, [(key: 'pota', ref: 'US-1234'), (key: 'sota', ref: 'W6/CT-006')]);
     });
 
@@ -117,8 +111,7 @@ void main() {
     });
 
     test('drops entries with no key, and keeps the order written', () {
-      expect(DeepLinkService.refPairsIn(':US-1234,pota:US-1,sota:W6/CT-006'),
-          [(key: 'pota', ref: 'US-1'), (key: 'sota', ref: 'W6/CT-006')]);
+      expect(DeepLinkService.refPairsIn(':US-1234,pota:US-1,sota:W6/CT-006'), [(key: 'pota', ref: 'US-1'), (key: 'sota', ref: 'W6/CT-006')]);
     });
 
     test('leaves the reference exactly as sent', () {

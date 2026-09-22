@@ -43,17 +43,14 @@ const _channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
 
 /// Points the secure-storage channel at [handler] for one test.
 void _mockSecureStorage(Future<Object?> Function(MethodCall call) handler) {
-  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-      .setMockMethodCallHandler(_channel, handler);
-  addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-      .setMockMethodCallHandler(_channel, null));
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_channel, handler);
+  addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_channel, null));
 }
 
 /// What the Linux plugin actually raises: `KeyringLocked` covers no Secret
 /// Service, no default collection, and a collection that would not unlock
 /// (flutter_secure_storage_linux, `Secret.hpp` `warmupKeyring`).
-Future<Object?> _keyringLocked(MethodCall call) async =>
-    throw PlatformException(code: 'KeyringLocked', message: 'Keyring is locked');
+Future<Object?> _keyringLocked(MethodCall call) async => throw PlatformException(code: 'KeyringLocked', message: 'Keyring is locked');
 
 Future<HaLoServices> _services(SharedPreferences prefs) async {
   final db = HaLoDatabase(NativeDatabase.memory());
@@ -142,10 +139,7 @@ void main() {
       final services = await _services(prefs);
 
       maybeShowNoKeyringNotice(services);
-      expect(
-        services.statusBar.activeNotices.map((n) => n.key),
-        contains(noKeyringNoticeKey),
-      );
+      expect(services.statusBar.activeNotices.map((n) => n.key), contains(noKeyringNoticeKey));
       expect(
         services.statusBar.activeNotices.single.text,
         t.settings.accounts.noKeyringText,

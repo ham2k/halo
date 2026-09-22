@@ -39,6 +39,7 @@ class _SvgSceneViewState extends State<SvgSceneView> with WidgetsBindingObserver
   bool _sending = false;
   bool _appVisible = true;
   int _sequence = 0;
+
   /// Whether the last action failed. A flag, not the message: the banner is
   /// translated when it is built, so it follows a locale change.
   bool _failed = false;
@@ -51,8 +52,7 @@ class _SvgSceneViewState extends State<SvgSceneView> with WidgetsBindingObserver
     _appVisible = _visible(WidgetsBinding.instance.lifecycleState);
   }
 
-  bool _visible(AppLifecycleState? state) =>
-      state == null || state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+  bool _visible(AppLifecycleState? state) => state == null || state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -66,9 +66,7 @@ class _SvgSceneViewState extends State<SvgSceneView> with WidgetsBindingObserver
     final local = widget.scene.controls.where((c) => c.event == null).map((c) => c.value).toSet();
     _values = {
       for (final entry in widget.scene.values.entries)
-        entry.key: (_dirty.contains(entry.key) || _active.contains(entry.key) || local.contains(entry.key))
-            ? _values[entry.key] ?? entry.value
-            : entry.value,
+        entry.key: (_dirty.contains(entry.key) || _active.contains(entry.key) || local.contains(entry.key)) ? _values[entry.key] ?? entry.value : entry.value,
     };
   }
 
@@ -167,9 +165,7 @@ class _SvgSceneViewState extends State<SvgSceneView> with WidgetsBindingObserver
             if (_failed)
               MaterialBanner(
                 content: Text(context.t.operation.layout.panelActionFailed),
-                actions: [
-                  TextButton(onPressed: () => setState(() => _failed = false), child: Text(context.t.common.dismiss)),
-                ],
+                actions: [TextButton(onPressed: () => setState(() => _failed = false), child: Text(context.t.common.dismiss))],
               ),
             Expanded(
               child: TickerMode(
@@ -192,8 +188,7 @@ class _SvgSceneViewState extends State<SvgSceneView> with WidgetsBindingObserver
                                     key: ValueKey(layer.id),
                                     layer: layer,
                                     values: _values,
-                                    immediate:
-                                        reduceMotion || layer.bindings.values.any((b) => _dirty.contains(b.value)),
+                                    immediate: reduceMotion || layer.bindings.values.any((b) => _dirty.contains(b.value)),
                                     reduceMotion: reduceMotion,
                                   ),
                                 ),
@@ -240,13 +235,7 @@ class _SceneLayerView extends StatelessWidget {
   final SceneLayer layer;
   final Map<String, double> values;
   final bool immediate, reduceMotion;
-  const _SceneLayerView({
-    super.key,
-    required this.layer,
-    required this.values,
-    required this.immediate,
-    required this.reduceMotion,
-  });
+  const _SceneLayerView({super.key, required this.layer, required this.values, required this.immediate, required this.reduceMotion});
   @override
   Widget build(BuildContext context) {
     final text = layer.text;
@@ -260,16 +249,10 @@ class _SceneLayerView extends StatelessWidget {
     }
     final decimals = (text?['decimals'] as num? ?? 0).toInt();
     final formatted = textValue is num
-        ? textValue
-              .toStringAsFixed(decimals)
-              .padLeft((text?['minIntegerDigits'] as num? ?? 1).toInt() + (decimals > 0 ? decimals + 1 : 0), '0')
+        ? textValue.toStringAsFixed(decimals).padLeft((text?['minIntegerDigits'] as num? ?? 1).toInt() + (decimals > 0 ? decimals + 1 : 0), '0')
         : textValue.toString();
     Widget artwork = layer.svg != null
-        ? SvgPicture.string(
-            layer.svg!,
-            fit: BoxFit.fill,
-            errorBuilder: (_, error, stack) => const Icon(MdiIcons.imageBroken),
-          )
+        ? SvgPicture.string(layer.svg!, fit: BoxFit.fill, errorBuilder: (_, error, stack) => const Icon(MdiIcons.imageBroken))
         : Align(
             alignment: switch (text?['align']) {
               'center' => Alignment.center,
@@ -288,9 +271,7 @@ class _SceneLayerView extends StatelessWidget {
                 fontWeight: FontWeight.values[((text['fontWeight'] as num? ?? 400) / 100).round().clamp(1, 9) - 1],
                 height: (text['lineHeight'] as num? ?? 1.2).toDouble(),
                 letterSpacing: (text['letterSpacing'] as num? ?? 0).toDouble(),
-                color: text['color'] == null
-                    ? null
-                    : Color(0xff000000 | int.parse((text['color'] as String).substring(1), radix: 16)),
+                color: text['color'] == null ? null : Color(0xff000000 | int.parse((text['color'] as String).substring(1), radix: 16)),
               ),
             ),
           );
@@ -327,8 +308,7 @@ class _Pose {
   final double angle, x, y, opacity;
   const _Pose(this.angle, this.x, this.y, this.opacity);
   @override
-  bool operator ==(Object other) =>
-      other is _Pose && other.angle == angle && other.x == x && other.y == y && other.opacity == opacity;
+  bool operator ==(Object other) => other is _Pose && other.angle == angle && other.x == x && other.y == y && other.opacity == opacity;
   @override
   int get hashCode => Object.hash(angle, x, y, opacity);
 }
@@ -384,9 +364,7 @@ class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
     child: widget.child,
     builder: (_, child) {
       final phase = _clock.value * math.pi * 2;
-      final wave = widget.config['flicker'] == true
-          ? (math.sin(phase * 7) + math.sin(phase * 13) + 2) / 4
-          : (math.sin(phase) + 1) / 2;
+      final wave = widget.config['flicker'] == true ? (math.sin(phase * 7) + math.sin(phase * 13) + 2) / 4 : (math.sin(phase) + 1) / 2;
       final min = (widget.config['minOpacity'] as num).toDouble();
       return Opacity(opacity: min + (1 - min) * wave, child: child);
     },
@@ -489,10 +467,7 @@ class _ControlViewState extends State<_ControlView> {
                   ? null
                   : (event) {
                       if (event is PointerScrollEvent) {
-                        GestureBinding.instance.pointerSignalResolver.register(
-                          event,
-                          (_) => _adjust(event.scrollDelta.dy > 0 ? -c.step : c.step),
-                        );
+                        GestureBinding.instance.pointerSignalResolver.register(event, (_) => _adjust(event.scrollDelta.dy > 0 ? -c.step : c.step));
                       }
                     },
               child: GestureDetector(
@@ -535,9 +510,7 @@ class _ControlViewState extends State<_ControlView> {
                 onPanEnd: button ? null : (_) => widget.onCommit(),
                 onPanCancel: button ? null : widget.onCancel,
                 child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: _focused ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2) : null,
-                  ),
+                  decoration: BoxDecoration(border: _focused ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2) : null),
                 ),
               ),
             ),

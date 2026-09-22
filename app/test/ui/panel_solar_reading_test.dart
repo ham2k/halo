@@ -74,8 +74,7 @@ void main() {
       // be a reading nobody took.
       expect(reading.solarFlux, isNotNull, reason: 'sanity: the document did parse');
       expect(parseSolarReading('<solarflux>143</solarflux><xray></xray>', fetchedAtUtc: fetchedAt)!.xray, isNull);
-      expect(parseSolarReading('<solarflux>143</solarflux><aindex>NoRpt</aindex>', fetchedAtUtc: fetchedAt)!.aIndex,
-          isNull);
+      expect(parseSolarReading('<solarflux>143</solarflux><aindex>NoRpt</aindex>', fetchedAtUtc: fetchedAt)!.aIndex, isNull);
     });
 
     test('band rows pair day with night, in the feed\'s own order', () {
@@ -101,10 +100,7 @@ void main() {
     });
 
     test('a rating the feed has never sent is unknown, not poor', () {
-      final reading = parseSolarReading(
-        '<solarflux>143</solarflux><band name="6m" time="day">Marginal</band>',
-        fetchedAtUtc: fetchedAt,
-      )!;
+      final reading = parseSolarReading('<solarflux>143</solarflux><band name="6m" time="day">Marginal</band>', fetchedAtUtc: fetchedAt)!;
 
       // An operator deciding which band to call on is owed the difference
       // between "poor" and "we don't know" — guessing the worst case reads as
@@ -130,8 +126,7 @@ void main() {
       // is empty on web. `services.ham2k.net` is the same proxy the extension
       // host already routes this host through for the SOLAR command.
       expect(solarConditionsUrl(web: false).host, 'www.hamqsl.com');
-      expect(solarConditionsUrl(web: true).toString(),
-          'https://services.ham2k.net/www.hamqsl.com/solarxml.php');
+      expect(solarConditionsUrl(web: true).toString(), 'https://services.ham2k.net/www.hamqsl.com/solarxml.php');
     });
 
     test('SWPC is never proxied', () {
@@ -157,10 +152,12 @@ void main() {
     });
 
     test('rows are sorted, because the charts index by position', () {
-      final kp = parseKpSeries('['
-          '{"time_tag":"2026-08-25T06:00:00","Kp":2},'
-          '{"time_tag":"2026-08-25T00:00:00","Kp":5},'
-          '{"time_tag":"2026-08-25T03:00:00","Kp":3}]');
+      final kp = parseKpSeries(
+        '['
+        '{"time_tag":"2026-08-25T06:00:00","Kp":2},'
+        '{"time_tag":"2026-08-25T00:00:00","Kp":5},'
+        '{"time_tag":"2026-08-25T03:00:00","Kp":3}]',
+      );
 
       // One out-of-order row would draw a storm spike backwards through the
       // week — a shape, at a plausible height, describing nothing.
@@ -168,11 +165,13 @@ void main() {
     });
 
     test('a row missing its value or its stamp is skipped, not zeroed', () {
-      final kp = parseKpSeries('['
-          '{"time_tag":"2026-08-25T00:00:00","Kp":4},'
-          '{"time_tag":"2026-08-25T03:00:00"},'
-          '{"Kp":7},'
-          '{"time_tag":"nonsense","Kp":8}]');
+      final kp = parseKpSeries(
+        '['
+        '{"time_tag":"2026-08-25T00:00:00","Kp":4},'
+        '{"time_tag":"2026-08-25T03:00:00"},'
+        '{"Kp":7},'
+        '{"time_tag":"nonsense","Kp":8}]',
+      );
 
       // A zeroed row is a quiet three hours that never happened, sitting in
       // the middle of the record.
@@ -211,10 +210,7 @@ void main() {
 
   group('lastDays', () {
     final now = DateTime.utc(2026, 8, 25, 12);
-    final series = [
-      for (var days = 10; days >= 0; days--)
-        (utc: now.subtract(Duration(days: days)), value: days.toDouble()),
-    ];
+    final series = [for (var days = 10; days >= 0; days--) (utc: now.subtract(Duration(days: days)), value: days.toDouble())];
 
     test('slices against the clock it is handed, not the device\'s', () {
       // Sliced per BUILD rather than at parse time, so a DEVTT jump reshapes
@@ -247,10 +243,7 @@ void main() {
       // The columns reordered. A parser holding a fixed index would return a
       // perfectly plausible curve of the wrong quantity — a density plotted
       // as a wind speed looks exactly like a wind speed.
-      final points = parseSolarWindSeries(body(
-        '["time_tag","density","speed"]',
-        '["2026-08-26T12:18:00Z",1.72,301.9]',
-      ));
+      final points = parseSolarWindSeries(body('["time_tag","density","speed"]', '["2026-08-26T12:18:00Z",1.72,301.9]'));
 
       expect(points, hasLength(1));
       expect(points.single.value, 301.9);
@@ -260,19 +253,13 @@ void main() {
     test('a null speed is a gap, not a zero', () {
       // The spacecraft drops readings routinely. Drawn as zero, a dropout is
       // a wind that stopped.
-      final points = parseSolarWindSeries(body(
-        '["time_tag","speed"]',
-        '["2026-08-26T12:18:00Z",null],["2026-08-26T12:19:00Z",302.0]',
-      ));
+      final points = parseSolarWindSeries(body('["time_tag","speed"]', '["2026-08-26T12:18:00Z",null],["2026-08-26T12:19:00Z",302.0]'));
 
       expect(points.map((point) => point.value), [302.0]);
     });
 
     test('sorted, whatever order the rows arrive in', () {
-      final points = parseSolarWindSeries(body(
-        '["time_tag","speed"]',
-        '["2026-08-26T12:20:00Z",303.0],["2026-08-26T12:18:00Z",301.0]',
-      ));
+      final points = parseSolarWindSeries(body('["time_tag","speed"]', '["2026-08-26T12:20:00Z",303.0],["2026-08-26T12:18:00Z",301.0]'));
 
       expect(points.map((point) => point.value), [301.0, 303.0]);
     });
@@ -285,8 +272,7 @@ void main() {
       expect(parseSolarWindSeries('not json'), isEmpty);
       expect(parseSolarWindSeries('{}'), isEmpty);
       expect(parseSolarWindSeries('[]'), isEmpty);
-      expect(parseSolarWindSeries(body('["time_tag","density"]', '["2026-08-26T12:18:00Z",1.7]')), isEmpty,
-          reason: 'no speed column at all');
+      expect(parseSolarWindSeries(body('["time_tag","density"]', '["2026-08-26T12:18:00Z",1.7]')), isEmpty, reason: 'no speed column at all');
       expect(parseSolarWindSeries(body('["time_tag","speed"]', '["nonsense",302.0]')), isEmpty);
     });
   });
@@ -295,10 +281,7 @@ void main() {
     test('the fresher feed wins a shared stamp', () {
       // The wind's week and its hour overlap by that hour, and the hourly
       // feed is the one that has heard more recently.
-      final bulletin = [
-        (utc: DateTime.utc(2026, 8, 25, 0), value: 1.0),
-        (utc: DateTime.utc(2026, 8, 25, 3), value: 2.0),
-      ];
+      final bulletin = [(utc: DateTime.utc(2026, 8, 25, 0), value: 1.0), (utc: DateTime.utc(2026, 8, 25, 3), value: 2.0)];
       final json = [(utc: DateTime.utc(2026, 8, 25, 3), value: 4.0)];
 
       expect(mergeSeries(bulletin, json).map((point) => point.value), [1.0, 4.0]);
@@ -328,10 +311,7 @@ void main() {
 
       final buckets = averageIntoBuckets(points);
 
-      expect(buckets.map((point) => point.utc), [
-        DateTime.utc(2026, 8, 24, 3),
-        DateTime.utc(2026, 8, 24, 6),
-      ]);
+      expect(buckets.map((point) => point.utc), [DateTime.utc(2026, 8, 24, 3), DateTime.utc(2026, 8, 24, 6)]);
     });
 
     test('each bucket is the mean of what fell in it', () {
@@ -347,25 +327,16 @@ void main() {
     test('an empty bucket is absent, never interpolated', () {
       // The spacecraft drops readings. A gap invented as the mean of its
       // neighbours is a wind nobody measured.
-      final points = [
-        (utc: DateTime.utc(2026, 8, 24, 0, 5), value: 400.0),
-        (utc: DateTime.utc(2026, 8, 24, 9, 5), value: 500.0),
-      ];
+      final points = [(utc: DateTime.utc(2026, 8, 24, 0, 5), value: 400.0), (utc: DateTime.utc(2026, 8, 24, 9, 5), value: 500.0)];
 
       final buckets = averageIntoBuckets(points);
 
       expect(buckets, hasLength(2));
-      expect(buckets.map((point) => point.utc), [
-        DateTime.utc(2026, 8, 24, 0),
-        DateTime.utc(2026, 8, 24, 9),
-      ]);
+      expect(buckets.map((point) => point.utc), [DateTime.utc(2026, 8, 24, 0), DateTime.utc(2026, 8, 24, 9)]);
     });
 
     test('a week of one-minute readings collapses to the week in buckets', () {
-      final week = [
-        for (var i = 0; i < 7 * 24 * 60; i++)
-          (utc: DateTime.utc(2026, 8, 19).add(Duration(minutes: i)), value: 300.0 + i % 7),
-      ];
+      final week = [for (var i = 0; i < 7 * 24 * 60; i++) (utc: DateTime.utc(2026, 8, 19).add(Duration(minutes: i)), value: 300.0 + i % 7)];
 
       // 7 days / 3 hours.
       expect(averageIntoBuckets(week), hasLength(56));
@@ -376,7 +347,6 @@ void main() {
     });
   });
 
-
   group('the wind\'s two feeds', () {
     test('a bucket the week already averaged is not replaced by a partial one', () {
       // Right after a big fetch the recent readings are cleared, so the hour
@@ -384,17 +354,10 @@ void main() {
       // averaged over three hours. Letting that win draws a one-hour mean
       // under a label naming three — the plausible curve of the wrong
       // quantity, again.
-      final history = [
-        (utc: DateTime.utc(2026, 8, 24, 0), value: 500.0),
-        (utc: DateTime.utc(2026, 8, 24, 3), value: 450.0),
-      ];
+      final history = [(utc: DateTime.utc(2026, 8, 24, 0), value: 500.0), (utc: DateTime.utc(2026, 8, 24, 3), value: 450.0)];
       // An hour of readings inside the period history already covered, plus
       // one that runs past it.
-      final recent = [
-        for (var i = 0; i < 60; i++)
-          (utc: DateTime.utc(2026, 8, 24, 5, i), value: 350.0),
-        (utc: DateTime.utc(2026, 8, 24, 6, 1), value: 300.0),
-      ];
+      final recent = [for (var i = 0; i < 60; i++) (utc: DateTime.utc(2026, 8, 24, 5, i), value: 350.0), (utc: DateTime.utc(2026, 8, 24, 6, 1), value: 300.0)];
 
       final buckets = averageIntoBuckets(recent);
       final covered = history.last.utc;

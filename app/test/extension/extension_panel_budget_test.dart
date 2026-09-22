@@ -43,21 +43,10 @@ void main() {
 
   /// The same panel with nothing declared up front — what a panel rendering
   /// operator-written text looks like before it has read any.
-  const triggerless = PanelDefinition(
-    id: 'ext:text:custom',
-    title: 'Custom Text',
-    source: PanelSource.extension,
-    hookKey: 'text',
-    panelKey: 'custom',
-  );
+  const triggerless = PanelDefinition(id: 'ext:text:custom', title: 'Custom Text', source: PanelSource.extension, hookKey: 'text', panelKey: 'custom');
 
-  Widget harness(
-    _RecordingPanels panels, {
-    required bool visible,
-    int qsoCount = 0,
-    PanelDefinition panel = definition,
-    void Function(String?)? onTitle,
-  }) => TranslationProvider(
+  Widget harness(_RecordingPanels panels, {required bool visible, int qsoCount = 0, PanelDefinition panel = definition, void Function(String?)? onTitle}) =>
+      TranslationProvider(
         child: MaterialApp(
           home: Scaffold(
             body: DockPaneVisibility(
@@ -202,13 +191,7 @@ void main() {
 
     // A second pane of the same panel, rendering static text.
     panels.declares = const [];
-    const other = PanelDefinition(
-      id: 'ext:text:custom#2',
-      title: 'Custom Text',
-      source: PanelSource.extension,
-      hookKey: 'text',
-      panelKey: 'custom',
-    );
+    const other = PanelDefinition(id: 'ext:text:custom#2', title: 'Custom Text', source: PanelSource.extension, hookKey: 'text', panelKey: 'custom');
     await tester.pumpWidget(harness(panels, visible: true, panel: other));
     await settle(tester);
     panels.renders.clear();
@@ -272,25 +255,18 @@ void main() {
     // time. The arithmetic is what can be checked.
     final ended = DateTime.utc(2026, 1, 1, 12);
 
-    expect(panelRenderDelay(lastEndedAt: null, now: ended), Duration.zero,
-        reason: 'nothing has rendered yet');
-    expect(panelRenderDelay(lastEndedAt: ended, now: ended), panelRenderThrottle,
-        reason: 'a render that just finished owes the whole gap');
+    expect(panelRenderDelay(lastEndedAt: null, now: ended), Duration.zero, reason: 'nothing has rendered yet');
     expect(
-      panelRenderDelay(lastEndedAt: ended, now: ended.add(const Duration(milliseconds: 400))),
-      const Duration(milliseconds: 350),
+      panelRenderDelay(lastEndedAt: ended, now: ended),
+      panelRenderThrottle,
+      reason: 'a render that just finished owes the whole gap',
     );
+    expect(panelRenderDelay(lastEndedAt: ended, now: ended.add(const Duration(milliseconds: 400))), const Duration(milliseconds: 350));
     expect(panelRenderDelay(lastEndedAt: ended, now: ended.add(panelRenderThrottle)), Duration.zero);
-    expect(
-      panelRenderDelay(lastEndedAt: ended, now: ended.add(const Duration(seconds: 5))),
-      Duration.zero,
-    );
+    expect(panelRenderDelay(lastEndedAt: ended, now: ended.add(const Duration(seconds: 5))), Duration.zero);
     // A clock that went backwards — an NTP correction mid-session — must not
     // read as "the gap elapsed"; that is the runaway again by another route.
-    expect(
-      panelRenderDelay(lastEndedAt: ended, now: ended.subtract(const Duration(seconds: 30))),
-      panelRenderThrottle,
-    );
+    expect(panelRenderDelay(lastEndedAt: ended, now: ended.subtract(const Duration(seconds: 30))), panelRenderThrottle);
   });
 
   testWidgets('an identical answer does not rebuild the pane', (tester) async {
@@ -310,20 +286,13 @@ void main() {
     panels.markConfigChanged(definition.id);
     await settle(tester);
     expect(panels.renders, ['initial', 'config'], reason: 'it did render again');
-    expect(
-      identical(tester.widget<PanelContentView>(find.byType(PanelContentView)), before),
-      isTrue,
-      reason: 'same content, so the subtree was never rebuilt',
-    );
+    expect(identical(tester.widget<PanelContentView>(find.byType(PanelContentView)), before), isTrue, reason: 'same content, so the subtree was never rebuilt');
 
     // And a real change still gets through — the check must not be a mute.
     panels.content = 'changed';
     panels.markConfigChanged(definition.id);
     await settle(tester);
-    expect(
-      identical(tester.widget<PanelContentView>(find.byType(PanelContentView)), before),
-      isFalse,
-    );
+    expect(identical(tester.widget<PanelContentView>(find.byType(PanelContentView)), before), isFalse);
   });
 
   testWidgets('a pane revealed for the first time does not owe a catch-up', (tester) async {
@@ -373,8 +342,7 @@ void main() {
 
     await settle(tester);
     await settle(tester);
-    expect(panels.renders, ['initial', 'coalesced'],
-        reason: 'the render in flight re-requested when it finished');
+    expect(panels.renders, ['initial', 'coalesced'], reason: 'the render in flight re-requested when it finished');
   });
 
   test('a tick is dropped whenever a render is already coming', () {
@@ -392,8 +360,7 @@ void main() {
     // render, telling the panel it is rendering for a tick when a QSO was
     // logged.
     expect(ask('tick', rendering: true), PanelRenderRequest.drop);
-    expect(ask('tick', scheduled: true, wait: gap), PanelRenderRequest.drop,
-        reason: 'a render is already scheduled; this tick would only relabel it');
+    expect(ask('tick', scheduled: true, wait: gap), PanelRenderRequest.drop, reason: 'a render is already scheduled; this tick would only relabel it');
     // Nothing coming: a tick inside the gap is still worth waiting out, since
     // the gap is at most panelRenderThrottle and skipping costs a whole period.
     expect(ask('tick', wait: gap), PanelRenderRequest.defer);
@@ -436,8 +403,7 @@ void main() {
     // forever, and never shares a frame with the WallClock widgets it is
     // supposed to line up with. Every period >= 2s hides this by converging
     // on its first tick, which is why the case below is a 1s one at phase.
-    expect(panelTickDelayMillis(periodMs: 1000, nowMillis: 12_250, speed: 1), 750,
-        reason: 'lands ON the next second, not 1000ms after an arbitrary phase');
+    expect(panelTickDelayMillis(periodMs: 1000, nowMillis: 12_250, speed: 1), 750, reason: 'lands ON the next second, not 1000ms after an arbitrary phase');
     expect(panelTickDelayMillis(periodMs: 5000, nowMillis: 12_250, speed: 1), 2750);
     // Already on a boundary: a full period away, never zero — a zero-duration
     // timer here would spin the chain.
@@ -525,21 +491,11 @@ class _NullSource implements PanelExtensionSource {
   Future<List<Map<String, dynamic>>?> getExtensionPanels() async => const [];
 
   @override
-  Future<Map<String, dynamic>?> renderPanel({
-    required String hookKey,
-    required String panelKey,
-    required Map<String, dynamic> args,
-  }) async => null;
+  Future<Map<String, dynamic>?> renderPanel({required String hookKey, required String panelKey, required Map<String, dynamic> args}) async => null;
 
   @override
-  Future<Map<String, dynamic>> readPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async => const {};
+  Future<Map<String, dynamic>> readPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async => const {};
 
   @override
-  Future<void> forgetPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async {}
+  Future<void> forgetPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async {}
 }

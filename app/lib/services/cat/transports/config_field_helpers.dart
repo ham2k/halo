@@ -14,12 +14,12 @@ import 'package:halo_i18n/halo_i18n.dart';
 /// The plain required-hostname-or-IP field two transports collect
 /// identically (TCP's own host, and the Icom network login's host).
 Map<String, dynamic> hostConfigElement() => {
-      'type': 'field',
-      'fieldType': 'text',
-      'key': 'host',
-      'label': t.settings.station.host,
-      'description': t.settings.station.hostDescription,
-    };
+  'type': 'field',
+  'fieldType': 'text',
+  'key': 'host',
+  'label': t.settings.station.host,
+  'description': t.settings.station.hostDescription,
+};
 
 String trimmedHost(Map<String, dynamic> config) => stringFromConfig(config, 'host').trim();
 

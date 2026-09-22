@@ -20,21 +20,23 @@ void main() {
 
   Future<void> pumpPanel(WidgetTester tester, List<String> notes) async {
     final services = (await makeHaLoServices()).services;
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: CallInfoPanel(
-            operation: const Operation(uuid: 'op-1', data: {'grid': 'FN31pr'}),
-            services: services,
-            call: 'W1AW',
-            guess: const {},
-            lookups: [
-              {'source': 'call-notes', 'notes': notes},
-            ],
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: CallInfoPanel(
+              operation: const Operation(uuid: 'op-1', data: {'grid': 'FN31pr'}),
+              services: services,
+              call: 'W1AW',
+              guess: const {},
+              lookups: [
+                {'source': 'call-notes', 'notes': notes},
+              ],
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 

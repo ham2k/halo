@@ -136,14 +136,11 @@ class CatalogEntry with ExtensionSearchable {
       accentColor: json['accentColor'] is String ? json['accentColor'] as String : null,
       keywords: json['keywords'] is List ? (json['keywords'] as List).whereType<String>().toList() : const [],
       hooks: json['hooks'] is List ? (json['hooks'] as List).whereType<String>().toList() : const [],
-      relevance: json['relevance'] is Map
-          ? ExtensionRelevance.fromJson((json['relevance'] as Map).cast<String, dynamic>())
-          : null,
+      relevance: json['relevance'] is Map ? ExtensionRelevance.fromJson((json['relevance'] as Map).cast<String, dynamic>()) : null,
       translations: {
         if (json['translations'] is Map)
           for (final entry in (json['translations'] as Map).entries)
-            if (entry.key is String && entry.value is Map)
-              entry.key as String: (entry.value as Map).cast<String, Object?>(),
+            if (entry.key is String && entry.value is Map) entry.key as String: (entry.value as Map).cast<String, Object?>(),
       },
     );
   }
@@ -189,10 +186,10 @@ List<CatalogEntry> orderedCatalogEntries(List<CatalogEntry> entries, OperatorGeo
 
   final tiers = {for (final entry in entries) entry.key: tier(entry)};
   return [...entries]..sort((a, b) {
-      final byTier = tiers[a.key]!.compareTo(tiers[b.key]!);
-      if (byTier != 0) return byTier;
-      return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
-    });
+    final byTier = tiers[a.key]!.compareTo(tiers[b.key]!);
+    if (byTier != 0) return byTier;
+    return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
+  });
 }
 
 /// One version of `GET /api/v1/extensions/:key` — the hash a deep link's
@@ -257,32 +254,24 @@ class CatalogUpdates {
   const CatalogUpdates({required this.updates, required this.revoked, required this.ignored});
 
   static CatalogUpdates fromJson(Map<String, dynamic> json) => CatalogUpdates(
-        updates: [
-          if (json['updates'] is List)
-            for (final raw in json['updates'] as List)
-              if (CatalogEntry.fromJson(raw) case final entry?)
-                CatalogUpdate(
-                  entry: entry,
-                  installedStatus: raw is Map && raw['installedStatus'] is String ? raw['installedStatus'] as String : 'unknown',
-                ),
-        ],
-        revoked: [
-          if (json['revoked'] is List)
-            for (final raw in json['revoked'] as List)
-              if (raw is Map && raw['key'] is String && raw['version'] is String)
-                CatalogRevocation(
-                  key: raw['key'] as String,
-                  version: raw['version'] as String,
-                  note: raw['note'] is String ? raw['note'] as String : '',
-                ),
-        ],
-        ignored: [
-          if (json['ignored'] is List)
-            for (final raw in json['ignored'] as List)
-              if (raw is Map && raw['key'] is String)
-                (key: raw['key'] as String, reason: raw['reason'] is String ? raw['reason'] as String : ''),
-        ],
-      );
+    updates: [
+      if (json['updates'] is List)
+        for (final raw in json['updates'] as List)
+          if (CatalogEntry.fromJson(raw) case final entry?)
+            CatalogUpdate(entry: entry, installedStatus: raw is Map && raw['installedStatus'] is String ? raw['installedStatus'] as String : 'unknown'),
+    ],
+    revoked: [
+      if (json['revoked'] is List)
+        for (final raw in json['revoked'] as List)
+          if (raw is Map && raw['key'] is String && raw['version'] is String)
+            CatalogRevocation(key: raw['key'] as String, version: raw['version'] as String, note: raw['note'] is String ? raw['note'] as String : ''),
+    ],
+    ignored: [
+      if (json['ignored'] is List)
+        for (final raw in json['ignored'] as List)
+          if (raw is Map && raw['key'] is String) (key: raw['key'] as String, reason: raw['reason'] is String ? raw['reason'] as String : ''),
+    ],
+  );
 }
 
 /// The catalog did not answer — a failure below the application layer, or
@@ -320,11 +309,11 @@ class CatalogService {
     String Function()? locale,
     this._requestTimeout = kCatalogRequestTimeout,
     this._downloadTimeout = kCatalogDownloadTimeout,
-  })  : _client = client ?? http.Client(),
-        // The fallback resolver never throws, so a missing native build
-        // number cannot block a background check.
-        _userAgent = userAgent ?? ham2kUserAgentOrFallback,
-        _locale = locale ?? (() => LocaleSettings.currentLocale.languageCode);
+  }) : _client = client ?? http.Client(),
+       // The fallback resolver never throws, so a missing native build
+       // number cannot block a background check.
+       _userAgent = userAgent ?? ham2kUserAgentOrFallback,
+       _locale = locale ?? (() => LocaleSettings.currentLocale.languageCode);
 
   /// The channel asked for.
   ///
@@ -377,8 +366,7 @@ class CatalogService {
     return (key: match.group(1)!, version: Uri.decodeComponent(match.group(2)!));
   }
 
-  Uri bundleUrlFor(String key, String version) =>
-      Uri.parse('$baseUrl/api/v1/extensions/$key/versions/${Uri.encodeComponent(version)}/bundle');
+  Uri bundleUrlFor(String key, String version) => Uri.parse('$baseUrl/api/v1/extensions/$key/versions/${Uri.encodeComponent(version)}/bundle');
 
   final Map<String, ({int at, Object value})> _cache = {};
 
@@ -407,12 +395,9 @@ class CatalogService {
   /// catalog could not be read; an entry that could not be parsed is
   /// dropped, not the list.
   Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false}) async {
-    final url = Uri.parse('$baseUrl/api/v1/catalog').replace(queryParameters: {
-      'channel': channel,
-      ...?geo?.toQueryParameters(),
-      'api': '$kExtensionApiVersion',
-      'lang': _locale(),
-    });
+    final url = Uri.parse(
+      '$baseUrl/api/v1/catalog',
+    ).replace(queryParameters: {'channel': channel, ...?geo?.toQueryParameters(), 'api': '$kExtensionApiVersion', 'lang': _locale()});
     // [force] for a caller that IS the operator asking — opening the panel is
     // the one moment where an answer from a few minutes ago is not good
     // enough: they have come to see what is there, and a version published
@@ -476,11 +461,7 @@ class CatalogService {
     ];
     if (pairs.isEmpty) return null;
     final url = Uri.parse('$baseUrl/api/v1/updates');
-    final json = await _postJson(url, {
-      'channel': channel,
-      'api': kExtensionApiVersion,
-      'installed': pairs,
-    });
+    final json = await _postJson(url, {'channel': channel, 'api': kExtensionApiVersion, 'installed': pairs});
     if (json == null) return null;
     return CatalogUpdates.fromJson(json);
   }
@@ -535,8 +516,7 @@ class CatalogService {
           continue;
         }
         if (response.statusCode != 200) {
-          throw BundleException(BundleRejection.downloadFailed,
-              t.extensionsPanel.downloadFailed(source: target.host, status: response.statusCode));
+          throw BundleException(BundleRejection.downloadFailed, t.extensionsPanel.downloadFailed(source: target.host, status: response.statusCode));
         }
         // Counted as it arrives. Reading the whole body first and measuring it
         // afterwards is a cap that has already let the thing it refuses into
@@ -561,8 +541,7 @@ class CatalogService {
     } on IOException catch (e) {
       throw BundleException(BundleRejection.downloadFailed, _unreachable(target, e));
     }
-    throw BundleException(
-        BundleRejection.downloadFailed, t.extensionsPanel.downloadFailed(source: source.host, status: 310));
+    throw BundleException(BundleRejection.downloadFailed, t.extensionsPanel.downloadFailed(source: source.host, status: 310));
   }
 
   String _unreachable(Uri target, Object cause) {
@@ -570,13 +549,10 @@ class CatalogService {
     return t.extensionsPanel.downloadUnreachable(source: target.host);
   }
 
-  Future<Map<String, dynamic>?> _getJson(Uri url) =>
-      _json(url, (headers) => _client.get(url, headers: headers));
+  Future<Map<String, dynamic>?> _getJson(Uri url) => _json(url, (headers) => _client.get(url, headers: headers));
 
-  Future<Map<String, dynamic>?> _postJson(Uri url, Map<String, Object?> body) => _json(
-      url,
-      (headers) =>
-          _client.post(url, headers: {...headers, 'Content-Type': 'application/json'}, body: jsonEncode(body)));
+  Future<Map<String, dynamic>?> _postJson(Uri url, Map<String, Object?> body) =>
+      _json(url, (headers) => _client.post(url, headers: {...headers, 'Content-Type': 'application/json'}, body: jsonEncode(body)));
 
   /// One request, one policy. A non-200 is null and a console line — a
   /// missing key is a 404 and normal. A 200 that is not a JSON object is
@@ -591,8 +567,7 @@ class CatalogService {
   /// refused, a socket reset. Every one is [CatalogUnreachable] to the
   /// policy; a bare one escaping this unattended check would reach the
   /// operator as a notice about a server they never asked about.
-  Future<Map<String, dynamic>?> _json(
-      Uri url, Future<http.Response> Function(Map<String, String> headers) send) async {
+  Future<Map<String, dynamic>?> _json(Uri url, Future<http.Response> Function(Map<String, String> headers) send) async {
     final http.Response response;
     try {
       response = await send({'User-Agent': await _userAgent(), 'Accept': 'application/json'}).timeout(_requestTimeout);
@@ -635,8 +610,7 @@ class CatalogService {
   /// catalog with nothing in it.
   void _malformed(Uri url, String what) {
     debugPrint('[catalog] malformed response from $url — $what');
-    ErrorReportingService.report(FormatException('catalog response: $what', url.toString()), StackTrace.current,
-        context: 'catalog-fetch');
+    ErrorReportingService.report(FormatException('catalog response: $what', url.toString()), StackTrace.current, context: 'catalog-fetch');
   }
 }
 
@@ -703,8 +677,8 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
     bool Function(ExtensionInfo)? inUse,
     this.openExtensions,
     int Function()? realNow,
-  })  : inUse = inUse ?? _everythingLoads,
-        _realNow = realNow ?? realNowMillis;
+  }) : inUse = inUse ?? _everythingLoads,
+       _realNow = realNow ?? realNowMillis;
 
   static bool _everythingLoads(ExtensionInfo info) => true;
 
@@ -763,7 +737,10 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
       final result = await catalog.checkUpdates(candidates);
       if (result == null) return false;
       await settings.setCatalogUpdateCheckedAt(_realNow());
-    final loading = {for (final info in candidates) if (inUse(info)) info.key};
+      final loading = {
+        for (final info in candidates)
+          if (inUse(info)) info.key,
+      };
       _pending = {
         for (final update in result.updates)
           if (loading.contains(update.entry.key)) update.entry.key: update.entry,
@@ -796,9 +773,7 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
     }
     if (!announce) return;
     final locale = LocaleSettings.currentLocale.languageCode;
-    final names = [
-      for (final key in _pending.keys) candidates.where((info) => info.key == key).firstOrNull?.nameFor(locale) ?? key,
-    ];
+    final names = [for (final key in _pending.keys) candidates.where((info) => info.key == key).firstOrNull?.nameFor(locale) ?? key];
     // Two names, then a count. A notice is read at a glance from the footer:
     // one name is the whole story, two still are, and by the third the list is
     // longer than the sentence around it — what is left is a number and the

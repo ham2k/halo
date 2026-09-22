@@ -15,8 +15,7 @@ import 'support/bundles.dart';
 
 /// Hoisted to a `final`, not written inline: [sharedHost] keys on handler
 /// identity, so an inline closure would boot a fresh host per call.
-Future<dynamic> _profileSectionHostCall(String method, Map<String, dynamic> params) async =>
-    method == 'getSettings' ? {'operatorSection': 'ENY'} : null;
+Future<dynamic> _profileSectionHostCall(String method, Map<String, dynamic> params) async => method == 'getSettings' ? {'operatorSection': 'ENY'} : null;
 
 void main() {
   requireBundles();
@@ -33,49 +32,55 @@ void main() {
     String? section,
     String? uuid,
     int day = 1,
-  }) =>
-      {
-        'uuid': uuid ?? '$call-$band-$mode',
-        'their': {'call': call},
-        'band': band,
-        'mode': mode,
-        'startAtMillis': DateTime.utc(2026, 6, day, 18).millisecondsSinceEpoch,
-        'refs': [
-          {
-            'type': type,
-            'class': ?theirClass,
-            'location': ?section,
-          },
-        ],
-      };
+  }) => {
+    'uuid': uuid ?? '$call-$band-$mode',
+    'their': {'call': call},
+    'band': band,
+    'mode': mode,
+    'startAtMillis': DateTime.utc(2026, 6, day, 18).millisecondsSinceEpoch,
+    'refs': [
+      {'type': type, 'class': ?theirClass, 'location': ?section},
+    ],
+  };
 
-  Future<Map<String, dynamic>> score(
-    ExtensionHost host,
-    String type, {
-    required Map<String, dynamic> setup,
-    required List<Map<String, dynamic>> qsos,
-  }) async {
+  Future<Map<String, dynamic>> score(ExtensionHost host, String type, {required Map<String, dynamic> setup, required List<Map<String, dynamic>> qsos}) async {
     final ref = {'type': type, ...setup};
-    final result = await host.invokeHook('scoring', key: type, method: 'scoreQsos', args: {
-      'operation': {'uuid': 'op', 'stationCall': 'W1AW', 'refs': [ref]},
-      'qsos': qsos,
-      'ref': ref,
-    }, timeout: const Duration(seconds: 20)) as Map;
+    final result =
+        await host.invokeHook(
+              'scoring',
+              key: type,
+              method: 'scoreQsos',
+              args: {
+                'operation': {
+                  'uuid': 'op',
+                  'stationCall': 'W1AW',
+                  'refs': [ref],
+                },
+                'qsos': qsos,
+                'ref': ref,
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
     return result.cast<String, dynamic>();
   }
 
-  Map<String, dynamic>? contestTally(Map<String, dynamic> result) =>
-      ((result['operationSummary'] as Map?)?['contest'] as Map?)?.cast<String, dynamic>();
+  Map<String, dynamic>? contestTally(Map<String, dynamic> result) => ((result['operationSummary'] as Map?)?['contest'] as Map?)?.cast<String, dynamic>();
 
   group('the rules both contests share', () {
     for (final type in ['fd', 'wfd']) {
       test('$type: phone is one point, CW and data are two', () async {
         final host = await hostFor(type);
-        final result = await score(host, type, setup: const {}, qsos: [
-          contestQso(type, 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a'),
-          contestQso(type, 'K1BBB', band: '20m', mode: 'CW', uuid: 'b'),
-          contestQso(type, 'K1CCC', band: '20m', mode: 'FT8', uuid: 'c'),
-        ]);
+        final result = await score(
+          host,
+          type,
+          setup: const {},
+          qsos: [
+            contestQso(type, 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a'),
+            contestQso(type, 'K1BBB', band: '20m', mode: 'CW', uuid: 'b'),
+            contestQso(type, 'K1CCC', band: '20m', mode: 'FT8', uuid: 'c'),
+          ],
+        );
         expect((result['qsoScores'] as Map)['a']['value'], 1);
         expect((result['qsoScores'] as Map)['b']['value'], 2);
         expect((result['qsoScores'] as Map)['c']['value'], 2);
@@ -86,12 +91,17 @@ void main() {
         // band-hopping contest. Getting this wrong either refuses real points
         // or awards points twice.
         final host = await hostFor(type);
-        final result = await score(host, type, setup: const {}, qsos: [
-          contestQso(type, 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a'),
-          contestQso(type, 'K1AAA', band: '40m', mode: 'SSB', uuid: 'b'),
-          contestQso(type, 'K1AAA', band: '20m', mode: 'CW', uuid: 'c'),
-          contestQso(type, 'K1AAA', band: '20m', mode: 'SSB', uuid: 'd'),
-        ]);
+        final result = await score(
+          host,
+          type,
+          setup: const {},
+          qsos: [
+            contestQso(type, 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a'),
+            contestQso(type, 'K1AAA', band: '40m', mode: 'SSB', uuid: 'b'),
+            contestQso(type, 'K1AAA', band: '20m', mode: 'CW', uuid: 'c'),
+            contestQso(type, 'K1AAA', band: '20m', mode: 'SSB', uuid: 'd'),
+          ],
+        );
         final scores = result['qsoScores'] as Map;
         expect(scores['b']['value'], 1, reason: 'new band');
         expect(scores['b']['notices'], contains('newBand'));
@@ -105,11 +115,16 @@ void main() {
         // Three tallies because the rules count them three ways. `DX` is a
         // valid thing to receive and is not a section.
         final host = await hostFor(type);
-        final result = await score(host, type, setup: const {}, qsos: [
-          contestQso(type, 'K1AAA', band: '20m', mode: 'SSB', section: 'ENY', uuid: 'a'),
-          contestQso(type, 'VE3BBB', band: '20m', mode: 'SSB', section: 'ONS', uuid: 'b'),
-          contestQso(type, 'G0CCC', band: '20m', mode: 'SSB', section: 'DX', uuid: 'c'),
-        ]);
+        final result = await score(
+          host,
+          type,
+          setup: const {},
+          qsos: [
+            contestQso(type, 'K1AAA', band: '20m', mode: 'SSB', section: 'ENY', uuid: 'a'),
+            contestQso(type, 'VE3BBB', band: '20m', mode: 'SSB', section: 'ONS', uuid: 'b'),
+            contestQso(type, 'G0CCC', band: '20m', mode: 'SSB', section: 'DX', uuid: 'c'),
+          ],
+        );
         expect(contestTally(result)!['longSummary'], contains('3 sections'));
       }, timeout: const Timeout(Duration(seconds: 60)));
     }
@@ -122,10 +137,15 @@ void main() {
       // but kept here because the wrong version lived here and a reader
       // comparing the two files should land on the correction.
       for (final type in ['fd', 'wfd']) {
-        final result = await score(await hostFor(type), type, setup: const {}, qsos: [
-          contestQso(type, 'K1AAA', band: '30m', mode: 'CW', uuid: 'a'),
-          contestQso(type, 'K1BBB', band: '20m', mode: 'CW', uuid: 'b'),
-        ]);
+        final result = await score(
+          await hostFor(type),
+          type,
+          setup: const {},
+          qsos: [
+            contestQso(type, 'K1AAA', band: '30m', mode: 'CW', uuid: 'a'),
+            contestQso(type, 'K1BBB', band: '20m', mode: 'CW', uuid: 'b'),
+          ],
+        );
         expect((result['qsoScores'] as Map)['a']['value'], 0, reason: '$type 30m');
         expect((result['qsoScores'] as Map)['a']['alerts'], contains('invalidBand'));
         expect((result['qsoScores'] as Map)['b']['value'], 2, reason: '$type 20m still counts');
@@ -135,9 +155,12 @@ void main() {
     test("FD's multiplier is power; QRP off batteries is five", () async {
       final host = await hostFor('fd');
       Future<int> totalWith(Map<String, dynamic> setup) async {
-        final result = await score(host, 'fd', setup: setup, qsos: [
-          contestQso('fd', 'K1AAA', band: '20m', mode: 'CW', uuid: 'a'),
-        ]);
+        final result = await score(
+          host,
+          'fd',
+          setup: setup,
+          qsos: [contestQso('fd', 'K1AAA', band: '20m', mode: 'CW', uuid: 'a')],
+        );
         return contestTally(result)!['total'] as int;
       }
 
@@ -159,17 +182,18 @@ void main() {
       // The rules grant it only for running entirely on emergency power, once.
       final host = await hostFor('fd');
       Future<int> totalWith(Map<String, dynamic> setup) async {
-        final result = await score(host, 'fd', setup: {'ourPower': '500W', ...setup}, qsos: [
-          contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a'),
-        ]);
+        final result = await score(
+          host,
+          'fd',
+          setup: {'ourPower': '500W', ...setup},
+          qsos: [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a')],
+        );
         return contestTally(result)!['total'] as int;
       }
 
       // 1 QSO point at x1 throughout, so the rest is bonus.
-      expect(await totalWith({'bonusTransmitters': 3}), 1,
-          reason: 'transmitters alone earn nothing without emergency power');
-      expect(await totalWith({'bonusTransmitters': 3, 'bonusEmergencyPower': true}), 1 + 300,
-          reason: '100 per transmitter, ONCE');
+      expect(await totalWith({'bonusTransmitters': 3}), 1, reason: 'transmitters alone earn nothing without emergency power');
+      expect(await totalWith({'bonusTransmitters': 3, 'bonusEmergencyPower': true}), 1 + 300, reason: '100 per transmitter, ONCE');
       // The rules cap it at 20 transmitters; a club may still record 25.
       expect(await totalWith({'bonusTransmitters': 25, 'bonusEmergencyPower': true}), 1 + 2000);
     }, timeout: const Timeout(Duration(seconds: 90)));
@@ -177,9 +201,12 @@ void main() {
     test('the counted bonuses use their own rates and caps', () async {
       final host = await hostFor('fd');
       Future<int> totalWith(Map<String, dynamic> setup) async {
-        final result = await score(host, 'fd', setup: {'ourPower': '500W', ...setup}, qsos: [
-          contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a'),
-        ]);
+        final result = await score(
+          host,
+          'fd',
+          setup: {'ourPower': '500W', ...setup},
+          qsos: [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a')],
+        );
         return contestTally(result)!['total'] as int;
       }
 
@@ -195,9 +222,12 @@ void main() {
       // flat 100 got wrong.
       final host = await hostFor('fd');
       Future<int> totalWith(Map<String, dynamic> setup) async {
-        final result = await score(host, 'fd', setup: {'ourPower': '500W', ...setup}, qsos: [
-          contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a'),
-        ]);
+        final result = await score(
+          host,
+          'fd',
+          setup: {'ourPower': '500W', ...setup},
+          qsos: [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a')],
+        );
         return contestTally(result)!['total'] as int;
       }
 
@@ -216,10 +246,22 @@ void main() {
       // Day operation is a Field Day contact, whether or not an exchange was
       // captured for it.
       final host = await hostFor('fd');
-      final fields = await host.invokeHook('adifFields', key: 'fd', method: 'fieldsForOneQSO', args: {
-        'qso': contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A', section: 'ENY'),
-        'operation': {'refs': [{'type': 'fd', 'ourClass': '1D', 'ourSection': 'CT'}]},
-      }, timeout: const Duration(seconds: 10)) as List;
+      final fields =
+          await host.invokeHook(
+                'adifFields',
+                key: 'fd',
+                method: 'fieldsForOneQSO',
+                args: {
+                  'qso': contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A', section: 'ENY'),
+                  'operation': {
+                    'refs': [
+                      {'type': 'fd', 'ourClass': '1D', 'ourSection': 'CT'},
+                    ],
+                  },
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List;
 
       final flat = {for (final f in fields) (f as Map)['name']: f['value']};
       expect(flat, {'CONTEST_ID': 'ARRL-FIELD-DAY', 'CLASS': '2A', 'ARRL_SECT': 'ENY'});
@@ -238,15 +280,25 @@ void main() {
       final qso = contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A', section: 'ENY');
       (qso['their'] as Map<String, dynamic>)['arrlSection'] = 'CT';
 
-      final result = await host.invokeHook('export', key: 'adif', method: 'generateExport', args: {
-        'operation': {
-          'uuid': 'op-1',
-          'stationCall': 'W1AW',
-          'refs': [{'type': 'fd', 'ourClass': '1D', 'ourSection': 'CT'}],
-        },
-        'qsos': [qso],
-        'includePrivateData': true,
-      }, timeout: const Duration(seconds: 20)) as Map;
+      final result =
+          await host.invokeHook(
+                'export',
+                key: 'adif',
+                method: 'generateExport',
+                args: {
+                  'operation': {
+                    'uuid': 'op-1',
+                    'stationCall': 'W1AW',
+                    'refs': [
+                      {'type': 'fd', 'ourClass': '1D', 'ourSection': 'CT'},
+                    ],
+                  },
+                  'qsos': [qso],
+                  'includePrivateData': true,
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
 
       final content = result['content'] as String;
       expect(content, contains('<ARRL_SECT:3>ENY'));
@@ -255,20 +307,41 @@ void main() {
 
     test('an operation that is not Field Day gets no Field Day fields', () async {
       final host = await hostFor('fd');
-      final fields = await host.invokeHook('adifFields', key: 'fd', method: 'fieldsForOneQSO', args: {
-        'qso': contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A'),
-        'operation': const {'refs': []},
-      }, timeout: const Duration(seconds: 10)) as List;
+      final fields =
+          await host.invokeHook(
+                'adifFields',
+                key: 'fd',
+                method: 'fieldsForOneQSO',
+                args: {
+                  'qso': contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A'),
+                  'operation': const {'refs': []},
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List;
       expect(fields, isEmpty);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('the Cabrillo line carries both stations, ours first', () async {
       final host = await hostFor('fd');
-      final result = await host.invokeHook('export', key: 'fd', method: 'generateExport', args: {
-        'exportType': 'fd-cabrillo',
-        'operation': {'stationCall': 'W1AW', 'refs': [{'type': 'fd', 'ourClass': '1D', 'ourSection': 'CT'}]},
-        'qsos': [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A', section: 'ENY')],
-      }, timeout: const Duration(seconds: 20)) as Map;
+      final result =
+          await host.invokeHook(
+                'export',
+                key: 'fd',
+                method: 'generateExport',
+                args: {
+                  'exportType': 'fd-cabrillo',
+                  'operation': {
+                    'stationCall': 'W1AW',
+                    'refs': [
+                      {'type': 'fd', 'ourClass': '1D', 'ourSection': 'CT'},
+                    ],
+                  },
+                  'qsos': [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A', section: 'ENY')],
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
 
       final content = result['content'] as String;
       // The registered CABRILLO name, not the ADIF CONTEST_ID — a checker does
@@ -291,10 +364,24 @@ void main() {
       // Ranking, never prefilling — §5.3 asks for that here because a guess
       // from a callsign is wrong often enough to be annoying.
       final host = await hostFor('fd');
-      final controls = await host.invokeHook('activity', key: 'fd', method: 'loggingControls', args: {
-        'operation': {'refs': [{'type': 'fd'}]},
-        'qso': {'their': {'call': 'W1XYZ'}},
-      }, timeout: const Duration(seconds: 10)) as List;
+      final controls =
+          await host.invokeHook(
+                'activity',
+                key: 'fd',
+                method: 'loggingControls',
+                args: {
+                  'operation': {
+                    'refs': [
+                      {'type': 'fd'},
+                    ],
+                  },
+                  'qso': {
+                    'their': {'call': 'W1XYZ'},
+                  },
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List;
 
       final section = controls.cast<Map>().firstWhere((c) => c['key'] == 'fd/section');
       final input = section['input'] as Map;
@@ -313,10 +400,24 @@ void main() {
       // KL7 is Alaska and nothing else, so the call-area guess must not dilute
       // it with the whole of call area 7.
       final host = await hostFor('fd');
-      final controls = await host.invokeHook('activity', key: 'fd', method: 'loggingControls', args: {
-        'operation': {'refs': [{'type': 'fd'}]},
-        'qso': {'their': {'call': 'KL7AA'}},
-      }, timeout: const Duration(seconds: 10)) as List;
+      final controls =
+          await host.invokeHook(
+                'activity',
+                key: 'fd',
+                method: 'loggingControls',
+                args: {
+                  'operation': {
+                    'refs': [
+                      {'type': 'fd'},
+                    ],
+                  },
+                  'qso': {
+                    'their': {'call': 'KL7AA'},
+                  },
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List;
 
       final section = controls.cast<Map>().firstWhere((c) => c['key'] == 'fd/section');
       expect(((section['input'] as Map)['preferredCodes'] as List), ['AK']);
@@ -326,10 +427,24 @@ void main() {
       // `PC1A` is a legal exchange — a station asking you to copy the bulletin.
       // A pattern that refused it would tint every one of them as an error.
       final host = await hostFor('fd');
-      final controls = await host.invokeHook('activity', key: 'fd', method: 'loggingControls', args: {
-        'operation': {'refs': [{'type': 'fd'}]},
-        'qso': {'their': {'call': 'W1XYZ'}},
-      }, timeout: const Duration(seconds: 10)) as List;
+      final controls =
+          await host.invokeHook(
+                'activity',
+                key: 'fd',
+                method: 'loggingControls',
+                args: {
+                  'operation': {
+                    'refs': [
+                      {'type': 'fd'},
+                    ],
+                  },
+                  'qso': {
+                    'their': {'call': 'W1XYZ'},
+                  },
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List;
 
       final klass = controls.cast<Map>().firstWhere((c) => c['key'] == 'fd/class');
       final pattern = RegExp((klass['input'] as Map)['pattern'] as String);
@@ -342,9 +457,17 @@ void main() {
 
     test('off-contest the controls contribute nothing', () async {
       final host = await hostFor('fd');
-      final controls = await host.invokeHook('activity', key: 'fd', method: 'loggingControls', args: {
-        'operation': const {'refs': []},
-      }, timeout: const Duration(seconds: 10)) as List;
+      final controls =
+          await host.invokeHook(
+                'activity',
+                key: 'fd',
+                method: 'loggingControls',
+                args: {
+                  'operation': const {'refs': []},
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List;
       expect(controls, isEmpty);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
@@ -355,8 +478,17 @@ void main() {
     for (final type in ['fd', 'wfd']) {
       test('$type defaults our section from the profile', () async {
         final host = await sharedHost(['fd', 'wfd'], onHostCall: _profileSectionHostCall);
-        final controls = await host.invokeHook('activity', key: type, method: 'operationControls',
-            args: {'operation': const {'refs': []}}, timeout: const Duration(seconds: 10)) as List;
+        final controls =
+            await host.invokeHook(
+                  'activity',
+                  key: type,
+                  method: 'operationControls',
+                  args: {
+                    'operation': const {'refs': []},
+                  },
+                  timeout: const Duration(seconds: 10),
+                )
+                as List;
         final elements = (((controls.single as Map)['input'] as Map)['form'] as Map)['elements'] as List;
         final field = elements.cast<Map>().firstWhere((e) => e['key'] == 'ourSection');
         expect(field['value'], 'ENY');
@@ -366,8 +498,17 @@ void main() {
         // `nullHostCall` RESOLVES with null (see its doc) — settings present,
         // no section in them. The rejecting case is the test below.
         final host = await hostFor(type);
-        final controls = await host.invokeHook('activity', key: type, method: 'operationControls',
-            args: {'operation': const {'refs': []}}, timeout: const Duration(seconds: 10)) as List;
+        final controls =
+            await host.invokeHook(
+                  'activity',
+                  key: type,
+                  method: 'operationControls',
+                  args: {
+                    'operation': const {'refs': []},
+                  },
+                  timeout: const Duration(seconds: 10),
+                )
+                as List;
         final elements = (((controls.single as Map)['input'] as Map)['form'] as Map)['elements'] as List;
         final field = elements.cast<Map>().firstWhere((e) => e['key'] == 'ourSection');
         expect(field['value'], '');
@@ -379,12 +520,20 @@ void main() {
       // the extension's catch breaks nothing that any test can see.
       test('$type survives a host that rejects getSettings', () async {
         final host = await sharedHost([type], cacheKey: 'no-host-call');
-        final controls = await host.invokeHook('activity', key: type, method: 'operationControls',
-            args: {'operation': const {'refs': []}}, timeout: const Duration(seconds: 10)) as List;
+        final controls =
+            await host.invokeHook(
+                  'activity',
+                  key: type,
+                  method: 'operationControls',
+                  args: {
+                    'operation': const {'refs': []},
+                  },
+                  timeout: const Duration(seconds: 10),
+                )
+                as List;
         final elements = (((controls.single as Map)['input'] as Map)['form'] as Map)['elements'] as List;
         final field = elements.cast<Map>().firstWhere((e) => e['key'] == 'ourSection');
-        expect(field['value'], '',
-            reason: 'a rejected getSettings must cost the default, never the setup form');
+        expect(field['value'], '', reason: 'a rejected getSettings must cost the default, never the setup form');
       }, timeout: const Timeout(Duration(seconds: 60)));
 
       // The reason the default is sticky. FormRenderer re-applies `value` when
@@ -407,8 +556,17 @@ void main() {
         // bundle, so a shared host would carry another test's read into this one.
         final host = await sharedHost([type], onHostCall: flaky, cacheKey: 'flaky-settings-$type');
         Future<Object?> sectionValue() async {
-          final controls = await host.invokeHook('activity', key: type, method: 'operationControls',
-              args: {'operation': const {'refs': []}}, timeout: const Duration(seconds: 10)) as List;
+          final controls =
+              await host.invokeHook(
+                    'activity',
+                    key: type,
+                    method: 'operationControls',
+                    args: {
+                      'operation': const {'refs': []},
+                    },
+                    timeout: const Duration(seconds: 10),
+                  )
+                  as List;
           final elements = (((controls.single as Map)['input'] as Map)['form'] as Map)['elements'] as List;
           return elements.cast<Map>().firstWhere((e) => e['key'] == 'ourSection')['value'];
         }
@@ -426,9 +584,7 @@ void main() {
     // these tests will still be running in.
     Future<List<Map<String, dynamic>>> suggest(String key, String? term) async {
       final host = await hostFor(key);
-      final result = await host.invokeHook('activity', key: key, method: 'suggest',
-          args: {'searchTerm': ?term},
-          timeout: const Duration(seconds: 15)) as List;
+      final result = await host.invokeHook('activity', key: key, method: 'suggest', args: {'searchTerm': ?term}, timeout: const Duration(seconds: 15)) as List;
       return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
     }
 
@@ -512,8 +668,17 @@ void main() {
     // read "3A ENY" with no clue which contest it belonged to.
     Future<Map<String, dynamic>> decorate(String key, Map<String, dynamic> ref) async {
       final host = await hostFor(key);
-      final result = await host.invokeHook('ref:$key', key: key, method: 'decorateRef',
-          args: {'ref': {'type': key, ...ref}}, timeout: const Duration(seconds: 10)) as Map;
+      final result =
+          await host.invokeHook(
+                'ref:$key',
+                key: key,
+                method: 'decorateRef',
+                args: {
+                  'ref': {'type': key, ...ref},
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as Map;
       return result.cast<String, dynamic>();
     }
 
@@ -587,13 +752,16 @@ void main() {
       // The first version reported the running total per day and re-added the
       // whole bonus to each one.
       final host = await hostFor('fd');
-      final result = await score(host, 'fd', setup: {
-        'ourPower': '500W', 'bonusTransmitters': 2, 'bonusEmergencyPower': true,
-      }, qsos: [
-        contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a', day: 27),
-        contestQso('fd', 'K1BBB', band: '20m', mode: 'SSB', uuid: 'b', day: 28),
-        contestQso('fd', 'K1CCC', band: '20m', mode: 'SSB', uuid: 'c', day: 28),
-      ]);
+      final result = await score(
+        host,
+        'fd',
+        setup: {'ourPower': '500W', 'bonusTransmitters': 2, 'bonusEmergencyPower': true},
+        qsos: [
+          contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a', day: 27),
+          contestQso('fd', 'K1BBB', band: '20m', mode: 'SSB', uuid: 'b', day: 28),
+          contestQso('fd', 'K1CCC', band: '20m', mode: 'SSB', uuid: 'c', day: 28),
+        ],
+      );
 
       final days = (result['daySections'] as List).cast<Map>();
       expect(days, hasLength(2));
@@ -611,20 +779,29 @@ void main() {
       // `?? 'PHONE'` fallback was dead: a mode-less QSO scored 2 and dupe-keyed
       // as DATA, letting a later real SSB contact score again.
       final host = await hostFor('fd');
-      final result = await score(host, 'fd', setup: const {}, qsos: [
-        {
-          'uuid': 'a', 'their': {'call': 'K1AAA'}, 'band': '20m', 'mode': '',
-          'startAtMillis': DateTime.utc(2026, 6, 27, 18).millisecondsSinceEpoch,
-          'refs': [{'type': 'fd'}],
-        },
-        contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'b', day: 27),
-      ]);
+      final result = await score(
+        host,
+        'fd',
+        setup: const {},
+        qsos: [
+          {
+            'uuid': 'a',
+            'their': {'call': 'K1AAA'},
+            'band': '20m',
+            'mode': '',
+            'startAtMillis': DateTime.utc(2026, 6, 27, 18).millisecondsSinceEpoch,
+            'refs': [
+              {'type': 'fd'},
+            ],
+          },
+          contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'b', day: 27),
+        ],
+      );
       expect((result['qsoScores'] as Map)['a']['value'], 1, reason: 'phone rate, not the data rate');
       // It keeps its own dupe bucket rather than being silently filed as DATA:
       // we do not know the mode, so claiming it matches the later SSB contact
       // would be inventing a rule. What matters is that it is not worth 2.
-      expect((result['qsoScores'] as Map)['b']['value'], 1,
-          reason: 'the real SSB contact still scores on its own merits');
+      expect((result['qsoScores'] as Map)['b']['value'], 1, reason: 'the real SSB contact still scores on its own merits');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('WFD objectives carry their own weights, not one each', () async {
@@ -632,9 +809,12 @@ void main() {
       // first — capping a well-equipped station at x8 instead of x33.
       final host = await hostFor('wfd');
       Future<int> totalWith(Map<String, dynamic> setup) async {
-        final result = await score(host, 'wfd', setup: setup, qsos: [
-          contestQso('wfd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a'),
-        ]);
+        final result = await score(
+          host,
+          'wfd',
+          setup: setup,
+          qsos: [contestQso('wfd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a')],
+        );
         return contestTally(result)!['total'] as int;
       }
 
@@ -646,24 +826,44 @@ void main() {
       // All twelve is the published maximum of 33.
       final all = {
         for (final k in [
-          'objectiveAltPower','objectiveAwayFromHome','objectiveMultipleAntennas',
-          'objectiveFmSatellite','objectiveSsbCwSatellite','objectiveWinlink',
-          'objectiveSpecialBulletin','objectiveSixBands','objectiveTwelveBands',
-          'objectiveMultipleModes','objectiveQrp','objectiveSixContinuousHours',
-        ]) k: true,
+          'objectiveAltPower',
+          'objectiveAwayFromHome',
+          'objectiveMultipleAntennas',
+          'objectiveFmSatellite',
+          'objectiveSsbCwSatellite',
+          'objectiveWinlink',
+          'objectiveSpecialBulletin',
+          'objectiveSixBands',
+          'objectiveTwelveBands',
+          'objectiveMultipleModes',
+          'objectiveQrp',
+          'objectiveSixContinuousHours',
+        ])
+          k: true,
       };
       expect(await totalWith(all), 33);
     }, timeout: const Timeout(Duration(seconds: 150)));
 
     test('WFD satellite contacts earn the multiplier but no QSO points', () async {
       final host = await hostFor('wfd');
-      final result = await score(host, 'wfd', setup: const {}, qsos: [
-        {
-          'uuid': 'a', 'their': {'call': 'K1AAA'}, 'band': '2m', 'mode': 'SSB',
-          'startAtMillis': DateTime.utc(2026, 1, 24, 19).millisecondsSinceEpoch,
-          'refs': [{'type': 'wfd'}, {'type': 'satellite', 'ref': 'SO-50/145.85/fm'}],
-        },
-      ]);
+      final result = await score(
+        host,
+        'wfd',
+        setup: const {},
+        qsos: [
+          {
+            'uuid': 'a',
+            'their': {'call': 'K1AAA'},
+            'band': '2m',
+            'mode': 'SSB',
+            'startAtMillis': DateTime.utc(2026, 1, 24, 19).millisecondsSinceEpoch,
+            'refs': [
+              {'type': 'wfd'},
+              {'type': 'satellite', 'ref': 'SO-50/145.85/fm'},
+            ],
+          },
+        ],
+      );
       expect((result['qsoScores'] as Map)['a']['value'], 0);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
@@ -673,41 +873,66 @@ void main() {
       // adding from the search REPLACED a configured setup, silently losing
       // class, section, power and every bonus.
       final host = await hostFor('fd');
-      final controls = await host.invokeHook('activity', key: 'fd', method: 'operationControls',
-          args: {'operation': const {'refs': []}}, timeout: const Duration(seconds: 10)) as List;
+      final controls =
+          await host.invokeHook(
+                'activity',
+                key: 'fd',
+                method: 'operationControls',
+                args: {
+                  'operation': const {'refs': []},
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as List;
       final elements = (((controls.single as Map)['input'] as Map)['form'] as Map)['elements'] as List;
-      final refField = elements.cast<Map>().firstWhere(
-          (e) => e['key'] == 'ref', orElse: () => throw StateError('the form must write `ref`'));
+      final refField = elements.cast<Map>().firstWhere((e) => e['key'] == 'ref', orElse: () => throw StateError('the form must write `ref`'));
       final formYear = refField['value'] as String;
 
-      final suggestions = await host.invokeHook('activity', key: 'fd', method: 'suggest',
-          args: {'searchTerm': 'field day'}, timeout: const Duration(seconds: 10)) as List;
-      expect((suggestions.single as Map)['ref'], formYear,
-          reason: 'the form and the search must agree on which running this is');
+      final suggestions =
+          await host.invokeHook('activity', key: 'fd', method: 'suggest', args: {'searchTerm': 'field day'}, timeout: const Duration(seconds: 10)) as List;
+      expect((suggestions.single as Map)['ref'], formYear, reason: 'the form and the search must agree on which running this is');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('the section notice is a key, and fires only on a new section', () async {
       // A display name pushed through the notice channel reaches a Spanish
       // operator in English and lands in the score cache that way.
       final host = await hostFor('fd');
-      final result = await score(host, 'fd', setup: const {}, qsos: [
-        contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', section: 'ENY', uuid: 'a'),
-        contestQso('fd', 'K1BBB', band: '40m', mode: 'SSB', section: 'ENY', uuid: 'b'),
-      ]);
+      final result = await score(
+        host,
+        'fd',
+        setup: const {},
+        qsos: [
+          contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', section: 'ENY', uuid: 'a'),
+          contestQso('fd', 'K1BBB', band: '40m', mode: 'SSB', section: 'ENY', uuid: 'b'),
+        ],
+      );
       final scores = result['qsoScores'] as Map;
       expect(scores['a']['notices'], contains('newSection'));
       expect(scores['a']['notices'], isNot(contains('Eastern New York')));
-      expect(scores['b']['notices'] ?? const [], isNot(contains('newSection')),
-          reason: 'the second ENY contact is not news');
+      expect(scores['b']['notices'] ?? const [], isNot(contains('newSection')), reason: 'the second ENY contact is not news');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a DX callsign is not offered US sections', () async {
       final host = await hostFor('fd');
       Future<List> preferredFor(String call, String entity) async {
-        final controls = await host.invokeHook('activity', key: 'fd', method: 'loggingControls', args: {
-          'operation': {'refs': [{'type': 'fd'}]},
-          'qso': {'their': {'call': call, 'entityPrefix': entity}},
-        }, timeout: const Duration(seconds: 10)) as List;
+        final controls =
+            await host.invokeHook(
+                  'activity',
+                  key: 'fd',
+                  method: 'loggingControls',
+                  args: {
+                    'operation': {
+                      'refs': [
+                        {'type': 'fd'},
+                      ],
+                    },
+                    'qso': {
+                      'their': {'call': call, 'entityPrefix': entity},
+                    },
+                  },
+                  timeout: const Duration(seconds: 10),
+                )
+                as List;
         final section = controls.cast<Map>().firstWhere((c) => c['key'] == 'fd/section');
         return ((section['input'] as Map)['preferredCodes'] as List);
       }
@@ -722,18 +947,33 @@ void main() {
 
     test('the exchange is written onto the QSO for the log column', () async {
       final host = await hostFor('fd');
-      final patch = await host.invokeHook('activity', key: 'fd', method: 'processQsoBeforeSave', args: {
-        'qso': contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A', section: 'ENY'),
-        'operation': {'refs': [{'type': 'fd', 'ourClass': '1D'}]},
-      }, timeout: const Duration(seconds: 10)) as Map?;
+      final patch =
+          await host.invokeHook(
+                'activity',
+                key: 'fd',
+                method: 'processQsoBeforeSave',
+                args: {
+                  'qso': contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A', section: 'ENY'),
+                  'operation': {
+                    'refs': [
+                      {'type': 'fd', 'ourClass': '1D'},
+                    ],
+                  },
+                },
+                timeout: const Duration(seconds: 10),
+              )
+              as Map?;
       expect((patch?['their'] as Map?)?['exchange'], '2A ENY');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('scores are rendered with thousands separators', () async {
       final host = await hostFor('fd');
-      final result = await score(host, 'fd', setup: {
-        'ourPower': '500W', 'bonusTransmitters': 20, 'bonusEmergencyPower': true,
-      }, qsos: [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a')]);
+      final result = await score(
+        host,
+        'fd',
+        setup: {'ourPower': '500W', 'bonusTransmitters': 20, 'bonusEmergencyPower': true},
+        qsos: [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a')],
+      );
       expect(contestTally(result)!['summary'], contains('2,001'));
     }, timeout: const Timeout(Duration(seconds: 60)));
   });

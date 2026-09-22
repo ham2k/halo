@@ -31,28 +31,50 @@ void main() {
 
   // summitslist.csv's real column order.
   const headers = [
-    'SummitCode', 'AssociationName', 'RegionName', 'SummitName', 'AltM', 'AltFt',
-    'GridRef1', 'GridRef2', 'Longitude', 'Latitude', 'Points', 'BonusPoints',
-    'ValidFrom', 'ValidTo', 'ActivationCount', 'ActivationDate', 'ActivationCall',
+    'SummitCode',
+    'AssociationName',
+    'RegionName',
+    'SummitName',
+    'AltM',
+    'AltFt',
+    'GridRef1',
+    'GridRef2',
+    'Longitude',
+    'Latitude',
+    'Points',
+    'BonusPoints',
+    'ValidFrom',
+    'ValidTo',
+    'ActivationCount',
+    'ActivationDate',
+    'ActivationCall',
   ];
 
   // 31/12/2099 is SOTA's "never expires" sentinel; the mapper drops anything
   // whose ValidTo has passed, so every row here has to carry it.
   const fullRow = [
-    'W6/CT-001', 'USA - California', 'Central', 'Test Peak', '1200', '3937',
-    '', '', '-122.1', '37.5', '4', '0',
-    '01/01/2020', '31/12/2099', '0', '', '',
+    'W6/CT-001',
+    'USA - California',
+    'Central',
+    'Test Peak',
+    '1200',
+    '3937',
+    '',
+    '',
+    '-122.1',
+    '37.5',
+    '4',
+    '0',
+    '01/01/2020',
+    '31/12/2099',
+    '0',
+    '',
+    '',
   ];
 
   Future<List<Map<String, dynamic>>> mapCsv(Map<String, Object?> args) async {
     final host = await sharedHost(['sota']);
-    final result = await host.invokeHook(
-      'dataFile',
-      key: 'sota-all-summits',
-      method: 'mapCsvBatch',
-      args: args,
-      timeout: const Duration(seconds: 20),
-    ) as List;
+    final result = await host.invokeHook('dataFile', key: 'sota-all-summits', method: 'mapCsvBatch', args: args, timeout: const Duration(seconds: 20)) as List;
     return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
   }
 

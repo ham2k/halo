@@ -61,12 +61,7 @@ class AdifImportOutcome {
   /// answered in full.
   final int recordsWithFailedHooks;
 
-  const AdifImportOutcome({
-    required this.records,
-    this.failedHooks = const {},
-    this.recordsUnreachable = 0,
-    this.recordsWithFailedHooks = 0,
-  });
+  const AdifImportOutcome({required this.records, this.failedHooks = const {}, this.recordsUnreachable = 0, this.recordsWithFailedHooks = 0});
 
   /// Every record whose references may be short, however they came to be.
   int get recordsAtRisk => recordsUnreachable + recordsWithFailedHooks;
@@ -132,12 +127,7 @@ class AdifImportService {
       if (batchFailed.any((key) => key != '*')) withFailedHooks += batch.length;
       failed.addAll(batchFailed);
     }
-    return AdifImportOutcome(
-      records: records,
-      failedHooks: failed,
-      recordsUnreachable: unreachable,
-      recordsWithFailedHooks: withFailedHooks,
-    );
+    return AdifImportOutcome(records: records, failedHooks: failed, recordsUnreachable: unreachable, recordsWithFailedHooks: withFailedHooks);
   }
 
   Future<void> _applyBatch(ExtensionHost host, List<AdifRecord> batch, Set<String> failed) async {
@@ -186,9 +176,7 @@ class AdifImportService {
       // has lost track of which record is which, and applying the overlap
       // would put one QSO's references on another — drop the whole reply.
       if (value.length != batch.length) {
-        debugPrint(
-          '[extensions] adifImport hook $key returned ${value.length} results for ${batch.length} records',
-        );
+        debugPrint('[extensions] adifImport hook $key returned ${value.length} results for ${batch.length} records');
         failed.add(key);
         continue;
       }

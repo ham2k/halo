@@ -13,10 +13,12 @@ import 'package:ham2k_logger/views/notice_actions.dart';
 
 void main() {
   testWidgets('dialog action opens a modal via the global navigator', (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      navigatorKey: navigatorKey,
-      home: const Scaffold(body: SizedBox()),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigatorKey,
+        home: const Scaffold(body: SizedBox()),
+      ),
+    );
 
     handleNoticeAction('n', {
       'action': 'dialog',

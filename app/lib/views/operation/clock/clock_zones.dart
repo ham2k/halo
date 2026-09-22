@@ -29,10 +29,7 @@ List<Map<String, dynamic>>? _zoneOptions;
 /// argument, so an unmemoized call rebuilds 340-odd maps on every dependency
 /// change. The corollary: the list is fixed for the session, which is right
 /// because the database it reads only changes on a package bump.
-List<Map<String, dynamic>> clockZoneOptions({
-  required String utcLabel,
-  required String deviceLabel,
-}) {
+List<Map<String, dynamic>> clockZoneOptions({required String utcLabel, required String deviceLabel}) {
   final cached = _zoneOptions;
   if (cached != null) {
     // The labels are localized, and a locale change re-runs registration.
@@ -64,9 +61,9 @@ List<Map<String, dynamic>> clockZoneOptions({
 /// UTC and the device's own clock, which are not IANA zones and are always
 /// offered — including when the database is missing entirely.
 List<Map<String, dynamic>> _specialZoneOptions(String utcLabel, String deviceLabel) => [
-      {'label': utcLabel, 'value': utcZoneId},
-      {'label': deviceLabel, 'value': deviceZoneId},
-    ];
+  {'label': utcLabel, 'value': utcZoneId},
+  {'label': deviceLabel, 'value': deviceZoneId},
+];
 
 /// What one clock shows at one instant.
 @immutable

@@ -25,12 +25,50 @@ const defaultCwSpeedWpm = 20;
 /// it reaches the radio, because what an IC-7300 or an FTDX10 does with a
 /// character its keyer has no code for is not documented anywhere.
 const morseElements = <String, String>{
-  'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.', 'G': '--.', 'H': '....', 'I': '..',
-  'J': '.---', 'K': '-.-', 'L': '.-..', 'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
-  'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-', 'Y': '-.--', 'Z': '--..',
-  '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...',
-  '8': '---..', '9': '----.',
-  '.': '.-.-.-', ',': '--..--', '?': '..--..', '/': '-..-.', '=': '-...-', '+': '.-.-.', '-': '-....-', '@': '.--.-.',
+  'A': '.-',
+  'B': '-...',
+  'C': '-.-.',
+  'D': '-..',
+  'E': '.',
+  'F': '..-.',
+  'G': '--.',
+  'H': '....',
+  'I': '..',
+  'J': '.---',
+  'K': '-.-',
+  'L': '.-..',
+  'M': '--',
+  'N': '-.',
+  'O': '---',
+  'P': '.--.',
+  'Q': '--.-',
+  'R': '.-.',
+  'S': '...',
+  'T': '-',
+  'U': '..-',
+  'V': '...-',
+  'W': '.--',
+  'X': '-..-',
+  'Y': '-.--',
+  'Z': '--..',
+  '0': '-----',
+  '1': '.----',
+  '2': '..---',
+  '3': '...--',
+  '4': '....-',
+  '5': '.....',
+  '6': '-....',
+  '7': '--...',
+  '8': '---..',
+  '9': '----.',
+  '.': '.-.-.-',
+  ',': '--..--',
+  '?': '..--..',
+  '/': '-..-.',
+  '=': '-...-',
+  '+': '.-.-.',
+  '-': '-....-',
+  '@': '.--.-.',
 };
 
 /// [text] uppercased, with every character the keyers cannot send removed
@@ -262,13 +300,15 @@ class CwSendQueue {
   void _reportCurrent() {
     final current = _current;
     if (current == null) return;
-    onProgress?.call(CwSendProgress(
-      id: current.id,
-      text: current.text,
-      characterEnds: _currentEnds,
-      pending: [for (final m in _pending) m.text],
-      pendingIds: [for (final m in _pending) m.id],
-    ));
+    onProgress?.call(
+      CwSendProgress(
+        id: current.id,
+        text: current.text,
+        characterEnds: _currentEnds,
+        pending: [for (final m in _pending) m.text],
+        pendingIds: [for (final m in _pending) m.id],
+      ),
+    );
   }
 
   void _sendNext() {

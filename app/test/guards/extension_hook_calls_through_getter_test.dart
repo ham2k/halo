@@ -91,7 +91,8 @@ void main() {
     expect(
       offendersIn(File(_file).readAsStringSync()),
       isEmpty,
-      reason: 'Read `this.host`, not `_host`, wherever a hook is called: the test double can\n'
+      reason:
+          'Read `this.host`, not `_host`, wherever a hook is called: the test double can\n'
           'only stand in for the getter, and a hook call through the field answers empty\n'
           'under every fake instead of failing. Runtime management (setClockTravel,\n'
           'reloadBundle, setKV, lifecycle) stays on the field.',

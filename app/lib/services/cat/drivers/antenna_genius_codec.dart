@@ -208,7 +208,10 @@ class AgPort {
       auto: f['auto'] == '1',
       radioName: f['nickname']?.replaceAll('_', ' '),
       // Zero is "nothing to say", the same convention rxant and band use.
-      freqMHz: switch (double.tryParse(f['freq'] ?? '')) { 0 => null, final v => v },
+      freqMHz: switch (double.tryParse(f['freq'] ?? '')) {
+        0 => null,
+        final v => v,
+      },
       bandIndex: _selection(f['band']),
       transmitting: f['tx'] == '1',
       inhibited: f['inhibit'] == '1',
@@ -252,15 +255,7 @@ class AgAnnouncement {
   final int? ports;
   final int? antennas;
 
-  const AgAnnouncement({
-    required this.host,
-    required this.port,
-    this.serial,
-    this.name,
-    this.firmware,
-    this.ports,
-    this.antennas,
-  });
+  const AgAnnouncement({required this.host, required this.port, this.serial, this.name, this.firmware, this.ports, this.antennas});
 }
 
 /// Reads one discovery datagram, or null for anything that is not a usable

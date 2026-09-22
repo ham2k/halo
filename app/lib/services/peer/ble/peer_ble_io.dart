@@ -68,10 +68,7 @@ class UniversalBlePeerGateway implements PeerBleGateway {
     AvailabilityState central;
     try {
       central = await UniversalBle.getBluetoothAvailabilityState();
-      for (var attempt = 0;
-          (central == AvailabilityState.unknown || central == AvailabilityState.resetting) &&
-              attempt < _settleAttempts;
-          attempt++) {
+      for (var attempt = 0; (central == AvailabilityState.unknown || central == AvailabilityState.resetting) && attempt < _settleAttempts; attempt++) {
         await Future<void>.delayed(_settleStep);
         central = await UniversalBle.getBluetoothAvailabilityState();
       }
@@ -84,8 +81,7 @@ class UniversalBlePeerGateway implements PeerBleGateway {
       case AvailabilityState.poweredOff:
         return const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'Bluetooth is turned off');
       case AvailabilityState.unauthorized:
-        return const PeerBleReadiness(
-            canCentral: false, canPeripheral: false, problem: 'Bluetooth permission was denied');
+        return const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'Bluetooth permission was denied');
       case AvailabilityState.unsupported:
         return const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'No Bluetooth radio');
       case AvailabilityState.unknown:
@@ -93,8 +89,7 @@ class UniversalBlePeerGateway implements PeerBleGateway {
         // Still settling past the poll window — ask the transport to come
         // back rather than parking on a state that announces nothing when
         // it changes.
-        return const PeerBleReadiness(
-            canCentral: false, canPeripheral: false, problem: 'Bluetooth is starting up', transient: true);
+        return const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'Bluetooth is starting up', transient: true);
     }
 
     try {
@@ -102,8 +97,7 @@ class UniversalBlePeerGateway implements PeerBleGateway {
       // deliberately NOT part of this request.
       if (!await UniversalBle.hasPermissions()) {
         if (!requestPermission) {
-          return const PeerBleReadiness(
-              canCentral: false, canPeripheral: false, problem: 'Bluetooth permission not granted');
+          return const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'Bluetooth permission not granted');
         }
         await UniversalBle.requestPermissions();
         // Re-checked rather than trusting the request's outcome: whether a
@@ -111,8 +105,7 @@ class UniversalBlePeerGateway implements PeerBleGateway {
         // string that must be right is the one a real user produces by
         // tapping Deny on the prompt the sub-switch raised.
         if (!await UniversalBle.hasPermissions()) {
-          return const PeerBleReadiness(
-              canCentral: false, canPeripheral: false, problem: 'Bluetooth permission was denied');
+          return const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'Bluetooth permission was denied');
         }
       }
     } catch (e) {
@@ -132,9 +125,7 @@ class UniversalBlePeerGateway implements PeerBleGateway {
       // bearing: the peripheral manager has NO state-change event in the
       // plugin, so a one-shot query racing its power-on strands the
       // advertise role on '(unknown)' with nothing to ever re-check.
-      for (var attempt = 0;
-          state == PeripheralReadinessState.unknown && attempt < _settleAttempts;
-          attempt++) {
+      for (var attempt = 0; state == PeripheralReadinessState.unknown && attempt < _settleAttempts; attempt++) {
         await Future<void>.delayed(_settleStep);
         state = await UniversalBlePeripheral.getAvailabilityState();
       }
@@ -147,8 +138,7 @@ class UniversalBlePeerGateway implements PeerBleGateway {
       debugPrint('[peer] BLE peripheral availability check failed: $e');
       problem = 'This device can look for peers but cannot announce itself over Bluetooth';
     }
-    return PeerBleReadiness(
-        canCentral: true, canPeripheral: canPeripheral, problem: problem, transient: transient);
+    return PeerBleReadiness(canCentral: true, canPeripheral: canPeripheral, problem: problem, transient: transient);
   }
 
   // ---- peripheral role ----
@@ -159,24 +149,26 @@ class UniversalBlePeerGateway implements PeerBleGateway {
     await _installServerPlumbing();
     try {
       await UniversalBlePeripheral.clearServices();
-      await UniversalBlePeripheral.addService(BlePeripheralService(
-        uuid: peerBleServiceUuid,
-        characteristics: [
-          // Open permissions and no encryption requirement anywhere: an SMP
-          // security request is what pops the OS pairing dialog, and the app
-          // brings its own trust layer (TOFU + the session handshake).
-          BlePeripheralCharacteristic(
-            uuid: peerBleRxUuid,
-            properties: [CharacteristicProperty.write, CharacteristicProperty.writeWithoutResponse],
-            permissions: [PeripheralAttributePermission.readable, PeripheralAttributePermission.writeable],
-          ),
-          BlePeripheralCharacteristic(
-            uuid: peerBleTxUuid,
-            properties: [CharacteristicProperty.notify],
-            permissions: [PeripheralAttributePermission.readable],
-          ),
-        ],
-      ));
+      await UniversalBlePeripheral.addService(
+        BlePeripheralService(
+          uuid: peerBleServiceUuid,
+          characteristics: [
+            // Open permissions and no encryption requirement anywhere: an SMP
+            // security request is what pops the OS pairing dialog, and the app
+            // brings its own trust layer (TOFU + the session handshake).
+            BlePeripheralCharacteristic(
+              uuid: peerBleRxUuid,
+              properties: [CharacteristicProperty.write, CharacteristicProperty.writeWithoutResponse],
+              permissions: [PeripheralAttributePermission.readable, PeripheralAttributePermission.writeable],
+            ),
+            BlePeripheralCharacteristic(
+              uuid: peerBleTxUuid,
+              properties: [CharacteristicProperty.notify],
+              permissions: [PeripheralAttributePermission.readable],
+            ),
+          ],
+        ),
+      );
       await UniversalBlePeripheral.startAdvertising(services: [peerBleServiceUuid], localName: localName);
       _serverStarted = true;
     } catch (e) {
@@ -199,9 +191,7 @@ class UniversalBlePeerGateway implements PeerBleGateway {
       // handler, and splicing a partial buffer into the stream desyncs the
       // sender's own link; writes to any other characteristic are not ours
       // to interpret at all.
-      final isFrameBytes = offset == 0 &&
-          value != null &&
-          BleUuidParser.compareStrings(characteristicId, peerBleRxUuid);
+      final isFrameBytes = offset == 0 && value != null && BleUuidParser.compareStrings(characteristicId, peerBleRxUuid);
       if (isFrameBytes && !_serverEvents.isClosed) {
         _serverEvents.add(PeerBleWriteReceived(deviceId, value));
       }
@@ -209,9 +199,7 @@ class UniversalBlePeerGateway implements PeerBleGateway {
     });
     _subscriptionSub = UniversalBlePeripheral.characteristicSubscriptionStream.listen((event) {
       if (_serverEvents.isClosed) return;
-      _serverEvents.add(event.isSubscribed
-          ? PeerBleCentralSubscribed(event.deviceId)
-          : PeerBleCentralUnsubscribed(event.deviceId));
+      _serverEvents.add(event.isSubscribed ? PeerBleCentralSubscribed(event.deviceId) : PeerBleCentralUnsubscribed(event.deviceId));
     });
     _connectionSub = UniversalBlePeripheral.connectionStateStream.listen((event) {
       if (event.connected || _serverEvents.isClosed) return;
@@ -354,10 +342,7 @@ class UniversalBlePeerGateway implements PeerBleGateway {
   Stream<PeerBleSighting> get sightings => _sightings.stream;
 
   @override
-  Future<PeerBleClientConnection> connect(
-    String addressId, {
-    required void Function(Uint8List packet) onPacket,
-  }) async {
+  Future<PeerBleClientConnection> connect(String addressId, {required void Function(Uint8List packet) onPacket}) async {
     await UniversalBle.connect(addressId, timeout: const Duration(seconds: 15));
     StreamSubscription<Uint8List>? notifySub;
     try {
@@ -411,17 +396,14 @@ class _UniversalBleClientConnection implements PeerBleClientConnection {
   final int chunkLimit;
 
   @override
-  Future<void> write(Uint8List packet) =>
-      UniversalBle.write(_deviceId, peerBleServiceUuid, peerBleRxUuid, packet, withoutResponse: true);
+  Future<void> write(Uint8List packet) => UniversalBle.write(_deviceId, peerBleServiceUuid, peerBleRxUuid, packet, withoutResponse: true);
 
   @override
   Future<void> get disconnected =>
       // `orElse` keeps the contract's "never an error": without it, the
       // stream closing with no disconnect event completes this future with
       // a StateError nobody handles.
-      UniversalBle.connectionStream(_deviceId)
-          .firstWhere((connected) => !connected, orElse: () => false)
-          .then((_) {});
+      UniversalBle.connectionStream(_deviceId).firstWhere((connected) => !connected, orElse: () => false).then((_) {});
 
   @override
   Future<void> disconnect() async {

@@ -109,11 +109,7 @@ class _ScreenSharePickerState extends State<_ScreenSharePicker> {
   Widget build(BuildContext context) {
     final t = context.t.settings.peers;
     final offered = widget.services.settings.peerSharedScreenIds.toSet();
-    final byKind = <String, List<PeerScreenSource>>{
-      PeerScreenSourceKind.display: [],
-      PeerScreenSourceKind.app: [],
-      PeerScreenSourceKind.window: [],
-    };
+    final byKind = <String, List<PeerScreenSource>>{PeerScreenSourceKind.display: [], PeerScreenSourceKind.app: [], PeerScreenSourceKind.window: []};
     for (final source in _screens.availableSources) {
       (byKind[source.kind] ?? byKind[PeerScreenSourceKind.window]!).add(source);
     }
@@ -125,10 +121,7 @@ class _ScreenSharePickerState extends State<_ScreenSharePicker> {
     // cares about are the first to ask for a thumbnail.
     for (final kind in byKind.keys) {
       final sources = byKind[kind]!;
-      byKind[kind] = [
-        ...sources.where((s) => _offeredOnOpen.contains(s.id)),
-        ...sources.where((s) => !_offeredOnOpen.contains(s.id)),
-      ];
+      byKind[kind] = [...sources.where((s) => _offeredOnOpen.contains(s.id)), ...sources.where((s) => !_offeredOnOpen.contains(s.id))];
     }
 
     return DefaultTabController(
@@ -150,10 +143,7 @@ class _ScreenSharePickerState extends State<_ScreenSharePicker> {
               label: t.screenRefresh,
               button: true,
               child: IconButton(
-                icon: _refreshing
-                    ? const SizedBox.square(
-                        dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Icon(MdiIcons.refresh),
+                icon: _refreshing ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(MdiIcons.refresh),
                 onPressed: _refreshing ? null : () => unawaited(_refresh()),
               ),
             ),
@@ -186,8 +176,7 @@ class _ScreenSharePickerState extends State<_ScreenSharePicker> {
               if (_screens.error case final problem?)
                 ListTile(
                   dense: true,
-                  leading: Icon(MdiIcons.alertCircleOutline,
-                      color: Theme.of(context).colorScheme.error),
+                  leading: Icon(MdiIcons.alertCircleOutline, color: Theme.of(context).colorScheme.error),
                   title: Text(context.t.settings.peers.screenProblem(error: problem)),
                 ),
               TabBar(
@@ -208,17 +197,8 @@ class _ScreenSharePickerState extends State<_ScreenSharePicker> {
               Expanded(
                 child: TabBarView(
                   children: [
-                    for (final kind in const [
-                      PeerScreenSourceKind.display,
-                      PeerScreenSourceKind.app,
-                      PeerScreenSourceKind.window,
-                    ])
-                      _SourceGrid(
-                        sources: byKind[kind]!,
-                        offered: offered,
-                        screens: _screens,
-                        onToggle: (source, value) => unawaited(_toggle(source, value)),
-                      ),
+                    for (final kind in const [PeerScreenSourceKind.display, PeerScreenSourceKind.app, PeerScreenSourceKind.window])
+                      _SourceGrid(sources: byKind[kind]!, offered: offered, screens: _screens, onToggle: (source, value) => unawaited(_toggle(source, value))),
                   ],
                 ),
               ),
@@ -228,10 +208,7 @@ class _ScreenSharePickerState extends State<_ScreenSharePicker> {
         // The `cancel:` slot, not `actions:` — every toggle in here autosaves,
         // so Done is the way OUT rather than a commit, and only that slot gets
         // the gap that keeps a dismissal off a primary action.
-        cancel: TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.t.common.done),
-        ),
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
       ),
     );
   }
@@ -243,12 +220,7 @@ class _SourceGrid extends StatelessWidget {
   final PeerScreens screens;
   final void Function(PeerScreenSource, bool) onToggle;
 
-  const _SourceGrid({
-    required this.sources,
-    required this.offered,
-    required this.screens,
-    required this.onToggle,
-  });
+  const _SourceGrid({required this.sources, required this.offered, required this.screens, required this.onToggle});
 
   @override
   Widget build(BuildContext context) {

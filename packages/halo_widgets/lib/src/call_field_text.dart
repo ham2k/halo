@@ -86,10 +86,7 @@ class CallFieldText {
   /// without replacing it.
   Iterable<String> get callsInField {
     final segments = isStack ? text.split('//') : [text];
-    return segments
-        .expand((segment) => segment.split(','))
-        .map((s) => s.trim().toUpperCase())
-        .where((s) => s.isNotEmpty);
+    return segments.expand((segment) => segment.split(',')).map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty);
   }
 
   /// The single call that's actually relevant right now — the whole field
@@ -117,10 +114,7 @@ class CallFieldText {
         // "no selection" and picks the segment's LAST comma entry instead of
         // its first. A genuinely unfocused field keeps its own negative
         // offset, where that last-entry fallback is the intended answer.
-        return commaSegmentAtCursor(
-          stack.segments[picked.index],
-          cursor < 0 ? cursor : math.max(0, cursor - stack.starts[picked.index]),
-        );
+        return commaSegmentAtCursor(stack.segments[picked.index], cursor < 0 ? cursor : math.max(0, cursor - stack.starts[picked.index]));
       }
       return picked.calls.first;
     }
@@ -201,11 +195,7 @@ class CallFieldText {
     if (!isStack) return null;
     final stack = stackSegments();
     for (var i = stack.cursorIndex; i >= 0; i--) {
-      final calls = stack.segments[i]
-          .split(',')
-          .map((s) => s.trim().toUpperCase())
-          .where((s) => s.isNotEmpty)
-          .toList();
+      final calls = stack.segments[i].split(',').map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty).toList();
       if (calls.isNotEmpty && calls.every(looksLikeCallsign)) {
         final remainder = [...stack.segments]..removeAt(i);
         return (calls: calls, remainder: remainder.join('//'), index: i);

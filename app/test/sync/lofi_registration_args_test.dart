@@ -21,13 +21,7 @@ class _RecordingHost implements ExtensionHost {
   final calls = <({String method, Object? args})>[];
 
   @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
+  Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     calls.add((method: method, args: args));
     return {'push_channel_name': 'chan', 'webhook_client_token': 'signed--token'};
   }
@@ -39,8 +33,7 @@ class _RecordingHost implements ExtensionHost {
     Object? args,
     Duration timeout = const Duration(seconds: 10),
     bool partialOnTimeout = false,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

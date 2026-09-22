@@ -13,31 +13,19 @@ import 'package:ham2k_logger/tools/sync_account_identity.dart';
 
 void main() {
   test('the email is the identity, even when a callsign is present', () {
-    expect(
-      syncAccountIdentity({'uuid': 'abc', 'call': 'N0CALL', 'email': 'me@example.com'}),
-      'me@example.com',
-    );
+    expect(syncAccountIdentity({'uuid': 'abc', 'call': 'N0CALL', 'email': 'me@example.com'}), 'me@example.com');
   });
 
   test('a pending email outranks the confirmed one, marked as pending', () {
-    expect(
-      syncAccountIdentity({'email': 'old@example.com', 'pending_email': 'new@example.com'}),
-      'new@example.com (pending confirmation)',
-    );
+    expect(syncAccountIdentity({'email': 'old@example.com', 'pending_email': 'new@example.com'}), 'new@example.com (pending confirmation)');
   });
 
   test('a pending email equal to the confirmed one is not pending at all', () {
-    expect(
-      syncAccountIdentity({'email': 'me@example.com', 'pending_email': 'me@example.com'}),
-      'me@example.com',
-    );
+    expect(syncAccountIdentity({'email': 'me@example.com', 'pending_email': 'me@example.com'}), 'me@example.com');
   });
 
   test('no email: anonymous, identified by the uuid prefix — not the callsign', () {
-    expect(
-      syncAccountIdentity({'uuid': '0a1b2c3d-4e5f-6789-abcd-ef0123456789', 'call': 'N0CALL'}),
-      'Anonymous Account (#0A1B2C3D)',
-    );
+    expect(syncAccountIdentity({'uuid': '0a1b2c3d-4e5f-6789-abcd-ef0123456789', 'call': 'N0CALL'}), 'Anonymous Account (#0A1B2C3D)');
   });
 
   test('no identity material at all returns null for the caller to fall back', () {
@@ -46,13 +34,7 @@ void main() {
   });
 
   test('includePending: false yields the confirmed email — for rows whose tap acts on it', () {
-    expect(
-      syncAccountIdentity(
-        {'email': 'old@example.com', 'pending_email': 'new@example.com'},
-        includePending: false,
-      ),
-      'old@example.com',
-    );
+    expect(syncAccountIdentity({'email': 'old@example.com', 'pending_email': 'new@example.com'}, includePending: false), 'old@example.com');
   });
 
   // No "Linked as" prefix: the row is already titled "Account". The short id
@@ -71,11 +53,7 @@ void main() {
   test('label: a pending email folds the short id into its own parenthesis', () {
     expect(
       syncAccountLabel({
-        'current_account': {
-          'uuid': '0a1b2c3d-4e5f',
-          'email': 'old@example.com',
-          'pending_email': 'new@example.com',
-        },
+        'current_account': {'uuid': '0a1b2c3d-4e5f', 'email': 'old@example.com', 'pending_email': 'new@example.com'},
       }),
       'new@example.com (pending confirmation - #0A1B2C3D)',
     );
@@ -93,11 +71,7 @@ void main() {
   test('label: a pending email equal to the confirmed one is not pending', () {
     expect(
       syncAccountLabel({
-        'current_account': {
-          'uuid': '0a1b2c3d-4e5f',
-          'email': 'me@example.com',
-          'pending_email': 'me@example.com',
-        },
+        'current_account': {'uuid': '0a1b2c3d-4e5f', 'email': 'me@example.com', 'pending_email': 'me@example.com'},
       }),
       'me@example.com (#0A1B2C3D)',
     );

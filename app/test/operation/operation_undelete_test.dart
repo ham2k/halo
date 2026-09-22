@@ -32,9 +32,13 @@ void main() {
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
     await services.operations.softDelete(operation.uuid);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: OperationView(services: services, operationUuid: operation.uuid)),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     return (services, operation.uuid);
   }
@@ -91,8 +95,11 @@ void main() {
 
     expect(notice, findsOneWidget);
     expect(callField.hitTestable(), findsNothing, reason: 'a tap must not reach the logging fields');
-    expect(FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<ExcludeFocus>(), isNull,
-        reason: 'nor may the keyboard: the call field autofocuses, and Enter logs');
+    expect(
+      FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<ExcludeFocus>(),
+      isNull,
+      reason: 'nor may the keyboard: the call field autofocuses, and Enter logs',
+    );
 
     await tester.tap(find.widgetWithText(FilledButton, 'Undelete Operation'));
     await tester.pumpAndSettle();

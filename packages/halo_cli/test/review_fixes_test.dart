@@ -24,16 +24,14 @@ void main() {
   });
   tearDown(() => temp.deleteSync(recursive: true));
 
-  Map<String, Object?> readConfig() =>
-      (jsonDecode(File(configPath).readAsStringSync()) as Map).cast<String, Object?>();
+  Map<String, Object?> readConfig() => (jsonDecode(File(configPath).readAsStringSync()) as Map).cast<String, Object?>();
 
   /// Names a throwaway `--cache` alongside `--config`: without it the run
   /// falls back to `defaultCacheDir()` and opens the DEVELOPER'S own
   /// reference database — see account_test.dart's own `run` for what that
   /// costs. `--config` alone is deliberately still exercised below by the
   /// tests about `--config` itself, which pass their own argument lists.
-  Future<int> run(List<String> args) =>
-      runHaloExt(['--config', configPath, '--cache', '${temp.path}/cache', ...args]);
+  Future<int> run(List<String> args) => runHaloExt(['--config', configPath, '--cache', '${temp.path}/cache', ...args]);
 
   group('the environment overrides one run, never the file', () {
     test('a HALO_SETTING_ override is not written back by an unrelated save', () {
@@ -41,13 +39,12 @@ void main() {
       // `HALO_SETTING_developerMode=true …` run plus any save — an
       // extension's setSettings, an `account set` — turns a one-off override
       // into stored state the operator never chose and cannot see.
-      File(configPath).writeAsStringSync(jsonEncode({
-        'settings': {'operatorCall': 'KI2D'}
-      }));
-      final config = CliConfig.load(
-        path: configPath,
-        environment: {'HALO_SETTING_developerMode': 'true'},
+      File(configPath).writeAsStringSync(
+        jsonEncode({
+          'settings': {'operatorCall': 'KI2D'},
+        }),
       );
+      final config = CliConfig.load(path: configPath, environment: {'HALO_SETTING_developerMode': 'true'});
       expect(config.settings['developerMode'], isTrue, reason: 'the override applies to this run');
 
       config.setExtensionSettings('pota', {'showSpots': true});
@@ -69,19 +66,12 @@ void main() {
     test('a reader still refuses a path that is not there', () async {
       // The typo guard: proceeding with empty credentials looks exactly like
       // an extension that has none.
-      expect(
-        await runHaloExt(
-            ['--config', '${temp.path}/nope.json', '--cache', '${temp.path}/cache', 'account', 'list']),
-        2,
-      );
+      expect(await runHaloExt(['--config', '${temp.path}/nope.json', '--cache', '${temp.path}/cache', 'account', 'list']), 2);
     });
 
     test('a config that is not a JSON object is a config error, not a crash', () {
       File(configPath).writeAsStringSync('[]');
-      expect(
-        () => CliConfig.load(path: configPath),
-        throwsA(predicate((e) => '$e'.contains('must hold a JSON object'))),
-      );
+      expect(() => CliConfig.load(path: configPath), throwsA(predicate((e) => '$e'.contains('must hold a JSON object'))));
     });
   });
 
@@ -114,14 +104,10 @@ void main() {
     });
 
     test('while the declared fields go through from either source', () {
-      expect(
-        assignmentsFor(
-          account: qrz,
-          commandLine: const ['username=N0DEV'],
-          stdinLines: const ['password=hunter2'],
-        ),
-        {'username': 'N0DEV', 'password': 'hunter2'},
-      );
+      expect(assignmentsFor(account: qrz, commandLine: const ['username=N0DEV'], stdinLines: const ['password=hunter2']), {
+        'username': 'N0DEV',
+        'password': 'hunter2',
+      });
     });
 
     test('a value containing = keeps it', () {

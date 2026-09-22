@@ -32,18 +32,17 @@ CatalogEntry _entry(
   List<String> keywords = const [],
   List<String> hooks = const [],
   ExtensionRelevance? relevance,
-}) =>
-    CatalogEntry(
-      key: key,
-      name: name,
-      version: '1.0.0',
-      sha256: 'a' * 64,
-      bundleUrl: Uri.parse('https://catalog.example/api/v1/extensions/$key/versions/1.0.0/bundle'),
-      description: description,
-      keywords: keywords,
-      hooks: hooks,
-      relevance: relevance,
-    );
+}) => CatalogEntry(
+  key: key,
+  name: name,
+  version: '1.0.0',
+  sha256: 'a' * 64,
+  bundleUrl: Uri.parse('https://catalog.example/api/v1/extensions/$key/versions/1.0.0/bundle'),
+  description: description,
+  keywords: keywords,
+  hooks: hooks,
+  relevance: relevance,
+);
 
 /// Counts what the sheet asks of the catalog, and answers whatever the test
 /// set — including nothing, which is what an unreachable catalog answers.
@@ -71,10 +70,7 @@ class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
   _NoActivityExtensions() : super(FakeExtensionHost({}));
 
   @override
-  Future<ControlsResult> operationControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
       (controls: const <Map<String, dynamic>>[], loadFailed: false);
 }
 
@@ -92,17 +88,19 @@ Future<(HaLoServices, Operation, _CountingCatalog)> _harness({
   final extensions = _NoActivityExtensions()..settings = settings;
   extensions.debugSetAvailableExtensions(available);
   final catalogService = _CountingCatalog(entries: catalog, gate: gate);
-  return (
-    HaLoServices(db, settings, extensions: extensions, catalog: catalogService),
-    Operation(uuid: 'op-1', data: {'refs': refs}),
-    catalogService,
-  );
+  return (HaLoServices(db, settings, extensions: extensions, catalog: catalogService), Operation(uuid: 'op-1', data: {'refs': refs}), catalogService);
 }
 
 Future<void> _pump(WidgetTester tester, HaLoServices services, Operation operation) async {
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(home: Scaffold(body: OperationSheet(services: services, operation: operation))),
-  ));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: OperationSheet(services: services, operation: operation),
+        ),
+      ),
+    ),
+  );
   await tester.pumpAndSettle();
 }
 
@@ -119,19 +117,34 @@ void main() {
 
   group('orderedCatalogEntries', () {
     test('the operator\'s own region leads, worldwide next, everyone else last', () {
-      final texas = _entry('tx', 'Texas', relevance: ExtensionRelevance.fromJson(const {'entities': ['K']}));
-      final vermont = _entry('vt', 'Vermont', relevance: ExtensionRelevance.fromJson(const {'entities': ['VE']}));
+      final texas = _entry(
+        'tx',
+        'Texas',
+        relevance: ExtensionRelevance.fromJson(const {
+          'entities': ['K'],
+        }),
+      );
+      final vermont = _entry(
+        'vt',
+        'Vermont',
+        relevance: ExtensionRelevance.fromJson(const {
+          'entities': ['VE'],
+        }),
+      );
       final worldwide = _entry('ww', 'Worldwide');
       final operator = const OperatorGeo(entityPrefix: 'K');
 
-      expect(
-        orderedCatalogEntries([vermont, worldwide, texas], operator, 'en').map((e) => e.key),
-        ['tx', 'ww', 'vt'],
-      );
+      expect(orderedCatalogEntries([vermont, worldwide, texas], operator, 'en').map((e) => e.key), ['tx', 'ww', 'vt']);
     });
 
     test('with no operator geo there is no first tier — worldwide leads', () {
-      final texas = _entry('tx', 'Texas', relevance: ExtensionRelevance.fromJson(const {'entities': ['K']}));
+      final texas = _entry(
+        'tx',
+        'Texas',
+        relevance: ExtensionRelevance.fromJson(const {
+          'entities': ['K'],
+        }),
+      );
       final worldwide = _entry('ww', 'Worldwide');
       expect(orderedCatalogEntries([texas, worldwide], null, 'en').map((e) => e.key), ['ww', 'tx']);
     });
@@ -139,7 +152,9 @@ void main() {
 
   testWidgets('a catalog extension the app does not have is offered as an install', (tester) async {
     final (services, operation, catalog) = await _harness(
-      catalog: [_entry('ham2k-texas-qso-party', 'Texas QSO Party', keywords: const ['texas'])],
+      catalog: [
+        _entry('ham2k-texas-qso-party', 'Texas QSO Party', keywords: const ['texas']),
+      ],
     );
     await _pump(tester, services, operation);
     await _type(tester, 'texas');
@@ -159,7 +174,9 @@ void main() {
     // so an installed extension is the only kind the catalog can now
     // duplicate.
     final (services, operation, _) = await _harness(
-      catalog: [_entry('qp', 'QSO Parties', keywords: const ['texas'])],
+      catalog: [
+        _entry('qp', 'QSO Parties', keywords: const ['texas']),
+      ],
       available: const [
         ExtensionInfo(
           key: 'qp',
@@ -184,9 +201,7 @@ void main() {
     // The sheet opens with a search of its own for nearby references. That
     // one must not reach the catalog: an operation sheet opened to add a park
     // is the common case, and it has nothing to match against.
-    final (services, operation, catalog) = await _harness(
-      catalog: [_entry('ham2k-texas-qso-party', 'Texas QSO Party')],
-    );
+    final (services, operation, catalog) = await _harness(catalog: [_entry('ham2k-texas-qso-party', 'Texas QSO Party')]);
     await _pump(tester, services, operation);
 
     expect(catalog.fetches, 0);
@@ -210,7 +225,9 @@ void main() {
 
   testWidgets('with the experiment off the tier is absent and nothing is fetched', (tester) async {
     final (services, operation, catalog) = await _harness(
-      catalog: [_entry('ham2k-texas-qso-party', 'Texas QSO Party', keywords: const ['texas'])],
+      catalog: [
+        _entry('ham2k-texas-qso-party', 'Texas QSO Party', keywords: const ['texas']),
+      ],
       experimentOn: false,
     );
     await _pump(tester, services, operation);
@@ -220,8 +237,7 @@ void main() {
     expect(find.textContaining('Install '), findsNothing);
   });
 
-  testWidgets('a listing that lands mid-typing matches what is in the box, not what started the fetch',
-      (tester) async {
+  testWidgets('a listing that lands mid-typing matches what is in the box, not what started the fetch', (tester) async {
     // The listing is held until AFTER the second word is typed, which is the
     // only arrangement that reaches the fetch's own matching: with it landing
     // straight away, the search that follows re-matches anyway and a
@@ -247,8 +263,7 @@ void main() {
     expect(find.text('Install Texas QSO Party'), findsNothing);
   });
 
-  testWidgets('a reference nothing installed handles finds its extension in the catalog, with nothing typed',
-      (tester) async {
+  testWidgets('a reference nothing installed handles finds its extension in the catalog, with nothing typed', (tester) async {
     // The operation was logged when fifty parties were one extension. That
     // extension is gone, the per-event one was never installed, and the row
     // in Current Activities is red with no remedy anywhere — the case a

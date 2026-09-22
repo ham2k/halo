@@ -23,8 +23,7 @@ class _FakeVfoStore implements VfoStore {
   Vfo get vfoA => _vfoA;
 
   @override
-  void setVfo(String key,
-      {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {
+  void setVfo(String key, {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {
     calls.add('freq=$freq band=$band mode=$mode clearFreq=$clearFreq');
     if (power != null || clearPower) powerCalls.add('power=$power clear=$clearPower');
     final watts = clearPower ? null : (power ?? _vfoA.power);
@@ -44,28 +43,30 @@ class _Harness {
   bool hasConfiguredRadio = false;
   bool radioConnected = false;
   bool powerInPlay = false;
+
   /// Only its populating bracket is read by the model under test; the
   /// draft's own data paths are never asked, so it has nothing to read.
   late final draft = QsoDraft(config: () => throw UnsupportedError('the draft is not read here'));
   int rescores = 0;
   int notifications = 0;
-  late final model = RadioControlModel(
-    config: () => (
-      radio: RadioHookup(
-        radioService: store,
-        hasConfiguredRadio: hasConfiguredRadio,
-        radioConnected: radioConnected,
-        ourItuRegion: 2,
-        ourCountryCode: 'US',
-      ),
-      powerInPlay: () => powerInPlay,
-      editingQso: editingQso,
-    ),
-    draft: draft,
-    onRescore: () => rescores++,
-  )
-    ..addListener(() => notifications++)
-    ..bind();
+  late final model =
+      RadioControlModel(
+          config: () => (
+            radio: RadioHookup(
+              radioService: store,
+              hasConfiguredRadio: hasConfiguredRadio,
+              radioConnected: radioConnected,
+              ourItuRegion: 2,
+              ourCountryCode: 'US',
+            ),
+            powerInPlay: () => powerInPlay,
+            editingQso: editingQso,
+          ),
+          draft: draft,
+          onRescore: () => rescores++,
+        )
+        ..addListener(() => notifications++)
+        ..bind();
 }
 
 void main() {
@@ -121,7 +122,13 @@ void main() {
 
   testWidgets('editing an existing QSO changes the QSO, never the VFO', (tester) async {
     final h = _Harness();
-    h.editingQso = const Qso(uuid: 'q1', operationUuid: 'op', data: {'their': {'call': 'W1AW'}});
+    h.editingQso = const Qso(
+      uuid: 'q1',
+      operationUuid: 'op',
+      data: {
+        'their': {'call': 'W1AW'},
+      },
+    );
     h.model.freqController.text = '14074';
     await tester.pump(const Duration(seconds: 5));
     h.model.applyBandPick('40m');
@@ -132,8 +139,7 @@ void main() {
     h.model.dispose();
   });
 
-  testWidgets('a band pick empties the frequency, re-derives a sideband on a move, and pushes at once',
-      (tester) async {
+  testWidgets('a band pick empties the frequency, re-derives a sideband on a move, and pushes at once', (tester) async {
     final h = _Harness();
     h.model.freqController.text = '14285'; // 20m, SSB → USB
     expect(h.model.mode, 'USB');
@@ -145,8 +151,7 @@ void main() {
     h.model.dispose();
   });
 
-  testWidgets('settling a pending edit flushes it, and a discarded one is dropped with the follow restored',
-      (tester) async {
+  testWidgets('settling a pending edit flushes it, and a discarded one is dropped with the follow restored', (tester) async {
     final h = _Harness();
     h.model.freqController.text = '7200';
     expect(h.store.calls, isEmpty);
@@ -237,9 +242,13 @@ void main() {
     // The trap: a seed that lands while the operator is typing overwrites
     // their entry with the rig's — the field has to be left alone while it
     // holds focus, and committed when focus leaves it.
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: TextField(controller: h.model.powerController, focusNode: h.model.powerFocus)),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TextField(controller: h.model.powerController, focusNode: h.model.powerFocus),
+        ),
+      ),
+    );
     h.model.powerFocus.requestFocus();
     await tester.pump();
     h.model.powerController.text = '5';

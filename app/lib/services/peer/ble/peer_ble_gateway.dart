@@ -30,12 +30,7 @@ const String peerBleTxUuid = '562ee8a0-8848-43b5-b4d4-abaa07a2f39f';
 
 /// What the radio can do right now, per role.
 class PeerBleReadiness {
-  const PeerBleReadiness({
-    required this.canCentral,
-    required this.canPeripheral,
-    this.problem,
-    this.transient = false,
-  });
+  const PeerBleReadiness({required this.canCentral, required this.canPeripheral, this.problem, this.transient = false});
 
   final bool canCentral;
   final bool canPeripheral;
@@ -166,8 +161,5 @@ abstract class PeerBleGateway {
   /// to the TX characteristic, and only THEN subscribes — see
   /// [PeerBleClientConnection] for why that order is load-bearing. Throws
   /// on any failure, fully cleaned up.
-  Future<PeerBleClientConnection> connect(
-    String addressId, {
-    required void Function(Uint8List packet) onPacket,
-  });
+  Future<PeerBleClientConnection> connect(String addressId, {required void Function(Uint8List packet) onPacket});
 }

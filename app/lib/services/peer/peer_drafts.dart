@@ -30,11 +30,7 @@ class PeerDraftBlock {
 
   final PeerQsoDraftPayload draft;
 
-  const PeerDraftBlock({
-    required this.deviceId,
-    required this.deviceName,
-    required this.draft,
-  });
+  const PeerDraftBlock({required this.deviceId, required this.deviceName, required this.draft});
 
   bool get isThisDevice => deviceId == localDraftPeerId;
 
@@ -77,12 +73,12 @@ class PeerDrafts extends ChangeNotifier {
   }
 
   static PeerMessage _messageFor(PeerQsoDraftPayload draft) => PeerMessage.qsoDraft(
-        qso: draft.qso,
-        operationUuid: draft.operationUuid,
-        fields: draft.fields,
-        position: draft.position,
-        operatorCall: draft.operatorCall,
-      );
+    qso: draft.qso,
+    operationUuid: draft.operationUuid,
+    fields: draft.fields,
+    position: draft.position,
+    operatorCall: draft.operatorCall,
+  );
 
   /// This device has stopped sharing, so it has no block and nothing to say
   /// about anyone else's — the drafts it holds were all read against an
@@ -158,15 +154,10 @@ class PeerDrafts extends ChangeNotifier {
   /// to (see [PeerQsoDraftPayload.operationUuid]).
   List<PeerDraftBlock> blocksFor(String operationUuid) {
     final blocks = <PeerDraftBlock>[
-      if (_local != null && _local!.operationUuid == operationUuid)
-        PeerDraftBlock(deviceId: localDraftPeerId, deviceName: '', draft: _local!),
+      if (_local != null && _local!.operationUuid == operationUuid) PeerDraftBlock(deviceId: localDraftPeerId, deviceName: '', draft: _local!),
       for (final entry in _drafts.entries)
         if (entry.value.operationUuid == operationUuid)
-          PeerDraftBlock(
-            deviceId: entry.key,
-            deviceName: peers.peers[entry.key]?.beacon.deviceName ?? '',
-            draft: entry.value,
-          ),
+          PeerDraftBlock(deviceId: entry.key, deviceName: peers.peers[entry.key]?.beacon.deviceName ?? '', draft: entry.value),
     ];
     blocks.sort((a, b) {
       final byPosition = _comparePositions(a.positionNumber, b.positionNumber);

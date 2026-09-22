@@ -31,10 +31,7 @@ void main() {
         ham2kSsoFetchUri(Uri.parse(_token), onWeb: true).toString(),
         'https://services.ham2k.net/sso.sota.org.uk/auth/realms/SOTA/protocol/openid-connect/token',
       );
-      expect(
-        ham2kSsoFetchUri(Uri.parse(_account), onWeb: true).toString(),
-        'https://services.ham2k.net/sso.sota.org.uk/auth/realms/SOTA/account',
-      );
+      expect(ham2kSsoFetchUri(Uri.parse(_account), onWeb: true).toString(), 'https://services.ham2k.net/sso.sota.org.uk/auth/realms/SOTA/account');
     });
 
     test('the discovery document is fetched from SOTA even on web', () {
@@ -49,8 +46,7 @@ void main() {
       // Keycloak endpoints here: a host-wide rule would hand the Worker
       // traffic it has no entry for, and would let a future endpoint join the
       // proxied set without anyone choosing that.
-      for (final path in ['/auth/realms/SOTA/protocol/openid-connect/logout',
-                          '/auth/realms/SOTA/protocol/openid-connect/userinfo']) {
+      for (final path in ['/auth/realms/SOTA/protocol/openid-connect/logout', '/auth/realms/SOTA/protocol/openid-connect/userinfo']) {
         final url = 'https://sso.sota.org.uk$path';
         expect(ham2kSsoFetchUri(Uri.parse(url), onWeb: true).toString(), url);
       }

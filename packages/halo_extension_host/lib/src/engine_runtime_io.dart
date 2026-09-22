@@ -94,8 +94,7 @@ class _IoEngineRuntime implements EngineRuntime {
   }
 
   @override
-  Future<void> load(String kernelSource, List<ExtensionBundle> bundles,
-      {ClockTravelState clock = const ClockTravelState.real()}) async {
+  Future<void> load(String kernelSource, List<ExtensionBundle> bundles, {ClockTravelState clock = const ClockTravelState.real()}) async {
     final js = _createRuntime();
     _js = js;
     js.onSend((channel, message) {

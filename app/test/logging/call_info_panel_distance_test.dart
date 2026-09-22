@@ -31,13 +31,15 @@ void main() {
 
   Future<void> pumpPanel(WidgetTester tester, HaLoServices services, Map<String, dynamic>? guess) async {
     final operation = Operation(uuid: 'op-123', data: const {'grid': 'FN31pr'});
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: CallInfoPanel(operation: operation, services: services, call: 'N0CALL', guess: guess),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: CallInfoPanel(operation: operation, services: services, call: 'N0CALL', guess: guess),
+          ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 

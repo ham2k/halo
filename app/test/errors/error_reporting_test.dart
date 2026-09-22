@@ -20,7 +20,6 @@
 // each test body — before tearDowns run — so every test restores them
 // inline via try/finally (withErrorHooks) rather than addTearDown.
 
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,8 +36,7 @@ import '../support/error_reporting_fakes.dart';
 /// no notice. Which exact quiet tier it lands in is asserted per-rule in
 /// error_policy_test.dart; these tests are about the NARROWNESS of each
 /// exemption as it is applied by the real FlutterError hook.
-bool _isNoise(FlutterErrorDetails details) =>
-    !ErrorPolicy.decide(details.exception, details: details).disposition.uploads;
+bool _isNoise(FlutterErrorDetails details) => !ErrorPolicy.decide(details.exception, details: details).disposition.uploads;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -74,22 +72,17 @@ void main() {
     FlutterErrorDetails focusTraversalNull({
       Object? error,
       String? context = 'while dispatching notifications for WidgetsBindingObserver.didChangeViewFocus',
-    }) =>
-        FlutterErrorDetails(
-          exception: error ?? TypeError(),
-          stack: StackTrace.fromString('focus_traversal.dart 1685:90  _pickNext'),
-          library: 'widgets library',
-          context: context == null ? null : ErrorDescription(context),
-        );
+    }) => FlutterErrorDetails(
+      exception: error ?? TypeError(),
+      stack: StackTrace.fromString('focus_traversal.dart 1685:90  _pickNext'),
+      library: 'widgets library',
+      context: context == null ? null : ErrorDescription(context),
+    );
 
     test('is recognized on web, and only on web', () {
       final details = focusTraversalNull();
       ErrorPolicy.debugTreatAsWeb = false;
-      expect(
-        _isNoise(details),
-        isFalse,
-        reason: 'didChangeViewFocus only reaches that path on the multi-view embedder',
-      );
+      expect(_isNoise(details), isFalse, reason: 'didChangeViewFocus only reaches that path on the multi-view embedder');
       ErrorPolicy.debugTreatAsWeb = true;
       expect(_isNoise(details), isTrue);
     });
@@ -98,16 +91,8 @@ void main() {
       ErrorPolicy.debugTreatAsWeb = true;
       // dart2js's own null-check failure has not always been a `TypeError`, so
       // the message is matched as well as the type.
-      for (final error in <Object>[
-        TypeError(),
-        StateError('Unexpected null value.'),
-        StateError('Null check operator used on a null value'),
-      ]) {
-        expect(
-          _isNoise(focusTraversalNull(error: error)),
-          isTrue,
-          reason: '$error',
-        );
+      for (final error in <Object>[TypeError(), StateError('Unexpected null value.'), StateError('Null check operator used on a null value')]) {
+        expect(_isNoise(focusTraversalNull(error: error)), isTrue, reason: '$error');
       }
     });
 
@@ -116,29 +101,16 @@ void main() {
       // Same place, a different failure. An observer of ours throwing here would
       // be a real bug, and matching the null check specifically is what keeps it
       // reportable.
-      expect(
-        _isNoise(focusTraversalNull(error: RangeError('index'))),
-        isFalse,
-      );
-      expect(
-        _isNoise(focusTraversalNull(error: StateError('boom'))),
-        isFalse,
-      );
+      expect(_isNoise(focusTraversalNull(error: RangeError('index'))), isFalse);
+      expect(_isNoise(focusTraversalNull(error: StateError('boom'))), isFalse);
     });
 
     test('the same null check from anywhere else is still reported', () {
       ErrorPolicy.debugTreatAsWeb = true;
       // A null check thrown during a build, a layout, a gesture: every other one
       // of these is a bug of ours and has to stay loud.
-      expect(
-        _isNoise(focusTraversalNull(context: 'while building MyWidget')),
-        isFalse,
-      );
-      expect(
-        _isNoise(focusTraversalNull(context: null)),
-        isFalse,
-        reason: 'no context at all is not a match either',
-      );
+      expect(_isNoise(focusTraversalNull(context: 'while building MyWidget')), isFalse);
+      expect(_isNoise(focusTraversalNull(context: null)), isFalse, reason: 'no context at all is not a match either');
     });
 
     testWidgets('is dropped before the notice, the console dump, or the backend', (tester) async {
@@ -166,10 +138,7 @@ void main() {
         chained(FlutterErrorDetails(exception: StateError('boom')));
         expect(tester.takeException(), isA<StateError>());
         await tester.pump();
-        expect(
-          statusBar.activeNotices.where((n) => n.key == 'error-reporting:first-error'),
-          hasLength(1),
-        );
+        expect(statusBar.activeNotices.where((n) => n.key == 'error-reporting:first-error'), hasLength(1));
       });
     });
   });
@@ -180,27 +149,19 @@ void main() {
     // layout bug, but not a "Something went wrong" notice aimed at an
     // operator who can't act on it, and not an external report for
     // something that literally cannot reach a release build.
-    FlutterErrorDetails overflow({Object? error}) => FlutterErrorDetails(
-          exception: error ?? FlutterError('A RenderFlex overflowed by 13 pixels on the right.\n'),
-          library: 'rendering library',
-        );
+    FlutterErrorDetails overflow({Object? error}) =>
+        FlutterErrorDetails(exception: error ?? FlutterError('A RenderFlex overflowed by 13 pixels on the right.\n'), library: 'rendering library');
 
     test('is recognized by its message, whatever widget threw it', () {
       expect(_isNoise(overflow()), isTrue);
     });
 
     test('nothing else with the same FlutterError type is swallowed', () {
-      expect(
-        _isNoise(overflow(error: FlutterError('some other message'))),
-        isFalse,
-      );
+      expect(_isNoise(overflow(error: FlutterError('some other message'))), isFalse);
     });
 
     test('a non-FlutterError exception is never matched, even with the same text', () {
-      expect(
-        _isNoise(overflow(error: StateError('A RenderFlex overflowed by 13 pixels on the right.'))),
-        isFalse,
-      );
+      expect(_isNoise(overflow(error: StateError('A RenderFlex overflowed by 13 pixels on the right.'))), isFalse);
     });
 
     testWidgets('is still console-visible, but posts no notice and never reaches the backend', (tester) async {
@@ -218,10 +179,7 @@ void main() {
         // since it proves the call returned cleanly rather than propagating.
         expect(tester.takeException(), isNull);
         await tester.pump(); // the notice would be queued as a microtask
-        expect(
-          statusBar.activeNotices.where((n) => n.key == 'error-reporting:first-error'),
-          isEmpty,
-        );
+        expect(statusBar.activeNotices.where((n) => n.key == 'error-reporting:first-error'), isEmpty);
         expect(backend.exceptions, isEmpty);
       }, backend: backend);
     });
@@ -273,10 +231,7 @@ void main() {
     // it, so the failure stops here rather than reaching the command.
     final backend = FakeErrorReportingBackend(diagnosticThrows: true);
     await withErrorHooks(() async {
-      expect(
-        () => ErrorReportingService.diagnostic(title: 'DEVBENCH', body: 'rows'),
-        returnsNormally,
-      );
+      expect(() => ErrorReportingService.diagnostic(title: 'DEVBENCH', body: 'rows'), returnsNormally);
       // And says it did not land, which is what stops the headline claiming
       // the numbers reached the backend.
       expect(ErrorReportingService.diagnostic(title: 'DEVBENCH', body: 'rows'), isFalse);
@@ -289,17 +244,12 @@ void main() {
     // the exemption is only as good as the path the error happened to take.
     final backend = FakeErrorReportingBackend();
     await withErrorHooks(() async {
-      ErrorReportingService.report(
-        FlutterError('setState() or markNeedsBuild() called during build.'),
-        StackTrace.current,
-        context: 'some-caller',
-      );
+      ErrorReportingService.report(FlutterError('setState() or markNeedsBuild() called during build.'), StackTrace.current, context: 'some-caller');
       expect(backend.exceptions, isEmpty);
     }, backend: backend);
   });
 
-  test('attachSettings pushes callsign + account id only once consent is on, and clears both when it turns off',
-      () async {
+  test('attachSettings pushes callsign + account id only once consent is on, and clears both when it turns off', () async {
     final backend = FakeErrorReportingBackend();
     await withErrorHooks(() async {
       final settings = SettingsService(await SharedPreferences.getInstance());
@@ -331,12 +281,16 @@ void main() {
 
   testWidgets('a throwing widget renders the tile, siblings keep working', (tester) async {
     await withErrorHooks(() async {
-      await tester.pumpWidget(MaterialApp(
-        home: Row(children: [
-          const Expanded(child: Text('healthy sibling')),
-          Expanded(child: Builder(builder: (_) => throw StateError('boom'))),
-        ]),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Row(
+            children: [
+              const Expanded(child: Text('healthy sibling')),
+              Expanded(child: Builder(builder: (_) => throw StateError('boom'))),
+            ],
+          ),
+        ),
+      );
       expect(tester.takeException(), isA<StateError>());
 
       // The failed slot degrades to the tile; the rest of the tree survived.
@@ -346,8 +300,7 @@ void main() {
     });
   });
 
-  testWidgets('first error posts one StatusBar notice with Copy details, later errors do not repeat it',
-      (tester) async {
+  testWidgets('first error posts one StatusBar notice with Copy details, later errors do not repeat it', (tester) async {
     await withErrorHooks(() async {
       final statusBar = StatusBarService(await SharedPreferences.getInstance());
       ErrorReportingService.attachStatusBar(statusBar);
@@ -402,7 +355,8 @@ void main() {
       expect(
         reloadedKeys,
         isNot(contains('error-reporting:first-error')),
-        reason: 'its "Copy details" action cannot survive a restart anyway — a dead, '
+        reason:
+            'its "Copy details" action cannot survive a restart anyway — a dead, '
             'button-less copy left sitting in the footer forever would be worse than gone',
       );
     });

@@ -30,24 +30,26 @@ Future<void> showStationConfigDialog(BuildContext context, HaLoServices services
   // is on screen by the time the operator reads the row.
   services.cat.refreshKeyerSpeed();
   return showModalPane<void>(
-  context,
-  title: context.t.settings.station.title,
-  closeLabel: context.t.common.close,
-  // StationPanel is its own scrolling ListView — the pane must not also wrap
-  // it in a SingleChildScrollView.
-  scrollable: false,
-  // The compact panel ends in a footer band whose Done is the way out.
-  closeButton: false,
-  builder: (context) => StationPanel(
-    services: services,
-    compact: true,
-    onMoreSettings: () {
-      final navigator = Navigator.of(context);
-      navigator.pop();
-      navigator.push(MaterialPageRoute<void>(
-        builder: (_) => SettingsView(services: services, initialPanel: 'station'),
-      ));
-    },
-  ),
-);
+    context,
+    title: context.t.settings.station.title,
+    closeLabel: context.t.common.close,
+    // StationPanel is its own scrolling ListView — the pane must not also wrap
+    // it in a SingleChildScrollView.
+    scrollable: false,
+    // The compact panel ends in a footer band whose Done is the way out.
+    closeButton: false,
+    builder: (context) => StationPanel(
+      services: services,
+      compact: true,
+      onMoreSettings: () {
+        final navigator = Navigator.of(context);
+        navigator.pop();
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => SettingsView(services: services, initialPanel: 'station'),
+          ),
+        );
+      },
+    ),
+  );
 }

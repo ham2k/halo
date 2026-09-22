@@ -53,32 +53,35 @@ void main() {
   // call and defeat the sharing. The table it answers from is `const`, so one
   // host serves every test here.
   Future<dynamic> castleLookups(String method, Map<String, dynamic> params) async {
-        switch (method) {
-          case 'dbLookupSelectOne':
-            return castles[params['key']];
-          case 'dbLookupSelectAll':
-            final q = (params['query'] as String).toUpperCase();
-            return castles.values
-                .where((c) => c['key'].toString().contains(q) || c['name'].toString().toUpperCase().contains(q))
-                .toList();
-          case 'dbLookupSelectByLocation':
-            // Deliberately returns the FAR castle first: the factory has to
-            // rank by real distance rather than trusting query order.
-            return [castles['I-00001'], castles['ON-00558'], castles['ON-00123']];
-          case 'log':
-            return null;
-          default:
-            return null;
-        }
-      }
+    switch (method) {
+      case 'dbLookupSelectOne':
+        return castles[params['key']];
+      case 'dbLookupSelectAll':
+        final q = (params['query'] as String).toUpperCase();
+        return castles.values.where((c) => c['key'].toString().contains(q) || c['name'].toString().toUpperCase().contains(q)).toList();
+      case 'dbLookupSelectByLocation':
+        // Deliberately returns the FAR castle first: the factory has to
+        // rank by real distance rather than trusting query order.
+        return [castles['I-00001'], castles['ON-00558'], castles['ON-00123']];
+      case 'log':
+        return null;
+      default:
+        return null;
+    }
+  }
 
   Future<ExtensionHost> startHost() => sharedHost(['wca'], onHostCall: castleLookups);
 
   group('reference handling', () {
     test('a well-formed reference validates and is upper-cased', () async {
       final host = await startHost();
-      final result = await host.invokeHook('ref:wcaActivation',
-          method: 'validateRef', args: {'ref': {'type': 'wcaActivation', 'ref': 'on-00558'}});
+      final result = await host.invokeHook(
+        'ref:wcaActivation',
+        method: 'validateRef',
+        args: {
+          'ref': {'type': 'wcaActivation', 'ref': 'on-00558'},
+        },
+      );
       expect(result['valid'], true);
       expect(result['normalized'], 'ON-00558');
     }, timeout: const Timeout(Duration(seconds: 60)));
@@ -86,8 +89,13 @@ void main() {
     test('a malformed reference is rejected', () async {
       final host = await startHost();
       // WCA references are prefix-NNNNN; four digits is not enough.
-      final result = await host.invokeHook('ref:wcaActivation',
-          method: 'validateRef', args: {'ref': {'type': 'wcaActivation', 'ref': 'ON-0055'}});
+      final result = await host.invokeHook(
+        'ref:wcaActivation',
+        method: 'validateRef',
+        args: {
+          'ref': {'type': 'wcaActivation', 'ref': 'ON-0055'},
+        },
+      );
       expect(result['valid'], false);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
@@ -101,20 +109,24 @@ void main() {
     test('re-decorating onto an unresolvable code drops the old one entirely', () async {
       final host = await startHost();
       for (final code in ['ON-99999', 'ON-0055']) {
-        final ref = await host.invokeHook('ref:wcaActivation', method: 'decorateRef', args: {
-          'ref': {
-            'type': 'wcaActivation',
-            'ref': code,
-            // Everything a previous, resolved reference would have left behind.
-            'name': 'Kasteel van Beersel',
-            'label': 'WCA ON-00558: Kasteel van Beersel',
-            'shortLabel': 'WCA ON-00558',
-            'grid': 'JO20eq',
-            'lat': 50.766,
-            'lon': 4.307,
-            'location': 'Vlaams-Brabant',
+        final ref = await host.invokeHook(
+          'ref:wcaActivation',
+          method: 'decorateRef',
+          args: {
+            'ref': {
+              'type': 'wcaActivation',
+              'ref': code,
+              // Everything a previous, resolved reference would have left behind.
+              'name': 'Kasteel van Beersel',
+              'label': 'WCA ON-00558: Kasteel van Beersel',
+              'shortLabel': 'WCA ON-00558',
+              'grid': 'JO20eq',
+              'lat': 50.766,
+              'lon': 4.307,
+              'location': 'Vlaams-Brabant',
+            },
           },
-        });
+        );
         expect(ref['ref'], code, reason: code);
         for (final stale in ['label', 'shortLabel', 'grid', 'lat', 'lon', 'location']) {
           expect(ref[stale], isNull, reason: '$stale survived onto $code');
@@ -124,8 +136,13 @@ void main() {
 
     test('a known reference is decorated from the local list', () async {
       final host = await startHost();
-      final ref = await host.invokeHook('ref:wcaActivation',
-          method: 'decorateRef', args: {'ref': {'type': 'wcaActivation', 'ref': 'on-00558'}});
+      final ref = await host.invokeHook(
+        'ref:wcaActivation',
+        method: 'decorateRef',
+        args: {
+          'ref': {'type': 'wcaActivation', 'ref': 'on-00558'},
+        },
+      );
       expect(ref['name'], 'Kasteel van Beersel');
       expect(ref['program'], 'WCA');
       expect(ref['grid'], 'JO20eq');
@@ -136,8 +153,13 @@ void main() {
 
     test('a well-formed reference the list has never heard of says so', () async {
       final host = await startHost();
-      final ref = await host.invokeHook('ref:wcaActivation',
-          method: 'decorateRef', args: {'ref': {'type': 'wcaActivation', 'ref': 'ON-99999'}});
+      final ref = await host.invokeHook(
+        'ref:wcaActivation',
+        method: 'decorateRef',
+        args: {
+          'ref': {'type': 'wcaActivation', 'ref': 'ON-99999'},
+        },
+      );
       // Distinct from "invalid": the code is plausible, the list is just stale.
       expect(ref['name'], 'Unknown castle');
       expect(ref['program'], 'WCA');
@@ -148,8 +170,13 @@ void main() {
       // ECA/BCA references ARE WCA references; WCA answers for them so one
       // typed while those extensions are disabled still resolves.
       for (final type in ['ecaActivation', 'bcaActivation']) {
-        final ref = await host.invokeHook('ref:$type',
-            method: 'decorateRef', args: {'ref': {'type': type, 'ref': 'ON-00558'}});
+        final ref = await host.invokeHook(
+          'ref:$type',
+          method: 'decorateRef',
+          args: {
+            'ref': {'type': type, 'ref': 'ON-00558'},
+          },
+        );
         expect(ref['name'], 'Kasteel van Beersel', reason: 'via $type');
       }
     }, timeout: const Timeout(Duration(seconds: 60)));
@@ -162,8 +189,13 @@ void main() {
       // whenever WCA is enabled alongside them — while still decorating the
       // ref, which makes the loss look like a rendering bug rather than this.
       for (final type in ['wcaActivation', 'ecaActivation', 'bcaActivation']) {
-        final title = await host.invokeHook('ref:$type', method: 'suggestOperationTitle',
-            args: {'ref': {'type': type, 'ref': 'ON-00558', 'name': 'Kasteel van Beersel'}});
+        final title = await host.invokeHook(
+          'ref:$type',
+          method: 'suggestOperationTitle',
+          args: {
+            'ref': {'type': type, 'ref': 'ON-00558', 'name': 'Kasteel van Beersel'},
+          },
+        );
         expect(title, isNotNull, reason: 'via $type');
         expect((title as Map)['at'], 'ON-00558', reason: 'via $type');
         expect(title['subtitle'], 'Kasteel van Beersel', reason: 'via $type');
@@ -174,10 +206,18 @@ void main() {
   group('suggestions', () {
     test('nearby results are ranked by real distance, not query order', () async {
       final host = await startHost();
-      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
-        'operation': {'uuid': 'op'},
-        'location': {'lat': 50.77, 'lon': 4.30},
-      }) as List).cast<Map>();
+      final suggestions =
+          (await host.invokeHook(
+                    'activity',
+                    key: 'wca',
+                    method: 'suggest',
+                    args: {
+                      'operation': {'uuid': 'op'},
+                      'location': {'lat': 50.77, 'lon': 4.30},
+                    },
+                  )
+                  as List)
+              .cast<Map>();
 
       // The stub hands back Milan first; Beersel is 500m away and must win.
       expect(suggestions.first['ref'], 'ON-00558');
@@ -187,10 +227,18 @@ void main() {
 
     test('a name search finds a castle and labels it', () async {
       final host = await startHost();
-      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
-        'operation': {'uuid': 'op'},
-        'searchTerm': 'Sforzesco',
-      }) as List).cast<Map>();
+      final suggestions =
+          (await host.invokeHook(
+                    'activity',
+                    key: 'wca',
+                    method: 'suggest',
+                    args: {
+                      'operation': {'uuid': 'op'},
+                      'searchTerm': 'Sforzesco',
+                    },
+                  )
+                  as List)
+              .cast<Map>();
 
       expect(suggestions.length, 1);
       expect(suggestions.first['ref'], 'I-00001');
@@ -204,11 +252,19 @@ void main() {
     // shape WCA's own regex has wrong.
     test('a scoped search offers the reference the operator typed, even unlisted', () async {
       final host = await startHost();
-      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
-        'operation': {'uuid': 'op'},
-        'searchTerm': 'on-99999',
-        'scoped': true,
-      }) as List).cast<Map>();
+      final suggestions =
+          (await host.invokeHook(
+                    'activity',
+                    key: 'wca',
+                    method: 'suggest',
+                    args: {
+                      'operation': {'uuid': 'op'},
+                      'searchTerm': 'on-99999',
+                      'scoped': true,
+                    },
+                  )
+                  as List)
+              .cast<Map>();
 
       expect(suggestions.first['ref'], 'ON-99999');
       expect(suggestions.first['name'], 'Unknown castle');
@@ -216,11 +272,19 @@ void main() {
 
     test('a scoped search offers a code the regex rejects, named as invalid', () async {
       final host = await startHost();
-      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
-        'operation': {'uuid': 'op'},
-        'searchTerm': 'ZZ-0055',
-        'scoped': true,
-      }) as List).cast<Map>();
+      final suggestions =
+          (await host.invokeHook(
+                    'activity',
+                    key: 'wca',
+                    method: 'suggest',
+                    args: {
+                      'operation': {'uuid': 'op'},
+                      'searchTerm': 'ZZ-0055',
+                      'scoped': true,
+                    },
+                  )
+                  as List)
+              .cast<Map>();
 
       expect(suggestions.first['ref'], 'ZZ-0055');
       expect(suggestions.first['name'], 'Invalid reference');
@@ -237,11 +301,19 @@ void main() {
     // this test would hold while the common case misbehaved.
     test('a scoped search for a NAME invents no reference from it', () async {
       final host = await startHost();
-      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
-        'operation': {'uuid': 'op'},
-        'searchTerm': 'Beersel',
-        'scoped': true,
-      }) as List).cast<Map>();
+      final suggestions =
+          (await host.invokeHook(
+                    'activity',
+                    key: 'wca',
+                    method: 'suggest',
+                    args: {
+                      'operation': {'uuid': 'op'},
+                      'searchTerm': 'Beersel',
+                      'scoped': true,
+                    },
+                  )
+                  as List)
+              .cast<Map>();
 
       expect(suggestions.map((s) => s['ref']), ['ON-00558']);
     }, timeout: const Timeout(Duration(seconds: 60)));
@@ -251,11 +323,19 @@ void main() {
     // the program's own pattern accepts skips the heuristic entirely.
     test('a reference the pattern accepts is offered whatever it looks like', () async {
       final host = await sharedHost(['blha'], onHostCall: castleLookups);
-      final suggestions = (await host.invokeHook('activity', key: 'blha', method: 'suggest', args: {
-        'operation': {'uuid': 'op'},
-        'searchTerm': 'BEL 999',
-        'scoped': true,
-      }) as List).cast<Map>();
+      final suggestions =
+          (await host.invokeHook(
+                    'activity',
+                    key: 'blha',
+                    method: 'suggest',
+                    args: {
+                      'operation': {'uuid': 'op'},
+                      'searchTerm': 'BEL 999',
+                      'scoped': true,
+                    },
+                  )
+                  as List)
+              .cast<Map>();
 
       expect(suggestions.first['ref'], 'BEL 999');
     }, timeout: const Timeout(Duration(seconds: 60)));
@@ -266,11 +346,19 @@ void main() {
     // which is what keeps BLHA's `BEL 123` (tested above) working.
     test('a scoped NAME search with a number in it still invents nothing', () async {
       final host = await startHost();
-      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
-        'operation': {'uuid': 'op'},
-        'searchTerm': 'castle 3',
-        'scoped': true,
-      }) as List).cast<Map>();
+      final suggestions =
+          (await host.invokeHook(
+                    'activity',
+                    key: 'wca',
+                    method: 'suggest',
+                    args: {
+                      'operation': {'uuid': 'op'},
+                      'searchTerm': 'castle 3',
+                      'scoped': true,
+                    },
+                  )
+                  as List)
+              .cast<Map>();
 
       expect(suggestions.map((s) => s['ref']), isNot(contains('CASTLE 3')));
     }, timeout: const Timeout(Duration(seconds: 60)));
@@ -280,10 +368,18 @@ void main() {
     // would bury the real matches under a dozen invented references.
     test('an unscoped search invents nothing', () async {
       final host = await startHost();
-      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
-        'operation': {'uuid': 'op'},
-        'searchTerm': 'ZZ-0055',
-      }) as List).cast<Map>();
+      final suggestions =
+          (await host.invokeHook(
+                    'activity',
+                    key: 'wca',
+                    method: 'suggest',
+                    args: {
+                      'operation': {'uuid': 'op'},
+                      'searchTerm': 'ZZ-0055',
+                    },
+                  )
+                  as List)
+              .cast<Map>();
 
       expect(suggestions, isEmpty);
     }, timeout: const Timeout(Duration(seconds: 60)));
@@ -291,9 +387,17 @@ void main() {
 
   test('the operation control is keyed so `wca:` search scoping works', () async {
     final host = await startHost();
-    final controls = (await host.invokeHook('activity', key: 'wca', method: 'operationControls', args: {
-      'operation': {'uuid': 'op'},
-    }) as List).cast<Map>();
+    final controls =
+        (await host.invokeHook(
+                  'activity',
+                  key: 'wca',
+                  method: 'operationControls',
+                  args: {
+                    'operation': {'uuid': 'op'},
+                  },
+                )
+                as List)
+            .cast<Map>();
 
     expect(controls.length, 1);
     // The core derives the search scope from the part before the slash, so a
@@ -305,10 +409,24 @@ void main() {
 
   test('an activation contributes MY_SIG/MY_SIG_INFO and nothing else', () async {
     final host = await startHost();
-    final fields = (await host.invokeHook('adifFields', key: 'wca', method: 'fieldsForOneQSO', args: {
-      'qso': {'their': {'call': 'W1AW'}},
-      'operation': {'refs': [{'type': 'wcaActivation', 'ref': 'ON-00558'}]},
-    }) as List).cast<Map>();
+    final fields =
+        (await host.invokeHook(
+                  'adifFields',
+                  key: 'wca',
+                  method: 'fieldsForOneQSO',
+                  args: {
+                    'qso': {
+                      'their': {'call': 'W1AW'},
+                    },
+                    'operation': {
+                      'refs': [
+                        {'type': 'wcaActivation', 'ref': 'ON-00558'},
+                      ],
+                    },
+                  },
+                )
+                as List)
+            .cast<Map>();
 
     expect(fields.map((f) => f['name']), ['MY_SIG', 'MY_SIG_INFO']);
     expect(fields.map((f) => f['value']), ['WCA', 'ON-00558']);
@@ -316,23 +434,33 @@ void main() {
 
   test('fifty contacts activate a castle', () async {
     final host = await startHost();
-    final result = await host.invokeHook('scoring', key: 'wca', method: 'scoreQsos', args: {
-      'operation': {
-        'uuid': 'op',
-        'refs': [{'type': 'wcaActivation', 'ref': 'ON-00558'}],
-      },
-      'qsos': [
-        for (var i = 0; i < 50; i++)
-          {
-            'uuid': 'q$i',
-            'their': {'call': 'W${i}ABC'},
-            'band': '20m',
-            'mode': 'SSB',
-            'startAtMillis': DateTime.utc(2026, 7, 1, 12, i).millisecondsSinceEpoch,
-          },
-      ],
-      'ref': {'type': 'wcaActivation', 'ref': 'ON-00558'},
-    }, timeout: const Duration(seconds: 20)) as Map;
+    final result =
+        await host.invokeHook(
+              'scoring',
+              key: 'wca',
+              method: 'scoreQsos',
+              args: {
+                'operation': {
+                  'uuid': 'op',
+                  'refs': [
+                    {'type': 'wcaActivation', 'ref': 'ON-00558'},
+                  ],
+                },
+                'qsos': [
+                  for (var i = 0; i < 50; i++)
+                    {
+                      'uuid': 'q$i',
+                      'their': {'call': 'W${i}ABC'},
+                      'band': '20m',
+                      'mode': 'SSB',
+                      'startAtMillis': DateTime.utc(2026, 7, 1, 12, i).millisecondsSinceEpoch,
+                    },
+                ],
+                'ref': {'type': 'wcaActivation', 'ref': 'ON-00558'},
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
 
     final activation = ((result['operationSummary'] as Map)['activation'] as Map);
     expect(activation['summary'], '50 ✓');

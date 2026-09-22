@@ -74,11 +74,7 @@ sealed class DockNode {
         // persisted spec) would produce NaN/negative pane extents — fall
         // back to equal shares rather than crash unrecoverably on launch.
         final valid = weights != null && weights.length == children.length && weights.every((w) => w.isFinite && w > 0);
-        return DockSplit(
-          json['axis'] == 'v' ? Axis.vertical : Axis.horizontal,
-          children,
-          valid ? weights : List.filled(children.length, 1),
-        );
+        return DockSplit(json['axis'] == 'v' ? Axis.vertical : Axis.horizontal, children, valid ? weights : List.filled(children.length, 1));
     }
     return null;
   }
@@ -189,8 +185,7 @@ class DockGroup extends DockNode {
 
   int selected;
 
-  DockGroup(this.modules, {Map<String, DockNode>? nested, this.selected = 0})
-      : nested = nested ?? <String, DockNode>{};
+  DockGroup(this.modules, {Map<String, DockNode>? nested, this.selected = 0}) : nested = nested ?? <String, DockNode>{};
 
   /// The subtree behind [slot], or null when it holds a plain module.
   DockNode? nestedIn(String slot) => nested[slot];

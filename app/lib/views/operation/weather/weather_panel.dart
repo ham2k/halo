@@ -58,9 +58,7 @@ const Duration _fetchTimeout = Duration(seconds: 8);
 typedef WeatherFetch = Future<({int status, String body})> Function(Uri url);
 
 Future<({int status, String body})> _httpFetch(Uri url) async {
-  final response = await http
-      .get(url, headers: {'User-Agent': await ham2kUserAgentOrFallback()})
-      .timeout(_fetchTimeout);
+  final response = await http.get(url, headers: {'User-Agent': await ham2kUserAgentOrFallback()}).timeout(_fetchTimeout);
   return (status: response.statusCode, body: response.body);
 }
 
@@ -132,15 +130,7 @@ class WeatherPanel extends StatefulWidget {
   /// Null outside tests, where [_httpFetch] is used.
   final WeatherFetch? fetch;
 
-  const WeatherPanel({
-    super.key,
-    required this.panelId,
-    required this.panels,
-    required this.settings,
-    this.operationGrid,
-    this.onTitle,
-    this.fetch,
-  });
+  const WeatherPanel({super.key, required this.panelId, required this.panels, required this.settings, this.operationGrid, this.onTitle, this.fetch});
 
   @override
   State<WeatherPanel> createState() => _WeatherPanelState();
@@ -206,8 +196,7 @@ class _WeatherPanelState extends State<WeatherPanel> with WidgetsBindingObserver
     unawaited(_loadConfig());
   }
 
-  static bool _visibleIn(AppLifecycleState state) =>
-      state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+  static bool _visibleIn(AppLifecycleState state) => state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -308,11 +297,9 @@ class _WeatherPanelState extends State<WeatherPanel> with WidgetsBindingObserver
   /// outside one, or with no grid set, or a blank override — and also when
   /// the override is there but unreadable, which [_overrideIsBad] tells
   /// apart.
-  WeatherPlace? get _place =>
-      _useOperationLocation ? parseWeatherPlace(widget.operationGrid) : parseWeatherPlace(_override);
+  WeatherPlace? get _place => _useOperationLocation ? parseWeatherPlace(widget.operationGrid) : parseWeatherPlace(_override);
 
-  bool get _overrideIsBad =>
-      !_useOperationLocation && _override.isNotEmpty && parseWeatherPlace(_override) == null;
+  bool get _overrideIsBad => !_useOperationLocation && _override.isNotEmpty && parseWeatherPlace(_override) == null;
 
   /// What a reading is OF. Rounded to two places so a grid square's centre
   /// and the same square typed as lat/lon are one reading, not two.
@@ -458,12 +445,7 @@ class _WeatherPanelState extends State<WeatherPanel> with WidgetsBindingObserver
       if (failure != null) {
         return _message(failure.transport ? t.weatherUnreachable : t.weatherUnreadable);
       }
-      return Center(
-        child: SizedBox.square(
-          dimension: 24,
-          child: _fetching ? const CircularProgressIndicator(strokeWidth: 2) : null,
-        ),
-      );
+      return Center(child: SizedBox.square(dimension: 24, child: _fetching ? const CircularProgressIndicator(strokeWidth: 2) : null));
     }
     return _WeatherReadout(reading: reading, staleFetch: _failure != null);
   }
@@ -474,9 +456,7 @@ class _WeatherPanelState extends State<WeatherPanel> with WidgetsBindingObserver
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
     ),
   );
@@ -577,10 +557,7 @@ class _WeatherReadout extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final box = Size(
-          constraints.maxWidth - safe.horizontal,
-          constraints.maxHeight - safe.vertical,
-        );
+        final box = Size(constraints.maxWidth - safe.horizontal, constraints.maxHeight - safe.vertical);
         // Nothing at all below one line of the smallest text plus the inset.
         // A Column cannot shrink a Text, so what happens instead of this is a
         // RenderFlex overflow on every frame — in a pane far too small to
@@ -609,9 +586,7 @@ class _WeatherReadout extends StatelessWidget {
         // does not start taking the curve's band instead of standing down.
         // Width matters too: a column narrower than the glyph it holds is not
         // a strip, it is eight clipped icons.
-        final showStrip = hasForecast &&
-            box.height >= _stripFloor - _stripHeight + stripHeight &&
-            box.width / hours.length >= _stripColumnFloor;
+        final showStrip = hasForecast && box.height >= _stripFloor - _stripHeight + stripHeight && box.width / hours.length >= _stripColumnFloor;
         final showDetails = box.height >= _detailFloor && contentWidth >= _detailContentWidthFloor;
 
         // The size the pane would like, then what it can actually pay for in
@@ -623,10 +598,7 @@ class _WeatherReadout extends StatelessWidget {
         // on every frame. 22pt of numeral plus the 24pt inset already needs
         // 47pt of pane, which a dock pane can go under.
         final roomForTemp = math.max(0.0, box.height - _inset.vertical);
-        final tempSize = math.min(
-          math.min(math.max(box.height * 0.26, 22.0), 60.0),
-          math.min(roomForTemp / _tempLineHeight, contentWidth * 0.30),
-        );
+        final tempSize = math.min(math.min(math.max(box.height * 0.26, 22.0), 60.0), math.min(roomForTemp / _tempLineHeight, contentWidth * 0.30));
         final tempStyle = theme.textTheme.displaySmall?.copyWith(
           fontSize: tempSize,
           height: _tempLineHeight,
@@ -706,10 +678,7 @@ class _WeatherReadout extends StatelessWidget {
                     // measured against the width they get, and inside the row
                     // that width is whatever the stamp leaves — which
                     // `contentWidth` does not know.
-                    if (showDetails) ...[
-                      SizedBox(height: Space.md),
-                      _details(context, now, contentWidth),
-                    ],
+                    if (showDetails) ...[SizedBox(height: Space.md), _details(context, now, contentWidth)],
                   ],
                 ),
               ),
@@ -745,7 +714,11 @@ class _WeatherReadout extends StatelessWidget {
                 )
               else
                 const Spacer(),
-              if (showStrip) SizedBox(height: stripHeight, child: _HourStrip(hours: hours, accent: accent)),
+              if (showStrip)
+                SizedBox(
+                  height: stripHeight,
+                  child: _HourStrip(hours: hours, accent: accent),
+                ),
             ],
           ),
         );
@@ -753,8 +726,7 @@ class _WeatherReadout extends StatelessWidget {
     );
   }
 
-  String _conditionText(BuildContext context, String key) =>
-      context.t['operation.layout.panels.weatherConditions.$key'] as String;
+  String _conditionText(BuildContext context, String key) => context.t['operation.layout.panels.weatherConditions.$key'] as String;
 
   /// Wind, humidity, and whichever of sunrise/sunset comes next. Only the
   /// next one: both, in a pane this size, costs the row that carries the wind
@@ -805,19 +777,11 @@ class _WeatherReadout extends StatelessWidget {
               // words ("mp/h", "km/h"), and "11mp/h" reads as one token.
               '${reading.windSpeed!.round()} ${units.windSpeed}'.trim(),
               if (reading.windDirection case final degrees?) compassPoint(degrees),
-              if (reading.windGusts case final gusts? when gusts > reading.windSpeed!)
-                t.weatherGusts(speed: '${gusts.round()}'),
+              if (reading.windGusts case final gusts? when gusts > reading.windSpeed!) t.weatherGusts(speed: '${gusts.round()}'),
             ].join(' '),
           );
-    final humidity = reading.humidity == null
-        ? null
-        : (icon: MdiIcons.waterPercent, text: '${reading.humidity}%');
-    final sunChip = sun == null
-        ? null
-        : (
-            icon: sunIsRise ? MdiIcons.weatherSunsetUp : MdiIcons.weatherSunsetDown,
-            text: _hhmm(reading.atLocation(sun)),
-          );
+    final humidity = reading.humidity == null ? null : (icon: MdiIcons.waterPercent, text: '${reading.humidity}%');
+    final sunChip = sun == null ? null : (icon: sunIsRise ? MdiIcons.weatherSunsetUp : MdiIcons.weatherSunsetDown, text: _hhmm(reading.atLocation(sun)));
 
     // Widest first, so the first candidate that fits is the most it can show.
     for (final candidate in [
@@ -860,24 +824,16 @@ class _WeatherReadout extends StatelessWidget {
   /// the only thing that says so.
   Widget _stamp(BuildContext context, {required bool showZone}) {
     final theme = Theme.of(context);
-    final style = theme.textTheme.labelSmall?.copyWith(
-      color: staleFetch ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
-    );
+    final style = theme.textTheme.labelSmall?.copyWith(color: staleFetch ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
         // A leaf, so the per-second rebuild the shared heartbeat drives stops
         // here rather than re-running the pane's whole subtree.
-        OncePerSecond(
-          builder: (context, now) => Text(
-            _ageText(context, now.difference(reading.fetchedAtUtc)),
-            style: style,
-          ),
-        ),
+        OncePerSecond(builder: (context, now) => Text(_ageText(context, now.difference(reading.fetchedAtUtc)), style: style)),
         if (showZone)
-          if (reading.timezoneAbbreviation case final zone?)
-          Text(zone, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline)),
+          if (reading.timezoneAbbreviation case final zone?) Text(zone, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline)),
       ],
     );
   }

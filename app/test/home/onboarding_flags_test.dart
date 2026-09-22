@@ -94,8 +94,7 @@ void main() {
   });
 
   group('operation-sheet onboarding — independent auto-open', () {
-    testWidgets('opening an EXISTING operation (not new) auto-opens the sheet once, for a user who has never seen it',
-        (tester) async {
+    testWidgets('opening an EXISTING operation (not new) auto-opens the sheet once, for a user who has never seen it', (tester) async {
       tester.view.physicalSize = const Size(1000, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -108,17 +107,18 @@ void main() {
       final operation = await services.operations.create(stationCall: 'KI2D');
       expect(settings.onboardingShownCount(OnboardingFlows.operationSheet), 0);
 
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          // openActivities: false — this is the "just opening an operation
-          // I already had" path, not the new-operation one.
-          home: OperationView(services: services, operationUuid: operation.uuid),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            // openActivities: false — this is the "just opening an operation
+            // I already had" path, not the new-operation one.
+            home: OperationView(services: services, operationUuid: operation.uuid),
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
-      expect(find.byType(OperationSheet), findsOneWidget,
-          reason: 'first-ever operation open must show the sheet once, per issue #348');
+      expect(find.byType(OperationSheet), findsOneWidget, reason: 'first-ever operation open must show the sheet once, per issue #348');
       expect(settings.onboardingShownCount(OnboardingFlows.operationSheet), 1);
 
       await tester.pumpWidget(const SizedBox());
@@ -137,11 +137,13 @@ void main() {
 
       final operation = await services.operations.create(stationCall: 'KI2D');
 
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: OperationView(services: services, operationUuid: operation.uuid),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: OperationView(services: services, operationUuid: operation.uuid),
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(OperationSheet), findsNothing);
@@ -179,7 +181,11 @@ void main() {
     testWidgets('wiggles below the threshold', (tester) async {
       final services = await servicesWithNewOperationCount(0);
       addTearDown(services.db.close);
-      await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(home: HomeView(services: services)),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.pump(nudgeDelay);
 
@@ -192,7 +198,11 @@ void main() {
     testWidgets('still wiggles at one below the threshold', (tester) async {
       final services = await servicesWithNewOperationCount(1);
       addTearDown(services.db.close);
-      await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(home: HomeView(services: services)),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.pump(nudgeDelay);
 
@@ -205,7 +215,11 @@ void main() {
     testWidgets('stops once the threshold is reached', (tester) async {
       final services = await servicesWithNewOperationCount(2);
       addTearDown(services.db.close);
-      await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(home: HomeView(services: services)),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.pump(nudgeDelay);
 
@@ -218,7 +232,11 @@ void main() {
     testWidgets('creating a new operation records the count the nudge reads', (tester) async {
       final services = await servicesWithNewOperationCount(0);
       addTearDown(services.db.close);
-      await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(home: HomeView(services: services)),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.pump(nudgeDelay);
 

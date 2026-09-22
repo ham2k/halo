@@ -54,13 +54,7 @@ class StatusBarHammer {
       var step = 0;
       while (realNowUtc().isBefore(until)) {
         final slot = step % slots;
-        statusBar.setProgress(
-          key: _key(slot),
-          icon: 'progress-download',
-          title: 'Hammer $slot',
-          text: 'file $step',
-          value: (step % 10) / 10,
-        );
+        statusBar.setProgress(key: _key(slot), icon: 'progress-download', title: 'Hammer $slot', text: 'file $step', value: (step % 10) / 10);
         // Retire a DIFFERENT slot: the one written two ticks ago, so frames
         // have gone by between its last write and its removal. Clearing the
         // slot just set, in the same breath and with no frame between, only

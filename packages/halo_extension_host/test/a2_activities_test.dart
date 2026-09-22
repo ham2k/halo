@@ -20,8 +20,7 @@ void main() {
 
   Future<List<Map<String, dynamic>>> mapCsv(String ext, String dfKey, List<dynamic> rows) async {
     final host = await hostFor(ext);
-    final result = await host.invokeHook('dataFile', key: dfKey, method: 'mapCsvBatch',
-        args: {'rows': rows}, timeout: const Duration(seconds: 20)) as List;
+    final result = await host.invokeHook('dataFile', key: dfKey, method: 'mapCsvBatch', args: {'rows': rows}, timeout: const Duration(seconds: 20)) as List;
     return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
   }
 
@@ -31,10 +30,17 @@ void main() {
     // `21991231` is the list's way of saying "no end date"; anything else has
     // been retired, so a mapper that ignored the column would resurrect mills.
     final entries = await mapCsv('mota', 'mota-all-mills', [
-      {'Reference': 'X00001', 'Name': 'De Vlijt', 'District': 'Noord-Holland', 'Function': 'Windmill',
-       'Latitude': '52.4', 'Longitude': '4.8', 'Maidenhead Locator': 'JO22HK', 'valid to': '21991231'},
-      {'Reference': 'X00002', 'Name': 'Gone', 'District': 'Utrecht',
-       'Latitude': '52.1', 'Longitude': '5.1', 'valid to': '20180101'},
+      {
+        'Reference': 'X00001',
+        'Name': 'De Vlijt',
+        'District': 'Noord-Holland',
+        'Function': 'Windmill',
+        'Latitude': '52.4',
+        'Longitude': '4.8',
+        'Maidenhead Locator': 'JO22HK',
+        'valid to': '21991231',
+      },
+      {'Reference': 'X00002', 'Name': 'Gone', 'District': 'Utrecht', 'Latitude': '52.1', 'Longitude': '5.1', 'valid to': '20180101'},
     ]);
 
     expect(entries.map((e) => e['key']), ['X00001']);
@@ -45,8 +51,7 @@ void main() {
 
   test('siota reads its own column names and keeps the published locator', () async {
     final entries = await mapCsv('siota', 'siota-all-silos', [
-      {'SILO_CODE': 'VK-ABC123', 'NAME': 'Wallup', 'LOCALITY': 'Wallup', 'STATE': 'VIC',
-       'LOCATOR': 'QF12ab', 'LAT': '-36.4', 'LNG': '142.3'},
+      {'SILO_CODE': 'VK-ABC123', 'NAME': 'Wallup', 'LOCALITY': 'Wallup', 'STATE': 'VIC', 'LOCATOR': 'QF12ab', 'LAT': '-36.4', 'LNG': '142.3'},
     ]);
 
     expect(entries.length, 1);
@@ -59,10 +64,8 @@ void main() {
 
   test('wwbota falls back to the reference country when the list omits DXCC', () async {
     final entries = await mapCsv('wwbota', 'wwbota-all-bunkers', [
-      {'Reference': 'B/G-0001', 'Name': 'With DXCC', 'Type': 'Pillbox',
-       'Lat': '51.5', 'Long': '-0.1', 'Maidenhead': 'IO91WM', 'DXCC': '223'},
-      {'Reference': 'B/S5-0001', 'Name': 'No DXCC', 'Type': 'Bunker',
-       'Lat': '46.0', 'Long': '14.5', 'Locator': 'JN76AA', 'DXCC': ''},
+      {'Reference': 'B/G-0001', 'Name': 'With DXCC', 'Type': 'Pillbox', 'Lat': '51.5', 'Long': '-0.1', 'Maidenhead': 'IO91WM', 'DXCC': '223'},
+      {'Reference': 'B/S5-0001', 'Name': 'No DXCC', 'Type': 'Bunker', 'Lat': '46.0', 'Long': '14.5', 'Locator': 'JN76AA', 'DXCC': ''},
     ]);
 
     expect(entries.length, 2);
@@ -79,12 +82,19 @@ void main() {
     // The list is drawn from a map layer, so the coordinates are named for
     // screen axes — swapping them would put every reference in the wrong ocean.
     final host = await hostFor('zlota');
-    final result = await host.invokeHook('dataFile', key: 'zlota-all-references',
-        method: 'mapJsonBatch', args: {
-      'entries': [
-        {'code': 'ZLH/AA-001', 'name': 'Angelus Hut', 'asset_type': 'hut', 'x': 172.7, 'y': -41.8},
-      ],
-    }, timeout: const Duration(seconds: 20)) as List;
+    final result =
+        await host.invokeHook(
+              'dataFile',
+              key: 'zlota-all-references',
+              method: 'mapJsonBatch',
+              args: {
+                'entries': [
+                  {'code': 'ZLH/AA-001', 'name': 'Angelus Hut', 'asset_type': 'hut', 'x': 172.7, 'y': -41.8},
+                ],
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as List;
     final entries = result.map((e) => (e as Map).cast<String, dynamic>()).toList();
 
     expect(entries.first['key'], 'ZLH/AA-001');
@@ -101,20 +111,33 @@ void main() {
 
   Future<Map<String, dynamic>> scoreFor(String ext, String activationType, String ref, int contacts) async {
     final host = await hostFor(ext);
-    final result = await host.invokeHook('scoring', key: ext, method: 'scoreQsos', args: {
-      'operation': {'uuid': 'op', 'refs': [{'type': activationType, 'ref': ref}]},
-      'qsos': [
-        for (var i = 0; i < contacts; i++)
-          {
-            'uuid': 'q$i',
-            'their': {'call': 'W${i}ABC'},
-            'band': '20m',
-            'mode': 'SSB',
-            'startAtMillis': DateTime.utc(2026, 7, 1, 12, i).millisecondsSinceEpoch,
-          },
-      ],
-      'ref': {'type': activationType, 'ref': ref},
-    }, timeout: const Duration(seconds: 20)) as Map;
+    final result =
+        await host.invokeHook(
+              'scoring',
+              key: ext,
+              method: 'scoreQsos',
+              args: {
+                'operation': {
+                  'uuid': 'op',
+                  'refs': [
+                    {'type': activationType, 'ref': ref},
+                  ],
+                },
+                'qsos': [
+                  for (var i = 0; i < contacts; i++)
+                    {
+                      'uuid': 'q$i',
+                      'their': {'call': 'W${i}ABC'},
+                      'band': '20m',
+                      'mode': 'SSB',
+                      'startAtMillis': DateTime.utc(2026, 7, 1, 12, i).millisecondsSinceEpoch,
+                    },
+                ],
+                'ref': {'type': activationType, 'ref': ref},
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
     return ((result['operationSummary'] as Map)['activation'] as Map).cast<String, dynamic>();
   }
 
@@ -138,14 +161,32 @@ void main() {
     // counted toward anything, and inventing a threshold would be worse than
     // showing none.
     final host = await hostFor('mota');
-    final result = await host.invokeHook('scoring', key: 'mota', method: 'scoreQsos', args: {
-      'operation': {'uuid': 'op', 'refs': [{'type': 'motaActivation', 'ref': 'X00001'}]},
-      'qsos': [
-        {'uuid': 'q0', 'their': {'call': 'W1AW'}, 'band': '20m', 'mode': 'SSB',
-         'startAtMillis': DateTime.utc(2026, 7, 1, 12).millisecondsSinceEpoch},
-      ],
-      'ref': {'type': 'motaActivation', 'ref': 'X00001'},
-    }, timeout: const Duration(seconds: 20)) as Map;
+    final result =
+        await host.invokeHook(
+              'scoring',
+              key: 'mota',
+              method: 'scoreQsos',
+              args: {
+                'operation': {
+                  'uuid': 'op',
+                  'refs': [
+                    {'type': 'motaActivation', 'ref': 'X00001'},
+                  ],
+                },
+                'qsos': [
+                  {
+                    'uuid': 'q0',
+                    'their': {'call': 'W1AW'},
+                    'band': '20m',
+                    'mode': 'SSB',
+                    'startAtMillis': DateTime.utc(2026, 7, 1, 12).millisecondsSinceEpoch,
+                  },
+                ],
+                'ref': {'type': 'motaActivation', 'ref': 'X00001'},
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
 
     expect((result['operationSummary'] as Map)['activation'], isNull);
   }, timeout: const Timeout(Duration(seconds: 60)));

@@ -22,8 +22,7 @@
 // 23922] (hi < lo, so it never matches any frequency). Re-run the generator
 // above to see the current list of these.
 
-const List<({double loKHz, double hiKHz, String? mode, int priority, List<int> regions, List<String> countries})>
-    bandPlanModeSegments = [
+const List<({double loKHz, double hiKHz, String? mode, int priority, List<int> regions, List<String> countries})> bandPlanModeSegments = [
   // 160m
   (loKHz: 1800, hiKHz: 1810, mode: 'OOB', priority: 0, regions: [1], countries: []),
   (loKHz: 1810, hiKHz: 1838, mode: 'CW', priority: 0, regions: [1], countries: []),
@@ -65,7 +64,14 @@ const List<({double loKHz, double hiKHz, String? mode, int priority, List<int> r
   (loKHz: 10136, hiKHz: 10139, mode: 'FT8', priority: 100, regions: [], countries: []),
   (loKHz: 10140, hiKHz: 10143, mode: 'FT4', priority: 100, regions: [], countries: []),
   (loKHz: 10100, hiKHz: 10150, mode: null, priority: 0, regions: [], countries: ['au', 'nz']),
-  (loKHz: 10100, hiKHz: 10150, mode: null, priority: 0, regions: [], countries: ['ao', 'bi', 'bw', 'cd', 'cg', 'ga', 'ke', 'km', 'ls', 'mg', 'mu', 'mw', 'mz', 'na', 'rw', 'sc', 'so', 'st', 'sz', 'tz', 'ug', 'za', 'zm', 'zw']),
+  (
+    loKHz: 10100,
+    hiKHz: 10150,
+    mode: null,
+    priority: 0,
+    regions: [],
+    countries: ['ao', 'bi', 'bw', 'cd', 'cg', 'ga', 'ke', 'km', 'ls', 'mg', 'mu', 'mw', 'mz', 'na', 'rw', 'sc', 'so', 'st', 'sz', 'tz', 'ug', 'za', 'zm', 'zw'],
+  ),
   // 20m
   (loKHz: 14000, hiKHz: 14150, mode: 'CW', priority: 0, regions: [], countries: []),
   (loKHz: 14000, hiKHz: 14070, mode: 'CW', priority: 0, regions: [1], countries: []),

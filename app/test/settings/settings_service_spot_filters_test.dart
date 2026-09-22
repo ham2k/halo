@@ -49,7 +49,9 @@ void main() {
     expect(settings.disabledSpotSources, isEmpty);
 
     final mixed = await settingsWith({
-      'spottingFilters': jsonEncode({'disabledSources': ['sota', 7]}),
+      'spottingFilters': jsonEncode({
+        'disabledSources': ['sota', 7],
+      }),
     });
     expect(mixed.disabledSpotSources, {'sota'});
   });

@@ -21,8 +21,7 @@
 /// reports a missing method as a successful `null`. Requiring a list here
 /// would tell an operator running only contests that their search is down, on
 /// every keystroke, forever.
-bool allActivitySourcesFailed(List<Map<String, dynamic>> entries) =>
-    entries.isNotEmpty && entries.every((entry) => entry['ok'] != true);
+bool allActivitySourcesFailed(List<Map<String, dynamic>> entries) => entries.isNotEmpty && entries.every((entry) => entry['ok'] != true);
 
 /// The suggestions carried by [entries] — one `{key, ok, value}` per activity
 /// hook, the shape `invokeHookAll` returns — in the order the picker should
@@ -35,10 +34,7 @@ bool allActivitySourcesFailed(List<Map<String, dynamic>> entries) =>
 ///
 /// An entry that failed, or answered with anything but a list, contributes
 /// nothing: one broken hook never costs the others their results.
-List<Map<String, dynamic>> mergeActivitySuggestions(
-  List<Map<String, dynamic>> entries, {
-  Set<String> preferredKeys = const {},
-}) {
+List<Map<String, dynamic>> mergeActivitySuggestions(List<Map<String, dynamic>> entries, {Set<String> preferredKeys = const {}}) {
   final preferred = <Map<String, dynamic>>[];
   final others = <Map<String, dynamic>>[];
   for (final entry in entries) {
@@ -73,9 +69,7 @@ List<Map<String, dynamic>> mergeActivitySuggestions(
 ///
 /// Neither the input list nor its maps are mutated.
 List<Map<String, dynamic>> rankActivitySuggestions(List<Map<String, dynamic>> suggestions) {
-  final ordered = [
-    for (var i = 0; i < suggestions.length; i++) (index: i, suggestion: suggestions[i]),
-  ];
+  final ordered = [for (var i = 0; i < suggestions.length; i++) (index: i, suggestion: suggestions[i])];
 
   ordered.sort((a, b) {
     final ka = _distanceKey(a.suggestion);

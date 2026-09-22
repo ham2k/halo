@@ -26,8 +26,7 @@ void main() {
     // the path can rewrite, the consent screen would be describing whatever
     // they substituted.
     for (final scheme in ['http', 'ftp', 'file']) {
-      expect(parse('com.ham2k:///install_extension?url=$scheme://example.org/a.h2kext'), isNull,
-          reason: 'expected $scheme to be refused');
+      expect(parse('com.ham2k:///install_extension?url=$scheme://example.org/a.h2kext'), isNull, reason: 'expected $scheme to be refused');
     }
   });
 
@@ -53,7 +52,6 @@ void main() {
 
   test('ignores links that are not this one', () {
     expect(parse('com.ham2k:///link_client?id=a&token=b'), isNull);
-    expect(parse('https://example.org/install_extension?url=https://example.org/a.h2kext'), isNull,
-        reason: 'only the app\'s own schemes are ours to act on');
+    expect(parse('https://example.org/install_extension?url=https://example.org/a.h2kext'), isNull, reason: 'only the app\'s own schemes are ours to act on');
   });
 }

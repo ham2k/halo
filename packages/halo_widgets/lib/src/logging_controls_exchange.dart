@@ -60,12 +60,7 @@ typedef ExchangeMenu = ({Map<String, dynamic> control, List<ExchangeOption> sugg
 
 /// The exchange fields' state. See the file comment.
 class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
-  ExchangeFieldsModel({
-    required this.config,
-    required this.draftQsoData,
-    required this.onPrimaryFieldKeyEvent,
-    required this.onFocusChanged,
-  });
+  ExchangeFieldsModel({required this.config, required this.draftQsoData, required this.onPrimaryFieldKeyEvent, required this.onFocusChanged});
 
   /// The panel's configuration as it stands right now.
   final ExchangeFieldsConfig Function() config;
@@ -208,8 +203,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
     _touched.add(key);
   }
 
-  TextEditingController controllerFor(String key) =>
-      _controllers[key] ??= TextEditingController(text: _values[key] ?? '');
+  TextEditingController controllerFor(String key) => _controllers[key] ??= TextEditingController(text: _values[key] ?? '');
 
   LayerLink linkFor(String key) => _links[key] ??= LayerLink();
 
@@ -222,18 +216,16 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// being typed), which masks its absence — but on an existing QSO opened
   /// for editing, tabbing into a searchable exchange would show no offer at
   /// all while Space still rewrote the field.
-  FocusNode focusFor(String key) => _focus[key] ??= (FocusNode(
-        debugLabel: 'exchange:$key',
-        onKeyEvent: _onKeyEvent,
-      )..addListener(() {
-          onFocusChanged(_focus[key]!, controllerFor(key));
-          // A dismissal and a highlight both belong to the field that had
-          // focus when they were made, so leaving or entering a field clears
-          // them.
-          _menuDismissed = false;
-          _selection = null;
-          notify();
-        }));
+  FocusNode focusFor(String key) => _focus[key] ??= (FocusNode(debugLabel: 'exchange:$key', onKeyEvent: _onKeyEvent)
+    ..addListener(() {
+      onFocusChanged(_focus[key]!, controllerFor(key));
+      // A dismissal and a highlight both belong to the field that had
+      // focus when they were made, so leaving or entering a field clears
+      // them.
+      _menuDismissed = false;
+      _selection = null;
+      notify();
+    }));
 
   /// [key]'s focus node, but only once it is attached to a built field —
   /// creating one for a control whose widget hasn't been built leaves an
@@ -272,8 +264,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
       // are the field's own selection and caret moves and stay its. The key
       // is tested before the menu, which is resolved from the options on
       // every ask — a plain keystroke must not pay for that.
-      final bare =
-          !(keyboard.isShiftPressed || keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed);
+      final bare = !(keyboard.isShiftPressed || keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed);
       if (bare && (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) && menuOpen) {
         // The menu is drawn best-at-the-bottom, so Up walks up the screen,
         // away from the field, which is +1 in rank order.
@@ -409,8 +400,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
         // writes — normalized HERE so the edit path agrees, since
         // `QsosRepository.update` deliberately never allocates and so never
         // passes through that method.
-        (byType[refType] ??= {'type': refType})[field] =
-            input['kind'] == 'serial' ? (int.tryParse(value) ?? value) : value;
+        (byType[refType] ??= {'type': refType})[field] = input['kind'] == 'serial' ? (int.tryParse(value) ?? value) : value;
       }
     }
     if (byType.isEmpty && clearedByType.isEmpty) return refs;
@@ -442,10 +432,9 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// per build from the descriptor. Malformed entries are dropped rather than
   /// crashing the entry row — options cross the bridge from third-party code.
   List<ExchangeOption> optionsFor(Map<dynamic, dynamic> control) => [
-        for (final raw in ((control['input'] as Map?)?['options'] as List?) ?? const [])
-          if (raw is Map)
-            ?ExchangeOption.fromMap(raw.cast<String, dynamic>()),
-      ];
+    for (final raw in ((control['input'] as Map?)?['options'] as List?) ?? const [])
+      if (raw is Map) ?ExchangeOption.fromMap(raw.cast<String, dynamic>()),
+  ];
 
   /// The separator a `kind: 'options'` control accepts several values with —
   /// a QSO party's county line, `ORDES/JEF` — or `''` for the single-value
@@ -585,14 +574,9 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
     if (inherited == null) return matches;
     final exact = options.where((o) => o.code.toUpperCase() == inherited.toUpperCase()).toList();
     if (exact.isEmpty) {
-      return matches.isNotEmpty
-          ? matches
-          : matchExchangeOptions(inherited, options, matchOn: on, preferred: preferred);
+      return matches.isNotEmpty ? matches : matchExchangeOptions(inherited, options, matchOn: on, preferred: preferred);
     }
-    return [
-      ...exact,
-      ...matches.where((o) => o.code.toUpperCase() != inherited.toUpperCase()),
-    ];
+    return [...exact, ...matches.where((o) => o.code.toUpperCase() != inherited.toUpperCase())];
   }
 
   /// Whether the suggestion menu is showing — what arms the arrow keys and
@@ -679,8 +663,8 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
       // testing only the literal text would refuse every one of those — a
       // menu showing a row Space can never take.
       final inherited = _inheritedValue(control);
-      final acceptable = isAcceptableExchangeMatch(typed, chosen, matchOn: on) ||
-          (inherited != null && isAcceptableExchangeMatch(inherited, chosen, matchOn: on));
+      final acceptable =
+          isAcceptableExchangeMatch(typed, chosen, matchOn: on) || (inherited != null && isAcceptableExchangeMatch(inherited, chosen, matchOn: on));
       if (!acceptable) return false;
     }
 
@@ -697,12 +681,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
     } else {
       final text = _values[key] ?? '';
       final cursor = controller.selection.baseOffset;
-      final replaced = replaceExchangeValueAt(
-        text,
-        cursor < 0 ? text.length : cursor,
-        separator,
-        chosen.code,
-      );
+      final replaced = replaceExchangeValueAt(text, cursor < 0 ? text.length : cursor, separator, chosen.code);
       _values[key] = replaced.text;
       controller.value = TextEditingValue(
         text: replaced.text,
@@ -734,10 +713,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// current controls. Passed to `add` so the repository can allocate against
   /// the QSO as committed — and so a number the operator was shown raises the
   /// counter past itself rather than being handed out twice.
-  List<SequenceDescriptor> get serialSequences => [
-        for (final control in config().textControls())
-          ?serialDescriptorFor(control),
-      ];
+  List<SequenceDescriptor> get serialSequences => [for (final control in config().textControls()) ?serialDescriptorFor(control)];
 
   /// [refs] with every declared serial field removed, so the sequence issues
   /// a fresh number at commit instead of the one already on the ref. Only for
@@ -750,10 +726,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
     ];
     if (descriptors.isEmpty) return list;
     return [
-      for (final ref in list)
-        {
-          ...ref,
-        }..removeWhere((field, _) => descriptors.any((d) => d.refType == ref['type'] && d.field == field)),
+      for (final ref in list) {...ref}..removeWhere((field, _) => descriptors.any((d) => d.refType == ref['type'] && d.field == field)),
     ];
   }
 
@@ -1004,18 +977,10 @@ class ExchangeField extends StatelessWidget {
       // is a typo claims a multiplier that isn't there, and the field is the
       // only place that can say so while the QSO is still in front of the
       // operator.
-      isInvalid = isInvalid || !areKnownExchangeOptions(
-        value,
-        options,
-        separator: model.separatorFor(control),
-        inheritPrefix: model.inheritPrefixFor(control),
-      );
+      isInvalid = isInvalid || !areKnownExchangeOptions(value, options, separator: model.separatorFor(control), inheritPrefix: model.inheritPrefixFor(control));
     }
     final uppercase = !isSerial && input['uppercase'] != false;
-    final transforms = [
-      for (final t in (input['transforms'] as List?) ?? const [])
-        RefTransform.fromMap((t as Map).cast<String, dynamic>()),
-    ];
+    final transforms = [for (final t in (input['transforms'] as List?) ?? const []) RefTransform.fromMap((t as Map).cast<String, dynamic>())];
 
     return AnimatedContainer(
       duration: duration,
@@ -1129,8 +1094,7 @@ class ExchangeSuggestionsMenu extends StatelessWidget {
     // and the highlight stops being the only difference between rows.
     final codeStyle = haloMonoStyle(context, color: colors.onSurface, fontWeight: FontWeight.w400);
     final boldCode = codeStyle.copyWith(fontWeight: FontWeight.w700);
-    final nameStyle = (theme.textTheme.bodyMedium ?? const TextStyle())
-        .copyWith(color: colors.onSurface, fontWeight: FontWeight.w400);
+    final nameStyle = (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(color: colors.onSurface, fontWeight: FontWeight.w400);
     final boldName = nameStyle.copyWith(fontWeight: FontWeight.w700);
 
     // Measured in BOLD even for the rows that aren't: the highlight moves with
@@ -1161,21 +1125,14 @@ class ExchangeSuggestionsMenu extends StatelessWidget {
           // In FRONT, so the wash covers the value column too and the whole row
           // reads as one selected thing.
           position: DecorationPosition.foreground,
-          decoration: BoxDecoration(
-            color: isSelected ? colors.onSurface.withValues(alpha: 0.10) : Colors.transparent,
-          ),
+          decoration: BoxDecoration(color: isSelected ? colors.onSurface.withValues(alpha: 0.10) : Colors.transparent),
           child: Row(
             children: [
               SizedBox(
                 width: nameWidth,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: namePadding, vertical: Space.xs),
-                  child: Text(
-                    option.name ?? option.code,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: isSelected ? boldName : nameStyle,
-                  ),
+                  child: Text(option.name ?? option.code, maxLines: 1, overflow: TextOverflow.ellipsis, style: isSelected ? boldName : nameStyle),
                 ),
               ),
               Container(
@@ -1183,11 +1140,7 @@ class ExchangeSuggestionsMenu extends StatelessWidget {
                 color: haloDialogBandColor(context),
                 padding: const EdgeInsets.symmetric(vertical: Space.xs),
                 alignment: Alignment.center,
-                child: Text(
-                  option.code,
-                  maxLines: 1,
-                  style: isSelected ? boldCode : codeStyle,
-                ),
+                child: Text(option.code, maxLines: 1, style: isSelected ? boldCode : codeStyle),
               ),
             ],
           ),

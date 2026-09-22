@@ -111,18 +111,14 @@ ExportAction rowExportAction({bool? isWeb, TargetPlatform? platform}) {
 }
 
 IconData exportActionIcon(ExportAction action) => switch (action) {
-      ExportAction.save => MdiIcons.contentSave,
-      ExportAction.share => MdiIcons.shareVariant,
-      ExportAction.export => MdiIcons.exportVariant,
-      ExportAction.download => MdiIcons.download,
-    };
+  ExportAction.save => MdiIcons.contentSave,
+  ExportAction.share => MdiIcons.shareVariant,
+  ExportAction.export => MdiIcons.exportVariant,
+  ExportAction.download => MdiIcons.download,
+};
 
 /// Opens the Exports pane for [operation].
-Future<void> showOperationExportPanel(
-  BuildContext context, {
-  required HaLoServices services,
-  required Operation operation,
-}) {
+Future<void> showOperationExportPanel(BuildContext context, {required HaLoServices services, required Operation operation}) {
   final t = context.t;
   return showModalPane<void>(
     context,
@@ -156,10 +152,8 @@ Future<void> showOperationExportPanel(
 /// The gear's dialog. Also declared as a settings group
 /// (`ExportsSettingsGroup`), so the same setting is reachable from
 /// Settings by someone who never opens this panel.
-Future<void> showExportSettingsDialog(
-  BuildContext context, {
-  required HaLoServices services,
-}) => showSettingsForTarget(context, services: services, target: 'exports', title: context.t.operation.export.settingsTitle);
+Future<void> showExportSettingsDialog(BuildContext context, {required HaLoServices services}) =>
+    showSettingsForTarget(context, services: services, target: 'exports', title: context.t.operation.export.settingsTitle);
 
 class OperationExportPanel extends StatefulWidget {
   final HaLoServices services;
@@ -251,8 +245,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
               return <Map<String, dynamic>>[];
             }),
       ]);
-      final options = (results[0] as List<Map<String, dynamic>>)
-        ..sort((a, b) => ((b['priority'] as num?) ?? 0).compareTo((a['priority'] as num?) ?? 0));
+      final options = (results[0] as List<Map<String, dynamic>>)..sort((a, b) => ((b['priority'] as num?) ?? 0).compareTo((a['priority'] as num?) ?? 0));
       if (!mounted || request != _loadRequest) return;
       setState(() {
         _options = options;
@@ -279,11 +272,9 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// A hook may offer multiple options of the same exportType. exportKey
   /// distinguishes them, with exportType as the default for single options.
   /// The callsign separates identical options offered for different stations.
-  String _selectionKey(Map<String, dynamic> option) =>
-      '${option['stationCall'] ?? ''}|${option['hookKey']}:${option['exportKey'] ?? option['exportType']}';
+  String _selectionKey(Map<String, dynamic> option) => '${option['stationCall'] ?? ''}|${option['hookKey']}:${option['exportKey'] ?? option['exportType']}';
 
-  List<Map<String, dynamic>> get _selectedOptions =>
-      _options.where((o) => _selected[_selectionKey(o)] == true).toList();
+  List<Map<String, dynamic>> get _selectedOptions => _options.where((o) => _selected[_selectionKey(o)] == true).toList();
 
   /// The options grouped by the station callsign that owes them, in the order
   /// the calls were entered. One entry for a normal single-call operation —
@@ -309,8 +300,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     ];
   }
 
-  String _filenameOf(Map<String, dynamic> option) =>
-      option['filename'] as String? ?? option['label'] as String? ?? option['exportType'] as String;
+  String _filenameOf(Map<String, dynamic> option) => option['filename'] as String? ?? option['label'] as String? ?? option['exportType'] as String;
 
   /// The counted verb. [combined] names the batch that spans EVERY callsign,
   /// which only exists when there is more than one — "Download 8 files" beside
@@ -357,8 +347,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       // stale, which UIKit answers by clamping — a misplaced popover, not a
       // failure.
       final box = context.findRenderObject() as RenderBox?;
-      final shareOrigin =
-          box == null || !box.hasSize ? null : box.localToGlobal(Offset.zero) & box.size;
+      final shareOrigin = box == null || !box.hasSize ? null : box.localToGlobal(Offset.zero) & box.size;
       final files = await exports.generateExports(widget.operation, options);
       widget.services.track('operation_exported', {
         'formats': options.map((o) => o['format'] ?? o['key'] ?? '?').join(','),
@@ -413,8 +402,8 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     final report = failure != null
         ? (title: t.operation.export.resultFailedTitle, body: failure)
         : outcome != null
-            ? (title: t.operation.export.resultTitle, body: outcome)
-            : null;
+        ? (title: t.operation.export.resultTitle, body: outcome)
+        : null;
     if (report == null) return;
     // The pane can go while an export runs — its Done stays live, and the
     // barrier is dismissible — and the dialog needs a context this State
@@ -443,18 +432,15 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// The pane stays open behind it — exporting one format and then another is
   /// ordinary, and dismissing the confirmation is not a request to leave.
   Future<void> _showResult(String title, String body) => showHaloDialog<void>(
-        context: context,
-        builder: (dialogContext) => HaloDialog(
-          title: Text(title),
-          content: Text(body),
-          // Nothing to abandon and nothing left to confirm: Done, in the
-          // cancel slot (docs/design/user-interface.md § Dialogs).
-          cancel: TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(dialogContext.t.common.done),
-          ),
-        ),
-      );
+    context: context,
+    builder: (dialogContext) => HaloDialog(
+      title: Text(title),
+      content: Text(body),
+      // Nothing to abandon and nothing left to confirm: Done, in the
+      // cancel slot (docs/design/user-interface.md § Dialogs).
+      cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(dialogContext.t.common.done)),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -470,19 +456,16 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _error != null
-                  ? Padding(
-                      padding: const EdgeInsets.all(Space.xxl),
-                      child: Center(child: Text(t.operation.export.exportFailed(error: _error!))),
-                    )
-                  : _buildList(context),
+              ? Padding(
+                  padding: const EdgeInsets.all(Space.xxl),
+                  child: Center(child: Text(t.operation.export.exportFailed(error: _error!))),
+                )
+              : _buildList(context),
         ),
         // The sync report is pinned under the list rather than riding at the
         // end of it: it is a standing fact about the operation, not one more
         // thing to scroll to, and a long list of formats would bury it.
-        if (!_loading && _error == null) ...[
-          const Divider(height: 1),
-          _buildSyncSummary(context, _syncCounts),
-        ],
+        if (!_loading && _error == null) ...[const Divider(height: 1), _buildSyncSummary(context, _syncCounts)],
         _buildFooter(context),
       ],
     );
@@ -502,8 +485,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         // button saying "Save 3 files" belongs with the ticks it counted, and
         // the operator who came to export everything should not have to reach
         // the end of the formats to find the button that does it.
-        if (_options.isNotEmpty)
-          SliverToBoxAdapter(child: _buildActionBand(context, combined: groups.length > 1)),
+        if (_options.isNotEmpty) SliverToBoxAdapter(child: _buildActionBand(context, combined: groups.length > 1)),
         if (_options.isEmpty)
           SliverToBoxAdapter(
             child: Padding(
@@ -513,9 +495,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
                 // operator looking for a fault: a log with no contacts yet has
                 // nothing to offer, where a log WITH contacts and no options
                 // means the formats themselves never arrived.
-                _syncCounts != null && _syncCounts!.total == 0
-                    ? t.operation.export.nothingLogged
-                    : t.operation.export.noOptions,
+                _syncCounts != null && _syncCounts!.total == 0 ? t.operation.export.nothingLogged : t.operation.export.noOptions,
                 style: theme.textTheme.bodyMedium,
               ),
             ),
@@ -526,28 +506,27 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
             // header at all — grouping chrome around one group is just noise,
             // and with nothing to tell apart there is nothing to pin.
             if (groups.length > 1)
-              SliverMainAxisGroup(slivers: [
-                // Pinned: the callsign a row belongs to is the one thing a
-                // multi-operator list cannot afford to scroll away, since
-                // every group offers the same formats under a different call.
-                // Only inside this group — pinned to the whole scroll view,
-                // every callsign's band would stack up at the top.
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _PinnedGroupHeader(
-                    // Never BELOW the unscaled height: 40 of those pixels are
-                    // a Material button's own floor, which an OS text scale
-                    // under 1 does not shrink — scaled down, the band clamps
-                    // the button instead of fitting it.
-                    height: math.max(
-                      _groupHeaderHeight,
-                      MediaQuery.textScalerOf(context).scale(_groupHeaderHeight),
+              SliverMainAxisGroup(
+                slivers: [
+                  // Pinned: the callsign a row belongs to is the one thing a
+                  // multi-operator list cannot afford to scroll away, since
+                  // every group offers the same formats under a different call.
+                  // Only inside this group — pinned to the whole scroll view,
+                  // every callsign's band would stack up at the top.
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _PinnedGroupHeader(
+                      // Never BELOW the unscaled height: 40 of those pixels are
+                      // a Material button's own floor, which an OS text scale
+                      // under 1 does not shrink — scaled down, the band clamps
+                      // the button instead of fitting it.
+                      height: math.max(_groupHeaderHeight, MediaQuery.textScalerOf(context).scale(_groupHeaderHeight)),
+                      child: _buildGroupHeader(context, group),
                     ),
-                    child: _buildGroupHeader(context, group),
                   ),
-                ),
-                _optionRows(context, group.options, rowAction),
-              ])
+                  _optionRows(context, group.options, rowAction),
+                ],
+              )
             else
               _optionRows(context, group.options, rowAction),
         const SliverToBoxAdapter(child: SizedBox(height: Space.md)),
@@ -555,36 +534,25 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     );
   }
 
-  Widget _optionRows(
-    BuildContext context,
-    List<Map<String, dynamic>> options,
-    ExportAction rowAction,
-  ) =>
-      SliverList(
-        delegate: SliverChildListDelegate([
-          for (final option in options) _buildOptionRow(context, option, rowAction),
-        ]),
-      );
+  Widget _optionRows(BuildContext context, List<Map<String, dynamic>> options, ExportAction rowAction) =>
+      SliverList(delegate: SliverChildListDelegate([for (final option in options) _buildOptionRow(context, option, rowAction)]));
 
   /// The operation's sync state, in ONE row. Event markers are counted on the
   /// same line rather than in a row of their own: a second tile would read as
   /// a second report to check on a routine "everything is synced", and would
   /// appear only when the operation has markers, moving everything under it.
-  Widget _buildSyncSummary(
-    BuildContext context,
-    ({int total, int pending, int eventTotal, int eventPending})? counts,
-  ) {
+  Widget _buildSyncSummary(BuildContext context, ({int total, int pending, int eventTotal, int eventPending})? counts) {
     final t = context.t.operation.export;
     final qsos = counts == null
         ? null
         : counts.pending == 0
-            ? t.qsosSynced(total: counts.total)
-            : t.qsosPending(pending: counts.pending, total: counts.total);
+        ? t.qsosSynced(total: counts.total)
+        : t.qsosPending(pending: counts.pending, total: counts.total);
     final events = counts == null || counts.eventTotal == 0
         ? null
         : counts.eventPending == 0
-            ? t.eventsSynced(total: counts.eventTotal)
-            : t.eventsPending(pending: counts.eventPending, total: counts.eventTotal);
+        ? t.eventsSynced(total: counts.eventTotal)
+        : t.eventsPending(pending: counts.eventPending, total: counts.eventTotal);
     return Container(
       // The same band the batch at the top of the list takes: the two are the
       // ends of one list, not a control at one end and a stray row at the
@@ -622,11 +590,9 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
             // SectionHeader.titleStyle: that is the HEADING face, a step up,
             // and a count is a sentence, which at that size takes two lines
             // of a phone's band.
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontFamily: 'RobotoSlab',
-                  fontWeight: FontWeight.w900,
-                  color: HaLoColors.of(context).onSurfaceAccent,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontFamily: 'RobotoSlab', fontWeight: FontWeight.w900, color: HaLoColors.of(context).onSurfaceAccent),
           );
     return Container(
       color: _bandColor(context),
@@ -660,10 +626,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// a multi-operator operation owes each call its own submission, so "export
   /// what I ticked for W1AW" has to be sayable without unticking everyone
   /// else's.
-  Widget _buildGroupHeader(
-    BuildContext context,
-    ({String call, List<Map<String, dynamic>> options}) group,
-  ) {
+  Widget _buildGroupHeader(BuildContext context, ({String call, List<Map<String, dynamic>> options}) group) {
     final theme = Theme.of(context);
     final colors = HaLoColors.of(context);
     final selected = group.options.where((o) => _selected[_selectionKey(o)] == true).toList();
@@ -690,10 +653,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
                 // take a second line: the callsign gives way to the buttons.
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colors.onSurfaceAccent,
-                ),
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: colors.onSurfaceAccent),
               ),
             ),
             _buildBulkActions(
@@ -742,8 +702,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     // developer-only surface is marked with instead.
     final activityColor = widget.services.exports.isQsonOption(option)
         ? colors.devMode
-        : resolveExtensionColor(option['color'] as String?) ??
-            colorForRefType(_controls, option['refType'] as String?);
+        : resolveExtensionColor(option['color'] as String?) ?? colorForRefType(_controls, option['refType'] as String?);
 
     void toggle() => setState(() => _selected[key] = !selected);
 
@@ -769,16 +728,9 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
                   children: [
                     Text(
                       label,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colors.onSurfaceAccent,
-                      ),
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: colors.onSurfaceAccent),
                     ),
-                    if (option['filename'] != null)
-                      Text(
-                        filename,
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
+                    if (option['filename'] != null) Text(filename, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                   ],
                 ),
               ),
@@ -821,10 +773,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     final icon = Icon(
       resolveIconName(
         option['icon'] as String?,
-        fallback: resolveIconName(
-          iconForRefType(_controls, option['refType'] as String?),
-          fallback: MdiIcons.fileExport,
-        ),
+        fallback: resolveIconName(iconForRefType(_controls, option['refType'] as String?), fallback: MdiIcons.fileExport),
       ),
       color: activityColor == null ? colors.onSurfaceAccent : null,
     );
@@ -834,13 +783,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
 
   /// The batch action(s) for [selected] — everything ticked in the panel, in
   /// [_buildActionBand], or just one callsign's in its group header.
-  Widget _buildBulkActions(
-    BuildContext context,
-    List<Map<String, dynamic>> selected, {
-    bool combined = false,
-    bool wrap = true,
-    bool compact = false,
-  }) {
+  Widget _buildBulkActions(BuildContext context, List<Map<String, dynamic>> selected, {bool combined = false, bool wrap = true, bool compact = false}) {
     final actions = bulkExportActions();
 
     /// The count alone where the label won't fit — the icon already carries
@@ -849,9 +792,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     /// is told nothing, and this app has no tooltips to fall back on.
     Widget labelFor(ExportAction action) {
       final label = _bulkLabel(action, selected.length, combined: combined);
-      return compact
-          ? Text('${selected.length}', semanticsLabel: label)
-          : Text(label);
+      return compact ? Text('${selected.length}', semanticsLabel: label) : Text(label);
     }
 
     final buttons = <Widget>[
@@ -888,10 +829,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (final (index, button) in buttons.indexed) ...[
-            if (index > 0) const SizedBox(width: Space.md),
-            button,
-          ],
+          for (final (index, button) in buttons.indexed) ...[if (index > 0) const SizedBox(width: Space.md), button],
         ],
       );
     }
@@ -904,16 +842,16 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// so this stays a plain dismissal — nothing here is destructive or
   /// unsaved, and the exports have already happened by the time it's pressed.
   Widget _buildFooter(BuildContext context) => haloDialogFooterBand(
-        context,
-        // Everything that DOES something lives in the list above and has
-        // already happened by the time this is pressed, so this is a way out
-        // rather than a confirm: plain Done, in the cancel slot.
-        cancel: TextButton(
-          // maybePop, matching the pane's barrier.
-          onPressed: () => Navigator.of(context).maybePop(),
-          child: Text(context.t.common.done),
-        ),
-      );
+    context,
+    // Everything that DOES something lives in the list above and has
+    // already happened by the time this is pressed, so this is a way out
+    // rather than a confirm: plain Done, in the cancel slot.
+    cancel: TextButton(
+      // maybePop, matching the pane's barrier.
+      onPressed: () => Navigator.of(context).maybePop(),
+      child: Text(context.t.common.done),
+    ),
+  );
 }
 
 /// The callsign band's pinned-sliver delegate — a fixed [height], since a
@@ -934,8 +872,7 @@ class _PinnedGroupHeader extends SliverPersistentHeaderDelegate {
   // declared throws ("layoutExtent exceeds paintExtent"), so the child is
   // held to exactly that box rather than trusted to match it.
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) =>
-      SizedBox(height: height, child: child);
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => SizedBox(height: height, child: child);
 
   // Always true: [child] is rebuilt fresh by the enclosing build — it carries
   // the group's live tick count — so the comparison would never match anyway,

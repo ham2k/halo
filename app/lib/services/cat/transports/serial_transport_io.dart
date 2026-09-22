@@ -179,9 +179,9 @@ void _quietLibserialport() {
   if (_libserialportQuieted) return;
   _libserialportQuieted = true;
   try {
-    final setHandler = ffi.DynamicLibrary.process().lookupFunction<
-        ffi.Void Function(ffi.Pointer<ffi.Void>),
-        void Function(ffi.Pointer<ffi.Void>)>('sp_set_debug_handler');
+    final setHandler = ffi.DynamicLibrary.process().lookupFunction<ffi.Void Function(ffi.Pointer<ffi.Void>), void Function(ffi.Pointer<ffi.Void>)>(
+      'sp_set_debug_handler',
+    );
     setHandler(ffi.nullptr);
   } catch (e) {
     debugPrint('[cat] could not quiet libserialport debug logging: $e');
@@ -203,8 +203,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
   String get key => transportKey;
 
   @override
-  List<SerialPortOption> get availablePorts =>
-      Platform.isAndroid ? _cachedAndroidPortOptions : availableSerialPorts();
+  List<SerialPortOption> get availablePorts => Platform.isAndroid ? _cachedAndroidPortOptions : availableSerialPorts();
 
   /// Android's device list is a MethodChannel round-trip, unlike
   /// libserialport's synchronous FFI scan — so it goes through the same
@@ -228,15 +227,17 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     final options = <SerialPortOption>[];
     for (final device in devices) {
       byName[device.deviceName] = device;
-      options.addAll(androidSerialPortOptions(
-        deviceName: device.deviceName,
-        manufacturer: device.manufacturerName,
-        productName: device.productName,
-        serialNumber: device.serial,
-        vendorId: device.vid,
-        productId: device.pid,
-        serialInterfaces: await androidSerialInterfaces(device.deviceName, vendorId: device.vid),
-      ));
+      options.addAll(
+        androidSerialPortOptions(
+          deviceName: device.deviceName,
+          manufacturer: device.manufacturerName,
+          productName: device.productName,
+          serialNumber: device.serial,
+          vendorId: device.vid,
+          productId: device.pid,
+          serialInterfaces: await androidSerialInterfaces(device.deviceName, vendorId: device.vid),
+        ),
+      );
     }
     _androidDevicesByName = byName;
     _cachedAndroidPortOptions = options;
@@ -354,21 +355,27 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     // the same way tcp_transport_io.dart races Socket.connect, so a
     // superseded attempt doesn't leave the port claimed behind a newer one.
     final createCompleter = Completer<usb.UsbPort?>();
-    unawaited(device.create('', iface).then(
-      (port) {
-        if (createCompleter.isCompleted) {
-          unawaited(port?.close().catchError((Object _) => false));
-        } else {
-          createCompleter.complete(port);
-        }
-      },
-      onError: (Object error, StackTrace stackTrace) {
-        if (!createCompleter.isCompleted) createCompleter.completeError(error, stackTrace);
-      },
-    ));
-    unawaited(cancel.whenCancelled.then((_) {
-      if (!createCompleter.isCompleted) createCompleter.completeError(const CatCancelledException());
-    }));
+    unawaited(
+      device
+          .create('', iface)
+          .then(
+            (port) {
+              if (createCompleter.isCompleted) {
+                unawaited(port?.close().catchError((Object _) => false));
+              } else {
+                createCompleter.complete(port);
+              }
+            },
+            onError: (Object error, StackTrace stackTrace) {
+              if (!createCompleter.isCompleted) createCompleter.completeError(error, stackTrace);
+            },
+          ),
+    );
+    unawaited(
+      cancel.whenCancelled.then((_) {
+        if (!createCompleter.isCompleted) createCompleter.completeError(const CatCancelledException());
+      }),
+    );
 
     final usb.UsbPort? port;
     try {
@@ -391,12 +398,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     if (!opened) throw SerialPortUnavailable(name, 'permission denied, or already in use', failure: SerialFailure.busy);
 
     try {
-      await port.setPortParameters(
-        baudRate,
-        usb.UsbPort.DATABITS_8,
-        stopBits == 2 ? usb.UsbPort.STOPBITS_2 : usb.UsbPort.STOPBITS_1,
-        usb.UsbPort.PARITY_NONE,
-      );
+      await port.setPortParameters(baudRate, usb.UsbPort.DATABITS_8, stopBits == 2 ? usb.UsbPort.STOPBITS_2 : usb.UsbPort.STOPBITS_1, usb.UsbPort.PARITY_NONE);
       await port.setFlowControl(usb.UsbPort.FLOW_CONTROL_OFF);
       // RTS and DTR stay OFF — see the RTS-as-PTT note on the desktop
       // connect path above; the same wiring risk applies here.
@@ -440,16 +442,15 @@ class SerialPortUnavailable implements SerialPortProblem {
     final failure = text.contains('busy')
         ? SerialFailure.busy
         : text.contains('permission denied') || text.contains('access is denied')
-            ? SerialFailure.denied
-            : text.contains('no such file') || text.contains('no such device') || text.contains('cannot find')
-                ? SerialFailure.missing
-                : SerialFailure.other;
+        ? SerialFailure.denied
+        : text.contains('no such file') || text.contains('no such device') || text.contains('cannot find')
+        ? SerialFailure.missing
+        : SerialFailure.other;
     return SerialPortUnavailable(portName, reason, failure: failure);
   }
 
   @override
-  String toString() =>
-      reason == null ? 'Could not open $portName' : 'Could not open $portName: $reason';
+  String toString() => reason == null ? 'Could not open $portName' : 'Could not open $portName: $reason';
 }
 
 class _SerialConnection implements EquipmentConnection {
@@ -554,9 +555,11 @@ class _AndroidSerialConnection implements EquipmentConnection {
     if (!_open) return;
     // Drivers write from unguarded poll timers, so a write to a port that
     // has gone away must not throw into a timer callback.
-    unawaited(_port.write(Uint8List.fromList(bytes)).catchError((Object e) {
-      debugPrint('[cat] android usb write failed: $e');
-    }));
+    unawaited(
+      _port.write(Uint8List.fromList(bytes)).catchError((Object e) {
+        debugPrint('[cat] android usb write failed: $e');
+      }),
+    );
   }
 
   @override
@@ -611,8 +614,7 @@ List<SerialPortOption> availableSerialPorts() {
 
   return [
     for (final name in names)
-      if (_portDescriptors[name] case final cached?
-          when now - cached.readAtMillis < _descriptorTtl.inMilliseconds)
+      if (_portDescriptors[name] case final cached? when now - cached.readAtMillis < _descriptorTtl.inMilliseconds)
         cached.option
       else
         _remember(_describeSerialPort(name), now),

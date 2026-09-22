@@ -178,7 +178,9 @@ void main() {
     // the operator scopes with the type's word, and the query carries the
     // hook key that actually answers. Typing the extension key is NOT a
     // scope — the key is the runtime's, the word is the operator's.
-    const scopes = {'pota': ['ki2d-pota']};
+    const scopes = {
+      'pota': ['ki2d-pota'],
+    };
 
     test('the ref type word scopes to the serving hook key', () {
       final query = ActivitySearchQuery.parse('pota: bear', scopes);
@@ -190,7 +192,9 @@ void main() {
     test('a word two extensions serve scopes to both hooks', () {
       // Scoping to parks means every supplier of parks, or the second
       // extension's data is never searched and nothing says so.
-      const shared = {'pota': ['pota', 'ki2d-pota']};
+      const shared = {
+        'pota': ['pota', 'ki2d-pota'],
+      };
       expect(ActivitySearchQuery.parse('pota: bear', shared).activityKeys, ['pota', 'ki2d-pota']);
       expect(ActivitySearchQuery.parse('pota bear', shared).preferredKeys, ['pota', 'ki2d-pota']);
     });

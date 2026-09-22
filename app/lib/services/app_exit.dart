@@ -250,10 +250,6 @@ void _reportQuietly(Object error, StackTrace stackTrace) {
 void _reportARefusedExit() {
   Timer(const Duration(seconds: 2), () {
     ErrorPolicy.appIsExiting = false;
-    ErrorReportingService.report(
-      StateError('the app is still running after its database was closed to exit'),
-      StackTrace.current,
-      context: 'db:exit-refused',
-    );
+    ErrorReportingService.report(StateError('the app is still running after its database was closed to exit'), StackTrace.current, context: 'db:exit-refused');
   });
 }

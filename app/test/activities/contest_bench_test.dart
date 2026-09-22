@@ -70,11 +70,7 @@ void main() {
         // offset itself agrees with itself and passes however the workload
         // changes.
         final looked = {for (var i = 0; i < total; i++) callOf(benchLookupIndex(i, total))};
-        expect(
-          logged.intersection(looked),
-          isEmpty,
-          reason: 'offset must not collide with a logged call at $total QSOs',
-        );
+        expect(logged.intersection(looked), isEmpty, reason: 'offset must not collide with a logged call at $total QSOs');
       }
     });
 

@@ -7,8 +7,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/src/call_field_text.dart';
 
-CallFieldText _at(String text, int cursor, {bool stacking = true}) =>
-    CallFieldText(text, cursor: cursor, stacking: stacking);
+CallFieldText _at(String text, int cursor, {bool stacking = true}) => CallFieldText(text, cursor: cursor, stacking: stacking);
 
 void main() {
   test('a plain call is the whole field, uppercased, wherever the cursor is', () {
@@ -71,10 +70,16 @@ void main() {
     final stack = t.stackSegments();
     expect(t.expansionInputFor(stack, alreadyExpanded: null), '//1AB');
     expect(t.expansionInputFor(stack, alreadyExpanded: '//1AB'), isNull, reason: 'a key expands once per draft');
-    expect(_at('//1AB', 4).expansionInputFor(_at('//1AB', 4).stackSegments(), alreadyExpanded: null), isNull,
-        reason: 'the whole-field command path already asked');
-    expect(_at('KI2D//', 6).expansionInputFor(_at('KI2D//', 6).stackSegments(), alreadyExpanded: null), isNull,
-        reason: 'an empty segment has nothing to expand');
+    expect(
+      _at('//1AB', 4).expansionInputFor(_at('//1AB', 4).stackSegments(), alreadyExpanded: null),
+      isNull,
+      reason: 'the whole-field command path already asked',
+    );
+    expect(
+      _at('KI2D//', 6).expansionInputFor(_at('KI2D//', 6).stackSegments(), alreadyExpanded: null),
+      isNull,
+      reason: 'an empty segment has nothing to expand',
+    );
   });
 
   test('command input keeps the case typed; the call does not', () {

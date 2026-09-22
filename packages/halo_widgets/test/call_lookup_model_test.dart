@@ -19,8 +19,8 @@ class _Harness {
   final workedBeforeAsked = <String>[];
   int cleared = 0;
   Map<String, dynamic>? Function(String call, bool online) answer = (call, online) => {
-        'guess': {'name': online ? 'Online $call' : 'Offline $call'},
-      };
+    'guess': {'name': online ? 'Online $call' : 'Offline $call'},
+  };
   int notifications = 0;
   final operation = const Operation(uuid: 'op', data: {'refs': []});
 
@@ -43,14 +43,19 @@ class _Harness {
       },
       scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
         scores.add('${qso['their']['call']} excluding=$excludeUuid');
-        return {'alerts': ['dupe'], 'notices': ['newBand']};
+        return {
+          'alerts': ['dupe'],
+          'notices': ['newBand'],
+        };
       },
       editingQso: editingQso,
       operation: operation,
     ),
     activeCall: () => call,
     isCallInfoActive: () => call.length >= 3,
-    qsoData: (call) => {'their': {'call': call}},
+    qsoData: (call) => {
+      'their': {'call': call},
+    },
     segmented: () => SegmentedOperation.from(operation: operation.data, qsos: const []),
     onResolved: (call, result, phase) => resolved.add('$call ${phase.name}'),
     onCleared: () => cleared++,
@@ -97,7 +102,11 @@ void main() {
 
   testWidgets('a failed online pass keeps the offline preview', (tester) async {
     final h = _Harness();
-    h.answer = (call, online) => online ? null : {'guess': {'name': 'Offline'}};
+    h.answer = (call, online) => online
+        ? null
+        : {
+            'guess': {'name': 'Offline'},
+          };
     h.call = 'W1AW';
     h.model.scheduleLookup();
     await tester.pump(const Duration(milliseconds: 300));
@@ -107,8 +116,7 @@ void main() {
     h.model.dispose();
   });
 
-  testWidgets('a call looked up this session comes back from the cache at once, and a reset forgets it',
-      (tester) async {
+  testWidgets('a call looked up this session comes back from the cache at once, and a reset forgets it', (tester) async {
     final h = _Harness();
     h.call = 'W1AW';
     h.model.scheduleLookup();
@@ -142,7 +150,13 @@ void main() {
     await tester.pump();
     expect(h.workedBeforeAsked, ['W1AW excluding=null'], reason: 'the same key is never asked twice');
     expect(h.model.workedBefore, [1, 2, 3]);
-    h.editingQso = const Qso(uuid: 'q1', operationUuid: 'op', data: {'their': {'call': 'W1AW'}});
+    h.editingQso = const Qso(
+      uuid: 'q1',
+      operationUuid: 'op',
+      data: {
+        'their': {'call': 'W1AW'},
+      },
+    );
     expect(h.model.workedBefore, isNull, reason: 'opening this call\'s own QSO changes what the count must exclude');
     h.model.refreshWorkedBefore();
     await tester.pump();

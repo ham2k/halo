@@ -37,13 +37,11 @@ const uuidGenerator = Uuid();
 /// rolls back the whole `mergeFromSync` round, and the server serves the
 /// identical record again next round, forever.
 @internal
-String encodeQsoData(Map<String, dynamic> data, String context) =>
-    jsonEncode(_normalizedReporting(data, normalizeQsoQson, context));
+String encodeQsoData(Map<String, dynamic> data, String context) => jsonEncode(_normalizedReporting(data, normalizeQsoQson, context));
 
 /// [encodeQsoData] for an operation.
 @internal
-String encodeOperationData(Map<String, dynamic> data, String context) =>
-    jsonEncode(_normalizedReporting(data, normalizeOperationQson, context));
+String encodeOperationData(Map<String, dynamic> data, String context) => jsonEncode(_normalizedReporting(data, normalizeOperationQson, context));
 
 Map<String, dynamic> _normalizedReporting(
   Map<String, dynamic> data,
@@ -76,21 +74,14 @@ Map<String, dynamic> _normalizedReporting(
 /// this a legacy record looks revision-less and loses every comparison.
 @internal
 void normalizeLegacyStamps(Map<String, dynamic> data) {
-  for (final (legacy, current) in const [
-    ('createdOnMillis', 'createdAtMillis'),
-    ('updatedOnMillis', 'updatedAtMillis'),
-  ]) {
+  for (final (legacy, current) in const [('createdOnMillis', 'createdAtMillis'), ('updatedOnMillis', 'updatedAtMillis')]) {
     final value = data.remove(legacy);
     if (value != null) data.putIfAbsent(current, () => value);
   }
 }
 
 @internal
-bool inboundIsStale({
-  required int? existingUpdatedAtMillis,
-  required bool existingSynced,
-  required int? incomingUpdatedAtMillis,
-}) {
+bool inboundIsStale({required int? existingUpdatedAtMillis, required bool existingSynced, required int? incomingUpdatedAtMillis}) {
   if (existingUpdatedAtMillis != null && incomingUpdatedAtMillis != null) {
     return existingUpdatedAtMillis >= incomingUpdatedAtMillis;
   }
@@ -127,12 +118,7 @@ bool inboundRepairsTombstone({
   required int? existingUpdatedAtMillis,
   required bool incomingDeleted,
   required int? incomingUpdatedAtMillis,
-}) =>
-    incomingDeleted &&
-    !existingDeleted &&
-    existingSynced &&
-    existingUpdatedAtMillis != null &&
-    existingUpdatedAtMillis == incomingUpdatedAtMillis;
+}) => incomingDeleted && !existingDeleted && existingSynced && existingUpdatedAtMillis != null && existingUpdatedAtMillis == incomingUpdatedAtMillis;
 
 /// Normalizing here, not only in [encodeQsoData], is what reaches a record
 /// that was already stored: the writers cannot heal a row nothing writes to.
@@ -157,13 +143,13 @@ bool inboundRepairsTombstone({
 /// would swallow real database corruption.
 @internal
 Qso qsoFromRow(QsoRow row, {List<QsonTypeViolation>? violations}) => Qso(
-      uuid: row.uuid,
-      operationUuid: row.operation,
-      data: normalizeQsoQson(jsonDecode(row.data) as Map<String, dynamic>, violations: violations),
-      deleted: row.deleted,
-      purged: row.purged,
-      scoreCache: row.scoreCache,
-    );
+  uuid: row.uuid,
+  operationUuid: row.operation,
+  data: normalizeQsoQson(jsonDecode(row.data) as Map<String, dynamic>, violations: violations),
+  deleted: row.deleted,
+  purged: row.purged,
+  scoreCache: row.scoreCache,
+);
 
 /// How many violations one decode batch carries back. A log with thousands
 /// of bad rows would otherwise build a list the size of the damage and hand
@@ -186,10 +172,7 @@ class _DecodedQsos {
 
 _DecodedQsos _decodeQsos(List<QsoRow> rows) {
   final violations = <QsonTypeViolation>[];
-  final qsos = [
-    for (final row in rows)
-      qsoFromRow(row, violations: violations.length < _readViolationSampleLimit ? violations : null),
-  ];
+  final qsos = [for (final row in rows) qsoFromRow(row, violations: violations.length < _readViolationSampleLimit ? violations : null)];
   return _DecodedQsos(qsos, violations);
 }
 

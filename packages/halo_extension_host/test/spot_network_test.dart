@@ -55,13 +55,15 @@ void main() {
     test('converts MHz to kHz and types the references', () async {
       // The only feed in this batch publishing MHz; the rest of HaLo works in
       // kHz, so a missed conversion puts every spot on the wrong band.
-      final rec = recorder('[{"call":"g1abc","freq":14.285,"mode":"ssb",'
-          '"time":"2026-07-01T12:00:00Z","type":"Live","comment":"B/G-0001",'
-          '"spotter":"G1ABC","references":[{"reference":"B/G-0001"}]}]');
+      final rec = recorder(
+        '[{"call":"g1abc","freq":14.285,"mode":"ssb",'
+        '"time":"2026-07-01T12:00:00Z","type":"Live","comment":"B/G-0001",'
+        '"spotter":"G1ABC","references":[{"reference":"B/G-0001"}]}]',
+      );
       final host = await hostWith('wwbota', ['api.wwbota.org'], rec.client);
 
-      final spots = (await host.invokeHook('spots', key: 'wwbota', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20)) as List).cast<Map>();
+      final spots = (await host.invokeHook('spots', key: 'wwbota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)) as List)
+          .cast<Map>();
 
       expect(spots.length, 1);
       expect(spots.first['freq'], 14285);
@@ -76,8 +78,7 @@ void main() {
       // it: an extension cannot quietly become anonymous by being tested.
       final rec = recorder('[]');
       final host = await hostWith('wwbota', ['api.wwbota.org'], rec.client);
-      await host.invokeHook('spots', key: 'wwbota', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20));
+      await host.invokeHook('spots', key: 'wwbota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
 
       expect(rec.sent.single.headers['User-Agent'], 'Ham2K-Test/1.0');
       expect(rec.sent.single.url.host, 'api.wwbota.org');
@@ -88,8 +89,7 @@ void main() {
     Future<Map<String, dynamic>> postedBodyFor(Map<String, dynamic> args, String method) async {
       final rec = recorder('{}', status: 201);
       final host = await hostWith('wwbota', ['api.wwbota.org'], rec.client);
-      final result = await host.invokeHook('spots', key: 'wwbota', method: method,
-          args: args, timeout: const Duration(seconds: 20)) as Map;
+      final result = await host.invokeHook('spots', key: 'wwbota', method: method, args: args, timeout: const Duration(seconds: 20)) as Map;
       expect(result['ok'], true, reason: 'post should succeed');
       return jsonDecode(rec.sent.single.body) as Map<String, dynamic>;
     }
@@ -122,7 +122,12 @@ void main() {
 
     test('QRT is read out of the comment, and an unknown mode stays null', () async {
       final body = await postedBodyFor({
-        'operation': {'stationCall': 'G1ABC', 'refs': [{'type': 'wwbotaActivation', 'ref': 'B/G-0001'}]},
+        'operation': {
+          'stationCall': 'G1ABC',
+          'refs': [
+            {'type': 'wwbotaActivation', 'ref': 'B/G-0001'},
+          ],
+        },
         'freq': 14285,
         'comment': 'QRT',
       }, 'postSelfSpot');
@@ -139,7 +144,9 @@ void main() {
           'our': {'call': 'G1ABC'},
           'freq': 7120,
           'mode': 'SSB',
-          'refs': [{'type': 'wwbota', 'ref': 'B/G-0511'}],
+          'refs': [
+            {'type': 'wwbota', 'ref': 'B/G-0511'},
+          ],
         },
         'comment': 'loud',
       }, 'postOtherSpot');
@@ -156,7 +163,9 @@ void main() {
         'qso': {
           'their': {'call': 'M0XYZ'},
           'freq': 7120,
-          'refs': [{'type': 'wwbota', 'ref': 'B/G-0511'}],
+          'refs': [
+            {'type': 'wwbota', 'ref': 'B/G-0511'},
+          ],
         },
       }, 'postOtherSpot');
 
@@ -171,7 +180,9 @@ void main() {
           'their': {'call': 'M0XYZ'},
           'our': {'call': ''},
           'freq': 7120,
-          'refs': [{'type': 'wwbota', 'ref': 'B/G-0511'}],
+          'refs': [
+            {'type': 'wwbota', 'ref': 'B/G-0511'},
+          ],
         },
         'spotterCall': 'G1ABC',
       }, 'postOtherSpot');
@@ -184,16 +195,18 @@ void main() {
     // The feed emits a ROW PER REFERENCE, so a station at two places arrives as
     // two rows sharing an id. Left unfolded they show as two spots for the same
     // station on the same frequency.
-    final rec = recorder('['
-        '{"id":7,"activator":"zl1abc","reference":"ZLH/AA-001","frequency":"14285",'
-        '"mode":"SSB","referenced_time":"2026-07-01T12:00:00Z","name":"Angelus Hut"},'
-        '{"id":7,"activator":"zl1abc","reference":"ZLI/AA-002","frequency":"14285",'
-        '"mode":"SSB","referenced_time":"2026-07-01T12:00:00Z","name":"Some Island"}'
-        ']');
+    final rec = recorder(
+      '['
+      '{"id":7,"activator":"zl1abc","reference":"ZLH/AA-001","frequency":"14285",'
+      '"mode":"SSB","referenced_time":"2026-07-01T12:00:00Z","name":"Angelus Hut"},'
+      '{"id":7,"activator":"zl1abc","reference":"ZLI/AA-002","frequency":"14285",'
+      '"mode":"SSB","referenced_time":"2026-07-01T12:00:00Z","name":"Some Island"}'
+      ']',
+    );
     final host = await hostWith('zlota', ['ontheair.nz'], rec.client);
 
-    final spots = (await host.invokeHook('spots', key: 'zlota', method: 'fetchSpots',
-        args: {'online': true}, timeout: const Duration(seconds: 20)) as List).cast<Map>();
+    final spots = (await host.invokeHook('spots', key: 'zlota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)) as List)
+        .cast<Map>();
 
     expect(spots.length, 1);
     expect((spots.first['refs'] as List).length, 2);
@@ -210,12 +223,25 @@ void main() {
       final rec = recorder('OK');
       final host = await hostWith('gma', ['www.cqgma.org'], rec.client);
 
-      final result = await host.invokeHook('spots', key: 'gma', method: 'postSelfSpot', args: {
-        'operation': {'stationCall': 'DL1ABC', 'refs': [{'type': 'gmaActivation', 'ref': 'DL/AL-001'}]},
-        'freq': 14285,
-        'mode': 'SSB',
-        'comment': 'up 5',
-      }, timeout: const Duration(seconds: 20)) as Map;
+      final result =
+          await host.invokeHook(
+                'spots',
+                key: 'gma',
+                method: 'postSelfSpot',
+                args: {
+                  'operation': {
+                    'stationCall': 'DL1ABC',
+                    'refs': [
+                      {'type': 'gmaActivation', 'ref': 'DL/AL-001'},
+                    ],
+                  },
+                  'freq': 14285,
+                  'mode': 'SSB',
+                  'comment': 'up 5',
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
 
       expect(result['ok'], true);
       final request = rec.sent.single;
@@ -234,16 +260,22 @@ void main() {
       final rec = recorder('OK');
       final host = await hostWith('gma', ['www.cqgma.org'], rec.client);
 
-      await host.invokeHook('spots', key: 'gma', method: 'postSelfSpot', args: {
-        'operation': {
-          'stationCall': 'DL1ABC',
-          'refs': [
-            {'type': 'gmaActivation', 'ref': 'DL/AL-001'},
-            {'type': 'gmaActivation', 'ref': 'DL/AL-002'},
-          ],
+      await host.invokeHook(
+        'spots',
+        key: 'gma',
+        method: 'postSelfSpot',
+        args: {
+          'operation': {
+            'stationCall': 'DL1ABC',
+            'refs': [
+              {'type': 'gmaActivation', 'ref': 'DL/AL-001'},
+              {'type': 'gmaActivation', 'ref': 'DL/AL-002'},
+            ],
+          },
+          'freq': 14285,
         },
-        'freq': 14285,
-      }, timeout: const Duration(seconds: 20));
+        timeout: const Duration(seconds: 20),
+      );
 
       expect(rec.sent.single.body, contains('yreference=DL%2FAL-001'));
       expect(rec.sent.single.body, contains('also+DL%2FAL-002'));
@@ -260,16 +292,24 @@ void main() {
 
       Future<String> spotWith(Map<String, dynamic>? our) async {
         rec.sent.clear();
-        await host.invokeHook('spots', key: 'gma', method: 'postOtherSpot', args: {
-          'qso': {
-            'their': {'call': 'M0XYZ'},
-            'our': ?our,
-            'freq': 7120,
-            'mode': 'SSB',
-            'refs': [{'type': 'gma', 'ref': 'DL/AL-001'}],
+        await host.invokeHook(
+          'spots',
+          key: 'gma',
+          method: 'postOtherSpot',
+          args: {
+            'qso': {
+              'their': {'call': 'M0XYZ'},
+              'our': ?our,
+              'freq': 7120,
+              'mode': 'SSB',
+              'refs': [
+                {'type': 'gma', 'ref': 'DL/AL-001'},
+              ],
+            },
+            'spotterCall': 'DL1ABC',
           },
-          'spotterCall': 'DL1ABC',
-        }, timeout: const Duration(seconds: 20));
+          timeout: const Duration(seconds: 20),
+        );
         return rec.sent.single.body;
       }
 
@@ -285,14 +325,24 @@ void main() {
       final rec = recorder('OK');
       final host = await hostWith('gma', ['www.cqgma.org'], rec.client);
 
-      final result = await host.invokeHook('spots', key: 'gma', method: 'postOtherSpot', args: {
-        'qso': {
-          'their': {'call': ''},
-          'freq': 7120,
-          'refs': [{'type': 'gma', 'ref': 'DL/AL-001'}],
-        },
-        'spotterCall': 'DL1ABC',
-      }, timeout: const Duration(seconds: 20)) as Map;
+      final result =
+          await host.invokeHook(
+                'spots',
+                key: 'gma',
+                method: 'postOtherSpot',
+                args: {
+                  'qso': {
+                    'their': {'call': ''},
+                    'freq': 7120,
+                    'refs': [
+                      {'type': 'gma', 'ref': 'DL/AL-001'},
+                    ],
+                  },
+                  'spotterCall': 'DL1ABC',
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
 
       expect(result['ok'], false);
       expect(rec.sent, isEmpty);
@@ -310,19 +360,36 @@ void main() {
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
         extensions: [ExtensionBundle(key: 'wwff', source: bundleSource('wwff'))],
-        secrets: const {'wwff': {'WWFF_API_KEY': 'k'}},
-        fetchAllowlists: const {'wwff': ['wwff.co', 'spots.wwff.co']},
+        secrets: const {
+          'wwff': {'WWFF_API_KEY': 'k'},
+        },
+        fetchAllowlists: const {
+          'wwff': ['wwff.co', 'spots.wwff.co'],
+        },
         httpClient: rec.client,
         onHostCall: (m, p) async => null,
       );
       addTearDown(host.dispose);
 
-      final result = await host.invokeHook('spots', key: 'wwff', method: 'postSelfSpot', args: {
-        'operation': {'stationCall': 'W1AW', 'refs': [{'type': 'wwffActivation', 'ref': 'KFF-0001'}]},
-        'freq': 14285,
-        'mode': 'SSB',
-        'comment': 'up 5',
-      }, timeout: const Duration(seconds: 20)) as Map;
+      final result =
+          await host.invokeHook(
+                'spots',
+                key: 'wwff',
+                method: 'postSelfSpot',
+                args: {
+                  'operation': {
+                    'stationCall': 'W1AW',
+                    'refs': [
+                      {'type': 'wwffActivation', 'ref': 'KFF-0001'},
+                    ],
+                  },
+                  'freq': 14285,
+                  'mode': 'SSB',
+                  'comment': 'up 5',
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
 
       expect(result['ok'], true);
       final body = jsonDecode(rec.sent.single.body) as Map<String, dynamic>;
@@ -338,23 +405,33 @@ void main() {
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
         extensions: [ExtensionBundle(key: 'llota', source: bundleSource('llota'))],
-        secrets: const {'llota': {'LLOTA_API_KEY': 'k'}},
-        fetchAllowlists: const {'llota': ['llota.app']},
+        secrets: const {
+          'llota': {'LLOTA_API_KEY': 'k'},
+        },
+        fetchAllowlists: const {
+          'llota': ['llota.app'],
+        },
         httpClient: rec.client,
         onHostCall: (m, p) async => null,
       );
       addTearDown(host.dispose);
 
-      await host.invokeHook('spots', key: 'llota', method: 'postSelfSpot', args: {
-        'operation': {
-          'stationCall': 'W1AW',
-          'refs': [
-            {'type': 'llotaActivation', 'ref': 'LLUS-0001'},
-            {'type': 'llotaActivation', 'ref': 'LLUS-0002'},
-          ],
+      await host.invokeHook(
+        'spots',
+        key: 'llota',
+        method: 'postSelfSpot',
+        args: {
+          'operation': {
+            'stationCall': 'W1AW',
+            'refs': [
+              {'type': 'llotaActivation', 'ref': 'LLUS-0001'},
+              {'type': 'llotaActivation', 'ref': 'LLUS-0002'},
+            ],
+          },
+          'freq': 14285,
         },
-        'freq': 14285,
-      }, timeout: const Duration(seconds: 20));
+        timeout: const Duration(seconds: 20),
+      );
 
       // `spots/spot`, not `spots` — that one is the feed, and POSTing to it
       // silently does nothing useful.
@@ -381,21 +458,27 @@ void main() {
       // and a fixed date would age past the cutoff the day after it was
       // written.
       final recent = nowUtc().subtract(const Duration(minutes: 5)).toIso8601String();
-      final rec = recorder('{"api":"TOTA Cluster","version":"1.0","count":1,"error":null,'
-          '"spots":[{"callsign":"ok1abc","frequency":14285,"mode":"ssb",'
-          '"tower_ref":"OKR-0001","time_utc":"$recent","comment":"hi"}]}');
+      final rec = recorder(
+        '{"api":"TOTA Cluster","version":"1.0","count":1,"error":null,'
+        '"spots":[{"callsign":"ok1abc","frequency":14285,"mode":"ssb",'
+        '"tower_ref":"OKR-0001","time_utc":"$recent","comment":"hi"}]}',
+      );
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
         extensions: [ExtensionBundle(key: 'tota', source: bundleSource('tota'))],
-        secrets: const {'tota': {'TOTA_API_KEY': 'k'}},
-        fetchAllowlists: const {'tota': ['rozhledny.eu', 'www.rozhledny.eu']},
+        secrets: const {
+          'tota': {'TOTA_API_KEY': 'k'},
+        },
+        fetchAllowlists: const {
+          'tota': ['rozhledny.eu', 'www.rozhledny.eu'],
+        },
         httpClient: rec.client,
         onHostCall: (m, p) async => null,
       );
       addTearDown(host.dispose);
 
-      final spots = (await host.invokeHook('spots', key: 'tota', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20)) as List).cast<Map>();
+      final spots = (await host.invokeHook('spots', key: 'tota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)) as List)
+          .cast<Map>();
 
       expect((spots.single['their'] as Map)['call'], 'OK1ABC');
       expect(spots.single['freq'], 14285);
@@ -411,21 +494,26 @@ void main() {
       // clears what it held and reports the source healthy, so nothing on
       // either side of the bridge ever says the key stopped working. Exactly
       // the silence this card was opened for.
-      final rec = recorder('{"api":"TOTA Cluster","version":"1.0","count":0,'
-          '"spots":[],"error":"invalid_api_key"}');
+      final rec = recorder(
+        '{"api":"TOTA Cluster","version":"1.0","count":0,'
+        '"spots":[],"error":"invalid_api_key"}',
+      );
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
         extensions: [ExtensionBundle(key: 'tota', source: bundleSource('tota'))],
-        secrets: const {'tota': {'TOTA_API_KEY': 'k'}},
-        fetchAllowlists: const {'tota': ['rozhledny.eu', 'www.rozhledny.eu']},
+        secrets: const {
+          'tota': {'TOTA_API_KEY': 'k'},
+        },
+        fetchAllowlists: const {
+          'tota': ['rozhledny.eu', 'www.rozhledny.eu'],
+        },
         httpClient: rec.client,
         onHostCall: (m, p) async => null,
       );
       addTearDown(host.dispose);
 
       await expectLater(
-        host.invokeHook('spots', key: 'tota', method: 'fetchSpots',
-            args: {'online': true}, timeout: const Duration(seconds: 20)),
+        host.invokeHook('spots', key: 'tota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
         throwsA(predicate((e) => '$e'.contains('invalid_api_key'))),
       );
       // The key rides in the query string, so the refusal may name the award's
@@ -440,23 +528,33 @@ void main() {
         extensions: [ExtensionBundle(key: 'tota', source: bundleSource('tota'))],
         // Nothing injected: TOTA's key is a constant in its own bundle.
         secrets: const {},
-        fetchAllowlists: const {'tota': ['rozhledny.eu', 'www.rozhledny.eu']},
+        fetchAllowlists: const {
+          'tota': ['rozhledny.eu', 'www.rozhledny.eu'],
+        },
         httpClient: rec.client,
         onHostCall: (m, p) async => null,
       );
       addTearDown(host.dispose);
 
-      final result = await host.invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
-        'operation': {
-          'stationCall': 'OK1ABC',
-          'refs': [
-            {'type': 'totaActivation', 'ref': 'OKR-0001'},
-            {'type': 'totaActivation', 'ref': 'OKR-0002'},
-          ],
-        },
-        'freq': 14285,
-        'mode': 'SSB',
-      }, timeout: const Duration(seconds: 20)) as Map;
+      final result =
+          await host.invokeHook(
+                'spots',
+                key: 'tota',
+                method: 'postSelfSpot',
+                args: {
+                  'operation': {
+                    'stationCall': 'OK1ABC',
+                    'refs': [
+                      {'type': 'totaActivation', 'ref': 'OKR-0001'},
+                      {'type': 'totaActivation', 'ref': 'OKR-0002'},
+                    ],
+                  },
+                  'freq': 14285,
+                  'mode': 'SSB',
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
 
       expect(result['ok'], true);
       // The endpoint takes a single tower_ref, so an n-fer is several posts.
@@ -484,7 +582,9 @@ void main() {
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
         extensions: [ExtensionBundle(key: key, source: bundleSource(key))],
-        secrets: {key: {'${key.toUpperCase()}_API_KEY': 'k'}},
+        secrets: {
+          key: {'${key.toUpperCase()}_API_KEY': 'k'},
+        },
         fetchAllowlists: {key: domains},
         httpClient: client,
         onHostCall: (m, p) async => null,
@@ -499,19 +599,39 @@ void main() {
       // mode. (LLOTA is the exception and keeps its default — polo's own
       // LLOTAPostSpotAPI really does write `mode ?? 'SSB'`.)
       final wwff = recorder('{}');
-      await (await keyed('wwff', ['wwff.co', 'spots.wwff.co'], wwff.client))
-          .invokeHook('spots', key: 'wwff', method: 'postSelfSpot', args: {
-        'operation': {'stationCall': 'W1AW', 'refs': [{'type': 'wwffActivation', 'ref': 'KFF-0001'}]},
-        'freq': 14285,
-      }, timeout: const Duration(seconds: 20));
+      await (await keyed('wwff', ['wwff.co', 'spots.wwff.co'], wwff.client)).invokeHook(
+        'spots',
+        key: 'wwff',
+        method: 'postSelfSpot',
+        args: {
+          'operation': {
+            'stationCall': 'W1AW',
+            'refs': [
+              {'type': 'wwffActivation', 'ref': 'KFF-0001'},
+            ],
+          },
+          'freq': 14285,
+        },
+        timeout: const Duration(seconds: 20),
+      );
       expect(jsonDecode(wwff.sent.single.body)['mode'], isNull);
 
       final tota = recorder('{}');
-      await (await keyed('tota', ['rozhledny.eu', 'www.rozhledny.eu'], tota.client))
-          .invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
-        'operation': {'stationCall': 'OK1ABC', 'refs': [{'type': 'totaActivation', 'ref': 'OKR-0001'}]},
-        'freq': 14285,
-      }, timeout: const Duration(seconds: 20));
+      await (await keyed('tota', ['rozhledny.eu', 'www.rozhledny.eu'], tota.client)).invokeHook(
+        'spots',
+        key: 'tota',
+        method: 'postSelfSpot',
+        args: {
+          'operation': {
+            'stationCall': 'OK1ABC',
+            'refs': [
+              {'type': 'totaActivation', 'ref': 'OKR-0001'},
+            ],
+          },
+          'freq': 14285,
+        },
+        timeout: const Duration(seconds: 20),
+      );
       expect(jsonDecode(tota.sent.single.body)['mode'], isNull);
     }, timeout: const Timeout(Duration(seconds: 90)));
 
@@ -520,28 +640,67 @@ void main() {
       // matches these messages by name and swallows them; reporting them paints
       // a red failure over a spot that is fine, and invites a pointless retry.
       final wwff = recorder('{"message":"Duplicate spot detected"}', status: 400);
-      final wwffResult = await (await keyed('wwff', ['wwff.co', 'spots.wwff.co'], wwff.client))
-          .invokeHook('spots', key: 'wwff', method: 'postSelfSpot', args: {
-        'operation': {'stationCall': 'W1AW', 'refs': [{'type': 'wwffActivation', 'ref': 'KFF-0001'}]},
-        'freq': 14285, 'mode': 'SSB',
-      }, timeout: const Duration(seconds: 20)) as Map;
+      final wwffResult =
+          await (await keyed('wwff', ['wwff.co', 'spots.wwff.co'], wwff.client)).invokeHook(
+                'spots',
+                key: 'wwff',
+                method: 'postSelfSpot',
+                args: {
+                  'operation': {
+                    'stationCall': 'W1AW',
+                    'refs': [
+                      {'type': 'wwffActivation', 'ref': 'KFF-0001'},
+                    ],
+                  },
+                  'freq': 14285,
+                  'mode': 'SSB',
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
       expect(wwffResult['ok'], true);
 
       final tota = recorder('{"message":"Duplicate self-spot"}', status: 400);
-      final totaResult = await (await keyed('tota', ['rozhledny.eu', 'www.rozhledny.eu'], tota.client))
-          .invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
-        'operation': {'stationCall': 'OK1ABC', 'refs': [{'type': 'totaActivation', 'ref': 'OKR-0001'}]},
-        'freq': 14285, 'mode': 'SSB',
-      }, timeout: const Duration(seconds: 20)) as Map;
+      final totaResult =
+          await (await keyed('tota', ['rozhledny.eu', 'www.rozhledny.eu'], tota.client)).invokeHook(
+                'spots',
+                key: 'tota',
+                method: 'postSelfSpot',
+                args: {
+                  'operation': {
+                    'stationCall': 'OK1ABC',
+                    'refs': [
+                      {'type': 'totaActivation', 'ref': 'OKR-0001'},
+                    ],
+                  },
+                  'freq': 14285,
+                  'mode': 'SSB',
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
       expect(totaResult['ok'], true);
 
       // A real error is still an error.
       final broken = recorder('{"message":"Bad reference"}', status: 400);
-      final brokenResult = await (await keyed('tota', ['rozhledny.eu', 'www.rozhledny.eu'], broken.client))
-          .invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
-        'operation': {'stationCall': 'OK1ABC', 'refs': [{'type': 'totaActivation', 'ref': 'OKR-0001'}]},
-        'freq': 14285, 'mode': 'SSB',
-      }, timeout: const Duration(seconds: 20)) as Map;
+      final brokenResult =
+          await (await keyed('tota', ['rozhledny.eu', 'www.rozhledny.eu'], broken.client)).invokeHook(
+                'spots',
+                key: 'tota',
+                method: 'postSelfSpot',
+                args: {
+                  'operation': {
+                    'stationCall': 'OK1ABC',
+                    'refs': [
+                      {'type': 'totaActivation', 'ref': 'OKR-0001'},
+                    ],
+                  },
+                  'freq': 14285,
+                  'mode': 'SSB',
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
       expect(brokenResult['ok'], false);
     }, timeout: const Timeout(Duration(seconds: 120)));
 
@@ -553,23 +712,30 @@ void main() {
       final client = MockClient((request) async {
         sent.add(request);
         final ref = jsonDecode(request.body)['tower_ref'];
-        return ref == 'OKR-0002'
-            ? http.Response('{"message":"Server exploded"}', 500)
-            : http.Response('{}', 200);
+        return ref == 'OKR-0002' ? http.Response('{"message":"Server exploded"}', 500) : http.Response('{}', 200);
       });
       final host = await keyed('tota', ['rozhledny.eu', 'www.rozhledny.eu'], client);
 
-      final result = await host.invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
-        'operation': {
-          'stationCall': 'OK1ABC',
-          'refs': [
-            {'type': 'totaActivation', 'ref': 'OKR-0001'},
-            {'type': 'totaActivation', 'ref': 'OKR-0002'},
-            {'type': 'totaActivation', 'ref': 'OKR-0003'},
-          ],
-        },
-        'freq': 14285, 'mode': 'SSB',
-      }, timeout: const Duration(seconds: 20)) as Map;
+      final result =
+          await host.invokeHook(
+                'spots',
+                key: 'tota',
+                method: 'postSelfSpot',
+                args: {
+                  'operation': {
+                    'stationCall': 'OK1ABC',
+                    'refs': [
+                      {'type': 'totaActivation', 'ref': 'OKR-0001'},
+                      {'type': 'totaActivation', 'ref': 'OKR-0002'},
+                      {'type': 'totaActivation', 'ref': 'OKR-0003'},
+                    ],
+                  },
+                  'freq': 14285,
+                  'mode': 'SSB',
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
 
       expect(sent.length, 3, reason: 'all three towers attempted');
       expect(sent.map((r) => jsonDecode(r.body)['tower_ref']), ['OKR-0001', 'OKR-0002', 'OKR-0003']);
@@ -595,7 +761,9 @@ void main() {
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
         extensions: [ExtensionBundle(key: key, source: bundleSource(key))],
-        secrets: {key: {'${key.toUpperCase()}_API_KEY': 'k'}},
+        secrets: {
+          key: {'${key.toUpperCase()}_API_KEY': 'k'},
+        },
         fetchAllowlists: {key: domains},
         httpClient: client,
         onHostCall: (m, p) async => null,
@@ -608,15 +776,23 @@ void main() {
       final rec = recorder('{}');
       final host = await keyed('wwff', ['wwff.co', 'spots.wwff.co'], rec.client);
 
-      await host.invokeHook('spots', key: 'wwff', method: 'postOtherSpot', args: {
-        'qso': {
-          'their': {'call': 'M0XYZ'},
-          'our': {'call': ''},
-          'freq': 7120,
-          'refs': [{'type': 'wwff', 'ref': 'GFF-0001'}],
+      await host.invokeHook(
+        'spots',
+        key: 'wwff',
+        method: 'postOtherSpot',
+        args: {
+          'qso': {
+            'their': {'call': 'M0XYZ'},
+            'our': {'call': ''},
+            'freq': 7120,
+            'refs': [
+              {'type': 'wwff', 'ref': 'GFF-0001'},
+            ],
+          },
+          'spotterCall': 'W1AW',
         },
-        'spotterCall': 'W1AW',
-      }, timeout: const Duration(seconds: 20));
+        timeout: const Duration(seconds: 20),
+      );
 
       expect(rec.sent.single.body, contains('W1AW'));
     }, timeout: const Timeout(Duration(seconds: 60)));
@@ -625,15 +801,23 @@ void main() {
       final rec = recorder('{}', status: 201);
       final host = await keyed('llota', ['llota.app'], rec.client);
 
-      await host.invokeHook('spots', key: 'llota', method: 'postOtherSpot', args: {
-        'qso': {
-          'their': {'call': 'M0XYZ'},
-          'our': {'call': '  '},
-          'freq': 7120,
-          'refs': [{'type': 'llota', 'ref': 'LLUS-0001'}],
+      await host.invokeHook(
+        'spots',
+        key: 'llota',
+        method: 'postOtherSpot',
+        args: {
+          'qso': {
+            'their': {'call': 'M0XYZ'},
+            'our': {'call': '  '},
+            'freq': 7120,
+            'refs': [
+              {'type': 'llota', 'ref': 'LLUS-0001'},
+            ],
+          },
+          'spotterCall': 'W1AW',
         },
-        'spotterCall': 'W1AW',
-      }, timeout: const Duration(seconds: 20));
+        timeout: const Duration(seconds: 20),
+      );
 
       expect(jsonDecode(rec.sent.single.body)['operator_callsign'], 'W1AW');
     }, timeout: const Timeout(Duration(seconds: 60)));
@@ -649,14 +833,24 @@ void main() {
         final rec = recorder('{}');
         final host = await keyed(key, domains, rec.client);
 
-        final result = await host.invokeHook('spots', key: key, method: 'postOtherSpot', args: {
-          'qso': {
-            'their': {'call': ''},
-            'freq': 7120,
-            'refs': [{'type': hunting, 'ref': 'X-0001'}],
-          },
-          'spotterCall': 'W1AW',
-        }, timeout: const Duration(seconds: 20)) as Map;
+        final result =
+            await host.invokeHook(
+                  'spots',
+                  key: key,
+                  method: 'postOtherSpot',
+                  args: {
+                    'qso': {
+                      'their': {'call': ''},
+                      'freq': 7120,
+                      'refs': [
+                        {'type': hunting, 'ref': 'X-0001'},
+                      ],
+                    },
+                    'spotterCall': 'W1AW',
+                  },
+                  timeout: const Duration(seconds: 20),
+                )
+                as Map;
 
         expect(result['ok'], false, reason: '$key should refuse');
         expect(rec.sent, isEmpty, reason: '$key should send nothing');
@@ -669,7 +863,8 @@ void main() {
     // before it will trust one — see the bogus-body test below.
     const epochOne = 'ed0601ac-a1f9-4666-98ba-2b0e52c07f5e';
     const epochTwo = '11112222-3333-4444-5555-666677778888';
-    const sotaSpots = '[{"id":1,"timeStamp":"2026-08-05T21:46:18.348572Z","comments":"",'
+    const sotaSpots =
+        '[{"id":1,"timeStamp":"2026-08-05T21:46:18.348572Z","comments":"",'
         '"callsign":"N0SPOT","summitCode":"W7O/WV-096","summitName":"Sylvania, Mount",'
         '"activatorCallsign":"KK7ER","activatorName":"Michael","frequency":14.062,"mode":"cw",'
         '"points":1,"AltM":297,"AltFt":975,"type":null,"epoch":"ed0601ac-a1f9-4666-98ba-2b0e52c07f5e"}]';
@@ -677,8 +872,7 @@ void main() {
     /// Answers `/spots/epoch` from [epochs], one entry per call, and every
     /// other request with the spot list. Recording the paths is the point:
     /// what this gate does is NOT send a request.
-    ({List<String> paths, MockClient client}) sotaRecorder(List<String> epochs,
-        {int epochStatus = 200, bool epochThrows = false}) {
+    ({List<String> paths, MockClient client}) sotaRecorder(List<String> epochs, {int epochStatus = 200, bool epochThrows = false}) {
       final paths = <String>[];
       var call = 0;
       return (
@@ -697,8 +891,7 @@ void main() {
     }
 
     Future<List> fetchSota(ExtensionHost host) async =>
-        (await host.invokeHook('spots', key: 'sota', method: 'fetchSpots',
-            args: {'online': true}, timeout: const Duration(seconds: 20)) as List);
+        (await host.invokeHook('spots', key: 'sota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)) as List);
 
     test('an unchanged epoch answers from cache without asking for spots again', () async {
       // The point of the whole gate: SpotsService polls every two minutes for
@@ -712,8 +905,7 @@ void main() {
 
       expect(first.length, 1);
       expect(second, first, reason: 'the cached list must be the same spots, not an empty one');
-      expect(rec.paths.where((p) => !p.endsWith('/epoch')).length, 1,
-          reason: 'the second poll should have cost one epoch request and nothing else');
+      expect(rec.paths.where((p) => !p.endsWith('/epoch')).length, 1, reason: 'the second poll should have cost one epoch request and nothing else');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a moved epoch fetches the spots again', () async {
@@ -766,7 +958,8 @@ void main() {
   });
 
   group('one stalled source', () {
-    const potaSpots = '[{"spotId":1,"activator":"KI2D","frequency":"14285","mode":"SSB",'
+    const potaSpots =
+        '[{"spotId":1,"activator":"KI2D","frequency":"14285","mode":"SSB",'
         '"reference":"US-1234","name":"Somewhere","locationDesc":"US-CA",'
         '"spotTime":"2026-08-05T21:46:18","spotter":"N0SPOT","comments":"","source":"Web","count":1}]';
 
@@ -775,17 +968,16 @@ void main() {
     /// epoch probe still answers, so the stall lands on the request that
     /// matters rather than being absorbed by the probe's own timeout.
     ({MockClient client}) potaFastSotaStalled() => (
-          client: MockClient((request) async {
-            if (request.url.host == 'api.pota.app') {
-              return http.Response(potaSpots, 200, headers: {'content-type': 'application/json'});
-            }
-            if (request.url.path.endsWith('/epoch')) {
-              return http.Response('ed0601ac-a1f9-4666-98ba-2b0e52c07f5e', 200,
-                  headers: {'content-type': 'text/plain'});
-            }
-            return Completer<http.Response>().future; // never settles
-          }),
-        );
+      client: MockClient((request) async {
+        if (request.url.host == 'api.pota.app') {
+          return http.Response(potaSpots, 200, headers: {'content-type': 'application/json'});
+        }
+        if (request.url.path.endsWith('/epoch')) {
+          return http.Response('ed0601ac-a1f9-4666-98ba-2b0e52c07f5e', 200, headers: {'content-type': 'text/plain'});
+        }
+        return Completer<http.Response>().future; // never settles
+      }),
+    );
 
     Future<ExtensionHost> hostWithBoth(http.Client client) async {
       final host = await ExtensionHost.start(
@@ -812,19 +1004,20 @@ void main() {
       // and sitting there — because SOTA never replied.
       final host = await hostWithBoth(potaFastSotaStalled().client);
 
-      final entries = await host.invokeHookAll('spots',
-          method: 'fetchSpots',
-          args: {'online': true},
-          timeout: const Duration(seconds: 3),
-          partialOnTimeout: true);
+      final entries = await host.invokeHookAll(
+        'spots',
+        method: 'fetchSpots',
+        args: {'online': true},
+        timeout: const Duration(seconds: 3),
+        partialOnTimeout: true,
+      );
 
       final byKey = {for (final e in entries) e['key']: e};
       expect(byKey.keys, containsAll(['pota', 'sota']));
       expect(byKey['pota']!['ok'], true, reason: 'POTA answered and must survive SOTA stalling');
       expect((byKey['pota']!['value'] as List), hasLength(1));
       expect(byKey['sota']!['ok'], false);
-      expect(byKey['sota']!['timedOut'], true,
-          reason: 'a source that never answered must be distinguishable from one that answered with an error');
+      expect(byKey['sota']!['timedOut'], true, reason: 'a source that never answered must be distinguishable from one that answered with an error');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a feed answering 503 is an error entry, not a timeout', () async {
@@ -835,15 +1028,16 @@ void main() {
       // will still be refusing in ten minutes. A feed that swallowed its own
       // HTTP status and answered with an empty list would look identical to a
       // quiet band here, and nothing downstream could recover the difference.
-      final host = await hostWithBoth(MockClient((request) async {
-        if (request.url.host.contains('pota')) {
-          return http.Response(potaSpots, 200, headers: {'content-type': 'application/json'});
-        }
-        return http.Response('<html>down</html>', 503);
-      }));
+      final host = await hostWithBoth(
+        MockClient((request) async {
+          if (request.url.host.contains('pota')) {
+            return http.Response(potaSpots, 200, headers: {'content-type': 'application/json'});
+          }
+          return http.Response('<html>down</html>', 503);
+        }),
+      );
 
-      final entries = await host.invokeHookAll('spots',
-          method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
+      final entries = await host.invokeHookAll('spots', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
 
       final byKey = {for (final e in entries) e['key']: e};
       expect(byKey['sota']!['ok'], false);
@@ -858,8 +1052,7 @@ void main() {
       final host = await hostWithBoth(potaFastSotaStalled().client);
 
       await expectLater(
-        host.invokeHookAll('spots',
-            method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 3)),
+        host.invokeHookAll('spots', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 3)),
         throwsA(isA<HookTimeoutException>()),
       );
     }, timeout: const Timeout(Duration(seconds: 60)));
@@ -880,19 +1073,19 @@ void main() {
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
         extensions: [ExtensionBundle(key: 'sota', source: bundleSource('sota'))],
-        fetchAllowlists: const {'sota': ['api-db2.sota.org.uk']},
+        fetchAllowlists: const {
+          'sota': ['api-db2.sota.org.uk'],
+        },
         httpClient: client,
         userAgent: 'Ham2K-Test/1.0',
         onHostCall: nullHostCall,
       );
       addTearDown(host.dispose);
 
-      final spots = await host.invokeHook('spots',
-          key: 'sota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 12)) as List;
+      final spots = await host.invokeHook('spots', key: 'sota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 12)) as List;
 
       expect(spots, isEmpty);
-      expect(paths.where((p) => !p.endsWith('/epoch')), hasLength(1),
-          reason: 'the spots request must still be made after the probe is abandoned');
+      expect(paths.where((p) => !p.endsWith('/epoch')), hasLength(1), reason: 'the spots request must still be made after the probe is abandoned');
     }, timeout: const Timeout(Duration(seconds: 60)));
   });
 
@@ -903,8 +1096,7 @@ void main() {
     final host = await hostWith('zlota', const [], rec.client);
 
     await expectLater(
-      host.invokeHook('spots', key: 'zlota', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20)),
+      host.invokeHook('spots', key: 'zlota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
       throwsA(anything),
     );
     expect(rec.sent, isEmpty);

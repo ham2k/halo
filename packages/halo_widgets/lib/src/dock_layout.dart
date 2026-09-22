@@ -54,16 +54,14 @@ class DockPaneVisibility extends InheritedWidget {
 
   const DockPaneVisibility({super.key, required this.visible, required super.child});
 
-  static bool of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<DockPaneVisibility>()?.visible ?? true;
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<DockPaneVisibility>()?.visible ?? true;
 
   /// The value WITHOUT registering a dependency, for a caller that already
   /// depends on it through [of] and needs it mid-frame — `didUpdateWidget`
   /// runs BEFORE `didChangeDependencies` when a widget and its inherited
   /// ancestors both change in one pump, so a State reading its own cached
   /// copy there is reading the previous frame's answer.
-  static bool readOf(BuildContext context) =>
-      context.getInheritedWidgetOfExactType<DockPaneVisibility>()?.visible ?? true;
+  static bool readOf(BuildContext context) => context.getInheritedWidgetOfExactType<DockPaneVisibility>()?.visible ?? true;
 
   @override
   bool updateShouldNotify(DockPaneVisibility oldWidget) => oldWidget.visible != visible;
@@ -229,9 +227,7 @@ class DockLayoutView extends StatefulWidget {
   static bool specMatches(DockNode? spec, Iterable<String> moduleIds) {
     if (spec == null) return false;
     final inSpec = spec.collectModules();
-    return inSpec.length == inSpec.toSet().length &&
-        inSpec.toSet().containsAll(moduleIds) &&
-        moduleIds.toSet().containsAll(inSpec);
+    return inSpec.length == inSpec.toSet().length && inSpec.toSet().containsAll(moduleIds) && moduleIds.toSet().containsAll(inSpec);
   }
 
   @override
@@ -673,8 +669,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
 
   /// The node a dragged [id] should arrive as: a plain group for a module, and
   /// for a container the same tab it left as, still holding [carried].
-  DockGroup _arriving(String id, DockNode? carried) =>
-      carried == null ? DockGroup([id]) : DockGroup([id], nested: {id: carried});
+  DockGroup _arriving(String id, DockNode? carried) => carried == null ? DockGroup([id]) : DockGroup([id], nested: {id: carried});
 
   /// The split [child] is a child OF, or null when it is the root or the whole
   /// subtree behind a container slot — neither of which has one.
@@ -787,9 +782,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         parent.weights.insert(at, share * _newPaneShare);
         _growPane(parent, at);
       } else {
-        final weights = before
-            ? [_newPaneShare, 1 - _newPaneShare]
-            : [1 - _newPaneShare, _newPaneShare];
+        final weights = before ? [_newPaneShare, 1 - _newPaneShare] : [1 - _newPaneShare, _newPaneShare];
         final split = DockSplit(axis, before ? [fresh, target] : [target, fresh], weights);
         // Through `_replaceNode` rather than "null parent means root": a group
         // that is the whole subtree behind a container slot also has no split
@@ -853,11 +846,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
       final held = target.nested.remove(slot) ?? DockGroup([slot]);
       final fresh = _arriving(id, carried);
       final containerId = _newContainerId(alsoTaken: fresh.collectContainerIds());
-      target.nested[containerId] = DockSplit(
-        Axis.vertical,
-        above ? [fresh, held] : [held, fresh],
-        [1, 1],
-      );
+      target.nested[containerId] = DockSplit(Axis.vertical, above ? [fresh, held] : [held, fresh], [1, 1]);
       target.modules[at] = containerId;
       target.selected = at;
       if (!_normalize()) failed = true;
@@ -1139,10 +1128,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         // single-pane floor and the inner split overflows.
         final declared = modules.fold(0.0, (max_, id) {
           final subtree = nested[id];
-          return math.max(
-            max_,
-            subtree == null ? _moduleMinFor(id, axis) : _nodeMinExtent(subtree, axis, crossExtent: crossExtent),
-          );
+          return math.max(max_, subtree == null ? _moduleMinFor(id, axis) : _nodeMinExtent(subtree, axis, crossExtent: crossExtent));
         });
         return math.max(base, declared);
       case DockSplit(axis: final childAxis, :final children):
@@ -1153,10 +1139,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
           // gives each of THIS split's children the same cross-axis share the
           // split itself was handed). Known, not lost, so it propagates.
           final dividerTotal = _dividerExtent * (children.length - 1);
-          return children.fold(
-            dividerTotal,
-            (sum, c) => sum + _nodeMinExtent(c, axis, crossExtent: crossExtent),
-          );
+          return children.fold(dividerTotal, (sum, c) => sum + _nodeMinExtent(c, axis, crossExtent: crossExtent));
         }
         // Here this split's OWN axis IS the cross axis being asked about —
         // it divides that axis among its children by weight, which isn't
@@ -1188,10 +1171,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
             ? [
                 for (var i = 0; i < split.weights.length; i++)
                   i == _growingIndex
-                      ? math.max(
-                          math.min(split.weights[i], floorWeight),
-                          split.weights[i] * layoutAnimationCurve.transform(_growth.value),
-                        )
+                      ? math.max(math.min(split.weights[i], floorWeight), split.weights[i] * layoutAnimationCurve.transform(_growth.value))
                       : split.weights[i],
               ]
             : split.weights;
@@ -1290,62 +1270,62 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         for (var i = 0; i < split.children.length; i++) {
           if (i > 0) {
             void handleDividerDrag(double delta) => setState(() {
-                  // A run with no room, or weights that sum to nothing, cannot
-                  // convert pixels to weight at all — so the travel IS
-                  // overshoot and is banked rather than dropped. Guarding
-                  // weightSum here too keeps this path's arithmetic as safe as
-                  // the build path's above: `shift / weightSum` would otherwise
-                  // make the bank NaN, and NaN weights persist silently, coming
-                  // back as a layout the loader discards.
-                  if (available <= 0 || weightSum <= 0) {
-                    _dragOvershoot[(split, i)] = (_dragOvershoot[(split, i)] ?? 0) + delta;
-                    return;
-                  }
-                  // Against the weights this frame was LAID OUT from, which
-                  // are not the stored ones whenever the floor above lifted a
-                  // pane: measured from the stored pair instead, a boundary
-                  // beside an under-floor pane moves by the difference
-                  // between them rather than by the drag, so it lags the
-                  // pointer and then snaps. The lifted pair is also what is on
-                  // screen, so adopting it here is the same rule `onDragCancel`
-                  // follows — persist what the operator can see. Not while a
-                  // pane is animating in: those weights are a frame of an
-                  // animation, not an arrangement.
-                  final base = List<double>.of(growing ? split.weights : weights);
-                  // Move the boundary between i-1 and i, keeping both panes
-                  // usable; weights shift by the dragged fraction of the run.
-                  // Bounds via max/min, not clamp(): a pane ALREADY below the
-                  // minimum (persisted weights in a smaller window) inverts
-                  // clamp's limits, which throws — max/min just refuse to
-                  // shrink it further.
-                  // Banked overshoot first, so travel spent pushing against a
-                  // floor has to be paid back before the boundary moves again.
-                  // Kept in PIXELS, not weight: a window resized mid-drag
-                  // changes what a weight is worth, and a debt recorded in the
-                  // old currency would repay the wrong distance.
-                  final desired = delta + (_dragOvershoot[(split, i)] ?? 0);
-                  final deltaWeight = desired / available * weightSum;
-                  final maxGive = math.max(0.0, base[i - 1] - floors[i - 1] / available * weightSum);
-                  final maxTake = math.max(0.0, base[i] - floors[i] / available * weightSum);
-                  final shift = math.min(maxTake, math.max(-maxGive, deltaWeight));
-                  _dragOvershoot[(split, i)] = desired - shift / weightSum * available;
-                  base[i - 1] += shift;
-                  base[i] -= shift;
-                  for (var k = 0; k < split.weights.length; k++) {
-                    split.weights[k] = base[k];
-                    // Written back into the frame's own snapshot too, which
-                    // `base` is re-derived from on every event: the pointer
-                    // moves this frame collected are all dispatched before the
-                    // rebuild, so without this the 2nd..Nth each start from the
-                    // same stale values and only the last survives. A
-                    // high-rate mouse delivers several moves per frame and a
-                    // slow frame collects more still, so the boundary would
-                    // advance at a fraction of the pointer's speed exactly
-                    // when the machine is busiest. Harmless when `weights`
-                    // already IS `split.weights` (no floor was lifted).
-                    weights[k] = base[k];
-                  }
-                });
+              // A run with no room, or weights that sum to nothing, cannot
+              // convert pixels to weight at all — so the travel IS
+              // overshoot and is banked rather than dropped. Guarding
+              // weightSum here too keeps this path's arithmetic as safe as
+              // the build path's above: `shift / weightSum` would otherwise
+              // make the bank NaN, and NaN weights persist silently, coming
+              // back as a layout the loader discards.
+              if (available <= 0 || weightSum <= 0) {
+                _dragOvershoot[(split, i)] = (_dragOvershoot[(split, i)] ?? 0) + delta;
+                return;
+              }
+              // Against the weights this frame was LAID OUT from, which
+              // are not the stored ones whenever the floor above lifted a
+              // pane: measured from the stored pair instead, a boundary
+              // beside an under-floor pane moves by the difference
+              // between them rather than by the drag, so it lags the
+              // pointer and then snaps. The lifted pair is also what is on
+              // screen, so adopting it here is the same rule `onDragCancel`
+              // follows — persist what the operator can see. Not while a
+              // pane is animating in: those weights are a frame of an
+              // animation, not an arrangement.
+              final base = List<double>.of(growing ? split.weights : weights);
+              // Move the boundary between i-1 and i, keeping both panes
+              // usable; weights shift by the dragged fraction of the run.
+              // Bounds via max/min, not clamp(): a pane ALREADY below the
+              // minimum (persisted weights in a smaller window) inverts
+              // clamp's limits, which throws — max/min just refuse to
+              // shrink it further.
+              // Banked overshoot first, so travel spent pushing against a
+              // floor has to be paid back before the boundary moves again.
+              // Kept in PIXELS, not weight: a window resized mid-drag
+              // changes what a weight is worth, and a debt recorded in the
+              // old currency would repay the wrong distance.
+              final desired = delta + (_dragOvershoot[(split, i)] ?? 0);
+              final deltaWeight = desired / available * weightSum;
+              final maxGive = math.max(0.0, base[i - 1] - floors[i - 1] / available * weightSum);
+              final maxTake = math.max(0.0, base[i] - floors[i] / available * weightSum);
+              final shift = math.min(maxTake, math.max(-maxGive, deltaWeight));
+              _dragOvershoot[(split, i)] = desired - shift / weightSum * available;
+              base[i - 1] += shift;
+              base[i] -= shift;
+              for (var k = 0; k < split.weights.length; k++) {
+                split.weights[k] = base[k];
+                // Written back into the frame's own snapshot too, which
+                // `base` is re-derived from on every event: the pointer
+                // moves this frame collected are all dispatched before the
+                // rebuild, so without this the 2nd..Nth each start from the
+                // same stale values and only the last survives. A
+                // high-rate mouse delivers several moves per frame and a
+                // slow frame collects more still, so the boundary would
+                // advance at a fraction of the pointer's speed exactly
+                // when the machine is busiest. Harmless when `weights`
+                // already IS `split.weights` (no floor was lifted).
+                weights[k] = base[k];
+              }
+            });
             children.add(
               SolidPaneDivider(
                 axis: split.axis,
@@ -1459,9 +1439,9 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         : widget.tabActions?[id];
     // Unwrapped: the two strips wrap it differently — see [_buildGroup].
     return DockTabDropSlot(
-        index: index,
-        onDrop: (dragged, at) => _handleTabDrop(dragged, group, at),
-        child: DockTab(
+      index: index,
+      onDrop: (dragged, at) => _handleTabDrop(dragged, group, at),
+      child: DockTab(
         title: widget.titles[id] ?? id,
         selected: index == group.selected,
         editing: widget.editing,
@@ -1525,174 +1505,154 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     // is the worst possible moment. A headerless pane gets [FloatingPaneChrome]
     // laid OVER its top-left corner instead: same handle, same title, same
     // options button, no height taken from anything.
-    final showHeader = group.modules.length > 1 ||
-        !widget.headerlessModules.contains(group.modules.first);
+    final showHeader = group.modules.length > 1 || !widget.headerlessModules.contains(group.modules.first);
     // The showing slot holds a whole subtree rather than a pane. Everything
     // this group draws AS a pane — the editing wash, its own drop bands, its
     // own outline — belongs to the panes inside instead, each of which draws
     // its own. So the outer group's body bands are unreachable while a
     // container is showing: splitting THIS group means selecting a plain tab
     // first, and the dock's own edge strips are always there.
-    final showingNested =
-        group.nested.containsKey(group.modules[group.selected.clamp(0, group.modules.length - 1)]);
+    final showingNested = group.nested.containsKey(group.modules[group.selected.clamp(0, group.modules.length - 1)]);
     final floatingChrome = widget.editing && !showHeader;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showHeader)
-        Material(
-          color: headerColor,
-          child: SizedBox(
-            // The same chrome height as every other strip of chrome — this
-            // IS the dock's tab strip. `chromeHeightOf` holds it to
-            // Material's minimum tap target on touch, which a shorter header
-            // would otherwise squeeze a module's `tabActions` IconButton
-            // below, silently.
-            //
-            // Snapped because the header's color meets the pane body at this
-            // edge, and the height × the grid is fractional at some scale/DPR
-            // combinations (48 × 0.85 × 2.75), which seams the two.
-            height: PixelGrid.of(context).snap(LayoutDensity.chromeHeightOf(context)),
-            // A Builder, not this method's own `context`: `_buildGroup` is a
-            // plain Dart call from `_buildSplit`/`_buildNode`, not a fresh
-            // Element — reusing `State.context` here would always resolve
-            // PaneSafeArea against DockLayoutView's OWN outer ambient,
-            // ignoring the position-correct value `_buildSplit` wrapped THIS
-            // child in. Builder gets a context at this group's real tree
-            // position.
-            child: Builder(
-              builder: (context) {
-                return Padding(
-                  padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context), right: PaneSafeArea.rightOf(context)),
-                  // Tabs share the strip evenly and ellipsize their names,
-                  // and only scroll once even a few letters each no longer
-                  // fit — so a dock group reads as the same kind of tab bar
-                  // as the stock one beside it. Sizing the strip to its
-                  // WIDEST tab instead (IntrinsicWidth over equal-flex tabs)
-                  // pushes it past the pane the moment one module has a long
-                  // name, and a tab scrolled out of sight is a pane the
-                  // operator cannot reach without first discovering that the
-                  // strip scrolls at all. Beyond the floor it does scroll
-                  // (scroll-wheel reachable; tab drags win the gesture arena
-                  // over the scroll view, which is fine — the strip is
-                  // primarily tapped, and it usually fits).
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      // Stretch, not the default center, in both strips:
-                      // centered, a tab shrink-wraps its label and paints its
-                      // bottom-border selection indicator at the LABEL's
-                      // bottom edge, well above the strip's. Stretch is what
-                      // reaches the strip's height
-                      // from here: RenderFlex stretches to its incoming
-                      // maxHeight, and the horizontal viewport passes the
-                      // strip's height through as that max.
-                      if (widget.editing) {
-                        // The editing strip does NOT scroll. Scrolling is the
-                        // right answer while the dock is being used — the
-                        // operator is reading tabs, and a squeezed one reads
-                        // as nothing. Mid-rearrange it is the wrong one: the
-                        // tab scrolled out of sight is as likely as not the
-                        // one being worked on, and the handles are what the
-                        // strip is for. So it squeezes instead, and the tab
-                        // that is SHOWING is the one that keeps its name.
+          Material(
+            color: headerColor,
+            child: SizedBox(
+              // The same chrome height as every other strip of chrome — this
+              // IS the dock's tab strip. `chromeHeightOf` holds it to
+              // Material's minimum tap target on touch, which a shorter header
+              // would otherwise squeeze a module's `tabActions` IconButton
+              // below, silently.
+              //
+              // Snapped because the header's color meets the pane body at this
+              // edge, and the height × the grid is fractional at some scale/DPR
+              // combinations (48 × 0.85 × 2.75), which seams the two.
+              height: PixelGrid.of(context).snap(LayoutDensity.chromeHeightOf(context)),
+              // A Builder, not this method's own `context`: `_buildGroup` is a
+              // plain Dart call from `_buildSplit`/`_buildNode`, not a fresh
+              // Element — reusing `State.context` here would always resolve
+              // PaneSafeArea against DockLayoutView's OWN outer ambient,
+              // ignoring the position-correct value `_buildSplit` wrapped THIS
+              // child in. Builder gets a context at this group's real tree
+              // position.
+              child: Builder(
+                builder: (context) {
+                  return Padding(
+                    padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context), right: PaneSafeArea.rightOf(context)),
+                    // Tabs share the strip evenly and ellipsize their names,
+                    // and only scroll once even a few letters each no longer
+                    // fit — so a dock group reads as the same kind of tab bar
+                    // as the stock one beside it. Sizing the strip to its
+                    // WIDEST tab instead (IntrinsicWidth over equal-flex tabs)
+                    // pushes it past the pane the moment one module has a long
+                    // name, and a tab scrolled out of sight is a pane the
+                    // operator cannot reach without first discovering that the
+                    // strip scrolls at all. Beyond the floor it does scroll
+                    // (scroll-wheel reachable; tab drags win the gesture arena
+                    // over the scroll view, which is fine — the strip is
+                    // primarily tapped, and it usually fits).
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        // Stretch, not the default center, in both strips:
+                        // centered, a tab shrink-wraps its label and paints its
+                        // bottom-border selection indicator at the LABEL's
+                        // bottom edge, well above the strip's. Stretch is what
+                        // reaches the strip's height
+                        // from here: RenderFlex stretches to its incoming
+                        // maxHeight, and the horizontal viewport passes the
+                        // strip's height through as that max.
+                        if (widget.editing) {
+                          // The editing strip does NOT scroll. Scrolling is the
+                          // right answer while the dock is being used — the
+                          // operator is reading tabs, and a squeezed one reads
+                          // as nothing. Mid-rearrange it is the wrong one: the
+                          // tab scrolled out of sight is as likely as not the
+                          // one being worked on, and the handles are what the
+                          // strip is for. So it squeezes instead, and the tab
+                          // that is SHOWING is the one that keeps its name.
+                          final count = group.modules.length;
+                          final floor = DockTab.activeMinWidth(context);
+                          // Even shares while they are wide enough to read, and
+                          // only then the showing tab's floor — the squeeze is
+                          // what a narrow strip costs, not a permanent shape.
+                          final squeezing = count > 1 && constraints.maxWidth / count < floor;
+                          if (!squeezing) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [for (var i = 0; i < count; i++) Expanded(child: _buildTab(context, group, i))],
+                            );
+                          }
+                          // What is left over, shared out. CONTINUOUS rather
+                          // than a step down to the handle: the others give up
+                          // exactly what the showing tab needs and no more, so a
+                          // strip a few points too narrow costs a few points of
+                          // label rather than every label at once — but never
+                          // past the grab handle, which is a fixed box and
+                          // overflows the Row rather than shrinking with it.
+                          final others = math.max(DockTab.squeezedMinWidth, (constraints.maxWidth - floor) / (count - 1));
+                          final rest = others * (count - 1);
+                          if (floor + rest <= constraints.maxWidth) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (var i = 0; i < count; i++)
+                                  if (i == group.selected)
+                                    // Expanded, not the floor: it takes what the
+                                    // others left, which is the floor plus
+                                    // whatever rounding they gave back.
+                                    Expanded(child: _buildTab(context, group, i))
+                                  else
+                                    SizedBox(width: others, child: _buildTab(context, group, i)),
+                              ],
+                            );
+                          }
+                          // Not even handles fit. Scrolling is the wrong answer
+                          // while rearranging — see above — but it is the only
+                          // one left that does not paint a tab over its
+                          // neighbour, and a strip this narrow has already lost
+                          // the argument.
+                          return SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (var i = 0; i < count; i++) SizedBox(width: i == group.selected ? floor : others, child: _buildTab(context, group, i)),
+                              ],
+                            ),
+                          );
+                        }
                         final count = group.modules.length;
-                        final floor = DockTab.activeMinWidth(context);
-                        // Even shares while they are wide enough to read, and
-                        // only then the showing tab's floor — the squeeze is
-                        // what a narrow strip costs, not a permanent shape.
-                        final squeezing = count > 1 && constraints.maxWidth / count < floor;
-                        if (!squeezing) {
+                        // ONE floor for the whole group, action included where
+                        // any tab in it has one — not the selected tab's own.
+                        // The action moves with the selection, and a floor that
+                        // moved with it would resize every tab in the strip on
+                        // each tap. Under it the tabs share; at it they stop and
+                        // the strip scrolls, so the floor is also the width the
+                        // scrolling strip gives them.
+                        final floor = DockTab.readableMinWidth(context, solo: count == 1, hasAction: group.modules.any((id) => widget.tabActions?[id] != null));
+                        if (count * floor <= constraints.maxWidth) {
                           return Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              for (var i = 0; i < count; i++) Expanded(child: _buildTab(context, group, i)),
-                            ],
+                            children: [for (var i = 0; i < count; i++) Expanded(child: _buildTab(context, group, i))],
                           );
                         }
-                        // What is left over, shared out. CONTINUOUS rather
-                        // than a step down to the handle: the others give up
-                        // exactly what the showing tab needs and no more, so a
-                        // strip a few points too narrow costs a few points of
-                        // label rather than every label at once — but never
-                        // past the grab handle, which is a fixed box and
-                        // overflows the Row rather than shrinking with it.
-                        final others = math.max(
-                          DockTab.squeezedMinWidth,
-                          (constraints.maxWidth - floor) / (count - 1),
-                        );
-                        final rest = others * (count - 1);
-                        if (floor + rest <= constraints.maxWidth) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              for (var i = 0; i < count; i++)
-                                if (i == group.selected)
-                                  // Expanded, not the floor: it takes what the
-                                  // others left, which is the floor plus
-                                  // whatever rounding they gave back.
-                                  Expanded(child: _buildTab(context, group, i))
-                                else
-                                  SizedBox(width: others, child: _buildTab(context, group, i)),
-                            ],
-                          );
-                        }
-                        // Not even handles fit. Scrolling is the wrong answer
-                        // while rearranging — see above — but it is the only
-                        // one left that does not paint a tab over its
-                        // neighbour, and a strip this narrow has already lost
-                        // the argument.
                         return SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              for (var i = 0; i < count; i++)
-                                SizedBox(
-                                  width: i == group.selected ? floor : others,
-                                  child: _buildTab(context, group, i),
-                                ),
-                            ],
+                            children: [for (var i = 0; i < count; i++) SizedBox(width: floor, child: _buildTab(context, group, i))],
                           ),
                         );
-                      }
-                      final count = group.modules.length;
-                      // ONE floor for the whole group, action included where
-                      // any tab in it has one — not the selected tab's own.
-                      // The action moves with the selection, and a floor that
-                      // moved with it would resize every tab in the strip on
-                      // each tap. Under it the tabs share; at it they stop and
-                      // the strip scrolls, so the floor is also the width the
-                      // scrolling strip gives them.
-                      final floor = DockTab.readableMinWidth(
-                        context,
-                        solo: count == 1,
-                        hasAction: group.modules.any((id) => widget.tabActions?[id] != null),
-                      );
-                      if (count * floor <= constraints.maxWidth) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (var i = 0; i < count; i++) Expanded(child: _buildTab(context, group, i)),
-                          ],
-                        );
-                      }
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (var i = 0; i < count; i++)
-                              SizedBox(width: floor, child: _buildTab(context, group, i)),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
+                      },
+                    ),
+                  );
+                },
+              ),
             ),
           ),
-        ),
         Expanded(
           child: Stack(
             fit: StackFit.expand,
@@ -1733,13 +1693,13 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                     // as if nobody had switched tabs.
                     Builder(
                       builder: (context) => DockPaneVisibility(
-                      visible: i == group.selected && DockPaneVisibility.of(context),
-                      // A CONTAINER slot renders its whole subtree, bare: the
-                      // groups inside it apply their own editing chrome and
-                      // own their own drop regions, so wrapping them in this
-                      // group's would leave a nested arrangement with no way
-                      // to be rearranged.
-                      child: _slotBody(group, i, showHeader: showHeader),
+                        visible: i == group.selected && DockPaneVisibility.of(context),
+                        // A CONTAINER slot renders its whole subtree, bare: the
+                        // groups inside it apply their own editing chrome and
+                        // own their own drop regions, so wrapping them in this
+                        // group's would leave a nested arrangement with no way
+                        // to be rearranged.
+                        child: _slotBody(group, i, showHeader: showHeader),
                       ),
                     ),
                 ],
@@ -1758,9 +1718,8 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                     ? const SizedBox.shrink()
                     : DockGroupDropRegions(
                         washAlpha: _hitWashAlpha,
-                        onDrop: (id, drop) => drop.nest
-                            ? _handleNestDrop(id, group, above: drop.region == DockRegion.top)
-                            : _handleDrop(id, group, drop.region),
+                        onDrop: (id, drop) =>
+                            drop.nest ? _handleNestDrop(id, group, above: drop.region == DockRegion.top) : _handleDrop(id, group, drop.region),
                       ),
               ),
               // Last, so the outline is over the drop bands too — otherwise

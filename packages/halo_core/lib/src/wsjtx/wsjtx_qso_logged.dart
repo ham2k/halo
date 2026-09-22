@@ -120,10 +120,7 @@ String wsjtxDedupeKey(WsjtxQsoLogged info) {
 String? _notesFor({required String comments, required String exchangeSent, required String exchangeReceived}) {
   final parts = <String>[];
   if (comments.isNotEmpty) parts.add(comments);
-  final exchangeParts = <String>[
-    if (exchangeSent.isNotEmpty) 'Sent: $exchangeSent',
-    if (exchangeReceived.isNotEmpty) 'Rcvd: $exchangeReceived',
-  ];
+  final exchangeParts = <String>[if (exchangeSent.isNotEmpty) 'Sent: $exchangeSent', if (exchangeReceived.isNotEmpty) 'Rcvd: $exchangeReceived'];
   if (exchangeParts.isNotEmpty) parts.add('WSJT-X exchange — ${exchangeParts.join(', ')}');
   return parts.isEmpty ? null : parts.join('\n');
 }

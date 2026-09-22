@@ -58,9 +58,8 @@ List<ExchangeOption> matchExchangeOptions(
 
   final trimmed = query.trim().toUpperCase();
   if (trimmed.isEmpty) {
-    final ordered = [
-      for (var i = 0; i < options.length; i++) (index: i, option: options[i]),
-    ]..sort((a, b) {
+    final ordered = [for (var i = 0; i < options.length; i++) (index: i, option: options[i])]
+      ..sort((a, b) {
         final byPreference = preferenceRank(a.option).compareTo(preferenceRank(b.option));
         return byPreference != 0 ? byPreference : a.index.compareTo(b.index);
       });
@@ -92,11 +91,7 @@ List<ExchangeOption> matchExchangeOptions(
 /// shortcut needs to know which of them it is looking at: accepting a suggestion
 /// replaces what the operator typed, and only the tiers where their own text is a
 /// PREFIX of the answer are safe to do that with.
-int? exchangeMatchTier(
-  String query,
-  ExchangeOption option, {
-  Set<String> matchOn = const {'code', 'name'},
-}) {
+int? exchangeMatchTier(String query, ExchangeOption option, {Set<String> matchOn = const {'code', 'name'}}) {
   final trimmed = query.trim().toUpperCase();
   if (trimmed.isEmpty) return null;
   final byCode = matchOn.contains('code');
@@ -121,11 +116,7 @@ int? exchangeMatchTier(
 /// operator heading for "Crane Creek") substring-matches "Alum **Cr**eek";
 /// accepting that logs `ALU`: a park they never worked, in a field they were
 /// only passing through on their way to the next one.
-bool isAcceptableExchangeMatch(
-  String query,
-  ExchangeOption option, {
-  Set<String> matchOn = const {'code', 'name'},
-}) {
+bool isAcceptableExchangeMatch(String query, ExchangeOption option, {Set<String> matchOn = const {'code', 'name'}}) {
   final tier = exchangeMatchTier(query, option, matchOn: matchOn);
   return tier != null && tier <= 2;
 }
@@ -169,12 +160,7 @@ String exchangeValueAt(String text, int cursor, String separator) {
 /// [text] with the value the cursor is in replaced by [value], and where the
 /// cursor ends up — at the end of what was just written, so the operator can
 /// type the separator and carry straight on.
-({String text, int cursor}) replaceExchangeValueAt(
-  String text,
-  int cursor,
-  String separator,
-  String value,
-) {
+({String text, int cursor}) replaceExchangeValueAt(String text, int cursor, String separator, String value) {
   final span = exchangeValueSpan(text, cursor, separator);
   final replaced = text.replaceRange(span.start, span.end, value);
   return (text: replaced, cursor: span.start + value.length);
@@ -215,16 +201,9 @@ String? inheritedCandidate(String first, String value, int prefixLength) {
 }
 
 /// Every value in [text], each paired with what it might be short for.
-List<(String, String?)> exchangeValueCandidates(
-  String text,
-  String separator, {
-  int inheritPrefix = 0,
-}) {
+List<(String, String?)> exchangeValueCandidates(String text, String separator, {int inheritPrefix = 0}) {
   final values = splitExchangeValues(text, separator);
-  return [
-    for (final (index, value) in values.indexed)
-      (value, index == 0 ? null : inheritedCandidate(values.first, value, inheritPrefix)),
-  ];
+  return [for (final (index, value) in values.indexed) (value, index == 0 ? null : inheritedCandidate(values.first, value, inheritPrefix))];
 }
 
 /// Whether every value in [text] is one of [options]' codes.
@@ -233,17 +212,10 @@ List<(String, String?)> exchangeValueCandidates(
 /// claims a multiplier that isn't there, and the operator can still fix it
 /// while the QSO is in front of them. A field with nothing typed is not
 /// invalid — it is unanswered.
-bool areKnownExchangeOptions(
-  String text,
-  List<ExchangeOption> options, {
-  String separator = '',
-  int inheritPrefix = 0,
-}) {
+bool areKnownExchangeOptions(String text, List<ExchangeOption> options, {String separator = '', int inheritPrefix = 0}) {
   final values = exchangeValueCandidates(text, separator, inheritPrefix: inheritPrefix);
   if (values.isEmpty) return true;
   // EITHER reading counts: a value that is a county on its own is valid, and so
   // is one that becomes a county once it borrows the first value's prefix.
-  return values.every((entry) =>
-      isKnownExchangeOption(entry.$1, options) ||
-      (entry.$2 != null && isKnownExchangeOption(entry.$2!, options)));
+  return values.every((entry) => isKnownExchangeOption(entry.$1, options) || (entry.$2 != null && isKnownExchangeOption(entry.$2!, options)));
 }

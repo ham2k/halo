@@ -25,32 +25,28 @@ void main() {
     List<PeerDraftFieldPayload> fields = const [],
     Map<String, dynamic>? their,
     Map<String, dynamic> vfo = const {'band': '20m', 'mode': 'CW', 'freq': 14025.0},
-  }) =>
-      PeerDraftBlock(
-        deviceId: deviceId,
-        deviceName: deviceName,
-        draft: PeerQsoDraftPayload(
-          qso: {'their': their ?? const {}, ...vfo},
-          operationUuid: 'op-1',
-          fields: fields,
-          position: position,
-          operatorCall: operatorCall,
-        ),
-      );
+  }) => PeerDraftBlock(
+    deviceId: deviceId,
+    deviceName: deviceName,
+    draft: PeerQsoDraftPayload(
+      qso: {'their': their ?? const {}, ...vfo},
+      operationUuid: 'op-1',
+      fields: fields,
+      position: position,
+      operatorCall: operatorCall,
+    ),
+  );
 
   Future<void> pump(WidgetTester tester, PeerDraftBlock block) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: PositionBlockView(
-            block: block,
-            operation: operation,
-            miles: false,
-            showBearing: false,
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: PositionBlockView(block: block, operation: operation, miles: false, showBearing: false),
           ),
         ),
       ),
-    ));
+    );
   }
 
   /// Every rendered run, in order, with the colour it actually came out as —
@@ -58,15 +54,13 @@ void main() {
   /// differ by nothing else. Two runs can carry the same text (a typed `59`
   /// and a hinted `59`), so position in this list is what tells them apart.
   List<(String, Color?)> runs(WidgetTester tester) => [
-        for (final widget in tester.widgetList<Text>(find.byType(Text)))
-          if (widget.textSpan case final TextSpan span)
-            for (final child in span.children ?? const <InlineSpan>[])
-              if (child is TextSpan && (child.text ?? '').trim().isNotEmpty)
-                (child.text!, child.style?.color),
-      ];
+    for (final widget in tester.widgetList<Text>(find.byType(Text)))
+      if (widget.textSpan case final TextSpan span)
+        for (final child in span.children ?? const <InlineSpan>[])
+          if (child is TextSpan && (child.text ?? '').trim().isNotEmpty) (child.text!, child.style?.color),
+  ];
 
-  Color? colorOf(WidgetTester tester, String text) =>
-      runs(tester).where((run) => run.$1 == text).map((run) => run.$2).firstOrNull;
+  Color? colorOf(WidgetTester tester, String text) => runs(tester).where((run) => run.$1 == text).map((run) => run.$2).firstOrNull;
 
   group('the header says whose block this is', () {
     testWidgets('position and operator together', (tester) async {
@@ -120,15 +114,16 @@ void main() {
     testWidgets('a typed report and a defaulted one do not look alike', (tester) async {
       await pump(
         tester,
-        blockOf(fields: const [
-          PeerDraftFieldPayload(key: 'call', value: 'KN2X'),
-          PeerDraftFieldPayload(key: 'sent', value: '59'),
-          PeerDraftFieldPayload(key: 'rcvd', hint: '59'),
-        ]),
+        blockOf(
+          fields: const [
+            PeerDraftFieldPayload(key: 'call', value: 'KN2X'),
+            PeerDraftFieldPayload(key: 'sent', value: '59'),
+            PeerDraftFieldPayload(key: 'rcvd', hint: '59'),
+          ],
+        ),
       );
       final row = runs(tester);
-      expect(row.map((run) => run.$1), ['KN2X', '59', '59'],
-          reason: 'the row renders in the order the sender sent it');
+      expect(row.map((run) => run.$1), ['KN2X', '59', '59'], reason: 'the row renders in the order the sender sent it');
       // Both read "59". Sent was typed, Rcvd is only what the app would send —
       // and an operator has to be able to see which is which at a glance.
       expect(row[1].$2, row[0].$2, reason: 'a typed report reads like any other typed value');
@@ -138,13 +133,14 @@ void main() {
     testWidgets('a field with neither a value nor a hint takes no room', (tester) async {
       await pump(
         tester,
-        blockOf(fields: const [
-          PeerDraftFieldPayload(key: 'call', value: 'KN2X'),
-          PeerDraftFieldPayload(key: 'state'),
-        ]),
+        blockOf(
+          fields: const [
+            PeerDraftFieldPayload(key: 'call', value: 'KN2X'),
+            PeerDraftFieldPayload(key: 'state'),
+          ],
+        ),
       );
-      expect(runs(tester).map((run) => run.$1), ['KN2X'],
-          reason: 'a field with nothing to say is left out, not rendered blank');
+      expect(runs(tester).map((run) => run.$1), ['KN2X'], reason: 'a field with nothing to say is left out, not rendered blank');
     });
 
     // The row is the SENDER's, so a control this build has no extension for
@@ -152,9 +148,9 @@ void main() {
     testWidgets('a control this build knows nothing about still renders', (tester) async {
       await pump(
         tester,
-        blockOf(fields: const [
-          PeerDraftFieldPayload(key: 'wfd_class', label: 'Class', value: '3A'),
-        ]),
+        blockOf(
+          fields: const [PeerDraftFieldPayload(key: 'wfd_class', label: 'Class', value: '3A')],
+        ),
       );
       expect(colorOf(tester, '3A'), isNotNull);
     });
@@ -162,25 +158,40 @@ void main() {
 
   group('the call-info lines', () {
     testWidgets("the operator's own name outranks the lookup's", (tester) async {
-      await pump(tester, blockOf(their: const {
-        'name': 'Johnny',
-        'guess': {'name': 'John'},
-      }));
+      await pump(
+        tester,
+        blockOf(
+          their: const {
+            'name': 'Johnny',
+            'guess': {'name': 'John'},
+          },
+        ),
+      );
       expect(colorOf(tester, 'Johnny'), isNotNull);
       expect(colorOf(tester, 'John'), isNull);
     });
 
     testWidgets("the lookup's name shows when the operator set none", (tester) async {
-      await pump(tester, blockOf(their: const {
-        'guess': {'name': 'John'},
-      }));
+      await pump(
+        tester,
+        blockOf(
+          their: const {
+            'guess': {'name': 'John'},
+          },
+        ),
+      );
       expect(colorOf(tester, 'John'), isNotNull);
     });
 
     testWidgets('a place joins the name', (tester) async {
-      await pump(tester, blockOf(their: const {
-        'guess': {'name': 'John', 'location': 'Wurstboro, NY'},
-      }));
+      await pump(
+        tester,
+        blockOf(
+          their: const {
+            'guess': {'name': 'John', 'location': 'Wurstboro, NY'},
+          },
+        ),
+      );
       expect(colorOf(tester, 'Wurstboro, NY'), isNotNull);
     });
   });

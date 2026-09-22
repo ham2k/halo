@@ -12,10 +12,7 @@
 ///   - Cloudflare Pages default domain: `<name>.halo-dev-ham2k-net.pages.dev`
 ///     (see `.github/workflows/deploy-web-preview.yml`)
 ///   - custom domain: `<name>-halo-dev.ham2k.net`
-const List<String> _previewHostSuffixes = <String>[
-  '.halo-dev-ham2k-net.pages.dev',
-  '-halo-dev.ham2k.net',
-];
+const List<String> _previewHostSuffixes = <String>['.halo-dev-ham2k-net.pages.dev', '-halo-dev.ham2k.net'];
 
 /// The preview name encoded in [host], or `''` when [host] is a production
 /// deployment, localhost, a custom domain, or otherwise not a single-label

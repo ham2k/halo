@@ -31,14 +31,16 @@ void main() {
     expect(
       source,
       contains(r'target_compile_options(${plugin}_plugin PRIVATE $<$<CONFIG:Release>:/Zi>)'),
-      reason: 'without /Zi a Release frame inside a plugin DLL resolves to the '
+      reason:
+          'without /Zi a Release frame inside a plugin DLL resolves to the '
           'nearest exported symbol, which is how HALO-290 spent four rounds '
           'attributing plugin frames to MSVCP140',
     );
     expect(
       source,
       contains(r'target_link_options(${plugin}_plugin PRIVATE $<$<CONFIG:Release>:/DEBUG>)'),
-      reason: 'MSVC emits the linked PDB only with the linker\'s /DEBUG — /Zi '
+      reason:
+          'MSVC emits the linked PDB only with the linker\'s /DEBUG — /Zi '
           'alone leaves compiler-side PDBs the release pipeline never '
           'uploads, so dropping just this line defeats the hunk while the /Zi '
           'check above stays green',
@@ -53,7 +55,8 @@ void main() {
     expect(
       source.indexOf('include(flutter/generated_plugins.cmake)'),
       lessThan(source.indexOf(r'foreach(plugin ${FLUTTER_PLUGIN_LIST})')),
-      reason: 'the loop must come after the include, or it iterates an empty '
+      reason:
+          'the loop must come after the include, or it iterates an empty '
           'list and no plugin gets symbols',
     );
   });
@@ -69,7 +72,8 @@ void main() {
     expect(
       body,
       isNot(contains('universal_ble')),
-      reason: 'the loop must stay driven by FLUTTER_PLUGIN_LIST; naming any '
+      reason:
+          'the loop must stay driven by FLUTTER_PLUGIN_LIST; naming any '
           'plugin inside it reintroduces the per-plugin gap',
     );
   });

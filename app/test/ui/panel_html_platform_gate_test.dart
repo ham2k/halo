@@ -90,37 +90,44 @@ class _FakePlatformWebViewEnvironment extends PlatformWebViewEnvironment {
 void _succeedingWindowsProbe() {
   WindowsWebView.debugReset();
   addTearDown(WindowsWebView.debugReset);
-  WindowsWebView.debugCreateEnvironment =
-      () async => WebViewEnvironment.fromPlatform(platform: _FakePlatformWebViewEnvironment());
+  WindowsWebView.debugCreateEnvironment = () async => WebViewEnvironment.fromPlatform(platform: _FakePlatformWebViewEnvironment());
 }
 
 PanelService _websiteService() {
-  final service = PanelService(FakePanelExtensions(configs: {
-    'website#1': {websiteUrlKey: 'https://example.com'},
-  }));
-  service.registerNative(const PanelDefinition(
-    id: websitePanelId,
-    title: 'Web Site',
-    source: PanelSource.native,
-    multiple: true,
-    formFields: [
-      {'type': 'field', 'key': websiteUrlKey, 'fieldType': 'text'},
-    ],
-  ));
+  final service = PanelService(
+    FakePanelExtensions(
+      configs: {
+        'website#1': {websiteUrlKey: 'https://example.com'},
+      },
+    ),
+  );
+  service.registerNative(
+    const PanelDefinition(
+      id: websitePanelId,
+      title: 'Web Site',
+      source: PanelSource.native,
+      multiple: true,
+      formFields: [
+        {'type': 'field', 'key': websiteUrlKey, 'fieldType': 'text'},
+      ],
+    ),
+  );
   return service;
 }
 
 Future<void> _pumpWebsitePanel(WidgetTester tester, PanelService service, {bool dockVisible = true}) async {
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(
-      home: Scaffold(
-        body: DockPaneVisibility(
-          visible: dockVisible,
-          child: WebsitePanel(panelId: 'website#1', panels: service, autoRefresh: false),
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: DockPaneVisibility(
+            visible: dockVisible,
+            child: WebsitePanel(panelId: 'website#1', panels: service, autoRefresh: false),
+          ),
         ),
       ),
     ),
-  ));
+  );
 }
 
 Future<void> _pumpHtmlPanel(WidgetTester tester) async {
@@ -128,7 +135,9 @@ Future<void> _pumpHtmlPanel(WidgetTester tester) async {
     TranslationProvider(
       child: const MaterialApp(
         home: Scaffold(
-          body: PanelContentView(content: PanelContent(kind: 'html', content: '<p>hello</p>')),
+          body: PanelContentView(
+            content: PanelContent(kind: 'html', content: '<p>hello</p>'),
+          ),
         ),
       ),
     ),
@@ -250,7 +259,8 @@ void main() {
       expect(
         WindowsWebView.resolved,
         isNotNull,
-        reason: 'the pane has to ask, not just read the cached answer, or a capable '
+        reason:
+            'the pane has to ask, not just read the cached answer, or a capable '
             'Windows machine sits here until some other pane happens to probe first',
       );
       // The probe said no, so now — and only now — the refusal is earned. A
@@ -270,8 +280,13 @@ void main() {
       await _pumpWebsitePanel(tester, service);
       await tester.pump();
 
-      expect(WindowsWebView.resolved, isNotNull, reason: 'reading the cached answer without ever asking for it '
-          'leaves the pane refusing a web view this machine can host');
+      expect(
+        WindowsWebView.resolved,
+        isNotNull,
+        reason:
+            'reading the cached answer without ever asking for it '
+            'leaves the pane refusing a web view this machine can host',
+      );
       expect(find.text(t.operation.layout.panels.websiteUnsupported), findsOneWidget);
     });
   });
@@ -305,8 +320,11 @@ void main() {
     await on(TargetPlatform.linux, () async {
       await _pumpMapPanel(tester, settings);
 
-      expect(find.byType(MapboxWebviewMapView), findsNothing,
-          reason: 'no web view implementation is registered on Linux, so this branch is a blank pane, not a map');
+      expect(
+        find.byType(MapboxWebviewMapView),
+        findsNothing,
+        reason: 'no web view implementation is registered on Linux, so this branch is a blank pane, not a map',
+      );
       expect(find.byType(OsmMapView), findsOneWidget, reason: 'OSM is the real Linux map, not a degraded fallback');
       // Nothing thrown says the routing decided against the web view rather
       // than reaching one and failing.
@@ -362,8 +380,7 @@ void main() {
     await on(TargetPlatform.iOS, () async {
       await _pumpMapPanel(tester, settings, dockVisible: false);
 
-      expect(find.byType(MapboxWebviewMapView), findsNothing,
-          reason: 'a pane behind another tab in its dock group must not build a webview');
+      expect(find.byType(MapboxWebviewMapView), findsNothing, reason: 'a pane behind another tab in its dock group must not build a webview');
       // Nothing thrown is the second half of the claim: no platform view was
       // reached at all, rather than one built and quietly failing.
       expect(tester.takeException(), isNull);
@@ -371,8 +388,7 @@ void main() {
       // The dock selects this pane's tab — same pane, now on screen.
       await _pumpMapPanel(tester, settings, dockVisible: true);
 
-      expect(find.byType(MapboxWebviewMapView), findsOneWidget,
-          reason: 'once actually on screen the pane must build its map, or mobile never gets one');
+      expect(find.byType(MapboxWebviewMapView), findsOneWidget, reason: 'once actually on screen the pane must build its map, or mobile never gets one');
       expect(tester.takeException(), isNotNull);
     });
   });
@@ -391,8 +407,7 @@ void main() {
 
       await _pumpMapPanel(tester, settings, dockVisible: false);
 
-      expect(find.byType(MapboxWebviewMapView), findsOneWidget,
-          reason: 'a map already built stays built behind another tab');
+      expect(find.byType(MapboxWebviewMapView), findsOneWidget, reason: 'a map already built stays built behind another tab');
       expect(tester.takeException(), isNotNull);
     });
   });
@@ -409,15 +424,13 @@ void main() {
       await _pumpMapPanel(tester, settings, dockVisible: false);
       await tester.pump();
 
-      expect(WindowsWebView.resolved, isNull,
-          reason: 'a pane behind another tab in its dock group must not spawn the WebView2 process');
+      expect(WindowsWebView.resolved, isNull, reason: 'a pane behind another tab in its dock group must not spawn the WebView2 process');
 
       // The dock selects this pane's tab — same pane, now on screen.
       await _pumpMapPanel(tester, settings, dockVisible: true);
       await tester.pump();
 
-      expect(WindowsWebView.resolved, isNotNull,
-          reason: 'once actually on screen the pane must still ask, or a capable Windows machine never gets its map');
+      expect(WindowsWebView.resolved, isNotNull, reason: 'once actually on screen the pane must still ask, or a capable Windows machine never gets its map');
     });
   });
 
@@ -446,7 +459,8 @@ void main() {
       expect(
         find.byType(MapboxWebviewMapView),
         findsOneWidget,
-        reason: 'an answer resolved elsewhere must still reach this pane on reveal, or a capable '
+        reason:
+            'an answer resolved elsewhere must still reach this pane on reveal, or a capable '
             'Windows machine is stuck on OSM for the rest of the session',
       );
       expect(find.byType(OsmMapView), findsNothing);
@@ -468,8 +482,7 @@ void main() {
       await _pumpWebsitePanel(tester, service, dockVisible: false);
       await tester.pump();
 
-      expect(WindowsWebView.resolved, isNull,
-          reason: 'a pane behind another tab in its dock group must not spawn the WebView2 process');
+      expect(WindowsWebView.resolved, isNull, reason: 'a pane behind another tab in its dock group must not spawn the WebView2 process');
 
       await _pumpWebsitePanel(tester, service, dockVisible: true);
       await tester.pump();

@@ -93,11 +93,7 @@ class WallClock extends ChangeNotifier {
   // cadence, drifting off the wall-clock boundary it was aimed at.
   void _arm() {
     if (_timer != null) return;
-    final delayMs = delayToBoundary(
-      periodMs: period.inMilliseconds,
-      nowMillis: nowMillis(),
-      speed: AppClock.instance.speed,
-    );
+    final delayMs = delayToBoundary(periodMs: period.inMilliseconds, nowMillis: nowMillis(), speed: AppClock.instance.speed);
     _timer = Timer(Duration(milliseconds: delayMs), () {
       _timer = null;
       if (hasListeners) {
@@ -136,7 +132,6 @@ class ClockTravel extends ChangeNotifier {
   }
 
   static final ClockTravel instance = ClockTravel._();
-
 }
 
 /// Rebuilds [builder] once per second, in the same frame as every other
@@ -151,8 +146,5 @@ class OncePerSecond extends StatelessWidget {
   final Widget Function(BuildContext context, DateTime nowUtc) builder;
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-        listenable: WallClock.seconds,
-        builder: (context, _) => builder(context, nowUtc()),
-      );
+  Widget build(BuildContext context) => ListenableBuilder(listenable: WallClock.seconds, builder: (context, _) => builder(context, nowUtc()));
 }

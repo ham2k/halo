@@ -12,7 +12,10 @@ import 'package:halo_i18n/halo_i18n.dart';
 /// row and the wide-layout Information Panel so both stay in sync.
 List<String> operationStatsLines(BuildContext context, List<Qso> qsos) {
   final t = context.t.loggingControls.info;
-  final contacts = [for (final q in qsos) if (q.isRealContact) q];
+  final contacts = [
+    for (final q in qsos)
+      if (q.isRealContact) q,
+  ];
   if (contacts.isEmpty) return [t.noQsos];
 
   final count = contacts.length;
@@ -22,9 +25,7 @@ List<String> operationStatsLines(BuildContext context, List<Qso> qsos) {
 
   final countText = count == 1 ? t.qsoCountOne : t.qsoCountOther(count: count);
   final line1 = <String>[
-    (firstMs != null && lastMs != null)
-        ? t.qsosInTime(count: countText, time: fmtTimeBetween(firstMs, lastMs))
-        : countText,
+    (firstMs != null && lastMs != null) ? t.qsosInTime(count: countText, time: fmtTimeBetween(firstMs, lastMs)) : countText,
     // "since last" only while the last QSO is recent (<6h) — otherwise a
     // long-idle log would show a distractingly large figure.
     if (lastMs != null && nowMs - lastMs < 6 * 60 * 60 * 1000) t.sinceLast(time: fmtTimeBetween(lastMs, nowMs)),

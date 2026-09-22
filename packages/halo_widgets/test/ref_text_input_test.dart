@@ -13,25 +13,23 @@ void main() {
     ValueChanged<List<Map<String, dynamic>>>? onChanged,
     List<Map<String, dynamic>> refs = const [],
     RefDecorator? decorate,
-  }) =>
-      MaterialApp(
-        home: Scaffold(
-          body: RefTextInput(
-            refType: 'pota',
-            label: 'POTA',
-            pattern: potaPattern,
-            transforms: transforms,
-            refs: refs,
-            onChanged: onChanged ?? (_) {},
-            decorate: decorate,
-          ),
-        ),
-      );
+  }) => MaterialApp(
+    home: Scaffold(
+      body: RefTextInput(
+        refType: 'pota',
+        label: 'POTA',
+        pattern: potaPattern,
+        transforms: transforms,
+        refs: refs,
+        onChanged: onChanged ?? (_) {},
+        decorate: decorate,
+      ),
+    ),
+  );
 
   /// The field's underline color, which is the whole of how it reports a
   /// reference its program's pattern rejects.
-  Color? underlineColor(WidgetTester tester) =>
-      tester.widget<TextField>(find.byType(TextField)).decoration?.enabledBorder?.borderSide.color;
+  Color? underlineColor(WidgetTester tester) => tester.widget<TextField>(find.byType(TextField)).decoration?.enabledBorder?.borderSide.color;
 
   testWidgets('disables autocorrect, suggestions, and smart punctuation', (tester) async {
     // References like "US-1234" are codes, not prose — the "-" in particular
@@ -47,9 +45,11 @@ void main() {
 
   group('transforms', () {
     testWidgets('a transform reformats "us1234" into "US-1234" as the user types', (tester) async {
-      await tester.pumpWidget(build(transforms: const [
-        RefTransform(pattern: r'([A-Z]+)(\d+)', replacement: r'${1}-${2}', flags: 'gi'),
-      ]));
+      await tester.pumpWidget(
+        build(
+          transforms: const [RefTransform(pattern: r'([A-Z]+)(\d+)', replacement: r'${1}-${2}', flags: 'gi')],
+        ),
+      );
 
       await tester.enterText(find.byType(TextField), 'us1234');
       await tester.pump();
@@ -69,11 +69,15 @@ void main() {
     });
 
     testWidgets('a digit-leading replacement literal is not swallowed by group-index parsing', (tester) async {
-      await tester.pumpWidget(build(transforms: const [
-        // Same shape as POTA's real prefix-insertion transform with
-        // a DXCC prefix that starts with a digit (Fiji's "3D2").
-        RefTransform(pattern: r'(^|,\s*)(\d\d+|TEST)', replacement: r'${1}3D2-${2}', flags: 'gi'),
-      ]));
+      await tester.pumpWidget(
+        build(
+          transforms: const [
+            // Same shape as POTA's real prefix-insertion transform with
+            // a DXCC prefix that starts with a digit (Fiji's "3D2").
+            RefTransform(pattern: r'(^|,\s*)(\d\d+|TEST)', replacement: r'${1}3D2-${2}', flags: 'gi'),
+          ],
+        ),
+      );
 
       await tester.enterText(find.byType(TextField), '1234');
       await tester.pump();
@@ -85,9 +89,11 @@ void main() {
     });
 
     testWidgets('cursor position survives a mid-string edit through a transform rewrite', (tester) async {
-      await tester.pumpWidget(build(transforms: const [
-        RefTransform(pattern: r'([A-Z]+)(\d+)', replacement: r'${1}-${2}', flags: 'gi'),
-      ]));
+      await tester.pumpWidget(
+        build(
+          transforms: const [RefTransform(pattern: r'([A-Z]+)(\d+)', replacement: r'${1}-${2}', flags: 'gi')],
+        ),
+      );
 
       // Seed the field with an already-dashed value, via the same raw
       // remote-text-input channel `enterText` uses, so the next update can
@@ -101,10 +107,7 @@ void main() {
       // platform reports has the "9" already inserted, cursor right after
       // it — this is what reaches `_RefTransformFormatter.formatEditUpdate`
       // as `newValue` before any transform runs.
-      tester.testTextInput.updateEditingValue(const TextEditingValue(
-        text: 'US-19234,US-5678',
-        selection: TextSelection.collapsed(offset: 5),
-      ));
+      tester.testTextInput.updateEditingValue(const TextEditingValue(text: 'US-19234,US-5678', selection: TextSelection.collapsed(offset: 5)));
       await tester.pump();
 
       final field = tester.widget<TextField>(find.byType(TextField));
@@ -137,19 +140,13 @@ void main() {
       await tester.showKeyboard(find.byType(TextField));
       // Backspacing one character at a time, from a complete two-reference
       // value all the way down through the trailing comma.
-      const sequence = [
-        'US-1234,US-5678',
-        'US-1234,US-567',
-        'US-1234,US-56',
-        'US-1234,US-5',
-        'US-1234,US-',
-        'US-1234,US',
-        'US-1234,U',
-        'US-1234,',
-      ];
+      const sequence = ['US-1234,US-5678', 'US-1234,US-567', 'US-1234,US-56', 'US-1234,US-5', 'US-1234,US-', 'US-1234,US', 'US-1234,U', 'US-1234,'];
       for (final text in sequence) {
         tester.testTextInput.updateEditingValue(
-          TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length)),
+          TextEditingValue(
+            text: text,
+            selection: TextSelection.collapsed(offset: text.length),
+          ),
         );
         await tester.pump();
       }
@@ -168,26 +165,31 @@ void main() {
   // between the operator and a silently mangled reference.
   testWidgets('a slash survives the input filter, with no transform to repair it', (tester) async {
     List<Map<String, dynamic>>? emitted;
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: RefTextInput(
-          refType: 'gmaActivation',
-          label: 'GMA',
-          // GMA's own shape, and no transforms — exactly what the factory emits.
-          pattern: r'[A-Z0-9]+/[A-Z]{2,}-[0-9]{3,}',
-          refs: const [],
-          onChanged: (refs) => emitted = refs,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RefTextInput(
+            refType: 'gmaActivation',
+            label: 'GMA',
+            // GMA's own shape, and no transforms — exactly what the factory emits.
+            pattern: r'[A-Z0-9]+/[A-Z]{2,}-[0-9]{3,}',
+            refs: const [],
+            onChanged: (refs) => emitted = refs,
+          ),
         ),
       ),
-    ));
+    );
 
     await tester.enterText(find.byType(TextField), 'DL/BW-123');
     await tester.pump();
 
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'DL/BW-123');
     expect(emitted?.single['ref'], 'DL/BW-123');
-    expect(underlineColor(tester), isNot(Theme.of(tester.element(find.byType(TextField))).colorScheme.error),
-        reason: 'a well-formed GMA reference must not read as invalid');
+    expect(
+      underlineColor(tester),
+      isNot(Theme.of(tester.element(find.byType(TextField))).colorScheme.error),
+      reason: 'a well-formed GMA reference must not read as invalid',
+    );
   });
 
   testWidgets('a reference handed over after the field was built is handed back as the same map', (tester) async {
@@ -205,8 +207,7 @@ void main() {
     expect(identical(emitted!.single, guessed), isTrue);
   });
 
-  testWidgets('a reference arriving while the empty field has focus shows; one arriving mid-typing does not',
-      (tester) async {
+  testWidgets('a reference arriving while the empty field has focus shows; one arriving mid-typing does not', (tester) async {
     final park = <String, dynamic>{'type': 'pota', 'ref': 'US-2080'};
     await tester.pumpWidget(build());
     await tester.tap(find.byType(TextField));
@@ -217,12 +218,18 @@ void main() {
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'US-2080');
     // Mid-typing, a round trip landing must not fight the keystrokes.
     await tester.enterText(find.byType(TextField), 'US-2080, US-1');
-    await tester.pumpWidget(build(refs: [park, {'type': 'pota', 'ref': 'US-1234'}]));
+    await tester.pumpWidget(
+      build(
+        refs: [
+          park,
+          {'type': 'pota', 'ref': 'US-1234'},
+        ],
+      ),
+    );
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'US-2080, US-1');
   });
 
-  testWidgets('a handed-over reference finds its map whatever case it came in, and decoration joins that map',
-      (tester) async {
+  testWidgets('a handed-over reference finds its map whatever case it came in, and decoration joins that map', (tester) async {
     // A feed hands the code over raw; the field looks codes up uppercased.
     // The decorate round trip then adds the name INTO the guess's own map —
     // the panel takes a guess back by identity, so a swap would lose it.
@@ -233,6 +240,7 @@ void main() {
       decorations++;
       return {...ref, 'name': 'Park ${ref['ref']}'};
     }
+
     await tester.pumpWidget(build(onChanged: (refs) => emitted = refs, decorate: decorate));
     await tester.pumpWidget(build(refs: [guessed], onChanged: (refs) => emitted = refs, decorate: decorate));
     await tester.enterText(find.byType(TextField), 'US-2080,');
@@ -278,9 +286,13 @@ void main() {
       // An imported QSO, or one opened for editing: nothing recomputes the
       // tint on its own, so a state seeded only by `onChanged` would show a
       // clean field over a reference the operator still has to fix.
-      await tester.pumpWidget(build(refs: const [
-        {'type': 'pota', 'ref': 'NOT-A-PARK'},
-      ]));
+      await tester.pumpWidget(
+        build(
+          refs: const [
+            {'type': 'pota', 'ref': 'NOT-A-PARK'},
+          ],
+        ),
+      );
       await tester.pump();
 
       final error = Theme.of(tester.element(find.byType(TextField))).colorScheme.error;
@@ -289,10 +301,14 @@ void main() {
 
     testWidgets('is not sent for decoration — there is nothing to look up', (tester) async {
       final looked = <String>[];
-      await tester.pumpWidget(build(decorate: (ref) async {
-        looked.add(ref['ref'] as String);
-        return ref;
-      }));
+      await tester.pumpWidget(
+        build(
+          decorate: (ref) async {
+            looked.add(ref['ref'] as String);
+            return ref;
+          },
+        ),
+      );
 
       await tester.enterText(find.byType(TextField), 'US-1234, NOPE');
       await tester.pump();

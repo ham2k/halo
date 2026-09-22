@@ -27,7 +27,8 @@ void main() {
 
   /// N0NBH's document as the panel gets it, with the leading spaces the real
   /// feed puts in its indices.
-  String conditions({int sfi = 143, int k = 1, String band = 'Good'}) => '''
+  String conditions({int sfi = 143, int k = 1, String band = 'Good'}) =>
+      '''
 <solar><solardata>
   <updated> 25 Aug 2026 1753 GMT</updated>
   <solarflux>$sfi</solarflux>
@@ -59,8 +60,7 @@ void main() {
     final now = nowUtc();
     return '[${[
       for (var i = days; i > 0; i--)
-        for (final hour in [17, 20, 22])
-          '{"time_tag":"${DateTime.utc(now.year, now.month, now.day - i, hour).toIso8601String().split('.').first}",'
+        for (final hour in [17, 20, 22]) '{"time_tag":"${DateTime.utc(now.year, now.month, now.day - i, hour).toIso8601String().split('.').first}",'
               '"flux":${120 + i}}',
     ].join(',')}]';
   }
@@ -74,10 +74,7 @@ void main() {
   String kpSeries({int hours = 72, double kp = 2}) {
     final now = nowUtc();
     final grid = DateTime.utc(now.year, now.month, now.day, (now.hour ~/ 3) * 3);
-    return '[${[
-      for (var i = hours ~/ 3; i > 0; i--)
-        '{"time_tag":"${grid.subtract(Duration(hours: i * 3)).toIso8601String().split('.').first}","Kp":$kp}',
-    ].join(',')}]';
+    return '[${[for (var i = hours ~/ 3; i > 0; i--) '{"time_tag":"${grid.subtract(Duration(hours: i * 3)).toIso8601String().split('.').first}","Kp":$kp}'].join(',')}]';
   }
 
   /// SWPC's propagated wind, which is an array of ARRAYS with a header row —
@@ -85,10 +82,7 @@ void main() {
   /// reads the header rather than trusting a column index.
   String windSeries({int minutes = 56}) {
     final now = nowUtc();
-    return '[["time_tag","speed","density","temperature"],${[
-      for (var i = minutes; i > 0; i--)
-        '["${now.subtract(Duration(minutes: i)).toIso8601String().split('.').first}Z",${300 + i % 12},1.8,32000]',
-    ].join(',')}]';
+    return '[["time_tag","speed","density","temperature"],${[for (var i = minutes; i > 0; i--) '["${now.subtract(Duration(minutes: i)).toIso8601String().split('.').first}Z",${300 + i % 12},1.8,32000]'].join(',')}]';
   }
 
   /// A week of wind at ten-minute cadence — what the big file looks like once
@@ -97,11 +91,8 @@ void main() {
   String windHistory({int days = 7}) {
     final now = nowUtc();
     final readings = days * 24 * 6;
-    return '[["time_tag","speed","density"],${[
-      for (var i = readings; i > 0; i--)
-        '["${now.subtract(Duration(minutes: i * 10)).toIso8601String().split('.').first}Z",'
-            '${300 + (i % 40)},1.8]',
-    ].join(',')}]';
+    return '[["time_tag","speed","density"],${[for (var i = readings; i > 0; i--) '["${now.subtract(Duration(minutes: i * 10)).toIso8601String().split('.').first}Z",'
+          '${300 + (i % 40)},1.8]'].join(',')}]';
   }
 
   late List<Uri> requested;
@@ -111,14 +102,7 @@ void main() {
   /// Answers each of the three URLs from its own body, so a test can fail one
   /// service while the others succeed. A null body throws instead — a
   /// transport failure, which is what [_Failure.transport] is drawn from.
-  SolarFetch answering({
-    String? solar,
-    String? flux,
-    String? kp,
-    String? wind,
-    String? windHistoryBody,
-    int status = 200,
-  }) => (url) async {
+  SolarFetch answering({String? solar, String? flux, String? kp, String? wind, String? windHistoryBody, int status = 200}) => (url) async {
     requested.add(url);
     // Matched on the PATH, not the host: on web the conditions URL is
     // proxied through services.ham2k.net, so a host match would silently
@@ -134,36 +118,32 @@ void main() {
     return (status: status, body: body);
   };
 
-  Future<void> pump(
-    WidgetTester tester, {
-    required SolarFetch fetch,
-    bool dockVisible = true,
-    Size size = const Size(440, 420),
-    double textScale = 1.0,
-  }) async {
+  Future<void> pump(WidgetTester tester, {required SolarFetch fetch, bool dockVisible = true, Size size = const Size(440, 420), double textScale = 1.0}) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        // The OS text size, which composes ON TOP of the app's own Font Scale
-        // and — unlike Font Scale — does not come out of the MediaQuery size
-        // (docs/design/ui-scaling.md §3). Applied here rather than on the
-        // view, so it reaches the pane the way the platform's does.
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
-          child: child!,
-        ),
-        home: Scaffold(
-          body: DockPaneVisibility(
-            visible: dockVisible,
-            child: SolarPanel(fetch: fetch),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          // The OS text size, which composes ON TOP of the app's own Font Scale
+          // and — unlike Font Scale — does not come out of the MediaQuery size
+          // (docs/design/ui-scaling.md §3). Applied here rather than on the
+          // view, so it reaches the pane the way the platform's does.
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: DockPaneVisibility(
+              visible: dockVisible,
+              child: SolarPanel(fetch: fetch),
+            ),
           ),
         ),
       ),
-    ));
+    );
     // Deliberately NOT pumpAndSettle: the loading state is a
     // CircularProgressIndicator, which never settles, so a settle here would
     // time out and be reported against whatever ran next.
@@ -183,17 +163,17 @@ void main() {
   /// captions when the labels moved onto the marks, so no text on the pane
   /// says one is there — and the flux and wind curves share a painter, so
   /// the type does not tell them apart either.
-  Finder chart(String which) => find.descendant(
-    of: find.byKey(ValueKey('solar-chart-$which')),
-    matching: find.byType(CustomPaint),
-  );
+  Finder chart(String which) => find.descendant(of: find.byKey(ValueKey('solar-chart-$which')), matching: find.byType(CustomPaint));
   Finder fluxChart() => chart('flux');
   Finder kpChart() => chart('kp');
   Finder windChart() => chart('wind');
 
   group('a reading on screen', () {
     testWidgets('leads with the flux index and the sunspot number', (tester) async {
-      await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
+      );
 
       // The flux is one string; the sunspot number is a label and a value in
       // its own column beside it.
@@ -204,7 +184,10 @@ void main() {
     });
 
     testWidgets('credits both feeds on one centred line at the foot', (tester) async {
-      await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
+      );
 
       // BOTH, and this is the whole reason the line is plural: hamqsl carries
       // every number and the band grid, and both charts are NOAA's. A credit
@@ -232,8 +215,11 @@ void main() {
     });
 
     testWidgets('carries the four columns of numbers', (tester) async {
-      await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
-          size: const Size(900, 420));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
+        size: const Size(900, 420),
+      );
 
       // The flux leads, and the two stacked pairs follow it: what is on the
       // disc (SN, 304A) and what the field is doing (A, Kp).
@@ -249,8 +235,11 @@ void main() {
     });
 
     testWidgets('the pairs stack, and the labels line up under one another', (tester) async {
-      await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
-          size: const Size(900, 420));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
+        size: const Size(900, 420),
+      );
 
       // Two ROWS, not one run: this is the whole shape the block was moved
       // into, and a Row that quietly laid all four out side by side would
@@ -263,7 +252,10 @@ void main() {
     });
 
     testWidgets('draws the band grid with both day and night', (tester) async {
-      await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
+      );
 
       // Both columns, always: this panel has no location — which is the whole
       // reason it needs no settings — so which of the two is in force is not
@@ -282,8 +274,11 @@ void main() {
       // FittedBox is what prevents that, and a FittedBox given unbounded
       // width does not.
       for (final width in [900.0, 620.0, 460.0, 360.0, 280.0, 200.0, 140.0]) {
-        await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
-            size: Size(width, 420));
+        await pump(
+          tester,
+          fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
+          size: Size(width, 420),
+        );
 
         expect(tester.takeException(), isNull, reason: 'the block overflowed at width $width');
         // The flux survives every width — it is what a pane this narrow
@@ -299,14 +294,11 @@ void main() {
     /// drawn onto the canvas, so there is no Text widget to find. Asserting
     /// on the instruction list is the same bargain `panel_solar_charts_test`
     /// makes — a Canvas cannot be read back, a painter's inputs can.
-    SolarKpChartPainter kpPainter(WidgetTester tester) =>
-        tester.widget<CustomPaint>(kpChart().last).painter! as SolarKpChartPainter;
+    SolarKpChartPainter kpPainter(WidgetTester tester) => tester.widget<CustomPaint>(kpChart().last).painter! as SolarKpChartPainter;
 
-    SolarLineChartPainter fluxPainter(WidgetTester tester) =>
-        tester.widget<CustomPaint>(fluxChart().last).painter! as SolarLineChartPainter;
+    SolarLineChartPainter fluxPainter(WidgetTester tester) => tester.widget<CustomPaint>(fluxChart().last).painter! as SolarLineChartPainter;
 
-    SolarLineChartPainter windPainter(WidgetTester tester) =>
-        tester.widget<CustomPaint>(windChart().last).painter! as SolarLineChartPainter;
+    SolarLineChartPainter windPainter(WidgetTester tester) => tester.widget<CustomPaint>(windChart().last).painter! as SolarLineChartPainter;
 
     /// A mouse the test can move. Hover is a pointer KIND, not a gesture: a
     /// synthesized touch move produces no hover event at all, and a test
@@ -322,8 +314,11 @@ void main() {
       // No standing labels at all. They crowded each other in a real pane and
       // the curve ran through them; the chart is the shape, and the reading
       // is what you ask it for.
-      await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
-          size: const Size(900, 600));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
+        size: const Size(900, 600),
+      );
 
       expect(fluxPainter(tester).labels, isEmpty);
       expect(kpPainter(tester).labels, isEmpty);
@@ -334,10 +329,11 @@ void main() {
       // Flux, wind, Kp. The first two are what the sun sent; the third is
       // what the earth's field made of it, so the pane reads top to bottom in
       // the order the physics happens.
-      await pump(tester, fetch: answering(
-          solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(),
-          windHistoryBody: windHistory()),
-          size: const Size(900, 700));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(), windHistoryBody: windHistory()),
+        size: const Size(900, 700),
+      );
 
       final flux = tester.getRect(fluxChart().last);
       final wind = tester.getRect(windChart().last);
@@ -355,8 +351,11 @@ void main() {
       // constraints. A chart that drew, hit-tested and hovered as a
       // zero-width strip is invisible in a way every painter test above still
       // passes through.
-      await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
-          size: const Size(900, 600));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
+        size: const Size(900, 600),
+      );
 
       expect(tester.getRect(kpChart().last).width, 900);
       expect(tester.getRect(fluxChart().last).width, 900);
@@ -368,12 +367,15 @@ void main() {
       // against is bounded at both ends, so a fixture whose last point is in
       // the future quietly loses it and every index below shifts.
       final at = nowUtc().subtract(const Duration(hours: 9));
-      final kp = '[${[
-        for (final (index, value) in [4, 2, 7, 3].indexed)
-          '{"time_tag":"${at.add(Duration(hours: index * 3)).toIso8601String().split('.').first}","Kp":$value}',
-      ].join(',')}]';
-      await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kp),
-          size: const Size(900, 600));
+      final kp =
+          '[${[
+            for (final (index, value) in [4, 2, 7, 3].indexed) '{"time_tag":"${at.add(Duration(hours: index * 3)).toIso8601String().split('.').first}","Kp":$value}',
+          ].join(',')}]';
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kp),
+        size: const Size(900, 600),
+      );
 
       final pointer = await mouse(tester);
       final chart = tester.getRect(kpChart().last);
@@ -393,10 +395,11 @@ void main() {
     });
 
     testWidgets('the flux curve names the hour too, since the day has three', (tester) async {
-      await pump(tester, fetch: answering(
-          solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(),
-          windHistoryBody: windHistory()),
-          size: const Size(900, 700));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(), windHistoryBody: windHistory()),
+        size: const Size(900, 700),
+      );
 
       final pointer = await mouse(tester);
       await pointer.moveTo(tester.getCenter(fluxChart().last));
@@ -415,10 +418,11 @@ void main() {
       // The question an operator has is never about one series — it is
       // whether the wind that arrived on Tuesday is the wind that shut the
       // band — so pointing at any chart answers on all of them.
-      await pump(tester, fetch: answering(
-          solar: conditions(), flux: fluxSeries(), kp: kpSeries(hours: 168), wind: windSeries(),
-          windHistoryBody: windHistory()),
-          size: const Size(900, 700));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries(hours: 168), wind: windSeries(), windHistoryBody: windHistory()),
+        size: const Size(900, 700),
+      );
 
       final pointer = await mouse(tester);
       final bars = tester.getRect(kpChart().last);
@@ -434,14 +438,16 @@ void main() {
       // indices would be different days.
       final kpLabel = kpPainter(tester).labels.single;
       final windLabel = windPainter(tester).labels.single;
-      expect(windLabel.detail, kpLabel.detail,
-          reason: 'wind and Kp share a grid, so they name the same period');
+      expect(windLabel.detail, kpLabel.detail, reason: 'wind and Kp share a grid, so they name the same period');
       await endOfTest(tester);
     });
 
     testWidgets('and stops reading out when the pointer leaves', (tester) async {
-      await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
-          size: const Size(900, 600));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
+        size: const Size(900, 600),
+      );
 
       final pointer = await mouse(tester);
       await pointer.moveTo(tester.getCenter(kpChart().last));
@@ -493,9 +499,7 @@ void main() {
     });
 
     testWidgets('the wind curve is the first chart to go', (tester) async {
-      final fetch = answering(
-          solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(),
-          windHistoryBody: windHistory());
+      final fetch = answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(), windHistoryBody: windHistory());
 
       await pump(tester, fetch: fetch, size: const Size(440, 700));
       expect(windChart(), findsOneWidget);
@@ -516,8 +520,11 @@ void main() {
       // small to read. The dock only enforces its 120pt minimum while
       // DRAGGING, so a layout saved in a big window reopens at sizes like
       // this.
-      await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
-          size: const Size(440, 30));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
+        size: const Size(440, 30),
+      );
 
       expect(tester.takeException(), isNull);
       expect(find.text('SFI 143'), findsNothing);
@@ -525,8 +532,11 @@ void main() {
     });
 
     testWidgets('a narrow pane drops the grid rather than crushing it', (tester) async {
-      await pump(tester, fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
-          size: const Size(120, 420));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries()),
+        size: const Size(120, 420),
+      );
 
       expect(tester.takeException(), isNull);
       expect(find.text(t.solarBandDay), findsNothing);
@@ -550,11 +560,7 @@ void main() {
         for (final height in [40.0, 47.0, 54.0, 70.0, 90.0, 110.0, 140.0, 200.0, 210.0, 224.0, 240.0, 270.0, 300.0, 330.0, 420.0]) {
           for (final width in [120.0, 162.0, 184.0, 240.0, 440.0]) {
             await pump(tester, fetch: fetch, size: Size(width, height), textScale: scale);
-            expect(
-              tester.takeException(),
-              isNull,
-              reason: 'overflowed at ${width}x$height, textScaler $scale',
-            );
+            expect(tester.takeException(), isNull, reason: 'overflowed at ${width}x$height, textScaler $scale');
             await endOfTest(tester);
           }
         }
@@ -567,9 +573,10 @@ void main() {
       // The megabyte is the one request that can plausibly fail on its own —
       // 1.13MB over a summit's cellular link — and it must not take the round
       // with it or be re-asked inside it.
-      await pump(tester, fetch: answering(
-          solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(),
-          windHistoryBody: null));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(), windHistoryBody: null),
+      );
 
       expect(requested.where((url) => url == solarWindHistoryUrl()), hasLength(1));
       expect(find.text('SFI 143'), findsOneWidget, reason: 'the round still landed');
@@ -584,8 +591,10 @@ void main() {
     // unconditionally, before the await — see `_fetchIfDue`.
 
     testWidgets('asks all five on the first round, once each', (tester) async {
-      await pump(tester, fetch: answering(
-          solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries()));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries()),
+      );
 
       // Five: hamqsl, the flux, the Kp, the wind hour, and — on the first
       // round only — the wind WEEK.
@@ -608,7 +617,10 @@ void main() {
     });
 
     testWidgets('hamqsl failing leaves the pane with nothing to show', (tester) async {
-      await pump(tester, fetch: answering(solar: null, flux: fluxSeries(), kp: kpSeries()));
+      await pump(
+        tester,
+        fetch: answering(solar: null, flux: fluxSeries(), kp: kpSeries()),
+      );
 
       // It carries every headline number and the whole grid; a pane holding
       // only two SWPC curves would be a solar panel with no solar reading on
@@ -623,22 +635,22 @@ void main() {
     /// cannot be driven from here — the retry floor runs on the real clock
     /// and staleness on the app clock, and `fakeAsync` moves neither — so
     /// this state, which takes two rounds to reach, is built directly.
-    Future<void> pumpReadout(
-      WidgetTester tester, {
-      required bool staleFetch,
-      Size size = const Size(440, 420),
-    }) async {
+    Future<void> pumpReadout(WidgetTester tester, {required bool staleFetch, Size size = const Size(440, 420)}) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = size;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
       final reading = parseSolarReading(conditions(), fetchedAtUtc: nowUtc())!;
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(body: solarReadoutForTest(reading: reading, staleFetch: staleFetch)),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: solarReadoutForTest(reading: reading, staleFetch: staleFetch),
+            ),
+          ),
         ),
-      ));
+      );
       await tester.pump();
     }
 
@@ -676,7 +688,10 @@ void main() {
       // Told "no network", an operator goes hunting for signal — wasted
       // effort when the truth is a reshaped feed or a captive portal's login
       // page, neither of which they can do anything about.
-      await pump(tester, fetch: answering(solar: '<html>hello</html>', flux: fluxSeries(), kp: kpSeries()));
+      await pump(
+        tester,
+        fetch: answering(solar: '<html>hello</html>', flux: fluxSeries(), kp: kpSeries()),
+      );
 
       expect(find.text(t.solarUnreadable), findsOneWidget);
       expect(find.text(t.solarUnreachable), findsNothing);
@@ -684,8 +699,10 @@ void main() {
     });
 
     testWidgets('a non-200 is an answer, not a silence', (tester) async {
-      await pump(tester,
-          fetch: answering(solar: 'Service Unavailable', flux: fluxSeries(), kp: kpSeries(), status: 503));
+      await pump(
+        tester,
+        fetch: answering(solar: 'Service Unavailable', flux: fluxSeries(), kp: kpSeries(), status: 503),
+      );
 
       expect(find.text(t.solarUnreadable), findsOneWidget);
       await endOfTest(tester);
@@ -710,10 +727,12 @@ void main() {
       // and three charts on every frame of a pane being dragged — which is
       // what a divider that moves in steps rather than following the pointer
       // is made of.
-      await pump(tester, fetch: answering(
-          solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(),
-          windHistoryBody: windHistory()),
-          dockVisible: false, size: const Size(900, 700));
+      await pump(
+        tester,
+        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(), windHistoryBody: windHistory()),
+        dockVisible: false,
+        size: const Size(900, 700),
+      );
 
       expect(find.text('SFI 143'), findsNothing);
       expect(fluxChart(), findsNothing);
@@ -730,17 +749,8 @@ void main() {
       // it ~1.5MB.
       expect(solarWindHistoryIsDue(fetchedAtReal: null, realNow: real), isTrue);
       expect(solarWindHistoryIsDue(fetchedAtReal: real, realNow: real), isFalse);
-      expect(
-        solarWindHistoryIsDue(
-          fetchedAtReal: real,
-          realNow: real.add(solarWindHistoryInterval - const Duration(minutes: 1)),
-        ),
-        isFalse,
-      );
-      expect(
-        solarWindHistoryIsDue(fetchedAtReal: real, realNow: real.add(solarWindHistoryInterval)),
-        isTrue,
-      );
+      expect(solarWindHistoryIsDue(fetchedAtReal: real, realNow: real.add(solarWindHistoryInterval - const Duration(minutes: 1))), isFalse);
+      expect(solarWindHistoryIsDue(fetchedAtReal: real, realNow: real.add(solarWindHistoryInterval)), isTrue);
     });
 
     test('the retry floor outranks everything, including having no reading', () {
@@ -750,14 +760,8 @@ void main() {
       // Every visibility change reaches the refresh, and a failing round
       // leaves `_reading` null — so without the floor an operator with no
       // signal, switching between two dock tabs, sends a request per switch.
-      expect(
-        solarFetchIsDue(attemptedAtReal: real, realNow: real, reading: null, now: now),
-        isFalse,
-      );
-      expect(
-        solarFetchIsDue(attemptedAtReal: null, realNow: real, reading: null, now: now),
-        isTrue,
-      );
+      expect(solarFetchIsDue(attemptedAtReal: real, realNow: real, reading: null, now: now), isFalse);
+      expect(solarFetchIsDue(attemptedAtReal: null, realNow: real, reading: null, now: now), isTrue);
     });
 
     test('a reading goes stale on the APP clock, and the floor runs on the real one', () {
@@ -769,22 +773,9 @@ void main() {
       // so the panel ages in step with the rest of the app, while the request
       // pacing must NOT travel — a developer jumping a day forward must not
       // turn into a burst against three third parties.
+      expect(solarFetchIsDue(attemptedAtReal: real.subtract(const Duration(minutes: 5)), realNow: real, reading: fresh, now: now), isFalse);
       expect(
-        solarFetchIsDue(
-          attemptedAtReal: real.subtract(const Duration(minutes: 5)),
-          realNow: real,
-          reading: fresh,
-          now: now,
-        ),
-        isFalse,
-      );
-      expect(
-        solarFetchIsDue(
-          attemptedAtReal: real.subtract(const Duration(minutes: 5)),
-          realNow: real,
-          reading: fresh,
-          now: now.add(solarMaxAge),
-        ),
+        solarFetchIsDue(attemptedAtReal: real.subtract(const Duration(minutes: 5)), realNow: real, reading: fresh, now: now.add(solarMaxAge)),
         isTrue,
         reason: 'the app clock moved past maxAge; the real one did not move at all',
       );

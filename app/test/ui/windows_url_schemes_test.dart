@@ -18,14 +18,10 @@ String? commandFor(List<SchemeRegistryValue> values, String scheme) {
   return null;
 }
 
-bool hasUrlProtocolMarker(List<SchemeRegistryValue> values, String scheme) =>
-    values.any((v) => v.key == scheme && v.name == 'URL Protocol');
+bool hasUrlProtocolMarker(List<SchemeRegistryValue> values, String scheme) => values.any((v) => v.key == scheme && v.name == 'URL Protocol');
 
 void main() {
-  final values = schemeRegistryValues(
-    exePath: r'C:\Program Files\Ham2K Logger\ham2k_logger.exe',
-    edition: 'dev',
-  );
+  final values = schemeRegistryValues(exePath: r'C:\Program Files\Ham2K Logger\ham2k_logger.exe', edition: 'dev');
 
   group('schemeRegistryValues', () {
     test('registers every scheme the app claims on macOS', () {
@@ -53,9 +49,7 @@ void main() {
       // cannot run PoLo at all, so the claim is pure downside; the check lives
       // here because this table is where reinstating one is tempting.
       for (final edition in ['dev', 'next', 'prod']) {
-        final schemes = schemeRegistryValues(exePath: r'C:\HaLo\app.exe', edition: edition)
-            .where((v) => v.name == 'URL Protocol')
-            .map((v) => v.key);
+        final schemes = schemeRegistryValues(exePath: r'C:\HaLo\app.exe', edition: edition).where((v) => v.name == 'URL Protocol').map((v) => v.key);
         expect(schemes.where((s) => s.startsWith('com.ham2k.polo')), isEmpty, reason: edition);
       }
     });
@@ -93,10 +87,8 @@ void main() {
       // reg.exe spells these differently, and `/v ""` is not the same as
       // `/ve`: the first creates a value literally named empty-string, which
       // the shell never reads.
-      expect(regAddArguments((key: 'com.ham2k', name: '', data: 'URL:Ham2K')),
-          containsAllInOrder(['add', r'HKCU\Software\Classes\com.ham2k', '/ve']));
-      expect(regAddArguments((key: 'com.ham2k', name: 'URL Protocol', data: '')),
-          containsAllInOrder(['/v', 'URL Protocol']));
+      expect(regAddArguments((key: 'com.ham2k', name: '', data: 'URL:Ham2K')), containsAllInOrder(['add', r'HKCU\Software\Classes\com.ham2k', '/ve']));
+      expect(regAddArguments((key: 'com.ham2k', name: 'URL Protocol', data: '')), containsAllInOrder(['/v', 'URL Protocol']));
     });
 
     test('overwrites without prompting', () {
@@ -148,10 +140,7 @@ void main() {
           .toSet();
       expect(fromIss, isNotEmpty, reason: 'the .iss regex matched nothing — has the file moved?');
 
-      final fromDart = schemeRegistryValues(exePath: r'C:\x\x.exe', edition: 'dev')
-          .where((v) => v.name == 'URL Protocol')
-          .map((v) => v.key)
-          .toSet();
+      final fromDart = schemeRegistryValues(exePath: r'C:\x\x.exe', edition: 'dev').where((v) => v.name == 'URL Protocol').map((v) => v.key).toSet();
       expect(fromIss, equals(fromDart));
     });
 
@@ -162,10 +151,7 @@ void main() {
       // rows — which is why this asserts on the filter's own subject rather
       // than on the comparison's result.
       final iss = File('windows/installer/ham2k-logger.iss').readAsStringSync();
-      final kept = iss
-          .split('\n')
-          .where((line) => !RegExp(r'\bdeletekey\b').hasMatch(line))
-          .join('\n');
+      final kept = iss.split('\n').where((line) => !RegExp(r'\bdeletekey\b').hasMatch(line)).join('\n');
       expect(kept, contains(r'com.ham2k.logger.{#HaloEdition}'));
       expect(kept, contains(r'com.ham2k.halo.{#HaloEdition}'));
       // ...and the rows it exists to drop are gone. Registry rows only: the
@@ -193,11 +179,7 @@ void main() {
       // The installer's migration writes HKA; this path writes HKCU, and the
       // installer's own notes say HKCU keys SHADOW the machine ones. Deleting
       // anywhere else would leave the shadowing key answering.
-      expect(regDeleteArguments('com.ham2k.polo'), [
-        'delete',
-        r'HKCU\Software\Classes\com.ham2k.polo',
-        '/f',
-      ]);
+      expect(regDeleteArguments('com.ham2k.polo'), ['delete', r'HKCU\Software\Classes\com.ham2k.polo', '/f']);
     });
   });
 

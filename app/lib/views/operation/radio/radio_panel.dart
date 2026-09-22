@@ -12,8 +12,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:halo_core/halo_core.dart'
-    show NumberFormatting, fmtFreqToTheHz, freqDisplayParts, groupDigits;
+import 'package:halo_core/halo_core.dart' show NumberFormatting, fmtFreqToTheHz, freqDisplayParts, groupDigits;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -89,12 +88,7 @@ class RadioPanel extends StatefulWidget {
   /// Names the tab after the radio, so two of these are told apart.
   final ValueChanged<String?>? onTitle;
 
-  const RadioPanel({
-    super.key,
-    required this.panelId,
-    required this.services,
-    this.onTitle,
-  });
+  const RadioPanel({super.key, required this.panelId, required this.services, this.onTitle});
 
   @override
   State<RadioPanel> createState() => _RadioPanelState();
@@ -209,7 +203,10 @@ class _RadioPanelState extends State<RadioPanel> {
     final uuid = stored is! String || stored == radioNodeAuto
         // The LOCAL rig: this panel is a front panel for a session this
         // device holds, which a peer's radio is not.
-        ? switch (_cat.radio1) { LocalRadio(:final uuid) => uuid, _ => null }
+        ? switch (_cat.radio1) {
+            LocalRadio(:final uuid) => uuid,
+            _ => null,
+          }
         : stored;
     if (uuid == null) return null;
     return _cat.nodeFor(uuid);
@@ -267,9 +264,7 @@ class _RadioPanelState extends State<RadioPanel> {
             // which does not know which radio is behind it — describes
             // nothing. Asked of the merged config so the entry's own
             // overrides are in it.
-            meters: node == null
-                ? const {}
-                : (_cat.typeFor(node)?.telemetryMetersFor(node.config) ?? const {}),
+            meters: node == null ? const {} : (_cat.typeFor(node)?.telemetryMetersFor(node.config) ?? const {}),
             // The dialog governs the VFO the app FOLLOWS
             // (core_settings_groups.dart), so it is only this pane's to open
             // when this pane is showing that radio. On a second-rig pane it
@@ -309,12 +304,8 @@ class _RadioPanelState extends State<RadioPanel> {
     }
   }
 
-  void _openTuneDialog(BuildContext context) => showSettingsForTarget(
-        context,
-        services: widget.services,
-        target: 'current-radio',
-        title: t.settings.station.currentRadioSettings,
-      );
+  void _openTuneDialog(BuildContext context) =>
+      showSettingsForTarget(context, services: widget.services, target: 'current-radio', title: t.settings.station.currentRadioSettings);
 }
 
 /// The frequency, mode and power, in whichever style the pane wears.
@@ -385,13 +376,14 @@ class RadioReadout extends StatelessWidget {
     // MEANS: a screen-reader user handed digits alone has no way to know
     // the rig is on the air.
     final tx = state.telemetry.isTransmitting ? '${t.operation.layout.panels.radioTransmitting} ' : '';
-    final label = failure ??
+    final label =
+        failure ??
         (stale
             ? '${p.radioStale} ${freq == null ? '' : fmtFreqToTheHz(freq)}'
             : live
-                ? '$tx${freq == null ? p.radioNoFrequency : fmtFreqToTheHz(freq)} ${mode ?? ''}'
-                    '${power == null ? '' : ' ${_wattsText(power!)}'}'
-                : p.radioOff);
+            ? '$tx${freq == null ? p.radioNoFrequency : fmtFreqToTheHz(freq)} ${mode ?? ''}'
+                  '${power == null ? '' : ' ${_wattsText(power!)}'}'
+            : p.radioOff);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -421,8 +413,8 @@ class RadioReadout extends StatelessWidget {
               child: failure != null
                   ? _failure(context, failure)
                   : style == radioStyleLcd
-                      ? _lcd(context, freq)
-                      : _modern(context, freq),
+                  ? _lcd(context, freq)
+                  : _modern(context, freq),
             ),
           ),
         ),
@@ -439,20 +431,19 @@ class RadioReadout extends StatelessWidget {
   /// so without a tick the strip would show the SWR of a transmission that
   /// ended twenty minutes ago.
   Widget _meterStrip(BuildContext context) => SizedBox(
-        height: _meterStripHeight,
-        child: OncePerSecond(
-          builder: (context, nowUtc) {
-            final now = nowUtc.millisecondsSinceEpoch;
-            return Row(
-              children: [
-                for (final meter in RadioMeter.values)
-                  if (meters.contains(meter))
-                    _meterSlot(context, meter, state.telemetry.fresh(meter, now)),
-              ],
-            );
-          },
-        ),
-      );
+    height: _meterStripHeight,
+    child: OncePerSecond(
+      builder: (context, nowUtc) {
+        final now = nowUtc.millisecondsSinceEpoch;
+        return Row(
+          children: [
+            for (final meter in RadioMeter.values)
+              if (meters.contains(meter)) _meterSlot(context, meter, state.telemetry.fresh(meter, now)),
+          ],
+        );
+      },
+    ),
+  );
 
   /// One meter's place in the row.
   ///
@@ -475,7 +466,10 @@ class RadioReadout extends StatelessWidget {
               Flexible(child: _meter(context, meter, reading)),
             ],
           );
-    final padded = Padding(padding: const EdgeInsets.only(right: Space.sm), child: cell);
+    final padded = Padding(
+      padding: const EdgeInsets.only(right: Space.sm),
+      child: cell,
+    );
     // Flexible either way, never a bare child. A non-flex child of a Row is
     // given UNBOUNDED width, so on a narrow pane — or at the tightest Font
     // Scale — the plain readings would take everything they asked for, the
@@ -505,10 +499,7 @@ class RadioReadout extends StatelessWidget {
         // 1.0 to 3.0, the span a rig's own SWR scale covers, with the red
         // zone starting at the threshold the operator is warned at.
         final value = reading?.value ?? 1.0;
-        return (
-          fraction: ((value - 1) / (_swrFullScale - 1)).clamp(0.0, 1.0),
-          alertFrom: (swrAlertThreshold - 1) / (_swrFullScale - 1),
-        );
+        return (fraction: ((value - 1) / (_swrFullScale - 1)).clamp(0.0, 1.0), alertFrom: (swrAlertThreshold - 1) / (_swrFullScale - 1));
       case RadioMeter.signalDbm:
       case RadioMeter.alc:
       case RadioMeter.supplyVolts:
@@ -519,20 +510,20 @@ class RadioReadout extends StatelessWidget {
   }
 
   Widget _bar(BuildContext context, RadioMeter meter, ({double fraction, double? alertFrom}) bar) => SizedBox(
-        height: _meterBarHeight,
-        child: CustomPaint(
-          painter: MeterBarPainter(
-            fraction: bar.fraction,
-            alertFrom: bar.alertFrom,
-            lit: palette.ink,
-            // The LCD face has real unlit segments to borrow; the Modern one
-            // has no ghosts of its own, so the unlit track is the label
-            // colour worn thin.
-            unlit: palette.ghost ?? palette.label.withValues(alpha: 0.20),
-            alert: _alertColor(context),
-          ),
-        ),
-      );
+    height: _meterBarHeight,
+    child: CustomPaint(
+      painter: MeterBarPainter(
+        fraction: bar.fraction,
+        alertFrom: bar.alertFrom,
+        lit: palette.ink,
+        // The LCD face has real unlit segments to borrow; the Modern one
+        // has no ghosts of its own, so the unlit track is the label
+        // colour worn thin.
+        unlit: palette.ghost ?? palette.label.withValues(alpha: 0.20),
+        alert: _alertColor(context),
+      ),
+    ),
+  );
 
   /// One meter's reading, or its label alone while nothing has been read.
   ///
@@ -543,16 +534,17 @@ class RadioReadout extends StatelessWidget {
   Widget _meter(BuildContext context, RadioMeter meter, MeterReading? reading) {
     final alert = meter == RadioMeter.swr && reading != null && reading.value >= swrAlertThreshold;
     final text = reading == null ? _meterLabel(meter) : _meterText(meter, reading.value);
-    final base = (style == radioStyleLcd
-            ? TextStyle(fontSize: _meterStripHeight * 0.72, fontWeight: FontWeight.w700, height: 1.0)
-            : Theme.of(context).textTheme.labelSmall ?? const TextStyle())
-        .copyWith(
-      color: alert ? _alertColor(context) : palette.label,
-      fontWeight: alert ? FontWeight.w700 : null,
-      // The digits change every poll; without tabular figures the whole
-      // strip shuffles sideways while the operator is transmitting.
-      fontFeatures: const [FontFeature.tabularFigures()],
-    );
+    final base =
+        (style == radioStyleLcd
+                ? TextStyle(fontSize: _meterStripHeight * 0.72, fontWeight: FontWeight.w700, height: 1.0)
+                : Theme.of(context).textTheme.labelSmall ?? const TextStyle())
+            .copyWith(
+              color: alert ? _alertColor(context) : palette.label,
+              fontWeight: alert ? FontWeight.w700 : null,
+              // The digits change every poll; without tabular figures the whole
+              // strip shuffles sideways while the operator is transmitting.
+              fontFeatures: const [FontFeature.tabularFigures()],
+            );
     // Ellipsised rather than wrapped: the strip is one row tall by
     // construction, and a second line would be clipped rather than shown.
     final label = Text(text, style: base, maxLines: 1, overflow: TextOverflow.ellipsis);
@@ -584,8 +576,7 @@ class RadioReadout extends StatelessWidget {
   /// is red: transmitting is what the operator asked for, and if the normal
   /// case is already lit red then the one thing on this pane that means
   /// "stop and look" has nothing left to say it with.
-  Color _alertColor(BuildContext context) =>
-      style == radioStyleLcd ? const Color(0xFFE04A2F) : Theme.of(context).colorScheme.error;
+  Color _alertColor(BuildContext context) => style == radioStyleLcd ? const Color(0xFFE04A2F) : Theme.of(context).colorScheme.error;
 
   String _meterLabel(RadioMeter meter) {
     final p = t.operation.layout.panels;
@@ -617,31 +608,25 @@ class RadioReadout extends StatelessWidget {
   /// row of its own, so a pane three units tall spends its height on the
   /// digits instead of on a strip holding one icon.
   Widget _annunciators(BuildContext context, String? mode, {required bool stale}) => SizedBox(
-        height: _annunciatorHeight,
-        child: Row(
-          children: [
-            if (mode != null && mode.isNotEmpty) _mode(context, mode),
-            // Beside the mode rather than over the digits: the frequency is
-            // still roughly where the rig is, so it stays readable and this
-            // says how much to trust it.
-            if (stale) ...[
-              const SizedBox(width: Space.xs),
-              _mode(context, t.operation.layout.panels.radioStale),
-            ],
-            // Only when the radio has SAID it is keyed. A driver that
-            // cannot answer leaves this null, and an unlit TX legend on a
-            // rig that is actually transmitting is honest about what the
-            // app knows; a lit one that guessed would not be.
-            if (state.telemetry.isTransmitting) ...[
-              const SizedBox(width: Space.xs),
-              _mode(context, t.operation.layout.panels.radioTransmitting),
-            ],
-            const Spacer(),
-            _power(context),
-            if (powerButton != null) ...[const SizedBox(width: Space.xs), powerButton!],
-          ],
-        ),
-      );
+    height: _annunciatorHeight,
+    child: Row(
+      children: [
+        if (mode != null && mode.isNotEmpty) _mode(context, mode),
+        // Beside the mode rather than over the digits: the frequency is
+        // still roughly where the rig is, so it stays readable and this
+        // says how much to trust it.
+        if (stale) ...[const SizedBox(width: Space.xs), _mode(context, t.operation.layout.panels.radioStale)],
+        // Only when the radio has SAID it is keyed. A driver that
+        // cannot answer leaves this null, and an unlit TX legend on a
+        // rig that is actually transmitting is honest about what the
+        // app knows; a lit one that guessed would not be.
+        if (state.telemetry.isTransmitting) ...[const SizedBox(width: Space.xs), _mode(context, t.operation.layout.panels.radioTransmitting)],
+        const Spacer(),
+        _power(context),
+        if (powerButton != null) ...[const SizedBox(width: Space.xs), powerButton!],
+      ],
+    ),
+  );
 
   /// Why the radio would not come up, in place of the digits.
   ///
@@ -649,20 +634,19 @@ class RadioReadout extends StatelessWidget {
   /// a failed connect never had one — and because a reason an operator is
   /// meant to act on has to be legible at the distance the digits are.
   Widget _failure(BuildContext context, String reason) => Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Space.xs),
-          child: Text(
-            reason,
-            textAlign: TextAlign.center,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: (style == radioStyleLcd
-                    ? TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.4)
-                    : Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Space.xs),
+      child: Text(
+        reason,
+        textAlign: TextAlign.center,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+        style:
+            (style == radioStyleLcd ? TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.4) : Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
                 .copyWith(color: palette.ink),
-          ),
-        ),
-      );
+      ),
+    ),
+  );
 
   Widget _mode(BuildContext context, String mode) {
     if (style == radioStyleLcd) {
@@ -682,9 +666,9 @@ class RadioReadout extends StatelessWidget {
       child: Text(
         mode,
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: scheme.onSecondaryContainer.withValues(alpha: live ? 1.0 : _dimmedAlpha),
-              fontWeight: FontWeight.w700,
-            ),
+          color: scheme.onSecondaryContainer.withValues(alpha: live ? 1.0 : _dimmedAlpha),
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -704,25 +688,19 @@ class RadioReadout extends StatelessWidget {
           SizedBox(
             height: _annunciatorHeight,
             width: lcdWidthForCells(cells, _annunciatorHeight),
-            child: CustomPaint(painter: RadioLcdPainter(cells: cells, palette: palette)),
+            child: CustomPaint(
+              painter: RadioLcdPainter(cells: cells, palette: palette),
+            ),
           ),
           SizedBox(width: _annunciatorHeight * 0.14),
           Text(
             p.radioWatts,
-            style: TextStyle(
-              color: palette.label,
-              fontSize: _annunciatorHeight * 0.55,
-              fontWeight: FontWeight.w700,
-              height: 1.0,
-            ),
+            style: TextStyle(color: palette.label, fontSize: _annunciatorHeight * 0.55, fontWeight: FontWeight.w700, height: 1.0),
           ),
         ],
       );
     }
-    return Text(
-      _wattsText(watts),
-      style: Theme.of(context).textTheme.labelLarge?.copyWith(color: palette.label),
-    );
+    return Text(_wattsText(watts), style: Theme.of(context).textTheme.labelLarge?.copyWith(color: palette.label));
   }
 
   /// Watts as the operator reads them, spelled once for both faces and the
@@ -730,11 +708,11 @@ class RadioReadout extends StatelessWidget {
   String _wattsText(num watts) => '${powerText(watts)} ${t.operation.layout.panels.radioWatts}';
 
   Widget _lcd(BuildContext context, double? freq) => LayoutBuilder(
-        builder: (context, constraints) => CustomPaint(
-          size: constraints.biggest,
-          painter: RadioLcdPainter(cells: lcdCellsForFrequency(freq), palette: palette),
-        ),
-      );
+    builder: (context, constraints) => CustomPaint(
+      size: constraints.biggest,
+      painter: RadioLcdPainter(cells: lcdCellsForFrequency(freq), palette: palette),
+    ),
+  );
 
   /// The Modern face's frequency, split the way a QSO row splits one: MHz
   /// bold, kHz regular, Hz smaller. One reading convention across the app, so
@@ -749,14 +727,12 @@ class RadioReadout extends StatelessWidget {
     final theme = Theme.of(context);
     if (freq == null) {
       return Center(
-        child: Text(
-          t.operation.layout.panels.radioNoFrequency,
-          style: theme.textTheme.displaySmall?.copyWith(color: palette.ink),
-        ),
+        child: Text(t.operation.layout.panels.radioNoFrequency, style: theme.textTheme.displaySmall?.copyWith(color: palette.ink)),
       );
     }
     final parts = freqDisplayParts(freq, hzDigits: 3);
-    final base = theme.textTheme.displaySmall?.copyWith(
+    final base =
+        theme.textTheme.displaySmall?.copyWith(
           color: palette.ink,
           // Without tabular figures the readout jitters sideways on every
           // digit the radio reports.
@@ -848,10 +824,7 @@ class RadioPowerButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(height * 0.16),
           )
         : BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .secondaryContainer
-                .withValues(alpha: connected ? 1.0 : _dimmedAlpha),
+            color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: connected ? 1.0 : _dimmedAlpha),
             borderRadius: BorderRadius.circular(height / 2),
           );
     return Container(
@@ -871,12 +844,7 @@ class RadioPowerButton extends StatelessWidget {
           // (docs/design/user-interface.md), so the accessible name is the
           // only place this button is named.
           semanticLabel: connected ? p.radioDisconnect : p.radioConnect,
-          color: style == radioStyleLcd
-              ? lit
-              : Theme.of(context)
-                  .colorScheme
-                  .onSecondaryContainer
-                  .withValues(alpha: connected ? 1.0 : _dimmedAlpha),
+          color: style == radioStyleLcd ? lit : Theme.of(context).colorScheme.onSecondaryContainer.withValues(alpha: connected ? 1.0 : _dimmedAlpha),
         ),
         // A connect already in flight has nothing useful for a second press to
         // do, and CatService's own attempt sequence would simply supersede the
@@ -906,17 +874,8 @@ RadioPalette radioPaletteFor(BuildContext context, String style) {
     // the glass itself — the digits survive but the segment matrix behind
     // them does not, which is the one thing the ghosts exist for.
     final glass = lcdPalette(Brightness.dark);
-    return RadioPalette(
-      face: glass.face,
-      ink: glass.ink,
-      ghost: glass.ghost,
-      label: glass.ink.withValues(alpha: 0.75),
-    );
+    return RadioPalette(face: glass.face, ink: glass.ink, ghost: glass.ghost, label: glass.ink.withValues(alpha: 0.75));
   }
   final scheme = theme.colorScheme;
-  return RadioPalette(
-    face: scheme.surface,
-    ink: HaLoColors.of(context).onSurfaceAccent,
-    label: scheme.onSurfaceVariant,
-  );
+  return RadioPalette(face: scheme.surface, ink: HaLoColors.of(context).onSurfaceAccent, label: scheme.onSurfaceVariant);
 }

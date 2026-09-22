@@ -83,10 +83,7 @@ void main() {
       // is a socket nobody owns and nobody closes. The dialler has to see
       // the refusal as an exception, which is what `_dialMedia`'s catch
       // turns into `peerUnreachable` and a retry.
-      await expectLater(
-        dialPeerLink('127.0.0.1', server.port, mediaTicket: ''),
-        throwsA(isA<WebSocketException>()),
-      );
+      await expectLater(dialPeerLink('127.0.0.1', server.port, mediaTicket: ''), throwsA(isA<WebSocketException>()));
     });
 
     test('messages cross intact, in order, with boundaries preserved', () async {
@@ -149,10 +146,7 @@ void main() {
       final deadPort = vacated.port;
       await vacated.close();
 
-      await expectLater(
-        dialPeerLink('127.0.0.1', deadPort, timeout: const Duration(seconds: 2)),
-        throwsA(anything),
-      );
+      await expectLater(dialPeerLink('127.0.0.1', deadPort, timeout: const Duration(seconds: 2)), throwsA(anything));
     });
 
     test('a non-WebSocket request is refused without disturbing the server', () async {
@@ -230,11 +224,7 @@ void main() {
     /// a microtask away rather than a wall-clock one.
     PeerBeaconSocket open(FakeAsync async, FakeHost host) {
       PeerBeaconSocket? opened;
-      unawaited(openPeerBeaconSocket(
-        port: fakeBeaconPort,
-        broadcastAddress: host.address,
-        bind: host.binder,
-      ).then((socket) => opened = socket));
+      unawaited(openPeerBeaconSocket(port: fakeBeaconPort, broadcastAddress: host.address, bind: host.binder).then((socket) => opened = socket));
       async.flushMicrotasks();
       return opened!;
     }
@@ -246,12 +236,7 @@ void main() {
 
         final received = <PeerBeacon>[];
         socket.beacons.listen(received.add, onError: (Object _) {});
-        socket.announce(const PeerBeacon(
-          deviceId: 'device-a',
-          deviceName: 'Laptop',
-          operationUuid: 'op-1',
-          port: 4321,
-        ));
+        socket.announce(const PeerBeacon(deviceId: 'device-a', deviceName: 'Laptop', operationUuid: 'op-1', port: 4321));
         async.flushMicrotasks();
 
         expect(received, hasLength(1));
@@ -290,12 +275,7 @@ void main() {
         expect(errors, isEmpty, reason: 'a stray datagram is ordinary traffic, not a fault');
 
         // A real beacon on the same socket still gets through.
-        socket.announce(const PeerBeacon(
-          deviceId: 'device-b',
-          deviceName: 'Phone',
-          operationUuid: 'op-1',
-          port: 9999,
-        ));
+        socket.announce(const PeerBeacon(deviceId: 'device-b', deviceName: 'Phone', operationUuid: 'op-1', port: 9999));
         async.flushMicrotasks();
         expect(seen.map((b) => b.deviceId), ['device-b']);
 
@@ -451,10 +431,7 @@ void main() {
         host.sendsFailSynchronously = true;
         // Never throws out of announce, whichever way dart:io reports it:
         // callers announce from a timer and have no way to catch this.
-        expect(
-          () => socket.announce(const PeerBeacon(deviceId: 'device-f', deviceName: 'Handheld', port: 1)),
-          returnsNormally,
-        );
+        expect(() => socket.announce(const PeerBeacon(deviceId: 'device-f', deviceName: 'Handheld', port: 1)), returnsNormally);
         async.flushMicrotasks();
         expect(socket.healthy, isFalse, reason: 'the socket is given up so something rebinds it');
         expect(socket.retryDelays, isNotEmpty, reason: 'and the ladder counts it, rather than spinning per tick');
@@ -524,8 +501,7 @@ void main() {
         // them climbs to the ceiling and stays there — bound for a couple of
         // seconds out of every minute, and deaf for the rest, over a socket
         // that was receiving perfectly well the whole time.
-        expect(socket.retryDelays.last, lessThan(climbed),
-            reason: 'a beacon arrived, so the socket is working whatever its sends are doing');
+        expect(socket.retryDelays.last, lessThan(climbed), reason: 'a beacon arrived, so the socket is working whatever its sends are doing');
 
         unawaited(socket.close());
         unawaited(peerSocket.close());
@@ -588,11 +564,7 @@ void main() {
 
       await expectLater(
         RawDatagramSocket.bind(InternetAddress.anyIPv4, holder.port, reuseAddress: false),
-        throwsA(isA<SocketException>().having(
-          (e) => e.osError?.message,
-          'osError.message',
-          contains('Address already in use'),
-        )),
+        throwsA(isA<SocketException>().having((e) => e.osError?.message, 'osError.message', contains('Address already in use'))),
       );
     });
   });
@@ -632,10 +604,7 @@ void main() {
       final server = await listener.network.bindLinkServer();
       addTearDown(server.close);
 
-      await expectLater(
-        lan.host().network.dial('10.99.99.99', server.port),
-        throwsA(isA<SocketException>()),
-      );
+      await expectLater(lan.host().network.dial('10.99.99.99', server.port), throwsA(isA<SocketException>()));
     });
 
     test('a media dial lands on mediaConnections with its ticket, never on connections', () async {
@@ -670,10 +639,7 @@ void main() {
       final server = await listener.network.bindLinkServer();
       addTearDown(server.close);
 
-      await expectLater(
-        lan.host().network.dial(listener.address, server.port, mediaTicket: ''),
-        throwsA(isA<WebSocketException>()),
-      );
+      await expectLater(lan.host().network.dial(listener.address, server.port, mediaTicket: ''), throwsA(isA<WebSocketException>()));
     });
   });
 

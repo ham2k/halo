@@ -72,25 +72,13 @@ void main() {
     final refs = [
       {'type': 'pota', 'ref': 'K-1234', 'shortLabel': 'K-1234', 'grid': 'FN21ab'},
     ];
-    final markers = activitySuggestionMarkers(
-      [suggestion],
-      controls: controls,
-      refs: refs,
-      defaultColor: defaultColor,
-      strokeColor: strokeColor,
-    );
+    final markers = activitySuggestionMarkers([suggestion], controls: controls, refs: refs, defaultColor: defaultColor, strokeColor: strokeColor);
     // The list keeps a search hit (faded) and drops a nearby dupe; the map
     // makes no such distinction, because what decides it here is whether the
     // point is already carrying the selected-ref marker below.
     expect(markers, isEmpty);
     expect(
-      activitySelectedRefMarkers(
-        refs,
-        controls: controls,
-        defaultColor: defaultColor,
-        strokeColor: strokeColor,
-        glyphFor: (_, _) => null,
-      ),
+      activitySelectedRefMarkers(refs, controls: controls, defaultColor: defaultColor, strokeColor: strokeColor, glyphFor: (_, _) => null),
       hasLength(1),
       reason: 'dropping it from the suggestions is only safe while this one is drawn',
     );
@@ -175,13 +163,7 @@ void main() {
     final glyph = MapMarkerGlyph(
       icon: MdiIcons.pineTree,
       color: Colors.white,
-      image: MapMarkerImage(
-        id: 'glyph-test',
-        rgba: Uint8List.fromList(const [1, 2, 3, 4]),
-        width: 1,
-        height: 1,
-        pixelRatio: 2,
-      ),
+      image: MapMarkerImage(id: 'glyph-test', rgba: Uint8List.fromList(const [1, 2, 3, 4]), width: 1, height: 1, pixelRatio: 2),
     );
     final markers = activitySelectedRefMarkers(
       [
@@ -208,15 +190,17 @@ void main() {
   });
 
   test('a marker with no glyph carries no image block, so the backends draw their circle', () {
-    final payload = mapMarkersPayload(activitySelectedRefMarkers(
-      [
-        {'type': 'pota', 'ref': 'K-1234', 'shortLabel': 'K-1234', 'grid': 'FN21ab'},
-      ],
-      controls: controls,
-      defaultColor: defaultColor,
-      strokeColor: strokeColor,
-      glyphFor: (_, _) => null,
-    ));
+    final payload = mapMarkersPayload(
+      activitySelectedRefMarkers(
+        [
+          {'type': 'pota', 'ref': 'K-1234', 'shortLabel': 'K-1234', 'grid': 'FN21ab'},
+        ],
+        controls: controls,
+        defaultColor: defaultColor,
+        strokeColor: strokeColor,
+        glyphFor: (_, _) => null,
+      ),
+    );
     expect(payload.single.containsKey('image'), isFalse);
   });
 

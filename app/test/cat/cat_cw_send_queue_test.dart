@@ -58,11 +58,7 @@ void main() {
       expect(cwCharacterEnds('ET', 20), [const Duration(milliseconds: 60), const Duration(milliseconds: 420)]);
       // A space is the 7-dit word gap, and the next character pays no
       // character gap on top of it.
-      expect(cwCharacterEnds('E E', 20), [
-        const Duration(milliseconds: 60),
-        const Duration(milliseconds: 480),
-        const Duration(milliseconds: 540),
-      ]);
+      expect(cwCharacterEnds('E E', 20), [const Duration(milliseconds: 60), const Duration(milliseconds: 480), const Duration(milliseconds: 540)]);
     });
 
     test('the last end is the message\'s length without the trailing word gap', () {

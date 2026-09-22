@@ -101,10 +101,7 @@ void main() {
     // offline stays quiet even if the device is back online by the time
     // ErrorPolicy looks at it.
     final changes = StreamController<List<ConnectivityResult>>();
-    ConnectivityService.start(
-      changesSource: changes.stream,
-      check: () async => [ConnectivityResult.none],
-    );
+    ConnectivityService.start(changesSource: changes.stream, check: () async => [ConnectivityResult.none]);
     await Future<void>.delayed(Duration.zero);
     expect(ConnectivityService.isOffline, isTrue);
 

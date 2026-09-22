@@ -23,7 +23,6 @@ import '../services/cat/equipment_brands.dart';
 import '../services/cat/equipment_registry.dart';
 import '../services/cat/cat_service.dart';
 
-
 /// Picking what to add: every radio the app knows, filtered by a search box,
 /// with whatever announced itself on the network as its first shelf.
 ///
@@ -60,6 +59,7 @@ class AddEquipmentDialog extends StatefulWidget {
   @override
   State<AddEquipmentDialog> createState() => _AddEquipmentDialogState();
 }
+
 class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
   final _searchController = TextEditingController();
 
@@ -179,9 +179,9 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
           // Above the viewport: bring it to the top.
           ? target
           : target + headerHeight > bottom
-              // Below it: bring it just inside the bottom edge.
-              ? target + headerHeight - position.viewportDimension
-              : null;
+          // Below it: bring it just inside the bottom edge.
+          ? target + headerHeight - position.viewportDimension
+          : null;
       if (want == null) return;
       _scroll.jumpTo(want.clamp(0, position.maxScrollExtent));
     });
@@ -292,10 +292,8 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
       if (widget.showDiscovery) (key: _discoveryKey, title: st.detectedEquipment, rows: _discoveredRows(context)),
       for (final brand in featuredBrands)
         if (catalogue[brand] case final rows? when rows.isNotEmpty) (key: brand, title: brand, rows: rows),
-      if (catalogue[_softwareKey] case final rows? when rows.isNotEmpty)
-        (key: _softwareKey, title: st.softwareIntermediaries, rows: rows),
-      if (catalogue[_otherBrandsKey] case final rows? when rows.isNotEmpty)
-        (key: _otherBrandsKey, title: st.otherBrands, rows: rows),
+      if (catalogue[_softwareKey] case final rows? when rows.isNotEmpty) (key: _softwareKey, title: st.softwareIntermediaries, rows: rows),
+      if (catalogue[_otherBrandsKey] case final rows? when rows.isNotEmpty) (key: _otherBrandsKey, title: st.otherBrands, rows: rows),
       if (other.isNotEmpty) (key: _otherEquipmentKey, title: st.otherEquipment, rows: other),
     ];
   }
@@ -328,8 +326,7 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
           subtitle: device.detail,
           variants: [?widget.cat.registry.typeFor(device.typeKey)],
         ),
-      if (_searching)
-        _AddRow(title: '', icon: MdiIcons.magnify, choice: const AddChoice.none(), searching: true),
+      if (_searching) _AddRow(title: '', icon: MdiIcons.magnify, choice: const AddChoice.none(), searching: true),
     ];
   }
 
@@ -473,7 +470,8 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
       color: Color.lerp(theme.colorScheme.surface, haloDialogBandColorAt(context), 0.5),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(Space.xl, Space.sm, Space.lg, Space.sm),
-        child: child ??
+        child:
+            child ??
             Row(
               children: [
                 Expanded(
@@ -515,43 +513,40 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
   }
 
   Widget _rowsSliver(BuildContext context, List<_AddRow> rows) => SliverList.list(
-        children: [
-          for (final row in rows)
-            if (row.searching)
-              const ListTile(
-                // In the row's own width rather than the leading slot: it
-                // stands for the search itself, not for a piece of equipment,
-                // so it has no name beside it to line up with. The padding
-                // goes to zero because a ListTile's title slot is inset by
-                // its gutters, and centring inside THAT lands the spinner off
-                // the row's true centre by half of them.
-                contentPadding: EdgeInsets.zero,
-                title: Center(
-                  child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
-                ),
-              )
-            else
-            ListTile(
-              leading: Icon(row.icon),
-              title: Text(row.title),
-              subtitle: row.subtitle == null ? null : Text(row.subtitle!),
-              // The glyphs belong beside the radio's NAME, not halfway down
-              // the row. Material 3 centres `leading`/`trailing` against the
-              // whole tile unless told otherwise, so a two-line row would
-              // otherwise drop them a line — wrapping them in a
-              // shrink-wrapping Column does NOT do this, only the alignment
-              // does. No catalogue row is two-line today; a discovered
-              // device's is, and it draws from the same shape.
-              titleAlignment: ListTileTitleAlignment.top,
-              trailing: row.variants.isEmpty ? null : TransportIcons(types: row.variants),
-              onTap: row.choice.isNothing ? null : () => Navigator.of(context).pop(row.choice),
-              // Only where there is something to tap: a hand cursor over a row
-              // that reports rather than offers promises an action it has not.
-              mouseCursor: row.choice.isNothing ? null : SystemMouseCursors.click,
-            ),
-        ],
-      );
-
+    children: [
+      for (final row in rows)
+        if (row.searching)
+          const ListTile(
+            // In the row's own width rather than the leading slot: it
+            // stands for the search itself, not for a piece of equipment,
+            // so it has no name beside it to line up with. The padding
+            // goes to zero because a ListTile's title slot is inset by
+            // its gutters, and centring inside THAT lands the spinner off
+            // the row's true centre by half of them.
+            contentPadding: EdgeInsets.zero,
+            title: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))),
+          )
+        else
+          ListTile(
+            leading: Icon(row.icon),
+            title: Text(row.title),
+            subtitle: row.subtitle == null ? null : Text(row.subtitle!),
+            // The glyphs belong beside the radio's NAME, not halfway down
+            // the row. Material 3 centres `leading`/`trailing` against the
+            // whole tile unless told otherwise, so a two-line row would
+            // otherwise drop them a line — wrapping them in a
+            // shrink-wrapping Column does NOT do this, only the alignment
+            // does. No catalogue row is two-line today; a discovered
+            // device's is, and it draws from the same shape.
+            titleAlignment: ListTileTitleAlignment.top,
+            trailing: row.variants.isEmpty ? null : TransportIcons(types: row.variants),
+            onTap: row.choice.isNothing ? null : () => Navigator.of(context).pop(row.choice),
+            // Only where there is something to tap: a hand cursor over a row
+            // that reports rather than offers promises an action it has not.
+            mouseCursor: row.choice.isNothing ? null : SystemMouseCursors.click,
+          ),
+    ],
+  );
 }
 
 /// How long the "still looking" spinner stays in the Detected Equipment
@@ -603,27 +598,11 @@ class _AddRow {
   /// Whether this row IS the spinner — see [_discoveredRows].
   final bool searching;
 
-  _AddRow({
-    required this.title,
-    required this.icon,
-    required this.choice,
-    this.variants = const [],
-    this.subtitle,
-    this.searching = false,
-    String brand = '',
-  }) : _haystack = [
-          title,
-          brand,
-          for (final type in variants) type.transportLabel,
-        ].join(' ').toLowerCase();
+  _AddRow({required this.title, required this.icon, required this.choice, this.variants = const [], this.subtitle, this.searching = false, String brand = ''})
+    : _haystack = [title, brand, for (final type in variants) type.transportLabel].join(' ').toLowerCase();
 
-  factory _AddRow.forModel(EquipmentModel model, List<EquipmentType> variants) => _AddRow(
-        title: model.name,
-        icon: iconForCategory(model.category),
-        choice: AddChoice.model(model),
-        variants: variants,
-        brand: model.manufacturer ?? '',
-      );
+  factory _AddRow.forModel(EquipmentModel model, List<EquipmentType> variants) =>
+      _AddRow(title: model.name, icon: iconForCategory(model.category), choice: AddChoice.model(model), variants: variants, brand: model.manufacturer ?? '');
 
   /// Matches the radio's name, its brand and the ways it can be reached, so
   /// "usb" finds every rig with a cable and "705" finds the one radio — an
@@ -648,9 +627,7 @@ class AddChoice {
   /// A row that reports rather than offers — the spinner, and the line that
   /// says discovery could not run. Tapping one does nothing, so the pane
   /// stays open.
-  const AddChoice.none()
-      : model = null,
-        discovered = null;
+  const AddChoice.none() : model = null, discovered = null;
 
   bool get isNothing => model == null && discovered == null;
 }

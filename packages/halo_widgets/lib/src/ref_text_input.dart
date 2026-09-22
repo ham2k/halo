@@ -78,11 +78,8 @@ class RefTransform {
 
   const RefTransform({required this.pattern, required this.replacement, this.flags = ''});
 
-  factory RefTransform.fromMap(Map<String, dynamic> map) => RefTransform(
-        pattern: map['pattern'] as String,
-        replacement: map['replacement'] as String,
-        flags: (map['flags'] as String?) ?? '',
-      );
+  factory RefTransform.fromMap(Map<String, dynamic> map) =>
+      RefTransform(pattern: map['pattern'] as String, replacement: map['replacement'] as String, flags: (map['flags'] as String?) ?? '');
 }
 
 /// References are always uppercase, live as the user types — since
@@ -141,7 +138,10 @@ class RefTransformFormatter extends TextInputFormatter {
     text = _applyOnce(_applyOnce(text));
 
     final offset = (text.length - distanceFromEnd).clamp(0, text.length);
-    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: offset));
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: offset),
+    );
   }
 
   String _applyOnce(String text) {
@@ -153,9 +153,9 @@ class RefTransformFormatter extends TextInputFormatter {
         continue;
       }
       String expand(Match m) => transform.replacement.replaceAllMapped(RegExp(r'\$\{(\d+)\}'), (rm) {
-            final index = int.parse(rm.group(1)!);
-            return index <= m.groupCount ? (m.group(index) ?? '') : rm.group(0)!;
-          });
+        final index = int.parse(rm.group(1)!);
+        return index <= m.groupCount ? (m.group(index) ?? '') : rm.group(0)!;
+      });
       if (transform.flags.contains('g')) {
         text = text.replaceAllMapped(regex, expand);
       } else {
@@ -224,8 +224,7 @@ class _RefTextInputState extends State<RefTextInput> {
   /// own controller, and the only one it may dispose.
   TextEditingController? _ownController;
 
-  TextEditingController get _controller =>
-      widget.controller ?? (_ownController ??= TextEditingController(text: _joined(widget.refs)));
+  TextEditingController get _controller => widget.controller ?? (_ownController ??= TextEditingController(text: _joined(widget.refs)));
 
   /// Only set when no [RefTextInput.focusNode] was supplied — the field's own
   /// node, and the only one it may dispose.
@@ -261,9 +260,7 @@ class _RefTextInputState extends State<RefTextInput> {
   /// Whether [code] is owed a round trip: not once one has completed, and not
   /// for a map that already carries more than the code itself. A bare
   /// `{type, ref}` handed over — a lookup's guess — is still owed its name.
-  bool _isDecorated(String code) =>
-      _decorated.contains(code) ||
-      (_decorations[code]?.keys.any((key) => key != 'type' && key != 'ref') ?? false);
+  bool _isDecorated(String code) => _decorated.contains(code) || (_decorations[code]?.keys.any((key) => key != 'type' && key != 'ref') ?? false);
 
   RegExp? get _regex => compileRefPattern(widget.pattern);
 
@@ -277,8 +274,7 @@ class _RefTextInputState extends State<RefTextInput> {
   /// The comma-separated segments of [text], trimmed and uppercased — what
   /// both the emitted refs and the validity check are built from, so they can
   /// never disagree about where one reference ends and the next begins.
-  List<String> _codesIn(String text) =>
-      text.split(',').map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty).toList();
+  List<String> _codesIn(String text) => text.split(',').map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty).toList();
 
   bool _anyInvalid(List<String> codes) {
     final regex = _regex;
@@ -413,9 +409,7 @@ class _RefTextInputState extends State<RefTextInput> {
   @override
   Widget build(BuildContext context) {
     return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.space): () => _insertAtCursor(' '),
-      },
+      bindings: {const SingleActivator(LogicalKeyboardKey.space): () => _insertAtCursor(' ')},
       child: TextField(
         controller: _controller,
         focusNode: _focus,
@@ -423,12 +417,7 @@ class _RefTextInputState extends State<RefTextInput> {
         // after our own focus listener above and overwrites its
         // cursor-at-end placement.
         selectAllOnFocus: false,
-        decoration: poloFieldDecoration(
-          context,
-          widget.label,
-          hintText: widget.placeholder,
-          labelColor: widget.labelColor,
-        ).copyWith(
+        decoration: poloFieldDecoration(context, widget.label, hintText: widget.placeholder, labelColor: widget.labelColor).copyWith(
           enabledBorder: _hasInvalid ? haloInvalidInputBorder(context, width: 1) : null,
           focusedBorder: _hasInvalid ? haloInvalidInputBorder(context, width: 2) : null,
         ),

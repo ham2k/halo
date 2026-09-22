@@ -209,8 +209,7 @@ class PeerBleTransport {
         // advertise diagnosis would evaporate in exactly the
         // both-roles-broken case.
         log?.call('BLE advertise failed: $e');
-        readiness = PeerBleReadiness(
-            canCentral: readiness.canCentral, canPeripheral: false, problem: 'Bluetooth advertise failed: $e');
+        readiness = PeerBleReadiness(canCentral: readiness.canCentral, canPeripheral: false, problem: 'Bluetooth advertise failed: $e');
       }
     } else if (!readiness.canPeripheral && _serverUp) {
       _serverUp = false;
@@ -224,8 +223,7 @@ class PeerBleTransport {
       } catch (e) {
         startFailed = true;
         log?.call('BLE scan start failed: $e');
-        readiness =
-            PeerBleReadiness(canCentral: false, canPeripheral: readiness.canPeripheral, problem: 'Bluetooth scan failed: $e');
+        readiness = PeerBleReadiness(canCentral: false, canPeripheral: readiness.canPeripheral, problem: 'Bluetooth scan failed: $e');
       }
     } else if (!readiness.canCentral && _scanUp) {
       _scanUp = false;
@@ -276,8 +274,7 @@ class PeerBleTransport {
   void _onSighting(PeerBleSighting sighting) {
     if (!_running) return;
     final now = realNowMillis();
-    _candidates.removeWhere((_, c) =>
-        c.activeLink == null && !c.connecting && now - c.lastSeenMillis > _candidateExpiry.inMilliseconds);
+    _candidates.removeWhere((_, c) => c.activeLink == null && !c.connecting && now - c.lastSeenMillis > _candidateExpiry.inMilliseconds);
 
     // Once per fresh address, not per advertisement: the line that says
     // discovery is even happening — RPA rotation keeps the rate to a few
@@ -335,19 +332,21 @@ class PeerBleTransport {
     PeerBleLink? link;
     final PeerBleClientConnection connection;
     try {
-      connection = await gateway.connect(addressId, onPacket: (packet) {
-        final live = link;
-        if (live != null) {
-          live.feed(packet);
-        } else {
-          earlyPackets.add(packet);
-        }
-      });
+      connection = await gateway.connect(
+        addressId,
+        onPacket: (packet) {
+          final live = link;
+          if (live != null) {
+            live.feed(packet);
+          } else {
+            earlyPackets.add(packet);
+          }
+        },
+      );
     } catch (e) {
       candidate.connecting = false;
       candidate.failures++;
-      candidate.cooldownUntilMillis =
-          realNowMillis() + exponentialBackoff(candidate.failures, cap: _addressBackoffCap).inMilliseconds;
+      candidate.cooldownUntilMillis = realNowMillis() + exponentialBackoff(candidate.failures, cap: _addressBackoffCap).inMilliseconds;
       log?.call('BLE connect to $addressId failed (attempt ${candidate.failures}): $e');
       return;
     }
@@ -359,31 +358,28 @@ class PeerBleTransport {
       return;
     }
     log?.call('BLE connected to $addressId');
-    final live = link = PeerBleLink(
-      sendPacket: connection.write,
-      shutdown: connection.disconnect,
-      label: addressId,
-      log: log,
-    );
+    final live = link = PeerBleLink(sendPacket: connection.write, shutdown: connection.disconnect, label: addressId, log: log);
     candidate.activeLink = live;
     candidate.connecting = false;
     for (final packet in earlyPackets) {
       live.feed(packet);
     }
     earlyPackets.clear();
-    unawaited(connection.disconnected
-        .then((_) => live.close(), onError: (Object _) => live.close()));
-    _startLink(live, connection.chunkLimit, onClosed: (uptimeMillis) {
-      candidate.activeLink = null;
-      if (uptimeMillis < _shortLivedCutoff.inMilliseconds) {
-        candidate.failures++;
-        candidate.cooldownUntilMillis =
-            realNowMillis() + exponentialBackoff(candidate.failures, cap: _addressBackoffCap).inMilliseconds;
-      } else {
-        candidate.failures = 0;
-        candidate.cooldownUntilMillis = realNowMillis() + 2000;
-      }
-    });
+    unawaited(connection.disconnected.then((_) => live.close(), onError: (Object _) => live.close()));
+    _startLink(
+      live,
+      connection.chunkLimit,
+      onClosed: (uptimeMillis) {
+        candidate.activeLink = null;
+        if (uptimeMillis < _shortLivedCutoff.inMilliseconds) {
+          candidate.failures++;
+          candidate.cooldownUntilMillis = realNowMillis() + exponentialBackoff(candidate.failures, cap: _addressBackoffCap).inMilliseconds;
+        } else {
+          candidate.failures = 0;
+          candidate.cooldownUntilMillis = realNowMillis() + 2000;
+        }
+      },
+    );
   }
 
   // ---- peripheral side ----
@@ -430,9 +426,13 @@ class PeerBleTransport {
       await link.close();
       return;
     }
-    _startLink(link, chunk, onClosed: (_) {
-      if (identical(_serverLinks[centralId], link)) _serverLinks.remove(centralId);
-    });
+    _startLink(
+      link,
+      chunk,
+      onClosed: (_) {
+        if (identical(_serverLinks[centralId], link)) _serverLinks.remove(centralId);
+      },
+    );
   }
 
   // ---- shared ----
@@ -440,26 +440,30 @@ class PeerBleTransport {
   void _startLink(PeerBleLink link, int chunkLimit, {required void Function(int uptimeMillis) onClosed}) {
     _links.add(link);
     final bornMillis = realNowMillis();
-    unawaited(link.closed.then((_) {
-      _links.remove(link);
-      onClosed(realNowMillis() - bornMillis);
-    }));
+    unawaited(
+      link.closed.then((_) {
+        _links.remove(link);
+        onClosed(realNowMillis() - bornMillis);
+      }),
+    );
     link.start(chunkLimit);
-    unawaited(link.ready.timeout(handshakeTimeout, onTimeout: () => false).then((ready) {
-      if (!ready) {
-        // The one line covering every pre-ready death — nothing else logs
-        // these, and a peer that connects but never completes the
-        // handshake would otherwise leave no evidence it ever tried.
-        log?.call('BLE link ${link.label} ended before the handshake completed');
-        unawaited(link.close());
-        return;
-      }
-      if (!_running) {
-        unawaited(link.close());
-        return;
-      }
-      onLink(link);
-    }));
+    unawaited(
+      link.ready.timeout(handshakeTimeout, onTimeout: () => false).then((ready) {
+        if (!ready) {
+          // The one line covering every pre-ready death — nothing else logs
+          // these, and a peer that connects but never completes the
+          // handshake would otherwise leave no evidence it ever tried.
+          log?.call('BLE link ${link.label} ended before the handshake completed');
+          unawaited(link.close());
+          return;
+        }
+        if (!_running) {
+          unawaited(link.close());
+          return;
+        }
+        onLink(link);
+      }),
+    );
   }
 }
 
@@ -588,9 +592,11 @@ class PeerBleLink implements PeerLink {
     // The negotiated sizes, in one place: a side that silently fell back to
     // the ATT floor drags both directions to 20-byte packets, and this line
     // is what separates "BLE is just slow" from "negotiation failed".
-    log?.call('BLE link $label ready '
-        '(packet size: local ${_conduit.localChunkLimit}, peer ${_conduit.peerChunkLimit}; '
-        'peer protocol v${_conduit.peerProtocolVersion})');
+    log?.call(
+      'BLE link $label ready '
+      '(packet size: local ${_conduit.localChunkLimit}, peer ${_conduit.peerChunkLimit}; '
+      'peer protocol v${_conduit.peerProtocolVersion})',
+    );
     _keepaliveTimer = Timer.periodic(keepaliveInterval, (_) {
       if (now() - _lastHeardMillis > idleCutoff.inMilliseconds) {
         log?.call('BLE link $label silent past ${idleCutoff.inSeconds}s; dropping');

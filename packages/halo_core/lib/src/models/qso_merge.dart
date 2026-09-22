@@ -38,11 +38,7 @@ const qsoMergeWindow = Duration(minutes: 5);
 /// [stationCall] takes `our.call` out of the comparison entirely — see
 /// [qsoForStation]. An importer that is about to rewrite every record to one
 /// station cannot also treat the call it is discarding as a difference.
-bool qsosAreSameContact(
-  Map<String, dynamic> a,
-  Map<String, dynamic> b, {
-  String? stationCall,
-}) {
+bool qsosAreSameContact(Map<String, dynamic> a, Map<String, dynamic> b, {String? stationCall}) {
   final theirA = _sub(a, 'their');
   final theirB = _sub(b, 'their');
 
@@ -97,12 +93,7 @@ bool qsosAreSameContact(
 /// The result shares no mutable structure with either input: an import preview
 /// holds the existing log record alongside the merged candidate, and editing
 /// one must not rewrite the other.
-Map<String, dynamic> mergeQsos(
-  Map<String, dynamic> older,
-  Map<String, dynamic> newer, {
-  Set<String> multiRefTypes = const {},
-  String? stationCall,
-}) {
+Map<String, dynamic> mergeQsos(Map<String, dynamic> older, Map<String, dynamic> newer, {Set<String> multiRefTypes = const {}, String? stationCall}) {
   final merged = _mergeMaps(older, newer);
 
   final start = _minOf(_millis(older['startAtMillis']), _millis(newer['startAtMillis']));
@@ -134,10 +125,7 @@ Map<String, dynamic> mergeQsos(
 Map<String, dynamic> qsoForStation(Map<String, dynamic> qso, String stationCall) {
   final result = _deepCopyMap(qso);
   final our = result['our'];
-  result['our'] = {
-    if (our is Map) ...our.cast<String, dynamic>(),
-    'call': stationCall,
-  };
+  result['our'] = {if (our is Map) ...our.cast<String, dynamic>(), 'call': stationCall};
   return result;
 }
 
@@ -176,8 +164,7 @@ const qsoRefScopeOperation = 'operation';
 /// the answer, and a marker left behind would be a second source of truth free
 /// to disagree with it.
 HoistedRefs hoistOperationRefs(List<Map<String, dynamic>> qsos) {
-  bool belongsToOperation(Map<String, dynamic> ref) =>
-      _text(ref[qsoRefScopeKey]) == qsoRefScopeOperation.toUpperCase();
+  bool belongsToOperation(Map<String, dynamic> ref) => _text(ref[qsoRefScopeKey]) == qsoRefScopeOperation.toUpperCase();
 
   Map<String, dynamic> untagged(Map<String, dynamic> ref) => _deepCopyMap(ref)..remove(qsoRefScopeKey);
 
@@ -196,19 +183,10 @@ HoistedRefs hoistOperationRefs(List<Map<String, dynamic>> qsos) {
     return (operationRefs: const [], qsos: [for (final qso in qsos) _withUntaggedRefs(qso)]);
   }
 
-  return (
-    operationRefs: lifted.values.toList(),
-    qsos: [
-      for (final qso in qsos)
-        _withUntaggedRefs(qso, drop: belongsToOperation),
-    ],
-  );
+  return (operationRefs: lifted.values.toList(), qsos: [for (final qso in qsos) _withUntaggedRefs(qso, drop: belongsToOperation)]);
 }
 
-Map<String, dynamic> _withUntaggedRefs(
-  Map<String, dynamic> qso, {
-  bool Function(Map<String, dynamic>)? drop,
-}) {
+Map<String, dynamic> _withUntaggedRefs(Map<String, dynamic> qso, {bool Function(Map<String, dynamic>)? drop}) {
   final raw = qso['refs'];
   if (raw is! List || raw.isEmpty) return qso;
   // Walks the RAW list, not `_refsOf`, so an entry that is not a map survives.
@@ -217,10 +195,7 @@ Map<String, dynamic> _withUntaggedRefs(
   // way to avoid one function over.
   final kept = [
     for (final ref in raw)
-      if (ref is! Map)
-        ref
-      else if (drop == null || !drop(ref.cast<String, dynamic>()))
-        _deepCopyMap(ref.cast<String, dynamic>())..remove(qsoRefScopeKey),
+      if (ref is! Map) ref else if (drop == null || !drop(ref.cast<String, dynamic>())) _deepCopyMap(ref.cast<String, dynamic>())..remove(qsoRefScopeKey),
   ];
   final result = _deepCopyMap(qso);
   if (kept.isEmpty) {
@@ -270,11 +245,7 @@ List<String> foreignStationCalls(Iterable<Map<String, dynamic>> qsos, String sta
 /// nothing will match it and no scorer will read it — but dropping it from the
 /// OLDER side only, as this once did, silently deleted whatever an existing
 /// record carried the moment anything merged into it.
-List<Map<String, dynamic>> _mergeRefs(
-  List<Map<String, dynamic>> older,
-  List<Map<String, dynamic>> newer,
-  Set<String> multiRefTypes,
-) {
+List<Map<String, dynamic>> _mergeRefs(List<Map<String, dynamic>> older, List<Map<String, dynamic>> newer, Set<String> multiRefTypes) {
   final multi = {for (final type in multiRefTypes) type.toUpperCase()};
   final result = <Map<String, dynamic>>[];
   final placed = <String, int>{};
@@ -344,9 +315,7 @@ Map<String, dynamic> _mergeMaps(Map<String, dynamic> older, Map<String, dynamic>
   return result;
 }
 
-Map<String, dynamic> _deepCopyMap(Map<String, dynamic> source) => {
-      for (final entry in source.entries) entry.key: _deepCopy(entry.value),
-    };
+Map<String, dynamic> _deepCopyMap(Map<String, dynamic> source) => {for (final entry in source.entries) entry.key: _deepCopy(entry.value)};
 
 Object? _deepCopy(Object? value) {
   if (value is Map) return _deepCopyMap(value.cast<String, dynamic>());
@@ -361,8 +330,7 @@ Object? _deepCopy(Object? value) {
 /// strips a trailing run before this sees it, but this module also serves QSON
 /// import and sync, where a space-only field would otherwise erase a real
 /// value on the strength of saying nothing.
-bool _isBlank(Object? value) =>
-    value == null || (value is String && value.trim().isEmpty) || (value is Iterable && value.isEmpty);
+bool _isBlank(Object? value) => value == null || (value is String && value.trim().isEmpty) || (value is Iterable && value.isEmpty);
 
 /// One contact logged as `SSB` and again as `USB` is one contact — the two
 /// name the same emission, and which one a logger writes is a matter of its
@@ -432,31 +400,17 @@ int? _maxOf(int? a, int? b) => a == null ? b : (b == null ? a : (a > b ? a : b))
 ///
 /// The result shares no mutable structure with any input, same as
 /// [mergeQsos].
-Map<String, dynamic> mergeConcurrentEdit({
-  required Map<String, dynamic> base,
-  required Map<String, dynamic> current,
-  required Map<String, dynamic> edited,
-}) =>
+Map<String, dynamic> mergeConcurrentEdit({required Map<String, dynamic> base, required Map<String, dynamic> current, required Map<String, dynamic> edited}) =>
     _threeWayLevel(base, current, edited, mergeParties: true);
 
-Map<String, dynamic> _threeWayLevel(
-  Map<String, dynamic> base,
-  Map<String, dynamic> current,
-  Map<String, dynamic> edited, {
-  required bool mergeParties,
-}) {
+Map<String, dynamic> _threeWayLevel(Map<String, dynamic> base, Map<String, dynamic> current, Map<String, dynamic> edited, {required bool mergeParties}) {
   final result = <String, dynamic>{};
   // A key living only in [base] was removed on both sides — it never
   // appears. A key only in [current] is an untouched concurrent addition
   // (kept); one only in [edited] is the editor's own addition (kept).
   for (final key in {...current.keys, ...edited.keys}) {
     if (mergeParties && (key == 'their' || key == 'our')) {
-      final merged = _threeWayLevel(
-        _mapValue(base[key]),
-        _mapValue(current[key]),
-        _mapValue(edited[key]),
-        mergeParties: false,
-      );
+      final merged = _threeWayLevel(_mapValue(base[key]), _mapValue(current[key]), _mapValue(edited[key]), mergeParties: false);
       if (merged.isNotEmpty) result[key] = merged;
       continue;
     }
@@ -472,8 +426,7 @@ Map<String, dynamic> _threeWayLevel(
   return result;
 }
 
-Map<String, dynamic> _mapValue(Object? value) =>
-    value is Map ? value.cast<String, dynamic>() : const <String, dynamic>{};
+Map<String, dynamic> _mapValue(Object? value) => value is Map ? value.cast<String, dynamic>() : const <String, dynamic>{};
 
 bool _deepEquals(Object? a, Object? b) {
   if (identical(a, b)) return true;

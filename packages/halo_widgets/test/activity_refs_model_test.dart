@@ -38,8 +38,8 @@ const _hunterExchange = {
 };
 
 Map<String, dynamic> _guess(List<Map<String, dynamic>> refs) => {
-      'guess': {'refs': refs},
-    };
+  'guess': {'refs': refs},
+};
 
 class _Harness {
   _Harness({this.controls = const []});
@@ -47,6 +47,7 @@ class _Harness {
   List<Map<String, dynamic>> controls;
   Qso? editingQso;
   bool locked = false;
+
   /// Only its populating bracket is read by the model under test; the
   /// draft's own data paths are never asked, so it has nothing to read.
   late final draft = QsoDraft(config: () => throw UnsupportedError('the draft is not read here'));
@@ -60,17 +61,14 @@ class _Harness {
   int notifications = 0;
 
   late final ActivityRefsModel model = ActivityRefsModel(
-    config: () => (
-      activityControls: controls,
-      refreshActivityControls: refresh,
-      editingQso: editingQso,
-      fieldsLocked: () => locked,
-      callAtCursor: () => callAtCursor,
-    ),
+    config: () =>
+        (activityControls: controls, refreshActivityControls: refresh, editingQso: editingQso, fieldsLocked: () => locked, callAtCursor: () => callAtCursor),
     draft: draft,
     draftQsoData: (call) {
       refreshedFor.add(call);
-      return {'their': {'call': call}};
+      return {
+        'their': {'call': call},
+      };
     },
     onControlsRefreshed: () => controlsAtNotice.add(model.controls),
   )..addListener(() => notifications++);
@@ -113,7 +111,15 @@ void main() {
       h.model.setRefs('pota/hunter', [typed]);
       // The operator's own entry outranks the guess; and answering true here
       // on every pass is what would make the ref-change re-lookup cycle.
-      expect(h.model.applyGuessRefs(_guess([{'type': 'potaHunter', 'ref': 'US-1234'}]), 'W1AW'), isFalse);
+      expect(
+        h.model.applyGuessRefs(
+          _guess([
+            {'type': 'potaHunter', 'ref': 'US-1234'},
+          ]),
+          'W1AW',
+        ),
+        isFalse,
+      );
       expect(h.model.refsFor('pota/hunter'), [typed]);
       h.model.takeBackGuessUnlessIn([]);
       expect(h.model.refsFor('pota/hunter'), [typed], reason: 'nothing was guessed, so nothing is taken back');
@@ -122,7 +128,9 @@ void main() {
     test('is refused while editing a saved QSO, while the form is locked, and while populating', () {
       final h = _Harness(controls: [_hunter]);
       addTearDown(h.model.dispose);
-      final proposed = _guess([{'type': 'potaHunter', 'ref': 'US-1234'}]);
+      final proposed = _guess([
+        {'type': 'potaHunter', 'ref': 'US-1234'},
+      ]);
       h.editingQso = const Qso(uuid: 'q', operationUuid: 'op', data: {});
       expect(h.model.applyGuessRefs(proposed, 'W1AW'), isFalse, reason: 'a saved contact was made somewhere else');
       h.editingQso = null;
@@ -136,7 +144,16 @@ void main() {
     test('skips a malformed proposal — no type, or no ref', () {
       final h = _Harness(controls: [_hunter]);
       addTearDown(h.model.dispose);
-      expect(h.model.applyGuessRefs(_guess([{'type': 'potaHunter'}, {'ref': 'US-1234'}]), 'W1AW'), isFalse);
+      expect(
+        h.model.applyGuessRefs(
+          _guess([
+            {'type': 'potaHunter'},
+            {'ref': 'US-1234'},
+          ]),
+          'W1AW',
+        ),
+        isFalse,
+      );
       expect(h.model.hasRefs, isFalse);
     });
 
@@ -172,10 +189,26 @@ void main() {
       // proposes the same park, into a type now free — and must not put it
       // straight back into the field they just cleared.
       h.model.setRefs('pota/hunter', []);
-      expect(h.model.applyGuessRefs(_guess([{'type': 'potaHunter', 'ref': 'US-1234'}]), 'W1AW'), isFalse);
+      expect(
+        h.model.applyGuessRefs(
+          _guess([
+            {'type': 'potaHunter', 'ref': 'US-1234'},
+          ]),
+          'W1AW',
+        ),
+        isFalse,
+      );
       expect(h.model.refsFor('pota/hunter'), isEmpty);
       // A different park for the same call is still news.
-      expect(h.model.applyGuessRefs(_guess([{'type': 'potaHunter', 'ref': 'US-5678'}]), 'W1AW'), isTrue);
+      expect(
+        h.model.applyGuessRefs(
+          _guess([
+            {'type': 'potaHunter', 'ref': 'US-5678'},
+          ]),
+          'W1AW',
+        ),
+        isTrue,
+      );
     });
 
     test('is taken back by identity, leaving an equal ref the operator typed alone', () {
@@ -199,8 +232,18 @@ void main() {
     test('both lookup passes contribute for one call, and one clear takes both back', () {
       final h = _Harness(controls: [_hunter, _sota]);
       addTearDown(h.model.dispose);
-      h.model.applyGuessRefs(_guess([{'type': 'potaHunter', 'ref': 'US-1234'}]), 'W1AW');
-      h.model.applyGuessRefs(_guess([{'type': 'sotaHunter', 'ref': 'W7O/CN-001'}]), 'W1AW');
+      h.model.applyGuessRefs(
+        _guess([
+          {'type': 'potaHunter', 'ref': 'US-1234'},
+        ]),
+        'W1AW',
+      );
+      h.model.applyGuessRefs(
+        _guess([
+          {'type': 'sotaHunter', 'ref': 'W7O/CN-001'},
+        ]),
+        'W1AW',
+      );
       expect(h.model.refsFor('sota/hunter'), hasLength(1));
       expect(h.model.clearGuessedRefs(), isTrue);
       expect(h.model.hasRefs, isFalse);
@@ -217,8 +260,7 @@ void main() {
       expect(h.model.isRefListControl('pota/note'), isFalse);
     });
 
-    test('a refreshed set stands in for the operation\'s until the controls start over',
-        () async {
+    test('a refreshed set stands in for the operation\'s until the controls start over', () async {
       final h = _Harness(controls: [_hunter]);
       addTearDown(h.model.dispose);
       h.refresh = (qso) async => [_hunter, _sota];
@@ -237,8 +279,7 @@ void main() {
       expect(h.model.controls, [_hunter, _sota]);
     });
 
-    test('a refresh that resolves after the call moved on, or after the operation changed, is dropped',
-        () async {
+    test('a refresh that resolves after the call moved on, or after the operation changed, is dropped', () async {
       final h = _Harness(controls: [_hunter]);
       addTearDown(h.model.dispose);
       final gate = Completer<void>();
@@ -371,7 +412,11 @@ void main() {
     // field refs it has since moved past.
     final park = {'type': 'potaHunter', 'ref': 'US-1234'};
     h.model.applyGuessRefs(_guess([park]), 'W1AW');
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: Builder(builder: spec.expandedBuilder))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: Builder(builder: spec.expandedBuilder)),
+      ),
+    );
     final field = tester.widget<RefTextInput>(find.byType(RefTextInput));
     expect(field.refs, [park]);
     expect(identical(field.focusNode, h.model.focusFor('pota/hunter')), isTrue);

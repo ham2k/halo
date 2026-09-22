@@ -44,15 +44,10 @@ class BuildFreshnessService with WidgetsBindingObserver {
   Timer? _timer;
   bool _notified = false;
 
-  BuildFreshnessService({
-    required this.statusBar,
-    http.Client? client,
-    Uri Function()? urlBuilder,
-    String? currentSha,
-  })  : _client = client ?? http.Client(),
-        _urlBuilder = urlBuilder ??
-            (() => Uri.base.resolve('build_sha.txt?_=${nowMillis()}')),
-        _currentSha = currentSha ?? kGitSha;
+  BuildFreshnessService({required this.statusBar, http.Client? client, Uri Function()? urlBuilder, String? currentSha})
+    : _client = client ?? http.Client(),
+      _urlBuilder = urlBuilder ?? (() => Uri.base.resolve('build_sha.txt?_=${nowMillis()}')),
+      _currentSha = currentSha ?? kGitSha;
 
   /// No-op off the web (every other platform updates through its own
   /// channel) and for a local/dev build: no update prompt belongs in one, and

@@ -43,21 +43,13 @@ void main() {
   });
 
   Widget wrap(Widget child) => TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: SizedBox(width: 400, height: 800, child: child),
-          ),
-        ),
-      );
+    child: MaterialApp(
+      home: Scaffold(body: SizedBox(width: 400, height: 800, child: child)),
+    ),
+  );
 
-  LoggingPanel panel(Key key) => LoggingPanel(
-        key: key,
-        operation: operation,
-        services: services,
-        qsos: const [],
-        loggingControls: const [],
-        onCommandAction: (action, [params]) async {},
-      );
+  LoggingPanel panel(Key key) =>
+      LoggingPanel(key: key, operation: operation, services: services, qsos: const [], loggingControls: const [], onCommandAction: (action, [params]) async {});
 
   testWidgets('registers action handlers on mount and clears them on dispose', (tester) async {
     await tester.pumpWidget(wrap(panel(const ValueKey('a'))));
@@ -86,11 +78,9 @@ void main() {
     await tester.pumpWidget(wrap(panel(const ValueKey('b'))));
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(DevBridge.instance.actionHandler, isNotNull,
-        reason: 'panel A dispose must not clear the handlers panel B just registered');
+    expect(DevBridge.instance.actionHandler, isNotNull, reason: 'panel A dispose must not clear the handlers panel B just registered');
     expect(DevBridge.instance.setFieldHandler, isNotNull);
-    expect(DevBridge.instance.actionHandler, isNot(same(handlerA)),
-        reason: 'panel B should now own the bridge');
+    expect(DevBridge.instance.actionHandler, isNot(same(handlerA)), reason: 'panel B should now own the bridge');
 
     await tester.pumpWidget(wrap(const SizedBox()));
     await tester.pump(const Duration(seconds: 5));

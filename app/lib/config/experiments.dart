@@ -32,13 +32,7 @@ class ExperimentDefinition {
   /// SettingsService.experimentEverEnabled).
   final bool private;
 
-  const ExperimentDefinition({
-    required this.key,
-    required this.name,
-    this.description,
-    this.aliases = const [],
-    this.private = false,
-  });
+  const ExperimentDefinition({required this.key, required this.name, this.description, this.aliases = const [], this.private = false});
 
   /// Whether [token] names this experiment — its key or any alias.
   ///
@@ -75,13 +69,15 @@ List<ExperimentDefinition> parseExperimentsYaml(String yamlSource) {
     if (entry is! YamlMap) continue;
     try {
       final key = entry['key'] as String;
-      definitions.add(ExperimentDefinition(
-        key: key,
-        name: (entry['name'] as String?) ?? key,
-        description: entry['description'] as String?,
-        aliases: [for (final alias in (entry['aliases'] as YamlList?) ?? YamlList()) alias as String],
-        private: (entry['private'] as bool?) ?? false,
-      ));
+      definitions.add(
+        ExperimentDefinition(
+          key: key,
+          name: (entry['name'] as String?) ?? key,
+          description: entry['description'] as String?,
+          aliases: [for (final alias in (entry['aliases'] as YamlList?) ?? YamlList()) alias as String],
+          private: (entry['private'] as bool?) ?? false,
+        ),
+      );
     } catch (_) {
       continue;
     }
@@ -108,14 +104,10 @@ Future<List<ExperimentDefinition>> loadExperiments() {
   // reason a parse error does: the future is cached, and the extension host's
   // getSettings awaits it for EVERY hook context — a cached rejection would
   // strip every hook of its settings for the rest of the session.
-  return _experimentsFuture ??= rootBundle
-      .loadString('experiments.yaml')
-      .then(parseExperimentsYaml)
-      .catchError((Object _) => const <ExperimentDefinition>[]);
+  return _experimentsFuture ??= rootBundle.loadString('experiments.yaml').then(parseExperimentsYaml).catchError((Object _) => const <ExperimentDefinition>[]);
 }
 
 /// Resolves [loadExperiments] synchronously to [definitions] from then on
 /// (same rationale as setReleaseNotesForTesting). Call from `setUp()`.
 @visibleForTesting
-void setExperimentsForTesting(List<ExperimentDefinition> definitions) =>
-    _experimentsFuture = Future.value(definitions);
+void setExperimentsForTesting(List<ExperimentDefinition> definitions) => _experimentsFuture = Future.value(definitions);

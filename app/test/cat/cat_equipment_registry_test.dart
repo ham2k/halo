@@ -28,16 +28,17 @@ void main() {
       // shows a field for it — and, separately, what the fields with
       // nothing hardcoded or narrowed would offer.
       final knownKeys = {...type.transport.recognizedConfigKeys, ...type.driver.recognizedConfigKeys};
-      final unrestrictedFields = [
-        ...type.transport.configElements(),
-        ...type.driver.configElements(),
-      ].where((e) => e['type'] == 'field').toList();
+      final unrestrictedFields = [...type.transport.configElements(), ...type.driver.configElements()].where((e) => e['type'] == 'field').toList();
 
       test('every overridden key is a field its transport or driver actually declares', () {
         for (final key in type.overrides.keys) {
-          expect(knownKeys, contains(key),
-              reason: '"$key" is overridden, but neither the transport nor the driver '
-                  'declares a field by that key — a typo here silently hardcodes nothing.');
+          expect(
+            knownKeys,
+            contains(key),
+            reason:
+                '"$key" is overridden, but neither the transport nor the driver '
+                'declares a field by that key — a typo here silently hardcodes nothing.',
+          );
         }
       });
 
@@ -50,20 +51,27 @@ void main() {
       // silently never takes (EquipmentType._merged clobbers it with the
       // override at connect/save time regardless of what the form showed).
       test('every overridden key is actually hidden from the assembled form', () {
-        final renderedKeys =
-            type.configElements().where((e) => e['type'] == 'field').map((e) => e['key'] as String).toSet();
+        final renderedKeys = type.configElements().where((e) => e['type'] == 'field').map((e) => e['key'] as String).toSet();
         for (final key in type.overrides.keys) {
-          expect(renderedKeys, isNot(contains(key)),
-              reason: '"$key" is overridden (meant to be hardcoded and hidden), but still renders '
-                  'as a field — the transport/driver is missing its containsKey(overrides) guard.');
+          expect(
+            renderedKeys,
+            isNot(contains(key)),
+            reason:
+                '"$key" is overridden (meant to be hardcoded and hidden), but still renders '
+                'as a field — the transport/driver is missing its containsKey(overrides) guard.',
+          );
         }
       });
 
       test('every restricted key is a field its transport or driver actually declares', () {
         for (final key in type.restrictions.keys) {
-          expect(knownKeys, contains(key),
-              reason: '"$key" is restricted, but neither the transport nor the driver '
-                  'declares a field by that key — a typo here silently narrows nothing.');
+          expect(
+            knownKeys,
+            contains(key),
+            reason:
+                '"$key" is restricted, but neither the transport nor the driver '
+                'declares a field by that key — a typo here silently narrows nothing.',
+          );
         }
       });
 
@@ -79,8 +87,7 @@ void main() {
           final restrictedValues = restricted.toSet();
 
           expect(restrictedValues, isNotEmpty, reason: '"${entry.key}" is restricted to nothing at all');
-          expect(allowedValues.containsAll(restrictedValues), isTrue,
-              reason: '"${entry.key}" is restricted to a value its transport/driver never offers');
+          expect(allowedValues.containsAll(restrictedValues), isTrue, reason: '"${entry.key}" is restricted to a value its transport/driver never offers');
         }
       });
     });
@@ -98,9 +105,13 @@ void main() {
       if (type.transportKey == NoneTransport.transportKey) continue;
       final name = type.transportIconName;
       expect(name, isNotNull, reason: '${type.transportKey} has no icon, so its rows show nothing');
-      expect(resolveIconName(name!), isNot(MdiIcons.puzzle),
-          reason: '"$name" is not in the generated codepoint table — resolveIconName '
-              'falls back to a puzzle piece rather than failing');
+      expect(
+        resolveIconName(name!),
+        isNot(MdiIcons.puzzle),
+        reason:
+            '"$name" is not in the generated codepoint table — resolveIconName '
+            'falls back to a puzzle piece rather than failing',
+      );
     }
   });
 
@@ -112,8 +123,11 @@ void main() {
       for (final note in type.notes) {
         if (note['type'] != 'markdown') continue;
         expect(note['collapsible'], isTrue, reason: '${type.key} renders notes open, burying its own fields');
-        expect(note['title'], isA<String>().having((t) => t.isNotEmpty, 'is not empty', isTrue),
-            reason: '${type.key} would render a chevron with no label at all');
+        expect(
+          note['title'],
+          isA<String>().having((t) => t.isNotEmpty, 'is not empty', isTrue),
+          reason: '${type.key} would render a chevron with no label at all',
+        );
         expect(note['text'], isA<String>().having((t) => t.isNotEmpty, 'is not empty', isTrue));
       }
     }
@@ -127,10 +141,8 @@ void main() {
   group('renamed keys still find their pairing', () {
     test('every old key maps to one the catalogue still has', () {
       for (final entry in renamedTypeKeys.entries) {
-        expect(registry.typeFor(entry.value), isNotNull,
-            reason: '"${entry.key}" forwards to "${entry.value}", which no longer exists');
-        expect(registry.typeFor(entry.key), isNull,
-            reason: '"${entry.key}" is still a live key, so nothing was actually renamed');
+        expect(registry.typeFor(entry.value), isNotNull, reason: '"${entry.key}" forwards to "${entry.value}", which no longer exists');
+        expect(registry.typeFor(entry.key), isNull, reason: '"${entry.key}" is still a live key, so nothing was actually renamed');
       }
     });
 
@@ -160,9 +172,13 @@ void main() {
   test('nothing declares a config key the editor reserves for itself', () {
     for (final type in registry.types) {
       for (final key in {...type.transport.recognizedConfigKeys, ...type.driver.recognizedConfigKeys}) {
-        expect(key, isNot(anyOf('name', 'transport')),
-            reason: '${type.key} declares "$key", which the editor uses for its own field '
-                'and removes before saving — the value would never survive');
+        expect(
+          key,
+          isNot(anyOf('name', 'transport')),
+          reason:
+              '${type.key} declares "$key", which the editor uses for its own field '
+              'and removes before saving — the value would never survive',
+        );
       }
     }
   });
@@ -179,44 +195,41 @@ void main() {
   // to be a deliberate edit here rather than a side effect of moving a
   // variant between models.
   test('the shipped variant keys are exactly these', () {
-    expect(
-      registry.types.map((t) => t.key).toSet(),
-      {
-        'flexradio-tcp',
-        'ft891-serial',
-        'ft710-serial',
-        'ftdx10-serial',
-        'yaesu-serial',
-        'ft817-serial',
-        'ft857-serial',
-        'ft897-serial',
-        'q900-serial',
-        'icom-generic-serial',
-        'kenwood-serial',
-        'qmx-serial',
-        'fx4cr-serial',
-        'kx2-serial',
-        'kx3-serial',
-        'elecraft-serial',
-        'ic7300-serial',
-        'ic7300mk2-serial',
-        'ic706mkiig-serial',
-        'ic7100-serial',
-        'ic7610-serial',
-        'ic7760-serial',
-        'x6100-serial',
-        'ic705-network',
-        'ic705-serial',
-        'rigctld-tcp',
-        'flrig-tcp',
-        'placeholder-radio',
-        'winkeyer-serial',
-        'antenna-genius-tcp',
-        'sierra-coax-serial',
-        'antenna-none',
-        'key-none',
-      },
-    );
+    expect(registry.types.map((t) => t.key).toSet(), {
+      'flexradio-tcp',
+      'ft891-serial',
+      'ft710-serial',
+      'ftdx10-serial',
+      'yaesu-serial',
+      'ft817-serial',
+      'ft857-serial',
+      'ft897-serial',
+      'q900-serial',
+      'icom-generic-serial',
+      'kenwood-serial',
+      'qmx-serial',
+      'fx4cr-serial',
+      'kx2-serial',
+      'kx3-serial',
+      'elecraft-serial',
+      'ic7300-serial',
+      'ic7300mk2-serial',
+      'ic706mkiig-serial',
+      'ic7100-serial',
+      'ic7610-serial',
+      'ic7760-serial',
+      'x6100-serial',
+      'ic705-network',
+      'ic705-serial',
+      'rigctld-tcp',
+      'flrig-tcp',
+      'placeholder-radio',
+      'winkeyer-serial',
+      'antenna-genius-tcp',
+      'sierra-coax-serial',
+      'antenna-none',
+      'key-none',
+    });
   });
 
   // A named radio exists so an operator does not have to know their rig's
@@ -256,7 +269,6 @@ void main() {
         expect(type.category, kCategoryTransceiver);
         prefills.forEach((field, value) => expect(type.defaultConfig[field], value));
       });
-
     });
   });
 
@@ -349,9 +361,13 @@ void main() {
 
       test('names each transport once', () {
         final keys = model.variants.map((v) => v.transportKey).toList();
-        expect(keys.toSet().length, keys.length,
-            reason: 'two variants on one transport make the editor offer the same choice twice, '
-                'and variantForTransport pick whichever comes first');
+        expect(
+          keys.toSet().length,
+          keys.length,
+          reason:
+              'two variants on one transport make the editor offer the same choice twice, '
+              'and variantForTransport pick whichever comes first',
+        );
       });
 
       // The editor renders EVERY variant's fields at once and narrows them
@@ -372,9 +388,13 @@ void main() {
         final seen = <String, dynamic>{};
         for (final variant in model.variants) {
           for (final entry in variant.defaultConfig.entries) {
-            expect(seen.putIfAbsent(entry.key, () => entry.value), entry.value,
-                reason: '${model.key}\'s variants prefill "${entry.key}" differently, but the editor '
-                    'renders one field for it — one of the two values can never be shown');
+            expect(
+              seen.putIfAbsent(entry.key, () => entry.value),
+              entry.value,
+              reason:
+                  '${model.key}\'s variants prefill "${entry.key}" differently, but the editor '
+                  'renders one field for it — one of the two values can never be shown',
+            );
           }
         }
       });
@@ -387,9 +407,13 @@ void main() {
             final key = element['key'] as String;
             final fieldType = element['fieldType'] as String;
             final seen = fieldTypes[key];
-            expect(seen ?? fieldType, fieldType,
-                reason: '"$key" is a $seen on one of ${model.key}\'s transports and a $fieldType on another — '
-                    'they share a field in the editor, so one would overwrite the other');
+            expect(
+              seen ?? fieldType,
+              fieldType,
+              reason:
+                  '"$key" is a $seen on one of ${model.key}\'s transports and a $fieldType on another — '
+                  'they share a field in the editor, so one would overwrite the other',
+            );
             fieldTypes[key] = fieldType;
           }
         }
@@ -416,9 +440,11 @@ void main() {
 
     test('a restricted baud-rate field narrows to exactly the allowed subset, in order', () {
       final field = transport
-          .configElements(restrictions: {
-            'baudRate': [9600, 4800],
-          })
+          .configElements(
+            restrictions: {
+              'baudRate': [9600, 4800],
+            },
+          )
           .firstWhere((e) => e['key'] == 'baudRate');
       final offered = [for (final o in field['options'] as List) (o as Map)['value']];
       expect(offered, [4800, 9600], reason: 'narrowed to the allowed subset, in the transport\'s own order');
@@ -466,7 +492,6 @@ void main() {
     }
   });
 }
-
 
 /// Enough of a sink to construct a session. Nothing here sends or reads —
 /// these tests only ask a session to describe itself.

@@ -187,8 +187,7 @@ void main() {
       for (final (a, b) in cases) {
         for (final segment in greatCirclePoints(a, b)) {
           for (var i = 1; i < segment.length; i++) {
-            expect((segment[i].longitude - segment[i - 1].longitude).abs(), lessThan(180),
-                reason: 'jump within a polyline for $a → $b');
+            expect((segment[i].longitude - segment[i - 1].longitude).abs(), lessThan(180), reason: 'jump within a polyline for $a → $b');
           }
         }
       }

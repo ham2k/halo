@@ -13,28 +13,16 @@ void main() {
     });
 
     test('names the patch and pre-release parts in version order', () {
-      expect(
-        const PublicVersion(main: august, patch: 2, preRelease: 1).displayName(),
-        "August '26 patch 2 pre 1",
-      );
-      expect(
-        const PublicVersion(main: august, patch: 2, preRelease: 1, preReleasePatch: 3).displayName(),
-        "August '26 patch 2 pre 1.3",
-      );
+      expect(const PublicVersion(main: august, patch: 2, preRelease: 1).displayName(), "August '26 patch 2 pre 1");
+      expect(const PublicVersion(main: august, patch: 2, preRelease: 1, preReleasePatch: 3).displayName(), "August '26 patch 2 pre 1.3");
     });
 
     test('the stage label sits between the month and the patch, not at the end', () {
       // Trailing it would read as another version component ("patch 1 ALPHA"),
       // which is exactly what the label is not — it qualifies the product, not
       // this version (docs/releases.md §2.1).
-      expect(
-        const PublicVersion(main: august, patch: 1).displayName(stageLabel: 'ALPHA'),
-        "August '26 ALPHA patch 1",
-      );
-      expect(
-        const PublicVersion(main: august, patch: 1, preRelease: 2).displayName(stageLabel: 'ALPHA'),
-        "August '26 ALPHA patch 1 pre 2",
-      );
+      expect(const PublicVersion(main: august, patch: 1).displayName(stageLabel: 'ALPHA'), "August '26 ALPHA patch 1");
+      expect(const PublicVersion(main: august, patch: 1, preRelease: 2).displayName(stageLabel: 'ALPHA'), "August '26 ALPHA patch 1 pre 2");
     });
 
     test('an empty stage label leaves no gap — it is how the label is retired', () {
@@ -69,13 +57,7 @@ void main() {
     });
 
     test('a pre-release names its label and counter, patch included', () {
-      final parts = const PublicVersion(
-        main: august,
-        patch: 2,
-        preRelease: 1,
-        preReleasePatch: 3,
-        preReleaseLabel: 'alpha',
-      ).displayParts();
+      final parts = const PublicVersion(main: august, patch: 2, preRelease: 1, preReleasePatch: 3, preReleaseLabel: 'alpha').displayParts();
       expect(parts.patch, 2);
       expect(parts.preReleaseLabel, 'alpha');
       // The counter and its patch are one number to a reader — a display that

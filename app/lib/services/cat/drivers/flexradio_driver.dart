@@ -61,7 +61,6 @@ const flexRadioPingInterval = Duration(seconds: 25);
 /// at a blank row wondering.
 const _sliceRefreshSettle = Duration(seconds: 3);
 
-
 class FlexRadioDriver extends EquipmentDriver {
   const FlexRadioDriver();
 
@@ -72,7 +71,6 @@ class FlexRadioDriver extends EquipmentDriver {
 
   @override
   String get name => 'FlexRadio (SmartSDR)';
-
 
   /// A FLEX-6600 runs up to eight slices; smaller models run fewer, and the
   /// radio says how many in its `radio slices=` status. Offering all eight
@@ -98,27 +96,23 @@ class FlexRadioDriver extends EquipmentDriver {
       FlexRadioSession(sink, slice: sliceFromConfig(config), meterHost: config['host'] as String?);
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) =>
       // A pairing that fixes the slice has nothing to ask — the same escape
       // hatch the CI-V address field uses.
       overrides.containsKey(sliceConfigKey)
-          ? const []
-          : [
-              {
-                'type': 'field',
-                'fieldType': 'select',
-                'key': sliceConfigKey,
-                'label': t.settings.station.flexSlice,
-                'description': t.settings.station.flexSliceDescription,
-                'options': [
-                  for (var i = 0; i < sliceLabels.length; i++)
-                    {'value': '$i', 'label': t.settings.station.flexSliceLabel(letter: sliceLabels[i])},
-                ],
-              },
-            ];
+      ? const []
+      : [
+          {
+            'type': 'field',
+            'fieldType': 'select',
+            'key': sliceConfigKey,
+            'label': t.settings.station.flexSlice,
+            'description': t.settings.station.flexSliceDescription,
+            'options': [
+              for (var i = 0; i < sliceLabels.length; i++) {'value': '$i', 'label': t.settings.station.flexSliceLabel(letter: sliceLabels[i])},
+            ],
+          },
+        ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
@@ -149,8 +143,7 @@ class FlexRadioDriver extends EquipmentDriver {
 
   /// The radio's own letter for a slice index; the index itself for one
   /// past the letters we name, which the radio would have to have invented.
-  static String sliceLabel(int slice) =>
-      slice >= 0 && slice < sliceLabels.length ? sliceLabels[slice] : '$slice';
+  static String sliceLabel(int slice) => slice >= 0 && slice < sliceLabels.length ? sliceLabels[slice] : '$slice';
 
   /// Null for anything that isn't a slice this driver offers. A value
   /// round-tripped through JSON (or a form) arrives as a String or a num
@@ -176,18 +169,20 @@ class FlexRadioDiscoverer implements EquipmentDiscoverer {
   const FlexRadioDiscoverer({required this.typeKey});
 
   @override
-  Stream<DiscoveredEquipment> discover() =>
-      udpBroadcastDatagrams(port: FlexRadioDriver.defaultPort).map(parseFlexDiscovery).where((found) => found != null).map(
-            (found) => DiscoveredEquipment(
-              typeKey: typeKey,
-              // Serial when the radio offers one, so a radio that moves to a
-              // new address updates its entry instead of appearing twice.
-              id: found!.serial ?? '${found.host}:${found.port}',
-              name: found.nickname ?? found.model,
-              detail: [found.model, if (found.version != null) 'v${found.version}', found.host].join(' · '),
-              config: {'host': found.host, 'port': found.port},
-            ),
-          );
+  Stream<DiscoveredEquipment> discover() => udpBroadcastDatagrams(port: FlexRadioDriver.defaultPort)
+      .map(parseFlexDiscovery)
+      .where((found) => found != null)
+      .map(
+        (found) => DiscoveredEquipment(
+          typeKey: typeKey,
+          // Serial when the radio offers one, so a radio that moves to a
+          // new address updates its entry instead of appearing twice.
+          id: found!.serial ?? '${found.host}:${found.port}',
+          name: found.nickname ?? found.model,
+          detail: [found.model, if (found.version != null) 'v${found.version}', found.host].join(' · '),
+          config: {'host': found.host, 'port': found.port},
+        ),
+      );
 }
 
 /// What a FlexRadio says about itself when it announces on the network.
@@ -200,14 +195,7 @@ class FlexDiscovery {
   final String host;
   final int port;
 
-  const FlexDiscovery({
-    required this.model,
-    required this.host,
-    required this.port,
-    this.serial,
-    this.nickname,
-    this.version,
-  });
+  const FlexDiscovery({required this.model, required this.host, required this.port, this.serial, this.nickname, this.version});
 }
 
 /// Reads one discovery datagram.
@@ -273,11 +261,8 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   /// How the receive-meter UDP socket is opened. A parameter because the real
   /// one binds a port and resolves a host, which no test of what the session
   /// does WITH the socket — or without one — can do.
-  final Future<FlexMeterSocket?> Function(
-    String host,
-    void Function(Uint8List data) onData,
-    void Function(Object error, StackTrace stack) onError,
-  ) openMeterSocket;
+  final Future<FlexMeterSocket?> Function(String host, void Function(Uint8List data) onData, void Function(Object error, StackTrace stack) onError)
+  openMeterSocket;
   late final _meters = FlexMeterCodec(slice);
   final _signalThrottle = FlexSignalThrottle();
   FlexMeterSocket? _meterSocket;
@@ -625,10 +610,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
     // A client that names neither still gets an entry: an empty name is how
     // a slice says "held, by something I cannot name", and dropping the line
     // would leave that slice looking free.
-    _clients[handle] = [
-      ?program,
-      if (station != null) '($station)',
-    ].join(' ');
+    _clients[handle] = [?program, if (station != null) '($station)'].join(' ');
     _publishChannels();
   }
 
@@ -660,9 +642,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
     // Mentioned, but the radio never said whether it runs: no verdict to
     // give, so whatever was last reported stands.
     if (_slices.containsKey(slice) && inUse == null) return;
-    _sink.reportProblem(
-      inUse == true ? null : t.settings.station.flexSliceMissing(letter: FlexRadioDriver.sliceLabel(slice)),
-    );
+    _sink.reportProblem(inUse == true ? null : t.settings.station.flexSliceMissing(letter: FlexRadioDriver.sliceLabel(slice)));
   }
 
   void _publishChannels() {
@@ -682,8 +662,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
             // harmless one: `sub client all` may have been refused, or the
             // radio may format a handle differently in the two places it
             // appears. Either way something IS on this slice.
-            heldByUnknown: status.clientHandle != null &&
-                _nonEmpty(_clients[status.clientHandle!.toLowerCase()]) == null,
+            heldByUnknown: status.clientHandle != null && _nonEmpty(_clients[status.clientHandle!.toLowerCase()]) == null,
           )
         else
           EquipmentChannel(key: '$index', label: FlexRadioDriver.sliceLabel(index)),
@@ -840,11 +819,5 @@ class _SliceStatus {
   final String? mode;
   final String? clientHandle;
 
-  const _SliceStatus({
-    required this.label,
-    required this.inUse,
-    this.freqKHz,
-    this.mode,
-    this.clientHandle,
-  });
+  const _SliceStatus({required this.label, required this.inUse, this.freqKHz, this.mode, this.clientHandle});
 }

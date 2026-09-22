@@ -45,9 +45,7 @@ class WindowChromeService {
   /// and Linux custom frame with Flutter-drawn caption buttons).
   static bool get _chromeless =>
       !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.macOS ||
-          defaultTargetPlatform == TargetPlatform.windows ||
-          defaultTargetPlatform == TargetPlatform.linux);
+      (defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux);
 
   static double? _lastReported;
   static Size? _lastMinimumSize;

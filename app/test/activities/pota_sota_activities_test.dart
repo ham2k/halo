@@ -52,12 +52,8 @@ void main() {
     expect(host, isNotNull, reason: 'extension runtime failed to boot');
 
     final defs = await host!.invokeHookAll('dataFile', method: 'getDefinition');
-    final potaDef = Map<String, dynamic>.from(
-      (defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'pota-all-parks')['value'] as Map),
-    );
-    final sotaDef = Map<String, dynamic>.from(
-      (defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'sota-all-summits')['value'] as Map),
-    );
+    final potaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'pota-all-parks')['value'] as Map));
+    final sotaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'sota-all-summits')['value'] as Map));
 
     final prefs = await SharedPreferences.getInstance();
     final manager = _CannedDataFileManager(
@@ -65,11 +61,13 @@ void main() {
       extensions: extensions,
       prefs: prefs,
       bodiesByKey: {
-        'pota-all-parks': 'reference,name,active,entityId,locationDesc,latitude,longitude,grid\n'
+        'pota-all-parks':
+            'reference,name,active,entityId,locationDesc,latitude,longitude,grid\n'
             'US-1234,Test State Park,1,291,US-CA,37.7749,-122.4194,\n'
             'US-9963,Retired Park,0,291,US-VA,36.9434,-77.1106,\n'
             'US-5555,Oddly Flagged Park,Y,291,US-VA,36.9,-77.1,\n',
-        'sota-all-summits': 'SOTA Summits List\n'
+        'sota-all-summits':
+            'SOTA Summits List\n'
             'SummitCode,SummitName,AssociationName,RegionName,Latitude,Longitude,AltM,Points,ValidFrom,ValidTo\n'
             'W6/CT-001,Test Peak,USA-California,Central,37.5,-122.1,1200,4,01/01/2020,31/12/2099\n',
       },
@@ -107,9 +105,7 @@ void main() {
   test('SOTA subCategory resolves sub-associations and the two hand-verified overrides', () async {
     final host = extensions.host!;
     final defs = await host.invokeHookAll('dataFile', method: 'getDefinition');
-    final sotaDef = Map<String, dynamic>.from(
-      (defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'sota-all-summits')['value'] as Map),
-    );
+    final sotaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'sota-all-summits')['value'] as Map));
 
     final prefs = await SharedPreferences.getInstance();
     final manager = _CannedDataFileManager(
@@ -117,7 +113,8 @@ void main() {
       extensions: extensions,
       prefs: prefs,
       bodiesByKey: {
-        'sota-all-summits': 'SOTA Summits List\n'
+        'sota-all-summits':
+            'SOTA Summits List\n'
             'SummitCode,SummitName,AssociationName,RegionName,Latitude,Longitude,AltM,Points,ValidFrom,ValidTo\n'
             // KLA has no valid-prefix reading on its own; stripping the
             // trailing region letter recovers "KL", a real Alaska prefix
@@ -157,11 +154,7 @@ void main() {
     final results = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'ZD8XYZ',
-        'searchTerm': 'Test Ascension Peak',
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'ZD8XYZ', 'searchTerm': 'Test Ascension Peak'},
     );
     final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'sota')['value'] as List).cast<Map>();
     expect(sotaSuggestions.any((s) => s['ref'] == 'ZD/AI-001'), isTrue);
@@ -197,11 +190,7 @@ void main() {
     final searchResults = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'W1AW',
-        'searchTerm': 'Test State Park',
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'Test State Park'},
     );
     final searchSuggestions = (searchResults.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
     expect(searchSuggestions.map((s) => s['ref']), ['US-1234']);
@@ -267,11 +256,7 @@ void main() {
     final search = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'W1AW',
-        'searchTerm': 'Retired Park',
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'Retired Park'},
     );
     final searchSuggestions = (search.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
     expect(searchSuggestions.map((s) => s['ref']), ['US-1234']);
@@ -281,11 +266,7 @@ void main() {
     final exact = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'W1AW',
-        'searchTerm': 'US-9963',
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'US-9963'},
     );
     final exactSuggestions = (exact.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
     final retired = exactSuggestions.firstWhere((s) => s['ref'] == 'US-9963');
@@ -326,24 +307,14 @@ void main() {
         'location': {'lat': 37.7749, 'lon': -122.4194},
       },
     );
-    expect(
-      (nearby.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>().map((s) => s['ref']),
-      contains('US-4321'),
-    );
+    expect((nearby.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>().map((s) => s['ref']), contains('US-4321'));
 
     final search = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'W1AW',
-        'searchTerm': 'Unflagged',
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'Unflagged'},
     );
-    expect(
-      (search.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>().map((s) => s['ref']),
-      contains('US-4321'),
-    );
+    expect((search.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>().map((s) => s['ref']), contains('US-4321'));
   });
 
   test('POTA and SOTA suggest() serves nearby results from the populated lookup table', () async {
@@ -361,15 +332,7 @@ void main() {
         flags: 1,
         data: '{"reference":"US-1234","name":"Test State Park","active":true}',
       ),
-      LookupRow(
-        category: 'sota',
-        key: 'W6/CT-001',
-        name: 'Test Peak',
-        lat: 37.5,
-        lon: -122.1,
-        flags: 1,
-        data: '{"ref":"W6/CT-001","name":"Test Peak"}',
-      ),
+      LookupRow(category: 'sota', key: 'W6/CT-001', name: 'Test Peak', lat: 37.5, lon: -122.1, flags: 1, data: '{"ref":"W6/CT-001","name":"Test Peak"}'),
     ]);
 
     final results = await host.invokeHookAll(
@@ -448,11 +411,7 @@ void main() {
     final results = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'W1AW',
-        'searchTerm': 'US-15000',
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'US-15000'},
     );
 
     final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
@@ -472,12 +431,7 @@ void main() {
     final results = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'W1AW',
-        'searchTerm': 'us-12',
-        'scoped': true,
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'us-12', 'scoped': true},
     );
 
     final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
@@ -495,11 +449,7 @@ void main() {
     final results = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'W1AW',
-        'searchTerm': 'us-12',
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'us-12'},
     );
 
     final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
@@ -518,12 +468,7 @@ void main() {
       final results = await host.invokeHookAll(
         'activity',
         method: 'suggest',
-        args: {
-          'operation': <String, dynamic>{},
-          'callsign': 'W1AW',
-          'searchTerm': term,
-          'scoped': true,
-        },
+        args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': term, 'scoped': true},
       );
 
       final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
@@ -539,19 +484,23 @@ void main() {
     final host = extensions.host!;
 
     for (final code in ['US-99999', 'US-12']) {
-      final ref = await host.invokeHook('ref:potaActivation', method: 'decorateRef', args: {
-        'ref': {
-          'type': 'potaActivation',
-          'ref': code,
-          'name': 'Oak Ridge',
-          'label': 'POTA US-12059: Oak Ridge',
-          'shortLabel': 'POTA US-12059',
-          'grid': 'FN21rq',
-          'lat': 41.7,
-          'lon': -74.2,
-          'location': 'US-NY',
+      final ref = await host.invokeHook(
+        'ref:potaActivation',
+        method: 'decorateRef',
+        args: {
+          'ref': {
+            'type': 'potaActivation',
+            'ref': code,
+            'name': 'Oak Ridge',
+            'label': 'POTA US-12059: Oak Ridge',
+            'shortLabel': 'POTA US-12059',
+            'grid': 'FN21rq',
+            'lat': 41.7,
+            'lon': -74.2,
+            'location': 'US-NY',
+          },
         },
-      });
+      );
       expect(ref['ref'], code, reason: code);
       for (final stale in ['label', 'shortLabel', 'grid', 'lat', 'lon', 'location']) {
         expect(ref[stale], isNull, reason: '$stale survived onto $code');
@@ -567,12 +516,7 @@ void main() {
     final results = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'W1AW',
-        'searchTerm': 'w6/sd-9',
-        'scoped': true,
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'w6/sd-9', 'scoped': true},
     );
 
     final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'sota')['value'] as List).cast<Map>();
@@ -586,12 +530,7 @@ void main() {
     final results = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'W1AW',
-        'searchTerm': 'w6/sd-999',
-        'scoped': true,
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'w6/sd-999', 'scoped': true},
     );
 
     final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'sota')['value'] as List).cast<Map>();
@@ -606,11 +545,7 @@ void main() {
     final results = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'W1AW',
-        'searchTerm': 'US15000',
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'US15000'},
     );
 
     final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
@@ -626,11 +561,7 @@ void main() {
       final results = await host.invokeHookAll(
         'activity',
         method: 'suggest',
-        args: {
-          'operation': <String, dynamic>{},
-          'callsign': 'W1AW',
-          'searchTerm': searchTerm,
-        },
+        args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': searchTerm},
       );
 
       final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
@@ -657,11 +588,7 @@ void main() {
     final results = await host.invokeHookAll(
       'activity',
       method: 'suggest',
-      args: {
-        'operation': <String, dynamic>{},
-        'callsign': 'W1AW',
-        'searchTerm': 'US-1234',
-      },
+      args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'US-1234'},
     );
 
     final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();

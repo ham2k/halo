@@ -20,10 +20,10 @@ void main() {
   /// (sdk/src/kernel.ts), leaving `ctx.appName` undefined, which the panel
   /// renders as an empty `app.name` rather than failing.
   Future<ExtensionHost> panelHost() => ExtensionHost.start(
-        kernelSource: bundleSource('kernel'),
-        extensions: [ExtensionBundle(key: 'custom-text', source: bundleSource('custom-text'))],
-        onHostCall: (method, params) async => method == 'getSettings' ? {'appName': 'Ham2K Logger'} : null,
-      );
+    kernelSource: bundleSource('kernel'),
+    extensions: [ExtensionBundle(key: 'custom-text', source: bundleSource('custom-text'))],
+    onHostCall: (method, params) async => method == 'getSettings' ? {'appName': 'Ham2K Logger'} : null,
+  );
 
   test('a panel hook advertises its panels, and renders one', () async {
     final host = await panelHost();
@@ -110,10 +110,10 @@ __polo.defineExtension({
   /// getSettings call, so a test about a panel that varies with it has to
   /// answer that call.
   Future<ExtensionHost> contextualPanelHost(bool developerMode) => ExtensionHost.start(
-        kernelSource: bundleSource('kernel'),
-        extensions: const [ExtensionBundle(key: 'panel-test-extension', source: contextualPanelSource)],
-        onHostCall: (method, params) async => method == 'getSettings' ? {'developerMode': developerMode} : null,
-      );
+    kernelSource: bundleSource('kernel'),
+    extensions: const [ExtensionBundle(key: 'panel-test-extension', source: contextualPanelSource)],
+    onHostCall: (method, params) async => method == 'getSettings' ? {'developerMode': developerMode} : null,
+  );
 
   test('a descriptor carries its refresh triggers across', () async {
     final host = await contextualPanelHost(true);

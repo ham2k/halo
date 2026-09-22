@@ -95,33 +95,33 @@ class StatusBarNotice {
   });
 
   StatusBarNotice copyWith({DateTime? dismissedAt}) => StatusBarNotice(
-        key: key,
-        icon: icon,
-        title: title,
-        text: text,
-        actions: actions,
-        createdAt: createdAt,
-        dismissedAt: dismissedAt ?? this.dismissedAt,
-        persist: persist,
-      );
+    key: key,
+    icon: icon,
+    title: title,
+    text: text,
+    actions: actions,
+    createdAt: createdAt,
+    dismissedAt: dismissedAt ?? this.dismissedAt,
+    persist: persist,
+  );
 
   Map<String, dynamic> _toJson() => {
-        'key': key,
-        'icon': icon,
-        'title': title,
-        'text': text,
-        'createdAt': createdAt.toIso8601String(),
-        'dismissedAt': dismissedAt?.toIso8601String(),
-      };
+    'key': key,
+    'icon': icon,
+    'title': title,
+    'text': text,
+    'createdAt': createdAt.toIso8601String(),
+    'dismissedAt': dismissedAt?.toIso8601String(),
+  };
 
   static StatusBarNotice _fromJson(Map<String, dynamic> json) => StatusBarNotice(
-        key: json['key'] as String,
-        icon: json['icon'] as String?,
-        title: json['title'] as String?,
-        text: json['text'] as String? ?? '',
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        dismissedAt: json['dismissedAt'] != null ? DateTime.parse(json['dismissedAt'] as String) : null,
-      );
+    key: json['key'] as String,
+    icon: json['icon'] as String?,
+    title: json['title'] as String?,
+    text: json['text'] as String? ?? '',
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    dismissedAt: json['dismissedAt'] != null ? DateTime.parse(json['dismissedAt'] as String) : null,
+  );
 }
 
 class StatusBarService extends ChangeNotifier {
@@ -168,14 +168,7 @@ class StatusBarService extends ChangeNotifier {
   /// Without it the message stays until cleared or replaced.
   void setMessage({required String key, String? icon, String? title, String? text, Duration? dismissAfter}) {
     final now = nowLocal();
-    final item = StatusBarItem(
-      key: key,
-      icon: icon,
-      title: title,
-      text: text,
-      createdAt: _items[key]?.createdAt ?? now,
-      updatedAt: now,
-    );
+    final item = StatusBarItem(key: key, icon: icon, title: title, text: text, createdAt: _items[key]?.createdAt ?? now, updatedAt: now);
     _items[key] = item;
     _capItems();
     notifyListeners();
@@ -262,23 +255,8 @@ class StatusBarService extends ChangeNotifier {
     if (keys.isNotEmpty || dismissed) notifyListeners();
   }
 
-  void showNotice({
-    required String key,
-    String? icon,
-    String? title,
-    required String text,
-    List<StatusBarAction> actions = const [],
-    bool persist = true,
-  }) {
-    final notice = StatusBarNotice(
-      key: key,
-      icon: icon,
-      title: title,
-      text: text,
-      actions: actions,
-      createdAt: nowLocal(),
-      persist: persist,
-    );
+  void showNotice({required String key, String? icon, String? title, required String text, List<StatusBarAction> actions = const [], bool persist = true}) {
+    final notice = StatusBarNotice(key: key, icon: icon, title: title, text: text, actions: actions, createdAt: nowLocal(), persist: persist);
     _notices.removeWhere((n) => n.key == key);
     _notices.add(notice);
     if (_notices.length > _maxHistory) _notices.removeRange(0, _notices.length - _maxHistory);
@@ -300,10 +278,7 @@ class StatusBarService extends ChangeNotifier {
     final raw = _prefs.getString(_historyKey);
     if (raw == null || raw.isEmpty) return [];
     try {
-      return (jsonDecode(raw) as List)
-          .cast<Map<String, dynamic>>()
-          .map(StatusBarNotice._fromJson)
-          .toList();
+      return (jsonDecode(raw) as List).cast<Map<String, dynamic>>().map(StatusBarNotice._fromJson).toList();
     } catch (e) {
       debugPrint('[statusBar] failed to parse persisted notice history, discarding it: $e');
       return [];

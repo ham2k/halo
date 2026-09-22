@@ -89,12 +89,16 @@ final DynamicLibrary _lib = _openLibrary();
 
 final _new = _lib.lookupFunction<Pointer<Void> Function(), Pointer<Void> Function()>('halo_qjs_new');
 final _free = _lib.lookupFunction<Void Function(Pointer<Void>), void Function(Pointer<Void>)>('halo_qjs_free');
-final _eval = _lib.lookupFunction<
-    Int32 Function(Pointer<Void>, Pointer<Char>, Pointer<Char>, Pointer<Pointer<Char>>),
-    int Function(Pointer<Void>, Pointer<Char>, Pointer<Char>, Pointer<Pointer<Char>>)>('halo_qjs_eval');
-final _setHostFn = _lib.lookupFunction<
-    Void Function(Pointer<Void>, Pointer<Char>, Pointer<NativeFunction<_SendNative>>, Pointer<Void>),
-    void Function(Pointer<Void>, Pointer<Char>, Pointer<NativeFunction<_SendNative>>, Pointer<Void>)>('halo_qjs_set_host_fn');
+final _eval = _lib
+    .lookupFunction<
+      Int32 Function(Pointer<Void>, Pointer<Char>, Pointer<Char>, Pointer<Pointer<Char>>),
+      int Function(Pointer<Void>, Pointer<Char>, Pointer<Char>, Pointer<Pointer<Char>>)
+    >('halo_qjs_eval');
+final _setHostFn = _lib
+    .lookupFunction<
+      Void Function(Pointer<Void>, Pointer<Char>, Pointer<NativeFunction<_SendNative>>, Pointer<Void>),
+      void Function(Pointer<Void>, Pointer<Char>, Pointer<NativeFunction<_SendNative>>, Pointer<Void>)
+    >('halo_qjs_set_host_fn');
 final _freeString = _lib.lookupFunction<Void Function(Pointer<Char>), void Function(Pointer<Char>)>('halo_qjs_free_string');
 final _pump = _lib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('halo_qjs_execute_pending_job');
 final _setMemoryLimit = _lib.lookupFunction<Void Function(Pointer<Void>, Size), void Function(Pointer<Void>, int)>('halo_qjs_set_memory_limit');
@@ -153,15 +157,13 @@ class HaloQuickJs {
   /// the old callable is closed here rather than leaked.
   void onSend(HaloQuickJsSend fn) {
     _checkAlive();
-    final cb = NativeCallable<_SendNative>.isolateLocal(
-      (Pointer<Void> _, Pointer<Char> channel, Pointer<Char> message) {
-        // Deliberately total: an exception escaping here is invisible to both
-        // sides, so there is nothing useful a throw could accomplish.
-        try {
-          fn(_fromC(channel), _fromC(message));
-        } catch (_) {}
-      },
-    );
+    final cb = NativeCallable<_SendNative>.isolateLocal((Pointer<Void> _, Pointer<Char> channel, Pointer<Char> message) {
+      // Deliberately total: an exception escaping here is invisible to both
+      // sides, so there is nothing useful a throw could accomplish.
+      try {
+        fn(_fromC(channel), _fromC(message));
+      } catch (_) {}
+    });
     // Close any previous one: an unclosed NativeCallable keeps its isolate
     // alive forever, which on the extension host means it never shuts down.
     for (final old in _callbacks) {

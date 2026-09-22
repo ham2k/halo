@@ -33,13 +33,14 @@ import 'ref_text_input.dart';
 /// whatever else comes to describe what a station is doing at this moment.
 /// Optional (defaulting to false in implementations) so a caller that only
 /// wants to know who a callsign belongs to needn't say so.
-typedef CallLookup = Future<Map<String, dynamic>?> Function(
-  String call, {
-  required Map<String, dynamic> qso,
-  required Map<String, dynamic> operation,
-  required bool online,
-  bool recentContext,
-});
+typedef CallLookup =
+    Future<Map<String, dynamic>?> Function(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+      bool recentContext,
+    });
 
 /// When the log's earlier contacts with [call] started (epoch millis) — the
 /// compact call-info's worked-before pill. [excludingQsoUuid] is the QSO
@@ -56,12 +57,7 @@ typedef WorkedBefore = Future<List<int>> Function(String call, {String? excludin
 /// doc (extensions/sdk/src/types.ts): a hook whose `commands` are expensive
 /// to compute (e.g. SEED) may return a cheap describe-only result otherwise,
 /// since this is also the function called on every typing-debounce preview.
-typedef CommandInterpreter = Future<Map<String, dynamic>?> Function(
-  String input, [
-  Map<String, dynamic>? operation,
-  Map<String, dynamic>? qso,
-  bool execute,
-]);
+typedef CommandInterpreter = Future<Map<String, dynamic>?> Function(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute]);
 
 /// Handles a named command action — a closed set the core recognizes, not
 /// arbitrary state (DESIGN.md §4). `params` carries whatever JSON payload
@@ -74,30 +70,25 @@ typedef CommandActionHandler = Future<void> Function(String action, [Map<String,
 /// and controllers — so it hands this out via
 /// [CommandHooks.onDispatcherChanged] for callers outside the logging
 /// panel (the ⌘K command dialog) to route through instead of reimplementing.
-typedef CommandActionsDispatcher = Future<void> Function(
-  List<dynamic> actions, {
-  bool skipOnlineLookup,
-});
+typedef CommandActionsDispatcher = Future<void> Function(List<dynamic> actions, {bool skipOnlineLookup});
 
 /// Which `spots` hooks currently offer self- or other-spotting — `qso: null`
 /// asks about self-spotting the operation, `qso` set asks about spotting
 /// that QSO's station. Mirrors `ExtensionService.suggestSpotSources`.
-typedef SuggestSpotSources = Future<List<Map<String, dynamic>>> Function({
-  required Map<String, dynamic> operation,
-  Map<String, dynamic>? qso,
-});
+typedef SuggestSpotSources = Future<List<Map<String, dynamic>>> Function({required Map<String, dynamic> operation, Map<String, dynamic>? qso});
 
 /// Posts a spot via every hook in `sources` and returns `{hookKey:
 /// PostResult}`. Mirrors `ExtensionService.sendSpot`.
-typedef SendSpot = Future<Map<String, Map<String, dynamic>>> Function({
-  required List<Map<String, dynamic>> sources,
-  required Map<String, dynamic> operation,
-  Map<String, dynamic>? qso,
-  double? freq,
-  String? mode,
-  String? comment,
-  String? spotterCall,
-});
+typedef SendSpot =
+    Future<Map<String, Map<String, dynamic>>> Function({
+      required List<Map<String, dynamic>> sources,
+      required Map<String, dynamic> operation,
+      Map<String, dynamic>? qso,
+      double? freq,
+      String? mode,
+      String? comment,
+      String? spotterCall,
+    });
 
 /// Builds the info area's default (no-call) statistics — 0–2 preformatted
 /// lines ("{n} QSOs in {time}", "{rate} Q/h for last 10"). The app layer owns
@@ -116,12 +107,13 @@ typedef CallLocationLine = String? Function(Map<String, dynamic> guess);
 /// Scores the in-progress QSO for the call-info notices line — returns
 /// `{notices, alerts}` lists of scoring keys, or null. Mirrors
 /// `ExtensionService.scoreQso`.
-typedef ScoreQso = Future<Map<String, dynamic>?> Function({
-  required Map<String, dynamic> operation,
-  required Map<String, dynamic> qso,
-  String? excludeUuid,
-  List<Map<String, dynamic>>? segments,
-});
+typedef ScoreQso =
+    Future<Map<String, dynamic>?> Function({
+      required Map<String, dynamic> operation,
+      required Map<String, dynamic> qso,
+      String? excludeUuid,
+      List<Map<String, dynamic>>? segments,
+    });
 
 /// Fires when the current call-info changes (call/lookup/score), or null when
 /// the call-info panel isn't showing. Deduped by the widget.
@@ -198,8 +190,7 @@ class LogHooks {
   /// `break` projects the county, call and setup that were true when it was
   /// made, so a hook need not stamp anything onto a contact to keep a later
   /// edit from moving it.
-  final Future<Map<String, dynamic>> Function(Map<String, dynamic> qso, Map<String, dynamic> operation)?
-      decorateQsoBeforeSave;
+  final Future<Map<String, dynamic>> Function(Map<String, dynamic> qso, Map<String, dynamic> operation)? decorateQsoBeforeSave;
 
   /// A QSO write failed. The panel has already shown its own failure message
   /// in the info area; this is the host's hook to report the error
@@ -225,19 +216,18 @@ class LogHooks {
     VoidCallback? onCallListLogged,
     Future<Map<String, dynamic>> Function(Map<String, dynamic> qso, Map<String, dynamic> operation)? decorateQsoBeforeSave,
     void Function(Object error, StackTrace stackTrace)? onWriteError,
-  }) =>
-      LogHooks(
-        operation: operation ?? this.operation,
-        qsosRepository: qsosRepository ?? this.qsosRepository,
-        serialNumbers: serialNumbers ?? this.serialNumbers,
-        qsos: qsos ?? this.qsos,
-        onLogged: onLogged ?? this.onLogged,
-        onQsoDeleted: onQsoDeleted ?? this.onQsoDeleted,
-        onQsoUndeleted: onQsoUndeleted ?? this.onQsoUndeleted,
-        onCallListLogged: onCallListLogged ?? this.onCallListLogged,
-        decorateQsoBeforeSave: decorateQsoBeforeSave ?? this.decorateQsoBeforeSave,
-        onWriteError: onWriteError ?? this.onWriteError,
-      );
+  }) => LogHooks(
+    operation: operation ?? this.operation,
+    qsosRepository: qsosRepository ?? this.qsosRepository,
+    serialNumbers: serialNumbers ?? this.serialNumbers,
+    qsos: qsos ?? this.qsos,
+    onLogged: onLogged ?? this.onLogged,
+    onQsoDeleted: onQsoDeleted ?? this.onQsoDeleted,
+    onQsoUndeleted: onQsoUndeleted ?? this.onQsoUndeleted,
+    onCallListLogged: onCallListLogged ?? this.onCallListLogged,
+    decorateQsoBeforeSave: decorateQsoBeforeSave ?? this.decorateQsoBeforeSave,
+    onWriteError: onWriteError ?? this.onWriteError,
+  );
 }
 
 /// What the app is doing with the panel right now: the QSO it is editing, a
@@ -517,20 +507,19 @@ class RadioHookup {
     List<String>? enabledBands,
     List<String>? enabledModes,
     bool? trackingPower,
-  }) =>
-      RadioHookup(
-        radioService: radioService ?? this.radioService,
-        radioUpdates: radioUpdates ?? this.radioUpdates,
-        hasConfiguredRadio: hasConfiguredRadio ?? this.hasConfiguredRadio,
-        radioConnected: radioConnected ?? this.radioConnected,
-        onOpenStationConfig: onOpenStationConfig ?? this.onOpenStationConfig,
-        radioName: radioName ?? this.radioName,
-        ourItuRegion: ourItuRegion ?? this.ourItuRegion,
-        ourCountryCode: ourCountryCode ?? this.ourCountryCode,
-        enabledBands: enabledBands ?? this.enabledBands,
-        enabledModes: enabledModes ?? this.enabledModes,
-        trackingPower: trackingPower ?? this.trackingPower,
-      );
+  }) => RadioHookup(
+    radioService: radioService ?? this.radioService,
+    radioUpdates: radioUpdates ?? this.radioUpdates,
+    hasConfiguredRadio: hasConfiguredRadio ?? this.hasConfiguredRadio,
+    radioConnected: radioConnected ?? this.radioConnected,
+    onOpenStationConfig: onOpenStationConfig ?? this.onOpenStationConfig,
+    radioName: radioName ?? this.radioName,
+    ourItuRegion: ourItuRegion ?? this.ourItuRegion,
+    ourCountryCode: ourCountryCode ?? this.ourCountryCode,
+    enabledBands: enabledBands ?? this.enabledBands,
+    enabledModes: enabledModes ?? this.enabledModes,
+    trackingPower: trackingPower ?? this.trackingPower,
+  );
 }
 
 /// Where the panel learns about a callsign and what it shows about one: the
@@ -646,32 +635,27 @@ class LookupHooks {
     VoidCallback? onCallInfoTap,
     VoidCallback? onOperationInfoTap,
     InlineMarkdownOpenLink? onOpenLink,
-  }) =>
-      LookupHooks(
-        lookup: lookup ?? this.lookup,
-        enqueueLookup: enqueueLookup ?? this.enqueueLookup,
-        enqueueAllLookups: enqueueAllLookups ?? this.enqueueAllLookups,
-        operationStatsLines: operationStatsLines ?? this.operationStatsLines,
-        callLocationLine: callLocationLine ?? this.callLocationLine,
-        scoreQso: scoreQso ?? this.scoreQso,
-        scoreNoticeLabel: scoreNoticeLabel ?? this.scoreNoticeLabel,
-        workedBefore: workedBefore ?? this.workedBefore,
-        workedBeforeLabel: workedBeforeLabel ?? this.workedBeforeLabel,
-        onCallInfoChanged: onCallInfoChanged ?? this.onCallInfoChanged,
-        onCallInfoTap: onCallInfoTap ?? this.onCallInfoTap,
-        onOperationInfoTap: onOperationInfoTap ?? this.onOperationInfoTap,
-        onOpenLink: onOpenLink ?? this.onOpenLink,
-      );
+  }) => LookupHooks(
+    lookup: lookup ?? this.lookup,
+    enqueueLookup: enqueueLookup ?? this.enqueueLookup,
+    enqueueAllLookups: enqueueAllLookups ?? this.enqueueAllLookups,
+    operationStatsLines: operationStatsLines ?? this.operationStatsLines,
+    callLocationLine: callLocationLine ?? this.callLocationLine,
+    scoreQso: scoreQso ?? this.scoreQso,
+    scoreNoticeLabel: scoreNoticeLabel ?? this.scoreNoticeLabel,
+    workedBefore: workedBefore ?? this.workedBefore,
+    workedBeforeLabel: workedBeforeLabel ?? this.workedBeforeLabel,
+    onCallInfoChanged: onCallInfoChanged ?? this.onCallInfoChanged,
+    onCallInfoTap: onCallInfoTap ?? this.onCallInfoTap,
+    onOperationInfoTap: onOperationInfoTap ?? this.onOperationInfoTap,
+    onOpenLink: onOpenLink ?? this.onOpenLink,
+  );
 }
 
 /// The activities' contribution to the panel: their declarative controls, a
 /// per-QSO refresh of them, and reference decoration.
 class ActivityHooks {
-  const ActivityHooks({
-    this.activityControls = const [],
-    this.refreshActivityControls,
-    this.decorateRef,
-  });
+  const ActivityHooks({this.activityControls = const [], this.refreshActivityControls, this.decorateRef});
 
   /// Declarative activity control descriptors from extensions (UI catalog).
   /// v0 supports `input.kind == 'refList'`; each becomes a chip in the
@@ -701,13 +685,7 @@ class ActivityHooks {
 /// The command shortcuts typed into the call field: who interprets them, who
 /// runs their actions, and how a command typed elsewhere reaches this panel.
 class CommandHooks {
-  const CommandHooks({
-    this.interpretCommand,
-    this.interpretationUpdates,
-    this.onCommandMessageChanged,
-    this.onCommandAction,
-    this.onDispatcherChanged,
-  });
+  const CommandHooks({this.interpretCommand, this.interpretationUpdates, this.onCommandMessageChanged, this.onCommandAction, this.onDispatcherChanged});
 
   /// Extension-backed command shortcuts, tried on space in the call field.
   /// When null, space in the call field just advances focus.
@@ -738,12 +716,7 @@ class CommandHooks {
 /// The secondary control strip as the operator arranged it, and what the app
 /// lays between the info area and the entry row.
 class ControlStripSettings {
-  const ControlStripSettings({
-    this.controlOrder = const [],
-    this.hiddenControlKeys = const {},
-    this.onControlsSettingsChanged,
-    this.aboveEntryRow,
-  });
+  const ControlStripSettings({this.controlOrder = const [], this.hiddenControlKeys = const {}, this.onControlsSettingsChanged, this.aboveEntryRow});
 
   /// The user's preferred order for the secondary control chips, by key
   /// (`'time'`, `'radio'`, an activity control's own key, `'more'`). Keys
@@ -772,10 +745,7 @@ class ControlStripSettings {
 
 /// The Spotting control's way out to the spotting networks.
 class SpottingHooks {
-  const SpottingHooks({
-    this.suggestSpotSources,
-    this.sendSpot,
-  });
+  const SpottingHooks({this.suggestSpotSources, this.sendSpot});
 
   /// Spotting control (ham2k/halo-dist#10) — null (either) disables the
   /// control's icon-row/send-button UI, matching how a null
@@ -896,23 +866,22 @@ class LoggingPreferences {
     bool? vibrateNumbersRow,
     bool? leftieMode,
     KeyboardAccessoryController? keyboardAccessory,
-  }) =>
-      LoggingPreferences(
-        defaultOperatorCall: defaultOperatorCall ?? this.defaultOperatorCall,
-        defaultPosition: defaultPosition ?? this.defaultPosition,
-        showPositionField: showPositionField ?? this.showPositionField,
-        showRSTFields: showRSTFields ?? this.showRSTFields,
-        showStateField: showStateField ?? this.showStateField,
-        showGridField: showGridField ?? this.showGridField,
-        defaultReport: defaultReport ?? this.defaultReport,
-        defaultReportCW: defaultReportCW ?? this.defaultReportCW,
-        defaultReportFT8: defaultReportFT8 ?? this.defaultReportFT8,
-        switchSentRcvd: switchSentRcvd ?? this.switchSentRcvd,
-        jumpAfterRST: jumpAfterRST ?? this.jumpAfterRST,
-        showNumbersRow: showNumbersRow ?? this.showNumbersRow,
-        showExtraInNumbersRow: showExtraInNumbersRow ?? this.showExtraInNumbersRow,
-        vibrateNumbersRow: vibrateNumbersRow ?? this.vibrateNumbersRow,
-        leftieMode: leftieMode ?? this.leftieMode,
-        keyboardAccessory: keyboardAccessory ?? this.keyboardAccessory,
-      );
+  }) => LoggingPreferences(
+    defaultOperatorCall: defaultOperatorCall ?? this.defaultOperatorCall,
+    defaultPosition: defaultPosition ?? this.defaultPosition,
+    showPositionField: showPositionField ?? this.showPositionField,
+    showRSTFields: showRSTFields ?? this.showRSTFields,
+    showStateField: showStateField ?? this.showStateField,
+    showGridField: showGridField ?? this.showGridField,
+    defaultReport: defaultReport ?? this.defaultReport,
+    defaultReportCW: defaultReportCW ?? this.defaultReportCW,
+    defaultReportFT8: defaultReportFT8 ?? this.defaultReportFT8,
+    switchSentRcvd: switchSentRcvd ?? this.switchSentRcvd,
+    jumpAfterRST: jumpAfterRST ?? this.jumpAfterRST,
+    showNumbersRow: showNumbersRow ?? this.showNumbersRow,
+    showExtraInNumbersRow: showExtraInNumbersRow ?? this.showExtraInNumbersRow,
+    vibrateNumbersRow: vibrateNumbersRow ?? this.vibrateNumbersRow,
+    leftieMode: leftieMode ?? this.leftieMode,
+    keyboardAccessory: keyboardAccessory ?? this.keyboardAccessory,
+  );
 }

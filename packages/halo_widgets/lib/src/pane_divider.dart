@@ -41,9 +41,7 @@ import 'platform_chrome.dart';
 ///
 /// Plain logical pixels (docs/design/ui-scaling.md rule 4): never multiply
 /// by the font scale.
-double paneDividerWidth({bool editing = false}) => editing
-    ? (isMobilePlatform ? 16.0 : 11.0)
-    : (isMobilePlatform ? 9.0 : 7.0);
+double paneDividerWidth({bool editing = false}) => editing ? (isMobilePlatform ? 16.0 : 11.0) : (isMobilePlatform ? 9.0 : 7.0);
 
 /// How far BEYOND each side of the painted bar a press still counts as a
 /// grab on it — 0 off a touch platform, where the pointer lands where it is
@@ -198,7 +196,9 @@ class _PaneDividerDragTargetState extends State<PaneDividerDragTarget> {
         // paint anything — a native platform view (the map webview) may
         // still flicker under a fast drag, which is tolerated. IgnorePointer:
         // it's paint-only, it can't drive the drag itself.
-        builder: (context) => const Positioned.fill(child: IgnorePointer(child: ColoredBox(color: Colors.transparent))),
+        builder: (context) => const Positioned.fill(
+          child: IgnorePointer(child: ColoredBox(color: Colors.transparent)),
+        ),
       );
       overlay.insert(_captureOverlay!);
     }

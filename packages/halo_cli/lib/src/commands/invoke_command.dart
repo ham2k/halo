@@ -23,9 +23,7 @@ class InvokeCommand extends ExtCommand {
   InvokeCommand() {
     argParser
       ..addOption('key', help: 'Narrow to one hook key (e.g. --key core, --key pota).')
-      ..addFlag('all',
-          negatable: false,
-          help: 'Call every hook in the category, not just the highest-priority one.')
+      ..addFlag('all', negatable: false, help: 'Call every hook in the category, not just the highest-priority one.')
       ..addOption('args', help: 'Hook arguments as JSON, @file, or - for stdin.');
   }
 

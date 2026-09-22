@@ -77,11 +77,7 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   /// not take the result down with it.
   final bool diagnosticThrows;
 
-  FakeErrorReportingBackend({
-    this.failsToRun = false,
-    this.breadcrumbThrows = false,
-    this.diagnosticThrows = false,
-  });
+  FakeErrorReportingBackend({this.failsToRun = false, this.breadcrumbThrows = false, this.diagnosticThrows = false});
 
   @override
   Future<bool> run(FutureOr<void> Function() startBody) async {

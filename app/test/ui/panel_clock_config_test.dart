@@ -29,22 +29,18 @@ void main() {
 
   PanelService serviceWith(FakePanelExtensions extensions) {
     final service = PanelService(extensions);
-    service.registerNative(const PanelDefinition(
-      id: 'clock',
-      title: 'Clock',
-      source: PanelSource.native,
-      multiple: true,
-      formFields: fields,
-    ));
+    service.registerNative(const PanelDefinition(id: 'clock', title: 'Clock', source: PanelSource.native, multiple: true, formFields: fields));
     return service;
   }
 
   group('config is per placement', () {
     test('two panes of one panel read their own values', () async {
-      final extensions = FakePanelExtensions(configs: {
-        'clock#1': {clockZoneKey: 'UTC'},
-        'clock#2': {clockZoneKey: 'Asia/Tokyo'},
-      });
+      final extensions = FakePanelExtensions(
+        configs: {
+          'clock#1': {clockZoneKey: 'UTC'},
+          'clock#2': {clockZoneKey: 'Asia/Tokyo'},
+        },
+      );
       final service = serviceWith(extensions);
 
       // `configFor` is handed the panel the catalog resolved, and reads
@@ -55,9 +51,11 @@ void main() {
     });
 
     test('removing a placement forgets what it held; removing the panel does not', () async {
-      final extensions = FakePanelExtensions(configs: {
-        'clock#1': {clockZoneKey: 'Asia/Tokyo'},
-      });
+      final extensions = FakePanelExtensions(
+        configs: {
+          'clock#1': {clockZoneKey: 'Asia/Tokyo'},
+        },
+      );
       final service = serviceWith(extensions);
 
       // An instance id is an anonymous slot — `nextInstanceId` hands the
@@ -75,11 +73,13 @@ void main() {
 
   group('the pane reads its own placement', () {
     Future<void> pump(WidgetTester tester, PanelService service, String panelId) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: ClockPanel(panelId: panelId, panels: service),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ClockPanel(panelId: panelId, panels: service),
+          ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump();
     }
@@ -90,10 +90,12 @@ void main() {
         .firstWhere((p) => p is LcdFacePainter || p is AnalogFacePainter, orElse: () => null);
 
     testWidgets('each placement wears its own face', (tester) async {
-      final extensions = FakePanelExtensions(configs: {
-        'clock#1': {clockFaceKey: clockFaceAnalog},
-        'clock#2': {clockFaceKey: clockFaceLcd},
-      });
+      final extensions = FakePanelExtensions(
+        configs: {
+          'clock#1': {clockFaceKey: clockFaceAnalog},
+          'clock#2': {clockFaceKey: clockFaceLcd},
+        },
+      );
       final service = serviceWith(extensions);
 
       // clock#1 first, and against the NON-default face: a lookup that
@@ -118,9 +120,13 @@ void main() {
       // A layout outlives the release that named its face — `swiss` is
       // exactly that, dropped after the SBB face's removal. A pane that threw
       // here would take the whole Operation View with it.
-      final service = serviceWith(FakePanelExtensions(configs: {
-        'clock#1': {clockFaceKey: 'swiss'},
-      }));
+      final service = serviceWith(
+        FakePanelExtensions(
+          configs: {
+            'clock#1': {clockFaceKey: 'swiss'},
+          },
+        ),
+      );
       await pump(tester, service, 'clock#1');
       expect(painterOf(tester), isA<AnalogFacePainter>());
       expect(tester.takeException(), isNull);
@@ -140,22 +146,24 @@ void main() {
       // Without this both tabs read "Clock" and the operator has to open each
       // one's settings to find out which is which.
       final titles = <String?>[];
-      final service = serviceWith(FakePanelExtensions(configs: {
-        'clock#1': {clockZoneKey: 'America/New_York'},
-      }));
+      final service = serviceWith(
+        FakePanelExtensions(
+          configs: {
+            'clock#1': {clockZoneKey: 'America/New_York'},
+          },
+        ),
+      );
       // TranslationProvider because naming the tab reads the localized label
       // for the device zone — the only string this pane needs.
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: ClockPanel(
-              panelId: 'clock#1',
-              panels: service,
-              onTitle: titles.add,
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: ClockPanel(panelId: 'clock#1', panels: service, onTitle: titles.add),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump();
       expect(titles, ['New York']);

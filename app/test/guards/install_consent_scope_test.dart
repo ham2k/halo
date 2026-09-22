@@ -64,7 +64,8 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: 'Consent is asked for every install and for every update taken one at a time.\n'
+      reason:
+          'Consent is asked for every install and for every update taken one at a time.\n'
           'Only Update all may skip it, because the press that started it named every\n'
           'extension it would take. If you need another exception, that is a decision\n'
           'about what the operator is shown before code runs — not a parameter.',

@@ -63,10 +63,8 @@ void main() {
   });
 
   Widget wrap(Widget child) => TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(body: child),
-        ),
-      );
+    child: MaterialApp(home: Scaffold(body: child)),
+  );
 
   // The info row's second button's accessible name is 'Wipe'/'Undo' while
   // composing a new QSO, 'Delete'/'Revert'/'Restore' while editing one — a
@@ -82,20 +80,13 @@ void main() {
   // Matches the info row's second button regardless of which state it's
   // showing. Finds the Icon (which carries the name) and walks up to the
   // button, so `tap` hits the whole target rather than the glyph.
-  Finder infoRowButton(String label) => find.ancestor(
-        of: find.byWidgetPredicate((w) => w is Icon && w.semanticLabel == label),
-        matching: find.byType(IconButton),
-      );
+  Finder infoRowButton(String label) =>
+      find.ancestor(of: find.byWidgetPredicate((w) => w is Icon && w.semanticLabel == label), matching: find.byType(IconButton));
 
-  testWidgets('Escape deselects a QSO selected via the list, even though the tap never focused a compose field',
-      (tester) async {
-    await tester.pumpWidget(wrap(LoggingPanel(
-      operation: operation,
-      services: services,
-      qsos: [qso],
-      loggingControls: const [],
-      onCommandAction: (action, [params]) async {},
-    )));
+  testWidgets('Escape deselects a QSO selected via the list, even though the tap never focused a compose field', (tester) async {
+    await tester.pumpWidget(
+      wrap(LoggingPanel(operation: operation, services: services, qsos: [qso], loggingControls: const [], onCommandAction: (action, [params]) async {})),
+    );
     // A single QSO is well under the count where QsoList's first build is
     // worth deferring behind a spinner (HALO-258), so it renders directly —
     // but the wrap above still needs a frame to settle before W1AW is
@@ -134,13 +125,9 @@ void main() {
     HardwareKeyboard.instance.addHandler(viewHandler);
     addTearDown(() => HardwareKeyboard.instance.removeHandler(viewHandler));
 
-    await tester.pumpWidget(wrap(LoggingPanel(
-      operation: operation,
-      services: services,
-      qsos: [qso],
-      loggingControls: const [],
-      onCommandAction: (action, [params]) async {},
-    )));
+    await tester.pumpWidget(
+      wrap(LoggingPanel(operation: operation, services: services, qsos: [qso], loggingControls: const [], onCommandAction: (action, [params]) async {})),
+    );
     await tester.pump();
     await tester.tap(find.text('W1AW'));
     await tester.pump();
@@ -171,13 +158,9 @@ void main() {
     HardwareKeyboard.instance.addHandler(viewHandler);
     addTearDown(() => HardwareKeyboard.instance.removeHandler(viewHandler));
 
-    await tester.pumpWidget(wrap(LoggingPanel(
-      operation: operation,
-      services: services,
-      qsos: [qso],
-      loggingControls: const [],
-      onCommandAction: (action, [params]) async {},
-    )));
+    await tester.pumpWidget(
+      wrap(LoggingPanel(operation: operation, services: services, qsos: [qso], loggingControls: const [], onCommandAction: (action, [params]) async {})),
+    );
     await tester.pump();
     await tester.tap(find.text('W1AW'));
     await tester.pump();
@@ -200,13 +183,9 @@ void main() {
     // keyboard is — an operator pressing it twice is backing further out, and
     // landing back in the editor they just left is the one outcome that makes
     // the gesture unpredictable.
-    await tester.pumpWidget(wrap(LoggingPanel(
-      operation: operation,
-      services: services,
-      qsos: [qso],
-      loggingControls: const [],
-      onCommandAction: (action, [params]) async {},
-    )));
+    await tester.pumpWidget(
+      wrap(LoggingPanel(operation: operation, services: services, qsos: [qso], loggingControls: const [], onCommandAction: (action, [params]) async {})),
+    );
     await tester.pump();
 
     await tester.tap(find.text('W1AW'));
@@ -238,13 +217,9 @@ void main() {
     // of blindly deselecting.
     final deletedQso = Qso(uuid: qso.uuid, operationUuid: qso.operationUuid, data: qso.data, deleted: true);
 
-    await tester.pumpWidget(wrap(LoggingPanel(
-      operation: operation,
-      services: services,
-      qsos: [deletedQso],
-      loggingControls: const [],
-      onCommandAction: (action, [params]) async {},
-    )));
+    await tester.pumpWidget(
+      wrap(LoggingPanel(operation: operation, services: services, qsos: [deletedQso], loggingControls: const [], onCommandAction: (action, [params]) async {})),
+    );
     await tester.pump();
 
     await tester.tap(find.text('W1AW'));
@@ -270,13 +245,9 @@ void main() {
       'our': {'call': 'N0CALL', 'sent': '59'},
       'mode': 'SSB',
     });
-    await tester.pumpWidget(wrap(LoggingPanel(
-      operation: operation,
-      services: services,
-      qsos: [complete],
-      loggingControls: const [],
-      onCommandAction: (action, [params]) async {},
-    )));
+    await tester.pumpWidget(
+      wrap(LoggingPanel(operation: operation, services: services, qsos: [complete], loggingControls: const [], onCommandAction: (action, [params]) async {})),
+    );
     await tester.pump();
 
     await tester.tap(find.text('K2HAM'));

@@ -27,8 +27,7 @@ import '../support/halo_test_support.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('the new-operation FAB clears a real device inset, not just the fixed 16px (issue #205)',
-      (tester) async {
+  testWidgets('the new-operation FAB clears a real device inset, not just the fixed 16px (issue #205)', (tester) async {
     // Single-pane width: the primary pane (where the FAB lives) spans the
     // whole window and so legitimately owns the real right device inset too
     // — at a two-pane width the right edge belongs to the branding pane
@@ -42,13 +41,13 @@ void main() {
     final HaLoHarness(:services) = await makeHaLoServices();
 
     await tester.pumpWidget(
-      TranslationProvider(child: MaterialApp(home: HomeView(services: services))),
+      TranslationProvider(
+        child: MaterialApp(home: HomeView(services: services)),
+      ),
     );
     await tester.pumpAndSettle();
 
-    final positioned = tester.widget<Positioned>(
-      find.ancestor(of: find.byIcon(MdiIcons.plus), matching: find.byType(Positioned)),
-    );
+    final positioned = tester.widget<Positioned>(find.ancestor(of: find.byIcon(MdiIcons.plus), matching: find.byType(Positioned)));
     expect(positioned.bottom, 16 + 40, reason: 'FAB must clear the real bottom device inset, not just the fixed 16px');
     expect(positioned.right, 16 + 30, reason: 'FAB must clear the real right device inset, not just the fixed 16px');
 

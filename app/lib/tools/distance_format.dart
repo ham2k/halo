@@ -15,10 +15,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 /// comes from i18n, so this lives in the app layer, not halo_core.
 String fmtDistance(double km, {required bool miles}) {
   final value = miles ? km / kmPerMile : km;
-  final formatted = NumberFormat(
-    value <= 5 ? '#,##0.0' : '#,##0',
-    ui.PlatformDispatcher.instance.locale.toString(),
-  ).format(value);
+  final formatted = NumberFormat(value <= 5 ? '#,##0.0' : '#,##0', ui.PlatformDispatcher.instance.locale.toString()).format(value);
   return miles ? t.map.distanceMiles(distance: formatted) : t.map.distanceKm(distance: formatted);
 }
 

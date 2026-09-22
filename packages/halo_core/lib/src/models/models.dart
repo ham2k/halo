@@ -23,8 +23,7 @@ import 'qson_values.dart';
 /// Both `T` and `TEST` count. Neither is a standard modifier — those are
 /// `/P`, `/M`, `/MM`, `/AM` — so nothing a real operator signs with is
 /// swept in by accident.
-bool isTestCall(String call) =>
-    call.toUpperCase().split('/').any((segment) => segment == 'T' || segment == 'TEST');
+bool isTestCall(String call) => call.toUpperCase().split('/').any((segment) => segment == 'T' || segment == 'TEST');
 
 /// A logging session: one station, one setup, one stretch of time.
 class Operation {
@@ -130,8 +129,7 @@ class Operation {
     );
   }
 
-  DateTime? get startAtMax =>
-      startAtMillisMax == null ? null : DateTime.fromMillisecondsSinceEpoch(startAtMillisMax!, isUtc: true);
+  DateTime? get startAtMax => startAtMillisMax == null ? null : DateTime.fromMillisecondsSinceEpoch(startAtMillisMax!, isUtc: true);
 
   /// Falls back to app-polo's older `createdOnMillis` spelling, which
   /// operations synced from a long-lived polo install still carry (polo does
@@ -183,14 +181,7 @@ class Qso {
   /// runtime). `null` until `ScoringService` has scored this operation.
   final String? scoreCache;
 
-  const Qso({
-    required this.uuid,
-    required this.operationUuid,
-    required this.data,
-    this.deleted = false,
-    this.purged = false,
-    this.scoreCache,
-  });
+  const Qso({required this.uuid, required this.operationUuid, required this.data, this.deleted = false, this.purged = false, this.scoreCache});
 
   Map<String, dynamic>? get scores {
     if (scoreCache == null) return null;
@@ -276,6 +267,7 @@ class Qso {
     if (asQsonString(_their['grid']) != null) return null;
     return locationFromGuess(_theirGuess);
   }
+
   String? get theirState => asQsonString(_their['state']) ?? asQsonString(_theirGuess['state']);
   // Both set by the callsign-annotation lookup step
   // (`annotateCallsign`) — `entityPrefix` identifies the DXCC entity for the
@@ -318,8 +310,7 @@ class Qso {
   /// rather than an entered value — true exactly when the coalescing getters
   /// above fell back to the guess (no top-level value). Callers like the QSO
   /// row use it to render guessed-but-unconfirmed values more faintly.
-  bool theirFieldIsGuessed(String field) =>
-      asQsonString(_their[field]) == null && asQsonString(_theirGuess[field]) != null;
+  bool theirFieldIsGuessed(String field) => asQsonString(_their[field]) == null && asQsonString(_theirGuess[field]) != null;
 
   double? get freq => asQsonNum(data['freq'])?.toDouble();
   String? get band => asQsonString(data['band']);
@@ -343,8 +334,7 @@ class Qso {
   num? get power => asQsonNum(data['power']);
 
   int? get startAtMillis => asQsonNum(data['startAtMillis'])?.toInt();
-  DateTime? get startAt =>
-      startAtMillis == null ? null : DateTime.fromMillisecondsSinceEpoch(startAtMillis!, isUtc: true);
+  DateTime? get startAt => startAtMillis == null ? null : DateTime.fromMillisecondsSinceEpoch(startAtMillis!, isUtc: true);
 
   /// See `Operation.updatedAtMillis`.
   int? get updatedAtMillis => asQsonNum(data['updatedAtMillis'])?.toInt();

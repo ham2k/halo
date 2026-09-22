@@ -27,8 +27,7 @@ void listenForPeerPairingRequests(HaLoServices services) {
     final pending = services.peerService.pendingPairing;
     final peer = pending?.session?.peer;
     if (peer == null) return;
-    _openPeerPairingPrompt(services, peer.deviceId, peer.deviceName,
-        viaBluetooth: pending?.session?.link is PeerBleLink);
+    _openPeerPairingPrompt(services, peer.deviceId, peer.deviceName, viaBluetooth: pending?.session?.link is PeerBleLink);
   });
 }
 
@@ -44,24 +43,21 @@ bool _peerPairingPromptOpen = false;
 /// dropped prompt leaves a device sitting at `needsPairing` with nothing on
 /// screen to say so. Unlike a QR deep link this one does have a way back —
 /// the Peers panel lists the waiting device — so it gives up quietly.
-void _openPeerPairingPrompt(
-  HaLoServices services,
-  String deviceId,
-  String deviceName, {
-  required bool viaBluetooth,
-  int attemptsLeft = 20,
-}) {
+void _openPeerPairingPrompt(HaLoServices services, String deviceId, String deviceName, {required bool viaBluetooth, int attemptsLeft = 20}) {
   if (_peerPairingPromptOpen) return;
   final context = navigatorKey.currentContext;
   if (context == null) {
     if (attemptsLeft <= 0) {
-      debugPrint('[peer] pairing prompt dropped: no navigator after 5s — '
-          'the Peers panel still lists $deviceId');
+      debugPrint(
+        '[peer] pairing prompt dropped: no navigator after 5s — '
+        'the Peers panel still lists $deviceId',
+      );
       return;
     }
-    Timer(const Duration(milliseconds: 250),
-        () => _openPeerPairingPrompt(services, deviceId, deviceName,
-            viaBluetooth: viaBluetooth, attemptsLeft: attemptsLeft - 1));
+    Timer(
+      const Duration(milliseconds: 250),
+      () => _openPeerPairingPrompt(services, deviceId, deviceName, viaBluetooth: viaBluetooth, attemptsLeft: attemptsLeft - 1),
+    );
     return;
   }
   _peerPairingPromptOpen = true;
@@ -69,23 +65,25 @@ void _openPeerPairingPrompt(
   // dialog is up completes this future with an ERROR, which `then`'s finally
   // does not run for — and a latched flag suppresses every future pairing
   // prompt for the rest of the process.
-  unawaited(showPeerPairingDialog(context,
-          deviceName: deviceName, deviceId: deviceId, viaBluetooth: viaBluetooth)
-      .catchError((Object e) {
-    debugPrint('[peer] pairing prompt failed: $e');
-    return null;
-  }).then((allowed) async {
-    try {
-      // Dismissed rather than answered: left pending on purpose, so the
-      // Peers panel still offers it instead of it counting as a refusal.
-      if (allowed == null) return;
-      if (allowed) {
-        await services.peerService.acceptPairing(deviceId);
-      } else {
-        await services.peerService.rejectPairing(deviceId);
-      }
-    } finally {
-      _peerPairingPromptOpen = false;
-    }
-  }));
+  unawaited(
+    showPeerPairingDialog(context, deviceName: deviceName, deviceId: deviceId, viaBluetooth: viaBluetooth)
+        .catchError((Object e) {
+          debugPrint('[peer] pairing prompt failed: $e');
+          return null;
+        })
+        .then((allowed) async {
+          try {
+            // Dismissed rather than answered: left pending on purpose, so the
+            // Peers panel still offers it instead of it counting as a refusal.
+            if (allowed == null) return;
+            if (allowed) {
+              await services.peerService.acceptPairing(deviceId);
+            } else {
+              await services.peerService.rejectPairing(deviceId);
+            }
+          } finally {
+            _peerPairingPromptOpen = false;
+          }
+        }),
+  );
 }

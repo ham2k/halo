@@ -71,8 +71,7 @@ void main() {
     // what it covers. A band ABOVE it must still render correctly rather
     // than losing its leading digit — it just takes the column it needs.
     test('the reserve holds from 630 m through 70 cm', () {
-      final widths =
-          [472.0, 1800.0, 14074.0, 50313.0, 145500.0, 435000.0].map(lcdCellsForFrequency).map((c) => c.length);
+      final widths = [472.0, 1800.0, 14074.0, 50313.0, 145500.0, 435000.0].map(lcdCellsForFrequency).map((c) => c.length);
       expect(widths.toSet(), hasLength(1));
     });
 
@@ -85,18 +84,20 @@ void main() {
 
   group('a descriptor whose options changed is not the same descriptor', () {
     PanelDefinition withRadios(List<String> names) => PanelDefinition(
-          id: 'radio',
-          title: 'Radio',
-          source: PanelSource.native,
-          formFields: [
-            {
-              'type': 'field',
-              'key': 'radio',
-              'fieldType': 'select',
-              'options': [for (final name in names) {'label': name, 'value': name}],
-            },
+      id: 'radio',
+      title: 'Radio',
+      source: PanelSource.native,
+      formFields: [
+        {
+          'type': 'field',
+          'key': 'radio',
+          'fieldType': 'select',
+          'options': [
+            for (final name in names) {'label': name, 'value': name},
           ],
-        );
+        },
+      ],
+    );
 
     // The trap this exists to catch: comparing only `formFields.length` reads
     // a rebuilt picker as identical, so `registerNative` no-ops and the

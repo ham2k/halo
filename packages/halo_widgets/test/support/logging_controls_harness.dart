@@ -111,12 +111,14 @@ void installLoggingHarness() {
 /// a contest exchange have to say which contest is being run, exactly as the
 /// operator has to add the activity before the field appears.
 Operation running(List<String> refTypes) => Operation(
-      uuid: operation.uuid,
-      data: {
-        ...operation.data,
-        'refs': [for (final type in refTypes) {'type': type}],
-      },
-    );
+  uuid: operation.uuid,
+  data: {
+    ...operation.data,
+    'refs': [
+      for (final type in refTypes) {'type': type},
+    ],
+  },
+);
 
 /// The panel under test, wired with the same nine groups the app wires it
 /// with — a test names the group it varies and nothing else. [log] and
@@ -158,18 +160,13 @@ Widget host({
     session: session ?? const LoggingSession(),
     // The app passes the same object twice — RadioService is both the store
     // and the Listenable. See RadioHookup.radioUpdates.
-    radio: resolvedRadio.copyWith(
-      radioService: store,
-      radioUpdates: resolvedRadio.radioUpdates ?? (store is Listenable ? store as Listenable : null),
-    ),
+    radio: resolvedRadio.copyWith(radioService: store, radioUpdates: resolvedRadio.radioUpdates ?? (store is Listenable ? store as Listenable : null)),
     // The dupe notice is a pill in the info area keyed `duplicate`; map it
     // to DUPE so the dupe-detection tests can assert on the text. The
     // caller's own label wins, and has to be checked for here: a copyWith
     // keeps what it has only for an argument that is null, and this one
     // never is.
-    lookups: (lookups ?? const LookupHooks()).copyWith(
-      scoreNoticeLabel: lookups?.scoreNoticeLabel ?? (key) => key == 'duplicate' ? 'DUPE' : key,
-    ),
+    lookups: (lookups ?? const LookupHooks()).copyWith(scoreNoticeLabel: lookups?.scoreNoticeLabel ?? (key) => key == 'duplicate' ? 'DUPE' : key),
     activities: activities ?? const ActivityHooks(),
     commands: commands ?? const CommandHooks(),
     strip: strip ?? const ControlStripSettings(),
@@ -232,12 +229,7 @@ void raiseKeyboard(WidgetTester tester, {double logicalHeight = 300}) {
 /// LoggingControls applies a command result without booting a JS runtime.
 /// The extension itself is covered by an integration test in
 /// halo_extension_host against the real built bundle.
-Future<Map<String, dynamic>?> fakeInterpretCommand(
-  String input, [
-  Map<String, dynamic>? operation,
-  Map<String, dynamic>? qso,
-  bool execute = false,
-]) async {
+Future<Map<String, dynamic>?> fakeInterpretCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
   final band = RegExp(r'^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$', caseSensitive: false).firstMatch(input);
   if (band != null) {
     final b = '${band.group(1)!.toLowerCase()}m';
@@ -245,8 +237,10 @@ Future<Map<String, dynamic>?> fakeInterpretCommand(
       'describe': 'Change band to **$b**?',
       'confirm': 'Band set to **$b**',
       'commands': [
-        {'setVfo': {'band': b}}
-      ]
+        {
+          'setVfo': {'band': b},
+        },
+      ],
     };
   }
 
@@ -256,8 +250,10 @@ Future<Map<String, dynamic>?> fakeInterpretCommand(
       'describe': 'Change mode to **$mode**?',
       'confirm': 'Mode set to **$mode**',
       'commands': [
-        {'setVfo': {'mode': mode}}
-      ]
+        {
+          'setVfo': {'mode': mode},
+        },
+      ],
     };
   }
 
@@ -268,8 +264,10 @@ Future<Map<String, dynamic>?> fakeInterpretCommand(
         'describe': 'Change frequency to **${(freq / 1000).toStringAsFixed(3)} MHz**?',
         'confirm': 'Frequency set to **${(freq / 1000).toStringAsFixed(3)} MHz**',
         'commands': [
-          {'setVfo': {'freq': freq}}
-        ]
+          {
+            'setVfo': {'freq': freq},
+          },
+        ],
       };
     }
   }
@@ -397,11 +395,7 @@ class FailingQsosRepository extends QsosRepository {
   int _adds = 0;
 
   @override
-  Future<Qso> add(
-    String operationUuid,
-    Map<String, dynamic> qsoData, {
-    List<SequenceDescriptor> serialSequences = const [],
-  }) {
+  Future<Qso> add(String operationUuid, Map<String, dynamic> qsoData, {List<SequenceDescriptor> serialSequences = const []}) {
     if (_adds >= addsBeforeFailure) throw StateError('disk full');
     _adds++;
     return super.add(operationUuid, qsoData, serialSequences: serialSequences);
@@ -419,13 +413,7 @@ class FakeVfoStore extends ChangeNotifier implements VfoStore {
   Vfo get vfoA => _vfoA;
 
   @override
-  void setVfo(String key,
-      {double? freq,
-      String? band,
-      String? mode,
-      num? power,
-      bool clearFreq = false,
-      bool clearPower = false}) {
+  void setVfo(String key, {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {
     if (key != 'vfoA') return;
     final newPower = clearPower ? null : (power ?? _vfoA.power);
     if (freq != null) {
@@ -471,7 +459,6 @@ class _VfoWatcherState extends State<VfoWatcher> {
 
   @override
   Widget build(BuildContext context) => Text('vfo changes: $_changes');
-
 }
 
 /// A number source that answers from the sequence and records what the panel

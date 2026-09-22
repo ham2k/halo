@@ -21,14 +21,8 @@ void main() {
   const editing = Color(0xFF0088FF); // stand-in for colorScheme.secondary
   const stroke = Color(0xFF1A1A1A);
 
-  ({List<MapMarkerData> markers, List<MapLineData> lines}) build(CallInfoData? info,
-          {GridLocation? qth, String? grid = 'CM87'}) =>
-      buildHighlightData(
-          callInfo: info,
-          operationLocation: qth ?? gridToLocation(grid),
-          composingColor: composing,
-          editingColor: editing,
-          strokeColor: stroke);
+  ({List<MapMarkerData> markers, List<MapLineData> lines}) build(CallInfoData? info, {GridLocation? qth, String? grid = 'CM87'}) =>
+      buildHighlightData(callInfo: info, operationLocation: qth ?? gridToLocation(grid), composingColor: composing, editingColor: editing, strokeColor: stroke);
 
   test('nothing to highlight when there is no call info', () {
     expect(build(null).markers, isEmpty);
@@ -37,7 +31,11 @@ void main() {
 
   test('nothing to highlight when the location cannot be resolved', () {
     expect(build(CallInfoData(call: 'W1AW')).markers, isEmpty, reason: 'no guess at all');
-    expect(build(CallInfoData(call: 'W1AW', guess: {})).markers, isEmpty, reason: 'guess with no location keys');
+    expect(
+      build(CallInfoData(call: 'W1AW', guess: {})).markers,
+      isEmpty,
+      reason: 'guess with no location keys',
+    );
   });
 
   test('a resolved location produces one highlight marker in the composing colour', () {
@@ -63,8 +61,7 @@ void main() {
     expect(marker.longitude, closeTo(-72.7278, 1e-9));
 
     final squareCentre = gridToLocation('FN31pr')!;
-    expect((marker.latitude - squareCentre.latitude).abs(), greaterThan(1e-4),
-        reason: 'the fixture must not sit on the grid centre, or this test cannot fail');
+    expect((marker.latitude - squareCentre.latitude).abs(), greaterThan(1e-4), reason: 'the fixture must not sit on the grid centre, or this test cannot fail');
   });
 
   test('editing an existing QSO uses the editing colour for the marker and line', () {
@@ -92,13 +89,14 @@ void main() {
   // a line quietly passing under a dot, on web and desktop only. Whether the
   // pixels actually land that way is checked in a browser, not here.
   test('the GL script creates the base marker layer before the highlight line', () {
-    final added = RegExp(r"ensureLayer\(\w+\('([\w-]+)'")
-        .allMatches(mapGlScript)
-        .map((match) => match.group(1))
-        .toList();
+    final added = RegExp(r"ensureLayer\(\w+\('([\w-]+)'").allMatches(mapGlScript).map((match) => match.group(1)).toList();
 
-    expect(added, ['polo-lines', 'polo-markers', 'polo-lines-highlight', 'polo-markers-highlight'],
-        reason: "the current QSO's line has to come after the base markers, or it passes under their dots");
+    expect(added, [
+      'polo-lines',
+      'polo-markers',
+      'polo-lines-highlight',
+      'polo-markers-highlight',
+    ], reason: "the current QSO's line has to come after the base markers, or it passes under their dots");
   });
 
   // A maplibregl.Marker is a DOM element above the canvas, which no layer can

@@ -31,9 +31,7 @@ void main() {
   // target platform is) a transparent, wider grab strip is stacked over it,
   // carrying the same cursor and the same callbacks — so a gesture aimed
   // here goes through the strip, which is the point of it.
-  final dividerHandles = find.byWidgetPredicate(
-    (w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight,
-  );
+  final dividerHandles = find.byWidgetPredicate((w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeLeftRight);
   final dividerHandle = dividerHandles.first;
 
   const primary = SizedBox(key: Key('primary'), child: Text('primary'));
@@ -64,12 +62,7 @@ void main() {
 
     await tester.pumpWidget(
       harness(
-        child: const ResizableSplitView(
-          primary: primary,
-          secondary: secondary,
-          preferredPrimaryWidth: 500,
-          dividerStyle: SplitDividerStyle.surfaces,
-        ),
+        child: const ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500, dividerStyle: SplitDividerStyle.surfaces),
       ),
     );
     await tester.pumpAndSettle();
@@ -92,12 +85,7 @@ void main() {
 
     final theme = Theme.of(tester.element(dividerHandle));
     final headerColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
-    final bar = tester.widget<Container>(
-      find.descendant(
-        of: dividerHandle,
-        matching: find.byWidgetPredicate((w) => w is Container && w.color == headerColor),
-      ),
-    );
+    final bar = tester.widget<Container>(find.descendant(of: dividerHandle, matching: find.byWidgetPredicate((w) => w is Container && w.color == headerColor)));
     expect(bar.color, headerColor, reason: 'the solid divider reads as chrome: same surface as the header');
   });
 
@@ -128,8 +116,7 @@ void main() {
     expect(primaryWidth(tester), ShirtSize.sMax);
   });
 
-  testWidgets('resizable: false with primaryFraction sizes the primary as a fixed fraction and hides the drag handle',
-      (tester) async {
+  testWidgets('resizable: false with primaryFraction sizes the primary as a fixed fraction and hides the drag handle', (tester) async {
     tester.view.physicalSize = const Size(1000, 600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -273,8 +260,7 @@ void main() {
     );
   });
 
-  testWidgets('an ambient device inset reaches only the pane whose edge is at that physical edge (issue #205)',
-      (tester) async {
+  testWidgets('an ambient device inset reaches only the pane whose edge is at that physical edge (issue #205)', (tester) async {
     tester.view.physicalSize = const Size(1000, 600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -341,8 +327,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    AnimatedOpacity dots() =>
-        tester.widget<AnimatedOpacity>(find.descendant(of: dividerHandle, matching: find.byType(AnimatedOpacity)));
+    AnimatedOpacity dots() => tester.widget<AnimatedOpacity>(find.descendant(of: dividerHandle, matching: find.byType(AnimatedOpacity)));
     expect(dots().opacity, 0.5, reason: 'resting: an invitation, not furniture');
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -369,12 +354,7 @@ void main() {
       child: MaterialApp(
         theme: theme,
         home: const Scaffold(
-          body: ResizableSplitView(
-            primary: primary,
-            secondary: secondary,
-            preferredPrimaryWidth: 500,
-            dividerStyle: SplitDividerStyle.surfaces,
-          ),
+          body: ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500, dividerStyle: SplitDividerStyle.surfaces),
         ),
       ),
     );
@@ -383,9 +363,7 @@ void main() {
       final box = tester.widget<DecoratedBox>(
         find.descendant(
           of: find.byType(IgnorePointer),
-          matching: find.byWidgetPredicate(
-            (w) => w is DecoratedBox && (w.decoration as BoxDecoration).gradient != null,
-          ),
+          matching: find.byWidgetPredicate((w) => w is DecoratedBox && (w.decoration as BoxDecoration).gradient != null),
         ),
       );
       return ((box.decoration as BoxDecoration).gradient! as LinearGradient).colors.first;
@@ -428,11 +406,7 @@ void main() {
         child: ResizableSplitView(
           dividerStyle: SplitDividerStyle.surfaces,
           primary: primary,
-          secondary: GestureDetector(
-            key: const Key('pane-button'),
-            behavior: HitTestBehavior.opaque,
-            onTap: () => taps++,
-          ),
+          secondary: GestureDetector(key: const Key('pane-button'), behavior: HitTestBehavior.opaque, onTap: () => taps++),
           preferredPrimaryWidth: 500,
         ),
       ),
@@ -460,12 +434,7 @@ void main() {
     final reported = <double>[];
     await tester.pumpWidget(
       harness(
-        child: ResizableSplitView(
-          primary: primary,
-          secondary: secondary,
-          preferredPrimaryWidth: 500,
-          onPreferredPrimaryWidthChanged: reported.add,
-        ),
+        child: ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500, onPreferredPrimaryWidthChanged: reported.add),
       ),
     );
     await tester.pumpAndSettle();
@@ -493,22 +462,14 @@ void main() {
     final reported = <double>[];
     await tester.pumpWidget(
       harness(
-        child: ResizableSplitView(
-          primary: primary,
-          secondary: secondary,
-          onPreferredPrimaryWidthChanged: reported.add,
-        ),
+        child: ResizableSplitView(primary: primary, secondary: secondary, onPreferredPrimaryWidthChanged: reported.add),
       ),
     );
     await tester.pumpAndSettle();
     final before = primaryWidth(tester);
 
     // Down on the strip, straight up the screen and well past kTouchSlop.
-    await tester.timedDragFrom(
-      Offset(before + 2, 300),
-      const Offset(0, -120),
-      const Duration(milliseconds: 200),
-    );
+    await tester.timedDragFrom(Offset(before + 2, 300), const Offset(0, -120), const Duration(milliseconds: 200));
     await tester.pumpAndSettle();
 
     expect(primaryWidth(tester), before, reason: 'a cross-axis swipe moves no boundary');
@@ -529,12 +490,7 @@ void main() {
     final reported = <double>[];
     await tester.pumpWidget(
       harness(
-        child: ResizableSplitView(
-          primary: primary,
-          secondary: secondary,
-          preferredPrimaryWidth: 500,
-          onPreferredPrimaryWidthChanged: reported.add,
-        ),
+        child: ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500, onPreferredPrimaryWidthChanged: reported.add),
       ),
     );
     await tester.pumpAndSettle();
@@ -559,11 +515,7 @@ void main() {
     final statefulPrimary = TextFormField(key: fieldKey, initialValue: '');
 
     Widget build({required bool twoPane}) => harness(
-      child: ResizableSplitView(
-        primary: statefulPrimary,
-        secondary: twoPane ? secondary : null,
-        preferredPrimaryWidth: 500,
-      ),
+      child: ResizableSplitView(primary: statefulPrimary, secondary: twoPane ? secondary : null, preferredPrimaryWidth: 500),
     );
 
     await tester.pumpWidget(build(twoPane: false));
@@ -612,13 +564,7 @@ void main() {
 
     await tester.pumpWidget(
       harness(
-        child: const ResizableSplitView(
-          primary: primary,
-          secondary: secondary,
-          preferredPrimaryWidth: 100,
-          minPrimaryWidth: 300,
-          maxPrimaryWidth: 450,
-        ),
+        child: const ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 100, minPrimaryWidth: 300, maxPrimaryWidth: 450),
       ),
     );
     await tester.pumpAndSettle();
@@ -626,13 +572,7 @@ void main() {
 
     await tester.pumpWidget(
       harness(
-        child: const ResizableSplitView(
-          primary: primary,
-          secondary: secondary,
-          preferredPrimaryWidth: 800,
-          minPrimaryWidth: 300,
-          maxPrimaryWidth: 450,
-        ),
+        child: const ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 800, minPrimaryWidth: 300, maxPrimaryWidth: 450),
       ),
     );
     await tester.pumpAndSettle();
@@ -647,12 +587,7 @@ void main() {
     final reported = <double>[];
     await tester.pumpWidget(
       harness(
-        child: ResizableSplitView(
-          primary: primary,
-          secondary: secondary,
-          preferredPrimaryWidth: 500,
-          onPreferredPrimaryWidthChanged: reported.add,
-        ),
+        child: ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500, onPreferredPrimaryWidthChanged: reported.add),
       ),
     );
     await tester.pumpAndSettle();
@@ -687,12 +622,7 @@ void main() {
     final reported = <double>[];
     await tester.pumpWidget(
       harness(
-        child: ResizableSplitView(
-          primary: primary,
-          secondary: secondary,
-          preferredPrimaryWidth: 500,
-          onPreferredPrimaryWidthChanged: reported.add,
-        ),
+        child: ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500, onPreferredPrimaryWidthChanged: reported.add),
       ),
     );
     await tester.pumpAndSettle();
@@ -769,12 +699,7 @@ void main() {
     final reported = <double>[];
     await tester.pumpWidget(
       harness(
-        child: ResizableSplitView(
-          primary: primary,
-          secondary: secondary,
-          preferredPrimaryWidth: 500,
-          onPreferredPrimaryWidthChanged: reported.add,
-        ),
+        child: ResizableSplitView(primary: primary, secondary: secondary, preferredPrimaryWidth: 500, onPreferredPrimaryWidthChanged: reported.add),
       ),
     );
     await tester.pumpAndSettle();

@@ -29,8 +29,7 @@ class SystemLists {
       case r'$core.bands':
         final common = halo_core.popularBands.toSet();
         return [
-          for (final band in halo_core.extendedBands)
-            {'label': band, 'value': band, if (common.contains(band)) 'common': true},
+          for (final band in halo_core.extendedBands) {'label': band, 'value': band, if (common.contains(band)) 'common': true},
         ];
       // Modes tier three ways, like app-polo: MAIN_MODES upfront,
       // POPULAR_MODES behind "Show more", the rest of the ADIF list
@@ -40,12 +39,7 @@ class SystemLists {
         final popular = halo_core.popularModes.toSet();
         return [
           for (final mode in halo_core.adifModes)
-            {
-              'label': mode,
-              'value': mode,
-              if (common.contains(mode)) 'common': true,
-              if (!common.contains(mode) && !popular.contains(mode)) 'uncommon': true,
-            },
+            {'label': mode, 'value': mode, if (common.contains(mode)) 'common': true, if (!common.contains(mode) && !popular.contains(mode)) 'uncommon': true},
         ];
       default:
         return null;

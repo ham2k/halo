@@ -78,20 +78,8 @@ Future<void> showEquipmentReportDialog(
       'title': st.reportTitle,
       'elements': [
         {'type': 'markdown', 'text': st.reportIntro},
-        {
-          'type': 'field',
-          'fieldType': 'text',
-          'key': 'manufacturer',
-          'label': st.reportManufacturer,
-          'description': st.reportManufacturerDescription,
-        },
-        {
-          'type': 'field',
-          'fieldType': 'text',
-          'key': 'model',
-          'label': st.reportModel,
-          'description': st.reportModelDescription,
-        },
+        {'type': 'field', 'fieldType': 'text', 'key': 'manufacturer', 'label': st.reportManufacturer, 'description': st.reportManufacturerDescription},
+        {'type': 'field', 'fieldType': 'text', 'key': 'model', 'label': st.reportModel, 'description': st.reportModelDescription},
         {
           'type': 'field',
           'fieldType': 'radio',
@@ -103,20 +91,8 @@ Future<void> showEquipmentReportDialog(
             {'value': _Outcome.fails.name, 'label': st.reportOutcomeFails},
           ],
         },
-        {
-          'type': 'field',
-          'fieldType': 'multiline',
-          'key': 'comments',
-          'label': st.reportComments,
-          'placeholder': st.reportCommentsPlaceholder,
-        },
-        {
-          'type': 'field',
-          'fieldType': 'multiline',
-          'key': 'hints',
-          'label': st.reportHints,
-          'placeholder': st.reportHintsPlaceholder,
-        },
+        {'type': 'field', 'fieldType': 'multiline', 'key': 'comments', 'label': st.reportComments, 'placeholder': st.reportCommentsPlaceholder},
+        {'type': 'field', 'fieldType': 'multiline', 'key': 'hints', 'label': st.reportHints, 'placeholder': st.reportHintsPlaceholder},
       ],
     },
     initialState: {...equipmentReportPrefill(node, type), 'comments': '', 'hints': ''},
@@ -142,13 +118,7 @@ Future<void> showEquipmentReportDialog(
     barrierDismissible: false,
     builder: (context) => _ReportSubmissionDialog(
       services: services,
-      report: buildEquipmentReport(
-        values: values,
-        node: node,
-        type: type,
-        state: state,
-        registry: services.cat.registry,
-      ),
+      report: buildEquipmentReport(values: values, node: node, type: type, state: state, registry: services.cat.registry),
     ),
   );
 }
@@ -182,9 +152,9 @@ Future<void> showEquipmentReportDialog(
 /// operator's mouth, and it is the one field the whole report turns on.
 @visibleForTesting
 Map<String, dynamic> equipmentReportPrefill(EquipmentNode node, EquipmentType type) => {
-      'manufacturer': type.manufacturer ?? type.driver.name.split(RegExp(r'\s')).first,
-      'model': node.name,
-    };
+  'manufacturer': type.manufacturer ?? type.driver.name.split(RegExp(r'\s')).first,
+  'model': node.name,
+};
 
 /// The operator's answers plus everything the app knows about the radio it
 /// was talking to, as one card.
@@ -224,11 +194,7 @@ EquipmentReport buildEquipmentReport({
     ...equipmentSetupLines(node: node, type: type, state: state, registry: registry),
   ].join('\n');
 
-  return (
-    title: [manufacturer, model, outcome.titleWord].where((part) => part.isNotEmpty).join(' '),
-    body: body,
-    kind: outcome.kind,
-  );
+  return (title: [manufacturer, model, outcome.titleWord].where((part) => part.isNotEmpty).join(' '), body: body, kind: outcome.kind);
 }
 
 /// Sends the report and says what happened. Nothing to fill in — it starts
@@ -258,11 +224,7 @@ class _ReportSubmissionDialogState extends State<_ReportSubmissionDialog> {
   }
 
   Future<void> _submit() async {
-    final result = await widget.services.extensions.submitReport(
-      title: widget.report.title,
-      body: widget.report.body,
-      kind: widget.report.kind,
-    );
+    final result = await widget.services.extensions.submitReport(title: widget.report.title, body: widget.report.body, kind: widget.report.kind);
     // This dialog cannot be dismissed while the call is in flight, so being
     // unmounted here means the whole route stack went — there is nobody left
     // to tell. The console still gets it: a failure with no surface anywhere
@@ -302,12 +264,7 @@ class _ReportSubmissionDialogState extends State<_ReportSubmissionDialog> {
               }),
         // The report has already been sent by the time this shows, so this is
         // a way out rather than a confirm: Done, plain, in the cancel slot.
-        cancel: result == null
-            ? null
-            : TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(context.t.common.done),
-              ),
+        cancel: result == null ? null : TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
       ),
     );
   }

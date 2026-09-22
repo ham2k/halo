@@ -21,42 +21,42 @@ import 'package:halo_core/halo_core.dart' show nowUtc;
 import '../services/catalog_service.dart';
 import '../services/error_reporting_service.dart';
 import '../config/experiments.dart' show kCatalogExperiment;
-import '../services/extension_relevance.dart'
-    show ExtensionRelevance, OperatorGeo, kAlwaysSuggested, kRelevanceSoon, relevanceBand;
+import '../services/extension_relevance.dart' show ExtensionRelevance, OperatorGeo, kAlwaysSuggested, kRelevanceSoon, relevanceBand;
 import '../services/extension_service.dart';
 import '../services/installed_extensions.dart';
 import 'extension_install_flow.dart';
 import '../services/halo_services.dart';
+
 /// Category display order; anything unrecognized lands in "other". Public
 /// because the Accounts panel groups by the same categories, and two lists in
 /// two orders would present the same extensions differently in each.
 const extensionCategoryOrder = ['activity', 'contest', 'lookup', 'spots', 'dashboard'];
 
 String extensionCategoryTitle(String category) => switch (category) {
-      'activity' => t.extensionsPanel.categoryActivity,
-      'contest' => t.extensionsPanel.categoryContest,
-      'lookup' => t.extensionsPanel.categoryLookup,
-      'spots' => t.extensionsPanel.categorySpots,
-      'dashboard' => t.extensionsPanel.categoryDashboard,
-      _ => t.extensionsPanel.categoryOther,
-    };
+  'activity' => t.extensionsPanel.categoryActivity,
+  'contest' => t.extensionsPanel.categoryContest,
+  'lookup' => t.extensionsPanel.categoryLookup,
+  'spots' => t.extensionsPanel.categorySpots,
+  'dashboard' => t.extensionsPanel.categoryDashboard,
+  _ => t.extensionsPanel.categoryOther,
+};
 
 IconData extensionCategoryIcon(String? category) => switch (category) {
-      'activity' => MdiIcons.compass,
-      'contest' => MdiIcons.trophy,
-      'lookup' => MdiIcons.accountSearch,
-      'spots' => MdiIcons.radioTower,
-      'dashboard' => MdiIcons.viewDashboard,
-      _ => MdiIcons.toyBrick,
-    };
+  'activity' => MdiIcons.compass,
+  'contest' => MdiIcons.trophy,
+  'lookup' => MdiIcons.accountSearch,
+  'spots' => MdiIcons.radioTower,
+  'dashboard' => MdiIcons.viewDashboard,
+  _ => MdiIcons.toyBrick,
+};
 
 /// The categories present in [keys], in [extensionCategoryOrder] first and
 /// then whatever else turned up, so a caller grouping by category doesn't
 /// restate the ordering rule.
 List<String> extensionCategoriesIn(Iterable<String> keys) => [
-      ...extensionCategoryOrder.where(keys.contains),
-      ...keys.where((c) => !extensionCategoryOrder.contains(c)),
-    ];
+  ...extensionCategoryOrder.where(keys.contains),
+  ...keys.where((c) => !extensionCategoryOrder.contains(c)),
+];
 
 class ExtensionsPanel extends StatefulWidget {
   final HaLoServices services;
@@ -130,10 +130,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
   /// under the experiment while the catalog is not live. Hidden entirely:
   /// no header, no status line, and no fetch — a section that is not built
   /// but still asks the catalog is a request nobody can see the reason for.
-  bool get _catalogShown =>
-      widget.onlyHook == null &&
-      InstalledExtensions.isSupported &&
-      widget.services.settings.experimentEnabled(kCatalogExperiment);
+  bool get _catalogShown => widget.onlyHook == null && InstalledExtensions.isSupported && widget.services.settings.experimentEnabled(kCatalogExperiment);
 
   /// What [_catalogShown] answered last, so the settings change that flips
   /// the experiment is told apart from every other one (an override, a
@@ -246,7 +243,10 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       if (!held.contains(key)) held.add(key);
     }
     final present = natural.toSet();
-    return [for (final key in held) if (present.contains(key)) key];
+    return [
+      for (final key in held)
+        if (present.contains(key)) key,
+    ];
   }
 
   Future<void> _toggle(String key, bool enabled) async {
@@ -291,26 +291,29 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     if (name == null) return; // cancelled, or refused with its own dialog
     services.track('extension_installed', {});
     if (mounted) {
-      services.statusBar.setMessage(key: 'extensions:installed', text: t.extensionsPanel.installedMessage(name: name));
+      services.statusBar.setMessage(
+        key: 'extensions:installed',
+        text: t.extensionsPanel.installedMessage(name: name),
+      );
     }
   }
 
   /// Install or Update from the catalog: the shared path (installFromCatalog),
   /// with this panel's applying state driven around the commit.
   Future<void> _installFromCatalog(CatalogEntry entry, {bool askConsent = true}) => installFromCatalog(
-        context,
-        services: widget.services,
-        release: entry.release,
-        askConsent: askConsent,
-        commit: (bundle) async {
-          if (mounted) setState(() => _applying = true);
-          try {
-            await widget.services.extensions.installBundle(bundle);
-          } finally {
-            if (mounted) setState(() => _applying = false);
-          }
-        },
-      );
+    context,
+    services: widget.services,
+    release: entry.release,
+    askConsent: askConsent,
+    commit: (bundle) async {
+      if (mounted) setState(() => _applying = true);
+      try {
+        await widget.services.extensions.installBundle(bundle);
+      } finally {
+        if (mounted) setState(() => _applying = false);
+      }
+    },
+  );
 
   /// Opens an extension's details, and does whatever the operator chose
   /// there — the dialog only ever answers.
@@ -406,8 +409,10 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       // not work.
       ErrorReportingService.report(e, stack, context: 'extension-uninstall');
       if (mounted) {
-        widget.services.statusBar
-            .setMessage(key: 'extensions:uninstall', text: t.extensionsPanel.uninstallFailed(name: name));
+        widget.services.statusBar.setMessage(
+          key: 'extensions:uninstall',
+          text: t.extensionsPanel.uninstallFailed(name: name),
+        );
       }
     } finally {
       if (mounted) setState(() => _applying = false);
@@ -426,8 +431,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     // flush against the pane's edges: fall back to the settings-list inset
     // and publish it, so the rows below line up with the field rather than
     // each taking a default of their own.
-    final rowInset =
-        ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: settingsRowInset);
+    final rowInset = ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: settingsRowInset);
     final query = _searchController.text.trim().toLowerCase();
 
     return ListenableBuilder(
@@ -483,8 +487,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         // flipped off would otherwise leave a badge with nowhere to go.
         bool hasUpdate(String key) =>
             _catalogShown &&
-            ((catalogByKey[key]?.isNewerThan(installedVersions[key]) ?? false) ||
-                (pendingUpdates[key]?.isNewerThan(installedVersions[key]) ?? false));
+            ((catalogByKey[key]?.isNewerThan(installedVersions[key]) ?? false) || (pendingUpdates[key]?.isNewerThan(installedVersions[key]) ?? false));
 
         // What the catalog offers that the operator does not already have.
         //
@@ -506,10 +509,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           }
         }
 
-        final categories = extensionCategoriesIn({
-          for (final info in visible) info.category ?? 'other',
-          for (final entry in offers) entry.category ?? 'other',
-        });
+        final categories = extensionCategoriesIn({for (final info in visible) info.category ?? 'other', for (final entry in offers) entry.category ?? 'other'});
 
         // Which of the offers are worth putting in front of somebody who did
         // not ask. Ninety extensions under five headings would bury what an
@@ -527,7 +527,6 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           if (relevance.dates.isNotEmpty) return relevance.startsWithin(kRelevanceSoon, now);
           return bandOf(relevance) < 2;
         }
-
 
         final overrides = settings.extensionOverrides;
         final revoked = settings.extensionRevoked;
@@ -558,67 +557,70 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           // offering something to browse.
           final notice = HaLoColors.of(context).notice;
           final onNotice = HaLoColors.of(context).onNotice;
-          rows.add(SectionHeader(
-            t.extensionsPanel.pendingUpdatesSection,
-            background: notice,
-            color: onNotice,
-            trailing: OutlinedButton(
-              onPressed: _applying ? null : () => unawaited(_updateAll(pending)),
-              // Outlined, so the verb reads as a button on a ground that is
-              // already a colour: a bare label on the notice yellow is one
-              // more piece of the sentence around it.
-              style: OutlinedButton.styleFrom(
-                foregroundColor: onNotice,
-                side: BorderSide(color: onNotice),
+          rows.add(
+            SectionHeader(
+              t.extensionsPanel.pendingUpdatesSection,
+              background: notice,
+              color: onNotice,
+              trailing: OutlinedButton(
+                onPressed: _applying ? null : () => unawaited(_updateAll(pending)),
+                // Outlined, so the verb reads as a button on a ground that is
+                // already a colour: a bare label on the notice yellow is one
+                // more piece of the sentence around it.
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: onNotice,
+                  side: BorderSide(color: onNotice),
+                ),
+                child: Text(t.extensionsPanel.updateAllAction),
               ),
-              child: Text(t.extensionsPanel.updateAllAction),
             ),
-          ));
+          );
           for (final entry in pending) {
             final info = visible.firstWhere((i) => i.key == entry.key);
-            rows.add(ListTile(
-              key: ValueKey('pending-${entry.key}'),
-              // The tile's own ground, which fills the row's whole width: the
-              // band's ColoredBox reaches the pane's edges and the rows under
-              // it have to as well, or the notice is a stripe with a ragged
-              // side.
-              tileColor: notice,
-              leading: ExtensionIconTile(
-                icon: info.icon,
-                accentColor: info.accentColor,
-                fallbackIcon: extensionCategoryIcon(info.category),
-              ),
-              title: Text(info.nameFor(locale), style: TextStyle(color: onNotice)),
-              // What it would become, beside what it is: the row is about the
-              // gap between the two, and a version on its own says neither.
-              subtitle: Text(
-                t.extensionsPanel.installVersion(version: '${info.version} → ${entry.version}'),
-                style: TextStyle(color: onNotice),
-              ),
-              trailing: SizedBox(
-                height: _trailingControlHeight,
-                child: FilledButton(
-                  onPressed: _applying ? null : () => unawaited(_installFromCatalog(entry)),
-                  child: Text(t.extensionsPanel.updateAction),
+            rows.add(
+              ListTile(
+                key: ValueKey('pending-${entry.key}'),
+                // The tile's own ground, which fills the row's whole width: the
+                // band's ColoredBox reaches the pane's edges and the rows under
+                // it have to as well, or the notice is a stripe with a ragged
+                // side.
+                tileColor: notice,
+                leading: ExtensionIconTile(icon: info.icon, accentColor: info.accentColor, fallbackIcon: extensionCategoryIcon(info.category)),
+                title: Text(info.nameFor(locale), style: TextStyle(color: onNotice)),
+                // What it would become, beside what it is: the row is about the
+                // gap between the two, and a version on its own says neither.
+                subtitle: Text(
+                  t.extensionsPanel.installVersion(version: '${info.version} → ${entry.version}'),
+                  style: TextStyle(color: onNotice),
+                ),
+                trailing: SizedBox(
+                  height: _trailingControlHeight,
+                  child: FilledButton(onPressed: _applying ? null : () => unawaited(_installFromCatalog(entry)), child: Text(t.extensionsPanel.updateAction)),
                 ),
               ),
-            ));
+            );
           }
         }
 
         for (final category in categories) {
-          final inCategory = [for (final info in visible) if ((info.category ?? 'other') == category) info]
-            ..sort((a, b) {
-              final byBand = bandOf(a.relevance).compareTo(bandOf(b.relevance));
-              if (byBand != 0) return byBand;
-              return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
-            });
-          final offered = [for (final e in offers) if ((e.category ?? 'other') == category) e]
-            ..sort((a, b) {
-              final byBand = bandOf(a.relevance).compareTo(bandOf(b.relevance));
-              if (byBand != 0) return byBand;
-              return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
-            });
+          final inCategory =
+              [
+                for (final info in visible)
+                  if ((info.category ?? 'other') == category) info,
+              ]..sort((a, b) {
+                final byBand = bandOf(a.relevance).compareTo(bandOf(b.relevance));
+                if (byBand != 0) return byBand;
+                return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
+              });
+          final offered =
+              [
+                for (final e in offers)
+                  if ((e.category ?? 'other') == category) e,
+              ]..sort((a, b) {
+                final byBand = bandOf(a.relevance).compareTo(bandOf(b.relevance));
+                if (byBand != 0) return byBand;
+                return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
+              });
           // A search is the operator asking, so it answers in full — and so
           // does a category they have opened. Otherwise the head of the list
           // is what is suggested, and only a few of it: a heading that
@@ -637,11 +639,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           final store = extensionService.installed;
           final installedByKey = {for (final info in inCategory) info.key: info};
           final offersByKey = {for (final entry in shown) entry.key: entry};
-          final order = _orderFor(
-            category,
-            [...inCategory.map((info) => info.key), ...shown.map((entry) => entry.key)],
-            frozen: query.isEmpty,
-          );
+          final order = _orderFor(category, [...inCategory.map((info) => info.key), ...shown.map((entry) => entry.key)], frozen: query.isEmpty);
           for (final orderedKey in order) {
             final info = installedByKey[orderedKey];
             final entry = offersByKey[orderedKey];
@@ -651,11 +649,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
               // The extension's own icon (build-index `icon`, mirroring its
               // hooks) when it has one; the category icon otherwise, on the
               // accent its manifest names.
-              final icon = ExtensionIconTile(
-                icon: info.icon,
-                accentColor: info.accentColor,
-                fallbackIcon: extensionCategoryIcon(info.category),
-              );
+              final icon = ExtensionIconTile(icon: info.icon, accentColor: info.accentColor, fallbackIcon: extensionCategoryIcon(info.category));
               final title = Text(info.nameFor(locale));
               final description = info.descriptionFor(locale);
               // Stable identity: without keys, list churn during the applying
@@ -673,23 +667,22 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 // extension the app ships is at whatever version the app is,
                 // which is nobody's to act on, so it says so where the others
                 // carry a version. The tap still toggles the whole row.
-                rows.add(ListTile(
-                  key: rowKey,
-                  leading: icon,
-                  title: title,
-                  subtitle: _DescriptionLine(
-                    description: description,
-                    onDetails: () => unawaited(_showDetails(info)),
+                rows.add(
+                  ListTile(
+                    key: rowKey,
+                    leading: icon,
+                    title: title,
+                    subtitle: _DescriptionLine(description: description, onDetails: () => unawaited(_showDetails(info))),
+                    onTap: () => toggle(!enabled),
+                    mouseCursor: SystemMouseCursors.click,
+                    trailing: _TrailingWithCaption(
+                      caption: t.extensionsPanel.builtIn,
+                      control: _trailingSwitch(value: enabled, onChanged: toggle),
+                    ),
                   ),
-                  onTap: () => toggle(!enabled),
-                  mouseCursor: SystemMouseCursors.click,
-                  trailing: _TrailingWithCaption(
-                    caption: t.extensionsPanel.builtIn,
-                    control: _trailingSwitch(value: enabled, onChanged: toggle),
-                  ),
-                ));
-              continue;
-            }
+                );
+                continue;
+              }
 
               // An installed extension sits in its own category alongside the
               // app's own — it is the same kind of thing, and splitting them
@@ -708,43 +701,43 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
               // switch, unlike a revoked release: the operator turning it off
               // is a choice that still means something once a later version
               // lifts the refusal.
-              rows.add(ListTile(
-                key: rowKey,
-                leading: icon,
-                title: title,
-                // The row toggles, as the built-in rows above it do. Boxing the
-                // switch to [_trailingControlHeight] to make room for the
-                // version under it takes its tap target below the 48 Material
-                // asks for, and the row is what gives that back.
-                onTap: isRevoked ? null : () => toggle(!enabled),
-                mouseCursor: isRevoked ? null : SystemMouseCursors.click,
-                // No "Installed" here any more: it sits under the same headings
-                // as the app's own extensions, so saying so on every row said
-                // nothing the section did not. What is left is what is
-                // UNUSUAL about this one.
-                subtitle: _DescriptionLine(
-                  description: [
-                    if (isRevoked) t.extensionsPanel.revokedBadge,
-                    if (extensionService.isExtensionRefused(info)) t.extensionsPanel.refusedBadge,
-                    if (hasUpdate(info.key)) t.extensionsPanel.updateAvailableBadge,
-                    if (revokedNote.isNotEmpty) revokedNote,
-                    ?description,
-                  ].join(' · '),
-                  onDetails: () => unawaited(_showDetails(info)),
+              rows.add(
+                ListTile(
+                  key: rowKey,
+                  leading: icon,
+                  title: title,
+                  // The row toggles, as the built-in rows above it do. Boxing the
+                  // switch to [_trailingControlHeight] to make room for the
+                  // version under it takes its tap target below the 48 Material
+                  // asks for, and the row is what gives that back.
+                  onTap: isRevoked ? null : () => toggle(!enabled),
+                  mouseCursor: isRevoked ? null : SystemMouseCursors.click,
+                  // No "Installed" here any more: it sits under the same headings
+                  // as the app's own extensions, so saying so on every row said
+                  // nothing the section did not. What is left is what is
+                  // UNUSUAL about this one.
+                  subtitle: _DescriptionLine(
+                    description: [
+                      if (isRevoked) t.extensionsPanel.revokedBadge,
+                      if (extensionService.isExtensionRefused(info)) t.extensionsPanel.refusedBadge,
+                      if (hasUpdate(info.key)) t.extensionsPanel.updateAvailableBadge,
+                      if (revokedNote.isNotEmpty) revokedNote,
+                      ?description,
+                    ].join(' · '),
+                    onDetails: () => unawaited(_showDetails(info)),
+                  ),
+                  trailing: _TrailingWithCaption(
+                    // What is installed, not what the catalog offers: the offer
+                    // is on the catalog row below, and the two together are what
+                    // an update moves between.
+                    caption: info.version,
+                    // Removing lives in the details dialog now. It was a bin
+                    // beside the switch, one mis-aimed click from a toggle, and
+                    // the row it sat on could not say what would be removed.
+                    control: isRevoked ? const SizedBox(height: _trailingControlHeight) : _trailingSwitch(value: enabled, onChanged: toggle),
+                  ),
                 ),
-                trailing: _TrailingWithCaption(
-                  // What is installed, not what the catalog offers: the offer
-                  // is on the catalog row below, and the two together are what
-                  // an update moves between.
-                  caption: info.version,
-                  // Removing lives in the details dialog now. It was a bin
-                  // beside the switch, one mis-aimed click from a toggle, and
-                  // the row it sat on could not say what would be removed.
-                  control: isRevoked
-                      ? const SizedBox(height: _trailingControlHeight)
-                      : _trailingSwitch(value: enabled, onChanged: toggle),
-                ),
-              ));
+              );
               continue;
             }
             // The catalog's offer, under the same heading as what the operator
@@ -752,36 +745,38 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
             // a question about where it came from.
             shownOffers.add('catalog:${entry!.key}');
             final description = entry.descriptionFor(locale);
-            rows.add(ListTile(
-              key: ValueKey('catalog-${entry.key}'),
-              // The glyph in the accent rather than a solid tile of it, and
-              // faded: this row is an offer, and at an installed row's weight
-              // it claims a place in the panel that nothing has taken yet.
-              leading: ExtensionIconTile(
-                icon: entry.icon,
-                accentColor: entry.accentColor,
-                fallbackIcon: extensionCategoryIcon(entry.category),
-                filled: false,
-                opacity: kUninstalledIconOpacity,
-              ),
-              title: Text(entry.nameFor(locale)),
-              subtitle: description == null ? null : Text(description),
-              // The offered version under the button, as an installed row
-              // carries the version it holds.
-              trailing: _TrailingWithCaption(
-                caption: entry.version,
-                control: SizedBox(
-                  height: _trailingControlHeight,
-                  // Disabled until the store exists, like Install from file: a
-                  // press before then has nothing to install into. `_applying`
-                  // is the IgnorePointer's job, not a disabled button's.
-                  child: OutlinedButton(
-                    onPressed: store == null ? null : () => unawaited(_installFromCatalog(entry)),
-                    child: Text(t.extensionsPanel.installAction),
+            rows.add(
+              ListTile(
+                key: ValueKey('catalog-${entry.key}'),
+                // The glyph in the accent rather than a solid tile of it, and
+                // faded: this row is an offer, and at an installed row's weight
+                // it claims a place in the panel that nothing has taken yet.
+                leading: ExtensionIconTile(
+                  icon: entry.icon,
+                  accentColor: entry.accentColor,
+                  fallbackIcon: extensionCategoryIcon(entry.category),
+                  filled: false,
+                  opacity: kUninstalledIconOpacity,
+                ),
+                title: Text(entry.nameFor(locale)),
+                subtitle: description == null ? null : Text(description),
+                // The offered version under the button, as an installed row
+                // carries the version it holds.
+                trailing: _TrailingWithCaption(
+                  caption: entry.version,
+                  control: SizedBox(
+                    height: _trailingControlHeight,
+                    // Disabled until the store exists, like Install from file: a
+                    // press before then has nothing to install into. `_applying`
+                    // is the IgnorePointer's job, not a disabled button's.
+                    child: OutlinedButton(
+                      onPressed: store == null ? null : () => unawaited(_installFromCatalog(entry)),
+                      child: Text(t.extensionsPanel.installAction),
+                    ),
                   ),
                 ),
               ),
-          ));
+            );
           }
 
           // What the category holds beyond what is worth suggesting. Without
@@ -796,18 +791,17 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           if (hidden > 0) {
             shownOffers.add('more:$category');
             final theme = Theme.of(context);
-            rows.add(ListTile(
-              key: ValueKey('catalog-more-$category'),
-              title: Text(
-                shown.isEmpty
-                    ? t.extensionsPanel.availableInCategory(count: hidden)
-                    : t.extensionsPanel.moreInCategory(count: hidden),
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+            rows.add(
+              ListTile(
+                key: ValueKey('catalog-more-$category'),
+                title: Text(
+                  shown.isEmpty ? t.extensionsPanel.availableInCategory(count: hidden) : t.extensionsPanel.moreInCategory(count: hidden),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+                ),
+                onTap: () => setState(() => _expandedCategories.add(category)),
               ),
-              onTap: () => setState(() => _expandedCategories.add(category)),
-            ));
+            );
           }
         }
 
@@ -827,10 +821,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         // which categories are open all land in the same pass — and the
         // replacement view is built in this very frame, so it needs its
         // controller now rather than after it.
-        final listKey = listContentsKey([
-          for (final info in visible) info.key,
-          ...shownOffers,
-        ]);
+        final listKey = listContentsKey([for (final info in visible) info.key, ...shownOffers]);
         if (listKey != _listKey) {
           _listKey = listKey;
           // The outgoing controller is still attached to the scroll view being
@@ -890,8 +881,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                       // Disabled until the store exists — it is built on the
                       // first loadAvailableExtensions, and a press before that
                       // has nothing to install into.
-                      onPressed:
-                          _applying || extensionService.installed == null ? null : () => unawaited(_install()),
+                      onPressed: _applying || extensionService.installed == null ? null : () => unawaited(_install()),
                     ),
                   ],
                 ],
@@ -948,10 +938,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 // pop here resolves the caller's await while the runtime
                 // restart is still in flight, and the caller then re-reads a
                 // half-started runtime.
-                cancel: TextButton(
-                  onPressed: _applying ? null : () => Navigator.of(context).maybePop(),
-                  child: Text(t.common.done),
-                ),
+                cancel: TextButton(onPressed: _applying ? null : () => Navigator.of(context).maybePop(), child: Text(t.common.done)),
               ),
           ],
         );
@@ -992,7 +979,10 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     if (name == null) return;
     services.track('extension_installed', {});
     if (mounted) {
-      services.statusBar.setMessage(key: 'extensions:installed', text: t.extensionsPanel.installedMessage(name: name));
+      services.statusBar.setMessage(
+        key: 'extensions:installed',
+        text: t.extensionsPanel.installedMessage(name: name),
+      );
     }
   }
 }
@@ -1042,8 +1032,7 @@ class _CatalogStatusLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final rowInset =
-        ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: settingsRowInset);
+    final rowInset = ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: settingsRowInset);
     return Padding(
       padding: rowInset.add(const EdgeInsets.symmetric(vertical: Space.md)),
       child: Text(text, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
@@ -1058,8 +1047,10 @@ class _CatalogStatusLine extends StatelessWidget {
 /// nothing behind for a line of text.
 const _trailingControlHeight = 32.0;
 
-Widget _trailingSwitch({required bool value, required ValueChanged<bool> onChanged}) =>
-    SizedBox(height: _trailingControlHeight, child: Switch(value: value, onChanged: onChanged));
+Widget _trailingSwitch({required bool value, required ValueChanged<bool> onChanged}) => SizedBox(
+  height: _trailingControlHeight,
+  child: Switch(value: value, onChanged: onChanged),
+);
 
 /// A row's trailing control with one subdued line OVER it: the version the
 /// extension is installed at, or offered at, or — for one the app ships,
@@ -1099,15 +1090,10 @@ class _TrailingWithCaption extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Flexible(
-          child: Text(
-            caption!,
-            maxLines: 1,
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
+          child: Text(caption!, maxLines: 1, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
         ),
         control,
       ],
     );
   }
 }
-

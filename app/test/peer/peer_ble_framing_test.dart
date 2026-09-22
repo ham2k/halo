@@ -183,8 +183,7 @@ void main() {
     // A heard B's hello and acked it, but B has heard nothing from A: A
     // must NOT be ready (its hello is unconfirmed), B must not either.
     expect(b.conduit.ready, isFalse);
-    expect(a.conduit.ready, isFalse,
-        reason: 'handing this link to a session would send messages into the same hole the hello fell in');
+    expect(a.conduit.ready, isFalse, reason: 'handing this link to a session would send messages into the same hole the hello fell in');
 
     // The retry: A replays its hello; this time the radio carries it.
     a.conduit.resendHello();
@@ -285,8 +284,7 @@ void main() {
     // the window back — the sender then stalls on bytes the peer already
     // confirmed, which over a real link is a permanent one-way jam.
     final stale = ByteData(8)..setUint32(0, 1, Endian.little);
-    a.conduit.feed(Uint8List.fromList(
-        [bleFrameMagic, bleFrameTypeAck, 8, 0, 0, 0, ...stale.buffer.asUint8List()]));
+    a.conduit.feed(Uint8List.fromList([bleFrameMagic, bleFrameTypeAck, 8, 0, 0, 0, ...stale.buffer.asUint8List()]));
 
     // With the accounting intact the whole next message fits the reopened
     // window and all 100 payload bytes leave, as three fragments each
@@ -338,8 +336,7 @@ void main() {
       final length = packet[2] | (packet[3] << 8) | (packet[4] << 16) | (packet[5] << 24);
       expect(packet.length, 6 + length);
     }
-    expect(packets.map((p) => p[1]).toList(),
-        [...List.filled(packets.length - 1, bleFrameTypeMsgPart), bleFrameTypeMsg]);
+    expect(packets.map((p) => p[1]).toList(), [...List.filled(packets.length - 1, bleFrameTypeMsgPart), bleFrameTypeMsg]);
 
     for (final packet in packets) {
       b.conduit.feed(packet);
@@ -398,8 +395,7 @@ void main() {
     a.conduit.enqueueMessage(Uint8List(300));
     final started = [a.conduit.nextPacket()!, a.conduit.nextPacket()!];
     final hello = utf8.encode(jsonEncode({'v': 1, 'chunk': 40}));
-    a.conduit.feed(Uint8List.fromList(
-        [bleFrameMagic, bleFrameTypeHello, hello.length, 0, 0, 0, ...hello]));
+    a.conduit.feed(Uint8List.fromList([bleFrameMagic, bleFrameTypeHello, hello.length, 0, 0, 0, ...hello]));
 
     for (final packet in [...started, ...a.drain()]) {
       b.conduit.feed(packet);
@@ -415,8 +411,7 @@ void main() {
     final a = _Harness(maxMessageBytes: 100);
     a.conduit.sendHello(100);
     for (var i = 0; i < 5 && a.errors.isEmpty; i++) {
-      a.conduit.feed(Uint8List.fromList(
-          [bleFrameMagic, bleFrameTypeMsgPart, 40, 0, 0, 0, ...Uint8List(40)]));
+      a.conduit.feed(Uint8List.fromList([bleFrameMagic, bleFrameTypeMsgPart, 40, 0, 0, 0, ...Uint8List(40)]));
     }
     expect(a.errors, hasLength(1));
     expect(a.messages, isEmpty);

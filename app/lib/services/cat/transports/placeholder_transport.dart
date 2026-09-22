@@ -90,41 +90,31 @@ class PlaceholderTransport extends EquipmentTransport {
   }
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [
-        // Developer mode only, like the driver's own knobs: these shape a
-        // SIMULATED link, and an operator using this entry to name their rig
-        // has no link to shape.
-        if (!overrides.containsKey('placeholderConnectDelay'))
-          {
-            'type': 'field',
-            'fieldType': 'number',
-            'key': 'placeholderConnectDelay',
-            'label': t.settings.station.placeholderConnectDelay,
-            'description': t.settings.station.placeholderConnectDelayDescription,
-            'devMode': true,
-          },
-        if (!overrides.containsKey('placeholderDropAfter'))
-          {
-            'type': 'field',
-            'fieldType': 'number',
-            'key': 'placeholderDropAfter',
-            'label': t.settings.station.placeholderDropAfter,
-            'description': t.settings.station.placeholderDropAfterDescription,
-            'devMode': true,
-          },
-        if (!overrides.containsKey('placeholderFailConnect'))
-          {
-            'type': 'field',
-            'fieldType': 'checkbox',
-            'key': 'placeholderFailConnect',
-            'label': t.settings.station.placeholderFailConnect,
-            'devMode': true,
-          },
-      ];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    // Developer mode only, like the driver's own knobs: these shape a
+    // SIMULATED link, and an operator using this entry to name their rig
+    // has no link to shape.
+    if (!overrides.containsKey('placeholderConnectDelay'))
+      {
+        'type': 'field',
+        'fieldType': 'number',
+        'key': 'placeholderConnectDelay',
+        'label': t.settings.station.placeholderConnectDelay,
+        'description': t.settings.station.placeholderConnectDelayDescription,
+        'devMode': true,
+      },
+    if (!overrides.containsKey('placeholderDropAfter'))
+      {
+        'type': 'field',
+        'fieldType': 'number',
+        'key': 'placeholderDropAfter',
+        'label': t.settings.station.placeholderDropAfter,
+        'description': t.settings.station.placeholderDropAfterDescription,
+        'devMode': true,
+      },
+    if (!overrides.containsKey('placeholderFailConnect'))
+      {'type': 'field', 'fieldType': 'checkbox', 'key': 'placeholderFailConnect', 'label': t.settings.station.placeholderFailConnect, 'devMode': true},
+  ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
@@ -144,9 +134,7 @@ class PlaceholderTransport extends EquipmentTransport {
         // Parsed by the reader [connect] itself uses rather than by a second
         // `tryParse` written here, so a value that validates is the value
         // that gets read. -1 is a sentinel no valid entry can produce.
-        return numberFromConfig({...config, key: value}, key, -1) < 0
-            ? t.settings.station.placeholderWholeNumberInvalid
-            : null;
+        return numberFromConfig({...config, key: value}, key, -1) < 0 ? t.settings.station.placeholderWholeNumberInvalid : null;
       default:
         return null;
     }

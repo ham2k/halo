@@ -71,18 +71,28 @@ extension on GuohetecSession {
     bool vfoBActive = false,
     int signalByte = 0x12,
     int swrByte = 0x00,
-  }) =>
-      feed(buildGuohetecFrame(GuohetecOpcode.statusSync, [
-        transmitting ? 1 : 0,
-        vfoAMode,
-        vfoBMode,
-        ...encodeFrequency(vfoAHz),
-        ...encodeFrequency(vfoBHz),
-        vfoBActive ? 1 : 0,
-        0, 0, 0, 20, 0, 138, 12, 34, 56, 0x00,
-        signalByte,
-        swrByte,
-      ]));
+  }) => feed(
+    buildGuohetecFrame(GuohetecOpcode.statusSync, [
+      transmitting ? 1 : 0,
+      vfoAMode,
+      vfoBMode,
+      ...encodeFrequency(vfoAHz),
+      ...encodeFrequency(vfoBHz),
+      vfoBActive ? 1 : 0,
+      0,
+      0,
+      0,
+      20,
+      0,
+      138,
+      12,
+      34,
+      56,
+      0x00,
+      signalByte,
+      swrByte,
+    ]),
+  );
 }
 
 /// The data bytes of a command the session sent — everything between the

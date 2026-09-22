@@ -35,8 +35,7 @@ class MapError implements Exception {
   final String message;
   final bool offline;
 
-  MapError({required this.backend, required this.kind, required this.message})
-      : offline = ConnectivityService.isOffline;
+  MapError({required this.backend, required this.kind, required this.message}) : offline = ConnectivityService.isOffline;
 
   @visibleForTesting
   const MapError.raw({required this.backend, required this.kind, required this.message, required this.offline});

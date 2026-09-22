@@ -65,14 +65,12 @@ class LogContext {
     if (qson != null && !qson.containsKey('operation') && !qson.containsKey('qsos')) {
       // Naming both keys matters: the likely mistakes are handing it a bare
       // operation or a bare QSO array, and neither says so on its own.
-      throw QsonShapeError('--qson: expected an object with `operation` and/or `qsos` — '
-          'a QSON file as PoLo exports it. Got keys: ${qson.keys.take(6).join(', ')}');
+      throw QsonShapeError(
+        '--qson: expected an object with `operation` and/or `qsos` — '
+        'a QSON file as PoLo exports it. Got keys: ${qson.keys.take(6).join(', ')}',
+      );
     }
-    return LogContext(
-      operation: operation ?? _mapAt(qson, 'operation'),
-      qsos: qsos ?? _listAt(qson, 'qsos') ?? (qson != null ? const [] : null),
-      spots: spots,
-    );
+    return LogContext(operation: operation ?? _mapAt(qson, 'operation'), qsos: qsos ?? _listAt(qson, 'qsos') ?? (qson != null ? const [] : null), spots: spots);
   }
 
   static Map<String, Object?>? _mapAt(Map<String, Object?>? source, String key) {
@@ -155,10 +153,7 @@ class CliHostCalls {
         return config.accountFor(params['kvKey'] as String);
 
       case 'setAccountSession':
-        config.setAccountSession(
-          params['kvKey'] as String,
-          (params['session'] as Map).cast<String, Object?>(),
-        );
+        config.setAccountSession(params['kvKey'] as String, (params['session'] as Map).cast<String, Object?>());
         return null;
 
       case 'translate':
@@ -205,8 +200,7 @@ class CliHostCalls {
         final call = (params['call'] as String?)?.toUpperCase();
         if (call == null) return const <Map<String, Object?>>[];
         final maxAge = params['maxAgeMinutes'];
-        final cutoff = nowMillis() -
-            (maxAge is num ? maxAge.toInt() : 30) * Duration.millisecondsPerMinute;
+        final cutoff = nowMillis() - (maxAge is num ? maxAge.toInt() : 30) * Duration.millisecondsPerMinute;
         return [
           for (final spot in log.spots)
             if (_spotCall(spot) == call && _spotMillis(spot) >= cutoff) spot,
@@ -230,12 +224,14 @@ class CliHostCalls {
         // The --op's refs describe only its own QSOs, as an operation's refs
         // do in the app's join. An --op with no uuid owns every QSO, as it
         // does for getQsos.
-        bool ours(Map<String, Object?> qso) =>
-            operationUuid == null || qso['operation'] == null || qso['operation'] == operationUuid;
+        bool ours(Map<String, Object?> qso) => operationUuid == null || qso['operation'] == null || qso['operation'] == operationUuid;
         final segmented = filter.refsSegmentAware && log.operation != null
             ? SegmentedOperation.from(
                 operation: log.operation!.cast<String, dynamic>(),
-                qsos: qsosOf(log.operation!, [for (final qso in log.qsos!) if (ours(qso)) qso]),
+                qsos: qsosOf(log.operation!, [
+                  for (final qso in log.qsos!)
+                    if (ours(qso)) qso,
+                ]),
               )
             : null;
         final matches = [
@@ -248,11 +244,11 @@ class CliHostCalls {
             if (qso['band'] != 'event' &&
                 !asQsonBool(qso['deleted']) &&
                 ((qso['their'] as Map?)?['call'] as String?)?.toUpperCase() == historyCall &&
-                filter.matches(qso,
-                    operationUuid: operationUuid,
-                    operation: !ours(qso)
-                        ? null
-                        : segmented?.effectiveAt(_startAtMillisOrNull(qso)) ?? log.operation))
+                filter.matches(
+                  qso,
+                  operationUuid: operationUuid,
+                  operation: !ours(qso) ? null : segmented?.effectiveAt(_startAtMillisOrNull(qso)) ?? log.operation,
+                ))
               qso,
         ];
         matches.sort((a, b) => _startAtMillis(b).compareTo(_startAtMillis(a)));
@@ -261,11 +257,7 @@ class CliHostCalls {
       case 'dbLookupSelectOne':
         return await lookups?.selectOne(params['category'] as String, params['key'] as String);
       case 'dbLookupSelectAll':
-        return await lookups?.selectAll(
-              params['category'] as String,
-              params['query'] as String,
-              activeOnly: params['activeOnly'] as bool? ?? false,
-            ) ??
+        return await lookups?.selectAll(params['category'] as String, params['query'] as String, activeOnly: params['activeOnly'] as bool? ?? false) ??
             const [];
       case 'dbLookupSelectByLocation':
         return await lookups?.selectByLocation(
@@ -280,9 +272,7 @@ class CliHostCalls {
       case 'getLocation':
         final extensionKey = params['extensionKey'] as String?;
         if (extensionKey == null || !locationAllowlist.contains(extensionKey)) {
-          throw HostCallRefused(
-            "getLocation blocked: extension '${extensionKey ?? 'unknown'}' does not declare requiresLocation",
-          );
+          throw HostCallRefused("getLocation blocked: extension '${extensionKey ?? 'unknown'}' does not declare requiresLocation");
         }
         final fix = location;
         return fix == null ? null : {'latitude': fix.lat, 'longitude': fix.lon};
@@ -324,8 +314,7 @@ class CliHostCalls {
     }
   }
 
-  static String _spotCall(Map<String, Object?> spot) =>
-      ((spot['their'] as Map?)?['call'] as String? ?? '').toUpperCase();
+  static String _spotCall(Map<String, Object?> spot) => ((spot['their'] as Map?)?['call'] as String? ?? '').toUpperCase();
 
   static int _spotMillis(Map<String, Object?> spot) {
     final value = (spot['spot'] as Map?)?['timeInMillis'];

@@ -59,10 +59,14 @@ void main() {
       'mode': 'SSB',
       'startAtMillis': 1000,
     });
-    await tester.pumpWidget(MaterialApp(
-      theme: buildHaLoTheme(Brightness.light),
-      home: Scaffold(body: QsoList(qsos: [qso], onSelect: (_) {})),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: Scaffold(
+          body: QsoList(qsos: [qso], onSelect: (_) {}),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -107,17 +111,23 @@ void main() {
         {'freq': 14285.0},
         {'band': '20m'},
       ].indexed) {
-        list.add(await qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-          'mode': 'SSB',
-          'startAtMillis': 1000 * (i + 1),
-          ...fields,
-        }));
+        list.add(
+          await qsos.add(operation.uuid, {
+            'their': {'call': 'W1AW'},
+            'mode': 'SSB',
+            'startAtMillis': 1000 * (i + 1),
+            ...fields,
+          }),
+        );
       }
-      await tester.pumpWidget(MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        home: Scaffold(body: QsoList(qsos: list, onSelect: (_) {})),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Scaffold(
+            body: QsoList(qsos: list, onSelect: (_) {}),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       double rightEdgeOf(String text) => tester.getBottomRight(find.text(text)).dx;

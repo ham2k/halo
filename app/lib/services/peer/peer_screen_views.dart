@@ -71,26 +71,14 @@ class PeerScreenView {
   /// which is why the pane marks it differently from a stalled one.
   final bool degraded;
 
-  const PeerScreenView({
-    required this.peerDeviceId,
-    required this.sourceId,
-    required this.status,
-    this.refusal,
-    this.frame,
-    this.degraded = false,
-  });
+  const PeerScreenView({required this.peerDeviceId, required this.sourceId, required this.status, this.refusal, this.frame, this.degraded = false});
 
   /// [refusal] is tied to [status] rather than carried forward: a view that
   /// goes refused → live would otherwise keep the old reason, and the first
   /// caller to show one beside a live frame reads a stale explanation. The
   /// frame IS carried forward, deliberately — the last picture is what a
   /// pane keeps when things go wrong.
-  PeerScreenView _with({
-    PeerScreenViewStatus? status,
-    String? refusal,
-    PeerScreenFrame? frame,
-    bool? degraded,
-  }) {
+  PeerScreenView _with({PeerScreenViewStatus? status, String? refusal, PeerScreenFrame? frame, bool? degraded}) {
     final nextStatus = status ?? this.status;
     return PeerScreenView(
       peerDeviceId: peerDeviceId,
@@ -127,8 +115,7 @@ class PeerScreenTarget {
   }
 
   @override
-  bool operator ==(Object other) =>
-      other is PeerScreenTarget && other.peerDeviceId == peerDeviceId && other.sourceId == sourceId;
+  bool operator ==(Object other) => other is PeerScreenTarget && other.peerDeviceId == peerDeviceId && other.sourceId == sourceId;
 
   @override
   int get hashCode => Object.hash(peerDeviceId, sourceId);
@@ -153,13 +140,7 @@ class PeerScreenTarget {
 typedef PeerScreenDemand = ({int maxWidth, int fullWidth, PeerScreenCrop? crop});
 
 class PeerScreenViews extends ChangeNotifier {
-  PeerScreenViews({
-    required this.peers,
-    this.screens,
-    this.localName = 'This device',
-    this.maxWidth = 1280,
-    this.fps = 10,
-  }) {
+  PeerScreenViews({required this.peers, this.screens, this.localName = 'This device', this.maxWidth = 1280, this.fps = 10}) {
     final producer = screens;
     if (producer != null) {
       // The producer's own stills land in ITS notifier, and the picker
@@ -167,9 +148,7 @@ class PeerScreenViews extends ChangeNotifier {
       // reach here or the tile never redraws.
       producer.addListener(_onProducerChanged);
       _localFrames = producer.localFrames.listen(_onLocalFrame);
-      _localRefusals = producer.localRefusals.listen(
-        (refusal) => onRefused(localScreenPeerId, refusal.$1, refusal.$2),
-      );
+      _localRefusals = producer.localRefusals.listen((refusal) => onRefused(localScreenPeerId, refusal.$1, refusal.$2));
     }
   }
 
@@ -196,9 +175,7 @@ class PeerScreenViews extends ChangeNotifier {
   /// The still for one source, wherever it lives — this device's own come
   /// straight from the producer with no message in between.
   Uint8List? thumbnailFor(String peerDeviceId, String sourceId) =>
-      peerDeviceId == localScreenPeerId
-          ? screens?.thumbnailFor(sourceId)
-          : _thumbnails[_thumbKey(peerDeviceId, sourceId)];
+      peerDeviceId == localScreenPeerId ? screens?.thumbnailFor(sourceId) : _thumbnails[_thumbKey(peerDeviceId, sourceId)];
 
   /// Asks for a still, once. Safe to call from a tile's build: it is a
   /// no-op for anything already asked for or already had.
@@ -351,8 +328,10 @@ class PeerScreenViews extends ChangeNotifier {
         // Once per target, like an unreadable frame: a mixed pair of builds
         // is otherwise a pane that will not sharpen on ONE peer, with
         // nothing anywhere saying why.
-        debugPrint('[peer] ${target.peerDeviceId} does not crop — '
-            '${target.sourceId} goes out at full-source terms');
+        debugPrint(
+          '[peer] ${target.peerDeviceId} does not crop — '
+          '${target.sourceId} goes out at full-source terms',
+        );
       }
     }
     // Every path above that discards a crop leaves [width] measured across
@@ -499,10 +478,7 @@ class PeerScreenViews extends ChangeNotifier {
       // Only while still waiting — a grant or a refusal that landed in the
       // meantime is the answer, and must not be overwritten.
       if (view == null || view.status != PeerScreenViewStatus.connecting) return;
-      _views[target] = view._with(
-        status: PeerScreenViewStatus.refused,
-        refusal: 'noAnswer',
-      );
+      _views[target] = view._with(status: PeerScreenViewStatus.refused, refusal: 'noAnswer');
       notifyListeners();
       _scheduleRetry(target.peerDeviceId);
     });
@@ -552,8 +528,10 @@ class PeerScreenViews extends ChangeNotifier {
         // acknowledged, so recording them as asked would suppress the next
         // attempt too. The stream carries on at whatever it is serving.
         _asked.remove(target);
-        debugPrint('[peer] ${target.peerDeviceId} never answered new terms for '
-            '${target.sourceId} — leaving the stream as it is');
+        debugPrint(
+          '[peer] ${target.peerDeviceId} never answered new terms for '
+          '${target.sourceId} — leaving the stream as it is',
+        );
         return;
       }
       _termAttempts[target] = attempts;
@@ -568,15 +546,13 @@ class PeerScreenViews extends ChangeNotifier {
   /// Every source on offer anywhere, with the peer that offers it — what a
   /// panel's picker lists.
   List<(String peerDeviceId, String peerName, PeerScreenSource source)> get catalog => [
-        // This device first: it is the one the operator is looking at, and
-        // its sources are the ones they can check against what is actually
-        // on screen.
-        for (final source in screens?.offeredSources ?? const <PeerScreenSource>[])
-          (localScreenPeerId, localName, source),
-        for (final entry in _offers.entries)
-          for (final source in entry.value)
-            (entry.key, _nameOf(entry.key), source),
-      ];
+    // This device first: it is the one the operator is looking at, and
+    // its sources are the ones they can check against what is actually
+    // on screen.
+    for (final source in screens?.offeredSources ?? const <PeerScreenSource>[]) (localScreenPeerId, localName, source),
+    for (final entry in _offers.entries)
+      for (final source in entry.value) (entry.key, _nameOf(entry.key), source),
+  ];
 
   String _nameOf(String peerDeviceId) {
     final name = peers.peers[peerDeviceId]?.beacon.deviceName;
@@ -592,10 +568,7 @@ class PeerScreenViews extends ChangeNotifier {
     final ids = sources.map((s) => s.id).toSet();
     for (final target in _views.keys.toList()) {
       if (target.peerDeviceId == peerDeviceId && !ids.contains(target.sourceId)) {
-        _views[target] = _views[target]!._with(
-          status: PeerScreenViewStatus.refused,
-          refusal: 'notOffered',
-        );
+        _views[target] = _views[target]!._with(status: PeerScreenViewStatus.refused, refusal: 'notOffered');
       }
     }
     notifyListeners();
@@ -622,8 +595,7 @@ class PeerScreenViews extends ChangeNotifier {
     // capture restart the demand is kept across a hide to avoid.
     final demand = _demands[subscriberId];
     if (demand != null && demand.crop != null && _demandTargets[subscriberId] != target) {
-      _demands[subscriberId] =
-          (maxWidth: demand.maxWidth, fullWidth: demand.fullWidth, crop: null);
+      _demands[subscriberId] = (maxWidth: demand.maxWidth, fullWidth: demand.fullWidth, crop: null);
       _demandTargets[subscriberId] = target;
     }
     if (previous != null) {
@@ -745,9 +717,7 @@ class PeerScreenViews extends ChangeNotifier {
     // operator zoomed. Same rule as [_ensure], for the same reason.
     _views[target] = existing == null
         ? _blank(target)
-        : (existing.status == PeerScreenViewStatus.live
-            ? existing
-            : existing._with(status: PeerScreenViewStatus.connecting));
+        : (existing.status == PeerScreenViewStatus.live ? existing : existing._with(status: PeerScreenViewStatus.connecting));
     notifyListeners();
     // Frames arrive on the media link, which is per peer — a grant for a
     // second source from a peer already connected needs no new socket.
@@ -759,10 +729,7 @@ class PeerScreenViews extends ChangeNotifier {
     final target = PeerScreenTarget(peerDeviceId, sourceId);
     _answered(target);
     _resetDeliveryStats(target);
-    _views[target] = (_views[target] ?? _blank(target))._with(
-      status: PeerScreenViewStatus.refused,
-      refusal: reason ?? 'refused',
-    );
+    _views[target] = (_views[target] ?? _blank(target))._with(status: PeerScreenViewStatus.refused, refusal: reason ?? 'refused');
     notifyListeners();
     // A capture that stopped or failed to start is a passing condition — the
     // window reopens, the permission is granted — unlike being told the
@@ -778,11 +745,8 @@ class PeerScreenViews extends ChangeNotifier {
 
   // MARK: - Internals
 
-  PeerScreenView _blank(PeerScreenTarget target) => PeerScreenView(
-        peerDeviceId: target.peerDeviceId,
-        sourceId: target.sourceId,
-        status: PeerScreenViewStatus.connecting,
-      );
+  PeerScreenView _blank(PeerScreenTarget target) =>
+      PeerScreenView(peerDeviceId: target.peerDeviceId, sourceId: target.sourceId, status: PeerScreenViewStatus.connecting);
 
   void _ensure(PeerScreenTarget target) {
     final existing = _views[target];
@@ -793,9 +757,7 @@ class PeerScreenViews extends ChangeNotifier {
     // would flicker for nothing.
     _views[target] = existing == null
         ? _blank(target)
-        : (existing.status == PeerScreenViewStatus.live
-            ? existing
-            : existing._with(status: PeerScreenViewStatus.connecting));
+        : (existing.status == PeerScreenViewStatus.live ? existing : existing._with(status: PeerScreenViewStatus.connecting));
     if (target.peerDeviceId == localScreenPeerId) {
       // No grant, no ticket, no dial — the producer is right here. It still
       // goes through addWatcher, so this pane counts toward the rule that a
@@ -805,16 +767,15 @@ class PeerScreenViews extends ChangeNotifier {
       _croppingTargets.add(target);
       final producer = screens;
       if (producer == null) {
-        _views[target] = _views[target]!._with(
-          status: PeerScreenViewStatus.refused, refusal: 'notOffered');
+        _views[target] = _views[target]!._with(status: PeerScreenViewStatus.refused, refusal: 'notOffered');
         notifyListeners();
         return;
       }
-      unawaited(producer
-          .addWatcher(localViewerWatcher, _recordTerms(target))
-          .then((accepted) {
-        if (!accepted) onRefused(localScreenPeerId, target.sourceId, 'notOffered');
-      }));
+      unawaited(
+        producer.addWatcher(localViewerWatcher, _recordTerms(target)).then((accepted) {
+          if (!accepted) onRefused(localScreenPeerId, target.sourceId, 'notOffered');
+        }),
+      );
       notifyListeners();
       return;
     }
@@ -823,10 +784,7 @@ class PeerScreenViews extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    peers.sendEphemeralTo(
-      target.peerDeviceId,
-      PeerMessage.screenSubscribe(_recordTerms(target)),
-    );
+    peers.sendEphemeralTo(target.peerDeviceId, PeerMessage.screenSubscribe(_recordTerms(target)));
     _armAnswerDeadline(target);
     _armTermsDeadline(target);
     notifyListeners();
@@ -913,9 +871,7 @@ class PeerScreenViews extends ChangeNotifier {
       // came from a dial (`peer-media-unreachable`). Through the streak,
       // because the retry below fires every few seconds while the pane is
       // open.
-      ErrorReportingService.reportIfRepeated(_dialStreakKey(peerDeviceId),
-          PeerMediaDialFailure(peerDeviceId, e), st,
-          context: 'PeerScreenViews:dialMedia');
+      ErrorReportingService.reportIfRepeated(_dialStreakKey(peerDeviceId), PeerMediaDialFailure(peerDeviceId, e), st, context: 'PeerScreenViews:dialMedia');
       for (final target in _views.keys.toList()) {
         if (target.peerDeviceId != peerDeviceId) continue;
         _views[target] = _views[target]!._with(status: PeerScreenViewStatus.peerUnreachable);
@@ -944,20 +900,22 @@ class PeerScreenViews extends ChangeNotifier {
         onError: (Object e) => debugPrint('[peer] media link from $peerDeviceId errored: $e'),
         cancelOnError: false,
       );
-      unawaited(link.closed.then((_) {
-        if (_mediaLinks[peerDeviceId] != link) return;
-        _mediaLinks.remove(peerDeviceId);
-        unawaited(_mediaSubscriptions.remove(peerDeviceId)?.cancel());
-        for (final target in _views.keys.toList()) {
-          if (target.peerDeviceId != peerDeviceId) continue;
-          _views[target] = _views[target]!._with(status: PeerScreenViewStatus.connecting);
-          _resetDeliveryStats(target);
-        }
-        notifyListeners();
-        // The producer stopped capturing when its end of this closed, so
-        // nothing is coming without a fresh subscribe.
-        _scheduleRetry(peerDeviceId);
-      }));
+      unawaited(
+        link.closed.then((_) {
+          if (_mediaLinks[peerDeviceId] != link) return;
+          _mediaLinks.remove(peerDeviceId);
+          unawaited(_mediaSubscriptions.remove(peerDeviceId)?.cancel());
+          for (final target in _views.keys.toList()) {
+            if (target.peerDeviceId != peerDeviceId) continue;
+            _views[target] = _views[target]!._with(status: PeerScreenViewStatus.connecting);
+            _resetDeliveryStats(target);
+          }
+          notifyListeners();
+          // The producer stopped capturing when its end of this closed, so
+          // nothing is coming without a fresh subscribe.
+          _scheduleRetry(peerDeviceId);
+        }),
+      );
     }
   }
 
@@ -992,8 +950,7 @@ class PeerScreenViews extends ChangeNotifier {
     if (routing != null) {
       final acked = PeerScreenTarget(peerDeviceId, routing.sourceId);
       if (_pacedTargets.contains(acked)) {
-        _mediaLinks[peerDeviceId]?.send(
-            PeerScreenAck(sourceId: routing.sourceId, sequence: routing.sequence).encode());
+        _mediaLinks[peerDeviceId]?.send(PeerScreenAck(sourceId: routing.sourceId, sequence: routing.sequence).encode());
       }
       // Delivery resumed, so whatever stalled it has passed. Without this a
       // pane that recovers twice over a long session is left un-retryable
@@ -1026,9 +983,7 @@ class PeerScreenViews extends ChangeNotifier {
 
     final previous = _lastSeq[target];
     _lastSeq[target] = frame.sequence;
-    final missed = (previous == null || frame.sequence <= previous)
-        ? 0
-        : frame.sequence - previous - 1;
+    final missed = (previous == null || frame.sequence <= previous) ? 0 : frame.sequence - previous - 1;
     final recent = _recent.putIfAbsent(target, () => <bool>[])
       ..addAll(List<bool>.filled(missed.clamp(0, _dropWindow), true))
       ..add(false);
@@ -1037,11 +992,7 @@ class PeerScreenViews extends ChangeNotifier {
     }
     final dropped = recent.where((wasDropped) => wasDropped).length;
 
-    _views[target] = _views[target]!._with(
-      status: PeerScreenViewStatus.live,
-      frame: frame,
-      degraded: dropped >= _dropsBeforeSaying,
-    );
+    _views[target] = _views[target]!._with(status: PeerScreenViewStatus.live, frame: frame, degraded: dropped >= _dropsBeforeSaying);
     notifyListeners();
   }
 

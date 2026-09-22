@@ -41,21 +41,9 @@ class PeerBeacon {
   /// the payload. Null on a beacon this device composed to send.
   final String? address;
 
-  const PeerBeacon({
-    required this.deviceId,
-    required this.deviceName,
-    this.operationUuid,
-    required this.port,
-    this.address,
-  });
+  const PeerBeacon({required this.deviceId, required this.deviceName, this.operationUuid, required this.port, this.address});
 
-  Map<String, dynamic> toJson() => {
-        'halo': 'peer',
-        'deviceId': deviceId,
-        'deviceName': deviceName,
-        'operationUuid': ?operationUuid,
-        'port': port,
-      };
+  Map<String, dynamic> toJson() => {'halo': 'peer', 'deviceId': deviceId, 'deviceName': deviceName, 'operationUuid': ?operationUuid, 'port': port};
 
   /// Null for anything that isn't one of ours — the discovery port is shared
   /// with whatever else the operator runs, so a datagram that doesn't parse
@@ -76,13 +64,7 @@ class PeerBeacon {
     );
   }
 
-  PeerBeacon withAddress(String? address) => PeerBeacon(
-        deviceId: deviceId,
-        deviceName: deviceName,
-        operationUuid: operationUuid,
-        port: port,
-        address: address,
-      );
+  PeerBeacon withAddress(String? address) => PeerBeacon(deviceId: deviceId, deviceName: deviceName, operationUuid: operationUuid, port: port, address: address);
 }
 
 /// The default UDP port peer beacons go out on. Not registered with IANA and

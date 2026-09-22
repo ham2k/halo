@@ -32,21 +32,21 @@ List<String> equipmentSetupLines({
   required EquipmentRegistry registry,
 }) {
   final lines = [
-      '- Configured as: ${type.model.name} (`${type.key}`)',
-      '- Connection: ${type.transportLabel}',
-      '- Driver: `${type.driver.key}`',
-      ...configLines(node, type, registry),
-      ...serialPortLines(node, type),
-      '- Status: ${state.status.name}',
-      // The raw exception's own words when the row shows a translated
-      // stand-in instead — a developer triaging this needs the address, port
-      // or errno a friendly message drops.
-      if (state.error != null) '- Error: ${state.errorDetail ?? state.error}',
-      // The devMode readout — what a driver worked out about the rig it was
-      // talking to (a Kenwood's learned IF offset, say). Meaningless to the
-      // operator, which is why it is normally hidden, and exactly what a
-      // report about that rig is for.
-      if (state.diagnostic != null) '- Diagnostic: ${state.diagnostic}',
+    '- Configured as: ${type.model.name} (`${type.key}`)',
+    '- Connection: ${type.transportLabel}',
+    '- Driver: `${type.driver.key}`',
+    ...configLines(node, type, registry),
+    ...serialPortLines(node, type),
+    '- Status: ${state.status.name}',
+    // The raw exception's own words when the row shows a translated
+    // stand-in instead — a developer triaging this needs the address, port
+    // or errno a friendly message drops.
+    if (state.error != null) '- Error: ${state.errorDetail ?? state.error}',
+    // The devMode readout — what a driver worked out about the rig it was
+    // talking to (a Kenwood's learned IF offset, say). Meaningless to the
+    // operator, which is why it is normally hidden, and exactly what a
+    // report about that rig is for.
+    if (state.diagnostic != null) '- Diagnostic: ${state.diagnostic}',
   ];
   // Hoisted: this enumerates ports, and libserialport opens each one to read
   // its descriptors. Inside the comprehension it would do that per LINE.
@@ -80,10 +80,7 @@ String redactSerialNumber(String line, String? serialNumber) {
   // caches that empty answer for half a minute, so `serialNumber` is null
   // exactly here, while the device NODE still spells the serial out. Keyed
   // off the node's shape instead, which needs nothing read from the port.
-  return redacted.replaceAllMapped(
-    _usbNodeIdentifier,
-    (match) => '${match[1]}$_serialPlaceholder',
-  );
+  return redacted.replaceAllMapped(_usbNodeIdentifier, (match) => '${match[1]}$_serialPlaceholder');
 }
 
 /// `cu.usbserial-01AF7D0E1` / `cu.usbmodem14201` — the prefix macOS builds a
@@ -172,8 +169,7 @@ List<String> configLines(EquipmentNode node, EquipmentType type, EquipmentRegist
     if (options is List) {
       optionLabels[key] = {
         for (final option in options)
-          if (option is Map && option['value'] != null && option['label'] is String && option['label'] != '')
-            '${option['value']}': option['label'] as String,
+          if (option is Map && option['value'] != null && option['label'] is String && option['label'] != '') '${option['value']}': option['label'] as String,
       };
     }
   }

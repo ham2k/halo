@@ -73,38 +73,29 @@ void main() {
   /// is the one thing this sweep must not accidentally test.
   String fluxSeries() {
     final now = nowUtc();
-    return '[${[
-      for (var i = 30; i > 0; i--)
-        '{"time_tag":"${now.subtract(Duration(days: i)).toIso8601String().split('.').first}","flux":${120 + i}}',
-    ].join(',')}]';
+    return '[${[for (var i = 30; i > 0; i--) '{"time_tag":"${now.subtract(Duration(days: i)).toIso8601String().split('.').first}","flux":${120 + i}}'].join(',')}]';
   }
 
   /// The propagated wind, an array of ARRAYS with a header row.
   String windSeries() {
     final now = nowUtc();
-    return '[["time_tag","speed","density"],${[
-      for (var i = 56; i > 0; i--)
-        '["${now.subtract(Duration(minutes: i)).toIso8601String().split('.').first}Z",${300 + i % 12},1.8]',
-    ].join(',')}]';
+    return '[["time_tag","speed","density"],${[for (var i = 56; i > 0; i--) '["${now.subtract(Duration(minutes: i)).toIso8601String().split('.').first}Z",${300 + i % 12},1.8]'].join(',')}]';
   }
 
   String kpSeries() {
     final now = nowUtc();
-    return '[${[
-      for (var i = 24; i > 0; i--)
-        '{"time_tag":"${now.subtract(Duration(hours: i * 3)).toIso8601String().split('.').first}","Kp":${(i % 7) + 1}}',
-    ].join(',')}]';
+    return '[${[for (var i = 24; i > 0; i--) '{"time_tag":"${now.subtract(Duration(hours: i * 3)).toIso8601String().split('.').first}","Kp":${(i % 7) + 1}}'].join(',')}]';
   }
 
   SolarFetch answering() => (url) async {
-        final body = switch (url.path) {
-          final path when path.contains('solarxml') => conditions(),
-          final path when path.contains('f107') => fluxSeries(),
-          final path when path.contains('solar-wind') => windSeries(),
-          _ => kpSeries(),
-        };
-        return (status: 200, body: body);
-      };
+    final body = switch (url.path) {
+      final path when path.contains('solarxml') => conditions(),
+      final path when path.contains('f107') => fluxSeries(),
+      final path when path.contains('solar-wind') => windSeries(),
+      _ => kpSeries(),
+    };
+    return (status: 200, body: body);
+  };
 
   Future<void> pump(WidgetTester tester, Size size, double textScale) async {
     tester.view.devicePixelRatio = 1;
@@ -112,20 +103,22 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        // The app's own theme, not the default one: the floors gate type, and
-        // type here is whatever the theme says it is.
-        theme: buildHaLoTheme(Brightness.dark),
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
-          child: child!,
-        ),
-        home: Scaffold(
-          body: DockPaneVisibility(visible: true, child: SolarPanel(fetch: answering())),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          // The app's own theme, not the default one: the floors gate type, and
+          // type here is whatever the theme says it is.
+          theme: buildHaLoTheme(Brightness.dark),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: DockPaneVisibility(visible: true, child: SolarPanel(fetch: answering())),
+          ),
         ),
       ),
-    ));
+    );
     // Deliberately not pumpAndSettle: the loading state is a
     // CircularProgressIndicator, which never settles.
     for (var i = 0; i < 4; i++) {
@@ -143,10 +136,12 @@ void main() {
   // Either side of every floor rather than at it: the bug a floor carries is
   // never at the floor exactly, it is in the BAND above it, where the section
   // has been let in and the headline has not yet grown enough room for it.
-  const heights = [40.0, 54.0, 90.0, 110.0, 140.0, 196.0, 200.0, 206.0, 210.0,
-      214.0, 224.0, 240.0, 258.0, 262.0, 268.0, 300.0, 316.0, 320.0, 328.0, 420.0,
-      // Either side of the wind curve's floor, which is the third chart's.
-      424.0, 430.0, 440.0, 520.0, 700.0];
+  const heights = [
+    40.0, 54.0, 90.0, 110.0, 140.0, 196.0, 200.0, 206.0, 210.0,
+    214.0, 224.0, 240.0, 258.0, 262.0, 268.0, 300.0, 316.0, 320.0, 328.0, 420.0,
+    // Either side of the wind curve's floor, which is the third chart's.
+    424.0, 430.0, 440.0, 520.0, 700.0,
+  ];
   // Out to a pane far wider than tall, which is what a dock row of one panel
   // is, and what nothing else in this panel's tests covers.
   const widths = [120.0, 184.0, 240.0, 440.0, 900.0];
@@ -156,11 +151,7 @@ void main() {
       for (final height in heights) {
         for (final width in widths) {
           await pump(tester, Size(width, height), scale);
-          expect(
-            tester.takeException(),
-            isNull,
-            reason: 'overflowed at ${width}x$height, textScaler $scale',
-          );
+          expect(tester.takeException(), isNull, reason: 'overflowed at ${width}x$height, textScaler $scale');
           await endOfTest(tester);
         }
       }

@@ -61,8 +61,7 @@ class DeepLinkService {
   Stream<Uri> get links => _appLinks.uriLinkStream;
 
   /// Whether [uri] is an OAuth redirect callback (`com.ham2k.*.auth://…`).
-  static bool isAuthCallback(Uri uri) =>
-      uri.scheme.startsWith('com.ham2k') && uri.scheme.endsWith('.auth');
+  static bool isAuthCallback(Uri uri) => uri.scheme.startsWith('com.ham2k') && uri.scheme.endsWith('.auth');
 
   /// The sync link request [uri] carries, or null when it isn't one:
   /// `com.ham2k:///link_client?id=<client uuid>&token=<challenge>`, the
@@ -108,8 +107,7 @@ class DeepLinkService {
   }
 
   /// Whether [uri] is a Ham2K link naming [command] (`'qso'`, `'vfo'`, …).
-  static bool _isCommand(Uri uri, String command) =>
-      uri.scheme.startsWith('com.ham2k') && (uri.path == '/$command' || uri.host == command);
+  static bool _isCommand(Uri uri, String command) => uri.scheme.startsWith('com.ham2k') && (uri.path == '/$command' || uri.host == command);
 
   /// The radio state a `/vfo` link carries — where the operator's radio
   /// actually is, per a companion app that already knows (SOTAcat, SOTAmat).
@@ -140,14 +138,9 @@ class DeepLinkService {
   ///
   /// `returnpath` is accepted and ignored, as it is in app-polo: it is
   /// reserved for telling the calling app we are done, which nothing does yet.
-  static ({
-    List<String> calls,
-    double? freqKHz,
-    String? band,
-    String? mode,
-    int? startAtMillis,
-    List<({String key, String ref})> theirRefs,
-  })? qsoRequest(Uri uri) {
+  static ({List<String> calls, double? freqKHz, String? band, String? mode, int? startAtMillis, List<({String key, String ref})> theirRefs})? qsoRequest(
+    Uri uri,
+  ) {
     if (!_isCommand(uri, 'qso')) return null;
     final params = uri.queryParameters;
     // A comma-joined list is a multi-operator activation — several operators
@@ -159,11 +152,7 @@ class DeepLinkService {
     //
     // Split here anyway, so an empty or punctuation-only list is caught
     // before it reaches the field, and each call arrives trimmed.
-    final calls = (params['their.call'] ?? '')
-        .split(',')
-        .map((c) => c.trim().toUpperCase())
-        .where((c) => c.isNotEmpty)
-        .toList();
+    final calls = (params['their.call'] ?? '').split(',').map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty).toList();
     if (calls.isEmpty) return null;
     final radio = _radioStateIn(params);
     return (
@@ -248,13 +237,13 @@ class DeepLinkService {
   /// A link carrying either one names the band on its own, so an explicit
   /// `band` is only consulted when neither is present.
   static ({double? freqKHz, String? band, String? mode}) _radioStateIn(Map<String, String> params) {
-    final freqKHz = double.tryParse(params['freq'] ?? '') ??
-        switch (double.tryParse(params['frequency'] ?? '')) { final hz? => hz / 1000, null => null };
+    final freqKHz =
+        double.tryParse(params['freq'] ?? '') ??
+        switch (double.tryParse(params['frequency'] ?? '')) {
+          final hz? => hz / 1000,
+          null => null,
+        };
     final mode = params['mode']?.trim().toUpperCase();
-    return (
-      freqKHz: freqKHz,
-      band: freqKHz != null ? null : params['band']?.trim(),
-      mode: (mode == null || mode.isEmpty) ? null : mode,
-    );
+    return (freqKHz: freqKHz, band: freqKHz != null ? null : params['band']?.trim(), mode: (mode == null || mode.isEmpty) ? null : mode);
   }
 }

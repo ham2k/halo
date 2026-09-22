@@ -208,8 +208,7 @@ Future<bool> installShippedExtensions({
   var installedAny = false;
 
   for (final bundle in shipped) {
-    if (!shouldPreload(bundle,
-        preloadedVersion: preloaded[bundle.key], installedVersion: installedVersions[bundle.key])) {
+    if (!shouldPreload(bundle, preloadedVersion: preloaded[bundle.key], installedVersion: installedVersions[bundle.key])) {
       continue;
     }
     // Recorded whatever happens next. A bundle that cannot be installed is
@@ -319,8 +318,14 @@ Future<({bool landed, bool complete})> adoptCatalogTwins({
   // fetching their twins would put two of each in the panel.
   if (!settings.catalogExtensionsInUse) return (landed: false, complete: true);
   // Everything the app ships, offered or withdrawn — see predecessorBuiltInKey.
-  final shipped = {for (final info in available) if (info.source == ExtensionSource.asset) info.key};
-  final installed = {for (final info in available) if (info.isInstalled) info.key};
+  final shipped = {
+    for (final info in available)
+      if (info.source == ExtensionSource.asset) info.key,
+  };
+  final installed = {
+    for (final info in available)
+      if (info.isInstalled) info.key,
+  };
   final adopted = {...settings.extensionAdopted};
   final wanted = <String>[];
   for (final info in available) {
@@ -349,7 +354,10 @@ Future<({bool landed, bool complete})> adoptCatalogTwins({
   // Said, because it is the one reason the upgrade fails that reports nothing
   // else: the operator only sees "we couldn't finish", launch after launch,
   // until the catalog publishes the key.
-  final missing = [for (final twin in wanted) if (!offered.containsKey(twin)) twin];
+  final missing = [
+    for (final twin in wanted)
+      if (!offered.containsKey(twin)) twin,
+  ];
   if (missing.isNotEmpty) debugPrint('[extensions] catalog listing lacks ${missing.join(', ')}; adoption incomplete');
 
   var landed = false;
@@ -371,12 +379,7 @@ Future<({bool landed, bool complete})> adoptCatalogTwins({
         bytes,
         provenance: BundleProvenance(host: catalog.host, sha256: entry.sha256, version: entry.version),
       );
-      await carryPredecessorRecords(
-        key: twin,
-        settings: settings,
-        builtInKeys: shipped,
-        copySecrets: copySecrets,
-      );
+      await carryPredecessorRecords(key: twin, settings: settings, builtInKeys: shipped, copySecrets: copySecrets);
       await store.install(inspected);
       // Never fresh: the point of the adoption is that the operator's state
       // for this extension already exists, under the name it used to have.

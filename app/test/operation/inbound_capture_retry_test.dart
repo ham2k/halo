@@ -25,11 +25,7 @@ class _FailingCaptures extends InboundCaptureRepository {
   int failures;
 
   @override
-  Future<InboundCaptureRow> capture({
-    required String source,
-    required String dedupeKey,
-    required Map<String, dynamic> qsoData,
-  }) {
+  Future<InboundCaptureRow> capture({required String source, required String dedupeKey, required Map<String, dynamic> qsoData}) {
     if (failures > 0) {
       failures--;
       throw StateError('disk full');
@@ -45,11 +41,7 @@ class _FailingQsos extends QsosRepository {
   bool failing = true;
 
   @override
-  Future<Qso> add(
-    String operationUuid,
-    Map<String, dynamic> qsoData, {
-    List<SequenceDescriptor> serialSequences = const [],
-  }) {
+  Future<Qso> add(String operationUuid, Map<String, dynamic> qsoData, {List<SequenceDescriptor> serialSequences = const []}) {
     if (failing) throw StateError('routing failed');
     return super.add(operationUuid, qsoData, serialSequences: serialSequences);
   }
@@ -83,24 +75,28 @@ void main() {
   });
 
   InboundQsoListenerService service(InboundCaptureRepository captures) => InboundQsoListenerService(
-        settings: settings,
-        captures: captures,
-        qsos: qsos,
-        operations: operations,
-        lookupQueue: lookupQueue,
-        captureRetryInterval: const Duration(milliseconds: 20),
-      );
+    settings: settings,
+    captures: captures,
+    qsos: qsos,
+    operations: operations,
+    lookupQueue: lookupQueue,
+    captureRetryInterval: const Duration(milliseconds: 20),
+  );
 
   test('a failed capture surfaces captureError and is retried until it lands, then the error clears', () async {
     final captures = _FailingCaptures(db, failures: 1);
     final listener = service(captures);
     addTearDown(listener.dispose);
 
-    await listener.captureIncoming(source: wsjtxSource, dedupeKey: 'k1', qso: {
-      'their': {'call': 'W1AW'},
-      'band': '20m',
-      'mode': 'FT8',
-    });
+    await listener.captureIncoming(
+      source: wsjtxSource,
+      dedupeKey: 'k1',
+      qso: {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'FT8',
+      },
+    );
 
     // The insert threw: nothing stored yet, but the failure is visible and
     // the payload is queued — not silently dropped.
@@ -119,9 +115,13 @@ void main() {
     final listener = service(captures);
     addTearDown(listener.dispose);
 
-    await listener.captureIncoming(source: n1mmSource, dedupeKey: 'k2', qso: {
-      'their': {'call': 'K1ABC'},
-    });
+    await listener.captureIncoming(
+      source: n1mmSource,
+      dedupeKey: 'k2',
+      qso: {
+        'their': {'call': 'K1ABC'},
+      },
+    );
     expect(listener.captureError, isNotNull);
 
     // Two more retries fail (failures: 3 in total); the error must still be
@@ -155,12 +155,20 @@ void main() {
     final op = await operations.create(stationCall: 'KI2D');
     listener.setReceivingOperation(op.uuid);
 
-    await listener.captureIncoming(source: wsjtxSource, dedupeKey: 'a', qso: {
-      'their': {'call': 'W1AW'},
-    });
-    await listener.captureIncoming(source: wsjtxSource, dedupeKey: 'b', qso: {
-      'their': {'call': 'K1ABC'},
-    });
+    await listener.captureIncoming(
+      source: wsjtxSource,
+      dedupeKey: 'a',
+      qso: {
+        'their': {'call': 'W1AW'},
+      },
+    );
+    await listener.captureIncoming(
+      source: wsjtxSource,
+      dedupeKey: 'b',
+      qso: {
+        'their': {'call': 'K1ABC'},
+      },
+    );
 
     // First drain: entry a's insert lands but its routing throws. Entry b
     // must survive to a later drain; once routing recovers, both rows
@@ -184,11 +192,15 @@ void main() {
     await operations.updateLocalData(op.uuid, {'operatorCall': 'W1ABC', 'multiIdentifier': '02'});
     listener.setReceivingOperation(op.uuid);
 
-    await listener.captureIncoming(source: wsjtxSource, dedupeKey: 'a', qso: {
-      'their': {'call': 'W1AW'},
-      'band': '20m',
-      'mode': 'FT8',
-    });
+    await listener.captureIncoming(
+      source: wsjtxSource,
+      dedupeKey: 'a',
+      qso: {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'FT8',
+      },
+    );
 
     final logged = await qsos.watchForOperation(op.uuid).first;
     expect((logged.single.data['our'] as Map)['operatorCall'], 'W1ABC');
@@ -207,10 +219,14 @@ void main() {
     await operations.updateLocalData(op.uuid, {'operatorCall': 'W1ABC'});
     listener.setReceivingOperation(op.uuid);
 
-    await listener.captureIncoming(source: wsjtxSource, dedupeKey: 'a', qso: {
-      'our': {'operatorCall': 'K2SUL'},
-      'their': {'call': 'W1AW'},
-    });
+    await listener.captureIncoming(
+      source: wsjtxSource,
+      dedupeKey: 'a',
+      qso: {
+        'our': {'operatorCall': 'K2SUL'},
+        'their': {'call': 'W1AW'},
+      },
+    );
 
     final logged = await qsos.watchForOperation(op.uuid).first;
     expect((logged.single.data['our'] as Map)['operatorCall'], 'K2SUL');

@@ -17,13 +17,15 @@ import 'package:ham2k_logger/views/map/mapbox_webview_map_view.dart';
 
 /// Every Dart file that builds a map page, read as source. The CDN check has
 /// to be a source scan: a URL that is never fetched in a test still ships.
-Iterable<File> _mapSources() =>
-    Directory('lib/views/map').listSync().whereType<File>().where((f) => f.path.endsWith('.dart'));
+Iterable<File> _mapSources() => Directory('lib/views/map').listSync().whereType<File>().where((f) => f.path.endsWith('.dart'));
 
 void main() {
   test('the page inlines the library instead of fetching it', () {
     final page = MapboxWebviewMapView.pageHtml(
-      false, mapDefaultStyleUrl, mapDefaultStyleUrlDark, false,
+      false,
+      mapDefaultStyleUrl,
+      mapDefaultStyleUrlDark,
+      false,
       suppressWindowBlur: false,
       glSource: 'GL_SOURCE_SENTINEL',
       glCss: 'GL_CSS_SENTINEL',
@@ -32,11 +34,7 @@ void main() {
     expect(page, contains('GL_CSS_SENTINEL'));
     // A `src`/`href` for the library is the regression: it turns a bundled
     // asset back into a network fetch on the map's critical path.
-    expect(
-      page,
-      isNot(contains('<script src=')),
-      reason: 'the library must be inlined, not fetched',
-    );
+    expect(page, isNot(contains('<script src=')), reason: 'the library must be inlined, not fetched');
     expect(page, isNot(contains('<link ')));
   });
 
@@ -56,7 +54,8 @@ void main() {
       expect(
         code,
         isNot(contains('unpkg.com')),
-        reason: '${file.path} fetches from unpkg; MapLibre is vendored under '
+        reason:
+            '${file.path} fetches from unpkg; MapLibre is vendored under '
             'assets/maplibre/ precisely so the map does not need the network',
       );
     }
@@ -70,7 +69,8 @@ void main() {
       expect(
         File('assets/maplibre/$name').existsSync(),
         isTrue,
-        reason: 'assets/maplibre/$name is missing; the map cannot draw without '
+        reason:
+            'assets/maplibre/$name is missing; the map cannot draw without '
             'it, and LICENSE.txt is required because MapLibre is BSD-3-Clause '
             'and this ships a copy',
       );
@@ -106,7 +106,8 @@ void main() {
     expect(
       source.substring(0, 4000),
       contains(mapGlVersion),
-      reason: 'mapGlVersion ($mapGlVersion) does not appear in the vendored '
+      reason:
+          'mapGlVersion ($mapGlVersion) does not appear in the vendored '
           "library's header — one of the two was updated without the other",
     );
   });

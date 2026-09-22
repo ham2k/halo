@@ -31,11 +31,7 @@ typedef CommandConfig = ({
 
 /// The command being typed into the call field. See the file comment.
 class CommandInterpretationModel extends ChangeNotifier with PanelModel {
-  CommandInterpretationModel({
-    required this.config,
-    required this.callText,
-    required this.qsoData,
-  });
+  CommandInterpretationModel({required this.config, required this.callText, required this.qsoData});
 
   /// The panel's configuration as it stands right now.
   final CommandConfig Function() config;
@@ -93,8 +89,7 @@ class CommandInterpretationModel extends ChangeNotifier with PanelModel {
   /// The command input that would expand [stack]'s cursor segment, or null
   /// — see [CallFieldText.expansionInputFor]; this is the one place that
   /// knows which key the draft has already spent.
-  String? expansionInputFor(StackSegments stack) =>
-      callText().expansionInputFor(stack, alreadyExpanded: _lastExpandedInput);
+  String? expansionInputFor(StackSegments stack) => callText().expansionInputFor(stack, alreadyExpanded: _lastExpandedInput);
 
   /// The command input that would expand the stacked segment under the
   /// cursor right now, or null when the field isn't a stack, no command
@@ -120,7 +115,6 @@ class CommandInterpretationModel extends ChangeNotifier with PanelModel {
   /// for case — see [_retain].
   static final _callsignModeSafeText = RegExp('^[$callsignCharacters]*\$');
 
-
   // ---- What the panel reads ----
 
   Map<String, dynamic>? get current => _current;
@@ -139,8 +133,7 @@ class CommandInterpretationModel extends ChangeNotifier with PanelModel {
   ///   rewrite the whole field on the very next keystroke — "EXP LA"
   ///   snapping to "EXPLA". Same guard [_retain] applies to the null-result
   ///   path, for the same reason.
-  bool get expectsParams =>
-      _retained != null && (_retained!['expectsParams'] == true || !_callsignModeSafeText.hasMatch(callText().text));
+  bool get expectsParams => _retained != null && (_retained!['expectsParams'] == true || !_callsignModeSafeText.hasMatch(callText().text));
 
   /// Whether the retained command declared `mixedCase: true` — only such
   /// commands (e.g. NOTE, whose parameter is free prose) release the call

@@ -87,11 +87,11 @@ Future<MapMarkerImage> renderMarkerIconImage({
       // be encoded. Named here rather than left as a bare null check: the
       // caller's report of it is all anyone reading a crash later gets.
       if (data == null) {
-        throw StateError(
-            'could not rasterize marker glyph U+${icon.codePoint.toRadixString(16)} in ${icon.fontFamily}');
+        throw StateError('could not rasterize marker glyph U+${icon.codePoint.toRadixString(16)} in ${icon.fontFamily}');
       }
       return MapMarkerImage(
-        id: 'glyph-${icon.fontPackage}/${icon.fontFamily}/${icon.codePoint}'
+        id:
+            'glyph-${icon.fontPackage}/${icon.fontFamily}/${icon.codePoint}'
             '-${background.toARGB32()}-${foreground.toARGB32()}-${strokeColor.toARGB32()}'
             '-$size',
         // Offset and length, not the whole buffer: a view into a larger one

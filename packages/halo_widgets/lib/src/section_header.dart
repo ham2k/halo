@@ -87,8 +87,7 @@ class SectionHeader extends StatelessWidget {
   static const ruleWidth = 1.0;
 
   static EdgeInsets _padding(BuildContext context) {
-    final inset = (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xxl))
-        .resolve(Directionality.of(context));
+    final inset = (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xxl)).resolve(Directionality.of(context));
     return EdgeInsets.fromLTRB(
       (inset.left - overhang).clamp(0.0, double.infinity),
       inset.top + Space.sm,
@@ -108,28 +107,20 @@ class SectionHeader extends StatelessWidget {
   /// needs, which a stated extent can only guess at. Nested groups stack
   /// rather than overlap: it pins under whatever pinned band the group above
   /// it holds (the Settings panel's category band over its sections).
-  static Widget pinned(
-    BuildContext context,
-    String title, {
-    Color? color,
-    Widget? subtitle,
-    Widget? trailing,
-    Color? background,
-  }) =>
-      SectionHeader(title, color: color, subtitle: subtitle, trailing: trailing, background: background)
-          .asPinnedSliver(context);
+  static Widget pinned(BuildContext context, String title, {Color? color, Widget? subtitle, Widget? trailing, Color? background}) =>
+      SectionHeader(title, color: color, subtitle: subtitle, trailing: trailing, background: background).asPinnedSliver(context);
 
   /// This very band as its pinned sliver — for a caller holding a built
   /// [SectionHeader] rather than a title ([sectionSlivers], which reads the
   /// bands out of a list of rows).
   Widget asPinnedSliver(BuildContext context) => PinnedHeaderSliver(
-        // Painted, unlike the inline heading: pinned, it has its own rows
-        // scrolling UNDER it, and a heading with no ground of its own would
-        // show them through. The pane's surface is what it stands on — a
-        // pinned band only belongs on a surface-grounded list — unless the
-        // band brought its own, which is then what its rows scroll under.
-        child: ColoredBox(color: background ?? Theme.of(context).colorScheme.surface, child: this),
-      );
+    // Painted, unlike the inline heading: pinned, it has its own rows
+    // scrolling UNDER it, and a heading with no ground of its own would
+    // show them through. The pane's surface is what it stands on — a
+    // pinned band only belongs on a surface-grounded list — unless the
+    // band brought its own, which is then what its rows scroll under.
+    child: ColoredBox(color: background ?? Theme.of(context).colorScheme.surface, child: this),
+  );
 
   /// A whole section: this band pinned over [children], which scroll under
   /// it until the next section's band pushes it off.
@@ -137,18 +128,12 @@ class SectionHeader extends StatelessWidget {
   /// Every sliver in the group is a sliver, [children] excepted — they are
   /// boxes, in a [SliverList]. A box handed straight to a viewport fails the
   /// whole list rather than just its own section.
-  static Widget section(
-    BuildContext context,
-    String title, {
-    required List<Widget> children,
-    Color? color,
-  }) =>
-      SliverMainAxisGroup(
-        slivers: [
-          pinned(context, title, color: color),
-          SliverList(delegate: SliverChildListDelegate(children)),
-        ],
-      );
+  static Widget section(BuildContext context, String title, {required List<Widget> children, Color? color}) => SliverMainAxisGroup(
+    slivers: [
+      pinned(context, title, color: color),
+      SliverList(delegate: SliverChildListDelegate(children)),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -157,8 +142,7 @@ class SectionHeader extends StatelessWidget {
     // belong to the section above and its own pinned band names them. Silent
     // and plausible on screen, which is why it fails here instead.
     assert(
-      context.findAncestorWidgetOfExactType<SectionedListView>() == null ||
-          context.findAncestorWidgetOfExactType<PinnedHeaderSliver>() != null,
+      context.findAncestorWidgetOfExactType<SectionedListView>() == null || context.findAncestorWidgetOfExactType<PinnedHeaderSliver>() != null,
       'A SectionHeader in a SectionedListView must be a direct child of it, '
       'or come from a widget that returns SectionedSlivers.',
     );
@@ -190,7 +174,9 @@ class SectionHeader extends StatelessWidget {
                   // it back against the last word. Expanded also gives the
                   // title the room to WRAP at a large font scale rather than
                   // pushing the control off the band.
-                  Expanded(child: Text(title, style: titleStyle(context, color: color))),
+                  Expanded(
+                    child: Text(title, style: titleStyle(context, color: color)),
+                  ),
                   const SizedBox(width: Space.md),
                   trailing!,
                 ],

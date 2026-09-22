@@ -25,11 +25,7 @@ class OperationLocationScreen extends StatefulWidget {
   final HaLoServices services;
   final Operation operation;
 
-  const OperationLocationScreen({
-    super.key,
-    required this.services,
-    required this.operation,
-  });
+  const OperationLocationScreen({super.key, required this.services, required this.operation});
 
   @override
   State<OperationLocationScreen> createState() => _OperationLocationScreenState();
@@ -249,10 +245,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
           }
         : null;
     final gpsSubtitle = switch (location.status) {
-      LocationStatus.available =>
-        localProblem == null
-            ? (location.displayGrid ?? '')
-            : '${location.displayGrid ?? ''} — $localProblem',
+      LocationStatus.available => localProblem == null ? (location.displayGrid ?? '') : '${location.displayGrid ?? ''} — $localProblem',
       LocationStatus.unknown || LocationStatus.determining => t.locating,
       LocationStatus.permissionDenied => t.permissionDenied,
       LocationStatus.permissionBlocked => t.permissionBlocked,
@@ -269,115 +262,110 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
       content: CustomScrollView(
         shrinkWrap: true,
         slivers: [
-          SectionHeader.section(context, t.selectedLocation, children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: settingsRowInset),
-            child: TextField(
-              selectAllOnFocus: false,
-              controller: _gridController,
-              focusNode: _gridFocus,
-              // Field pair/square uppercase, subsquare-on lowercase, live —
-              // see GridCaseTextFormatter.
-              inputFormatters: const [GridCaseTextFormatter()],
-              decoration: poloFieldDecoration(
-                context,
-                t.gridSquare,
-                errorText: _gridRejected ? t.gridInvalid : null,
-              ),
-              onSubmitted: (_) => _save(),
-            ),
-          ),
-          const SizedBox(height: Space.md),
-          ]),
-          SectionHeader.section(context, t.suggestedLocations, children: [
-          ListTile(
-            leading: Icon(MdiIcons.crosshairsGps),
-            // A fix served on a peer's behalf is named as such — calling the
-            // phone's position "Device GPS" would tell the operator this
-            // machine can do something it cannot.
-            title: Text(switch (location.peerPositionDeviceName) {
-              final device? => t.peerGps(device: device),
-              null => t.deviceGps,
-            }),
-            subtitle: Text(gpsSubtitle),
-            onTap: location.displayGrid == null
-                ? null
-                : () => _adoptGrid(location.displayGrid!, 'gps', location: location.location),
-          ),
-          for (final suggestion in refsWithGrid)
-            ListTile(
-              tileColor: !_controlsUnreliable &&
-                      isUnknownRefType(_controls, suggestion.ref['type'] as String?,
-                          code: refCodeOf(suggestion.ref))
-                  ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
-                  : null,
-              leading: _controlsUnreliable
-                  ? Icon(MdiIcons.toyBrick)
-                  : activityRefIcon(_controls, suggestion.ref['type'] as String?,
-                      code: refCodeOf(suggestion.ref)),
-              title: Text((suggestion.ref['shortLabel'] ?? suggestion.ref['ref'] ?? '?') as String),
-              subtitle: Text(suggestion.grid, style: const TextStyle(fontFamily: 'RobotoMono')),
-              onTap: () => _adoptGrid(suggestion.grid, 'manual', location: suggestion.location),
-            ),
-          // Only worth saying when a ref is actually standing there without
-          // its activity's icon and label — with no refs to explain, the
-          // controls are of no consequence to this screen.
-          if (_controlsState == ControlsLoadState.failed && refsWithGrid.isNotEmpty)
-            ListTile(
-              leading: Icon(MdiIcons.alertCircleOutline, color: theme.colorScheme.error),
-              title: Text(t.controlsUnavailableTitle, style: TextStyle(color: theme.colorScheme.error)),
-              subtitle: Text(t.controlsUnavailableReason),
-              trailing: TextButton(
-                onPressed: () {
-                  setState(() => _controlsState = ControlsLoadState.loading);
-                  _loadControls();
-                },
-                child: Text(t.controlsUnavailableRetry),
-              ),
-            ),
-          const SizedBox(height: Space.md),
-          ]),
-          SectionHeader.section(context, t.moreDetails, children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: settingsRowInset),
-            child: Column(
-              children: [
-                TextField(
+          SectionHeader.section(
+            context,
+            t.selectedLocation,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: settingsRowInset),
+                child: TextField(
                   selectAllOnFocus: false,
-                  controller: _stateController,
-                  focusNode: _stateFocus,
-                  // A 2-letter abbreviation goes fully uppercase on blur —
-                  // see _onStateFocusChange.
-                  inputFormatters: const [CapitalizeFirstLetterTextFormatter()],
-                  decoration: poloFieldDecoration(context, t.stateOrProvince),
+                  controller: _gridController,
+                  focusNode: _gridFocus,
+                  // Field pair/square uppercase, subsquare-on lowercase, live —
+                  // see GridCaseTextFormatter.
+                  inputFormatters: const [GridCaseTextFormatter()],
+                  decoration: poloFieldDecoration(context, t.gridSquare, errorText: _gridRejected ? t.gridInvalid : null),
                   onSubmitted: (_) => _save(),
                 ),
-                const SizedBox(height: Space.md),
-                TextField(
-                  selectAllOnFocus: false,
-                  controller: _countyController,
-                  focusNode: _countyFocus,
-                  inputFormatters: const [CapitalizeFirstLetterTextFormatter()],
-                  decoration: poloFieldDecoration(context, t.county),
-                  onSubmitted: (_) => _save(),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: Space.md),
+            ],
           ),
-          const SizedBox(height: Space.xxl),
-          ]),
+          SectionHeader.section(
+            context,
+            t.suggestedLocations,
+            children: [
+              ListTile(
+                leading: Icon(MdiIcons.crosshairsGps),
+                // A fix served on a peer's behalf is named as such — calling the
+                // phone's position "Device GPS" would tell the operator this
+                // machine can do something it cannot.
+                title: Text(switch (location.peerPositionDeviceName) {
+                  final device? => t.peerGps(device: device),
+                  null => t.deviceGps,
+                }),
+                subtitle: Text(gpsSubtitle),
+                onTap: location.displayGrid == null ? null : () => _adoptGrid(location.displayGrid!, 'gps', location: location.location),
+              ),
+              for (final suggestion in refsWithGrid)
+                ListTile(
+                  tileColor: !_controlsUnreliable && isUnknownRefType(_controls, suggestion.ref['type'] as String?, code: refCodeOf(suggestion.ref))
+                      ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
+                      : null,
+                  leading: _controlsUnreliable
+                      ? Icon(MdiIcons.toyBrick)
+                      : activityRefIcon(_controls, suggestion.ref['type'] as String?, code: refCodeOf(suggestion.ref)),
+                  title: Text((suggestion.ref['shortLabel'] ?? suggestion.ref['ref'] ?? '?') as String),
+                  subtitle: Text(suggestion.grid, style: const TextStyle(fontFamily: 'RobotoMono')),
+                  onTap: () => _adoptGrid(suggestion.grid, 'manual', location: suggestion.location),
+                ),
+              // Only worth saying when a ref is actually standing there without
+              // its activity's icon and label — with no refs to explain, the
+              // controls are of no consequence to this screen.
+              if (_controlsState == ControlsLoadState.failed && refsWithGrid.isNotEmpty)
+                ListTile(
+                  leading: Icon(MdiIcons.alertCircleOutline, color: theme.colorScheme.error),
+                  title: Text(t.controlsUnavailableTitle, style: TextStyle(color: theme.colorScheme.error)),
+                  subtitle: Text(t.controlsUnavailableReason),
+                  trailing: TextButton(
+                    onPressed: () {
+                      setState(() => _controlsState = ControlsLoadState.loading);
+                      _loadControls();
+                    },
+                    child: Text(t.controlsUnavailableRetry),
+                  ),
+                ),
+              const SizedBox(height: Space.md),
+            ],
+          ),
+          SectionHeader.section(
+            context,
+            t.moreDetails,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: settingsRowInset),
+                child: Column(
+                  children: [
+                    TextField(
+                      selectAllOnFocus: false,
+                      controller: _stateController,
+                      focusNode: _stateFocus,
+                      // A 2-letter abbreviation goes fully uppercase on blur —
+                      // see _onStateFocusChange.
+                      inputFormatters: const [CapitalizeFirstLetterTextFormatter()],
+                      decoration: poloFieldDecoration(context, t.stateOrProvince),
+                      onSubmitted: (_) => _save(),
+                    ),
+                    const SizedBox(height: Space.md),
+                    TextField(
+                      selectAllOnFocus: false,
+                      controller: _countyController,
+                      focusNode: _countyFocus,
+                      inputFormatters: const [CapitalizeFirstLetterTextFormatter()],
+                      decoration: poloFieldDecoration(context, t.county),
+                      onSubmitted: (_) => _save(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: Space.xxl),
+            ],
+          ),
         ],
-        ),
-      cancel: TextButton(
-        onPressed: () => Navigator.of(context).pop(null),
-        child: Text(context.t.common.cancel),
       ),
-      actions: [
-        FilledButton(
-          onPressed: _save,
-          child: Text(context.t.common.save),
-        ),
-      ],
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(null), child: Text(context.t.common.cancel)),
+      actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
     );
   }
 }

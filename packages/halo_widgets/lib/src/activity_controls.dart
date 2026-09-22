@@ -20,8 +20,7 @@ import 'mdi_icons.g.dart';
 /// caller passes a nullable type read out of extension JSON, meaning a ref
 /// or an export that claims NO activity would be branded with that
 /// extension's icon and accent.
-Map<String, dynamic>? controlForRefType(List<Map<String, dynamic>> controls, String? refType) =>
-    controlForRef(controls, type: refType);
+Map<String, dynamic>? controlForRefType(List<Map<String, dynamic>> controls, String? refType) => controlForRef(controls, type: refType);
 
 /// The control that handles the reference [type]/[code], most precise first.
 ///
@@ -39,11 +38,7 @@ Map<String, dynamic>? controlForRefType(List<Map<String, dynamic>> controls, Str
 ///
 /// [code] is the reference's own code and may be null; a claim with a prefix
 /// then matches nothing, because there is nothing for the prefix to begin.
-Map<String, dynamic>? controlForRef(
-  List<Map<String, dynamic>> controls, {
-  required String? type,
-  String? code,
-}) {
+Map<String, dynamic>? controlForRef(List<Map<String, dynamic>> controls, {required String? type, String? code}) {
   if (type == null || type.isEmpty) return null;
   final folded = code?.toLowerCase();
   Map<String, dynamic>? best;
@@ -90,8 +85,7 @@ Color? colorForRefType(List<Map<String, dynamic>> controls, String? refType, {St
 /// Whether [refType] doesn't match any currently active control — its
 /// extension isn't installed/loaded/enabled right now. A null [refType]
 /// (no control ever declares one) counts as unknown too.
-bool isUnknownRefType(List<Map<String, dynamic>> controls, String? refType, {String? code}) =>
-    controlForRef(controls, type: refType, code: code) == null;
+bool isUnknownRefType(List<Map<String, dynamic>> controls, String? refType, {String? code}) => controlForRef(controls, type: refType, code: code) == null;
 
 /// A reference's own code, where it has one that is readable.
 ///
@@ -111,12 +105,11 @@ String? refCodeOf(Map<String, dynamic> ref) => ref['ref'] is String ? ref['ref']
 ///
 /// The type is applied last, so a form field that happens to be named `type`
 /// cannot decide what the reference IS.
-Map<String, dynamic> refWithFormResult(
-  Map<String, dynamic>? existing,
-  Map<String, dynamic> result, {
-  required String refType,
-}) =>
-    {...?existing, ...result, 'type': existing?['type'] ?? refType};
+Map<String, dynamic> refWithFormResult(Map<String, dynamic>? existing, Map<String, dynamic> result, {required String refType}) => {
+  ...?existing,
+  ...result,
+  'type': existing?['type'] ?? refType,
+};
 
 /// The references among [refs] that no control in [controls] handles, as the
 /// type and code pair an extension's manifest claim is matched against.
@@ -125,16 +118,11 @@ Map<String, dynamic> refWithFormResult(
 /// and by app-polo, so a `ref` that is a number is not this reader's to throw
 /// over — every caller here is deciding what to OFFER, and offering nothing
 /// beats taking the screen down with it.
-List<({String type, String? code})> unhandledRefsIn(
-  List<Map<String, dynamic>> refs,
-  List<Map<String, dynamic>> controls,
-) =>
-    [
-      for (final ref in refs)
-        if (ref['type'] is String)
-          if (controlForRef(controls, type: ref['type'] as String, code: refCodeOf(ref)) == null)
-            (type: ref['type'] as String, code: refCodeOf(ref)),
-    ];
+List<({String type, String? code})> unhandledRefsIn(List<Map<String, dynamic>> refs, List<Map<String, dynamic>> controls) => [
+  for (final ref in refs)
+    if (ref['type'] is String)
+      if (controlForRef(controls, type: ref['type'] as String, code: refCodeOf(ref)) == null) (type: ref['type'] as String, code: refCodeOf(ref)),
+];
 
 /// The icon for a ref/suggestion of [refType]: the matching control's own
 /// icon, tinted with its declared accent color if any — or, when it matches
@@ -147,13 +135,7 @@ List<({String type, String? code})> unhandledRefsIn(
 /// known-type icon — the question-mark itself defaults to 16 regardless,
 /// overridable for a more compact inline usage (e.g. QsoList's per-row
 /// count).
-Widget activityRefIcon(
-  List<Map<String, dynamic>> controls,
-  String? refType, {
-  String? code,
-  double? iconSize,
-  double? avatarRadius,
-}) {
+Widget activityRefIcon(List<Map<String, dynamic>> controls, String? refType, {String? code, double? iconSize, double? avatarRadius}) {
   final control = controlForRef(controls, type: refType, code: code);
   if (control == null) {
     return CircleAvatar(
@@ -164,7 +146,5 @@ Widget activityRefIcon(
   }
   final icon = Icon(resolveIconName(control['icon'] as String?), size: iconSize);
   final color = resolveExtensionColor(control['color'] as String?);
-  return color == null
-      ? icon
-      : CircleAvatar(radius: avatarRadius, backgroundColor: color.withValues(alpha: 0.6), child: icon);
+  return color == null ? icon : CircleAvatar(radius: avatarRadius, backgroundColor: color.withValues(alpha: 0.6), child: icon);
 }

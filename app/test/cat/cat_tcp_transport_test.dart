@@ -94,10 +94,7 @@ void main() {
 
   test('an already-cancelled token is refused without opening anything', () async {
     final cancel = CatCancelToken()..cancel();
-    await expectLater(
-      const TcpTransport().connect(target, cancel: cancel),
-      throwsA(isA<CatCancelledException>()),
-    );
+    await expectLater(const TcpTransport().connect(target, cancel: cancel), throwsA(isA<CatCancelledException>()));
     expect(serverSockets, isEmpty);
   });
 
@@ -108,8 +105,7 @@ void main() {
     await vacant.close();
 
     await expectLater(
-      const TcpTransport().connect({'host': InternetAddress.loopbackIPv4.address, 'port': port},
-          cancel: CatCancelToken()),
+      const TcpTransport().connect({'host': InternetAddress.loopbackIPv4.address, 'port': port}, cancel: CatCancelToken()),
       throwsA(isA<SocketException>()),
     );
   });
@@ -121,8 +117,7 @@ void main() {
     // rather than a plausible-looking one that would silently pass it.
 
     test('targetFor falls back to port 0, not a guessed default', () {
-      expect(const TcpTransport().targetFor({'host': 'radio.local', 'port': 'garbage'}),
-          {'host': 'radio.local', 'port': 0});
+      expect(const TcpTransport().targetFor({'host': 'radio.local', 'port': 'garbage'}), {'host': 'radio.local', 'port': 0});
     });
 
     test('describeTarget reflects the same fallback', () {

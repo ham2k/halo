@@ -192,8 +192,10 @@ AdifImportPlan planAdifImport({
   }
   records = datable;
 
-  final flagged = [for (final record in records) if (record.problems.isNotEmpty) record];
-
+  final flagged = [
+    for (final record in records)
+      if (record.problems.isNotEmpty) record,
+  ];
 
   // Rewritten up front rather than at each merge, so matching, folding and the
   // records finally written all see the same station.
@@ -201,12 +203,7 @@ AdifImportPlan planAdifImport({
       ? records
       : [
           for (final record in records)
-            AdifRecord(
-              number: record.number,
-              fields: record.fields,
-              qso: qsoForStation(record.qso, stationCall),
-              problems: record.problems,
-            ),
+            AdifRecord(number: record.number, fields: record.fields, qso: qsoForStation(record.qso, stationCall), problems: record.problems),
         ];
 
   // Before matching, so an operation-level reference is never carried onto an
@@ -214,12 +211,7 @@ AdifImportPlan planAdifImport({
   final hoisted = hoistOperationRefs([for (final r in restationed) r.qso]);
   final incoming = [
     for (var i = 0; i < restationed.length; i++)
-      AdifRecord(
-        number: restationed[i].number,
-        fields: restationed[i].fields,
-        qso: hoisted.qsos[i],
-        problems: restationed[i].problems,
-      ),
+      AdifRecord(number: restationed[i].number, fields: restationed[i].fields, qso: hoisted.qsos[i], problems: restationed[i].problems),
   ];
 
   // Bucketed by callsign, which is the first and most selective thing a match
@@ -257,12 +249,7 @@ AdifImportPlan planAdifImport({
     // Claimed rows deliberately stay in the running: two file records CAN
     // belong to one logged contact, and excluding a claimed row would send the
     // second off to become a spurious addition.
-    final match = _nearest(
-      existingByCall[call] ?? const <Qso>[],
-      record.qso,
-      (qso) => qso.data,
-      stationCall,
-    );
+    final match = _nearest(existingByCall[call] ?? const <Qso>[], record.qso, (qso) => qso.data, stationCall);
     if (match != null) {
       byExisting.putIfAbsent(match.uuid, () => []).add(record.qso);
       continue;
@@ -304,13 +291,7 @@ AdifImportPlan planAdifImport({
     // device see those contacts as newer revisions — for a write with no
     // content.
     if (const DeepCollectionEquality().equals(data, target.data)) continue;
-    merges.add(Qso(
-      uuid: target.uuid,
-      operationUuid: target.operationUuid,
-      data: data,
-      deleted: target.deleted,
-      scoreCache: target.scoreCache,
-    ));
+    merges.add(Qso(uuid: target.uuid, operationUuid: target.operationUuid, data: data, deleted: target.deleted, scoreCache: target.scoreCache));
     mergeBases[target.uuid] = target;
   }
 
@@ -318,12 +299,7 @@ AdifImportPlan planAdifImport({
   // merging applies the imposed call to the merged record, so a logged contact
   // is rewritten only if something merges into it. Scanning all of `existing`
   // would warn about contacts nothing is going to touch.
-  final foreign = stationCall == null
-      ? const <String>[]
-      : foreignStationCalls(
-          [for (final r in records) r.qso, ...targetsBefore],
-          stationCall,
-        );
+  final foreign = stationCall == null ? const <String>[] : foreignStationCalls([for (final r in records) r.qso, ...targetsBefore], stationCall);
 
   return AdifImportPlan(
     filename: filename,
@@ -350,12 +326,7 @@ AdifImportPlan planAdifImport({
 /// "First that matches" is not the same question: inside a five-minute window
 /// several contacts can qualify, and taking whichever the list happens to
 /// reach first welds the wrong pair together.
-T? _nearest<T>(
-  Iterable<T> candidates,
-  Map<String, dynamic> record,
-  Map<String, dynamic> Function(T) dataOf,
-  String? stationCall,
-) {
+T? _nearest<T>(Iterable<T> candidates, Map<String, dynamic> record, Map<String, dynamic> Function(T) dataOf, String? stationCall) {
   final at = qsoStartMillis(record);
   T? best;
   int? bestGap;

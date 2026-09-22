@@ -14,8 +14,7 @@ void main() {
   setUp(() => temp = Directory.systemTemp.createTempSync('halo-cli-config'));
   tearDown(() => temp.deleteSync(recursive: true));
 
-  File configWith(Map<String, Object?> json) =>
-      File('${temp.path}/halo-cli.json')..writeAsStringSync(jsonEncode(json));
+  File configWith(Map<String, Object?> json) => File('${temp.path}/halo-cli.json')..writeAsStringSync(jsonEncode(json));
 
   group('loading', () {
     test('a missing default file is a fresh start, a missing NAMED one is a typo', () {
@@ -29,19 +28,18 @@ void main() {
 
     test('malformed JSON names the file instead of throwing a decoder error', () {
       File('${temp.path}/bad.json').writeAsStringSync('{not json');
-      expect(
-        () => CliConfig.load(path: '${temp.path}/bad.json'),
-        throwsA(isA<CliUsageError>().having((e) => e.message, 'message', contains('bad.json'))),
-      );
+      expect(() => CliConfig.load(path: '${temp.path}/bad.json'), throwsA(isA<CliUsageError>().having((e) => e.message, 'message', contains('bad.json'))));
     });
 
     test('settings merge OVER the defaults rather than replacing them', () {
       // An extension reading `showRSTFields` must not get null just because
       // the operator set one unrelated key — every key in the app's
       // getSettings view has to survive a partial config.
-      final config = CliConfig.load(path: configWith({
-        'settings': {'operatorCall': 'KI2D'}
-      }).path);
+      final config = CliConfig.load(
+        path: configWith({
+          'settings': {'operatorCall': 'KI2D'},
+        }).path,
+      );
       expect(config.settings['operatorCall'], 'KI2D');
       expect(config.settings['showRSTFields'], true);
       expect(config.settings['bands'], defaultSettings['bands']);
@@ -62,9 +60,9 @@ void main() {
       final path = configWith({
         'accounts': {
           'qrz': {
-            'credentials': {'username': 'KI2D'}
-          }
-        }
+            'credentials': {'username': 'KI2D'},
+          },
+        },
       }).path;
       CliConfig.load(path: path).setAccountSession('qrz', {'key': 'abc123'});
 
@@ -90,7 +88,7 @@ void main() {
       // variable, a value pasted for a single command — into a credential
       // stored on disk that the operator never chose to save.
       final path = configWith({
-        'secrets': {'TOTA_API_KEY': 'from-file'}
+        'secrets': {'TOTA_API_KEY': 'from-file'},
       }).path;
       final config = CliConfig.load(path: path, environment: {'HALO_SECRET_SOTA_OAUTH_CLIENT_ID': 'from-env'});
       expect(config.secrets['SOTA_OAUTH_CLIENT_ID'], 'from-env');
@@ -103,12 +101,9 @@ void main() {
 
     test('overrides a setting the file also sets, and parses its JSON', () {
       final path = configWith({
-        'settings': {'developerMode': false, 'locale': 'en'}
+        'settings': {'developerMode': false, 'locale': 'en'},
       }).path;
-      final config = CliConfig.load(path: path, environment: {
-        'HALO_SETTING_developerMode': 'true',
-        'HALO_SETTING_locale': 'es',
-      });
+      final config = CliConfig.load(path: path, environment: {'HALO_SETTING_developerMode': 'true', 'HALO_SETTING_locale': 'es'});
       // `true` the boolean, not "true" the string — an extension branching on
       // it would take the wrong path on a truthy string.
       expect(config.settings['developerMode'], isTrue);

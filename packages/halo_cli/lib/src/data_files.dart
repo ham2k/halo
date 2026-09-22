@@ -59,21 +59,14 @@ class DataFileResult {
   final String? cachedAt;
   final int? entries;
 
-  DataFileResult({
-    required this.key,
-    this.category,
-    this.rows = 0,
-    this.error,
-    this.cachedAt,
-    this.entries,
-  });
+  DataFileResult({required this.key, this.category, this.rows = 0, this.error, this.cachedAt, this.entries});
 
   Map<String, Object?> toJson() => {
-        'key': key,
-        if (category != null) 'category': category,
-        if (cachedAt != null) ...{'kind': 'raw', 'entries': entries, 'cachedAt': cachedAt} else 'rows': rows,
-        if (error != null) 'error': error,
-      };
+    'key': key,
+    if (category != null) 'category': category,
+    if (cachedAt != null) ...{'kind': 'raw', 'entries': entries, 'cachedAt': cachedAt} else 'rows': rows,
+    if (error != null) 'error': error,
+  };
 }
 
 class DataFileSync {
@@ -87,12 +80,7 @@ class DataFileSync {
   /// timeout are tuned around it.
   static const chunkSize = 5000;
 
-  DataFileSync({
-    required this.runtime,
-    required this.store,
-    required this.userAgent,
-    this.verbose = false,
-  });
+  DataFileSync({required this.runtime, required this.store, required this.userAgent, this.verbose = false});
 
   /// Every registered data file, in registration order.
   Future<List<DataFileDef>> definitions() async {
@@ -134,8 +122,7 @@ class DataFileSync {
     if (response.statusCode != 200) {
       throw StateError('HTTP ${response.statusCode} from ${redactUrlForLog(url)}');
     }
-    return decodeDataFileBody(response.bodyBytes,
-        encoding: resolveDataFileEncoding(encoding, response.headers['content-type']));
+    return decodeDataFileBody(response.bodyBytes, encoding: resolveDataFileEncoding(encoding, response.headers['content-type']));
   }
 
   Future<DataFileResult> _importCsv(DataFileDef def, String body) async {
@@ -159,8 +146,7 @@ class DataFileSync {
       rows.add(parsed);
     }
 
-    return _mapAndWrite(def, 'mapCsvBatch', 'rows', rows,
-        extraArgs: headers == null ? null : {'headers': headers});
+    return _mapAndWrite(def, 'mapCsvBatch', 'rows', rows, extraArgs: headers == null ? null : {'headers': headers});
   }
 
   Future<DataFileResult> _importJson(DataFileDef def, String body) async {
@@ -202,11 +188,13 @@ class DataFileSync {
       if (entry is! File || !entry.path.endsWith('.json')) continue;
       final key = entry.uri.pathSegments.last.replaceAll(RegExp(r'\.json$'), '');
       try {
-        await runtime.host.invokeHook('dataFile',
-            key: key,
-            method: 'onLoadRawData',
-            args: jsonDecode(entry.readAsStringSync()),
-            timeout: const Duration(seconds: 30));
+        await runtime.host.invokeHook(
+          'dataFile',
+          key: key,
+          method: 'onLoadRawData',
+          args: jsonDecode(entry.readAsStringSync()),
+          timeout: const Duration(seconds: 30),
+        );
         replayed.add(key);
       } catch (e) {
         // The extension that owns this file may simply not be loaded (a
@@ -232,8 +220,7 @@ class DataFileSync {
     final cache = File('${rawCacheDir(store)}/${def.key}.json')
       ..parent.createSync(recursive: true)
       ..writeAsStringSync(jsonEncode(processed));
-    await runtime.host.invokeHook('dataFile',
-        key: def.key, method: 'onLoadRawData', args: processed, timeout: const Duration(seconds: 60));
+    await runtime.host.invokeHook('dataFile', key: def.key, method: 'onLoadRawData', args: processed, timeout: const Duration(seconds: 60));
     return DataFileResult(
       key: def.key,
       cachedAt: cache.path,
@@ -245,13 +232,7 @@ class DataFileSync {
     );
   }
 
-  Future<DataFileResult> _mapAndWrite(
-    DataFileDef def,
-    String method,
-    String argKey,
-    List<Object?> items, {
-    Map<String, Object?>? extraArgs,
-  }) async {
+  Future<DataFileResult> _mapAndWrite(DataFileDef def, String method, String argKey, List<Object?> items, {Map<String, Object?>? extraArgs}) async {
     // Stamps every row this run touches, so the sweep below can delete
     // exactly what the source dropped.
     final updatedFlag = nowMillis();
@@ -272,8 +253,10 @@ class DataFileSync {
       if (mapped is! List) {
         // Bailing out protects what is already imported: carrying on to the
         // sweep with nothing imported would delete the whole category.
-        throw StateError('$method returned ${mapped.runtimeType}, not a list — '
-            'dropped rows $start..$end of ${items.length}');
+        throw StateError(
+          '$method returned ${mapped.runtimeType}, not a list — '
+          'dropped rows $start..$end of ${items.length}',
+        );
       }
 
       final rows = <LookupRow>[];
@@ -281,17 +264,19 @@ class DataFileSync {
         if (item is! Map) continue;
         final key = item['key'] as String?;
         if (key == null) continue;
-        rows.add(LookupRow(
-          category: def.category,
-          subCategory: item['subCategory'] as String?,
-          key: key,
-          name: item['name'] as String?,
-          lat: (item['lat'] as num?)?.toDouble(),
-          lon: (item['lon'] as num?)?.toDouble(),
-          flags: item['flags'] as int?,
-          data: item['data'] != null ? jsonEncode(item['data']) : null,
-          updated: updatedFlag,
-        ));
+        rows.add(
+          LookupRow(
+            category: def.category,
+            subCategory: item['subCategory'] as String?,
+            key: key,
+            name: item['name'] as String?,
+            lat: (item['lat'] as num?)?.toDouble(),
+            lon: (item['lon'] as num?)?.toDouble(),
+            flags: item['flags'] as int?,
+            data: item['data'] != null ? jsonEncode(item['data']) : null,
+            updated: updatedFlag,
+          ),
+        );
       }
       if (rows.isNotEmpty) {
         await store.repository.insertLookupBatch(rows);

@@ -76,14 +76,16 @@ class RadioService extends ChangeNotifier implements VfoStore {
   /// override to add), so every existing caller keeps meaning `user` and
   /// only CAT has to say otherwise.
   @override
-  void setVfo(String key,
-      {double? freq,
-      String? band,
-      String? mode,
-      num? power,
-      bool clearFreq = false,
-      bool clearPower = false,
-      VfoOrigin origin = VfoOrigin.user}) {
+  void setVfo(
+    String key, {
+    double? freq,
+    String? band,
+    String? mode,
+    num? power,
+    bool clearFreq = false,
+    bool clearPower = false,
+    VfoOrigin origin = VfoOrigin.user,
+  }) {
     final current = _vfos[key] ?? const Vfo();
     // Independent of the freq/band/mode arithmetic below, like `mode`: a
     // power change says nothing about where the radio is tuned.
@@ -200,7 +202,6 @@ class RadioService extends ChangeNotifier implements VfoStore {
   }
 
   Future<void> _persist() async {
-    await _prefs.setString(
-        _prefsKey, jsonEncode({for (final entry in _vfos.entries) entry.key: entry.value.toJson()}));
+    await _prefs.setString(_prefsKey, jsonEncode({for (final entry in _vfos.entries) entry.key: entry.value.toJson()}));
   }
 }

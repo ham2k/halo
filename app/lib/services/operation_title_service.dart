@@ -47,12 +47,7 @@ class OperationTitleService {
     await operations.updateLocalData(operation.uuid, {
       'titleSuggestion': fragments.isEmpty
           ? null
-          : {
-              'title': fragments.title,
-              'for': fragments.forText,
-              'at': fragments.atText,
-              'subtitle': fragments.subtitle,
-            },
+          : {'title': fragments.title, 'for': fragments.forText, 'at': fragments.atText, 'subtitle': fragments.subtitle},
     });
   }
 
@@ -95,35 +90,34 @@ class OperationTitleService {
     // when the MAX is all that's needed (each ref's suggestion is
     // independent of the others).
     var complete = true;
-    final results = await Future.wait(refs.map((ref) async {
-      final type = ref['type'] as String?;
-      if (type == null) return null;
-      try {
-        final result = await host.invokeHook(
-          'ref:$type',
-          method: 'suggestOperationTitle',
-          args: {'ref': ref, 'operation': operationPayload},
-          timeout: const Duration(seconds: 10),
-        );
-        if (result is! Map) return null;
-        return OperationTitleSuggestion(
-          title: result['title'] as String?,
-          forText: result['for'] as String?,
-          atText: result['at'] as String?,
-          subtitle: result['subtitle'] as String?,
-          priority: (result['priority'] as num?) ?? 0,
-        );
-      } catch (e) {
-        debugPrint('[operationTitle] suggestOperationTitle failed for ref:$type: $e');
-        complete = false;
-        return null;
-      }
-    }));
-
-    return RefTitleSuggestions(
-      suggestions: results.whereType<OperationTitleSuggestion>().toList(),
-      complete: complete,
+    final results = await Future.wait(
+      refs.map((ref) async {
+        final type = ref['type'] as String?;
+        if (type == null) return null;
+        try {
+          final result = await host.invokeHook(
+            'ref:$type',
+            method: 'suggestOperationTitle',
+            args: {'ref': ref, 'operation': operationPayload},
+            timeout: const Duration(seconds: 10),
+          );
+          if (result is! Map) return null;
+          return OperationTitleSuggestion(
+            title: result['title'] as String?,
+            forText: result['for'] as String?,
+            atText: result['at'] as String?,
+            subtitle: result['subtitle'] as String?,
+            priority: (result['priority'] as num?) ?? 0,
+          );
+        } catch (e) {
+          debugPrint('[operationTitle] suggestOperationTitle failed for ref:$type: $e');
+          complete = false;
+          return null;
+        }
+      }),
     );
+
+    return RefTitleSuggestions(suggestions: results.whereType<OperationTitleSuggestion>().toList(), complete: complete);
   }
 }
 

@@ -34,7 +34,7 @@ void main() {
   test('inline JSON is recognized by its opening brace or bracket', () {
     expect(readJsonMapArg('{"a": 1}', label: '--op'), {'a': 1});
     expect(readJsonListArg('[{"a": 1}]', label: '--qsos'), [
-      {'a': 1}
+      {'a': 1},
     ]);
   });
 
@@ -51,16 +51,17 @@ void main() {
     // The path resolved fine; the content is the problem, and the message
     // must not now claim the file is missing.
     final path = fileWith('{not json');
-    expect(
-      () => readJsonArg(path, label: '--qson'),
-      throwsA(isA<CliUsageError>().having((e) => e.message, 'message', contains('not valid JSON'))),
-    );
+    expect(() => readJsonArg(path, label: '--qson'), throwsA(isA<CliUsageError>().having((e) => e.message, 'message', contains('not valid JSON'))));
   });
 
   test('the wrong JSON shape is named by shape, not by syntax', () {
-    expect(() => readJsonMapArg('[1, 2]', label: '--op'),
-        throwsA(isA<CliUsageError>().having((e) => e.message, 'message', contains('expected a JSON object'))));
-    expect(() => readJsonListArg('{"a": 1}', label: '--qsos'),
-        throwsA(isA<CliUsageError>().having((e) => e.message, 'message', contains('expected a JSON array'))));
+    expect(
+      () => readJsonMapArg('[1, 2]', label: '--op'),
+      throwsA(isA<CliUsageError>().having((e) => e.message, 'message', contains('expected a JSON object'))),
+    );
+    expect(
+      () => readJsonListArg('{"a": 1}', label: '--qsos'),
+      throwsA(isA<CliUsageError>().having((e) => e.message, 'message', contains('expected a JSON array'))),
+    );
   });
 }

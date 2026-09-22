@@ -47,19 +47,11 @@ void main() {
   // logging panel would; the no-operation cases are their own tests. SOLAR/
   // WEATHER are operation-OPTIONAL (APP-34) — `execute` lets a test drive
   // their execute-time (logging) path instead of just the describe preview.
-  Future<Map<String, dynamic>?> interpret(
-    String input, {
-    Map<String, dynamic>? operation = const {'stationCall': 'KI2D'},
-    bool execute = false,
-  }) async {
+  Future<Map<String, dynamic>?> interpret(String input, {Map<String, dynamic>? operation = const {'stationCall': 'KI2D'}, bool execute = false}) async {
     final entries = await extensions.host!.invokeHookAll(
       'command',
       method: 'interpret',
-      args: {
-        'input': input,
-        'operation': ?operation,
-        if (execute) 'execute': true,
-      },
+      args: {'input': input, 'operation': ?operation, if (execute) 'execute': true},
     );
     for (final entry in entries) {
       if (entry['ok'] == true && entry['value'] is Map) {
@@ -92,12 +84,7 @@ void main() {
       final commands = (result!['commands'] as List).cast<Map>();
       final qsoData = (commands.single['addQso'] as Map).cast<String, dynamic>();
       expect(qsoData['band'], 'event');
-      expect(qsoData['event'], {
-        'event': 'note',
-        'command': 'NOTE This is nice',
-        'icon': 'sticker-text-outline',
-        'note': 'This is nice',
-      });
+      expect(qsoData['event'], {'event': 'note', 'command': 'NOTE This is nice', 'icon': 'sticker-text-outline', 'note': 'This is nice'});
       // The COMPLETE result must also carry mixedCase — without it, the call
       // field would snap back to uppercase-only while the note is still
       // being typed past the first word.
@@ -209,10 +196,7 @@ void main() {
 
   group('WEATHER command', () {
     test('with a gridded operation, a recognized describe preview returns a placeholder immediately (issue #189)', () async {
-      final result = await interpret(
-        'WEATHER',
-        operation: {'stationCall': 'KI2D', 'grid': 'FN21vs'},
-      );
+      final result = await interpret('WEATHER', operation: {'stationCall': 'KI2D', 'grid': 'FN21vs'});
       expect(result, {'describe': 'Fetching current weather…'});
     });
 
@@ -272,10 +256,7 @@ void main() {
     });
 
     test('a call with no extension identity at all is blocked', () async {
-      expect(
-        () => extensions.debugHandleHostCall('getLocation', {}),
-        throwsA(isA<ExtensionHostException>()),
-      );
+      expect(() => extensions.debugHandleHostCall('getLocation', {}), throwsA(isA<ExtensionHostException>()));
     });
   });
 }

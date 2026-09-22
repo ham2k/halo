@@ -33,22 +33,11 @@ void main() {
   /// Every request this device asked a peer for, in order.
   late List<PeerKeyRequestPayload> requests;
 
-  const pick = PeerRadioSelection(
-    deviceId: 'device-a',
-    radioId: 'rig-1',
-    deviceName: 'Shack Mac',
-    radioName: 'IC-705',
-  );
+  const pick = PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-1', deviceName: 'Shack Mac', radioName: 'IC-705');
 
   /// The offer a keying peer sends: its key answers for the radio, and the
   /// radio has memories of its own.
-  const keyingOffer = PeerRadioOffer(
-    id: 'rig-1',
-    name: 'IC-705',
-    keysCw: true,
-    voiceMemories: 4,
-    recordsVoice: true,
-  );
+  const keyingOffer = PeerRadioOffer(id: 'rig-1', name: 'IC-705', keysCw: true, voiceMemories: 4, recordsVoice: true);
 
   setUp(() async {
     final harness = await makeHaLoServices();
@@ -69,11 +58,7 @@ void main() {
   }
 
   Future<EquipmentNode> connectPlaceholder({String name = 'Bench Rig'}) async {
-    final node = await cat.addNode(
-      typeKey: 'placeholder-radio',
-      name: name,
-      config: placeholderRadioModel.variants.single.defaultConfig,
-    );
+    final node = await cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);
     await cat.connect(node.uuid);
     addTearDown(() => cat.disconnect(node.uuid));
     return node;
@@ -104,7 +89,9 @@ void main() {
     });
 
     test('a peer that offers no keying keys nothing, and nothing is sent', () async {
-      await followPeerRadio(offer: const PeerRadioOffer(id: 'rig-1', name: 'IC-705'));
+      await followPeerRadio(
+        offer: const PeerRadioOffer(id: 'rig-1', name: 'IC-705'),
+      );
 
       expect(cat.canKeyCw, isFalse);
       cat.sendCw('CQ');
@@ -149,14 +136,7 @@ void main() {
           keyerSpeedWpm: 24,
           keyerSpeedMin: 5,
           keyerSpeedMax: 60,
-          cw: PeerCwProgressPayload(
-            id: 7,
-            text: 'CQ',
-            characterEndsMs: [200, 400],
-            pending: ['TEST'],
-            pendingIds: [8],
-            sentCount: 1,
-          ),
+          cw: PeerCwProgressPayload(id: 7, text: 'CQ', characterEndsMs: [200, 400], pending: ['TEST'], pendingIds: [8], sentCount: 1),
         ),
       );
 
@@ -172,13 +152,22 @@ void main() {
     test('a status about another radio, or from another device, is dropped', () async {
       await followPeerRadio();
 
-      cat.notePeerKeyStatus(pick.deviceId,
-          const PeerKeyStatusPayload(radioId: 'rig-2', cw: PeerCwProgressPayload(id: 1, text: 'NOPE')));
-      cat.notePeerKeyStatus('device-b',
-          const PeerKeyStatusPayload(radioId: 'rig-1', cw: PeerCwProgressPayload(id: 2, text: 'NOPE')));
+      cat.notePeerKeyStatus(
+        pick.deviceId,
+        const PeerKeyStatusPayload(
+          radioId: 'rig-2',
+          cw: PeerCwProgressPayload(id: 1, text: 'NOPE'),
+        ),
+      );
+      cat.notePeerKeyStatus(
+        'device-b',
+        const PeerKeyStatusPayload(
+          radioId: 'rig-1',
+          cw: PeerCwProgressPayload(id: 2, text: 'NOPE'),
+        ),
+      );
 
-      expect(cat.cwProgress.value, isNull,
-          reason: 'a device that offers radios hears its own controllers, and two writers fight');
+      expect(cat.cwProgress.value, isNull, reason: 'a device that offers radios hears its own controllers, and two writers fight');
     });
 
     test('a message ENDING over there is what starts the repeat wait here', () async {
@@ -186,8 +175,13 @@ void main() {
       // only thing that can start its wait is the far side saying the
       // message is over.
       await followPeerRadio();
-      cat.notePeerKeyStatus(pick.deviceId,
-          const PeerKeyStatusPayload(radioId: 'rig-1', cw: PeerCwProgressPayload(id: 1, text: 'CQ')));
+      cat.notePeerKeyStatus(
+        pick.deviceId,
+        const PeerKeyStatusPayload(
+          radioId: 'rig-1',
+          cw: PeerCwProgressPayload(id: 1, text: 'CQ'),
+        ),
+      );
       cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
       expect(cat.keyerRepeat.value, isNull, reason: 'still keying over there');
 
@@ -206,14 +200,18 @@ void main() {
       cat.sendCw('CQ', hasMessageOne: true);
       cat.playVoiceMemory(1);
       cat.sendPeerKeyRequest = send;
-      cat.notePeerKeyStatus(pick.deviceId,
-          const PeerKeyStatusPayload(radioId: 'rig-1', cw: PeerCwProgressPayload(id: 7, text: 'TU 5NN')));
+      cat.notePeerKeyStatus(
+        pick.deviceId,
+        const PeerKeyStatusPayload(
+          radioId: 'rig-1',
+          cw: PeerCwProgressPayload(id: 7, text: 'TU 5NN'),
+        ),
+      );
 
       cat.stopMessageOne();
 
       expect(requests.where((r) => r.op == PeerKeyOp.stopCw), isEmpty);
-      cat.notePeerKeyStatus(pick.deviceId,
-          const PeerKeyStatusPayload(radioId: 'rig-1', voice: PeerVoiceActivityPayload(memory: 1)));
+      cat.notePeerKeyStatus(pick.deviceId, const PeerKeyStatusPayload(radioId: 'rig-1', voice: PeerVoiceActivityPayload(memory: 1)));
       cat.stopMessageOne();
       expect(requests.where((r) => r.op == PeerKeyOp.stopVoice), isEmpty);
     });
@@ -226,8 +224,7 @@ void main() {
       await followPeerRadio();
       cat.playVoiceSequence([1]); // requested; the far radio never reports it
       cat.playVoiceMemory(2);
-      cat.notePeerKeyStatus(pick.deviceId,
-          const PeerKeyStatusPayload(radioId: 'rig-1', voice: PeerVoiceActivityPayload(memory: 2)));
+      cat.notePeerKeyStatus(pick.deviceId, const PeerKeyStatusPayload(radioId: 'rig-1', voice: PeerVoiceActivityPayload(memory: 2)));
       requests.clear();
 
       cat.stopMessageOne();
@@ -235,18 +232,27 @@ void main() {
       expect(requests.where((r) => r.op == PeerKeyOp.stopVoice), isEmpty);
     });
 
-    test('a call typed after this operator\'s CQ ended leaves the next message on the shared radio alone',
-        () async {
+    test('a call typed after this operator\'s CQ ended leaves the next message on the shared radio alone', () async {
       // The far queue's next message is somebody else's — another operator
       // following the same radio. The message-1 mark has to end with the CQ
       // it marked, or stopMessageOne sends a stop that cuts theirs off.
       await followPeerRadio();
       cat.sendCw('CQ', hasMessageOne: true);
-      cat.notePeerKeyStatus(pick.deviceId,
-          const PeerKeyStatusPayload(radioId: 'rig-1', cw: PeerCwProgressPayload(id: 1, text: 'CQ')));
+      cat.notePeerKeyStatus(
+        pick.deviceId,
+        const PeerKeyStatusPayload(
+          radioId: 'rig-1',
+          cw: PeerCwProgressPayload(id: 1, text: 'CQ'),
+        ),
+      );
       cat.notePeerKeyStatus(pick.deviceId, const PeerKeyStatusPayload(radioId: 'rig-1'));
-      cat.notePeerKeyStatus(pick.deviceId,
-          const PeerKeyStatusPayload(radioId: 'rig-1', cw: PeerCwProgressPayload(id: 2, text: 'TU 5NN')));
+      cat.notePeerKeyStatus(
+        pick.deviceId,
+        const PeerKeyStatusPayload(
+          radioId: 'rig-1',
+          cw: PeerCwProgressPayload(id: 2, text: 'TU 5NN'),
+        ),
+      );
       requests.clear();
 
       cat.stopMessageOne();
@@ -259,22 +265,14 @@ void main() {
       await settings.setVoiceMessageLabel(1, 'MY CQ');
       await settings.setVoiceMessageDuration(1, 9000);
 
-      cat.notePeerKeyStatus(
-        pick.deviceId,
-        const PeerKeyStatusPayload(
-          radioId: 'rig-1',
-          voiceLabels: ['THEIR CQ', 'THEIR TU'],
-          voiceDurationsMs: [4200, 1100],
-        ),
-      );
+      cat.notePeerKeyStatus(pick.deviceId, const PeerKeyStatusPayload(radioId: 'rig-1', voiceLabels: ['THEIR CQ', 'THEIR TU'], voiceDurationsMs: [4200, 1100]));
 
       expect(cat.canPlayVoice, isTrue);
       expect(cat.voiceMemoryCount, 4, reason: 'as many as that radio has');
       expect(cat.canRecordVoice, isTrue);
       expect(cat.voiceMessagesAreLocal, isFalse, reason: 'a label editor here would rename audio it is not about');
       expect(cat.voiceMessageLabel(1), 'THEIR CQ');
-      expect(cat.voiceMessageDuration(1), 4200,
-          reason: 'a length measured here would pace a bar against a different recording');
+      expect(cat.voiceMessageDuration(1), 4200, reason: 'a length measured here would pace a bar against a different recording');
     });
 
     test('play, record and stop all address the peer', () async {
@@ -284,16 +282,13 @@ void main() {
       cat.recordVoiceMemory(3);
       cat.stopVoice();
 
-      expect(requests.map((r) => (r.op, r.memory)), [
-        (PeerKeyOp.voice, 2),
-        (PeerKeyOp.record, 3),
-        (PeerKeyOp.stopVoice, null),
-      ]);
+      expect(requests.map((r) => (r.op, r.memory)), [(PeerKeyOp.voice, 2), (PeerKeyOp.record, 3), (PeerKeyOp.stopVoice, null)]);
     });
 
     test('a radio that cannot record is not asked to', () async {
       await followPeerRadio(
-          offer: const PeerRadioOffer(id: 'rig-1', name: 'IC-705', keysCw: true, voiceMemories: 4));
+        offer: const PeerRadioOffer(id: 'rig-1', name: 'IC-705', keysCw: true, voiceMemories: 4),
+      );
 
       expect(cat.canRecordVoice, isFalse);
       cat.recordVoiceMemory(1);
@@ -353,13 +348,7 @@ void main() {
       cat.noteOffer(pick.deviceId, pick.deviceName, [keyingOffer]);
       cat.notePeerKeyStatus(
         pick.deviceId,
-        const PeerKeyStatusPayload(
-          radioId: 'rig-1',
-          keyerSpeedWpm: 26,
-          keyerSpeedMin: 5,
-          keyerSpeedMax: 60,
-          voiceLabels: ['THEIR CQ'],
-        ),
+        const PeerKeyStatusPayload(radioId: 'rig-1', keyerSpeedWpm: 26, keyerSpeedMin: 5, keyerSpeedMax: 60, voiceLabels: ['THEIR CQ']),
       );
 
       // Only now does the operator pick it.
@@ -421,7 +410,8 @@ void main() {
       // The buttons and the dialog rows index eight icons. A rig this build
       // has not met — or a garbled message — would throw inside build.
       await followPeerRadio(
-          offer: const PeerRadioOffer(id: 'rig-1', name: 'Big Rig', keysCw: true, voiceMemories: 32));
+        offer: const PeerRadioOffer(id: 'rig-1', name: 'Big Rig', keysCw: true, voiceMemories: 32),
+      );
 
       expect(cat.voiceMemoryCount, 8);
     });
@@ -441,8 +431,7 @@ void main() {
       cat.playVoiceMemory(1);
       cat.playVoiceMemory(1);
 
-      expect(cat.keyerRepeatDeadlineMillis, first,
-          reason: 'five minutes from the FIRST send, not five from each repeat');
+      expect(cat.keyerRepeatDeadlineMillis, first, reason: 'five minutes from the FIRST send, not five from each repeat');
 
       // And a memory that is NOT the chain's still ends it.
       cat.playVoiceMemory(3);
@@ -504,8 +493,13 @@ void main() {
 
     test('the peer walking away leaves the surfaces quiet, and the pick standing', () async {
       await followPeerRadio();
-      cat.notePeerKeyStatus(pick.deviceId,
-          const PeerKeyStatusPayload(radioId: 'rig-1', cw: PeerCwProgressPayload(id: 1, text: 'CQ')));
+      cat.notePeerKeyStatus(
+        pick.deviceId,
+        const PeerKeyStatusPayload(
+          radioId: 'rig-1',
+          cw: PeerCwProgressPayload(id: 1, text: 'CQ'),
+        ),
+      );
 
       cat.forgetPeerRadios(pick.deviceId);
 
@@ -717,8 +711,7 @@ void main() {
 
       final status = cat.keyStatusForOfferedRadio(node.uuid);
       expect(status?.voiceLabels.first, 'MY CQ');
-      expect(status?.voiceLabels.length, cat.voiceMemoryCount,
-          reason: 'a label for a ninth memory is a label for a button nobody is shown');
+      expect(status?.voiceLabels.length, cat.voiceMemoryCount, reason: 'a label for a ninth memory is a label for a button nobody is shown');
     });
   });
 }

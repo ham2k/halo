@@ -71,31 +71,19 @@ class HaloDialogHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ConstrainedBox(
-      constraints: BoxConstraints(
-        minHeight: theme.appBarTheme.toolbarHeight ?? kToolbarHeight,
-      ),
+      constraints: BoxConstraints(minHeight: theme.appBarTheme.toolbarHeight ?? kToolbarHeight),
       child: Padding(
         // Horizontal only: the minHeight above sets the height, and a close
         // button's 48pt tap target already fills it — adding vertical padding
         // on top pushes the header to 72. Tighter on the leading/trailing edge
         // when a button lives there, since its tap target supplies that inset.
-        padding: EdgeInsets.only(
-          left: leading == null ? 24 : 12,
-          right: trailing == null ? 24 : 12,
-        ),
+        padding: EdgeInsets.only(left: leading == null ? 24 : 12, right: trailing == null ? 24 : 12),
         child: Row(
           children: [
-            if (leading != null) ...[
-              leading!,
-              const SizedBox(width: Space.md),
-            ],
+            if (leading != null) ...[leading!, const SizedBox(width: Space.md)],
             Expanded(
               child: DefaultTextStyle(
-                style:
-                    (theme.appBarTheme.titleTextStyle ??
-                            theme.textTheme.headlineSmall ??
-                            const TextStyle())
-                        .copyWith(color: theme.colorScheme.onSurface),
+                style: (theme.appBarTheme.titleTextStyle ?? theme.textTheme.headlineSmall ?? const TextStyle()).copyWith(color: theme.colorScheme.onSurface),
                 // Vertical room for a wrapped title, and none of it spent on
                 // a single-line one: the band's minHeight is taller than one
                 // line plus this, so the usual header is exactly the height
@@ -105,8 +93,7 @@ class HaloDialogHeader extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: Space.sm),
                   child: switch (title) {
-                    final Text text =>
-                      shrinkToFitText(text, maxLines: _titleMaxLines, minScale: _titleMinScale),
+                    final Text text => shrinkToFitText(text, maxLines: _titleMaxLines, minScale: _titleMinScale),
                     final Widget widget? => widget,
                     null => const SizedBox.shrink(),
                   },
@@ -168,13 +155,7 @@ const double haloDialogCancelGap = Space.xxl;
 /// [actions] is deliberately NOT wrapped in [Flexible], unlike the slots
 /// before it: whatever else gets clipped, the dialog's own action stays
 /// readable.
-Widget haloDialogFooterRow({
-  Widget? cancel,
-  Widget? destructive,
-  Widget? help,
-  Widget? secondary,
-  List<Widget> actions = const [],
-}) {
+Widget haloDialogFooterRow({Widget? cancel, Widget? destructive, Widget? help, Widget? secondary, List<Widget> actions = const []}) {
   // The trailing buttons are the OverflowBar's OWN children, not a Row handed
   // to it as one child. An OverflowBar decides to stack by summing its
   // children's LAID-OUT sizes (`overflow_bar.dart`'s performLayout), and a Row
@@ -192,14 +173,8 @@ Widget haloDialogFooterRow({
       // below competes with it for flex share, so a single short verb would
       // reserve half the footer and force the trailing buttons to stack with
       // 300pt sitting unused.
-      if (destructive != null) ...[
-        destructive,
-        const SizedBox(width: Space.md),
-      ],
-      if (help != null) ...[
-        help,
-        const SizedBox(width: Space.md),
-      ],
+      if (destructive != null) ...[destructive, const SizedBox(width: Space.md)],
+      if (help != null) ...[help, const SizedBox(width: Space.md)],
       Expanded(
         child: OverflowBar(
           alignment: MainAxisAlignment.end,
@@ -236,13 +211,7 @@ Widget haloDialogFooterRow({
 /// A pane that carries this is closed BY it (`showModalPane`'s
 /// `closeButton: false` takes the header's X away), so the way out is one
 /// button in the place every dialog puts it rather than two in two places.
-Widget haloDialogFooterBand(
-  BuildContext context, {
-  Widget? cancel,
-  Widget? destructive,
-  Widget? secondary,
-  List<Widget> actions = const [],
-}) {
+Widget haloDialogFooterBand(BuildContext context, {Widget? cancel, Widget? destructive, Widget? secondary, List<Widget> actions = const []}) {
   final theme = Theme.of(context);
   return Container(
     decoration: BoxDecoration(
@@ -256,12 +225,7 @@ Widget haloDialogFooterBand(
       top: false,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.lg),
-        child: haloDialogFooterRow(
-          cancel: cancel,
-          destructive: destructive,
-          secondary: secondary,
-          actions: actions,
-        ),
+        child: haloDialogFooterRow(cancel: cancel, destructive: destructive, secondary: secondary, actions: actions),
       ),
     ),
   );
@@ -371,18 +335,15 @@ class HaloDialog extends StatelessWidget {
   /// inset" means — `SectionHeader` reads Space.xxl, `FormRenderer`'s rows
   /// zero, a plain `ListTile` Material's 16. Naming one of those here would
   /// move the other two in every dialog in the app.
-  Widget _wrapContent(BuildContext context, Widget content) => list
-      ? SettingsList(child: content)
-      : ListTileTheme(data: Theme.of(context).listTileTheme, child: content);
+  Widget _wrapContent(BuildContext context, Widget content) =>
+      list ? SettingsList(child: content) : ListTileTheme(data: Theme.of(context).listTileTheme, child: content);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final padding = contentPadding ??
-        (list
-            ? const EdgeInsets.symmetric(vertical: Space.md)
-            : const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl));
+    final padding =
+        contentPadding ?? (list ? const EdgeInsets.symmetric(vertical: Space.md) : const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl));
 
     Widget? body;
     if (content != null) {
@@ -411,9 +372,7 @@ class HaloDialog extends StatelessWidget {
       // have ListViews.) So the width is chosen here instead: compact for
       // prompts, the full cap for content-carrying dialogs.
       child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: wide ? maxDialogWidth : compactDialogWidth,
-        ),
+        constraints: BoxConstraints(maxWidth: wide ? maxDialogWidth : compactDialogWidth),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -425,13 +384,7 @@ class HaloDialog extends StatelessWidget {
             if (actions.isNotEmpty || cancel != null || destructive != null || help != null || secondary != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.lg),
-                child: haloDialogFooterRow(
-                  cancel: cancel,
-                  destructive: destructive,
-                  help: help,
-                  secondary: secondary,
-                  actions: actions,
-                ),
+                child: haloDialogFooterRow(cancel: cancel, destructive: destructive, help: help, secondary: secondary, actions: actions),
               ),
           ],
         ),

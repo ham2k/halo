@@ -39,20 +39,16 @@ const _scopes = {
 
 Set<String> _keys(List<Scorer> scorers) => scorers.map((s) => s.key).toSet();
 
-Qso _qso({List<Map<String, dynamic>> refs = const []}) =>
-    Qso(uuid: 'q', operationUuid: 'op-1', data: {'refs': refs});
+Qso _qso({List<Map<String, dynamic>> refs = const []}) => Qso(uuid: 'q', operationUuid: 'op-1', data: {'refs': refs});
 
 void main() {
   group('scorersFor', () {
     test('an operation that activates a park selects that scorer, as before', () {
-      final scorers = ExtensionService.scorersFor(
-        {
-          'refs': [
-            {'type': 'potaActivation', 'ref': 'US-0001'},
-          ],
-        },
-        _scopes,
-      );
+      final scorers = ExtensionService.scorersFor({
+        'refs': [
+          {'type': 'potaActivation', 'ref': 'US-0001'},
+        ],
+      }, _scopes);
       expect(_keys(scorers), {'core', 'pota'});
       // Paired with the ref that named it — the activation's own reference,
       // which is what earns activation credit.
@@ -61,11 +57,7 @@ void main() {
 
     // The whole point. A chaser's operation carries no refs at all.
     test('a hunted ref type selects the scorer the operation never names', () {
-      final scorers = ExtensionService.scorersFor(
-        const {'refs': []},
-        _scopes,
-        alsoRefTypes: const {'pota'},
-      );
+      final scorers = ExtensionService.scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'pota'});
       expect(_keys(scorers), {'core', 'pota'});
     });
 
@@ -74,11 +66,7 @@ void main() {
     // here would not grant activation credit anyway — but it would misreport
     // what selected the scorer.
     test('a hunt-only selection carries no ref', () {
-      final scorers = ExtensionService.scorersFor(
-        const {'refs': []},
-        _scopes,
-        alsoRefTypes: const {'pota'},
-      );
+      final scorers = ExtensionService.scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'pota'});
       expect(scorers.firstWhere((s) => s.key == 'pota').ref, isNull);
     });
 
@@ -103,11 +91,7 @@ void main() {
     // carrying the log, so selecting every installed activity — app-polo's
     // `generalHuntingType` — is what this deliberately does NOT do.
     test('only the programs actually hunted are selected', () {
-      final scorers = ExtensionService.scorersFor(
-        const {'refs': []},
-        _scopes,
-        alsoRefTypes: const {'sota'},
-      );
+      final scorers = ExtensionService.scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'sota'});
       expect(_keys(scorers), {'core', 'sota'});
     });
 
@@ -115,15 +99,12 @@ void main() {
     // skips — but it is marked and sorted LAST, which is what the merge sites
     // read to drop its verdict for a QSO another scorer scored.
     test('the always scorer is selected last and flagged as the fallback', () {
-      final scorers = ExtensionService.scorersFor(
-        {
-          'refs': [
-            {'type': 'potaActivation', 'ref': 'US-0001'},
-            {'type': 'cqww'},
-          ],
-        },
-        _scopes,
-      );
+      final scorers = ExtensionService.scorersFor({
+        'refs': [
+          {'type': 'potaActivation', 'ref': 'US-0001'},
+          {'type': 'cqww'},
+        ],
+      }, _scopes);
       expect(_keys(scorers), {'core', 'pota', 'cqww'});
       expect(scorers.last.key, 'core');
       expect(scorers.last.fallback, isTrue);
@@ -142,20 +123,12 @@ void main() {
     // to name its event, every spot and every pill would carry
     // `alerts: ['unknownEvent']`.
     test('a contest is never resurrected by its ref type in the log', () {
-      final scorers = ExtensionService.scorersFor(
-        const {'refs': []},
-        _scopes,
-        alsoRefTypes: const {'cqww'},
-      );
+      final scorers = ExtensionService.scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'cqww'});
       expect(_keys(scorers), {'core'});
     });
 
     test('an unrelated hunted type selects nothing extra', () {
-      final scorers = ExtensionService.scorersFor(
-        const {'refs': []},
-        _scopes,
-        alsoRefTypes: const {'wwff'},
-      );
+      final scorers = ExtensionService.scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'wwff'});
       expect(_keys(scorers), {'core'});
     });
   });
@@ -163,13 +136,17 @@ void main() {
   group('huntedRefTypesOf', () {
     test('collects every reference type across the log', () {
       final types = ExtensionService.huntedRefTypesOf([
-        _qso(refs: [
-          {'type': 'pota', 'ref': 'US-0001'},
-        ]),
-        _qso(refs: [
-          {'type': 'sota', 'ref': 'W1/AM-001'},
-          {'type': 'pota', 'ref': 'US-0002'},
-        ]),
+        _qso(
+          refs: [
+            {'type': 'pota', 'ref': 'US-0001'},
+          ],
+        ),
+        _qso(
+          refs: [
+            {'type': 'sota', 'ref': 'W1/AM-001'},
+            {'type': 'pota', 'ref': 'US-0002'},
+          ],
+        ),
         _qso(),
       ]);
       expect(types, {'pota', 'sota'});
@@ -197,9 +174,26 @@ void main() {
     });
 
     test('a candidate with no refs, or malformed ones, yields nothing', () {
-      expect(ExtensionService.refTypesOf(const {'their': {'call': 'K1ABC'}}), isEmpty);
-      expect(ExtensionService.refTypesOf(const {'refs': ['not-a-map']}), isEmpty);
-      expect(ExtensionService.refTypesOf(const {'refs': [{'ref': 'US-0001'}]}), isEmpty);
+      expect(
+        ExtensionService.refTypesOf(const {
+          'their': {'call': 'K1ABC'},
+        }),
+        isEmpty,
+      );
+      expect(
+        ExtensionService.refTypesOf(const {
+          'refs': ['not-a-map'],
+        }),
+        isEmpty,
+      );
+      expect(
+        ExtensionService.refTypesOf(const {
+          'refs': [
+            {'ref': 'US-0001'},
+          ],
+        }),
+        isEmpty,
+      );
     });
   });
 }

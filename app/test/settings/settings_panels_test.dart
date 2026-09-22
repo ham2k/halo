@@ -42,14 +42,7 @@ Future<HaLoServices> makeServices({Map<String, Object> prefs = const {}}) async 
         {
           'key': 'myext',
           'ok': true,
-          'value': {
-            'panelKey': 'myext',
-            'hookKey': 'myext',
-            'extensionKey': 'myext',
-            'title': 'My Extension',
-            'kind': 'dynamic',
-            'order': 50,
-          },
+          'value': {'panelKey': 'myext', 'hookKey': 'myext', 'extensionKey': 'myext', 'title': 'My Extension', 'kind': 'dynamic', 'order': 50},
         },
       ],
       'settingsPanel:myext:getDefinition': {
@@ -81,20 +74,13 @@ class _StatefulPanelHost implements ExtensionHost {
   bool extraField = false;
 
   @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
+  Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     if (method == 'getDefinition') {
       return {
         'title': 'My Extension',
         'elements': [
           {'type': 'field', 'fieldType': 'text', 'key': 'bar', 'label': 'Bar Field', 'value': value, 'common': true},
-          if (extraField)
-            {'type': 'field', 'fieldType': 'text', 'key': 'extra', 'label': 'Extra Field', 'value': '', 'common': true},
+          if (extraField) {'type': 'field', 'fieldType': 'text', 'key': 'extra', 'label': 'Extra Field', 'value': '', 'common': true},
         ],
       };
     }
@@ -112,23 +98,15 @@ class _StatefulPanelHost implements ExtensionHost {
     Object? args,
     Duration timeout = const Duration(seconds: 10),
     bool partialOnTimeout = false,
-  }) async =>
-      method != 'getPanels'
-          ? const []
-          : [
-              {
-                'key': 'myext',
-                'ok': true,
-                'value': {
-                  'panelKey': 'myext',
-                  'hookKey': 'myext',
-                  'extensionKey': 'myext',
-                  'title': 'My Extension',
-                  'kind': 'dynamic',
-                  'order': 50,
-                },
-              },
-            ];
+  }) async => method != 'getPanels'
+      ? const []
+      : [
+          {
+            'key': 'myext',
+            'ok': true,
+            'value': {'panelKey': 'myext', 'hookKey': 'myext', 'extensionKey': 'myext', 'title': 'My Extension', 'kind': 'dynamic', 'order': 50},
+          },
+        ];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -159,7 +137,11 @@ Future<void> pumpSettings(WidgetTester tester, HaLoServices services, {Size size
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
-  await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(home: SettingsView(services: services)),
+    ),
+  );
   await tester.pumpAndSettle();
 }
 
@@ -314,7 +296,11 @@ void main() {
     // amounts to. Without the stored key it would open on Common Preferences.
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: SettingsView(services: services)),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(shown('Leftie Mode'), findsOneWidget);
@@ -388,14 +374,7 @@ void main() {
     Finder mounted(String text) => find.text(text, skipOffstage: false);
     expect(mounted('before'), findsNWidgets(2), reason: 'test setup: both copies of the field are mounted');
 
-    await services.extensions.commitSettingsFieldValue(
-      kind: 'dynamic',
-      hookKey: 'myext',
-      panelKey: 'myext',
-      fieldKey: 'bar',
-      value: 'after',
-      state: const {},
-    );
+    await services.extensions.commitSettingsFieldValue(kind: 'dynamic', hookKey: 'myext', panelKey: 'myext', fieldKey: 'bar', value: 'after', state: const {});
     await tester.pumpAndSettle();
 
     expect(mounted('after'), findsNWidgets(2), reason: 'both copies show what was committed');
@@ -423,8 +402,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.getTopLeft(shown('Common Preferences')).dy, categoryBand, reason: 'the category band holds');
-    expect(tester.getTopLeft(shown('User Interface')).dy, firstSection,
-        reason: 'and so does the band of the section being scrolled through');
+    expect(tester.getTopLeft(shown('User Interface')).dy, firstSection, reason: 'and so does the band of the section being scrolled through');
     // The section that has not reached the top yet travels with its rows —
     // pinning is per section, not the whole panel's bands piled up.
     final logging = tester.getTopLeft(shown('Logging')).dy;
@@ -452,8 +430,7 @@ void main() {
     // The BAND, not the title inside it: the band is what lands at the top,
     // and its title sits a padding's worth below that.
     Finder loggingBand() => find.ancestor(of: shown('Logging'), matching: find.byType(AccordionHeader)).first;
-    expect(tester.getTopLeft(loggingBand()).dy, greaterThan(listTop + 100),
-        reason: 'test setup: the category sits well down the panel');
+    expect(tester.getTopLeft(loggingBand()).dy, greaterThan(listTop + 100), reason: 'test setup: the category sits well down the panel');
 
     await tester.tap(shown('Logging'));
     await tester.pumpAndSettle();
@@ -499,7 +476,8 @@ void main() {
       expect(
         identical(formsAfter[i], formsBefore[i]),
         isTrue,
-        reason: 'the rebuilt scroll view must adopt the forms, not replace them — a replaced form '
+        reason:
+            'the rebuilt scroll view must adopt the forms, not replace them — a replaced form '
             'disposes the focus nodes the operator is typing against',
       );
     }
@@ -523,14 +501,7 @@ void main() {
     // A commit that changes the DEFINITION, not just a value — the field
     // count is what moves the rows below it.
     host.extraField = true;
-    await services.extensions.commitSettingsFieldValue(
-      kind: 'dynamic',
-      hookKey: 'myext',
-      panelKey: 'myext',
-      fieldKey: 'bar',
-      value: 'before',
-      state: const {},
-    );
+    await services.extensions.commitSettingsFieldValue(kind: 'dynamic', hookKey: 'myext', panelKey: 'myext', fieldKey: 'bar', value: 'before', state: const {});
     await tester.pumpAndSettle();
 
     expect(shown('Extra Field'), findsWidgets, reason: 'test setup: the definition grew a row');
@@ -576,7 +547,8 @@ void main() {
     expect(
       tester.widgetList(mounted).length,
       before,
-      reason: 'a filtered-out category must stay in the tree — unmounting it disposes the focus '
+      reason:
+          'a filtered-out category must stay in the tree — unmounting it disposes the focus '
           'nodes that the operator is typing against',
     );
   });

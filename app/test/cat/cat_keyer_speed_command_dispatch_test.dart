@@ -32,11 +32,7 @@ void main() {
     // The hooks decline while it is off; this pins the dispatcher's own guard
     // for an action arriving anyway (a stale interpretation, an extension).
     final services = await buildServices();
-    final node = await services.cat.addNode(
-      typeKey: 'placeholder-radio',
-      name: 'Bench Rig',
-      config: placeholderRadioModel.variants.single.defaultConfig,
-    );
+    final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
     await services.cat.connect(node.uuid);
     addTearDown(() => services.cat.disconnect(node.uuid));
     final context = services.openOperationContext('op-1');
@@ -53,11 +49,7 @@ void main() {
     final services = await buildServices();
     await services.settings.setExperimentEnabled('keyer', true);
     expect((await services.handleCommandAction('showKeyer'))?.failed, isTrue);
-    final node = await services.cat.addNode(
-      typeKey: 'placeholder-radio',
-      name: 'Bench Rig',
-      config: placeholderRadioModel.variants.single.defaultConfig,
-    );
+    final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
     await services.cat.connect(node.uuid);
     addTearDown(() => services.cat.disconnect(node.uuid));
     expect(services.cat.keyerAreaShown.value, isFalse);
@@ -78,11 +70,11 @@ void main() {
     final services = await buildServices();
     await services.settings.setExperimentEnabled('keyer', true);
     final node = await services.cat.addNode(
-        typeKey: 'placeholder-radio',
-        name: 'Bench Rig',
-        // The Add dialog prefills these; a bare node fails its own validators.
-        config: placeholderRadioModel.variants.single.defaultConfig,
-      );
+      typeKey: 'placeholder-radio',
+      name: 'Bench Rig',
+      // The Add dialog prefills these; a bare node fails its own validators.
+      config: placeholderRadioModel.variants.single.defaultConfig,
+    );
     await services.cat.connect(node.uuid);
     addTearDown(() => services.cat.disconnect(node.uuid));
 

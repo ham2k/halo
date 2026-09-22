@@ -10,19 +10,13 @@ void main() {
   /// keys off, so a rename there shows up here rather than as a live feature
   /// that silently stopped working.
   Map<String, dynamic> spot({double? freq = 14050, String? mode = 'CW'}) => {
-        'their': {'call': 'N0DX'},
-        'freq': ?freq,
-        'mode': ?mode,
-        'refs': const [],
-      };
+    'their': {'call': 'N0DX'},
+    'freq': ?freq,
+    'mode': ?mode,
+    'refs': const [],
+  };
 
-  Map<String, dynamic> offset(
-    Map<String, dynamic> qso, {
-    bool enabled = true,
-    bool connected = true,
-    double range = 25,
-    double draw = 0.0,
-  }) =>
+  Map<String, dynamic> offset(Map<String, dynamic> qso, {bool enabled = true, bool connected = true, double range = 25, double draw = 0.0}) =>
       zeroBeatSuggestion(qso, enabled: enabled, radioConnected: connected, rangeHz: range, draw: draw);
 
   group('zeroBeatOffsetHz', () {
@@ -196,8 +190,11 @@ void main() {
       // it's deleted.
       final source = spot(freq: 10125.0);
       for (final draw in [0.0, 0.3, 0.6, 0.99]) {
-        expect(identical(offset(source, range: 100000, draw: draw), source), isTrue,
-            reason: 'draw $draw pushed the spot out of 30 m instead of leaving it alone');
+        expect(
+          identical(offset(source, range: 100000, draw: draw), source),
+          isTrue,
+          reason: 'draw $draw pushed the spot out of 30 m instead of leaving it alone',
+        );
       }
     });
 
@@ -222,8 +219,7 @@ void main() {
       // just the ones this offsets.
       var draws = 0;
       final offsetter = ZeroBeatOffsetter(nextDraw: () => (draws++ % 7) / 7);
-      Map<String, dynamic> tap(Map<String, dynamic> s) =>
-          offsetter.apply(s, enabled: true, radioConnected: true, rangeHz: 25);
+      Map<String, dynamic> tap(Map<String, dynamic> s) => offsetter.apply(s, enabled: true, radioConnected: true, rangeHz: 25);
 
       final first = tap(spot());
       final second = tap(spot());
@@ -244,8 +240,7 @@ void main() {
     test('an excursion to another spot does not redraw the first one', () {
       var draws = 0;
       final offsetter = ZeroBeatOffsetter(nextDraw: () => (draws++ % 7) / 7);
-      Map<String, dynamic> tap(Map<String, dynamic> s) =>
-          offsetter.apply(s, enabled: true, radioConnected: true, rangeHz: 25);
+      Map<String, dynamic> tap(Map<String, dynamic> s) => offsetter.apply(s, enabled: true, radioConnected: true, rangeHz: 25);
 
       final first = tap(spot());
       tap(spot(freq: 7030));
@@ -258,8 +253,7 @@ void main() {
       // retunes tens of Hz when the operator taps back to it.
       var draws = 0;
       final offsetter = ZeroBeatOffsetter(nextDraw: () => (draws++ % 97) / 97);
-      Map<String, dynamic> tap(Map<String, dynamic> s) =>
-          offsetter.apply(s, enabled: true, radioConnected: true, rangeHz: 25);
+      Map<String, dynamic> tap(Map<String, dynamic> s) => offsetter.apply(s, enabled: true, radioConnected: true, rangeHz: 25);
 
       final mine = tap(spot());
       for (var i = 0; i < 60; i++) {
@@ -274,8 +268,7 @@ void main() {
       // at once and abandoned outlives it.
       var draws = 0;
       final offsetter = ZeroBeatOffsetter(nextDraw: () => (draws++ % 97) / 97);
-      Map<String, dynamic> tap(Map<String, dynamic> s) =>
-          offsetter.apply(s, enabled: true, radioConnected: true, rangeHz: 25);
+      Map<String, dynamic> tap(Map<String, dynamic> s) => offsetter.apply(s, enabled: true, radioConnected: true, rangeHz: 25);
 
       final mine = tap(spot());
       for (var i = 0; i < 20; i++) {

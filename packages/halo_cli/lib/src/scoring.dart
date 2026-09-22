@@ -19,40 +19,31 @@ import 'runtime.dart' show CliUsageError;
 /// The operation's segments, resolved from the `break`/`start` rows in [qsos] —
 /// the same resolution `ScoringService` does, from the plain maps a QSON file
 /// carries rather than from database rows.
-SegmentedOperation segmentedOperationOf(
-  Map<String, Object?> operation,
-  List<Map<String, Object?>> qsos,
-) =>
+SegmentedOperation segmentedOperationOf(Map<String, Object?> operation, List<Map<String, Object?>> qsos) =>
     SegmentedOperation.from(operation: operation.cast<String, dynamic>(), qsos: qsosOf(operation, qsos));
 
 /// [qsos] as the model the segment resolver and the ref readers expect.
 List<Qso> qsosOf(Map<String, Object?> operation, List<Map<String, Object?>> qsos) => [
-      for (final (index, qso) in qsos.indexed)
-        Qso(
-          uuid: (qso['uuid'] as String?) ?? 'qso-$index',
-          operationUuid: (operation['uuid'] as String?) ?? 'op',
-          // `deleted` is a column, not something `data` carries, so a file that
-          // spells it out has to be read here: a deleted `break` row that still
-          // opened a segment would give this tool boundaries the app never sees.
-          // Coerced, because a file exported from polo or dumped from LoFi
-          // spells the flag as the integer 1 (see [asQsonBool]).
-          deleted: asQsonBool(qso['deleted']),
-          data: qso.cast<String, dynamic>(),
-        ),
-    ];
+  for (final (index, qso) in qsos.indexed)
+    Qso(
+      uuid: (qso['uuid'] as String?) ?? 'qso-$index',
+      operationUuid: (operation['uuid'] as String?) ?? 'op',
+      // `deleted` is a column, not something `data` carries, so a file that
+      // spells it out has to be read here: a deleted `break` row that still
+      // opened a segment would give this tool boundaries the app never sees.
+      // Coerced, because a file exported from polo or dumped from LoFi
+      // spells the flag as the integer 1 (see [asQsonBool]).
+      deleted: asQsonBool(qso['deleted']),
+      data: qso.cast<String, dynamic>(),
+    ),
+];
 
 /// The segment payload a scorer is handed, or null for an unsegmented log —
 /// the harness treats a one-entry timeline as no timeline at all, so sending
 /// one is pure payload.
-List<Map<String, dynamic>>? segmentsOf(
-  Map<String, Object?> operation,
-  List<Map<String, Object?>> qsos,
-) {
+List<Map<String, dynamic>>? segmentsOf(Map<String, Object?> operation, List<Map<String, Object?>> qsos) {
   final asQsos = qsosOf(operation, qsos);
-  final segmented = SegmentedOperation.from(
-    operation: operation.cast<String, dynamic>(),
-    qsos: asQsos,
-  );
+  final segmented = SegmentedOperation.from(operation: operation.cast<String, dynamic>(), qsos: asQsos);
   return segmented.isSegmented ? segmented.payload : null;
 }
 
@@ -71,13 +62,7 @@ Future<Map<String, Object?>> scoreWithOneScorer(
     'scoring',
     key: key,
     method: 'scoreQsos',
-    args: {
-      'operation': operation,
-      'qsos': qsos,
-      'ref': ?ref,
-      'segments': ?segments,
-      ...extraArgs,
-    },
+    args: {'operation': operation, 'qsos': qsos, 'ref': ?ref, 'segments': ?segments, ...extraArgs},
     timeout: timeout,
   );
   if (result is! Map) {
@@ -102,8 +87,7 @@ Future<Map<String, Map<String, Object?>>> scoreOperation(
   Duration timeout = const Duration(seconds: 30),
 }) async {
   final scopes = {
-    for (final entry in await host.invokeHookAll('scoring',
-        method: 'scope', args: extraArgs, timeout: timeout))
+    for (final entry in await host.invokeHookAll('scoring', method: 'scope', args: extraArgs, timeout: timeout))
       if (entry['ok'] == true && entry['value'] != null) entry['key'] as String: entry['value'],
   };
 
@@ -169,10 +153,7 @@ Future<Map<String, Map<String, Object?>>> scoreOperation(
 /// The priority merge over whole-operation results: which QSOs some scorer has
 /// ruled on, and each fallback scorer's verdicts reduced accordingly. Separate
 /// from the calls above so it can be exercised without a runtime.
-Map<String, Map<String, Object?>> mergeScoredVerdicts(
-  List<Scorer> scorers,
-  Map<String, Map<String, Object?>> results,
-) {
+Map<String, Map<String, Object?>> mergeScoredVerdicts(List<Scorer> scorers, Map<String, Map<String, Object?>> results) {
   final judged = <String>{};
   for (final scorer in scorers.where((s) => !s.fallback)) {
     final verdicts = (results[scorer.key]?['qsoScores'] as Map?) ?? const {};
@@ -189,8 +170,7 @@ Map<String, Map<String, Object?>> mergeScoredVerdicts(
     final merged = <String, Object?>{};
     for (final entry in verdicts.entries) {
       final verdict = entry.value;
-      final kept =
-          judged.contains(entry.key) && verdict is Map ? withoutWorkedBefore(verdict) : verdict;
+      final kept = judged.contains(entry.key) && verdict is Map ? withoutWorkedBefore(verdict) : verdict;
       if (kept != null) merged[entry.key] = kept;
     }
     results[scorer.key]!['qsoScores'] = merged;

@@ -17,12 +17,7 @@ class ReleaseNotesEntry {
   final String photoCaption;
   final List<String> changes;
 
-  const ReleaseNotesEntry({
-    required this.version,
-    required this.name,
-    required this.photoCaption,
-    required this.changes,
-  });
+  const ReleaseNotesEntry({required this.version, required this.name, required this.photoCaption, required this.changes});
 
   /// The `MAJOR.MINOR` prefix of [version] (e.g. `26.8` for `26.8.0`),
   /// matching the release image filename convention
@@ -46,12 +41,14 @@ List<ReleaseNotesEntry> parseReleaseNotesYaml(String yamlSource) {
     final body = entry.value;
     if (body is! YamlMap) continue;
     try {
-      entries.add(ReleaseNotesEntry(
-        version: entry.key as String,
-        name: (body['name'] as String?) ?? entry.key as String,
-        photoCaption: (body['photoCaption'] as String?) ?? '',
-        changes: [for (final change in (body['changes'] as YamlList?) ?? YamlList()) change as String],
-      ));
+      entries.add(
+        ReleaseNotesEntry(
+          version: entry.key as String,
+          name: (body['name'] as String?) ?? entry.key as String,
+          photoCaption: (body['photoCaption'] as String?) ?? '',
+          changes: [for (final change in (body['changes'] as YamlList?) ?? YamlList()) change as String],
+        ),
+      );
     } catch (_) {
       // A field with the wrong type (e.g. `changes: "oops"` instead of a
       // list) throws on the cast above — skip just this entry, same as the

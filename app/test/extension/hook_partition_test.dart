@@ -66,8 +66,7 @@ void main() {
     ]);
 
     expect(parts.unreachable, ['pota', 'sota', 'wwff']);
-    expect([for (final f in parts.failed) f.key], ['wwbota'],
-        reason: 'a service that answered badly is not the network');
+    expect([for (final f in parts.failed) f.key], ['wwbota'], reason: 'a service that answered badly is not the network');
   });
 
   test('IOClient\'s socket-wrapping ClientException shape is still unreachable', () {
@@ -79,11 +78,7 @@ void main() {
     // instead of `unreachable`, telling the operator to stop expecting spots
     // from a source that never got a chance to answer.
     final parts = partitionHookEntries([
-      {
-        'key': 'pota',
-        'ok': false,
-        'error': "ClientException with SocketException: Failed host lookup: 'api.pota.app', uri=https://api.pota.app/spots",
-      },
+      {'key': 'pota', 'ok': false, 'error': "ClientException with SocketException: Failed host lookup: 'api.pota.app', uri=https://api.pota.app/spots"},
     ]);
 
     expect(parts.unreachable, ['pota']);
@@ -123,10 +118,10 @@ void main() {
     // routes a later sendSpot back to the right hook.
     final parts = partitionHookEntries([
       ok('pota', [
-        {'their': 'K1ABC'}
+        {'their': 'K1ABC'},
       ]),
       ok('sota', [
-        {'their': 'G1XYZ'}
+        {'their': 'G1XYZ'},
       ]),
     ]);
 
@@ -144,7 +139,7 @@ void main() {
         'key': 'bad',
         'ok': true,
         'value': [
-          {1: 'not a string key'}
+          {1: 'not a string key'},
         ],
       },
       {'key': 'sota', 'ok': false, 'timedOut': true},

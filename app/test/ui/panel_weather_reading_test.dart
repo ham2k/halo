@@ -62,11 +62,7 @@ void main() {
   }
 
   WeatherReading read([String? body]) {
-    final reading = parseWeatherReading(
-      body ?? fixture(),
-      fetchedAtUtc: DateTime.utc(2026, 8, 8, 22, 44),
-      fahrenheit: true,
-    );
+    final reading = parseWeatherReading(body ?? fixture(), fetchedAtUtc: DateTime.utc(2026, 8, 8, 22, 44), fahrenheit: true);
     return reading!;
   }
 
@@ -134,8 +130,7 @@ void main() {
   });
 
   group('a bad answer costs the panel, not the app', () {
-    WeatherReading? parse(String body) =>
-        parseWeatherReading(body, fetchedAtUtc: DateTime.utc(2026), fahrenheit: true);
+    WeatherReading? parse(String body) => parseWeatherReading(body, fetchedAtUtc: DateTime.utc(2026), fahrenheit: true);
 
     test('malformed JSON is null, not a throw', () {
       // A throw here reaches ErrorPolicy and puts a "Something went wrong"
@@ -157,10 +152,12 @@ void main() {
       // The offset is the second required one: it is what every hour label,
       // the sunrise and the sunset are built on, and defaulting it to zero
       // would draw a whole panel of plausible, wrong times.
-      final reading = parse(jsonEncode({
-        'utc_offset_seconds': 0,
-        'current': {'temperature_2m': 12},
-      }));
+      final reading = parse(
+        jsonEncode({
+          'utc_offset_seconds': 0,
+          'current': {'temperature_2m': 12},
+        }),
+      );
       expect(reading, isNotNull);
       expect(reading!.temperature, 12);
       expect(reading.hours, isEmpty);

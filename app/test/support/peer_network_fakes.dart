@@ -244,12 +244,7 @@ class _FakeDatagramSocket extends Stream<RawSocketEvent> implements RawDatagramS
   }
 
   @override
-  StreamSubscription<RawSocketEvent> listen(
-    void Function(RawSocketEvent event)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) =>
+  StreamSubscription<RawSocketEvent> listen(void Function(RawSocketEvent event)? onData, {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
       _events.stream.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
 
   @override
@@ -259,12 +254,7 @@ class _FakeDatagramSocket extends Stream<RawSocketEvent> implements RawDatagramS
   int send(List<int> buffer, InternetAddress address, int port) {
     if (_closed) return 0;
     if (host.sendsFail) {
-      final failure = SocketException(
-        'Send failed',
-        osError: const OSError('Network is unreachable', 51),
-        address: address,
-        port: port,
-      );
+      final failure = SocketException('Send failed', osError: const OSError('Network is unreachable', 51), address: address, port: port);
       if (host.sendsFailSynchronously) throw failure;
       // dart:io reports it on the error handler and CLOSES the socket behind
       // it, which is the whole reason a failed send costs a rebind rather
@@ -329,12 +319,10 @@ class _FakeDatagramSocket extends Stream<RawSocketEvent> implements RawDatagramS
   // peer_beacon_io.dart's header on the iOS entitlement. Reaching these from
   // the beacon socket is the bug, so they say so rather than no-op.
   @override
-  void joinMulticast(InternetAddress group, [NetworkInterface? interface]) =>
-      throw UnsupportedError('peer discovery is broadcast, not multicast');
+  void joinMulticast(InternetAddress group, [NetworkInterface? interface]) => throw UnsupportedError('peer discovery is broadcast, not multicast');
 
   @override
-  void leaveMulticast(InternetAddress group, [NetworkInterface? interface]) =>
-      throw UnsupportedError('peer discovery is broadcast, not multicast');
+  void leaveMulticast(InternetAddress group, [NetworkInterface? interface]) => throw UnsupportedError('peer discovery is broadcast, not multicast');
 
   @override
   Uint8List getRawOption(RawSocketOption option) => Uint8List(0);

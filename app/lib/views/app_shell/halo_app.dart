@@ -117,8 +117,7 @@ class _HaLoAppState extends State<HaLoApp> {
   /// context is above that wrapper, where the height is still the raw window,
   /// so the division has to be redone here — without it a zoomed-in operator
   /// would step from a density they aren't actually looking at.
-  double get _densityLadderHeight =>
-      MediaQuery.sizeOf(context).height / widget.services.settings.fontScale.scaleFactor;
+  double get _densityLadderHeight => MediaQuery.sizeOf(context).height / widget.services.settings.fontScale.scaleFactor;
 
   void _stepDensity({required bool denser}) {
     final settings = widget.services.settings;
@@ -151,20 +150,14 @@ class _HaLoAppState extends State<HaLoApp> {
     // is not the same thing. Naming only one of the two leaves the operator
     // unable to tell which they just changed.
     final detail = switch (preference) {
-      _ when preference != DensityPreference.auto && preference.name != effective.name =>
-        context.t.settings.layoutDensityClamped(effective: effectiveLabel),
+      _ when preference != DensityPreference.auto && preference.name != effective.name => context.t.settings.layoutDensityClamped(effective: effectiveLabel),
       _ when atLimit => context.t.settings.layoutDensityAtLimit,
       DensityPreference.auto => effectiveLabel,
       _ => null,
     };
     final text = detail == null ? settingLabel : '$settingLabel — $detail';
 
-    widget.services.statusBar.setMessage(
-      key: _densityMessageKey,
-      icon: 'arrow-collapse-vertical',
-      title: context.t.settings.layoutDensity,
-      text: text,
-    );
+    widget.services.statusBar.setMessage(key: _densityMessageKey, icon: 'arrow-collapse-vertical', title: context.t.settings.layoutDensity, text: text);
     _densityMessageTimer?.cancel();
     _densityMessageTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) widget.services.statusBar.clear(_densityMessageKey);
@@ -199,9 +192,7 @@ class _HaLoAppState extends State<HaLoApp> {
 
   void _toggleTheme() {
     final settings = widget.services.settings;
-    settings.setThemeMode(
-      toggledThemeMode(settings.themeMode, WidgetsBinding.instance.platformDispatcher.platformBrightness),
-    );
+    settings.setThemeMode(toggledThemeMode(settings.themeMode, WidgetsBinding.instance.platformDispatcher.platformBrightness));
   }
 
   void _toggleLocale() {
@@ -261,12 +252,8 @@ class _HaLoAppState extends State<HaLoApp> {
     // Claiming them costs ⌘+ and ⌘_ as aliases for ⌘= and ⌘-, which is the
     // deliberate trade.
     if (HardwareKeyboard.instance.isShiftPressed) {
-      final denser = key == LogicalKeyboardKey.minus ||
-          key == LogicalKeyboardKey.underscore ||
-          key == LogicalKeyboardKey.numpadSubtract;
-      final sparser = key == LogicalKeyboardKey.equal ||
-          key == LogicalKeyboardKey.add ||
-          key == LogicalKeyboardKey.numpadAdd;
+      final denser = key == LogicalKeyboardKey.minus || key == LogicalKeyboardKey.underscore || key == LogicalKeyboardKey.numpadSubtract;
+      final sparser = key == LogicalKeyboardKey.equal || key == LogicalKeyboardKey.add || key == LogicalKeyboardKey.numpadAdd;
       if (denser || sparser) {
         _stepDensity(denser: denser);
         return true;
@@ -280,18 +267,13 @@ class _HaLoAppState extends State<HaLoApp> {
       }
     }
 
-    if (key == LogicalKeyboardKey.equal ||
-        key == LogicalKeyboardKey.add ||
-        key == LogicalKeyboardKey.numpadAdd) {
+    if (key == LogicalKeyboardKey.equal || key == LogicalKeyboardKey.add || key == LogicalKeyboardKey.numpadAdd) {
       settings.increaseFontScale();
       return true;
-    } else if (key == LogicalKeyboardKey.minus ||
-        key == LogicalKeyboardKey.numpadSubtract ||
-        key == LogicalKeyboardKey.underscore) {
+    } else if (key == LogicalKeyboardKey.minus || key == LogicalKeyboardKey.numpadSubtract || key == LogicalKeyboardKey.underscore) {
       settings.decreaseFontScale();
       return true;
-    } else if (key == LogicalKeyboardKey.digit0 ||
-        key == LogicalKeyboardKey.numpad0) {
+    } else if (key == LogicalKeyboardKey.digit0 || key == LogicalKeyboardKey.numpad0) {
       settings.setFontScale(FontScale.normal);
       return true;
     }
@@ -369,15 +351,19 @@ class _HaLoAppState extends State<HaLoApp> {
           // top-left corner doesn't flash out around the buttons.
           Widget content = child;
           if (isWindowsChromelessWindow || isLinuxChromelessWindow) {
-            content = Stack(children: [
-              content,
-              const Positioned(top: 0, right: 0, child: WindowsCaptionButtons()),
-            ]);
+            content = Stack(
+              children: [
+                content,
+                const Positioned(top: 0, right: 0, child: WindowsCaptionButtons()),
+              ],
+            );
           } else if (isMacOSChromelessWindow) {
-            content = Stack(children: [
-              content,
-              const Positioned(top: 0, left: 0, child: MacOSTrafficLightMask()),
-            ]);
+            content = Stack(
+              children: [
+                content,
+                const Positioned(top: 0, left: 0, child: MacOSTrafficLightMask()),
+              ],
+            );
           }
 
           // The app shows NO hover labels (docs/design/user-interface.md).
@@ -390,25 +376,25 @@ class _HaLoAppState extends State<HaLoApp> {
           return TooltipVisibility(
             visible: false,
             child: ValueListenableBuilder<bool>(
-                valueListenable: macOSWindowIsFullScreen,
-                builder: (context, isFullScreen, _) => MacOSFullScreenScope(
-                  isFullScreen: isFullScreen,
-                  child: UiScale(
+              valueListenable: macOSWindowIsFullScreen,
+              builder: (context, isFullScreen, _) => MacOSFullScreenScope(
+                isFullScreen: isFullScreen,
+                child: UiScale(
+                  scale: scale,
+                  // INSIDE UiScale, deliberately: the density ladder reads
+                  // the divided height, so a large font scale genuinely
+                  // fits less and reaches for a tighter layout sooner —
+                  // the same bargain ShirtSize makes on width
+                  // (docs/design/ui-scaling.md rule 4). Reading the real
+                  // window height here would leave the operator who zoomed
+                  // in with a sparse layout that no longer fits.
+                  child: _LayoutDensityFromWindow(
+                    settings: widget.services.settings,
                     scale: scale,
-                    // INSIDE UiScale, deliberately: the density ladder reads
-                    // the divided height, so a large font scale genuinely
-                    // fits less and reaches for a tighter layout sooner —
-                    // the same bargain ShirtSize makes on width
-                    // (docs/design/ui-scaling.md rule 4). Reading the real
-                    // window height here would leave the operator who zoomed
-                    // in with a sparse layout that no longer fits.
-                    child: _LayoutDensityFromWindow(
-                      settings: widget.services.settings,
-                      scale: scale,
-                      // Outermost so it covers every field in the app — the gates'
-                      // own overlays and anything pushed on the Navigator (which is
-                      // `content`, i.e. dialogs and panes) included.
-                      child: TapToDismissEmptyField(
+                    // Outermost so it covers every field in the app — the gates'
+                    // own overlays and anything pushed on the Navigator (which is
+                    // `content`, i.e. dialogs and panes) included.
+                    child: TapToDismissEmptyField(
                       // Outermost of the startup gates: the tester overlay
                       // paints above even the onboarding flow — a tester's
                       // fresh install gets the caution warning before
@@ -432,11 +418,11 @@ class _HaLoAppState extends State<HaLoApp> {
                           ),
                         ),
                       ),
-                      ),
                     ),
                   ),
                 ),
               ),
+            ),
           );
         },
       ),
@@ -546,9 +532,7 @@ class _LayoutDensityFromWindowState extends State<_LayoutDensityFromWindow> {
     final base = Theme.of(context);
     if (_derivedTheme == null || !identical(base, _derivedFrom)) {
       _derivedFrom = base;
-      _derivedTheme = base.copyWith(
-        appBarTheme: base.appBarTheme.copyWith(toolbarHeight: _toolbarHeight),
-      );
+      _derivedTheme = base.copyWith(appBarTheme: base.appBarTheme.copyWith(toolbarHeight: _toolbarHeight));
     }
     return LayoutDensityScope(
       density: _density,

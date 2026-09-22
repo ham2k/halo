@@ -24,83 +24,78 @@ void main() {
   /// app can know about either side present — an entered county on ours, a
   /// looked-up one on theirs, a split, a duration and a power.
   Map<String, dynamic> operation() => {
-        'uuid': 'op',
-        'stationCall': 'N0DEV',
-        'title': 'Park run',
-        'state': 'CA',
-        'county': 'Marin',
-        'grid': 'CM87ss',
-        // Decorated, the way `decorateRef` leaves a reference the operator
-        // added — QSLMSG names the programs, and a fixture of bare codes would
-        // pass whether it did or not. The WWFF ref stays undecorated: a
-        // reference that resolved to nothing must still reach the card.
-        'refs': [
-          {'type': 'potaActivation', 'ref': 'US-0001', 'shortLabel': 'POTA US-0001', 'label': 'POTA US-0001: Some Park'},
-          {'type': 'wwffActivation', 'ref': 'KFF-0002'},
-        ],
-      };
+    'uuid': 'op',
+    'stationCall': 'N0DEV',
+    'title': 'Park run',
+    'state': 'CA',
+    'county': 'Marin',
+    'grid': 'CM87ss',
+    // Decorated, the way `decorateRef` leaves a reference the operator
+    // added — QSLMSG names the programs, and a fixture of bare codes would
+    // pass whether it did or not. The WWFF ref stays undecorated: a
+    // reference that resolved to nothing must still reach the card.
+    'refs': [
+      {'type': 'potaActivation', 'ref': 'US-0001', 'shortLabel': 'POTA US-0001', 'label': 'POTA US-0001: Some Park'},
+      {'type': 'wwffActivation', 'ref': 'KFF-0002'},
+    ],
+  };
 
   Map<String, dynamic> qso() => {
-        'uuid': 'q0',
-        // `cqZone`/`ituZone` are here because something PUT them here — an
-        // import, or an extension that knows where the station is. Nothing
-        // derives them, so a zone no country file would produce is the proof.
-        'our': {
-          'call': 'N0DEV',
-          'sent': '59',
-          'rig': 'FT-891',
-          'antenna': 'EFHW',
-          'cqZone': 31,
-          'ituZone': 61,
-        },
-        'their': {
-          'call': 'W1AW',
-          'sent': '57',
-          'power': 5,
-          // The receive half of a split, which QSON records on `their`.
-          'freq': 14275.0,
-          'band': '20m',
-          'email': 'w1aw@example.org',
-          'guess': {
-            'call': 'W1AW',
-            'name': 'ARRL HQ',
-            'city': 'Newington',
-            'county': 'Hartford',
-            'state': 'CT',
-            'country': 'United States',
-            'continent': 'NA',
-            'entityPrefix': 'K',
-            'dxccCode': 291,
-            // Deliberately not the zone a country file would resolve W1AW to:
-            // an export writes what an extension filled in, and a value only
-            // the log could hold is the only way to prove it.
-            'cqZone': 9,
-            'ituZone': 8,
-          },
-        },
-        'band': '20m',
-        'mode': 'SSB',
-        'freq': 14250.0,
-        'power': 100,
-        'notes': 'first QSO of the day',
-        'startAtMillis': DateTime.utc(2026, 7, 1, 12).millisecondsSinceEpoch,
-        'endAtMillis': DateTime.utc(2026, 7, 1, 12, 3).millisecondsSinceEpoch,
-      };
+    'uuid': 'q0',
+    // `cqZone`/`ituZone` are here because something PUT them here — an
+    // import, or an extension that knows where the station is. Nothing
+    // derives them, so a zone no country file would produce is the proof.
+    'our': {'call': 'N0DEV', 'sent': '59', 'rig': 'FT-891', 'antenna': 'EFHW', 'cqZone': 31, 'ituZone': 61},
+    'their': {
+      'call': 'W1AW',
+      'sent': '57',
+      'power': 5,
+      // The receive half of a split, which QSON records on `their`.
+      'freq': 14275.0,
+      'band': '20m',
+      'email': 'w1aw@example.org',
+      'guess': {
+        'call': 'W1AW',
+        'name': 'ARRL HQ',
+        'city': 'Newington',
+        'county': 'Hartford',
+        'state': 'CT',
+        'country': 'United States',
+        'continent': 'NA',
+        'entityPrefix': 'K',
+        'dxccCode': 291,
+        // Deliberately not the zone a country file would resolve W1AW to:
+        // an export writes what an extension filled in, and a value only
+        // the log could hold is the only way to prove it.
+        'cqZone': 9,
+        'ituZone': 8,
+      },
+    },
+    'band': '20m',
+    'mode': 'SSB',
+    'freq': 14250.0,
+    'power': 100,
+    'notes': 'first QSO of the day',
+    'startAtMillis': DateTime.utc(2026, 7, 1, 12).millisecondsSinceEpoch,
+    'endAtMillis': DateTime.utc(2026, 7, 1, 12, 3).millisecondsSinceEpoch,
+  };
 
   Future<String> export({required bool includePrivateData, Map<String, dynamic>? qsoOverrides}) async {
     final host = await sharedHost(['adif'], cacheKey: 'adif-fields');
-    final result = await host.invokeHook(
-      'export',
-      key: 'adif',
-      method: 'generateExport',
-      args: {
-        'operation': operation(),
-        'qsos': [qso()..addAll(qsoOverrides ?? const {})],
-        'exportType': 'adif',
-        'includePrivateData': includePrivateData,
-      },
-      timeout: const Duration(seconds: 20),
-    ) as Map;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': operation(),
+                'qsos': [qso()..addAll(qsoOverrides ?? const {})],
+                'exportType': 'adif',
+                'includePrivateData': includePrivateData,
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
     return result['content'] as String;
   }
 
@@ -144,27 +139,21 @@ void main() {
   // trip these fields exist to keep whole.
   test('an entity the contact carries outranks one resolved from the call', () async {
     final host = await sharedHost(['adif'], cacheKey: 'adif-fields');
-    final imported = qso()
-      ..['our'] = {
-        'call': 'N0DEV',
-        'sent': '59',
-        'dxccCode': 110,
-        'entityName': 'Hawaii',
-        'continent': 'OC',
-        'regionCode': 'HI',
-      };
-    final result = await host.invokeHook(
-      'export',
-      key: 'adif',
-      method: 'generateExport',
-      args: {
-        'operation': operation(),
-        'qsos': [imported],
-        'exportType': 'adif',
-        'includePrivateData': true,
-      },
-      timeout: const Duration(seconds: 20),
-    ) as Map;
+    final imported = qso()..['our'] = {'call': 'N0DEV', 'sent': '59', 'dxccCode': 110, 'entityName': 'Hawaii', 'continent': 'OC', 'regionCode': 'HI'};
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': operation(),
+                'qsos': [imported],
+                'exportType': 'adif',
+                'includePrivateData': true,
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
     final content = result['content'] as String;
 
     expect(content, contains('<MY_DXCC:3>110'));
@@ -192,18 +181,20 @@ void main() {
   test('an operation with no zones recorded writes none', () async {
     final host = await sharedHost(['adif'], cacheKey: 'adif-fields');
     final bare = qso()..['our'] = {'call': 'N0DEV', 'sent': '59'};
-    final result = await host.invokeHook(
-      'export',
-      key: 'adif',
-      method: 'generateExport',
-      args: {
-        'operation': operation(),
-        'qsos': [bare],
-        'exportType': 'adif',
-        'includePrivateData': true,
-      },
-      timeout: const Duration(seconds: 20),
-    ) as Map;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': operation(),
+                'qsos': [bare],
+                'exportType': 'adif',
+                'includePrivateData': true,
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
 
     expect(result['content'] as String, isNot(contains('MY_CQ_ZONE')));
     expect(result['content'] as String, isNot(contains('MY_ITU_ZONE')));
@@ -233,18 +224,20 @@ void main() {
     final corrected = qso();
     (corrected['their'] as Map)['state'] = 'ON';
     (corrected['their'] as Map).remove('county');
-    final result = await host.invokeHook(
-      'export',
-      key: 'adif',
-      method: 'generateExport',
-      args: {
-        'operation': operation(),
-        'qsos': [corrected],
-        'exportType': 'adif',
-        'includePrivateData': true,
-      },
-      timeout: const Duration(seconds: 20),
-    ) as Map;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': operation(),
+                'qsos': [corrected],
+                'exportType': 'adif',
+                'includePrivateData': true,
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
     final content = result['content'] as String;
 
     expect(content, contains('<STATE:2>ON'));
@@ -258,18 +251,20 @@ void main() {
   test('a multi-line note keeps its lines in NOTES and loses them in COMMENT', () async {
     final host = await sharedHost(['adif'], cacheKey: 'adif-fields');
     final multiline = qso()..['notes'] = 'first line\nsecond line';
-    final result = await host.invokeHook(
-      'export',
-      key: 'adif',
-      method: 'generateExport',
-      args: {
-        'operation': operation(),
-        'qsos': [multiline],
-        'exportType': 'adif',
-        'includePrivateData': true,
-      },
-      timeout: const Duration(seconds: 20),
-    ) as Map;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': operation(),
+                'qsos': [multiline],
+                'exportType': 'adif',
+                'includePrivateData': true,
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
     final content = result['content'] as String;
 
     expect(content, contains('<NOTES:22>first line\nsecond line'));
@@ -287,18 +282,20 @@ void main() {
     // The contact states a square and no fix; the operation holds a fix
     // somewhere else entirely.
     final roving = qso()..['our'] = {'call': 'N0DEV', 'sent': '59', 'grid': 'DM09aa'};
-    final result = await host.invokeHook(
-      'export',
-      key: 'adif',
-      method: 'generateExport',
-      args: {
-        'operation': {...operation(), 'lat': 37.86, 'lon': -122.48},
-        'qsos': [roving],
-        'exportType': 'adif',
-        'includePrivateData': true,
-      },
-      timeout: const Duration(seconds: 20),
-    ) as Map;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': {...operation(), 'lat': 37.86, 'lon': -122.48},
+                'qsos': [roving],
+                'exportType': 'adif',
+                'includePrivateData': true,
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
     final content = result['content'] as String;
 
     expect(content, contains('<MY_GRIDSQUARE:6>DM09aa'));
@@ -394,10 +391,7 @@ void main() {
     // band and of a contact that has no band at all — and only the first can
     // be re-derived by a reader. Dropping the second takes the sideband out of
     // the log for good, which is the opposite of what the suppression is for.
-    final content = await export(
-      includePrivateData: true,
-      qsoOverrides: {'mode': 'LSB', 'freq': null, 'band': null},
-    );
+    final content = await export(includePrivateData: true, qsoOverrides: {'mode': 'LSB', 'freq': null, 'band': null});
 
     expect(content, contains('<MODE:3>SSB'));
     expect(content, contains('<SUBMODE:3>LSB'));

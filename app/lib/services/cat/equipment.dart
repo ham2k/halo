@@ -77,29 +77,16 @@ class EquipmentNode {
   /// grow without schema churn — the same reasoning as `Profile.data`.
   final Map<String, dynamic> config;
 
-  const EquipmentNode({
-    required this.uuid,
-    required this.typeKey,
-    this.name = '',
-    this.config = const {},
-  });
+  const EquipmentNode({required this.uuid, required this.typeKey, this.name = '', this.config = const {}});
 
   /// [typeKey] changes when the operator picks a different transport for the
   /// same radio — the node is then bound to a different driver and transport,
   /// which is why [CatService.updateNode] drops any live connection rather
   /// than leaving a session built by the old pairing attached to it.
-  EquipmentNode copyWith({String? typeKey, String? name, Map<String, dynamic>? config}) => EquipmentNode(
-        uuid: uuid,
-        typeKey: typeKey ?? this.typeKey,
-        name: name ?? this.name,
-        config: config ?? this.config,
-      );
+  EquipmentNode copyWith({String? typeKey, String? name, Map<String, dynamic>? config}) =>
+      EquipmentNode(uuid: uuid, typeKey: typeKey ?? this.typeKey, name: name ?? this.name, config: config ?? this.config);
 
-  Map<String, dynamic> toJson() => {
-        'typeKey': typeKey,
-        if (name.isNotEmpty) 'name': name,
-        if (config.isNotEmpty) 'config': config,
-      };
+  Map<String, dynamic> toJson() => {'typeKey': typeKey, if (name.isNotEmpty) 'name': name, if (config.isNotEmpty) 'config': config};
 
   /// Reads one stored record. Returns null for anything unrecognisable
   /// rather than throwing — a corrupt entry drops that one node, it does
@@ -141,8 +128,7 @@ class VfoReading {
   bool get isEmpty => freqKHz == null && mode == null;
 
   @override
-  bool operator ==(Object other) =>
-      other is VfoReading && other.freqKHz == freqKHz && other.mode == mode;
+  bool operator ==(Object other) => other is VfoReading && other.freqKHz == freqKHz && other.mode == mode;
 
   @override
   int get hashCode => Object.hash(freqKHz, mode);
@@ -217,8 +203,7 @@ class MeterReading {
   const MeterReading(this.value, this.atMillis);
 
   @override
-  bool operator ==(Object other) =>
-      other is MeterReading && other.value == value && other.atMillis == atMillis;
+  bool operator ==(Object other) => other is MeterReading && other.value == value && other.atMillis == atMillis;
 
   @override
   int get hashCode => Object.hash(value, atMillis);
@@ -249,13 +234,10 @@ class RadioTelemetry {
   /// [transmitting] itself.
   bool get isTransmitting => transmitting ?? false;
 
-  RadioTelemetry withTransmitting(bool value) =>
-      RadioTelemetry(transmitting: value, meters: meters);
+  RadioTelemetry withTransmitting(bool value) => RadioTelemetry(transmitting: value, meters: meters);
 
-  RadioTelemetry withMeter(RadioMeter meter, num value, int atMillis) => RadioTelemetry(
-        transmitting: transmitting,
-        meters: {...meters, meter: MeterReading(value, atMillis)},
-      );
+  RadioTelemetry withMeter(RadioMeter meter, num value, int atMillis) =>
+      RadioTelemetry(transmitting: transmitting, meters: {...meters, meter: MeterReading(value, atMillis)});
 
   /// [meter]'s reading if it is still worth showing at [nowMillis], else
   /// null — see [meterLinger].
@@ -266,14 +248,18 @@ class RadioTelemetry {
   }
 
   @override
-  bool operator ==(Object other) =>
-      other is RadioTelemetry && other.transmitting == transmitting && mapEquals(other.meters, meters);
+  bool operator ==(Object other) => other is RadioTelemetry && other.transmitting == transmitting && mapEquals(other.meters, meters);
 
   @override
   int get hashCode => Object.hash(transmitting, Object.hashAllUnordered(meters.entries.map((e) => Object.hash(e.key, e.value))));
 
   @override
-  String toString() => 'RadioTelemetry(${transmitting == null ? 'tx unknown' : transmitting! ? 'TX' : 'RX'}'
+  String toString() =>
+      'RadioTelemetry(${transmitting == null
+          ? 'tx unknown'
+          : transmitting!
+          ? 'TX'
+          : 'RX'}'
       '${meters.isEmpty ? '' : ', ${meters.entries.map((e) => '${e.key.name}=${e.value.value}').join(', ')}'})';
 }
 
@@ -317,15 +303,7 @@ class EquipmentChannel {
   /// inventory at all, because by then they believe they checked.
   final bool heldByUnknown;
 
-  const EquipmentChannel({
-    required this.key,
-    required this.label,
-    this.inUse = false,
-    this.freqKHz,
-    this.mode,
-    this.usedBy,
-    this.heldByUnknown = false,
-  });
+  const EquipmentChannel({required this.key, required this.label, this.inUse = false, this.freqKHz, this.mode, this.usedBy, this.heldByUnknown = false});
 
   @override
   bool operator ==(Object other) =>
@@ -342,7 +320,8 @@ class EquipmentChannel {
   int get hashCode => Object.hash(key, label, inUse, freqKHz, mode, usedBy, heldByUnknown);
 
   @override
-  String toString() => 'EquipmentChannel($key/$label, inUse: $inUse, freq: $freqKHz, '
+  String toString() =>
+      'EquipmentChannel($key/$label, inUse: $inUse, freq: $freqKHz, '
       'mode: $mode, usedBy: ${usedBy ?? (heldByUnknown ? 'unnamed' : 'nobody')})';
 }
 
@@ -373,8 +352,7 @@ class SwitchAntenna {
   const SwitchAntenna({required this.key, required this.name, this.configured = true});
 
   @override
-  bool operator ==(Object other) =>
-      other is SwitchAntenna && other.key == key && other.name == name && other.configured == configured;
+  bool operator ==(Object other) => other is SwitchAntenna && other.key == key && other.name == name && other.configured == configured;
 
   @override
   int get hashCode => Object.hash(key, name, configured);
@@ -463,11 +441,11 @@ class SwitchPort {
       other.inhibited == inhibited;
 
   @override
-  int get hashCode =>
-      Object.hash(key, label, selectedAntennaKey, auto, band, radioName, freqKHz, transmitting, inhibited);
+  int get hashCode => Object.hash(key, label, selectedAntennaKey, auto, band, radioName, freqKHz, transmitting, inhibited);
 
   @override
-  String toString() => 'SwitchPort($key/$label -> ${selectedAntennaKey ?? 'none'}'
+  String toString() =>
+      'SwitchPort($key/$label -> ${selectedAntennaKey ?? 'none'}'
       '${auto ? ', auto' : ''}${band != null ? ', $band' : ''}'
       '${radioName != null ? ', $radioName' : ''}${freqKHz != null ? ', $freqKHz kHz' : ''}'
       '${transmitting ? ', TX' : ''}${inhibited ? ', inhibited' : ''})';
@@ -589,27 +567,26 @@ class EquipmentState {
     List<EquipmentChannel>? channels,
     List<SwitchAntenna>? switchAntennas,
     List<SwitchPort>? switchPorts,
-  }) =>
-      EquipmentState(
-        status: status ?? this.status,
-        // An explicit null clears it: any transition out of `error` should
-        // drop the stale message rather than carry it into the next state.
-        error: status == null || status == EquipmentStatus.error ? (error ?? this.error) : null,
-        errorDetail: status == null || status == EquipmentStatus.error ? (errorDetail ?? this.errorDetail) : null,
-        vfo: vfo ?? this.vfo,
-        power: power ?? this.power,
-        telemetry: telemetry ?? this.telemetry,
-        keyerSpeed: keyerSpeed ?? this.keyerSpeed,
-        stale: stale ?? this.stale,
-        // Needs its own flag rather than a null argument: a driver saying
-        // "nothing to report any more" and a caller not mentioning it at all
-        // are different, and `??` cannot tell them apart.
-        diagnostic: clearDiagnostic ? null : (diagnostic ?? this.diagnostic),
-        // Same flag-not-null reasoning as [diagnostic]: "the slice is back"
-        // has to be sayable.
-        problem: clearProblem ? null : (problem ?? this.problem),
-        channels: channels ?? this.channels,
-        switchAntennas: switchAntennas ?? this.switchAntennas,
-        switchPorts: switchPorts ?? this.switchPorts,
-      );
+  }) => EquipmentState(
+    status: status ?? this.status,
+    // An explicit null clears it: any transition out of `error` should
+    // drop the stale message rather than carry it into the next state.
+    error: status == null || status == EquipmentStatus.error ? (error ?? this.error) : null,
+    errorDetail: status == null || status == EquipmentStatus.error ? (errorDetail ?? this.errorDetail) : null,
+    vfo: vfo ?? this.vfo,
+    power: power ?? this.power,
+    telemetry: telemetry ?? this.telemetry,
+    keyerSpeed: keyerSpeed ?? this.keyerSpeed,
+    stale: stale ?? this.stale,
+    // Needs its own flag rather than a null argument: a driver saying
+    // "nothing to report any more" and a caller not mentioning it at all
+    // are different, and `??` cannot tell them apart.
+    diagnostic: clearDiagnostic ? null : (diagnostic ?? this.diagnostic),
+    // Same flag-not-null reasoning as [diagnostic]: "the slice is back"
+    // has to be sayable.
+    problem: clearProblem ? null : (problem ?? this.problem),
+    channels: channels ?? this.channels,
+    switchAntennas: switchAntennas ?? this.switchAntennas,
+    switchPorts: switchPorts ?? this.switchPorts,
+  );
 }

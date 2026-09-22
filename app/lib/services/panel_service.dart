@@ -128,8 +128,7 @@ class PanelDefinition {
 
   /// Whether [view] may offer this panel — see [views] for why an empty set
   /// answers yes for an extension panel and no for a native one.
-  bool availableIn(String view) =>
-      views.isEmpty ? source == PanelSource.extension : views.contains(view);
+  bool availableIn(String view) => views.isEmpty ? source == PanelSource.extension : views.contains(view);
 
   bool get hasSettings => formFields.isNotEmpty || settingsTarget != null;
 
@@ -177,8 +176,7 @@ class PanelDefinition {
       other.minHeight == minHeight;
 
   @override
-  int get hashCode =>
-      Object.hash(id, title, description, icon, preview, source, hookKey, panelKey, settingsTarget, minWidth, minHeight);
+  int get hashCode => Object.hash(id, title, description, icon, preview, source, hookKey, panelKey, settingsTarget, minWidth, minHeight);
 
   /// Reads one entry of `getExtensionPanels`. Returns null for an entry
   /// missing what a panel cannot work without — an extension bug should
@@ -298,8 +296,7 @@ const panelRenderThrottle = Duration(milliseconds: 750);
 /// Pure, because the wiring around it cannot be tested here: the test binding
 /// restores `resumed` on the next pump, so a lifecycle state set in a widget
 /// test does not survive to the moment a trigger arrives.
-bool appIsVisibleIn(AppLifecycleState state) =>
-    state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+bool appIsVisibleIn(AppLifecycleState state) => state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
 
 /// How long a render must wait, given when the last one FINISHED.
 ///
@@ -336,20 +333,14 @@ enum PanelRenderRequest { now, defer, coalesce, drop }
 /// that is still running is how the idle gap gets defeated: the gap is
 /// measured from the LAST render's end, so mid-render it has usually already
 /// elapsed and the timer would be armed for zero.
-PanelRenderRequest panelRenderRequest({
-  required String reason,
-  required bool rendering,
-  required bool scheduled,
-  required Duration wait,
-}) {
+PanelRenderRequest panelRenderRequest({required String reason, required bool rendering, required bool scheduled, required Duration wait}) {
   final coming = rendering || scheduled;
   if (reason == 'tick') return coming ? PanelRenderRequest.drop : _waitOrNow(wait);
   if (rendering) return PanelRenderRequest.coalesce;
   return _waitOrNow(wait);
 }
 
-PanelRenderRequest _waitOrNow(Duration wait) =>
-    wait > Duration.zero ? PanelRenderRequest.defer : PanelRenderRequest.now;
+PanelRenderRequest _waitOrNow(Duration wait) => wait > Duration.zero ? PanelRenderRequest.defer : PanelRenderRequest.now;
 
 /// The period a panel ticks at, given everything it declared — the shortest
 /// of them, floored at [minPanelTickSeconds]. Null when it asked for none.
@@ -418,30 +409,16 @@ abstract interface class PanelExtensionSource {
   /// Null when the runtime could not be asked at all.
   Future<List<Map<String, dynamic>>?> getExtensionPanels();
 
-  Future<Map<String, dynamic>?> renderPanel({
-    required String hookKey,
-    required String panelKey,
-    required Map<String, dynamic> args,
-  });
+  Future<Map<String, dynamic>?> renderPanel({required String hookKey, required String panelKey, required Map<String, dynamic> args});
 
-  Future<Map<String, dynamic>> readPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  });
+  Future<Map<String, dynamic>> readPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields});
 
-  Future<void> forgetPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  });
+  Future<void> forgetPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields});
 }
 
 /// Optional capability so ordinary panel sources need not implement events.
 abstract interface class PanelEventSource {
-  Future<Map<String, dynamic>?> panelEvent({
-    required String hookKey,
-    required String panelKey,
-    required Map<String, dynamic> args,
-  });
+  Future<Map<String, dynamic>?> panelEvent({required String hookKey, required String panelKey, required Map<String, dynamic> args});
 }
 
 class PanelService extends ChangeNotifier {
@@ -510,8 +487,7 @@ class PanelService extends ChangeNotifier {
   /// The panels [view] may offer — what its Add a Panel sheet lists. Native
   /// panels belonging to another view are filtered out; extension panels name
   /// no view and so survive for every one.
-  List<PanelDefinition> catalogFor(String view) =>
-      catalog.where((panel) => panel.availableIn(view)).toList();
+  List<PanelDefinition> catalogFor(String view) => catalog.where((panel) => panel.availableIn(view)).toList();
 
   /// The panel an id names. An instance id (`…#2`) resolves to its
   /// descriptor, but what comes back carries the INSTANCE id — config is
@@ -541,7 +517,7 @@ class PanelService extends ChangeNotifier {
   /// unguessable.
   static String nextInstanceId(String descriptorId, Iterable<String> inLayout) {
     final taken = inLayout.where((id) => PanelDefinition.descriptorIdOf(id) == descriptorId).toSet();
-    for (var i = 1;; i++) {
+    for (var i = 1; ; i++) {
       final candidate = PanelDefinition.instanceIdFor(descriptorId, i);
       if (!taken.contains(candidate)) return candidate;
     }
@@ -688,23 +664,15 @@ class PanelService extends ChangeNotifier {
     return extensions.renderPanel(hookKey: panel.hookKey!, panelKey: panel.panelKey!, args: {...args, 'instanceId': panel.id});
   }
 
-  Future<Map<String, dynamic>?> event(
-    PanelDefinition panel,
-    Map<String, dynamic> args,
-  ) {
+  Future<Map<String, dynamic>?> event(PanelDefinition panel, Map<String, dynamic> args) {
     final source = extensions;
     if (source is! PanelEventSource) {
       throw StateError('Panel events unavailable');
     }
-    return (source as PanelEventSource).panelEvent(
-      hookKey: panel.hookKey!,
-      panelKey: panel.panelKey!,
-      args: {...args, 'instanceId': panel.id},
-    );
+    return (source as PanelEventSource).panelEvent(hookKey: panel.hookKey!, panelKey: panel.panelKey!, args: {...args, 'instanceId': panel.id});
   }
 
-  Future<Map<String, dynamic>> configFor(PanelDefinition panel) =>
-      extensions.readPanelConfig(panelKey: panel.id, fields: panel.formFields);
+  Future<Map<String, dynamic>> configFor(PanelDefinition panel) => extensions.readPanelConfig(panelKey: panel.id, fields: panel.formFields);
 
   /// Throws away what a removed pane held, for INSTANCES only.
   ///

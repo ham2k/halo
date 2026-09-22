@@ -14,30 +14,29 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
   Widget host({required double width, required int sections, required int rowsPerSection}) => MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: width,
-            height: 400,
-            child: ListTileTheme.merge(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Builder(
-                builder: (context) => CustomScrollView(
-                  slivers: [
-                    for (var s = 0; s < sections; s++)
-                      SliverMainAxisGroup(slivers: [
-                        SectionHeader.pinned(context, 'Section $s'),
-                        SliverList.list(children: [
-                          for (var r = 0; r < rowsPerSection; r++)
-                            ListTile(title: Text('Row $s-$r')),
-                        ]),
-                      ]),
-                  ],
-                ),
-              ),
+    home: Scaffold(
+      body: SizedBox(
+        width: width,
+        height: 400,
+        child: ListTileTheme.merge(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Builder(
+            builder: (context) => CustomScrollView(
+              slivers: [
+                for (var s = 0; s < sections; s++)
+                  SliverMainAxisGroup(
+                    slivers: [
+                      SectionHeader.pinned(context, 'Section $s'),
+                      SliverList.list(children: [for (var r = 0; r < rowsPerSection; r++) ListTile(title: Text('Row $s-$r'))]),
+                    ],
+                  ),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    ),
+  );
 
   testWidgets('a band holds the top while its own rows scroll under it', (tester) async {
     await tester.pumpWidget(host(width: 600, sections: 3, rowsPerSection: 8));
@@ -85,10 +84,7 @@ void main() {
     // keep — both insets are read from the ambient ListTileTheme, so the
     // heading tracks the rows wherever the pane puts them without lining up
     // with them and reading as one more row.
-    expect(
-      tester.getTopLeft(find.text('Row 0-0')).dx - tester.getTopLeft(find.text('Section 0')).dx,
-      SectionHeader.overhang,
-    );
+    expect(tester.getTopLeft(find.text('Row 0-0')).dx - tester.getTopLeft(find.text('Section 0')).dx, SectionHeader.overhang);
   });
 
   testWidgets('a pinned band takes the height it lays out to, so a large text scale still fits', (tester) async {

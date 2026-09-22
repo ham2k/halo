@@ -38,8 +38,7 @@ import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
 import '../map/webview_support_probe.dart';
-import 'activities_view.dart'
-    show ActivityRowChip, activityRowDetail, activityRowIsRetired, activityRowTitle;
+import 'activities_view.dart' show ActivityRowChip, activityRowDetail, activityRowIsRetired, activityRowTitle;
 
 /// The entry's own coordinate when the activity's lookup table has one
 /// (tighter than decoding a 6-character grid square — see the SDK's `Ref.lat`
@@ -76,28 +75,28 @@ List<MapMarkerData> activitySuggestionMarkers(
   final markers = <MapMarkerData>[];
   for (var i = 0; i < suggestions.length; i++) {
     final suggestion = suggestions[i];
-    final storedRef = refs
-        .where((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref'])
-        .firstOrNull;
+    final storedRef = refs.where((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']).firstOrNull;
     if (storedRef != null && locationForSuggestion(storedRef) != null) continue;
     final location = locationForSuggestion(suggestion);
     if (location == null) continue;
     final control = controlForRefType(controls, suggestion['type'] as String?);
     final baseColor = colorForRefType(controls, suggestion['type'] as String?) ?? defaultColor;
-    markers.add(MapMarkerData(
-      id: '$i',
-      latitude: location.latitude,
-      longitude: location.longitude,
-      label: activityRowTitle(control, suggestion),
-      kind: MapMarkerKind.qso,
-      // Faded when the operation already has it: this dot only survives the
-      // drop above because the stored reference has no location of its own
-      // to draw, and at full strength it would be indistinguishable from a
-      // reference the operator can still add — which its card, offering no
-      // Add button, then contradicts.
-      color: storedRef == null ? baseColor : baseColor.withValues(alpha: 0.4),
-      strokeColor: strokeColor,
-    ));
+    markers.add(
+      MapMarkerData(
+        id: '$i',
+        latitude: location.latitude,
+        longitude: location.longitude,
+        label: activityRowTitle(control, suggestion),
+        kind: MapMarkerKind.qso,
+        // Faded when the operation already has it: this dot only survives the
+        // drop above because the stored reference has no location of its own
+        // to draw, and at full strength it would be indistinguishable from a
+        // reference the operator can still add — which its card, offering no
+        // Add button, then contradicts.
+        color: storedRef == null ? baseColor : baseColor.withValues(alpha: 0.4),
+        strokeColor: strokeColor,
+      ),
+    );
   }
   return markers;
 }
@@ -125,25 +124,23 @@ List<MapMarkerData> activitySelectedRefMarkers(
   for (final ref in refs) {
     final location = locationForSuggestion(ref);
     if (location == null) continue;
-    final control = controlForRef(
-      controls,
-      type: ref['type'] as String?,
-      code: ref['ref'] is String ? ref['ref'] as String : null,
-    );
+    final control = controlForRef(controls, type: ref['type'] as String?, code: ref['ref'] is String ? ref['ref'] as String : null);
     // With the code, like the control lookup above it: a reference answered
     // under a legacy type would otherwise take the default colour while the
     // row beside it wears its extension's.
     final color = colorForRefType(controls, ref['type'] as String?, code: refCodeOf(ref)) ?? defaultColor;
-    markers.add(MapMarkerData(
-      id: selectedRefMarkerId(ref),
-      latitude: location.latitude,
-      longitude: location.longitude,
-      label: activityRowTitle(control, ref),
-      kind: MapMarkerKind.qso,
-      color: color,
-      strokeColor: strokeColor,
-      glyph: glyphFor(resolveIconName(control?['icon'] as String?), color),
-    ));
+    markers.add(
+      MapMarkerData(
+        id: selectedRefMarkerId(ref),
+        latitude: location.latitude,
+        longitude: location.longitude,
+        label: activityRowTitle(control, ref),
+        kind: MapMarkerKind.qso,
+        color: color,
+        strokeColor: strokeColor,
+        glyph: glyphFor(resolveIconName(control?['icon'] as String?), color),
+      ),
+    );
   }
   return markers;
 }
@@ -241,7 +238,8 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     // The font is part of the icon's identity, not decoration: extensions
     // name icons across two of them (halo_widgets' resolveIconName), so two
     // different glyphs can share a code point.
-    final key = '${icon.fontFamily}/${icon.fontPackage}/${icon.codePoint}'
+    final key =
+        '${icon.fontFamily}/${icon.fontPackage}/${icon.codePoint}'
         '/${background.toARGB32()}/${foreground.toARGB32()}'
         '/${strokeColor.toARGB32()}/$devicePixelRatio';
     final ready = _glyphs[key];
@@ -325,9 +323,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     // Lower bound too: the id makes a round trip through the backend's JS,
     // and this promises null for one that stands for no entry rather than a
     // RangeError.
-    return index != null && index >= 0 && index < widget.suggestions.length
-        ? widget.suggestions[index]
-        : null;
+    return index != null && index >= 0 && index < widget.suggestions.length ? widget.suggestions[index] : null;
   }
 
   @override
@@ -357,13 +353,8 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
       controls: widget.controls,
       defaultColor: theme.colorScheme.primary,
       strokeColor: strokeColor,
-      glyphFor: (icon, background) => _glyphFor(
-        icon: icon,
-        background: background,
-        foreground: glyphForeground,
-        strokeColor: strokeColor,
-        devicePixelRatio: devicePixelRatio,
-      ),
+      glyphFor: (icon, background) =>
+          _glyphFor(icon: icon, background: background, foreground: glyphForeground, strokeColor: strokeColor, devicePixelRatio: devicePixelRatio),
     );
 
     // The hint is about a search that found nothing, so it must not stand in
@@ -375,10 +366,18 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         child: Padding(
           padding: const EdgeInsets.all(Space.xxl),
           child: Text.rich(
-            TextSpan(children: [
-              TextSpan(text: t.mapEmptyState, style: const TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: '\n${t.mapEmptyStateHint}', style: TextStyle(color: theme.colorScheme.outline)),
-            ]),
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: t.mapEmptyState,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(
+                  text: '\n${t.mapEmptyStateHint}',
+                  style: TextStyle(color: theme.colorScheme.outline),
+                ),
+              ],
+            ),
             textAlign: TextAlign.center,
           ),
         ),
@@ -420,9 +419,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     // they have already added.
     final shapeRefs = [
       ...widget.refs,
-      if (_markerEntry(_selectedMarkerId) case final revealed?
-          when !widget.refs.any((r) => selectedRefMarkerId(r) == selectedRefMarkerId(revealed)))
-        revealed,
+      if (_markerEntry(_selectedMarkerId) case final revealed? when !widget.refs.any((r) => selectedRefMarkerId(r) == selectedRefMarkerId(revealed))) revealed,
     ];
     final shapes = refShapes(
       shapeRefs,
@@ -434,8 +431,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
 
     final pinnedStyle = widget.settings.mapStyle;
     final glStyleUrl = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrl;
-    final glStyleUrlDark =
-        pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrlDark;
+    final glStyleUrlDark = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrlDark;
 
     final Widget map;
     if (kIsWeb) {
@@ -460,8 +456,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         styleUrlDark: glStyleUrlDark,
         onMarkerTap: _onMarkerTap,
       );
-    } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) &&
-        webviewSupported) {
+    } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) && webviewSupported) {
       map = MapboxWebviewMapView(
         markers: allMarkers,
         shapes: shapes,
@@ -475,8 +470,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     } else {
       // Linux, or Windows without a usable WebView2 environment — see
       // map_panel.dart's own fallback for the same reasoning.
-      map = OsmMapView(
-          markers: allMarkers, shapes: shapes, isDark: isDark, zoomController: widget.camera, onMarkerTap: _onMarkerTap);
+      map = OsmMapView(markers: allMarkers, shapes: shapes, isDark: isDark, zoomController: widget.camera, onMarkerTap: _onMarkerTap);
     }
 
     final selected = _markerEntry(_selectedMarkerId);
@@ -503,7 +497,9 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         // map's dots carry no accessible labels of their own to lose here —
         // the reveal card below, a real sibling widget, is what a
         // screen-reader user actually needs, and it keeps its own semantics.
-        Positioned.fill(child: ExcludeSemantics(child: PointerInterceptor(child: map))),
+        Positioned.fill(
+          child: ExcludeSemantics(child: PointerInterceptor(child: map)),
+        ),
         if (selected != null)
           Positioned(
             left: Space.md,
@@ -554,9 +550,7 @@ class _RevealCard extends StatelessWidget {
     final theme = Theme.of(context);
     final t = context.t.activitiesView;
     final detail = activityRowDetail(suggestion);
-    final distance = suggestion['distance'] is num
-        ? fmtDistance((suggestion['distance'] as num).toDouble(), miles: miles)
-        : null;
+    final distance = suggestion['distance'] is num ? fmtDistance((suggestion['distance'] as num).toDouble(), miles: miles) : null;
 
     return Material(
       color: theme.colorScheme.surface,

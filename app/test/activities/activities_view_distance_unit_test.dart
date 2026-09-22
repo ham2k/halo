@@ -40,11 +40,15 @@ void main() {
       },
     );
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(body: OperationSheet(services: services, operation: operation)),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: OperationSheet(services: services, operation: operation),
+          ),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.bySemanticsLabel('Remove'));

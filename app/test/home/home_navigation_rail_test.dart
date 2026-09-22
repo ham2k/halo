@@ -35,15 +35,17 @@ Future<void> _pumpHome(WidgetTester tester, HaLoServices services, {required Siz
   // Through the shell the ROOT uses, not HomeView bare: the rail is a sibling
   // of the window's chrome now, so a test that pumped the view alone would be
   // exercising a composition that does not ship.
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(
-      theme: theme,
-      home: HomeRailShell(
-        services: services,
-        routes: HomeView(services: services),
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        theme: theme,
+        home: HomeRailShell(
+          services: services,
+          routes: HomeView(services: services),
+        ),
       ),
     ),
-  ));
+  );
 
   // Home is `MaterialApp.home` and arms two timers on mount — the FAB's
   // settle deadline and the first-run nudge's wait. A test that simply ends
@@ -69,9 +71,7 @@ Future<void> _settle(WidgetTester tester) => settleFrames(tester);
 /// visible one (that is how it opens and closes without squeezing its glyphs),
 /// so measuring the widget reports the same number in every state, including
 /// the state where the rail is not on screen at all.
-double _railWidth(WidgetTester tester) => tester
-    .getSize(find.ancestor(of: find.byType(HomeNavigationRail), matching: find.byType(ClipRect)).first)
-    .width;
+double _railWidth(WidgetTester tester) => tester.getSize(find.ancestor(of: find.byType(HomeNavigationRail), matching: find.byType(ClipRect)).first).width;
 
 /// Unmounts the tree and lets Home's timers run out.
 ///
@@ -121,11 +121,7 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Show or hide the navigation labels'));
     await _settle(tester);
 
-    expect(
-      _railWidth(tester),
-      HomeNavigationRail.collapsedWidth,
-      reason: 'the logo brings in the narrow rail — never the labelled one at this width',
-    );
+    expect(_railWidth(tester), HomeNavigationRail.collapsedWidth, reason: 'the logo brings in the narrow rail — never the labelled one at this width');
     expect(find.text('Operations'), findsNothing, reason: 'labels would take a third of a 400px window');
     expect(cog, findsNothing, reason: 'the header button goes as the rail arrives; the rail carries Settings now');
     await _endOfTest(tester);
@@ -236,11 +232,7 @@ void main() {
     // width, and one that left the cutout out would clamp the widening away
     // and overflow the glyph out of its own column — on device only, where a
     // cutout exists at all.
-    expect(
-      _railWidth(tester),
-      HomeNavigationRail.collapsedWidth + 59,
-      reason: 'the rail holds its own column PLUS the cutout',
-    );
+    expect(_railWidth(tester), HomeNavigationRail.collapsedWidth + 59, reason: 'the rail holds its own column PLUS the cutout');
     expect(tester.takeException(), isNull, reason: 'nothing may overflow');
 
     // And it is still the ICON-ONLY rail. The cutout makes it wider than a
@@ -286,17 +278,19 @@ void main() {
     // route to Settings with it — and the shell cannot see the keyboard on its
     // own (it is built inside `removeViewInsets`), which is why the inset is
     // handed to it.
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: HomeRailShell(
-          services: services,
-          routes: HomeView(services: services),
-          // What the root reserves for the keyboard: a spacer below the whole
-          // band, so nothing above it can reach into the keyboard's space.
-          keyboard: const [SizedBox(height: 300, width: double.infinity)],
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: HomeRailShell(
+            services: services,
+            routes: HomeView(services: services),
+            // What the root reserves for the keyboard: a spacer below the whole
+            // band, so nothing above it can reach into the keyboard's space.
+            keyboard: const [SizedBox(height: 300, width: double.infinity)],
+          ),
         ),
       ),
-    ));
+    );
     await _settle(tester);
 
     expect(
@@ -319,11 +313,7 @@ void main() {
     // The rail runs outside any Scaffold, so nothing above it has taken that
     // inset on its behalf.
     final cog = find.descendant(of: find.byType(HomeNavigationRail), matching: find.byIcon(MdiIcons.cogOutline));
-    expect(
-      tester.getBottomLeft(cog).dy,
-      lessThanOrEqualTo(800 - 34),
-      reason: 'the glyph must clear the home indicator, not sit under it',
-    );
+    expect(tester.getBottomLeft(cog).dy, lessThanOrEqualTo(800 - 34), reason: 'the glyph must clear the home indicator, not sit under it');
 
     await _endOfTest(tester);
   });
@@ -337,10 +327,7 @@ void main() {
     // outline variant, which is why this matters: with no solid/outline
     // contrast to fall back on, colour is the ONLY thing separating the
     // selected destination from the rest.
-    final icon = tester.widget<Icon>(find.descendant(
-      of: find.byType(HomeNavigationRail),
-      matching: find.byIcon(MdiIcons.notebookMultiple),
-    ));
+    final icon = tester.widget<Icon>(find.descendant(of: find.byType(HomeNavigationRail), matching: find.byIcon(MdiIcons.notebookMultiple)));
 
     // The rail paints on `surfaceContainerHighest`, a band off `surface`, and
     // `colorScheme.primary` is the SAME teal in both brightnesses — 1.45:1
@@ -371,18 +358,13 @@ void main() {
     await _endOfTest(tester);
   });
 
-  testWidgets('Settings opens from the rail; Operations names where we already are and does not navigate',
-      (tester) async {
+  testWidgets('Settings opens from the rail; Operations names where we already are and does not navigate', (tester) async {
     final services = await _services(tester);
     await _pumpHome(tester, services, size: const Size(1000, 800));
 
     await tester.tap(find.descendant(of: find.byType(HomeNavigationRail), matching: find.byIcon(MdiIcons.notebookMultiple)));
     await _settle(tester);
-    expect(
-      find.byType(SettingsView),
-      findsNothing,
-      reason: 'Operations is the screen we are on — it must not push anything',
-    );
+    expect(find.byType(SettingsView), findsNothing, reason: 'Operations is the screen we are on — it must not push anything');
     expect(find.byType(HomeView), findsOneWidget);
 
     await tester.tap(find.descendant(of: find.byType(HomeNavigationRail), matching: find.byIcon(MdiIcons.cog)));
@@ -395,11 +377,7 @@ void main() {
     // ends with no rebuild of its own. Left mounted, it goes on laying itself
     // out against a pane it no longer occupies — which is a negative padding
     // and a caught assertion, not merely a wasted subtree.
-    expect(
-      find.byType(SettingsView),
-      findsNothing,
-      reason: 'going back must UNMOUNT Settings, not park it off-screen',
-    );
+    expect(find.byType(SettingsView), findsNothing, reason: 'going back must UNMOUNT Settings, not park it off-screen');
 
     // The cog is a TOGGLE, where Operations is inert on its own screen: the
     // operator who opened Settings from here reaches for the same control to
@@ -431,10 +409,7 @@ void main() {
     expect(tester.getSize(cap).height, tester.getSize(find.byType(HomeQuickLookup)).height);
     // Level, not merely equal: the same height at different offsets is still
     // two rows.
-    expect(
-      tester.getBottomLeft(cap).dy,
-      moreOrLessEquals(tester.getBottomLeft(find.byType(HomeQuickLookup)).dy, epsilon: 0.01),
-    );
+    expect(tester.getBottomLeft(cap).dy, moreOrLessEquals(tester.getBottomLeft(find.byType(HomeQuickLookup)).dy, epsilon: 0.01));
     await _endOfTest(tester);
   });
 
@@ -454,13 +429,15 @@ void main() {
     // not as a route itself. As `home:` the shell is inside the stack, so
     // anything pushed covers it whatever the flag says, and this test would
     // pass against the very bug it exists for.
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorObservers: [homeRailRouteObserver],
-        builder: (context, child) => HomeRailShell(services: services, routes: child!),
-        home: const _RouteHost(),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorObservers: [homeRailRouteObserver],
+          builder: (context, child) => HomeRailShell(services: services, routes: child!),
+          home: const _RouteHost(),
+        ),
       ),
-    ));
+    );
     await _settle(tester);
 
     // Pressed by POSITION rather than by finder, because what is under test is
@@ -471,22 +448,14 @@ void main() {
     homeRail.destination = HomeDestination.operations;
     await tester.tapAt(onTheCog);
     await _settle(tester);
-    expect(
-      homeRail.destination,
-      HomeDestination.settings,
-      reason: 'beside Home the rail is a fixture and must be pressable',
-    );
+    expect(homeRail.destination, HomeDestination.settings, reason: 'beside Home the rail is a fixture and must be pressable');
 
     homeRail.destination = HomeDestination.operations;
     await tester.tap(find.text('push a page'));
     await _settle(tester);
     await tester.tapAt(onTheCog);
     await _settle(tester);
-    expect(
-      homeRail.destination,
-      HomeDestination.operations,
-      reason: 'a view that owns the window covers the rail; a press there must not reach it',
-    );
+    expect(homeRail.destination, HomeDestination.operations, reason: 'a view that owns the window covers the rail; a press there must not reach it');
 
     // Mid-pop, with the outgoing view still filling the window. `didPop` fires
     // when the pop is ASKED for, so a count released there paints the rail
@@ -496,11 +465,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 120));
     await tester.tapAt(onTheCog);
     await tester.pump();
-    expect(
-      homeRail.destination,
-      HomeDestination.operations,
-      reason: 'the rail stays under a route for the whole way out, not just until the pop is asked for',
-    );
+    expect(homeRail.destination, HomeDestination.operations, reason: 'the rail stays under a route for the whole way out, not just until the pop is asked for');
 
     await _settle(tester);
     await tester.tapAt(onTheCog);
@@ -530,11 +495,13 @@ void main() {
     // as a new `chrome` list on a new shell widget: nothing about that reaches
     // the entry on its own, so unfixed the notice appears only after a hot
     // restart and its dismiss button never takes.
-    Future<void> pumpWith(List<Widget> chrome) => tester.pumpWidget(TranslationProvider(
-          child: MaterialApp(
-            home: HomeRailShell(services: services, routes: const SizedBox.expand(), chrome: chrome),
-          ),
-        ));
+    Future<void> pumpWith(List<Widget> chrome) => tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: HomeRailShell(services: services, routes: const SizedBox.expand(), chrome: chrome),
+        ),
+      ),
+    );
 
     await pumpWith(const [Text('nothing to report')]);
     await _settle(tester);
@@ -555,23 +522,28 @@ class _RouteHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: Column(
-          children: [
-            TextButton(
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (context) => Scaffold(
-                  body: TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('back')),
-                ),
-              )),
-              child: const Text('push a page'),
-            ),
-            Builder(
-              builder: (context) => TextButton(
-                onPressed: () => showDialog<void>(context: context, builder: (_) => const AlertDialog(title: Text('hi'))),
-                child: const Text('open a dialog'),
+    body: Column(
+      children: [
+        TextButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (context) => Scaffold(
+                body: TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('back')),
               ),
             ),
-          ],
+          ),
+          child: const Text('push a page'),
         ),
-      );
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => const AlertDialog(title: Text('hi')),
+            ),
+            child: const Text('open a dialog'),
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -12,6 +12,7 @@ import 'package:test/test.dart';
 class _FakeSyncSettings extends SyncSettings {
   @override
   bool enabled = true;
+
   /// Every write goes through [state]'s setter, which is what keeps the
   /// rewind default below from being defeated by a wholesale reassignment.
   Map<String, dynamic> _state;
@@ -117,7 +118,10 @@ void main() {
 
     Future<void> dirtyRow() async {
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'startAtMillis': 1000,
+      });
     }
 
     test('an ordinary round reaches the transport while travelled', () async {
@@ -126,8 +130,7 @@ void main() {
 
       await engine.runOneRound(smallBatch: false);
 
-      expect(transport.calls, isNotEmpty,
-          reason: 'the clock no longer bars a round — the write gate bounds what can be in it');
+      expect(transport.calls, isNotEmpty, reason: 'the clock no longer bars a round — the write gate bounds what can be in it');
     });
 
     test('the loop keeps running too, not just a hand-driven round', () async {
@@ -167,10 +170,8 @@ void main() {
 
       expect(await engine.resolveAccountChange(SyncAccountChoice.replace), isFalse);
       expect((await qsos.syncCounts()).total, 1, reason: 'replace must not have wiped');
-      expect(settings.state['pendingAccountUUID'], 'acct-2',
-          reason: 'and the question must still be pending, not silently answered');
+      expect(settings.state['pendingAccountUUID'], 'acct-2', reason: 'and the question must still be pending, not silently answered');
     });
-
   });
 
   test('selectBatch is empty when nothing is dirty', () async {
@@ -180,7 +181,10 @@ void main() {
 
   test('selectBatch brings in QSOs and their still-unsynced parent operation', () async {
     final op = await operations.create(stationCall: 'KI2D');
-    await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+    await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+      'startAtMillis': 1000,
+    });
 
     final batch = await engine.selectBatch(qsoBatchSize: 10, operationBatchSize: 10);
     expect(batch.qsos, hasLength(1));
@@ -189,7 +193,9 @@ void main() {
 
   test('selectBatch falls back to unsynced operations when no QSOs are pending', () async {
     final op = await operations.create(stationCall: 'KI2D');
-    await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+    await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+    });
     await operations.markSynced([op]);
     await qsos.markSynced(await qsos.watchForOperation(op.uuid).first);
 
@@ -202,7 +208,10 @@ void main() {
 
   test('runOneRound sends dirty rows, marks them synced, and merges the response', () async {
     final op = await operations.create(stationCall: 'KI2D');
-    final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+    final qso = await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+      'startAtMillis': 1000,
+    });
 
     transport.responder = (method, args) {
       expect(method, 'sync');
@@ -241,16 +250,27 @@ void main() {
     // directions are asserted together because they are one contract: pushing
     // null while refusing to merge null back makes the loose half of a log a
     // one-way trip.
-    await qsos.writeBatch(operationUuid: '', inserts: [
-      {'their': {'call': 'W1AW'}, 'startAtMillis': 1000},
-    ]);
+    await qsos.writeBatch(
+      operationUuid: '',
+      inserts: [
+        {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': 1000,
+        },
+      ],
+    );
 
     Map<String, dynamic>? sent;
     transport.responder = (method, args) {
       sent = ((args['qsos'] as List).cast<Map>().single).cast<String, dynamic>();
       return {
         'qsos': [
-          {'uuid': 'inbound-loose', 'operation': null, 'their': {'call': 'N1MM'}, 'startAtMillis': 2000},
+          {
+            'uuid': 'inbound-loose',
+            'operation': null,
+            'their': {'call': 'N1MM'},
+            'startAtMillis': 2000,
+          },
         ],
         'account': {'uuid': 'acct-1'},
       };
@@ -274,12 +294,21 @@ void main() {
     // read — so treating it as loose would silently detach a contact from the
     // operation it belongs to, with nothing to show it ever happened.
     transport.responder = (method, args) => {
-          'qsos': [
-            {'uuid': 'inbound-typed', 'operation': 42, 'their': {'call': 'N1MM'}, 'startAtMillis': 2000},
-            {'uuid': 'inbound-absent', 'their': {'call': 'W1AW'}, 'startAtMillis': 3000},
-          ],
-          'account': {'uuid': 'acct-1'},
-        };
+      'qsos': [
+        {
+          'uuid': 'inbound-typed',
+          'operation': 42,
+          'their': {'call': 'N1MM'},
+          'startAtMillis': 2000,
+        },
+        {
+          'uuid': 'inbound-absent',
+          'their': {'call': 'W1AW'},
+          'startAtMillis': 3000,
+        },
+      ],
+      'account': {'uuid': 'acct-1'},
+    };
 
     await engine.runOneRound();
 
@@ -289,8 +318,7 @@ void main() {
   });
 
   group('records the server refuses', () {
-    Future<Set<String>> unsyncedQsoUuids() async =>
-        (await qsos.unsyncedBatch(100)).map((q) => q.uuid).toSet();
+    Future<Set<String>> unsyncedQsoUuids() async => (await qsos.unsyncedBatch(100)).map((q) => q.uuid).toSet();
 
     test('stay dirty instead of being marked sent', () async {
       // Marking a refused record synced is how a local edit diverges from the
@@ -298,19 +326,29 @@ void main() {
       // send anything, so a record flagged sent that the server never took is
       // offered again by nothing, ever.
       final op = await operations.create(stationCall: 'KI2D');
-      final kept = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
-      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 2000});
+      final kept = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'startAtMillis': 1000,
+      });
+      final refused = await qsos.add(op.uuid, {
+        'their': {'call': 'K2ABC'},
+        'startAtMillis': 2000,
+      });
 
       transport.responder = (method, args) => {
-            'account': {'uuid': 'acct-1'},
-            'errors': {
-              'qsos': {
-                refused.uuid: [
-                  {'operation': [{'error': 'forbidden'}]},
+        'account': {'uuid': 'acct-1'},
+        'errors': {
+          'qsos': {
+            refused.uuid: [
+              {
+                'operation': [
+                  {'error': 'forbidden'},
                 ],
               },
-            },
-          };
+            ],
+          },
+        },
+      };
 
       await engine.runOneRound();
 
@@ -324,7 +362,10 @@ void main() {
       // A refused record is re-sent and re-refused every round by design, so
       // reporting on each one would upload thousands of copies of one fact.
       final op = await operations.create(stationCall: 'KI2D');
-      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 2000});
+      final refused = await qsos.add(op.uuid, {
+        'their': {'call': 'K2ABC'},
+        'startAtMillis': 2000,
+      });
 
       final reported = <Object>[];
       final engineWithReporting = SyncEngine(
@@ -336,19 +377,23 @@ void main() {
       );
 
       transport.responder = (method, args) => {
-            'account': {'uuid': 'acct-1'},
-            'errors': {
-              'qsos': {
-                // `value:` is what Rails' own `:taken` and `:inclusion`
-                // validators merge into the error options — the record's
-                // field contents, in the payload, exactly where a walker that
-                // takes any string would pick them up.
-                refused.uuid: [
-                  {'their': [{'error': 'taken', 'value': 'K2ABC'}]},
+        'account': {'uuid': 'acct-1'},
+        'errors': {
+          'qsos': {
+            // `value:` is what Rails' own `:taken` and `:inclusion`
+            // validators merge into the error options — the record's
+            // field contents, in the payload, exactly where a walker that
+            // takes any string would pick them up.
+            refused.uuid: [
+              {
+                'their': [
+                  {'error': 'taken', 'value': 'K2ABC'},
                 ],
               },
-            },
-          };
+            ],
+          },
+        },
+      };
 
       await engineWithReporting.runOneRound();
       await engineWithReporting.runOneRound();
@@ -361,8 +406,7 @@ void main() {
       // not — they hold callsigns, names and notes, and this string leaves
       // the device.
       expect(rejection.toString(), contains('taken'), reason: 'the error name is the diagnostic');
-      expect(rejection.toString(), isNot(contains('K2ABC')),
-          reason: 'a field value must never reach the crash backend');
+      expect(rejection.toString(), isNot(contains('K2ABC')), reason: 'a field value must never reach the crash backend');
     });
 
     test('a round where nothing was accepted does not re-run at zero delay', () async {
@@ -371,23 +415,34 @@ void main() {
       // single `forbidden` edit spins the loop against the server for as long
       // as the app runs.
       final op = await operations.create(stationCall: 'KI2D');
-      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 2000});
+      final refused = await qsos.add(op.uuid, {
+        'their': {'call': 'K2ABC'},
+        'startAtMillis': 2000,
+      });
 
       transport.responder = (method, args) => {
-            'account': {'uuid': 'acct-1'},
-            'errors': {
-              'qsos': {
-                refused.uuid: [
-                  {'operation': [{'error': 'forbidden'}]},
+        'account': {'uuid': 'acct-1'},
+        'errors': {
+          'qsos': {
+            refused.uuid: [
+              {
+                'operation': [
+                  {'error': 'forbidden'},
                 ],
               },
-              'operations': {
-                op.uuid: [
-                  {'operation': [{'error': 'forbidden'}]},
+            ],
+          },
+          'operations': {
+            op.uuid: [
+              {
+                'operation': [
+                  {'error': 'forbidden'},
                 ],
               },
-            },
-          };
+            ],
+          },
+        },
+      };
 
       await engine.runOneRound();
       expect(transport.calls, hasLength(1));
@@ -409,31 +464,36 @@ void main() {
       // the app runs.
       final signals = <bool>[];
       engine.dispose();
-      engine = SyncEngine(
-        operations: operations,
-        qsos: qsos,
-        settings: settings,
-        transport: transport.call,
-        onPushBacklog: signals.add,
-      );
+      engine = SyncEngine(operations: operations, qsos: qsos, settings: settings, transport: transport.call, onPushBacklog: signals.add);
       final op = await operations.create(stationCall: 'KI2D');
-      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 2000});
+      final refused = await qsos.add(op.uuid, {
+        'their': {'call': 'K2ABC'},
+        'startAtMillis': 2000,
+      });
 
       transport.responder = (method, args) => {
-            'account': {'uuid': 'acct-1'},
-            'errors': {
-              'qsos': {
-                refused.uuid: [
-                  {'operation': [{'error': 'forbidden'}]},
+        'account': {'uuid': 'acct-1'},
+        'errors': {
+          'qsos': {
+            refused.uuid: [
+              {
+                'operation': [
+                  {'error': 'forbidden'},
                 ],
               },
-              'operations': {
-                op.uuid: [
-                  {'operation': [{'error': 'forbidden'}]},
+            ],
+          },
+          'operations': {
+            op.uuid: [
+              {
+                'operation': [
+                  {'error': 'forbidden'},
                 ],
               },
-            },
-          };
+            ],
+          },
+        },
+      };
 
       await engine.runOneRound();
 
@@ -447,7 +507,10 @@ void main() {
       // it would ever be sent again — for the life of the install. Keeping it
       // dirty without holding it back trades one silent loss for a worse one.
       final op = await operations.create(stationCall: 'KI2D');
-      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 9000});
+      final refused = await qsos.add(op.uuid, {
+        'their': {'call': 'K2ABC'},
+        'startAtMillis': 9000,
+      });
 
       final sent = <List<String>>[];
       transport.responder = (method, args) {
@@ -457,7 +520,11 @@ void main() {
           'errors': {
             'qsos': {
               refused.uuid: [
-                {'operation': [{'error': 'forbidden'}]},
+                {
+                  'operation': [
+                    {'error': 'forbidden'},
+                  ],
+                },
               ],
             },
           },
@@ -469,7 +536,10 @@ void main() {
 
       // Logged after the refusal, so it sorts BEHIND the refused record and is
       // exactly what a starved queue would never deliver.
-      final behind = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+      final behind = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'startAtMillis': 1000,
+      });
       await engine.runOneRound();
 
       expect(sent.last, contains(behind.uuid), reason: 'the queue must keep moving');
@@ -483,17 +553,14 @@ void main() {
       // temporary — a permission granted, an owner adding this device — and a
       // record parked for good is the silent loss this all exists to end.
       final op = await operations.create(stationCall: 'KI2D');
-      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 9000});
+      final refused = await qsos.add(op.uuid, {
+        'their': {'call': 'K2ABC'},
+        'startAtMillis': 9000,
+      });
 
       // The real clock cannot be wound forward, so the window is driven
       // instead — zero means every round is past it.
-      final impatient = SyncEngine(
-        operations: operations,
-        qsos: qsos,
-        transport: transport.call,
-        settings: settings,
-        refusalQuarantine: Duration.zero,
-      );
+      final impatient = SyncEngine(operations: operations, qsos: qsos, transport: transport.call, settings: settings, refusalQuarantine: Duration.zero);
 
       final sent = <List<String>>[];
       transport.responder = (method, args) {
@@ -503,7 +570,11 @@ void main() {
           'errors': {
             'qsos': {
               refused.uuid: [
-                {'operation': [{'error': 'forbidden'}]},
+                {
+                  'operation': [
+                    {'error': 'forbidden'},
+                  ],
+                },
               ],
             },
           },
@@ -524,7 +595,10 @@ void main() {
       // still loses data silently, and the only trace it happened. An
       // unusable payload is a fault in what this app WROTE.
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'startAtMillis': 1000,
+      });
 
       final reported = <Object>[];
       final engineWithReporting = SyncEngine(
@@ -536,15 +610,15 @@ void main() {
       );
 
       transport.responder = (method, args) => {
-            'account': {'uuid': 'acct-1'},
-            'errors': {
-              'qsos': {
-                '_malformed': [
-                  {'error': 'unusable_payload', 'count': 2},
-                ],
-              },
-            },
-          };
+        'account': {'uuid': 'acct-1'},
+        'errors': {
+          'qsos': {
+            '_malformed': [
+              {'error': 'unusable_payload', 'count': 2},
+            ],
+          },
+        },
+      };
 
       await engineWithReporting.runOneRound();
 
@@ -563,7 +637,10 @@ void main() {
       // told records were refused when none were, naming a "uuid" no record
       // has.
       final op = await operations.create(stationCall: 'KI2D');
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'startAtMillis': 1000,
+      });
 
       final reported = <Object>[];
       final engineWithReporting = SyncEngine(
@@ -575,26 +652,24 @@ void main() {
       );
 
       transport.responder = (method, args) => {
-            'account': {'uuid': 'acct-1'},
-            'errors': {
-              'qsos': {
-                'pagination': {'cursor': 'refused'},
-                '_malformed': [
-                  {'error': 'unusable_payload', 'count': 2},
-                ],
-              },
-            },
-          };
+        'account': {'uuid': 'acct-1'},
+        'errors': {
+          'qsos': {
+            'pagination': {'cursor': 'refused'},
+            '_malformed': [
+              {'error': 'unusable_payload', 'count': 2},
+            ],
+          },
+        },
+      };
 
       await engineWithReporting.runOneRound();
 
       // The unreadable COUNT is reported (see the test above) — what must not
       // happen is either key being read as a refused record, which would name
       // a "uuid" no record has.
-      expect(reported.whereType<SyncRecordsRejected>(), isEmpty,
-          reason: 'neither key names a record that was refused');
-      expect(await unsyncedQsoUuids(), isNot(contains(qso.uuid)),
-          reason: 'nothing in that block named this record');
+      expect(reported.whereType<SyncRecordsRejected>(), isEmpty, reason: 'neither key names a record that was refused');
+      expect(await unsyncedQsoUuids(), isNot(contains(qso.uuid)), reason: 'nothing in that block named this record');
     });
   });
 
@@ -684,7 +759,10 @@ void main() {
   test('a suggested batch size from the server is applied to the next round', () async {
     final op = await operations.create(stationCall: 'KI2D');
     for (var i = 0; i < 120; i++) {
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW$i'}, 'startAtMillis': i});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW$i'},
+        'startAtMillis': i,
+      });
     }
 
     var round = 0;
@@ -711,7 +789,10 @@ void main() {
   test('server tuning knobs nested under meta.flags (the real server shape) are honored', () async {
     final op = await operations.create(stationCall: 'KI2D');
     for (var i = 0; i < 120; i++) {
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW$i'}, 'startAtMillis': i});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW$i'},
+        'startAtMillis': i,
+      });
     }
 
     var round = 0;
@@ -739,16 +820,13 @@ void main() {
   test('a push that leaves more behind reports a backlog draining, until it is drained', () async {
     final signals = <bool>[];
     engine.dispose();
-    engine = SyncEngine(
-      operations: operations,
-      qsos: qsos,
-      settings: settings,
-      transport: transport.call,
-      onPushBacklog: signals.add,
-    );
+    engine = SyncEngine(operations: operations, qsos: qsos, settings: settings, transport: transport.call, onPushBacklog: signals.add);
     final op = await operations.create(stationCall: 'KI2D');
     for (var i = 0; i < SyncEngine.defaultLargeBatchSize + 20; i++) {
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW$i'}, 'startAtMillis': i});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW$i'},
+        'startAtMillis': i,
+      });
     }
 
     await engine.runOneRound();
@@ -832,11 +910,11 @@ void main() {
   // rate, and paging at it would make a 300-page backfill take hours.
   // Distinct values, so using either one for both jobs fails here.
   Map<String, dynamic> pagedResponse(List<Map<String, dynamic>> page) => {
-        'qsos': page,
-        'meta': {
-          'flags': {'suggested_sync_loop_delay': 5500, 'suggested_sync_check_period': 60000},
-        },
-      };
+    'qsos': page,
+    'meta': {
+      'flags': {'suggested_sync_loop_delay': 5500, 'suggested_sync_check_period': 60000},
+    },
+  };
 
   List<Map<String, dynamic>> inboundFrom(Map<String, dynamic> args, {required int totalAvailable}) {
     final since = (((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['syncedSinceMillis'] as int;
@@ -857,10 +935,10 @@ void main() {
   // foreground time for a few thousand rows, which a phone opened for minutes never accumulates.
   test('a forward pull asks for a backfill-sized page, not the push batch', () async {
     transport.responder = (method, args) => {
-          'meta': {
-            'flags': {'suggested_sync_batch_size': 50},
-          },
-        };
+      'meta': {
+        'flags': {'suggested_sync_batch_size': 50},
+      },
+    };
     await engine.runOneRound();
     await engine.runOneRound();
 
@@ -873,8 +951,8 @@ void main() {
     // A server with a page and a half of pending QSOs to hand back: a full
     // page the first call, the rest on the next — the same "keep looping
     // until caught up" shape as app-polo's `receivedAllUpdates`.
-    transport.responder = (method, args) => pagedResponse(
-        inboundFrom(args, totalAvailable: SyncEngine.backfillPullLimit + 50).take(SyncEngine.backfillPullLimit).toList());
+    transport.responder = (method, args) =>
+        pagedResponse(inboundFrom(args, totalAvailable: SyncEngine.backfillPullLimit + 50).take(SyncEngine.backfillPullLimit).toList());
 
     await engine.runOneRound();
     expect(transport.calls, hasLength(1)); // first page: a full page
@@ -892,13 +970,11 @@ void main() {
   // default and a backfill pages twenty times slower than the server asked for.
   test('a suggested loop delay of zero pages straight through, not at the default', () async {
     transport.responder = (method, args) => {
-          'qsos': inboundFrom(args, totalAvailable: SyncEngine.backfillPullLimit + 50)
-              .take(SyncEngine.backfillPullLimit)
-              .toList(),
-          'meta': {
-            'flags': {'suggested_sync_loop_delay': 0, 'suggested_sync_check_period': 60000},
-          },
-        };
+      'qsos': inboundFrom(args, totalAvailable: SyncEngine.backfillPullLimit + 50).take(SyncEngine.backfillPullLimit).toList(),
+      'meta': {
+        'flags': {'suggested_sync_loop_delay': 0, 'suggested_sync_check_period': 60000},
+      },
+    };
 
     await engine.runOneRound();
     expect(transport.calls, hasLength(1));
@@ -1091,7 +1167,9 @@ void main() {
       // Both sides hold a log, so the change is one only the user can
       // settle — see the silent-adoption tests below for the other case.
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       transport.responder = (method, args) {
         expect(method, 'getAccountData');
         return {
@@ -1145,7 +1223,9 @@ void main() {
 
     test('an empty account is adopted without asking even when this device has a log', () async {
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       transport.responder = (method, args) => method == 'getAccountData'
           ? {
               'current_account': {'uuid': 'acct-new'},
@@ -1171,12 +1251,14 @@ void main() {
       // guess — and since Replace empties the local log, the check would
       // find nothing and adopt every time.
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       transport.responder = (method, args) => {
-            'current_account': {'uuid': 'acct-new'},
-            'operations': {'total': 0},
-            'qsos': {'total': 0},
-          };
+        'current_account': {'uuid': 'acct-new'},
+        'operations': {'total': 0},
+        'qsos': {'total': 0},
+      };
       // Every account this device is told it belongs to, in order. The end
       // state alone proves nothing here: a de-link leaves `lastSyncAccountUUID`
       // null, the next round re-enters the never-linked branch, and — over
@@ -1208,10 +1290,12 @@ void main() {
       // fields as an empty account would merge this device's log into a
       // stranger's history without ever asking.
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       transport.responder = (method, args) => {
-            'current_account': {'uuid': 'acct-new'},
-          };
+        'current_account': {'uuid': 'acct-new'},
+      };
 
       await engine.runOneRound();
 
@@ -1231,7 +1315,9 @@ void main() {
 
     test('resolveAccountChange(combine) resets sync flags and starts a fresh backfill', () async {
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await operations.markSynced([op]);
       await qsos.markSynced(await qsos.watchForOperation(op.uuid).first);
       settings.state = {'pendingAccountUUID': 'acct-new'};
@@ -1258,7 +1344,9 @@ void main() {
 
     test('resolveAccountChange(replace) backs up local data and clears it', () async {
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       settings.state = {'pendingAccountUUID': 'acct-new'};
 
       transport.responder = (method, args) => const {};
@@ -1335,7 +1423,9 @@ void main() {
       transport.responder = (method, args) {
         if (gated) {
           return {
-            'meta': {'qsos': {'recordsLeft': 5}},
+            'meta': {
+              'qsos': {'recordsLeft': 5},
+            },
           };
         }
         return {
@@ -1351,7 +1441,9 @@ void main() {
           ],
           // snake_case on purpose — the server has sent both spellings and
           // the engine must accept either, like app-polo does.
-          'meta': {'qsos': {'records_left': 0}},
+          'meta': {
+            'qsos': {'records_left': 0},
+          },
         };
       };
 
@@ -1411,10 +1503,7 @@ void main() {
         final List<Map<String, dynamic>> page;
         if (matching.length > limit) {
           final edgeStamp = matching[limit - 1]['syncedAtMillis'];
-          page = [
-            ...matching.take(limit).where((q) => q['syncedAtMillis'] != edgeStamp),
-            ...matching.where((q) => q['syncedAtMillis'] == edgeStamp),
-          ];
+          page = [...matching.take(limit).where((q) => q['syncedAtMillis'] != edgeStamp), ...matching.where((q) => q['syncedAtMillis'] == edgeStamp)];
         } else {
           page = matching;
         }
@@ -1429,10 +1518,14 @@ void main() {
 
       expect(settings.state['completedFullSync'], isTrue);
       expect(await qsos.watchForOperation('op1').first, hasLength(totalAvailable));
-      expect(settings.state['earliestQSOSyncedAtMillis'], 100,
-          reason: 'with no cursor sent, the watermark is the page\'s earliest stamp and not one '
-              'past it - `+ 1` asks the server for `< 101`, which re-requests the whole tie '
-              'every round, forever');
+      expect(
+        settings.state['earliestQSOSyncedAtMillis'],
+        100,
+        reason:
+            'with no cursor sent, the watermark is the page\'s earliest stamp and not one '
+            'past it - `+ 1` asks the server for `< 101`, which re-requests the whole tie '
+            'every round, forever',
+      );
     });
 
     // The N4TRD regression. A tie larger than a page cannot be paged by a millisecond cursor at
@@ -1495,12 +1588,19 @@ void main() {
         guard++;
       }
 
-      expect(settings.state['completedFullSync'], isTrue,
-          reason: 'a tie wider than any page the server will return must still terminate - '
-              'this is the stall itself');
+      expect(
+        settings.state['completedFullSync'],
+        isTrue,
+        reason:
+            'a tie wider than any page the server will return must still terminate - '
+            'this is the stall itself',
+      );
       expect(await qsos.watchForOperation('op1').first, hasLength(all.length));
-      expect(settings.state[SyncEngine.backfillCursorKeys['qsos']], isNull,
-          reason: 'a finished backfill clears its descending cursor, which forward mode cannot use');
+      expect(
+        settings.state[SyncEngine.backfillCursorKeys['qsos']],
+        isNull,
+        reason: 'a finished backfill clears its descending cursor, which forward mode cannot use',
+      );
     });
 
     // A cursor replaces the millisecond bound rather than accompanying it — LoFi's
@@ -1513,15 +1613,15 @@ void main() {
       var round = 0;
 
       List<Map<String, dynamic>> rows(int count, int from) => [
-            for (var i = 0; i < count; i++)
-              {
-                'uuid': 'fwd-${from + i}',
-                'operation': 'op1',
-                'their': {'call': 'W1AW${from + i}'},
-                'startAtMillis': from + i,
-                'syncedAtMillis': 1000 + from + i,
-              },
-          ];
+        for (var i = 0; i < count; i++)
+          {
+            'uuid': 'fwd-${from + i}',
+            'operation': 'op1',
+            'their': {'call': 'W1AW${from + i}'},
+            'startAtMillis': from + i,
+            'syncedAtMillis': 1000 + from + i,
+          },
+      ];
 
       transport.responder = (method, args) {
         final sync = ((args['meta'] as Map)['sync'] as Map)['qsos'] as Map;
@@ -1551,9 +1651,13 @@ void main() {
       await engine.runOneRound();
       await engine.runOneRound();
 
-      expect(cursorsSent, [null, 'fwd:100', null],
-          reason: 'the short page named no position, so the cursor is dropped and the watermark '
-              'takes over - holding it re-requests the same tail every round');
+      expect(
+        cursorsSent,
+        [null, 'fwd:100', null],
+        reason:
+            'the short page named no position, so the cursor is dropped and the watermark '
+            'takes over - holding it re-requests the same tail every round',
+      );
     });
 
     // The other half of the rule above, and the reason it cannot simply be "no cursor means drop
@@ -1572,7 +1676,12 @@ void main() {
         if (round == 1) {
           return {
             'qsos': [
-              {'uuid': 'q1', 'operation': 'op1', 'their': {'call': 'W1AW'}, 'syncedAtMillis': 100},
+              {
+                'uuid': 'q1',
+                'operation': 'op1',
+                'their': {'call': 'W1AW'},
+                'syncedAtMillis': 100,
+              },
             ],
             'meta': {
               'qsos': {'next_cursor': 'row:1', 'records_left': 5},
@@ -1593,9 +1702,13 @@ void main() {
       await engine.runOneRound();
       await engine.runOneRound();
 
-      expect(cursorsSent, [null, 'row:1', 'row:1'],
-          reason: 'a gated round returned no page, so it says nothing about where we are - the '
-              'cursor has to survive it');
+      expect(
+        cursorsSent,
+        [null, 'row:1', 'row:1'],
+        reason:
+            'a gated round returned no page, so it says nothing about where we are - the '
+            'cursor has to survive it',
+      );
     });
 
     // Finding from review: the millisecond watermark is a FALLBACK, read only when the cursor
@@ -1647,15 +1760,23 @@ void main() {
       };
 
       await engine.runOneRound();
-      expect(settings.state['earliestQSOSyncedAtMillis'], 161,
-          reason: 'no cursor was sent, so the server extended over its edge stamp and `< 161` '
-              'skips nothing - `+ 1` here is what stalls a real backfill');
+      expect(
+        settings.state['earliestQSOSyncedAtMillis'],
+        161,
+        reason:
+            'no cursor was sent, so the server extended over its edge stamp and `< 161` '
+            'skips nothing - `+ 1` here is what stalls a real backfill',
+      );
 
       await engine.runOneRound();
-      expect(settings.state['earliestQSOSyncedAtMillis'], 101,
-          reason: 'this page stopped mid-stamp, so the fallback must re-cover 100 - banking 100 '
-              'would ask for `< 100` and lose the rest of the tie for good, silently, with '
-              'records_left counting down around the hole');
+      expect(
+        settings.state['earliestQSOSyncedAtMillis'],
+        101,
+        reason:
+            'this page stopped mid-stamp, so the fallback must re-cover 100 - banking 100 '
+            'would ask for `< 100` and lose the rest of the tie for good, silently, with '
+            'records_left counting down around the hole',
+      );
     });
 
     // `errors.<side>.pagination.cursor` is how the server says it refused a cursor (malformed, or
@@ -1684,9 +1805,13 @@ void main() {
       await engine.runOneRound();
       await engine.runOneRound();
 
-      expect(cursorsSent, ['stale:9', null],
-          reason: 'the server said it refused this cursor, so re-sending it just repeats the '
-              'refusal - and an empty page alone must NOT clear one, or a cooldown round would');
+      expect(
+        cursorsSent,
+        ['stale:9', null],
+        reason:
+            'the server said it refused this cursor, so re-sending it just repeats the '
+            'refusal - and an empty page alone must NOT clear one, or a cooldown round would',
+      );
     });
 
     // The error block is server-supplied and lands after the merge but before the state write, so
@@ -1695,24 +1820,33 @@ void main() {
     test('an unrecognizable errors block is ignored rather than thrown on', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'held:3'};
       transport.responder = (method, args) => {
-            'qsos': [
-              {'uuid': 'q1', 'operation': 'op1', 'their': {'call': 'W1AW'}, 'syncedAtMillis': 500},
-            ],
-            'meta': {
-              'qsos': {'next_cursor': 'row:1', 'records_left': 2},
-              'operations': {'records_left': 0},
-            },
-            // Not the documented `{side: {pagination: {...}}}` shape at all.
-            'errors': 'something went wrong',
-          };
+        'qsos': [
+          {
+            'uuid': 'q1',
+            'operation': 'op1',
+            'their': {'call': 'W1AW'},
+            'syncedAtMillis': 500,
+          },
+        ],
+        'meta': {
+          'qsos': {'next_cursor': 'row:1', 'records_left': 2},
+          'operations': {'records_left': 0},
+        },
+        // Not the documented `{side: {pagination: {...}}}` shape at all.
+        'errors': 'something went wrong',
+      };
 
       await engine.runOneRound();
 
       // A throw inside _processResponseMeta is swallowed by runOneRound's catch, so "no
       // exception escaped" proves nothing. These two only get written if it ran to the end.
-      expect(settings.state['latestQSOSyncedAtMillis'], 500,
-          reason: 'the watermark is written after the errors block is read - a throw there loses '
-              'this round entirely and re-throws on the identical page every round after');
+      expect(
+        settings.state['latestQSOSyncedAtMillis'],
+        500,
+        reason:
+            'the watermark is written after the errors block is read - a throw there loses '
+            'this round entirely and re-throws on the identical page every round after',
+      );
       expect(settings.state['backfillQSOCursor'], 'row:1');
     });
 
@@ -1723,68 +1857,69 @@ void main() {
     test('a server echoing back the cursor it was sent retries at the loop delay', () async {
       final logs = <String>[];
       engine.dispose();
-      engine = SyncEngine(
-        operations: operations,
-        qsos: qsos,
-        settings: settings,
-        transport: transport.call,
-        log: logs.add,
-      );
+      engine = SyncEngine(operations: operations, qsos: qsos, settings: settings, transport: transport.call, log: logs.add);
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
       transport.responder = (method, args) => {
-            'qsos': [
-              for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
-                {
-                  'uuid': 'q$i',
-                  'operation': 'op1',
-                  'their': {'call': 'W1AW$i'},
-                  'startAtMillis': i,
-                  'syncedAtMillis': 4000 - i,
-                },
-            ],
-            'meta': {
-              // The same cursor back, on a full page: the next round would re-request this page.
-              'qsos': {'next_cursor': 'row:7', 'records_left': 99},
-              'operations': {'records_left': 0},
-              'flags': {'suggested_sync_loop_delay': 5500, 'suggested_sync_check_period': 60000},
+        'qsos': [
+          for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
+            {
+              'uuid': 'q$i',
+              'operation': 'op1',
+              'their': {'call': 'W1AW$i'},
+              'startAtMillis': i,
+              'syncedAtMillis': 4000 - i,
             },
-          };
+        ],
+        'meta': {
+          // The same cursor back, on a full page: the next round would re-request this page.
+          'qsos': {'next_cursor': 'row:7', 'records_left': 99},
+          'operations': {'records_left': 0},
+          'flags': {'suggested_sync_loop_delay': 5500, 'suggested_sync_check_period': 60000},
+        },
+      };
 
       await engine.runOneRound();
 
-      expect(logs.where((l) => l.contains('came back unchanged')), isNotEmpty,
-          reason: 'an unmoving cursor is named, or the boost logic reads it as a timestamp tie');
+      expect(
+        logs.where((l) => l.contains('came back unchanged')),
+        isNotEmpty,
+        reason: 'an unmoving cursor is named, or the boost logic reads it as a timestamp tie',
+      );
       final wait = engine.nextAttemptAt!.difference(realNowUtc());
-      expect(wait, lessThanOrEqualTo(const Duration(milliseconds: 5500)),
-          reason: 'the log promises the loop delay; idling at the check period would make a stuck '
-              'backfill recover at the idle rate');
+      expect(
+        wait,
+        lessThanOrEqualTo(const Duration(milliseconds: 5500)),
+        reason:
+            'the log promises the loop delay; idling at the check period would make a stuck '
+            'backfill recover at the idle rate',
+      );
       expect(wait, greaterThan(const Duration(seconds: 4)));
     });
 
     test('a server flag that is not a number is ignored and named, and the round still lands', () async {
       final logs = <String>[];
       engine.dispose();
-      engine = SyncEngine(
-        operations: operations,
-        qsos: qsos,
-        settings: settings,
-        transport: transport.call,
-        log: logs.add,
-      );
+      engine = SyncEngine(operations: operations, qsos: qsos, settings: settings, transport: transport.call, log: logs.add);
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
       transport.responder = (method, args) => {
-            'qsos': [
-              for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
-                {'uuid': 'q$i', 'operation': 'op1', 'their': {'call': 'W1AW$i'}, 'startAtMillis': i, 'syncedAtMillis': 4000 - i},
-            ],
-            'meta': {
-              'qsos': {'next_cursor': 'row:8', 'records_left': 5},
-              'operations': {'records_left': 0},
-              // A hand-edited plans.flags row: a throw on it would land after the merge and before
-              // the state write, so the cursor never advances and this page is re-pulled forever.
-              'flags': {'suggested_sync_check_period': 'a minute', 'suggested_sync_loop_delay': '5500'},
+        'qsos': [
+          for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
+            {
+              'uuid': 'q$i',
+              'operation': 'op1',
+              'their': {'call': 'W1AW$i'},
+              'startAtMillis': i,
+              'syncedAtMillis': 4000 - i,
             },
-          };
+        ],
+        'meta': {
+          'qsos': {'next_cursor': 'row:8', 'records_left': 5},
+          'operations': {'records_left': 0},
+          // A hand-edited plans.flags row: a throw on it would land after the merge and before
+          // the state write, so the cursor never advances and this page is re-pulled forever.
+          'flags': {'suggested_sync_check_period': 'a minute', 'suggested_sync_loop_delay': '5500'},
+        },
+      };
 
       await engine.runOneRound();
 
@@ -1799,26 +1934,31 @@ void main() {
     // limit wherever that lands, and the fallback window is `> watermark`, so banking the last
     // stamp delivered would skip whatever else shares it.
     test('a forward cursor page banks a watermark that re-covers the stamp it stopped in', () async {
-      settings.state = {
-        'lastSyncAccountUUID': 'acct-1',
-        'completedFullSync': true,
-        'forwardQSOCursor': 'fwd:5',
-      };
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true, 'forwardQSOCursor': 'fwd:5'};
       transport.responder = (method, args) => {
-            'qsos': [
-              {'uuid': 'f1', 'operation': 'op1', 'their': {'call': 'W1AW'}, 'syncedAtMillis': 900},
-            ],
-            'meta': {
-              'qsos': {'next_cursor': 'fwd:6', 'records_left': 4},
-              'operations': {'records_left': 0},
-            },
-          };
+        'qsos': [
+          {
+            'uuid': 'f1',
+            'operation': 'op1',
+            'their': {'call': 'W1AW'},
+            'syncedAtMillis': 900,
+          },
+        ],
+        'meta': {
+          'qsos': {'next_cursor': 'fwd:6', 'records_left': 4},
+          'operations': {'records_left': 0},
+        },
+      };
 
       await engine.runOneRound();
 
-      expect(settings.state['latestQSOSyncedAtMillis'], 899,
-          reason: 'the page stopped inside stamp 900, so banking 900 would ask for `> 900` and '
-              'skip the rest of it with nothing counting the loss');
+      expect(
+        settings.state['latestQSOSyncedAtMillis'],
+        899,
+        reason:
+            'the page stopped inside stamp 900, so banking 900 would ask for `> 900` and '
+            'skip the rest of it with nothing counting the loss',
+      );
     });
 
     // The trap is the arithmetic: a slice's report must add the page's UNMERGED rest onto the
@@ -1829,32 +1969,27 @@ void main() {
       settings.state = {'lastSyncAccountUUID': 'acct-1'};
       final reports = <SyncProgress>[];
       engine.dispose();
-      engine = SyncEngine(
-        operations: operations,
-        qsos: qsos,
-        settings: settings,
-        transport: transport.call,
-        onProgress: reports.add,
-      );
+      engine = SyncEngine(operations: operations, qsos: qsos, settings: settings, transport: transport.call, onProgress: reports.add);
       final pageSize = SyncEngine.mergeChunkSize * 2 + 10;
       transport.responder = (method, args) => {
-            'qsos': [
-              for (var i = 0; i < pageSize; i++)
-                {'uuid': 'q$i', 'operation': 'op1', 'their': {'call': 'W1AW$i'}, 'syncedAtMillis': 1000 - i},
-            ],
-            'meta': {
-              'qsos': {'records_left': 500, 'total_records': 500 + pageSize},
-              'operations': {'records_left': 0, 'total_records': 1},
+        'qsos': [
+          for (var i = 0; i < pageSize; i++)
+            {
+              'uuid': 'q$i',
+              'operation': 'op1',
+              'their': {'call': 'W1AW$i'},
+              'syncedAtMillis': 1000 - i,
             },
-          };
+        ],
+        'meta': {
+          'qsos': {'records_left': 500, 'total_records': 500 + pageSize},
+          'operations': {'records_left': 0, 'total_records': 1},
+        },
+      };
 
       await engine.runOneRound();
 
-      expect(reports.map((r) => r.qsosLeft), [
-        500 + pageSize - SyncEngine.mergeChunkSize,
-        500 + pageSize - 2 * SyncEngine.mergeChunkSize,
-        500,
-      ]);
+      expect(reports.map((r) => r.qsosLeft), [500 + pageSize - SyncEngine.mergeChunkSize, 500 + pageSize - 2 * SyncEngine.mergeChunkSize, 500]);
       expect(reports.every((r) => r.backfilling && r.qsosTotal == 500 + pageSize), isTrue);
       expect(await qsos.watchForOperation('op1').first, hasLength(pageSize));
       // One watermark for the page, whichever slice held its edges.
@@ -1869,12 +2004,21 @@ void main() {
       final limits = <int>[];
       transport.responder = (method, args) {
         limits.add((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int);
-        return const {'qsos': [], 'meta': {'qsos': {'records_left': 0}, 'operations': {'records_left': 0}}};
+        return const {
+          'qsos': [],
+          'meta': {
+            'qsos': {'records_left': 0},
+            'operations': {'records_left': 0},
+          },
+        };
       };
       await engine.runOneRound();
       expect(limits.single, SyncEngine.backfillPullLimit);
-      expect(SyncEngine.backfillPullLimit * SyncEngine.maxBackfillLimitBoost, greaterThan(SyncEngine.serverMaxPullLimit),
-          reason: 'sanity: the boost CAN overshoot, so the clamp is load-bearing');
+      expect(
+        SyncEngine.backfillPullLimit * SyncEngine.maxBackfillLimitBoost,
+        greaterThan(SyncEngine.serverMaxPullLimit),
+        reason: 'sanity: the boost CAN overshoot, so the clamp is load-bearing',
+      );
     });
 
     // A page is megabytes under a fixed transport timeout. Retrying the identical request on
@@ -1888,21 +2032,24 @@ void main() {
         if (fail-- > 0) throw Exception('timed out');
         return {
           'qsos': [
-            {'uuid': 'q1', 'operation': 'op1', 'their': {'call': 'W1AW'}, 'syncedAtMillis': 100},
+            {
+              'uuid': 'q1',
+              'operation': 'op1',
+              'their': {'call': 'W1AW'},
+              'syncedAtMillis': 100,
+            },
           ],
-          'meta': {'qsos': {'records_left': 5}, 'operations': {'records_left': 0}},
+          'meta': {
+            'qsos': {'records_left': 5},
+            'operations': {'records_left': 0},
+          },
         };
       };
       await engine.runOneRound();
       await engine.runOneRound();
       await engine.runOneRound();
       await engine.runOneRound();
-      expect(limits, [
-        SyncEngine.backfillPullLimit,
-        SyncEngine.backfillPullLimit ~/ 2,
-        SyncEngine.backfillPullLimit ~/ 4,
-        SyncEngine.backfillPullLimit,
-      ]);
+      expect(limits, [SyncEngine.backfillPullLimit, SyncEngine.backfillPullLimit ~/ 2, SyncEngine.backfillPullLimit ~/ 4, SyncEngine.backfillPullLimit]);
     });
 
     // A push-only round (the debounced reaction to a logged QSO) also answers, and on a device in
@@ -1918,11 +2065,18 @@ void main() {
           pullLimits.add(sync['limit'] as int);
           if (failPulls) throw Exception('timed out');
         }
-        return const {'meta': {'qsos': {'records_left': 5}, 'operations': {'records_left': 0}}};
+        return const {
+          'meta': {
+            'qsos': {'records_left': 5},
+            'operations': {'records_left': 0},
+          },
+        };
       };
       await engine.runOneRound(); // pull fails: shrunk
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await engine.runOneRound(smallBatch: true); // push lands
       failPulls = false;
       await engine.runOneRound();
@@ -1946,7 +2100,12 @@ void main() {
           case 'fail':
             throw Exception('boom');
           default:
-            return const {'meta': {'qsos': {'records_left': 5}, 'operations': {'records_left': 0}}};
+            return const {
+              'meta': {
+                'qsos': {'records_left': 5},
+                'operations': {'records_left': 0},
+              },
+            };
         }
       };
       await engine.runOneRound(); // backfill pull, transport not ready
@@ -1993,15 +2152,20 @@ void main() {
         },
       );
       transport.responder = (method, args) => {
-            'qsos': [
-              for (var i = 0; i < pageSize; i++)
-                {'uuid': 'q$i', 'operation': 'op1', 'their': {'call': 'W1AW$i'}, 'syncedAtMillis': 1000 - i},
-            ],
-            'meta': {
-              'qsos': {'records_left': 0, 'total_records': pageSize},
-              'operations': {'records_left': 0, 'total_records': 0},
+        'qsos': [
+          for (var i = 0; i < pageSize; i++)
+            {
+              'uuid': 'q$i',
+              'operation': 'op1',
+              'their': {'call': 'W1AW$i'},
+              'syncedAtMillis': 1000 - i,
             },
-          };
+        ],
+        'meta': {
+          'qsos': {'records_left': 0, 'total_records': pageSize},
+          'operations': {'records_left': 0, 'total_records': 0},
+        },
+      };
 
       await engine.runOneRound();
       // Before the rounds the abandon and the resync each scheduled can run: either would pull
@@ -2010,8 +2174,11 @@ void main() {
       expect(resync, isNotNull, reason: 'sanity: the first slice reported, and the wipe was requested');
       await resync;
 
-      expect(await db.select(db.qsosBackup).get(), hasLength(SyncEngine.mergeChunkSize),
-          reason: 'sanity: exactly the first slice was in the tables when the wipe ran');
+      expect(
+        await db.select(db.qsosBackup).get(),
+        hasLength(SyncEngine.mergeChunkSize),
+        reason: 'sanity: exactly the first slice was in the tables when the wipe ran',
+      );
       final rows = await qsos.watchForOperation('op1').first;
       expect(rows, isEmpty, reason: 'the slices after the wipe must not have landed');
       expect(settings.state['completedFullSync'], isNot(true), reason: 'and the abandoned round wrote no state');
@@ -2022,16 +2189,22 @@ void main() {
     test('a stuck cursor on a zero loop delay retries at the check period, not instantly', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
       transport.responder = (method, args) => {
-            'qsos': [
-              for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
-                {'uuid': 'q$i', 'operation': 'op1', 'their': {'call': 'W1AW$i'}, 'startAtMillis': i, 'syncedAtMillis': 9000 - i},
-            ],
-            'meta': {
-              'qsos': {'next_cursor': 'row:7', 'records_left': 99},
-              'operations': {'records_left': 0},
-              'flags': {'suggested_sync_loop_delay': 0, 'suggested_sync_check_period': 7000},
+        'qsos': [
+          for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
+            {
+              'uuid': 'q$i',
+              'operation': 'op1',
+              'their': {'call': 'W1AW$i'},
+              'startAtMillis': i,
+              'syncedAtMillis': 9000 - i,
             },
-          };
+        ],
+        'meta': {
+          'qsos': {'next_cursor': 'row:7', 'records_left': 99},
+          'operations': {'records_left': 0},
+          'flags': {'suggested_sync_loop_delay': 0, 'suggested_sync_check_period': 7000},
+        },
+      };
 
       await engine.runOneRound();
 
@@ -2044,13 +2217,7 @@ void main() {
       settings.state = {'lastSyncAccountUUID': 'acct-1'};
       final reports = <SyncProgress>[];
       engine.dispose();
-      engine = SyncEngine(
-        operations: operations,
-        qsos: qsos,
-        settings: settings,
-        transport: transport.call,
-        onProgress: reports.add,
-      );
+      engine = SyncEngine(operations: operations, qsos: qsos, settings: settings, transport: transport.call, onProgress: reports.add);
 
       // Round 1: a page plus counts. Round 2: a cooldown-gated response —
       // counts but NO records. Round 3: nothing left — backfill completes.
@@ -2060,7 +2227,12 @@ void main() {
         if (round == 1) {
           return {
             'qsos': [
-              {'uuid': 'q1', 'operation': 'op1', 'their': {'call': 'W1AW'}, 'syncedAtMillis': 100},
+              {
+                'uuid': 'q1',
+                'operation': 'op1',
+                'their': {'call': 'W1AW'},
+                'syncedAtMillis': 100,
+              },
             ],
             'meta': {
               'qsos': {'records_left': 41, 'total_records': 42},
@@ -2109,7 +2281,9 @@ void main() {
     test('a reconciliation during an in-flight round abandons that round\'s response', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
 
       final gate = Completer<Map<String, dynamic>>();
       final syncArgs = <Map<String, dynamic>>[];
@@ -2184,7 +2358,9 @@ void main() {
       // Local data, so the change is the user's to settle; without it the
       // engine would adopt acct-2 silently and this would prove nothing.
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       transport.responder = (method, args) => method == 'getAccountData'
           ? {
               'operations': {'total': 3},
@@ -2214,13 +2390,20 @@ void main() {
       // and the `sync` response carries no totals to judge the account by.
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       final methods = <String>[];
       transport.responder = (method, args) {
         methods.add(method);
         return method == 'getAccountData'
-            ? {'operations': {'total': 0}, 'qsos': {'total': 0}}
-            : {'account': {'uuid': 'acct-2'}};
+            ? {
+                'operations': {'total': 0},
+                'qsos': {'total': 0},
+              }
+            : {
+                'account': {'uuid': 'acct-2'},
+              };
       };
 
       await engine.runOneRound();
@@ -2251,7 +2434,9 @@ void main() {
     test('forceFullResync (SYNCALL) backs up and clears data without touching account state', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
 
       transport.responder = (method, args) => const {};
       await engine.forceFullResync();
@@ -2334,8 +2519,7 @@ void main() {
     // can refuse any other authenticated call — ham2k-lofi's `sync` returns
     // this as `{error, error_status}` data rather than throwing, so it must
     // not be treated like an arbitrary transport failure.
-    Map<String, dynamic> rejection() =>
-        {'error': 'LoFi registration failed: HTTP 422', 'error_status': 422};
+    Map<String, dynamic> rejection() => {'error': 'LoFi registration failed: HTTP 422', 'error_status': 422};
 
     test('a single rejected round is not counted or reported', () async {
       Object? reported;
@@ -2388,7 +2572,13 @@ void main() {
     test('a round that succeeds resets the rejection streak', () async {
       var authNoticeCount = 0;
       var rejecting = true;
-      final flaky = _FakeTransport((method, args) => rejecting ? rejection() : {'account': {'uuid': 'acct-1'}});
+      final flaky = _FakeTransport(
+        (method, args) => rejecting
+            ? rejection()
+            : {
+                'account': {'uuid': 'acct-1'},
+              },
+      );
       final e = SyncEngine(
         operations: operations,
         qsos: qsos,
@@ -2464,7 +2654,9 @@ void main() {
   // returns forever.
   group('received purges with nothing held here', () {
     setUp(() {
-      transport.responder = (method, args) => {'account': {'uuid': 'acct-1'}};
+      transport.responder = (method, args) => {
+        'account': {'uuid': 'acct-1'},
+      };
     });
 
     test('a round drops one an earlier build stranded', () async {
@@ -2484,15 +2676,17 @@ void main() {
 
     test('a round leaves one whose QSOs are held here for the operator', () async {
       final op = await operations.create(stationCall: 'KI2D/T');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'startAtMillis': 1000,
+      });
       await operations.mergeFromSync([
         {'uuid': op.uuid, 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 9999999999999},
       ]);
 
       await engine.runOneRound();
 
-      expect(await operations.get(op.uuid), isNotNull,
-          reason: 'removing this device\'s own QSOs is exactly what the operator has to confirm');
+      expect(await operations.get(op.uuid), isNotNull, reason: 'removing this device\'s own QSOs is exactly what the operator has to confirm');
       expect((await operations.watchReceivedPurgesPending().first).map((o) => o.uuid), [op.uuid]);
     });
   });
@@ -2507,7 +2701,10 @@ void main() {
     /// A purged, synced QSO whose operation row no longer exists.
     Future<Qso> makeOrphan(String call) async {
       final op = await operations.create(stationCall: 'KI2D/T');
-      final qso = await qsos.add(op.uuid, {'their': {'call': call}, 'startAtMillis': 1000});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': call},
+        'startAtMillis': 1000,
+      });
       await qsos.purgeForOperation(op.uuid);
       await qsos.markSynced([(await qsos.get(qso.uuid))!]);
       await operations.hardDeleteOperation(op.uuid);
@@ -2515,7 +2712,9 @@ void main() {
     }
 
     setUp(() {
-      transport.responder = (method, args) => {'account': {'uuid': 'acct-1'}};
+      transport.responder = (method, args) => {
+        'account': {'uuid': 'acct-1'},
+      };
     });
 
     test('a round reclaims orphans left behind by an earlier run', () async {
@@ -2538,11 +2737,11 @@ void main() {
       expect(await qsos.get(orphan.uuid), isNotNull, reason: 'nothing arrived that could have stranded anything');
 
       transport.responder = (method, args) => {
-            'account': {'uuid': 'acct-1'},
-            'qsos': [
-              {'uuid': 'inbound-qso', 'operation': 'gone-op', 'deleted': true, 'purged': true, 'updatedAtMillis': 1},
-            ],
-          };
+        'account': {'uuid': 'acct-1'},
+        'qsos': [
+          {'uuid': 'inbound-qso', 'operation': 'gone-op', 'deleted': true, 'purged': true, 'updatedAtMillis': 1},
+        ],
+      };
       await engine.runOneRound();
 
       expect(await qsos.get(orphan.uuid), isNull, reason: 'an inbound purge tombstone re-arms the sweep');
@@ -2583,8 +2782,7 @@ void main() {
       };
     });
 
-    Map<String, dynamic> forwardWindow(Map<String, dynamic> args, String side) =>
-        ((args['meta'] as Map)['sync'] as Map)[side] as Map<String, dynamic>;
+    Map<String, dynamic> forwardWindow(Map<String, dynamic> args, String side) => ((args['meta'] as Map)['sync'] as Map)[side] as Map<String, dynamic>;
 
     test('the first round asks for the account history again, from the beginning', () async {
       await engine.runOneRound();
@@ -2640,13 +2838,13 @@ void _reachabilityTests() {
   late List<bool> reported;
 
   SyncEngine build({bool Function(Object)? classify}) => SyncEngine(
-        operations: OperationsRepository(db),
-        qsos: QsosRepository(db),
-        transport: transport.call,
-        settings: settings,
-        onReachability: reported.add,
-        isTransportFailure: classify ?? (e) => e is _NoAnswer,
-      );
+    operations: OperationsRepository(db),
+    qsos: QsosRepository(db),
+    transport: transport.call,
+    settings: settings,
+    onReachability: reported.add,
+    isTransportFailure: classify ?? (e) => e is _NoAnswer,
+  );
 
   setUp(() {
     db = HaLoDatabase(NativeDatabase.memory());

@@ -40,8 +40,7 @@ String get ham2kArcLogoAsset => ham2kArcLogoAssetFor(kEdition);
 /// The edition badge asset — a wide "NEXT EDITION" / "DEV EDITION" wordmark
 /// shown next to the product name — or `null` for [Edition.prod], which has no
 /// badge (it's the plain product).
-String? ham2kEditionBadgeAssetFor(Edition edition) =>
-    edition == Edition.prod ? null : 'assets/images/edition-${edition.name}.svg';
+String? ham2kEditionBadgeAssetFor(Edition edition) => edition == Edition.prod ? null : 'assets/images/edition-${edition.name}.svg';
 
 /// The edition badge for the current build edition (see
 /// [ham2kEditionBadgeAssetFor]); `null` on Regular builds.
@@ -64,12 +63,8 @@ class Ham2kEditionBadge extends StatelessWidget {
   /// Shadows behind the badge art, back-to-front. Defaults to none.
   final List<Shadow> shadows;
 
-  const Ham2kEditionBadge({
-    super.key,
-    this.height,
-    this.width,
-    this.shadows = const [],
-  }) : assert((height == null) != (width == null), 'give exactly one of height or width');
+  const Ham2kEditionBadge({super.key, this.height, this.width, this.shadows = const []})
+    : assert((height == null) != (width == null), 'give exactly one of height or width');
   // Release strips that assert, and SvgPicture with neither dimension paints
   // the art at its intrinsic size — wrong, but visibly so.
 
@@ -85,16 +80,8 @@ class Ham2kEditionBadge extends StatelessWidget {
           Transform.translate(
             offset: shadow.offset,
             child: ImageFiltered(
-              imageFilter: ImageFilter.blur(
-                sigmaX: Shadow.convertRadiusToSigma(shadow.blurRadius),
-                sigmaY: Shadow.convertRadiusToSigma(shadow.blurRadius),
-              ),
-              child: SvgPicture.asset(
-                asset,
-                height: height,
-                width: width,
-                colorFilter: ColorFilter.mode(shadow.color, BlendMode.srcIn),
-              ),
+              imageFilter: ImageFilter.blur(sigmaX: Shadow.convertRadiusToSigma(shadow.blurRadius), sigmaY: Shadow.convertRadiusToSigma(shadow.blurRadius)),
+              child: SvgPicture.asset(asset, height: height, width: width, colorFilter: ColorFilter.mode(shadow.color, BlendMode.srcIn)),
             ),
           ),
         SvgPicture.asset(asset, height: height, width: width),
@@ -112,22 +99,17 @@ const kOverlayDropShadows = [Shadow(color: Colors.black54, offset: Offset(1, 2),
 
 /// The Dev badge art is gray, so a dark drop shadow barely lifts it off a
 /// photo; a white glow (zero-offset, stacked for strength) makes it read.
-const _devEditionBadgeGlow = [
-  Shadow(color: Colors.white, blurRadius: 4),
-  Shadow(color: Colors.white, blurRadius: 4),
-];
+const _devEditionBadgeGlow = [Shadow(color: Colors.white, blurRadius: 4), Shadow(color: Colors.white, blurRadius: 4)];
 
 /// The badge shadow for the current build edition (see the two lists above),
 /// for a badge standing over a release photo — the splash lockup and the home
 /// branding pane. The compact header bar has its own list below.
-List<Shadow> get ham2kEditionBadgeShadows =>
-    kEdition == Edition.dev ? _devEditionBadgeGlow : kOverlayDropShadows;
+List<Shadow> get ham2kEditionBadgeShadows => kEdition == Edition.dev ? _devEditionBadgeGlow : kOverlayDropShadows;
 
 /// Badge shadows for the compact home-app-bar badge: Dev gets the white glow
 /// (its gray art needs lift off the teal bar too); other editions keep the
 /// subtle black glow that sits well on teal.
-List<Shadow> get ham2kHeaderEditionBadgeShadows =>
-    kEdition == Edition.dev ? _devEditionBadgeGlow : const [Shadow(color: Colors.black, blurRadius: 3)];
+List<Shadow> get ham2kHeaderEditionBadgeShadows => kEdition == Edition.dev ? _devEditionBadgeGlow : const [Shadow(color: Colors.black, blurRadius: 3)];
 
 /// How much larger the product name is set than the lockup's base size. The
 /// name is the half of the mark a reader actually reads, and the arc carries
@@ -172,13 +154,7 @@ class Ham2kBrandMark extends StatelessWidget {
   /// larger against the same lockup — e.g. the About header (+3).
   final double titleFontSizeDelta;
 
-  const Ham2kBrandMark({
-    super.key,
-    this.logoWidth = 200,
-    this.light = false,
-    this.showShadow = false,
-    this.titleFontSizeDelta = 0,
-  });
+  const Ham2kBrandMark({super.key, this.logoWidth = 200, this.light = false, this.showShadow = false, this.titleFontSizeDelta = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -205,8 +181,7 @@ class Ham2kBrandMark extends StatelessWidget {
     final titleSize = (TextPainter(
       text: TextSpan(text: titleText, style: titleStyle),
       textDirection: TextDirection.ltr,
-    )..layout())
-        .size;
+    )..layout()).size;
 
     // The edition badge ("NEXT EDITION" / "DEV EDITION") sits below the name,
     // left-aligned; Regular (prod) has none.
@@ -239,11 +214,7 @@ class Ham2kBrandMark extends StatelessWidget {
     final unionWidth = math.max(logoWidth, titleLeft + blockWidth);
     final unionHeight = math.max(logoHeight, titleTop + blockHeight);
 
-    final arc = SvgPicture.asset(
-      ham2kArcLogoAsset,
-      width: logoWidth,
-      colorFilter: light ? const ColorFilter.mode(Colors.white, BlendMode.srcIn) : null,
-    );
+    final arc = SvgPicture.asset(ham2kArcLogoAsset, width: logoWidth, colorFilter: light ? const ColorFilter.mode(Colors.white, BlendMode.srcIn) : null);
 
     return SizedBox(
       width: unionWidth,
@@ -278,11 +249,7 @@ class _ArcLogoWithShadow extends StatelessWidget {
           offset: Offset(width * 0.015, width * 0.02),
           child: ImageFiltered(
             imageFilter: ImageFilter.blur(sigmaX: width * 0.02, sigmaY: width * 0.02),
-            child: SvgPicture.asset(
-              ham2kArcLogoAsset,
-              width: width,
-              colorFilter: const ColorFilter.mode(Colors.black45, BlendMode.srcIn),
-            ),
+            child: SvgPicture.asset(ham2kArcLogoAsset, width: width, colorFilter: const ColorFilter.mode(Colors.black45, BlendMode.srcIn)),
           ),
         ),
         logo,
@@ -309,12 +276,7 @@ class Ham2kOutlinedShadowText extends StatelessWidget {
   /// caller sitting on a lighter ground can soften it.
   final Color color;
 
-  const Ham2kOutlinedShadowText({
-    super.key,
-    required this.text,
-    required this.style,
-    this.color = Colors.black,
-  });
+  const Ham2kOutlinedShadowText({super.key, required this.text, required this.style, this.color = Colors.black});
 
   @override
   Widget build(BuildContext context) {

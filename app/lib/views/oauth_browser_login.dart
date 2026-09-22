@@ -146,10 +146,9 @@ class OAuthBrowserLoginBody extends StatefulWidget {
     this.launcher,
     this.pollInterval = const Duration(seconds: 4),
   }) : assert(
-          (expectedState == null) == (webhookEvents == null) &&
-              (expectedState == null) == (fetchWebhookEvents == null),
-          'the relay wiring is all three or none',
-        );
+         (expectedState == null) == (webhookEvents == null) && (expectedState == null) == (fetchWebhookEvents == null),
+         'the relay wiring is all three or none',
+       );
 
   @override
   State<OAuthBrowserLoginBody> createState() => _OAuthBrowserLoginBodyState();
@@ -291,11 +290,7 @@ class _OAuthBrowserLoginBodyState extends State<OAuthBrowserLoginBody> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          t.browserLoginTitle,
-          style: Theme.of(context).textTheme.titleMedium,
-          textAlign: TextAlign.center,
-        ),
+        Text(t.browserLoginTitle, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
         const SizedBox(height: Space.lg),
         const Center(child: CircularProgressIndicator()),
         const SizedBox(height: Space.lg),
@@ -305,17 +300,11 @@ class _OAuthBrowserLoginBodyState extends State<OAuthBrowserLoginBody> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: Space.lg),
-        OutlinedButton(
-          onPressed: () => unawaited(_openBrowser()),
-          child: Text(t.openInBrowser),
-        ),
+        OutlinedButton(onPressed: () => unawaited(_openBrowser()), child: Text(t.openInBrowser)),
         const SizedBox(height: Space.md),
         // Distinct from the pane's own Cancel, which closes the whole dialog:
         // this abandons the sign-in and leaves the operator back at Connect.
-        TextButton(
-          onPressed: widget.onCancel,
-          child: Text(t.cancelLogin),
-        ),
+        TextButton(onPressed: widget.onCancel, child: Text(t.cancelLogin)),
       ],
     );
   }

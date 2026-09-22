@@ -41,7 +41,9 @@ void main() {
 
     test('scanNow records nothing when no operation is active', () async {
       final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await outbox.scanNow();
       expect(await outbox.latestSeq(op.uuid), 0);
     });
@@ -51,8 +53,12 @@ void main() {
       final other = await operations.create(stationCall: 'KI2D', userTitle: 'Not shared');
       outbox.activeOperationUuid = shared.uuid;
 
-      await qsos.add(shared.uuid, {'their': {'call': 'W1AW'}});
-      await qsos.add(other.uuid, {'their': {'call': 'K1ABC'}});
+      await qsos.add(shared.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      await qsos.add(other.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
       await outbox.scanNow();
 
       expect(await outbox.latestSeq(shared.uuid), greaterThan(0));
@@ -61,7 +67,9 @@ void main() {
 
     test('the first scan after sharing starts is a full snapshot of the operation and its QSOs', () async {
       final op = await operations.create(stationCall: 'KI2D', userTitle: 'Already underway');
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       // Sharing turns on AFTER these were already logged.
       outbox.activeOperationUuid = op.uuid;
       await outbox.scanNow();
@@ -75,9 +83,13 @@ void main() {
       outbox.activeOperationUuid = op.uuid;
       await outbox.scanNow(); // the freshly-created (empty) operation
 
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await outbox.scanNow();
-      final second = await qsos.add(op.uuid, {'their': {'call': 'K1ABC'}});
+      final second = await qsos.add(op.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
       await outbox.scanNow();
 
       final qsoEvents = (await outbox.eventsSince(op.uuid, 0)).where((e) => e.kind == 'qso');
@@ -88,7 +100,9 @@ void main() {
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;
 
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await qsos.update(Qso(uuid: qso.uuid, operationUuid: op.uuid, data: {...qso.data, 'notes': 'edited'}));
       await qsos.softDelete(qso);
       await outbox.scanNow(); // one scan, after all three writes already committed
@@ -101,7 +115,9 @@ void main() {
     test('purging a shared Test Operation records purged:true for the operation and every QSO', () async {
       final op = await operations.create(stationCall: 'KI2D/T');
       outbox.activeOperationUuid = op.uuid;
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
 
       await operations.purge(op.uuid);
       await qsos.purgeForOperation(op.uuid);
@@ -109,8 +125,7 @@ void main() {
 
       final events = await outbox.eventsSince(op.uuid, 0);
       final opEvent = events.singleWhere((e) => e.kind == 'operation' && e.recordUuid == op.uuid);
-      expect(opEvent.data, contains('"purged":true'),
-          reason: 'a peer must learn this was an unrecoverable purge, not an ordinary soft-delete');
+      expect(opEvent.data, contains('"purged":true'), reason: 'a peer must learn this was an unrecoverable purge, not an ordinary soft-delete');
 
       final qsoEvent = events.singleWhere((e) => e.kind == 'qso' && e.recordUuid == qso.uuid);
       expect(qsoEvent.data, contains('"purged":true'));
@@ -120,13 +135,19 @@ void main() {
     test('a batch import into a shared operation reaches the outbox (inserts and updates)', () async {
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;
-      final existing = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'notes': 'before import'});
+      final existing = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'notes': 'before import',
+      });
       await outbox.scanNow();
 
       await qsos.writeBatch(
         operationUuid: op.uuid,
         inserts: [
-          {'their': {'call': 'K1ABC'}, 'startAtMillis': 2000},
+          {
+            'their': {'call': 'K1ABC'},
+            'startAtMillis': 2000,
+          },
         ],
         updates: [
           Qso(uuid: existing.uuid, operationUuid: op.uuid, data: {...existing.data, 'notes': 'merged by import'}),
@@ -164,8 +185,12 @@ void main() {
       outbox.activeOperationUuid = op.uuid;
       await outbox.scanNow(); // the operation's own baseline snapshot
 
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
-      final second = await qsos.add(op.uuid, {'their': {'call': 'K1ABC'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      final second = await qsos.add(op.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
       await outbox.scanNow();
 
       final fromStart = (await outbox.eventsSince(op.uuid, 0)).where((e) => e.kind == 'qso').toList();
@@ -184,7 +209,9 @@ void main() {
       // would satisfy a count and still hand the peer its whole log again.
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await outbox.scanNow();
       final before = await outbox.eventsSince(op.uuid, 0);
 
@@ -193,15 +220,16 @@ void main() {
       await outbox.scanNow();
 
       final after = await outbox.eventsSince(op.uuid, 0);
-      expect(after.map((e) => e.seq), before.map((e) => e.seq),
-          reason: 'a restart must not re-emit rows a peer already has');
+      expect(after.map((e) => e.seq), before.map((e) => e.seq), reason: 'a restart must not re-emit rows a peer already has');
       expect(after.where((e) => e.recordUuid == qso.uuid), hasLength(1));
     });
 
     test('notifyChanged debounces into one scan', () async {
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
 
       outbox.notifyChanged();
       expect(await outbox.latestSeq(op.uuid), 0); // not yet — still debouncing
@@ -213,7 +241,9 @@ void main() {
     test('two concurrent scans for the same operation do not duplicate events', () async {
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;
-      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
 
       // Both calls start in the same synchronous stretch, so the second
       // hits the reentrancy guard before the first's scan has even queried
@@ -228,7 +258,9 @@ void main() {
       final opA = await operations.create(stationCall: 'KI2D', userTitle: 'A');
       final opB = await operations.create(stationCall: 'KI2D', userTitle: 'B');
       outbox.activeOperationUuid = opA.uuid;
-      await qsos.add(opA.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(opA.uuid, {
+        'their': {'call': 'W1AW'},
+      });
 
       // Start A's scan but don't await it yet — it suspends at its first
       // `await`, having already captured operationUuid=A/generation=0.
@@ -241,7 +273,9 @@ void main() {
       // If A's completion had clobbered the watermark it just reset, this
       // scan would use A's (nonzero) watermark instead of B's fresh 0 and
       // silently skip B's own baseline snapshot.
-      final qsoB = await qsos.add(opB.uuid, {'their': {'call': 'K1ABC'}});
+      final qsoB = await qsos.add(opB.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
       await outbox.scanNow();
 
       final eventsB = await outbox.eventsSince(opB.uuid, 0);
@@ -267,37 +301,40 @@ void main() {
       await db.close();
     });
 
-    Future<int> rowCount() async =>
-        (await db.customSelect('SELECT COUNT(*) c FROM peer_events').getSingle()).read<int>('c');
+    Future<int> rowCount() async => (await db.customSelect('SELECT COUNT(*) c FROM peer_events').getSingle()).read<int>('c');
 
     test('editing one QSO many times leaves one row, not one per edit', () async {
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await outbox.scanNow();
 
       for (var i = 0; i < 8; i++) {
         final current = (await qsos.watchForOperation(op.uuid).first).single;
-        await qsos.update(Qso(
-          uuid: current.uuid,
-          operationUuid: op.uuid,
-          data: {...current.data, 'notes': 'edit $i'},
-        ));
+        await qsos.update(Qso(uuid: current.uuid, operationUuid: op.uuid, data: {...current.data, 'notes': 'edit $i'}));
         await outbox.scanNow();
       }
 
       // One row for the operation, one for the QSO — not one per edit.
       expect(await rowCount(), 2);
       final events = await outbox.eventsSince(op.uuid, 0);
-      expect(events.singleWhere((e) => e.recordUuid == qso.uuid).data, contains('edit 7'),
-          reason: 'the surviving row must be the NEWEST snapshot, not the first');
+      expect(
+        events.singleWhere((e) => e.recordUuid == qso.uuid).data,
+        contains('edit 7'),
+        reason: 'the surviving row must be the NEWEST snapshot, not the first',
+      );
     });
 
     test('a re-share sends nothing to a peer that was already caught up', () async {
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;
       for (var i = 0; i < 5; i++) {
-        await qsos.add(op.uuid, {'their': {'call': 'W${i}AW'}, 'startAtMillis': 1000 + i});
+        await qsos.add(op.uuid, {
+          'their': {'call': 'W${i}AW'},
+          'startAtMillis': 1000 + i,
+        });
       }
       await outbox.scanNow();
       final caughtUpAt = (await outbox.eventsSince(op.uuid, 0)).last.seq;
@@ -309,26 +346,25 @@ void main() {
       outbox.activeOperationUuid = op.uuid;
       await outbox.scanNow();
 
-      expect(await outbox.eventsSince(op.uuid, caughtUpAt), isEmpty,
-          reason: 're-sharing an unchanged operation must transfer nothing');
+      expect(await outbox.eventsSince(op.uuid, caughtUpAt), isEmpty, reason: 're-sharing an unchanged operation must transfer nothing');
     });
 
     test('a brand-new peer still receives the whole operation after pruning', () async {
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;
-      final first = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final first = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await outbox.scanNow();
       // Edit it repeatedly so the early rows are pruned away.
       for (var i = 0; i < 3; i++) {
         final current = (await qsos.watchForOperation(op.uuid).first).single;
-        await qsos.update(Qso(
-          uuid: current.uuid,
-          operationUuid: op.uuid,
-          data: {...current.data, 'notes': 'edit $i'},
-        ));
+        await qsos.update(Qso(uuid: current.uuid, operationUuid: op.uuid, data: {...current.data, 'notes': 'edit $i'}));
         await outbox.scanNow();
       }
-      final second = await qsos.add(op.uuid, {'their': {'call': 'K1ABC'}});
+      final second = await qsos.add(op.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
       await outbox.scanNow();
 
       // Cursor 0 is what a peer that has never synced this operation asks
@@ -345,28 +381,35 @@ void main() {
       // catches this on a fast machine is worse than none.
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;
-      final first = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final first = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await outbox.scanNow();
 
       final stamp = (await qsos.get(first.uuid))!.updatedAtMillis!;
-      final second = await qsos.add(op.uuid, {'their': {'call': 'K1ABC'}});
+      final second = await qsos.add(op.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
       // Force the second QSO onto the exact millisecond the scan stopped at.
-      await db.customStatement(
-        'UPDATE qsos SET updated_at_millis = ? WHERE uuid = ?',
-        [stamp, second.uuid],
-      );
+      await db.customStatement('UPDATE qsos SET updated_at_millis = ? WHERE uuid = ?', [stamp, second.uuid]);
       await outbox.scanNow();
 
       final events = await outbox.eventsSince(op.uuid, 0);
-      expect(events.map((e) => e.recordUuid), contains(second.uuid),
-          reason: 'a strict > on the watermark drops a record sharing that millisecond, '
-              'and a persisted watermark makes that miss permanent');
+      expect(
+        events.map((e) => e.recordUuid),
+        contains(second.uuid),
+        reason:
+            'a strict > on the watermark drops a record sharing that millisecond, '
+            'and a persisted watermark makes that miss permanent',
+      );
     });
 
     test('an existing cursor stays valid across a prune — seq is never reused', () async {
       final op = await operations.create(stationCall: 'KI2D');
       outbox.activeOperationUuid = op.uuid;
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await outbox.scanNow();
       final seqBefore = (await outbox.eventsSince(op.uuid, 0)).map((e) => e.seq).reduce((a, b) => a > b ? a : b);
 
@@ -375,10 +418,8 @@ void main() {
       await outbox.scanNow();
 
       final after = await outbox.eventsSince(op.uuid, seqBefore);
-      expect(after.map((e) => e.recordUuid), [qso.uuid],
-          reason: 'a peer at the old cursor must be handed the newer snapshot, not nothing');
-      expect(after.single.seq, greaterThan(seqBefore),
-          reason: 'a recycled rowid would put the new row BELOW the cursor and hide it forever');
+      expect(after.map((e) => e.recordUuid), [qso.uuid], reason: 'a peer at the old cursor must be handed the newer snapshot, not nothing');
+      expect(after.single.seq, greaterThan(seqBefore), reason: 'a recycled rowid would put the new row BELOW the cursor and hide it forever');
     });
 
     test('a record with NO revision stamp still reaches the outbox', () async {
@@ -387,7 +428,9 @@ void main() {
       // stamp. Deduping on a null lookup silently drops every one of them,
       // on every scan, including a first share.
       final op = await operations.create(stationCall: 'KI2D');
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await db.customStatement('UPDATE qsos SET updated_at_millis = NULL WHERE uuid = ?', [qso.uuid]);
 
       outbox.activeOperationUuid = op.uuid;
@@ -405,12 +448,19 @@ void main() {
       final op = await operations.create(stationCall: 'KI2D');
       final ahead = realNowMillis() + 90000;
       await qsos.mergeFromPeer([
-        {'uuid': 'from-fast-peer', 'operation': op.uuid, 'their': {'call': 'K1ABC'}, 'updatedAtMillis': ahead},
+        {
+          'uuid': 'from-fast-peer',
+          'operation': op.uuid,
+          'their': {'call': 'K1ABC'},
+          'updatedAtMillis': ahead,
+        },
       ]);
       outbox.activeOperationUuid = op.uuid;
       await outbox.scanNow();
 
-      final local = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final local = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await outbox.scanNow();
 
       outbox.activeOperationUuid = null;
@@ -424,16 +474,19 @@ void main() {
       final shared = await operations.create(stationCall: 'KI2D', userTitle: 'Shared');
       final other = await operations.create(stationCall: 'KI2D', userTitle: 'Other');
       outbox.activeOperationUuid = other.uuid;
-      await qsos.add(other.uuid, {'their': {'call': 'K1ABC'}});
+      await qsos.add(other.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
       await outbox.scanNow();
       final otherRows = (await outbox.eventsSince(other.uuid, 0)).length;
 
       outbox.activeOperationUuid = shared.uuid;
-      await qsos.add(shared.uuid, {'their': {'call': 'W1AW'}});
+      await qsos.add(shared.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await outbox.scanNow();
 
-      expect((await outbox.eventsSince(other.uuid, 0)).length, otherRows,
-          reason: "scanning one operation must not touch another's rows");
+      expect((await outbox.eventsSince(other.uuid, 0)).length, otherRows, reason: "scanning one operation must not touch another's rows");
     });
   });
 
@@ -466,10 +519,7 @@ void main() {
       // same peer/operation — without a transaction tying each call's read
       // to its write, both could read the same starting cursor and whichever
       // commits last would win outright, regardless of its value.
-      await Future.wait([
-        cursors.advanceTo('peer-a', 'op-1', 3),
-        cursors.advanceTo('peer-a', 'op-1', 12),
-      ]);
+      await Future.wait([cursors.advanceTo('peer-a', 'op-1', 3), cursors.advanceTo('peer-a', 'op-1', 12)]);
       expect(await cursors.lastAppliedSeq('peer-a', 'op-1'), 12);
     });
 
@@ -496,15 +546,22 @@ void main() {
     test('unlike mergeFromSync, an applied record is left dirty so it still reaches LoFi', () async {
       final op = await operations.create(stationCall: 'KI2D');
       await qsos.mergeFromPeer([
-        {'uuid': 'peer-qso-1', 'operation': op.uuid, 'their': {'call': 'W1AW'}, 'updatedAtMillis': 1000},
+        {
+          'uuid': 'peer-qso-1',
+          'operation': op.uuid,
+          'their': {'call': 'W1AW'},
+          'updatedAtMillis': 1000,
+        },
       ]);
-      expect(await qsos.hasUnsynced(), isTrue,
-          reason: 'the originating peer device may never reach the internet itself');
+      expect(await qsos.hasUnsynced(), isTrue, reason: 'the originating peer device may never reach the internet itself');
     });
 
     test('a peer record never overwrites a newer local edit', () async {
       final op = await operations.create(stationCall: 'KI2D');
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'notes': 'local edit'});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'notes': 'local edit',
+      });
 
       await qsos.mergeFromPeer([
         {
@@ -520,7 +577,9 @@ void main() {
 
     test('a peer delete tombstones the local row', () async {
       final op = await operations.create(stationCall: 'KI2D');
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
 
       await qsos.mergeFromPeer([
         {
@@ -536,12 +595,7 @@ void main() {
     });
 
     test('operations: applying twice (a redelivered event) is idempotent, not a duplicate', () async {
-      final record = {
-        'uuid': 'peer-op-1',
-        'stationCall': 'KI2D',
-        'userTitle': 'From a peer',
-        'updatedAtMillis': 1000,
-      };
+      final record = {'uuid': 'peer-op-1', 'stationCall': 'KI2D', 'userTitle': 'From a peer', 'updatedAtMillis': 1000};
       await operations.mergeFromPeer([record]);
       await operations.mergeFromPeer([record]);
       expect(await operations.watchAll().first, hasLength(1));
@@ -575,8 +629,12 @@ void main() {
       ]);
       outboxA.activeOperationUuid = op.uuid;
 
-      await qsosA.add(op.uuid, {'their': {'call': 'W1AW'}});
-      await qsosA.add(op.uuid, {'their': {'call': 'K1ABC'}});
+      await qsosA.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      await qsosA.add(op.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
       await outboxA.scanNow();
 
       // Device B catches up from scratch (cursor 0).
@@ -591,7 +649,9 @@ void main() {
 
       // A third QSO, scanned, then a reconnect-style catch-up from the
       // advanced cursor only replays what's new — not the whole operation.
-      await qsosA.add(op.uuid, {'their': {'call': 'EA4XYZ'}});
+      await qsosA.add(op.uuid, {
+        'their': {'call': 'EA4XYZ'},
+      });
       await outboxA.scanNow();
       final resumeSince = await cursorsB.lastAppliedSeq('device-a', op.uuid);
       final resumeEvents = await outboxA.eventsSince(op.uuid, resumeSince);

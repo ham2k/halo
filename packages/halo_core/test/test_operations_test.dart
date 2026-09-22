@@ -63,8 +63,7 @@ void main() {
     final removed = await operations.hardDeletePurged();
     expect(removed, [purged.uuid]);
     expect(await operations.get(purged.uuid), isNull, reason: 'purged AND synced — the row is gone for real');
-    expect(await operations.get(deletedOnly.uuid), isNotNull,
-        reason: 'a normal (non-purged) delete must never be hard-deleted');
+    expect(await operations.get(deletedOnly.uuid), isNotNull, reason: 'a normal (non-purged) delete must never be hard-deleted');
   });
 
   test('hardDeletePurged sweeps every purged+synced row, not just a caller-scoped batch', () async {
@@ -135,8 +134,11 @@ void main() {
 
     // A LATER sync round on this device must not auto-delete it either —
     // this device never confirmed a purge, it only received one.
-    expect(await operations.hardDeletePurged(), isEmpty,
-        reason: 'hardDeletePurged is for locally-confirmed purges only; purgedLocally is false on a merged row');
+    expect(
+      await operations.hardDeletePurged(),
+      isEmpty,
+      reason: 'hardDeletePurged is for locally-confirmed purges only; purgedLocally is false on a merged row',
+    );
     expect(await operations.get('remote-op'), isNotNull);
   });
 
@@ -155,8 +157,7 @@ void main() {
     await operations.markSynced([(await operations.get(localOp.uuid))!]);
 
     final pending = await operations.watchReceivedPurgesPending().first;
-    expect(pending.map((o) => o.uuid), ['remote-op'],
-        reason: 'a locally-confirmed purge (purgedLocally: true) is not a received-purge candidate');
+    expect(pending.map((o) => o.uuid), ['remote-op'], reason: 'a locally-confirmed purge (purgedLocally: true) is not a received-purge candidate');
   });
 
   test('eligibleReceivedPurges lists only the still-valid rows, and hardDeleteOperation removes one for real', () async {
@@ -177,8 +178,7 @@ void main() {
     expect(await operations.get('remote-op'), isNull);
   });
 
-  test(
-      'confirming a received purge removes every QSO of the operation, even ones whose own purge tombstone '
+  test('confirming a received purge removes every QSO of the operation, even ones whose own purge tombstone '
       "hasn't arrived yet", () async {
     // Operations and QSOs sync in separate batches/watermarks — an operator
     // can confirm as soon as the OPERATION record lands, before this
@@ -199,7 +199,12 @@ void main() {
     ]);
     // A QSO synced normally, with no purged flag at all — the gap this pins.
     await qsos.mergeFromSync([
-      {'uuid': 'remote-qso', 'operation': 'remote-op', 'their': {'call': 'W1AW'}, 'updatedAtMillis': 1},
+      {
+        'uuid': 'remote-qso',
+        'operation': 'remote-op',
+        'their': {'call': 'W1AW'},
+        'updatedAtMillis': 1,
+      },
     ]);
 
     await operations.eligibleReceivedPurges(['remote-op']);
@@ -283,8 +288,7 @@ void main() {
   // explicit confirmation on that OTHER device too, regardless of which of
   // the two created the operation in the first place.
   group('a purge from one device never skips confirmation on another', () {
-    test('an operation created on device B, purged on device A via PURGETESTS, still needs B\'s own confirmation',
-        () async {
+    test('an operation created on device B, purged on device A via PURGETESTS, still needs B\'s own confirmation', () async {
       // Device A never created this operation — it only has it because
       // device B synced it there first, then device A ran PURGETESTS.
       await operations.mergeFromSync([
@@ -300,8 +304,7 @@ void main() {
       expect(await operations.hardDeletePurged(), ['shared-op']);
     });
 
-    test('device B receiving that same purge does not remove its copy without asking, regardless of who purged it',
-        () async {
+    test('device B receiving that same purge does not remove its copy without asking, regardless of who purged it', () async {
       // Simulates device B pulling the record device A just pushed after
       // running PURGETESTS — the payload SyncEngine._buildPayload would
       // have sent for the purged row above.
@@ -349,8 +352,11 @@ void main() {
       await operations.mergeFromSync([tombstone]);
 
       expect(await operations.get('remote-op'), isNull, reason: 'a removal the operator confirmed must stay done');
-      expect(await operations.watchReceivedPurgesPending().first, isEmpty,
-          reason: 'a resurrected row raises the "removed on another device" notice all over again');
+      expect(
+        await operations.watchReceivedPurgesPending().first,
+        isEmpty,
+        reason: 'a resurrected row raises the "removed on another device" notice all over again',
+      );
     });
 
     test('a purge tombstone for an operation this device never had is ignored', () async {
@@ -359,8 +365,11 @@ void main() {
       ]);
 
       expect(await operations.get('never-here'), isNull);
-      expect(await operations.watchReceivedPurgesPending().first, isEmpty,
-          reason: 'nothing to remove here — asking the operator to confirm would be asking about a stranger');
+      expect(
+        await operations.watchReceivedPurgesPending().first,
+        isEmpty,
+        reason: 'nothing to remove here — asking the operator to confirm would be asking about a stranger',
+      );
     });
 
     test('a peer\'s purge tombstone for an operation this device never had is ignored too', () async {
@@ -375,7 +384,14 @@ void main() {
       expect(await operations.get('never-here'), isNull);
 
       await qsos.mergeFromPeer([
-        {'uuid': 'never-here-qso', 'operation': 'never-here', 'their': {'call': 'W1AW'}, 'deleted': true, 'purged': true, 'updatedAtMillis': 1},
+        {
+          'uuid': 'never-here-qso',
+          'operation': 'never-here',
+          'their': {'call': 'W1AW'},
+          'deleted': true,
+          'purged': true,
+          'updatedAtMillis': 1,
+        },
       ]);
       expect(await qsos.get('never-here-qso'), isNull);
     });
@@ -413,14 +429,22 @@ void main() {
         {'uuid': 'real-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
       ]);
       await qsos.mergeFromSync([
-        {'uuid': 'real-qso', 'operation': 'real-op', 'their': {'call': 'W1AW'}, 'updatedAtMillis': 1},
+        {
+          'uuid': 'real-qso',
+          'operation': 'real-op',
+          'their': {'call': 'W1AW'},
+          'updatedAtMillis': 1,
+        },
       ]);
       await operations.mergeFromSync([
         {'uuid': 'real-op', 'stationCall': 'KI2D/T', 'deleted': true, 'purged': true, 'updatedAtMillis': 2},
       ]);
 
-      expect(await operations.hardDeleteEmptyReceivedPurges(), isEmpty,
-          reason: 'this device holds QSOs of it — removing them is exactly what the operator must confirm');
+      expect(
+        await operations.hardDeleteEmptyReceivedPurges(),
+        isEmpty,
+        reason: 'this device holds QSOs of it — removing them is exactly what the operator must confirm',
+      );
       expect((await operations.watchReceivedPurgesPending().first).map((o) => o.uuid), ['real-op']);
     });
 
@@ -474,11 +498,17 @@ void main() {
         {'uuid': 'remote-op', 'stationCall': 'KI2D/T', 'updatedAtMillis': 1},
       ]);
       await qsos.mergeFromSync([
-        {'uuid': 'remote-qso', 'operation': 'remote-op', 'their': {'call': 'W1AW'}, 'deleted': true, 'purged': true, 'updatedAtMillis': 1},
+        {
+          'uuid': 'remote-qso',
+          'operation': 'remote-op',
+          'their': {'call': 'W1AW'},
+          'deleted': true,
+          'purged': true,
+          'updatedAtMillis': 1,
+        },
       ]);
 
-      expect(await qsos.get('remote-qso'), isNull,
-          reason: 'a QSO is only ever purged with its whole operation, so a tombstone alone is nothing to keep');
+      expect(await qsos.get('remote-qso'), isNull, reason: 'a QSO is only ever purged with its whole operation, so a tombstone alone is nothing to keep');
     });
   });
 
@@ -488,8 +518,12 @@ void main() {
     // gone. No other sweep can reach it — they all take an operation uuid
     // that has to still exist to be found.
     final gone = await operations.create(stationCall: 'KI2D/T');
-    final orphan = await qsos.add(gone.uuid, {'their': {'call': 'W1AW'}});
-    final unpushed = await qsos.add(gone.uuid, {'their': {'call': 'K2ABC'}});
+    final orphan = await qsos.add(gone.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    final unpushed = await qsos.add(gone.uuid, {
+      'their': {'call': 'K2ABC'},
+    });
     await qsos.purgeForOperation(gone.uuid);
     await qsos.markSynced([(await qsos.get(orphan.uuid))!]);
     await operations.hardDeleteOperation(gone.uuid);
@@ -497,16 +531,16 @@ void main() {
     // Still awaiting this device's operator: the operation row is right
     // there, and only confirming removes its QSOs.
     final pending = await operations.create(stationCall: 'W1AW/T');
-    final pendingQso = await qsos.add(pending.uuid, {'their': {'call': 'N0DEV'}});
+    final pendingQso = await qsos.add(pending.uuid, {
+      'their': {'call': 'N0DEV'},
+    });
     await qsos.purgeForOperation(pending.uuid);
     await qsos.markSynced([(await qsos.get(pendingQso.uuid))!]);
 
     expect(await qsos.hardDeletePurgedOrphans(), 1);
 
     expect(await qsos.get(orphan.uuid), isNull);
-    expect(await qsos.get(unpushed.uuid), isNotNull,
-        reason: 'its tombstone has not reached the server yet — deleting it now loses the purge entirely');
-    expect(await qsos.get(pendingQso.uuid), isNotNull,
-        reason: 'its operation is still here, so the operator has not been asked yet');
+    expect(await qsos.get(unpushed.uuid), isNotNull, reason: 'its tombstone has not reached the server yet — deleting it now loses the purge entirely');
+    expect(await qsos.get(pendingQso.uuid), isNotNull, reason: 'its operation is still here, so the operator has not been asked yet');
   });
 }

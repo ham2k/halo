@@ -127,12 +127,19 @@ void main() {
 
     // A QSO add refreshes the operation's counters — the stream must see it
     // without any manual re-fetch.
-    await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+    await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+      'startAtMillis': 1000,
+    });
     await pumpEventQueue();
 
     // A localData write (the shape ScoringService uses for day/op summaries)
     // must flow through too — this is what keeps day-header badges fresh.
-    await operations.updateLocalData(op.uuid, {'scoring': {'operationSummary': {'dupe': 0}}});
+    await operations.updateLocalData(op.uuid, {
+      'scoring': {
+        'operationSummary': {'dupe': 0},
+      },
+    });
     await pumpEventQueue();
 
     expect(emissions.first?.userTitle, 'Reactive');
@@ -155,7 +162,10 @@ void main() {
 
   test('a brand-new operation with no QSOs sorts to the top, not the bottom', () async {
     final active = await operations.create(stationCall: 'KI2D', userTitle: 'Active op');
-    await qsos.add(active.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+    await qsos.add(active.uuid, {
+      'their': {'call': 'W1AW'},
+      'startAtMillis': 1000,
+    });
 
     // New operation has a NULL startAtMillisMax; SQLite sorts NULLs last in
     // DESC by default, which would otherwise bury it at the end.
@@ -173,11 +183,7 @@ void main() {
     final op3 = await operations.create(stationCall: 'KI2D', userTitle: 'Third created');
 
     final all = await operations.watchAll().first;
-    expect(all.map((o) => o.userTitle).take(3), [
-      op3.userTitle,
-      op2.userTitle,
-      op1.userTitle,
-    ]);
+    expect(all.map((o) => o.userTitle).take(3), [op3.userTitle, op2.userTitle, op1.userTitle]);
   });
 
   test('update with basedOn keeps a concurrent sync revision where the edit did not touch it', () async {
@@ -223,13 +229,13 @@ void main() {
 
   group('writeBatch', () {
     Map<String, dynamic> qsoData(String call, {String? uuid}) => {
-          'uuid': ?uuid,
-          'our': {'call': 'KI2D'},
-          'their': {'call': call},
-          'band': '20m',
-          'mode': 'SSB',
-          'startAtMillis': DateTime.utc(2024, 7, 23, 12).millisecondsSinceEpoch,
-        };
+      'uuid': ?uuid,
+      'our': {'call': 'KI2D'},
+      'their': {'call': call},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': DateTime.utc(2024, 7, 23, 12).millisecondsSinceEpoch,
+    };
 
     test('inserts and updates together, refreshing counters once', () async {
       final op = await operations.create(stationCall: 'KI2D');
@@ -242,11 +248,7 @@ void main() {
         operationUuid: op.uuid,
         inserts: [qsoData('K1ABC'), qsoData('K2DEF')],
         updates: [
-          Qso(
-            uuid: existing.uuid,
-            operationUuid: op.uuid,
-            data: {...existing.data, 'notes': 'merged'},
-          ),
+          Qso(uuid: existing.uuid, operationUuid: op.uuid, data: {...existing.data, 'notes': 'merged'}),
         ],
       );
 
@@ -284,9 +286,7 @@ void main() {
 
       final written = await qsos.writeBatch(
         operationUuid: op.uuid,
-        updates: [
-          Qso(uuid: 'not-in-the-table', operationUuid: op.uuid, data: qsoData('W1AW')),
-        ],
+        updates: [Qso(uuid: 'not-in-the-table', operationUuid: op.uuid, data: qsoData('W1AW'))],
       );
 
       expect(written, 0);
@@ -322,7 +322,10 @@ void main() {
       await expectLater(
         qsos.writeBatch(
           operationUuid: op.uuid,
-          inserts: [qsoData('K1ABC'), qsoData('K2DEF', uuid: existing.uuid)],
+          inserts: [
+            qsoData('K1ABC'),
+            qsoData('K2DEF', uuid: existing.uuid),
+          ],
         ),
         throwsA(anything),
       );
@@ -339,10 +342,7 @@ void main() {
       final qso = await qsos.add(op.uuid, qsoData('W1AW'));
       Qso copy() => Qso(uuid: qso.uuid, operationUuid: op.uuid, data: qso.data);
 
-      expect(
-        () => qsos.writeBatch(operationUuid: op.uuid, updates: [copy(), copy()]),
-        throwsArgumentError,
-      );
+      expect(() => qsos.writeBatch(operationUuid: op.uuid, updates: [copy(), copy()]), throwsArgumentError);
     });
 
     test("an update cannot give the row a uuid other than its own", () async {
@@ -406,11 +406,7 @@ void main() {
           'their': <String, dynamic>{...snapshot.data['their'] as Map<String, dynamic>, 'grid': 'FN31pr'},
         },
       );
-      await qsos.writeBatch(
-        operationUuid: op.uuid,
-        updates: [planned],
-        updateBases: {target.uuid: snapshot},
-      );
+      await qsos.writeBatch(operationUuid: op.uuid, updates: [planned], updateBases: {target.uuid: snapshot});
 
       final stored = (await qsos.get(target.uuid))!;
       expect((stored.data['their'] as Map)['grid'], 'FN31pr', reason: "the file's own addition must land");
@@ -435,10 +431,7 @@ void main() {
       // chunk to prove the counts still add up across the boundary.
       final op = await operations.create(stationCall: 'KI2D');
       const total = 1200;
-      await qsos.writeBatch(
-        operationUuid: op.uuid,
-        inserts: [for (var i = 0; i < total; i++) qsoData('W1AW$i')],
-      );
+      await qsos.writeBatch(operationUuid: op.uuid, inserts: [for (var i = 0; i < total; i++) qsoData('W1AW$i')]);
       final existing = await qsos.watchForOperation(op.uuid).first;
 
       final written = await qsos.writeBatch(
@@ -457,17 +450,15 @@ void main() {
   group('sync revision stamps (updatedAtMillis)', () {
     test('markSynced only flips rows whose revision stamp still matches the sent copy', () async {
       final op = await operations.create(stationCall: 'KI2D');
-      final sent = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final sent = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
 
       // An edit lands while the sync round's network call is in flight: the
       // row is re-stamped after `sent` was snapshotted for the payload.
       await Future<void>.delayed(const Duration(milliseconds: 5));
       final edited = (await qsos.watchForOperation(op.uuid).first).single;
-      await qsos.update(Qso(
-        uuid: edited.uuid,
-        operationUuid: edited.operationUuid,
-        data: {...edited.data, 'notes': 'edited mid-flight'},
-      ));
+      await qsos.update(Qso(uuid: edited.uuid, operationUuid: edited.operationUuid, data: {...edited.data, 'notes': 'edited mid-flight'}));
 
       await qsos.markSynced([sent]);
       // The edit survives as dirty — marking it synced here would silently
@@ -495,7 +486,10 @@ void main() {
 
     test('mergeFromSync never overwrites a newer local revision', () async {
       final op = await operations.create(stationCall: 'KI2D');
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'notes': 'local edit'});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'notes': 'local edit',
+      });
 
       // An older copy coming back down — e.g. this device's own earlier
       // push returning during a "combine" backfill. It must not clobber
@@ -537,8 +531,12 @@ void main() {
       // honoured: an inbound copy can move a contact out into the general
       // log, where there is no destination operation to refresh at all.
       final op = await operations.create(stationCall: 'KI2D');
-      final staying = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
-      final leaving = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}});
+      final staying = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      final leaving = await qsos.add(op.uuid, {
+        'their': {'call': 'K2ABC'},
+      });
       await qsos.refreshOperationCounters(op.uuid);
       expect((await operations.byUuids([op.uuid])).single.qsoCount, 2);
 
@@ -553,8 +551,7 @@ void main() {
       ]);
 
       expect((await qsos.get(leaving.uuid))!.operationUuid, '');
-      expect((await operations.byUuids([op.uuid])).single.qsoCount, 1,
-          reason: 'the operation it left must stop counting it');
+      expect((await operations.byUuids([op.uuid])).single.qsoCount, 1, reason: 'the operation it left must stop counting it');
       expect((await qsos.watchForOperation(op.uuid).first).map((q) => q.uuid), [staying.uuid]);
     });
 
@@ -634,7 +631,10 @@ void main() {
         {
           'uuid': 'bad-record',
           'operation': op.uuid,
-          'their': {'call': 'W1AW', 'guess': {'name': 7}},
+          'their': {
+            'call': 'W1AW',
+            'guess': {'name': 7},
+          },
           'mode': true,
           'updatedAtMillis': 1000,
         },
@@ -651,17 +651,23 @@ void main() {
       // writes to it, so nothing heals it, and it is exactly the population
       // that reported the crash.
       final op = await operations.create(stationCall: 'KI2D');
-      await db.into(db.qsos).insert(QsosCompanion.insert(
-            uuid: 'legacy-row',
-            operation: op.uuid,
-            data: Value(jsonEncode({
-              'their': {'call': 'W1AW'},
-              'mode': true,
-              'freq': '14074.5',
-              'band': '20m',
-              'startAtMillis': 1000,
-            })),
-          ));
+      await db
+          .into(db.qsos)
+          .insert(
+            QsosCompanion.insert(
+              uuid: 'legacy-row',
+              operation: op.uuid,
+              data: Value(
+                jsonEncode({
+                  'their': {'call': 'W1AW'},
+                  'mode': true,
+                  'freq': '14074.5',
+                  'band': '20m',
+                  'startAtMillis': 1000,
+                }),
+              ),
+            ),
+          );
 
       final stored = (await qsos.get('legacy-row'))!;
       // `data` itself, not just the getters: SyncEngine._buildPayload and
@@ -674,18 +680,14 @@ void main() {
     });
 
     test('an operation row is healed on read the same way', () async {
-      await db.into(db.operations).insert(OperationsCompanion.insert(
-            uuid: 'legacy-op',
-            data: Value(jsonEncode({
-              'stationCall': 'KI2D',
-              'refs': 'POTA',
-              'createdAtMillis': '1721736000000',
-            })),
-          ));
+      await db
+          .into(db.operations)
+          .insert(
+            OperationsCompanion.insert(uuid: 'legacy-op', data: Value(jsonEncode({'stationCall': 'KI2D', 'refs': 'POTA', 'createdAtMillis': '1721736000000'}))),
+          );
 
       final stored = (await operations.get('legacy-op'))!;
-      expect(stored.data.containsKey('refs'), isFalse,
-          reason: 'a refs that is not a list drives no scoring and no export');
+      expect(stored.data.containsKey('refs'), isFalse, reason: 'a refs that is not a list drives no scoring and no export');
       expect(stored.data['createdAtMillis'], 1721736000000);
     });
 
@@ -704,11 +706,20 @@ void main() {
       addTearDown(() => onQsonTypeViolation = null);
 
       final op = await operations.create(stationCall: 'KI2D');
-      Future<void> insertBad(String uuid) => db.into(db.qsos).insert(QsosCompanion.insert(
-            uuid: uuid,
-            operation: op.uuid,
-            data: Value(jsonEncode({'their': {'call': 'W1AW'}, 'mode': true})),
-          ));
+      Future<void> insertBad(String uuid) => db
+          .into(db.qsos)
+          .insert(
+            QsosCompanion.insert(
+              uuid: uuid,
+              operation: op.uuid,
+              data: Value(
+                jsonEncode({
+                  'their': {'call': 'W1AW'},
+                  'mode': true,
+                }),
+              ),
+            ),
+          );
 
       await insertBad('bad-0');
       await qsos.watchForOperation(op.uuid).first;
@@ -736,11 +747,20 @@ void main() {
 
       final op = await operations.create(stationCall: 'KI2D');
       for (var i = 0; i < 300; i++) {
-        await db.into(db.qsos).insert(QsosCompanion.insert(
-              uuid: 'bad-$i',
-              operation: op.uuid,
-              data: Value(jsonEncode({'their': {'call': 'W1AW'}, 'mode': true})),
-            ));
+        await db
+            .into(db.qsos)
+            .insert(
+              QsosCompanion.insert(
+                uuid: 'bad-$i',
+                operation: op.uuid,
+                data: Value(
+                  jsonEncode({
+                    'their': {'call': 'W1AW'},
+                    'mode': true,
+                  }),
+                ),
+              ),
+            );
       }
       await qsos.watchForOperation(op.uuid).first;
 
@@ -753,10 +773,7 @@ void main() {
       onQsonTypeViolation = (context, violation) => seen.add('$context ${violation.path}');
       addTearDown(() => onQsonTypeViolation = null);
 
-      await db.into(db.operations).insert(OperationsCompanion.insert(
-            uuid: 'legacy-op-2',
-            data: Value(jsonEncode({'stationCall': 'KI2D', 'refs': 'POTA'})),
-          ));
+      await db.into(db.operations).insert(OperationsCompanion.insert(uuid: 'legacy-op-2', data: Value(jsonEncode({'stationCall': 'KI2D', 'refs': 'POTA'}))));
       await operations.get('legacy-op-2');
       expect(seen, contains('operations:read refs'));
     });
@@ -765,13 +782,7 @@ void main() {
       final op = await operations.create(stationCall: 'KI2D', userTitle: 'Local title');
 
       await operations.mergeFromSync([
-        {
-          'uuid': op.uuid,
-          'stationCall': 'KI2D',
-          'userTitle': 'Stale server title',
-          'updatedAtMillis': op.updatedAtMillis! - 1000,
-          'syncedAtMillis': 1,
-        },
+        {'uuid': op.uuid, 'stationCall': 'KI2D', 'userTitle': 'Stale server title', 'updatedAtMillis': op.updatedAtMillis! - 1000, 'syncedAtMillis': 1},
       ]);
       expect((await operations.byUuids([op.uuid])).single.userTitle, 'Local title');
       expect(await operations.hasUnsynced(), isTrue);
@@ -779,25 +790,40 @@ void main() {
 
     test('an inbound record with no revision stamp only overwrites rows with nothing left to push', () async {
       final op = await operations.create(stationCall: 'KI2D');
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'notes': 'unpushed edit'});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'notes': 'unpushed edit',
+      });
 
       // Dirty local row: protected from stampless (pre-stamp history) data.
       await qsos.mergeFromSync([
-        {'uuid': qso.uuid, 'operation': op.uuid, 'their': {'call': 'W1AW'}, 'notes': 'stampless copy'},
+        {
+          'uuid': qso.uuid,
+          'operation': op.uuid,
+          'their': {'call': 'W1AW'},
+          'notes': 'stampless copy',
+        },
       ]);
       expect((await qsos.watchForOperation(op.uuid).first).single.notes, 'unpushed edit');
 
       // Once pushed (clean), a stampless inbound record is accepted.
       await qsos.markSynced([qso]);
       await qsos.mergeFromSync([
-        {'uuid': qso.uuid, 'operation': op.uuid, 'their': {'call': 'W1AW'}, 'notes': 'stampless copy'},
+        {
+          'uuid': qso.uuid,
+          'operation': op.uuid,
+          'their': {'call': 'W1AW'},
+          'notes': 'stampless copy',
+        },
       ]);
       expect((await qsos.watchForOperation(op.uuid).first).single.notes, 'stampless copy');
     });
 
     test('softDelete re-stamps the record so the delete syncs as the newest revision', () async {
       final op = await operations.create(stationCall: 'KI2D');
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
 
       await Future<void>.delayed(const Duration(milliseconds: 5));
       await qsos.softDelete(qso);
@@ -809,7 +835,9 @@ void main() {
 
     test('undelete restores the QSO, refreshes counters, and re-stamps so it syncs newer than the tombstone', () async {
       final op = await operations.create(stationCall: 'KI2D');
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+      });
       await qsos.softDelete(qso);
       final tombstone = (await qsos.watchForOperation(op.uuid, includeDeleted: true).first).single;
       await qsos.markSynced([tombstone]);
@@ -830,7 +858,10 @@ void main() {
       // restoring must not restamp the stale snapshot over it — that would
       // silently revert the other device's edits everywhere.
       final op = await operations.create(stationCall: 'KI2D');
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'notes': 'original'});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'notes': 'original',
+      });
       await qsos.softDelete(qso);
       final tombstone = (await qsos.watchForOperation(op.uuid, includeDeleted: true).first).single;
       await qsos.markSynced([tombstone]);
@@ -860,12 +891,19 @@ void main() {
       // either bumped updatedAtMillis the fingerprint would move and the
       // rescore would re-trigger itself forever. Guard that here.
       final op = await operations.create(stationCall: 'KI2D');
-      final qso = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 1000});
+      final qso = await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'startAtMillis': 1000,
+      });
       final beforeQso = qso.updatedAtMillis;
       final beforeOp = (await operations.byUuids([op.uuid])).single.updatedAtMillis;
 
       await qsos.updateScoreCache({qso.uuid: '{"dupe":false}'});
-      await operations.updateLocalData(op.uuid, {'scoring': {'operationSummary': {'dupe': 0}}});
+      await operations.updateLocalData(op.uuid, {
+        'scoring': {
+          'operationSummary': {'dupe': 0},
+        },
+      });
 
       final afterQso = (await qsos.watchForOperation(op.uuid).first).single;
       final afterOp = (await operations.byUuids([op.uuid])).single;
@@ -881,22 +919,8 @@ void main() {
 
     // Insert lookup batch.
     await lookupRepo.insertLookupBatch([
-      LookupRow(
-        category: 'sota',
-        key: 'G/LD-001',
-        name: 'Scafell Pike',
-        lat: 54.45426,
-        lon: -3.211682,
-        updated: 1,
-      ),
-      LookupRow(
-        category: 'sota',
-        key: 'G/LD-002',
-        name: 'Helvellyn',
-        lat: 54.52688,
-        lon: -3.01725,
-        updated: 2,
-      ),
+      LookupRow(category: 'sota', key: 'G/LD-001', name: 'Scafell Pike', lat: 54.45426, lon: -3.211682, updated: 1),
+      LookupRow(category: 'sota', key: 'G/LD-002', name: 'Helvellyn', lat: 54.52688, lon: -3.01725, updated: 2),
     ]);
 
     // Query single lookup by key.
@@ -946,11 +970,11 @@ void main() {
 
   group('restampSegmentStationCall', () {
     Future<Qso> contact(String operationUuid, String call, int atMillis, {String? ourCall}) => qsos.add(operationUuid, {
-          'their': {'call': call},
-          if (ourCall != null) 'our': {'call': ourCall},
-          'band': '20m',
-          'startAtMillis': atMillis,
-        });
+      'their': {'call': call},
+      if (ourCall != null) 'our': {'call': ourCall},
+      'band': '20m',
+      'startAtMillis': atMillis,
+    });
 
     test('an unsegmented log follows the call in full', () async {
       // No segment rows means one implicit segment covering everything, so

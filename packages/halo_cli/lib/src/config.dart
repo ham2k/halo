@@ -100,11 +100,11 @@ class CliConfig {
     Map<String, bool>? extensionOverrides,
     this.environmentSecrets = const {},
     this.environmentSettings = const {},
-  })  : settings = {...defaultSettings, ...?settings},
-        extensionSettings = extensionSettings ?? {},
-        accounts = accounts ?? {},
-        secrets = secrets ?? {},
-        extensionOverrides = extensionOverrides ?? {};
+  }) : settings = {...defaultSettings, ...?settings},
+       extensionSettings = extensionSettings ?? {},
+       accounts = accounts ?? {},
+       secrets = secrets ?? {},
+       extensionOverrides = extensionOverrides ?? {};
 
   /// The default config path: `$XDG_CONFIG_HOME/ham2k/halo-cli.json`, or
   /// `~/.config/ham2k/halo-cli.json`.
@@ -195,9 +195,9 @@ class CliConfig {
   }
 
   Map<String, Object?> accountFor(String kvKey) => {
-        'credentials': accounts[kvKey]?['credentials'] ?? const <String, Object?>{},
-        'session': accounts[kvKey]?['session'] ?? const <String, Object?>{},
-      };
+    'credentials': accounts[kvKey]?['credentials'] ?? const <String, Object?>{},
+    'session': accounts[kvKey]?['session'] ?? const <String, Object?>{},
+  };
 
   /// Writes the file back, 0600. Secrets supplied through the environment are
   /// deliberately NOT written: they belong to the invocation, and persisting
@@ -208,8 +208,7 @@ class CliConfig {
     final json = <String, Object?>{
       'settings': {
         for (final entry in settings.entries)
-          if (defaultSettings[entry.key] != entry.value && !environmentSettings.contains(entry.key))
-            entry.key: entry.value,
+          if (defaultSettings[entry.key] != entry.value && !environmentSettings.contains(entry.key)) entry.key: entry.value,
       },
       if (extensionSettings.isNotEmpty) 'extensionSettings': extensionSettings,
       if (accounts.isNotEmpty) 'accounts': accounts,
@@ -227,28 +226,25 @@ class CliConfig {
     if (!Platform.isWindows) Process.runSync('chmod', ['600', target.path]);
   }
 
-  static Map<String, Object?> _mapOf(Object? value) =>
-      value is Map ? value.cast<String, Object?>() : const <String, Object?>{};
+  static Map<String, Object?> _mapOf(Object? value) => value is Map ? value.cast<String, Object?>() : const <String, Object?>{};
 
   static Map<String, Map<String, Object?>> _nestedMapOf(Object? value) => {
-        for (final entry in _mapOf(value).entries)
-          if (entry.value is Map) entry.key: (entry.value as Map).cast<String, Object?>(),
-      };
+    for (final entry in _mapOf(value).entries)
+      if (entry.value is Map) entry.key: (entry.value as Map).cast<String, Object?>(),
+  };
 
   static Map<String, String> _secretsFromEnv(Map<String, String> env) => {
-        for (final entry in env.entries)
-          if (entry.key.startsWith('HALO_SECRET_') && entry.value.isNotEmpty)
-            entry.key.substring('HALO_SECRET_'.length): entry.value,
-      };
+    for (final entry in env.entries)
+      if (entry.key.startsWith('HALO_SECRET_') && entry.value.isNotEmpty) entry.key.substring('HALO_SECRET_'.length): entry.value,
+  };
 
   /// `HALO_SETTING_developerMode=true` → `{developerMode: true}`. The value is
   /// parsed as JSON when it can be, so booleans, numbers and lists all work;
   /// anything else is taken as the plain string it is.
   static Map<String, Object?> _settingsFromEnv(Map<String, String> env) => {
-        for (final entry in env.entries)
-          if (entry.key.startsWith('HALO_SETTING_'))
-            entry.key.substring('HALO_SETTING_'.length): _jsonOrString(entry.value),
-      };
+    for (final entry in env.entries)
+      if (entry.key.startsWith('HALO_SETTING_')) entry.key.substring('HALO_SETTING_'.length): _jsonOrString(entry.value),
+  };
 
   static Object? _jsonOrString(String value) {
     try {

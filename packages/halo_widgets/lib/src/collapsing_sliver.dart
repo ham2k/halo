@@ -78,18 +78,18 @@ class _CollapsingSliverState extends State<CollapsingSliver> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _controller,
-        // Built once and reused across every frame of the animation: the
-        // subtree holds the forms, and rebuilding it per frame would be both
-        // wasteful and a way to lose their State.
-        child: widget.child,
-        builder: (context, child) => _CollapsedSliver(
-          factor: _factor,
-          // Semantics go with the paint: a shut category is not a place the
-          // screen reader (or the Tab order) should land.
-          child: SliverOpacity(opacity: _factor, sliver: child!),
-        ),
-      );
+    animation: _controller,
+    // Built once and reused across every frame of the animation: the
+    // subtree holds the forms, and rebuilding it per frame would be both
+    // wasteful and a way to lose their State.
+    child: widget.child,
+    builder: (context, child) => _CollapsedSliver(
+      factor: _factor,
+      // Semantics go with the paint: a shut category is not a place the
+      // screen reader (or the Tab order) should land.
+      child: SliverOpacity(opacity: _factor, sliver: child!),
+    ),
+  );
 }
 
 class _CollapsedSliver extends SingleChildRenderObjectWidget {
@@ -101,8 +101,7 @@ class _CollapsedSliver extends SingleChildRenderObjectWidget {
   RenderObject createRenderObject(BuildContext context) => _RenderCollapsedSliver(factor: factor);
 
   @override
-  void updateRenderObject(BuildContext context, _RenderCollapsedSliver renderObject) =>
-      renderObject.factor = factor;
+  void updateRenderObject(BuildContext context, _RenderCollapsedSliver renderObject) => renderObject.factor = factor;
 }
 
 /// Reports [factor] of its child's extent and paints the top of it, clipped.
@@ -142,10 +141,7 @@ class _RenderCollapsedSliver extends RenderSliver with RenderObjectWithChildMixi
     final scrollExtent = childGeometry.scrollExtent * _factor;
     // What a sliver of OUR extent would paint, and never more of the child
     // than the child itself has.
-    final paintExtent = math.min(
-      childGeometry.paintExtent,
-      calculatePaintOffset(constraints, from: 0, to: scrollExtent),
-    );
+    final paintExtent = math.min(childGeometry.paintExtent, calculatePaintOffset(constraints, from: 0, to: scrollExtent));
     geometry = SliverGeometry(
       scrollExtent: scrollExtent,
       paintExtent: paintExtent,
@@ -167,37 +163,26 @@ class _RenderCollapsedSliver extends RenderSliver with RenderObjectWithChildMixi
   void paint(PaintingContext context, Offset offset) {
     final child = this.child;
     if (child == null || !geometry!.visible) return;
-    context.pushClipRect(
-      needsCompositing,
-      offset,
-      Offset.zero & _clipSize,
-      (context, offset) => context.paintChild(child, offset),
-    );
+    context.pushClipRect(needsCompositing, offset, Offset.zero & _clipSize, (context, offset) => context.paintChild(child, offset));
   }
 
   Size get _clipSize => switch (constraints.axis) {
-        Axis.vertical => Size(constraints.crossAxisExtent, geometry!.paintExtent),
-        Axis.horizontal => Size(geometry!.paintExtent, constraints.crossAxisExtent),
-      };
+    Axis.vertical => Size(constraints.crossAxisExtent, geometry!.paintExtent),
+    Axis.horizontal => Size(geometry!.paintExtent, constraints.crossAxisExtent),
+  };
 
   @override
-  bool hitTestChildren(
-    SliverHitTestResult result, {
-    required double mainAxisPosition,
-    required double crossAxisPosition,
-  }) {
+  bool hitTestChildren(SliverHitTestResult result, {required double mainAxisPosition, required double crossAxisPosition}) {
     final child = this.child;
     // Only what is actually on screen answers a tap: half-wiped rows still
     // exist below the clip, and a row nobody can see must not be tappable.
     if (child == null || mainAxisPosition >= geometry!.paintExtent) return false;
-    return child.geometry!.hitTestExtent > 0 &&
-        child.hitTest(result, mainAxisPosition: mainAxisPosition, crossAxisPosition: crossAxisPosition);
+    return child.geometry!.hitTestExtent > 0 && child.hitTest(result, mainAxisPosition: mainAxisPosition, crossAxisPosition: crossAxisPosition);
   }
 
   @override
   double childMainAxisPosition(RenderSliver child) => 0;
 
   @override
-  void applyPaintTransform(RenderObject child, Matrix4 transform) =>
-      (child.parentData! as SliverPhysicalParentData).applyPaintTransform(transform);
+  void applyPaintTransform(RenderObject child, Matrix4 transform) => (child.parentData! as SliverPhysicalParentData).applyPaintTransform(transform);
 }

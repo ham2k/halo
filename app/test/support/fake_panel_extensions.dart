@@ -20,8 +20,7 @@ class FakePanelExtensions implements PanelExtensionSource {
   /// The single placement's config, for the common case of one pane.
   final Map<String, Map<String, dynamic>> configs;
 
-  FakePanelExtensions({Map<String, dynamic>? config, Map<String, Map<String, dynamic>>? configs})
-      : configs = configs ?? {'clock#1': ?config};
+  FakePanelExtensions({Map<String, dynamic>? config, Map<String, Map<String, dynamic>>? configs}) : configs = configs ?? {'clock#1': ?config};
 
   @override
   final ValueNotifier<int> runtimeGeneration = ValueNotifier(0);
@@ -30,17 +29,10 @@ class FakePanelExtensions implements PanelExtensionSource {
   Future<List<Map<String, dynamic>>?> getExtensionPanels() async => const [];
 
   @override
-  Future<Map<String, dynamic>?> renderPanel({
-    required String hookKey,
-    required String panelKey,
-    required Map<String, dynamic> args,
-  }) async => null;
+  Future<Map<String, dynamic>?> renderPanel({required String hookKey, required String panelKey, required Map<String, dynamic> args}) async => null;
 
   @override
-  Future<Map<String, dynamic>> readPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async {
+  Future<Map<String, dynamic>> readPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async {
     final stored = configs[panelKey] ?? const {};
     // Only declared fields come back, exactly as the real read does — a value
     // left behind by an older form must not reappear as config.
@@ -55,10 +47,7 @@ class FakePanelExtensions implements PanelExtensionSource {
   final forgotten = <String>[];
 
   @override
-  Future<void> forgetPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async {
+  Future<void> forgetPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async {
     forgotten.add(panelKey);
     configs.remove(panelKey);
   }

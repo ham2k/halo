@@ -60,11 +60,7 @@ void main() {
   /// The response, laid out around [now] the way Open-Meteo lays one out:
   /// hourly slots on the LOCATION's hour boundaries, running well past the
   /// eight the panel wants.
-  ({String body, DateTime firstHour, DateTime sunset}) forecast(
-    DateTime now, {
-    int? code = 1,
-    double temperature = 88.9,
-  }) {
+  ({String body, DateTime firstHour, DateTime sunset}) forecast(DateTime now, {int? code = 1, double temperature = 88.9}) {
     // The location's hour boundaries, which a non-whole offset puts at :15
     // past each UTC hour.
     final epochSeconds = now.millisecondsSinceEpoch ~/ 1000;
@@ -107,12 +103,7 @@ void main() {
 
   PanelService serviceWith(FakePanelExtensions extensions) {
     final service = PanelService(extensions);
-    service.registerNative(const PanelDefinition(
-      id: weatherPanelId,
-      title: 'Weather',
-      source: PanelSource.native,
-      formFields: fields,
-    ));
+    service.registerNative(const PanelDefinition(id: weatherPanelId, title: 'Weather', source: PanelSource.native, formFields: fields));
     return service;
   }
 
@@ -137,31 +128,25 @@ void main() {
 
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());
-    final service = serviceWith(FakePanelExtensions(configs: {
-      weatherPanelId: ?config,
-    }));
+    final service = serviceWith(FakePanelExtensions(configs: {weatherPanelId: ?config}));
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        theme: ThemeData(brightness: brightness),
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
-          child: child!,
-        ),
-        home: Scaffold(
-          body: DockPaneVisibility(
-            visible: dockVisible,
-            child: WeatherPanel(
-              panelId: weatherPanelId,
-              panels: service,
-              settings: settings,
-              operationGrid: operationGrid,
-              fetch: fetch,
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: ThemeData(brightness: brightness),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: DockPaneVisibility(
+              visible: dockVisible,
+              child: WeatherPanel(panelId: weatherPanelId, panels: service, settings: settings, operationGrid: operationGrid, fetch: fetch),
             ),
           ),
         ),
       ),
-    ));
+    );
     // Config load, then the fetch it triggers. Deliberately NOT
     // pumpAndSettle: the loading state is a CircularProgressIndicator, which
     // never settles, so a settle here would time out and be reported against
@@ -236,8 +221,7 @@ void main() {
       body['hourly']['temperature_2m'][27] = null;
       body['hourly']['precipitation_probability'][27] = null;
       for (final brightness in Brightness.values) {
-        await pump(tester, fetch: answering(jsonEncode(body)),
-          size: const Size(440, 400), textScale: 2, brightness: brightness);
+        await pump(tester, fetch: answering(jsonEncode(body)), size: const Size(440, 400), textScale: 2, brightness: brightness);
         final box = tester.getRect(find.byKey(const ValueKey('forecast-hour')));
         await tester.tapAt(Offset(box.left + box.width * 3.5 / 8, box.center.dy));
         await tester.pump();
@@ -268,12 +252,7 @@ void main() {
         await pump(tester, fetch: answering(forecast(nowUtc()).body), size: Size(width, 340));
 
         final tops = <double>[];
-        for (final icon in [
-          MdiIcons.weatherWindy,
-          MdiIcons.waterPercent,
-          MdiIcons.weatherSunsetUp,
-          MdiIcons.weatherSunsetDown,
-        ]) {
+        for (final icon in [MdiIcons.weatherWindy, MdiIcons.waterPercent, MdiIcons.weatherSunsetUp, MdiIcons.weatherSunsetDown]) {
           final found = find.byIcon(icon);
           if (found.evaluate().isNotEmpty) tops.add(tester.getTopLeft(found.first).dy);
         }
@@ -316,11 +295,7 @@ void main() {
       // Falling back to the operation's grid here would show a perfectly good
       // forecast for somewhere the operator did not ask about, with their
       // typo silently ignored.
-      await pump(
-        tester,
-        config: {weatherLocationKey: 'somewhere nice'},
-        fetch: answering(forecast(nowUtc()).body),
-      );
+      await pump(tester, config: {weatherLocationKey: 'somewhere nice'}, fetch: answering(forecast(nowUtc()).body));
       expect(find.textContaining('somewhere nice'), findsOneWidget);
       expect(requested, isEmpty);
     });
@@ -330,21 +305,12 @@ void main() {
       // runs first and knows the operation's grid. Acting there sends exactly
       // one request for the wrong place, per mount, and draws its answer
       // until the right one lands — with nothing on screen looking broken.
-      await pump(
-        tester,
-        config: {weatherLocationKey: '51.48,-0.10'},
-        operationGrid: 'FN42',
-        fetch: answering(forecast(nowUtc()).body),
-      );
+      await pump(tester, config: {weatherLocationKey: '51.48,-0.10'}, operationGrid: 'FN42', fetch: answering(forecast(nowUtc()).body));
       expect(requested.map((u) => u.queryParameters['latitude']), everyElement('51.4800'));
     });
 
     testWidgets('an override wins over the operation grid', (tester) async {
-      await pump(
-        tester,
-        config: {weatherLocationKey: '51.48,-0.10'},
-        fetch: answering(forecast(nowUtc()).body),
-      );
+      await pump(tester, config: {weatherLocationKey: '51.48,-0.10'}, fetch: answering(forecast(nowUtc()).body));
       expect(requested.single.queryParameters['latitude'], '51.4800');
     });
 
@@ -361,12 +327,7 @@ void main() {
     });
 
     testWidgets('the checkbox off with a blank override asks for a location, and fetches nothing', (tester) async {
-      await pump(
-        tester,
-        config: {weatherUseOperationLocationKey: false},
-        operationGrid: 'FN42',
-        fetch: answering(forecast(nowUtc()).body),
-      );
+      await pump(tester, config: {weatherUseOperationLocationKey: false}, operationGrid: 'FN42', fetch: answering(forecast(nowUtc()).body));
       expect(find.text(t.weatherNoLocation), findsOneWidget);
       expect(requested, isEmpty);
     });
@@ -436,19 +397,15 @@ void main() {
       final settings = SettingsService(await SharedPreferences.getInstance());
       final service = serviceWith(FakePanelExtensions(configs: const {}));
 
-      Future<void> pumpWithGrid(String grid) => tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: WeatherPanel(
-              panelId: weatherPanelId,
-              panels: service,
-              settings: settings,
-              operationGrid: grid,
-              fetch: gated,
+      Future<void> pumpWithGrid(String grid) => tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: WeatherPanel(panelId: weatherPanelId, panels: service, settings: settings, operationGrid: grid, fetch: gated),
             ),
           ),
         ),
-      ));
+      );
 
       await pumpWithGrid('FN42');
       for (var i = 0; i < 4; i++) {

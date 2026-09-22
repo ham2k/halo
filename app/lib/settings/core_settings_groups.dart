@@ -41,11 +41,7 @@ String _decimalSeparatorName() {
 
 // The theme field's own icon switches with its current value so the row
 // reflects what's actually selected, not just that it's a theme setting.
-const _themeIcons = {
-  'system': 'theme-light-dark',
-  'light': 'white-balance-sunny',
-  'dark': 'weather-night',
-};
+const _themeIcons = {'system': 'theme-light-dark', 'light': 'white-balance-sunny', 'dark': 'weather-night'};
 
 Map<String, dynamic> _select({
   required String key,
@@ -168,10 +164,7 @@ class GeneralSettingsGroup extends SettingsGroup {
         // Just the current language's own name (its option label).
         description: settings.locale == 'es' ? 'Español' : 'English',
         value: settings.locale,
-        options: const [
-          (label: 'English', value: 'en'),
-          (label: 'Español', value: 'es'),
-        ],
+        options: const [(label: 'English', value: 'en'), (label: 'Español', value: 'es')],
         common: true,
       ),
       _fontScaleSelect(),
@@ -184,10 +177,7 @@ class GeneralSettingsGroup extends SettingsGroup {
         // Just the current unit's name (its option label).
         description: t['settings.distanceUnitsOpts.${settings.distanceUnits.name}'] as String,
         value: settings.distanceUnits.name,
-        options: [
-          for (final unit in DistanceUnits.values)
-            (label: t['settings.distanceUnitsOpts.${unit.name}'] as String, value: unit.name),
-        ],
+        options: [for (final unit in DistanceUnits.values) (label: t['settings.distanceUnitsOpts.${unit.name}'] as String, value: unit.name)],
         common: true,
       ),
       _select(
@@ -204,10 +194,7 @@ class GeneralSettingsGroup extends SettingsGroup {
           NumberFormatStyle.comma => t.settings.numberFormatDescription.comma,
         },
         value: settings.numberFormatStyle.name,
-        options: [
-          for (final style in NumberFormatStyle.values)
-            (label: t['settings.numberFormatOpts.${style.name}'] as String, value: style.name),
-        ],
+        options: [for (final style in NumberFormatStyle.values) (label: t['settings.numberFormatOpts.${style.name}'] as String, value: style.name)],
       ),
       _select(
         key: 'gridPrecision',
@@ -218,19 +205,14 @@ class GeneralSettingsGroup extends SettingsGroup {
         // which carries an example grid the row has no room for.
         description: t['settings.gridPrecisionDescription.${settings.gridPrecision.name}'] as String,
         value: settings.gridPrecision.name,
-        options: [
-          for (final precision in GridPrecision.values)
-            (label: t['settings.gridPrecisionOpts.${precision.name}'] as String, value: precision.name),
-        ],
+        options: [for (final precision in GridPrecision.values) (label: t['settings.gridPrecisionOpts.${precision.name}'] as String, value: precision.name)],
       ),
       _toggle(
         key: 'keepDeviceAwake',
         aliases: const ['awake', 'sleep', 'screen'],
         label: t.settings.keepDeviceAwake.title,
         icon: settings.keepDeviceAwake ? 'lightbulb-on' : 'lightbulb-outline',
-        description: settings.keepDeviceAwake
-            ? t.settings.keepDeviceAwake.descriptionOn
-            : t.settings.keepDeviceAwake.descriptionOff,
+        description: settings.keepDeviceAwake ? t.settings.keepDeviceAwake.descriptionOn : t.settings.keepDeviceAwake.descriptionOff,
         value: settings.keepDeviceAwake,
       ),
     ];
@@ -250,8 +232,7 @@ class GeneralSettingsGroup extends SettingsGroup {
   Map<String, dynamic> _fontScaleSelect() {
     final current = settings.fontScale;
     final anchor = current.nearestSelectable;
-    String labelFor(FontScale scale) =>
-        t['settings.fontScaleOpts.${scale == anchor ? current.name : scale.name}'] as String;
+    String labelFor(FontScale scale) => t['settings.fontScaleOpts.${scale == anchor ? current.name : scale.name}'] as String;
 
     return _select(
       key: 'fontScale',
@@ -261,9 +242,7 @@ class GeneralSettingsGroup extends SettingsGroup {
       // Just the current scale's name (its option label).
       description: t['settings.fontScaleOpts.${current.name}'] as String,
       value: anchor.name,
-      options: [
-        for (final scale in FontScale.selectableValues) (label: labelFor(scale), value: scale.name),
-      ],
+      options: [for (final scale in FontScale.selectableValues) (label: labelFor(scale), value: scale.name)],
       common: true,
     );
   }
@@ -377,19 +356,14 @@ class LoggingSettingsGroup extends SettingsGroup {
         // now, the dialog says what each choice would do.
         description: t['settings.logging.countryFlagsDescription.${settings.dxFlags.name}'] as String,
         value: settings.dxFlags.name,
-        options: [
-          for (final option in DxFlags.values)
-            (label: t['settings.logging.countryFlags.${option.name}'] as String, value: option.name),
-        ],
+        options: [for (final option in DxFlags.values) (label: t['settings.logging.countryFlags.${option.name}'] as String, value: option.name)],
         target: 'logging-extended',
       ),
       _toggle(
         key: 'suggestDefaultOperator',
         label: s.suggestDefaultOperator.title,
         icon: 'account-arrow-right',
-        description: settings.suggestDefaultOperator
-            ? s.suggestDefaultOperator.descriptionOn
-            : s.suggestDefaultOperator.descriptionOff,
+        description: settings.suggestDefaultOperator ? s.suggestDefaultOperator.descriptionOn : s.suggestDefaultOperator.descriptionOff,
         value: settings.suggestDefaultOperator,
         target: 'logging-extended',
       ),
@@ -526,34 +500,10 @@ class LoggingSettingsGroup extends SettingsGroup {
         'common': true,
         'target': 'logging-extended',
       },
-      _toggle(
-        key: 'showRSTFields',
-        label: t.operation.menu.showRstFields,
-        icon: 'signal',
-        value: settings.showRSTFields,
-        target: 'logging',
-      ),
-      _toggle(
-        key: 'showStateField',
-        label: t.operation.menu.showStateField,
-        icon: 'map',
-        value: settings.showStateField,
-        target: 'logging',
-      ),
-      _toggle(
-        key: 'showGridField',
-        label: t.operation.menu.showGridField,
-        icon: 'grid',
-        value: settings.showGridField,
-        target: 'logging',
-      ),
-      _toggle(
-        key: 'showQsoNumbers',
-        label: t.operation.menu.showQsoNumbers,
-        icon: 'counter',
-        target: 'logging',
-        value: settings.showQsoNumbers,
-      ),
+      _toggle(key: 'showRSTFields', label: t.operation.menu.showRstFields, icon: 'signal', value: settings.showRSTFields, target: 'logging'),
+      _toggle(key: 'showStateField', label: t.operation.menu.showStateField, icon: 'map', value: settings.showStateField, target: 'logging'),
+      _toggle(key: 'showGridField', label: t.operation.menu.showGridField, icon: 'grid', value: settings.showGridField, target: 'logging'),
+      _toggle(key: 'showQsoNumbers', label: t.operation.menu.showQsoNumbers, icon: 'counter', target: 'logging', value: settings.showQsoNumbers),
       _toggle(
         key: 'showDeletedQSOs',
         aliases: const ['deletedQSOs'],
@@ -627,7 +577,7 @@ class RadioSettingsGroup extends SettingsGroup {
     // Station Configuration experiment — an empty group renders nothing at
     // all (see settings_view.dart's _SettingsGroupForm), rather than a
     // section header over nothing.
-    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return [];
+    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) return [];
     final s = t.settings.radio;
     return [
       _toggle(
@@ -717,7 +667,7 @@ class RadioSettingsGroup extends SettingsGroup {
       // and Settings lists them like any other setting.
       // Behind the keyer experiment as well as CAT — the surfaces that key
       // them are.
-      if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) ...[
+      if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) ...[
         {'type': 'markdown', 'text': s.cwMessages.description, 'target': 'cw-messages'},
         // Message 1 only, which is what the circled 1 in the label says —
         // see SettingsService.cwRepeatDelay on why the others never repeat.
@@ -760,10 +710,7 @@ class RadioSettingsGroup extends SettingsGroup {
           value: '${settings.voiceRepeatDelay.inSeconds}',
           options: [
             for (final option in SettingsService.cwRepeatDelayOptions)
-              (
-                label: option == '0' ? s.voiceMessages.repeatOff : s.voiceMessages.repeatAfter(n: option),
-                value: option
-              ),
+              (label: option == '0' ? s.voiceMessages.repeatOff : s.voiceMessages.repeatAfter(n: option), value: option),
           ],
           target: 'voice-messages',
         ),
@@ -776,13 +723,7 @@ class RadioSettingsGroup extends SettingsGroup {
             target: 'voice-messages',
           ),
       ],
-      {
-        'type': 'link',
-        'key': 'moreStationSettings',
-        'label': s.moreSettings,
-        'icon': 'cat',
-        'panel': 'station',
-      },
+      {'type': 'link', 'key': 'moreStationSettings', 'label': s.moreSettings, 'icon': 'cat', 'panel': 'station'},
     ];
   }
 
@@ -850,8 +791,7 @@ class RadioSettingsGroup extends SettingsGroup {
 
 /// A tuning value as its option string — `2.0` is offered as `'2'`, `0.25`
 /// as `'0.25'`, so a stored value matches the dropdown's own items.
-String _numText(double value) =>
-    value == value.roundToDouble() ? value.toInt().toString() : '$value';
+String _numText(double value) => value == value.roundToDouble() ? value.toInt().toString() : '$value';
 
 /// The Map tab's basemap picker (see map_panel.dart / map_gl_script.dart's
 /// `mapLibreStyleUrl`) — the OSM backend has no equivalent choice to offer,
@@ -885,10 +825,7 @@ class MapSettingsGroup extends SettingsGroup {
         label: s.style.title,
         icon: 'map-outline',
         value: settings.mapStyle.name,
-        options: [
-          for (final style in MapStyle.values)
-            (label: t['settings.map.styleOpts.${style.name}'] as String, value: style.name),
-        ],
+        options: [for (final style in MapStyle.values) (label: t['settings.map.styleOpts.${style.name}'] as String, value: style.name)],
         target: 'map',
       ),
     ];
@@ -944,20 +881,8 @@ class PrivacySettingsGroup extends SettingsGroup {
         description: settings.consentOpData ? s.shareOpData.descriptionOn : s.shareOpData.descriptionOff,
         value: settings.consentOpData,
       ),
-      {
-        'type': 'link',
-        'key': 'privacyPolicy',
-        'label': s.privacyPolicy,
-        'icon': 'shield-account',
-        'url': privacyPolicyUrl,
-      },
-      {
-        'type': 'link',
-        'key': 'termsOfService',
-        'label': s.termsOfService,
-        'icon': 'file-document',
-        'url': termsOfServiceUrl,
-      },
+      {'type': 'link', 'key': 'privacyPolicy', 'label': s.privacyPolicy, 'icon': 'shield-account', 'url': privacyPolicyUrl},
+      {'type': 'link', 'key': 'termsOfService', 'label': s.termsOfService, 'icon': 'file-document', 'url': termsOfServiceUrl},
     ];
   }
 
@@ -1015,18 +940,10 @@ class SyncSettingsGroup extends SettingsGroup {
         key: 'enabled',
         label: t.settings.sync.enable,
         icon: 'cloud-sync',
-        description: travelLabel != null
-            ? 'Time travelling ($travelLabel) — only test data is written'
-            : (account.isEmpty ? null : account),
+        description: travelLabel != null ? 'Time travelling ($travelLabel) — only test data is written' : (account.isEmpty ? null : account),
         value: settings.syncEnabled,
       ),
-      {
-        'type': 'link',
-        'key': 'moreSyncSettings',
-        'label': t.settings.sync.moreSettings,
-        'icon': 'cloud-cog',
-        'panel': 'sync',
-      },
+      {'type': 'link', 'key': 'moreSyncSettings', 'label': t.settings.sync.moreSettings, 'icon': 'cloud-cog', 'panel': 'sync'},
     ];
   }
 

@@ -71,25 +71,9 @@ typedef RadioControlConfig = ({
 /// edit applies changes to the QSO, never to the VFO — only a new (composing)
 /// QSO's Radio control mirrors and edits the VFO.
 class RadioControlModel extends ChangeNotifier with PanelModel {
-  RadioControlModel({
-    required this.config,
-    required this.draft,
-    required this.onRescore,
-  }) {
-    bandFocus = _dropdownCommitFocusNode(
-      commit: commitBandText,
-      clearFilter: () => _bandFilter = '',
-      menu: bandMenu,
-      frame: bandFrame,
-      step: stepBand,
-    );
-    modeFocus = _dropdownCommitFocusNode(
-      commit: commitModeText,
-      clearFilter: () => _modeFilter = '',
-      menu: modeMenu,
-      frame: modeFrame,
-      step: stepMode,
-    );
+  RadioControlModel({required this.config, required this.draft, required this.onRescore}) {
+    bandFocus = _dropdownCommitFocusNode(commit: commitBandText, clearFilter: () => _bandFilter = '', menu: bandMenu, frame: bandFrame, step: stepBand);
+    modeFocus = _dropdownCommitFocusNode(commit: commitModeText, clearFilter: () => _modeFilter = '', menu: modeMenu, frame: modeFrame, step: stepMode);
   }
 
   /// The panel's configuration as it stands right now.
@@ -210,8 +194,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   bool get outOfBand {
     final freq = this.freq;
     final cfg = config();
-    return freq != null &&
-        isOutOfBandFrequency(freq, ituRegion: cfg.radio.ourItuRegion, countryCode: cfg.radio.ourCountryCode);
+    return freq != null && isOutOfBandFrequency(freq, ituRegion: cfg.radio.ourItuRegion, countryCode: cfg.radio.ourCountryCode);
   }
 
   /// `mode` as the Mode dropdown and the Radio chip show it, per
@@ -230,9 +213,8 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   ///
   /// Guarded on the CONVENTION, not on the fields: nothing stated is the only
   /// case with no answer, and [resolveMode] must answer regardless.
-  String resolveMode(String requested) => expectedSideband(freqKHz: freq, band: band) == null
-      ? requested
-      : (resolveSideband(requested, freq, band: band) ?? requested);
+  String resolveMode(String requested) =>
+      expectedSideband(freqKHz: freq, band: band) == null ? requested : (resolveSideband(requested, freq, band: band) ?? requested);
 
   /// Nothing has ever been stored in the VFO: no band *and* no frequency, or
   /// no mode. This is the fresh-install state — `RadioService` persists the
@@ -274,10 +256,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     return [
       (text: head, color: null),
       (text: ' • ', color: null),
-      (
-        text: outOfBand ? outOfBandMode : (displayMode(mode, freqKHz: freq, band: band) ?? mode),
-        color: unexpected ? errorColor : null,
-      ),
+      (text: outOfBand ? outOfBandMode : (displayMode(mode, freqKHz: freq, band: band) ?? mode), color: unexpected ? errorColor : null),
     ];
   }
 
@@ -312,12 +291,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   /// radio to report on. [selected] is the pill's own; see [radioStatusColor].
   Color? statusColor(ThemeData theme, {required bool selected}) {
     final config = this.config();
-    return radioStatusColor(
-      theme,
-      hasConfiguredRadio: config.radio.hasConfiguredRadio,
-      connected: config.radio.radioConnected,
-      selected: selected,
-    );
+    return radioStatusColor(theme, hasConfiguredRadio: config.radio.hasConfiguredRadio, connected: config.radio.radioConnected, selected: selected);
   }
 
   @override
@@ -646,8 +620,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     // match before landing on a final value that doesn't (e.g. "1800", a
     // real match, mid-typing "18001", a real gap between 160m and 17m).
     if (freq != null) {
-      final guess = modeForFrequency(freq, ituRegion: cfg.radio.ourItuRegion, countryCode: cfg.radio.ourCountryCode) ??
-          _modeBeforeFreqEdit;
+      final guess = modeForFrequency(freq, ituRegion: cfg.radio.ourItuRegion, countryCode: cfg.radio.ourCountryCode) ?? _modeBeforeFreqEdit;
       // Compared RESOLVED: a generic `SSB` guess against a generic `SSB` mode
       // is not a no-op once there is a frequency to resolve against, so the
       // raw comparison blocked it — and dropping the comparison altogether
@@ -713,8 +686,8 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     final options = enabled == null
         ? [for (final b in bands) b.name]
         : enabled.isEmpty
-            ? popularBands
-            : enabled;
+        ? popularBands
+        : enabled;
     final band = this.band;
     return [...options, if (band != null && !options.contains(band)) band];
   }
@@ -724,8 +697,8 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     final options = enabled == null
         ? modes
         : enabled.isEmpty
-            ? mainModes
-            : enabled;
+        ? mainModes
+        : enabled;
     return [...options, if (!options.contains(displayedMode)) displayedMode];
   }
 
@@ -739,7 +712,10 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     final typed = filter.trim();
     if (typed.isEmpty) return options;
     final q = typed.toLowerCase();
-    final matches = [for (final o in options) if (o.toLowerCase().contains(q)) o];
+    final matches = [
+      for (final o in options)
+        if (o.toLowerCase().contains(q)) o,
+    ];
     return matches.isEmpty ? options : matches;
   }
 
@@ -772,14 +748,12 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   /// The Band menu's entries under the current filter — the same list
   /// instance as last time while nothing changed (see above).
   List<DropdownMenuEntry<String>> get bandMenuEntries {
-    _bandMenuEntries = _memoEntries(
-        _bandMenuKey, _bandMenuEntries, _filteredOptions(bandOptions(), _bandFilter), (k) => _bandMenuKey = k);
+    _bandMenuEntries = _memoEntries(_bandMenuKey, _bandMenuEntries, _filteredOptions(bandOptions(), _bandFilter), (k) => _bandMenuKey = k);
     return _bandMenuEntries;
   }
 
   List<DropdownMenuEntry<String>> get modeMenuEntries {
-    _modeMenuEntries = _memoEntries(
-        _modeMenuKey, _modeMenuEntries, _filteredOptions(modeOptions(), _modeFilter), (k) => _modeMenuKey = k);
+    _modeMenuEntries = _memoEntries(_modeMenuKey, _modeMenuEntries, _filteredOptions(modeOptions(), _modeFilter), (k) => _modeMenuKey = k);
     return _modeMenuEntries;
   }
 
@@ -787,12 +761,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   /// rebuilds the entries and updates [cacheKey] via [setKey]. `\x00`
   /// joins the values — a separator that can't appear in a band/mode name,
   /// so distinct value lists never collide on the same key.
-  List<DropdownMenuEntry<String>> _memoEntries(
-    String? cacheKey,
-    List<DropdownMenuEntry<String>> cache,
-    List<String> values,
-    void Function(String key) setKey,
-  ) {
+  List<DropdownMenuEntry<String>> _memoEntries(String? cacheKey, List<DropdownMenuEntry<String>> cache, List<String> values, void Function(String key) setKey) {
     final key = values.join('\x00');
     if (key == cacheKey) return cache;
     setKey(key);
@@ -977,8 +946,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     // at the rig while the panel holds the new one, until the next wipe
     // reseeds the panel from the rig.
     final leavingBand = cfg.editingQso == null ? (cfg.radio.radioService?.vfoA.band ?? band) : band;
-    final resolved =
-        (value != leavingBand && isSidebandMode(mode)) ? (resolveSideband('SSB', null, band: value) ?? mode) : mode;
+    final resolved = (value != leavingBand && isSidebandMode(mode)) ? (resolveSideband('SSB', null, band: value) ?? mode) : mode;
     mode = resolved;
     manualBand = value;
     freqController.clear();
@@ -1056,12 +1024,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
 /// mode: tertiary is a light-ish amber, tertiaryLight a near-black brown)
 /// — so which color pair reads well flips with `selected`, not just with
 /// the theme.
-Color? radioStatusColor(
-  ThemeData theme, {
-  required bool hasConfiguredRadio,
-  required bool connected,
-  required bool selected,
-}) {
+Color? radioStatusColor(ThemeData theme, {required bool hasConfiguredRadio, required bool connected, required bool selected}) {
   if (!hasConfiguredRadio) return null;
   final dark = theme.brightness == Brightness.dark;
   if (dark != selected) {
@@ -1114,7 +1077,6 @@ class RadioControlFields extends StatelessWidget {
   /// have to be built against it rather than against `Theme.of(context)`.
   final ThemeData theme;
 
-
   /// The panel's own formatters for the frequency field — the Space-to-advance
   /// formatter is the panel's, since Space's meaning is the panel's contract.
   final List<TextInputFormatter> freqInputFormatters;
@@ -1158,10 +1120,7 @@ class RadioControlFields extends StatelessWidget {
       filled: true,
       fillColor: theme.colorScheme.surface,
       floatingLabelBehavior: FloatingLabelBehavior.always,
-      floatingLabelStyle: TextStyle(
-        fontSize: 14,
-        color: theme.colorScheme.onTertiaryContainer,
-      ),
+      floatingLabelStyle: TextStyle(fontSize: 14, color: theme.colorScheme.onTertiaryContainer),
       contentPadding: EdgeInsets.fromLTRB(
         Space.xs,
         dropdownMetrics.fieldPaddingTop * dropdownTextScale,
@@ -1263,11 +1222,7 @@ class RadioControlFields extends StatelessWidget {
             focusNode: model.freqFocus,
             selectAllOnFocus: false,
             style: textStyle,
-            decoration: poloFieldDecoration(
-              context,
-              t.loggingControls.frequency,
-              labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
-            ),
+            decoration: poloFieldDecoration(context, t.loggingControls.frequency, labelColor: Theme.of(context).colorScheme.onTertiaryContainer),
             keyboardType: freqKeyboardType,
             // No autocorrect/suggestions/smart punctuation — see Sent.
             autocorrect: false,
@@ -1365,10 +1320,7 @@ class RadioControlFields extends StatelessWidget {
                           radioName,
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: theme.colorScheme.onTertiary.withValues(alpha: editing ? 0.38 : 1),
-                          ),
+                          style: TextStyle(fontSize: 11, color: theme.colorScheme.onTertiary.withValues(alpha: editing ? 0.38 : 1)),
                         ),
                       ),
                     ),
@@ -1392,38 +1344,33 @@ SecondaryControlSpec radioControlSpec(
   required TextInputType freqKeyboardType,
   required VoidCallback onFreqSubmitted,
   required VoidCallback onPicked,
-}) =>
-    SecondaryControlSpec(
-      key: 'radio',
-      icon: model.chipIcon,
-      iconColor: model.statusColor(theme, selected: selected),
-      // `band` is null both when nothing is tuned at all and when the
-      // frequency in the field falls outside every ham band; `outOfBand`
-      // catches the case a band name can't — a frequency inside a ham band
-      // that the operator's own region or country doesn't allocate to
-      // amateurs (e.g. 7250 kHz in ITU Region 1).
-      alert: model.band == null || model.outOfBand,
-      summary: model.summary,
-      summaryParts: model.summaryParts(errorColor: theme.colorScheme.error),
-      expandedBuilder: (context) => RadioControlFields(
-        model: model,
-        theme: theme,
-        freqInputFormatters: freqInputFormatters,
-        freqKeyboardType: freqKeyboardType,
-        onFreqSubmitted: onFreqSubmitted,
-        onPicked: onPicked,
-      ),
-    );
+}) => SecondaryControlSpec(
+  key: 'radio',
+  icon: model.chipIcon,
+  iconColor: model.statusColor(theme, selected: selected),
+  // `band` is null both when nothing is tuned at all and when the
+  // frequency in the field falls outside every ham band; `outOfBand`
+  // catches the case a band name can't — a frequency inside a ham band
+  // that the operator's own region or country doesn't allocate to
+  // amateurs (e.g. 7250 kHz in ITU Region 1).
+  alert: model.band == null || model.outOfBand,
+  summary: model.summary,
+  summaryParts: model.summaryParts(errorColor: theme.colorScheme.error),
+  expandedBuilder: (context) => RadioControlFields(
+    model: model,
+    theme: theme,
+    freqInputFormatters: freqInputFormatters,
+    freqKeyboardType: freqKeyboardType,
+    onFreqSubmitted: onFreqSubmitted,
+    onPicked: onPicked,
+  ),
+);
 
 /// The Power control's expanded field: watts, four digits wide, read from
 /// [model], which seeds it from the VFO and pushes it back on submit or
 /// blur.
 class PowerControlFields extends StatelessWidget {
-  const PowerControlFields({
-    super.key,
-    required this.model,
-    required this.keyboardType,
-  });
+  const PowerControlFields({super.key, required this.model, required this.keyboardType});
 
   final RadioControlModel model;
   final TextInputType keyboardType;
@@ -1467,10 +1414,9 @@ class PowerControlFields extends StatelessWidget {
 const powerChipIcon = MdiIcons.flash;
 
 /// The Power chip and its expanded field, read from [model].
-SecondaryControlSpec powerControlSpec(RadioControlModel model, {required TextInputType keyboardType}) =>
-    SecondaryControlSpec(
-      key: 'power',
-      icon: powerChipIcon,
-      summary: model.powerSummary,
-      expandedBuilder: (context) => PowerControlFields(model: model, keyboardType: keyboardType),
-    );
+SecondaryControlSpec powerControlSpec(RadioControlModel model, {required TextInputType keyboardType}) => SecondaryControlSpec(
+  key: 'power',
+  icon: powerChipIcon,
+  summary: model.powerSummary,
+  expandedBuilder: (context) => PowerControlFields(model: model, keyboardType: keyboardType),
+);

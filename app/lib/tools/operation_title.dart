@@ -37,21 +37,10 @@ String buildGeneratedTitle(Translations t, OperationTitleFragments fragments) {
 /// Composed like the title so the two read alike: an operator who reads
 /// "for NJQP: MORR at US-1234" in the header finds the same words on the row
 /// that opened the stretch.
-String segmentDescriptionFor(
-  Translations t,
-  Iterable<OperationTitleSuggestion> suggestions,
-  String? grid, {
-  required String kind,
-}) {
+String segmentDescriptionFor(Translations t, Iterable<OperationTitleSuggestion> suggestions, String? grid, {required String kind}) {
   final merged = mergeOperationTitleSuggestions(suggestions);
-  final places = [
-    if (merged.atText.isNotEmpty) merged.atText,
-    if (grid != null && grid.isNotEmpty) grid,
-  ].join(', ');
-  final sentence = buildGeneratedTitle(
-    t,
-    OperationTitleFragments(title: merged.title, forText: merged.forText, atText: places),
-  );
+  final places = [if (merged.atText.isNotEmpty) merged.atText, if (grid != null && grid.isNotEmpty) grid].join(', ');
+  final sentence = buildGeneratedTitle(t, OperationTitleFragments(title: merged.title, forText: merged.forText, atText: places));
   if (sentence.isEmpty) return '';
   if (kind == 'break') return t.operation.segmentNow(description: sentence);
   return sentence[0].toUpperCase() + sentence.substring(1);
@@ -113,8 +102,7 @@ String headerCallsignFor(Operation operation) {
   final parts = [
     // A club station logged by its own licensee names nobody new — app-polo
     // draws the same line (`operationTemplates.js`).
-    if (operatorCall.isNotEmpty && operatorCall.toUpperCase() != stationCall.trim().toUpperCase())
-      'op $operatorCall',
+    if (operatorCall.isNotEmpty && operatorCall.toUpperCase() != stationCall.trim().toUpperCase()) 'op $operatorCall',
     // The suffix goes on the STATION call over the air (see
     // `spotCallForSelfSpot`); here it rides with the operator, because what
     // it names is which operator this device belongs to.

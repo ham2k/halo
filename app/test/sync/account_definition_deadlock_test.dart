@@ -57,13 +57,15 @@ void main() {
     expect(
       booted.extensions.accountSynchronizable,
       isNotEmpty,
-      reason: 'the boot-time account refresh resolved no flags at all, so every '
+      reason:
+          'the boot-time account refresh resolved no flags at all, so every '
           'account falls back to device-local for the whole session',
     );
     expect(
       booted.extensions.accountSynchronizable['qrz'],
       isTrue,
-      reason: "QRZ declares synchronizable: true so a QRZ login follows the user "
+      reason:
+          "QRZ declares synchronizable: true so a QRZ login follows the user "
           'across their Apple devices; losing that flag breaks iCloud Keychain '
           'sync silently, with no error and no failed operation',
     );
@@ -74,7 +76,8 @@ void main() {
     expect(
       booted.logs.where((l) => l.contains('getAccounts failed')),
       isEmpty,
-      reason: 'boot logged a getAccounts failure:\n'
+      reason:
+          'boot logged a getAccounts failure:\n'
           '${booted.logs.where((l) => l.contains('getAccounts')).join('\n')}',
     );
   });
@@ -90,7 +93,8 @@ void main() {
     expect(
       booted.elapsed,
       lessThan(const Duration(milliseconds: 1500)),
-      reason: 'start() took ${booted.elapsed.inMilliseconds}ms, which is the '
+      reason:
+          'start() took ${booted.elapsed.inMilliseconds}ms, which is the '
           'shape of waiting out a hook timeout rather than doing work',
     );
   });
@@ -110,10 +114,8 @@ void main() {
     // _accountKeychainOptions, not by this test. Said plainly because a test
     // named for a guarantee it doesn't provide is worse than no test.
     const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (call) async => null);
-    addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, null));
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async => null);
+    addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
 
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
@@ -136,7 +138,8 @@ void main() {
     expect(
       credentialsResolved,
       isFalse,
-      reason: 'a direct credential read resolved before the boot-time flags did, '
+      reason:
+          'a direct credential read resolved before the boot-time flags did, '
           'so it used the device-local default instead of the account\'s '
           'declared flag — the race the gate exists to prevent',
     );

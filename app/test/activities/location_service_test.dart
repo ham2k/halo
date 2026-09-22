@@ -50,17 +50,17 @@ void main() {
 
   group('a paired peer\'s fix as the fallback source (HALO-334)', () {
     Position peerFix({double lat = 40.7, double lon = -74.0}) => Position(
-          latitude: lat,
-          longitude: lon,
-          timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
-          accuracy: 5,
-          altitude: 0,
-          altitudeAccuracy: 0,
-          heading: 0,
-          headingAccuracy: 0,
-          speed: 0,
-          speedAccuracy: 0,
-        );
+      latitude: lat,
+      longitude: lon,
+      timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+      accuracy: 5,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: 0,
+      speedAccuracy: 0,
+    );
 
     test('held but not served while nothing has asked the local hardware', () {
       // `unknown` means the local receiver has not even been tried. Serving
@@ -72,8 +72,7 @@ void main() {
       expect(service.status, LocationStatus.unknown);
       expect(service.position, isNull);
       expect(service.positionIsFromPeer, isFalse);
-      expect(service.peerPositionProviderId, 'device-a',
-          reason: 'held latent — it serves the instant local hardware fails');
+      expect(service.peerPositionProviderId, 'device-a', reason: 'held latent — it serves the instant local hardware fails');
     });
 
     test('serves position, status and grid once the local receiver cannot deliver', () async {
@@ -89,8 +88,7 @@ void main() {
       expect(service.position?.latitude, 40.7);
       expect(service.positionIsFromPeer, isTrue);
       expect(service.grid, isNotNull);
-      expect(service.peerPositionDeviceName, 'Phone',
-          reason: 'the Location screen must be able to say WHOSE position this is');
+      expect(service.peerPositionDeviceName, 'Phone', reason: 'the Location screen must be able to say WHOSE position this is');
     });
 
     test('a clear names its provider, so it cannot blank a newer peer\'s fix', () async {
@@ -101,8 +99,7 @@ void main() {
 
       // device-a's disconnect notice arrives after device-b superseded it.
       service.setPeerPosition(null, deviceId: 'device-a');
-      expect(service.position?.latitude, 51.5,
-          reason: 'the stale clear must not take the newer provider\'s fix with it');
+      expect(service.position?.latitude, 51.5, reason: 'the stale clear must not take the newer provider\'s fix with it');
 
       service.setPeerPosition(null, deviceId: 'device-b');
       expect(service.position, isNull);

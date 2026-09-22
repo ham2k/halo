@@ -83,16 +83,7 @@ List<int> _frame(int opcode, [int p1 = 0, int p2 = 0, int p3 = 0, int p4 = 0]) =
 /// that menu. An operator on USER-L logs one letter wrong until they set
 /// the mode in the app, which is the same failure any unread menu produces
 /// and better than reporting no mode at all.
-const yaesuBinaryModeCodes = <String, int>{
-  'LSB': 0x00,
-  'USB': 0x01,
-  'CW': 0x02,
-  'CW-R': 0x03,
-  'AM': 0x04,
-  'FM': 0x08,
-  'DATA-USB': 0x0A,
-  'DATA-FM': 0x0C,
-};
+const yaesuBinaryModeCodes = <String, int>{'LSB': 0x00, 'USB': 0x01, 'CW': 0x02, 'CW-R': 0x03, 'AM': 0x04, 'FM': 0x08, 'DATA-USB': 0x0A, 'DATA-FM': 0x0C};
 
 /// Read-only codes: the radio reports them, and no Set Operating Mode
 /// parameter produces them.
@@ -101,9 +92,7 @@ const yaesuBinaryModeCodes = <String, int>{
 /// the reverse — the FT-857 and FT-897 set it with `0x88` and report it as
 /// plain FM (`0x08`), so a round trip through the radio loses the "N" and
 /// nothing here can hold it.
-const yaesuBinaryReadOnlyModeCodes = <String, int>{
-  'WFM': 0x06,
-};
+const yaesuBinaryReadOnlyModeCodes = <String, int>{'WFM': 0x06};
 
 /// The narrow-FM set code the FT-857 and FT-897 add and the FT-817 does
 /// not — see [buildSetModeCommand]'s `narrowFm`.
@@ -132,9 +121,7 @@ List<int> encodeBcdFrequency(int freqHz) {
   // expressed, and truncating the way the radio's own four bytes would is
   // better than sending a longer command it would misread entirely.
   final trimmed = digits.substring(digits.length - 8);
-  return [
-    for (var i = 0; i < 8; i += 2) (int.parse(trimmed[i]) << 4) | int.parse(trimmed[i + 1]),
-  ];
+  return [for (var i = 0; i < 8; i += 2) (int.parse(trimmed[i]) << 4) | int.parse(trimmed[i + 1])];
 }
 
 /// Null for anything that is not valid BCD — a nibble above 9 means these
@@ -155,11 +142,7 @@ int? decodeBcdFrequency(List<int> bytes) {
 /// see [YaesuBinaryCommand.replyOptional].
 YaesuBinaryCommand buildSetFrequencyCommand(int freqHz) {
   final bcd = encodeBcdFrequency(freqHz);
-  return YaesuBinaryCommand(
-    [...bcd, YaesuBinaryOpcode.setFrequency],
-    replyLength: 1,
-    replyOptional: true,
-  );
+  return YaesuBinaryCommand([...bcd, YaesuBinaryOpcode.setFrequency], replyLength: 1, replyOptional: true);
 }
 
 /// Null for a mode the radio has no code for, so the caller sends nothing
@@ -171,30 +154,21 @@ YaesuBinaryCommand? buildSetModeCommand(String? mode, {bool narrowFm = false}) {
   final normalized = mode?.toUpperCase();
   final code = narrowFm && normalized == 'FM-N' ? yaesuBinaryFmNarrowCode : yaesuBinaryCodeForModeName(normalized);
   if (code == null) return null;
-  return YaesuBinaryCommand(
-    _frame(YaesuBinaryOpcode.setMode, code),
-    replyLength: 1,
-    replyOptional: true,
-  );
+  return YaesuBinaryCommand(_frame(YaesuBinaryOpcode.setMode, code), replyLength: 1, replyOptional: true);
 }
 
 /// Asks where the radio is and what mode it is in — one question for both,
 /// unlike the ASCII line's two.
-const YaesuBinaryCommand readFrequencyAndModeCommand =
-    YaesuBinaryCommand([0, 0, 0, 0, YaesuBinaryOpcode.readFrequencyAndMode], replyLength: 5);
+const YaesuBinaryCommand readFrequencyAndModeCommand = YaesuBinaryCommand([0, 0, 0, 0, YaesuBinaryOpcode.readFrequencyAndMode], replyLength: 5);
 
 /// Asks whether the radio is keyed, and how the transmission is going.
-const YaesuBinaryCommand readTransmitStatusCommand =
-    YaesuBinaryCommand([0, 0, 0, 0, YaesuBinaryOpcode.readTransmitStatus], replyLength: 1);
+const YaesuBinaryCommand readTransmitStatusCommand = YaesuBinaryCommand([0, 0, 0, 0, YaesuBinaryOpcode.readTransmitStatus], replyLength: 1);
 
 /// Keys the transmitter over CAT, or unkeys it.
 ///
 /// The radio answers `0x00` when the state changed and `0xF0` when it was
 /// already there; both mean the radio is now in the requested state.
-YaesuBinaryCommand buildPttCommand(bool on) => YaesuBinaryCommand(
-      _frame(on ? YaesuBinaryOpcode.pttOn : YaesuBinaryOpcode.pttOff),
-      replyLength: 1,
-    );
+YaesuBinaryCommand buildPttCommand(bool on) => YaesuBinaryCommand(_frame(on ? YaesuBinaryOpcode.pttOn : YaesuBinaryOpcode.pttOff), replyLength: 1);
 
 /// A five-byte Read Frequency & Mode reply: four BCD bytes then the mode.
 class YaesuBinaryVfoReading {
@@ -208,8 +182,7 @@ class YaesuBinaryVfoReading {
   const YaesuBinaryVfoReading({required this.freqHz, this.mode});
 
   @override
-  bool operator ==(Object other) =>
-      other is YaesuBinaryVfoReading && other.freqHz == freqHz && other.mode == mode;
+  bool operator ==(Object other) => other is YaesuBinaryVfoReading && other.freqHz == freqHz && other.mode == mode;
 
   @override
   int get hashCode => Object.hash(freqHz, mode);
@@ -251,12 +224,7 @@ class YaesuBinaryTransmitStatus {
   /// one (drivers/info/README.md).
   final int powerOut;
 
-  const YaesuBinaryTransmitStatus({
-    required this.transmitting,
-    required this.highSwr,
-    required this.split,
-    required this.powerOut,
-  });
+  const YaesuBinaryTransmitStatus({required this.transmitting, required this.highSwr, required this.split, required this.powerOut});
 
   @override
   bool operator ==(Object other) =>

@@ -109,10 +109,12 @@ void main() {
     fakeAsync((async) {
       var polls = 0;
       late final AdaptivePoller poller;
-      poller = AdaptivePoller(onPoll: () {
-        polls++;
-        poller.stop();
-      })..start();
+      poller = AdaptivePoller(
+        onPoll: () {
+          polls++;
+          poller.stop();
+        },
+      )..start();
 
       async.elapse(const Duration(seconds: 30));
       // A driver tearing down inside its own poll callback must not leave a
@@ -143,10 +145,12 @@ void main() {
   test('a callback that throws does not end polling', () {
     fakeAsync((async) {
       var polls = 0;
-      final poller = AdaptivePoller(onPoll: () {
-        polls++;
-        if (polls == 1) throw StateError('a write to a port that just went away');
-      })..start();
+      final poller = AdaptivePoller(
+        onPoll: () {
+          polls++;
+          if (polls == 1) throw StateError('a write to a port that just went away');
+        },
+      )..start();
       addTearDown(poller.stop);
 
       // Timer.periodic, which this replaced, would have fired again next

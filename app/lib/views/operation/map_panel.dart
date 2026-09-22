@@ -150,10 +150,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     final theme = Theme.of(context);
     // Rebuild when settings change (the km/miles preference shows up in
     // every QSO popup's distance).
-    return ListenableBuilder(
-      listenable: widget.settings,
-      builder: (context, _) => _buildMap(context, theme),
-    );
+    return ListenableBuilder(listenable: widget.settings, builder: (context, _) => _buildMap(context, theme));
   }
 
   Widget _buildMap(BuildContext context, ThemeData theme) {
@@ -208,20 +205,20 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     // GL backends just never has a reason to swap it.
     final pinnedStyle = widget.settings.mapStyle;
     final glStyleUrl = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrl;
-    final glStyleUrlDark =
-        pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrlDark;
+    final glStyleUrlDark = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrlDark;
     if (kIsWeb) {
       // The app already runs in a browser — GL JS mounts directly on a
       // platform-view div, no webview needed.
       map = MapboxWebMapView(
-          markers: markers,
-          lines: lines,
-          shapes: shapes,
-          projection: _projection,
-          isDark: isDark,
-          styleUrl: glStyleUrl,
-          styleUrlDark: glStyleUrlDark,
-          zoomController: _zoomController);
+        markers: markers,
+        lines: lines,
+        shapes: shapes,
+        projection: _projection,
+        isDark: isDark,
+        styleUrl: glStyleUrl,
+        styleUrlDark: glStyleUrlDark,
+        zoomController: _zoomController,
+      );
     } else if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android) {
       // Nothing until the pane has actually been opened once. macOS/Windows
       // get here only through `webviewSupported`, which already waits for
@@ -242,24 +239,25 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
               projection: _projection,
               isDark: isDark,
               styleUrl: glStyleUrl,
-              styleUrlDark: glStyleUrlDark)
+              styleUrlDark: glStyleUrlDark,
+            )
           : const SizedBox.expand();
-    } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) &&
-        webviewSupported) {
+    } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) && webviewSupported) {
       // Named platform by platform, and through `defaultTargetPlatform` rather
       // than `dart:io`'s `Platform` (which no test can override), so that the
       // Linux exclusion is a rule a test holds down. Widening this branch to
       // Linux gives Linux a blank pane, not a map: no webview implementation
       // is registered there.
       map = MapboxWebviewMapView(
-          markers: markers,
-          lines: lines,
-          shapes: shapes,
-          projection: _projection,
-          isDark: isDark,
-          styleUrl: glStyleUrl,
-          styleUrlDark: glStyleUrlDark,
-          zoomController: _zoomController);
+        markers: markers,
+        lines: lines,
+        shapes: shapes,
+        projection: _projection,
+        isDark: isDark,
+        styleUrl: glStyleUrl,
+        styleUrlDark: glStyleUrlDark,
+        zoomController: _zoomController,
+      );
     } else {
       // Linux, where no webview map exists (no web view implementation is
       // registered there — see docs/quirks.md), so the OSM backend is the
@@ -267,8 +265,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       // projection. Windows without a usable WebView2 environment lands
       // here too.
       hasGlobe = false;
-      map = OsmMapView(
-          markers: markers, lines: lines, shapes: shapes, isDark: isDark, zoomController: _zoomController);
+      map = OsmMapView(markers: markers, lines: lines, shapes: shapes, isDark: isDark, zoomController: _zoomController);
     }
 
     // Mobile already zooms by pinch with no room to spare in the pane; the
@@ -287,9 +284,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
             right: 8 + PaneSafeArea.rightOf(context),
             child: _MapProjectionButton(
               projection: _projection,
-              onPressed: () => setState(
-                () => _projection = _projection == MapProjection.mercator ? MapProjection.globe : MapProjection.mercator,
-              ),
+              onPressed: () => setState(() => _projection = _projection == MapProjection.mercator ? MapProjection.globe : MapProjection.mercator),
             ),
           ),
         if (hasZoomButtons)
@@ -337,8 +332,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     // would otherwise draw a circle each.
     final qthGrids = <String, ({String display, GridLocation location})>{};
 
-    void addQth(String grid, GridLocation location) =>
-        qthGrids.putIfAbsent(grid.toUpperCase(), () => (display: grid, location: location));
+    void addQth(String grid, GridLocation location) => qthGrids.putIfAbsent(grid.toUpperCase(), () => (display: grid, location: location));
 
     final operationGrid = widget.operation.displayGrid;
     if (operationGrid != null) {
@@ -347,12 +341,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
 
     for (final qso in widget.qsos) {
       if (!qso.isRealContact) continue;
-      final location = locationForQsoInfo(
-        exact: qso.theirExactLocation,
-        grid: qso.theirGrid,
-        entityPrefix: qso.theirEntityPrefix,
-        state: qso.theirState,
-      );
+      final location = locationForQsoInfo(exact: qso.theirExactLocation, grid: qso.theirGrid, entityPrefix: qso.theirEntityPrefix, state: qso.theirState);
       if (location == null) continue;
 
       final qthGrid = qso.ourDisplayGrid ?? operationGrid;
@@ -395,23 +384,19 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
 
   /// The current QSO's highlight, using the logging panel's accent colours —
   /// `colorScheme.tertiary` (orange) composing, `.secondary` (blue) editing.
-  ({List<MapMarkerData> markers, List<MapLineData> lines}) _buildHighlight(ThemeData theme, {required bool isDark}) =>
-      buildHighlightData(
-        callInfo: widget.callInfo,
-        operationLocation: widget.operation.location,
-        composingColor: mapHighlightColor(theme.colorScheme.tertiary),
-        editingColor: mapHighlightColor(theme.colorScheme.secondary),
-        strokeColor: isDark ? _qsoStrokeDark : _qsoStrokeLight,
-      );
+  ({List<MapMarkerData> markers, List<MapLineData> lines}) _buildHighlight(ThemeData theme, {required bool isDark}) => buildHighlightData(
+    callInfo: widget.callInfo,
+    operationLocation: widget.operation.location,
+    composingColor: mapHighlightColor(theme.colorScheme.tertiary),
+    editingColor: mapHighlightColor(theme.colorScheme.secondary),
+    strokeColor: isDark ? _qsoStrokeDark : _qsoStrokeLight,
+  );
 
-  MapMarkerData _markerForQso(Qso qso, GridLocation location, GridLocation? qth, HaLoColors poloColors,
-      {required bool miles, required Color strokeColor}) {
+  MapMarkerData _markerForQso(Qso qso, GridLocation location, GridLocation? qth, HaLoColors poloColors, {required bool miles, required Color strokeColor}) {
     final distanceStr = qth == null ? null : fmtDistance(distanceOnEarthKm(location, qth), miles: miles);
 
     final startAt = qso.startAt;
-    final timeStr = startAt == null
-        ? null
-        : '${startAt.hour.toString().padLeft(2, '0')}:${startAt.minute.toString().padLeft(2, '0')}z';
+    final timeStr = startAt == null ? null : '${startAt.hour.toString().padLeft(2, '0')}:${startAt.minute.toString().padLeft(2, '0')}z';
 
     // Detail line: `<report> • <mode> • <band> • <time>`, skipping whatever
     // is missing. Split around the band so backends can color just it (see
@@ -419,10 +404,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     final band = qso.band ?? '';
     // The mode as a list shows it ([displayMode]); the popup is plain text a
     // backend renders, so an unexpected sideband is spelled out uncolored.
-    final leadParts = [
-      if (qso.receivedRST != null) qso.receivedRST!,
-      ?displayMode(qso.mode, freqKHz: qso.freq, band: qso.band),
-    ];
+    final leadParts = [if (qso.receivedRST != null) qso.receivedRST!, ?displayMode(qso.mode, freqKHz: qso.freq, band: qso.band)];
     final prefix = leadParts.isEmpty ? '' : leadParts.join(' • ') + (band.isEmpty ? '' : ' • ');
     final suffix = timeStr == null ? '' : (band.isEmpty && leadParts.isEmpty ? timeStr : ' • $timeStr');
 
@@ -482,10 +464,7 @@ class _MapProjectionButton extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       elevation: 2,
       child: IconButton(
-        icon: Icon(
-          toGlobe ? MdiIcons.earth : MdiIcons.map,
-          semanticLabel: toGlobe ? context.t.map.globe : context.t.map.flat,
-        ),
+        icon: Icon(toGlobe ? MdiIcons.earth : MdiIcons.map, semanticLabel: toGlobe ? context.t.map.globe : context.t.map.flat),
         onPressed: onPressed,
       ),
     );

@@ -46,25 +46,20 @@ void main() {
     final clock = AppClock.instance;
     // By hand: the ExtensionService listener that normally pushes travel into
     // the sandbox lives in the app, above this package.
-    host.setClockTravel(
-      anchorRealMillis: clock.anchorRealMillis,
-      anchorVirtualMillis: clock.anchorVirtualMillis,
-      speed: clock.speed,
-    );
+    host.setClockTravel(anchorRealMillis: clock.anchorRealMillis, anchorVirtualMillis: clock.anchorVirtualMillis, speed: clock.speed);
     return host;
   }
 
   Future<List<Map<String, dynamic>>> suggest(ExtensionHost host, {bool scoped = false}) async {
-    final result = await host.invokeHook(
-      'activity',
-      key: 'cwt',
-      method: 'suggest',
-      args: {
-        'operation': const <String, dynamic>{},
-        if (scoped) 'scoped': true,
-      },
-      timeout: const Duration(seconds: 10),
-    ) as List?;
+    final result =
+        await host.invokeHook(
+              'activity',
+              key: 'cwt',
+              method: 'suggest',
+              args: {'operation': const <String, dynamic>{}, if (scoped) 'scoped': true},
+              timeout: const Duration(seconds: 10),
+            )
+            as List?;
     return [for (final entry in result ?? const []) (entry as Map).cast<String, dynamic>()];
   }
 

@@ -35,30 +35,26 @@ class _DataFilesListCommand extends ExtCommand {
 
   @override
   Future<int> run() => withRuntime((runtime) async {
-        final counts = await lookups.counts();
-        final defs = await DataFileSync(
-          runtime: runtime,
-          store: lookups,
-          userAgent: cliUserAgent(runtime.index),
-        ).definitions();
-        emit({
-          'cache': lookups.file.path,
-          'files': [
-            for (final def in defs)
-              {
-                'key': def.key,
-                'name': def.name,
-                'extension': def.extensionKey,
-                'fetchType': def.fetchType,
-                'category': def.category,
-                // A raw file never becomes lookup rows, so a zero here is its
-                // normal state, not an empty cache.
-                'cachedRows': counts[def.category] ?? 0,
-              },
-          ],
-        });
-        return 0;
-      });
+    final counts = await lookups.counts();
+    final defs = await DataFileSync(runtime: runtime, store: lookups, userAgent: cliUserAgent(runtime.index)).definitions();
+    emit({
+      'cache': lookups.file.path,
+      'files': [
+        for (final def in defs)
+          {
+            'key': def.key,
+            'name': def.name,
+            'extension': def.extensionKey,
+            'fetchType': def.fetchType,
+            'category': def.category,
+            // A raw file never becomes lookup rows, so a zero here is its
+            // normal state, not an empty cache.
+            'cachedRows': counts[def.category] ?? 0,
+          },
+      ],
+    });
+    return 0;
+  });
 }
 
 class _DataFilesSyncCommand extends ExtCommand {
@@ -74,34 +70,36 @@ class _DataFilesSyncCommand extends ExtCommand {
 
   @override
   Future<int> run() => withRuntime((runtime) async {
-        final sync = DataFileSync(
-          runtime: runtime,
-          store: lookups,
-          userAgent: cliUserAgent(runtime.index),
-          verbose: verbose,
-        );
-        final wanted = argResults!.rest.toSet();
-        final defs = await sync.definitions();
-        final selected = wanted.isEmpty ? defs : [for (final def in defs) if (wanted.contains(def.key)) def];
-        if (selected.isEmpty) {
-          throw CliUsageError(wanted.isEmpty
-              ? 'no data files are registered (are the extensions that own them loaded?)'
-              : 'no such data file: ${wanted.join(', ')} (try `halo-ext data-files list`)');
-        }
+    final sync = DataFileSync(runtime: runtime, store: lookups, userAgent: cliUserAgent(runtime.index), verbose: verbose);
+    final wanted = argResults!.rest.toSet();
+    final defs = await sync.definitions();
+    final selected = wanted.isEmpty
+        ? defs
+        : [
+            for (final def in defs)
+              if (wanted.contains(def.key)) def,
+          ];
+    if (selected.isEmpty) {
+      throw CliUsageError(
+        wanted.isEmpty
+            ? 'no data files are registered (are the extensions that own them loaded?)'
+            : 'no such data file: ${wanted.join(', ')} (try `halo-ext data-files list`)',
+      );
+    }
 
-        // Serial, not parallel: they all queue through one single-threaded JS
-        // engine anyway, and a serial run keeps the progress lines and any
-        // failure attributable to one file.
-        final results = <DataFileResult>[];
-        for (final def in selected) {
-          results.add(await sync.import(def));
-        }
-        emit({
-          'cache': lookups.file.path,
-          'files': [for (final result in results) result.toJson()],
-        });
-        // A partial sync is a failure worth an exit code: a script that syncs
-        // and then queries would otherwise carry on against data it never got.
-        return results.any((result) => result.error != null) ? 1 : 0;
-      });
+    // Serial, not parallel: they all queue through one single-threaded JS
+    // engine anyway, and a serial run keeps the progress lines and any
+    // failure attributable to one file.
+    final results = <DataFileResult>[];
+    for (final def in selected) {
+      results.add(await sync.import(def));
+    }
+    emit({
+      'cache': lookups.file.path,
+      'files': [for (final result in results) result.toJson()],
+    });
+    // A partial sync is a failure worth an exit code: a script that syncs
+    // and then queries would otherwise carry on against data it never got.
+    return results.any((result) => result.error != null) ? 1 : 0;
+  });
 }

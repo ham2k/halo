@@ -38,11 +38,11 @@ void main() {
   /// The same operation as it arrives from elsewhere — deliberately newer, so
   /// nothing but the seat rule can be what keeps a local value.
   Map<String, dynamic> inbound(Map<String, dynamic> operators) => {
-        'uuid': (operators.remove('uuid') as String?) ?? 'op',
-        'stationCall': 'K2SUL',
-        'updatedAtMillis': 9999999999999,
-        ...operators,
-      };
+    'uuid': (operators.remove('uuid') as String?) ?? 'op',
+    'stationCall': 'K2SUL',
+    'updatedAtMillis': 9999999999999,
+    ...operators,
+  };
 
   Future<Operation> stored() async => (await operations.watchAll().first).single;
 
@@ -51,7 +51,9 @@ void main() {
     final uuid = (await stored()).uuid;
 
     // The other seat's push, built before this device named W2ABC.
-    await operations.mergeFromSync([inbound({'uuid': uuid, 'operator1': 'N0DEV', 'operator2': 'STALE'})]);
+    await operations.mergeFromSync([
+      inbound({'uuid': uuid, 'operator1': 'N0DEV', 'operator2': 'STALE'}),
+    ]);
 
     final after = await stored();
     expect(after.data['operator2'], 'W2ABC');
@@ -68,7 +70,9 @@ void main() {
     await seatedAt('2', {'operator2': 'W2ABC'});
     final before = await stored();
 
-    await operations.mergeFromSync([inbound({'uuid': before.uuid, 'operator2': 'STALE'})]);
+    await operations.mergeFromSync([
+      inbound({'uuid': before.uuid, 'operator2': 'STALE'}),
+    ]);
 
     final after = await stored();
     expect(after.synced, isFalse);
@@ -87,7 +91,9 @@ void main() {
     await seatedAt('2', {'operator2': 'W2ABC'});
     final uuid = (await stored()).uuid;
 
-    await operations.mergeFromSync([inbound({'uuid': uuid, 'operator2': 'W2ABC', 'operator1': 'KI2D'})]);
+    await operations.mergeFromSync([
+      inbound({'uuid': uuid, 'operator2': 'W2ABC', 'operator1': 'KI2D'}),
+    ]);
 
     final after = await stored();
     expect(after.synced, isTrue);
@@ -98,7 +104,9 @@ void main() {
     await seatedAt('', {'operatorCall': 'KI2D'});
     final uuid = (await stored()).uuid;
 
-    await operations.mergeFromSync([inbound({'uuid': uuid, 'operatorCall': 'N0DEV'})]);
+    await operations.mergeFromSync([
+      inbound({'uuid': uuid, 'operatorCall': 'N0DEV'}),
+    ]);
 
     expect((await stored()).data['operatorCall'], 'N0DEV');
   });
@@ -109,7 +117,9 @@ void main() {
     await seatedAt('2', const {});
     final uuid = (await stored()).uuid;
 
-    await operations.mergeFromSync([inbound({'uuid': uuid, 'operator2': 'W2ABC'})]);
+    await operations.mergeFromSync([
+      inbound({'uuid': uuid, 'operator2': 'W2ABC'}),
+    ]);
 
     expect((await stored()).data['operator2'], 'W2ABC');
   });
@@ -118,7 +128,9 @@ void main() {
     await seatedAt('2', {'operator2': ''});
     final uuid = (await stored()).uuid;
 
-    await operations.mergeFromSync([inbound({'uuid': uuid, 'operator2': 'W2ABC'})]);
+    await operations.mergeFromSync([
+      inbound({'uuid': uuid, 'operator2': 'W2ABC'}),
+    ]);
 
     expect((await stored()).data['operator2'], '');
   });
@@ -129,7 +141,9 @@ void main() {
     await seatedAt('3', {'operator3': 'KI2D'});
     final uuid = (await stored()).uuid;
 
-    await operations.mergeFromPeer([inbound({'uuid': uuid, 'operator3': 'N0DEV'})]);
+    await operations.mergeFromPeer([
+      inbound({'uuid': uuid, 'operator3': 'N0DEV'}),
+    ]);
 
     expect((await stored()).data['operator3'], 'KI2D');
   });

@@ -55,10 +55,7 @@ class _QuietTabActionState extends State<_QuietTabAction> {
       child: TweenAnimationBuilder<Color?>(
         duration: const Duration(milliseconds: 150),
         tween: ColorTween(end: _hovered ? active : quiet),
-        builder: (context, color, child) => ColorFiltered(
-          colorFilter: ColorFilter.mode(color ?? quiet, BlendMode.srcIn),
-          child: child,
-        ),
+        builder: (context, color, child) => ColorFiltered(colorFilter: ColorFilter.mode(color ?? quiet, BlendMode.srcIn), child: child),
         child: widget.child,
       ),
     );
@@ -173,11 +170,7 @@ class DockTab extends StatelessWidget {
     // and the current textScaler, so this holds under OS/accessibility text
     // sizing too. A hand-rolled painter measures the unscaled string and
     // under-reserves by however much the operator has turned their text up.
-    final width = textWidth(
-      context,
-      'Abc…',
-      Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold) ?? const TextStyle(),
-    );
+    final width = textWidth(context, 'Abc…', Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold) ?? const TextStyle());
     // Every box between the tab's two edges: the handle, the action, the
     // label's own inset either side of it (see [_tabContent]) and the tab's
     // padding. Leave one out and the floor is that much short — the tab
@@ -241,8 +234,7 @@ class DockTab extends StatelessWidget {
   /// silently, on the one platform with no pointer to aim with. Such a strip
   /// scrolls sooner, which is the honest answer: the button has to stay
   /// pressable.
-  static double minActionSizeOf(BuildContext context) =>
-      isMobilePlatform ? LayoutDensity.chromeHeightOf(context) : _editingActionSize;
+  static double minActionSizeOf(BuildContext context) => isMobilePlatform ? LayoutDensity.chromeHeightOf(context) : _editingActionSize;
 
   /// A tab's contents: the grab handle pinned to its leading edge, the
   /// module's action to its trailing edge, and the label centered between
@@ -286,8 +278,7 @@ class DockTab extends StatelessWidget {
           child: action == null || editing
               ? _tabRow(context, labelColor, style: style, available: double.infinity)
               : LayoutBuilder(
-                  builder: (context, constraints) =>
-                      _tabRow(context, labelColor, style: style, available: constraints.maxWidth),
+                  builder: (context, constraints) => _tabRow(context, labelColor, style: style, available: constraints.maxWidth),
                 ),
         ),
       ],
@@ -311,10 +302,7 @@ class DockTab extends StatelessWidget {
             // rearranged gives it back to the handle already sitting
             // there. The trailing side stays tight either way: it is
             // the gap to the options button, not an edge.
-            padding: EdgeInsetsDirectional.only(
-              start: showHandle ? Space.sm : Space.lg,
-              end: solo ? Space.lg : Space.sm,
-            ),
+            padding: EdgeInsetsDirectional.only(start: showHandle ? Space.sm : Space.lg, end: solo ? Space.lg : Space.sm),
             child: Text(
               title,
               maxLines: 1,
@@ -322,8 +310,7 @@ class DockTab extends StatelessWidget {
               // A pane's name is what the operator is arranging BY while
               // editing — the tab is otherwise a handle and a border
               // with some text between them.
-              style: (editing ? style?.copyWith(fontWeight: FontWeight.bold) : style)
-                  ?.copyWith(color: labelColor),
+              style: (editing ? style?.copyWith(fontWeight: FontWeight.bold) : style)?.copyWith(color: labelColor),
             ),
           ),
         ),
@@ -358,11 +345,7 @@ class DockTab extends StatelessWidget {
   /// whatever clips the strip.
   static Widget _tightIconButton(Widget child, double size) => IconButtonTheme(
     data: IconButtonThemeData(
-      style: IconButton.styleFrom(
-        minimumSize: Size.square(size),
-        padding: EdgeInsets.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
+      style: IconButton.styleFrom(minimumSize: Size.square(size), padding: EdgeInsets.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
     ),
     child: child,
   );
@@ -401,11 +384,7 @@ class DockTab extends StatelessWidget {
             label: title,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
-              child: _tabContent(
-                context,
-                theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
-                style: theme.textTheme.titleSmall,
-              ),
+              child: _tabContent(context, theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary, style: theme.textTheme.titleSmall),
             ),
           )
         : TabChrome(
@@ -421,8 +400,7 @@ class DockTab extends StatelessWidget {
             // is deliberately open — the pane runs into it. The stock
             // indicator sits across exactly that opening.
             showIndicator: !editing,
-            builder: (context, labelColor) =>
-                _tabContent(context, labelColor, style: Theme.of(context).textTheme.titleSmall),
+            builder: (context, labelColor) => _tabContent(context, labelColor, style: Theme.of(context).textTheme.titleSmall),
           );
     // Outside edit mode the tab is only a tab. Not a disabled Draggable but
     // no Draggable at all: one that merely refuses still enters the gesture
@@ -626,10 +604,7 @@ class FloatingPaneChrome extends StatelessWidget {
                               color: theme.colorScheme.primary,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.md),
-                                child: Text(
-                                  title,
-                                  style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onPrimary),
-                                ),
+                                child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onPrimary)),
                               ),
                             ),
                             childWhenDragging: Opacity(opacity: 0.4, child: content),

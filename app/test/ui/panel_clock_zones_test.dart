@@ -58,10 +58,7 @@ void main() {
       // assumes an hour is wrong here and nowhere else.
       expect(wallOf('Australia/Lord_Howe', '2026-04-04T14:59:00Z'), '2026-04-05 01:59');
       expect(wallOf('Australia/Lord_Howe', '2026-04-04T15:00:00Z'), '2026-04-05 01:30');
-      expect(
-        readZone('Australia/Lord_Howe', DateTime.parse('2026-04-04T15:00:00Z')).offset,
-        const Duration(hours: 10, minutes: 30),
-      );
+      expect(readZone('Australia/Lord_Howe', DateTime.parse('2026-04-04T15:00:00Z')).offset, const Duration(hours: 10, minutes: 30));
     });
   });
 
@@ -70,11 +67,9 @@ void main() {
       // Whole-hour arithmetic is right for most of the world and wrong for
       // about a fifth of it.
       expect(wallOf('Asia/Kolkata', '2026-08-08T03:30:00Z'), '2026-08-08 09:00');
-      expect(readZone('Asia/Kolkata', DateTime.parse('2026-08-08T03:30:00Z')).offset,
-          const Duration(hours: 5, minutes: 30));
+      expect(readZone('Asia/Kolkata', DateTime.parse('2026-08-08T03:30:00Z')).offset, const Duration(hours: 5, minutes: 30));
       expect(wallOf('Asia/Kathmandu', '2026-08-08T03:30:00Z'), '2026-08-08 09:15');
-      expect(readZone('Asia/Kathmandu', DateTime.parse('2026-08-08T03:30:00Z')).offset,
-          const Duration(hours: 5, minutes: 45));
+      expect(readZone('Asia/Kathmandu', DateTime.parse('2026-08-08T03:30:00Z')).offset, const Duration(hours: 5, minutes: 45));
     });
 
     test('crosses the date line in both directions', () {

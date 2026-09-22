@@ -82,15 +82,15 @@ class HomeRailState extends ChangeNotifier {
   /// Counts one route arriving over the home layer, or leaving it. [page] for
   /// a route that REPLACES what is under it rather than dimming it.
   void coveringChanged(int delta, {required bool page}) => _set(() {
-        _covering = math.max(0, _covering + delta);
-        if (page) _coveringPages = math.max(0, _coveringPages + delta);
-      }, false);
+    _covering = math.max(0, _covering + delta);
+    if (page) _coveringPages = math.max(0, _coveringPages + delta);
+  }, false);
 
   set expanded(bool value) => _set(() => _expanded = value, _expanded == value);
   set destination(HomeDestination value) => _set(() {
-        if (_destination != HomeDestination.settings) _lastNonSettingsDestination = _destination;
-        _destination = value;
-      }, _destination == value);
+    if (_destination != HomeDestination.settings) _lastNonSettingsDestination = _destination;
+    _destination = value;
+  }, _destination == value);
 
   /// Applies a change and tells the shell, deferring when we are inside a
   /// build: a view sets these from `initState`, which runs while the shell

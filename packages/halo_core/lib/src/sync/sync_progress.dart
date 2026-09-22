@@ -14,13 +14,7 @@ class SyncProgress {
   final int? operationsTotal;
   final int? operationsLeft;
 
-  const SyncProgress({
-    required this.backfilling,
-    this.qsosTotal,
-    this.qsosLeft,
-    this.operationsTotal,
-    this.operationsLeft,
-  });
+  const SyncProgress({required this.backfilling, this.qsosTotal, this.qsosLeft, this.operationsTotal, this.operationsLeft});
 }
 
 /// Merges a page of QSOs in [sliceSize] slices, reporting [onProgress]
@@ -57,13 +51,15 @@ Future<SyncWatermark> mergeQsosReportingProgress(
       ..include(slice.earliestSyncedAtMillis)
       ..include(slice.latestSyncedAtMillis);
     if (end < inbound.length && counts.qsosTotal != null) {
-      onProgress(SyncProgress(
-        backfilling: true,
-        qsosTotal: counts.qsosTotal,
-        qsosLeft: (counts.qsosLeft ?? 0) + inbound.length - end,
-        operationsTotal: counts.operationsTotal,
-        operationsLeft: counts.operationsLeft,
-      ));
+      onProgress(
+        SyncProgress(
+          backfilling: true,
+          qsosTotal: counts.qsosTotal,
+          qsosLeft: (counts.qsosLeft ?? 0) + inbound.length - end,
+          operationsTotal: counts.operationsTotal,
+          operationsLeft: counts.operationsLeft,
+        ),
+      );
     }
   }
   return watermark;
@@ -71,9 +67,7 @@ Future<SyncWatermark> mergeQsosReportingProgress(
 
 /// The per-side `records_left`/`total_records` of a response meta, either
 /// spelling — present on real pages and cooldown responses alike.
-({int? qsosLeft, int? qsosTotal, int? operationsLeft, int? operationsTotal}) serverCounts(
-  Map<String, dynamic> meta,
-) {
+({int? qsosLeft, int? qsosTotal, int? operationsLeft, int? operationsTotal}) serverCounts(Map<String, dynamic> meta) {
   int? count(String side, String camel, String snake) {
     final sideMeta = meta[side] as Map?;
     return ((sideMeta?[camel] ?? sideMeta?[snake]) as num?)?.toInt();

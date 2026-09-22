@@ -41,13 +41,7 @@ class MapMarkerImage {
   /// on a hidpi display instead of rendering at [width] CSS pixels.
   final double pixelRatio;
 
-  MapMarkerImage({
-    required this.id,
-    required this.rgba,
-    required this.width,
-    required this.height,
-    required this.pixelRatio,
-  });
+  MapMarkerImage({required this.id, required this.rgba, required this.width, required this.height, required this.pixelRatio});
 
   /// Encoded once per image rather than once per payload: the marker list is
   /// rebuilt whenever the search results change, and re-encoding tens of
@@ -80,9 +74,7 @@ class MapMarkerGlyph {
   const MapMarkerGlyph({required this.icon, required this.color, required this.image});
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is MapMarkerGlyph && icon == other.icon && color == other.color && image == other.image);
+  bool operator ==(Object other) => identical(this, other) || (other is MapMarkerGlyph && icon == other.icon && color == other.color && image == other.image);
 
   @override
   int get hashCode => Object.hash(icon, color, image);
@@ -177,8 +169,22 @@ class MapMarkerData {
           glyph == other.glyph);
 
   @override
-  int get hashCode => Object.hash(id, latitude, longitude, label, kind, color, strokeColor, sizeFactor, popupTitle,
-      popupDetailPrefix, popupBand, popupDetailSuffix, highlight, glyph);
+  int get hashCode => Object.hash(
+    id,
+    latitude,
+    longitude,
+    label,
+    kind,
+    color,
+    strokeColor,
+    sizeFactor,
+    popupTitle,
+    popupDetailPrefix,
+    popupBand,
+    popupDetailSuffix,
+    highlight,
+    glyph,
+  );
 }
 
 /// One contiguous polyline of a QSO's great-circle arc back to its QTH —
@@ -215,8 +221,7 @@ class MapLineData {
           (points.isEmpty || (points.first == other.points.first && points.last == other.points.last)));
 
   @override
-  int get hashCode => Object.hash(
-      id, color, highlight, points.length, points.isEmpty ? null : points.first, points.isEmpty ? null : points.last);
+  int get hashCode => Object.hash(id, color, highlight, points.length, points.isEmpty ? null : points.first, points.isEmpty ? null : points.last);
 }
 
 /// '#RRGGBB' for CSS/GL consumption (alpha stripped — see [mapLinesPayload]).
@@ -226,54 +231,48 @@ String mapColorToHex(Color color) => '#${color.toARGB32().toRadixString(16).padL
 /// — one encoder for the two backends that feed it (desktop webview and
 /// Flutter web), so the wire format can't drift from the JS that reads it.
 List<Map<String, dynamic>> mapMarkersPayload(List<MapMarkerData> markers) => [
-      for (final m in markers)
-        {
-          'id': m.id,
-          'latitude': m.latitude,
-          'longitude': m.longitude,
-          'label': m.label,
-          'kind': m.kind.name,
-          'color': mapColorToHex(m.color),
-          'strokeColor': mapColorToHex(m.strokeColor),
-          'sizeFactor': m.sizeFactor,
-          'popupTitle': m.popupTitle,
-          'popupDetailPrefix': m.popupDetailPrefix,
-          'popupBand': m.popupBand,
-          'popupDetailSuffix': m.popupDetailSuffix,
-          'highlight': m.highlight,
-          // Base64 rather than a byte list: both bridges (the webview's
-          // string-only channel and the web view's JS interop) carry a
-          // string unchanged, while a 9KB list would be walked element by
-          // element on the way across.
-          if (m.glyph?.image case final image?)
-            'image': {
-              'id': image.id,
-              'rgba': image.base64Rgba,
-              'width': image.width,
-              'height': image.height,
-              'pixelRatio': image.pixelRatio,
-            },
-        },
-    ];
+  for (final m in markers)
+    {
+      'id': m.id,
+      'latitude': m.latitude,
+      'longitude': m.longitude,
+      'label': m.label,
+      'kind': m.kind.name,
+      'color': mapColorToHex(m.color),
+      'strokeColor': mapColorToHex(m.strokeColor),
+      'sizeFactor': m.sizeFactor,
+      'popupTitle': m.popupTitle,
+      'popupDetailPrefix': m.popupDetailPrefix,
+      'popupBand': m.popupBand,
+      'popupDetailSuffix': m.popupDetailSuffix,
+      'highlight': m.highlight,
+      // Base64 rather than a byte list: both bridges (the webview's
+      // string-only channel and the web view's JS interop) carry a
+      // string unchanged, while a 9KB list would be walked element by
+      // element on the way across.
+      if (m.glyph?.image case final image?)
+        'image': {'id': image.id, 'rgba': image.base64Rgba, 'width': image.width, 'height': image.height, 'pixelRatio': image.pixelRatio},
+    },
+];
 
 /// Opacity travels separately — the GL layer paints a flat hex line-color,
 /// with the (shared) alpha applied as line-opacity.
 Map<String, dynamic> mapLinesPayload(List<MapLineData> lines) => {
-      'opacity': lines.isEmpty ? 1.0 : lines.first.color.a.clamp(0.0, 1.0),
-      'features': [
-        for (final line in lines)
-          {
-            'type': 'Feature',
-            'properties': {'color': mapColorToHex(line.color), 'highlight': line.highlight},
-            'geometry': {
-              'type': 'LineString',
-              'coordinates': [
-                for (final p in line.points) [p.longitude, p.latitude],
-              ],
-            },
-          },
-      ],
-    };
+  'opacity': lines.isEmpty ? 1.0 : lines.first.color.a.clamp(0.0, 1.0),
+  'features': [
+    for (final line in lines)
+      {
+        'type': 'Feature',
+        'properties': {'color': mapColorToHex(line.color), 'highlight': line.highlight},
+        'geometry': {
+          'type': 'LineString',
+          'coordinates': [
+            for (final p in line.points) [p.longitude, p.latitude],
+          ],
+        },
+      },
+  ],
+};
 
 /// One filled outline on the map — a SOTA activation zone, and whatever other
 /// footprints a program publishes (see the `geojsonUrlForRef` hook).
@@ -298,8 +297,7 @@ class MapShapeData {
   /// compare of thousands of points on every `didUpdateWidget` would only ever
   /// confirm what the id already says.
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || (other is MapShapeData && id == other.id && color == other.color);
+  bool operator ==(Object other) => identical(this, other) || (other is MapShapeData && id == other.id && color == other.color);
 
   @override
   int get hashCode => Object.hash(id, color);
@@ -373,20 +371,20 @@ List<MapShapeData> mapShapesFromGeojson(Object? document, {required String idPre
 /// [mapLinesPayload] splits color from opacity — the GL layers take a flat
 /// paint color with opacity applied separately.
 Map<String, dynamic> mapShapesPayload(List<MapShapeData> shapes) => {
-      'features': [
-        for (final shape in shapes)
-          {
-            'type': 'Feature',
-            'properties': {'color': mapColorToHex(shape.color)},
-            'geometry': {
-              'type': 'Polygon',
-              'coordinates': [
-                for (final ring in shape.rings)
-                  [
-                    for (final p in ring) [p.longitude, p.latitude],
-                  ],
+  'features': [
+    for (final shape in shapes)
+      {
+        'type': 'Feature',
+        'properties': {'color': mapColorToHex(shape.color)},
+        'geometry': {
+          'type': 'Polygon',
+          'coordinates': [
+            for (final ring in shape.rings)
+              [
+                for (final p in ring) [p.longitude, p.latitude],
               ],
-            },
-          },
-      ],
-    };
+          ],
+        },
+      },
+  ],
+};

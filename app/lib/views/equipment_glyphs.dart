@@ -15,13 +15,13 @@ import '../services/cat/equipment_registry.dart';
 /// The glyph the logging panel's own Radio control falls back to when no
 /// CAT radio is configured — this list is what configures one.
 IconData iconForCategory(String? category) => switch (category) {
-      kCategoryTransceiver => MdiIcons.radio,
-      kCategoryAntenna => MdiIcons.antenna,
-      kCategoryKey => MdiIcons.key,
-      kCategoryKeyer => MdiIcons.keyboardVariant,
-      kCategoryAntennaSwitch => MdiIcons.directionsFork,
-      _ => MdiIcons.developerBoard,
-    };
+  kCategoryTransceiver => MdiIcons.radio,
+  kCategoryAntenna => MdiIcons.antenna,
+  kCategoryKey => MdiIcons.key,
+  kCategoryKeyer => MdiIcons.keyboardVariant,
+  kCategoryAntennaSwitch => MdiIcons.directionsFork,
+  _ => MdiIcons.developerBoard,
+};
 
 /// How a pairing is plugged in, as a glyph — see `transportIconNameFor`.
 ///
@@ -41,8 +41,7 @@ IconData? _iconForTransport(EquipmentType type) {
 class TransportIcons extends StatelessWidget {
   final List<EquipmentType> types;
 
-  const TransportIcons({
-    super.key,required this.types});
+  const TransportIcons({super.key, required this.types});
 
   @override
   Widget build(BuildContext context) {
@@ -127,14 +126,7 @@ class AddressText extends StatelessWidget {
         // The WHOLE address stays in the semantics tree however little of it
         // is painted: the clip is a fit problem, and a screen reader has no
         // width to run out of.
-        return Text(
-          text,
-          style: style,
-          textAlign: textAlign,
-          maxLines: 1,
-          softWrap: false,
-          semanticsLabel: text == address ? null : address,
-        );
+        return Text(text, style: style, textAlign: textAlign, maxLines: 1, softWrap: false, semanticsLabel: text == address ? null : address);
       },
     );
   }

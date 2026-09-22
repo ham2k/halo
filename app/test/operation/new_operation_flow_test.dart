@@ -35,16 +35,16 @@ void main() {
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
 
     // What HomeView._newOperation does — no dialog, just the profile call.
-    final operation = await services.operations.create(
-      stationCall: settings.activeProfile.operatorCall,
-    );
+    final operation = await services.operations.create(stationCall: settings.activeProfile.operatorCall);
     expect(operation.stationCall, 'KI2D');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid, openActivities: true),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid, openActivities: true),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(OperationSheet), findsOneWidget);
@@ -72,16 +72,16 @@ void main() {
     // the (absent-in-tests) keychain platform channel.
     final HaLoHarness(:services, :settings) = await makeHaLoServices();
 
-    final operation = await services.operations.create(
-      stationCall: settings.activeProfile.operatorCall,
-    );
+    final operation = await services.operations.create(stationCall: settings.activeProfile.operatorCall);
     expect(operation.stationCall, '');
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid, openActivities: true),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid, openActivities: true),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(OperationSheet), findsNothing);
@@ -94,8 +94,11 @@ void main() {
 
     await tester.enterText(find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField)), 'ki2d');
     await tester.pump();
-    expect(find.descendant(of: find.byType(HaloDialog), matching: find.text('ki2d')), findsOneWidget,
-        reason: 'the typed callsign should be in the dialog field');
+    expect(
+      find.descendant(of: find.byType(HaloDialog), matching: find.text('ki2d')),
+      findsOneWidget,
+      reason: 'the typed callsign should be in the dialog field',
+    );
     await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.text('Save')));
     await tester.pumpAndSettle();
     expect(find.byType(HaloDialog), findsNothing);

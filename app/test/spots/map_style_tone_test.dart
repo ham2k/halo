@@ -16,13 +16,7 @@ import 'package:ham2k_logger/views/map/map_gl_script.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/activities_results_map.dart';
 
-const _park = {
-  'type': 'pota',
-  'ref': 'US-0001',
-  'shortLabel': 'POTA US-0001',
-  'lat': 40.0,
-  'lon': -75.0,
-};
+const _park = {'type': 'pota', 'ref': 'US-0001', 'shortLabel': 'POTA US-0001', 'lat': 40.0, 'lon': -75.0};
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -55,26 +49,21 @@ void main() {
 
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     try {
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          theme: ThemeData(brightness: Brightness.light),
-          home: Scaffold(
-            body: ActivitiesResultsMap(
-              suggestions: const [_park],
-              controls: const [],
-              refs: const [],
-              settings: settings,
-              onAdd: (_) {},
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            theme: ThemeData(brightness: Brightness.light),
+            home: Scaffold(
+              body: ActivitiesResultsMap(suggestions: const [_park], controls: const [], refs: const [], settings: settings, onAdd: (_) {}),
             ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       final map = tester.widget<OsmMapView>(find.byType(OsmMapView));
       expect(map.isDark, isTrue, reason: 'the basemap is Dark Matter, whatever the app theme says');
-      expect(map.markers.first.strokeColor, const Color(0xFFF2F2F2),
-          reason: 'a dark ring on dark tiles is the marker disappearing');
+      expect(map.markers.first.strokeColor, const Color(0xFFF2F2F2), reason: 'a dark ring on dark tiles is the marker disappearing');
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }

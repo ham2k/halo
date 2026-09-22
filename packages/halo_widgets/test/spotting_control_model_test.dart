@@ -15,8 +15,7 @@ class _FakeVfoStore implements VfoStore {
   @override
   Vfo vfoA;
   @override
-  void setVfo(String key,
-      {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {}
+  void setVfo(String key, {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {}
 }
 
 class _Harness {
@@ -60,7 +59,11 @@ void main() {
     h.editingQso = Qso(
       uuid: 'q1',
       operationUuid: 'op',
-      data: {'their': {'call': 'W1AW'}, 'startAtMillis': nowMillis() - 60 * 1000, 'freq': 7200},
+      data: {
+        'their': {'call': 'W1AW'},
+        'startAtMillis': nowMillis() - 60 * 1000,
+        'freq': 7200,
+      },
     );
     expect(h.model.state.enabled, isTrue);
     expect(h.model.state.buttonLabel, startsWith('Spot W1AW at 7'));
@@ -68,21 +71,26 @@ void main() {
     h.editingQso = Qso(
       uuid: 'q2',
       operationUuid: 'op',
-      data: {'their': {'call': 'W1AW'}, 'startAtMillis': nowMillis() - 6 * 60 * 1000},
+      data: {
+        'their': {'call': 'W1AW'},
+        'startAtMillis': nowMillis() - 6 * 60 * 1000,
+      },
     );
     expect(h.model.state.enabled, isFalse);
     expect(h.model.state.buttonLabel, 'Too late to spot W1AW');
     h.model.dispose();
   });
 
-  testWidgets('a send colours each source by its answer, clears the comment, and forgets the colours later',
-      (tester) async {
+  testWidgets('a send colours each source by its answer, clears the comment, and forgets the colours later', (tester) async {
     final h = _Harness();
     h.vfo = const Vfo(freq: 14285, mode: 'SSB');
     await h.model.refreshSources();
     expect(h.model.sources.length, 2);
     h.model.commentController.text = 'CQ POTA';
-    h.answer = {'pota': {'ok': true}, 'sota': {'ok': false}};
+    h.answer = {
+      'pota': {'ok': true},
+      'sota': {'ok': false},
+    };
     await h.model.send();
     expect(h.sent.single['freq'], 14285);
     expect(h.sent.single['mode'], 'SSB');
@@ -97,12 +105,14 @@ void main() {
     h.model.dispose();
   });
 
-  test('the answers are keyed to the sources the send began with, not whatever is on offer when it lands',
-      () async {
+  test('the answers are keyed to the sources the send began with, not whatever is on offer when it lands', () async {
     final h = _Harness();
     h.vfo = const Vfo(freq: 14285);
     await h.model.refreshSources();
-    h.answer = {'pota': {'ok': true}, 'sota': {'ok': true}};
+    h.answer = {
+      'pota': {'ok': true},
+      'sota': {'ok': true},
+    };
     final pending = h.model.send();
     // The QSO context changes while the send is in flight.
     h.model.forgetSources();
@@ -115,9 +125,13 @@ void main() {
 
   testWidgets('Enter in the comment field sends, and only while a send is possible', (tester) async {
     final h = _Harness();
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: TextField(focusNode: h.model.commentFocus, controller: h.model.commentController)),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TextField(focusNode: h.model.commentFocus, controller: h.model.commentController),
+        ),
+      ),
+    );
     h.model.commentFocus.requestFocus();
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);

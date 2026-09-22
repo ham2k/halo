@@ -162,8 +162,7 @@ class BleFrameConduit {
 
   /// Both HELLOs have crossed AND ours was acknowledged — MSG traffic may
   /// flow, and the link may be handed to a session.
-  bool get ready =>
-      _helloFrame != null && _helloOffset >= _helloFrame!.length && _peerChunk != null && _helloAcked;
+  bool get ready => _helloFrame != null && _helloOffset >= _helloFrame!.length && _peerChunk != null && _helloAcked;
 
   /// Replays our HELLO from the start. Called on a timer while [ready] is
   /// false: the receiver tolerates duplicate hellos, and retransmission is
@@ -266,8 +265,7 @@ class BleFrameConduit {
       // of 20 still leaves 14 payload bytes, so this always advances.
       final end = (_msgQueueOffset + chunk - _headerBytes).clamp(0, message.length);
       isLast = end >= message.length;
-      packet = _encodeFrame(
-          isLast ? bleFrameTypeMsg : bleFrameTypeMsgPart, Uint8List.sublistView(message, _msgQueueOffset, end));
+      packet = _encodeFrame(isLast ? bleFrameTypeMsg : bleFrameTypeMsgPart, Uint8List.sublistView(message, _msgQueueOffset, end));
       _pendingOutboundBytes -= end - _msgQueueOffset;
       _msgQueueOffset = end;
     } else {
@@ -280,8 +278,7 @@ class BleFrameConduit {
       packet = Uint8List.sublistView(frame, _msgQueueOffset, end);
       // Payload bytes only: the counter tracks messages accepted but not
       // yet on the air, and the header is not part of the message.
-      _pendingOutboundBytes -= (end - _headerBytes).clamp(0, message.length) -
-          (_msgQueueOffset - _headerBytes).clamp(0, message.length);
+      _pendingOutboundBytes -= (end - _headerBytes).clamp(0, message.length) - (_msgQueueOffset - _headerBytes).clamp(0, message.length);
       _msgQueueOffset = end;
     }
     if (isLast) {
@@ -328,10 +325,7 @@ class BleFrameConduit {
           return;
         }
         final type = bytes[_inOffset + 1];
-        final length = bytes[_inOffset + 2] |
-            (bytes[_inOffset + 3] << 8) |
-            (bytes[_inOffset + 4] << 16) |
-            (bytes[_inOffset + 5] << 24);
+        final length = bytes[_inOffset + 2] | (bytes[_inOffset + 3] << 8) | (bytes[_inOffset + 4] << 16) | (bytes[_inOffset + 5] << 24);
         if (length < 0 || length > maxMessageBytes) {
           _fail('frame length $length exceeds the $maxMessageBytes cap');
           return;

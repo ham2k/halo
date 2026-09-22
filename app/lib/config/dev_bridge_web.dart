@@ -22,8 +22,7 @@ void installDevBridge() {
   final bridge = JSObject();
   bridge['getState'] = (() => DevBridge.instance.state().jsify()).toJS;
   bridge['getGuess'] = (() => DevBridge.instance.guess().jsify()).toJS;
-  bridge['setField'] =
-      ((JSString field, JSString value) => DevBridge.instance.setField(field.toDart, value.toDart)).toJS;
+  bridge['setField'] = ((JSString field, JSString value) => DevBridge.instance.setField(field.toDart, value.toDart)).toJS;
   bridge['tap'] = ((JSString action) => DevBridge.instance.action(action.toDart)).toJS;
   // A single stable promise (resolves when signalReady() fires) — `await
   // window.__halo.ready` replaces sleeping after a page load.

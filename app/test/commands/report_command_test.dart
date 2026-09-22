@@ -38,11 +38,7 @@ void main() {
   // home screen's Quick Lookup with nothing open — so nothing here passes an
   // operation, and a result is still expected.
   Future<Map<String, dynamic>?> interpret(String input, {bool execute = false}) async {
-    final entries = await extensions.host!.invokeHookAll(
-      'command',
-      method: 'interpret',
-      args: {'input': input, if (execute) 'execute': true},
-    );
+    final entries = await extensions.host!.invokeHookAll('command', method: 'interpret', args: {'input': input, if (execute) 'execute': true});
     for (final entry in entries) {
       if (entry['ok'] == true && entry['value'] is Map) {
         return (entry['value'] as Map).cast<String, dynamic>();

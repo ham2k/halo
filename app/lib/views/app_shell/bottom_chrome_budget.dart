@@ -65,13 +65,7 @@ class BottomChromeBudget {
   final bool showFooter;
   final bool showNumbersRow;
 
-  const BottomChromeBudget({
-    required this.noticeMax,
-    required this.footerMax,
-    this.showFooter = true,
-    this.showNumbersRow = true,
-    this.seatsNotice = true,
-  });
+  const BottomChromeBudget({required this.noticeMax, required this.footerMax, this.showFooter = true, this.showNumbersRow = true, this.seatsNotice = true});
 
   /// The most of the negotiable space the growable chrome may take between
   /// them, so the app always keeps the rest.

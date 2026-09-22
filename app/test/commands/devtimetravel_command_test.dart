@@ -33,23 +33,20 @@ void main() {
 
   tearDown(AppClock.instance.reset);
 
-  Future<HaLoServices> buildServices({
-    bool developerMode = true,
-    bool syncEnabled = false,
-    Map<String, dynamic>? currentAccount,
-  }) async {
+  Future<HaLoServices> buildServices({bool developerMode = true, bool syncEnabled = false, Map<String, dynamic>? currentAccount}) async {
     final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.setDeveloperMode(developerMode);
     if (syncEnabled) await settings.setSyncEnabled(true);
     if (currentAccount != null) {
-      await settings.setSyncState({'accountData': {'current_account': currentAccount}});
+      await settings.setSyncState({
+        'accountData': {'current_account': currentAccount},
+      });
     }
     return services;
   }
 
   /// What the call field would show after running the command.
-  Future<CommandActionOutcome?> travel(HaLoServices services, Map<String, dynamic> params) =>
-      services.handleCommandAction('devTimeTravel', params);
+  Future<CommandActionOutcome?> travel(HaLoServices services, Map<String, dynamic> params) => services.handleCommandAction('devTimeTravel', params);
 
   group('applying travel', () {
     test('an offset moves the clock', () async {
@@ -178,10 +175,7 @@ void main() {
   // payload that fails closed on absence but open on staleness.
   group('travel and the sync account', () {
     test('a real, email-identified account no longer refuses travel', () async {
-      final services = await buildServices(
-        syncEnabled: true,
-        currentAccount: {'uuid': 'abc12345', 'email': 'ki2d@example.com', 'call': 'KI2D'},
-      );
+      final services = await buildServices(syncEnabled: true, currentAccount: {'uuid': 'abc12345', 'email': 'ki2d@example.com', 'call': 'KI2D'});
       final outcome = await travel(services, {'deltaMillis': const Duration(hours: 1).inMilliseconds});
       expect(outcome!.failed, isFalse);
       expect(AppClock.instance.isTravelling, isTrue);
@@ -203,8 +197,7 @@ void main() {
   });
 
   group('sync while travelling', () {
-    Future<HaLoServices> withSync() =>
-        buildServices(syncEnabled: true, currentAccount: {'uuid': 'abc12345'});
+    Future<HaLoServices> withSync() => buildServices(syncEnabled: true, currentAccount: {'uuid': 'abc12345'});
 
     test('sync keeps running, and the operator\'s setting is untouched', () async {
       final services = await withSync();
@@ -217,8 +210,7 @@ void main() {
       // ends — and nothing holds sync off any more either, because what a
       // travelled session may write is bounded instead.
       expect(services.settings.syncEnabled, isTrue);
-      expect(services.syncEngine.travelRefusesSync, isTrue,
-          reason: 'the flag survives for the destructive pair, which still refuse');
+      expect(services.syncEngine.travelRefusesSync, isTrue, reason: 'the flag survives for the destructive pair, which still refuse');
     });
 
     test('sync can be turned ON while travelling, from any surface', () async {
@@ -227,8 +219,11 @@ void main() {
 
       await services.setSyncEnabled(true);
       expect(services.settings.syncEnabled, isTrue);
-      expect(services.statusBar.activeNotices.map((n) => n.key), isNot(contains('clock:timeTravelHoldsSync')),
-          reason: 'the refusal notice went with the refusal');
+      expect(
+        services.statusBar.activeNotices.map((n) => n.key),
+        isNot(contains('clock:timeTravelHoldsSync')),
+        reason: 'the refusal notice went with the refusal',
+      );
     });
 
     test('stepping the clock costs the operator nothing', () async {
@@ -327,8 +322,7 @@ void main() {
           }
         }
       }
-      expect(commands, contains('RELOAD'),
-          reason: 'sanity: the catalog fan-out answered — absence below is real, not an empty read');
+      expect(commands, contains('RELOAD'), reason: 'sanity: the catalog fan-out answered — absence below is real, not an empty read');
       expect(commands, isNot(contains('DEVTT')));
       expect(commands, isNot(contains('DEVTIMETRAVEL')));
     });

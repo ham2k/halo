@@ -121,7 +121,6 @@ class YaesuBinaryDriver extends EquipmentDriver {
   @override
   String get name => 'Yaesu FT-817/857/897 CAT';
 
-
   /// This protocol has no keyer command and no voice memory command: the
   /// chart's seventeen opcodes are frequency, mode, PTT, repeater and tone
   /// settings, and the two status reads. Nothing to declare.
@@ -145,41 +144,33 @@ class YaesuBinaryDriver extends EquipmentDriver {
   int get telemetryCycleBytes => yaesuBinaryTxWatchBytes;
 
   @override
-  Set<String> get recognizedConfigKeys => {
-        ...super.recognizedConfigKeys,
-        yaesuBinaryNarrowFmConfigKey,
-      };
+  Set<String> get recognizedConfigKeys => {...super.recognizedConfigKeys, yaesuBinaryNarrowFmConfigKey};
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [
-        // Developer mode only, and off by default: it puts a line of raw
-        // numbers on screen that only a developer can use. It exists to
-        // BUILD the scale that would make the PO nibble a wattage, not to
-        // be a feature.
-        {
-          'type': 'field',
-          'fieldType': 'checkbox',
-          'key': yaesuBinaryMeterCaptureConfigKey,
-          'label': t.settings.station.yaesuMeterCapture,
-          'description': t.settings.station.yaesuBinaryMeterCaptureDescription,
-          'devMode': true,
-        },
-        telemetryConfigElement(),
-      ];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    // Developer mode only, and off by default: it puts a line of raw
+    // numbers on screen that only a developer can use. It exists to
+    // BUILD the scale that would make the PO nibble a wattage, not to
+    // be a feature.
+    {
+      'type': 'field',
+      'fieldType': 'checkbox',
+      'key': yaesuBinaryMeterCaptureConfigKey,
+      'label': t.settings.station.yaesuMeterCapture,
+      'description': t.settings.station.yaesuBinaryMeterCaptureDescription,
+      'devMode': true,
+    },
+    telemetryConfigElement(),
+  ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
-        telemetryIntervalConfigKey => validateTelemetryInterval(value),
-        _ => null,
-      };
+    telemetryIntervalConfigKey => validateTelemetryInterval(value),
+    _ => null,
+  };
 
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
-      YaesuBinarySession(sink, config: config);
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => YaesuBinarySession(sink, config: config);
 }
 
 class YaesuBinarySession implements TransceiverSession {
@@ -200,16 +191,8 @@ class YaesuBinarySession implements TransceiverSession {
 
   late final TelemetryPoller _telemetry = TelemetryPoller(
     onPoll: (_) => _request(readTransmitStatusCommand),
-    idleInterval: telemetryIntervalFor(
-      _config,
-      cycleBytes: yaesuBinaryTxWatchBytes,
-      baudRate: serialBaudRateOrNull(_config),
-    ),
-    txInterval: telemetryIntervalFor(
-      _config,
-      cycleBytes: yaesuBinaryTxWatchBytes,
-      baudRate: serialBaudRateOrNull(_config),
-    ),
+    idleInterval: telemetryIntervalFor(_config, cycleBytes: yaesuBinaryTxWatchBytes, baudRate: serialBaudRateOrNull(_config)),
+    txInterval: telemetryIntervalFor(_config, cycleBytes: yaesuBinaryTxWatchBytes, baudRate: serialBaudRateOrNull(_config)),
   );
 
   /// What was last reported upward, so a repeat can be told from a move.
@@ -231,9 +214,9 @@ class YaesuBinarySession implements TransceiverSession {
   Timer? _resyncing;
 
   YaesuBinarySession(this._sink, {Map<String, dynamic> config = const {}})
-      : _config = config,
-        _narrowFm = config[yaesuBinaryNarrowFmConfigKey] == true,
-        _captureMeters = config[yaesuBinaryMeterCaptureConfigKey] == true;
+    : _config = config,
+      _narrowFm = config[yaesuBinaryNarrowFmConfigKey] == true,
+      _captureMeters = config[yaesuBinaryMeterCaptureConfigKey] == true;
 
   /// The poller's current cadence — for tests, which could otherwise only
   /// infer it from timing.
@@ -400,8 +383,7 @@ class YaesuBinarySession implements TransceiverSession {
   // ------------------------------------------------------------ commands
 
   @override
-  void setFrequency(double freqKHz) =>
-      _request(buildSetFrequencyCommand((freqKHz * 1000).round()), isWrite: true);
+  void setFrequency(double freqKHz) => _request(buildSetFrequencyCommand((freqKHz * 1000).round()), isWrite: true);
 
   @override
   void setMode(String mode) {

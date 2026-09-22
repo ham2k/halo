@@ -78,21 +78,24 @@ class ErrorReportingService {
     final tookOwnership = await _backend.run(startBody);
     if (tookOwnership || bodyStarted) return;
 
-    runZonedGuarded(() {
-      startBody();
-    }, (error, stackTrace) {
-      // Uncaught async error with no backend (or its init broken): log +
-      // notice. Reaching a zone handler means it never propagates, so a
-      // stray async error can't take down a logging session mid-contact.
-      if (error is WriteRefused) noticeWriteRefused(error);
-      final decision = ErrorPolicy.decide(error);
-      if (!decision.disposition.uploads) {
-        ErrorPolicy.logDecision(decision, error, stackTrace: stackTrace);
-        return;
-      }
-      debugPrint('[error-reporting] uncaught async error: $error\n$stackTrace');
-      if (decision.disposition.notifies) notify(error, stackTrace);
-    });
+    runZonedGuarded(
+      () {
+        startBody();
+      },
+      (error, stackTrace) {
+        // Uncaught async error with no backend (or its init broken): log +
+        // notice. Reaching a zone handler means it never propagates, so a
+        // stray async error can't take down a logging session mid-contact.
+        if (error is WriteRefused) noticeWriteRefused(error);
+        final decision = ErrorPolicy.decide(error);
+        if (!decision.disposition.uploads) {
+          ErrorPolicy.logDecision(decision, error, stackTrace: stackTrace);
+          return;
+        }
+        debugPrint('[error-reporting] uncaught async error: $error\n$stackTrace');
+        if (decision.disposition.notifies) notify(error, stackTrace);
+      },
+    );
   }
 
   /// Report a caught error explicitly (e.g. bootstrap() failures that are
@@ -207,13 +210,7 @@ class ErrorReportingService {
   /// site prints one, and a new site must too. So "in a row" in the report
   /// means loud failures since the last success: a rule that depends on
   /// state (offline, then not) can put a quiet stretch between them.
-  static void reportIfRepeated(
-    String key,
-    Object error,
-    StackTrace? stackTrace, {
-    String? context,
-    int threshold = repeatedFailureThreshold,
-  }) {
+  static void reportIfRepeated(String key, Object error, StackTrace? stackTrace, {String? context, int threshold = repeatedFailureThreshold}) {
     if (!ErrorPolicy.decide(error).disposition.uploads) return;
     final streak = (_failureStreaks[key] ?? 0) + 1;
     _failureStreaks[key] = streak;
@@ -311,13 +308,7 @@ class ErrorReportingService {
       return;
     }
     scheduleMicrotask(() {
-      statusBar.showNotice(
-        key: 'write-policy:refused',
-        icon: 'clock-alert',
-        title: 'Change not saved',
-        text: refusal.reason,
-        persist: false,
-      );
+      statusBar.showNotice(key: 'write-policy:refused', icon: 'clock-alert', title: 'Change not saved', text: refusal.reason, persist: false);
     });
   }
 

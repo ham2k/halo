@@ -5,20 +5,7 @@
 ///
 /// See docs/releases.md §2.1 — the main version is named after its *target*
 /// month, which may run ahead of the calendar month it is actually built in.
-const _monthNames = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
+const _monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 class MainVersion {
   final int year;

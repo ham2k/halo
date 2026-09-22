@@ -24,50 +24,29 @@ void main() {
   });
 
   test('only old contacts: no recent bucket, all of them as QSOs', () {
-    expect(
-      workedBeforeBuckets([longAgo, longAgo, longAgo], now: now),
-      (recent: WorkedBeforeRecent.none, recentCount: 0, olderCount: 3),
-    );
+    expect(workedBeforeBuckets([longAgo, longAgo, longAgo], now: now), (recent: WorkedBeforeRecent.none, recentCount: 0, olderCount: 3));
   });
 
   test('today alone is named, and taken out of the remainder', () {
-    expect(
-      workedBeforeBuckets([today, today, longAgo], now: now),
-      (recent: WorkedBeforeRecent.today, recentCount: 2, olderCount: 1),
-    );
+    expect(workedBeforeBuckets([today, today, longAgo], now: now), (recent: WorkedBeforeRecent.today, recentCount: 2, olderCount: 1));
   });
 
   test('today is still named when the only other recent contact was yesterday, and fewer', () {
-    expect(
-      workedBeforeBuckets([today, today, yesterday], now: now),
-      (recent: WorkedBeforeRecent.today, recentCount: 2, olderCount: 1),
-    );
+    expect(workedBeforeBuckets([today, today, yesterday], now: now), (recent: WorkedBeforeRecent.today, recentCount: 2, olderCount: 1));
   });
 
   test('the week is named for anything before today, and does not include today', () {
     // Yesterday alone: the week, not "yesterday" (unreachable in PoLo too).
-    expect(
-      workedBeforeBuckets([yesterday, longAgo], now: now),
-      (recent: WorkedBeforeRecent.last7days, recentCount: 1, olderCount: 1),
-    );
+    expect(workedBeforeBuckets([yesterday, longAgo], now: now), (recent: WorkedBeforeRecent.last7days, recentCount: 1, olderCount: 1));
     // One today and one earlier this week: the week names the earlier one
     // only, and today's contact falls into the remainder.
-    expect(
-      workedBeforeBuckets([today, thisWeek, longAgo], now: now),
-      (recent: WorkedBeforeRecent.last7days, recentCount: 1, olderCount: 2),
-    );
-    expect(
-      workedBeforeBuckets([yesterday, thisWeek], now: now),
-      (recent: WorkedBeforeRecent.last7days, recentCount: 2, olderCount: 0),
-    );
+    expect(workedBeforeBuckets([today, thisWeek, longAgo], now: now), (recent: WorkedBeforeRecent.last7days, recentCount: 1, olderCount: 2));
+    expect(workedBeforeBuckets([yesterday, thisWeek], now: now), (recent: WorkedBeforeRecent.last7days, recentCount: 2, olderCount: 0));
   });
 
   test('the week is six days back from today\'s midnight, not 7x24h', () {
     final sixDaysAgoMorning = at(DateTime(2026, 8, 27, 1, 0));
     final sevenDaysAgo = at(DateTime(2026, 8, 26, 23, 0));
-    expect(
-      workedBeforeBuckets([sixDaysAgoMorning, sevenDaysAgo], now: now),
-      (recent: WorkedBeforeRecent.last7days, recentCount: 1, olderCount: 1),
-    );
+    expect(workedBeforeBuckets([sixDaysAgoMorning, sevenDaysAgo], now: now), (recent: WorkedBeforeRecent.last7days, recentCount: 1, olderCount: 1));
   });
 }

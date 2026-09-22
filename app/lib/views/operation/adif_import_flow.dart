@@ -30,6 +30,7 @@ import '../../services/hook_payloads.dart';
 import '../../services/status_bar_service.dart';
 import '../../tools/operation_title.dart';
 import '../../services/halo_services.dart';
+
 /// Extensions ADIF files are written with. `.adi` is the format this parses;
 /// `.adif` appears in the wild for the same thing.
 const _adifExtensions = ['adi', 'adif'];
@@ -117,11 +118,7 @@ Future<Uint8List> _readHead(XFile file) async {
 }
 
 /// Opens the file picker, then runs [importAdifFile] on what was chosen.
-Future<void> pickAndImportAdif(
-  BuildContext context, {
-  required HaLoServices services,
-  required Operation operation,
-}) async {
+Future<void> pickAndImportAdif(BuildContext context, {required HaLoServices services, required Operation operation}) async {
   final XFile? file;
   try {
     file = await openFile(acceptedTypeGroups: adifTypeGroups());
@@ -141,12 +138,7 @@ Future<void> pickAndImportAdif(
 ///
 /// Nothing is written before the confirmation: merging rewrites contacts that
 /// were already correct, which is materially harder to undo than an append.
-Future<void> importAdifFile(
-  BuildContext context, {
-  required HaLoServices services,
-  required Operation operation,
-  required XFile file,
-}) async {
+Future<void> importAdifFile(BuildContext context, {required HaLoServices services, required Operation operation, required XFile file}) async {
   final t = context.t.adifImport;
   final statusBar = services.statusBar;
   final filename = file.name;
@@ -182,7 +174,10 @@ Future<void> importAdifFile(
 
   adifImportInFlight = true;
   try {
-    statusBar.setMessage(key: 'adifImport:status', text: t.reading(filename: filename));
+    statusBar.setMessage(
+      key: 'adifImport:status',
+      text: t.reading(filename: filename),
+    );
     final Uint8List bytes;
     final int recordCount;
     try {
@@ -221,26 +216,20 @@ Future<void> importAdifFile(
     statusBar.clear('adifImport:status');
     if (!context.mounted) return;
 
-    final decision = await _showSummary(
-      context,
-      plan,
-      failedProgramNames(services.extensions.availableExtensions, plan.failedHooks),
-    );
+    final decision = await _showSummary(context, plan, failedProgramNames(services.extensions.availableExtensions, plan.failedHooks));
     if (decision == null) return;
 
-    statusBar.setProgress(key: 'adifImport:status', text: t.importing(filename: filename));
+    statusBar.setProgress(
+      key: 'adifImport:status',
+      text: t.importing(filename: filename),
+    );
     final int written;
     try {
       // ONLY the write is guarded. Everything after it is reporting, and
       // reporting must not be able to retract a committed fact — a telemetry
       // throw once turned a successful 3,000-contact import into "could not
       // import", whose rational answer is to import again.
-      written = await services.qsos.writeBatch(
-        operationUuid: operation.uuid,
-        inserts: plan.additions,
-        updates: plan.merges,
-        updateBases: plan.mergeBases,
-      );
+      written = await services.qsos.writeBatch(operationUuid: operation.uuid, inserts: plan.additions, updates: plan.merges, updateBases: plan.mergeBases);
     } catch (e, stack) {
       _reportFailure(services, 'adifImport:write', e, stack, t.failed(filename: filename, error: '$e'));
       if (context.mounted) {
@@ -277,10 +266,7 @@ Future<void> importAdifFile(
       );
     }
     try {
-      services.track(
-        'adif_imported',
-        {'count': written, 'merged': plan.merges.length, 'planned': plan.importCount},
-      );
+      services.track('adif_imported', {'count': written, 'merged': plan.merges.length, 'planned': plan.importCount});
     } catch (e, stack) {
       ErrorReportingService.report(e, stack, context: 'adifImport:telemetry');
     }
@@ -314,11 +300,7 @@ void _reportFailure(HaLoServices services, String where, Object error, StackTrac
 /// dialog: `saveData` writes the whole `data` column, so a stale snapshot
 /// would silently revert a sync round or an edit in another pane that landed
 /// while the operator was deciding.
-Future<void> _addActivationToOperation(
-  HaLoServices services,
-  Operation operation,
-  List<Map<String, dynamic>> refs,
-) async {
+Future<void> _addActivationToOperation(HaLoServices services, Operation operation, List<Map<String, dynamic>> refs) async {
   final current = await services.operations.get(operation.uuid);
   if (current == null) return;
 
@@ -333,7 +315,10 @@ Future<void> _addActivationToOperation(
 
   final withRefs = Operation(
     uuid: current.uuid,
-    data: {...current.data, 'refs': [...existing, ...added]},
+    data: {
+      ...current.data,
+      'refs': [...existing, ...added],
+    },
     qsoCount: current.qsoCount,
     startAtMillisMin: current.startAtMillisMin,
     startAtMillisMax: current.startAtMillisMax,
@@ -368,16 +353,13 @@ Future<void> _addActivationToOperation(
 /// Success stays in the status bar on purpose: "imported 72 contacts" is a
 /// result to notice, not a question to answer.
 Future<void> _showNotice(BuildContext context, String message) => showHaloDialog<void>(
-      context: context,
-      builder: (dialogContext) => HaloDialog(
-        title: Text(context.t.adifImport.title),
-        content: Text(message),
-        cancel: TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(context.t.common.done),
-        ),
-      ),
-    );
+  context: context,
+  builder: (dialogContext) => HaloDialog(
+    title: Text(context.t.adifImport.title),
+    content: Text(message),
+    cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.t.common.done)),
+  ),
+);
 
 /// The failed hooks as the operator names them — 'POTA', not 'pota'.
 ///
@@ -400,12 +382,7 @@ List<String> failedProgramNames(Iterable<ExtensionInfo> available, Set<String> f
   ]..sort();
 }
 
-Future<AdifImportPlan> _planFor(
-  HaLoServices services,
-  Operation operation,
-  Uint8List bytes,
-  String filename,
-) async {
+Future<AdifImportPlan> _planFor(HaLoServices services, Operation operation, Uint8List bytes, String filename) async {
   final stacking = await _stackingRefTypes(services, operation);
   final log = parseAdifLogBytes(bytes);
   final outcome = await AdifImportService(services.extensions.host).applyHooks(log.qsos);
@@ -432,9 +409,7 @@ Future<AdifImportPlan> _planFor(
     // imported contact, and flag every record in the file as foreign because
     // no real call equals the joined string. A multi-operator operation has no
     // single answer to "whose contact is this", so impose nothing.
-    stationCall: operation.stationCalls.length == 1 && operation.stationCalls.first.isNotEmpty
-        ? operation.stationCalls.first
-        : null,
+    stationCall: operation.stationCalls.length == 1 && operation.stationCalls.first.isNotEmpty ? operation.stationCalls.first : null,
   );
 }
 
@@ -451,14 +426,16 @@ Future<({Set<String> types, bool unknown})> _stackingRefTypes(HaLoServices servi
   // A fan-out that failed yields the same empty-ish set as an operation whose
   // activities simply don't stack, and only one of them costs the operator a
   // reference. The caller has to be able to tell them apart.
-  return (unknown: result.loadFailed, types: {
-    for (final control in result.controls)
-      // `refType` lives on the control's `input`, not at the top level —
-      // reading it from the wrong place yields an empty set and merges that
-      // quietly refuse to stack.
-      if (control['allowsMultiple'] == true && (control['input'] as Map?)?['refType'] is String)
-        (control['input'] as Map)['refType'] as String,
-  });
+  return (
+    unknown: result.loadFailed,
+    types: {
+      for (final control in result.controls)
+        // `refType` lives on the control's `input`, not at the top level —
+        // reading it from the wrong place yields an empty set and merges that
+        // quietly refuse to stack.
+        if (control['allowsMultiple'] == true && (control['input'] as Map?)?['refType'] is String) (control['input'] as Map)['refType'] as String,
+    },
+  );
 }
 
 /// Accepts a log file dropped anywhere on its [child].
@@ -518,10 +495,7 @@ class _AdifDropTargetState extends State<AdifDropTarget> {
                     child: Card(
                       child: Padding(
                         padding: const EdgeInsets.all(Space.lg),
-                        child: Text(
-                          context.t.adifImport.dropHint,
-                          style: theme.textTheme.titleMedium,
-                        ),
+                        child: Text(context.t.adifImport.dropHint, style: theme.textTheme.titleMedium),
                       ),
                     ),
                   ),
@@ -540,11 +514,7 @@ class _ImportDecision {
   const _ImportDecision({required this.addActivation});
 }
 
-Future<_ImportDecision?> _showSummary(
-  BuildContext context,
-  AdifImportPlan plan,
-  List<String> failedPrograms,
-) {
+Future<_ImportDecision?> _showSummary(BuildContext context, AdifImportPlan plan, List<String> failedPrograms) {
   return showHaloDialog<_ImportDecision>(
     context: context,
     builder: (dialogContext) => _SummaryContent(plan: plan, failedPrograms: failedPrograms),
@@ -574,12 +544,9 @@ class _SummaryContentState extends State<_SummaryContent> {
     final theme = Theme.of(context);
 
     Widget stat(String text, {bool muted = false}) => Padding(
-          padding: const EdgeInsets.only(top: Space.xs),
-          child: Text(
-            text,
-            style: muted ? theme.textTheme.bodyMedium?.copyWith(color: theme.disabledColor) : null,
-          ),
-        );
+      padding: const EdgeInsets.only(top: Space.xs),
+      child: Text(text, style: muted ? theme.textTheme.bodyMedium?.copyWith(color: theme.disabledColor) : null),
+    );
 
     return HaloDialog(
       // The title names the ACTION; the file is content, not chrome. A long
@@ -590,25 +557,17 @@ class _SummaryContentState extends State<_SummaryContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            plan.filename,
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          Text(plan.filename, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: Space.sm),
-          if (plan.additions.isNotEmpty)
-            stat(t.newContacts(count: plan.additions.length, formatted: formatNumber(plan.additions.length))),
-          if (plan.merges.isNotEmpty)
-            stat(t.merging(count: plan.merges.length, formatted: formatNumber(plan.merges.length))),
+          if (plan.additions.isNotEmpty) stat(t.newContacts(count: plan.additions.length, formatted: formatNumber(plan.additions.length))),
+          if (plan.merges.isNotEmpty) stat(t.merging(count: plan.merges.length, formatted: formatNumber(plan.merges.length))),
           // Counts every match, including ones `merges` leaves out because
           // folding the file's data in changed nothing — a re-import of an
           // unchanged file otherwise shows neither line above and reads as
           // though nothing in it was recognized, rather than as already logged.
-          if (plan.alreadyLoggedCount > 0)
-            stat(t.alreadyLogged(count: plan.alreadyLoggedCount, formatted: formatNumber(plan.alreadyLoggedCount)), muted: true),
-          if (plan.unusable.isNotEmpty)
-            stat(t.unusable(count: plan.unusable.length, formatted: formatNumber(plan.unusable.length)), muted: true),
-          if (plan.undated.isNotEmpty)
-            stat(t.noDate(count: plan.undated.length, formatted: formatNumber(plan.undated.length)), muted: true),
+          if (plan.alreadyLoggedCount > 0) stat(t.alreadyLogged(count: plan.alreadyLoggedCount, formatted: formatNumber(plan.alreadyLoggedCount)), muted: true),
+          if (plan.unusable.isNotEmpty) stat(t.unusable(count: plan.unusable.length, formatted: formatNumber(plan.unusable.length)), muted: true),
+          if (plan.undated.isNotEmpty) stat(t.noDate(count: plan.undated.length, formatted: formatNumber(plan.undated.length)), muted: true),
           if (plan.hoistedOperationRefs.isNotEmpty && !plan.isEmpty) ...[
             const SizedBox(height: Space.sm),
             // Named, not silently dropped. Stripping an activation off every
@@ -626,8 +585,7 @@ class _SummaryContentState extends State<_SummaryContent> {
               title: Text(t.addActivation),
             ),
           ],
-          if (plan.flagged.isNotEmpty)
-            stat(t.flagged(count: plan.flagged.length, formatted: formatNumber(plan.flagged.length)), muted: true),
+          if (plan.flagged.isNotEmpty) stat(t.flagged(count: plan.flagged.length, formatted: formatNumber(plan.flagged.length)), muted: true),
           // Two sentences and two counts, because the two failures are not the
           // same claim about the same records. Nothing reaching the runtime
           // means no references were recovered, full stop; one program's hook
@@ -638,11 +596,7 @@ class _SummaryContentState extends State<_SummaryContent> {
           // total would put the unhedged sentence over records whose other
           // hooks answered in full. Each line counts only its own kind, so the
           // conflation is not expressible here.
-          if (plan.recordsUnreachable > 0)
-            stat(
-              t.missingRefs(count: plan.recordsUnreachable, formatted: formatNumber(plan.recordsUnreachable)),
-              muted: true,
-            ),
+          if (plan.recordsUnreachable > 0) stat(t.missingRefs(count: plan.recordsUnreachable, formatted: formatNumber(plan.recordsUnreachable)), muted: true),
           if (widget.failedPrograms.isNotEmpty)
             stat(
               t.partialRefs(
@@ -657,15 +611,13 @@ class _SummaryContentState extends State<_SummaryContent> {
           // here is how the addition-fold path got missed.
           if (plan.mayDropReferences) stat(t.stackingTypesUnknown, muted: true),
           if (plan.isEmpty && plan.refusedCount == 0) stat(t.nothingToImport),
-          if (plan.foreignStations.isNotEmpty && plan.stationCall != null)
-            _StationWarning(calls: plan.foreignStations, station: plan.stationCall!),
+          if (plan.foreignStations.isNotEmpty && plan.stationCall != null) _StationWarning(calls: plan.foreignStations, station: plan.stationCall!),
         ],
       ),
       actions: [
         if (!plan.isEmpty)
           FilledButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(_ImportDecision(addActivation: _addActivation)),
+            onPressed: () => Navigator.of(dialogContext).pop(_ImportDecision(addActivation: _addActivation)),
             child: Text(t.confirm),
           ),
       ],
@@ -696,18 +648,13 @@ class _StationWarning extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.t.adifImport;
     final theme = Theme.of(context);
-    final joined = calls.length < 2
-        ? calls.join()
-        : '${calls.take(calls.length - 1).join(', ')}${t.stationCallJoin}${calls.last}';
+    final joined = calls.length < 2 ? calls.join() : '${calls.take(calls.length - 1).join(', ')}${t.stationCallJoin}${calls.last}';
 
     return Padding(
       padding: const EdgeInsets.only(top: Space.md),
       child: Container(
         padding: const EdgeInsets.all(Space.sm),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(Space.xs),
-        ),
+        decoration: BoxDecoration(color: theme.colorScheme.errorContainer, borderRadius: BorderRadius.circular(Space.xs)),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -716,10 +663,7 @@ class _StationWarning extends StatelessWidget {
             Expanded(
               child: Text(
                 t.stationWarning(calls: joined, station: station),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onErrorContainer,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onErrorContainer, fontWeight: FontWeight.bold),
               ),
             ),
           ],

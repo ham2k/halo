@@ -42,27 +42,23 @@ void main() {
   Future<ExtensionHost> travelledHost() async {
     final host = await sharedHost(['custom-text']);
     final clock = AppClock.instance;
-    host.setClockTravel(
-      anchorRealMillis: clock.anchorRealMillis,
-      anchorVirtualMillis: clock.anchorVirtualMillis,
-      speed: clock.speed,
-    );
+    host.setClockTravel(anchorRealMillis: clock.anchorRealMillis, anchorVirtualMillis: clock.anchorVirtualMillis, speed: clock.speed);
     return host;
   }
 
   /// Renders `{{ now }}`, which the SDK's templateContext fills from the
   /// sandbox's `Date`.
   Future<Object?> renderClockPanel(ExtensionHost host) => host.invokeHook(
-        'panel',
-        key: 'custom-text',
-        method: 'render',
-        args: const {
-          'panelKey': 'custom-text',
-          'config': {'content': 'NOW={{ now }}'},
-          'reason': 'initial',
-        },
-        timeout: const Duration(seconds: 30),
-      );
+    'panel',
+    key: 'custom-text',
+    method: 'render',
+    args: const {
+      'panelKey': 'custom-text',
+      'config': {'content': 'NOW={{ now }}'},
+      'reason': 'initial',
+    },
+    timeout: const Duration(seconds: 30),
+  );
 
   /// The date the sandbox rendered, as `YYYY-MM-DD`.
   Future<String> renderedDate() async {
@@ -85,8 +81,11 @@ void main() {
     AppClock.instance.travel(delta: const Duration(days: 21));
     final rendered = await renderedDate();
     expect(rendered, isoDate(nowUtc()));
-    expect(rendered, isNot(isoDate(DateTime.now().toUtc())), // clock:allow — proving it is NOT real time
-        reason: 'the panel must be showing the travelled date, not the real one');
+    expect(
+      rendered,
+      isNot(isoDate(DateTime.now().toUtc())), // clock:allow — proving it is NOT real time
+      reason: 'the panel must be showing the travelled date, not the real one',
+    );
   });
 
   test('the sandbox follows a backward offset', () async {
@@ -104,16 +103,12 @@ void main() {
     final content = await renderClockPanel(await travelledHost());
     final markdown = ((content as Map)['content'] as String);
 
-    String hhmm(DateTime utc) =>
-        '${utc.hour.toString().padLeft(2, '0')}:${utc.minute.toString().padLeft(2, '0')}';
+    String hhmm(DateTime utc) => '${utc.hour.toString().padLeft(2, '0')}:${utc.minute.toString().padLeft(2, '0')}';
     // Either minute: the render lands a few milliseconds after `expected` was
     // read, which can be the far side of a minute boundary.
     expect(
       markdown,
-      anyOf(
-        contains('T${hhmm(expected)}'),
-        contains('T${hhmm(expected.add(const Duration(minutes: 1)))}'),
-      ),
+      anyOf(contains('T${hhmm(expected)}'), contains('T${hhmm(expected.add(const Duration(minutes: 1)))}')),
       reason: 'the rendered timestamp should read the travelled time:\n$markdown',
     );
   });
@@ -138,11 +133,7 @@ void main() {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
       extensions: [ExtensionBundle(key: 'custom-text', source: bundleSource('custom-text'))],
-      clock: ClockTravelState(
-        anchorRealMillis: clock.anchorRealMillis,
-        anchorVirtualMillis: clock.anchorVirtualMillis,
-        speed: clock.speed,
-      ),
+      clock: ClockTravelState(anchorRealMillis: clock.anchorRealMillis, anchorVirtualMillis: clock.anchorVirtualMillis, speed: clock.speed),
     );
     addTearDown(host.dispose);
 
@@ -171,7 +162,6 @@ void main() {
     // sub-millisecond render legitimately reports 1 against a total of 0 — and
     // is three orders of magnitude below the ~1000x error being looked for.
     final sample = host.samples.last;
-    expect(sample.jsMillis, lessThanOrEqualTo(sample.totalMillis + 5),
-        reason: 'jsMillis must be real elapsed milliseconds, not travelled ones');
+    expect(sample.jsMillis, lessThanOrEqualTo(sample.totalMillis + 5), reason: 'jsMillis must be real elapsed milliseconds, not travelled ones');
   });
 }

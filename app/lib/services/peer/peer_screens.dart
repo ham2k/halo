@@ -47,8 +47,7 @@ const int _maxCaptureWidth = 2560;
 const String localViewerWatcher = 'local:viewer';
 
 class PeerScreens extends ChangeNotifier {
-  PeerScreens({required this.settings, required this.peers, ScreenCaptureService? capture})
-      : _capture = capture ?? ScreenCaptureService() {
+  PeerScreens({required this.settings, required this.peers, ScreenCaptureService? capture}) : _capture = capture ?? ScreenCaptureService() {
     _frameSubscription = _capture.frames.listen(_onFrame);
     _stoppedSubscription = _capture.stopped.listen(_onCaptureStopped);
     _mediaSubscription = peers.mediaConnections.listen(_onMediaConnection);
@@ -224,9 +223,7 @@ class PeerScreens extends ChangeNotifier {
 
   /// Who is watching anything, for the "someone is looking at your screen"
   /// signal. The operator is entitled to know that at a glance.
-  Set<String> get watchers => {
-        for (final set in _watchers.values) ...set,
-      };
+  Set<String> get watchers => {for (final set in _watchers.values) ...set};
 
   /// Thumbnails for the picker, and the queue that fills them.
   ///
@@ -284,33 +281,37 @@ class PeerScreens extends ChangeNotifier {
     while (_thumbnailsInFlight.length < _maxThumbnailFetches && _thumbnailQueue.isNotEmpty) {
       final sourceId = _thumbnailQueue.removeAt(0);
       _thumbnailsInFlight.add(sourceId);
-      unawaited(_capture.thumbnail(sourceId).then<Uint8List?>(
-        (bytes) => bytes,
-        // Anything the service did not already turn into a null — the slot
-        // must come back either way. Left held, three of these stall the
-        // queue for the rest of the session and every waiting peer goes
-        // unanswered, with nothing on screen to say why.
-        onError: (Object e) {
-          debugPrint('[peer] thumbnail for $sourceId failed: $e');
-          return null;
-        },
-      ).then((bytes) {
-        _thumbnailsInFlight.remove(sourceId);
-        // Re-checked on DELIVERY, not only when the request arrived: a
-        // thumbnail is the picture, and the operator may have withdrawn the
-        // source while this was in flight.
-        final stale = _staleThumbnails.remove(sourceId);
-        final stillOffered = offeredSources.any((s) => s.id == sourceId);
-        if (bytes != null && stillOffered && !stale) _thumbnails[sourceId] = bytes;
-        for (final peerDeviceId in _thumbRequests.remove(sourceId) ?? const <String>{}) {
-          // Answered even when there is no picture: a viewer left waiting
-          // cannot tell "nothing to show" from "still coming".
-          peers.sendEphemeralTo(
-            peerDeviceId, PeerMessage.screenThumb(sourceId, stillOffered ? bytes : null));
-        }
-        notifyListeners();
-        _pumpThumbnails();
-      }));
+      unawaited(
+        _capture
+            .thumbnail(sourceId)
+            .then<Uint8List?>(
+              (bytes) => bytes,
+              // Anything the service did not already turn into a null — the slot
+              // must come back either way. Left held, three of these stall the
+              // queue for the rest of the session and every waiting peer goes
+              // unanswered, with nothing on screen to say why.
+              onError: (Object e) {
+                debugPrint('[peer] thumbnail for $sourceId failed: $e');
+                return null;
+              },
+            )
+            .then((bytes) {
+              _thumbnailsInFlight.remove(sourceId);
+              // Re-checked on DELIVERY, not only when the request arrived: a
+              // thumbnail is the picture, and the operator may have withdrawn the
+              // source while this was in flight.
+              final stale = _staleThumbnails.remove(sourceId);
+              final stillOffered = offeredSources.any((s) => s.id == sourceId);
+              if (bytes != null && stillOffered && !stale) _thumbnails[sourceId] = bytes;
+              for (final peerDeviceId in _thumbRequests.remove(sourceId) ?? const <String>{}) {
+                // Answered even when there is no picture: a viewer left waiting
+                // cannot tell "nothing to show" from "still coming".
+                peers.sendEphemeralTo(peerDeviceId, PeerMessage.screenThumb(sourceId, stillOffered ? bytes : null));
+              }
+              notifyListeners();
+              _pumpThumbnails();
+            }),
+      );
     }
   }
 
@@ -571,14 +572,7 @@ class PeerScreens extends ChangeNotifier {
     final ticket = _ticketFor(peerDeviceId);
     peers.sendEphemeralTo(
       peerDeviceId,
-      PeerMessage.screenGrant(
-        PeerScreenGrant(
-            sourceId: request.sourceId,
-            ticket: ticket,
-            port: port,
-            paced: true,
-            crops: true),
-      ),
+      PeerMessage.screenGrant(PeerScreenGrant(sourceId: request.sourceId, ticket: ticket, port: port, paced: true, crops: true)),
     );
   }
 
@@ -712,15 +706,17 @@ class PeerScreens extends ChangeNotifier {
       onError: (Object e) => debugPrint('[peer] media link from $peerDeviceId errored: $e'),
       cancelOnError: false,
     );
-    unawaited(connection.link.closed.then((_) {
-      // Only if it is still THIS link: a peer that redialled has already
-      // replaced it, and tearing its watchers down on the old one's close
-      // would kill the view that just came back.
-      if (_mediaLinks[peerDeviceId] != connection.link) return;
-      _mediaLinks.remove(peerDeviceId);
-      unawaited(_mediaAcks.remove(peerDeviceId)?.cancel());
-      unawaited(removeAllFor(peerDeviceId));
-    }));
+    unawaited(
+      connection.link.closed.then((_) {
+        // Only if it is still THIS link: a peer that redialled has already
+        // replaced it, and tearing its watchers down on the old one's close
+        // would kill the view that just came back.
+        if (_mediaLinks[peerDeviceId] != connection.link) return;
+        _mediaLinks.remove(peerDeviceId);
+        unawaited(_mediaAcks.remove(peerDeviceId)?.cancel());
+        unawaited(removeAllFor(peerDeviceId));
+      }),
+    );
     notifyListeners();
   }
 
@@ -728,13 +724,7 @@ class PeerScreens extends ChangeNotifier {
   /// grant a viewer anything on a false — see [addWatcher].
   Future<bool> _startCapture(String sourceId, PeerScreenSubscription terms) async {
     try {
-      await _capture.start(
-        sourceId,
-        maxWidth: terms.maxWidth.clamp(160, _maxCaptureWidth),
-        fps: terms.fps,
-        quality: terms.quality,
-        crop: terms.crop,
-      );
+      await _capture.start(sourceId, maxWidth: terms.maxWidth.clamp(160, _maxCaptureWidth), fps: terms.fps, quality: terms.quality, crop: terms.crop);
       // A restart builds a new capture session, which numbers its frames from
       // one again — so anything outstanding against the OLD numbering can
       // never be matched, for any watcher, not merely the one that triggered
@@ -831,8 +821,10 @@ class PeerScreens extends ChangeNotifier {
       // picture keeps working, and the queue it risks is the one that was
       // there before pacing existed.
       if (_unreadableAcksFrom.add(peerDeviceId)) {
-        debugPrint('[peer] unreadable media-link message from $peerDeviceId'
-            ' — a newer format? serving it ungated');
+        debugPrint(
+          '[peer] unreadable media-link message from $peerDeviceId'
+          ' — a newer format? serving it ungated',
+        );
       }
       _pacedFlows.removeWhere((key) => key.startsWith('$peerDeviceId/'));
       _forgetFlowsOf(peerDeviceId);

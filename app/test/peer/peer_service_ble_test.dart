@@ -20,11 +20,7 @@ import 'package:ham2k_logger/services/peer/serial_claims.dart';
 import '../support/peer_ble_fakes.dart';
 import '../support/peer_network_fakes.dart';
 
-Future<void> waitFor(
-  String what,
-  FutureOr<bool> Function() condition, {
-  Duration timeout = const Duration(seconds: 20),
-}) async {
+Future<void> waitFor(String what, FutureOr<bool> Function() condition, {Duration timeout = const Duration(seconds: 20)}) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
     if (await condition()) return;
@@ -113,15 +109,17 @@ void main() {
 
   test('two devices with no shared network pair over BLE and sync both ways', () async {
     final op = await sharedOperation();
-    await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}, 'band': '20m'});
+    await deviceA.qsos.add(op, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+    });
 
     await bleOn(deviceA);
     await bleOn(deviceB);
     await deviceA.service.setOpenOperation(op);
     await deviceB.service.setOpenOperation(op);
 
-    await waitFor('both to ask for pairing',
-        () => deviceA.service.pendingPairing != null && deviceB.service.pendingPairing != null);
+    await waitFor('both to ask for pairing', () => deviceA.service.pendingPairing != null && deviceB.service.pendingPairing != null);
     // The prompt must be able to say WHICH device asks, from the protocol
     // hello alone — BLE advertisements carry no name.
     expect(deviceB.service.pendingPairing!.session!.peer!.deviceName, 'Laptop');
@@ -129,15 +127,16 @@ void main() {
     await deviceA.service.acceptPairing(deviceB.deviceId);
     await deviceB.service.acceptPairing(deviceA.deviceId);
 
-    await waitFor("A's QSO to reach B",
-        () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
+    await waitFor("A's QSO to reach B", () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
     expect((await deviceB.qsos.watchForOperation(op).first).single.theirCall, 'W1AW');
 
     // Live, the reverse way, no reconnect.
-    await deviceB.qsos.add(op, {'their': {'call': 'K1ABC'}, 'band': '40m'});
+    await deviceB.qsos.add(op, {
+      'their': {'call': 'K1ABC'},
+      'band': '40m',
+    });
     await deviceB.service.pushLocal();
-    await waitFor("B's QSO to reach A",
-        () async => (await deviceA.qsos.watchForOperation(op).first).length == 2);
+    await waitFor("B's QSO to reach A", () async => (await deviceA.qsos.watchForOperation(op).first).length == 2);
 
     // And the panel can say how they are connected.
     final session = deviceA.service.peers[deviceB.deviceId]!.session!;
@@ -153,23 +152,23 @@ void main() {
     final op = await sharedOperation();
     await deviceA.service.trust.trust(deviceB.deviceId, name: 'Phone');
     await deviceB.service.trust.trust(deviceA.deviceId, name: 'Laptop');
-    await deviceA.qsos.add(op, {'their': {'call': 'W1AW'}});
+    await deviceA.qsos.add(op, {
+      'their': {'call': 'W1AW'},
+    });
 
     await bleOn(deviceA);
     await bleOn(deviceB);
     await deviceA.service.setOpenOperation(op);
     await deviceB.service.setOpenOperation(op);
 
-    await waitFor('sync with no operator involvement',
-        () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
+    await waitFor('sync with no operator involvement', () async => (await deviceB.qsos.watchForOperation(op).first).isNotEmpty);
     expect(deviceA.service.pendingPairing, isNull);
     expect(deviceB.service.pendingPairing, isNull);
 
     // Let the higher-id side's delayed dial timer come due, then prove the
     // hint held: B never dialled a peer it already had a session with.
     await Future<void>.delayed(const Duration(milliseconds: 300));
-    expect(deviceB.gateway.connectCalls, 0,
-        reason: 'the connected-peer hint exists so the pair does not chew the radio with duplicate dials');
+    expect(deviceB.gateway.connectCalls, 0, reason: 'the connected-peer hint exists so the pair does not chew the radio with duplicate dials');
   });
 
   test('a serial claim crosses a BLE link, where a stream still does not', () async {
@@ -193,11 +192,9 @@ void main() {
       claims: const [PeerSerialClaim(label: 'serial', number: 7)],
     );
 
-    expect(deviceA.service.sendEphemeralTo(deviceB.deviceId, claim), isFalse,
-        reason: 'the default send is the LAN-only guard for streams');
+    expect(deviceA.service.sendEphemeralTo(deviceB.deviceId, claim), isFalse, reason: 'the default send is the LAN-only guard for streams');
     expect(deviceA.service.sendEphemeralTo(deviceB.deviceId, claim, allowBle: true), isTrue);
-    await waitFor('the claim to arrive over BLE',
-        () => received.any((m) => m.serialClaimsOrNull?.claims.single.number == 7));
+    await waitFor('the claim to arrive over BLE', () => received.any((m) => m.serialClaimsOrNull?.claims.single.number == 7));
   });
 
   test('a claim round runs across a BLE link, wired the way the app wires it', () async {
@@ -207,14 +204,14 @@ void main() {
     await deviceA.service.trust.trust(deviceB.deviceId, name: 'Phone');
     await deviceB.service.trust.trust(deviceA.deviceId, name: 'Laptop');
     SerialClaims claimsFor(_Device device) => SerialClaims(
-          localDeviceId: device.deviceId,
-          peek: (_, _) async => 1,
-          livePeers: () => [
-            for (final id in device.service.peers.keys)
-              if (device.service.hasSession(id)) id,
-          ],
-          send: (id, message) => device.service.sendEphemeralTo(id, message, allowBle: true),
-        );
+      localDeviceId: device.deviceId,
+      peek: (_, _) async => 1,
+      livePeers: () => [
+        for (final id in device.service.peers.keys)
+          if (device.service.hasSession(id)) id,
+      ],
+      send: (id, message) => device.service.sendEphemeralTo(id, message, allowBle: true),
+    );
     final claimsA = claimsFor(deviceA);
     final claimsB = claimsFor(deviceB);
     addTearDown(claimsA.dispose);
@@ -229,8 +226,7 @@ void main() {
 
     await bleOn(deviceA);
     await bleOn(deviceB);
-    await waitFor('both sides to hold the BLE session',
-        () => deviceA.service.hasSession(deviceB.deviceId) && deviceB.service.hasSession(deviceA.deviceId));
+    await waitFor('both sides to hold the BLE session', () => deviceA.service.hasSession(deviceB.deviceId) && deviceB.service.hasSession(deviceA.deviceId));
 
     const descriptor = SequenceDescriptor(refType: 'cqwpx', field: 'ourSerial', key: 'cqwpx/serial');
     final request = descriptor.requestFor(Qso(uuid: '', operationUuid: 'op-1', data: const {'band': '20m'}));
@@ -247,14 +243,12 @@ void main() {
     await deviceB.service.trust.trust(deviceA.deviceId, name: 'Laptop');
     await bleOn(deviceA);
     await bleOn(deviceB);
-    await waitFor('the pair to connect',
-        () => deviceA.service.peers[deviceB.deviceId]?.isConnected ?? false);
+    await waitFor('the pair to connect', () => deviceA.service.peers[deviceB.deviceId]?.isConnected ?? false);
 
     await deviceA.service.setBleEnabled(false);
     expect(deviceA.gateway.advertising, isFalse, reason: 'sub-switch off means the radio goes quiet');
     expect(deviceA.gateway.scanning, isFalse);
-    await waitFor('the session to drop with the transport',
-        () => !(deviceA.service.peers[deviceB.deviceId]?.isConnected ?? false));
+    await waitFor('the session to drop with the transport', () => !(deviceA.service.peers[deviceB.deviceId]?.isConnected ?? false));
     // The master switch stayed on: LAN (were it reachable) would be
     // unaffected, and the service still runs.
     expect(deviceA.service.running, isTrue);
@@ -272,13 +266,11 @@ void main() {
     };
     await bleOn(deviceA);
     await bleOn(deviceB);
-    await waitFor('the pair to connect',
-        () => deviceA.service.peers[deviceB.deviceId]?.isConnected ?? false);
+    await waitFor('the pair to connect', () => deviceA.service.peers[deviceB.deviceId]?.isConnected ?? false);
     await waitFor('A to report the connection', () => events.isNotEmpty);
 
     await deviceA.service.setBleEnabled(false);
-    await waitFor('the session to drop with the transport',
-        () => !(deviceA.service.peers[deviceB.deviceId]?.isConnected ?? false));
+    await waitFor('the session to drop with the transport', () => !(deviceA.service.peers[deviceB.deviceId]?.isConnected ?? false));
     // Long enough for a report to have travelled: this is a negative, so an
     // assertion made before the close landed would pass on anything.
     await Future<void>.delayed(const Duration(milliseconds: 500));
@@ -286,8 +278,7 @@ void main() {
   });
 
   test('a Bluetooth problem is the operator-visible bleError, apart from the LAN error', () async {
-    deviceA.gateway.readiness =
-        const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'Bluetooth is turned off');
+    deviceA.gateway.readiness = const PeerBleReadiness(canCentral: false, canPeripheral: false, problem: 'Bluetooth is turned off');
     await bleOn(deviceA);
     await waitFor('the problem to surface', () => deviceA.service.bleError != null);
     expect(deviceA.service.bleError, 'Bluetooth is turned off');

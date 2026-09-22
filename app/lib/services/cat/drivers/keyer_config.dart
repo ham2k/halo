@@ -15,33 +15,31 @@ import '../driver.dart';
 /// The CW keyer checkbox and the voice memory count, each skipped when
 /// [overrides] pins it.
 List<Map<String, dynamic>> keyerConfigElements(Map<String, dynamic> overrides) => [
-      if (!overrides.containsKey(cwKeyerConfigKey))
-        {
-          'type': 'field',
-          'fieldType': 'checkbox',
-          'key': cwKeyerConfigKey,
-          'label': t.settings.station.cwKeyerField,
-          'description': t.settings.station.cwKeyerFieldDescription,
-          'devMode': true,
-        },
-      if (!overrides.containsKey(voiceMemoriesConfigKey)) voiceMemoriesConfigElement(),
-    ];
+  if (!overrides.containsKey(cwKeyerConfigKey))
+    {
+      'type': 'field',
+      'fieldType': 'checkbox',
+      'key': cwKeyerConfigKey,
+      'label': t.settings.station.cwKeyerField,
+      'description': t.settings.station.cwKeyerFieldDescription,
+      'devMode': true,
+    },
+  if (!overrides.containsKey(voiceMemoriesConfigKey)) voiceMemoriesConfigElement(),
+];
 
 Map<String, dynamic> voiceMemoriesConfigElement() => {
-      'type': 'field',
-      'fieldType': 'number',
-      'key': voiceMemoriesConfigKey,
-      'label': t.settings.station.voiceMemories,
-      'description': t.settings.station.voiceMemoriesDescription,
-      'devMode': true,
-    };
+  'type': 'field',
+  'fieldType': 'number',
+  'key': voiceMemoriesConfigKey,
+  'label': t.settings.station.voiceMemories,
+  'description': t.settings.station.voiceMemoriesDescription,
+  'devMode': true,
+};
 
 /// Blank or a whole number from zero to [maxVoiceMemories]; anything else is
 /// refused with the field's own words.
 String? validateVoiceMemories(dynamic value) {
   if (value == null || (value is String && value.trim().isEmpty)) return null;
   final n = value is num ? value : num.tryParse('$value');
-  return (n != null && n >= 0 && n <= maxVoiceMemories && n == n.roundToDouble())
-      ? null
-      : t.settings.station.voiceMemoriesInvalid;
+  return (n != null && n >= 0 && n <= maxVoiceMemories && n == n.roundToDouble()) ? null : t.settings.station.voiceMemoriesInvalid;
 }

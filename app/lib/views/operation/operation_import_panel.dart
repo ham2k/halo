@@ -26,11 +26,7 @@ import 'adif_import_flow.dart';
 /// read as "since I started the other program".
 const _captureGapThreshold = Duration(minutes: 30);
 
-Future<void> showOperationImportPanel(
-  BuildContext context, {
-  required HaLoServices services,
-  required Operation operation,
-}) {
+Future<void> showOperationImportPanel(BuildContext context, {required HaLoServices services, required Operation operation}) {
   final t = context.t;
   return showModalPane<void>(
     context,
@@ -127,10 +123,7 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
       builder: (dialogContext) => HaloDialog(
         title: Text(t.gapDialogTitle),
         content: Text(t.gapDialogBody(count: older.length)),
-        cancel: TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: Text(t.gapDialogRecentOnly),
-        ),
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(t.gapDialogRecentOnly)),
         actions: [
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -163,10 +156,7 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
         // worked — so the footer holds one way out, in the cancel slot.
         haloDialogFooterBand(
           context,
-          cancel: TextButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            child: Text(context.t.common.done),
-          ),
+          cancel: TextButton(onPressed: () => Navigator.of(context).maybePop(), child: Text(context.t.common.done)),
         ),
       ],
     );
@@ -187,14 +177,12 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
 
     final settings = widget.services.settings;
     final theme = Theme.of(context);
-    final operationStationCall =
-        widget.operation.stationCalls.length == 1 ? widget.operation.stationCalls.first : null;
+    final operationStationCall = widget.operation.stationCalls.length == 1 ? widget.operation.stationCalls.first : null;
 
     return [
       importAdifRow,
       ListTile(
-        leading:
-            Icon(settings.listenForOtherAppsEnabled ? MdiIcons.accessPointNetwork : MdiIcons.accessPointNetworkOff),
+        leading: Icon(settings.listenForOtherAppsEnabled ? MdiIcons.accessPointNetwork : MdiIcons.accessPointNetworkOff),
         title: Text(t.listenTitle),
         subtitle: Text(
           !settings.listenForOtherAppsEnabled
@@ -209,10 +197,7 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Switch(
-              value: settings.listenForOtherAppsEnabled,
-              onChanged: (value) => unawaited(settings.setListenForOtherAppsEnabled(value)),
-            ),
+            Switch(value: settings.listenForOtherAppsEnabled, onChanged: (value) => unawaited(settings.setListenForOtherAppsEnabled(value))),
             IconButton(
               icon: Icon(MdiIcons.tune, semanticLabel: t.settingsButton),
               onPressed: () => unawaited(showListenSettingsDialog(context, services: widget.services)),
@@ -296,20 +281,12 @@ class _CaptureTile extends StatelessWidget {
     final mode = asQsonString(qso['mode']);
     // Same check ADIF import uses (`qso_merge.dart`'s `foreignStationCalls`)
     // to warn about a call that doesn't match the operation it's landing in.
-    final mismatch = operationStationCall != null &&
-        operationStationCall!.isNotEmpty &&
-        foreignStationCalls([qso], operationStationCall!).isNotEmpty;
+    final mismatch = operationStationCall != null && operationStationCall!.isNotEmpty && foreignStationCalls([qso], operationStationCall!).isNotEmpty;
 
     return ListTile(
-      leading: mismatch
-          ? Icon(MdiIcons.alertCircleOutline, color: Theme.of(context).colorScheme.error)
-          : const Icon(MdiIcons.radio),
+      leading: mismatch ? Icon(MdiIcons.alertCircleOutline, color: Theme.of(context).colorScheme.error) : const Icon(MdiIcons.radio),
       title: Text([call, band, mode].whereType<String>().join(' · ')),
-      subtitle: Text(
-        mismatch
-            ? t.stationMismatch(call: asQsonString(our['call']) ?? '?')
-            : fmtTimeBetween(row.receivedAtMillis, nowMillis()),
-      ),
+      subtitle: Text(mismatch ? t.stationMismatch(call: asQsonString(our['call']) ?? '?') : fmtTimeBetween(row.receivedAtMillis, nowMillis())),
       trailing: IconButton(
         icon: Icon(MdiIcons.closeCircleOutline, semanticLabel: t.discardAction),
         onPressed: onDiscard,
@@ -319,11 +296,10 @@ class _CaptureTile extends StatelessWidget {
 }
 
 /// The tune icon's dialog. See [_ListenSettingsDialogBody] for the shape.
-Future<void> showListenSettingsDialog(
-  BuildContext context, {
-  required HaLoServices services,
-}) =>
-    showHaloDialog<void>(context: context, builder: (_) => _ListenSettingsDialogBody(services: services));
+Future<void> showListenSettingsDialog(BuildContext context, {required HaLoServices services}) => showHaloDialog<void>(
+  context: context,
+  builder: (_) => _ListenSettingsDialogBody(services: services),
+);
 
 /// One row per protocol this app can listen to (currently N1MM's broadcast
 /// and WSJT-X's multicast — a list rather than two hand-written sections, so
@@ -384,8 +360,7 @@ class _ListenSettingsDialogBodyState extends State<_ListenSettingsDialogBody> {
     super.dispose();
   }
 
-  bool _recentlyReceived(int? lastReceivedAtMillis) =>
-      lastReceivedAtMillis != null && nowMillis() - lastReceivedAtMillis < _recentDataWindow.inMilliseconds;
+  bool _recentlyReceived(int? lastReceivedAtMillis) => lastReceivedAtMillis != null && nowMillis() - lastReceivedAtMillis < _recentDataWindow.inMilliseconds;
 
   static int? _validPort(String text) {
     final port = int.tryParse(text.trim());
@@ -417,16 +392,13 @@ class _ListenSettingsDialogBodyState extends State<_ListenSettingsDialogBody> {
     // No hover tooltips in this app (docs/design/user-interface.md) — the
     // dot's color is the sighted signal, Semantics is the accessible one.
     Widget statusLight(bool active) => Semantics(
-          label: active ? t.protocolStatusReceiving : t.protocolStatusNoData,
-          child: Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: active ? connectedColor() : theme.colorScheme.error,
-            ),
-          ),
-        );
+      label: active ? t.protocolStatusReceiving : t.protocolStatusNoData,
+      child: Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: active ? connectedColor() : theme.colorScheme.error),
+      ),
+    );
 
     Widget protocolRow({
       required String protocolName,
@@ -437,59 +409,55 @@ class _ListenSettingsDialogBodyState extends State<_ListenSettingsDialogBody> {
       required Widget addressField,
       required Widget portField,
       required String helpText,
-    }) =>
-        Container(
-          margin: const EdgeInsets.fromLTRB(Space.lg, 0, Space.lg, Space.md),
-          padding: const EdgeInsets.all(Space.md),
-          decoration: BoxDecoration(
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    }) => Container(
+      margin: const EdgeInsets.fromLTRB(Space.lg, 0, Space.lg, Space.md),
+      padding: const EdgeInsets.all(Space.md),
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Switch(value: enabled, onChanged: onEnabledChanged),
-                  const SizedBox(width: Space.sm),
-                  Expanded(child: Text(protocolName, style: theme.textTheme.titleSmall)),
-                  statusLight(recentlyReceived),
-                ],
-              ),
-              const SizedBox(height: Space.sm),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 3, child: addressField),
-                  const SizedBox(width: Space.sm),
-                  Expanded(flex: 2, child: portField),
-                ],
-              ),
-              // A failed bind/join is otherwise invisible: the status light
-              // reads identically red for "not started yet" and "will never
-              // work as configured" without this line naming the reason.
-              if (bindError != null) ...[
-                const SizedBox(height: Space.sm),
-                Text(
-                  t.protocolBindError(error: bindError),
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-                ),
-              ],
-              const SizedBox(height: Space.sm),
-              Text(
-                helpText,
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
+              Switch(value: enabled, onChanged: onEnabledChanged),
+              const SizedBox(width: Space.sm),
+              Expanded(child: Text(protocolName, style: theme.textTheme.titleSmall)),
+              statusLight(recentlyReceived),
             ],
           ),
-        );
+          const SizedBox(height: Space.sm),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: addressField),
+              const SizedBox(width: Space.sm),
+              Expanded(flex: 2, child: portField),
+            ],
+          ),
+          // A failed bind/join is otherwise invisible: the status light
+          // reads identically red for "not started yet" and "will never
+          // work as configured" without this line naming the reason.
+          if (bindError != null) ...[
+            const SizedBox(height: Space.sm),
+            Text(
+              t.protocolBindError(error: bindError),
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+            ),
+          ],
+          const SizedBox(height: Space.sm),
+          Text(helpText, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        ],
+      ),
+    );
 
     Widget portField(TextEditingController controller, String? errorText) => TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: InputDecoration(labelText: t.protocolPortLabel, errorText: errorText),
-        );
+      controller: controller,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(labelText: t.protocolPortLabel, errorText: errorText),
+    );
 
     return HaloDialog(
       title: Text(t.settingsTitle),
@@ -539,10 +507,7 @@ class _ListenSettingsDialogBodyState extends State<_ListenSettingsDialogBody> {
           ),
         ],
       ),
-      cancel: TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: Text(context.t.common.cancel),
-      ),
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
       actions: [
         FilledButton(
           onPressed: () {

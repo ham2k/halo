@@ -43,11 +43,7 @@ void main() {
     openExternalUrl('mailto:sd@ham2k.com');
     await settle(tester);
 
-    expect(launcher.launched.map((l) => l.url).toList(), [
-      'https://ham2k.com',
-      'http://ham2k.com',
-      'mailto:sd@ham2k.com',
-    ]);
+    expect(launcher.launched.map((l) => l.url).toList(), ['https://ham2k.com', 'http://ham2k.com', 'mailto:sd@ham2k.com']);
   });
 
   // An extension or a notes file could carry either of these; neither should

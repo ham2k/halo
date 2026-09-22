@@ -82,13 +82,7 @@ class OperationView extends StatefulWidget {
   /// does, with a 2s retry loop). Applied once, in `initState`.
   final Map<String, dynamic>? initialSuggestedQso;
 
-  const OperationView({
-    super.key,
-    required this.services,
-    required this.operationUuid,
-    this.openActivities = false,
-    this.initialSuggestedQso,
-  });
+  const OperationView({super.key, required this.services, required this.operationUuid, this.openActivities = false, this.initialSuggestedQso});
 
   @override
   State<OperationView> createState() => _OperationViewState();
@@ -122,8 +116,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// away looks like any other — whereas wide always draws logging alongside
   /// whatever else is arranged, so there is nothing there to protect.
   @override
-  Set<String> get pinnedModuleIds =>
-      dockLayoutClass == DockLayoutClass.narrow ? const {'logging'} : const {};
+  Set<String> get pinnedModuleIds => dockLayoutClass == DockLayoutClass.narrow ? const {'logging'} : const {};
 
   @override
   Set<String> get nativeModuleIds => {
@@ -135,8 +128,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   };
 
   /// Whether the Positions panel exists in this build at all.
-  bool get _peerPositionsPanel =>
-      widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */;
+  bool get _peerPositionsPanel => widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */;
 
   @override
   Map<String, String> get nativeTitles => {
@@ -180,15 +172,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   late bool _switchSentRcvd = widget.services.settings.switchSentRcvd;
   late bool _jumpAfterRST = widget.services.settings.jumpAfterRST;
   late DxFlags _dxFlags = widget.services.settings.dxFlags;
-
-
-
-
-
-
-
-
-
 
   /// The station's own DXCC entity, resolved once per operation load (not
   /// per QSO — the station call essentially never changes DXCC entity
@@ -331,9 +314,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// non-macOS case — AppBar's own default — so both callers agree on an
   /// actual number instead of one of them silently trusting a framework
   /// default the other can't see.
-  double _leadingWidthFor(bool isTwoPane, BuildContext context) => isTwoPane
-      ? (macOSAwareLeadingWidth(context) ?? 56.0)
-      : (isMacOSChromelessWindow ? 40 + macOSTrafficLightClearance(context) : 40);
+  double _leadingWidthFor(bool isTwoPane, BuildContext context) =>
+      isTwoPane ? (macOSAwareLeadingWidth(context) ?? 56.0) : (isMacOSChromelessWindow ? 40 + macOSTrafficLightClearance(context) : 40);
 
   /// The header's dots-and-title control — measured (not computed from
   /// theme constants) to left-align the operation sheet with it, since
@@ -408,8 +390,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// `narrowLeftInset` in [_openOperationSheet]). Shared with
   /// [_leadingGapWidth], which has to know how far LEFT of this control that
   /// button starts.
-  double _narrowSheetLeftInset(BuildContext context) =>
-      isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0;
+  double _narrowSheetLeftInset(BuildContext context) => isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0;
 
   double _leadingGapWidth(BuildContext context, {required bool isTwoPane}) {
     const dotsWidth = _headerDotsWidth;
@@ -483,8 +464,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// the operation happened to be open when it arrived.
   void _suggestQso(Map<String, dynamic> qso, {bool reveal = true, bool measured = false}) {
     setState(() {
-      _suggestedQso =
-          measured ? qso : zeroBeatSuggestionFor(qso, services: widget.services, offsetter: _zeroBeat);
+      _suggestedQso = measured ? qso : zeroBeatSuggestionFor(qso, services: widget.services, offsetter: _zeroBeat);
       // A slide peek is the one suggestion the operator has not committed to.
       _suggestedQsoIsTentative = !reveal;
     });
@@ -562,19 +542,9 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       context: context,
       builder: (context) => HaloDialog(
         title: Text(t.operation.spots.logConflict.title),
-        content: Text(
-          editing ? t.operation.spots.logConflict.editingBody : t.operation.spots.logConflict.composingBody,
-        ),
-        cancel: TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(t.operation.spots.logConflict.goBack),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(t.operation.spots.logConflict.clearAndLog),
-          ),
-        ],
+        content: Text(editing ? t.operation.spots.logConflict.editingBody : t.operation.spots.logConflict.composingBody),
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(t.operation.spots.logConflict.goBack)),
+        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.operation.spots.logConflict.clearAndLog))],
       ),
     );
     if (clear == true) return true;
@@ -610,7 +580,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // Local mirrors of the logging panel's own toggles (see
     // _buildLoggingSettingsButton) — flipped from the settings dialog,
     // so this is the only place they follow SettingsService.
-    final changed = s.showRSTFields != _showRSTFields ||
+    final changed =
+        s.showRSTFields != _showRSTFields ||
         s.showStateField != _showStateField ||
         s.showGridField != _showGridField ||
         s.showDeletedQSOs != _showDeletedQSOs ||
@@ -706,13 +677,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     widget.services.spots.addListener(_onSpotsChanged);
   }
 
-
   /// Releases this view's spot-cache subscription (see initState).
   VoidCallback? _unsubscribeSpots;
-
-
-
-
 
   /// Counts spot refreshes rather than carrying the spots themselves: it
   /// exists only to fire an extension panel's `spots` trigger, and the
@@ -725,8 +691,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// notifications, so a radio connecting takes effect on the next one.
   bool get _voiceKeyingPossible {
     final settings = widget.services.settings;
-    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return false;
-    if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return false;
+    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) return false;
+    if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     return widget.services.cat.canPlayVoice;
   }
 
@@ -735,8 +701,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// message typed mid-operation takes effect on the next rebuild.
   bool get _cwMessagesConfigured {
     final settings = widget.services.settings;
-    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return false;
-    if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return false;
+    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) return false;
+    if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     for (var n = 1; n <= SettingsService.cwMessageCount; n++) {
       if (settings.cwMessage(n).trim().isNotEmpty) return true;
     }
@@ -768,8 +734,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// Whether this device is sharing its logging state with peers at all —
   /// the experiment, the master switch, and a holder to publish into.
   bool get _peerSharingDrafts =>
-      widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ &&
-      widget.services.settings.peerSyncEnabled;
+      widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ && widget.services.settings.peerSyncEnabled;
 
   /// Publishes the composed contact to every peer sharing this operation.
   ///
@@ -797,36 +762,28 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     final header = _peerHeaderFor(operation);
     if (header == _lastPeerHeader) return;
     _lastPeerHeader = header;
-    drafts.publishLocal(PeerQsoDraftPayload(
-      qso: draft.qso,
-      operationUuid: draft.operationUuid,
-      fields: draft.fields,
-      position: header.$1,
-      operatorCall: header.$2,
-    ));
+    drafts.publishLocal(
+      PeerQsoDraftPayload(qso: draft.qso, operationUuid: draft.operationUuid, fields: draft.fields, position: header.$1, operatorCall: header.$2),
+    );
   }
 
   /// Read fresh every time: the operator can set either from the command bar
   /// mid-contact, and a value captured once when the view mounted would name
   /// the wrong position for the rest of the session.
-  (String, String) _peerHeaderFor(Operation operation) => (
-        multiIdentifierFor(operation),
-        operatorCallFor(operation),
-      );
+  (String, String) _peerHeaderFor(Operation operation) => (multiIdentifierFor(operation), operatorCallFor(operation));
 
   void _onPeerDraft(Operation operation, Map<String, dynamic> qso, List<PeerDraftField> fields) {
     final header = _peerHeaderFor(operation);
     _lastPeerHeader = header;
-    widget.services.peerDrafts.publishLocal(PeerQsoDraftPayload(
-      qso: qso,
-      operationUuid: operation.uuid,
-      fields: [
-        for (final field in fields)
-          PeerDraftFieldPayload(key: field.key, label: field.label, value: field.value, hint: field.hint),
-      ],
-      position: header.$1,
-      operatorCall: header.$2,
-    ));
+    widget.services.peerDrafts.publishLocal(
+      PeerQsoDraftPayload(
+        qso: qso,
+        operationUuid: operation.uuid,
+        fields: [for (final field in fields) PeerDraftFieldPayload(key: field.key, label: field.label, value: field.value, hint: field.hint)],
+        position: header.$1,
+        operatorCall: header.$2,
+      ),
+    );
   }
 
   /// The QSO being composed, republished from the logging panel for panels
@@ -921,8 +878,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // A keypress by itself stops nothing: what a call typed over a CQ stops
     // is decided by the callsign field (LoggingSession.onCallTyped), which
     // hears every way a call is entered and not only a hardware key.
-    if (!services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return false;
-    if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return false;
+    if (!services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) return false;
+    if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     final cat = services.cat;
     final keyboard = HardwareKeyboard.instance;
     if (keyboard.isMetaPressed || keyboard.isControlPressed || keyboard.isAltPressed) return false;
@@ -1149,9 +1106,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     final info = _callInfo;
     return {
       'view': 'operation',
-      'operation': op == null
-          ? null
-          : {'uuid': op.uuid, 'stationCall': op.stationCall, 'title': op.title, 'qsoCount': op.qsoCount},
+      'operation': op == null ? null : {'uuid': op.uuid, 'stationCall': op.stationCall, 'title': op.title, 'qsoCount': op.qsoCount},
       'call': info?.call,
       'editing': info?.isEditing ?? false,
       'guess': info?.guess,
@@ -1202,8 +1157,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// against. Same map shape `logging_controls.dart` passes its own
   /// `interpretCommand` calls.
   void _setCommandContext(Operation? operation) {
-    _commandContext.operation =
-        operation == null ? null : {...operation.data, 'uuid': operation.uuid};
+    _commandContext.operation = operation == null ? null : {...operation.data, 'uuid': operation.uuid};
   }
 
   void _onOperationChanged(Operation? operation) {
@@ -1242,11 +1196,9 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       // as it is, not get a second, onboarding-driven attempt to reopen
       // something on a later re-emission of the operation stream.
       _openedOperationSheetOnboarding = true;
-      final markOnboardingSeen =
-          widget.services.settings.onboardingShownCount(OnboardingFlows.operationSheet) == 0;
+      final markOnboardingSeen = widget.services.settings.onboardingShownCount(OnboardingFlows.operationSheet) == 0;
       _afterPushTransition(() => _openActivitiesOrPromptForCallsign(operation, markOnboardingSeen: markOnboardingSeen));
-    } else if (!_openedOperationSheetOnboarding &&
-        widget.services.settings.onboardingShownCount(OnboardingFlows.operationSheet) == 0) {
+    } else if (!_openedOperationSheetOnboarding && widget.services.settings.onboardingShownCount(OnboardingFlows.operationSheet) == 0) {
       // Independent of the new-operation auto-open above: the
       // FIRST operation this user ever opens — new or existing — shows the
       // sheet once, so it isn't a surprise the first time they go looking
@@ -1345,10 +1297,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // no account of why, which is the whole defect this change exists to end.
     _loggingControlsStale = result.loadFailed;
     if (result.loadFailed) {
-      widget.services.statusBar.setMessage(
-        key: 'operation:logging-controls-stale',
-        text: context.t.operation.loggingControlsStale,
-      );
+      widget.services.statusBar.setMessage(key: 'operation:logging-controls-stale', text: context.t.operation.loggingControlsStale);
       if (_loggingControls.isNotEmpty) return;
     } else {
       widget.services.statusBar.clear('operation:logging-controls-stale');
@@ -1499,13 +1448,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       closeLabel: context.t.common.close,
       // See the Call Info modal above — InformationPanel is a ListView too.
       scrollable: false,
-      builder: (_) => InformationPanel(
-        operation: operation,
-        qsos: qsos,
-        services: widget.services,
-        ourEntityPrefix: _ourEntityPrefix,
-        activityControls: _loggingControls,
-      ),
+      builder: (_) =>
+          InformationPanel(operation: operation, qsos: qsos, services: widget.services, ourEntityPrefix: _ourEntityPrefix, activityControls: _loggingControls),
     );
   }
 
@@ -1567,6 +1511,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
           void animListener() {
             if (mounted) setState(() {});
           }
+
           // Navigator.push()'s Future (what `await showTopModalPane` below
           // is waiting on) completes the instant saveAndClose()/revert-
           // AndClose() calls pop() — well before the route's reverse
@@ -1588,6 +1533,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
               setState(() => _sheetAnimation = null);
             }
           }
+
           anim.addListener(animListener);
           anim.addStatusListener(statusListener);
           _sheetAnimationListener = () {
@@ -1632,17 +1578,10 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
               final growth = ((_sheetAnimation?.value ?? 1.0) / _sheetHandoffThreshold).clamp(0.0, 1.0);
               return Opacity(
                 opacity: growth,
-                child: Transform.scale(
-                  scale: 0.2 + 0.8 * growth,
-                  alignment: Alignment.centerLeft,
-                  child: child,
-                ),
+                child: Transform.scale(scale: 0.2 + 0.8 * growth, alignment: Alignment.centerLeft, child: child),
               );
             },
-            child: KeyedSubtree(
-              key: _sheetOkButtonKey,
-              child: _sheetOkButton(context, sheetKey),
-            ),
+            child: KeyedSubtree(key: _sheetOkButtonKey, child: _sheetOkButton(context, sheetKey)),
           ),
         ),
         // Live copies of the AppBar's own X and Options/Export, reachable
@@ -1677,8 +1616,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 builder: (context, pushedLines, _) => AnimatedBuilder(
                   animation: _sheetAnimation ?? const AlwaysStoppedAnimation(1.0),
                   builder: (context, _) {
-                    final growth =
-                        ((_sheetAnimation?.value ?? 1.0) / _sheetHandoffThreshold).clamp(0.0, 1.0);
+                    final growth = ((_sheetAnimation?.value ?? 1.0) / _sheetHandoffThreshold).clamp(0.0, 1.0);
                     final lines = pushedLines ?? _headerTitleLines(context, _draftOperation ?? operation);
                     return Stack(
                       children: [
@@ -1752,10 +1690,14 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                                     final op = _draftOperation ?? operation;
                                     await sheetKey.currentState?.saveAndClose();
                                     if (mounted) {
-                                      unawaited(_showOperationOptions(op,
+                                      unawaited(
+                                        _showOperationOptions(
+                                          op,
                                           includeExport: !isTwoPane,
                                           includeImport: !isTwoPane,
-                                          includeEditLayout: !isTwoPane && !layoutEditing));
+                                          includeEditLayout: !isTwoPane && !layoutEditing,
+                                        ),
+                                      );
                                     }
                                   },
                                   onExport: () async {
@@ -1811,20 +1753,12 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
             }
           },
           onEditDetails: () async {
-            final updated = await editOperationDetails(
-              context,
-              widget.services,
-              _draftOperation ?? operation,
-              save: false,
-            );
+            final updated = await editOperationDetails(context, widget.services, _draftOperation ?? operation, save: false);
             if (updated != null && mounted) {
               setState(() {
                 _draftOperation = Operation(
                   uuid: _draftOperation!.uuid,
-                  data: {
-                    ..._draftOperation!.data,
-                    ...updated.data,
-                  },
+                  data: {..._draftOperation!.data, ...updated.data},
                   qsoCount: _draftOperation!.qsoCount,
                   startAtMillisMin: _draftOperation!.startAtMillisMin,
                   startAtMillisMax: _draftOperation!.startAtMillisMax,
@@ -1879,8 +1813,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
           _operation = draft == null
               ? _operation
               : fragments == null
-                  ? draft
-                  : _withTitleSuggestion(draft, fragments);
+              ? draft
+              : _withTitleSuggestion(draft, fragments);
           _pendingTitleFragments = fragments ?? _pendingTitleFragments;
           _draftOperation = null;
           _draftTitleFragments = null;
@@ -1901,12 +1835,14 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       // than trust a status change that evidently isn't coming.
       final anim = sheetAnim;
       if (anim != null) {
-        unawaited(Future.delayed(const Duration(milliseconds: 1500), () {
-          if (mounted && identical(_sheetAnimation, anim)) {
-            debugPrint('[operation] sheet-animation-stuck: dismissed status never fired within the fallback window');
-            setState(() => _sheetAnimation = null);
-          }
-        }));
+        unawaited(
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (mounted && identical(_sheetAnimation, anim)) {
+              debugPrint('[operation] sheet-animation-stuck: dismissed status never fired within the fallback window');
+              setState(() => _sheetAnimation = null);
+            }
+          }),
+        );
       }
     }
   }
@@ -1932,8 +1868,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     }
   }
 
-  Future<void> _export(Operation operation) =>
-      showOperationExportPanel(context, services: widget.services, operation: operation);
+  Future<void> _export(Operation operation) => showOperationExportPanel(context, services: widget.services, operation: operation);
 
   Future<void> _import(Operation operation) async {
     if (operation.deleted) return;
@@ -1943,9 +1878,11 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// Counted only once it has happened: a refusal throws past the `then`,
   /// and an operation something else already restored reports false.
   void _undelete(Operation operation) {
-    unawaited(widget.services.undeleteOperation(operation.uuid).then((restored) {
-      if (restored) widget.services.track('operation_undeleted');
-    }));
+    unawaited(
+      widget.services.undeleteOperation(operation.uuid).then((restored) {
+        if (restored) widget.services.track('operation_undeleted');
+      }),
+    );
   }
 
   /// The header's trailing controls: the operation's own Exports/Imports/
@@ -1980,51 +1917,50 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     required VoidCallback onOptions,
     required VoidCallback onExport,
     required VoidCallback onImport,
-  }) =>
-      [
-        // Operation-level actions, not scoped to the setup sheet: an operator
-        // reaches for Options/Export without necessarily opening it. Gone
-        // during layout editing along with the rest of the operation's own
-        // identity in this header — nothing about the operation is what's
-        // being arranged then. Narrow keeps only the gear — there isn't room
-        // for a second icon beside the title — with Export Logs folded into
-        // its menu instead of dropped.
-        if (!editingHeader)
-          _operationHeaderActions(
-            context,
-            isTwoPane: isTwoPane,
-            headerTitle: lines.title,
-            headerSubtitle: lines.subtitle,
-            onOptions: onOptions,
-            onExport: onExport,
-            onImport: onImport,
+  }) => [
+    // Operation-level actions, not scoped to the setup sheet: an operator
+    // reaches for Options/Export without necessarily opening it. Gone
+    // during layout editing along with the rest of the operation's own
+    // identity in this header — nothing about the operation is what's
+    // being arranged then. Narrow keeps only the gear — there isn't room
+    // for a second icon beside the title — with Export Logs folded into
+    // its menu instead of dropped.
+    if (!editingHeader)
+      _operationHeaderActions(
+        context,
+        isTwoPane: isTwoPane,
+        headerTitle: lines.title,
+        headerSubtitle: lines.subtitle,
+        onOptions: onOptions,
+        onExport: onExport,
+        onImport: onImport,
+      ),
+    // Narrow gives the way IN to the Tools menu (see
+    // [_showOperationOptions]) — the header there has room for the title
+    // and one button, and the operation's own title has the better claim.
+    // Once editing, the controls come back here at every width: a menu is
+    // not somewhere to hide the only way out of a mode.
+    if (isTwoPane || layoutEditing) ...[
+      // The LAYOUT sheet draws its own copy of these while IT is up; two
+      // would be one too many, and the one down here would be the
+      // unreachable one.
+      if (!layoutSheetOpen) ...[
+        // Separates it from Exports/Tools rather than the two groups
+        // sitting flush — they act on different things (the operation vs.
+        // the view's own arrangement), and nothing about a labeled
+        // TextButton.icon's own padding guarantees a gap here the way a
+        // plain IconButton's did.
+        if (!editingHeader) const SizedBox(width: Space.md),
+        IgnorePointer(
+          ignoring: _headerIconsInert,
+          child: Opacity(
+            opacity: layoutControlsOpacity,
+            child: Row(mainAxisSize: MainAxisSize.min, children: layoutHeaderControls(context)),
           ),
-        // Narrow gives the way IN to the Tools menu (see
-        // [_showOperationOptions]) — the header there has room for the title
-        // and one button, and the operation's own title has the better claim.
-        // Once editing, the controls come back here at every width: a menu is
-        // not somewhere to hide the only way out of a mode.
-        if (isTwoPane || layoutEditing) ...[
-          // The LAYOUT sheet draws its own copy of these while IT is up; two
-          // would be one too many, and the one down here would be the
-          // unreachable one.
-          if (!layoutSheetOpen) ...[
-            // Separates it from Exports/Tools rather than the two groups
-            // sitting flush — they act on different things (the operation vs.
-            // the view's own arrangement), and nothing about a labeled
-            // TextButton.icon's own padding guarantees a gap here the way a
-            // plain IconButton's did.
-            if (!editingHeader) const SizedBox(width: Space.md),
-            IgnorePointer(
-              ignoring: _headerIconsInert,
-              child: Opacity(
-                opacity: layoutControlsOpacity,
-                child: Row(mainAxisSize: MainAxisSize.min, children: layoutHeaderControls(context)),
-              ),
-            ),
-          ],
-        ],
-      ];
+        ),
+      ],
+    ],
+  ];
 
   /// The header's two title lines as the sheet's copy of the trailing
   /// controls last saw them (headerTrailing in [_openOperationSheet]).
@@ -2054,9 +1990,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     final suggested = displaySubtitleFor(operation);
     return (
       title: '${headerCallsignFor(operation)} ${displayTitleFor(context, operation)}',
-      subtitle: suggested.isNotEmpty
-          ? suggested
-          : operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • '),
+      subtitle: suggested.isNotEmpty ? suggested : operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • '),
     );
   }
 
@@ -2083,8 +2017,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// below). Derived rather than typed, so a change to [Space] or to the
   /// dots cannot silently drift the point at which labels drop out. Narrow
   /// drops the left inset, as the title control itself does.
-  double _headerTitleChrome(bool isTwoPane) =>
-      (isTwoPane ? Space.xs : 0) + _headerDotsWidth + Space.xs + Space.lg;
+  double _headerTitleChrome(bool isTwoPane) => (isTwoPane ? Space.xs : 0) + _headerDotsWidth + Space.xs + Space.lg;
 
   /// Whether the header's Exports/Imports/Tools group can afford to carry
   /// its labels.
@@ -2102,12 +2035,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// headroom is there for a title too long for the header at any label
   /// setting — spending it to buy labels would shrink the operation's own
   /// name to pay for a word that repeats an icon.
-  bool _headerActionsFitLabels(
-    BuildContext context, {
-    required bool isTwoPane,
-    required String title,
-    required String subtitle,
-  }) {
+  bool _headerActionsFitLabels(BuildContext context, {required bool isTwoPane, required String title, required String subtitle}) {
     final theme = Theme.of(context);
     final t = context.t.activitiesView;
     final titleStyle = theme.appBarTheme.titleTextStyle ?? theme.textTheme.titleLarge ?? const TextStyle();
@@ -2122,19 +2050,12 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // would drop the labels partway through the opening animation and put
     // them back partway through the close, and [_sheetOkButtonWidth] reads
     // null between opens besides.
-    final acceptButtonReserve =
-        kMinInteractiveDimension + _acceptButtonChrome + textWidth(context, context.t.common.ok, labelStyle);
+    final acceptButtonReserve = kMinInteractiveDimension + _acceptButtonChrome + textWidth(context, context.t.common.ok, labelStyle);
 
     final labels = isTwoPane ? [t.exports, t.imports, t.tools] : [t.tools];
-    final labelsCost = labels.fold<double>(
-      0.0,
-      (sum, label) => sum + _headerLabelChrome + textWidth(context, label, labelStyle),
-    );
+    final labelsCost = labels.fold<double>(0.0, (sum, label) => sum + _headerLabelChrome + textWidth(context, label, labelStyle));
 
-    final titleWanted = math.max(
-      textWidth(context, title, titleStyle),
-      subtitle.isEmpty ? 0.0 : textWidth(context, subtitle, subtitleStyle),
-    );
+    final titleWanted = math.max(textWidth(context, title, titleStyle), subtitle.isEmpty ? 0.0 : textWidth(context, subtitle, subtitleStyle));
 
     // The view's layout controls sit in this same row (see
     // [_headerTrailingControls]) and take width the labels cannot also
@@ -2149,11 +2070,10 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // would be measuring the placeholder font's glyph advance more than the
     // arithmetic, and would break on any padding change. It is here because
     // the budget must describe the row it is measuring.
-    final layoutControlsWidth = !layoutSheetOpen && (isTwoPane || layoutEditing)
-        ? Space.md + kMinInteractiveDimension
-        : 0.0;
+    final layoutControlsWidth = !layoutSheetOpen && (isTwoPane || layoutEditing) ? Space.md + kMinInteractiveDimension : 0.0;
 
-    final slack = MediaQuery.sizeOf(context).width -
+    final slack =
+        MediaQuery.sizeOf(context).width -
         _leadingWidthFor(isTwoPane, context) -
         acceptButtonReserve -
         windowsCaptionClearance(context) -
@@ -2190,25 +2110,19 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     required VoidCallback onImport,
   }) {
     final t = context.t.activitiesView;
-    final labeled = _headerActionsFitLabels(
-      context,
-      isTwoPane: isTwoPane,
-      title: headerTitle,
-      subtitle: headerSubtitle,
-    );
+    final labeled = _headerActionsFitLabels(context, isTwoPane: isTwoPane, title: headerTitle, subtitle: headerSubtitle);
     final onHeader = Theme.of(context).appBarTheme.foregroundColor ?? Theme.of(context).colorScheme.onPrimary;
-    Widget headerButton({required IconData icon, required String label, required VoidCallback onPressed}) =>
-        labeled
-            ? TextButton.icon(
-                icon: Icon(icon),
-                label: Text(label),
-                style: TextButton.styleFrom(foregroundColor: onHeader),
-                onPressed: onPressed,
-              )
-            : IconButton(
-                icon: Icon(icon, semanticLabel: label),
-                onPressed: onPressed,
-              );
+    Widget headerButton({required IconData icon, required String label, required VoidCallback onPressed}) => labeled
+        ? TextButton.icon(
+            icon: Icon(icon),
+            label: Text(label),
+            style: TextButton.styleFrom(foregroundColor: onHeader),
+            onPressed: onPressed,
+          )
+        : IconButton(
+            icon: Icon(icon, semanticLabel: label),
+            onPressed: onPressed,
+          );
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -2244,12 +2158,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// controls the edit ITSELF needs — the plus, Discard, Save — stay in the
   /// header at every width, because a menu is not somewhere an operator can
   /// be expected to find the way out of a mode.
-  Future<void> _showOperationOptions(
-    Operation operation, {
-    bool includeExport = false,
-    bool includeImport = false,
-    bool includeEditLayout = false,
-  }) async {
+  Future<void> _showOperationOptions(Operation operation, {bool includeExport = false, bool includeImport = false, bool includeEditLayout = false}) async {
     final t = context.t.activitiesView;
     final theme = Theme.of(context);
     await showHaloDialog<void>(
@@ -2303,16 +2212,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                   unawaited(editOperationDetails(context, widget.services, operation));
                 },
               ),
-            ListTile(
-              enabled: false,
-              leading: const Icon(MdiIcons.shareVariant),
-              title: Text(t.share),
-            ),
-            ListTile(
-              enabled: false,
-              leading: Icon(MdiIcons.archiveOutline),
-              title: Text(t.archive),
-            ),
+            ListTile(enabled: false, leading: const Icon(MdiIcons.shareVariant), title: Text(t.share)),
+            ListTile(enabled: false, leading: Icon(MdiIcons.archiveOutline), title: Text(t.archive)),
             if (operation.deleted)
               ListTile(
                 leading: Icon(MdiIcons.deleteRestore, color: theme.colorScheme.error),
@@ -2331,10 +2232,12 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 // screen underneath, not to a menu that is going away.
                 onTap: () {
                   Navigator.of(dialogContext).pop();
-                  unawaited(confirmDeleteOperation(context, widget.services, operation).then((deleted) {
-                    if (!deleted || !mounted) return;
-                    Navigator.of(context).pop();
-                  }));
+                  unawaited(
+                    confirmDeleteOperation(context, widget.services, operation).then((deleted) {
+                      if (!deleted || !mounted) return;
+                      Navigator.of(context).pop();
+                    }),
+                  );
                 },
               ),
             // Past the destructive row on purpose: it is a readout, not an
@@ -2344,9 +2247,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
             // Both gate terms, not just the experiment: with peer sync off
             // every row would read "Not connected", and unlike the Settings
             // panel this dialog carries no switch to say that is the reason.
-            if (widget.services.settings.peerSyncEnabled &&
-                widget.services.settings
-                    .experimentEnabled('p2p') /* stored key, see experiments.yaml */) ...[
+            if (widget.services.settings.peerSyncEnabled && widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ ) ...[
               SectionHeader(dialogContext.t.settings.peers.pairedDevices),
               LinkedDevicesList(services: widget.services),
             ],
@@ -2355,16 +2256,12 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
         // Every row here closes the menu itself, so this is a way out rather
         // than a confirm — and a dialog without a footer band ends on nothing,
         // which is what sets one apart from the rest.
-        cancel: TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(context.t.common.done),
-        ),
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.t.common.done)),
       ),
     );
   }
 
-  Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) =>
-      runCommandAction(widget.services, action, params, context);
+  Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) => runCommandAction(widget.services, action, params, context);
 
   /// The logging panel's own settings — field visibility, dupe/number
   /// display, a bulk lookup refresh — behind the tune icon, built from
@@ -2416,11 +2313,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// [_buildLoggingSettingsButton]: the Map panel is native and reaches its
   /// settings through a target, not `formFields`, so
   /// [DockHost.buildPanelSettingsButton] wouldn't find it either.
-  Widget _buildMapSettingsButton({BuildContext? context}) => buildTargetSettingsButton(
-        context ?? this.context,
-        target: 'map',
-        title: (context ?? this.context).t.operation.menu.mapSettingsTitle,
-      );
+  Widget _buildMapSettingsButton({BuildContext? context}) =>
+      buildTargetSettingsButton(context ?? this.context, target: 'map', title: (context ?? this.context).t.operation.menu.mapSettingsTitle);
 
   /// The panes this view builds itself, arranged by a persisted,
   /// user-editable dock tree (drag a tab to move a pane; see
@@ -2436,19 +2330,18 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// away on the callsign area — but it is offered by the sheet like any
   /// other panel.
   @override
-  DockNode buildDefaultDockSpec(DockLayoutClass layoutClass, {bool migrate = true}) =>
-      switch (layoutClass) {
-        DockLayoutClass.narrow => DockGroup(['logging', 'spots', 'map']),
-        DockLayoutClass.wide => DockSplit(Axis.horizontal, [
-          DockGroup(['logging']),
-          // Selected: Info.
-          DockGroup(['info', 'spots', 'map']),
-        ], [2, 1]),
-      };
-
-
-
-
+  DockNode buildDefaultDockSpec(DockLayoutClass layoutClass, {bool migrate = true}) => switch (layoutClass) {
+    DockLayoutClass.narrow => DockGroup(['logging', 'spots', 'map']),
+    DockLayoutClass.wide => DockSplit(
+      Axis.horizontal,
+      [
+        DockGroup(['logging']),
+        // Selected: Info.
+        DockGroup(['info', 'spots', 'map']),
+      ],
+      [2, 1],
+    ),
+  };
 
   /// Registers this view's own panels with the service. Called from
   /// [didChangeDependencies] rather than [initState] because the titles are
@@ -2456,54 +2349,64 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   void _registerNativePanels() {
     final t = context.t.operation;
     final service = widget.services.panels;
-    service.registerNative(PanelDefinition(
-      id: 'logging',
-      title: t.tabs.qsosPlain,
-      description: t.layout.panels.loggingDescription,
-      icon: 'notebook',
-      source: PanelSource.native,
-      views: const {PanelViews.operation},
-      // The same field-visibility and dupe/number toggles the logging
-      // panel's own tune button opens.
-      settingsTarget: 'logging',
-    ));
-    service.registerNative(PanelDefinition(
-      id: 'info',
-      title: t.tabs.info,
-      description: t.layout.panels.infoDescription,
-      icon: 'informationOutline',
-      source: PanelSource.native,
-      views: const {PanelViews.operation},
-    ));
+    service.registerNative(
+      PanelDefinition(
+        id: 'logging',
+        title: t.tabs.qsosPlain,
+        description: t.layout.panels.loggingDescription,
+        icon: 'notebook',
+        source: PanelSource.native,
+        views: const {PanelViews.operation},
+        // The same field-visibility and dupe/number toggles the logging
+        // panel's own tune button opens.
+        settingsTarget: 'logging',
+      ),
+    );
+    service.registerNative(
+      PanelDefinition(
+        id: 'info',
+        title: t.tabs.info,
+        description: t.layout.panels.infoDescription,
+        icon: 'informationOutline',
+        source: PanelSource.native,
+        views: const {PanelViews.operation},
+      ),
+    );
     // Registered only with the experiment on, exactly as Remote Screen is: a
     // saved arrangement holding one then falls to the missing-panel
     // placeholder rather than vanishing, and the operator keeps their layout.
-    if (widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */) {
-      service.registerNative(PanelDefinition(
-        id: 'positions',
-        title: t.positions.panelTitle,
-        description: t.positions.panelDescription,
-        icon: 'accountGroup',
+    if (widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ ) {
+      service.registerNative(
+        PanelDefinition(
+          id: 'positions',
+          title: t.positions.panelTitle,
+          description: t.positions.panelDescription,
+          icon: 'accountGroup',
+          source: PanelSource.native,
+          views: const {PanelViews.operation},
+        ),
+      );
+    }
+    service.registerNative(
+      PanelDefinition(
+        id: 'spots',
+        title: t.tabs.spots,
+        description: t.layout.panels.spotsDescription,
+        icon: 'radioTower',
         source: PanelSource.native,
         views: const {PanelViews.operation},
-      ));
-    }
-    service.registerNative(PanelDefinition(
-      id: 'spots',
-      title: t.tabs.spots,
-      description: t.layout.panels.spotsDescription,
-      icon: 'radioTower',
-      source: PanelSource.native,
-      views: const {PanelViews.operation},
-    ));
-    service.registerNative(PanelDefinition(
-      id: 'map',
-      title: t.tabs.map,
-      description: t.layout.panels.mapDescription,
-      icon: 'map',
-      source: PanelSource.native,
-      views: const {PanelViews.operation},
-    ));
+      ),
+    );
+    service.registerNative(
+      PanelDefinition(
+        id: 'map',
+        title: t.tabs.map,
+        description: t.layout.panels.mapDescription,
+        icon: 'map',
+        source: PanelSource.native,
+        views: const {PanelViews.operation},
+      ),
+    );
     registerSharedDashboardPanels();
   }
 
@@ -2536,10 +2439,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
         // At both widths, not just narrow: a wide arrangement is free to put
         // logging in a tab group too, and the row is no less wrong there.
         'logging': Builder(
-          builder: (context) => KeyboardAccessoryVisibility(
-            visible: DockPaneVisibility.of(context),
-            child: loggingPanel,
-          ),
+          builder: (context) => KeyboardAccessoryVisibility(visible: DockPaneVisibility.of(context), child: loggingPanel),
         ),
         'info': infoPanel,
         'spots': spotsPanel,
@@ -2596,31 +2496,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     _ => null,
   };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   /// Bakes [fragments] into [operation]'s own `localData['titleSuggestion']`
   /// — the same shape `OperationTitleService` persists, and the one
   /// `displayTitleFor`/`operation.titleFragments` actually reads. Used both
@@ -2631,23 +2506,18 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// still cached on the saved row until retitleOperation's own async
   /// refresh catches up, flickering back to the pre-edit title in between.
   Operation _withTitleSuggestion(Operation operation, OperationTitleFragments fragments) => Operation(
-        uuid: operation.uuid,
-        data: operation.data,
-        qsoCount: operation.qsoCount,
-        startAtMillisMin: operation.startAtMillisMin,
-        startAtMillisMax: operation.startAtMillisMax,
-        localData: {
-          ...operation.localData,
-          'titleSuggestion': fragments.isEmpty
-              ? null
-              : {
-                  'title': fragments.title,
-                  'for': fragments.forText,
-                  'at': fragments.atText,
-                  'subtitle': fragments.subtitle,
-                },
-        },
-      );
+    uuid: operation.uuid,
+    data: operation.data,
+    qsoCount: operation.qsoCount,
+    startAtMillisMin: operation.startAtMillisMin,
+    startAtMillisMax: operation.startAtMillisMax,
+    localData: {
+      ...operation.localData,
+      'titleSuggestion': fragments.isEmpty
+          ? null
+          : {'title': fragments.title, 'for': fragments.forText, 'at': fragments.atText, 'subtitle': fragments.subtitle},
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -2710,110 +2580,108 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
           child: Listener(
             onPointerDown: (_) => _panels.used('logging'),
             child: ReadOnlyWhileDeleted(
-            operation: operation,
-            onUndelete: () => _undelete(operation),
-            child: LoggingPanel(
-            operation: operation,
-            services: widget.services,
-            onSendCwMessage: _sendCwMessageFromArea,
-            onEnterSends: _sendEsmMessages,
-            cwTemplateContext: panelRenderContext,
-            keyingPhone: _keyingPhone,
-            qsos: qsos,
-            loggingControls: _loggingControls,
-            onCommandAction: _handleCommandAction,
-            showRSTFields: _showRSTFields,
-            showStateField: _showStateField,
-            showGridField: _showGridField,
-            showQsoNumbers: _showQsoNumbers,
-            defaultReport: _defaultReport,
-            defaultReportCW: _defaultReportCW,
-            defaultReportFT8: _defaultReportFT8,
-            switchSentRcvd: _switchSentRcvd,
-            jumpAfterRST: _jumpAfterRST,
-            dxFlags: _dxFlags,
-            ourEntityPrefix: _ourEntityPrefix,
-            ourItuRegion: _ourItuRegion,
-            ourCountryCode: _ourCountryCode,
-            suggestedQso: _suggestedQso,
-            suggestedQsoIsTentative: _suggestedQsoIsTentative,
-            suggestionSettledSerial: _suggestionSettledSerial,
-            onCallEdited: _onCallEdited,
-            onQsoLogged: _wakeHold.touch,
-            // Gated like the drafts: with sharing off the panel's own fallback
-            // is the same answer, and touching the field would construct the
-            // peer service on an install that never turned the experiment on.
-            serialNumbers: _peerSharingDrafts ? widget.services.serialClaims : null,
-            logRequest: _logRequest,
-            confirmLogOverwrite: _confirmLogOverwrite,
-            onCallInfoChanged: (info) {
-              // Entering a call is logging-panel use, and it is the one
-              // interaction the pointer listener below cannot see: the call
-              // field is autofocused, so an operator who just types never
-              // puts a pointer down inside the panel. Hooking this existing
-              // callback keeps key handling out of it — the focus ladder is
-              // a contract (docs/design/logging-fields.md), and a
-              // panel-wide key listener is exactly what it forbids.
-              _panels.used('logging');
-              // A callsign being ANSWERED FOR is what `lookup` is about, and
-              // this callback also fires for every letter typed. Keyed on
-              // which call has an answer, so typing K→KI→KI2 fires nothing
-              // and KI2D resolving fires once. Not an identity check on the
-              // guess map: editing a QSO rebuilds it on every call, which
-              // would make this per-keystroke after all.
-              //
-              // A LATER source answering the same call is not seen here: the
-              // callback upstream dedupes on a signature holding the guess's
-              // display fields, so a second lookup that only adds others
-              // never reaches this. Widening it would re-render the Info
-              // pane for the same fields it is already showing.
-              // A NULL info says the call-info area isn't showing — a command
-              // message has the space — which is not news about lookups.
-              // Forgetting here would fire `lookup` a second time for the
-              // same already-resolved call the moment the message clears.
-              var resolved = false;
-              if (info != null) {
-                final answeredFor = info.guess == null ? null : info.call;
-                resolved = answeredFor != null && answeredFor != _lookupAnsweredFor;
-                _lookupAnsweredFor = answeredFor;
-              }
-              if (resolved) _flushDraft = true;
-              setState(() {
-                _callInfo = info;
-                if (resolved) _lookupRevision++;
-              });
-            },
-            // Null unless a panel in this arrangement asked for something
-            // that lives in the draft: the draft is rebuilt and deep-compared
-            // on every keystroke to produce, so the only cheap version of it
-            // is the one nobody asked for.
-            //
-            // `lookup` counts. Its payload IS the draft — a resolved guess
-            // travels inside `their.guess` and nowhere else — so a panel
-            // declaring only `lookup` would otherwise be woken with no
-            // callsign at all, forever. What `lookup` buys over `qso` is
-            // renders, not this.
-            //
-            // A CW message counts too: `{{ qso.call }}` in one is rendered
-            // against this draft (`_sendCwMessage`), and with nothing else
-            // asking for it F1 would key the message with the call blank.
-            // And the voice keyer: its MODE is the draft's (`_keyingPhone`),
-            // so with nothing tracking the draft F1 in SSB would fall
-            // through to a CW keyer that keys nothing, silently.
-            onQsoChanged: _anyPanelWants('qso') || _anyPanelWants('lookup') || _cwMessagesConfigured || _voiceKeyingPossible
-                ? _onQsoDraftChanged
-                : null,
-            // Peer sharing is its own reason to publish, independent of the
-            // layout: the panel that reads this lives on ANOTHER device, so
-            // gating it on what a panel here declares would leave a position
-            // invisible to its peers whenever nothing local happened to want
-            // a draft. Null while sharing is off, which is what keeps the
-            // whole path off the keystroke route.
-            onPeerDraftChanged:
-                _peerSharingDrafts ? (qso, fields) => _onPeerDraft(operation, qso, fields) : null,
-            onCallInfoTap: () => _handleCallInfoTap(operation),
-            onOperationInfoTap: () => _handleOperationInfoTap(operation, qsos),
-            )),
+              operation: operation,
+              onUndelete: () => _undelete(operation),
+              child: LoggingPanel(
+                operation: operation,
+                services: widget.services,
+                onSendCwMessage: _sendCwMessageFromArea,
+                onEnterSends: _sendEsmMessages,
+                cwTemplateContext: panelRenderContext,
+                keyingPhone: _keyingPhone,
+                qsos: qsos,
+                loggingControls: _loggingControls,
+                onCommandAction: _handleCommandAction,
+                showRSTFields: _showRSTFields,
+                showStateField: _showStateField,
+                showGridField: _showGridField,
+                showQsoNumbers: _showQsoNumbers,
+                defaultReport: _defaultReport,
+                defaultReportCW: _defaultReportCW,
+                defaultReportFT8: _defaultReportFT8,
+                switchSentRcvd: _switchSentRcvd,
+                jumpAfterRST: _jumpAfterRST,
+                dxFlags: _dxFlags,
+                ourEntityPrefix: _ourEntityPrefix,
+                ourItuRegion: _ourItuRegion,
+                ourCountryCode: _ourCountryCode,
+                suggestedQso: _suggestedQso,
+                suggestedQsoIsTentative: _suggestedQsoIsTentative,
+                suggestionSettledSerial: _suggestionSettledSerial,
+                onCallEdited: _onCallEdited,
+                onQsoLogged: _wakeHold.touch,
+                // Gated like the drafts: with sharing off the panel's own fallback
+                // is the same answer, and touching the field would construct the
+                // peer service on an install that never turned the experiment on.
+                serialNumbers: _peerSharingDrafts ? widget.services.serialClaims : null,
+                logRequest: _logRequest,
+                confirmLogOverwrite: _confirmLogOverwrite,
+                onCallInfoChanged: (info) {
+                  // Entering a call is logging-panel use, and it is the one
+                  // interaction the pointer listener below cannot see: the call
+                  // field is autofocused, so an operator who just types never
+                  // puts a pointer down inside the panel. Hooking this existing
+                  // callback keeps key handling out of it — the focus ladder is
+                  // a contract (docs/design/logging-fields.md), and a
+                  // panel-wide key listener is exactly what it forbids.
+                  _panels.used('logging');
+                  // A callsign being ANSWERED FOR is what `lookup` is about, and
+                  // this callback also fires for every letter typed. Keyed on
+                  // which call has an answer, so typing K→KI→KI2 fires nothing
+                  // and KI2D resolving fires once. Not an identity check on the
+                  // guess map: editing a QSO rebuilds it on every call, which
+                  // would make this per-keystroke after all.
+                  //
+                  // A LATER source answering the same call is not seen here: the
+                  // callback upstream dedupes on a signature holding the guess's
+                  // display fields, so a second lookup that only adds others
+                  // never reaches this. Widening it would re-render the Info
+                  // pane for the same fields it is already showing.
+                  // A NULL info says the call-info area isn't showing — a command
+                  // message has the space — which is not news about lookups.
+                  // Forgetting here would fire `lookup` a second time for the
+                  // same already-resolved call the moment the message clears.
+                  var resolved = false;
+                  if (info != null) {
+                    final answeredFor = info.guess == null ? null : info.call;
+                    resolved = answeredFor != null && answeredFor != _lookupAnsweredFor;
+                    _lookupAnsweredFor = answeredFor;
+                  }
+                  if (resolved) _flushDraft = true;
+                  setState(() {
+                    _callInfo = info;
+                    if (resolved) _lookupRevision++;
+                  });
+                },
+                // Null unless a panel in this arrangement asked for something
+                // that lives in the draft: the draft is rebuilt and deep-compared
+                // on every keystroke to produce, so the only cheap version of it
+                // is the one nobody asked for.
+                //
+                // `lookup` counts. Its payload IS the draft — a resolved guess
+                // travels inside `their.guess` and nowhere else — so a panel
+                // declaring only `lookup` would otherwise be woken with no
+                // callsign at all, forever. What `lookup` buys over `qso` is
+                // renders, not this.
+                //
+                // A CW message counts too: `{{ qso.call }}` in one is rendered
+                // against this draft (`_sendCwMessage`), and with nothing else
+                // asking for it F1 would key the message with the call blank.
+                // And the voice keyer: its MODE is the draft's (`_keyingPhone`),
+                // so with nothing tracking the draft F1 in SSB would fall
+                // through to a CW keyer that keys nothing, silently.
+                onQsoChanged: _anyPanelWants('qso') || _anyPanelWants('lookup') || _cwMessagesConfigured || _voiceKeyingPossible ? _onQsoDraftChanged : null,
+                // Peer sharing is its own reason to publish, independent of the
+                // layout: the panel that reads this lives on ANOTHER device, so
+                // gating it on what a panel here declares would leave a position
+                // invisible to its peers whenever nothing local happened to want
+                // a draft. Null while sharing is off, which is what keeps the
+                // whole path off the keystroke route.
+                onPeerDraftChanged: _peerSharingDrafts ? (qso, fields) => _onPeerDraft(operation, qso, fields) : null,
+                onCallInfoTap: () => _handleCallInfoTap(operation),
+                onOperationInfoTap: () => _handleOperationInfoTap(operation, qsos),
+              ),
+            ),
           ),
         );
         final spotsPanel = KeyedSubtree(
@@ -2880,13 +2748,13 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
           onPointerDown: (_) => _wakeHold.touch(),
           onPointerSignal: (_) => _wakeHold.touch(),
           child: Scaffold(
-          // The body extends full height behind the on-screen keyboard, so
-          // each pane paints its own background there (and a two-pane split
-          // reflects for free). The logging panel keeps its fields above the
-          // keyboard with its own bottom spacer (see LoggingControls); the
-          // Quick Lookup / branding panes do the same on Home.
-          resizeToAvoidBottomInset: false,
-          appBar: AppBar(
+            // The body extends full height behind the on-screen keyboard, so
+            // each pane paints its own background there (and a two-pane split
+            // reflects for free). The logging panel keeps its fields above the
+            // keyboard with its own bottom spacer (see LoggingControls); the
+            // Quick Lookup / branding panes do the same on Home.
+            resizeToAvoidBottomInset: false,
+            appBar: AppBar(
               flexibleSpace: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 // Inert while editing, for the same reason the title above it
@@ -2895,12 +2763,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 // header between them opening the very sheet the other
                 // refuses.
                 onTap: editingHeader ? null : () => _editActivities(operation),
-                child: Stack(
-                  children: [
-                    if (windowHeaderGestureArea() != null)
-                      windowHeaderGestureArea()!,
-                  ],
-                ),
+                child: Stack(children: [if (windowHeaderGestureArea() != null) windowHeaderGestureArea()!]),
               ),
               leadingWidth: _leadingWidthFor(isTwoPane, context),
               // A chevron even though this view arrives over the whole window
@@ -2917,10 +2780,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
               // rather than sitting duplicated beside them.
               leading: IgnorePointer(
                 ignoring: _headerIconsInert,
-                child: Opacity(
-                  opacity: _headerIconsFadeOpacity,
-                  child: macOSAwareBackButton(context, close: true, boxSize: 40),
-                ),
+                child: Opacity(opacity: _headerIconsFadeOpacity, child: macOSAwareBackButton(context, close: true, boxSize: 40)),
               ),
               // Tight against it — the dots-and-title control
               // supplies its own (small) inset instead of relying on the
@@ -3008,12 +2868,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                   // title doesn't stretch to fill the AppBar — so the
                   // control's own edge doesn't sit flush against whatever's
                   // to its right (actions, or the window's own edge).
-                  padding: EdgeInsets.only(
-                    left: isTwoPane ? Space.xs : 0,
-                    right: Space.lg,
-                    top: Space.xxs,
-                    bottom: Space.xxs,
-                  ),
+                  padding: EdgeInsets.only(left: isTwoPane ? Space.xs : 0, right: Space.lg, top: Space.xxs, bottom: Space.xxs),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -3034,9 +2889,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                           height: 32,
                           child: Align(
                             alignment: AlignmentDirectional.centerStart,
-                            child: _HeaderDotsControl(
-                              progress: _sheetAnimation?.value ?? 0.0,
-                            ),
+                            child: _HeaderDotsControl(progress: _sheetAnimation?.value ?? 0.0),
                           ),
                         ),
                         // Separates the title from whichever control
@@ -3073,20 +2926,14 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                             // than the operation in it: what is being
                             // rearranged belongs to the view, and it outlives
                             // this operation and every other one.
-                            shrinkToFitText(
-                              Text(
-                                editingHeader
-                                    ? (viewOptions.title ?? context.t.operation.layout.viewName)
-                                    : headerLines.title,
-                              ),
-                            ),
+                            shrinkToFitText(Text(editingHeader ? (viewOptions.title ?? context.t.operation.layout.viewName) : headerLines.title)),
                             if (!editingHeader && refsLine.isNotEmpty)
                               shrinkToFitText(
                                 Text(
                                   refsLine,
-                                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                    color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
-                                  ),
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85)),
                                 ),
                                 condensed: true,
                               ),
@@ -3099,32 +2946,34 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 ),
               ),
             ),
-          body: AdifDropTarget(
-            // Wraps the whole body so a log file can be dropped anywhere on
-            // the operation, not onto some particular panel — the operator is
-            // dropping it "into this operation", and which pane happened to be
-            // under the cursor is not a distinction they are making.
-            onFile: (file) async {
-              if (operation.deleted) return;
-              await importAdifFile(context, services: widget.services, operation: operation, file: file);
-            },
-            child: PaneSafeArea.root(
-            context,
-            // Real device safe-area insets (notch, home indicator) bubble
-            // in from here; PaneSafeArea's own
-            // divider-clearance role composes with it further down.
-            child: withViewOverrides(_dockLayout(
-              loggingPanel: loggingPanel,
-              infoPanel: infoPanel,
-              spotsPanel: spotsPanel,
-              mapPanel: mapPanel,
-              realQsoCount: realQsoCount,
-              qsos: qsos,
-              operation: operation,
-            )),
+            body: AdifDropTarget(
+              // Wraps the whole body so a log file can be dropped anywhere on
+              // the operation, not onto some particular panel — the operator is
+              // dropping it "into this operation", and which pane happened to be
+              // under the cursor is not a distinction they are making.
+              onFile: (file) async {
+                if (operation.deleted) return;
+                await importAdifFile(context, services: widget.services, operation: operation, file: file);
+              },
+              child: PaneSafeArea.root(
+                context,
+                // Real device safe-area insets (notch, home indicator) bubble
+                // in from here; PaneSafeArea's own
+                // divider-clearance role composes with it further down.
+                child: withViewOverrides(
+                  _dockLayout(
+                    loggingPanel: loggingPanel,
+                    infoPanel: infoPanel,
+                    spotsPanel: spotsPanel,
+                    mapPanel: mapPanel,
+                    realQsoCount: realQsoCount,
+                    qsos: qsos,
+                    operation: operation,
+                  ),
+                ),
+              ),
+            ),
           ),
-          ),
-        ),
         );
       },
     );
@@ -3179,10 +3028,7 @@ class _HeaderDotsControl extends StatelessWidget {
       height: 32,
       child: CustomPaint(
         size: const Size(10, 32),
-        painter: _FallingDotsPainter(
-          progress: progress,
-          dotColor: onPrimary,
-        ),
+        painter: _FallingDotsPainter(progress: progress, dotColor: onPrimary),
       ),
     );
   }
@@ -3192,10 +3038,7 @@ class _FallingDotsPainter extends CustomPainter {
   final double progress;
   final Color dotColor;
 
-  _FallingDotsPainter({
-    required this.progress,
-    required this.dotColor,
-  });
+  _FallingDotsPainter({required this.progress, required this.dotColor});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -3220,11 +3063,8 @@ class _FallingDotsPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_FallingDotsPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.dotColor != dotColor;
+  bool shouldRepaint(_FallingDotsPainter oldDelegate) => oldDelegate.progress != progress || oldDelegate.dotColor != dotColor;
 }
-
-
 
 /// [qso] with a CW frequency moved a few Hz off the spotted one, so that
 /// everyone answering the same spot isn't transmitting on the same note
@@ -3244,11 +3084,7 @@ class _FallingDotsPainter extends CustomPainter {
 /// Returns the caller's own map untouched when nothing should move, and a
 /// copy when something does — the map it is handed belongs to the spot list
 /// either way, so neither is safe to mutate.
-Map<String, dynamic> zeroBeatSuggestionFor(
-  Map<String, dynamic> qso, {
-  required HaLoServices services,
-  required ZeroBeatOffsetter offsetter,
-}) {
+Map<String, dynamic> zeroBeatSuggestionFor(Map<String, dynamic> qso, {required HaLoServices services, required ZeroBeatOffsetter offsetter}) {
   final settings = services.settings;
   // Both gates are checked before `services.cat`, which is what keeps it
   // untouched: that getter is a `late final`, so reading it builds a
@@ -3257,18 +3093,13 @@ Map<String, dynamic> zeroBeatSuggestionFor(
   // structural one and stays first: without Station Configuration there is no
   // way to connect a radio at all, so the answer would be "not connected"
   // however the setting is left.
-  if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return qso;
+  if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) return qso;
   if (!settings.avoidZeroBeat) return qso;
   // The main VFO specifically — a rig connected in the shack but not driving
   // the panel is not going to be retuned by this suggestion either. A PEER's
   // rig is: an operator's move reaches it as `catSet`, so leaving it out
   // would tune it exactly zero beat, which is what this prevents.
-  return offsetter.apply(
-    qso,
-    enabled: true,
-    radioConnected: services.radio1IsLive,
-    rangeHz: settings.zeroBeatRangeHz,
-  );
+  return offsetter.apply(qso, enabled: true, radioConnected: services.radio1IsLive, rangeHz: settings.zeroBeatRangeHz);
 }
 
 /// The operation sheet's accept button, shown in the VIEW's own header (left
@@ -3281,10 +3112,6 @@ Map<String, dynamic> zeroBeatSuggestionFor(
 Widget _sheetOkButton(BuildContext context, GlobalKey<OperationSheetState> sheetKey) => FilledButton.icon(
   icon: const Icon(MdiIcons.check),
   label: Text(context.t.common.ok),
-  style: FilledButton.styleFrom(
-    backgroundColor: fabAccentColor,
-    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-  ),
+  style: FilledButton.styleFrom(backgroundColor: fabAccentColor, foregroundColor: Theme.of(context).colorScheme.onPrimary),
   onPressed: () => sheetKey.currentState?.saveAndClose(),
 );
-

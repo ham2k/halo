@@ -89,11 +89,8 @@ class _ListFieldActions {
 /// slot — one builder so the three dialogs can't drift on icon or wording.
 /// Undo, not restore: what it undoes is the operator's own change, and the
 /// two icons read as different promises when one dialog uses each.
-Widget _defaultsButton({required VoidCallback? onPressed}) => TextButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(MdiIcons.undo, size: 18),
-      label: Text(t.formChrome.defaults),
-    );
+Widget _defaultsButton({required VoidCallback? onPressed}) =>
+    TextButton.icon(onPressed: onPressed, icon: const Icon(MdiIcons.undo, size: 18), label: Text(t.formChrome.defaults));
 
 /// The Cancel/Save (+ submitting spinner) row shared by every presenter of
 /// a [FormRenderer] — the renderer's own `showActions` footer,
@@ -134,17 +131,17 @@ Widget formActionsRow({
     destructive: destructive == null
         ? null
         : destructive.icon == null
-            ? TextButton(
-                style: TextButton.styleFrom(foregroundColor: destructive.color),
-                onPressed: isSubmitting ? null : destructive.onPressed,
-                child: label(destructive.label),
-              )
-            : TextButton.icon(
-                style: TextButton.styleFrom(foregroundColor: destructive.color),
-                onPressed: isSubmitting ? null : destructive.onPressed,
-                icon: Icon(destructive.icon),
-                label: label(destructive.label),
-              ),
+        ? TextButton(
+            style: TextButton.styleFrom(foregroundColor: destructive.color),
+            onPressed: isSubmitting ? null : destructive.onPressed,
+            child: label(destructive.label),
+          )
+        : TextButton.icon(
+            style: TextButton.styleFrom(foregroundColor: destructive.color),
+            onPressed: isSubmitting ? null : destructive.onPressed,
+            icon: Icon(destructive.icon),
+            label: label(destructive.label),
+          ),
     secondary: secondary == null
         ? null
         // Disabled while submitting, like every other control on the form: it
@@ -152,23 +149,13 @@ Widget formActionsRow({
         // route pushed over a submitting pane is the route `Navigator.pop`
         // takes down when the submit lands — the pane stays open and its
         // values go to whatever was on top instead.
-        : TextButton(
-            onPressed: isSubmitting ? null : secondary.onPressed,
-            child: label(secondary.label),
-          ),
-    cancel: TextButton(
-      onPressed: isSubmitting ? null : onCancel,
-      child: label(t.common.cancel),
-    ),
+        : TextButton(onPressed: isSubmitting ? null : secondary.onPressed, child: label(secondary.label)),
+    cancel: TextButton(onPressed: isSubmitting ? null : onCancel, child: label(t.common.cancel)),
     actions: [
       if (isSubmitting)
         // Occupies the primary's place rather than sitting beside it, so the
         // footer neither grows nor reflows when a submit starts.
-        const SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        )
+        const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
       else
         // The one verb that never gives ground: whatever else gets clipped,
         // the form's own action stays readable.
@@ -308,8 +295,7 @@ class FormRendererState extends State<FormRenderer> {
   /// flush-left look those callers already size their own container for.
   EdgeInsetsGeometry get _rowContentPadding => ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
 
-  List<Map<String, dynamic>> get _fields =>
-      _elements.where((el) => el['type'] == 'field').toList();
+  List<Map<String, dynamic>> get _fields => _elements.where((el) => el['type'] == 'field').toList();
 
   /// [_elements] minus any whose `visibleWhen` predicate doesn't currently
   /// hold (docs/design/contests.md §5.4.1) — IARU HF's setup shows one of three
@@ -364,15 +350,13 @@ class FormRendererState extends State<FormRenderer> {
   /// rather than as a dropdown's one-string items.
   static bool _isRowSelect(Map<String, dynamic> el) {
     if (el['fieldType'] != 'select' || el['options'] is! List) return false;
-    return (el['options'] as List).any((opt) =>
-        opt is Map &&
-        (opt['trailing'] != null || opt['tags'] != null || opt['icon'] != null || opt['subtitle'] != null));
+    return (el['options'] as List).any(
+      (opt) => opt is Map && (opt['trailing'] != null || opt['tags'] != null || opt['icon'] != null || opt['subtitle'] != null),
+    );
   }
 
-  static List<Map<String, dynamic>> _fieldsIn(Map<String, dynamic> definition) => (definition['elements'] as List? ?? const [])
-      .cast<Map<String, dynamic>>()
-      .where((el) => el['type'] == 'field')
-      .toList();
+  static List<Map<String, dynamic>> _fieldsIn(Map<String, dynamic> definition) =>
+      (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>().where((el) => el['type'] == 'field').toList();
 
   /// A field's `value` here is the source of truth — set by whatever last
   /// called [FormRenderer] with a new [formDefinition] (e.g. a settings
@@ -494,9 +478,7 @@ class FormRendererState extends State<FormRenderer> {
       // the same ones — see `_numberText`. `toString()` here would print a
       // period into a field whose decimal key types a comma, so the first
       // edit of an untouched value would make it unparseable.
-      final controller = TextEditingController(
-        text: fieldType == 'number' ? _numberText(val) : val?.toString() ?? '',
-      );
+      final controller = TextEditingController(text: fieldType == 'number' ? _numberText(val) : val?.toString() ?? '');
       _controllers[key] = controller;
       controller.addListener(() {
         final text = controller.text;
@@ -551,8 +533,7 @@ class FormRendererState extends State<FormRenderer> {
 
     final delta = logicalKey == LogicalKeyboardKey.arrowDown ? 1 : -1;
     final currentIndex = options.indexWhere((opt) => opt['value'] == _values[key]);
-    final nextIndex =
-        currentIndex < 0 ? (delta > 0 ? 0 : options.length - 1) : (currentIndex + delta) % options.length;
+    final nextIndex = currentIndex < 0 ? (delta > 0 ? 0 : options.length - 1) : (currentIndex + delta) % options.length;
     final nextValue = options[nextIndex]['value'];
 
     setState(() {
@@ -702,20 +683,14 @@ class FormRendererState extends State<FormRenderer> {
     final theme = Theme.of(context);
     final elements = _visibleElements;
     // An InheritedWidget, so it wraps a sliver as happily as a box.
-    return AutofillGroup(
-      child: widget.sliver ? _buildSliver(context, theme, elements) : _buildBox(context, theme, elements),
-    );
+    return AutofillGroup(child: widget.sliver ? _buildSliver(context, theme, elements) : _buildBox(context, theme, elements));
   }
 
   Widget _buildBox(BuildContext context, ThemeData theme, List<Map<String, dynamic>> elements) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ..._formTitle(context, theme),
-          ..._elementRows(theme, elements),
-          ..._formActions(),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [..._formTitle(context, theme), ..._elementRows(theme, elements), ..._formActions()],
+  );
 
   /// The same form, as one sliver: every run of rows under a section band is
   /// a group of its own, so the band pins over ITS rows and is pushed off by
@@ -724,7 +699,13 @@ class FormRendererState extends State<FormRenderer> {
   Widget _buildSliver(BuildContext context, ThemeData theme, List<Map<String, dynamic>> elements) {
     final slivers = <Widget>[];
     final title = _formTitle(context, theme);
-    if (title.isNotEmpty) slivers.add(SliverToBoxAdapter(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: title)));
+    if (title.isNotEmpty) {
+      slivers.add(
+        SliverToBoxAdapter(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: title),
+        ),
+      );
+    }
 
     var section = <Map<String, dynamic>>[];
     Map<String, dynamic>? band;
@@ -738,9 +719,7 @@ class FormRendererState extends State<FormRenderer> {
       final rows = SliverToBoxAdapter(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _elementRows(theme, section)),
       );
-      slivers.add(band == null
-          ? rows
-          : SliverMainAxisGroup(slivers: [_pinnedBand(context, band!, theme), rows]));
+      slivers.add(band == null ? rows : SliverMainAxisGroup(slivers: [_pinnedBand(context, band!, theme), rows]));
       section = [];
       band = null;
     }
@@ -757,7 +736,11 @@ class FormRendererState extends State<FormRenderer> {
 
     final actions = _formActions();
     if (actions.isNotEmpty) {
-      slivers.add(SliverToBoxAdapter(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: actions)));
+      slivers.add(
+        SliverToBoxAdapter(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: actions),
+        ),
+      );
     }
     return SliverMainAxisGroup(slivers: slivers);
   }
@@ -765,8 +748,7 @@ class FormRendererState extends State<FormRenderer> {
   /// Whether an element heads a section — either style of band. A band is a
   /// header and nothing else: a `style` that strays onto another element
   /// must not silently close the gaps around it.
-  static bool _isBand(Map<String, dynamic> el) =>
-      el['type'] == 'header' && (el['style'] == 'section' || el['style'] == 'category');
+  static bool _isBand(Map<String, dynamic> el) => el['type'] == 'header' && (el['style'] == 'section' || el['style'] == 'category');
 
   /// [el]'s band, pinned over the rows that follow it.
   Widget _pinnedBand(BuildContext context, Map<String, dynamic> el, ThemeData theme) {
@@ -779,35 +761,25 @@ class FormRendererState extends State<FormRenderer> {
   }
 
   List<Widget> _formTitle(BuildContext context, ThemeData theme) => [
-        if (widget.showTitle && widget.formDefinition['title'] != null) ...[
-          Text(
-            widget.formDefinition['title'] as String,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontFamily: 'RobotoSlab',
-              fontWeight: FontWeight.bold,
-              color: HaLoColors.of(context).onSurfaceAccent,
-            ),
-          ),
-          const SizedBox(height: Space.xs),
-        ],
-        if (widget.showTitle && widget.formDefinition['subtitle'] != null) ...[
-          Text(
-            widget.formDefinition['subtitle'] as String,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: Space.xl),
-        ],
-      ];
+    if (widget.showTitle && widget.formDefinition['title'] != null) ...[
+      Text(
+        widget.formDefinition['title'] as String,
+        style: theme.textTheme.headlineSmall?.copyWith(fontFamily: 'RobotoSlab', fontWeight: FontWeight.bold, color: HaLoColors.of(context).onSurfaceAccent),
+      ),
+      const SizedBox(height: Space.xs),
+    ],
+    if (widget.showTitle && widget.formDefinition['subtitle'] != null) ...[
+      Text(widget.formDefinition['subtitle'] as String, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+      const SizedBox(height: Space.xl),
+    ],
+  ];
 
   List<Widget> _formActions() => [
-        if (widget.showActions) ...[
-          const SizedBox(height: Space.xxl),
-          formActionsRow(
-              isSubmitting: _isSubmitting, onCancel: widget.onCancel, onSave: submit, saveLabel: widget.saveLabel),
-        ],
-      ];
+    if (widget.showActions) ...[
+      const SizedBox(height: Space.xxl),
+      formActionsRow(isSubmitting: _isSubmitting, onCancel: widget.onCancel, onSave: submit, saveLabel: widget.saveLabel),
+    ],
+  ];
 
   /// [elements] as rows, with the gaps between them.
   ///
@@ -818,20 +790,19 @@ class FormRendererState extends State<FormRenderer> {
   /// it, a gap would be a hole dragged along with it. Hence no gap at either
   /// end of this list: a band is always what a run of rows begins after.
   List<Widget> _elementRows(ThemeData theme, List<Map<String, dynamic>> elements) => [
-        for (final (index, el) in elements.indexed) ...[
-          if (index > 0 && !_isBand(el) && !_isBand(elements[index - 1]))
-            const SizedBox(height: Space.xl),
-          switch (el['type'] as String?) {
-            'header' => _buildHeader(el, theme),
-            'divider' => _buildDivider(el, theme),
-            'markdown' => _buildMarkdown(el, theme),
-            'field' => _buildField(el, theme),
-            'link' => _buildLink(el, theme),
-            'action' => _buildActionElement(el, theme),
-            _ => const SizedBox.shrink(),
-          },
-        ],
-      ];
+    for (final (index, el) in elements.indexed) ...[
+      if (index > 0 && !_isBand(el) && !_isBand(elements[index - 1])) const SizedBox(height: Space.xl),
+      switch (el['type'] as String?) {
+        'header' => _buildHeader(el, theme),
+        'divider' => _buildDivider(el, theme),
+        'markdown' => _buildMarkdown(el, theme),
+        'field' => _buildField(el, theme),
+        'link' => _buildLink(el, theme),
+        'action' => _buildActionElement(el, theme),
+        _ => const SizedBox.shrink(),
+      },
+    ],
+  ];
 
   /// `style: 'section'` renders the settings-panel section band: smaller
   /// type than a form's own title, on the same ground the Operation Setup
@@ -848,12 +819,7 @@ class FormRendererState extends State<FormRenderer> {
   Widget? _headerSubtitle(Map<String, dynamic> el, ThemeData theme) {
     final subtitle = el['subtitle'] as String?;
     if (subtitle == null || subtitle.isEmpty) return null;
-    return Text(
-      subtitle,
-      style: theme.textTheme.bodySmall?.copyWith(
-        color: _devModeColor(el) ?? theme.colorScheme.onSurfaceVariant,
-      ),
-    );
+    return Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: _devModeColor(el) ?? theme.colorScheme.onSurfaceVariant));
   }
 
   Widget _buildHeader(Map<String, dynamic> el, ThemeData theme) {
@@ -869,11 +835,7 @@ class FormRendererState extends State<FormRenderer> {
       children: [
         Text(
           title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontFamily: 'RobotoSlab',
-            fontWeight: FontWeight.w900,
-            color: devModeColor ?? onSurfaceAccent,
-          ),
+          style: theme.textTheme.titleMedium?.copyWith(fontFamily: 'RobotoSlab', fontWeight: FontWeight.w900, color: devModeColor ?? onSurfaceAccent),
         ),
         if (subtitleWidget != null) ...[const SizedBox(height: Space.xs), subtitleWidget],
       ],
@@ -901,10 +863,7 @@ class FormRendererState extends State<FormRenderer> {
           Flexible(
             child: Text(
               title,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: devModeColor ?? onSurfaceAccent,
-                fontWeight: FontWeight.bold,
-              ),
+              style: theme.textTheme.titleSmall?.copyWith(color: devModeColor ?? onSurfaceAccent, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: Space.md),
@@ -919,11 +878,7 @@ class FormRendererState extends State<FormRenderer> {
     final devModeColor = _devModeColor(el);
     // Extension-authored copy, so it needs the emoji font; the dev-mode tint
     // keeps the bare sheet it always used, with only the fallback added.
-    final styleSheet = withEmojiFallback(
-      devModeColor == null
-          ? MarkdownStyleSheet.fromTheme(theme)
-          : MarkdownStyleSheet(p: TextStyle(color: devModeColor)),
-    );
+    final styleSheet = withEmojiFallback(devModeColor == null ? MarkdownStyleSheet.fromTheme(theme) : MarkdownStyleSheet(p: TextStyle(color: devModeColor)));
     if (el['collapsible'] == true) {
       return Theme(
         data: theme.copyWith(dividerColor: Colors.transparent),
@@ -932,7 +887,10 @@ class FormRendererState extends State<FormRenderer> {
             el['title'] as String? ?? '',
             style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
           ),
-          child: Align(alignment: Alignment.centerLeft, child: MarkdownBody(data: text, styleSheet: styleSheet)),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: MarkdownBody(data: text, styleSheet: styleSheet),
+          ),
         ),
       );
     }
@@ -964,8 +922,7 @@ class FormRendererState extends State<FormRenderer> {
     final placeholder = el['placeholder'] as String?;
     // `options` may be an app-resolved '$name' String that a caller failed
     // to resolve — degrade to no options instead of crashing the form.
-    final options =
-        (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
+    final options = (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
     final errorText = _errors[key];
     final devModeColor = _devModeColor(el);
 
@@ -990,40 +947,44 @@ class FormRendererState extends State<FormRenderer> {
         // filter makes `uppercase: true` meaningless, and the full-width
         // layout has never honored it there.
         final multiline = fieldType == 'multiline';
-        return inset(TextField(
-          selectAllOnFocus: false,
-          // See the checkbox's own `disabled` below: greyed rather than
-          // hidden, so a field that does not apply here says so instead of
-          // sending an operator hunting for it.
-          //
-          // `disabled` is honoured HERE, on the checkbox and on `select`,
-          // and nowhere else. It is still not documented for extension
-          // authors: a type that does not implement it renders fully
-          // editable, which is worse than the attribute not existing.
-          // Implement the type before documenting it — and every way INTO
-          // that type, which for `select` is three: the inline dropdown, the
-          // settings-row picker dialog, and the arrow keys on a focused one.
-          enabled: el['disabled'] != true,
-          controller: _controllers[key],
-          focusNode: _focusNodes[key],
-          maxLines: multiline ? null : 1,
-          minLines: multiline ? 3 : null,
-          keyboardType: _keyboardTypeFor(fieldType!),
-          textCapitalization: fieldType == 'number' ? TextCapitalization.none : _capitalizationFor(fieldType, el),
-          inputFormatters: _inputFormattersFor(fieldType, el),
-          autofillHints: _getAutofillHints(key, fieldType),
-          textInputAction: multiline ? null : TextInputAction.done,
-          onSubmitted: multiline ? null : (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
-        ));
+        return inset(
+          TextField(
+            selectAllOnFocus: false,
+            // See the checkbox's own `disabled` below: greyed rather than
+            // hidden, so a field that does not apply here says so instead of
+            // sending an operator hunting for it.
+            //
+            // `disabled` is honoured HERE, on the checkbox and on `select`,
+            // and nowhere else. It is still not documented for extension
+            // authors: a type that does not implement it renders fully
+            // editable, which is worse than the attribute not existing.
+            // Implement the type before documenting it — and every way INTO
+            // that type, which for `select` is three: the inline dropdown, the
+            // settings-row picker dialog, and the arrow keys on a focused one.
+            enabled: el['disabled'] != true,
+            controller: _controllers[key],
+            focusNode: _focusNodes[key],
+            maxLines: multiline ? null : 1,
+            minLines: multiline ? 3 : null,
+            keyboardType: _keyboardTypeFor(fieldType!),
+            textCapitalization: fieldType == 'number' ? TextCapitalization.none : _capitalizationFor(fieldType, el),
+            inputFormatters: _inputFormattersFor(fieldType, el),
+            autofillHints: _getAutofillHints(key, fieldType),
+            textInputAction: multiline ? null : TextInputAction.done,
+            onSubmitted: multiline ? null : (_) => submit(),
+            decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
+          ),
+        );
       case 'secret':
-        return inset(SecretTextField(
-          controller: _controllers[key],
-          focusNode: _focusNodes[key],
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => submit(),
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
-        ));
+        return inset(
+          SecretTextField(
+            controller: _controllers[key],
+            focusNode: _focusNodes[key],
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => submit(),
+            decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
+          ),
+        );
       case 'list':
         return _buildListField(el, theme);
       case 'multiselect':
@@ -1041,104 +1002,108 @@ class FormRendererState extends State<FormRenderer> {
         // column of near-identical device names is unscannable inline, and
         // has to be a column. Every other select is untouched.
         if (_isRowSelect(el)) {
-          return inset(RowSelectField(
-            label: label,
-            value: _values[key],
+          return inset(
+            RowSelectField(
+              label: label,
+              value: _values[key],
+              focusNode: _focusNodes[key],
+              errorText: errorText,
+              placeholder: placeholder,
+              labelColor: devModeColor,
+              enabled: !_isSubmitting && el['disabled'] != true,
+              rows: [
+                for (final opt in options)
+                  SelectRow(
+                    value: opt['value'],
+                    name: opt['label'] as String? ?? '',
+                    tags: ((opt['tags'] as List?) ?? const []).cast<String>(),
+                    trailing: opt['trailing'] as String?,
+                    icon: opt['icon'] as String?,
+                    subtitle: opt['subtitle'] as String?,
+                    emphasis: opt['emphasis'] == true,
+                  ),
+              ],
+              onChanged: (val) {
+                // The same `isAction` contract the dropdown honours below: the
+                // web serial transport's "Add a USB device…" lives IN the port
+                // list, and picking it must run `requestPort()` rather than
+                // become the field's value. Missed here, the form stores the
+                // action's key as the port and Save writes that into the
+                // config — and only on a browser with a device already granted,
+                // since it takes one structured option to reach this branch at
+                // all.
+                final picked = options.firstWhere((o) => o['value'] == val, orElse: () => const {});
+                if (picked['isAction'] == true) {
+                  unawaited(_runAction(val as String, picked['method'] as String? ?? ''));
+                  return;
+                }
+                setState(() {
+                  _values[key] = val;
+                  _errors.remove(key);
+                });
+                _handleFieldBlurOrInteraction(key, val);
+              },
+            ),
+          );
+        }
+        return inset(
+          DropdownButtonFormField<dynamic>(
+            // See _actionGeneration: forces a remount from the true
+            // _values[key] after any action runs, since this widget
+            // otherwise keeps showing whatever item was last tapped —
+            // including an isAction option that never became the value.
+            key: ValueKey('$key-$_actionGeneration'),
+            initialValue: _values[key],
             focusNode: _focusNodes[key],
-            errorText: errorText,
-            placeholder: placeholder,
-            labelColor: devModeColor,
-            enabled: !_isSubmitting && el['disabled'] != true,
-            rows: [
+            icon: dropdownTrailingIcon,
+            menuMaxHeight: dropdownMenuMaxHeight(context),
+            // Fill the field rather than taking the width of the widest OPTION,
+            // which is what an unexpanded dropdown does — one long label (a
+            // contest sponsor's own description of an entry category, say)
+            // would overflow the whole dialog to the right, for every extension.
+            isExpanded: true,
+            decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
+            hint: placeholder != null ? Text(placeholder) : null,
+            items: [
               for (final opt in options)
-                SelectRow(
+                DropdownMenuItem(
                   value: opt['value'],
-                  name: opt['label'] as String? ?? '',
-                  tags: ((opt['tags'] as List?) ?? const []).cast<String>(),
-                  trailing: opt['trailing'] as String?,
-                  icon: opt['icon'] as String?,
-                  subtitle: opt['subtitle'] as String?,
-                  emphasis: opt['emphasis'] == true,
+                  child: Text(opt['label'] as String, style: optionEmphasisStyle(opt, options)),
                 ),
             ],
-            onChanged: (val) {
-              // The same `isAction` contract the dropdown honours below: the
-              // web serial transport's "Add a USB device…" lives IN the port
-              // list, and picking it must run `requestPort()` rather than
-              // become the field's value. Missed here, the form stores the
-              // action's key as the port and Save writes that into the
-              // config — and only on a browser with a device already granted,
-              // since it takes one structured option to reach this branch at
-              // all.
-              final picked = options.firstWhere((o) => o['value'] == val, orElse: () => const {});
-              if (picked['isAction'] == true) {
-                unawaited(_runAction(val as String, picked['method'] as String? ?? ''));
-                return;
-              }
-              setState(() {
-                _values[key] = val;
-                _errors.remove(key);
-              });
-              _handleFieldBlurOrInteraction(key, val);
-            },
-          ));
-        }
-        return inset(DropdownButtonFormField<dynamic>(
-          // See _actionGeneration: forces a remount from the true
-          // _values[key] after any action runs, since this widget
-          // otherwise keeps showing whatever item was last tapped —
-          // including an isAction option that never became the value.
-          key: ValueKey('$key-$_actionGeneration'),
-          initialValue: _values[key],
-          focusNode: _focusNodes[key],
-          icon: dropdownTrailingIcon,
-          menuMaxHeight: dropdownMenuMaxHeight(context),
-          // Fill the field rather than taking the width of the widest OPTION,
-          // which is what an unexpanded dropdown does — one long label (a
-          // contest sponsor's own description of an entry category, say)
-          // would overflow the whole dialog to the right, for every extension.
-          isExpanded: true,
-          decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
-          hint: placeholder != null ? Text(placeholder) : null,
-          items: [
-            for (final opt in options)
-              DropdownMenuItem(
-                value: opt['value'],
-                child: Text(opt['label'] as String, style: optionEmphasisStyle(opt, options)),
-              )
-          ],
-          // Greyed rather than hidden, same as the text field's and the
-          // checkbox's — a choice that cannot be made right now should say
-          // so where it is, not vanish and send the operator hunting. The
-          // Antenna Genius' routing picker on a port that is transmitting is
-          // the case this exists for: offering it, taking the tap and having
-          // the driver refuse it puts the form's value out of step with the
-          // hardware, and the refusal lands on a panel behind the pane where
-          // the operator cannot see it.
-          onChanged: _isSubmitting || el['disabled'] == true
-              ? null
-              : (val) {
-                  // An `isAction` option (the web serial transport's
-                  // "add a USB device", so far, sitting right in the port
-                  // list rather than as a separate button) never becomes
-                  // this field's value — picking it runs an action instead,
-                  // same contract a `type: 'action'` element's button uses.
-                  // Leaving `val` unselected here (rather than setting it
-                  // then reverting it once the action resolves) means there
-                  // is nothing to revert if the operator cancels the
-                  // browser's own picker partway through.
-                  final picked = options.firstWhere((o) => o['value'] == val, orElse: () => const {});
-                  if (picked['isAction'] == true) {
-                    unawaited(_runAction(val as String, picked['method'] as String? ?? ''));
-                    return;
-                  }
-                  setState(() {
-                    _values[key] = val;
-                    _errors.remove(key);
-                  });
-                  _handleFieldBlurOrInteraction(key, val);
-                },
-        ));
+            // Greyed rather than hidden, same as the text field's and the
+            // checkbox's — a choice that cannot be made right now should say
+            // so where it is, not vanish and send the operator hunting. The
+            // Antenna Genius' routing picker on a port that is transmitting is
+            // the case this exists for: offering it, taking the tap and having
+            // the driver refuse it puts the form's value out of step with the
+            // hardware, and the refusal lands on a panel behind the pane where
+            // the operator cannot see it.
+            onChanged: _isSubmitting || el['disabled'] == true
+                ? null
+                : (val) {
+                    // An `isAction` option (the web serial transport's
+                    // "add a USB device", so far, sitting right in the port
+                    // list rather than as a separate button) never becomes
+                    // this field's value — picking it runs an action instead,
+                    // same contract a `type: 'action'` element's button uses.
+                    // Leaving `val` unselected here (rather than setting it
+                    // then reverting it once the action resolves) means there
+                    // is nothing to revert if the operator cancels the
+                    // browser's own picker partway through.
+                    final picked = options.firstWhere((o) => o['value'] == val, orElse: () => const {});
+                    if (picked['isAction'] == true) {
+                      unawaited(_runAction(val as String, picked['method'] as String? ?? ''));
+                      return;
+                    }
+                    setState(() {
+                      _values[key] = val;
+                      _errors.remove(key);
+                    });
+                    _handleFieldBlurOrInteraction(key, val);
+                  },
+          ),
+        );
       case 'radio':
         // Not inset whole: the options below ARE rows and spend the inset
         // through their own contentPadding. What is left — the group's
@@ -1149,12 +1114,7 @@ class FormRendererState extends State<FormRenderer> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              inset(Text(
-                label,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
-                ),
-              )),
+              inset(Text(label, style: theme.textTheme.labelMedium?.copyWith(color: devModeColor ?? theme.colorScheme.onSurfaceVariant))),
               const SizedBox(height: Space.xs),
               for (final opt in options)
                 RadioListTile<dynamic>(
@@ -1180,13 +1140,12 @@ class FormRendererState extends State<FormRenderer> {
                   dense: true,
                 ),
               if (errorText != null)
-                inset(Padding(
-                  padding: const EdgeInsets.only(top: Space.xs),
-                  child: Text(
-                    errorText,
-                    style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
+                inset(
+                  Padding(
+                    padding: const EdgeInsets.only(top: Space.xs),
+                    child: Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)),
                   ),
-                )),
+                ),
             ],
           ),
         );
@@ -1214,12 +1173,7 @@ class FormRendererState extends State<FormRenderer> {
             contentPadding: _rowContentPadding,
             controlAffinity: ListTileControlAffinity.leading,
             dense: true,
-            subtitle: errorText != null
-                ? Text(
-                    errorText,
-                    style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
-                  )
-                : null,
+            subtitle: errorText != null ? Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)) : null,
           ),
         );
       default:
@@ -1262,7 +1216,10 @@ class FormRendererState extends State<FormRenderer> {
     }
 
     final leading = icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null;
-    final title = Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor));
+    final title = Text(
+      label,
+      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
+    );
 
     final disabled = el['disabled'] == true;
     final toggle = _isSubmitting || disabled ? null : () => _setToggle(key, _values[key] != true);
@@ -1308,8 +1265,7 @@ class FormRendererState extends State<FormRenderer> {
       // — has no description to write, and a row with neither says nothing
       // at all: the operator has to open the dialog to find out what they
       // picked last time.
-      final options =
-          (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
+      final options = (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
       final current = options.where((o) => o['value'] == _values[key]).firstOrNull;
       final shown = current?['label'] as String? ?? el['placeholder'] as String?;
       if (shown != null && shown.isNotEmpty) subtitle = Text(shown, style: TextStyle(color: devModeColor));
@@ -1318,7 +1274,10 @@ class FormRendererState extends State<FormRenderer> {
     return ListTile(
       contentPadding: _rowContentPadding,
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
-      title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
+      title: Text(
+        label,
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
+      ),
       subtitle: subtitle,
       trailing: Icon(MdiIcons.chevronRight, color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
       // Same rule as the inline control and the arrow keys: all three ways
@@ -1341,8 +1300,7 @@ class FormRendererState extends State<FormRenderer> {
   Future<void> _openSelectDialog(Map<String, dynamic> el) async {
     final key = el['key'] as String;
     final label = el['label'] as String? ?? '';
-    final options =
-        (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
+    final options = (el['options'] is List) ? (el['options'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
     final current = _values[key];
     final hasDefault = el.containsKey('defaultValue');
 
@@ -1357,17 +1315,8 @@ class FormRendererState extends State<FormRenderer> {
         // The body scrolls itself; two scrollables on one axis fail to lay
         // out.
         scrollable: false,
-        content: _SelectDialogBody(
-          options: options,
-          current: current,
-          searchHint: t.formChrome.search,
-          clearLabel: t.formChrome.clear,
-        ),
-        secondary: hasDefault
-            ? _defaultsButton(
-                onPressed: _isSubmitting ? null : () => Navigator.of(dialogContext).pop([el['defaultValue']]),
-              )
-            : null,
+        content: _SelectDialogBody(options: options, current: current, searchHint: t.formChrome.search, clearLabel: t.formChrome.clear),
+        secondary: hasDefault ? _defaultsButton(onPressed: _isSubmitting ? null : () => Navigator.of(dialogContext).pop([el['defaultValue']])) : null,
         cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
       ),
     );
@@ -1419,12 +1368,19 @@ class FormRendererState extends State<FormRenderer> {
     return ListTile(
       contentPadding: _rowContentPadding,
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
-      title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
+      title: Text(
+        label,
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
+      ),
       subtitle: fieldType == 'textTemplate'
-          ? Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              ?subtitle,
-              TemplateSamplePreview(field: el, value: _displayValue(el, fieldType)),
-            ])
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ?subtitle,
+                TemplateSamplePreview(field: el, value: _displayValue(el, fieldType)),
+              ],
+            )
           : subtitle,
       trailing: Icon(MdiIcons.chevronRight, color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
       // Greyed rather than hidden, exactly as the inline field was — see the
@@ -1523,17 +1479,15 @@ class FormRendererState extends State<FormRenderer> {
     return ListTile(
       contentPadding: _rowContentPadding,
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
-      title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
+      title: Text(
+        label,
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
+      ),
       subtitle: description != null && description.isNotEmpty ? Text(description, style: TextStyle(color: devModeColor)) : null,
       trailing: panel != null
           ? Icon(MdiIcons.chevronRight, color: devModeColor)
           : IconButton(
-              icon: Icon(
-                MdiIcons.openInNew,
-                size: 22,
-                color: devModeColor,
-                semanticLabel: t.formChrome.openPage,
-              ),
+              icon: Icon(MdiIcons.openInNew, size: 22, color: devModeColor, semanticLabel: t.formChrome.openPage),
               onPressed: open,
             ),
       onTap: open,
@@ -1552,8 +1506,7 @@ class FormRendererState extends State<FormRenderer> {
   ///
   /// Empty for null, which is what an unset field and an unparseable entry
   /// both arrive as — the field shows nothing rather than the word "null".
-  static String _numberText(dynamic value) =>
-      value is num ? formatLocalizedNumber(value) : (value?.toString() ?? '');
+  static String _numberText(dynamic value) => value is num ? formatLocalizedNumber(value) : (value?.toString() ?? '');
 
   /// The controller text for [key]'s [value], in the operator's own number
   /// conventions when [key] is a `number` field.
@@ -1569,10 +1522,10 @@ class FormRendererState extends State<FormRenderer> {
   }
 
   TextInputType? _keyboardTypeFor(String fieldType) => switch (fieldType) {
-        'email' => TextInputType.emailAddress,
-        'number' => const TextInputType.numberWithOptions(decimal: true, signed: true),
-        _ => null,
-      };
+    'email' => TextInputType.emailAddress,
+    'number' => const TextInputType.numberWithOptions(decimal: true, signed: true),
+    _ => null,
+  };
 
   /// The one predicate for "does this field force uppercase?": callsign
   /// fields always do; any other text-like field opts in with
@@ -1581,8 +1534,7 @@ class FormRendererState extends State<FormRenderer> {
   /// email/callsign cases) and the compact icon-row path derive BOTH
   /// capitalization and formatters from this, so the two layouts can't
   /// disagree on a field's casing.
-  bool _isUppercase(String fieldType, Map<String, dynamic> el) =>
-      fieldType == 'callsign' || el['uppercase'] == true;
+  bool _isUppercase(String fieldType, Map<String, dynamic> el) => fieldType == 'callsign' || el['uppercase'] == true;
 
   /// `capitalize: true` — free prose that still starts with a capital, the
   /// middle setting between [_isUppercase]'s whole-field uppercasing and a
@@ -1596,34 +1548,32 @@ class FormRendererState extends State<FormRenderer> {
   TextCapitalization _capitalizationFor(String fieldType, Map<String, dynamic> el) => _isUppercase(fieldType, el)
       ? TextCapitalization.characters
       : _isCapitalized(el)
-          ? TextCapitalization.sentences
-          : TextCapitalization.none;
+      ? TextCapitalization.sentences
+      : TextCapitalization.none;
 
   List<TextInputFormatter>? _inputFormattersFor(String fieldType, Map<String, dynamic> el) => switch (fieldType) {
-        // BOTH marks are admitted and then normalized, rather than a filter
-        // built from the configured one. A filter admitting a single mark
-        // silently drops the other, and which key the operator's keyboard
-        // actually emits is not something this setting controls: a Spanish
-        // phone puts a comma on the numeric decimal key whatever the app is
-        // set to, and a macOS numpad emits a period regardless of region. So
-        // the failure was never "the wrong mark is configured", it was "a
-        // keypress vanishes" — and admitting one mark just moves who it
-        // happens to.
-        //
-        // Rewriting rather than accepting both at parse time is what keeps it
-        // unambiguous: the field can then only ever contain the configured
-        // decimal, so nothing downstream has to guess whether a lone mark in
-        // `14.285` was a decimal point or a thousands separator.
-        'number' => [
-            FilteringTextInputFormatter.allow(_numberFieldCharacters()),
-            const LocalizedDecimalMarkFormatter(),
-          ],
-        _ => _isUppercase(fieldType, el)
-            ? const [UpperCaseTextFormatter()]
-            : _isCapitalized(el)
-                ? const [CapitalizeFirstLetterTextFormatter()]
-                : null,
-      };
+    // BOTH marks are admitted and then normalized, rather than a filter
+    // built from the configured one. A filter admitting a single mark
+    // silently drops the other, and which key the operator's keyboard
+    // actually emits is not something this setting controls: a Spanish
+    // phone puts a comma on the numeric decimal key whatever the app is
+    // set to, and a macOS numpad emits a period regardless of region. So
+    // the failure was never "the wrong mark is configured", it was "a
+    // keypress vanishes" — and admitting one mark just moves who it
+    // happens to.
+    //
+    // Rewriting rather than accepting both at parse time is what keeps it
+    // unambiguous: the field can then only ever contain the configured
+    // decimal, so nothing downstream has to guess whether a lone mark in
+    // `14.285` was a decimal point or a thousands separator.
+    'number' => [FilteringTextInputFormatter.allow(_numberFieldCharacters()), const LocalizedDecimalMarkFormatter()],
+    _ =>
+      _isUppercase(fieldType, el)
+          ? const [UpperCaseTextFormatter()]
+          : _isCapitalized(el)
+          ? const [CapitalizeFirstLetterTextFormatter()]
+          : null,
+  };
 
   /// Sets a `checkbox` field, from the row or from its own Switch.
   void _setToggle(String key, bool value) {
@@ -1674,7 +1624,10 @@ class FormRendererState extends State<FormRenderer> {
     return ListTile(
       contentPadding: _rowContentPadding,
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
-      title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
+      title: Text(
+        label,
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
+      ),
       subtitle: subtitle,
       trailing: Icon(MdiIcons.chevronRight, color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
       onTap: _isSubmitting ? null : () => _openListEditor(el),
@@ -1707,9 +1660,7 @@ class FormRendererState extends State<FormRenderer> {
         // Leading, not trailing (unlike the dialog editor's drag handle) —
         // the drag gesture is scoped to just this icon via the listener
         // below, so it can't be confused with the row's own onTap.
-        leading: orderable
-            ? ReorderableDragStartListener(index: index, child: const Icon(MdiIcons.dragHorizontalVariant))
-            : null,
+        leading: orderable ? ReorderableDragStartListener(index: index, child: const Icon(MdiIcons.dragHorizontalVariant)) : null,
         title: Text(title.isEmpty ? t.formChrome.untitled : title),
         onTap: _isSubmitting ? null : () => actions.editItem(index),
         trailing: IconButton(
@@ -1799,12 +1750,8 @@ class FormRendererState extends State<FormRenderer> {
           'elements': itemFields,
         },
         initialState: initial,
-        validator: widget.validator == null
-            ? null
-            : (fieldKey, value, state) => widget.validator!('$itemPath.$fieldKey', value, state),
-        transformer: widget.transformer == null
-            ? null
-            : (fieldKey, value, state) => widget.transformer!('$itemPath.$fieldKey', value, state),
+        validator: widget.validator == null ? null : (fieldKey, value, state) => widget.validator!('$itemPath.$fieldKey', value, state),
+        transformer: widget.transformer == null ? null : (fieldKey, value, state) => widget.transformer!('$itemPath.$fieldKey', value, state),
         developerMode: widget.developerMode,
       );
       if (result == null) return;
@@ -1882,11 +1829,7 @@ class FormRendererState extends State<FormRenderer> {
                   // framework's auto handle off below, this icon IS the
                   // drag affordance (same wiring as the inline editor's
                   // leading handle).
-                  if (orderable)
-                    ReorderableDragStartListener(
-                      index: index,
-                      child: const Icon(MdiIcons.dragHorizontalVariant, size: 20),
-                    ),
+                  if (orderable) ReorderableDragStartListener(index: index, child: const Icon(MdiIcons.dragHorizontalVariant, size: 20)),
                   IconButton(
                     icon: Icon(MdiIcons.delete, size: 20, semanticLabel: t.formChrome.removeItem),
                     onPressed: _isSubmitting ? null : () => actions.deleteItem(index),
@@ -1905,35 +1848,35 @@ class FormRendererState extends State<FormRenderer> {
             contentPadding: EdgeInsets.zero,
             scrollable: false,
             content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (orderable)
-                      ReorderableListView(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        // Same as the inline editor: on mouse platforms the
-                        // framework auto-adds its own trailing handle to
-                        // every row, doubling the row's own — the trailing
-                        // icon above carries the ReorderableDragStartListener
-                        // instead.
-                        buildDefaultDragHandles: false,
-                        // See the ReorderableListView above — HALO-534.
-                        // ignore: deprecated_member_use
-                        onReorder: actions.reorder,
-                        children: [for (var i = 0; i < items.length; i++) rowFor(i)],
-                      )
-                    else
-                      for (var i = 0; i < items.length; i++) rowFor(i),
-                    TextButton.icon(
-                      onPressed: _isSubmitting ? null : () => actions.editItem(null),
-                      icon: const Icon(MdiIcons.plus, size: 18),
-                      label: Text(t.formChrome.addItem(label: itemLabel)),
-                    ),
-                  ],
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (orderable)
+                    ReorderableListView(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      // Same as the inline editor: on mouse platforms the
+                      // framework auto-adds its own trailing handle to
+                      // every row, doubling the row's own — the trailing
+                      // icon above carries the ReorderableDragStartListener
+                      // instead.
+                      buildDefaultDragHandles: false,
+                      // See the ReorderableListView above — HALO-534.
+                      // ignore: deprecated_member_use
+                      onReorder: actions.reorder,
+                      children: [for (var i = 0; i < items.length; i++) rowFor(i)],
+                    )
+                  else
+                    for (var i = 0; i < items.length; i++) rowFor(i),
+                  TextButton.icon(
+                    onPressed: _isSubmitting ? null : () => actions.editItem(null),
+                    icon: const Icon(MdiIcons.plus, size: 18),
+                    label: Text(t.formChrome.addItem(label: itemLabel)),
+                  ),
+                ],
               ),
+            ),
             cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
           );
         },
@@ -1982,10 +1925,7 @@ class FormRendererState extends State<FormRenderer> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
-          ),
+          Text(label, style: theme.textTheme.labelMedium?.copyWith(color: devModeColor ?? theme.colorScheme.onSurfaceVariant)),
           if (description != null && description.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: Space.xxs),
@@ -2004,10 +1944,7 @@ class FormRendererState extends State<FormRenderer> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Checkbox(
-                          value: selected.contains(opt['value']),
-                          onChanged: _isSubmitting ? null : (val) => toggle(opt['value'], val ?? false),
-                        ),
+                        Checkbox(value: selected.contains(opt['value']), onChanged: _isSubmitting ? null : (val) => toggle(opt['value'], val ?? false)),
                         Text(opt['label'] as String),
                       ],
                     ),
@@ -2058,7 +1995,10 @@ class FormRendererState extends State<FormRenderer> {
     return ListTile(
       contentPadding: _rowContentPadding,
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
-      title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
+      title: Text(
+        label,
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
+      ),
       subtitle: subtitle,
       trailing: Icon(MdiIcons.chevronRight, color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
       onTap: _isSubmitting || options.isEmpty ? null : () => _openMultiselectEditor(el, options),
@@ -2088,8 +2028,7 @@ class FormRendererState extends State<FormRenderer> {
     // Show more → Show all → Show fewer. A vocabulary with no common
     // options at all opens fully expanded with no toggle — collapsing it
     // would leave an empty list.
-    int tierOf(Map<String, dynamic> opt) =>
-        opt['common'] == true ? 0 : (opt['uncommon'] == true ? 2 : 1);
+    int tierOf(Map<String, dynamic> opt) => opt['common'] == true ? 0 : (opt['uncommon'] == true ? 2 : 1);
     final hasCommon = options.any((opt) => tierOf(opt) == 0);
     final hasUncommon = options.any((opt) => tierOf(opt) == 2);
     final hasDisclosure = hasCommon && options.any((opt) => tierOf(opt) > 0);
@@ -2124,8 +2063,10 @@ class FormRendererState extends State<FormRenderer> {
           // the committed value — they render as synthesized rows and are
           // preserved until the user explicitly toggles them off.
           final optionValues = {for (final opt in options) opt['value']};
-          List<dynamic> unknownIn(Set<dynamic> values) =>
-              [for (final v in currentValue) if (values.contains(v) && !optionValues.contains(v)) v];
+          List<dynamic> unknownIn(Set<dynamic> values) => [
+            for (final v in currentValue)
+              if (values.contains(v) && !optionValues.contains(v)) v,
+          ];
 
           Future<void> commit(Set<dynamic> newSelected) async {
             // Canonical order: filter the vocabulary, don't append; unknown
@@ -2180,106 +2121,104 @@ class FormRendererState extends State<FormRenderer> {
             // dropping their ListTile padding below so the two don't stack.
             scrollable: false,
             content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (final opt in visible)
-                            SwitchListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              // Selected values read bold, unselected ones
-                              // greyed, so the states scan apart without
-                              // hunting for the switch thumbs.
-                              title: Text(
-                                (opt['label'] as String?) ?? opt['value'].toString(),
-                                style: selected.contains(opt['value'])
-                                    ? const TextStyle(fontWeight: FontWeight.bold)
-                                    : TextStyle(color: theme.disabledColor),
-                              ),
-                              value: selected.contains(opt['value']),
-                              onChanged: _isSubmitting ? null : (on) => toggle(opt['value'], on),
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final opt in visible)
+                          SwitchListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            // Selected values read bold, unselected ones
+                            // greyed, so the states scan apart without
+                            // hunting for the switch thumbs.
+                            title: Text(
+                              (opt['label'] as String?) ?? opt['value'].toString(),
+                              style: selected.contains(opt['value']) ? const TextStyle(fontWeight: FontWeight.bold) : TextStyle(color: theme.disabledColor),
                             ),
-                        ],
-                      ),
+                            value: selected.contains(opt['value']),
+                            onChanged: _isSubmitting ? null : (on) => toggle(opt['value'], on),
+                          ),
+                      ],
                     ),
                   ),
-                  // The filter status sits between the list and the search
-                  // field it describes. Both slots carry keys: when the
-                  // status row pops in/out the field shifts index, and
-                  // without a key Flutter would remold the field's element
-                  // into the status row and recreate the field — dropping
-                  // its focus mid-typing.
-                  if (filtering)
-                    Padding(
-                      key: const ValueKey('multiselect-status'),
-                      padding: const EdgeInsets.only(top: Space.md),
-                      child: Text(
-                        t.formChrome.multiselectStatus(shown: visible.length, total: options.length, selected: selected.length),
-                        style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                      ),
+                ),
+                // The filter status sits between the list and the search
+                // field it describes. Both slots carry keys: when the
+                // status row pops in/out the field shifts index, and
+                // without a key Flutter would remold the field's element
+                // into the status row and recreate the field — dropping
+                // its focus mid-typing.
+                if (filtering)
+                  Padding(
+                    key: const ValueKey('multiselect-status'),
+                    padding: const EdgeInsets.only(top: Space.md),
+                    child: Text(
+                      t.formChrome.multiselectStatus(shown: visible.length, total: options.length, selected: selected.length),
+                      style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                     ),
-                  // A view control over the list, not a verb applied to the
-                  // selection — so it sits with the search field rather than
-                  // in the footer, whose slots are for what the dialog DOES
-                  // (docs/design/user-interface.md §Dialogs). Meaningless
-                  // while a query overrides the tiers, so it goes then.
-                  if (searchable || (hasDisclosure && !filtering))
-                    Padding(
-                      key: const ValueKey('multiselect-search'),
-                      padding: const EdgeInsets.only(top: Space.md),
-                      child: Row(
-                        children: [
-                          if (searchable)
-                            Expanded(
-                              child: TextField(
-                                selectAllOnFocus: false,
-                                controller: searchController,
-                                onChanged: (_) => setDialogState(() {}),
-                                decoration: InputDecoration(
-                                  isDense: true,
-                                  prefixIcon: const Icon(MdiIcons.magnify, size: 18),
-                                  suffixIcon: !filtering
-                                      ? null
-                                      : IconButton(
-                                          icon: Icon(MdiIcons.close, size: 18, semanticLabel: t.formChrome.clear),
-                                          onPressed: () => setDialogState(() => searchController!.clear()),
-                                        ),
-                                  hintText: t.formChrome.search,
-                                  border: searchBorder,
-                                  focusedBorder: haloFocusedBorder(searchBorder, dialogContext),
-                                ),
+                  ),
+                // A view control over the list, not a verb applied to the
+                // selection — so it sits with the search field rather than
+                // in the footer, whose slots are for what the dialog DOES
+                // (docs/design/user-interface.md §Dialogs). Meaningless
+                // while a query overrides the tiers, so it goes then.
+                if (searchable || (hasDisclosure && !filtering))
+                  Padding(
+                    key: const ValueKey('multiselect-search'),
+                    padding: const EdgeInsets.only(top: Space.md),
+                    child: Row(
+                      children: [
+                        if (searchable)
+                          Expanded(
+                            child: TextField(
+                              selectAllOnFocus: false,
+                              controller: searchController,
+                              onChanged: (_) => setDialogState(() {}),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                prefixIcon: const Icon(MdiIcons.magnify, size: 18),
+                                suffixIcon: !filtering
+                                    ? null
+                                    : IconButton(
+                                        icon: Icon(MdiIcons.close, size: 18, semanticLabel: t.formChrome.clear),
+                                        onPressed: () => setDialogState(() => searchController!.clear()),
+                                      ),
+                                hintText: t.formChrome.search,
+                                border: searchBorder,
+                                focusedBorder: haloFocusedBorder(searchBorder, dialogContext),
                               ),
-                            )
-                          else
-                            const Spacer(),
-                          if (hasDisclosure && !filtering)
-                            TextButton.icon(
-                              onPressed: () => setDialogState(() {
-                                level = switch (level) {
-                                  0 => hasUncommon ? 1 : 2,
-                                  1 => 2,
-                                  _ => 0,
-                                };
-                              }),
-                              icon: Icon(level >= 2 ? MdiIcons.unfoldLessHorizontal : MdiIcons.unfoldMoreHorizontal, size: 18),
-                              label: Text(switch (level) {
-                                0 when hasUncommon => t.formChrome.showMore,
-                                0 => t.formChrome.showAll,
-                                1 => t.formChrome.showAll,
-                                _ => t.formChrome.showFewer,
-                              }),
                             ),
-                        ],
-                      ),
+                          )
+                        else
+                          const Spacer(),
+                        if (hasDisclosure && !filtering)
+                          TextButton.icon(
+                            onPressed: () => setDialogState(() {
+                              level = switch (level) {
+                                0 => hasUncommon ? 1 : 2,
+                                1 => 2,
+                                _ => 0,
+                              };
+                            }),
+                            icon: Icon(level >= 2 ? MdiIcons.unfoldLessHorizontal : MdiIcons.unfoldMoreHorizontal, size: 18),
+                            label: Text(switch (level) {
+                              0 when hasUncommon => t.formChrome.showMore,
+                              0 => t.formChrome.showAll,
+                              1 => t.formChrome.showAll,
+                              _ => t.formChrome.showFewer,
+                            }),
+                          ),
+                      ],
                     ),
-                ],
-              ),
+                  ),
+              ],
+            ),
             // Restoring defaults is something else to DO with the selection,
             // so it takes the `secondary` slot; Done is the way out and takes
             // `cancel`. Neither may be improvised into `actions:` — a Row of
@@ -2332,24 +2271,19 @@ class FormRendererState extends State<FormRenderer> {
       contentPadding: _rowContentPadding,
       leading: Icon(
         unavailable ? MdiIcons.keyRemove : (connected ? MdiIcons.checkCircle : MdiIcons.radioboxBlank),
-        color: devModeColor ??
-            (connected
-                ? (theme.extension<HaLoColors>() ?? HaLoColors.light).onSurfaceAccent
-                : theme.colorScheme.onSurfaceVariant),
+        color: devModeColor ?? (connected ? (theme.extension<HaLoColors>() ?? HaLoColors.light).onSurfaceAccent : theme.colorScheme.onSurfaceVariant),
       ),
       title: Text(label, style: devModeColor == null ? null : TextStyle(color: devModeColor)),
       subtitle: Text(
         unavailable
             ? t.formChrome.storageUnavailable
             : connected
-                ? (statusLabel ?? t.formChrome.connected)
-                : t.formChrome.notConnected,
+            ? (statusLabel ?? t.formChrome.connected)
+            : t.formChrome.notConnected,
         style: devModeColor == null ? null : TextStyle(color: devModeColor),
       ),
       trailing: TextButton(
-        onPressed: accountKey == null || widget.onManageAccount == null || unavailable
-            ? null
-            : () => widget.onManageAccount!(accountKey, subkey),
+        onPressed: accountKey == null || widget.onManageAccount == null || unavailable ? null : () => widget.onManageAccount!(accountKey, subkey),
         child: Text(connected ? t.formChrome.manage : t.formChrome.connect),
       ),
     );
@@ -2408,20 +2342,18 @@ class FormRendererState extends State<FormRenderer> {
       );
     }
 
-
     return Padding(
       padding: _rowContentPadding,
       child: OutlinedButton(
-      style: devModeColor == null ? null : OutlinedButton.styleFrom(foregroundColor: devModeColor, side: BorderSide(color: devModeColor)),
-      onPressed: widget.onAction == null || isRunning ? null : () => _runAction(actionKey, method),
-      child: isRunning
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : Text(label),
-    ),
+        style: devModeColor == null
+            ? null
+            : OutlinedButton.styleFrom(
+                foregroundColor: devModeColor,
+                side: BorderSide(color: devModeColor),
+              ),
+        onPressed: widget.onAction == null || isRunning ? null : () => _runAction(actionKey, method),
+        child: isRunning ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(label),
+      ),
     );
   }
 }
@@ -2472,12 +2404,7 @@ class _SelectDialogBody extends StatefulWidget {
   final String searchHint;
   final String clearLabel;
 
-  const _SelectDialogBody({
-    required this.options,
-    required this.current,
-    required this.searchHint,
-    required this.clearLabel,
-  });
+  const _SelectDialogBody({required this.options, required this.current, required this.searchHint, required this.clearLabel});
 
   @override
   State<_SelectDialogBody> createState() => _SelectDialogBodyState();
@@ -2698,6 +2625,7 @@ class _TextEditDialogState extends State<_TextEditDialog> {
     );
   }
 }
+
 /// Helper function to display the FormRenderer inside an AlertDialog.
 Future<Map<String, dynamic>?> showFormDialog(
   BuildContext context, {
@@ -2731,12 +2659,7 @@ Future<Map<String, dynamic>?> showFormDialog(
           Text(formDefinition['title'] as String? ?? t.formChrome.formTitle),
           if (formDefinition['subtitle'] != null) ...[
             const SizedBox(height: Space.xs),
-            Text(
-              formDefinition['subtitle'] as String,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
+            Text(formDefinition['subtitle'] as String, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ],
         ],
       ),
@@ -2778,4 +2701,3 @@ Future<Map<String, dynamic>?> showFormDialog(
     ),
   );
 }
-

@@ -29,8 +29,7 @@ void main() {
   tearDown(ErrorReportingService.resetFailureStreaks);
 
   /// One failed attempt of [key], as a call site would record it.
-  void failOnce(String key) =>
-      ErrorReportingService.reportIfRepeated(key, StateError('boom'), StackTrace.empty, context: key);
+  void failOnce(String key) => ErrorReportingService.reportIfRepeated(key, StateError('boom'), StackTrace.empty, context: key);
 
   test('a failure that does not repeat is never uploaded', () async {
     await withErrorHooks(() async {
@@ -52,8 +51,8 @@ void main() {
 
   /// One failed attempt of [key] that the policy keeps to the console — a
   /// screen pane dialling a firewalled peer.
-  void failQuietly(String key) => ErrorReportingService.reportIfRepeated(
-      key, const PeerMediaDialFailure('device-b', SocketException('Connection refused')), StackTrace.empty);
+  void failQuietly(String key) =>
+      ErrorReportingService.reportIfRepeated(key, const PeerMediaDialFailure('device-b', SocketException('Connection refused')), StackTrace.empty);
 
   test('a failure the policy keeps quiet does not count, so the defect behind it still reports', () async {
     // The trap: a call whose COMMON failure is quiet fails that way for as

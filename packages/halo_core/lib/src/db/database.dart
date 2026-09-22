@@ -249,10 +249,7 @@ class InboundCaptures extends Table {
 ///   [recordUuid] is indexed. Without this index the prune costs grow with
 ///   the operation's size rather than with the handful of records edited.
 @DataClassName('PeerEventRow')
-@TableIndex(
-  name: 'peer_events_operation_seq',
-  columns: {#operationUuid, #seq, #recordUuid, #updatedAtMillis},
-)
+@TableIndex(name: 'peer_events_operation_seq', columns: {#operationUuid, #seq, #recordUuid, #updatedAtMillis})
 @TableIndex(name: 'peer_events_operation_record', columns: {#operationUuid, #recordUuid})
 class PeerEvents extends Table {
   IntColumn get seq => integer().autoIncrement()();
@@ -304,18 +301,7 @@ class PeerTrust extends Table {
   Set<Column> get primaryKey => {peerDeviceId};
 }
 
-@DriftDatabase(tables: [
-  Operations,
-  Qsos,
-  OperationsBackup,
-  QsosBackup,
-  Lookups,
-  Sequences,
-  InboundCaptures,
-  PeerEvents,
-  PeerCursors,
-  PeerTrust,
-])
+@DriftDatabase(tables: [Operations, Qsos, OperationsBackup, QsosBackup, Lookups, Sequences, InboundCaptures, PeerEvents, PeerCursors, PeerTrust])
 class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
@@ -324,85 +310,85 @@ class HaLoDatabase extends _$HaLoDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) => m.createAll(),
-        onUpgrade: (Migrator m, int from, int to) async {
-          // A file written by a NEWER build must not be quietly accepted.
-          // drift routes a downgrade through here too — every `from < N`
-          // guard no-ops and drift then stamps the file back down to `to`,
-          // keeping whatever the newer version added. Reinstalling the newer
-          // build afterwards re-runs its steps against a schema that already
-          // has them, and `addColumn` is a one-way door (see below). Refusing
-          // is the only outcome that keeps the log openable.
-          if (from > to) throw LogFromNewerBuild(storage: from, understood: to);
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (Migrator m, int from, int to) async {
+      // A file written by a NEWER build must not be quietly accepted.
+      // drift routes a downgrade through here too — every `from < N`
+      // guard no-ops and drift then stamps the file back down to `to`,
+      // keeping whatever the newer version added. Reinstalling the newer
+      // build afterwards re-runs its steps against a schema that already
+      // has them, and `addColumn` is a one-way door (see below). Refusing
+      // is the only outcome that keeps the log openable.
+      if (from > to) throw LogFromNewerBuild(storage: from, understood: to);
 
-          // The whole upgrade is one transaction. `addColumn` is not
-          // idempotent and drift only writes `user_version` once this
-          // returns, so a step that fails partway would leave the earlier
-          // steps applied with the version unchanged — and the next open
-          // re-runs them, hitting `duplicate column name` for reads too,
-          // permanently.
-          await m.database.transaction(() async {
-            if (from < 2) {
-              await m.createTable(operationsBackup);
-              await m.createTable(qsosBackup);
-            }
-            if (from < 3) {
-              await m.createTable(lookups);
-            }
-            if (from < 4) {
-              await m.addColumn(operations, operations.updatedAtMillis);
-              await m.addColumn(qsos, qsos.updatedAtMillis);
-            }
-            if (from < 5) {
-              // No backfill: the counter is derived, so an operation that
-              // already has serials on its QSOs rebuilds its high-water mark
-              // from the log the first time it allocates.
-              await m.createTable(sequences);
-            }
-            if (from < 6) {
-              await _backfillRevisionStamps(m);
-            }
-            if (from < 7) {
-              await m.addColumn(operations, operations.purged);
-              await m.addColumn(qsos, qsos.purged);
-            }
-            if (from < 8) {
-              await m.addColumn(operations, operations.purgedLocally);
-            }
-            if (from < 9) {
-              await m.createTable(inboundCaptures);
-            }
-            // `createTable` does not create a table's own declared indexes
-            // (see the migration test's note on this trap) — a device that
-            // upgraded to v9 before this index existed needs its own step,
-            // not just adding the annotation and leaving v9's step alone.
-            if (from < 10) {
-              await m.createIndex(inboundCapturesDedupeKey);
-            }
-            if (from < 11) {
-              await m.createTable(peerEvents);
-              await m.createTable(peerCursors);
-              await m.createIndex(peerEventsOperationSeq);
-            }
-            if (from < 12) {
-              await m.createTable(peerTrust);
-            }
-            // Widening an index means REPLACING it. `createIndex` issues a
-            // bare `CREATE INDEX` with no `IF NOT EXISTS`, and every install
-            // that took v11 already holds the narrow shape under this name —
-            // so without the drop this step throws, and with a drop bolted on
-            // later but no version bump it would never run at all.
-            if (from < 13) {
-              await m.drop(peerEventsOperationSeq);
-              await m.createIndex(peerEventsOperationSeq);
-              await m.createIndex(peerEventsOperationRecord);
-            }
-            if (from < 14) {
-              await _repairStatedLocations(m);
-            }
-          });
-        },
-      );
+      // The whole upgrade is one transaction. `addColumn` is not
+      // idempotent and drift only writes `user_version` once this
+      // returns, so a step that fails partway would leave the earlier
+      // steps applied with the version unchanged — and the next open
+      // re-runs them, hitting `duplicate column name` for reads too,
+      // permanently.
+      await m.database.transaction(() async {
+        if (from < 2) {
+          await m.createTable(operationsBackup);
+          await m.createTable(qsosBackup);
+        }
+        if (from < 3) {
+          await m.createTable(lookups);
+        }
+        if (from < 4) {
+          await m.addColumn(operations, operations.updatedAtMillis);
+          await m.addColumn(qsos, qsos.updatedAtMillis);
+        }
+        if (from < 5) {
+          // No backfill: the counter is derived, so an operation that
+          // already has serials on its QSOs rebuilds its high-water mark
+          // from the log the first time it allocates.
+          await m.createTable(sequences);
+        }
+        if (from < 6) {
+          await _backfillRevisionStamps(m);
+        }
+        if (from < 7) {
+          await m.addColumn(operations, operations.purged);
+          await m.addColumn(qsos, qsos.purged);
+        }
+        if (from < 8) {
+          await m.addColumn(operations, operations.purgedLocally);
+        }
+        if (from < 9) {
+          await m.createTable(inboundCaptures);
+        }
+        // `createTable` does not create a table's own declared indexes
+        // (see the migration test's note on this trap) — a device that
+        // upgraded to v9 before this index existed needs its own step,
+        // not just adding the annotation and leaving v9's step alone.
+        if (from < 10) {
+          await m.createIndex(inboundCapturesDedupeKey);
+        }
+        if (from < 11) {
+          await m.createTable(peerEvents);
+          await m.createTable(peerCursors);
+          await m.createIndex(peerEventsOperationSeq);
+        }
+        if (from < 12) {
+          await m.createTable(peerTrust);
+        }
+        // Widening an index means REPLACING it. `createIndex` issues a
+        // bare `CREATE INDEX` with no `IF NOT EXISTS`, and every install
+        // that took v11 already holds the narrow shape under this name —
+        // so without the drop this step throws, and with a drop bolted on
+        // later but no version bump it would never run at all.
+        if (from < 13) {
+          await m.drop(peerEventsOperationSeq);
+          await m.createIndex(peerEventsOperationSeq);
+          await m.createIndex(peerEventsOperationRecord);
+        }
+        if (from < 14) {
+          await _repairStatedLocations(m);
+        }
+      });
+    },
+  );
 
   /// Reconciles the two halves of every operation's location already stored
   /// — the same repair an incoming record now gets (`repairStatedLocation`,
@@ -464,10 +450,7 @@ class HaLoDatabase extends _$HaLoDatabase {
         }
         if (!repairStatedLocation(decoded)) continue;
         repaired++;
-        await m.database.customStatement(
-          'UPDATE operations SET data = ? WHERE rowid = ?',
-          [jsonEncode(decoded), after],
-        );
+        await m.database.customStatement('UPDATE operations SET data = ? WHERE rowid = ?', [jsonEncode(decoded), after]);
       }
     }
     // The count is the only trace this pass leaves: the rows it changes keep

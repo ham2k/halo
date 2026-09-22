@@ -39,23 +39,12 @@ Map<String, Object?> _entry({
   Object? bundleUrl = 'https://catalog.ham2k.net/api/v1/extensions/k2hrc-llota/versions/1.2.0/bundle',
   Map<String, Object?>? relevance,
   Map<String, Object?> extra = const {},
-}) =>
-    {
-      'key': key,
-      'name': name,
-      'version': version,
-      'sha256': sha256,
-      'bundleUrl': bundleUrl,
-      'category': 'activity',
-      'relevance': ?relevance,
-      ...extra,
-    };
+}) => {'key': key, 'name': name, 'version': version, 'sha256': sha256, 'bundleUrl': bundleUrl, 'category': 'activity', 'relevance': ?relevance, ...extra};
 
-String _catalog(List<Object?> entries) =>
-    jsonEncode({'generatedAt': '2026-09-07T05:00:00Z', 'channel': 'stable', 'api': 1, 'extensions': entries});
+String _catalog(List<Object?> entries) => jsonEncode({'generatedAt': '2026-09-07T05:00:00Z', 'channel': 'stable', 'api': 1, 'extensions': entries});
 
-ExtensionInfo _installed(String key, String version, {String? name}) => ExtensionInfo(
-    key: key, file: 'index.js', core: false, name: name ?? key, source: ExtensionSource.installed, version: version);
+ExtensionInfo _installed(String key, String version, {String? name}) =>
+    ExtensionInfo(key: key, file: 'index.js', core: false, name: name ?? key, source: ExtensionSource.installed, version: version);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -70,16 +59,19 @@ void main() {
     AppClock.instance.reset();
   });
 
-  CatalogService service(Future<http.Response> Function(http.Request) handler,
-          {SettingsService? settings, Duration? requestTimeout, Duration? downloadTimeout}) =>
-      CatalogService(
-        client: MockClient(handler),
-        settings: settings,
-        userAgent: () async => 'Ham2K Logger/test',
-        locale: () => 'es',
-        requestTimeout: requestTimeout ?? kCatalogRequestTimeout,
-        downloadTimeout: downloadTimeout ?? kCatalogDownloadTimeout,
-      );
+  CatalogService service(
+    Future<http.Response> Function(http.Request) handler, {
+    SettingsService? settings,
+    Duration? requestTimeout,
+    Duration? downloadTimeout,
+  }) => CatalogService(
+    client: MockClient(handler),
+    settings: settings,
+    userAgent: () async => 'Ham2K Logger/test',
+    locale: () => 'es',
+    requestTimeout: requestTimeout ?? kCatalogRequestTimeout,
+    downloadTimeout: downloadTimeout ?? kCatalogDownloadTimeout,
+  );
 
   Future<SettingsService> settingsWith(Map<String, Object> values) async {
     SharedPreferences.setMockInitialValues(values);
@@ -96,10 +88,11 @@ void main() {
         return http.Response(_catalog([]), 200);
       });
 
-      await catalog.fetchCatalog(geo: const OperatorGeo(entityPrefix: 'K', continent: 'NA'));
+      await catalog.fetchCatalog(
+        geo: const OperatorGeo(entityPrefix: 'K', continent: 'NA'),
+      );
       expect(urls.single.path, '/api/v1/catalog');
-      expect(urls.single.queryParameters,
-          {'channel': 'stable', 'entity': 'K', 'continent': 'NA', 'api': '$kExtensionApiVersion', 'lang': 'es'});
+      expect(urls.single.queryParameters, {'channel': 'stable', 'entity': 'K', 'continent': 'NA', 'api': '$kExtensionApiVersion', 'lang': 'es'});
       expect(urls.single.host, 'catalog.ham2k.net');
 
       catalog.invalidate();
@@ -120,7 +113,8 @@ void main() {
     test('a malformed entry is dropped, never the list', () async {
       // The alternative reads as an empty catalog, which is indistinguishable
       // from a catalog with nothing in it — over one publisher's typo.
-      final catalog = service((_) async => http.Response(
+      final catalog = service(
+        (_) async => http.Response(
           _catalog([
             _entry(key: 'good-one', name: 'Good'),
             _entry(key: 'NOT A KEY'),
@@ -131,7 +125,9 @@ void main() {
             null,
             _entry(key: 'also-good', name: 'Also good'),
           ]),
-          200));
+          200,
+        ),
+      );
 
       final entries = await catalog.fetchCatalog();
       expect(entries!.map((e) => e.key), ['good-one', 'also-good']);
@@ -191,8 +187,7 @@ void main() {
 
     test('a timeout is the same streak as a refused connection', () async {
       await withErrorHooks(() async {
-        final catalog = service((_) => Completer<http.Response>().future,
-            requestTimeout: const Duration(milliseconds: 20));
+        final catalog = service((_) => Completer<http.Response>().future, requestTimeout: const Duration(milliseconds: 20));
         for (var i = 0; i < 3; i++) {
           catalog.invalidate();
           expect(await catalog.fetchCatalog(), isNull);
@@ -281,7 +276,8 @@ void main() {
     });
 
     test('reads updates, revocations and the ignored list', () async {
-      final catalog = service((_) async => http.Response(
+      final catalog = service(
+        (_) async => http.Response(
           jsonEncode({
             'updates': [
               {..._entry(version: '1.3.0'), 'installedStatus': 'withdrawn'},
@@ -294,7 +290,9 @@ void main() {
               {'key': 'odd-one', 'reason': 'unparseable'},
             ],
           }),
-          200));
+          200,
+        ),
+      );
       final result = (await catalog.checkUpdates([_installed('k2hrc-llota', '1.0.0')]))!;
       expect(result.updates.single.entry.version, '1.3.0');
       expect(result.updates.single.installedStatus, 'withdrawn');
@@ -309,10 +307,7 @@ void main() {
       // would be notAnArchive; hashMismatch proves the hash came first.
       final catalog = service((_) async => http.Response('not the bytes the listing promised', 200));
       final entry = CatalogEntry.fromJson(_entry())!;
-      await expectLater(
-        catalog.download(entry.release),
-        throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.hashMismatch)),
-      );
+      await expectLater(catalog.download(entry.release), throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.hashMismatch)));
     });
 
     test('bytes that match come back whole', () async {
@@ -324,30 +319,24 @@ void main() {
       final catalog = service((request) async {
         if (request.url.path == '/api/v1/extensions/k2hrc-llota') {
           return http.Response(
-              jsonEncode({
-                'key': 'k2hrc-llota',
-                'versions': [
-                  {'version': '1.2.0', 'api': 1, 'sha256': _sha, 'size': 3},
-                  {'version': '1.1.0', 'api': 1, 'sha256': 'f' * 64, 'size': 3},
-                ],
-              }),
-              200);
+            jsonEncode({
+              'key': 'k2hrc-llota',
+              'versions': [
+                {'version': '1.2.0', 'api': 1, 'sha256': _sha, 'size': 3},
+                {'version': '1.1.0', 'api': 1, 'sha256': 'f' * 64, 'size': 3},
+              ],
+            }),
+            200,
+          );
         }
         return http.Response('abc', 200);
       });
       final listing = (await catalog.fetchExtension('k2hrc-llota'))!;
-      CatalogRelease release(String version) => (
-            key: 'k2hrc-llota',
-            version: version,
-            sha256: listing.versionNamed(version)!.sha256,
-            bundleUrl: catalog.bundleUrlFor('k2hrc-llota', version),
-          );
+      CatalogRelease release(String version) =>
+          (key: 'k2hrc-llota', version: version, sha256: listing.versionNamed(version)!.sha256, bundleUrl: catalog.bundleUrlFor('k2hrc-llota', version));
       expect(await catalog.download(release('1.2.0')), utf8.encode('abc'));
       // The same bytes against the other version's hash: refused.
-      await expectLater(
-        catalog.download(release('1.1.0')),
-        throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.hashMismatch)),
-      );
+      await expectLater(catalog.download(release('1.1.0')), throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.hashMismatch)));
       expect(listing.versionNamed('3.0.0'), isNull);
     });
 
@@ -361,11 +350,14 @@ void main() {
       final catalog = service((request) async {
         requests++;
         return http.Response(
-            jsonEncode({
-              'key': 'k2hrc-llota',
-              'versions': [for (final v in served) {'version': v, 'sha256': _sha}],
-            }),
-            200);
+          jsonEncode({
+            'key': 'k2hrc-llota',
+            'versions': [
+              for (final v in served) {'version': v, 'sha256': _sha},
+            ],
+          }),
+          200,
+        );
       });
       expect((await catalog.fetchExtension('k2hrc-llota'))!.versionNamed('1.3.0'), isNull);
       served = ['1.2.0', '1.3.0'];
@@ -381,13 +373,14 @@ void main() {
       // and shows its toString. A dead link is neither: it is a sentence
       // about this link, on the same footing as an unreadable file.
       await withErrorHooks(() async {
-        final stalled = service((_) => Completer<http.Response>().future,
-            downloadTimeout: const Duration(milliseconds: 20));
+        final stalled = service((_) => Completer<http.Response>().future, downloadTimeout: const Duration(milliseconds: 20));
         await expectLater(
           stalled.downloadBundle(Uri.parse('https://example.org/a.h2kext')),
-          throwsA(isA<BundleException>()
-              .having((e) => e.reason, 'reason', BundleRejection.downloadFailed)
-              .having((e) => e.message, 'message', t.extensionsPanel.downloadUnreachable(source: 'example.org'))),
+          throwsA(
+            isA<BundleException>()
+                .having((e) => e.reason, 'reason', BundleRejection.downloadFailed)
+                .having((e) => e.message, 'message', t.extensionsPanel.downloadUnreachable(source: 'example.org')),
+          ),
         );
         for (final failure in [http.ClientException('refused'), HandshakeException('tls')]) {
           final dead = service((_) async => throw failure);
@@ -423,10 +416,8 @@ void main() {
     });
 
     test('the developer override allows http only for loopback, and only while developer mode is on', () async {
-      Future<void> expectRefused(CatalogService catalog, String url) => expectLater(
-            catalog.downloadBundle(Uri.parse(url)),
-            throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.notAnArchive)),
-          );
+      Future<void> expectRefused(CatalogService catalog, String url) =>
+          expectLater(catalog.downloadBundle(Uri.parse(url)), throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.notAnArchive)));
       Future<http.Response> serve(http.Request request) async => http.Response('abc', 200);
 
       // Typed with a trailing slash, as addresses are pasted: kept, it
@@ -459,11 +450,9 @@ void main() {
   group('catalog URLs', () {
     test('a catalog link is one on the catalog in force — the override displaces the built-in host', () async {
       final plain = service((_) async => http.Response('', 404));
-      expect(plain.isCatalogUrl(Uri.parse('https://catalog.ham2k.net/api/v1/extensions/a/versions/1.0.0/bundle')),
-          isTrue);
+      expect(plain.isCatalogUrl(Uri.parse('https://catalog.ham2k.net/api/v1/extensions/a/versions/1.0.0/bundle')), isTrue);
       expect(plain.isCatalogUrl(Uri.parse('https://example.org/a.h2kext')), isFalse);
-      expect(plain.isCatalogUrl(Uri.parse('http://localhost:8787/api/v1/extensions/a/versions/1.0.0/bundle')),
-          isFalse);
+      expect(plain.isCatalogUrl(Uri.parse('http://localhost:8787/api/v1/extensions/a/versions/1.0.0/bundle')), isFalse);
       expect(plain.isCatalogUrl(Uri.parse('file:///tmp/a.h2kext')), isFalse);
 
       // Under the override, a production link is NOT a catalog link: routed
@@ -472,18 +461,16 @@ void main() {
       // where the https rule judges it like any other host.
       final dev = await settingsWith({'developerMode': true, 'catalogBaseUrl': 'http://localhost:8787'});
       final overridden = service((_) async => http.Response('', 404), settings: dev);
-      expect(overridden.isCatalogUrl(Uri.parse('http://localhost:8787/api/v1/extensions/a/versions/1.0.0/bundle')),
-          isTrue);
+      expect(overridden.isCatalogUrl(Uri.parse('http://localhost:8787/api/v1/extensions/a/versions/1.0.0/bundle')), isTrue);
       expect(overridden.isCatalogUrl(Uri.parse('https://catalog.ham2k.net/x')), isFalse);
     });
 
     test('a bundle path names its key and version, and nothing else parses', () {
-      expect(
-          CatalogService.parseBundleUrl(
-              Uri.parse('https://catalog.ham2k.net/api/v1/extensions/k2hrc-llota/versions/1.2.0-beta.1/bundle')),
-          (key: 'k2hrc-llota', version: '1.2.0-beta.1'));
-      expect(CatalogService.parseBundleUrl(Uri.parse('https://catalog.ham2k.net/api/v1/extensions/k2hrc-llota')),
-          isNull);
+      expect(CatalogService.parseBundleUrl(Uri.parse('https://catalog.ham2k.net/api/v1/extensions/k2hrc-llota/versions/1.2.0-beta.1/bundle')), (
+        key: 'k2hrc-llota',
+        version: '1.2.0-beta.1',
+      ));
+      expect(CatalogService.parseBundleUrl(Uri.parse('https://catalog.ham2k.net/api/v1/extensions/k2hrc-llota')), isNull);
       expect(CatalogService.parseBundleUrl(Uri.parse('https://catalog.ham2k.net/extensions/k2hrc-llota')), isNull);
     });
   });
@@ -536,7 +523,12 @@ void main() {
       expect(notices(CatalogUpdateCheck.noticeKey).single.persist, isFalse);
 
       final two = await checker(
-        (_) async => answer(updates: [_entry(version: '1.1.0'), _entry(key: 'other-one', version: '2.0.0')]),
+        (_) async => answer(
+          updates: [
+            _entry(version: '1.1.0'),
+            _entry(key: 'other-one', version: '2.0.0'),
+          ],
+        ),
         installed: [
           _installed('k2hrc-llota', '1.0.0', name: 'LLOTA'),
           _installed('other-one', '1.0.0', name: 'Other One'),
@@ -551,11 +543,13 @@ void main() {
       // A notice is read at a glance from the footer. Listing every name turns
       // it into a list, and the button below it is what the list was for.
       final many = await checker(
-        (_) async => answer(updates: [
-          _entry(version: '1.1.0'),
-          _entry(key: 'other-one', version: '2.0.0'),
-          _entry(key: 'third-one', version: '3.0.0'),
-        ]),
+        (_) async => answer(
+          updates: [
+            _entry(version: '1.1.0'),
+            _entry(key: 'other-one', version: '2.0.0'),
+            _entry(key: 'third-one', version: '3.0.0'),
+          ],
+        ),
         installed: [
           _installed('k2hrc-llota', '1.0.0', name: 'LLOTA'),
           _installed('other-one', '1.0.0', name: 'Other One'),
@@ -682,8 +676,7 @@ void main() {
       // lying, and a non-persistent notice is not enough: it lasts the
       // session. Mutated to never dismiss, both halves fail.
       var offered = [_entry(version: '1.1.0'), _entry(key: 'other-one', version: '2.0.0')];
-      final check = await checker((_) async => answer(updates: offered),
-          installed: [_installed('k2hrc-llota', '1.0.0'), _installed('other-one', '1.0.0')]);
+      final check = await checker((_) async => answer(updates: offered), installed: [_installed('k2hrc-llota', '1.0.0'), _installed('other-one', '1.0.0')]);
       await check.check();
       expect(notices(CatalogUpdateCheck.noticeKey), hasLength(1));
 
@@ -725,9 +718,11 @@ void main() {
       // disk whether or not a built-in is currently standing in front of it,
       // and the built-in going away later would light it up.
       final check = await checker(
-        (_) async => answer(revoked: [
-              {'key': 'k2hrc-llota', 'version': '1.0.0', 'note': 'It uploads the whole log.'},
-            ]),
+        (_) async => answer(
+          revoked: [
+            {'key': 'k2hrc-llota', 'version': '1.0.0', 'note': 'It uploads the whole log.'},
+          ],
+        ),
         inUse: (_) => false,
       );
       await check.check();
@@ -738,11 +733,15 @@ void main() {
     });
 
     test('a revoked pair is put on record, unloaded and told once, with the catalog\'s note', () async {
-      final check = await checker((_) async => answer(revoked: [
+      final check = await checker(
+        (_) async => answer(
+          revoked: [
             {'key': 'k2hrc-llota', 'version': '1.0.0', 'note': 'It uploads the whole log.'},
             // A version that is not the installed one is not this install's.
             {'key': 'k2hrc-llota', 'version': '0.9.0', 'note': 'old'},
-          ]));
+          ],
+        ),
+      );
       await check.check();
       expect(settings.extensionRevoked, {
         'k2hrc-llota': {'version': '1.0.0', 'note': 'It uploads the whole log.'},
@@ -768,10 +767,14 @@ void main() {
       // the record — and would run the revoked bytes the day the operator
       // switched it back on.
       final check = await checker(
-        (_) async => answer(revoked: [
-          {'key': 'k2hrc-llota', 'version': '1.0.0', 'note': 'It uploads the whole log.'},
-        ]),
-        prefs: {'extensionOverrides': jsonEncode({'k2hrc-llota': false})},
+        (_) async => answer(
+          revoked: [
+            {'key': 'k2hrc-llota', 'version': '1.0.0', 'note': 'It uploads the whole log.'},
+          ],
+        ),
+        prefs: {
+          'extensionOverrides': jsonEncode({'k2hrc-llota': false}),
+        },
       );
       await check.check();
       expect(settings.extensionRevoked['k2hrc-llota']?['version'], '1.0.0');

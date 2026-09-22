@@ -191,9 +191,7 @@ class _TesterOverlayViewState extends State<TesterOverlayView> {
   /// down via [testerOverlayCovering] instead.
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent &&
-        (event.logicalKey == LogicalKeyboardKey.escape ||
-            event.logicalKey == LogicalKeyboardKey.enter ||
-            event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+        (event.logicalKey == LogicalKeyboardKey.escape || event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
       widget.onDismiss();
     }
     return KeyEventResult.handled;
@@ -214,11 +212,7 @@ class _TesterOverlayViewState extends State<TesterOverlayView> {
       onKeyEvent: _onKeyEvent,
       child: Theme(
         data: buildHaLoTheme(Brightness.light),
-        child: _TesterPanel(
-          entries: widget.entries,
-          release: widget.release,
-          onDismiss: widget.onDismiss,
-        ),
+        child: _TesterPanel(entries: widget.entries, release: widget.release, onDismiss: widget.onDismiss),
       ),
     );
   }
@@ -245,15 +239,13 @@ class _TesterPanel extends StatelessWidget {
     // tripping flutter_markdown's assertion).
     final theme = Theme.of(context);
     final notesFontSize = (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2;
-    final notesStyleSheet = withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
-      p: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
-      listBullet: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
-      strong: theme.textTheme.bodyMedium?.copyWith(
-        fontSize: notesFontSize * 1.15,
-        fontWeight: FontWeight.bold,
-        color: Colors.black,
+    final notesStyleSheet = withEmojiFallback(
+      MarkdownStyleSheet.fromTheme(theme).copyWith(
+        p: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
+        listBullet: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
+        strong: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize * 1.15, fontWeight: FontWeight.bold, color: Colors.black),
       ),
-    ));
+    );
 
     // The standing warning leads, then each pending build's notes, newest
     // first — a tester several builds behind catches up in one read.
@@ -261,12 +253,7 @@ class _TesterPanel extends StatelessWidget {
       '**${context.t.testerOverlay.warningTitle}**',
       '',
       context.t.testerOverlay.warningBody,
-      for (final entry in entries) ...[
-        '',
-        '**${context.t.testerOverlay.whatsNew(build: entry.build)}**',
-        '',
-        ...entry.changes.map((change) => '- $change'),
-      ],
+      for (final entry in entries) ...['', '**${context.t.testerOverlay.whatsNew(build: entry.build)}**', '', ...entry.changes.map((change) => '- $change')],
     ];
     final notesMarkdown = notesLines.join('\n');
 
@@ -359,11 +346,7 @@ class _TesterPanel extends StatelessWidget {
                                           // native pixel size.
                                           Center(child: Image.asset('assets/images/under.gif')),
                                           const SizedBox(height: Space.md),
-                                          Text(
-                                            context.t.testerOverlay.thanks,
-                                            textAlign: TextAlign.center,
-                                            style: notesStyleSheet.p,
-                                          ),
+                                          Text(context.t.testerOverlay.thanks, textAlign: TextAlign.center, style: notesStyleSheet.p),
                                         ],
                                       ),
                                     ),

@@ -25,12 +25,7 @@ String fmtTimeBetween(int fromMillis, int toMillis) {
   final minutes = seconds ~/ 60;
   seconds %= 60;
 
-  final parts = <String>[
-    if (days > 0) '${days}d',
-    if (hours > 0) '${hours}h',
-    if (minutes > 0) '${minutes}m',
-    if (seconds > 0) '${seconds}s',
-  ];
+  final parts = <String>[if (days > 0) '${days}d', if (hours > 0) '${hours}h', if (minutes > 0) '${minutes}m', if (seconds > 0) '${seconds}s'];
   // Two most-significant units is enough resolution for the stats line and
   // keeps it short ("1d 3h", not "1d 3h 12m 7s").
   return parts.take(2).join(' ');

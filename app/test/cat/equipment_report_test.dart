@@ -68,14 +68,7 @@ void main() {
   }) {
     final resolvedType = type ?? ic705Network;
     return buildEquipmentReport(
-      values: {
-        'manufacturer': 'Icom',
-        'model': 'IC-7300',
-        'outcome': 'works',
-        'comments': '',
-        'hints': '',
-        ...values,
-      },
+      values: {'manufacturer': 'Icom', 'model': 'IC-7300', 'outcome': 'works', 'comments': '', 'hints': '', ...values},
       node: EquipmentNode(uuid: 'u1', typeKey: resolvedType.key, name: 'Left Radio', config: config),
       type: resolvedType,
       state: state,
@@ -88,10 +81,7 @@ void main() {
       // Neither is a fact and both stay editable — but an operator who
       // renamed this radio has already told us its model, and asking again is
       // asking them to repeat themselves.
-      final prefill = equipmentReportPrefill(
-        EquipmentNode(uuid: 'u1', typeKey: ic705Network.key, name: 'IC-7300', config: const {}),
-        ic705Network,
-      );
+      final prefill = equipmentReportPrefill(EquipmentNode(uuid: 'u1', typeKey: ic705Network.key, name: 'IC-7300', config: const {}), ic705Network);
       // The driver is named for a protocol family, not a manufacturer — the
       // whole point of taking the first word is that "Icom (CI-V)" in a
       // Manufacturer box is something every operator has to delete.
@@ -110,10 +100,7 @@ void main() {
       // applying the heuristic's shape check to it would forbid the very
       // answer declaring one exists to give.
       for (final type in EquipmentRegistry().types) {
-        final brand = equipmentReportPrefill(
-          EquipmentNode(uuid: 'u1', typeKey: type.key, name: '', config: const {}),
-          type,
-        )['manufacturer'] as String;
+        final brand = equipmentReportPrefill(EquipmentNode(uuid: 'u1', typeKey: type.key, name: '', config: const {}), type)['manufacturer'] as String;
         expect(brand, isNotEmpty, reason: '${type.key} prefills no manufacturer at all');
         expect(brand, isNot(contains('(')), reason: '${type.key} prefills "$brand"');
         if (type.manufacturer == null) {
@@ -127,10 +114,7 @@ void main() {
       // Kenwood — a wrong brand on the one kind of card whose whole value is
       // naming the hardware correctly.
       final qmx = EquipmentRegistry().typeFor('qmx-serial')!;
-      final brand = equipmentReportPrefill(
-        EquipmentNode(uuid: 'u1', typeKey: qmx.key, name: 'QMX', config: const {}),
-        qmx,
-      )['manufacturer'];
+      final brand = equipmentReportPrefill(EquipmentNode(uuid: 'u1', typeKey: qmx.key, name: 'QMX', config: const {}), qmx)['manufacturer'];
 
       expect(qmx.driver.name, 'Kenwood (CAT)');
       expect(brand, 'QRP Labs');
@@ -139,10 +123,7 @@ void main() {
     test('does not answer the outcome', () {
       // The one field the whole report turns on: a default here is a verdict
       // put in the operator's mouth, and a report filed on it says nothing.
-      final prefill = equipmentReportPrefill(
-        EquipmentNode(uuid: 'u1', typeKey: ic705Network.key, name: 'Left Radio', config: const {}),
-        ic705Network,
-      );
+      final prefill = equipmentReportPrefill(EquipmentNode(uuid: 'u1', typeKey: ic705Network.key, name: 'Left Radio', config: const {}), ic705Network);
       expect(prefill.containsKey('outcome'), isFalse);
     });
   });
@@ -169,10 +150,7 @@ void main() {
     });
 
     test('the operator prose leads the body, hints under their own heading', () {
-      final report = reportFor(values: {
-        'comments': 'Frequency tracks fine, mode is always USB.',
-        'hints': 'Turn CAT RTS off in menu 05-08.',
-      });
+      final report = reportFor(values: {'comments': 'Frequency tracks fine, mode is always USB.', 'hints': 'Turn CAT RTS off in menu 05-08.'});
       expect(report.body, startsWith('Frequency tracks fine, mode is always USB.'));
       // The hints are a separate field precisely so they can be lifted into
       // the pairing's troubleshooting notes later; buried in the comments they
@@ -346,11 +324,7 @@ void main() {
       // driver's autodetection is for.
       final report = reportFor(
         values: {'outcome': 'fails'},
-        state: const EquipmentState(
-          status: EquipmentStatus.error,
-          error: 'No response from radio',
-          diagnostic: 'IF offset unlearned',
-        ),
+        state: const EquipmentState(status: EquipmentStatus.error, error: 'No response from radio', diagnostic: 'IF offset unlearned'),
       );
       expect(report.body, contains('Status: error'));
       expect(report.body, contains('No response from radio'));
@@ -383,11 +357,7 @@ void main() {
     });
 
     test('refuses without an account, in the REPORT command\'s own words', () async {
-      final result = await extensions.submitReport(
-        title: 'Elecraft KX3 works',
-        body: 'Worked first time.',
-        kind: 'task',
-      );
+      final result = await extensions.submitReport(title: 'Elecraft KX3 works', body: 'Worked first time.', kind: 'task');
       expect(result.ref, isNull);
       // The gate lives in the extension so both surfaces refuse identically;
       // a Dart-side copy of it would drift the moment either changed.
@@ -412,8 +382,7 @@ class _ThrowingPortsTransport extends EquipmentTransport with SerialTransportCon
   List<SerialPortOption> get availablePorts => throw StateError('libserialport: no such device');
 
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
-      throw UnimplementedError();
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) => throw UnimplementedError();
 }
 
 /// A serial transport whose ports are fixtures rather than hardware.
@@ -425,20 +394,19 @@ class _FakePortsTransport extends EquipmentTransport with SerialTransportConfig 
 
   @override
   List<SerialPortOption> get availablePorts => const [
-        SerialPortOption(
-          name: 'COM8',
-          description: 'Silicon Labs CP2105 Dual USB to UART Bridge',
-          manufacturer: 'Silicon Labs',
-          productName: 'CP2105 Dual USB to UART Bridge',
-          serialNumber: '01AF7D0E',
-          vendorId: 0x10c4,
-          productId: 0xea70,
-        ),
-      ];
+    SerialPortOption(
+      name: 'COM8',
+      description: 'Silicon Labs CP2105 Dual USB to UART Bridge',
+      manufacturer: 'Silicon Labs',
+      productName: 'CP2105 Dual USB to UART Bridge',
+      serialNumber: '01AF7D0E',
+      vendorId: 0x10c4,
+      productId: 0xea70,
+    ),
+  ];
 
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
-      throw UnimplementedError();
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) => throw UnimplementedError();
 }
 
 /// A macOS enumeration: the node is the adapter's serial number with the port
@@ -451,18 +419,17 @@ class _MacPortsTransport extends EquipmentTransport with SerialTransportConfig {
 
   @override
   List<SerialPortOption> get availablePorts => const [
-        SerialPortOption(
-          name: '/dev/cu.usbserial-01AF7D0E1',
-          description: 'CP2105 Dual USB to UART Bridge',
-          serialNumber: '01AF7D0E',
-          vendorId: 0x10c4,
-          productId: 0xea70,
-        ),
-      ];
+    SerialPortOption(
+      name: '/dev/cu.usbserial-01AF7D0E1',
+      description: 'CP2105 Dual USB to UART Bridge',
+      serialNumber: '01AF7D0E',
+      vendorId: 0x10c4,
+      productId: 0xea70,
+    ),
+  ];
 
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
-      throw UnimplementedError();
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) => throw UnimplementedError();
 }
 
 /// An adapter whose serial is one character — real, and shorter than
@@ -474,13 +441,10 @@ class _ShortSerialPortsTransport extends EquipmentTransport with SerialTransport
   String get key => 'serial';
 
   @override
-  List<SerialPortOption> get availablePorts => const [
-        SerialPortOption(name: 'COM3', description: 'USB Serial Port', serialNumber: '1'),
-      ];
+  List<SerialPortOption> get availablePorts => const [SerialPortOption(name: 'COM3', description: 'USB Serial Port', serialNumber: '1')];
 
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
-      throw UnimplementedError();
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) => throw UnimplementedError();
 }
 
 /// The macOS port with every probe refused — no description, no ids, no
@@ -492,11 +456,8 @@ class _BusyMacPortsTransport extends EquipmentTransport with SerialTransportConf
   String get key => 'serial';
 
   @override
-  List<SerialPortOption> get availablePorts => const [
-        SerialPortOption(name: '/dev/cu.usbserial-01AF7D0E1'),
-      ];
+  List<SerialPortOption> get availablePorts => const [SerialPortOption(name: '/dev/cu.usbserial-01AF7D0E1')];
 
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
-      throw UnimplementedError();
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) => throw UnimplementedError();
 }

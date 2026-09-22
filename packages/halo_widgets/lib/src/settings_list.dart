@@ -37,7 +37,7 @@ class SettingsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTileTheme.merge(
-        contentPadding: EdgeInsets.only(left: settingsRowInset + extraLeft, right: settingsRowInset),
-        child: child,
-      );
+    contentPadding: EdgeInsets.only(left: settingsRowInset + extraLeft, right: settingsRowInset),
+    child: child,
+  );
 }

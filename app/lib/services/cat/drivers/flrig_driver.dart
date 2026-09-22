@@ -41,13 +41,7 @@ import '../equipment.dart';
 /// USB-D AM-D FM-D DV WFM): CW-R already matches the app's spelling, and
 /// names with no app equivalent (DV, WFM, AM-D) pass through in both
 /// directions, the way the rigctld driver passes Hamlib tokens.
-const flrigModesByAppMode = <String, String>{
-  'DATA-USB': 'USB-D',
-  'DATA-LSB': 'LSB-D',
-  'DATA-FM': 'FM-D',
-  'RTTY-LSB': 'RTTY',
-  'RTTY-USB': 'RTTY-R',
-};
+const flrigModesByAppMode = <String, String>{'DATA-USB': 'USB-D', 'DATA-LSB': 'LSB-D', 'DATA-FM': 'FM-D', 'RTTY-LSB': 'RTTY', 'RTTY-USB': 'RTTY-R'};
 
 const appModesByFlrigMode = <String, String>{
   'USB-D': 'DATA-USB',
@@ -74,26 +68,21 @@ class FlrigDriver extends EquipmentDriver {
   @override
   String get name => 'flrig';
 
-
   /// Everything flrig publishes a meter method for. Its power meter answers
   /// watts outright and its SWR a ratio, so this is the one driver here
   /// converting nothing on the way up.
   @override
-  Set<RadioMeter> get telemetryMeters =>
-      const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.alc, RadioMeter.supplyVolts};
+  Set<RadioMeter> get telemetryMeters => const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.alc, RadioMeter.supplyVolts};
 
   /// The meter cadence, and nothing else: where flrig is and which port it
   /// listens on are the TCP transport's questions.
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [telemetryConfigElement()];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    telemetryConfigElement(),
+  ];
 
   @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) =>
-      key == telemetryIntervalConfigKey ? validateTelemetryInterval(value) : null;
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) => key == telemetryIntervalConfigKey ? validateTelemetryInterval(value) : null;
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => FlrigSession(sink, config);
@@ -243,8 +232,7 @@ class FlrigSession implements TransceiverSession {
         }
         return;
       }
-      final lengthMatch = RegExp(r'^content-length:\s*(\d+)', caseSensitive: false, multiLine: true)
-          .firstMatch(text.substring(0, headerEnd));
+      final lengthMatch = RegExp(r'^content-length:\s*(\d+)', caseSensitive: false, multiLine: true).firstMatch(text.substring(0, headerEnd));
       // A response with no length can never be completed reliably; drop
       // the connection's worth of buffer rather than guess. Pumping here
       // can collide with that response's still-inbound body — flrig then
@@ -331,10 +319,7 @@ class FlrigSession implements TransceiverSession {
 
   /// Reports upward, and tells the poller whether the radio is moving.
   void _report(VfoReading reading) {
-    final merged = VfoReading(
-      freqKHz: reading.freqKHz ?? _lastReported?.freqKHz,
-      mode: reading.mode ?? _lastReported?.mode,
-    );
+    final merged = VfoReading(freqKHz: reading.freqKHz ?? _lastReported?.freqKHz, mode: reading.mode ?? _lastReported?.mode);
     // The FIRST reading is the answer to the question startUpdates just
     // asked, not the radio moving — see Ft891Session._report.
     final first = _lastReported == null;
@@ -346,15 +331,13 @@ class FlrigSession implements TransceiverSession {
   }
 
   @override
-  void setFrequency(double freqKHz) =>
-      _call(_Ask.ignored, 'rig.set_frequency', '<param><value><double>${(freqKHz * 1000).round()}</double></value></param>');
+  void setFrequency(double freqKHz) => _call(_Ask.ignored, 'rig.set_frequency', '<param><value><double>${(freqKHz * 1000).round()}</double></value></param>');
 
   @override
   void setMode(String mode) => _call(_Ask.ignored, 'rig.set_mode', '<param><value>${flrigModeForAppMode(mode)}</value></param>');
 
   @override
-  void setPower(num watts) =>
-      _call(_Ask.ignored, 'rig.set_power', '<param><value><double>$watts</double></value></param>');
+  void setPower(num watts) => _call(_Ask.ignored, 'rig.set_power', '<param><value><double>$watts</double></value></param>');
 
   @override
   void startUpdates() {
@@ -371,7 +354,6 @@ class FlrigSession implements TransceiverSession {
     _poller.stop();
     _telemetry.stop();
   }
-
 
   /// The poller's CURRENT cadence, not its floor: it runs fast while the
   /// dial is moving and eases off when it isn't, and a caller asking "how

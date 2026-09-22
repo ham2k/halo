@@ -52,13 +52,15 @@ void main() {
   }
 
   test('a stubbed client answers what an extension fetches', () async {
-    final rec = recorder('[{"spotId":1,"activator":"W1AW","frequency":"14285","mode":"SSB",'
-        '"reference":"US-0001","name":"Acadia","locationDesc":"US-ME",'
-        '"spotTime":"2026-07-01T12:00:00","spotter":"K2ABC","comments":"","source":"Web","count":1}]');
+    final rec = recorder(
+      '[{"spotId":1,"activator":"W1AW","frequency":"14285","mode":"SSB",'
+      '"reference":"US-0001","name":"Acadia","locationDesc":"US-ME",'
+      '"spotTime":"2026-07-01T12:00:00","spotter":"K2ABC","comments":"","source":"Web","count":1}]',
+    );
     final host = await hostWith(rec.client);
 
-    final spots = (await host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
-        args: {'online': true}, timeout: const Duration(seconds: 20)) as List).cast<Map>();
+    final spots = (await host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)) as List)
+        .cast<Map>();
 
     expect(spots.single['freq'], 14285);
     expect((spots.single['their'] as Map)['call'], 'W1AW');
@@ -71,11 +73,24 @@ void main() {
     final rec = recorder('{}');
     final host = await hostWith(rec.client);
 
-    final result = await host.invokeHook('spots', key: 'pota', method: 'postSelfSpot', args: {
-      'operation': {'stationCall': 'W1AW', 'refs': [{'type': 'potaActivation', 'ref': 'US-0001'}]},
-      'freq': 14285,
-      'mode': 'SSB',
-    }, timeout: const Duration(seconds: 20)) as Map;
+    final result =
+        await host.invokeHook(
+              'spots',
+              key: 'pota',
+              method: 'postSelfSpot',
+              args: {
+                'operation': {
+                  'stationCall': 'W1AW',
+                  'refs': [
+                    {'type': 'potaActivation', 'ref': 'US-0001'},
+                  ],
+                },
+                'freq': 14285,
+                'mode': 'SSB',
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
 
     expect(result['ok'], true);
     final body = jsonDecode(rec.sent.single.body) as Map<String, dynamic>;
@@ -92,14 +107,22 @@ void main() {
     final rec = recorder('{}');
     final host = await hostWith(rec.client);
 
-    await host.invokeHook('spots', key: 'pota', method: 'postSelfSpot', args: {
-      'operation': {
-        'stationCall': 'KI2D/TEST/OP1',
-        'refs': [{'type': 'potaActivation', 'ref': 'US-0001'}],
+    await host.invokeHook(
+      'spots',
+      key: 'pota',
+      method: 'postSelfSpot',
+      args: {
+        'operation': {
+          'stationCall': 'KI2D/TEST/OP1',
+          'refs': [
+            {'type': 'potaActivation', 'ref': 'US-0001'},
+          ],
+        },
+        'freq': 14285,
+        'mode': 'SSB',
       },
-      'freq': 14285,
-      'mode': 'SSB',
-    }, timeout: const Duration(seconds: 20));
+      timeout: const Duration(seconds: 20),
+    );
 
     final body = jsonDecode(rec.sent.single.body) as Map<String, dynamic>;
     expect(body['reference'], 'K-TEST');
@@ -111,8 +134,7 @@ void main() {
     // it: an extension cannot become anonymous by being tested.
     final rec = recorder('[]');
     final host = await hostWith(rec.client);
-    await host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
-        args: {'online': true}, timeout: const Duration(seconds: 20));
+    await host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
 
     expect(rec.sent.single.headers['User-Agent'], 'Ham2K-Test/1.0');
   }, timeout: const Timeout(Duration(seconds: 60)));
@@ -130,8 +152,7 @@ void main() {
     });
     final host = await hostWith(client);
 
-    final spots = await host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
-        args: {'online': true}, timeout: const Duration(seconds: 20));
+    final spots = await host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
 
     expect(spots, isEmpty);
     expect(sent, hasLength(2));
@@ -149,8 +170,7 @@ void main() {
     final host = await hostWith(client);
 
     final stopwatch = Stopwatch()..start();
-    await host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
-        args: {'online': true}, timeout: const Duration(seconds: 20));
+    await host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
     stopwatch.stop();
 
     // Generous slack above the 300-500ms production range for test/CI
@@ -169,8 +189,7 @@ void main() {
     final host = await hostWith(client);
 
     await expectLater(
-      host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20)),
+      host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
       throwsA(anything),
     );
     expect(sent, hasLength(2));
@@ -190,8 +209,7 @@ void main() {
     final host = await hostWith(client);
 
     await expectLater(
-      host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20)),
+      host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
       throwsA(anything),
     );
     expect(sent, hasLength(1));
@@ -206,8 +224,7 @@ void main() {
     final host = await hostWith(client);
 
     await expectLater(
-      host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20)),
+      host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
       throwsA(anything),
     );
     expect(sent, hasLength(1));
@@ -234,8 +251,7 @@ void main() {
     final host = await hostWith(rec.client, domains: const []);
 
     await expectLater(
-      host.invokeHook('spots', key: 'pota', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20)),
+      host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
       throwsA(anything),
     );
     expect(rec.sent, isEmpty);

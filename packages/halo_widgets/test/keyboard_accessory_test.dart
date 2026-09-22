@@ -13,13 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-KeyboardAccessorySpec spec(String? extraKey) => KeyboardAccessorySpec(
-      onKey: (_) {},
-      vibrate: true,
-      backgroundColor: 0xFF000000,
-      foregroundColor: 0xFFFFFFFF,
-      extraKey: extraKey,
-    );
+KeyboardAccessorySpec spec(String? extraKey) =>
+    KeyboardAccessorySpec(onKey: (_) {}, vibrate: true, backgroundColor: 0xFF000000, foregroundColor: 0xFFFFFFFF, extraKey: extraKey);
 
 void main() {
   test('a publisher withdraws its own row', () {
@@ -70,13 +65,7 @@ void main() {
     controller.addListener(() => notifications++);
 
     void onKey(String _) {}
-    KeyboardAccessorySpec same() => KeyboardAccessorySpec(
-          onKey: onKey,
-          vibrate: true,
-          backgroundColor: 0xFF102030,
-          foregroundColor: 0xFFFFFFFF,
-          extraKey: '.',
-        );
+    KeyboardAccessorySpec same() => KeyboardAccessorySpec(onKey: onKey, vibrate: true, backgroundColor: 0xFF102030, foregroundColor: 0xFFFFFFFF, extraKey: '.');
 
     for (var i = 0; i < 10; i++) {
       controller.publish(owner, same());
@@ -111,22 +100,28 @@ void main() {
 
   testWidgets('absent visibility means visible, so single-pane hosts need no wiring', (tester) async {
     late bool seen;
-    await tester.pumpWidget(Builder(builder: (context) {
-      seen = KeyboardAccessoryVisibility.of(context);
-      return const SizedBox.shrink();
-    }));
+    await tester.pumpWidget(
+      Builder(
+        builder: (context) {
+          seen = KeyboardAccessoryVisibility.of(context);
+          return const SizedBox.shrink();
+        },
+      ),
+    );
     expect(seen, isTrue);
   });
 
   testWidgets('a hidden pane reports invisible, and flipping it notifies dependents', (tester) async {
     final seen = <bool>[];
     Widget build(bool visible) => KeyboardAccessoryVisibility(
-          visible: visible,
-          child: Builder(builder: (context) {
-            seen.add(KeyboardAccessoryVisibility.of(context));
-            return const SizedBox.shrink();
-          }),
-        );
+      visible: visible,
+      child: Builder(
+        builder: (context) {
+          seen.add(KeyboardAccessoryVisibility.of(context));
+          return const SizedBox.shrink();
+        },
+      ),
+    );
 
     await tester.pumpWidget(build(true));
     await tester.pumpWidget(build(false));
@@ -139,14 +134,8 @@ void main() {
   // than only on a tab change.
   test('an unchanged value does not notify dependents', () {
     const stable = KeyboardAccessoryVisibility(visible: true, child: SizedBox.shrink());
-    expect(
-      stable.updateShouldNotify(const KeyboardAccessoryVisibility(visible: true, child: SizedBox.shrink())),
-      isFalse,
-    );
-    expect(
-      stable.updateShouldNotify(const KeyboardAccessoryVisibility(visible: false, child: SizedBox.shrink())),
-      isTrue,
-    );
+    expect(stable.updateShouldNotify(const KeyboardAccessoryVisibility(visible: true, child: SizedBox.shrink())), isFalse);
+    expect(stable.updateShouldNotify(const KeyboardAccessoryVisibility(visible: false, child: SizedBox.shrink())), isTrue);
   });
 }
 

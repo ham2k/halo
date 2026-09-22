@@ -6,9 +6,4 @@
 // see serial_transport_unsupported.dart for the same role.
 
 /// No-op on web. See the io implementation for the contract.
-bool configureWinSparkleBeforeInit({
-  required String buildVersion,
-  required int checkIntervalSeconds,
-  required bool automaticChecks,
-}) =>
-    false;
+bool configureWinSparkleBeforeInit({required String buildVersion, required int checkIntervalSeconds, required bool automaticChecks}) => false;

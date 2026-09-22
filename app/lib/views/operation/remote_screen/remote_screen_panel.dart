@@ -90,15 +90,7 @@ class RemoteScreenPanel extends StatefulWidget {
   /// [onChooseSource]: the write goes through the host's services.
   final void Function(double zoom, Offset pan)? onSaveView;
 
-  const RemoteScreenPanel({
-    super.key,
-    required this.panelId,
-    required this.panels,
-    required this.views,
-    this.onTitle,
-    this.onChooseSource,
-    this.onSaveView,
-  });
+  const RemoteScreenPanel({super.key, required this.panelId, required this.panels, required this.views, this.onTitle, this.onChooseSource, this.onSaveView});
 
   @override
   State<RemoteScreenPanel> createState() => _RemoteScreenPanelState();
@@ -158,8 +150,7 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
   /// [PeerScreenViews.requestAdjust].
   int _seenAdjustRequests = 0;
 
-  PeerScreenTarget? get _target =>
-      PeerScreenTarget.decode(_config[remoteScreenTargetKey] as String?);
+  PeerScreenTarget? get _target => PeerScreenTarget.decode(_config[remoteScreenTargetKey] as String?);
 
   @override
   void initState() {
@@ -268,10 +259,7 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
         return;
       }
       final crop = frame.crop;
-      final measured = Size(
-        next.image.width / (crop?.width ?? 1.0),
-        next.image.height / (crop?.height ?? 1.0),
-      );
+      final measured = Size(next.image.width / (crop?.width ?? 1.0), next.image.height / (crop?.height ?? 1.0));
       setState(() {
         _image?.dispose();
         _image = next.image;
@@ -306,12 +294,8 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
         _decodingSeq = null;
       }
       _zoom = ((config[remoteScreenZoomKey] as num?)?.toDouble() ?? 1.0).clamp(_minZoom, _maxZoom);
-      _pan = Offset(
-        (config[remoteScreenPanXKey] as num?)?.toDouble() ?? 0,
-        (config[remoteScreenPanYKey] as num?)?.toDouble() ?? 0,
-      );
-      _detail = ((config[remoteScreenDetailKey] as num?)?.toInt() ?? remoteScreenDetailDefault)
-          .clamp(320, 3840);
+      _pan = Offset((config[remoteScreenPanXKey] as num?)?.toDouble() ?? 0, (config[remoteScreenPanYKey] as num?)?.toDouble() ?? 0);
+      _detail = ((config[remoteScreenDetailKey] as num?)?.toInt() ?? remoteScreenDetailDefault).clamp(320, 3840);
     });
     _syncSubscription();
     _publishTitle();
@@ -370,12 +354,7 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
     final target = _target;
 
     if (target == null) {
-      return _Message(
-        icon: MdiIcons.monitorShare,
-        text: t.remoteScreenUnset,
-        action: widget.onChooseSource,
-        actionLabel: t.remoteScreenChoose,
-      );
+      return _Message(icon: MdiIcons.monitorShare, text: t.remoteScreenUnset, action: widget.onChooseSource, actionLabel: t.remoteScreenChoose);
     }
 
     final view = widget.views.viewFor(target);
@@ -389,16 +368,16 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
       // permission" both read as "that device wouldn't share this screen",
       // which sends the operator to the wrong device's settings.
       PeerScreenViewStatus.refused => switch (view?.refusal) {
-          'notOffered' => t.remoteScreenNotOffered,
-          'noListener' => t.remoteScreenNoListener,
-          'noLan' => t.remoteScreenNoLan,
-          'stopped' => t.remoteScreenStopped,
-          'captureFailed' => t.remoteScreenCaptureFailed,
-          'noAnswer' => t.remoteScreenNoAnswer,
-          'noMedia' => t.remoteScreenNoMedia,
-          'stalled' => t.remoteScreenStalled,
-          _ => t.remoteScreenRefused,
-        },
+        'notOffered' => t.remoteScreenNotOffered,
+        'noListener' => t.remoteScreenNoListener,
+        'noLan' => t.remoteScreenNoLan,
+        'stopped' => t.remoteScreenStopped,
+        'captureFailed' => t.remoteScreenCaptureFailed,
+        'noAnswer' => t.remoteScreenNoAnswer,
+        'noMedia' => t.remoteScreenNoMedia,
+        'stalled' => t.remoteScreenStalled,
+        _ => t.remoteScreenRefused,
+      },
       // Live and keeping up. A live view that is NOT keeping up says so
       // below, but never through this — a notice here dims the picture, and
       // a struggling stream is current, just intermittent.
@@ -411,12 +390,7 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
       // that has gone away is exactly when an operator wants to point this
       // somewhere else, and on a narrow layout this may be the only route to
       // it they have.
-      return _Message(
-        icon: MdiIcons.monitorShare,
-        text: notice ?? t.remoteScreenConnecting,
-        action: widget.onChooseSource,
-        actionLabel: t.remoteScreenChoose,
-      );
+      return _Message(icon: MdiIcons.monitorShare, text: notice ?? t.remoteScreenConnecting, action: widget.onChooseSource, actionLabel: t.remoteScreenChoose);
     }
 
     return _viewport(context, image, notice, view?.status, degraded);
@@ -429,202 +403,192 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
   /// Off the network is not the same as told no: the first is worth chasing
   /// on the network, the second is a decision the other device made.
   static IconData _noticeIcon(PeerScreenViewStatus? status) => switch (status) {
-        PeerScreenViewStatus.refused => MdiIcons.monitorOff,
-        _ => MdiIcons.lanDisconnect,
-      };
+    PeerScreenViewStatus.refused => MdiIcons.monitorOff,
+    _ => MdiIcons.lanDisconnect,
+  };
 
   static const double _minZoom = 0.25;
   static const double _maxZoom = 8.0;
 
   /// The picture, framed by the operator, with the adjust-mode chrome over
   /// it when they are framing it.
-  Widget _viewport(BuildContext context, ui.Image image, String? notice,
-      PeerScreenViewStatus? status, bool degraded) {
+  Widget _viewport(BuildContext context, ui.Image image, String? notice, PeerScreenViewStatus? status, bool degraded) {
     final t = context.t.operation.layout.panels;
     final theme = Theme.of(context);
 
-    return LayoutBuilder(builder: (context, constraints) {
-      final paneWidth = constraints.maxWidth;
-      final paneHeight = constraints.maxHeight;
-      // The SOURCE's size, not the frame's: under a crop the frame is a
-      // piece of it, and fitting the pane to that piece would jump the
-      // framing every time the terms changed.
-      final source = _sourceSize ?? Size(image.width.toDouble(), image.height.toDouble());
-      final imageWidth = source.width;
-      final imageHeight = source.height;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final paneWidth = constraints.maxWidth;
+        final paneHeight = constraints.maxHeight;
+        // The SOURCE's size, not the frame's: under a crop the frame is a
+        // piece of it, and fitting the pane to that piece would jump the
+        // framing every time the terms changed.
+        final source = _sourceSize ?? Size(image.width.toDouble(), image.height.toDouble());
+        final imageWidth = source.width;
+        final imageHeight = source.height;
 
-      // 1.0 IS "contain" — the scale below is a multiplier on top of what
-      // BoxFit.contain already did, so a fresh pane needs no arithmetic and
-      // an unset config renders exactly as it did before any of this.
-      final contain = math.min(paneWidth / imageWidth, paneHeight / imageHeight);
-      final cover = math.max(paneWidth / imageWidth, paneHeight / imageHeight);
-      // The OTHER dimension matching the pane. At 1.0 one of them does; at
-      // this, the other does — which is the whole of "snap when the shared
-      // screen matches the width or the height".
-      final coverZoom = contain <= 0 ? 1.0 : cover / contain;
+        // 1.0 IS "contain" — the scale below is a multiplier on top of what
+        // BoxFit.contain already did, so a fresh pane needs no arithmetic and
+        // an unset config renders exactly as it did before any of this.
+        final contain = math.min(paneWidth / imageWidth, paneHeight / imageHeight);
+        final cover = math.max(paneWidth / imageWidth, paneHeight / imageHeight);
+        // The OTHER dimension matching the pane. At 1.0 one of them does; at
+        // this, the other does — which is the whole of "snap when the shared
+        // screen matches the width or the height".
+        final coverZoom = contain <= 0 ? 1.0 : cover / contain;
 
-      final shownWidth = imageWidth * contain * _zoom;
-      final shownHeight = imageHeight * contain * _zoom;
-      // Panning past the picture's own edge would drag it out of the pane
-      // and leave the operator looking at nothing.
-      final maxPanX = math.max(0.0, (shownWidth - paneWidth) / 2);
-      final maxPanY = math.max(0.0, (shownHeight - paneHeight) / 2);
-      final pan = Offset(
-        _pan.dx.clamp(-maxPanX, maxPanX),
-        _pan.dy.clamp(-maxPanY, maxPanY),
-      );
+        final shownWidth = imageWidth * contain * _zoom;
+        final shownHeight = imageHeight * contain * _zoom;
+        // Panning past the picture's own edge would drag it out of the pane
+        // and leave the operator looking at nothing.
+        final maxPanX = math.max(0.0, (shownWidth - paneWidth) / 2);
+        final maxPanY = math.max(0.0, (shownHeight - paneHeight) / 2);
+        final pan = Offset(_pan.dx.clamp(-maxPanX, maxPanX), _pan.dy.clamp(-maxPanY, maxPanY));
 
-      // What this pane is actually looking at, told to the producer so its
-      // pixel budget is spent there. Reported from the layout because this
-      // is where the pane's size, the zoom and the pan are all known at
-      // once; `setDemand` is a no-op for a demand that has not changed, and
-      // a rebuild is not a change.
-      widget.views.setDemand(
-        widget.panelId,
-        _demandFor(
-          paneWidth: paneWidth,
-          paneHeight: paneHeight,
-          shownWidth: shownWidth,
-          shownHeight: shownHeight,
-          pan: pan,
-          pixelRatio: MediaQuery.devicePixelRatioOf(context),
-        ),
-      );
-
-      final crop = _imageCrop;
-      final picture = ClipRect(
-        child: Center(
-          child: Transform.translate(
-            offset: pan,
-            child: Transform.scale(
-              scale: _zoom,
-              // A box the size of the whole SOURCE, with the frame drawn in
-              // its own rect inside it. At full-source terms that is the
-              // whole box and the result is what BoxFit.contain drew before
-              // any of this; under a crop it is what keeps a frame captured
-              // for where the pane WAS from sliding over where it is now.
-              child: SizedBox(
-                width: imageWidth * contain,
-                height: imageHeight * contain,
-                child: crop == null
-                    ? RawImage(image: image, fit: BoxFit.fill)
-                    : Stack(children: [
-                        Positioned(
-                          left: crop.left * imageWidth * contain,
-                          top: crop.top * imageHeight * contain,
-                          width: crop.width * imageWidth * contain,
-                          height: crop.height * imageHeight * contain,
-                          child: RawImage(image: image, fit: BoxFit.fill),
-                        ),
-                      ]),
-              ),
-            ),
+        // What this pane is actually looking at, told to the producer so its
+        // pixel budget is spent there. Reported from the layout because this
+        // is where the pane's size, the zoom and the pan are all known at
+        // once; `setDemand` is a no-op for a demand that has not changed, and
+        // a rebuild is not a change.
+        widget.views.setDemand(
+          widget.panelId,
+          _demandFor(
+            paneWidth: paneWidth,
+            paneHeight: paneHeight,
+            shownWidth: shownWidth,
+            shownHeight: shownHeight,
+            pan: pan,
+            pixelRatio: MediaQuery.devicePixelRatioOf(context),
           ),
-        ),
-      );
+        );
 
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          if (!_adjusting)
-            picture
-          else
-            // Gestures only while adjusting: a scroll over a pane that is
-            // merely being watched belongs to whatever scrolls around it.
-            Listener(
-              // A mouse wheel.
-              onPointerSignal: (event) {
-                if (event is! PointerScrollEvent) return;
-                // Exponential, so a notch is the same proportional step
-                // wherever the zoom already is.
-                _setZoom(_zoom * math.exp(-event.scrollDelta.dy / 300), coverZoom);
-              },
-              // A trackpad's two-finger scroll, which macOS does NOT deliver
-              // as a scroll signal — it arrives as a pan/zoom sequence, and
-              // a plain pan recognizer swallows it and drags the picture.
-              // That is why the drag below excludes trackpads rather than
-              // taking every device: scrolling has to zoom on both.
-              onPointerPanZoomUpdate: (event) {
-                if (event.scale != 1.0) {
-                  // A real pinch says its own scale outright.
-                  _setZoom(_zoom * (1 + (event.scale - 1) * 0.5), coverZoom);
-                } else {
-                  _setZoom(_zoom * math.exp(event.panDelta.dy / 300), coverZoom);
-                }
-              },
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                supportedDevices: const {
-                  PointerDeviceKind.touch,
-                  PointerDeviceKind.mouse,
-                  PointerDeviceKind.stylus,
-                  PointerDeviceKind.invertedStylus,
-                  PointerDeviceKind.unknown,
-                },
-                onPanUpdate: (details) => setState(() => _pan = pan + details.delta),
-                child: picture,
-              ),
-            ),
-          // Dimmed, not blanked. What is on screen is still the last thing
-          // that device showed, and it is often exactly what the operator
-          // opened the pane to see — but a live picture and a frozen one
-          // must not look the same, or a stalled pane reads as a quiet one.
-          // IgnorePointer, because a ColoredBox hit-tests OPAQUE: over the
-          // picture it would swallow every scroll, pinch and drag — on
-          // exactly the dimmed, frozen pane an operator most wants to zoom
-          // into, with nothing to explain why Adjust View does nothing.
-          if (notice != null)
-            IgnorePointer(
-              child: Container(color: theme.colorScheme.scrim.withValues(alpha: 0.45)),
-            ),
-          // No scrim for this one: the picture IS current, so dimming it
-          // would say the opposite of what is true. Stalled and struggling
-          // must not look the same.
-          if (notice == null && degraded)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: Space.md +
-                  PaneSafeArea.bottomOf(context) +
-                  (_adjusting ? _adjustChromeHeight : 0),
-              child: Center(child: _NoticePill(icon: MdiIcons.wifiStrength2, text: t.remoteScreenDegraded)),
-            ),
-          if (notice != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              // Clear of the adjust-mode chrome, which owns this corner.
-              bottom: Space.md +
-                  PaneSafeArea.bottomOf(context) +
-                  (_adjusting ? _adjustChromeHeight : 0),
-              child: Center(child: _NoticePill(icon: _noticeIcon(status), text: notice)),
-            ),
-          if (_adjusting) ...[
-            // Same pill the map uses, in the same corner.
-            Positioned(
-              bottom: Space.md + PaneSafeArea.bottomOf(context),
-              left: Space.md + PaneSafeArea.leftOf(context),
-              child: _ZoomButtons(
-                onIn: () => _setZoom(_zoom * 1.25, coverZoom),
-                onOut: () => _setZoom(_zoom / 1.25, coverZoom),
-              ),
-            ),
-            Positioned(
-              bottom: Space.md + PaneSafeArea.bottomOf(context),
-              left: 0,
-              right: 0,
-              child: Center(
-                child: FilledButton.icon(
-                  onPressed: _finishAdjusting,
-                  icon: Icon(MdiIcons.check),
-                  label: Text(t.remoteScreenAdjustDone),
+        final crop = _imageCrop;
+        final picture = ClipRect(
+          child: Center(
+            child: Transform.translate(
+              offset: pan,
+              child: Transform.scale(
+                scale: _zoom,
+                // A box the size of the whole SOURCE, with the frame drawn in
+                // its own rect inside it. At full-source terms that is the
+                // whole box and the result is what BoxFit.contain drew before
+                // any of this; under a crop it is what keeps a frame captured
+                // for where the pane WAS from sliding over where it is now.
+                child: SizedBox(
+                  width: imageWidth * contain,
+                  height: imageHeight * contain,
+                  child: crop == null
+                      ? RawImage(image: image, fit: BoxFit.fill)
+                      : Stack(
+                          children: [
+                            Positioned(
+                              left: crop.left * imageWidth * contain,
+                              top: crop.top * imageHeight * contain,
+                              width: crop.width * imageWidth * contain,
+                              height: crop.height * imageHeight * contain,
+                              child: RawImage(image: image, fit: BoxFit.fill),
+                            ),
+                          ],
+                        ),
                 ),
               ),
             ),
+          ),
+        );
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            if (!_adjusting)
+              picture
+            else
+              // Gestures only while adjusting: a scroll over a pane that is
+              // merely being watched belongs to whatever scrolls around it.
+              Listener(
+                // A mouse wheel.
+                onPointerSignal: (event) {
+                  if (event is! PointerScrollEvent) return;
+                  // Exponential, so a notch is the same proportional step
+                  // wherever the zoom already is.
+                  _setZoom(_zoom * math.exp(-event.scrollDelta.dy / 300), coverZoom);
+                },
+                // A trackpad's two-finger scroll, which macOS does NOT deliver
+                // as a scroll signal — it arrives as a pan/zoom sequence, and
+                // a plain pan recognizer swallows it and drags the picture.
+                // That is why the drag below excludes trackpads rather than
+                // taking every device: scrolling has to zoom on both.
+                onPointerPanZoomUpdate: (event) {
+                  if (event.scale != 1.0) {
+                    // A real pinch says its own scale outright.
+                    _setZoom(_zoom * (1 + (event.scale - 1) * 0.5), coverZoom);
+                  } else {
+                    _setZoom(_zoom * math.exp(event.panDelta.dy / 300), coverZoom);
+                  }
+                },
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  supportedDevices: const {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.stylus,
+                    PointerDeviceKind.invertedStylus,
+                    PointerDeviceKind.unknown,
+                  },
+                  onPanUpdate: (details) => setState(() => _pan = pan + details.delta),
+                  child: picture,
+                ),
+              ),
+            // Dimmed, not blanked. What is on screen is still the last thing
+            // that device showed, and it is often exactly what the operator
+            // opened the pane to see — but a live picture and a frozen one
+            // must not look the same, or a stalled pane reads as a quiet one.
+            // IgnorePointer, because a ColoredBox hit-tests OPAQUE: over the
+            // picture it would swallow every scroll, pinch and drag — on
+            // exactly the dimmed, frozen pane an operator most wants to zoom
+            // into, with nothing to explain why Adjust View does nothing.
+            if (notice != null) IgnorePointer(child: Container(color: theme.colorScheme.scrim.withValues(alpha: 0.45))),
+            // No scrim for this one: the picture IS current, so dimming it
+            // would say the opposite of what is true. Stalled and struggling
+            // must not look the same.
+            if (notice == null && degraded)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: Space.md + PaneSafeArea.bottomOf(context) + (_adjusting ? _adjustChromeHeight : 0),
+                child: Center(
+                  child: _NoticePill(icon: MdiIcons.wifiStrength2, text: t.remoteScreenDegraded),
+                ),
+              ),
+            if (notice != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                // Clear of the adjust-mode chrome, which owns this corner.
+                bottom: Space.md + PaneSafeArea.bottomOf(context) + (_adjusting ? _adjustChromeHeight : 0),
+                child: Center(
+                  child: _NoticePill(icon: _noticeIcon(status), text: notice),
+                ),
+              ),
+            if (_adjusting) ...[
+              // Same pill the map uses, in the same corner.
+              Positioned(
+                bottom: Space.md + PaneSafeArea.bottomOf(context),
+                left: Space.md + PaneSafeArea.leftOf(context),
+                child: _ZoomButtons(onIn: () => _setZoom(_zoom * 1.25, coverZoom), onOut: () => _setZoom(_zoom / 1.25, coverZoom)),
+              ),
+              Positioned(
+                bottom: Space.md + PaneSafeArea.bottomOf(context),
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: FilledButton.icon(onPressed: _finishAdjusting, icon: Icon(MdiIcons.check), label: Text(t.remoteScreenAdjustDone)),
+                ),
+              ),
+            ],
           ],
-        ],
-      );
-    });
+        );
+      },
+    );
   }
 
   /// The measured source size, or the one already held when the two differ
@@ -641,8 +605,7 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
     final held = _sourceSize;
     if (held == null) return measured;
     const slack = 2.0;
-    final same = (held.width - measured.width).abs() <= slack &&
-        (held.height - measured.height).abs() <= slack;
+    final same = (held.width - measured.width).abs() <= slack && (held.height - measured.height).abs() <= slack;
     return same ? held : measured;
   }
 
@@ -701,8 +664,7 @@ class _RemoteScreenPanelState extends State<RemoteScreenPanel> with WidgetsBindi
     // they need in front of them to frame it.
     final crop = (_adjusting || (right - left >= 1.0 && bottom - top >= 1.0))
         ? null
-        : PeerScreenCrop.clamped(
-            left: left, top: top, width: right - left, height: bottom - top);
+        : PeerScreenCrop.clamped(left: left, top: top, width: right - left, height: bottom - top);
 
     final across = (crop?.width ?? 1.0) * shownWidth * pixelRatio;
     return (
@@ -839,10 +801,7 @@ class _Message extends StatelessWidget {
             Icon(icon, size: 40, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(height: Space.md),
             Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
-            if (action != null && actionLabel != null) ...[
-              const SizedBox(height: Space.md),
-              FilledButton.tonal(onPressed: action, child: Text(actionLabel!)),
-            ],
+            if (action != null && actionLabel != null) ...[const SizedBox(height: Space.md), FilledButton.tonal(onPressed: action, child: Text(actionLabel!))],
           ],
         ),
       ),

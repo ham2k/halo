@@ -13,24 +13,25 @@ import 'package:ham2k_logger/settings/export_settings_group.dart';
 class _Extensions extends ExtensionService {
   bool fail = false;
   @override
-  Future<List<Map<String, dynamic>>> exportTypeSettings(
-    Map<String, dynamic> global,
-    Map<String, dynamic> Function(String) overrides,
-  ) async {
+  Future<List<Map<String, dynamic>>> exportTypeSettings(Map<String, dynamic> global, Map<String, dynamic> Function(String) overrides) async {
     if (fail) throw StateError('Template bridge unavailable');
     return [
-    for (final type in ['default', 'potaActivation-adif', 'cqww-cabrillo']) {
-      'exportType': type,
-      'label': type == 'cqww-cabrillo' ? 'CQ WW' : 'POTA',
-      'format': type == 'cqww-cabrillo' ? 'cabrillo' : 'adif',
-      'settings': {
-        'includePrivateData': false, 'includeLookupData': true,
-        'filenameTemplate': '{{ log.station }}', 'customTemplates': false,
-        ...global, ...overrides(type),
-      },
-      'defaults': const <String, dynamic>{},
-    },
-  ];
+      for (final type in ['default', 'potaActivation-adif', 'cqww-cabrillo'])
+        {
+          'exportType': type,
+          'label': type == 'cqww-cabrillo' ? 'CQ WW' : 'POTA',
+          'format': type == 'cqww-cabrillo' ? 'cabrillo' : 'adif',
+          'settings': {
+            'includePrivateData': false,
+            'includeLookupData': true,
+            'filenameTemplate': '{{ log.station }}',
+            'customTemplates': false,
+            ...global,
+            ...overrides(type),
+          },
+          'defaults': const <String, dynamic>{},
+        },
+    ];
   }
 }
 
@@ -42,8 +43,7 @@ void main() {
     final group = ExportsSettingsGroup(settings, extensions);
     final fields = await group.typeElements('default');
     expect(fields.first['text'], t.exportSettings.defaultsDescription);
-    expect(fields.where((e) => e['type'] == 'header').map((e) => e['title']),
-        ['Reference Activities', 'Other Activities', 'ADIF Fields']);
+    expect(fields.where((e) => e['type'] == 'header').map((e) => e['title']), ['Reference Activities', 'Other Activities', 'ADIF Fields']);
     final templates = fields.where((e) => e['fieldType'] == 'textTemplate').toList();
     expect(templates, hasLength(9));
     expect(templates.every((e) => e['disabled'] == false), isTrue);
@@ -72,14 +72,29 @@ void main() {
     expect(elements.map((e) => e['label']), containsAll(['Defaults', 'POTA ADIF', 'CQ WW CABRILLO']));
     expect(elements.any((e) => e['key'] == 'editingType'), isFalse);
     expect(elements.any((e) => e['key'].toString().contains('::')), isFalse);
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: Scaffold(
-      body: Builder(builder: (context) => FormRenderer(
-        formDefinition: {'elements': elements}, initialState: const {}, settingsList: true,
-        showActions: false, showTitle: false,
-        onAction: (key, method, state) async { await group.openAction(context, key); return null; },
-        onSubmit: (_) {}, onCancel: () {},
-      )),
-    ))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => FormRenderer(
+                formDefinition: {'elements': elements},
+                initialState: const {},
+                settingsList: true,
+                showActions: false,
+                showTitle: false,
+                onAction: (key, method, state) async {
+                  await group.openAction(context, key);
+                  return null;
+                },
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
     await tester.tap(find.text('POTA ADIF'));
     await tester.pumpAndSettle();
     expect(find.text('Include lookup data'), findsOneWidget);

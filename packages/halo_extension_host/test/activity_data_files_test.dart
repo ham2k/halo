@@ -19,42 +19,29 @@ void main() {
 
   /// Runs rows through an extension's registered mapper, the way
   /// DataFileManager does.
-  Future<List<Map<String, dynamic>>> map(
-    String extension,
-    String dataFileKey,
-    String method,
-    String argName,
-    List<dynamic> rows,
-  ) async {
+  Future<List<Map<String, dynamic>>> map(String extension, String dataFileKey, String method, String argName, List<dynamic> rows) async {
     final host = await sharedHost([extension]);
-    final result = await host.invokeHook(
-      'dataFile',
-      key: dataFileKey,
-      method: method,
-      args: {argName: rows},
-      timeout: const Duration(seconds: 20),
-    ) as List;
+    final result = await host.invokeHook('dataFile', key: dataFileKey, method: method, args: {argName: rows}, timeout: const Duration(seconds: 20)) as List;
     return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
   }
 
-  Future<List<Map<String, dynamic>>> mapJson(String ext, String dfKey, List<dynamic> entries) =>
-      map(ext, dfKey, 'mapJsonBatch', 'entries', entries);
-  Future<List<Map<String, dynamic>>> mapCsv(String ext, String dfKey, List<dynamic> rows) =>
-      map(ext, dfKey, 'mapCsvBatch', 'rows', rows);
+  Future<List<Map<String, dynamic>>> mapJson(String ext, String dfKey, List<dynamic> entries) => map(ext, dfKey, 'mapJsonBatch', 'entries', entries);
+  Future<List<Map<String, dynamic>>> mapCsv(String ext, String dfKey, List<dynamic> rows) => map(ext, dfKey, 'mapCsvBatch', 'rows', rows);
 
   /// GeoJSON as the Belgian lists publish it.
   Map<String, dynamic> feature(String ref, String name, double lon, double lat) => {
-        'type': 'Feature',
-        'properties': {'reference': ref, 'name': name},
-        'geometry': {'type': 'Point', 'coordinates': [lon, lat]},
-      };
+    'type': 'Feature',
+    'properties': {'reference': ref, 'name': name},
+    'geometry': {
+      'type': 'Point',
+      'coordinates': [lon, lat],
+    },
+  };
 
   group('bca', () {
     test('reads GeoJSON coordinates as [lon, lat], not [lat, lon]', () async {
       // Beersel: 50.766 N, 4.307 E. Swapped, this lands in the Indian Ocean.
-      final entries = await mapJson('bca', 'bca-all-castles', [
-        feature('ON-00558', ' Kasteel van Beersel ', 4.307, 50.766),
-      ]);
+      final entries = await mapJson('bca', 'bca-all-castles', [feature('ON-00558', ' Kasteel van Beersel ', 4.307, 50.766)]);
 
       expect(entries.length, 1);
       expect(entries.first['key'], 'ON-00558');
@@ -72,10 +59,7 @@ void main() {
       // reference pattern would turn a stray space or an unexpected prefix into
       // a castle that simply does not exist, with nothing to show for it —
       // exactly how three real ECA references went missing.
-      final entries = await mapJson('bca', 'bca-all-castles', [
-        feature('ON-1', 'Odd but published', 4.0, 50.0),
-        feature('ON-00558', 'Beersel', 4.307, 50.766),
-      ]);
+      final entries = await mapJson('bca', 'bca-all-castles', [feature('ON-1', 'Odd but published', 4.0, 50.0), feature('ON-00558', 'Beersel', 4.307, 50.766)]);
       expect(entries.map((e) => e['key']), ['ON-1', 'ON-00558']);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
@@ -91,22 +75,14 @@ void main() {
 
   test('blha keeps the space INSIDE a `BEL 001` reference while trimming the ends', () async {
     // The inner space is part of the reference; only the ends are trimmed.
-    final entries = await mapJson('blha', 'blha-all-lighthouses', [
-      feature(' BEL 001 ', 'Oostende', 2.93, 51.23),
-    ]);
+    final entries = await mapJson('blha', 'blha-all-lighthouses', [feature(' BEL 001 ', 'Oostende', 2.93, 51.23)]);
     expect(entries.map((e) => e['key']), ['BEL 001']);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('eca reads the reference from WCA, not from a column named ECA', () async {
     // English castles are catalogued by their WCA code; there is no ECA column.
     final entries = await mapJson('eca', 'eca-all-castles', [
-      {
-        'WCA': 'G-00001',
-        'NAME_OF_CASTLE': ' Windsor Castle ',
-        'LOCATION': 'Berkshire',
-        'LATITUDE': '51.4839',
-        'LONGITUDE': '-0.6044',
-      },
+      {'WCA': 'G-00001', 'NAME_OF_CASTLE': ' Windsor Castle ', 'LOCATION': 'Berkshire', 'LATITUDE': '51.4839', 'LONGITUDE': '-0.6044'},
     ]);
 
     expect(entries.length, 1);
@@ -143,13 +119,7 @@ void main() {
     // against ham2k.com/data/cached/ela/ELA_References.json. A spaced
     // 'NAME OF LIGHTHOUSE' key reads nothing and yields nameless references.
     final entries = await mapJson('ela', 'ela-all-lighthouses', [
-      {
-        'ELA': 'ENG 001',
-        'NAME_OF_LIGHTHOUSE': 'Beachy Head',
-        'LOCATION': 'East Sussex',
-        'LATITUDE': '50.7361',
-        'LONGITUDE': '0.2494',
-      },
+      {'ELA': 'ENG 001', 'NAME_OF_LIGHTHOUSE': 'Beachy Head', 'LOCATION': 'East Sussex', 'LATITUDE': '50.7361', 'LONGITUDE': '0.2494'},
     ]);
 
     expect(entries.length, 1);
@@ -197,9 +167,16 @@ void main() {
     // scorer "for consistency" would invent a rule the award does not have.
     final host = await sharedHost(['pga']);
     await expectLater(
-      host.invokeHook('scoring', key: 'pga', method: 'scoreQsos',
-          args: {'operation': {'uuid': 'op', 'refs': []}, 'qsos': []},
-          timeout: const Duration(seconds: 10)),
+      host.invokeHook(
+        'scoring',
+        key: 'pga',
+        method: 'scoreQsos',
+        args: {
+          'operation': {'uuid': 'op', 'refs': []},
+          'qsos': [],
+        },
+        timeout: const Duration(seconds: 10),
+      ),
       throwsA(anything),
     );
   }, timeout: const Timeout(Duration(seconds: 60)));
@@ -207,13 +184,7 @@ void main() {
   test('wca splits the single COORDINATES column into lat and lon', () async {
     // WCA publishes one column holding "lat,lon" — the only list here that does.
     final entries = await mapCsv('wca', 'wca-all-castles', [
-      {
-        'REF': 'ON-00558',
-        'PREFIX': 'ON',
-        'CLEAN NAME': 'Kasteel van Beersel',
-        'CLEAN LOCATION': 'Vlaams-Brabant',
-        'COORDINATES': '50.766,4.307',
-      },
+      {'REF': 'ON-00558', 'PREFIX': 'ON', 'CLEAN NAME': 'Kasteel van Beersel', 'CLEAN LOCATION': 'Vlaams-Brabant', 'COORDINATES': '50.766,4.307'},
     ]);
 
     expect(entries.length, 1);

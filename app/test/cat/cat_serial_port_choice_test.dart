@@ -30,16 +30,14 @@ class _Ports extends EquipmentTransport with SerialTransportConfig {
   String get key => 'serial';
 
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
-      throw UnimplementedError();
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) => throw UnimplementedError();
 }
 
 /// An Android device split into [count] ports, the way serial_transport_io
 /// builds them.
 List<SerialPortOption> split(String device, int count, {int? vendorId, String? productName}) => [
-      for (var i = 0; i < count; i++)
-        SerialPortOption(name: '$device#$i', productName: productName, vendorId: vendorId, portIndex: i, portCount: count),
-    ];
+  for (var i = 0; i < count; i++) SerialPortOption(name: '$device#$i', productName: productName, vendorId: vendorId, portIndex: i, portCount: count),
+];
 
 void main() {
   const x6100 = '/dev/bus/usb/001/004';
@@ -71,9 +69,14 @@ void main() {
     // switched, so an operator who moved it must still be able to pick the
     // other one. Every port stays; the claimed ones lead.
     final choices = ports.portChoices({'index': 1});
-    expect([for (final c in choices) c.name],
-        ['$cp2105#1', '$ft2232#1', '$x6100#1', '/dev/bus/usb/001/002', '$cp2105#0', '$ft2232#0', '$x6100#0']);
-    expect([for (final c in choices) if (c.suggested) c.name], ['$cp2105#1', '$ft2232#1', '$x6100#1']);
+    expect([for (final c in choices) c.name], ['$cp2105#1', '$ft2232#1', '$x6100#1', '/dev/bus/usb/001/002', '$cp2105#0', '$ft2232#0', '$x6100#0']);
+    expect(
+      [
+        for (final c in choices)
+          if (c.suggested) c.name,
+      ],
+      ['$cp2105#1', '$ft2232#1', '$x6100#1'],
+    );
     // The ordinal STAYS, unlike when this rule hid the sibling: with both on
     // screen under one description, "port 2 of 2" is the only thing telling
     // the operator which row they are looking at.
@@ -86,7 +89,13 @@ void main() {
     // confident guess about hardware this definition has never seen is worse
     // than no guess. Every port is still listed either way.
     final choices = ports.portChoices(Ft891Driver.cp2105CatPort);
-    expect([for (final c in choices) if (c.suggested) c.name], ['$cp2105#0']);
+    expect(
+      [
+        for (final c in choices)
+          if (c.suggested) c.name,
+      ],
+      ['$cp2105#0'],
+    );
     expect([for (final c in choices) c.name], hasLength(7));
   });
 
@@ -98,28 +107,46 @@ void main() {
       {'index': -1},
     ]) {
       expect(names(restriction), names(null), reason: '$restriction');
-      expect([for (final c in ports.portChoices(restriction)) if (c.suggested) c.name], isEmpty,
-          reason: '$restriction');
+      expect(
+        [
+          for (final c in ports.portChoices(restriction))
+            if (c.suggested) c.name,
+        ],
+        isEmpty,
+        reason: '$restriction',
+      );
     }
   });
 
   test('a restriction that is not a map, or an index that is not a number, claims nothing', () {
-    for (final restriction in ['second', {'index': '1'}]) {
+    for (final restriction in [
+      'second',
+      {'index': '1'},
+    ]) {
       expect(names(restriction), names(null), reason: '$restriction');
-      expect([for (final c in ports.portChoices(restriction)) if (c.suggested) c.name], isEmpty,
-          reason: '$restriction');
+      expect(
+        [
+          for (final c in ports.portChoices(restriction))
+            if (c.suggested) c.name,
+        ],
+        isEmpty,
+        reason: '$restriction',
+      );
     }
   });
 
   test('the port field the editor renders is built from these choices, not the raw port list', () {
     // The seam: with this line reverted to `availablePorts`, every test
     // above still passes and no radio ever points at its port.
-    final field = ports.configElements(restrictions: {
-      'port': {'index': 1},
-    }).firstWhere((e) => e['key'] == 'port');
+    final field = ports
+        .configElements(
+          restrictions: {
+            'port': {'index': 1},
+          },
+        )
+        .firstWhere((e) => e['key'] == 'port');
     final options = (field['options'] as List).cast<Map<String, dynamic>>();
-    expect([for (final o in options) o['value']],
-        ['$cp2105#1', '$ft2232#1', '$x6100#1', '/dev/bus/usb/001/002', '$cp2105#0', '$ft2232#0', '$x6100#0']);
+    expect([for (final o in options) o['value']], ['$cp2105#1', '$ft2232#1', '$x6100#1', '/dev/bus/usb/001/002', '$cp2105#0', '$ft2232#0', '$x6100#0']);
     // And the claim survives into the form as emphasis, or the row leads the
     // list looking exactly like the six below it.
     expect(options.first['emphasis'], isTrue);
@@ -143,7 +170,13 @@ void main() {
       // sibling (same chip, same ids) is suggested too: the index clause is
       // what tells those two apart, and this list declares none.
       expect(choices.first.suggested, isTrue);
-      expect([for (final c in choices) if (c.suggested) c.name], ['$cp2105#0', '$cp2105#1']);
+      expect(
+        [
+          for (final c in choices)
+            if (c.suggested) c.name,
+        ],
+        ['$cp2105#0', '$cp2105#1'],
+      );
       // The tags are their own column now, not part of the name.
       expect(choices.first.pickerTags, contains('suggested'));
     });
@@ -167,11 +200,30 @@ void main() {
       // equipment editor down with it.
       for (final broken in [
         {'suggest': 'CP2105'},
-        {'suggest': {'match': [r'CP2105(']}},
-        {'suggest': {'match': [42]}},
-        {'suggest': {'usb': ['10C4']}},
+        {
+          'suggest': {
+            'match': [r'CP2105('],
+          },
+        },
+        {
+          'suggest': {
+            'match': [42],
+          },
+        },
+        {
+          'suggest': {
+            'usb': ['10C4'],
+          },
+        },
       ]) {
-        expect([for (final c in ports.portChoices(broken)) if (c.suggested) c.name], isEmpty, reason: '$broken');
+        expect(
+          [
+            for (final c in ports.portChoices(broken))
+              if (c.suggested) c.name,
+          ],
+          isEmpty,
+          reason: '$broken',
+        );
       }
     });
 
@@ -205,16 +257,9 @@ void main() {
 
     test('a port that appears after the first look is marked and sorts to the top', () {
       SerialPortSightings.resetForTest();
-      final live = _Ports([
-        const SerialPortOption(name: 'COM3'),
-        const SerialPortOption(name: 'COM4'),
-      ]);
+      final live = _Ports([const SerialPortOption(name: 'COM3'), const SerialPortOption(name: 'COM4')]);
       live.portChoices(null);
-      live.availablePorts = [
-        const SerialPortOption(name: 'COM3'),
-        const SerialPortOption(name: 'COM4'),
-        const SerialPortOption(name: 'COM9'),
-      ];
+      live.availablePorts = [const SerialPortOption(name: 'COM3'), const SerialPortOption(name: 'COM4'), const SerialPortOption(name: 'COM9')];
       final choices = live.portChoices(null);
       expect(choices.first.name, 'COM9');
       expect(choices.first.justNow, isTrue);
@@ -233,17 +278,11 @@ void main() {
       // a remembered stamp would bring the port back silently, which is the
       // moment the operator most wants pointed at.
       SerialPortSightings.resetForTest();
-      final live = _Ports([
-        const SerialPortOption(name: 'COM3'),
-        const SerialPortOption(name: 'COM4'),
-      ]);
+      final live = _Ports([const SerialPortOption(name: 'COM3'), const SerialPortOption(name: 'COM4')]);
       live.portChoices(null);
       live.availablePorts = [const SerialPortOption(name: 'COM3')];
       live.portChoices(null);
-      live.availablePorts = [
-        const SerialPortOption(name: 'COM3'),
-        const SerialPortOption(name: 'COM4'),
-      ];
+      live.availablePorts = [const SerialPortOption(name: 'COM3'), const SerialPortOption(name: 'COM4')];
       final choices = live.portChoices(null);
       expect(choices.first.name, 'COM4');
       expect(choices.first.justNow, isTrue);
@@ -253,22 +292,18 @@ void main() {
       SerialPortSightings.resetForTest();
       final live = _Ports([const SerialPortOption(name: 'COM3', description: 'CP2105')]);
       live.portChoices(null);
-      live.availablePorts = [
-        const SerialPortOption(name: 'COM3', description: 'CP2105'),
-        const SerialPortOption(name: 'COM9', description: 'FT232R'),
-      ];
+      live.availablePorts = [const SerialPortOption(name: 'COM3', description: 'CP2105'), const SerialPortOption(name: 'COM9', description: 'FT232R')];
       const suggest = {
-        'suggest': {'match': [r'CP2105']},
+        'suggest': {
+          'match': [r'CP2105'],
+        },
       };
       final choices = live.portChoices(suggest);
       // What the radio's own definition knows beats what was plugged in last.
       expect(choices.first.name, 'COM3');
       expect(choices[1].name, 'COM9');
 
-      live.availablePorts = [
-        const SerialPortOption(name: 'COM3', description: 'FT232R'),
-        const SerialPortOption(name: 'COM9', description: 'CP2105'),
-      ];
+      live.availablePorts = [const SerialPortOption(name: 'COM3', description: 'FT232R'), const SerialPortOption(name: 'COM9', description: 'CP2105')];
       final both = live.portChoices(suggest).first;
       expect(both.name, 'COM9');
       expect(both.pickerTags, ['suggested']);
@@ -281,10 +316,7 @@ void main() {
     // label that parks it in parentheses is answering a different question.
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    expect(
-      const SerialPortOption(name: 'COM3', description: 'Silicon Labs CP2105').label,
-      'COM3 — Silicon Labs CP2105',
-    );
+    expect(const SerialPortOption(name: 'COM3', description: 'Silicon Labs CP2105').label, 'COM3 — Silicon Labs CP2105');
   });
 
   test('a port whose descriptors are unreadable shows its bare node', () {
@@ -299,8 +331,7 @@ void main() {
     SerialPortSightings.resetForTest();
     // Three columns, not one string: a list of near-identical device nodes is
     // only scannable when the node has a column of its own.
-    final field = ports.configElements(restrictions: {'port': Ft891Driver.cp2105CatPort})
-        .firstWhere((e) => e['key'] == 'port');
+    final field = ports.configElements(restrictions: {'port': Ft891Driver.cp2105CatPort}).firstWhere((e) => e['key'] == 'port');
     final first = (field['options'] as List).cast<Map<String, dynamic>>().first;
     // The ordinal is part of the NAME now that the sibling is never hidden:
     // both rows read `CP2105` otherwise, and the suggested one has to say
@@ -438,11 +469,7 @@ void main() {
     final choices = bridge.portChoices(null);
     // Numbered in the order shown, which the device breaks the tie on — so a
     // refresh that changed nothing cannot swap #1 and #2.
-    expect([for (final c in choices) c.hardware], [
-      'CP2102 Single',
-      'CP2105 Dual USB to UART #1',
-      'CP2105 Dual USB to UART #2',
-    ]);
+    expect([for (final c in choices) c.hardware], ['CP2102 Single', 'CP2105 Dual USB to UART #1', 'CP2105 Dual USB to UART #2']);
     expect([for (final c in choices) c.device], ['debug-console', 'usbserial-00F8E1EB0', 'usbserial-00F8E1EB1']);
   });
 
@@ -488,11 +515,7 @@ void main() {
     SerialPortSightings.resetForTest();
     // COM10 before COM3 is what plain string order gives a Windows operator
     // with more than nine ports.
-    final windows = _Ports([
-      const SerialPortOption(name: 'COM10'),
-      const SerialPortOption(name: 'COM3'),
-      const SerialPortOption(name: 'COM9'),
-    ]);
+    final windows = _Ports([const SerialPortOption(name: 'COM10'), const SerialPortOption(name: 'COM3'), const SerialPortOption(name: 'COM9')]);
     expect([for (final c in windows.portChoices(null)) c.name], ['COM3', 'COM9', 'COM10']);
   });
 

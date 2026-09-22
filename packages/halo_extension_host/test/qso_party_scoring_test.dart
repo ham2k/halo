@@ -18,39 +18,32 @@ void main() {
   // The New York QSO Party: a county line party, 2 points a CW contact, and
   // `stateCountsForInState` — so an in-state contact is two multipliers.
   Map<String, dynamic> qso(int i, String call, String county, {String band = '20m'}) => {
-        'uuid': 'q$i',
-        'startAtMillis': DateTime.utc(2026, 10, 17, 14, i).millisecondsSinceEpoch,
-        'band': band,
-        'mode': 'CW',
-        'our': {'call': 'N0DEV'},
-        'their': {'call': call, 'entityPrefix': 'K'},
-        'refs': [
-          {'type': 'qp', 'location': county},
-        ],
-      };
+    'uuid': 'q$i',
+    'startAtMillis': DateTime.utc(2026, 10, 17, 14, i).millisecondsSinceEpoch,
+    'band': band,
+    'mode': 'CW',
+    'our': {'call': 'N0DEV'},
+    'their': {'call': call, 'entityPrefix': 'K'},
+    'refs': [
+      {'type': 'qp', 'location': county},
+    ],
+  };
 
   Map<String, dynamic> operationIn(String county) => {
-        'uuid': 'op',
-        'stationCall': 'N0DEV',
-        'refs': [
-          {'type': 'qp', 'ref': 'NY', 'location': county},
-        ],
-      };
+    'uuid': 'op',
+    'stationCall': 'N0DEV',
+    'refs': [
+      {'type': 'qp', 'ref': 'NY', 'location': county},
+    ],
+  };
 
   Future<Map<String, dynamic>> score(Map<String, dynamic> args) async {
     final host = await sharedHost(['qp']);
-    final result = await host.invokeHook(
-      'scoring',
-      key: 'qp',
-      method: 'scoreQsos',
-      args: args,
-      timeout: const Duration(seconds: 20),
-    ) as Map;
+    final result = await host.invokeHook('scoring', key: 'qp', method: 'scoreQsos', args: args, timeout: const Duration(seconds: 20)) as Map;
     return result.cast<String, dynamic>();
   }
 
-  Map<String, dynamic> summaryOf(Map<String, dynamic> result) =>
-      ((result['operationSummary'] as Map)['qp'] as Map).cast<String, dynamic>();
+  Map<String, dynamic> summaryOf(Map<String, dynamic> result) => ((result['operationSummary'] as Map)['qp'] as Map).cast<String, dynamic>();
 
   test('a county line is worth every pairing, through the real runtime', () async {
     // Two counties each side: four contacts' worth of points from one exchange,
@@ -103,18 +96,25 @@ void main() {
 
   test('the exchange field is a searchable set, and takes a county line', () async {
     final host = await sharedHost(['qp']);
-    final controls = (await host.invokeHook(
-      'activity',
-      key: 'qp',
-      method: 'loggingControls',
-      args: {
-        'operation': operationIn('ALB'),
-        'qso': const {
-          'their': {'call': 'K1ABC', 'entityPrefix': 'K', 'guess': {'state': 'NY'}},
-        },
-      },
-      timeout: const Duration(seconds: 20),
-    ) as List).cast<Map>();
+    final controls =
+        (await host.invokeHook(
+                  'activity',
+                  key: 'qp',
+                  method: 'loggingControls',
+                  args: {
+                    'operation': operationIn('ALB'),
+                    'qso': const {
+                      'their': {
+                        'call': 'K1ABC',
+                        'entityPrefix': 'K',
+                        'guess': {'state': 'NY'},
+                      },
+                    },
+                  },
+                  timeout: const Duration(seconds: 20),
+                )
+                as List)
+            .cast<Map>();
 
     final location = controls.firstWhere((control) => control['key'] == 'qp/location');
     // The field says which activity wants it, not what the sponsor calls a
@@ -156,22 +156,28 @@ void main() {
     // it will carry rather than finding out afterwards.
     final host = await sharedHost(['qp']);
     Future<Map<String, dynamic>> inputFor(Map<String, dynamic> their) async {
-      final controls = (await host.invokeHook(
-        'activity',
-        key: 'qp',
-        method: 'loggingControls',
-        args: {
-          'operation': operationIn('ALB'),
-          'qso': {'their': their},
-        },
-        timeout: const Duration(seconds: 20),
-      ) as List).cast<Map>();
-      return ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map)
-          .cast<String, dynamic>();
+      final controls =
+          (await host.invokeHook(
+                    'activity',
+                    key: 'qp',
+                    method: 'loggingControls',
+                    args: {
+                      'operation': operationIn('ALB'),
+                      'qso': {'their': their},
+                    },
+                    timeout: const Duration(seconds: 20),
+                  )
+                  as List)
+              .cast<Map>();
+      return ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map).cast<String, dynamic>();
     }
 
     // Out of the party: the state IS what they will send.
-    final pa = await inputFor({'call': 'W3WC', 'entityPrefix': 'K', 'guess': {'state': 'PA'}});
+    final pa = await inputFor({
+      'call': 'W3WC',
+      'entityPrefix': 'K',
+      'guess': {'state': 'PA'},
+    });
     expect(pa['suggestedValue'], 'PA');
     expect(pa.containsKey('placeholder'), isFalse);
 
@@ -207,21 +213,27 @@ void main() {
       },
       cacheKey: 'qp-prior-exchange',
     );
-    final controls = (await host.invokeHook(
-      'activity',
-      key: 'qp',
-      method: 'loggingControls',
-      args: {
-        'operation': operationIn('ALB'),
-        'qso': const {
-          'their': {'call': 'K2ABC', 'entityPrefix': 'K', 'guess': {'state': 'NY'}},
-        },
-      },
-      timeout: const Duration(seconds: 20),
-    ) as List).cast<Map>();
+    final controls =
+        (await host.invokeHook(
+                  'activity',
+                  key: 'qp',
+                  method: 'loggingControls',
+                  args: {
+                    'operation': operationIn('ALB'),
+                    'qso': const {
+                      'their': {
+                        'call': 'K2ABC',
+                        'entityPrefix': 'K',
+                        'guess': {'state': 'NY'},
+                      },
+                    },
+                  },
+                  timeout: const Duration(seconds: 20),
+                )
+                as List)
+            .cast<Map>();
 
-    final input = ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map)
-        .cast<String, dynamic>();
+    final input = ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map).cast<String, dynamic>();
     // The county they gave on the first band. The lookup knows only `NY`,
     // which is not an exchange anybody sends and is not offered at all.
     expect(input['suggestedValue'], 'ERI');
@@ -257,21 +269,27 @@ void main() {
       },
       cacheKey: 'qp-past-running',
     );
-    final controls = (await host.invokeHook(
-      'activity',
-      key: 'qp',
-      method: 'loggingControls',
-      args: {
-        'operation': operationIn('ALB'),
-        'qso': const {
-          'their': {'call': 'K2ABC', 'entityPrefix': 'K', 'guess': {'state': 'NY'}},
-        },
-      },
-      timeout: const Duration(seconds: 20),
-    ) as List).cast<Map>();
+    final controls =
+        (await host.invokeHook(
+                  'activity',
+                  key: 'qp',
+                  method: 'loggingControls',
+                  args: {
+                    'operation': operationIn('ALB'),
+                    'qso': const {
+                      'their': {
+                        'call': 'K2ABC',
+                        'entityPrefix': 'K',
+                        'guess': {'state': 'NY'},
+                      },
+                    },
+                  },
+                  timeout: const Duration(seconds: 20),
+                )
+                as List)
+            .cast<Map>();
 
-    final input = ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map)
-        .cast<String, dynamic>();
+    final input = ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map).cast<String, dynamic>();
     expect(input['suggestedValue'], 'SUL');
     expect(asked, hasLength(2), reason: 'this operation first, then earlier runnings');
     expect(asked[0]['operation'], 'op');
@@ -286,27 +304,29 @@ void main() {
     // party's own state: prefilled, it would log them as an out-of-party state
     // for a multiplier nobody copied, so it is a hint like `NY` in NYQP.
     final host = await sharedHost(['qp']);
-    final controls = (await host.invokeHook(
-      'activity',
-      key: 'qp',
-      method: 'loggingControls',
-      args: {
-        'operation': const {
-          'uuid': 'op',
-          'stationCall': 'N0DEV',
-          'refs': [
-            {'type': 'qp', 'ref': 'HI', 'location': 'HIL'},
-          ],
-        },
-        'qso': const {
-          'their': {'call': 'KH6ABC', 'entityPrefix': 'KH6'},
-        },
-      },
-      timeout: const Duration(seconds: 20),
-    ) as List).cast<Map>();
+    final controls =
+        (await host.invokeHook(
+                  'activity',
+                  key: 'qp',
+                  method: 'loggingControls',
+                  args: {
+                    'operation': const {
+                      'uuid': 'op',
+                      'stationCall': 'N0DEV',
+                      'refs': [
+                        {'type': 'qp', 'ref': 'HI', 'location': 'HIL'},
+                      ],
+                    },
+                    'qso': const {
+                      'their': {'call': 'KH6ABC', 'entityPrefix': 'KH6'},
+                    },
+                  },
+                  timeout: const Duration(seconds: 20),
+                )
+                as List)
+            .cast<Map>();
 
-    final input = ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map)
-        .cast<String, dynamic>();
+    final input = ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map).cast<String, dynamic>();
     expect(input.containsKey('suggestedValue'), isFalse);
     expect(input['placeholder'], 'HI');
     final codes = (input['options'] as List).map((option) => (option as Map)['code']).toSet();
@@ -336,21 +356,27 @@ void main() {
       },
       cacheKey: 'qp-history-fails',
     );
-    final controls = (await host.invokeHook(
-      'activity',
-      key: 'qp',
-      method: 'loggingControls',
-      args: {
-        'operation': operationIn('ALB'),
-        'qso': const {
-          'their': {'call': 'K2ABC', 'entityPrefix': 'K', 'guess': {'state': 'NY'}},
-        },
-      },
-      timeout: const Duration(seconds: 20),
-    ) as List).cast<Map>();
+    final controls =
+        (await host.invokeHook(
+                  'activity',
+                  key: 'qp',
+                  method: 'loggingControls',
+                  args: {
+                    'operation': operationIn('ALB'),
+                    'qso': const {
+                      'their': {
+                        'call': 'K2ABC',
+                        'entityPrefix': 'K',
+                        'guess': {'state': 'NY'},
+                      },
+                    },
+                  },
+                  timeout: const Duration(seconds: 20),
+                )
+                as List)
+            .cast<Map>();
 
-    final input = ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map)
-        .cast<String, dynamic>();
+    final input = ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map).cast<String, dynamic>();
     expect(input.containsKey('suggestedValue'), isFalse, reason: "last year's SUL must not answer for this operation");
     expect(input['placeholder'], 'NY');
   }, timeout: const Timeout(Duration(seconds: 60)));
@@ -370,16 +396,12 @@ void main() {
       },
       cacheKey: 'qp-no-qso',
     );
-    final controls = (await host.invokeHook(
-      'activity',
-      key: 'qp',
-      method: 'loggingControls',
-      args: {'operation': operationIn('ALB')},
-      timeout: const Duration(seconds: 20),
-    ) as List).cast<Map>();
+    final controls =
+        (await host.invokeHook('activity', key: 'qp', method: 'loggingControls', args: {'operation': operationIn('ALB')}, timeout: const Duration(seconds: 20))
+                as List)
+            .cast<Map>();
 
-    final input = ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map)
-        .cast<String, dynamic>();
+    final input = ((controls.firstWhere((control) => control['key'] == 'qp/location'))['input'] as Map).cast<String, dynamic>();
     expect(input.containsKey('suggestedValue'), isFalse);
     expect(input.containsKey('placeholder'), isFalse);
     expect(logReads, 0);
@@ -392,13 +414,18 @@ void main() {
     // file, the more negative the count — so a fresh setup defaulted to a party
     // that ran a year and a half ago.
     final host = await sharedHost(['qp']);
-    final controls = (await host.invokeHook(
-      'activity',
-      key: 'qp',
-      method: 'operationControls',
-      args: {'operation': const {'uuid': 'op', 'refs': []}},
-      timeout: const Duration(seconds: 20),
-    ) as List).cast<Map>();
+    final controls =
+        (await host.invokeHook(
+                  'activity',
+                  key: 'qp',
+                  method: 'operationControls',
+                  args: {
+                    'operation': const {'uuid': 'op', 'refs': []},
+                  },
+                  timeout: const Duration(seconds: 20),
+                )
+                as List)
+            .cast<Map>();
 
     final elements = ((controls.single['input'] as Map)['form'] as Map)['elements'] as List;
     final picker = (elements.first as Map).cast<String, dynamic>();
@@ -412,8 +439,11 @@ void main() {
     // and a test demanding an upcoming one at the top would fail on a date with
     // no code change at all. `./scripts/test.sh` is the only gate, so that
     // would be everyone's gate, red, for a reason nobody had changed.
-    expect(!stale.contains(true) || stale.lastIndexOf(false) < stale.indexOf(true), isTrue,
-        reason: 'a party waiting for next year\'s dates cannot outrank one about to run');
+    expect(
+      !stale.contains(true) || stale.lastIndexOf(false) < stale.indexOf(true),
+      isTrue,
+      reason: 'a party waiting for next year\'s dates cannot outrank one about to run',
+    );
 
     // Among the stale ones, the most RECENT comes first — which is the half of
     // this the all-stale weeks actually exercise, and where ordering by
@@ -422,8 +452,7 @@ void main() {
       for (var i = 0; i < labels.length; i++)
         if (stale[i]) int.tryParse(RegExp(r'in (\d+) days').firstMatch(labels[i])?.group(1) ?? '') ?? -1,
     ];
-    expect(staleDays.every((days) => days == -1), isTrue,
-        reason: 'a party that has run is labelled as such, not counted down to');
+    expect(staleDays.every((days) => days == -1), isTrue, reason: 'a party that has run is labelled as such, not counted down to');
 
     // The default a Save would write is whatever sits at the top.
     expect(picker['value'], (picker['options'] as List).first['value']);
@@ -453,39 +482,36 @@ void main() {
     );
 
     final their = (patch as Map?)?['their'] as Map?;
-    expect(their?['exchange'], isNot(''),
-        reason: 'an empty exchange must not be projected over a neighbour\'s');
+    expect(their?['exchange'], isNot(''), reason: 'an empty exchange must not be projected over a neighbour\'s');
 
     // And a county the operator DID type still projects, as it must.
-    final typed = await host.invokeHook(
-      'activity',
-      key: 'qp',
-      method: 'processQsoBeforeSave',
-      args: {
-        'operation': operationIn('ALB'),
-        'qso': const {
-          'their': {'call': 'K1ABC', 'entityPrefix': 'K'},
-          'band': '20m',
-          'mode': 'CW',
-          'refs': [
-            {'type': 'qp', 'location': 'ERI'},
-          ],
-        },
-      },
-      timeout: const Duration(seconds: 20),
-    ) as Map;
+    final typed =
+        await host.invokeHook(
+              'activity',
+              key: 'qp',
+              method: 'processQsoBeforeSave',
+              args: {
+                'operation': operationIn('ALB'),
+                'qso': const {
+                  'their': {'call': 'K1ABC', 'entityPrefix': 'K'},
+                  'band': '20m',
+                  'mode': 'CW',
+                  'refs': [
+                    {'type': 'qp', 'location': 'ERI'},
+                  ],
+                },
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
     expect(((typed['their'] as Map)['exchange'] as String), 'ERI');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a party is found by name in the activity search', () async {
     final host = await sharedHost(['qp']);
-    final suggestions = (await host.invokeHook(
-      'activity',
-      key: 'qp',
-      method: 'suggest',
-      args: const {'searchTerm': 'salmon'},
-      timeout: const Duration(seconds: 20),
-    ) as List).cast<Map>();
+    final suggestions =
+        (await host.invokeHook('activity', key: 'qp', method: 'suggest', args: const {'searchTerm': 'salmon'}, timeout: const Duration(seconds: 20)) as List)
+            .cast<Map>();
 
     // §5.6's discovery goal: one extension, 49 parties, each reachable by its
     // own name — including the one whose name says nothing about its state.

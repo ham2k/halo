@@ -19,23 +19,13 @@ import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/activities_results_map.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
-const _summitRef = {
-  'type': 'sotaActivation',
-  'ref': 'W2/GC-099',
-  'shortLabel': 'SOTA W2/GC-099',
-  'lat': 41.8867,
-  'lon': -74.9547,
-};
+const _summitRef = {'type': 'sotaActivation', 'ref': 'W2/GC-099', 'shortLabel': 'SOTA W2/GC-099', 'lat': 41.8867, 'lon': -74.9547};
 
-const _parkSuggestion = {
-  'type': 'pota',
-  'ref': 'US-0001',
-  'shortLabel': 'POTA US-0001',
-  'lat': 40.0,
-  'lon': -75.0,
-};
+const _parkSuggestion = {'type': 'pota', 'ref': 'US-0001', 'shortLabel': 'POTA US-0001', 'lat': 40.0, 'lon': -75.0};
 
-Widget _harness(Widget child) => TranslationProvider(child: MaterialApp(home: Scaffold(body: child)));
+Widget _harness(Widget child) => TranslationProvider(
+  child: MaterialApp(home: Scaffold(body: child)),
+);
 
 /// Records what the pane asks the camera to do.
 ///
@@ -47,8 +37,7 @@ class _RecordingCamera extends MapZoomController {
   final moves = <(double, double, double)>[];
 
   @override
-  void moveTo(double latitude, double longitude, {double zoom = MapZoomController.closeUpZoom}) =>
-      moves.add((latitude, longitude, zoom));
+  void moveTo(double latitude, double longitude, {double zoom = MapZoomController.closeUpZoom}) => moves.add((latitude, longitude, zoom));
 }
 
 void main() {
@@ -80,14 +69,18 @@ void main() {
 
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     try {
-      await tester.pumpWidget(_harness(ActivitiesResultsMap(
-        suggestions: const [_parkSuggestion],
-        controls: const [],
-        refs: const [_summitRef],
-        settings: settings,
-        camera: camera,
-        onAdd: (_) {},
-      )));
+      await tester.pumpWidget(
+        _harness(
+          ActivitiesResultsMap(
+            suggestions: const [_parkSuggestion],
+            controls: const [],
+            refs: const [_summitRef],
+            settings: settings,
+            camera: camera,
+            onAdd: (_) {},
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       // Through the backend's own callback rather than a synthetic gesture:
@@ -111,14 +104,11 @@ void main() {
 
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     try {
-      await tester.pumpWidget(_harness(ActivitiesResultsMap(
-        suggestions: const [_parkSuggestion],
-        controls: const [],
-        refs: const [],
-        settings: settings,
-        camera: camera,
-        onAdd: (_) {},
-      )));
+      await tester.pumpWidget(
+        _harness(
+          ActivitiesResultsMap(suggestions: const [_parkSuggestion], controls: const [], refs: const [], settings: settings, camera: camera, onAdd: (_) {}),
+        ),
+      );
       await tester.pumpAndSettle();
 
       // A suggestion's id is its index into the results, not a `ref-` id —

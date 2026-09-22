@@ -30,8 +30,7 @@ void _reportViewUnfocused(WidgetTester tester) => _dispatch(tester, ViewFocusSta
 /// DOM-focuses the view root; the resulting `focusin` comes back as a fresh
 /// `focused` event carrying `forward`. The test binding does not echo it on
 /// its own, so a test that omits this cannot see what the echo costs.
-void _reportViewRefocusedByEngine(WidgetTester tester) =>
-    _dispatch(tester, ViewFocusState.focused, direction: ViewFocusDirection.forward);
+void _reportViewRefocusedByEngine(WidgetTester tester) => _dispatch(tester, ViewFocusState.focused, direction: ViewFocusDirection.forward);
 
 void main() {
   /// Two focusable widgets, with the SECOND one focused — the arrangement the
@@ -43,13 +42,17 @@ void main() {
     final second = FocusNode(debugLabel: 'second');
     addTearDown(first.dispose);
     addTearDown(second.dispose);
-    await tester.pumpWidget(Directionality(
-      textDirection: TextDirection.ltr,
-      child: Column(children: [
-        Focus(focusNode: first, child: const SizedBox(width: 10, height: 10)),
-        Focus(focusNode: second, child: const SizedBox(width: 10, height: 10)),
-      ]),
-    ));
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Column(
+          children: [
+            Focus(focusNode: first, child: const SizedBox(width: 10, height: 10)),
+            Focus(focusNode: second, child: const SizedBox(width: 10, height: 10)),
+          ],
+        ),
+      ),
+    );
     second.requestFocus();
     await tester.pump();
     expect(second.hasFocus, isTrue, reason: 'the later field has to start focused for the test to mean anything');

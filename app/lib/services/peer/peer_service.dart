@@ -91,8 +91,8 @@ class PeerService extends ChangeNotifier {
     this.bleHeadStart = const Duration(seconds: 5),
     this.bleJitter = true,
     this.network = const RealPeerNetwork(),
-  })  : cursors = PeerCursorStore(db),
-        trust = PeerTrustStore(db) {
+  }) : cursors = PeerCursorStore(db),
+       trust = PeerTrustStore(db) {
     // The ONLY thing that turns a local write into a live push. Without it
     // the outbox fills correctly and no peer is ever told, so a QSO logged
     // while both sides are connected does not cross until the link drops
@@ -341,10 +341,7 @@ class PeerService extends ChangeNotifier {
   PeerRuntime? get pendingPairing {
     for (final runtime in _peers.values) {
       final session = runtime.session;
-      if (session != null &&
-          session.state == PeerSessionState.needsPairing &&
-          !session.localTrusts &&
-          !runtime.promptDismissed) {
+      if (session != null && session.state == PeerSessionState.needsPairing && !session.localTrusts && !runtime.promptDismissed) {
         return runtime;
       }
     }
@@ -471,8 +468,10 @@ class PeerService extends ChangeNotifier {
           gateway: bleGateway!,
           localDeviceId: localDeviceId,
           onLink: _onBleLink,
-          connectedDeviceIds: () =>
-              [for (final entry in _peers.entries) if (entry.value.isConnected) entry.key],
+          connectedDeviceIds: () => [
+            for (final entry in _peers.entries)
+              if (entry.value.isConnected) entry.key,
+          ],
           onStatus: (problem) {
             // A late status from a transport being torn down — a reconcile
             // failing mid-dispose, say — must not touch a notifier that may
@@ -685,8 +684,10 @@ class PeerService extends ChangeNotifier {
     // console says what it is doing — see docs/design/error-reporting.md on
     // why ErrorReportingService alone is not enough for an operator or a
     // developer standing in a field.
-    debugPrint('[peer] up as "$localDeviceName" ($localDeviceId), sharing ${_openOperationUuid ?? 'nothing'}, '
-        'listening on ${_linkServer?.port}, beacons on $beaconPort');
+    debugPrint(
+      '[peer] up as "$localDeviceName" ($localDeviceId), sharing ${_openOperationUuid ?? 'nothing'}, '
+      'listening on ${_linkServer?.port}, beacons on $beaconPort',
+    );
     _announce();
     _announceTimer = Timer.periodic(_announceInterval, (_) => _announce());
     _sweepTimer = Timer.periodic(_beaconTimeout, (_) => _sweepStalePeers());
@@ -759,12 +760,7 @@ class PeerService extends ChangeNotifier {
     // listen bind failed stays silent rather than announcing a port it isn't
     // on: a peer dialling that would just time out, repeatedly.
     if (port == null) return;
-    _beaconSocket?.announce(PeerBeacon(
-      deviceId: localDeviceId,
-      deviceName: localDeviceName,
-      operationUuid: _openOperationUuid,
-      port: port,
-    ));
+    _beaconSocket?.announce(PeerBeacon(deviceId: localDeviceId, deviceName: localDeviceName, operationUuid: _openOperationUuid, port: port));
   }
 
   void _onBeacon(PeerBeacon beacon) {
@@ -773,8 +769,10 @@ class PeerService extends ChangeNotifier {
 
     final existing = _peers[beacon.deviceId];
     if (existing == null) {
-      debugPrint('[peer] discovered "${beacon.deviceName}" (${beacon.deviceId}) '
-          'at ${beacon.address}:${beacon.port}');
+      debugPrint(
+        '[peer] discovered "${beacon.deviceName}" (${beacon.deviceId}) '
+        'at ${beacon.address}:${beacon.port}',
+      );
       final runtime = PeerRuntime(beacon);
       _peers[beacon.deviceId] = runtime;
       notifyListeners();
@@ -915,20 +913,17 @@ class PeerService extends ChangeNotifier {
   void _onSessionChanged(PeerSession session) {
     final peer = session.peer;
     if (peer != null) _unidentifiedSessions.remove(session);
-    debugPrint('[peer] ${peer?.deviceId ?? 'unidentified'} → ${session.state.name}'
-        '${session.refusedReason == null ? '' : ' (${session.refusedReason})'}');
+    debugPrint(
+      '[peer] ${peer?.deviceId ?? 'unidentified'} → ${session.state.name}'
+      '${session.refusedReason == null ? '' : ' (${session.refusedReason})'}',
+    );
     if (peer != null) {
       // File an inbound session under its peer once it says who it is. A
       // runtime may not exist yet if this device heard the link before the
       // beacon — the peer is real either way.
       final runtime = _peers.putIfAbsent(
         peer.deviceId,
-        () => PeerRuntime(PeerBeacon(
-          deviceId: peer.deviceId,
-          deviceName: peer.deviceName,
-          operationUuid: peer.operationUuid,
-          port: 0,
-        )),
+        () => PeerRuntime(PeerBeacon(deviceId: peer.deviceId, deviceName: peer.deviceName, operationUuid: peer.operationUuid, port: 0)),
       );
       if (runtime.session == null) {
         runtime.session = session;

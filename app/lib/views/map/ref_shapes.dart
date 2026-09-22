@@ -116,12 +116,11 @@ List<MapShapeData> refShapes(
   required List<Map<String, dynamic>> controls,
   required Color fallbackColor,
   required String Function(Map<String, dynamic> ref) markerIdFor,
-}) =>
-    [
-      for (final ref in refs)
-        ...?loader.shapeFor(
-          ref,
-          id: markerIdFor(ref),
-          color: colorForRefType(controls, ref['type'] as String?, code: refCodeOf(ref)) ?? fallbackColor,
-        ),
-    ];
+}) => [
+  for (final ref in refs)
+    ...?loader.shapeFor(
+      ref,
+      id: markerIdFor(ref),
+      color: colorForRefType(controls, ref['type'] as String?, code: refCodeOf(ref)) ?? fallbackColor,
+    ),
+];

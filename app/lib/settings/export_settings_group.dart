@@ -25,8 +25,7 @@ class ExportsSettingsGroup extends SettingsGroup {
   @override
   Listenable get listenable => Listenable.merge([settings, if (extensions != null) extensions!.runtimeGeneration]);
 
-  Future<List<Map<String, dynamic>>> _types() async =>
-      await extensions?.exportTypeSettings(settings.exportGlobalSettings, settings.exportTypeOverrides) ?? [];
+  Future<List<Map<String, dynamic>>> _types() async => await extensions?.exportTypeSettings(settings.exportGlobalSettings, settings.exportTypeOverrides) ?? [];
 
   String _label(Map<String, dynamic> type) {
     if (type['exportType'] == 'default') return t.exportSettings.defaults;
@@ -40,23 +39,28 @@ class ExportsSettingsGroup extends SettingsGroup {
     final types = await _types();
     return [
       {
-        'type': 'field', 'fieldType': 'checkbox', 'key': 'useCompactFileNames',
-        'label': t.operation.export.compactFileNames.title, 'icon': 'file-arrow-left-right-outline',
-        'description': settings.useCompactFileNames
-            ? t.exportSettings.compactFileNamesDescriptionOn : t.exportSettings.compactFileNamesDescriptionOff,
-        'value': settings.useCompactFileNames, 'target': 'exports',
+        'type': 'field',
+        'fieldType': 'checkbox',
+        'key': 'useCompactFileNames',
+        'label': t.operation.export.compactFileNames.title,
+        'icon': 'file-arrow-left-right-outline',
+        'description': settings.useCompactFileNames ? t.exportSettings.compactFileNamesDescriptionOn : t.exportSettings.compactFileNamesDescriptionOff,
+        'value': settings.useCompactFileNames,
+        'target': 'exports',
       },
-      if (types.isEmpty) {
-        'type': 'field', 'fieldType': 'checkbox', 'key': 'includePrivateData',
-        'label': t.operation.export.includePrivateData.title, 'icon': 'account-lock-outline',
-        'description': settings.includePrivateData
-            ? t.exportSettings.includePrivateDataDescriptionOn : t.exportSettings.includePrivateDataDescriptionOff,
-        'value': settings.includePrivateData, 'target': 'exports',
-      },
-      for (final type in types) {
-        'type': 'action', 'style': 'row', 'key': type['exportType'],
-        'label': _label(type), 'icon': 'file-cog-outline', 'target': 'exports',
-      },
+      if (types.isEmpty)
+        {
+          'type': 'field',
+          'fieldType': 'checkbox',
+          'key': 'includePrivateData',
+          'label': t.operation.export.includePrivateData.title,
+          'icon': 'account-lock-outline',
+          'description': settings.includePrivateData ? t.exportSettings.includePrivateDataDescriptionOn : t.exportSettings.includePrivateDataDescriptionOff,
+          'value': settings.includePrivateData,
+          'target': 'exports',
+        },
+      for (final type in types)
+        {'type': 'action', 'style': 'row', 'key': type['exportType'], 'label': _label(type), 'icon': 'file-cog-outline', 'target': 'exports'},
     ];
   }
 
@@ -80,18 +84,25 @@ class ExportsSettingsGroup extends SettingsGroup {
     final sample = Map<String, dynamic>.from(definition['templateSample'] as Map? ?? {});
     final sampleLog = {
       'activity': id == 'default' || id == 'adif' ? '' : definition['label'],
-      'exportType': id, 'format': format,
+      'exportType': id,
+      'format': format,
       'extension': {'adif': 'adi', 'cabrillo': 'log', 'reg1test': 'edi'}[format] ?? 'txt',
-      'ref': '', 'refName': '', 'modifier': id == 'adif' ? 'Full' : '',
+      'ref': '',
+      'refName': '',
+      'modifier': id == 'adif' ? 'Full' : '',
       ...Map<String, dynamic>.from(sample['log'] as Map? ?? {}),
     };
 
     Map<String, dynamic> field(String key, String label, {bool template = false, String? icon, String? description}) => {
-      'type': 'field', 'key': '$id::$key', 'label': label,
+      'type': 'field',
+      'key': '$id::$key',
+      'label': label,
       'fieldType': template ? 'textTemplate' : 'checkbox',
       'icon': icon ?? (template ? 'file-code-outline' : 'cog-outline'),
       'description': ?description,
-      'value': values[key], 'defaultValue': defaults[key], 'target': 'exports',
+      'value': values[key],
+      'defaultValue': defaults[key],
+      'target': 'exports',
       if (key == 'includeLookupData') 'disabled': values['includePrivateData'] != true,
       if (template) ...{
         'templateContext': key.startsWith('adif') ? 'adif' : 'export',
@@ -99,8 +110,12 @@ class ExportsSettingsGroup extends SettingsGroup {
         'templateSample': {
           ...sample,
           'operation': {
-            'refs': <dynamic>[], ...Map<String, dynamic>.from(sample['operation'] as Map? ?? {}),
-            if (key.startsWith('reference')) 'refs': [{'type': 'potaActivation', 'ref': 'US-1234'}],
+            'refs': <dynamic>[],
+            ...Map<String, dynamic>.from(sample['operation'] as Map? ?? {}),
+            if (key.startsWith('reference'))
+              'refs': [
+                {'type': 'potaActivation', 'ref': 'US-1234'},
+              ],
           },
           'log': {
             ...sampleLog,
@@ -111,38 +126,47 @@ class ExportsSettingsGroup extends SettingsGroup {
       },
     };
     return [
-        {'type': 'markdown', 'text': id == 'default' ? labels.defaultsDescription : labels.shared},
-        if (definition['format'] == 'adif') ...[
-          field('includePrivateData', t.operation.export.includePrivateData.title,
-            icon: 'account-lock-outline', description: values['includePrivateData'] == true
-                ? labels.includePrivateDataDescriptionOn : labels.includePrivateDataDescriptionOff),
-          field('includeLookupData', labels.includeLookupData,
-            icon: 'database-search-outline', description: values['includeLookupData'] == true
-                ? labels.includeLookupDataDescriptionOn : labels.includeLookupDataDescriptionOff),
-        ],
-        if (id != 'default') field('customTemplates', labels.customTemplates,
-          description: values['customTemplates'] == true
-              ? labels.customTemplatesDescriptionOn : labels.customTemplatesDescriptionOff),
-        if (id == 'default') ...[
-          {'type': 'header', 'style': 'section', 'title': labels.referenceActivities},
-          field('referenceFilenameTemplate', labels.filenameTemplate, template: true),
-          field('referenceCompactFilenameTemplate', labels.compactFilenameTemplate, template: true),
-          field('referenceTitleTemplate', labels.titleTemplate, template: true),
-          {'type': 'header', 'style': 'section', 'title': labels.otherActivities},
-          field('otherFilenameTemplate', labels.filenameTemplate, template: true),
-          field('otherCompactFilenameTemplate', labels.compactFilenameTemplate, template: true),
-          field('otherTitleTemplate', labels.titleTemplate, template: true),
-          {'type': 'header', 'style': 'section', 'title': labels.adifFields},
-        ] else ...[
-          field('filenameTemplate', labels.filenameTemplate, template: true),
-          field('compactFilenameTemplate', labels.compactFilenameTemplate, template: true),
-          if (format == 'adif') field('titleTemplate', labels.titleTemplate, template: true),
-        ],
-        if (format == 'adif') ...[
-          field('adifNotesTemplate', labels.adifNotesTemplate, template: true),
-          field('adifCommentTemplate', labels.adifCommentTemplate, template: true),
-          field('adifQslMessageTemplate', labels.adifQslMessageTemplate, template: true),
-        ],
+      {'type': 'markdown', 'text': id == 'default' ? labels.defaultsDescription : labels.shared},
+      if (definition['format'] == 'adif') ...[
+        field(
+          'includePrivateData',
+          t.operation.export.includePrivateData.title,
+          icon: 'account-lock-outline',
+          description: values['includePrivateData'] == true ? labels.includePrivateDataDescriptionOn : labels.includePrivateDataDescriptionOff,
+        ),
+        field(
+          'includeLookupData',
+          labels.includeLookupData,
+          icon: 'database-search-outline',
+          description: values['includeLookupData'] == true ? labels.includeLookupDataDescriptionOn : labels.includeLookupDataDescriptionOff,
+        ),
+      ],
+      if (id != 'default')
+        field(
+          'customTemplates',
+          labels.customTemplates,
+          description: values['customTemplates'] == true ? labels.customTemplatesDescriptionOn : labels.customTemplatesDescriptionOff,
+        ),
+      if (id == 'default') ...[
+        {'type': 'header', 'style': 'section', 'title': labels.referenceActivities},
+        field('referenceFilenameTemplate', labels.filenameTemplate, template: true),
+        field('referenceCompactFilenameTemplate', labels.compactFilenameTemplate, template: true),
+        field('referenceTitleTemplate', labels.titleTemplate, template: true),
+        {'type': 'header', 'style': 'section', 'title': labels.otherActivities},
+        field('otherFilenameTemplate', labels.filenameTemplate, template: true),
+        field('otherCompactFilenameTemplate', labels.compactFilenameTemplate, template: true),
+        field('otherTitleTemplate', labels.titleTemplate, template: true),
+        {'type': 'header', 'style': 'section', 'title': labels.adifFields},
+      ] else ...[
+        field('filenameTemplate', labels.filenameTemplate, template: true),
+        field('compactFilenameTemplate', labels.compactFilenameTemplate, template: true),
+        if (format == 'adif') field('titleTemplate', labels.titleTemplate, template: true),
+      ],
+      if (format == 'adif') ...[
+        field('adifNotesTemplate', labels.adifNotesTemplate, template: true),
+        field('adifCommentTemplate', labels.adifCommentTemplate, template: true),
+        field('adifQslMessageTemplate', labels.adifQslMessageTemplate, template: true),
+      ],
     ];
   }
 
@@ -189,7 +213,9 @@ class _ExportTypeDialogState extends State<_ExportTypeDialog> {
 
   void _reload() {
     final elements = _loadElements();
-    setState(() { _elements = elements; });
+    setState(() {
+      _elements = elements;
+    });
   }
 
   @override
@@ -209,22 +235,28 @@ class _ExportTypeDialogState extends State<_ExportTypeDialog> {
         if (snapshot.connectionState == ConnectionState.done && snapshot.data == null) {
           return Padding(
             padding: const EdgeInsets.all(Space.lg),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text(context.t.exportSettings.loadFailed),
-              TextButton(onPressed: _reload, child: Text(context.t.exportSettings.retry)),
-            ]),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(context.t.exportSettings.loadFailed),
+                TextButton(onPressed: _reload, child: Text(context.t.exportSettings.retry)),
+              ],
+            ),
           );
         }
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         return FormRenderer(
           formDefinition: {'elements': snapshot.data!},
           initialState: const {},
-          settingsList: true, showActions: false, showTitle: false,
+          settingsList: true,
+          showActions: false,
+          showTitle: false,
           onChange: (key, value, state) async {
             await widget.group.commit(key, value);
             return null;
           },
-          onSubmit: (_) {}, onCancel: () {},
+          onSubmit: (_) {},
+          onCancel: () {},
         );
       },
     ),

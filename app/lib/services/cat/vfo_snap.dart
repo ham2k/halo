@@ -39,11 +39,7 @@ class VfoSnapTuning {
   /// someone arriving.
   final double minSpeedKHzPerSec;
 
-  const VfoSnapTuning({
-    this.longMoveKHz = 2.0,
-    this.minMoveKHz = 0.2,
-    this.minSpeedKHzPerSec = 0.5,
-  });
+  const VfoSnapTuning({this.longMoveKHz = 2.0, this.minMoveKHz = 0.2, this.minSpeedKHzPerSec = 0.5});
 }
 
 /// Tracks one movement of the VFO and decides where it should settle.
@@ -129,9 +125,7 @@ class VfoSnapper {
       // radio, always. There is no interval inside the movement to measure
       // over, and an unmeasurable speed must not read as a slow one, or the
       // floor below would block every snap those radios could ever earn.
-      speedKHzPerSec: startAt == null || _lastAt!.difference(startAt) <= Duration.zero
-          ? null
-          : _pathKHz / (_lastAt!.difference(startAt).inMicroseconds / 1e6),
+      speedKHzPerSec: startAt == null || _lastAt!.difference(startAt) <= Duration.zero ? null : _pathKHz / (_lastAt!.difference(startAt).inMicroseconds / 1e6),
       tuning: tuning,
     );
     if (grid == null) return null;
@@ -160,11 +154,7 @@ class VfoSnapper {
 /// The grid a movement of [distanceKHz] earns, or null to leave the VFO
 /// alone. [speedKHzPerSec] is null when the burst was a single reading and no
 /// speed could be measured.
-double? _gridFor({
-  required double distanceKHz,
-  required double? speedKHzPerSec,
-  required VfoSnapTuning tuning,
-}) {
+double? _gridFor({required double distanceKHz, required double? speedKHzPerSec, required VfoSnapTuning tuning}) {
   // A long haul is a search for a clear slot, and it stays one however it
   // ended — checked BEFORE the speed floor, so easing in over the last turn
   // of the knob can't demote it to a fine adjustment.

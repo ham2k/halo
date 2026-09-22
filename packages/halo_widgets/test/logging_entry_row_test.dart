@@ -31,8 +31,13 @@ class _Harness {
   /// The contest exchange fields in the row, by key.
   List<String> exchangeKeys = const [];
   List<Map<String, dynamic>> get _exchangeControls => [
-        for (final key in exchangeKeys) {'key': key, 'label': key.toUpperCase(), 'input': {'kind': 'text'}},
-      ];
+    for (final key in exchangeKeys)
+      {
+        'key': key,
+        'label': key.toUpperCase(),
+        'input': {'kind': 'text'},
+      },
+  ];
 
   /// The row walks `textControls` every time it lays out, so a generator
   /// counts its layouts without reaching into it.
@@ -57,14 +62,7 @@ class _Harness {
   );
 
   late final exchange = ExchangeFieldsModel(
-    config: () => (
-      textControls: () => _exchangeControls,
-      editingQso: null,
-      operationUuid: 'op',
-      serialNumbers: null,
-      sequences: null,
-      call: '',
-    ),
+    config: () => (textControls: () => _exchangeControls, editingQso: null, operationUuid: 'op', serialNumbers: null, sequences: null, call: ''),
     draftQsoData: () => const {},
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
     onFocusChanged: (node, controller) {},
@@ -73,18 +71,11 @@ class _Harness {
   late final virtualSpace = VirtualSpaceFormatter(() {});
 
   List<RstFieldSlot> get rstPair => [
-        (focus: sent.focus, controller: sent.controller, label: 'Sent'),
-        (focus: rcvd.focus, controller: rcvd.controller, label: 'Rcvd'),
-      ];
+    (focus: sent.focus, controller: sent.controller, label: 'Sent'),
+    (focus: rcvd.focus, controller: rcvd.controller, label: 'Rcvd'),
+  ];
 
-  Widget host({
-    double width = 780,
-    bool leftieMode = false,
-    List<RstFieldSlot>? rst,
-    bool showState = true,
-    bool showGrid = true,
-    Widget? eventFields,
-  }) =>
+  Widget host({double width = 780, bool leftieMode = false, List<RstFieldSlot>? rst, bool showState = true, bool showGrid = true, Widget? eventFields}) =>
       MaterialApp(
         home: Scaffold(
           body: Center(
@@ -129,19 +120,24 @@ class _Harness {
   }
 }
 
-Finder _fieldFor(TextEditingController controller) =>
-    find.byWidgetPredicate((w) => w is TextField && w.controller == controller);
+Finder _fieldFor(TextEditingController controller) => find.byWidgetPredicate((w) => w is TextField && w.controller == controller);
 
 void main() {
   testWidgets('the log button closes the row, and opens it in leftie mode', (tester) async {
     final h = _Harness();
     await tester.pumpWidget(h.host());
-    expect(tester.getTopLeft(find.byKey(_submitKey)).dx, greaterThan(tester.getTopRight(_fieldFor(h.grid.controller)).dx),
-        reason: 'the button sits after the last field');
+    expect(
+      tester.getTopLeft(find.byKey(_submitKey)).dx,
+      greaterThan(tester.getTopRight(_fieldFor(h.grid.controller)).dx),
+      reason: 'the button sits after the last field',
+    );
 
     await tester.pumpWidget(h.host(leftieMode: true));
-    expect(tester.getTopRight(find.byKey(_submitKey)).dx, lessThan(tester.getTopLeft(_fieldFor(h.call.controller)).dx),
-        reason: 'a left-handed operator has it before the callsign');
+    expect(
+      tester.getTopRight(find.byKey(_submitKey)).dx,
+      lessThan(tester.getTopLeft(_fieldFor(h.call.controller)).dx),
+      reason: 'a left-handed operator has it before the callsign',
+    );
   });
 
   testWidgets('the fields follow the callsign in the order the panel hands them', (tester) async {
@@ -155,16 +151,14 @@ void main() {
     expect(tester.getTopLeft(_fieldFor(h.rcvd.controller)).dx, lessThan(tester.getTopLeft(_fieldFor(h.sent.controller)).dx));
   });
 
-  testWidgets('a squeezed row hands the focused field its width back on its own; a roomy one stays put',
-      (tester) async {
+  testWidgets('a squeezed row hands the focused field its width back on its own; a roomy one stays put', (tester) async {
     final h = _Harness()..exchangeKeys = const ['serial'];
     // Squeezed — five trailing fields want 332px of the 300 — yet wide enough
     // for any ONE of them at its full minimum beside the others at their
     // floors, so the row never overflows when the focused one takes it.
     await tester.pumpWidget(h.host(width: 300));
     double width(TextEditingController c) => tester.getSize(_fieldFor(c)).width;
-    expect(width(h.sent.controller), lessThan(fixedFieldMinWidth),
-        reason: 'five trailing fields cannot each get their minimum in 300px');
+    expect(width(h.sent.controller), lessThan(fixedFieldMinWidth), reason: 'five trailing fields cannot each get their minimum in 300px');
 
     // The trap: the widening only happens if the focus change rebuilds the
     // row, and nothing outside it is told about the focus change — for
@@ -172,8 +166,7 @@ void main() {
     h.sent.focus.requestFocus();
     await tester.pumpAndSettle();
     expect(width(h.sent.controller), fixedFieldMinWidth);
-    expect(width(h.rcvd.controller), lessThan(width(h.sent.controller)),
-        reason: 'the others give up what the focused one takes');
+    expect(width(h.rcvd.controller), lessThan(width(h.sent.controller)), reason: 'the others give up what the focused one takes');
     h.grid.focus.requestFocus();
     await tester.pumpAndSettle();
     expect(width(h.grid.controller), fixedFieldMinWidth);

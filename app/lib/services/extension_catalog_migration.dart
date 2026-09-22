@@ -248,10 +248,7 @@ Future<bool> _refuse(ExtensionService service, SettingsService settings, String 
   // asset and is pre-loaded from the catalog — and the list puts the asset
   // first. Taking that one records the app's own version, which refuses the
   // built-in for good and leaves the bundle that actually failed in the set.
-  final version = service.availableExtensions
-      .where((info) => info.key == key && info.isInstalled)
-      .map((info) => info.version)
-      .firstOrNull;
+  final version = service.availableExtensions.where((info) => info.key == key && info.isInstalled).map((info) => info.version).firstOrNull;
   // Nothing to key the refusal to, so nothing that a later version could
   // lift: reverting the whole upgrade is the safer answer.
   if (version == null) {
@@ -265,8 +262,7 @@ Future<bool> _refuse(ExtensionService service, SettingsService settings, String 
   // after at most two attempts per install. The rate here is what says
   // whether one download went bad or the catalog is serving something this
   // app cannot run to everybody.
-  ErrorReportingService.report(
-      BundleWouldNotEvaluate(key, version), StackTrace.current, context: 'extensions:refuse');
+  ErrorReportingService.report(BundleWouldNotEvaluate(key, version), StackTrace.current, context: 'extensions:refuse');
   refused[key] = version;
   await settings.setExtensionRefused(refused);
   return true;
@@ -279,10 +275,8 @@ Future<bool> _refuse(ExtensionService service, SettingsService settings, String 
 /// Switched on NOW, not whenever the adoption last recorded them: one
 /// switched off since was the operator's own choice, and naming it as lost
 /// tells them something the upgrade did not do.
-List<String> unservedBuiltInNames(ExtensionService service) => _names(service, (info) =>
-    info.source == ExtensionSource.asset &&
-    kBuiltInsWithoutTwin.contains(info.key) &&
-    service.isExtensionEnabled(info));
+List<String> unservedBuiltInNames(ExtensionService service) =>
+    _names(service, (info) => info.source == ExtensionSource.asset && kBuiltInsWithoutTwin.contains(info.key) && service.isExtensionEnabled(info));
 
 /// The names of the extensions that arrived and would not run.
 ///
@@ -299,11 +293,9 @@ List<String> unservedBuiltInNames(ExtensionService service) => _names(service, (
 /// and the extension the operator knows by that name is running. Naming it
 /// as one that "would not run" tells them something false twice over.
 List<String> refusedExtensionNames(ExtensionService service) => _names(
-    service,
-    (info) =>
-        service.isExtensionRefused(info) &&
-        service.isExtensionAvailable(info) &&
-        (service.settings?.extensionOverrides[info.key] ?? info.enabledByDefault));
+  service,
+  (info) => service.isExtensionRefused(info) && service.isExtensionAvailable(info) && (service.settings?.extensionOverrides[info.key] ?? info.enabledByDefault),
+);
 
 /// A set, because a key can appear twice — `ham2k-lookup` ships as an asset
 /// and is pre-loaded — and naming it twice reads as two extensions lost.

@@ -84,8 +84,7 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
 
   /// Its own method so the global translations are in scope: `_offer` binds a
   /// local `t` to the panel's strings, which shadows them for the whole body.
-  void _sayCatalogUnreachable() => widget.services.statusBar
-      .setMessage(key: 'extensions:upgradeOffer', text: t.extensionsPanel.upgradeUnreachable);
+  void _sayCatalogUnreachable() => widget.services.statusBar.setMessage(key: 'extensions:upgradeOffer', text: t.extensionsPanel.upgradeUnreachable);
 
   Future<void> _offer({required bool operatorAsked}) async {
     final settings = widget.services.settings;
@@ -130,16 +129,15 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     // A launch with fresh release notes paints them over this dialog. Left
     // dismissible, an Esc aimed at the notes would pop the offer unseen as
     // "Later"; the operator answers it on the buttons, once they can see it.
-    final accepted = await showDialog<bool>(
+    final accepted =
+        await showDialog<bool>(
           context: navigator,
           barrierDismissible: false,
           builder: (context) => HaloDialog(
             title: Text(t.upgradeTitle),
             content: Text(t.upgradeBody),
             cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(t.upgradeLater)),
-            actions: [
-              FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.upgradeAction)),
-            ],
+            actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.upgradeAction))],
           ),
         ) ??
         false;
@@ -173,18 +171,20 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
         TextSpan(text: ' ${t.upgradeDoneRefusedHint}'),
       ],
     ];
-    final doneBody = TextSpan(children: [
-      TextSpan(text: t.upgradeDoneBody),
-      if (unserved.isNotEmpty) ...[
-        const TextSpan(text: '\n\n'),
-        TextSpan(
-          text: t.upgradeDoneUnserved(names: unserved.join(', ')),
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        TextSpan(text: ' ${t.upgradeDoneUnservedHint}'),
+    final doneBody = TextSpan(
+      children: [
+        TextSpan(text: t.upgradeDoneBody),
+        if (unserved.isNotEmpty) ...[
+          const TextSpan(text: '\n\n'),
+          TextSpan(
+            text: t.upgradeDoneUnserved(names: unserved.join(', ')),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          TextSpan(text: ' ${t.upgradeDoneUnservedHint}'),
+        ],
+        ...refusedSpans,
       ],
-      ...refusedSpans,
-    ]);
+    );
     final (title, body) = switch (outcome) {
       UpgradeOutcome.done => (t.upgradeDoneTitle, doneBody.toPlainText()),
       // Nothing failed and nothing changed: the boot's own catch-up held the
@@ -209,7 +209,14 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     // One text for both places it can be shown, so a notice never says less
     // than the dialog it stands in for — the names of what stayed out are
     // the one line the operator has to carry away.
-    final shown = done ? doneBody : TextSpan(children: [TextSpan(text: body), ...refusedSpans]);
+    final shown = done
+        ? doneBody
+        : TextSpan(
+            children: [
+              TextSpan(text: body),
+              ...refusedSpans,
+            ],
+          );
     if (!mounted || !navigator.mounted) {
       // The screen the dialog would have used is gone — a rebuild, a hot
       // reload, the operator navigating — and they agreed to an operation

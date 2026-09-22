@@ -77,10 +77,15 @@ void main() {
     addTearDown(() => FlutterError.onError = priorOnError);
 
     Future<void> pumpTree({required bool ticking}) => tester.pumpWidget(
-          TranslationProvider(
-            child: MaterialApp(home: TickerMode(enabled: ticking, child: HomeView(services: services))),
+      TranslationProvider(
+        child: MaterialApp(
+          home: TickerMode(
+            enabled: ticking,
+            child: HomeView(services: services),
           ),
-        );
+        ),
+      ),
+    );
 
     await pumpTree(ticking: true);
     await tester.pumpAndSettle();
@@ -113,7 +118,8 @@ void main() {
     expect(
       tester.getSize(_fab).width,
       midWidth,
-      reason: 'with the ticker muted the transition itself cannot progress — without a deadline this is where the '
+      reason:
+          'with the ticker muted the transition itself cannot progress — without a deadline this is where the '
           'FAB stays, stuck at a partial width with its label half-faded',
     );
 
@@ -124,14 +130,16 @@ void main() {
     expect(
       tester.getSize(_fab).width,
       _collapsedWidth,
-      reason: 'once the transition\'s wall-clock time is up the FAB must be at its resting width regardless of what '
+      reason:
+          'once the transition\'s wall-clock time is up the FAB must be at its resting width regardless of what '
           'the animation managed to do',
     );
 
     expect(
       swallowedOverflows,
       greaterThan(0),
-      reason: 'the collapse is expected to overflow the FAB\'s Row today; when that gets fixed, delete the '
+      reason:
+          'the collapse is expected to overflow the FAB\'s Row today; when that gets fixed, delete the '
           'FlutterError.onError workaround above along with this assertion',
     );
 
@@ -149,7 +157,8 @@ void main() {
     expect(
       _rotationsAboveFab(),
       0,
-      reason: 'the nudge holds off at first — someone still taking the screen in has not reached the point of '
+      reason:
+          'the nudge holds off at first — someone still taking the screen in has not reached the point of '
           'needing to be pointed at the button',
     );
 
@@ -157,7 +166,8 @@ void main() {
     expect(
       _rotationsAboveFab(),
       greaterThan(0),
-      reason: 'an untouched screen past the delay is exactly who the nudge is for, and this FAB is under the '
+      reason:
+          'an untouched screen past the delay is exactly who the nudge is for, and this FAB is under the '
           'onboarding threshold',
     );
 
@@ -167,7 +177,8 @@ void main() {
     expect(
       _rotationsAboveFab(),
       0,
-      reason: 'after the bursts\' time is up the FAB must not be rotated by anything — a wiggle whose ticker died '
+      reason:
+          'after the bursts\' time is up the FAB must not be rotated by anything — a wiggle whose ticker died '
           'mid-swing would otherwise leave it permanently tilted',
     );
 
@@ -195,7 +206,11 @@ void main() {
     };
     addTearDown(() => FlutterError.onError = priorOnError);
 
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: HomeView(services: services)),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // Scroll past the threshold: the FAB collapses, arming its deadline.
@@ -240,11 +255,7 @@ void main() {
     await press.up();
     await tester.pump();
 
-    expect(
-      _rotationsAboveFab(),
-      0,
-      reason: 'precondition: the nudge must have settled during that press, or this proves nothing',
-    );
+    expect(_rotationsAboveFab(), 0, reason: 'precondition: the nudge must have settled during that press, or this proves nothing');
     expect(
       settings.onboardingShownCount(OnboardingFlows.newOperation),
       1,
@@ -267,7 +278,8 @@ void main() {
     expect(
       _rotationsAboveFab(),
       0,
-      reason: 'the user engaged on their own before the nudge fired, so it is dropped for this visit rather than '
+      reason:
+          'the user engaged on their own before the nudge fired, so it is dropped for this visit rather than '
           'interrupting them once they are already busy',
     );
 

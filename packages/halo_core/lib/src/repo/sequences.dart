@@ -52,13 +52,7 @@ class SequenceDescriptor {
   /// First number this sequence issues.
   final int start;
 
-  const SequenceDescriptor({
-    required this.refType,
-    required this.field,
-    required this.key,
-    this.scope = const [],
-    this.start = 1,
-  });
+  const SequenceDescriptor({required this.refType, required this.field, required this.key, this.scope = const [], this.start = 1});
 
   /// Reads a `kind: 'serial'` logging control's input descriptor. Returns null
   /// if it isn't one, or is missing anything allocation needs — a malformed
@@ -77,7 +71,8 @@ class SequenceDescriptor {
       field: field,
       key: '$extensionKey/$key',
       scope: [
-        for (final value in (sequence['scope'] as List?) ?? const []) if (value is String) value,
+        for (final value in (sequence['scope'] as List?) ?? const [])
+          if (value is String) value,
       ],
       start: (sequence['start'] as num?)?.toInt() ?? 1,
     );
@@ -295,7 +290,9 @@ class SequencesRepository {
 
   /// The operator's own starting point ("I logged the first hour on paper").
   Future<void> setStart(String operationUuid, SequenceRequest request, int start) async {
-    await db.into(db.sequences).insertOnConflictUpdate(
+    await db
+        .into(db.sequences)
+        .insertOnConflictUpdate(
           SequencesCompanion(
             operation: Value(operationUuid),
             label: Value(request.label),
@@ -313,7 +310,9 @@ class SequencesRepository {
   }
 
   Future<void> _write(String operationUuid, SequenceRequest request, int nextValue) async {
-    await db.into(db.sequences).insertOnConflictUpdate(
+    await db
+        .into(db.sequences)
+        .insertOnConflictUpdate(
           SequencesCompanion(
             operation: Value(operationUuid),
             label: Value(request.label),
@@ -325,9 +324,7 @@ class SequencesRepository {
   }
 
   Future<SequenceRow?> _stored(String operationUuid, String label) async {
-    return (db.select(db.sequences)
-          ..where((s) => s.operation.equals(operationUuid) & s.label.equals(label)))
-        .getSingleOrNull();
+    return (db.select(db.sequences)..where((s) => s.operation.equals(operationUuid) & s.label.equals(label))).getSingleOrNull();
   }
 
   /// `max(serial already on this operation's QSOs)`, or null if none.
@@ -356,12 +353,7 @@ class SequencesRepository {
     int? highest;
     final issued = <int>{};
     for (final row in rows) {
-      final qso = Qso(
-        uuid: row.uuid,
-        operationUuid: row.operation,
-        data: jsonDecode(row.data) as Map<String, dynamic>,
-        deleted: row.deleted,
-      );
+      final qso = Qso(uuid: row.uuid, operationUuid: row.operation, data: jsonDecode(row.data) as Map<String, dynamic>, deleted: row.deleted);
       if (qso.isEvent || !request.includes(qso)) continue;
       final value = request.serialOn(qso);
       if (value == null) continue;

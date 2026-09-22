@@ -90,8 +90,7 @@ Map<String, dynamic>? withoutWorkedBefore(Map<dynamic, dynamic> verdict) {
 /// A verdict's `notices`/`alerts`, defensively: a scorer that puts something
 /// other than a list of strings there must not take an operation's whole
 /// rescore down with a cast error.
-List<String> _stringsIn(Object? value) =>
-    value is List ? value.whereType<String>().toList() : const [];
+List<String> _stringsIn(Object? value) => value is List ? value.whereType<String>().toList() : const [];
 
 /// The scoring hook keys relevant to an operation, paired with the ref that
 /// selected each. An `'always'` scorer maps to a null ref and is flagged
@@ -140,10 +139,7 @@ List<Scorer> scorersFor(
 }) {
   final refs = [
     for (final segment in segmentRefs ?? const <List<Map<String, dynamic>>>[]) ...segment,
-    if (segmentRefs == null)
-      ...((operation['refs'] as List?) ?? const [])
-          .whereType<Map<dynamic, dynamic>>()
-          .map((r) => r.cast<String, dynamic>()),
+    if (segmentRefs == null) ...((operation['refs'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()),
   ];
 
   final selected = <Scorer>[];
@@ -169,8 +165,7 @@ List<Scorer> scorersFor(
     // A scorer the operation names is already selected, with the ref that named
     // it — this only reaches the ones it doesn't, so a hunt-only selection can
     // never displace an activation's own ref.
-    final huntingTypes =
-        ((scope is Map ? scope['huntingRefTypes'] : null) as List?)?.whereType<String>() ?? const <String>[];
+    final huntingTypes = ((scope is Map ? scope['huntingRefTypes'] : null) as List?)?.whereType<String>() ?? const <String>[];
     if (seen.isEmpty && huntingTypes.any(alsoRefTypes.contains)) {
       selected.add((key: entry.key, ref: null, fallback: false));
     }
@@ -181,7 +176,7 @@ List<Scorer> scorersFor(
 /// The reference types on one QSO-shaped map — a candidate being scored, which
 /// is not a logged QSO yet (the callsign being typed, a spot).
 Set<String> refTypesOf(Map<String, dynamic> qso) => {
-      for (final ref in (qso['refs'] as List?) ?? const [])
-        if (ref is Map)
-          if (ref['type'] case final String type) type,
-    };
+  for (final ref in (qso['refs'] as List?) ?? const [])
+    if (ref is Map)
+      if (ref['type'] case final String type) type,
+};

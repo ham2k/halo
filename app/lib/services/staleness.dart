@@ -39,12 +39,12 @@ enum StalenessTier {
 
 extension StalenessSignalTier on StalenessSignal {
   StalenessTier get tier => switch (this) {
-        StalenessSignal.codePushFloor => StalenessTier.nag,
-        StalenessSignal.expiredBuild => StalenessTier.nag,
-        // Stays a notice, as it ships today. A newer binary existing is not
-        // worth interrupting a contact for.
-        StalenessSignal.newerRelease => StalenessTier.notice,
-      };
+    StalenessSignal.codePushFloor => StalenessTier.nag,
+    StalenessSignal.expiredBuild => StalenessTier.nag,
+    // Stays a notice, as it ships today. A newer binary existing is not
+    // worth interrupting a contact for.
+    StalenessSignal.newerRelease => StalenessTier.notice,
+  };
 }
 
 /// Whether this install sits below [floor] on the code-push plane.
@@ -58,12 +58,7 @@ extension StalenessSignalTier on StalenessSignal {
 ///
 /// [updaterAvailable] false means there is no code-push plane at all (web,
 /// debug, a local `flutter build`), so a floor cannot apply.
-bool isBelowCodePushFloor({
-  required bool updaterAvailable,
-  required bool resolved,
-  required int? codePush,
-  required int? floor,
-}) {
+bool isBelowCodePushFloor({required bool updaterAvailable, required bool resolved, required int? codePush, required int? floor}) {
   if (floor == null) return false; // declaring a floor is always an explicit act
   if (!updaterAvailable || !resolved) return false;
   return (codePush ?? 0) < floor;
@@ -75,11 +70,7 @@ bool isBelowCodePushFloor({
 /// [dismissed] is the durable high-water mark: dismiss `26.9.0` and only
 /// `26.9.1`+ ever notifies again. That persistence is deliberate and differs
 /// from the other two signals — see [rankStaleness].
-bool isReleaseWorthAnnouncing({
-  required String currentVersion,
-  required String? latest,
-  required String? dismissed,
-}) {
+bool isReleaseWorthAnnouncing({required String currentVersion, required String? latest, required String? dismissed}) {
   if (latest == null || latest.isEmpty) return false;
   if (!isNewerRelease(current: currentVersion, available: latest)) return false;
   if (dismissed != null && !isNewerRelease(current: dismissed, available: latest)) return false;
@@ -99,11 +90,7 @@ bool isReleaseWorthAnnouncing({
 /// is what lets the dismissal policies differ per signal — the newer-release
 /// mark persists across launches while the other two return every launch —
 /// without the ranking having to know about any of that.
-StalenessSignal? rankStaleness({
-  required bool belowCodePushFloor,
-  required bool buildExpired,
-  required bool releaseWorthAnnouncing,
-}) {
+StalenessSignal? rankStaleness({required bool belowCodePushFloor, required bool buildExpired, required bool releaseWorthAnnouncing}) {
   if (belowCodePushFloor) return StalenessSignal.codePushFloor;
   if (buildExpired) return StalenessSignal.expiredBuild;
   if (releaseWorthAnnouncing) return StalenessSignal.newerRelease;

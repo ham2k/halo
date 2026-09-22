@@ -31,12 +31,7 @@ class _SettingsCommandExtensions extends ExtensionService {
   Future<void> start() async {}
 
   @override
-  Future<Map<String, dynamic>?> interpretCommand(
-    String input, [
-    Map<String, dynamic>? operation,
-    Map<String, dynamic>? qso,
-    bool execute = false,
-  ]) async {
+  Future<Map<String, dynamic>?> interpretCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
     switch (input.trim().toUpperCase()) {
       // The bare verb, as the real hooks answer it: a prefix the operator is
       // still typing is recognized but not runnable, which is what keeps Enter
@@ -85,12 +80,14 @@ void main() {
   /// [navigatorKey] — which `handleCommandAction`'s openSettings case needs a
   /// context from, exactly as the real app provides one.
   Future<void> pumpHomeBar(WidgetTester tester, HaLoServices services) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        home: Scaffold(body: HomeQuickLookup(services: services)),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          home: Scaffold(body: HomeQuickLookup(services: services)),
+        ),
       ),
-    ));
+    );
   }
 
   /// Types [verb], lets it interpret, then appends the rest — the way an
@@ -119,9 +116,13 @@ void main() {
 
     await submit(tester, 'SET', 'RST');
 
-    expect(find.text(t.settings.logging.defaultReport.title), findsWidgets,
-        reason: 'the whole point of a bare SET is reaching that setting — describing it and then doing '
-            'nothing on Enter is the same as having no command');
+    expect(
+      find.text(t.settings.logging.defaultReport.title),
+      findsWidgets,
+      reason:
+          'the whole point of a bare SET is reaching that setting — describing it and then doing '
+          'nothing on Enter is the same as having no command',
+    );
   });
 
   testWidgets('Enter on a SET with a value writes it', (tester) async {
@@ -131,8 +132,7 @@ void main() {
 
     await submit(tester, 'SHOW', 'GRID');
 
-    expect(services.settings.showGridField, isTrue,
-        reason: 'the confirmation is printed by the hook regardless, so a write that never happens is invisible');
+    expect(services.settings.showGridField, isTrue, reason: 'the confirmation is printed by the hook regardless, so a write that never happens is invisible');
   });
 
   testWidgets('the settings dialog survives the ⌘K palette closing itself behind it', (tester) async {
@@ -142,28 +142,29 @@ void main() {
     // the preview reads correctly, Enter is accepted, and the dialog that
     // opens is closed again in the same frame.
     final services = await buildServices();
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () => showCommandDialog(context, services),
-              child: const Text('open palette'),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(onPressed: () => showCommandDialog(context, services), child: const Text('open palette')),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open palette'));
     await tester.pumpAndSettle();
 
     await submit(tester, 'SET', 'RST');
 
-    expect(find.text(t.settings.logging.defaultReport.title), findsWidgets,
-        reason: 'the setting the command named must still be on screen after the palette closes');
-    expect(find.byType(CommandDialog), findsNothing,
-        reason: 'the palette must still dismiss itself — closing the right route, not simply failing to close');
+    expect(
+      find.text(t.settings.logging.defaultReport.title),
+      findsWidgets,
+      reason: 'the setting the command named must still be on screen after the palette closes',
+    );
+    expect(find.byType(CommandDialog), findsNothing, reason: 'the palette must still dismiss itself — closing the right route, not simply failing to close');
   });
   testWidgets('DEVMODE from the logging panel reaches the settings engine through the named action', (tester) async {
     // The trap: the panel forwards `updateSettings` like every other named

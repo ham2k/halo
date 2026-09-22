@@ -132,12 +132,11 @@ class LoggingInfoArea extends StatelessWidget {
     if (message != null) {
       return MarkdownBody(
         data: message,
-        styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
-          p: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onTertiaryContainer,
-            fontWeight: FontWeight.w500,
+        styleSheet: withEmojiFallback(
+          MarkdownStyleSheet.fromTheme(theme).copyWith(
+            p: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer, fontWeight: FontWeight.w500),
           ),
-        )),
+        ),
       );
     }
     final callInfo = this.callInfo;
@@ -166,26 +165,28 @@ class LoggingInfoArea extends StatelessWidget {
         iconColor: theme.colorScheme.tertiary,
       );
     }
-    return OncePerSecond(builder: (context, _) {
-      final lines = statsLines?.call() ?? const <String>[];
-      if (lines.isEmpty) return const SizedBox.shrink();
-      return infoIconRows(
-        theme,
-        // Filled icon in the same accent as the main buttons (tertiary, or
-        // secondary while editing).
-        icon: MdiIcons.timerOutline,
-        iconColor: theme.colorScheme.tertiary,
-        children: [
-          for (final line in lines)
-            Text(
-              line,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer),
-            ),
-        ],
-      );
-    });
+    return OncePerSecond(
+      builder: (context, _) {
+        final lines = statsLines?.call() ?? const <String>[];
+        if (lines.isEmpty) return const SizedBox.shrink();
+        return infoIconRows(
+          theme,
+          // Filled icon in the same accent as the main buttons (tertiary, or
+          // secondary while editing).
+          icon: MdiIcons.timerOutline,
+          iconColor: theme.colorScheme.tertiary,
+          children: [
+            for (final line in lines)
+              Text(
+                line,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer),
+              ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -200,20 +201,17 @@ class LockedFormWarning extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          Icon(MdiIcons.alert, size: 16, color: theme.colorScheme.error),
-          const SizedBox(width: Space.xs),
-          Expanded(
-            child: Text(
-              text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.error,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      );
+    children: [
+      Icon(MdiIcons.alert, size: 16, color: theme.colorScheme.error),
+      const SizedBox(width: Space.xs),
+      Expanded(
+        child: Text(
+          text,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w500),
+        ),
+      ),
+    ],
+  );
 }

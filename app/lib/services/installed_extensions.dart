@@ -211,9 +211,7 @@ class InspectedBundle {
 
   /// Whether it asks for anything at all beyond running. A bundle claiming
   /// nothing should not be dressed up as though it did.
-  bool get claimsCapabilities =>
-      domains.isNotEmpty || requiresLocation || requiresRadioRead || allowUserAgentOverride;
-
+  bool get claimsCapabilities => domains.isNotEmpty || requiresLocation || requiresRadioRead || allowUserAgentOverride;
 }
 
 /// Reads, validates, installs and removes `.h2kext` bundles.
@@ -221,12 +219,8 @@ class InspectedBundle {
 /// Native only: installed bundles are files on disk. On web the app runs from
 /// its own assets and a dev server, and [isSupported] is false.
 class InstalledExtensions {
-  InstalledExtensions({
-    required this.builtInKeys,
-    required this.hostSharedModules,
-    this.rootOverride,
-    bool Function(String key)? reservedPrefixAllowed,
-  }) : _reservedPrefixAllowed = reservedPrefixAllowed ?? _never;
+  InstalledExtensions({required this.builtInKeys, required this.hostSharedModules, this.rootOverride, bool Function(String key)? reservedPrefixAllowed})
+    : _reservedPrefixAllowed = reservedPrefixAllowed ?? _never;
 
   static bool _never(String key) => false;
 
@@ -291,12 +285,10 @@ class InstalledExtensions {
   /// Throws [BundleException]; writes nothing.
   Future<InspectedBundle> inspect(List<int> bytes, {BundleProvenance? provenance}) async {
     if (!isSupported) {
-      throw BundleException(
-          BundleRejection.unsupportedPlatform, 'Installing extensions is not supported on the web.');
+      throw BundleException(BundleRejection.unsupportedPlatform, 'Installing extensions is not supported on the web.');
     }
     if (provenance != null && sha256Hex(bytes) != provenance.sha256.toLowerCase()) {
-      throw BundleException(BundleRejection.hashMismatch,
-          'That download is not the extension the catalog described, so it was not opened.');
+      throw BundleException(BundleRejection.hashMismatch, 'That download is not the extension the catalog described, so it was not opened.');
     }
     // Sniffed, not trusted from the name: Android's file picker hands back a
     // cache copy whose extension the platform rewrote from the MIME type, so
@@ -342,8 +334,10 @@ class InstalledExtensions {
     // The version the listing named is the one the bundle must carry, or the
     // provenance record would vouch for a version the catalog never served.
     if (provenance != null && manifest['version'] != provenance.version) {
-      throw BundleException(BundleRejection.hashMismatch,
-          'That download calls itself version ${manifest['version']}, not the ${provenance.version} the catalog listed.');
+      throw BundleException(
+        BundleRejection.hashMismatch,
+        'That download calls itself version ${manifest['version']}, not the ${provenance.version} the catalog listed.',
+      );
     }
     return InspectedBundle(manifest: manifest, archive: archive, provenance: provenance);
   }
@@ -351,8 +345,7 @@ class InstalledExtensions {
   /// The key checks alone, for a caller that knows the key before it has the
   /// bytes — a catalog install refuses a built-in key before downloading
   /// anything. The same refusals [inspect] makes, with the same messages.
-  void checkKeyInstallable(String key, {BundleProvenance? provenance}) =>
-      _checkKey(key, reservedAllowed: provenance?.isReservedPrefixAllowed ?? false);
+  void checkKeyInstallable(String key, {BundleProvenance? provenance}) => _checkKey(key, reservedAllowed: provenance?.isReservedPrefixAllowed ?? false);
 
   /// Every entry must be one the format allows, sit inside the extension's own
   /// directory, and the whole thing must be a plausible size.
@@ -379,8 +372,7 @@ class InstalledExtensions {
         throw BundleException(BundleRejection.unsafeEntry, 'That bundle contains a file path it is not allowed to write.');
       }
       if (file.name != kManifestEntry && file.name != kBundleEntry && !file.name.startsWith(kAssetsPrefix)) {
-        throw BundleException(BundleRejection.unsafeEntry,
-            'That bundle contains "${file.name}", which is not part of the extension format.');
+        throw BundleException(BundleRejection.unsafeEntry, 'That bundle contains "${file.name}", which is not part of the extension format.');
       }
     }
   }
@@ -404,8 +396,7 @@ class InstalledExtensions {
     // the extension permanently — installed, reported installed, and then
     // never loaded, with nothing in the UI to explain it.
     if (manifest['experiments'] != null) {
-      throw BundleException(BundleRejection.malformed,
-          "That bundle gates itself on an app experiment, so it could never load.");
+      throw BundleException(BundleRejection.malformed, "That bundle gates itself on an app experiment, so it could never load.");
     }
     final domains = manifest['domains'];
     if (domains != null && (domains is! List || domains.any((d) => d is! String))) {
@@ -434,8 +425,7 @@ class InstalledExtensions {
     if (manifest.containsKey('relevance')) {
       final problems = ExtensionRelevance.validate(manifest['relevance']);
       if (problems.isNotEmpty) {
-        throw BundleException(
-            BundleRejection.malformed, "That bundle's manifest has an unreadable 'relevance': ${problems.first}");
+        throw BundleException(BundleRejection.malformed, "That bundle's manifest has an unreadable 'relevance': ${problems.first}");
       }
     }
   }
@@ -452,20 +442,23 @@ class InstalledExtensions {
       throw BundleException(BundleRejection.invalidKey, 'That bundle has no usable extension key.');
     }
     if (key.startsWith(kReservedKeyPrefix) && !reservedAllowed) {
-      throw BundleException(BundleRejection.reservedKey,
-          'That bundle claims the name "$key". Names beginning "ham2k-" are reserved for Ham2K\'s own extensions.');
+      throw BundleException(
+        BundleRejection.reservedKey,
+        'That bundle claims the name "$key". Names beginning "ham2k-" are reserved for Ham2K\'s own extensions.',
+      );
     }
     if (builtInKeys().contains(key)) {
-      throw BundleException(BundleRejection.collidesWithBuiltIn,
-          'That bundle calls itself "$key", which is already an extension built into this app.');
+      throw BundleException(BundleRejection.collidesWithBuiltIn, 'That bundle calls itself "$key", which is already an extension built into this app.');
     }
   }
 
   void _checkApi(Object? raw) {
     final api = raw is int ? raw : 0;
     if (api > kExtensionApiVersion) {
-      throw BundleException(BundleRejection.apiTooNew,
-          'That extension needs a newer version of this app (it was built for extension API $api; this app speaks $kExtensionApiVersion).');
+      throw BundleException(
+        BundleRejection.apiTooNew,
+        'That extension needs a newer version of this app (it was built for extension API $api; this app speaks $kExtensionApiVersion).',
+      );
     }
   }
 
@@ -481,20 +474,17 @@ class InstalledExtensions {
     for (final entry in raw.cast<String, dynamic>().entries) {
       final have = hostSharedModules[entry.key];
       if (have == null) {
-        throw BundleException(BundleRejection.unsatisfiedDependency,
-            'That extension needs ${entry.key}, which this app does not provide.');
+        throw BundleException(BundleRejection.unsatisfiedDependency, 'That extension needs ${entry.key}, which this app does not provide.');
       }
       final wanted = entry.value;
       if (wanted is! String || !_isParseableRange(wanted)) {
         // Distinct from a mismatch: telling an author their version is wrong
         // when the fault is a malformed range sends them looking at the one
         // thing that is fine.
-        throw BundleException(BundleRejection.malformed,
-            'That extension asks for ${entry.key} "$wanted", which is not a version range.');
+        throw BundleException(BundleRejection.malformed, 'That extension asks for ${entry.key} "$wanted", which is not a version range.');
       }
       if (!_satisfies(have, wanted)) {
-        throw BundleException(BundleRejection.unsatisfiedDependency,
-            'That extension needs ${entry.key} $wanted; this app has $have.');
+        throw BundleException(BundleRejection.unsatisfiedDependency, 'That extension needs ${entry.key} $wanted; this app has $have.');
       }
     }
   }
@@ -626,17 +616,19 @@ class InstalledExtensions {
           _skip(key, e.message);
           continue;
         }
-        found.add(ExtensionInfo.fromJson({
-          ...manifest.cast<String, dynamic>(),
-          'file': kBundleEntry,
-          'core': false,
-          'source': 'installed',
-          // Overridden rather than trusted, for the installs that predate the
-          // door's refusal of it. An extension is on because the operator
-          // installed it; honouring a manifest's `false` here would leave one
-          // listed and never loaded, and no override anywhere would say why.
-          'enabledByDefault': true,
-        }));
+        found.add(
+          ExtensionInfo.fromJson({
+            ...manifest.cast<String, dynamic>(),
+            'file': kBundleEntry,
+            'core': false,
+            'source': 'installed',
+            // Overridden rather than trusted, for the installs that predate the
+            // door's refusal of it. An extension is on because the operator
+            // installed it; honouring a manifest's `false` here would leave one
+            // listed and never loaded, and no override anywhere would say why.
+            'enabledByDefault': true,
+          }),
+        );
       } catch (e, stack) {
         // Skipped rather than fatal — one damaged install must not cost the
         // operator the others — but never in silence. An extension that
@@ -660,6 +652,5 @@ class InstalledExtensions {
   }
 
   /// The JS for an installed extension.
-  Future<String> sourceFor(String key) async =>
-      File(p.join(_dirFor(await _root(), key), kBundleEntry)).readAsString();
+  Future<String> sourceFor(String key) async => File(p.join(_dirFor(await _root(), key), kBundleEntry)).readAsString();
 }

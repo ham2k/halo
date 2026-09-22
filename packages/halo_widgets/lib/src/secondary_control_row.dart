@@ -139,29 +139,25 @@ class SecondaryControlSpec {
     FocusNode? focusNode,
     bool? enabled,
     bool? alert,
-  }) =>
-      SecondaryControlSpec(
-        key: key ?? this.key,
-        icon: icon ?? this.icon,
-        summary: summary ?? this.summary,
-        expandedBuilder: expandedBuilder ?? this.expandedBuilder,
-        liveSummary: liveSummary ?? this.liveSummary,
-        summaryParts: summaryParts ?? this.summaryParts,
-        iconColor: iconColor ?? this.iconColor,
-        focusNode: focusNode ?? this.focusNode,
-        enabled: enabled ?? this.enabled,
-        alert: alert ?? this.alert,
-      );
+  }) => SecondaryControlSpec(
+    key: key ?? this.key,
+    icon: icon ?? this.icon,
+    summary: summary ?? this.summary,
+    expandedBuilder: expandedBuilder ?? this.expandedBuilder,
+    liveSummary: liveSummary ?? this.liveSummary,
+    summaryParts: summaryParts ?? this.summaryParts,
+    iconColor: iconColor ?? this.iconColor,
+    focusNode: focusNode ?? this.focusNode,
+    enabled: enabled ?? this.enabled,
+    alert: alert ?? this.alert,
+  );
 }
 
 /// Lets mouse click-drag scroll the chip strip, in addition to the
 /// touch/trackpad drag Flutter's default behavior already allows.
 class _DragScrollBehavior extends MaterialScrollBehavior {
   @override
-  Set<PointerDeviceKind> get dragDevices => {
-        ...super.dragDevices,
-        PointerDeviceKind.mouse,
-      };
+  Set<PointerDeviceKind> get dragDevices => {...super.dragDevices, PointerDeviceKind.mouse};
 }
 
 class SecondaryControlRow extends StatefulWidget {
@@ -319,8 +315,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
   /// control that stopped applying) without the caller clearing its
   /// selection — the panel must close rather than stay stuck open showing
   /// a control that no longer exists.
-  bool get _panelShouldBeOpen =>
-      widget.selectedKey != null && widget.controls.any((c) => c.key == widget.selectedKey);
+  bool get _panelShouldBeOpen => widget.selectedKey != null && widget.controls.any((c) => c.key == widget.selectedKey);
 
   @override
   void didUpdateWidget(covariant SecondaryControlRow oldWidget) {
@@ -427,9 +422,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
   void _measure() {
     if (!mounted) return;
 
-    final anyChipBox = widget.controls.isEmpty
-        ? null
-        : _chipKeys[widget.controls.first.key]?.currentContext?.findRenderObject() as RenderBox?;
+    final anyChipBox = widget.controls.isEmpty ? null : _chipKeys[widget.controls.first.key]?.currentContext?.findRenderObject() as RenderBox?;
     if (anyChipBox != null && anyChipBox.attached) {
       final height = anyChipBox.size.height;
       if (height > 0 && (height - _chipHeight).abs() > 0.5) {
@@ -488,8 +481,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
   /// Read from the density rather than fixed: this is the floor an open
   /// control's panel occupies inside the logging panel, and the logging panel
   /// is the app's one rigid block.
-  static double _panelMinContentHeightOf(BuildContext context) =>
-      LayoutDensity.metricsOf(context).controlPanelMinHeight;
+  static double _panelMinContentHeightOf(BuildContext context) => LayoutDensity.metricsOf(context).controlPanelMinHeight;
 
   /// Border→pills spacing when the panel is closed, and panel→pills
   /// spacing once it's fully out — the panel "absorbs" most of the closed
@@ -607,10 +599,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                               key: ValueKey('${_panelSpec!.key}#$_panelGeneration'),
                               child: Align(
                                 alignment: _expandedAlignment,
-                                child: Builder(
-                                  key: _expandedKeyFor(_panelSpec!.key),
-                                  builder: _panelSpec!.expandedBuilder,
-                                ),
+                                child: Builder(key: _expandedKeyFor(_panelSpec!.key), builder: _panelSpec!.expandedBuilder),
                               ),
                             ),
                           ),
@@ -660,11 +649,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                         ? ConstrainedBox(
                             constraints: BoxConstraints(maxHeight: _chipHeight * 4 + spacing * 3),
                             child: SingleChildScrollView(
-                              child: Wrap(
-                                spacing: spacing,
-                                runSpacing: spacing,
-                                children: chips,
-                              ),
+                              child: Wrap(spacing: spacing, runSpacing: spacing, children: chips),
                             ),
                           )
                         : LayoutBuilder(
@@ -693,10 +678,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         SizedBox(width: widget.horizontalBleed),
-                                        for (final chip in chips) ...[
-                                          chip,
-                                          if (chip != chips.last) const SizedBox(width: spacing),
-                                        ],
+                                        for (final chip in chips) ...[chip, if (chip != chips.last) const SizedBox(width: spacing)],
                                         // Lets the last pill scroll clear of
                                         // the trailing gradient mask (see
                                         // _maskWidth).
@@ -737,10 +719,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                               // (0.875 of the 64px width), so the chips are
                               // completely gone a beat before the caret.
                               stops: const [0, 0.875],
-                              colors: [
-                                theme.colorScheme.tertiaryContainer.withValues(alpha: 0),
-                                theme.colorScheme.tertiaryContainer,
-                              ],
+                              colors: [theme.colorScheme.tertiaryContainer.withValues(alpha: 0), theme.colorScheme.tertiaryContainer],
                             ),
                           ),
                         ),
@@ -752,17 +731,12 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
             ),
             IconButton(
               visualDensity: VisualDensity.compact,
-              style: IconButton.styleFrom(
-                backgroundColor: HaLoColors.of(context).tertiaryLight.withValues(alpha: 0.5),
-              ),
+              style: IconButton.styleFrom(backgroundColor: HaLoColors.of(context).tertiaryLight.withValues(alpha: 0.5)),
               icon: AnimatedRotation(
                 turns: _gridExpanded ? 0.5 : 0,
                 duration: _duration,
                 curve: Curves.easeInOut,
-                child: Icon(
-                  MdiIcons.chevronDown,
-                  semanticLabel: _gridExpanded ? t.common.collapse : t.common.expand,
-                ),
+                child: Icon(MdiIcons.chevronDown, semanticLabel: _gridExpanded ? t.common.collapse : t.common.expand),
               ),
               onPressed: () => setState(() => _gridExpanded = !_gridExpanded),
             ),
@@ -786,13 +760,7 @@ class _AnimatedChip extends StatefulWidget {
   final Duration duration;
   final VoidCallback onExited;
 
-  const _AnimatedChip({
-    super.key,
-    required this.child,
-    required this.exiting,
-    required this.duration,
-    required this.onExited,
-  });
+  const _AnimatedChip({super.key, required this.child, required this.exiting, required this.duration, required this.onExited});
 
   @override
   State<_AnimatedChip> createState() => _AnimatedChipState();
@@ -846,12 +814,7 @@ class _ControlChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _ControlChip({
-    super.key,
-    required this.control,
-    required this.selected,
-    required this.onTap,
-  });
+  const _ControlChip({super.key, required this.control, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -901,28 +864,28 @@ class _ControlChip extends StatelessWidget {
         color: control.enabled && !control.alert ? (control.iconColor ?? foreground) : foreground,
       ),
       label: control.liveSummary != null
-          ? OncePerSecond(builder: (_, _) => Text(control.liveSummary!(), style: TextStyle(color: foreground)))
+          ? OncePerSecond(
+              builder: (_, _) => Text(control.liveSummary!(), style: TextStyle(color: foreground)),
+            )
           : control.summaryParts != null
-              ? Text.rich(
-                  TextSpan(
-                    children: [
-                      for (final part in control.summaryParts!)
-                        TextSpan(
-                          text: part.text,
-                          // A run's own color takes the same fade a disabled
-                          // chip gives the foreground, or the one colored run
-                          // would be the only thing on a dimmed chip at full
-                          // strength.
-                          style: TextStyle(
-                            color: part.color == null
-                                ? foreground
-                                : (control.enabled ? part.color! : part.color!.withValues(alpha: part.color!.a * 0.5)),
-                          ),
-                        ),
-                    ],
-                  ),
-                )
-              : Text(control.summary, style: TextStyle(color: foreground)),
+          ? Text.rich(
+              TextSpan(
+                children: [
+                  for (final part in control.summaryParts!)
+                    TextSpan(
+                      text: part.text,
+                      // A run's own color takes the same fade a disabled
+                      // chip gives the foreground, or the one colored run
+                      // would be the only thing on a dimmed chip at full
+                      // strength.
+                      style: TextStyle(
+                        color: part.color == null ? foreground : (control.enabled ? part.color! : part.color!.withValues(alpha: part.color!.a * 0.5)),
+                      ),
+                    ),
+                ],
+              ),
+            )
+          : Text(control.summary, style: TextStyle(color: foreground)),
       selected: selected,
       showCheckmark: false,
       visualDensity: LayoutDensity.of(context).chipVisualDensity,
@@ -967,11 +930,7 @@ class _SettingsPill extends StatelessWidget {
           mouseCursor: SystemMouseCursors.click,
           onTap: onTap,
           child: Center(
-            child: Icon(
-              MdiIcons.cog,
-              size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
-              color: theme.colorScheme.onTertiaryContainer,
-            ),
+            child: Icon(MdiIcons.cog, size: 16 * MediaQuery.textScalerOf(context).scale(1.0), color: theme.colorScheme.onTertiaryContainer),
           ),
         ),
       ),

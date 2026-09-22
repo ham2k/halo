@@ -138,12 +138,7 @@ class _TesterOverlayGateState extends State<TesterOverlayGate> {
   @override
   Widget build(BuildContext context) {
     final pending = _pending;
-    return Stack(
-      children: [
-        widget.child,
-        if (pending != null) _buildOverlay(context, pending),
-      ],
-    );
+    return Stack(children: [widget.child, if (pending != null) _buildOverlay(context, pending)]);
   }
 
   /// Always full screen, even on wide layouts — the same presentation choice

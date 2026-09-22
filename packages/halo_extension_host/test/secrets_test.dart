@@ -25,7 +25,8 @@ void main() {
 
   /// A bundle that hands back whatever `host.secret` gives it, including when
   /// it tries to name somebody else's identity explicitly.
-  String probe(String key) => '''
+  String probe(String key) =>
+      '''
     globalThis.__polo.defineExtension({
       key: '$key',
       name: '$key probe',
@@ -60,8 +61,7 @@ void main() {
   }
 
   Future<dynamic> ask(ExtensionHost host, String who, String name, {bool spoof = false}) =>
-      host.invokeHook('bench', key: who, method: spoof ? 'spoof' : 'get',
-          args: {'name': name}, timeout: const Duration(seconds: 10));
+      host.invokeHook('bench', key: who, method: spoof ? 'spoof' : 'get', args: {'name': name}, timeout: const Duration(seconds: 10));
 
   test('an extension reads the values resolved for it', () async {
     // Several names per extension, because one is not the shape: SOTA has a

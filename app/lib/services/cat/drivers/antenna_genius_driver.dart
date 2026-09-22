@@ -128,7 +128,6 @@ class AntennaGeniusDriver extends EquipmentDriver {
   @override
   String get name => 'Antenna Genius';
 
-
   /// Every model in the Genius series this driver covers has eight — the
   /// 8x1 and the 8x2 differ in device ports, not antenna ports.
   @override
@@ -142,10 +141,7 @@ class AntennaGeniusDriver extends EquipmentDriver {
   int get devicePortCount => 2;
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) {
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) {
     final st = t.settings.station;
     return [
       if (!overrides.containsKey(switchLayoutConfigKey))
@@ -159,14 +155,8 @@ class AntennaGeniusDriver extends EquipmentDriver {
           // "reversed": the operator is looking at their own coax, and only
           // one of these two counts matches what they plugged in where.
           'options': [
-            {
-              'value': switchLayoutDevicePorts,
-              'label': st.switchLayoutSides(antennas: antennaPortCount, radios: devicePortCount),
-            },
-            {
-              'value': switchLayoutAntennaPorts,
-              'label': st.switchLayoutSides(antennas: devicePortCount, radios: antennaPortCount),
-            },
+            {'value': switchLayoutDevicePorts, 'label': st.switchLayoutSides(antennas: antennaPortCount, radios: devicePortCount)},
+            {'value': switchLayoutAntennaPorts, 'label': st.switchLayoutSides(antennas: devicePortCount, radios: antennaPortCount)},
           ],
         },
     ];
@@ -178,9 +168,7 @@ class AntennaGeniusDriver extends EquipmentDriver {
     // Blank is the shipped layout, not a missing answer: an operator who
     // never opens this field has an 8x2 wired the way it is sold.
     if (value == null || value == '') return null;
-    return (value == switchLayoutDevicePorts || value == switchLayoutAntennaPorts)
-        ? null
-        : t.settings.station.switchLayoutRequired;
+    return (value == switchLayoutDevicePorts || value == switchLayoutAntennaPorts) ? null : t.settings.station.switchLayoutRequired;
   }
 
   @override
@@ -369,10 +357,7 @@ class AntennaGeniusSession implements AntennaSwitchSession {
       // A refused command is not a broken link — the switch is answering,
       // and reconnecting cannot make it accept a verb it does not have. That
       // is exactly the line EquipmentSink.reportProblem draws.
-      _setProblem(
-        _ProblemKind.refusedCommand,
-        t.settings.station.switchCommandRefused(command: command ?? '?', code: reply.code),
-      );
+      _setProblem(_ProblemKind.refusedCommand, t.settings.station.switchCommandRefused(command: command ?? '?', code: reply.code));
       return endsBringUp;
     }
     // The blank line that ends a multi-line answer, and the bare
@@ -424,12 +409,14 @@ class AntennaGeniusSession implements AntennaSwitchSession {
   void _reportInfo() {
     final info = _info;
     if (info == null) return;
-    _sink.reportDiagnostic([
-      if (info.name != null) info.name,
-      if (info.firmware != null) 'v${info.firmware}',
-      if (info.serial != null) 's/n ${info.serial}',
-      if (info.ports != null && info.antennas != null) '${info.antennas}x${info.ports}',
-    ].join(' · '));
+    _sink.reportDiagnostic(
+      [
+        if (info.name != null) info.name,
+        if (info.firmware != null) 'v${info.firmware}',
+        if (info.serial != null) 's/n ${info.serial}',
+        if (info.ports != null && info.antennas != null) '${info.antennas}x${info.ports}',
+      ].join(' · '),
+    );
   }
 
   /// The whole routing picture, in the switch's own numbering.
@@ -441,14 +428,7 @@ class AntennaGeniusSession implements AntennaSwitchSession {
     final antennaKeys = _antennas.keys.toList()..sort(_byNumber);
     final portKeys = _ports.keys.toList()..sort(_byNumber);
     _sink.reportSwitchState(
-      [
-        for (final key in antennaKeys)
-          SwitchAntenna(
-            key: key,
-            name: _antennas[key]!.name,
-            configured: _antennas[key]!.configured,
-          ),
-      ],
+      [for (final key in antennaKeys) SwitchAntenna(key: key, name: _antennas[key]!.name, configured: _antennas[key]!.configured)],
       [
         for (final key in portKeys)
           if (_ports[key] case final port?)
@@ -476,8 +456,7 @@ class AntennaGeniusSession implements AntennaSwitchSession {
     );
   }
 
-  static int _byNumber(String a, String b) =>
-      (int.tryParse(a) ?? 0).compareTo(int.tryParse(b) ?? 0);
+  static int _byNumber(String a, String b) => (int.tryParse(a) ?? 0).compareTo(int.tryParse(b) ?? 0);
 
   @override
   void selectAntenna(String portKey, String antennaKey) {

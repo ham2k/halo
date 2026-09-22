@@ -82,7 +82,10 @@ Future<void> updateExtensionDisabledSince({
 
   if (canPrune) {
     final overrides = settings.extensionOverrides;
-    final prunedOverrides = {for (final entry in overrides.entries) if (knownKeys.contains(entry.key)) entry.key: entry.value};
+    final prunedOverrides = {
+      for (final entry in overrides.entries)
+        if (knownKeys.contains(entry.key)) entry.key: entry.value,
+    };
     if (prunedOverrides.length != overrides.length) await settings.setExtensionOverrides(prunedOverrides);
   }
 }

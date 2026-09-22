@@ -31,8 +31,7 @@ String get _onboardAsConfig => debugEnvFlag(const String.fromEnvironment('ONBOAR
 /// (which decides whether to actually show it) and `_BootGateState` (which
 /// decides whether to wait for its photo before switching off the splash)
 /// so the two can't silently drift apart into two different answers.
-bool onboardingWillShow(HaLoServices services) =>
-    !services.settings.defaultProfileCallsignDefined && _onboardAsConfig.isEmpty;
+bool onboardingWillShow(HaLoServices services) => !services.settings.defaultProfileCallsignDefined && _onboardAsConfig.isEmpty;
 
 /// Applies an `ONBOARD_AS=CALL,activity,...` spec (see [_onboardAsConfig]):
 /// sets the operator callsign and enables the listed activity extensions.
@@ -118,14 +117,16 @@ class _OnboardingGateState extends State<OnboardingGate> {
     // arrive late (or never); OnboardingOverlayView itself crossfades the
     // photo in once it's actually finished downloading rather than popping
     // it in, so a late arrival still doesn't look broken.
-    loadReleaseNotes().then((notes) {
-      if (mounted && notes.isNotEmpty) setState(() => _release = notes.first);
-    }).catchError((Object error, StackTrace stackTrace) {
-      // Same tolerance as above: a broken/missing release-notes asset just
-      // means no photo, not a broken onboarding flow — but still needs a
-      // handler, or this becomes an unhandled rejection.
-      debugPrint('[onboarding] release notes unavailable: $error\n$stackTrace');
-    });
+    loadReleaseNotes()
+        .then((notes) {
+          if (mounted && notes.isNotEmpty) setState(() => _release = notes.first);
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          // Same tolerance as above: a broken/missing release-notes asset just
+          // means no photo, not a broken onboarding flow — but still needs a
+          // handler, or this becomes an unhandled rejection.
+          debugPrint('[onboarding] release notes unavailable: $error\n$stackTrace');
+        });
   }
 
   /// True while the finished overlay dissolves into the home screen —
@@ -178,15 +179,13 @@ class _OnboardingGateState extends State<OnboardingGate> {
           duration: const Duration(milliseconds: 350),
           curve: Curves.easeOut,
           onEnd: _finalizeDismiss,
-          child: IgnorePointer(ignoring: _dismissing, child: Overlay.wrap(child: view)),
+          child: IgnorePointer(
+            ignoring: _dismissing,
+            child: Overlay.wrap(child: view),
+          ),
         ),
       );
     }
-    return Stack(
-      children: [
-        widget.child,
-        ?overlay,
-      ],
-    );
+    return Stack(children: [widget.child, ?overlay]);
   }
 }

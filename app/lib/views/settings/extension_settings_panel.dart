@@ -163,15 +163,10 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
     try {
       do {
         _reloadPending = false;
-        var definition = await widget.services.extensions.getSettingsPanelDefinition(
-          hookKey: _hookKey,
-          panelKey: _panelKey,
-          kind: _kind,
-        );
+        var definition = await widget.services.extensions.getSettingsPanelDefinition(hookKey: _hookKey, panelKey: _panelKey, kind: _kind);
         // Extension-declared fields can reference system lists too.
         if (definition?['elements'] is List) {
-          final resolved = await widget.services.systemLists
-              .resolveInElements((definition!['elements'] as List).cast<Map<String, dynamic>>());
+          final resolved = await widget.services.systemLists.resolveInElements((definition!['elements'] as List).cast<Map<String, dynamic>>());
           // Platform-excluded elements don't exist on this session at all —
           // baked in here rather than filtered per-view, same as
           // `_SettingsGroupForm` (settings_view.dart). _fieldFor/validate/commit only ever look
@@ -227,13 +222,7 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
     if (await _validate(fieldKey, value, state) != null) return null;
     final field = _fieldFor(fieldKey);
     final committedValue = _kind == 'dynamic'
-        ? await widget.services.extensions.transformSettingsField(
-            hookKey: _hookKey,
-            panelKey: _panelKey,
-            fieldKey: fieldKey,
-            value: value,
-            state: state,
-          )
+        ? await widget.services.extensions.transformSettingsField(hookKey: _hookKey, panelKey: _panelKey, fieldKey: fieldKey, value: value, state: state)
         : value;
     await widget.services.extensions.commitSettingsFieldValue(
       kind: _kind,
@@ -311,9 +300,14 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return _box(widget.embedded
-          ? const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()))
-          : const Center(child: CircularProgressIndicator()));
+      return _box(
+        widget.embedded
+            ? const Padding(
+                padding: EdgeInsets.all(Space.xxl),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            : const Center(child: CircularProgressIndicator()),
+      );
     }
     var definition = _definition;
     if (definition == null) {
@@ -352,7 +346,12 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
         return byScore != 0 ? byScore : a.index.compareTo(b.index);
       });
       searchHidden = scored.isEmpty;
-      if (!searchHidden) definition = {...definition, 'elements': [for (final s in scored) s.element]};
+      if (!searchHidden) {
+        definition = {
+          ...definition,
+          'elements': [for (final s in scored) s.element],
+        };
+      }
     }
 
     final form = FormRenderer(
@@ -368,12 +367,7 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
       validator: _validate,
       onChange: _autosave,
       onAction: (actionKey, method, state) async {
-        final message = await widget.services.extensions.runSettingsAction(
-          hookKey: _hookKey,
-          panelKey: _panelKey,
-          method: method,
-          state: state,
-        );
+        final message = await widget.services.extensions.runSettingsAction(hookKey: _hookKey, panelKey: _panelKey, method: method, state: state);
         return message == null ? null : FormActionResult(message: message);
       },
       onManageAccount: _manageAccount,
@@ -395,22 +389,8 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
             : Visibility(visible: !searchHidden, maintainState: true, child: rows);
       }
       return widget.sliver
-          ? settingsCategorySliver(
-              context,
-              title: title,
-              expanded: widget.expanded,
-              onToggle: widget.onToggle,
-              hidden: searchHidden,
-              sliver: form,
-            )
-          : settingsCategory(
-              context,
-              title: title,
-              expanded: widget.expanded,
-              onToggle: widget.onToggle,
-              hidden: searchHidden,
-              child: form,
-            );
+          ? settingsCategorySliver(context, title: title, expanded: widget.expanded, onToggle: widget.onToggle, hidden: searchHidden, sliver: form)
+          : settingsCategory(context, title: title, expanded: widget.expanded, onToggle: widget.onToggle, hidden: searchHidden, child: form);
     }
 
     return Visibility(

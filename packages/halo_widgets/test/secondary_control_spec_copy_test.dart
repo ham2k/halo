@@ -51,16 +51,8 @@ void main() {
     final copyWith = body.substring(copyWithStart);
 
     for (final field in fields) {
-      expect(
-        copyWith,
-        contains(RegExp('[\\s,(]$field,')),
-        reason: '`$field` is not a parameter of copyWith',
-      );
-      expect(
-        copyWith,
-        contains('$field: $field ?? this.$field'),
-        reason: '`$field` is not forwarded by copyWith, so a copy silently resets it',
-      );
+      expect(copyWith, contains(RegExp('[\\s,(]$field,')), reason: '`$field` is not a parameter of copyWith');
+      expect(copyWith, contains('$field: $field ?? this.$field'), reason: '`$field` is not forwarded by copyWith, so a copy silently resets it');
     }
   });
 }

@@ -33,7 +33,10 @@ class ReadOnlyWhileDeleted extends StatelessWidget {
       children: [
         ExcludeFocus(
           excluding: deleted,
-          child: AbsorbPointer(absorbing: deleted, child: Opacity(opacity: deleted ? 0.5 : 1, child: child)),
+          child: AbsorbPointer(
+            absorbing: deleted,
+            child: Opacity(opacity: deleted ? 0.5 : 1, child: child),
+          ),
         ),
         if (deleted)
           Center(
@@ -45,11 +48,7 @@ class ReadOnlyWhileDeleted extends StatelessWidget {
                   children: [
                     Text(context.t.operation.deletedReadOnly, textAlign: TextAlign.center),
                     const SizedBox(height: Space.md),
-                    FilledButton.icon(
-                      icon: const Icon(MdiIcons.deleteRestore),
-                      label: Text(context.t.activitiesView.undeleteOperation),
-                      onPressed: onUndelete,
-                    ),
+                    FilledButton.icon(icon: const Icon(MdiIcons.deleteRestore), label: Text(context.t.activitiesView.undeleteOperation), onPressed: onUndelete),
                   ],
                 ),
               ),

@@ -295,8 +295,7 @@ class VoiceActivity {
   VoiceActivity asDoubtful() => VoiceActivity(memory: memory, recording: recording, doubtful: true);
 
   @override
-  bool operator ==(Object other) =>
-      other is VoiceActivity && other.memory == memory && other.recording == recording && other.doubtful == doubtful;
+  bool operator ==(Object other) => other is VoiceActivity && other.memory == memory && other.recording == recording && other.doubtful == doubtful;
 
   @override
   int get hashCode => Object.hash(memory, recording, doubtful);
@@ -345,11 +344,11 @@ int voiceMemoriesFromConfig(Map<String, dynamic> config, {required int fallback}
 /// [cwKeyerConfigKey] as a bool: absent is [fallback], and a checkbox
 /// stores a bool.
 bool cwKeyerFromConfig(Map<String, dynamic> config, {required bool fallback}) => switch (config[cwKeyerConfigKey]) {
-      final bool on => on,
-      'true' => true,
-      'false' => false,
-      _ => fallback,
-    };
+  final bool on => on,
+  'true' => true,
+  'false' => false,
+  _ => fallback,
+};
 
 /// The longest a session lets a memory play or record without the radio
 /// confirming it is over, when nothing better is known: a memory is a CQ or
@@ -458,13 +457,13 @@ abstract class EquipmentDriver {
   /// would otherwise be surprised by: the meter cycle on a slow link is
   /// several times the 200 ms they would have assumed.
   Duration defaultTelemetryInterval(Map<String, dynamic> config) => telemetryIntervalFor(
-        // Not [config]'s own value: this is what a BLANK field would do, and
-        // reading the operator's answer here would make the placeholder echo
-        // the number already in the box.
-        const {},
-        cycleBytes: telemetryWatchBytes > telemetryCycleBytes ? telemetryWatchBytes : telemetryCycleBytes,
-        baudRate: serialBaudRateOrNull(config),
-      );
+    // Not [config]'s own value: this is what a BLANK field would do, and
+    // reading the operator's answer here would make the placeholder echo
+    // the number already in the box.
+    const {},
+    cycleBytes: telemetryWatchBytes > telemetryCycleBytes ? telemetryWatchBytes : telemetryCycleBytes,
+    baudRate: serialBaudRateOrNull(config),
+  );
 
   /// The calibration this driver assumes when a node's entry names none —
   /// see [calibrationForConfig]. Null for a driver whose meter scales differ
@@ -472,8 +471,7 @@ abstract class EquipmentDriver {
   String? get defaultMeterInfoKey => null;
 
   /// The tables describing a node on this driver, or null when nothing does.
-  MeterCalibration? calibrationFor(Map<String, dynamic> config) =>
-      calibrationForConfig(config, fallbackKey: defaultMeterInfoKey);
+  MeterCalibration? calibrationFor(Map<String, dynamic> config) => calibrationForConfig(config, fallbackKey: defaultMeterInfoKey);
 
   /// [telemetryMeters] for ONE node: [config] is its merged configuration,
   /// the entry's overrides included. The service and the panel ask THIS,
@@ -526,11 +524,7 @@ abstract class EquipmentDriver {
   /// See [EquipmentTransport.configElements] for what [overrides] and
   /// [restrictions] mean; a key this driver doesn't recognize is silently
   /// ignored — it belongs to the transport instead.
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      const [];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => const [];
 
   /// Per-field version, for the editor. Null for a key this driver doesn't
   /// own.
@@ -541,8 +535,7 @@ abstract class EquipmentDriver {
   /// network controller address is the reason this exists: read directly
   /// in [createSession], on every pairing, never shown as a field on any
   /// of them.
-  Set<String> get recognizedConfigKeys =>
-      configElements().where((e) => e['type'] == 'field').map((e) => e['key'] as String).toSet();
+  Set<String> get recognizedConfigKeys => configElements().where((e) => e['type'] == 'field').map((e) => e['key'] as String).toSet();
 
   /// Whether the app must REMEMBER this keyer's speed, because the equipment
   /// cannot be asked what it is.

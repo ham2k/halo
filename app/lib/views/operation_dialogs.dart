@@ -43,25 +43,16 @@ String formatOperationDateRange(DateTime? from, DateTime? to) {
 /// title: the title says what's about to happen, the body says to what, so a
 /// long operation name can't push the action itself out of view.
 /// Soft-deletes on confirmation; returns whether the operation was deleted.
-Future<bool> confirmDeleteOperation(
-  BuildContext context,
-  HaLoServices services,
-  Operation operation,
-) async {
+Future<bool> confirmDeleteOperation(BuildContext context, HaLoServices services, Operation operation) async {
   final confirmed = await showHaloDialog<bool>(
     context: context,
     builder: (context) {
       final theme = Theme.of(context);
       final dateRange = formatOperationDateRange(
-        operation.startAtMillisMin == null
-            ? null
-            : DateTime.fromMillisecondsSinceEpoch(operation.startAtMillisMin!, isUtc: true),
+        operation.startAtMillisMin == null ? null : DateTime.fromMillisecondsSinceEpoch(operation.startAtMillisMin!, isUtc: true),
         operation.startAtMax,
       );
-      final details = [
-        context.t.operation.tabs.qsos(count: formatNumber(operation.qsoCount)),
-        if (dateRange.isNotEmpty) dateRange,
-      ].join(' • ');
+      final details = [context.t.operation.tabs.qsos(count: formatNumber(operation.qsoCount)), if (dateRange.isNotEmpty) dateRange].join(' • ');
 
       return HaloDialog(
         title: Text(context.t.dialogs.deleteOperationTitle),
@@ -71,18 +62,13 @@ Future<bool> confirmDeleteOperation(
           children: [
             // The same name the user just saw on the row or header they're
             // deleting from, not the raw (usually empty) title field.
-            Text(
-              '${operation.stationCall} ${displayTitleFor(context, operation)}',
-              style: theme.textTheme.titleMedium,
-            ),
+            Text('${operation.stationCall} ${displayTitleFor(context, operation)}', style: theme.textTheme.titleMedium),
             const SizedBox(height: Space.xs),
             Text(details, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
           ],
         ),
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-        actions: [
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.delete)),
-        ],
+        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.delete))],
       );
     },
   );
@@ -103,11 +89,7 @@ Future<bool> confirmDeleteOperation(
 /// holds and asks once for all of them, rather than one dialog per
 /// operation — the point of the command is bulk cleanup. Purging itself is
 /// the caller's job (`runCommandAction` in `main.dart`); this only asks.
-Future<bool> confirmPurgeTestOperations(
-  BuildContext context,
-  List<Operation> testOperations, {
-  int looseQsoCount = 0,
-}) async {
+Future<bool> confirmPurgeTestOperations(BuildContext context, List<Operation> testOperations, {int looseQsoCount = 0}) async {
   final confirmed = await showHaloDialog<bool>(
     context: context,
     builder: (context) {
@@ -139,16 +121,11 @@ Future<bool> confirmPurgeTestOperations(
             // Named separately rather than folded into the list above: these
             // belong to no operation, so there is no row they could sit under,
             // and the operator is agreeing to delete them too.
-            if (looseQsoCount > 0) ...[
-              const SizedBox(height: Space.sm),
-              Text(context.t.dialogs.purgeTestsLooseQsos(count: looseQsoCount)),
-            ],
+            if (looseQsoCount > 0) ...[const SizedBox(height: Space.sm), Text(context.t.dialogs.purgeTestsLooseQsos(count: looseQsoCount))],
           ],
         ),
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-        actions: [
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.dialogs.purgeTestsAction)),
-        ],
+        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.dialogs.purgeTestsAction))],
       );
     },
   );
@@ -171,9 +148,11 @@ Future<bool> confirmFullResyncDialog(BuildContext context, {required int qsoCoun
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(context.t.dialogs.syncAllBody(
-              qsos: context.t.settings.syncPanel.countQsos(count: qsoCount, n: formatNumber(qsoCount)),
-            )),
+            Text(
+              context.t.dialogs.syncAllBody(
+                qsos: context.t.settings.syncPanel.countQsos(count: qsoCount, n: formatNumber(qsoCount)),
+              ),
+            ),
             if (unsyncedCount > 0) ...[
               const SizedBox(height: Space.sm),
               Text(
@@ -184,9 +163,7 @@ Future<bool> confirmFullResyncDialog(BuildContext context, {required int qsoCoun
           ],
         ),
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-        actions: [
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.dialogs.syncAllAction)),
-        ],
+        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.dialogs.syncAllAction))],
       );
     },
   );
@@ -233,10 +210,7 @@ Future<bool> confirmReceivedTestOperationPurgesDialog(BuildContext context, List
           ],
         ),
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-        actions: [
-          FilledButton(
-              onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.dialogs.receivedPurgesAction)),
-        ],
+        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.dialogs.receivedPurgesAction))],
       );
     },
   );
@@ -292,12 +266,7 @@ Qso _qsoWithOur(Qso qso, Map<String, String> fields) {
 /// settings, and a restamp that fails or comes up short has to reach the
 /// status bar, which is the only place the operator would ever learn that the
 /// callsign changed and the log did not.
-Future<Operation?> editOperationDetails(
-  BuildContext context,
-  HaLoServices services,
-  Operation operation, {
-  bool save = true,
-}) async {
+Future<Operation?> editOperationDetails(BuildContext context, HaLoServices services, Operation operation, {bool save = true}) async {
   final operations = services.operations;
   final qsos = services.qsos;
   final settings = services.settings;
@@ -317,13 +286,11 @@ Future<Operation?> editOperationDetails(
       showMultiIdentifier: settings.developerMode,
       ownCall: settings.activeProfile.operatorCall.trim().toUpperCase(),
       suggestDefaultOperator: settings.suggestDefaultOperator,
-      operatorWasSet: operation.data.containsKey(operatorCallKeyFor(multiIdentifier)) ||
-          operation.localData.containsKey(operatorCallKey),
+      operatorWasSet: operation.data.containsKey(operatorCallKeyFor(multiIdentifier)) || operation.localData.containsKey(operatorCallKey),
       // Read once, when the dialog opens. A contact logged while it sits open
       // is not in the count and is not restamped — the alternative is a live
       // query behind a checkbox the operator already read a number off.
-      loadContacts: () async =>
-          (await qsos.forOperation(operation.uuid)).where((qso) => qso.isRealContact).toList(),
+      loadContacts: () async => (await qsos.forOperation(operation.uuid)).where((qso) => qso.isRealContact).toList(),
     ),
   );
   if (result == null || result.stationCall.trim().isEmpty) return null;
@@ -334,9 +301,7 @@ Future<Operation?> editOperationDetails(
   // The position is the only device-local field here, so it alone rides the
   // guarded `updateLocalData` write below; the operator is the operation's
   // shared data, stored in the slot of the position being SAVED.
-  final localPatch = {
-    if (newMultiIdentifier != multiIdentifier) multiIdentifierKey: newMultiIdentifier,
-  };
+  final localPatch = {if (newMultiIdentifier != multiIdentifier) multiIdentifierKey: newMultiIdentifier};
   // The operator FOLLOWS the position: changing the seat number moves whoever
   // the field names into the new seat, because the person at this key is the
   // same person who was at it a moment ago — they have said which seat they
@@ -471,13 +436,8 @@ Future<String?> editOneFieldDialog(
 }) {
   return showHaloDialog<String>(
     context: context,
-    builder: (context) => _OneFieldDialog(
-      title: title,
-      fieldLabel: fieldLabel,
-      fieldInitial: fieldInitial,
-      fieldCapitalization: fieldCapitalization,
-      saveLabel: saveLabel,
-    ),
+    builder: (context) =>
+        _OneFieldDialog(title: title, fieldLabel: fieldLabel, fieldInitial: fieldInitial, fieldCapitalization: fieldCapitalization, saveLabel: saveLabel),
   );
 }
 
@@ -524,9 +484,7 @@ class _OneFieldDialogState extends State<_OneFieldDialog> {
         onSubmitted: (_) => _save(),
       ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-      actions: [
-        FilledButton(onPressed: _save, child: Text(widget.saveLabel)),
-      ],
+      actions: [FilledButton(onPressed: _save, child: Text(widget.saveLabel))],
     );
   }
 }
@@ -589,11 +547,7 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
           ),
           const SizedBox(height: Space.md),
           if (widget.field2Obscure)
-            SecretTextField(
-              controller: _controller2,
-              decoration: poloFieldDecoration(context, widget.field2Label),
-              onSubmitted: (_) => _save(),
-            )
+            SecretTextField(controller: _controller2, decoration: poloFieldDecoration(context, widget.field2Label), onSubmitted: (_) => _save())
           else
             TextField(
               selectAllOnFocus: false,
@@ -604,9 +558,7 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
         ],
       ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-      actions: [
-        FilledButton(onPressed: _save, child: Text(context.t.common.save)),
-      ],
+      actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
     );
   }
 }
@@ -747,8 +699,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
 
   /// The station callsigns as typed — one operation can be run under several
   /// (`Operation.stationCalls`), and every rule below turns on how many.
-  List<String> get _stationCalls =>
-      splitStationCalls(_stationCallController.text).where((call) => call.isNotEmpty).toList();
+  List<String> get _stationCalls => splitStationCalls(_stationCallController.text).where((call) => call.isNotEmpty).toList();
 
   /// With several station callsigns there is no one operator to name: each
   /// contact carries its own, whichever call it was made under.
@@ -785,17 +736,16 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
 
   CallChangeAdvice get _operatorAdvice {
     if (_contacts == null || !_operatorApplies) return const CallChangeAdvice(CallChange.quiet);
-    return adviceForCallChange(
-      calls: _operatorScope.map((qso) => qso.ourOperatorCall),
-      typed: _operatorCallController.text,
-    );
+    return adviceForCallChange(calls: _operatorScope.map((qso) => qso.ourOperatorCall), typed: _operatorCallController.text);
   }
 
   /// Every typed callsign that doesn't parse — a warning, never a refusal: a
   /// special-event or portable form this regex doesn't know is still a
   /// callsign somebody worked, and must stay loggable.
-  List<String> get _invalidStationCalls =>
-      [for (final call in _stationCalls) if (!looksLikeCallsign(call)) call];
+  List<String> get _invalidStationCalls => [
+    for (final call in _stationCalls)
+      if (!looksLikeCallsign(call)) call,
+  ];
 
   /// The contacts a standing, ticked offer would rewrite — empty whenever the
   /// checkbox that set [ticked] is not on screen for the CURRENT field values.
@@ -828,22 +778,24 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
     // statement, with no enabled field to take it out again (app-polo's
     // `handleChangeStation` clears it for the same reason).
     final operatorCall = _operatorApplies ? _operatorCallController.text.trim().toUpperCase() : '';
-    Navigator.of(context).pop(_DetailsResult(
-      stationCall: stationCall,
-      operatorCall: operatorCall,
-      userTitle: _titleController.text.trim(),
-      notes: _notesController.text.trim(),
-      // Hidden means untouched: the controller still holds what came in, so
-      // the caller's change check sees no change and writes nothing.
-      multiIdentifier: _multiIdentifierController.text.trim(),
-      restampOperator: _restampTargets(
-        ticked: _restampOperator,
-        advice: _operatorAdvice,
-        scope: _operatorScope,
-        typed: operatorCall,
-        callOf: (qso) => qso.ourOperatorCall,
+    Navigator.of(context).pop(
+      _DetailsResult(
+        stationCall: stationCall,
+        operatorCall: operatorCall,
+        userTitle: _titleController.text.trim(),
+        notes: _notesController.text.trim(),
+        // Hidden means untouched: the controller still holds what came in, so
+        // the caller's change check sees no change and writes nothing.
+        multiIdentifier: _multiIdentifierController.text.trim(),
+        restampOperator: _restampTargets(
+          ticked: _restampOperator,
+          advice: _operatorAdvice,
+          scope: _operatorScope,
+          typed: operatorCall,
+          callOf: (qso) => qso.ourOperatorCall,
+        ),
       ),
-    ));
+    );
   }
 
   List<String> get _invalidOperatorCall {
@@ -854,16 +806,14 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
   String? _invalidCallsignsText(List<String> calls) {
     if (calls.isEmpty) return null;
     final t = context.t.dialogs.callChange;
-    return calls.length == 1
-        ? t.invalidCallsign(call: calls.single)
-        : t.invalidCallsigns(calls: calls.join(', '));
+    return calls.length == 1 ? t.invalidCallsign(call: calls.single) : t.invalidCallsigns(calls: calls.join(', '));
   }
 
   /// A line of explanation under a field, in the dialog's quieter voice.
   Widget _adviceNote(String text) => Padding(
-        padding: const EdgeInsets.only(top: Space.sm),
-        child: Text(text, style: Theme.of(context).textTheme.bodySmall),
-      );
+    padding: const EdgeInsets.only(top: Space.sm),
+    child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+  );
 
   /// The message and, where there is something to offer, the restamp
   /// checkbox — see `CallChangeAdvice`. Empty for [CallChange.quiet] and
@@ -918,16 +868,8 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
               autofocus: true,
               textCapitalization: TextCapitalization.characters,
               style: const TextStyle(fontFamily: 'RobotoMono'),
-              inputFormatters: [
-                TextInputFormatter.withFunction(
-                  (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
-                ),
-              ],
-              decoration: poloFieldDecoration(
-                context,
-                context.t.dialogs.stationCallsign,
-                errorText: _invalidCallsignsText(_invalidStationCalls),
-              ),
+              inputFormatters: [TextInputFormatter.withFunction((oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()))],
+              decoration: poloFieldDecoration(context, context.t.dialogs.stationCallsign, errorText: _invalidCallsignsText(_invalidStationCalls)),
               onSubmitted: (_) => _save(),
             ),
             // No station-call offer: the call is what a SEGMENT states, so
@@ -941,11 +883,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
               enabled: _operatorApplies,
               textCapitalization: TextCapitalization.characters,
               style: const TextStyle(fontFamily: 'RobotoMono'),
-              inputFormatters: [
-                TextInputFormatter.withFunction(
-                  (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
-                ),
-              ],
+              inputFormatters: [TextInputFormatter.withFunction((oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()))],
               decoration: poloFieldDecoration(
                 context,
                 context.t.settings.operatorCall,
@@ -983,11 +921,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
                 // Label only, matching FormRenderer's treatment of a
                 // `devMode: true` text field — the value itself stays in the
                 // ordinary field colour.
-                decoration: poloFieldDecoration(
-                  context,
-                  context.t.dialogs.multiStationIdentifier,
-                  labelColor: HaLoColors.of(context).devMode,
-                ),
+                decoration: poloFieldDecoration(context, context.t.dialogs.multiStationIdentifier, labelColor: HaLoColors.of(context).devMode),
                 onSubmitted: (_) => _save(),
               ),
             ],
@@ -1011,10 +945,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
           ],
         ),
       ),
-      cancel: TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: Text(context.t.common.cancel),
-      ),
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
       actions: [
         FilledButton(
           // An operation with no station callsign is not saveable, and the

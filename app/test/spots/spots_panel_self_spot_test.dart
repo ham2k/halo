@@ -28,14 +28,12 @@ class _FakeExtensions extends ExtensionService {
   final List<Map<String, dynamic>> controls;
 
   @override
-  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>
-      getSpots() async =>
-      (
-        items: board,
-        succeeded: board.map((s) => s['hookKey'] as String? ?? 'unknown').toSet().toList(),
-        unreachable: const <String>[],
-        failed: const <String>[],
-      );
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async => (
+    items: board,
+    succeeded: board.map((s) => s['hookKey'] as String? ?? 'unknown').toSet().toList(),
+    unreachable: const <String>[],
+    failed: const <String>[],
+  );
 
   @override
   Future<Map<String, String>> getSpotSourceNames() async => const {'test': 'Test Source'};
@@ -46,11 +44,7 @@ class _FakeExtensions extends ExtensionService {
   Future<void> start() async {}
 
   @override
-  Future<ControlsResult> loggingControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
-      (controls: controls, loadFailed: false);
+  Future<ControlsResult> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async => (controls: controls, loadFailed: false);
 
   @override
   Future<Map<String, dynamic>?> lookupCall(
@@ -59,21 +53,18 @@ class _FakeExtensions extends ExtensionService {
     required Map<String, dynamic> operation,
     bool online = true,
     bool recentContext = false,
-  }) async =>
-      null;
+  }) async => null;
 }
 
-Map<String, dynamic> _spot(String call,
-        {String band = '20m', double freq = 14250.0, int? timeInMillis}) =>
-    {
-      'their': {'call': call},
-      'freq': freq,
-      'band': band,
-      'mode': 'SSB',
-      'refs': const <Map<String, dynamic>>[],
-      'spot': {'timeInMillis': timeInMillis ?? nowMillis() - 60000, 'source': 'test'},
-      'hookKey': 'test',
-    };
+Map<String, dynamic> _spot(String call, {String band = '20m', double freq = 14250.0, int? timeInMillis}) => {
+  'their': {'call': call},
+  'freq': freq,
+  'band': band,
+  'mode': 'SSB',
+  'refs': const <Map<String, dynamic>>[],
+  'spot': {'timeInMillis': timeInMillis ?? nowMillis() - 60000, 'source': 'test'},
+  'hookKey': 'test',
+};
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -82,19 +73,11 @@ void main() {
   late SettingsService settings;
   late Operation operation;
 
-  Future<HaLoServices> servicesWith(
-    List<Map<String, dynamic>> spots, {
-    List<Map<String, dynamic>> controls = const [],
-  }) async {
+  Future<HaLoServices> servicesWith(List<Map<String, dynamic>> spots, {List<Map<String, dynamic>> controls = const []}) async {
     // Pinned wide open so the board itself is never narrowed by the radio's
     // band or mode — which filters the self pin ignores is asserted per test
     // by narrowing them back down.
-    await settings.setSpottingFilters({
-      'bandFilter': 'any',
-      'modeFilter': 'any',
-      'sortBy': 'frequency',
-      'groupByBand': true,
-    });
+    await settings.setSpottingFilters({'bandFilter': 'any', 'modeFilter': 'any', 'sortBy': 'frequency', 'groupByBand': true});
     return HaLoServices(db, settings, extensions: _FakeExtensions(spots, controls: controls));
   }
 
@@ -120,31 +103,30 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        home: Scaffold(
-          body: SpotsPanel(
-            operation: operation,
-            services: services,
-            logRevision: 'r1',
-            visible: ValueNotifier(true),
-            onSuggestQso: onSuggestQso,
-            onLogQso: onLogQso,
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Scaffold(
+            body: SpotsPanel(
+              operation: operation,
+              services: services,
+              logRevision: 'r1',
+              visible: ValueNotifier(true),
+              onSuggestQso: onSuggestQso,
+              onLogQso: onLogQso,
+            ),
           ),
         ),
       ),
-    ));
+    );
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }
   }
 
   testWidgets('our own spot is pinned above the board and taps re-tune instead of suggesting', (tester) async {
-    final services = await servicesWith([
-      _spot('K1ABC', freq: 14050.0),
-      _spot('N0CALL', freq: 14285.0),
-    ]);
+    final services = await servicesWith([_spot('K1ABC', freq: 14050.0), _spot('N0CALL', freq: 14285.0)]);
     final suggested = <Map<String, dynamic>>[];
     await pumpPanel(tester, services: services, onSuggestQso: (qso, {reveal = true}) => suggested.add(qso));
 
@@ -183,18 +165,10 @@ void main() {
   });
 
   testWidgets('sliding a self row right cannot log our own station', (tester) async {
-    final services = await servicesWith([
-      _spot('K1ABC', freq: 14050.0),
-      _spot('N0CALL', freq: 14285.0),
-    ]);
+    final services = await servicesWith([_spot('K1ABC', freq: 14050.0), _spot('N0CALL', freq: 14285.0)]);
     final suggested = <Map<String, dynamic>>[];
     final logged = <Map<String, dynamic>>[];
-    await pumpPanel(
-      tester,
-      services: services,
-      onSuggestQso: (qso, {reveal = true}) => suggested.add(qso),
-      onLogQso: logged.add,
-    );
+    await pumpPanel(tester, services: services, onSuggestQso: (qso, {reveal = true}) => suggested.add(qso), onLogQso: logged.add);
 
     /// Same drag as spots_panel_reveal_test.dart's slide helper: in steps,
     /// because the commit threshold is watched per drag frame.
@@ -245,17 +219,8 @@ void main() {
   testWidgets('the pinned self spot survives a band filter that hides the rest of the board', (tester) async {
     // The moment the pin matters: the operator QSYed and the 'auto'/explicit
     // band filter followed them away from where they self-spotted.
-    await settings.setSpottingFilters({
-      'bandFilter': '40m',
-      'modeFilter': 'any',
-      'sortBy': 'frequency',
-      'groupByBand': true,
-    });
-    final services = HaLoServices(db, settings,
-        extensions: _FakeExtensions([
-          _spot('K1ABC', freq: 14050.0),
-          _spot('N0CALL', freq: 14285.0),
-        ]));
+    await settings.setSpottingFilters({'bandFilter': '40m', 'modeFilter': 'any', 'sortBy': 'frequency', 'groupByBand': true});
+    final services = HaLoServices(db, settings, extensions: _FakeExtensions([_spot('K1ABC', freq: 14050.0), _spot('N0CALL', freq: 14285.0)]));
     await pumpPanel(tester, services: services);
 
     // Everything on the board is 20m, so the filter empties it — except the
@@ -272,15 +237,18 @@ void main() {
       {'type': 'pota', 'ref': 'US-0001'},
     ];
     (spot['spot'] as Map<String, dynamic>)['label'] = 'US-0001 Test Park';
-    final services = await servicesWith([spot], controls: [
-      {
-        'key': 'pota',
-        'label': 'POTA',
-        'icon': 'pine-tree',
-        'color': '#068541',
-        'input': {'kind': 'refList', 'refType': 'pota'},
-      },
-    ]);
+    final services = await servicesWith(
+      [spot],
+      controls: [
+        {
+          'key': 'pota',
+          'label': 'POTA',
+          'icon': 'pine-tree',
+          'color': '#068541',
+          'input': {'kind': 'refList', 'refType': 'pota'},
+        },
+      ],
+    );
     await pumpPanel(tester, services: services);
 
     // The icon takes the extension's color, not the row's outline grey.

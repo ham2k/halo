@@ -30,12 +30,14 @@ const double flagGlyphDefaultFontSize = 16;
 /// Renders [flag] at a size matching [fontSize]-emoji text, in the bundled
 /// color-emoji font. [shadows] glows the glyph against a tinted fill (e.g.
 /// the call-info flag).
-Widget flagGlyph(String flag, {double fontSize = flagGlyphDefaultFontSize, List<Shadow>? shadows}) =>
-    Text(flag, style: emojiStyle(fontSize: fontSize).copyWith(shadows: shadows));
+Widget flagGlyph(String flag, {double fontSize = flagGlyphDefaultFontSize, List<Shadow>? shadows}) => Text(
+  flag,
+  style: emojiStyle(fontSize: fontSize).copyWith(shadows: shadows),
+);
 
 /// [flagGlyph] as an [InlineSpan], for embedding a flag inline with running
 /// text in a `Text.rich` (e.g. the call-info header's "🇺🇸 United States").
 InlineSpan flagSpan(String flag, {required TextStyle style, List<Shadow>? shadows}) => WidgetSpan(
-      alignment: PlaceholderAlignment.middle,
-      child: flagGlyph(flag, fontSize: style.fontSize ?? flagGlyphDefaultFontSize, shadows: shadows),
-    );
+  alignment: PlaceholderAlignment.middle,
+  child: flagGlyph(flag, fontSize: style.fontSize ?? flagGlyphDefaultFontSize, shadows: shadows),
+);

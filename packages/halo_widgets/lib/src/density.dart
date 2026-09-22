@@ -83,8 +83,7 @@ enum LayoutDensity {
   ///
   /// Defaults to [normal] with no scope above — the pre-density layout, so a
   /// widget tested or hosted outside the app root behaves as it always did.
-  static LayoutDensity of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<LayoutDensityScope>()?.density ?? LayoutDensity.normal;
+  static LayoutDensity of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<LayoutDensityScope>()?.density ?? LayoutDensity.normal;
 
   /// [of], resolved to the dimensions themselves — the common case.
   static LayoutMetrics metricsOf(BuildContext context) => of(context).metrics;
@@ -179,9 +178,7 @@ enum DensityPreference {
   /// roomier pick is stored but does not take effect, which is what the
   /// caller's "too short" message is for.
   DensityPreference? stepped({required double height, required bool denser}) {
-    final from = this == DensityPreference.auto
-        ? resolve(height)
-        : LayoutDensity.values.byName(name);
+    final from = this == DensityPreference.auto ? resolve(height) : LayoutDensity.values.byName(name);
     final index = from.index + (denser ? -1 : 1);
     if (index < 0 || index >= LayoutDensity.values.length) return null;
     return DensityPreference.values.byName(LayoutDensity.values[index].name);
@@ -386,11 +383,7 @@ class LayoutDensityScope extends InheritedWidget {
   /// the window it sits in, however tall the pane itself is.
   static Widget forHeight({Key? key, required double height, required Widget child}) {
     return Builder(
-      builder: (context) => LayoutDensityScope(
-        key: key,
-        density: LayoutDensity.forHeight(height).atMost(LayoutDensity.of(context)),
-        child: child,
-      ),
+      builder: (context) => LayoutDensityScope(key: key, density: LayoutDensity.forHeight(height).atMost(LayoutDensity.of(context)), child: child),
     );
   }
 

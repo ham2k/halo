@@ -45,11 +45,7 @@ class MissingPanelPane extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              MdiIcons.toyBrickRemove,
-              size: 48,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            Icon(MdiIcons.toyBrickRemove, size: 48, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(height: Space.lg),
             Text(
               context.t.operation.layout.missingExtension(name: extensionName),

@@ -34,11 +34,7 @@ class _FakeSocket {
   StreamChannel<dynamic> get local => _controller.local;
 
   void send(String event, {String? channel, Object? data}) {
-    _controller.foreign.sink.add(jsonEncode({
-      'event': event,
-      'channel': ?channel,
-      'data': jsonEncode(data ?? const {}),
-    }));
+    _controller.foreign.sink.add(jsonEncode({'event': event, 'channel': ?channel, 'data': jsonEncode(data ?? const {})}));
   }
 
   void establish() => send('pusher:connection_established', data: {'socket_id': '1.1'});
@@ -62,10 +58,7 @@ class _Extensions extends ExtensionServiceWithFakeHost {
   Future<Map<String, dynamic>?> syncAccountData() async {
     accountFetches++;
     if (unreachable || account == null) return null;
-    return {
-      'current_account': account,
-      if (pendingChallenges != null) 'pending_challenges': pendingChallenges,
-    };
+    return {'current_account': account, if (pendingChallenges != null) 'pending_challenges': pendingChallenges};
   }
 
   @override
@@ -81,11 +74,7 @@ class _Extensions extends ExtensionServiceWithFakeHost {
   }
 }
 
-Future<(HaLoServices, _Extensions)> makeServices(
-  Map<String, dynamic>? account, {
-  int? pendingChallenges,
-  PusherService? pusher,
-}) async {
+Future<(HaLoServices, _Extensions)> makeServices(Map<String, dynamic>? account, {int? pendingChallenges, PusherService? pusher}) async {
   SharedPreferences.setMockInitialValues({'flutter.syncEnabled': true});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
@@ -99,7 +88,11 @@ Future<void> openSyncPanel(WidgetTester tester, HaLoServices services) async {
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(home: SettingsView(services: services)),
+    ),
+  );
   await tester.pumpAndSettle();
   // `.first`: the sidebar's entry. The Settings panel showing beside it
   // carries a band of the same name.
@@ -109,11 +102,7 @@ Future<void> openSyncPanel(WidgetTester tester, HaLoServices services) async {
 
 void main() {
   testWidgets('a change in flight offers a resend, naming the address it is waiting on', (tester) async {
-    final (services, _) = await makeServices({
-      'uuid': 'acct-1',
-      'email': 'old@example.com',
-      'pending_email': 'new@example.com',
-    });
+    final (services, _) = await makeServices({'uuid': 'acct-1', 'email': 'old@example.com', 'pending_email': 'new@example.com'});
     await openSyncPanel(tester, services);
 
     expect(find.text(t.settings.syncPanel.resendConfirmation), findsOneWidget);
@@ -124,11 +113,7 @@ void main() {
     // The trap: LoFi leaves pending_email set to the address that was just
     // confirmed, so testing the field for presence alone would leave a
     // "resend confirmation" row up forever on a settled account.
-    final (services, _) = await makeServices({
-      'uuid': 'acct-1',
-      'email': 'me@example.com',
-      'pending_email': 'me@example.com',
-    });
+    final (services, _) = await makeServices({'uuid': 'acct-1', 'email': 'me@example.com', 'pending_email': 'me@example.com'});
     await openSyncPanel(tester, services);
 
     expect(find.text(t.settings.syncPanel.resendConfirmation), findsNothing);
@@ -142,11 +127,7 @@ void main() {
   });
 
   testWidgets('resending asks the server to mail the confirmation again', (tester) async {
-    final (services, extensions) = await makeServices({
-      'uuid': 'acct-1',
-      'email': 'old@example.com',
-      'pending_email': 'new@example.com',
-    });
+    final (services, extensions) = await makeServices({'uuid': 'acct-1', 'email': 'old@example.com', 'pending_email': 'new@example.com'});
     await openSyncPanel(tester, services);
 
     await tester.tap(find.text(t.settings.syncPanel.resendConfirmation));
@@ -190,10 +171,7 @@ void main() {
     // loFiErrorMessage is what digs the sentence back out (see
     // extensions/sync/ham2k-lofi/src/errors.test.ts). Stubbing a bare
     // `error` here would be inventing a reply the server never sends.
-    extensions.setEmailResult = const {
-      'error': 'LoFi request failed: in use by another account',
-      'error_status': 422,
-    };
+    extensions.setEmailResult = const {'error': 'LoFi request failed: in use by another account', 'error_status': 422};
     await openSyncPanel(tester, services);
 
     await tester.tap(find.text(t.settings.syncPanel.account));
@@ -210,11 +188,7 @@ void main() {
     // Someone who never got the mail retypes the address. Doing nothing at
     // all — the obvious reading of "unchanged" — leaves them with no
     // feedback and no mail.
-    final (services, extensions) = await makeServices({
-      'uuid': 'acct-1',
-      'email': 'old@example.com',
-      'pending_email': 'new@example.com',
-    });
+    final (services, extensions) = await makeServices({'uuid': 'acct-1', 'email': 'old@example.com', 'pending_email': 'new@example.com'});
     await openSyncPanel(tester, services);
 
     await tester.tap(find.text(t.settings.syncPanel.account));
@@ -254,17 +228,11 @@ void main() {
     });
 
     testWidgets('a pending request shows the row, counted', (tester) async {
-      final (services, _) = await makeServices({
-        'uuid': 'acct-1',
-        'email': 'me@example.com',
-      }, pendingChallenges: 2);
+      final (services, _) = await makeServices({'uuid': 'acct-1', 'email': 'me@example.com'}, pendingChallenges: 2);
       await openSyncPanel(tester, services);
 
       expect(find.text(t.settings.syncPanel.connectionRequests), findsOneWidget);
-      expect(
-        find.text(t.settings.syncPanel.connectionRequestsDescription(count: 2, n: '2')),
-        findsOneWidget,
-      );
+      expect(find.text(t.settings.syncPanel.connectionRequestsDescription(count: 2, n: '2')), findsOneWidget);
     });
 
     testWidgets('a request arriving while the panel is open shows up on its own', (tester) async {
@@ -288,10 +256,7 @@ void main() {
       // interval is that this arrives first.
       final server = _FakeSocket();
       final pusher = PusherService(appKey: 'k', cluster: 'mt1', connect: (_) => server.local);
-      final (services, extensions) = await makeServices(
-        {'uuid': 'acct-1', 'email': 'me@example.com', 'push_channel': 'account-abc-1234'},
-        pusher: pusher,
-      );
+      final (services, extensions) = await makeServices({'uuid': 'acct-1', 'email': 'me@example.com', 'push_channel': 'account-abc-1234'}, pusher: pusher);
       await openSyncPanel(tester, services);
       server.establish();
       await tester.pumpAndSettle();
@@ -310,10 +275,7 @@ void main() {
     testWidgets('a push about somebody else\'s account is ignored', (tester) async {
       final server = _FakeSocket();
       final pusher = PusherService(appKey: 'k', cluster: 'mt1', connect: (_) => server.local);
-      final (services, extensions) = await makeServices(
-        {'uuid': 'acct-1', 'email': 'me@example.com', 'push_channel': 'account-abc-1234'},
-        pusher: pusher,
-      );
+      final (services, extensions) = await makeServices({'uuid': 'acct-1', 'email': 'me@example.com', 'push_channel': 'account-abc-1234'}, pusher: pusher);
       await openSyncPanel(tester, services);
       server.establish();
       await tester.pumpAndSettle();
@@ -343,15 +305,10 @@ void main() {
     });
 
     testWidgets('the row is coloured to be noticed, not to blend in', (tester) async {
-      final (services, _) = await makeServices({
-        'uuid': 'acct-1',
-        'email': 'me@example.com',
-      }, pendingChallenges: 1);
+      final (services, _) = await makeServices({'uuid': 'acct-1', 'email': 'me@example.com'}, pendingChallenges: 1);
       await openSyncPanel(tester, services);
 
-      final tile = tester.widget<ListTile>(
-        find.ancestor(of: find.text(t.settings.syncPanel.connectionRequests), matching: find.byType(ListTile)),
-      );
+      final tile = tester.widget<ListTile>(find.ancestor(of: find.text(t.settings.syncPanel.connectionRequests), matching: find.byType(ListTile)));
       final context = tester.element(find.text(t.settings.syncPanel.connectionRequests));
       expect((tile.leading! as Icon).color, HaLoColors.of(context).important);
     });

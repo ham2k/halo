@@ -53,11 +53,21 @@ class _FakeExtensions extends ExtensionService {
 Map<String, dynamic> _fold(String scorerKey, Map<String, dynamic> args, {bool withDay = true}) {
   final sent = (args['qsos'] as List).cast<Map<String, dynamic>>();
   return {
-    'qsoScores': {for (final q in sent) q['uuid'] as String: {'value': 1, 'pass': args.containsKey('resumeFrom') ? 'tail' : 'full'}},
+    'qsoScores': {
+      for (final q in sent) q['uuid'] as String: {'value': 1, 'pass': args.containsKey('resumeFrom') ? 'tail' : 'full'},
+    },
     'daySections': [
-      {'day': 100, 'count': sent.length, 'scores': {'qsoCount': {'key': 'qsoCount', 'total': sent.length}}},
+      {
+        'day': 100,
+        'count': sent.length,
+        'scores': {
+          'qsoCount': {'key': 'qsoCount', 'total': sent.length},
+        },
+      },
     ],
-    'operationSummary': {'qsoCount': {'key': 'qsoCount', 'total': sent.length}},
+    'operationSummary': {
+      'qsoCount': {'key': 'qsoCount', 'total': sent.length},
+    },
     'scoresheet': {'folded': sent.length, 'resumed': args.containsKey('resumeFrom')},
     if (withDay) 'scoresheetDay': 0,
   };
@@ -94,13 +104,12 @@ void main() {
 
   Future<Operation> current(Operation operation) async => (await operations.get(operation.uuid))!;
   Future<Qso> log(Operation operation, int i) => qsos.add(operation.uuid, {
-        'their': {'call': 'K$i'},
-        'band': '20m',
-        'mode': 'SSB',
-        'startAtMillis': DateTime.utc(2026, 7, 15, 13, i).millisecondsSinceEpoch,
-      });
-  List<String> sentUuids(Map<String, dynamic> args) =>
-      [for (final q in (args['qsos'] as List).cast<Map<String, dynamic>>()) q['uuid'] as String];
+    'their': {'call': 'K$i'},
+    'band': '20m',
+    'mode': 'SSB',
+    'startAtMillis': DateTime.utc(2026, 7, 15, 13, i).millisecondsSinceEpoch,
+  });
+  List<String> sentUuids(Map<String, dynamic> args) => [for (final q in (args['qsos'] as List).cast<Map<String, dynamic>>()) q['uuid'] as String];
 
   group('an append replays a tail', () {
     test('the second pass sends only the new contact, with the checkpoint and its day', () async {
@@ -132,8 +141,11 @@ void main() {
       await scoring.rescoreOperation(operation);
 
       expect((await qsos.get(added.uuid))?.scores?['core']?['pass'], 'tail');
-      expect((await qsos.get(earlier.uuid))?.scores?['core']?['pass'], 'full',
-          reason: 'a fold is forward-only: an append never revises an earlier verdict, and the pass must not blank it');
+      expect(
+        (await qsos.get(earlier.uuid))?.scores?['core']?['pass'],
+        'full',
+        reason: 'a fold is forward-only: an append never revises an earlier verdict, and the pass must not blank it',
+      );
     });
 
     test('the day the tail continues sums its count with the cached section; the checkpoint restamps over the whole log', () async {
@@ -147,9 +159,17 @@ void main() {
 
       final core = ((await current(operation)).localData['scoring'] as Map)['core'] as Map;
       expect(core['daySections'], [
-        {'day': 100, 'count': 3, 'scores': {'qsoCount': {'key': 'qsoCount', 'total': 1}}},
+        {
+          'day': 100,
+          'count': 3,
+          'scores': {
+            'qsoCount': {'key': 'qsoCount', 'total': 1},
+          },
+        },
       ]);
-      expect(core['operationSummary'], {'qsoCount': {'key': 'qsoCount', 'total': 1}});
+      expect(core['operationSummary'], {
+        'qsoCount': {'key': 'qsoCount', 'total': 1},
+      });
       expect(core['scoresheet'], {'folded': 1, 'resumed': true});
       // Stamped over the three rows, so the NEXT append resumes from here.
       expect((core['checkpoint'] as Map)['digest'], checkpointDigestOf(await qsos.forOperation(operation.uuid)));
@@ -211,10 +231,7 @@ void main() {
     test('when a scorer fails on the tail, so the tail contact still gets every verdict', () async {
       var operation = await operationWith(2);
       final scopes = {'core': 'always', 'other': 'always'};
-      final extensions = _FakeExtensions(
-        scopes: scopes,
-        answer: (key, args) => key == 'other' && args.containsKey('resumeFrom') ? null : _fold(key, args),
-      );
+      final extensions = _FakeExtensions(scopes: scopes, answer: (key, args) => key == 'other' && args.containsKey('resumeFrom') ? null : _fold(key, args));
       final scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
       await scoring.rescoreOperation(operation);
       final added = await log(operation, 1);
@@ -248,7 +265,16 @@ void main() {
       final scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
       await scoring.rescoreOperation(operation, full: true);
       final edited = (await qsos.forOperation(operation.uuid)).first;
-      await qsos.update(Qso(uuid: edited.uuid, operationUuid: edited.operationUuid, data: {...edited.data, 'their': {'call': 'W1AW/X'}}));
+      await qsos.update(
+        Qso(
+          uuid: edited.uuid,
+          operationUuid: edited.operationUuid,
+          data: {
+            ...edited.data,
+            'their': {'call': 'W1AW/X'},
+          },
+        ),
+      );
       await log(operation, 1);
       operation = await current(operation);
       await scoring.rescoreOperation(operation);
@@ -277,7 +303,10 @@ void main() {
       var operation = await operationWith(2);
       final scopes = {
         'core': 'always',
-        'pota': {'refTypes': ['potaActivation', 'pota'], 'huntingRefTypes': ['pota']},
+        'pota': {
+          'refTypes': ['potaActivation', 'pota'],
+          'huntingRefTypes': ['pota'],
+        },
       };
       final extensions = _FakeExtensions(scopes: scopes, answer: _fold);
       final scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
@@ -289,7 +318,9 @@ void main() {
         'their': {'call': 'K9PARK'},
         'band': '20m',
         'mode': 'SSB',
-        'refs': [{'type': 'pota', 'ref': 'US-0001'}],
+        'refs': [
+          {'type': 'pota', 'ref': 'US-0001'},
+        ],
         'startAtMillis': DateTime.utc(2026, 7, 15, 13).millisecondsSinceEpoch,
       });
       operation = await current(operation);
@@ -373,24 +404,66 @@ void main() {
     test('a continued day keeps the fresh tallies and sums the counts; new days append; earlier days stay', () {
       final merged = mergeDaySections(
         [
-          {'day': 1, 'count': 5, 'scores': {'a': 1}},
-          {'day': 2, 'count': 2, 'scores': {'a': 2}},
+          {
+            'day': 1,
+            'count': 5,
+            'scores': {'a': 1},
+          },
+          {
+            'day': 2,
+            'count': 2,
+            'scores': {'a': 2},
+          },
         ],
         [
-          {'day': 2, 'count': 1, 'scores': {'a': 3}},
-          {'day': 3, 'count': 4, 'scores': {'a': 4}},
+          {
+            'day': 2,
+            'count': 1,
+            'scores': {'a': 3},
+          },
+          {
+            'day': 3,
+            'count': 4,
+            'scores': {'a': 4},
+          },
         ],
       );
       expect(merged, [
-        {'day': 1, 'count': 5, 'scores': {'a': 1}},
-        {'day': 2, 'count': 3, 'scores': {'a': 3}},
-        {'day': 3, 'count': 4, 'scores': {'a': 4}},
+        {
+          'day': 1,
+          'count': 5,
+          'scores': {'a': 1},
+        },
+        {
+          'day': 2,
+          'count': 3,
+          'scores': {'a': 3},
+        },
+        {
+          'day': 3,
+          'count': 4,
+          'scores': {'a': 4},
+        },
       ]);
     });
 
     test('nothing cached is just the fresh sections; nothing fresh is the cached ones', () {
-      expect(mergeDaySections(null, [{'day': 1, 'count': 1, 'scores': {}}]), [{'day': 1, 'count': 1, 'scores': {}}]);
-      expect(mergeDaySections([{'day': 1, 'count': 1, 'scores': {}}], null), [{'day': 1, 'count': 1, 'scores': {}}]);
+      expect(
+        mergeDaySections(null, [
+          {'day': 1, 'count': 1, 'scores': {}},
+        ]),
+        [
+          {'day': 1, 'count': 1, 'scores': {}},
+        ],
+      );
+      expect(
+        mergeDaySections([
+          {'day': 1, 'count': 1, 'scores': {}},
+        ], null),
+        [
+          {'day': 1, 'count': 1, 'scores': {}},
+        ],
+      );
     });
   });
 }

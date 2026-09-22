@@ -30,8 +30,7 @@ import 'dart:typed_data';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../driver.dart';
 import '../equipment.dart';
-import 'antenna_genius_driver.dart'
-    show switchLayoutAntennaPorts, switchLayoutConfigKey, switchLayoutDevicePorts;
+import 'antenna_genius_driver.dart' show switchLayoutAntennaPorts, switchLayoutConfigKey, switchLayoutDevicePorts;
 import 'line_framer.dart';
 import 'sierra_dcn_codec.dart';
 
@@ -90,7 +89,6 @@ class SierraCoaxDriver extends EquipmentDriver {
   @override
   String get name => 'Sierra Radio CX-1';
 
-
   @override
   int get antennaPortCount => cx1PortCount;
 
@@ -101,20 +99,11 @@ class SierraCoaxDriver extends EquipmentDriver {
   int get devicePortCount => 1;
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) {
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) {
     final st = t.settings.station;
     return [
       if (!overrides.containsKey(sierraAddressConfigKey))
-        {
-          'type': 'field',
-          'fieldType': 'text',
-          'key': sierraAddressConfigKey,
-          'label': st.dcnAddress,
-          'description': st.dcnAddressDescription,
-        },
+        {'type': 'field', 'fieldType': 'text', 'key': sierraAddressConfigKey, 'label': st.dcnAddress, 'description': st.dcnAddressDescription},
       if (!overrides.containsKey(switchLayoutConfigKey))
         {
           'type': 'field',
@@ -123,14 +112,8 @@ class SierraCoaxDriver extends EquipmentDriver {
           'label': st.switchLayout,
           'description': st.switchLayoutDescription,
           'options': [
-            {
-              'value': switchLayoutDevicePorts,
-              'label': st.switchLayoutSidesOneRadio(antennas: cx1PortCount),
-            },
-            {
-              'value': switchLayoutAntennaPorts,
-              'label': st.switchLayoutSidesOneAntenna(radios: cx1PortCount),
-            },
+            {'value': switchLayoutDevicePorts, 'label': st.switchLayoutSidesOneRadio(antennas: cx1PortCount)},
+            {'value': switchLayoutAntennaPorts, 'label': st.switchLayoutSidesOneAntenna(radios: cx1PortCount)},
           ],
         },
     ];
@@ -140,9 +123,7 @@ class SierraCoaxDriver extends EquipmentDriver {
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
     if (key == switchLayoutConfigKey) {
       if (value == null || value == '') return null;
-      return (value == switchLayoutDevicePorts || value == switchLayoutAntennaPorts)
-          ? null
-          : t.settings.station.switchLayoutRequired;
+      return (value == switchLayoutDevicePorts || value == switchLayoutAntennaPorts) ? null : t.settings.station.switchLayoutRequired;
     }
     if (key != sierraAddressConfigKey) return null;
 
@@ -180,11 +161,8 @@ class SierraCoaxDriver extends EquipmentDriver {
   }
 
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => SierraCoaxSession(
-        sink,
-        address: addressFrom(config),
-        reversed: config[switchLayoutConfigKey] == switchLayoutAntennaPorts,
-      );
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
+      SierraCoaxSession(sink, address: addressFrom(config), reversed: config[switchLayoutConfigKey] == switchLayoutAntennaPorts);
 }
 
 /// An [AntennaSwitchSession] and not a [TransceiverSession]: nothing here
@@ -215,8 +193,7 @@ class SierraCoaxSession implements AntennaSwitchSession {
   bool _wantUpdates = false;
   Timer? _pollTimer;
 
-  void _send(String payload) =>
-      _sink.send(utf8.encode(buildDcnPacket(payload, to: address)));
+  void _send(String payload) => _sink.send(utf8.encode(buildDcnPacket(payload, to: address)));
 
   @override
   void startUpdates() {
@@ -330,28 +307,15 @@ class SierraCoaxSession implements AntennaSwitchSession {
         [SwitchAntenna(key: sierraCommonPortKey, name: t.settings.station.switchCommonPort)],
         [
           for (var port = 1; port <= cx1PortCount; port++)
-            SwitchPort(
-              key: '$port',
-              label: '$port',
-              selectedAntennaKey: port == selected ? sierraCommonPortKey : null,
-            ),
+            SwitchPort(key: '$port', label: '$port', selectedAntennaKey: port == selected ? sierraCommonPortKey : null),
         ],
       );
       return;
     }
 
     _sink.reportSwitchState(
-      [
-        for (var port = 1; port <= cx1PortCount; port++)
-          SwitchAntenna(key: '$port', name: _portName(port)),
-      ],
-      [
-        SwitchPort(
-          key: sierraCommonPortKey,
-          label: t.settings.station.switchCommonPort,
-          selectedAntennaKey: selected == null ? null : '$selected',
-        ),
-      ],
+      [for (var port = 1; port <= cx1PortCount; port++) SwitchAntenna(key: '$port', name: _portName(port))],
+      [SwitchPort(key: sierraCommonPortKey, label: t.settings.station.switchCommonPort, selectedAntennaKey: selected == null ? null : '$selected')],
     );
   }
 

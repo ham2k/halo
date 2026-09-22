@@ -18,22 +18,26 @@ void main() {
 
   Future<String?> line(WidgetTester tester, {required bool reverse}) async {
     String? result;
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Builder(builder: (context) {
-          result = callLocationLine(
-            context,
-            {'grid': 'JO01aa', 'location': 'London', 'country': 'England', 'entityPrefix': 'G'},
-            ourLocation: gridToLocation('FN31pr'),
-            miles: false,
-            showBearing: true,
-            showReverseBearing: reverse,
-            ourEntityPrefix: 'K',
-          );
-          return const SizedBox();
-        }),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              result = callLocationLine(
+                context,
+                {'grid': 'JO01aa', 'location': 'London', 'country': 'England', 'entityPrefix': 'G'},
+                ourLocation: gridToLocation('FN31pr'),
+                miles: false,
+                showBearing: true,
+                showReverseBearing: reverse,
+                ourEntityPrefix: 'K',
+              );
+              return const SizedBox();
+            },
+          ),
+        ),
       ),
-    ));
+    );
     return result;
   }
 

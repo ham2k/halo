@@ -13,32 +13,28 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
   Widget host({required CallInfoData data, bool label = true}) => MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 400,
-            child: CallInfoSummary(
-              data: data,
-              foregroundColor: Colors.black,
-              iconColor: Colors.black,
-              noticeLabel: (key) => key.toUpperCase(),
-              workedBeforeLabel: label ? (times) => '${times.length} QSOs' : null,
-            ),
-          ),
+    home: Scaffold(
+      body: SizedBox(
+        width: 400,
+        child: CallInfoSummary(
+          data: data,
+          foregroundColor: Colors.black,
+          iconColor: Colors.black,
+          noticeLabel: (key) => key.toUpperCase(),
+          workedBeforeLabel: label ? (times) => '${times.length} QSOs' : null,
         ),
-      );
+      ),
+    ),
+  );
 
-  Container pillOf(WidgetTester tester, String text) =>
-      tester.widget<Container>(find.ancestor(of: find.text(text), matching: find.byType(Container)).first);
+  Container pillOf(WidgetTester tester, String text) => tester.widget<Container>(find.ancestor(of: find.text(text), matching: find.byType(Container)).first);
 
   testWidgets('a grey pill in the scoring row, after the notices', (tester) async {
-    await tester.pumpWidget(host(
-      data: const CallInfoData(
-        call: 'W1AW',
-        guess: {'name': 'Hiram Percy'},
-        noticeKeys: ['newBand'],
-        workedBefore: [1000, 2000, 3000],
+    await tester.pumpWidget(
+      host(
+        data: const CallInfoData(call: 'W1AW', guess: {'name': 'Hiram Percy'}, noticeKeys: ['newBand'], workedBefore: [1000, 2000, 3000]),
       ),
-    ));
+    );
     expect(find.text('3 QSOs'), findsOneWidget);
     expect((pillOf(tester, '3 QSOs').decoration as BoxDecoration).color, infoGrey);
     expect((pillOf(tester, 'NEWBAND').decoration as BoxDecoration).color, positiveGreen);
@@ -52,36 +48,51 @@ void main() {
   });
 
   testWidgets('no pill for a first contact, while unknown, or without a labeller', (tester) async {
-    await tester.pumpWidget(host(data: const CallInfoData(call: 'W1AW', workedBefore: [])));
+    await tester.pumpWidget(
+      host(
+        data: const CallInfoData(call: 'W1AW', workedBefore: []),
+      ),
+    );
     expect(find.textContaining('QSO'), findsNothing);
 
     await tester.pumpWidget(host(data: const CallInfoData(call: 'W1AW')));
     expect(find.textContaining('QSO'), findsNothing);
 
-    await tester.pumpWidget(host(data: const CallInfoData(call: 'W1AW', workedBefore: [1000]), label: false));
+    await tester.pumpWidget(
+      host(
+        data: const CallInfoData(call: 'W1AW', workedBefore: [1000]),
+        label: false,
+      ),
+    );
     expect(find.textContaining('QSO'), findsNothing);
   });
 
   testWidgets('a duplicate alert takes the pill\'s place', (tester) async {
-    await tester.pumpWidget(host(
-      data: const CallInfoData(call: 'W1AW', alertKeys: ['duplicate'], workedBefore: [1000]),
-    ));
+    await tester.pumpWidget(
+      host(
+        data: const CallInfoData(call: 'W1AW', alertKeys: ['duplicate'], workedBefore: [1000]),
+      ),
+    );
     expect(find.text('DUPLICATE'), findsOneWidget);
     expect(find.text('1 QSOs'), findsNothing);
 
     // Any other alert leaves it be.
-    await tester.pumpWidget(host(
-      data: const CallInfoData(call: 'W1AW', alertKeys: ['notInLog'], workedBefore: [1000]),
-    ));
+    await tester.pumpWidget(
+      host(
+        data: const CallInfoData(call: 'W1AW', alertKeys: ['notInLog'], workedBefore: [1000]),
+      ),
+    );
     expect(find.text('1 QSOs'), findsOneWidget);
   });
 
   group('the note\'s marker run', () {
     testWidgets('paints last-emoji-first, split by grapheme, in the emoji font', (tester) async {
       // A ZWJ sequence first: a reversal by code point would tear it apart.
-      await tester.pumpWidget(host(
-        data: const CallInfoData(call: 'W1AW', guess: {'note': '🧑‍💻🍻 Alan - Dev Team'}),
-      ));
+      await tester.pumpWidget(
+        host(
+          data: const CallInfoData(call: 'W1AW', guess: {'note': '🧑‍💻🍻 Alan - Dev Team'}),
+        ),
+      );
       expect(find.text('🍻🧑‍💻'), findsOneWidget);
       expect(tester.widget<Text>(find.text('🍻🧑‍💻')).style?.fontFamily, emojiFontFamily);
       expect(find.textContaining('Alan - Dev Team'), findsOneWidget);
@@ -91,9 +102,11 @@ void main() {
       // ⏰ sits in U+2300–23FF, which the extension's LEADING_EMOJI covers: a
       // narrower range here leaves the QSO row showing a marker this line
       // folds into Roboto prose, where the web renderer paints nothing.
-      await tester.pumpWidget(host(
-        data: const CallInfoData(call: 'W1AW', guess: {'note': '⏰ slow op'}),
-      ));
+      await tester.pumpWidget(
+        host(
+          data: const CallInfoData(call: 'W1AW', guess: {'note': '⏰ slow op'}),
+        ),
+      );
       expect(find.text('⏰'), findsOneWidget);
       expect(find.textContaining('slow op'), findsOneWidget);
     });

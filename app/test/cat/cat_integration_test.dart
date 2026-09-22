@@ -30,46 +30,40 @@ class _FakeFlex {
   Socket? _client;
 
   _FakeFlex(this._server) {
-    _server.listen(
-      (socket) {
-        _client = socket;
-        // A write to a socket the client already destroyed fails on `done`,
-        // not at the `add` call, and an unhandled error there escapes into
-        // the zone and fails the test.
-        unawaited(socket.done.then((_) {}, onError: (Object _) {}));
-        socket.add(utf8.encode('V1.4.0.0\nH5AC2F980\n'));
-        socket.listen(
-          (chunk) {
-            for (final line in utf8.decode(chunk).split('\n')) {
-              if (line.trim().isEmpty) continue;
-              commands.add(line);
-              if (line.contains('sub slice all')) {
-                socket.add(utf8.encode(
-                    'S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 client_handle=0x1C61D553 mode=DIGU wide=0\n'));
-              }
+    _server.listen((socket) {
+      _client = socket;
+      // A write to a socket the client already destroyed fails on `done`,
+      // not at the `add` call, and an unhandled error there escapes into
+      // the zone and fails the test.
+      unawaited(socket.done.then((_) {}, onError: (Object _) {}));
+      socket.add(utf8.encode('V1.4.0.0\nH5AC2F980\n'));
+      socket.listen(
+        (chunk) {
+          for (final line in utf8.decode(chunk).split('\n')) {
+            if (line.trim().isEmpty) continue;
+            commands.add(line);
+            if (line.contains('sub slice all')) {
+              socket.add(utf8.encode('S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 client_handle=0x1C61D553 mode=DIGU wide=0\n'));
             }
-          },
-          // The client destroys its socket on disconnect (as polo's did, and
-          // as this transport does), so the peer sees a reset rather than a
-          // clean FIN. A real radio shrugs that off; so must the fake, or an
-          // ordinary disconnect fails the test with an unhandled error.
-          onError: (Object _) {},
-          cancelOnError: true,
-        );
-      },
-      onError: (Object _) {},
-    );
+          }
+        },
+        // The client destroys its socket on disconnect (as polo's did, and
+        // as this transport does), so the peer sees a reset rather than a
+        // clean FIN. A real radio shrugs that off; so must the fake, or an
+        // ordinary disconnect fails the test with an unhandled error.
+        onError: (Object _) {},
+        cancelOnError: true,
+      );
+    }, onError: (Object _) {});
   }
 
-  static Future<_FakeFlex> start() async =>
-      _FakeFlex(await ServerSocket.bind(InternetAddress.loopbackIPv4, 0));
+  static Future<_FakeFlex> start() async => _FakeFlex(await ServerSocket.bind(InternetAddress.loopbackIPv4, 0));
 
   String get host => _server.address.address;
   int get port => _server.port;
 
   /// The radio being retuned at the front panel.
-  void pushStatus({required String mhz, required String mode}) =>
-      _client?.add(utf8.encode('S5AC2F980|slice 0 RF_frequency=$mhz mode=$mode\n'));
+  void pushStatus({required String mhz, required String mode}) => _client?.add(utf8.encode('S5AC2F980|slice 0 RF_frequency=$mhz mode=$mode\n'));
 
   Future<void> stop() async {
     _client?.destroy();
@@ -100,46 +94,42 @@ class _FakeRigctld {
   String power = '50';
 
   _FakeRigctld(this._server) {
-    _server.listen(
-      (socket) {
-        unawaited(socket.done.then((_) {}, onError: (Object _) {}));
-        socket.listen(
-          (chunk) {
-            for (final line in utf8.decode(chunk).split('\n')) {
-              final command = line.trim();
-              if (command.isEmpty) continue;
-              commands.add(command);
-              if (command == '+\\chk_vfo') {
-                socket.add(utf8.encode('ChkVFO: 0\n'));
-              } else if (command == '+f') {
-                socket.add(utf8.encode('get_freq:\nFrequency: $frequency\nRPRT 0\n'));
-              } else if (command == '+m') {
-                socket.add(utf8.encode('get_mode:\nMode: $mode\nPassband: 15000\nRPRT 0\n'));
-              } else if (command.startsWith('F ')) {
-                frequency = command.substring(2).trim();
-                socket.add(utf8.encode('RPRT 0\n'));
-              } else if (command.startsWith('M ')) {
-                mode = command.split(' ')[1];
-                socket.add(utf8.encode('RPRT 0\n'));
-              } else if (command == '+l RFPOWER_METER_WATTS') {
-                socket.add(utf8.encode('get_level:\nRFPOWER_METER_WATTS: $power\nRPRT 0\n'));
-              } else if (command.startsWith('L RFPOWER ')) {
-                final fraction = double.parse(command.substring('L RFPOWER '.length).trim());
-                power = (fraction * 100).round().toString();
-                socket.add(utf8.encode('RPRT 0\n'));
-              }
+    _server.listen((socket) {
+      unawaited(socket.done.then((_) {}, onError: (Object _) {}));
+      socket.listen(
+        (chunk) {
+          for (final line in utf8.decode(chunk).split('\n')) {
+            final command = line.trim();
+            if (command.isEmpty) continue;
+            commands.add(command);
+            if (command == '+\\chk_vfo') {
+              socket.add(utf8.encode('ChkVFO: 0\n'));
+            } else if (command == '+f') {
+              socket.add(utf8.encode('get_freq:\nFrequency: $frequency\nRPRT 0\n'));
+            } else if (command == '+m') {
+              socket.add(utf8.encode('get_mode:\nMode: $mode\nPassband: 15000\nRPRT 0\n'));
+            } else if (command.startsWith('F ')) {
+              frequency = command.substring(2).trim();
+              socket.add(utf8.encode('RPRT 0\n'));
+            } else if (command.startsWith('M ')) {
+              mode = command.split(' ')[1];
+              socket.add(utf8.encode('RPRT 0\n'));
+            } else if (command == '+l RFPOWER_METER_WATTS') {
+              socket.add(utf8.encode('get_level:\nRFPOWER_METER_WATTS: $power\nRPRT 0\n'));
+            } else if (command.startsWith('L RFPOWER ')) {
+              final fraction = double.parse(command.substring('L RFPOWER '.length).trim());
+              power = (fraction * 100).round().toString();
+              socket.add(utf8.encode('RPRT 0\n'));
             }
-          },
-          onError: (Object _) {},
-          cancelOnError: true,
-        );
-      },
-      onError: (Object _) {},
-    );
+          }
+        },
+        onError: (Object _) {},
+        cancelOnError: true,
+      );
+    }, onError: (Object _) {});
   }
 
-  static Future<_FakeRigctld> start() async =>
-      _FakeRigctld(await ServerSocket.bind(InternetAddress.loopbackIPv4, 0));
+  static Future<_FakeRigctld> start() async => _FakeRigctld(await ServerSocket.bind(InternetAddress.loopbackIPv4, 0));
 
   String get host => _server.address.address;
   int get port => _server.port;
@@ -171,77 +161,75 @@ class _FakeFlrig {
   String volts = '13.8';
 
   _FakeFlrig(this._server) {
-    _server.listen(
-      (socket) {
-        unawaited(socket.done.then((_) {}, onError: (Object _) {}));
-        var pending = '';
-        socket.listen(
-          (chunk) {
-            pending += utf8.decode(chunk);
-            // One request per response, so requests are parsed with the
-            // same header-then-length walk the driver uses for responses.
-            while (true) {
-              final headerEnd = pending.indexOf('\r\n\r\n');
-              if (headerEnd < 0) return;
-              final length = int.parse(
-                  RegExp(r'content-length:\s*(\d+)', caseSensitive: false).firstMatch(pending.substring(0, headerEnd))!.group(1)!);
-              if (pending.length < headerEnd + 4 + length) return;
-              final body = pending.substring(headerEnd + 4, headerEnd + 4 + length);
-              pending = pending.substring(headerEnd + 4 + length);
-              final method = RegExp(r'<methodName>([^<]+)</methodName>').firstMatch(body)!.group(1)!;
-              methods.add(method);
-              switch (method) {
-                case 'rig.get_vfo':
-                  socket.add(_response(frequency));
-                case 'rig.get_mode':
-                  socket.add(_response(mode));
-                case 'rig.set_frequency':
-                  frequency = RegExp(r'<double>([\d.]+)</double>').firstMatch(body)!.group(1)!;
-                  socket.add(_response('<i4>1</i4>'));
-                case 'rig.set_mode':
-                  mode = RegExp(r'<param><value>([^<]+)</value></param>').firstMatch(body)!.group(1)!;
-                  socket.add(_response(''));
-                case 'rig.get_power':
-                  socket.add(_response(power));
-                case 'rig.set_power':
-                  power = RegExp(r'<double>([\d.]+)</double>').firstMatch(body)!.group(1)!;
-                  socket.add(_response('<i4>1</i4>'));
-                case 'rig.get_ptt':
-                  socket.add(_response('<i4>${transmitting ? 1 : 0}</i4>'));
-                case 'rig.get_pwrmeter':
-                  socket.add(_response(powerMeter));
-                case 'rig.get_swrmeter':
-                  socket.add(_response(swr));
-                case 'rig.get_alcmeter':
-                  socket.add(_response(alc));
-                case 'rig.get_vmeter':
-                  socket.add(_response(volts));
-              }
+    _server.listen((socket) {
+      unawaited(socket.done.then((_) {}, onError: (Object _) {}));
+      var pending = '';
+      socket.listen(
+        (chunk) {
+          pending += utf8.decode(chunk);
+          // One request per response, so requests are parsed with the
+          // same header-then-length walk the driver uses for responses.
+          while (true) {
+            final headerEnd = pending.indexOf('\r\n\r\n');
+            if (headerEnd < 0) return;
+            final length = int.parse(RegExp(r'content-length:\s*(\d+)', caseSensitive: false).firstMatch(pending.substring(0, headerEnd))!.group(1)!);
+            if (pending.length < headerEnd + 4 + length) return;
+            final body = pending.substring(headerEnd + 4, headerEnd + 4 + length);
+            pending = pending.substring(headerEnd + 4 + length);
+            final method = RegExp(r'<methodName>([^<]+)</methodName>').firstMatch(body)!.group(1)!;
+            methods.add(method);
+            switch (method) {
+              case 'rig.get_vfo':
+                socket.add(_response(frequency));
+              case 'rig.get_mode':
+                socket.add(_response(mode));
+              case 'rig.set_frequency':
+                frequency = RegExp(r'<double>([\d.]+)</double>').firstMatch(body)!.group(1)!;
+                socket.add(_response('<i4>1</i4>'));
+              case 'rig.set_mode':
+                mode = RegExp(r'<param><value>([^<]+)</value></param>').firstMatch(body)!.group(1)!;
+                socket.add(_response(''));
+              case 'rig.get_power':
+                socket.add(_response(power));
+              case 'rig.set_power':
+                power = RegExp(r'<double>([\d.]+)</double>').firstMatch(body)!.group(1)!;
+                socket.add(_response('<i4>1</i4>'));
+              case 'rig.get_ptt':
+                socket.add(_response('<i4>${transmitting ? 1 : 0}</i4>'));
+              case 'rig.get_pwrmeter':
+                socket.add(_response(powerMeter));
+              case 'rig.get_swrmeter':
+                socket.add(_response(swr));
+              case 'rig.get_alcmeter':
+                socket.add(_response(alc));
+              case 'rig.get_vmeter':
+                socket.add(_response(volts));
             }
-          },
-          onError: (Object _) {},
-          cancelOnError: true,
-        );
-      },
-      onError: (Object _) {},
-    );
+          }
+        },
+        onError: (Object _) {},
+        cancelOnError: true,
+      );
+    }, onError: (Object _) {});
   }
 
   static List<int> _response(String inner) {
-    final body = '<?xml version="1.0"?>\r\n'
+    final body =
+        '<?xml version="1.0"?>\r\n'
         '<methodResponse><params><param>\r\n'
         '\t<value>$inner</value>\r\n'
         '</param></params></methodResponse>\r\n';
-    return utf8.encode('HTTP/1.1 200 OK\r\n'
-        'Server: XMLRPC++ 0.8\r\n'
-        'Content-Type: text/xml\r\n'
-        'Content-length: ${body.length}\r\n'
-        '\r\n'
-        '$body');
+    return utf8.encode(
+      'HTTP/1.1 200 OK\r\n'
+      'Server: XMLRPC++ 0.8\r\n'
+      'Content-Type: text/xml\r\n'
+      'Content-length: ${body.length}\r\n'
+      '\r\n'
+      '$body',
+    );
   }
 
-  static Future<_FakeFlrig> start() async =>
-      _FakeFlrig(await ServerSocket.bind(InternetAddress.loopbackIPv4, 0));
+  static Future<_FakeFlrig> start() async => _FakeFlrig(await ServerSocket.bind(InternetAddress.loopbackIPv4, 0));
 
   String get host => _server.address.address;
   int get port => _server.port;
@@ -268,11 +256,7 @@ void main() {
   });
 
   test('connects to a FlexRadio over TCP and follows it', () async {
-    final node = await cat.addNode(
-      typeKey: 'flexradio-tcp',
-      name: 'Left Radio',
-      config: {'host': flex.host, 'port': flex.port},
-    );
+    final node = await cat.addNode(typeKey: 'flexradio-tcp', name: 'Left Radio', config: {'host': flex.host, 'port': flex.port});
 
     await cat.connect(node.uuid);
     expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
@@ -298,11 +282,7 @@ void main() {
   test('connects to a rigctld daemon over TCP and follows it by polling', () async {
     final rig = await _FakeRigctld.start();
     try {
-      final node = await cat.addNode(
-        typeKey: 'rigctld-tcp',
-        name: 'Shack Daemon',
-        config: {'host': rig.host, 'port': rig.port},
-      );
+      final node = await cat.addNode(typeKey: 'rigctld-tcp', name: 'Shack Daemon', config: {'host': rig.host, 'port': rig.port});
 
       await cat.connect(node.uuid);
       expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
@@ -319,9 +299,7 @@ void main() {
       // Settle on BOTH fields: the daemon answers frequency and mode as
       // separate writes, so waiting on frequency alone races the mode
       // answer still in flight and asserts against a stale reading.
-      await _settleUntil(
-          () => cat.stateFor(node.uuid).vfo == const VfoReading(freqKHz: 7123.45, mode: 'LSB'),
-          tries: 2 * kPollSlow.inMilliseconds ~/ 10);
+      await _settleUntil(() => cat.stateFor(node.uuid).vfo == const VfoReading(freqKHz: 7123.45, mode: 'LSB'), tries: 2 * kPollSlow.inMilliseconds ~/ 10);
       expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 7123.45, mode: 'LSB'));
 
       await cat.disconnect(node.uuid);
@@ -334,11 +312,7 @@ void main() {
   test('connects to an flrig instance over TCP and follows it by polling', () async {
     final rig = await _FakeFlrig.start();
     try {
-      final node = await cat.addNode(
-        typeKey: 'flrig-tcp',
-        name: 'Shack flrig',
-        config: {'host': rig.host, 'port': rig.port},
-      );
+      final node = await cat.addNode(typeKey: 'flrig-tcp', name: 'Shack flrig', config: {'host': rig.host, 'port': rig.port});
 
       await cat.connect(node.uuid);
       expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
@@ -355,9 +329,7 @@ void main() {
       // Settle on BOTH fields — same in-flight-mode race as the rigctld
       // test above; flrig's one-outstanding queue makes the gap between
       // the two answers even wider.
-      await _settleUntil(
-          () => cat.stateFor(node.uuid).vfo == const VfoReading(freqKHz: 7123.45, mode: 'DATA-LSB'),
-          tries: 2 * kPollSlow.inMilliseconds ~/ 10);
+      await _settleUntil(() => cat.stateFor(node.uuid).vfo == const VfoReading(freqKHz: 7123.45, mode: 'DATA-LSB'), tries: 2 * kPollSlow.inMilliseconds ~/ 10);
       expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 7123.45, mode: 'DATA-LSB'));
 
       await cat.disconnect(node.uuid);
@@ -373,10 +345,7 @@ void main() {
     final port = vacant.port;
     await vacant.close();
 
-    final node = await cat.addNode(
-      typeKey: 'flexradio-tcp',
-      config: {'host': InternetAddress.loopbackIPv4.address, 'port': port},
-    );
+    final node = await cat.addNode(typeKey: 'flexradio-tcp', config: {'host': InternetAddress.loopbackIPv4.address, 'port': port});
 
     await cat.connect(node.uuid);
     expect(cat.stateFor(node.uuid).status, EquipmentStatus.error);

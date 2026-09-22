@@ -65,11 +65,7 @@ typedef _SetInt = void Function(int);
 /// Never throws. A missing symbol leaves the updater on its previous
 /// behaviour, which is degraded but working; it must not take down the boot
 /// path that calls this.
-bool configureWinSparkleBeforeInit({
-  required String buildVersion,
-  required int checkIntervalSeconds,
-  required bool automaticChecks,
-}) {
+bool configureWinSparkleBeforeInit({required String buildVersion, required int checkIntervalSeconds, required bool automaticChecks}) {
   if (!Platform.isWindows) return false;
 
   try {
@@ -79,12 +75,9 @@ bool configureWinSparkleBeforeInit({
     // WinSparkle instance.
     final lib = DynamicLibrary.open('WinSparkle.dll');
 
-    final setAppBuildVersion =
-        lib.lookupFunction<_SetAppBuildVersionNative, _SetAppBuildVersion>('win_sparkle_set_app_build_version');
-    final setAutomaticChecks =
-        lib.lookupFunction<_SetIntNative, _SetInt>('win_sparkle_set_automatic_check_for_updates');
-    final setCheckInterval =
-        lib.lookupFunction<_SetIntNative, _SetInt>('win_sparkle_set_update_check_interval');
+    final setAppBuildVersion = lib.lookupFunction<_SetAppBuildVersionNative, _SetAppBuildVersion>('win_sparkle_set_app_build_version');
+    final setAutomaticChecks = lib.lookupFunction<_SetIntNative, _SetInt>('win_sparkle_set_automatic_check_for_updates');
+    final setCheckInterval = lib.lookupFunction<_SetIntNative, _SetInt>('win_sparkle_set_update_check_interval');
 
     final build = buildVersion.toNativeUtf16();
     try {

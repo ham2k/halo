@@ -77,19 +77,17 @@ class UncleanDatabaseQuit implements Exception {
 
   @override
   String toString() => switch (unknownStageName) {
-        final name? => 'UncleanDatabaseQuit: the previous quit did not finish a step '
-            'this build does not know ($name)',
-        _ => _stageMessage,
-      };
+    final name? =>
+      'UncleanDatabaseQuit: the previous quit did not finish a step '
+          'this build does not know ($name)',
+    _ => _stageMessage,
+  };
 
   String get _stageMessage => switch (stage) {
-        QuitStage.cat =>
-          'UncleanDatabaseQuit: the previous quit did not finish saying goodbye to the radios',
-        QuitStage.databaseDrain =>
-          'UncleanDatabaseQuit: the previous quit did not finish draining the database',
-        QuitStage.databaseClose =>
-          'UncleanDatabaseQuit: the previous quit did not finish closing the database',
-      };
+    QuitStage.cat => 'UncleanDatabaseQuit: the previous quit did not finish saying goodbye to the radios',
+    QuitStage.databaseDrain => 'UncleanDatabaseQuit: the previous quit did not finish draining the database',
+    QuitStage.databaseClose => 'UncleanDatabaseQuit: the previous quit did not finish closing the database',
+  };
 }
 
 /// Records that [stage] is about to run, answering whether the write landed.
@@ -102,8 +100,7 @@ class UncleanDatabaseQuit implements Exception {
 /// its own IO and answers false — so a caller that only guards against a
 /// throw is a caller that never learns the mark is missing, which is exactly
 /// the silence the mark exists to end.
-Future<bool> markQuitStage(SharedPreferences prefs, QuitStage stage) =>
-    prefs.setString(quitStageKey, stage.name);
+Future<bool> markQuitStage(SharedPreferences prefs, QuitStage stage) => prefs.setString(quitStageKey, stage.name);
 
 /// Forgets the stage — for the teardown that finished, and for the boot that
 /// has finished reporting one that did not.

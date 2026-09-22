@@ -147,8 +147,18 @@ void main() {
     });
 
     test("our own location falls back to our grid's centre, and is null when the QSO records neither", () {
-      expect(_qsoData({'our': {'lat': 41.5, 'lon': -72.5}}).ourLocation, const GridLocation(41.5, -72.5));
-      expect(_qsoData({'our': {'grid': 'FN31pr'}}).ourLocation, gridToLocation('FN31pr'));
+      expect(
+        _qsoData({
+          'our': {'lat': 41.5, 'lon': -72.5},
+        }).ourLocation,
+        const GridLocation(41.5, -72.5),
+      );
+      expect(
+        _qsoData({
+          'our': {'grid': 'FN31pr'},
+        }).ourLocation,
+        gridToLocation('FN31pr'),
+      );
       expect(_qsoData({}).ourLocation, isNull, reason: "the operation's own location answers for it");
     });
   });
@@ -184,7 +194,9 @@ void main() {
     });
 
     test('a dynamically-keyed their still reads, because the bridge produces them', () {
-      final q = _qsoData({'their': <dynamic, dynamic>{'call': 'W1AW'}});
+      final q = _qsoData({
+        'their': <dynamic, dynamic>{'call': 'W1AW'},
+      });
       expect(q.theirCall, 'W1AW');
     });
 

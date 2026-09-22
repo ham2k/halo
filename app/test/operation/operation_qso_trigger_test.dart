@@ -27,32 +27,32 @@ void main() {
   /// One extension panel, declaring the triggers the test needs. The shape
   /// is `invokeHookAll`'s: one envelope per hook, its panels inside.
   Map<String, dynamic> hostResults({required List<String> on}) => {
-        'panel:*:getPanels': [
-          {
-            'key': 'wx',
-            'ok': true,
-            'value': [
-              {'key': 'forecast', 'title': 'Forecast', 'on': on},
-            ],
-          },
+    'panel:*:getPanels': [
+      {
+        'key': 'wx',
+        'ok': true,
+        'value': [
+          {'key': 'forecast', 'title': 'Forecast', 'on': on},
         ],
-        'panel:wx:render': {'kind': 'markdown', 'content': 'ok'},
-      };
+      },
+    ],
+    'panel:wx:render': {'kind': 'markdown', 'content': 'ok'},
+  };
 
-  Future<HaLoServices> servicesWith(
-    WidgetTester tester, {
-    Map<String, dynamic> mockHooks = const {},
-    List<String> layout = const ['logging', 'info'],
-  }) async {
+  Future<HaLoServices> servicesWith(WidgetTester tester, {Map<String, dynamic> mockHooks = const {}, List<String> layout = const ['logging', 'info']}) async {
     final HaLoHarness(:services, :settings) = await makeHaLoServices(stubs: mockHooks);
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     await settings.setLayoutData(
       LayoutKeys.operationDock,
-      DockSplit(Axis.horizontal, [
-        DockGroup([layout.first]),
-        DockGroup(layout.sublist(1)),
-      ], [2, 1]).toJson(),
+      DockSplit(
+        Axis.horizontal,
+        [
+          DockGroup([layout.first]),
+          DockGroup(layout.sublist(1)),
+        ],
+        [2, 1],
+      ).toJson(),
     );
     return services;
   }
@@ -69,9 +69,13 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     final operation = await services.operations.create(stationCall: 'KI2D');
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: OperationView(services: services, operationUuid: operation.uuid)),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -175,10 +179,14 @@ void main() {
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     await settings.setLayoutData(
       LayoutKeys.operationDock,
-      DockSplit(Axis.horizontal, [
-        DockGroup(['logging']),
-        DockGroup(['logging', 'info']),
-      ], [2, 1]).toJson(),
+      DockSplit(
+        Axis.horizontal,
+        [
+          DockGroup(['logging']),
+          DockGroup(['logging', 'info']),
+        ],
+        [2, 1],
+      ).toJson(),
     );
 
     // The same module twice means the same widget in two groups, and the
@@ -197,10 +205,7 @@ void main() {
     // Launched with a remembered selection — without one the stale value is
     // empty, `applyTo` leaves the live tree alone, and the bug this is about
     // cannot show itself.
-    await services.settings.setLayoutData(
-      LayoutKeys.operationDockState,
-      const DockState(selected: {'info'}).toJson(),
-    );
+    await services.settings.setLayoutData(LayoutKeys.operationDockState, const DockState(selected: {'info'}).toJson());
     await pumpOperation(tester, services);
 
     await tester.tap(find.text('SPOTS'));
@@ -217,10 +222,7 @@ void main() {
 
     // The SELECTION, not the tab's label: the label is in the tree whether
     // or not its pane is on top.
-    expect(
-      tester.state<DockLayoutViewState>(find.byType(DockLayoutView)).currentState.selected,
-      contains('spots'),
-    );
+    expect(tester.state<DockLayoutViewState>(find.byType(DockLayoutView)).currentState.selected, contains('spots'));
     expect(
       DockState.of(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!).selected,
       isNot(contains('spots')),
@@ -263,18 +265,18 @@ void main() {
   /// the same group sits behind a tab, never renders by design, and spins on
   /// its progress indicator until pumpAndSettle gives up.
   Map<String, dynamic> twoPanelHooks() => {
-        'panel:*:getPanels': [
-          {
-            'key': 'notes',
-            'ok': true,
-            'value': [
-              {'key': 'text', 'title': 'Custom Text', 'multiple': true},
-              {'key': 'once', 'title': 'Single', 'multiple': false},
-            ],
-          },
+    'panel:*:getPanels': [
+      {
+        'key': 'notes',
+        'ok': true,
+        'value': [
+          {'key': 'text', 'title': 'Custom Text', 'multiple': true},
+          {'key': 'once', 'title': 'Single', 'multiple': false},
         ],
-        'panel:notes:render': {'kind': 'markdown', 'content': 'ok'},
-      };
+      },
+    ],
+    'panel:notes:render': {'kind': 'markdown', 'content': 'ok'},
+  };
 
   /// Into edit mode, then the plus that opens Add a Panel. The layout button
   /// no longer opens a sheet — it IS the way into editing.
@@ -308,11 +310,7 @@ void main() {
   });
 
   testWidgets('adding an instanceable panel again mints a new id, not a duplicate', (tester) async {
-    final services = await servicesWith(
-      tester,
-      mockHooks: twoPanelHooks(),
-      layout: const ['logging', 'ext:notes:text#1'],
-    );
+    final services = await servicesWith(tester, mockHooks: twoPanelHooks(), layout: const ['logging', 'ext:notes:text#1']);
     await pumpOperation(tester, services);
 
     final sheet = await openAddSheet(tester);
@@ -411,11 +409,7 @@ void main() {
   });
 
   testWidgets('a panel that did not opt in still leaves Available Panels once placed', (tester) async {
-    final services = await servicesWith(
-      tester,
-      mockHooks: twoPanelHooks(),
-      layout: const ['logging', 'ext:notes:once'],
-    );
+    final services = await servicesWith(tester, mockHooks: twoPanelHooks(), layout: const ['logging', 'ext:notes:once']);
     await pumpOperation(tester, services);
 
     // The other half of the rule: `multiple` is opt-in, so an ordinary panel
@@ -439,10 +433,7 @@ void main() {
     // destructive as deleting from it, because the next write replaces it —
     // and an extension can be missing for reasons as mundane as a hook that
     // timed out once.
-    expect(
-      DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))?.collectModules(),
-      contains('ext:wx:forecast'),
-    );
+    expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))?.collectModules(), contains('ext:wx:forecast'));
     expect(find.byType(MissingPanelPane), findsOneWidget);
     expect(find.byIcon(MdiIcons.toyBrickRemove), findsOneWidget);
 
@@ -490,11 +481,7 @@ void main() {
       // Checked BEFORE pumping: a pump draws whatever frame was scheduled and
       // clears the flag, so asserting after it would pass either way — which
       // is what the first version of this test did.
-      expect(
-        tester.binding.hasScheduledFrame,
-        isFalse,
-        reason: 'setState per keystroke rebuilds the logging, spots and map panes for one letter',
-      );
+      expect(tester.binding.hasScheduledFrame, isFalse, reason: 'setState per keystroke rebuilds the logging, spots and map panes for one letter');
       // Faster than the debounce window, as typing is.
       await tester.pump(const Duration(milliseconds: 100));
     }

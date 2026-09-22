@@ -43,8 +43,7 @@ class _AlwaysConnectingTransport extends EquipmentTransport {
   @override
   String get key => 'fake';
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async =>
-      _AlwaysOpenConnection();
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async => _AlwaysOpenConnection();
 }
 
 class _SilentSession implements TransceiverSession {
@@ -92,8 +91,7 @@ EquipmentRegistry _fakeRegistry() {
 
 /// A CatService over a transport that always connects. Nothing is connected
 /// yet — call [connectFakeRadio1] for that.
-CatService fakeCatService(SettingsService settings, RadioService radio) =>
-    CatService(settings, radio: radio, registry: _fakeRegistry());
+CatService fakeCatService(SettingsService settings, RadioService radio) => CatService(settings, radio: radio, registry: _fakeRegistry());
 
 /// Adds a fake transceiver to [cat], connects it, and makes it `radio1` — the
 /// state a feature gated on "a radio is connected" is waiting for.

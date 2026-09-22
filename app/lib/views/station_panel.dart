@@ -56,8 +56,7 @@ const _storedSecretPlaceholder = '••••••••';
 /// ambient theme at all (`compact`, in a modal pane), and there the rows to
 /// line up with are plain tiles at Material's inset.
 EdgeInsets _rowInset(BuildContext context) =>
-    (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xl))
-        .resolve(Directionality.of(context));
+    (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xl)).resolve(Directionality.of(context));
 
 /// What a piece of equipment is doing, in the panel's own vocabulary — shared
 /// so the status bar's line and the panel's pill cannot come to word the same
@@ -93,7 +92,7 @@ class StationPanel extends StatelessWidget {
   final VoidCallback? onMoreSettings;
 
   const StationPanel({super.key, required this.services, this.compact = false, this.onMoreSettings})
-      : assert(!compact || onMoreSettings != null, 'compact mode needs onMoreSettings');
+    : assert(!compact || onMoreSettings != null, 'compact mode needs onMoreSettings');
 
   CatService get _cat => services.cat;
 
@@ -102,8 +101,7 @@ class StationPanel extends StatelessWidget {
     // build's transport can't open — starting discovery there would just
     // bind a socket that never reports anything, and `_showAddDialog`
     // would spin its "searching" state forever for no reason.
-    final canDiscover =
-        _cat.registry.types.any((type) => type.discoverer != null && type.isSupportedOnThisPlatform);
+    final canDiscover = _cat.registry.types.any((type) => type.discoverer != null && type.isSupportedOnThisPlatform);
     // Discovery holds a bound UDP socket, so it runs only while the dialog
     // that shows its results is open — and the socket has to be released
     // even if the dialog throws, or `isDiscovering` stays true and every
@@ -169,8 +167,7 @@ class StationPanel extends StatelessWidget {
       builder: (context) => AddEquipmentDialog(
         cat: _cat,
         showDiscovery: showDiscovery,
-        showAntennaAndKey: services.settings.trackStationInfo &&
-            services.settings.stationInfoTrackedFields.any((f) => f == 'antenna' || f == 'key'),
+        showAntennaAndKey: services.settings.trackStationInfo && services.settings.stationInfoTrackedFields.any((f) => f == 'antenna' || f == 'key'),
         showKeyer: services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */,
         supportedVariants: _supportedVariants,
       ),
@@ -182,13 +179,12 @@ class StationPanel extends StatelessWidget {
   /// Everything that is not a radio or an antenna shares the last one:
   /// keys, keyers and antenna switches are each one or two nodes in a shack,
   /// and a heading apiece would be more heading than list.
-  List<({String title, List<EquipmentNode> nodes})> _inventorySections(
-    BuildContext context,
-    List<EquipmentNode> nodes,
-  ) {
+  List<({String title, List<EquipmentNode> nodes})> _inventorySections(BuildContext context, List<EquipmentNode> nodes) {
     final st = context.t.settings.station;
-    List<EquipmentNode> inCategory(bool Function(String?) matches) =>
-        [for (final node in nodes) if (matches(_cat.typeFor(node)?.category)) node];
+    List<EquipmentNode> inCategory(bool Function(String?) matches) => [
+      for (final node in nodes)
+        if (matches(_cat.typeFor(node)?.category)) node,
+    ];
 
     final transceivers = inCategory((category) => category == kCategoryTransceiver);
     final antennas = inCategory((category) => category == kCategoryAntenna);
@@ -204,24 +200,21 @@ class StationPanel extends StatelessWidget {
   /// no raw sockets and no serial, so a model can be reachable everywhere
   /// but here.
   List<EquipmentType> _supportedVariants(EquipmentModel model) => [
-        for (final variant in model.variants)
-          if (_cat.registry.typeFor(variant.key) case final type?)
-            if (type.isSupportedOnThisPlatform) type,
-      ];
+    for (final variant in model.variants)
+      if (_cat.registry.typeFor(variant.key) case final type?)
+        if (type.isSupportedOnThisPlatform) type,
+  ];
 
   Future<void> _editEquipment(BuildContext context, EquipmentNode node) async {
     final type = _cat.typeFor(node);
     if (type == null) return;
 
-    final values =
-        await _editValues(context, model: type.model, type: type, name: node.name, config: node.config, node: node);
+    final values = await _editValues(context, model: type.model, type: type, name: node.name, config: node.config, node: node);
     // Null also means the editor removed the node, or was cancelled — either
     // way there is nothing left to write back.
     if (values == null) return;
 
-    await _cat.updateNode(
-      node.copyWith(typeKey: values.typeKey, name: values.name, config: values.config),
-    );
+    await _cat.updateNode(node.copyWith(typeKey: values.typeKey, name: values.name, config: values.config));
   }
 
   /// [variant]'s config fields, with the channel picker's options saying
@@ -235,11 +228,7 @@ class StationPanel extends StatelessWidget {
   ///
   /// Labels only. The values are the driver's, so a form saved while the
   /// annotation was showing stores exactly what one saved without it does.
-  List<Map<String, dynamic>> _annotateChannels(
-    EquipmentType variant,
-    EquipmentNode? node,
-    BuildContext context,
-  ) {
+  List<Map<String, dynamic>> _annotateChannels(EquipmentType variant, EquipmentNode? node, BuildContext context) {
     final elements = variant.configElements();
     final channelKey = variant.driver.channelKey;
     if (channelKey == null || node == null) return elements;
@@ -256,10 +245,7 @@ class StationPanel extends StatelessWidget {
             ...element,
             'options': [
               for (final option in (element['options'] as List).cast<Map<String, dynamic>>())
-                if (byKey[option['value']] case final channel?)
-                  {...option, 'label': '${option['label']}${_describeChannel(channel, context)}'}
-                else
-                  option,
+                if (byKey[option['value']] case final channel?) {...option, 'label': '${option['label']}${_describeChannel(channel, context)}'} else option,
             ],
           },
     ];
@@ -289,8 +275,7 @@ class StationPanel extends StatelessWidget {
   /// the back of the box. The name because "port 1" means nothing to an
   /// operator who has three antennas and knows them by name. Neither alone
   /// is enough to match a row to a piece of coax.
-  String _switchPortName(SwitchAntenna antenna) =>
-      antenna.name.isEmpty || antenna.name == antenna.key ? antenna.key : '${antenna.key} - ${antenna.name}';
+  String _switchPortName(SwitchAntenna antenna) => antenna.name.isEmpty || antenna.name == antenna.key ? antenna.key : '${antenna.key} - ${antenna.name}';
 
   /// The Current State section: one picker per device port, saying what that
   /// port is on and changing it on the spot.
@@ -335,8 +320,7 @@ class StationPanel extends StatelessWidget {
           // to be "not while you are transmitting".
           if (port.transmitting) 'disabled': true,
           'options': [
-            for (final antenna in choices)
-              {'value': antenna.key, 'label': _switchAntennaLabel(node, antenna)},
+            for (final antenna in choices) {'value': antenna.key, 'label': _switchAntennaLabel(node, antenna)},
           ],
         },
     ];
@@ -351,18 +335,10 @@ class StationPanel extends StatelessWidget {
   /// filters it out of the variant loop by the same key; the two have to
   /// agree, which is why both go through [switchLayoutConfigKey] rather than
   /// either spelling it.
-  List<Map<String, dynamic>> _switchWiring(
-    BuildContext context,
-    EquipmentType type,
-    EquipmentNode? node,
-  ) {
+  List<Map<String, dynamic>> _switchWiring(BuildContext context, EquipmentType type, EquipmentNode? node) {
     final st = context.t.settings.station;
     final layout = [
-      for (final element in _annotateSwitchLayout(
-        type.driver.configElements(overrides: type.overrides, restrictions: type.restrictions),
-        node,
-        context,
-      ))
+      for (final element in _annotateSwitchLayout(type.driver.configElements(overrides: type.overrides, restrictions: type.restrictions), node, context))
         if (element['key'] == switchLayoutConfigKey) element,
     ];
     return [
@@ -430,11 +406,7 @@ class StationPanel extends StatelessWidget {
   ///
   /// Named by the switch's own port name where it has said one, so the
   /// operator matches the row to the label on the box rather than counting.
-  List<Map<String, dynamic>> _switchAntennaLinks(
-    BuildContext context,
-    EquipmentType type,
-    EquipmentNode? node,
-  ) {
+  List<Map<String, dynamic>> _switchAntennaLinks(BuildContext context, EquipmentType type, EquipmentNode? node) {
     final st = context.t.settings.station;
     final reported = node == null ? const <SwitchAntenna>[] : _cat.stateFor(node.uuid).switchAntennas;
     final ports = reported.isNotEmpty
@@ -452,18 +424,17 @@ class StationPanel extends StatelessWidget {
 
     return [
       for (final port in _routableAntennas(ports))
-          {
-            'type': 'field',
-            'fieldType': 'select',
-            'key': switchAntennaNodeConfigKey(port.key),
-            'label': st.switchAntennaFor(port: _switchPortName(port)),
-            'description': st.switchAntennaForDescription,
-            'options': [
-              {'value': '', 'label': st.switchNoAntenna},
-              for (final antenna in antennas)
-                {'value': antenna.uuid, 'label': _displayName(antenna)},
-            ],
-          },
+        {
+          'type': 'field',
+          'fieldType': 'select',
+          'key': switchAntennaNodeConfigKey(port.key),
+          'label': st.switchAntennaFor(port: _switchPortName(port)),
+          'description': st.switchAntennaForDescription,
+          'options': [
+            {'value': '', 'label': st.switchNoAntenna},
+            for (final antenna in antennas) {'value': antenna.uuid, 'label': _displayName(antenna)},
+          ],
+        },
     ];
   }
 
@@ -479,11 +450,7 @@ class StationPanel extends StatelessWidget {
   /// Labels only, like [_annotateChannels]: the values stay the driver's, so
   /// a form saved while connected stores exactly what one saved without a
   /// connection does.
-  List<Map<String, dynamic>> _annotateSwitchLayout(
-    List<Map<String, dynamic>> elements,
-    EquipmentNode? node,
-    BuildContext context,
-  ) {
+  List<Map<String, dynamic>> _annotateSwitchLayout(List<Map<String, dynamic>> elements, EquipmentNode? node, BuildContext context) {
     if (node == null) return elements;
     final state = _cat.stateFor(node.uuid);
     final antennas = state.switchAntennas.length;
@@ -501,10 +468,8 @@ class StationPanel extends StatelessWidget {
             'options': [
               for (final option in (element['options'] as List).cast<Map<String, dynamic>>())
                 switch (option['value']) {
-                  switchLayoutDevicePorts =>
-                    {...option, 'label': st.switchLayoutSides(antennas: antennas, radios: radios)},
-                  switchLayoutAntennaPorts =>
-                    {...option, 'label': st.switchLayoutSides(antennas: radios, radios: antennas)},
+                  switchLayoutDevicePorts => {...option, 'label': st.switchLayoutSides(antennas: antennas, radios: radios)},
+                  switchLayoutAntennaPorts => {...option, 'label': st.switchLayoutSides(antennas: radios, radios: antennas)},
                   _ => option,
                 },
             ],
@@ -582,83 +547,73 @@ class StationPanel extends StatelessWidget {
     // CURRENT state each time it's called, so rebuilding from it is enough;
     // nothing here needs to know what specifically changed.
     List<Map<String, dynamic>> buildElements() => [
-          {
-            'type': 'field',
-            'fieldType': 'text',
-            'key': 'name',
-            'label': st.name,
-            'description': st.nameDescription,
-          },
-          if (choosable)
-            {
-              'type': 'field',
-              'fieldType': 'select',
-              'key': 'transport',
-              'label': st.transport,
-              'description': st.transportDescription,
-              'options': [
-                for (final candidate in variants)
-                  {'value': candidate.transportKey, 'label': candidate.transportLabel},
-              ],
-            },
-          for (final candidate in variants)
-            for (final element in _annotateChannels(candidate, node, context))
-              // The switch's layout field is re-emitted under Wiring below,
-              // where it belongs with the antenna links. Left here too it
-              // would render twice, and FormRenderer would bind both boxes
-              // to the one value.
-              if (element['key'] != switchLayoutConfigKey)
-              {
-                ...element,
-                if (storedSecrets.contains(element['key'])) 'placeholder': _storedSecretPlaceholder,
-                // What a BLANK cadence field actually does, in the box where
-                // the operator would otherwise assume 200. Per candidate, so
-                // the serial pairing shows the number its baud rate can
-                // afford and the network one beside it shows its own — the
-                // whole reason the field is left blank by default is that
-                // the answer is not the same on both.
-                if (element['key'] == telemetryIntervalConfigKey)
-                  // Through the TYPE, so the entry's own overrides and
-                  // prefills are part of the question — the same reason
-                  // telemetryMetersFor exists. Handed the node's raw stored
-                  // map instead, a radio whose speed comes from its entry
-                  // rather than from a box the operator touched computes as
-                  // though the link had no stated speed at all.
-                  'placeholder': '${candidate.defaultTelemetryIntervalFor(node?.config ?? const {}).inMilliseconds}',
-                // Only when there is a choice to hide behind: an unconditional
-                // visibleWhen on a single-transport radio would depend on a
-                // `transport` value no field sets.
-                if (choosable) 'visibleWhen': {'field': 'transport', 'equals': candidate.transportKey},
-              },
-          // Which of the operator's own enabled bands (Preferences → Bands)
-          // this antenna covers. Lives here rather than in AntennaDriver's
-          // own configElements(): a driver is pure data with no settings
-          // access, and this list is exactly the operator's, not the
-          // catalogue's.
-          if (model.category == kCategoryAntenna)
-            {
-              'type': 'field',
-              'fieldType': 'checkboxGroup',
-              'key': 'bands',
-              'label': st.antennaBands,
-              'options': [
-                for (final band in services.settings.enabledBands) {'value': band, 'label': band},
-              ],
-            },
-          // Which of the operator's own antennas is on each of the switch's
-          // antenna ports. Here rather than in the driver's own
-          // configElements() for exactly the reason the antenna bands above
-          // are: a driver is pure catalogue data with no access to the
-          // station's inventory, and this list is the operator's equipment,
-          // not the switch's.
-          // What the switch is doing now, before how it is set up: an
-          // operator opening this dialog mid-operation is looking for the
-          // former, and the latter is answered once and rarely revisited.
-          if (model.category == kCategoryAntennaSwitch) ...[
-            ..._switchCurrentState(context, node),
-            ..._switchWiring(context, type, node),
+      {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': st.name, 'description': st.nameDescription},
+      if (choosable)
+        {
+          'type': 'field',
+          'fieldType': 'select',
+          'key': 'transport',
+          'label': st.transport,
+          'description': st.transportDescription,
+          'options': [
+            for (final candidate in variants) {'value': candidate.transportKey, 'label': candidate.transportLabel},
           ],
-        ];
+        },
+      for (final candidate in variants)
+        for (final element in _annotateChannels(candidate, node, context))
+          // The switch's layout field is re-emitted under Wiring below,
+          // where it belongs with the antenna links. Left here too it
+          // would render twice, and FormRenderer would bind both boxes
+          // to the one value.
+          if (element['key'] != switchLayoutConfigKey)
+            {
+              ...element,
+              if (storedSecrets.contains(element['key'])) 'placeholder': _storedSecretPlaceholder,
+              // What a BLANK cadence field actually does, in the box where
+              // the operator would otherwise assume 200. Per candidate, so
+              // the serial pairing shows the number its baud rate can
+              // afford and the network one beside it shows its own — the
+              // whole reason the field is left blank by default is that
+              // the answer is not the same on both.
+              if (element['key'] == telemetryIntervalConfigKey)
+                // Through the TYPE, so the entry's own overrides and
+                // prefills are part of the question — the same reason
+                // telemetryMetersFor exists. Handed the node's raw stored
+                // map instead, a radio whose speed comes from its entry
+                // rather than from a box the operator touched computes as
+                // though the link had no stated speed at all.
+                'placeholder': '${candidate.defaultTelemetryIntervalFor(node?.config ?? const {}).inMilliseconds}',
+              // Only when there is a choice to hide behind: an unconditional
+              // visibleWhen on a single-transport radio would depend on a
+              // `transport` value no field sets.
+              if (choosable) 'visibleWhen': {'field': 'transport', 'equals': candidate.transportKey},
+            },
+      // Which of the operator's own enabled bands (Preferences → Bands)
+      // this antenna covers. Lives here rather than in AntennaDriver's
+      // own configElements(): a driver is pure data with no settings
+      // access, and this list is exactly the operator's, not the
+      // catalogue's.
+      if (model.category == kCategoryAntenna)
+        {
+          'type': 'field',
+          'fieldType': 'checkboxGroup',
+          'key': 'bands',
+          'label': st.antennaBands,
+          'options': [
+            for (final band in services.settings.enabledBands) {'value': band, 'label': band},
+          ],
+        },
+      // Which of the operator's own antennas is on each of the switch's
+      // antenna ports. Here rather than in the driver's own
+      // configElements() for exactly the reason the antenna bands above
+      // are: a driver is pure catalogue data with no access to the
+      // station's inventory, and this list is the operator's equipment,
+      // not the switch's.
+      // What the switch is doing now, before how it is set up: an
+      // operator opening this dialog mid-operation is looking for the
+      // former, and the latter is answered once and rarely revisited.
+      if (model.category == kCategoryAntennaSwitch) ...[..._switchCurrentState(context, node), ..._switchWiring(context, type, node)],
+    ];
 
     final result = await showFormPane(
       context,
@@ -686,15 +641,13 @@ class StationPanel extends StatelessWidget {
         // collision could never let a stored value stand in for what the
         // switch just said.
         if (node != null)
-          for (final port in _cat.stateFor(node.uuid).switchPorts)
-            switchPortRoutingFormKey(port.key): ?port.selectedAntennaKey,
+          for (final port in _cat.stateFor(node.uuid).switchPorts) switchPortRoutingFormKey(port.key): ?port.selectedAntennaKey,
       },
       // Runs per field on submit, so a bad address blocks the save and says
       // so on the address field rather than failing later at connect time.
       // Asks the pairing the form is currently on: a field belonging to a
       // transport the operator switched away from is not theirs to get right.
-      validator: (key, value, values) async =>
-          isSwitchPortRoutingFormKey(key) ? null : typeForState(values).validateField(key, value, values),
+      validator: (key, value, values) async => isSwitchPortRoutingFormKey(key) ? null : typeForState(values).validateField(key, value, values),
       // The one field kind that acts as it is touched rather than on save:
       // routing a port is a command to the switch, and an operator who
       // cancels the pane has still moved the relay. Returning no updates
@@ -751,13 +704,7 @@ class StationPanel extends StatelessWidget {
           ? null
           : (
               label: st.report,
-              onPressed: () => unawaited(showEquipmentReportDialog(
-                context,
-                services: services,
-                node: node,
-                type: type,
-                state: _cat.stateFor(node.uuid),
-              )),
+              onPressed: () => unawaited(showEquipmentReportDialog(context, services: services, node: node, type: type, state: _cat.stateFor(node.uuid))),
             ),
       // A USB cable plugged in while this pane is open should show up in the
       // port picker without closing and reopening the editor — that pause,
@@ -806,8 +753,7 @@ class StationPanel extends StatelessWidget {
           // Storing one would put a stale claim about a relay into the
           // record, and the panel would then have two answers to which
           // antenna is live.
-          if (entry.key != 'name' && entry.key != 'transport' && !isSwitchPortRoutingFormKey(entry.key))
-            entry.key: entry.value,
+          if (entry.key != 'name' && entry.key != 'transport' && !isSwitchPortRoutingFormKey(entry.key)) entry.key: entry.value,
       },
     );
   }
@@ -819,16 +765,8 @@ class StationPanel extends StatelessWidget {
       builder: (context) => HaloDialog(
         title: Text(st.removeTitle(name: _displayName(node))),
         content: Text(st.removeMessage),
-        cancel: TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(context.t.common.cancel),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(st.remove),
-          ),
-        ],
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(st.remove))],
       ),
     );
     if (confirmed != true) return;
@@ -858,21 +796,21 @@ class StationPanel extends StatelessWidget {
     if (!compact) return content;
     // The compact dialog's own footer, pinned under the scrolling content —
     // same shape as the Exports pane's (operation_export_panel.dart).
-    return Column(children: [Expanded(child: content), _compactFooter(context)]);
+    return Column(
+      children: [
+        Expanded(child: content),
+        _compactFooter(context),
+      ],
+    );
   }
 
   /// The dropdown's value for a peer radio. Namespaced because the list is
   /// shared with local nodes and both are keyed by a uuid — one that means
   /// "a node in THIS station" and one that does not.
-  static String? _peerValue(PeerRadioSelection? selection) =>
-      selection == null ? null : peerRadioValue(selection);
+  static String? _peerValue(PeerRadioSelection? selection) => selection == null ? null : peerRadioValue(selection);
 
-  static PeerRadioSelection _selectionFor(PeerRemoteRadio peer) => PeerRadioSelection(
-        deviceId: peer.deviceId,
-        radioId: peer.radio.id,
-        deviceName: peer.deviceName,
-        radioName: peer.radio.name,
-      );
+  static PeerRadioSelection _selectionFor(PeerRemoteRadio peer) =>
+      PeerRadioSelection(deviceId: peer.deviceId, radioId: peer.radio.id, deviceName: peer.deviceName, radioName: peer.radio.name);
 
   /// One list, because there is one main VFO — see `CatService.radio1`, the
   /// single slot both kinds of pick are written to.
@@ -894,12 +832,16 @@ class StationPanel extends StatelessWidget {
       PeerRadio(:final selection) when selection.matches(picked.deviceId, picked.radioId) => selection,
       _ => null,
     };
-    return _cat.setRadio1(PeerRadio(PeerRadioSelection(
-      deviceId: picked.deviceId,
-      radioId: picked.radioId,
-      deviceName: offered?.deviceName ?? kept?.deviceName ?? '',
-      radioName: offered?.radio.name ?? kept?.radioName ?? '',
-    )));
+    return _cat.setRadio1(
+      PeerRadio(
+        PeerRadioSelection(
+          deviceId: picked.deviceId,
+          radioId: picked.radioId,
+          deviceName: offered?.deviceName ?? kept?.deviceName ?? '',
+          radioName: offered?.radio.name ?? kept?.radioName ?? '',
+        ),
+      ),
+    );
   }
 
   Widget _buildContent(BuildContext context) {
@@ -949,10 +891,7 @@ class StationPanel extends StatelessWidget {
         // to be unavailable — dropping it would silently hand the VFO back
         // to a local radio the operator had deliberately stepped off, and
         // the pick is what re-engages by itself when the peer returns.
-        final absentSelection = selection != null &&
-                !peerRadios.any((r) => selection.matches(r.deviceId, r.radio.id))
-            ? selection
-            : null;
+        final absentSelection = selection != null && !peerRadios.any((r) => selection.matches(r.deviceId, r.radio.id)) ? selection : null;
 
         return SectionedListView(
           padding: const EdgeInsets.only(bottom: Space.md),
@@ -968,22 +907,20 @@ class StationPanel extends StatelessWidget {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String?>(
-                // FormFieldState reads `initialValue` once and never again
-                // (its didUpdateWidget only handles forceErrorText), so
-                // without a key that changes with the value this dropdown
-                // shows whatever radio1 was on first build. CatService
-                // reassigns it behind this panel's back — auto-designating
-                // the first transceiver added, and re-designating when the
-                // current one is removed — and neither would have appeared.
+                      // FormFieldState reads `initialValue` once and never again
+                      // (its didUpdateWidget only handles forceErrorText), so
+                      // without a key that changes with the value this dropdown
+                      // shows whatever radio1 was on first build. CatService
+                      // reassigns it behind this panel's back — auto-designating
+                      // the first transceiver added, and re-designating when the
+                      // current one is removed — and neither would have appeared.
                       key: ValueKey(localRadio1 ?? _peerValue(selection)),
                       // Without this the button lays its SELECTED item out
                       // unbounded, so ellipsizing the menu entries is not
                       // enough — a name wider than the field overflows the
                       // row rather than truncating.
                       isExpanded: true,
-                      initialValue: transceivers.any((n) => n.uuid == localRadio1)
-                          ? localRadio1
-                          : _peerValue(selection),
+                      initialValue: transceivers.any((n) => n.uuid == localRadio1) ? localRadio1 : _peerValue(selection),
                       icon: dropdownTrailingIcon,
                       decoration: poloFieldDecoration(context, st.transceiverForMainVfo),
                       menuMaxHeight: dropdownMenuMaxHeight(context),
@@ -1012,12 +949,8 @@ class StationPanel extends StatelessWidget {
                             value: _peerValue(absentSelection),
                             child: Text(
                               st.peerTransceiverUnavailable(
-                                radio: absentSelection.radioName.isEmpty
-                                    ? absentSelection.radioId
-                                    : absentSelection.radioName,
-                                device: absentSelection.deviceName.isEmpty
-                                    ? absentSelection.deviceId
-                                    : absentSelection.deviceName,
+                                radio: absentSelection.radioName.isEmpty ? absentSelection.radioId : absentSelection.radioName,
+                                device: absentSelection.deviceName.isEmpty ? absentSelection.deviceId : absentSelection.deviceName,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1036,12 +969,7 @@ class StationPanel extends StatelessWidget {
                       // (docs/design/user-interface.md), so the accessible
                       // name is the only place this button is named.
                       icon: Icon(MdiIcons.tune, semanticLabel: st.currentRadioSettings),
-                      onPressed: () => showSettingsForTarget(
-                        buttonContext,
-                        services: services,
-                        target: 'current-radio',
-                        title: st.currentRadioSettings,
-                      ),
+                      onPressed: () => showSettingsForTarget(buttonContext, services: services, target: 'current-radio', title: st.currentRadioSettings),
                     ),
                   ),
                 ],
@@ -1078,8 +1006,7 @@ class StationPanel extends StatelessWidget {
             // station: the phone this feature is for has no key inventory of
             // its own, and without this row its operator could neither set
             // the speed nor step off the peer's key.
-            if (keys.isNotEmpty || (keyerExperiment && _cat.peerOffersCwKeying))
-              _keyRow(context, inset: rowInset, keys: keys),
+            if (keys.isNotEmpty || (keyerExperiment && _cat.peerOffersCwKeying)) _keyRow(context, inset: rowInset, keys: keys),
 
             // One keyer row for both keyers: the messages to edit, and the
             // switch that shows the logging panel's strip. In BOTH layouts,
@@ -1089,8 +1016,7 @@ class StationPanel extends StatelessWidget {
             // dialog to finish the job.
             // Capability, not connection: see _keyerRow. With neither side
             // able to carry a message there is nothing for the row to open.
-            if (keyerExperiment && (_cat.designatedKeyIsKeyer || _cat.radio1HasVoiceMemories))
-              _keyerRow(context, inset: rowInset),
+            if (keyerExperiment && (_cat.designatedKeyIsKeyer || _cat.radio1HasVoiceMemories)) _keyerRow(context, inset: rowInset),
 
             // What the station is made OF. Compact shows only what is in use
             // — the rig driving the main VFO, and the key if it is a device
@@ -1104,11 +1030,7 @@ class StationPanel extends StatelessWidget {
               // in compact, which lists what is in use and adds nothing.
               trailing: compact
                   ? null
-                  : FilledButton.icon(
-                      icon: const Icon(MdiIcons.plus, size: 18),
-                      label: Text(st.add),
-                      onPressed: () => _addEquipment(context),
-                    ),
+                  : FilledButton.icon(icon: const Icon(MdiIcons.plus, size: 18), label: Text(st.add), onPressed: () => _addEquipment(context)),
             ),
             if (compact) ...[
               // A peer's radio drives the same one `vfoA` a local one does,
@@ -1116,8 +1038,7 @@ class StationPanel extends StatelessWidget {
               // compact dialog names what the logging panel is following.
               // Nothing to connect or edit here: the session, and the rig,
               // are the other device's.
-              if (_cat.radio1 case PeerRadio(selection: final peerSelection))
-                _PeerVfoTile(selection: peerSelection, available: absentSelection == null),
+              if (_cat.radio1 case PeerRadio(selection: final peerSelection)) _PeerVfoTile(selection: peerSelection, available: absentSelection == null),
               if (localRadio1 case final uuid?)
                 if (_cat.nodeFor(uuid) case final node?)
                   _EquipmentTile(
@@ -1199,7 +1120,6 @@ class StationPanel extends StatelessWidget {
     );
   }
 
-
   /// Right after the current rig's row — the quick dialog's one write-in
   /// field among its pickers, though "write-in" undersells it once a rig is
   /// connected: a commit goes to the app's VFO ([Vfo.power]), which CAT
@@ -1227,8 +1147,7 @@ class StationPanel extends StatelessWidget {
         wattsLabel: st.watts,
         width: fieldWidth,
         style: style,
-        onCommit: (watts) =>
-            services.radio.setVfo('vfoA', power: watts, clearPower: watts == null),
+        onCommit: (watts) => services.radio.setVfo('vfoA', power: watts, clearPower: watts == null),
       ),
     );
   }
@@ -1260,13 +1179,9 @@ class StationPanel extends StatelessWidget {
               // The peer's key is a default, so nothing is stored for it —
               // and a picker reading the stored value alone would say None
               // while F1 keys over the link.
-              selected: peer != null && _cat.peerKeyIsInUse && _cat.peerOffersCwKeying
-                  ? peerRadioValue(peer)
-                  : _cat.designatedFor(kCategoryKey),
+              selected: peer != null && _cat.peerKeyIsInUse && _cat.peerOffersCwKeying ? peerRadioValue(peer) : _cat.designatedFor(kCategoryKey),
               // A radio in this list is its keyer, not the radio.
-              displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver
-                  ? st.keyViaRadio(radio: _displayName(node))
-                  : _displayName(node),
+              displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver ? st.keyViaRadio(radio: _displayName(node)) : _displayName(node),
               noneLabel: st.noneSelected,
               // The peer whose radio drives the VFO keys for this operator
               // unless they say otherwise — offered here so saying otherwise
@@ -1274,12 +1189,7 @@ class StationPanel extends StatelessWidget {
               // keys nothing is not a key.
               extras: [
                 if (keyerExperiment && peer != null && _cat.peerOffersCwKeying)
-                  (
-                    value: peerRadioValue(peer),
-                    label: st.keyOnDevice(
-                      device: peer.deviceName.isEmpty ? peer.deviceId : peer.deviceName,
-                    ),
-                  ),
+                  (value: peerRadioValue(peer), label: st.keyOnDevice(device: peer.deviceName.isEmpty ? peer.deviceId : peer.deviceName)),
               ],
               onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryKey, uuid)),
             ),
@@ -1300,10 +1210,7 @@ class StationPanel extends StatelessWidget {
                 items: [
                   if (range != null)
                     for (var wpm = range.min; wpm <= range.max; wpm++)
-                      DropdownMenuItem<int>(
-                        value: wpm,
-                        child: Text('$wpm ${context.t.settings.radio.keyerSpeed.unit}'),
-                      ),
+                      DropdownMenuItem<int>(value: wpm, child: Text('$wpm ${context.t.settings.radio.keyerSpeed.unit}')),
                 ],
                 onChanged: canKey ? (wpm) => wpm == null ? null : _cat.setKeyerSpeed(wpm) : null,
               ),
@@ -1350,17 +1257,11 @@ class StationPanel extends StatelessWidget {
             valueListenable: _cat.keyerAreaShown,
             builder: (context, shown, _) => Semantics(
               label: st.cwKeyerArea,
-              child: Switch(
-                value: shown,
-                onChanged: (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea(),
-              ),
+              child: Switch(value: shown, onChanged: (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea()),
             ),
           ),
           const SizedBox(width: Space.sm),
-          Text(
-            st.keyerRowLabel,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          Text(st.keyerRowLabel, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(width: Space.sm),
           // The same icon on both: what they open is a list of messages
           // either way, and the labels are what tell them apart. Both are
@@ -1392,14 +1293,8 @@ class StationPanel extends StatelessWidget {
     final st = context.t.settings.station;
     return haloDialogFooterBand(
       context,
-      destructive: TextButton(
-        onPressed: onMoreSettings,
-        child: Text(st.moreSettings),
-      ),
-      cancel: TextButton(
-        onPressed: () => Navigator.of(context).maybePop(),
-        child: Text(context.t.common.done),
-      ),
+      destructive: TextButton(onPressed: onMoreSettings, child: Text(st.moreSettings)),
+      cancel: TextButton(onPressed: () => Navigator.of(context).maybePop(), child: Text(context.t.common.done)),
     );
   }
 
@@ -1439,7 +1334,10 @@ class StationPanel extends StatelessWidget {
               'fieldType': 'multiselect',
               'key': 'trackedFields',
               'label': st.whatToTrack,
-              'value': [for (final opt in trackedFieldOptions) if (tracked.contains(opt['value'])) opt['value']],
+              'value': [
+                for (final opt in trackedFieldOptions)
+                  if (tracked.contains(opt['value'])) opt['value'],
+              ],
               'defaultValue': SettingsService.defaultStationInfoTrackedFields,
               'options': trackedFieldOptions,
               'compact': true,
@@ -1461,7 +1359,6 @@ class StationPanel extends StatelessWidget {
   }
 }
 
-
 /// The Power field's own text state, kept in a controller rather than
 /// [TextFormField]'s bare `initialValue` — the field's value has TWO writers
 /// (the operator typing, and a live CAT reading arriving from the radio) and
@@ -1481,14 +1378,7 @@ class _PowerField extends StatefulWidget {
   final TextStyle style;
   final ValueChanged<num?> onCommit;
 
-  const _PowerField({
-    required this.power,
-    required this.label,
-    required this.wattsLabel,
-    required this.width,
-    required this.style,
-    required this.onCommit,
-  });
+  const _PowerField({required this.power, required this.label, required this.wattsLabel, required this.width, required this.style, required this.onCommit});
 
   @override
   State<_PowerField> createState() => _PowerFieldState();
@@ -1596,7 +1486,10 @@ class _DesignationDropdown extends StatelessWidget {
       items: [
         DropdownMenuItem<String?>(value: null, child: Text(noneLabel)),
         for (final node in nodes)
-          DropdownMenuItem<String?>(value: node.uuid, child: Text(displayName(node), overflow: TextOverflow.ellipsis)),
+          DropdownMenuItem<String?>(
+            value: node.uuid,
+            child: Text(displayName(node), overflow: TextOverflow.ellipsis),
+          ),
         for (final extra in extras)
           DropdownMenuItem<String?>(
             value: extra.value,
@@ -1643,21 +1536,12 @@ class _PeerVfoTile extends StatelessWidget {
                 // Falling back to the id like the dropdown does: a pick made
                 // as the peer dropped is stored with empty names, and a row
                 // with a blank title names nothing at all.
-                Flexible(
-                  child: Text(
-                    selection.radioName.isEmpty ? selection.radioId : selection.radioName,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+                Flexible(child: Text(selection.radioName.isEmpty ? selection.radioId : selection.radioName, overflow: TextOverflow.ellipsis)),
                 const SizedBox(width: Space.md),
                 // Always: a peer selection IS the main VFO, or it would not
                 // be stored at all.
                 Flexible(
-                  child: _Pill(
-                    label: st.mainVfo,
-                    background: theme.colorScheme.secondaryContainer,
-                    foreground: theme.colorScheme.onSecondaryContainer,
-                  ),
+                  child: _Pill(label: st.mainVfo, background: theme.colorScheme.secondaryContainer, foreground: theme.colorScheme.onSecondaryContainer),
                 ),
               ],
             ),
@@ -1669,9 +1553,7 @@ class _PeerVfoTile extends StatelessWidget {
               child: Text(
                 // Where it is, in the place a local row states its address:
                 // for a peer's rig that is which device it is plugged into.
-                st.peerRadioOnDevice(
-                  device: selection.deviceName.isEmpty ? selection.deviceId : selection.deviceName,
-                ),
+                st.peerRadioOnDevice(device: selection.deviceName.isEmpty ? selection.deviceId : selection.deviceName),
                 textAlign: TextAlign.right,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -1680,12 +1562,7 @@ class _PeerVfoTile extends StatelessWidget {
           ),
         ],
       ),
-      subtitle: available
-          ? null
-          : Text(
-              st.peerRadioNotAvailable,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
+      subtitle: available ? null : Text(st.peerRadioNotAvailable, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
     );
   }
 }
@@ -1702,20 +1579,11 @@ class _MessagesButton extends StatelessWidget {
   final String disabledReason;
   final VoidCallback onPressed;
 
-  const _MessagesButton({
-    required this.label,
-    required this.enabled,
-    required this.disabledReason,
-    required this.onPressed,
-  });
+  const _MessagesButton({required this.label, required this.enabled, required this.disabledReason, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
-    final button = TextButton.icon(
-      icon: const Icon(MdiIcons.messageBulleted),
-      label: Text(label),
-      onPressed: enabled ? onPressed : null,
-    );
+    final button = TextButton.icon(icon: const Icon(MdiIcons.messageBulleted), label: Text(label), onPressed: enabled ? onPressed : null);
     if (enabled) return button;
     // `container` is load-bearing: without it the annotation merges into
     // whatever node the row already had, and the reason reaches nothing that
@@ -1803,8 +1671,7 @@ class _EquipmentTile extends StatelessWidget {
     // Both directions take time and both deserve the spinner: connecting
     // negotiates a handshake, disconnecting sends a goodbye that must not be
     // rushed.
-    final busy = state.status == EquipmentStatus.connecting ||
-        state.status == EquipmentStatus.disconnecting;
+    final busy = state.status == EquipmentStatus.connecting || state.status == EquipmentStatus.disconnecting;
     final vfo = state.vfo;
     final reading = [
       if (vfo.mode != null) vfo.mode!,
@@ -1854,11 +1721,7 @@ class _EquipmentTile extends StatelessWidget {
                 if (resolvedType.describeChannel(node.config) case final channel?) ...[
                   const SizedBox(width: Space.md),
                   Flexible(
-                    child: _Pill(
-                      label: channel,
-                      background: theme.colorScheme.surfaceContainerHighest,
-                      foreground: theme.colorScheme.onSurfaceVariant,
-                    ),
+                    child: _Pill(label: channel, background: theme.colorScheme.surfaceContainerHighest, foreground: theme.colorScheme.onSurfaceVariant),
                   ),
                 ],
                 // Beside the name: which radio drives the logging panel is
@@ -1870,11 +1733,7 @@ class _EquipmentTile extends StatelessWidget {
                   // shrinking — the name collapses to nothing and the row
                   // still blows past the edge by whatever the pill needed.
                   Flexible(
-                    child: _Pill(
-                      label: st.mainVfo,
-                      background: theme.colorScheme.secondaryContainer,
-                      foreground: theme.colorScheme.onSecondaryContainer,
-                    ),
+                    child: _Pill(label: st.mainVfo, background: theme.colorScheme.secondaryContainer, foreground: theme.colorScheme.onSecondaryContainer),
                   ),
                 ],
               ],
@@ -1942,9 +1801,7 @@ class _EquipmentTile extends StatelessWidget {
                       // Dimmed once it is no longer being confirmed. The
                       // number is the last thing the radio actually said,
                       // and how old it is matters as much as what it is.
-                      color: state.stale
-                          ? theme.colorScheme.onSurfaceVariant
-                          : HaLoColors.of(context).onSurfaceAccent,
+                      color: state.stale ? theme.colorScheme.onSurfaceVariant : HaLoColors.of(context).onSurfaceAccent,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1975,12 +1832,7 @@ class _EquipmentTile extends StatelessWidget {
                   ),
               ],
             ),
-      trailing: _ConnectionToggle(
-        busy: busy,
-        connected: connected,
-        onConnect: onConnect,
-        onDisconnect: onDisconnect,
-      ),
+      trailing: _ConnectionToggle(busy: busy, connected: connected, onConnect: onConnect, onDisconnect: onDisconnect),
       onTap: onEdit,
       mouseCursor: SystemMouseCursors.click,
     );
@@ -1990,8 +1842,7 @@ class _EquipmentTile extends StatelessWidget {
 /// One green that reads on both a light and a dark surface. Spelled out
 /// because the scheme has no semantic "success" colour, and `primary` is the
 /// app's accent — it says nothing about being connected.
-Color _connectedGreen(ThemeData theme) =>
-    theme.brightness == Brightness.dark ? Colors.green.shade600 : Colors.green.shade700;
+Color _connectedGreen(ThemeData theme) => theme.brightness == Brightness.dark ? Colors.green.shade600 : Colors.green.shade700;
 
 /// A small rounded label. Same shape as activities_view's `ActivityRowChip` —
 /// nothing pill-like is exported from halo_widgets, and that chip says the
@@ -2031,12 +1882,7 @@ class _ConnectionToggle extends StatelessWidget {
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
 
-  const _ConnectionToggle({
-    required this.busy,
-    required this.connected,
-    required this.onConnect,
-    required this.onDisconnect,
-  });
+  const _ConnectionToggle({required this.busy, required this.connected, required this.onConnect, required this.onDisconnect});
 
   @override
   Widget build(BuildContext context) {

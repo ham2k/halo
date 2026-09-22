@@ -24,13 +24,7 @@ import 'panel_model.dart';
 /// What the model reads from the panel's live configuration — re-read on
 /// every use rather than copied in, because the hooks, the edited QSO and the
 /// operation all change under a mounted panel.
-typedef CallLookupConfig = ({
-  CallLookup? lookup,
-  WorkedBefore? workedBefore,
-  ScoreQso? scoreQso,
-  Qso? editingQso,
-  Operation operation,
-});
+typedef CallLookupConfig = ({CallLookup? lookup, WorkedBefore? workedBefore, ScoreQso? scoreQso, Qso? editingQso, Operation operation});
 
 /// Which pass of a lookup just landed — the panel applies a result's
 /// proposed references off every pass, and only the [online] one may
@@ -110,7 +104,6 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   String? _scoreFor;
   List<String> _alertKeys = const [];
   List<String> _noticeKeys = const [];
-
 
   // ---- What the panel reads ----
 
@@ -272,18 +265,18 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   }
 
   Future<Map<String, dynamic>?> _fetch(CallLookup lookup, String call, {required bool online}) => lookup(
-        call,
-        qso: qsoData(call),
-        operation: config().operation.data,
-        online: online,
-        // The `recentContextLookup` sources run only while composing a new
-        // contact, which is the one case where "what is this station doing
-        // right now" is a question about the QSO being made. Editing a saved
-        // record is a question about the past: what a spot says now has no
-        // bearing on a contact already logged, and the panel would refuse
-        // the proposed refs anyway.
-        recentContext: config().editingQso == null,
-      );
+    call,
+    qso: qsoData(call),
+    operation: config().operation.data,
+    online: online,
+    // The `recentContextLookup` sources run only while composing a new
+    // contact, which is the one case where "what is this station doing
+    // right now" is a question about the QSO being made. Editing a saved
+    // record is a question about the past: what a spot says now has no
+    // bearing on a contact already logged, and the panel would refuse
+    // the proposed refs anyway.
+    recentContext: config().editingQso == null,
+  );
 
   /// Re-runs the callsign lookup after the QSO's refs change (e.g. adding a
   /// hunted POTA park or SOTA summit). The POTA/SOTA `lookup` hooks read the

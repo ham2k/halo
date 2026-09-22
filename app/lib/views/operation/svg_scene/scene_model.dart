@@ -78,12 +78,8 @@ String string(Map<dynamic, dynamic> json, String key, {String? fallback}) {
   return value;
 }
 
-Rect bounds(Map<dynamic, dynamic> json) => Rect.fromLTWH(
-  number(json, 'x'),
-  number(json, 'y'),
-  number(json, 'width', min: 1, max: 8192),
-  number(json, 'height', min: 1, max: 8192),
-);
+Rect bounds(Map<dynamic, dynamic> json) =>
+    Rect.fromLTWH(number(json, 'x'), number(json, 'y'), number(json, 'width', min: 1, max: 8192), number(json, 'height', min: 1, max: 8192));
 
 List<double> pair(Object? value) {
   if (value is! List || value.length != 2) {
@@ -154,25 +150,18 @@ class SceneLayer {
         for (final key in ['rotation', 'translateX', 'translateY', 'opacity'])
           if (json[key] != null) key: SceneBinding(json[key] as Map<dynamic, dynamic>),
       },
-      pivot = json['pivot'] == null
-          ? Alignment.center
-          : Alignment(pair(json['pivot'])[0] * 2 - 1, pair(json['pivot'])[1] * 2 - 1),
+      pivot = json['pivot'] == null ? Alignment.center : Alignment(pair(json['pivot'])[0] * 2 - 1, pair(json['pivot'])[1] * 2 - 1),
       transitionMs = number(json, 'transitionMs', fallback: 0, min: 0, max: 10000).round(),
       pulse = json['pulse'] as Map<dynamic, dynamic>? {
     if ((svg == null) == (text == null)) {
       throw const FormatException('Expected SVG or text');
     }
-    if (svg != null &&
-        RegExp(r'<(?:image|script|foreignObject)\b|<!DOCTYPE|<!ENTITY', caseSensitive: false).hasMatch(svg!)) {
+    if (svg != null && RegExp(r'<(?:image|script|foreignObject)\b|<!DOCTYPE|<!ENTITY', caseSensitive: false).hasMatch(svg!)) {
       throw const FormatException('Scene SVG must be self-contained vector artwork');
     }
     if (text != null) {
       final samples = text!['samples'];
-      if (samples != null &&
-          (samples is! List ||
-              samples.isEmpty ||
-              samples.length > 4096 ||
-              samples.any((v) => v is! String && (v is! num || !v.isFinite)))) {
+      if (samples != null && (samples is! List || samples.isEmpty || samples.length > 4096 || samples.any((v) => v is! String && (v is! num || !v.isFinite)))) {
         throw const FormatException('Invalid text samples');
       }
       if ((text!['value'] == null) == (text!['literal'] == null)) {
@@ -214,9 +203,7 @@ class SceneControl {
   final List<String>? valueLabels;
   final List<({String label, String event})>? menu;
   SceneControl(Map<dynamic, dynamic> json)
-    : menu = json['menu'] == null
-          ? null
-          : items(json['menu'], 32).map((m) => (label: string(m, 'label'), event: string(m, 'event'))).toList(),
+    : menu = json['menu'] == null ? null : items(json['menu'], 32).map((m) => (label: string(m, 'label'), event: string(m, 'event'))).toList(),
       id = string(json, 'id'),
       label = string(json, 'label'),
       kind = string(json, 'kind'),
@@ -226,9 +213,7 @@ class SceneControl {
       hover = json['hover'] == true,
       continuous = json['continuous'] == true,
       discrete = json['discrete'] == true,
-      valueLabels = json['valueLabels'] == null
-          ? null
-          : (json['valueLabels'] as List).map((v) => string({'v': v}, 'v')).toList(),
+      valueLabels = json['valueLabels'] == null ? null : (json['valueLabels'] as List).map((v) => string({'v': v}, 'v')).toList(),
       min = number(json, 'min', fallback: 0),
       max = number(json, 'max', fallback: 1),
       step = number(json, 'step', fallback: 1, min: 1e-9),
@@ -241,13 +226,9 @@ class SceneControl {
       throw const FormatException('Invalid scene control');
     }
   }
-  String describe(double n) => valueLabels == null
-      ? n.toString()
-      : valueLabels![((clamp(n) - min) / step).round().clamp(0, valueLabels!.length - 1)];
+  String describe(double n) => valueLabels == null ? n.toString() : valueLabels![((clamp(n) - min) / step).round().clamp(0, valueLabels!.length - 1)];
 
-  double atX(double x) => discrete
-      ? clamp(min + (x / rect.width * ((max - min) / step + 1)).floor() * step)
-      : clamp(min + x / rect.width * (max - min));
+  double atX(double x) => discrete ? clamp(min + (x / rect.width * ((max - min) / step + 1)).floor() * step) : clamp(min + x / rect.width * (max - min));
 
   double clamp(double n) => (min + ((n - min) / step).round() * step).clamp(min, max).toDouble();
 }

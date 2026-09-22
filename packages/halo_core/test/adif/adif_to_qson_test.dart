@@ -18,8 +18,7 @@ import 'package:test/test.dart';
 
 /// Loggers write whatever their platform's encoding is and rarely declare it.
 /// Malformed bytes must not cost the whole file.
-AdifLog _load(String name) =>
-    parseAdifLog(const Utf8Decoder(allowMalformed: true).convert(File('test/adif/samples/$name').readAsBytesSync()));
+AdifLog _load(String name) => parseAdifLog(const Utf8Decoder(allowMalformed: true).convert(File('test/adif/samples/$name').readAsBytesSync()));
 
 int _at(String iso) => DateTime.parse(iso).millisecondsSinceEpoch;
 
@@ -119,16 +118,8 @@ void main() {
       // one winning.
       expect(_qsl(log.qsos[5]), {
         'qrz': {'received': true, 'id': '629033963', 'receivedOn': _at('2021-05-09T00:00:00Z')},
-        'lotw': {
-          'received': true,
-          'receivedOn': _at('2021-05-10T00:00:00Z'),
-          'sentOn': _at('2021-05-10T00:00:00Z'),
-        },
-        'qsl': {
-          'received': true,
-          'receivedOn': _at('2021-05-22T00:00:00Z'),
-          'sentOn': _at('2021-05-25T00:00:00Z'),
-        },
+        'lotw': {'received': true, 'receivedOn': _at('2021-05-10T00:00:00Z'), 'sentOn': _at('2021-05-10T00:00:00Z')},
+        'qsl': {'received': true, 'receivedOn': _at('2021-05-22T00:00:00Z'), 'sentOn': _at('2021-05-25T00:00:00Z')},
         'received': true,
       });
     });
@@ -472,8 +463,10 @@ void main() {
       // branch and invents paper QSLs on a LoTW file.
       expect(_load('ve9cf-smp.adi').headers['programid'], 'Station Master Pro');
 
-      final log = parseAdifLog('<PROGRAMID:5>LoTW\n<EOH>\n'
-          '<CALL:4>W1AW<QSO_DATE:8>20240723<QSL_RCVD:1>Y<EOR>');
+      final log = parseAdifLog(
+        '<PROGRAMID:5>LoTW\n<EOH>\n'
+        '<CALL:4>W1AW<QSO_DATE:8>20240723<QSL_RCVD:1>Y<EOR>',
+      );
       expect(log.headers['programid'], 'LoTW');
       expect(log.qsos.single.qso['qsl'], isNull);
     });
@@ -641,8 +634,10 @@ Header text <PROGRAMID>Ham2K LoKi
     });
 
     test('a record with no date still maps, and sorts first', () {
-      final log = parseAdifLog('<CALL:4>W1AW<QSO_DATE:8>20240723<TIME_ON:6>120000<EOR>'
-          '<CALL:4>K1AA<EOR>');
+      final log = parseAdifLog(
+        '<CALL:4>W1AW<QSO_DATE:8>20240723<TIME_ON:6>120000<EOR>'
+        '<CALL:4>K1AA<EOR>',
+      );
 
       expect(log.qsos, hasLength(2));
       expect(_their(log.qsos[0])['call'], 'K1AA');
@@ -650,8 +645,7 @@ Header text <PROGRAMID>Ham2K LoKi
     });
 
     test('a contact crossing midnight ends the next day, not before it began', () {
-      final log = parseAdifLog(
-          '<CALL:4>W1AW<QSO_DATE:8>20240723<TIME_ON:6>235800<TIME_OFF:6>000200<EOR>');
+      final log = parseAdifLog('<CALL:4>W1AW<QSO_DATE:8>20240723<TIME_ON:6>235800<TIME_OFF:6>000200<EOR>');
 
       expect(log.qsos[0].qso['startAtMillis'], _at('2024-07-23T23:58:00Z'));
       expect(log.qsos[0].qso['endAtMillis'], _at('2024-07-24T00:02:00Z'));
@@ -761,9 +755,11 @@ Header text <PROGRAMID>Ham2K LoKi
       // writes only OPERATOR means it as the station call too, but where
       // STATION_CALLSIGN is also present it wins — importing K0XM's guest
       // operator as the transmitted call would misattribute the whole log.
-      final log = parseAdifLog('<EOH>\n'
-          '<CALL:4>W1AW<QSO_DATE:8>20240723<STATION_CALLSIGN:6>KI2D/P<OPERATOR:4>K0XM<EOR>\n'
-          '<CALL:5>K1ABC<QSO_DATE:8>20240723<OPERATOR:4>K0XM<EOR>');
+      final log = parseAdifLog(
+        '<EOH>\n'
+        '<CALL:4>W1AW<QSO_DATE:8>20240723<STATION_CALLSIGN:6>KI2D/P<OPERATOR:4>K0XM<EOR>\n'
+        '<CALL:5>K1ABC<QSO_DATE:8>20240723<OPERATOR:4>K0XM<EOR>',
+      );
 
       expect(_our(log.qsos[0]), containsPair('call', 'KI2D/P'));
       expect(_our(log.qsos[0]), containsPair('operatorCall', 'K0XM'));
@@ -776,9 +772,11 @@ Header text <PROGRAMID>Ham2K LoKi
       // ADIF names no field for a multi-station operating position, so ours
       // is app-defined. `APP_N1MM_RADIO_NR` counts radios at N1MM's station
       // and means nothing here — reading it would invent a position.
-      final log = parseAdifLog('<EOH>\n'
-          '<CALL:4>W1AW<QSO_DATE:8>20240723<APP_HAM2K_POSITION:1>2<EOR>\n'
-          '<CALL:5>K1ABC<QSO_DATE:8>20240723<APP_N1MM_RADIO_NR:1>2<EOR>');
+      final log = parseAdifLog(
+        '<EOH>\n'
+        '<CALL:4>W1AW<QSO_DATE:8>20240723<APP_HAM2K_POSITION:1>2<EOR>\n'
+        '<CALL:5>K1ABC<QSO_DATE:8>20240723<APP_N1MM_RADIO_NR:1>2<EOR>',
+      );
 
       expect(_our(log.qsos[0]), containsPair('multiIdentifier', '2'));
       expect(_our(log.qsos[1]), isNot(contains('multiIdentifier')));

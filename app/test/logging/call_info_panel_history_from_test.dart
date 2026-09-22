@@ -35,26 +35,37 @@ void main() {
     final services = await buildServices();
     final current = await services.operations.create(stationCall: 'N0DEV');
     final park = await services.operations.create(stationCall: 'N0DEV');
-    await services.operations.saveData(Operation(uuid: park.uuid, data: {
-      ...park.data,
-      'refs': [
-        {'type': 'potaActivation', 'ref': 'US-1234', 'name': 'North Lake SP'},
-        {'type': 'arrlDx', 'ref': 'arrl-dx-2026'},
-        {'type': 'pota', 'ref': 'US-9999', 'name': 'A Hunted Park'},
-      ],
-    }));
+    await services.operations.saveData(
+      Operation(
+        uuid: park.uuid,
+        data: {
+          ...park.data,
+          'refs': [
+            {'type': 'potaActivation', 'ref': 'US-1234', 'name': 'North Lake SP'},
+            {'type': 'arrlDx', 'ref': 'arrl-dx-2026'},
+            {'type': 'pota', 'ref': 'US-9999', 'name': 'A Hunted Park'},
+          ],
+        },
+      ),
+    );
     final plain = await services.operations.create(stationCall: 'N0DEV');
     for (final (op, start) in [(current, 3000), (park, 2000), (plain, 1000)]) {
-      await services.qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'band': '20m', 'startAtMillis': start});
+      await services.qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'startAtMillis': start,
+      });
     }
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: CallInfoPanel(operation: current, services: services, call: 'W1AW', guess: const {}),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: CallInfoPanel(operation: current, services: services, call: 'W1AW', guess: const {}),
+          ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('from US-1234 North Lake SP'), findsOneWidget);
@@ -85,17 +96,22 @@ void main() {
       'startAtMillis': 2000,
     });
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: CallInfoPanel(operation: current, services: services, call: 'W2XYZ', guess: const {}),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: CallInfoPanel(operation: current, services: services, call: 'W2XYZ', guess: const {}),
+          ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.textContaining(t.callInfo.withCall(call: 'KI2D')), findsNothing);
-    expect(find.textContaining(t.callInfo.withCall(call: 'N0DEV')), findsOneWidget,
-        reason: 'a contact made under a call this operation does not run still says so');
+    expect(
+      find.textContaining(t.callInfo.withCall(call: 'N0DEV')),
+      findsOneWidget,
+      reason: 'a contact made under a call this operation does not run still says so',
+    );
   });
 }

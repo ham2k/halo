@@ -80,40 +80,21 @@ class _SettingsPanelEntry {
 // A function of the current translations (not a const list) so the sidebar
 // follows the app locale like the panel bodies do.
 List<_SettingsPanelEntry> _fixedCorePanels(Translations t) => [
-      // Every declared group — core, sync and extension — in one panel,
-      // led by the `common: true`-flagged subset of all of them (see
-      // settings_registry.dart).
-      _SettingsPanelEntry(
-          key: 'settings',
-          title: t.settings.panels.settings,
-          icon: MdiIcons.cog,
-          order: 0,
-          description: t.settings.panels.settingsDescription),
-      _SettingsPanelEntry(
-          key: 'sync',
-          title: t.settings.sync.title,
-          icon: MdiIcons.sync,
-          order: 10,
-          description: t.settings.panels.syncDescription),
-      _SettingsPanelEntry(
-          key: 'accounts',
-          title: t.settings.accounts.title,
-          icon: MdiIcons.key,
-          order: 20,
-          description: t.settings.panels.accountsDescription),
-      _SettingsPanelEntry(
-          key: 'help',
-          title: t.settings.help.title,
-          icon: MdiIcons.lifebuoy,
-          order: 95,
-          description: t.settings.help.description),
-      _SettingsPanelEntry(
-          key: 'extensions',
-          title: t.settings.panels.extensions,
-          icon: MdiIcons.toyBrick,
-          order: 40,
-          description: t.settings.panels.extensionsDescription),
-    ];
+  // Every declared group — core, sync and extension — in one panel,
+  // led by the `common: true`-flagged subset of all of them (see
+  // settings_registry.dart).
+  _SettingsPanelEntry(key: 'settings', title: t.settings.panels.settings, icon: MdiIcons.cog, order: 0, description: t.settings.panels.settingsDescription),
+  _SettingsPanelEntry(key: 'sync', title: t.settings.sync.title, icon: MdiIcons.sync, order: 10, description: t.settings.panels.syncDescription),
+  _SettingsPanelEntry(key: 'accounts', title: t.settings.accounts.title, icon: MdiIcons.key, order: 20, description: t.settings.panels.accountsDescription),
+  _SettingsPanelEntry(key: 'help', title: t.settings.help.title, icon: MdiIcons.lifebuoy, order: 95, description: t.settings.help.description),
+  _SettingsPanelEntry(
+    key: 'extensions',
+    title: t.settings.panels.extensions,
+    icon: MdiIcons.toyBrick,
+    order: 40,
+    description: t.settings.panels.extensionsDescription,
+  ),
+];
 // Before Application Preferences (order 0) — the Profiles panel leads the list.
 // Internally "profiles"; until multi-profile features are enabled it
 // presents itself as just "Callsign".
@@ -150,14 +131,7 @@ class SettingsView extends StatefulWidget {
   /// this view and the mark reaching for the same corner.
   final double leadingInset;
 
-  const SettingsView({
-    super.key,
-    required this.services,
-    this.initialPanel,
-    this.embedded = false,
-    this.onBack,
-    this.leadingInset = 0,
-  });
+  const SettingsView({super.key, required this.services, this.initialPanel, this.embedded = false, this.onBack, this.leadingInset = 0});
 
   @override
   State<SettingsView> createState() => _SettingsViewState();
@@ -258,7 +232,7 @@ class _SettingsViewState extends State<SettingsView> {
       // via the Web Serial API. TCP and the Icom network transport
       // don't — a radio using either throws UnsupportedError on
       // connect, just not hidden a layer up from it.
-      if (settings.experimentEnabled('gato') /* stored key, see experiments.yaml */)
+      if (settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ )
         _SettingsPanelEntry(
           key: 'station',
           title: t.settings.panels.station,
@@ -268,14 +242,8 @@ class _SettingsViewState extends State<SettingsView> {
         ),
       // Between Sync (10) and Accounts (20): both are about where the log
       // goes — cloud first, then the devices beside you.
-      if (settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */)
-        _SettingsPanelEntry(
-          key: 'peers',
-          title: t.settings.panels.peers,
-          icon: MdiIcons.lan,
-          order: 15,
-          description: t.settings.panels.peersDescription,
-        ),
+      if (settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ )
+        _SettingsPanelEntry(key: 'peers', title: t.settings.panels.peers, icon: MdiIcons.lan, order: 15, description: t.settings.panels.peersDescription),
       ..._fixedCorePanels(t),
       // sidebar: false (e.g. call-notes, HALO-53) opts a panel out of this
       // top-level list — it's still returned by getSettingsPanels() for
@@ -299,11 +267,12 @@ class _SettingsViewState extends State<SettingsView> {
           description: t.settings.panels.developerSettingsDescription,
         ),
       _SettingsPanelEntry(
-          key: 'about',
-          title: t.settings.panels.about,
-          icon: MdiIcons.information,
-          order: _aboutPanelOrder,
-          description: t.settings.panels.aboutDescription),
+        key: 'about',
+        title: t.settings.panels.about,
+        icon: MdiIcons.information,
+        order: _aboutPanelOrder,
+        description: t.settings.panels.aboutDescription,
+      ),
     ];
     entries.sort((a, b) => a.order.compareTo(b.order));
     return entries;
@@ -364,56 +333,55 @@ class _SettingsViewState extends State<SettingsView> {
         // whole right panel, title included, shifts right by the grab
         // strip's clearance and its title lines up with the panel elements
         // below it.
-        secondary: LayoutBuilder(builder: (context, constraints) {
-          final safeLeft = PaneSafeArea.leftOf(context);
-          final paneWidth = constraints.maxWidth;
-          // The rows below span the pane and inset their CONTENTS by the
-          // centering offset plus 24 + safeLeft (_buildPanelContent's
-          // ListTileTheme merge over the one below). Replicate both parts to
-          // get the title's left edge to the same absolute x, measured from
-          // the pane's true left edge.
-          final centeringOffset = settingsRowCentering(paneWidth);
-          final targetLeft = centeringOffset + settingsRowInset + safeLeft;
-          // NavigationToolbar (which AppBar's title slot layouts through)
-          // starts the title at `titleSpacing` from the toolbar's left edge
-          // when centerTitle is false — see _ToolbarLayout.performLayout in
-          // navigation_toolbar.dart (`middleStart = leadingWidth +
-          // middleSpacing`; leadingWidth is 0, there's no leading widget
-          // here) — subtract it back out so a plain Padding (not a second,
-          // re-centered ConstrainedBox inside that already-narrower-than-
-          // the-pane slot, which drifted left by half the trailing actions'
-          // width) lands exactly on `targetLeft`.
-          final titleSpacing = Theme.of(context).appBarTheme.titleSpacing ?? NavigationToolbar.kMiddleSpacing;
-          return ScaffoldMessenger(
-            child: Scaffold(
-            appBar: AppBar(
-              flexibleSpace: windowHeaderGestureArea(),
-              centerTitle: false,
-              title: Padding(
-                padding: EdgeInsets.only(left: targetLeft - titleSpacing),
-                child: shrinkToFitText(Text(effectivePanel.effectiveScreenTitle)),
+        secondary: LayoutBuilder(
+          builder: (context, constraints) {
+            final safeLeft = PaneSafeArea.leftOf(context);
+            final paneWidth = constraints.maxWidth;
+            // The rows below span the pane and inset their CONTENTS by the
+            // centering offset plus 24 + safeLeft (_buildPanelContent's
+            // ListTileTheme merge over the one below). Replicate both parts to
+            // get the title's left edge to the same absolute x, measured from
+            // the pane's true left edge.
+            final centeringOffset = settingsRowCentering(paneWidth);
+            final targetLeft = centeringOffset + settingsRowInset + safeLeft;
+            // NavigationToolbar (which AppBar's title slot layouts through)
+            // starts the title at `titleSpacing` from the toolbar's left edge
+            // when centerTitle is false — see _ToolbarLayout.performLayout in
+            // navigation_toolbar.dart (`middleStart = leadingWidth +
+            // middleSpacing`; leadingWidth is 0, there's no leading widget
+            // here) — subtract it back out so a plain Padding (not a second,
+            // re-centered ConstrainedBox inside that already-narrower-than-
+            // the-pane slot, which drifted left by half the trailing actions'
+            // width) lands exactly on `targetLeft`.
+            final titleSpacing = Theme.of(context).appBarTheme.titleSpacing ?? NavigationToolbar.kMiddleSpacing;
+            return ScaffoldMessenger(
+              child: Scaffold(
+                appBar: AppBar(
+                  flexibleSpace: windowHeaderGestureArea(),
+                  centerTitle: false,
+                  title: Padding(
+                    padding: EdgeInsets.only(left: targetLeft - titleSpacing),
+                    child: shrinkToFitText(Text(effectivePanel.effectiveScreenTitle)),
+                  ),
+                  automaticallyImplyLeading: false,
+                  actions: [
+                    HeaderProfileLabel(settings: widget.services.settings),
+                    windowsCaptionSpacer(context),
+                  ],
+                ),
+                // No ambient left Padding here (that would inset the whole
+                // body — row backgrounds/dividers included — same mistake
+                // operation_view.dart's OperationSettingsPanel comment warns
+                // against). Each panel insets its own row CONTENT instead, via
+                // this ListTileTheme default (ListTile-based panels) or its own
+                // explicit padding (panels that aren't ListTile-based) — so
+                // row backgrounds and dividers still reach the pane's true
+                // edge, right up to the grab-strip clearance this cancels.
+                body: SettingsList(extraLeft: safeLeft, child: _buildPanelContent(effectivePanel, widget.services, _panels, _openPanel)),
               ),
-              automaticallyImplyLeading: false,
-              actions: [
-                HeaderProfileLabel(settings: widget.services.settings),
-                windowsCaptionSpacer(context),
-              ],
-            ),
-            // No ambient left Padding here (that would inset the whole
-            // body — row backgrounds/dividers included — same mistake
-            // operation_view.dart's OperationSettingsPanel comment warns
-            // against). Each panel insets its own row CONTENT instead, via
-            // this ListTileTheme default (ListTile-based panels) or its own
-            // explicit padding (panels that aren't ListTile-based) — so
-            // row backgrounds and dividers still reach the pane's true
-            // edge, right up to the grab-strip clearance this cancels.
-            body: SettingsList(
-              extraLeft: safeLeft,
-              child: _buildPanelContent(effectivePanel, widget.services, _panels, _openPanel),
-            ),
-          ),
-          );
-        }),
+            );
+          },
+        ),
       );
     } else {
       return Scaffold(
@@ -450,12 +418,7 @@ class _SettingsViewState extends State<SettingsView> {
     }
   }
 
-  Widget _buildSidebar(
-    BuildContext context, {
-    required bool isWide,
-    required List<_SettingsPanelEntry> panels,
-    required String selectedKey,
-  }) {
+  Widget _buildSidebar(BuildContext context, {required bool isWide, required List<_SettingsPanelEntry> panels, required String selectedKey}) {
     // The status footer doesn't reserve the home indicator globally (it
     // collapses when empty), so the list clears the bottom safe area itself;
     // the Scaffold canvas fills behind it.
@@ -464,49 +427,50 @@ class _SettingsViewState extends State<SettingsView> {
       left: false,
       right: false,
       child: ListView.builder(
-      itemCount: panels.length,
-      itemBuilder: (context, index) {
-        final panel = panels[index];
-        final isSelected = isWide && selectedKey == panel.key;
+        itemCount: panels.length,
+        itemBuilder: (context, index) {
+          final panel = panels[index];
+          final isSelected = isWide && selectedKey == panel.key;
 
-        // A panel with a monoDetail (the operator callsign) shows it in a
-        // monospace face after the title, e.g. "Callsign: KI2D". Titles are
-        // bold, matching the app's other list rows.
-        final mono = panel.monoDetail;
-        const titleStyle = TextStyle(fontWeight: FontWeight.bold);
-        final Widget titleWidget = (mono != null && mono.isNotEmpty)
-            ? Text.rich(
-                TextSpan(
-                  text: '${panel.title}: ',
-                  children: [TextSpan(text: mono, style: const TextStyle(fontFamily: 'RobotoMono'))],
-                ),
-                style: titleStyle,
-              )
-            : Text(panel.title, style: titleStyle);
+          // A panel with a monoDetail (the operator callsign) shows it in a
+          // monospace face after the title, e.g. "Callsign: KI2D". Titles are
+          // bold, matching the app's other list rows.
+          final mono = panel.monoDetail;
+          const titleStyle = TextStyle(fontWeight: FontWeight.bold);
+          final Widget titleWidget = (mono != null && mono.isNotEmpty)
+              ? Text.rich(
+                  TextSpan(
+                    text: '${panel.title}: ',
+                    children: [
+                      TextSpan(
+                        text: mono,
+                        style: const TextStyle(fontFamily: 'RobotoMono'),
+                      ),
+                    ],
+                  ),
+                  style: titleStyle,
+                )
+              : Text(panel.title, style: titleStyle);
 
-        return ListTile(
-          selected: isSelected,
-          // Material's default selected color is colorScheme.primary — a fill
-          // color here (the AppBar/FAB teal), not tuned for reading directly
-          // on this sidebar's surface; only 2.67:1 in dark mode.
-          selectedColor: HaLoColors.of(context).onSurfaceAccent,
-          // The section band's own hue, at half strength against the
-          // sidebar's surface: the selected row and the section it opens read
-          // as one family, but the band still marks a heading and this only
-          // marks a row. Derived rather than a fixed tint, so it follows the
-          // theme instead of disappearing in dark mode.
-          selectedTileColor: Color.lerp(
-            Theme.of(context).colorScheme.surface,
-            haloDialogBandColorAt(context),
-            0.5,
-          ),
-          leading: Icon(panel.icon),
-          title: titleWidget,
-          subtitle: panel.description == null ? null : Text(panel.description!),
-          onTap: () => _openPanel(panel.key),
-          mouseCursor: SystemMouseCursors.click,
-        );
-      },
+          return ListTile(
+            selected: isSelected,
+            // Material's default selected color is colorScheme.primary — a fill
+            // color here (the AppBar/FAB teal), not tuned for reading directly
+            // on this sidebar's surface; only 2.67:1 in dark mode.
+            selectedColor: HaLoColors.of(context).onSurfaceAccent,
+            // The section band's own hue, at half strength against the
+            // sidebar's surface: the selected row and the section it opens read
+            // as one family, but the band still marks a heading and this only
+            // marks a row. Derived rather than a fixed tint, so it follows the
+            // theme instead of disappearing in dark mode.
+            selectedTileColor: Color.lerp(Theme.of(context).colorScheme.surface, haloDialogBandColorAt(context), 0.5),
+            leading: Icon(panel.icon),
+            title: titleWidget,
+            subtitle: panel.description == null ? null : Text(panel.description!),
+            onTap: () => _openPanel(panel.key),
+            mouseCursor: SystemMouseCursors.click,
+          );
+        },
       ),
     );
   }
@@ -572,11 +536,9 @@ class _SettingsPanelScreenState extends State<_SettingsPanelScreen> {
 /// own key: those ids come from whatever the operator has installed, so
 /// reporting them by name would be unbounded cardinality AND would leak
 /// extension usage, which docs/design/telemetry.md excludes on purpose.
-String _panelUseName(_SettingsPanelEntry panel) =>
-    panel.descriptor != null ? 'extension' : panel.key;
+String _panelUseName(_SettingsPanelEntry panel) => panel.descriptor != null ? 'extension' : panel.key;
 
-Widget _buildPanelContent(
-    _SettingsPanelEntry panel, HaLoServices services, PanelUseTracker panels, FormOpenPanel openPanel) {
+Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, PanelUseTracker panels, FormOpenPanel openPanel) {
   final Widget content;
   switch (panel.key) {
     case 'profiles':
@@ -594,13 +556,15 @@ Widget _buildPanelContent(
     case 'accounts':
       // Service credentials and the offline data they and the extensions
       // feed, in one scroll.
-      content = CustomScrollView(slivers: [
-        AccountsPanel(services: services),
-        SliverPadding(
-          padding: const EdgeInsets.only(bottom: Space.md),
-          sliver: DataFilesPanel(services: services),
-        ),
-      ]);
+      content = CustomScrollView(
+        slivers: [
+          AccountsPanel(services: services),
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: Space.md),
+            sliver: DataFilesPanel(services: services),
+          ),
+        ],
+      );
     case 'developer':
       content = DeveloperPanel(services: services);
     case 'about':
@@ -609,15 +573,10 @@ Widget _buildPanelContent(
       content = const HelpPanel();
     default:
       final descriptor = panel.descriptor;
-      content = descriptor == null
-          ? const SizedBox.shrink()
-          : ExtensionSettingsPanel(services: services, descriptor: descriptor);
+      content = descriptor == null ? const SizedBox.shrink() : ExtensionSettingsPanel(services: services, descriptor: descriptor);
   }
   // Observes only, and wraps the body once so BOTH returns below are covered.
-  final body = Listener(
-    onPointerDown: (_) => panels.used(_panelUseName(panel)),
-    child: content,
-  );
+  final body = Listener(onPointerDown: (_) => panels.used(_panelUseName(panel)), child: content);
   // Settings content spans the pane; the ideal reading width is reached by
   // PADDING each row's contents, not by capping the column. Rows, section
   // bands and dividers therefore run to the pane's own edges, the way the
@@ -632,16 +591,18 @@ Widget _buildPanelContent(
   // The SafeArea sits inside: each panel's scroll view clears the bottom
   // safe area itself, since the status footer doesn't reserve the home
   // indicator globally.
-  return LayoutBuilder(builder: (context, constraints) {
-    final base = ListTileTheme.of(context).contentPadding ?? _defaultRowInset;
-    return ListTileTheme.merge(
-      contentPadding: base.add(EdgeInsets.symmetric(horizontal: settingsRowCentering(constraints.maxWidth))),
-      child: SettingsPaneWidth(
-        width: constraints.maxWidth,
-        child: SafeArea(top: false, left: false, right: false, child: body),
-      ),
-    );
-  });
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final base = ListTileTheme.of(context).contentPadding ?? _defaultRowInset;
+      return ListTileTheme.merge(
+        contentPadding: base.add(EdgeInsets.symmetric(horizontal: settingsRowCentering(constraints.maxWidth))),
+        child: SettingsPaneWidth(
+          width: constraints.maxWidth,
+          child: SafeArea(top: false, left: false, right: false, child: body),
+        ),
+      );
+    },
+  );
 }
 
 /// The narrow layout has no ListTileTheme of its own to merge over (the wide
@@ -774,7 +735,12 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
   Widget build(BuildContext context) {
     var elements = _elements;
     if (elements == null) {
-      return _box(const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator())));
+      return _box(
+        const Padding(
+          padding: EdgeInsets.all(Space.xxl),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
     }
     // A group can decline to contribute anything at all — RadioSettingsGroup
     // does while the CAT experiment is off. Its title is chrome for the rows
@@ -831,22 +797,8 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       onCancel: () {},
     );
     return widget.sliver
-        ? settingsCategorySliver(
-            context,
-            title: widget.group.title,
-            expanded: widget.expanded,
-            onToggle: widget.onToggle,
-            hidden: hidden,
-            sliver: form,
-          )
-        : settingsCategory(
-            context,
-            title: widget.group.title,
-            expanded: widget.expanded,
-            onToggle: widget.onToggle,
-            hidden: hidden,
-            child: form,
-          );
+        ? settingsCategorySliver(context, title: widget.group.title, expanded: widget.expanded, onToggle: widget.onToggle, hidden: hidden, sliver: form)
+        : settingsCategory(context, title: widget.group.title, expanded: widget.expanded, onToggle: widget.onToggle, hidden: hidden, child: form);
   }
 }
 
@@ -927,8 +879,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     _openCategory = stored == null
         ? _commonCategoryKey
         : stored.isEmpty
-            ? null
-            : stored;
+        ? null
+        : stored;
     _loadExtensionPanels();
     // Extension toggles restart the runtime with a different panel set.
     widget.services.extensions.runtimeGeneration.addListener(_loadExtensionPanels);
@@ -1257,13 +1209,7 @@ class _CommonSettingsCategory extends StatelessWidget {
       sliver: SliverMainAxisGroup(
         slivers: [
           for (final group in services.settingsRegistry.groups)
-            _SettingsGroupForm(
-              services: services,
-              group: group,
-              commonOnly: true,
-              sliver: true,
-              onRowsChanged: onRowsChanged,
-            ),
+            _SettingsGroupForm(services: services, group: group, commonOnly: true, sliver: true, onRowsChanged: onRowsChanged),
           if (panels != null)
             for (final descriptor in panels)
               ExtensionSettingsPanel(

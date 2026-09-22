@@ -29,8 +29,7 @@ const _aboutRecentReleaseCount = 3;
 Future<void> _copyVersionDetailsToClipboard(BuildContext context) async {
   await Clipboard.setData(ClipboardData(text: '$ham2kAppName\n${versionDetailsText()}'));
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(context.t.settings.about.copiedVersion)));
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.t.settings.about.copiedVersion)));
 }
 
 class AboutPanel extends StatelessWidget {
@@ -80,13 +79,7 @@ class AboutPanel extends StatelessWidget {
                 // the gesture arena over this ListTile's onTap —
                 // IgnorePointer keeps the whole row a single tap target
                 // instead of a text-selection field.
-                title: const IgnorePointer(
-                  child: VersionLabel(
-                    detailed: true,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    boldFirstLine: true,
-                  ),
-                ),
+                title: const IgnorePointer(child: VersionLabel(detailed: true, crossAxisAlignment: CrossAxisAlignment.start, boldFirstLine: true)),
                 onTap: () => _copyVersionDetailsToClipboard(context),
                 mouseCursor: SystemMouseCursors.click,
               ),
@@ -121,10 +114,7 @@ class AboutPanel extends StatelessWidget {
               SliverMainAxisGroup(
                 slivers: [
                   SectionHeader.pinned(context, context.t.settings.about.releaseNotes),
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _ReleaseNotesPreview(releases: recentReleases),
-                  ),
+                  SliverFillRemaining(hasScrollBody: false, child: _ReleaseNotesPreview(releases: recentReleases)),
                 ],
               ),
           ],

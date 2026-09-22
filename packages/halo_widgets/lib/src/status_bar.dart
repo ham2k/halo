@@ -34,14 +34,7 @@ class StatusBarItemData {
   final double? progressValue;
   final bool isIndeterminateProgress;
 
-  const StatusBarItemData({
-    required this.key,
-    this.icon,
-    this.title,
-    this.text,
-    this.progressValue,
-    this.isIndeterminateProgress = false,
-  });
+  const StatusBarItemData({required this.key, this.icon, this.title, this.text, this.progressValue, this.isIndeterminateProgress = false});
 
   bool get isProgress => isIndeterminateProgress || progressValue != null;
 }
@@ -98,14 +91,7 @@ class StatusBarPermaData {
   /// the operator did not ask for.
   final VoidCallback? onTap;
 
-  const StatusBarPermaData({
-    required this.key,
-    required this.icon,
-    required this.text,
-    this.badge,
-    this.muted = false,
-    this.onTap,
-  });
+  const StatusBarPermaData({required this.key, required this.icon, required this.text, this.badge, this.muted = false, this.onTap});
 }
 
 class StatusBarActionData {
@@ -123,14 +109,7 @@ class StatusBarNoticeData {
   final List<StatusBarActionData> actions;
   final DateTime createdAt;
 
-  const StatusBarNoticeData({
-    required this.key,
-    this.icon,
-    this.title,
-    required this.text,
-    this.actions = const [],
-    required this.createdAt,
-  });
+  const StatusBarNoticeData({required this.key, this.icon, this.title, required this.text, this.actions = const [], required this.createdAt});
 }
 
 /// The share of the window either of these may take when no caller supplies a
@@ -223,8 +202,7 @@ class StatusBarFooter extends StatefulWidget {
     this.showWhenEmpty = false,
     this.expanded,
     this.onExpandedChanged,
-  }) : assert(expanded == null || onExpandedChanged != null,
-            'a controlled footer needs onExpandedChanged, or nothing can open or close it');
+  }) : assert(expanded == null || onExpandedChanged != null, 'a controlled footer needs onExpandedChanged, or nothing can open or close it');
 
   @override
   State<StatusBarFooter> createState() => _StatusBarFooterState();
@@ -323,14 +301,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
 
   /// Everything the operator SEES — free to animate however it likes, since
   /// none of it reaches the semantics tree (see [build]).
-  Widget _visuals(
-    BuildContext context,
-    bool hasContent,
-    bool canExpand,
-    bool expanded,
-    Color backgroundColor,
-    Color foregroundColor,
-  ) {
+  Widget _visuals(BuildContext context, bool hasContent, bool canExpand, bool expanded, Color backgroundColor, Color foregroundColor) {
     // The bottom safe area is held OUT here, outside everything that animates,
     // and painted whether or not there is a band to draw. This widget spans
     // the window below every route, so it is the one that covers the home
@@ -354,14 +325,8 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
               switchInCurve: Curves.fastOutSlowIn,
               switchOutCurve: Curves.fastOutSlowIn,
               transitionBuilder: (child, animation) {
-                final offsetAnimation = Tween<Offset>(
-                  begin: const Offset(0, 1.0),
-                  end: Offset.zero,
-                ).animate(animation);
-                return SlideTransition(
-                  position: offsetAnimation,
-                  child: child,
-                );
+                final offsetAnimation = Tween<Offset>(begin: const Offset(0, 1.0), end: Offset.zero).animate(animation);
+                return SlideTransition(position: offsetAnimation, child: child);
               },
               child: !hasContent
                   ? const SizedBox(key: ValueKey('footer_empty'), width: double.infinity, height: 0)
@@ -413,100 +378,93 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                   // Hold the message to the ideal pane width, centered,
                   // rather than letting it stretch across a wide window.
                   : Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: idealPaneWidth),
-                      child: Row(
-                        // Stretch, so the switcher's child is as tall as the bar
-                        // rather than as tall as its text. The slide travels the
-                        // child's height: left to size itself the outgoing message
-                        // crossfades nearly in place instead of sliding out under
-                        // the bar's clip, which is a visual change this
-                        // semantics-only restructuring has no business making.
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Everything that changes with the item, and the only
-                          // part that animates. Excluded from semantics: the
-                          // switcher builds a fresh subtree per item and keeps the
-                          // outgoing one mounted through the transition, so its
-                          // nodes would be created and destroyed several times a
-                          // second — which is exactly what steals a focused text
-                          // field's node (see build()). The message itself is
-                          // still announced, by the one stable node up there.
-                          Expanded(
-                            child: ExcludeSemantics(
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 200),
-                                transitionBuilder: (child, animation) {
-                                  return SlideTransition(
-                                    position: Tween<Offset>(
-                                      begin: const Offset(0, 1.0),
-                                      end: Offset.zero,
-                                    ).animate(animation),
-                                    child: FadeTransition(opacity: animation, child: child),
-                                  );
-                                },
-                                child: Row(
-                                  key: _collapsedSwitchKey(last),
-                                  children: [
-                                    if (showGroups)
-                                      for (final group in _groupByIcon(widget.items))
-                                        Padding(
-                                          padding: const EdgeInsets.only(right: Space.xs),
-                                          child: _IconCountPill(icon: group.key, count: group.value, color: foregroundColor),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: idealPaneWidth),
+                        child: Row(
+                          // Stretch, so the switcher's child is as tall as the bar
+                          // rather than as tall as its text. The slide travels the
+                          // child's height: left to size itself the outgoing message
+                          // crossfades nearly in place instead of sliding out under
+                          // the bar's clip, which is a visual change this
+                          // semantics-only restructuring has no business making.
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Everything that changes with the item, and the only
+                            // part that animates. Excluded from semantics: the
+                            // switcher builds a fresh subtree per item and keeps the
+                            // outgoing one mounted through the transition, so its
+                            // nodes would be created and destroyed several times a
+                            // second — which is exactly what steals a focused text
+                            // field's node (see build()). The message itself is
+                            // still announced, by the one stable node up there.
+                            Expanded(
+                              child: ExcludeSemantics(
+                                child: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  transitionBuilder: (child, animation) {
+                                    return SlideTransition(
+                                      position: Tween<Offset>(begin: const Offset(0, 1.0), end: Offset.zero).animate(animation),
+                                      child: FadeTransition(opacity: animation, child: child),
+                                    );
+                                  },
+                                  child: Row(
+                                    key: _collapsedSwitchKey(last),
+                                    children: [
+                                      if (showGroups)
+                                        for (final group in _groupByIcon(widget.items))
+                                          Padding(
+                                            padding: const EdgeInsets.only(right: Space.xs),
+                                            child: _IconCountPill(icon: group.key, count: group.value, color: foregroundColor),
+                                          ),
+                                      if (last.icon != null) ...[
+                                        Icon(resolveIconName(last.icon), size: 16, color: foregroundColor),
+                                        const SizedBox(width: Space.sm),
+                                      ],
+                                      if (last.isProgress) ...[
+                                        Expanded(
+                                          flex: _progressTitleFlex,
+                                          child: Text(
+                                            last.title ?? last.text ?? '',
+                                            textAlign: TextAlign.left,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
+                                          ),
                                         ),
-                                    if (last.icon != null) ...[
-                                      Icon(resolveIconName(last.icon), size: 16, color: foregroundColor),
-                                      const SizedBox(width: Space.sm),
+                                        const SizedBox(width: Space.md),
+                                        Expanded(
+                                          flex: _progressBarFlex,
+                                          child: _StatusBarProgressIndicator(item: last, color: foregroundColor),
+                                        ),
+                                      ] else
+                                        Expanded(
+                                          child: Text(
+                                            last.title ?? last.text ?? '',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
+                                          ),
+                                        ),
                                     ],
-                                    if (last.isProgress) ...[
-                                      Expanded(
-                                        flex: _progressTitleFlex,
-                                        child: Text(
-                                          last.title ?? last.text ?? '',
-                                          textAlign: TextAlign.left,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
-                                        ),
-                                      ),
-                                      const SizedBox(width: Space.md),
-                                      Expanded(
-                                        flex: _progressBarFlex,
-                                        child: _StatusBarProgressIndicator(item: last, color: foregroundColor),
-                                      ),
-                                    ] else
-                                      Expanded(
-                                        child: Text(
-                                          last.title ?? last.text ?? '',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
-                                        ),
-                                      ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: Space.xs),
-                          // Hoisted OUT of the switcher above, deliberately. It is
-                          // the one control down here, it exists in every state,
-                          // and outside the switcher its element — and so its
-                          // semantics node — survives every item change instead of
-                          // being rebuilt with the row.
-                          // Centred rather than stretched: the row's stretch is
-                          // for the switcher's travel, and the button sizes itself.
-                          Center(
-                            child: _DismissButton(
-                              color: foregroundColor,
-                              onPressed: () => widget.onDismiss(last.key),
-                              label: widget.dismissLabel,
+                            const SizedBox(width: Space.xs),
+                            // Hoisted OUT of the switcher above, deliberately. It is
+                            // the one control down here, it exists in every state,
+                            // and outside the switcher its element — and so its
+                            // semantics node — survives every item change instead of
+                            // being rebuilt with the row.
+                            // Centred rather than stretched: the row's stretch is
+                            // for the switcher's travel, and the button sizes itself.
+                            Center(
+                              child: _DismissButton(color: foregroundColor, onPressed: () => widget.onDismiss(last.key), label: widget.dismissLabel),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
             ),
             // The icons sit OUTSIDE the centered message column on purpose:
             // they belong to the bar, not to whatever is being said in it, so
@@ -516,11 +474,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
             if (widget.perma.isNotEmpty) ...[
               const SizedBox(width: Space.sm),
               Center(
-                child: _PermaIcons(
-                  perma: widget.perma,
-                  color: foregroundColor,
-                  background: backgroundColor,
-                ),
+                child: _PermaIcons(perma: widget.perma, color: foregroundColor, background: backgroundColor),
               ),
             ],
           ],
@@ -621,8 +575,7 @@ class _PermaIconsState extends State<_PermaIcons> {
 
   /// A muted status's glyph and badge, held back from the bar's own colour
   /// without being lost against it.
-  Color _permaColor(StatusBarPermaData status) =>
-      status.muted ? widget.color.withValues(alpha: 0.5) : widget.color;
+  Color _permaColor(StatusBarPermaData status) => status.muted ? widget.color.withValues(alpha: 0.5) : widget.color;
 
   @override
   Widget build(BuildContext context) {
@@ -638,128 +591,121 @@ class _PermaIconsState extends State<_PermaIcons> {
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(padding: padding.copyWith(right: padding.right + Space.lg)),
       child: MenuAnchor(
-      controller: _menu,
-      // Anchored above the bar and hard against its trailing edge, so the menu
-      // hangs off the icons rather than floating over the middle of the
-      // window: `alignmentOffset` is measured from the anchor's top-left, and
-      // the menu is placed by its own top-left, so the y is the menu's own
-      // height plus the bar — which it does not know here. `Alignment.topRight`
-      // with a zero offset is the closest the API gets, and it puts the menu's
-      // top-right corner on the anchor's, growing upward from the bar.
-      // Just clear of the band. The menu is placed against the ANCHOR's top
-      // edge, and the anchor is a 16pt glyph centred in a taller bar, so the
-      // lift is the half-band above the glyph plus the gap that keeps the two
-      // apart. Derived from the band's height rather than a constant, because
-      // density resolves that (see [StatusBarFooter.collapsedHeightOf]) — and
-      // a fixed number that clears the bar at one density buries the icons at
-      // another.
-      //
-      // POSITIVE, which moves it UP: there is never room below a menu anchored
-      // to the bottom of the window, so `MenuAnchor` flips it — and a flipped
-      // root menu has this offset's y NEGATED (`_MenuAnchorState`). A negative
-      // value here pushes it down over the band, which is why this reads
-      // backwards.
-      alignmentOffset: Offset(
-        0,
-        (StatusBarFooter.collapsedHeightOf(context) - _permaIconSize) / 2 + Space.sm,
-      ),
-      // The tap that dismisses the menu does nothing else. Without this it
-      // passes through as well, and the bar is what is under the menu — so
-      // putting the statuses away would open the message list in the same
-      // gesture.
-      consumeOutsideTap: true,
-      // The menu's own box is transparent and takes no room of its own; the
-      // panel below carries the fill, the elevation and the margin.
-      //
-      // It has to be done from the inside like this: anchored to a glyph at
-      // the trailing edge, the menu's natural position overflows the window
-      // and `_MenuLayout` clamps its box flush to the edge — after
-      // `alignmentOffset` is applied, and regardless of the safe area handed
-      // to the anchor. Whatever the box does, what the operator sees is this
-      // panel, and a margin it holds is a margin that survives the clamp.
-      style: const MenuStyle(
-        alignment: Alignment.topRight,
-        visualDensity: VisualDensity.compact,
-        backgroundColor: WidgetStatePropertyAll(Colors.transparent),
-        surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
-        shadowColor: WidgetStatePropertyAll(Colors.transparent),
-        elevation: WidgetStatePropertyAll(0),
-        padding: WidgetStatePropertyAll(EdgeInsets.zero),
-      ),
-      // Every status gets a line, whichever icon was tapped. The tap runs the
-      // status's own action; one with none simply closes, which is what a menu
-      // entry that reports rather than offers should do.
-      menuChildren: [
-        Padding(
-          padding: const EdgeInsetsDirectional.only(end: Space.lg),
-          child: Material(
-            color: _menuFill(context),
-            elevation: 3,
-            shadowColor: Colors.black.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(Space.xs),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final status in widget.perma)
-                  MenuItemButton(
-                    leadingIcon: Icon(status.icon, size: 18, color: _permaColor(status)),
-                    style: MenuItemButton.styleFrom(foregroundColor: widget.color),
-                    // Straight through, null included: a status that only reports
-            // renders as a disabled entry, which is honest. A `?? () {}` would
-            // make an entry whose action went missing look live and do nothing.
-            onPressed: status.onTap,
-                    child: Text(status.text),
-                  ),
-              ],
+        controller: _menu,
+        // Anchored above the bar and hard against its trailing edge, so the menu
+        // hangs off the icons rather than floating over the middle of the
+        // window: `alignmentOffset` is measured from the anchor's top-left, and
+        // the menu is placed by its own top-left, so the y is the menu's own
+        // height plus the bar — which it does not know here. `Alignment.topRight`
+        // with a zero offset is the closest the API gets, and it puts the menu's
+        // top-right corner on the anchor's, growing upward from the bar.
+        // Just clear of the band. The menu is placed against the ANCHOR's top
+        // edge, and the anchor is a 16pt glyph centred in a taller bar, so the
+        // lift is the half-band above the glyph plus the gap that keeps the two
+        // apart. Derived from the band's height rather than a constant, because
+        // density resolves that (see [StatusBarFooter.collapsedHeightOf]) — and
+        // a fixed number that clears the bar at one density buries the icons at
+        // another.
+        //
+        // POSITIVE, which moves it UP: there is never room below a menu anchored
+        // to the bottom of the window, so `MenuAnchor` flips it — and a flipped
+        // root menu has this offset's y NEGATED (`_MenuAnchorState`). A negative
+        // value here pushes it down over the band, which is why this reads
+        // backwards.
+        alignmentOffset: Offset(0, (StatusBarFooter.collapsedHeightOf(context) - _permaIconSize) / 2 + Space.sm),
+        // The tap that dismisses the menu does nothing else. Without this it
+        // passes through as well, and the bar is what is under the menu — so
+        // putting the statuses away would open the message list in the same
+        // gesture.
+        consumeOutsideTap: true,
+        // The menu's own box is transparent and takes no room of its own; the
+        // panel below carries the fill, the elevation and the margin.
+        //
+        // It has to be done from the inside like this: anchored to a glyph at
+        // the trailing edge, the menu's natural position overflows the window
+        // and `_MenuLayout` clamps its box flush to the edge — after
+        // `alignmentOffset` is applied, and regardless of the safe area handed
+        // to the anchor. Whatever the box does, what the operator sees is this
+        // panel, and a margin it holds is a margin that survives the clamp.
+        style: const MenuStyle(
+          alignment: Alignment.topRight,
+          visualDensity: VisualDensity.compact,
+          backgroundColor: WidgetStatePropertyAll(Colors.transparent),
+          surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
+          shadowColor: WidgetStatePropertyAll(Colors.transparent),
+          elevation: WidgetStatePropertyAll(0),
+          padding: WidgetStatePropertyAll(EdgeInsets.zero),
+        ),
+        // Every status gets a line, whichever icon was tapped. The tap runs the
+        // status's own action; one with none simply closes, which is what a menu
+        // entry that reports rather than offers should do.
+        menuChildren: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: Space.lg),
+            child: Material(
+              color: _menuFill(context),
+              elevation: 3,
+              shadowColor: Colors.black.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(Space.xs),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final status in widget.perma)
+                    MenuItemButton(
+                      leadingIcon: Icon(status.icon, size: 18, color: _permaColor(status)),
+                      style: MenuItemButton.styleFrom(foregroundColor: widget.color),
+                      // Straight through, null included: a status that only reports
+                      // renders as a disabled entry, which is honest. A `?? () {}` would
+                      // make an entry whose action went missing look live and do nothing.
+                      onPressed: status.onTap,
+                      child: Text(status.text),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
-      builder: (context, controller, child) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final status in widget.perma)
-            Semantics(
-              container: true,
-              button: true,
-              label: status.text,
-              child: InkResponse(
-                onTap: () => controller.isOpen ? controller.close() : controller.open(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: Space.xs),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(status.icon, size: _permaIconSize, color: _permaColor(status)),
-                      if (status.badge case final badge?) ...[
-                        const SizedBox(width: Space.xxs),
-                        // The count is already in [status.text], which is this
-                        // button's accessible name — left in, a screen reader
-                        // reads the whole line and then a bare "0".
-                        ExcludeSemantics(
-                          child: Text(
-                            badge,
-                            // Sized against the glyph rather than off a text
-                            // style: this reads as part of the icon, and a
-                            // body style set by the theme would tower over a
-                            // 16pt one at some densities and vanish at
-                            // others.
-                            style: TextStyle(
-                              fontSize: _permaIconSize * 0.8,
-                              height: 1,
-                              color: _permaColor(status),
+        ],
+        builder: (context, controller, child) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final status in widget.perma)
+              Semantics(
+                container: true,
+                button: true,
+                label: status.text,
+                child: InkResponse(
+                  onTap: () => controller.isOpen ? controller.close() : controller.open(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Space.xs),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(status.icon, size: _permaIconSize, color: _permaColor(status)),
+                        if (status.badge case final badge?) ...[
+                          const SizedBox(width: Space.xxs),
+                          // The count is already in [status.text], which is this
+                          // button's accessible name — left in, a screen reader
+                          // reads the whole line and then a bare "0".
+                          ExcludeSemantics(
+                            child: Text(
+                              badge,
+                              // Sized against the glyph rather than off a text
+                              // style: this reads as part of the icon, and a
+                              // body style set by the theme would tower over a
+                              // 16pt one at some densities and vanish at
+                              // others.
+                              style: TextStyle(fontSize: _permaIconSize * 0.8, height: 1, color: _permaColor(status)),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -882,17 +828,11 @@ class _IconCountPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(10),
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[
-            Icon(resolveIconName(icon), size: 11, color: color),
-            const SizedBox(width: Space.xs),
-          ],
+          if (icon != null) ...[Icon(resolveIconName(icon), size: 11, color: color), const SizedBox(width: Space.xs)],
           Text(
             formatNumber(count),
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
@@ -939,11 +879,7 @@ class _StatusBarProgressIndicator extends StatelessWidget {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
       builder: (context, val, child) {
-        return LinearProgressIndicator(
-          value: val,
-          color: color,
-          backgroundColor: trackColor,
-        );
+        return LinearProgressIndicator(value: val, color: color, backgroundColor: trackColor);
       },
     );
   }
@@ -959,13 +895,7 @@ class _StatusBarItemRow extends StatelessWidget {
   /// and its dismiss button takes its own taps from inside this.
   final VoidCallback onToggle;
 
-  const _StatusBarItemRow({
-    required this.item,
-    required this.color,
-    required this.onDismiss,
-    required this.onToggle,
-    required this.dismissLabel,
-  });
+  const _StatusBarItemRow({required this.item, required this.color, required this.onDismiss, required this.onToggle, required this.dismissLabel});
 
   @override
   Widget build(BuildContext context) {
@@ -974,11 +904,8 @@ class _StatusBarItemRow extends StatelessWidget {
       color: color,
       onTap: onToggle,
       child: Row(
-              children: [
-          if (item.icon != null) ...[
-            Icon(resolveIconName(item.icon), size: 18, color: color),
-            const SizedBox(width: Space.md),
-          ],
+        children: [
+          if (item.icon != null) ...[Icon(resolveIconName(item.icon), size: 18, color: color), const SizedBox(width: Space.md)],
           if (item.isProgress) ...[
             Expanded(
               flex: _progressTitleFlex,
@@ -1063,16 +990,9 @@ class NoticeStack extends StatefulWidget {
   /// footer floors its own cap the same way (`_buildExpanded`) — a notice is
   /// where ErrorPolicy puts what the operator must read, so it may not be the
   /// one piece that silently shrinks to nothing.
-  static double minHeightOf(BuildContext context) =>
-      LayoutDensity.metricsOf(context).statusBarRow + _noticeBandHeight;
+  static double minHeightOf(BuildContext context) => LayoutDensity.metricsOf(context).statusBarRow + _noticeBandHeight;
 
-  const NoticeStack({
-    super.key,
-    required this.notices,
-    required this.onDismiss,
-    this.maxHeight,
-    this.dismissLabel = 'Dismiss',
-  });
+  const NoticeStack({super.key, required this.notices, required this.onDismiss, this.maxHeight, this.dismissLabel = 'Dismiss'});
 
   @override
   State<NoticeStack> createState() => _NoticeStackState();
@@ -1096,8 +1016,7 @@ class _NoticeStackState extends State<NoticeStack> {
 
   /// The budget for the whole stack: what the caller allowed, or 40% of the
   /// window when it did not say.
-  double _stackCap(BuildContext context) =>
-      widget.maxHeight ?? MediaQuery.sizeOf(context).height * _windowFraction;
+  double _stackCap(BuildContext context) => widget.maxHeight ?? MediaQuery.sizeOf(context).height * _windowFraction;
 
   /// The band actually painted. Normally the full [_noticeBandHeight]; when
   /// the stack's whole budget is smaller than that, the band shrinks with it
@@ -1141,14 +1060,8 @@ class _NoticeStackState extends State<NoticeStack> {
           switchInCurve: Curves.easeOutCubic,
           switchOutCurve: Curves.easeInCubic,
           transitionBuilder: (child, animation) {
-            final offsetAnimation = Tween<Offset>(
-              begin: const Offset(0, 1.0),
-              end: Offset.zero,
-            ).animate(animation);
-            return SlideTransition(
-              position: offsetAnimation,
-              child: child,
-            );
+            final offsetAnimation = Tween<Offset>(begin: const Offset(0, 1.0), end: Offset.zero).animate(animation);
+            return SlideTransition(position: offsetAnimation, child: child);
           },
           child: !hasNotices || top == null
               ? const SizedBox(key: ValueKey('notice_empty'), width: double.infinity, height: 0)
@@ -1163,106 +1076,105 @@ class _NoticeStackState extends State<NoticeStack> {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: idealPaneWidth),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // Invisible sizing reference: once the real cards below are
-              // `Positioned` (needed for the peek/expand animation), the
-              // Stack has no unpositioned child left to size itself from, so
-              // this ghost copy of the top card's content establishes its
-              // box — which is also how the peeking card ends up the same
-              // height as the top one, rather than a fixed decorative sliver.
-              // `onDismiss` must be non-null here too so the ghost renders
-              // the same close button as the real top card — otherwise it's
-              // shorter and the real (Positioned-constrained) card overflows
-              // its box.
-              //
-              // `ExcludeSemantics` states what `Opacity(0)` already achieves
-              // (RenderOpacity drops its child's semantics at zero alpha) so
-              // that raising the opacity for a fade one day cannot silently
-              // publish a duplicate of the notice — and a dead close button —
-              // to assistive tech. The peek below is the case that got that
-              // wrong.
-              ExcludeSemantics(
-                child: Opacity(
-                  opacity: 0,
-                  child: IgnorePointer(child: _capHeight(context, NoticeCard(notice: top, onDismiss: () {}, dismissLabel: widget.dismissLabel))),
-                ),
-              ),
-              if (second != null)
-                AnimatedPositioned(
-                  key: ValueKey(second.key),
-                  duration: _noticeDismissDuration,
-                  curve: Curves.easeInOut,
-                  left: isDismissingTop ? 0 : 6,
-                  top: isDismissingTop ? 0 : 6,
-                  right: isDismissingTop ? 0 : -6,
-                  bottom: isDismissingTop ? 0 : -6,
-                  // A few pixels of card edge showing behind the top one, to
-                  // say "there is another". Purely visual, and it must stay
-                  // that way: `IgnorePointer` takes it out of hit testing but
-                  // NOT out of semantics (`ignoringSemantics` defaults to
-                  // null, which reads as false), and at 0.7 opacity the
-                  // subtree is not dropped either — so without the exclusion
-                  // a screen reader is read the second notice in full, ahead
-                  // of the one actually on top, along with a close button
-                  // wired to a no-op. It is also churn: the whole card's
-                  // worth of nodes appears and vanishes as notices stack, and
-                  // freed nodes get recycled onto other widgets — including,
-                  // on web, a focused text field, whose `<input>` the engine
-                  // then disposes mid-word (see StatusBarFooter.build).
-                  //
-                  // This does cost something, and it is not only the label:
-                  // `NoticeCard` renders `notice.actions` as live buttons, so
-                  // a stacked notice's actions become unreachable to assistive
-                  // tech until it reaches the top. That is the intended
-                  // trade — activating a button on a card sitting visually
-                  // behind another is worse than waiting for it to surface —
-                  // but it is a trade, not a free silence.
-                  child: ExcludeSemantics(
-                    child: IgnorePointer(
-                      child: AnimatedOpacity(
-                        duration: _noticeDismissDuration,
-                        opacity: isDismissingTop ? 1 : 0.7,
-                        // A no-op `onDismiss` (rather than none) keeps this
-                        // card's rendered height identical to the ghost/top
-                        // cards — see the ghost's comment above. It's inert
-                        // either way since this whole subtree is wrapped in
-                        // `IgnorePointer`.
-                        child: _capHeight(context, NoticeCard(notice: second, onDismiss: () {}, dismissLabel: widget.dismissLabel)),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          // Invisible sizing reference: once the real cards below are
+                          // `Positioned` (needed for the peek/expand animation), the
+                          // Stack has no unpositioned child left to size itself from, so
+                          // this ghost copy of the top card's content establishes its
+                          // box — which is also how the peeking card ends up the same
+                          // height as the top one, rather than a fixed decorative sliver.
+                          // `onDismiss` must be non-null here too so the ghost renders
+                          // the same close button as the real top card — otherwise it's
+                          // shorter and the real (Positioned-constrained) card overflows
+                          // its box.
+                          //
+                          // `ExcludeSemantics` states what `Opacity(0)` already achieves
+                          // (RenderOpacity drops its child's semantics at zero alpha) so
+                          // that raising the opacity for a fade one day cannot silently
+                          // publish a duplicate of the notice — and a dead close button —
+                          // to assistive tech. The peek below is the case that got that
+                          // wrong.
+                          ExcludeSemantics(
+                            child: Opacity(
+                              opacity: 0,
+                              child: IgnorePointer(
+                                child: _capHeight(context, NoticeCard(notice: top, onDismiss: () {}, dismissLabel: widget.dismissLabel)),
+                              ),
+                            ),
+                          ),
+                          if (second != null)
+                            AnimatedPositioned(
+                              key: ValueKey(second.key),
+                              duration: _noticeDismissDuration,
+                              curve: Curves.easeInOut,
+                              left: isDismissingTop ? 0 : 6,
+                              top: isDismissingTop ? 0 : 6,
+                              right: isDismissingTop ? 0 : -6,
+                              bottom: isDismissingTop ? 0 : -6,
+                              // A few pixels of card edge showing behind the top one, to
+                              // say "there is another". Purely visual, and it must stay
+                              // that way: `IgnorePointer` takes it out of hit testing but
+                              // NOT out of semantics (`ignoringSemantics` defaults to
+                              // null, which reads as false), and at 0.7 opacity the
+                              // subtree is not dropped either — so without the exclusion
+                              // a screen reader is read the second notice in full, ahead
+                              // of the one actually on top, along with a close button
+                              // wired to a no-op. It is also churn: the whole card's
+                              // worth of nodes appears and vanishes as notices stack, and
+                              // freed nodes get recycled onto other widgets — including,
+                              // on web, a focused text field, whose `<input>` the engine
+                              // then disposes mid-word (see StatusBarFooter.build).
+                              //
+                              // This does cost something, and it is not only the label:
+                              // `NoticeCard` renders `notice.actions` as live buttons, so
+                              // a stacked notice's actions become unreachable to assistive
+                              // tech until it reaches the top. That is the intended
+                              // trade — activating a button on a card sitting visually
+                              // behind another is worse than waiting for it to surface —
+                              // but it is a trade, not a free silence.
+                              child: ExcludeSemantics(
+                                child: IgnorePointer(
+                                  child: AnimatedOpacity(
+                                    duration: _noticeDismissDuration,
+                                    opacity: isDismissingTop ? 1 : 0.7,
+                                    // A no-op `onDismiss` (rather than none) keeps this
+                                    // card's rendered height identical to the ghost/top
+                                    // cards — see the ghost's comment above. It's inert
+                                    // either way since this whole subtree is wrapped in
+                                    // `IgnorePointer`.
+                                    child: _capHeight(context, NoticeCard(notice: second, onDismiss: () {}, dismissLabel: widget.dismissLabel)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          AnimatedPositioned(
+                            key: ValueKey(top.key),
+                            duration: _noticeDismissDuration,
+                            curve: Curves.easeInOut,
+                            left: 0,
+                            top: isDismissingTop ? 80 : 0,
+                            right: 0,
+                            bottom: isDismissingTop ? -80 : 0,
+                            child: IgnorePointer(
+                              ignoring: isDismissingTop,
+                              child: AnimatedOpacity(
+                                duration: _noticeDismissDuration,
+                                opacity: isDismissingTop ? 0 : 1,
+                                child: _capHeight(context, NoticeCard(notice: top, onDismiss: () => _startDismiss(top.key), dismissLabel: widget.dismissLabel)),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              AnimatedPositioned(
-                key: ValueKey(top.key),
-                duration: _noticeDismissDuration,
-                curve: Curves.easeInOut,
-                left: 0,
-                top: isDismissingTop ? 80 : 0,
-                right: 0,
-                bottom: isDismissingTop ? -80 : 0,
-                child: IgnorePointer(
-                  ignoring: isDismissingTop,
-                  child: AnimatedOpacity(
-                    duration: _noticeDismissDuration,
-                    opacity: isDismissingTop ? 0 : 1,
-                    child: _capHeight(
-                      context,
-                      NoticeCard(notice: top, onDismiss: () => _startDismiss(top.key), dismissLabel: widget.dismissLabel),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
-    ),
-  ),
-),
-);
-}
+    );
+  }
 }
 
 class _NoticeSurface extends StatelessWidget {
@@ -1272,11 +1184,7 @@ class _NoticeSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: HaLoColors.of(context).notice,
-      elevation: 2,
-      child: child,
-    );
+    return Material(color: HaLoColors.of(context).notice, elevation: 2, child: child);
   }
 }
 
@@ -1294,35 +1202,35 @@ MarkdownStyleSheet _noticeMarkdownStyle(ThemeData theme, Color onNotice) {
   final body = theme.textTheme.bodyMedium?.copyWith(color: onNotice);
   final faint = onNotice.withValues(alpha: 0.08);
   final rule = onNotice.withValues(alpha: 0.3);
-  return withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
-    p: body,
-    listBullet: body,
-    blockquote: body,
-    tableBody: body,
-    img: body,
-    checkbox: body,
-    // Color only, never a body-derived style: the builder merges the link
-    // style onto its parent, and `merge` takes every non-null field — a
-    // fontSize or fontWeight here would override the heading or bold run the
-    // link sits inside. No underline either, since without an `onTapLink`
-    // these links do nothing; [StatusBarActionData]s are the actionable part.
-    a: TextStyle(color: Colors.blue.shade900),
-    code: body?.copyWith(
-      backgroundColor: faint,
-      fontFamily: 'monospace',
-      fontSize: theme.textTheme.bodyMedium!.fontSize! * 0.85,
+  return withEmojiFallback(
+    MarkdownStyleSheet.fromTheme(theme).copyWith(
+      p: body,
+      listBullet: body,
+      blockquote: body,
+      tableBody: body,
+      img: body,
+      checkbox: body,
+      // Color only, never a body-derived style: the builder merges the link
+      // style onto its parent, and `merge` takes every non-null field — a
+      // fontSize or fontWeight here would override the heading or bold run the
+      // link sits inside. No underline either, since without an `onTapLink`
+      // these links do nothing; [StatusBarActionData]s are the actionable part.
+      a: TextStyle(color: Colors.blue.shade900),
+      code: body?.copyWith(backgroundColor: faint, fontFamily: 'monospace', fontSize: theme.textTheme.bodyMedium!.fontSize! * 0.85),
+      h1: theme.textTheme.headlineSmall?.copyWith(color: onNotice),
+      h2: theme.textTheme.titleLarge?.copyWith(color: onNotice),
+      h3: theme.textTheme.titleMedium?.copyWith(color: onNotice),
+      h4: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
+      h5: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
+      h6: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
+      codeblockDecoration: BoxDecoration(color: faint, borderRadius: BorderRadius.circular(2)),
+      blockquoteDecoration: BoxDecoration(color: faint, borderRadius: BorderRadius.circular(2)),
+      tableBorder: TableBorder.all(color: rule),
+      horizontalRuleDecoration: BoxDecoration(
+        border: Border(top: BorderSide(width: 5, color: rule)),
+      ),
     ),
-    h1: theme.textTheme.headlineSmall?.copyWith(color: onNotice),
-    h2: theme.textTheme.titleLarge?.copyWith(color: onNotice),
-    h3: theme.textTheme.titleMedium?.copyWith(color: onNotice),
-    h4: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
-    h5: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
-    h6: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
-    codeblockDecoration: BoxDecoration(color: faint, borderRadius: BorderRadius.circular(2)),
-    blockquoteDecoration: BoxDecoration(color: faint, borderRadius: BorderRadius.circular(2)),
-    tableBorder: TableBorder.all(color: rule),
-    horizontalRuleDecoration: BoxDecoration(border: Border(top: BorderSide(width: 5, color: rule))),
-  ));
+  );
 }
 
 /// One notice, as a "post-it" card: icon+title row, markdown body, action
@@ -1351,10 +1259,7 @@ class NoticeCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                if (notice.icon != null) ...[
-                  Icon(resolveIconName(notice.icon), size: 18, color: onNotice),
-                  const SizedBox(width: Space.md),
-                ],
+                if (notice.icon != null) ...[Icon(resolveIconName(notice.icon), size: 18, color: onNotice), const SizedBox(width: Space.md)],
                 if (notice.title != null)
                   Expanded(
                     child: Text(
@@ -1379,10 +1284,7 @@ class NoticeCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Space.xs),
-            MarkdownBody(
-              data: notice.text,
-              styleSheet: _noticeMarkdownStyle(theme, onNotice),
-            ),
+            MarkdownBody(data: notice.text, styleSheet: _noticeMarkdownStyle(theme, onNotice)),
             if (notice.actions.isNotEmpty) ...[
               const SizedBox(height: Space.md),
               SingleChildScrollView(

@@ -11,20 +11,14 @@ import 'package:test/test.dart';
 
 List<AdifSegment> _segments(String text) => parseAdifSegments(text).toList();
 
-Map<String, String> _values(AdifSegment segment) => {
-      for (final f in segment.fields) f.name.toLowerCase(): f.value,
-    };
+Map<String, String> _values(AdifSegment segment) => {for (final f in segment.fields) f.name.toLowerCase(): f.value};
 
 void main() {
   group('parseAdifSegments', () {
     test('splits header and records on their end markers', () {
       final segments = _segments('Comment\n<ADIF_VER:5>3.1.5<EOH>\n<CALL:4>KI2D<EOR>\n<CALL:4>W1AW<EOR>\n');
 
-      expect(segments.map((s) => s.type), [
-        AdifSegmentType.header,
-        AdifSegmentType.record,
-        AdifSegmentType.record,
-      ]);
+      expect(segments.map((s) => s.type), [AdifSegmentType.header, AdifSegmentType.record, AdifSegmentType.record]);
       expect(segments[0].preamble, 'Comment\n');
       expect(_values(segments[1])['call'], 'KI2D');
       expect(_values(segments[2])['call'], 'W1AW');
@@ -185,15 +179,9 @@ void main() {
       // the marker merges the records into one segment, where the second's
       // fields overwrite the first's — and a contact disappears from the log
       // with only a warning on the survivor to show for it.
-      final segments = _segments(
-        '<eoh><QSO_DATE:8>20240101<CALL:5>W1AW<eor><QSO_DATE:8>20240102<CALL:4>W2AW<eor>',
-      );
+      final segments = _segments('<eoh><QSO_DATE:8>20240101<CALL:5>W1AW<eor><QSO_DATE:8>20240102<CALL:4>W2AW<eor>');
 
-      expect(segments.map((s) => s.type), [
-        AdifSegmentType.header,
-        AdifSegmentType.record,
-        AdifSegmentType.record,
-      ]);
+      expect(segments.map((s) => s.type), [AdifSegmentType.header, AdifSegmentType.record, AdifSegmentType.record]);
       expect(_values(segments[1])['call'], 'W1AW');
       expect(_values(segments[2])['call'], 'W2AW');
     });

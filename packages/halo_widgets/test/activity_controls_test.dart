@@ -63,10 +63,13 @@ void main() {
 
     test('reports only what no control handles', () {
       expect(
-        unhandledRefsIn(const [
-          {'type': 'pota', 'ref': 'US-0001'},
-          {'type': 'qp', 'ref': 'NY'},
-        ], const [potaControl]),
+        unhandledRefsIn(
+          const [
+            {'type': 'pota', 'ref': 'US-0001'},
+            {'type': 'qp', 'ref': 'NY'},
+          ],
+          const [potaControl],
+        ),
         [(type: 'qp', code: 'NY')],
       );
     });

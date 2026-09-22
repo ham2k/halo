@@ -58,27 +58,17 @@ const _undoToGetPreviousVersion = <int, List<String>>{
     'CREATE INDEX peer_events_operation_seq ON peer_events (operation_uuid, seq)',
   ],
   12: ['DROP TABLE peer_trust'],
-  11: [
-    'DROP INDEX peer_events_operation_seq',
-    'DROP TABLE peer_events',
-    'DROP TABLE peer_cursors',
-  ],
+  11: ['DROP INDEX peer_events_operation_seq', 'DROP TABLE peer_events', 'DROP TABLE peer_cursors'],
   10: ['DROP INDEX inbound_captures_dedupe_key'],
   9: ['DROP TABLE inbound_captures'],
   8: ['ALTER TABLE operations DROP COLUMN purged_locally'],
-  7: [
-    'ALTER TABLE operations DROP COLUMN purged',
-    'ALTER TABLE qsos DROP COLUMN purged',
-  ],
+  7: ['ALTER TABLE operations DROP COLUMN purged', 'ALTER TABLE qsos DROP COLUMN purged'],
   // v6 changed no schema entities — it backfills revision stamps — so there is
   // nothing to undo. The entry exists so the coverage check passes, and to
   // record that the version was considered.
   6: [],
   5: ['DROP TABLE sequences'],
-  4: [
-    'ALTER TABLE operations DROP COLUMN updated_at_millis',
-    'ALTER TABLE qsos DROP COLUMN updated_at_millis',
-  ],
+  4: ['ALTER TABLE operations DROP COLUMN updated_at_millis', 'ALTER TABLE qsos DROP COLUMN updated_at_millis'],
   3: ['DROP TABLE lookups'],
   2: ['DROP TABLE operations_backup', 'DROP TABLE qsos_backup'],
 };
@@ -119,11 +109,7 @@ void main() {
 
   /// A database file at [version], with [whileAtOldVersion] applied before it
   /// is closed — i.e. while the schema really is the old one.
-  Future<void> createAtVersion(
-    File file,
-    int version, {
-    Future<void> Function(HaLoDatabase db)? whileAtOldVersion,
-  }) async {
+  Future<void> createAtVersion(File file, int version, {Future<void> Function(HaLoDatabase db)? whileAtOldVersion}) async {
     final db = HaLoDatabase(NativeDatabase(file));
     try {
       // Any statement forces drift to open the file and run `onCreate`, which
@@ -156,16 +142,14 @@ void main() {
           "WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY name",
         )
         .get();
-    final schema =
-        rows.map((r) => r.read<String>('sql').replaceAll(RegExp(r'\s+'), ' ').trim()).toList();
+    final schema = rows.map((r) => r.read<String>('sql').replaceAll(RegExp(r'\s+'), ' ').trim()).toList();
     // Without this the comparison silently vacates if the query ever returns
     // nothing: `expect([], [])` passes.
     expect(schema, isNotEmpty, reason: 'sqlite_master query returned no entities at all');
     return schema;
   }
 
-  Future<int> userVersionOf(HaLoDatabase db) async =>
-      (await db.customSelect('PRAGMA user_version').getSingle()).read<int>('user_version');
+  Future<int> userVersionOf(HaLoDatabase db) async => (await db.customSelect('PRAGMA user_version').getSingle()).read<int>('user_version');
 
   /// An operator's log as it would actually be on disk. Values are BOUND, not
   /// interpolated — `jsonEncode` escapes `"` and `\` but not `'`, so an
@@ -213,17 +197,7 @@ void main() {
       ],
     );
 
-    Future<void> qso(
-      String uuid,
-      String call,
-      String band,
-      String mode,
-      int at, {
-      int deleted = 0,
-      int synced = 0,
-      String operation = 'op-1',
-      int? stamp,
-    }) {
+    Future<void> qso(String uuid, String call, String band, String mode, int at, {int deleted = 0, int synced = 0, String operation = 'op-1', int? stamp}) {
       return db.customStatement(
         'INSERT INTO qsos (uuid, operation, our_call, their_call, band, mode, '
         'start_at_millis, data, deleted, synced, score_cache$stampColumn) '
@@ -264,7 +238,8 @@ void main() {
       expect(
         _undoToGetPreviousVersion.keys.toSet(),
         {for (var v = 2; v <= currentVersion; v++) v},
-        reason: 'schemaVersion is $currentVersion — add the matching undo entry '
+        reason:
+            'schemaVersion is $currentVersion — add the matching undo entry '
             '(an empty list if that version changed no schema entities)',
       );
     });
@@ -274,71 +249,80 @@ void main() {
       // version bump that leaves this literal behind stops building the test
       // that upgrades FROM the version just superseded — so the newest step
       // is exercised from nothing, and the file goes green anyway.
-      expect(_highestUpgradeFrom, currentVersion - 1,
-          reason: 'schemaVersion is $currentVersion — _highestUpgradeFrom must be '
-              '${currentVersion - 1} or the newest upgrade path builds no test');
+      expect(
+        _highestUpgradeFrom,
+        currentVersion - 1,
+        reason:
+            'schemaVersion is $currentVersion — _highestUpgradeFrom must be '
+            '${currentVersion - 1} or the newest upgrade path builds no test',
+      );
     });
 
     test('walking back really does reach each version', () async {
       for (var version = 1; version < currentVersion; version++) {
         // Asserted before the file is closed: reopening is what triggers the
         // upgrade, so every table would be back by then.
-        await createAtVersion(dbFile('undo_v$version'), version, whileAtOldVersion: (db) async {
-          expect(await userVersionOf(db), version, reason: 'v$version stamp');
+        await createAtVersion(
+          dbFile('undo_v$version'),
+          version,
+          whileAtOldVersion: (db) async {
+            expect(await userVersionOf(db), version, reason: 'v$version stamp');
 
-          final tables = (await db
-                  .customSelect("SELECT name FROM sqlite_master WHERE type = 'table' "
-                      "AND name NOT LIKE 'sqlite_%' ORDER BY name")
-                  .get())
-              .map((r) => r.read<String>('name'))
-              .toSet();
+            final tables =
+                (await db
+                        .customSelect(
+                          "SELECT name FROM sqlite_master WHERE type = 'table' "
+                          "AND name NOT LIKE 'sqlite_%' ORDER BY name",
+                        )
+                        .get())
+                    .map((r) => r.read<String>('name'))
+                    .toSet();
 
-          expect(tables.contains('operations'), isTrue, reason: 'v$version');
-          expect(tables.contains('qsos'), isTrue, reason: 'v$version');
-          expect(tables.contains('operations_backup'), version >= 2, reason: 'v$version backups');
-          expect(tables.contains('qsos_backup'), version >= 2, reason: 'v$version backups');
-          expect(tables.contains('lookups'), version >= 3, reason: 'v$version lookups');
-          expect(tables.contains('sequences'), version >= 5, reason: 'v$version sequences');
-          expect(tables.contains('inbound_captures'), version >= 9, reason: 'v$version inbound_captures');
-          expect(tables.contains('peer_events'), version >= 11, reason: 'v$version peer_events');
-          expect(tables.contains('peer_cursors'), version >= 11, reason: 'v$version peer_cursors');
-          expect(tables.contains('peer_trust'), version >= 12, reason: 'v$version peer_trust');
+            expect(tables.contains('operations'), isTrue, reason: 'v$version');
+            expect(tables.contains('qsos'), isTrue, reason: 'v$version');
+            expect(tables.contains('operations_backup'), version >= 2, reason: 'v$version backups');
+            expect(tables.contains('qsos_backup'), version >= 2, reason: 'v$version backups');
+            expect(tables.contains('lookups'), version >= 3, reason: 'v$version lookups');
+            expect(tables.contains('sequences'), version >= 5, reason: 'v$version sequences');
+            expect(tables.contains('inbound_captures'), version >= 9, reason: 'v$version inbound_captures');
+            expect(tables.contains('peer_events'), version >= 11, reason: 'v$version peer_events');
+            expect(tables.contains('peer_cursors'), version >= 11, reason: 'v$version peer_cursors');
+            expect(tables.contains('peer_trust'), version >= 12, reason: 'v$version peer_trust');
 
-          for (final table in ['operations', 'qsos']) {
-            final columns = (await db.customSelect('PRAGMA table_info($table)').get())
-                .map((r) => r.read<String>('name'))
-                .toSet();
-            expect(columns.contains('updated_at_millis'), version >= 4,
-                reason: 'v$version $table stamps');
-          }
+            for (final table in ['operations', 'qsos']) {
+              final columns = (await db.customSelect('PRAGMA table_info($table)').get()).map((r) => r.read<String>('name')).toSet();
+              expect(columns.contains('updated_at_millis'), version >= 4, reason: 'v$version $table stamps');
+            }
 
-          // Indexes too, and by definition — because one of them CHANGED
-          // shape rather than appearing. An undo that drops the current
-          // `peer_events_operation_seq` without putting the narrow one back
-          // leaves a fixture no released build ever wrote, and the upgrade
-          // under test then has nothing to convert.
-          final indexes = {
-            for (final r in await db
-                .customSelect("SELECT name, sql FROM sqlite_master WHERE type = 'index' "
-                    "AND sql IS NOT NULL AND name NOT LIKE 'sqlite_%'")
-                .get())
-              r.read<String>('name'): r.read<String>('sql').replaceAll(RegExp(r'\s+'), ' ').trim()
-          };
-          expect(indexes.containsKey('inbound_captures_dedupe_key'), version >= 10,
-              reason: 'v$version dedupe index');
-          expect(indexes.containsKey('peer_events_operation_record'), version >= 13,
-              reason: 'v$version prune index');
-          if (version >= 11) {
-            expect(
-              indexes['peer_events_operation_seq'],
-              version >= 13
-                  ? 'CREATE INDEX peer_events_operation_seq ON peer_events '
-                      '(operation_uuid, seq, record_uuid, updated_at_millis)'
-                  : 'CREATE INDEX peer_events_operation_seq ON peer_events (operation_uuid, seq)',
-              reason: 'v$version outbox index shape',
-            );
-          }
-        });
+            // Indexes too, and by definition — because one of them CHANGED
+            // shape rather than appearing. An undo that drops the current
+            // `peer_events_operation_seq` without putting the narrow one back
+            // leaves a fixture no released build ever wrote, and the upgrade
+            // under test then has nothing to convert.
+            final indexes = {
+              for (final r
+                  in await db
+                      .customSelect(
+                        "SELECT name, sql FROM sqlite_master WHERE type = 'index' "
+                        "AND sql IS NOT NULL AND name NOT LIKE 'sqlite_%'",
+                      )
+                      .get())
+                r.read<String>('name'): r.read<String>('sql').replaceAll(RegExp(r'\s+'), ' ').trim(),
+            };
+            expect(indexes.containsKey('inbound_captures_dedupe_key'), version >= 10, reason: 'v$version dedupe index');
+            expect(indexes.containsKey('peer_events_operation_record'), version >= 13, reason: 'v$version prune index');
+            if (version >= 11) {
+              expect(
+                indexes['peer_events_operation_seq'],
+                version >= 13
+                    ? 'CREATE INDEX peer_events_operation_seq ON peer_events '
+                          '(operation_uuid, seq, record_uuid, updated_at_millis)'
+                    : 'CREATE INDEX peer_events_operation_seq ON peer_events (operation_uuid, seq)',
+                reason: 'v$version outbox index shape',
+              );
+            }
+          },
+        );
       }
     });
   });
@@ -347,19 +331,16 @@ void main() {
     for (var from = 1; from <= _highestUpgradeFrom; from++) {
       test('v$from keeps the operator\'s log intact', () async {
         final file = dbFile();
-        await createAtVersion(file, from,
-            whileAtOldVersion: (db) => seedOperatorLog(db, hasStampColumn: from >= 4));
+        await createAtVersion(file, from, whileAtOldVersion: (db) => seedOperatorLog(db, hasStampColumn: from >= 4));
 
         final db = HaLoDatabase(NativeDatabase(file));
         addTearDown(db.close);
 
-        expect(await userVersionOf(db), currentVersion,
-            reason: 'the upgrade must land on the current version');
+        expect(await userVersionOf(db), currentVersion, reason: 'the upgrade must land on the current version');
 
         final ops = await db.customSelect('SELECT * FROM operations ORDER BY uuid').get();
         expect(ops.map((r) => r.read<String>('uuid')), ['op-1', 'op-deleted']);
-        expect(jsonDecode(ops.first.read<String>('data')),
-            {'stationCall': 'KI2D', 'userTitle': "Field Day '26"});
+        expect(jsonDecode(ops.first.read<String>('data')), {'stationCall': 'KI2D', 'userTitle': "Field Day '26"});
         expect(jsonDecode(ops.first.read<String>('local_data')), {'lastPane': 'log'});
         expect(ops.first.read<int>('qso_count'), 2);
         // Soft deletes and dirty flags drive sync; losing either silently
@@ -375,14 +356,12 @@ void main() {
         expect(ops.first.read<int>('start_at_millis_max'), 1780003600000);
 
         final qsos = await db.customSelect('SELECT * FROM qsos ORDER BY uuid').get();
-        expect(qsos.map((r) => r.read<String>('uuid')),
-            ['qso-1', 'qso-2', 'qso-deleted', 'qso-orphan']);
+        expect(qsos.map((r) => r.read<String>('uuid')), ['qso-1', 'qso-2', 'qso-deleted', 'qso-orphan']);
         final first = qsos.first;
         expect(jsonDecode(first.read<String>('data'))['their'], {'call': 'W1AW'});
         // The only column linking a QSO to its operation, and there is no
         // foreign key anywhere to catch a migration that blanked it.
-        expect(qsos.map((r) => r.read<String>('operation')),
-            ['op-1', 'op-1', 'op-1', 'op-deleted']);
+        expect(qsos.map((r) => r.read<String>('operation')), ['op-1', 'op-1', 'op-1', 'op-deleted']);
         expect(first.read<String>('our_call'), 'KI2D');
         expect(first.read<String>('their_call'), 'W1AW');
         expect(first.read<String>('band'), '20m');
@@ -419,8 +398,7 @@ void main() {
       // does next, and it exercises the added column on a row that predates
       // it — which a brand-new row never does.
       final file = dbFile();
-      await createAtVersion(file, 1,
-          whileAtOldVersion: (db) => seedOperatorLog(db, hasStampColumn: false));
+      await createAtVersion(file, 1, whileAtOldVersion: (db) => seedOperatorLog(db, hasStampColumn: false));
 
       final db = HaLoDatabase(NativeDatabase(file));
       addTearDown(db.close);
@@ -432,20 +410,14 @@ void main() {
       expect(existing!.stationCall, 'KI2D');
       expect(await qsos.get('qso-1'), isNotNull);
 
-      await operations.saveData(Operation(
-        uuid: existing.uuid,
-        data: {...existing.data, 'userTitle': 'Renamed after upgrade'},
-      ));
+      await operations.saveData(Operation(uuid: existing.uuid, data: {...existing.data, 'userTitle': 'Renamed after upgrade'}));
       final rewritten = await operations.get('op-1');
       expect(rewritten!.userTitle, 'Renamed after upgrade');
       // saveData stamps both the blob and the column; they must agree, or
       // markSynced never matches this row again.
       expect(rewritten.updatedAtMillis, isNotNull);
       expect(
-        (await db
-                .customSelect("SELECT updated_at_millis FROM operations WHERE uuid = 'op-1'")
-                .getSingle())
-            .read<int?>('updated_at_millis'),
+        (await db.customSelect("SELECT updated_at_millis FROM operations WHERE uuid = 'op-1'").getSingle()).read<int?>('updated_at_millis'),
         rewritten.updatedAtMillis,
       );
 
@@ -463,37 +435,40 @@ void main() {
       // markSynced then matched zero rows and the whole imported log
       // re-uploaded on every sync round, forever.
       final file = dbFile();
-      await createAtVersion(file, 3, whileAtOldVersion: (db) async {
-        await db.customStatement(
-          'INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)',
-          ['op-synced', jsonEncode({'stationCall': 'KI2D', 'updatedAtMillis': 1779000000000})],
-        );
-        await db.customStatement(
-          'INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)',
-          // The older app-polo spelling, which Operation still accepts.
-          ['op-legacy', jsonEncode({'stationCall': 'KI2D', 'updatedOnMillis': 1778000000000})],
-        );
-        await db.customStatement(
-          'INSERT INTO qsos (uuid, operation, data, deleted, synced) VALUES (?, ?, ?, 0, 1)',
-          [
+      await createAtVersion(
+        file,
+        3,
+        whileAtOldVersion: (db) async {
+          await db.customStatement('INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)', [
+            'op-synced',
+            jsonEncode({'stationCall': 'KI2D', 'updatedAtMillis': 1779000000000}),
+          ]);
+          await db.customStatement(
+            'INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)',
+            // The older app-polo spelling, which Operation still accepts.
+            [
+              'op-legacy',
+              jsonEncode({'stationCall': 'KI2D', 'updatedOnMillis': 1778000000000}),
+            ],
+          );
+          await db.customStatement('INSERT INTO qsos (uuid, operation, data, deleted, synced) VALUES (?, ?, ?, 0, 1)', [
             'qso-synced',
             'op-synced',
             jsonEncode({
               'their': {'call': 'W1AW'},
               'updatedAtMillis': 1779000000000,
             }),
-          ],
-        );
-      });
+          ]);
+        },
+      );
 
       final db = HaLoDatabase(NativeDatabase(file));
       addTearDown(db.close);
 
-      Future<int?> stampOf(String table, String uuid) async => (await db.customSelect(
-            'SELECT updated_at_millis FROM $table WHERE uuid = ?',
-            variables: [Variable<String>(uuid)],
-          ).getSingle())
-              .read<int?>('updated_at_millis');
+      Future<int?> stampOf(String table, String uuid) async =>
+          (await db.customSelect('SELECT updated_at_millis FROM $table WHERE uuid = ?', variables: [Variable<String>(uuid)]).getSingle()).read<int?>(
+            'updated_at_millis',
+          );
 
       expect(await stampOf('operations', 'op-synced'), 1779000000000);
       expect(await stampOf('operations', 'op-legacy'), 1778000000000);
@@ -502,8 +477,7 @@ void main() {
       // The behaviour that actually matters: blob and column must agree, which
       // is what lets markSynced find the row.
       final op = await OperationsRepository(db).get('op-synced');
-      expect(op!.updatedAtMillis, await stampOf('operations', 'op-synced'),
-          reason: 'blob and column must agree or markSynced re-pushes forever');
+      expect(op!.updatedAtMillis, await stampOf('operations', 'op-synced'), reason: 'blob and column must agree or markSynced re-pushes forever');
     });
 
     test('a row with no stamp anywhere stays NULL', () async {
@@ -511,25 +485,12 @@ void main() {
       // revision information". Backfilling `now()` instead would make every
       // old row look newer than the server's copy and win every merge.
       final file = dbFile();
-      await createAtVersion(file, 3,
-          whileAtOldVersion: (db) => seedOperatorLog(db, hasStampColumn: false));
+      await createAtVersion(file, 3, whileAtOldVersion: (db) => seedOperatorLog(db, hasStampColumn: false));
 
       final db = HaLoDatabase(NativeDatabase(file));
       addTearDown(db.close);
-      expect(
-        (await db
-                .customSelect("SELECT updated_at_millis FROM operations WHERE uuid = 'op-1'")
-                .getSingle())
-            .read<int?>('updated_at_millis'),
-        isNull,
-      );
-      expect(
-        (await db
-                .customSelect("SELECT updated_at_millis FROM qsos WHERE uuid = 'qso-2'")
-                .getSingle())
-            .read<int?>('updated_at_millis'),
-        isNull,
-      );
+      expect((await db.customSelect("SELECT updated_at_millis FROM operations WHERE uuid = 'op-1'").getSingle()).read<int?>('updated_at_millis'), isNull);
+      expect((await db.customSelect("SELECT updated_at_millis FROM qsos WHERE uuid = 'qso-2'").getSingle()).read<int?>('updated_at_millis'), isNull);
     });
 
     test('a malformed blob does not take the whole upgrade down', () async {
@@ -537,12 +498,13 @@ void main() {
       // migration transaction, so one corrupt row must not make the log
       // unopenable.
       final file = dbFile();
-      await createAtVersion(file, 3, whileAtOldVersion: (db) async {
-        await db.customStatement(
-          'INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 0)',
-          ['op-corrupt', 'not json at all'],
-        );
-      });
+      await createAtVersion(
+        file,
+        3,
+        whileAtOldVersion: (db) async {
+          await db.customStatement('INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 0)', ['op-corrupt', 'not json at all']);
+        },
+      );
 
       final db = HaLoDatabase(NativeDatabase(file));
       addTearDown(db.close);
@@ -558,36 +520,24 @@ void main() {
     // grid-only peer would keep measuring from the coordinate it left behind,
     // and every one carrying `''` for a location never set would keep drawing
     // no QTH while claiming to have a grid.
-    Future<Map<String, dynamic>> dataOf(HaLoDatabase db, String table, String uuid) async => jsonDecode(
-          (await db.customSelect(
-            'SELECT data FROM $table WHERE uuid = ?',
-            variables: [Variable<String>(uuid)],
-          ).getSingle())
-              .read<String>('data'),
-        ) as Map<String, dynamic>;
+    Future<Map<String, dynamic>> dataOf(HaLoDatabase db, String table, String uuid) async =>
+        jsonDecode((await db.customSelect('SELECT data FROM $table WHERE uuid = ?', variables: [Variable<String>(uuid)]).getSingle()).read<String>('data'))
+            as Map<String, dynamic>;
 
     test('a coordinate left behind by a grid-only edit is dropped', () async {
       final file = dbFile();
-      await createAtVersion(file, 13, whileAtOldVersion: (db) async {
-        await db.customStatement(
-          'INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)',
-          [
+      await createAtVersion(
+        file,
+        13,
+        whileAtOldVersion: (db) async {
+          await db.customStatement('INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)', [
             'op-moved',
             // FN31pr's coordinate under DM33xk's locator: the pair outranks
             // the grid, so the map and every distance answer from Connecticut
             // for an operation the operator says is in Arizona.
-            jsonEncode({
-              'stationCall': 'KI2D',
-              'grid': 'DM33xk',
-              'lat': 41.7292,
-              'lon': -72.7292,
-              'updatedAtMillis': 1779000000000,
-            }),
-          ],
-        );
-        await db.customStatement(
-          'INSERT INTO qsos (uuid, operation, data, deleted, synced) VALUES (?, ?, ?, 0, 1)',
-          [
+            jsonEncode({'stationCall': 'KI2D', 'grid': 'DM33xk', 'lat': 41.7292, 'lon': -72.7292, 'updatedAtMillis': 1779000000000}),
+          ]);
+          await db.customStatement('INSERT INTO qsos (uuid, operation, data, deleted, synced) VALUES (?, ?, ?, 0, 1)', [
             'qso-stated',
             'op-moved',
             // The same disagreement on a CONTACT, which the step must leave
@@ -599,9 +549,9 @@ void main() {
               'their': {'call': 'W1AW', 'grid': 'DM33xk', 'lat': 41.7292, 'lon': -72.7292},
               'updatedAtMillis': 1779000000000,
             }),
-          ],
-        );
-      });
+          ]);
+        },
+      );
 
       final db = HaLoDatabase(NativeDatabase(file));
       addTearDown(db.close);
@@ -609,27 +559,30 @@ void main() {
       final operation = (await OperationsRepository(db).get('op-moved'))!;
       expect(operation.exactLocation, isNull);
       expect(operation.location, gridToLocation('DM33xk'));
-      expect((await QsosRepository(db).get('qso-stated'))!.theirExactLocation, const GridLocation(41.7292, -72.7292),
-          reason: 'a contact states its own position; the step must not touch it');
+      expect(
+        (await QsosRepository(db).get('qso-stated'))!.theirExactLocation,
+        const GridLocation(41.7292, -72.7292),
+        reason: 'a contact states its own position; the step must not touch it',
+      );
       // The revision is the record's own, untouched: a repair that bumped it
       // would push the whole repaired log back to a peer that cannot store
       // the half being dropped anyway.
       expect(operation.updatedAtMillis, 1779000000000);
-      expect(
-        (await db.customSelect("SELECT synced FROM operations WHERE uuid = 'op-moved'").getSingle())
-            .read<bool>('synced'),
-        isTrue,
-      );
+      expect((await db.customSelect("SELECT synced FROM operations WHERE uuid = 'op-moved'").getSingle()).read<bool>('synced'), isTrue);
     });
 
     test('a locator that names no place stops claiming to be one', () async {
       final file = dbFile();
-      await createAtVersion(file, 13, whileAtOldVersion: (db) async {
-        await db.customStatement(
-          'INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)',
-          ['op-blank', jsonEncode({'stationCall': 'KI2D', 'grid': '', 'gridSource': 'gps'})],
-        );
-      });
+      await createAtVersion(
+        file,
+        13,
+        whileAtOldVersion: (db) async {
+          await db.customStatement('INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)', [
+            'op-blank',
+            jsonEncode({'stationCall': 'KI2D', 'grid': '', 'gridSource': 'gps'}),
+          ]);
+        },
+      );
 
       final db = HaLoDatabase(NativeDatabase(file));
       addTearDown(db.close);
@@ -645,26 +598,18 @@ void main() {
       // coordinate sits inside its own square must come out byte for byte,
       // or every log in the field is rewritten for nothing.
       final file = dbFile();
-      final intact = jsonEncode({
-        'stationCall': 'KI2D',
-        'grid': 'FN31pr',
-        'lat': 41.7292,
-        'lon': -72.7292,
-      });
-      await createAtVersion(file, 13, whileAtOldVersion: (db) async {
-        await db.customStatement(
-          'INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)',
-          ['op-agreeing', intact],
-        );
-      });
+      final intact = jsonEncode({'stationCall': 'KI2D', 'grid': 'FN31pr', 'lat': 41.7292, 'lon': -72.7292});
+      await createAtVersion(
+        file,
+        13,
+        whileAtOldVersion: (db) async {
+          await db.customStatement('INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)', ['op-agreeing', intact]);
+        },
+      );
 
       final db = HaLoDatabase(NativeDatabase(file));
       addTearDown(db.close);
-      expect(
-        (await db.customSelect("SELECT data FROM operations WHERE uuid = 'op-agreeing'").getSingle())
-            .read<String>('data'),
-        intact,
-      );
+      expect((await db.customSelect("SELECT data FROM operations WHERE uuid = 'op-agreeing'").getSingle()).read<String>('data'), intact);
     });
   });
 
@@ -675,22 +620,23 @@ void main() {
       // cache; one that rebuilt the backup tables would destroy the
       // last-resort copy taken right before a replace-sync wipes the log.
       final file = dbFile();
-      await createAtVersion(file, 3, whileAtOldVersion: (db) async {
-        await db.customStatement(
-          'INSERT INTO lookups (category, key, name, lat, lon) VALUES (?, ?, ?, ?, ?)',
-          ['pota', 'US-0001', 'A park', 41.5, -73.5],
-        );
-        await db.customStatement(
-          'INSERT INTO operations_backup (backup_id, backup_at_millis, uuid, data, qso_count, '
-          'deleted) VALUES (?, ?, ?, ?, ?, ?)',
-          ['b1', 1780000000000, 'op-1', '{}', 0, 0],
-        );
-        await db.customStatement(
-          'INSERT INTO qsos_backup (backup_id, backup_at_millis, uuid, operation, data, deleted) '
-          'VALUES (?, ?, ?, ?, ?, ?)',
-          ['b1', 1780000000000, 'qso-1', 'op-1', '{}', 0],
-        );
-      });
+      await createAtVersion(
+        file,
+        3,
+        whileAtOldVersion: (db) async {
+          await db.customStatement('INSERT INTO lookups (category, key, name, lat, lon) VALUES (?, ?, ?, ?, ?)', ['pota', 'US-0001', 'A park', 41.5, -73.5]);
+          await db.customStatement(
+            'INSERT INTO operations_backup (backup_id, backup_at_millis, uuid, data, qso_count, '
+            'deleted) VALUES (?, ?, ?, ?, ?, ?)',
+            ['b1', 1780000000000, 'op-1', '{}', 0, 0],
+          );
+          await db.customStatement(
+            'INSERT INTO qsos_backup (backup_id, backup_at_millis, uuid, operation, data, deleted) '
+            'VALUES (?, ?, ?, ?, ?, ?)',
+            ['b1', 1780000000000, 'qso-1', 'op-1', '{}', 0],
+          );
+        },
+      );
 
       final db = HaLoDatabase(NativeDatabase(file));
       addTearDown(db.close);
@@ -701,24 +647,17 @@ void main() {
       final opBackup = await db.customSelect('SELECT * FROM operations_backup').getSingle();
       expect(opBackup.read<String>('uuid'), 'op-1');
       expect(opBackup.read<String>('backup_id'), 'b1');
-      expect(
-        (await db.customSelect('SELECT * FROM qsos_backup').getSingle()).read<String>('operation'),
-        'op-1',
-      );
+      expect((await db.customSelect('SELECT * FROM qsos_backup').getSingle()).read<String>('operation'), 'op-1');
     });
 
     test('the tables each step adds are writable and read back what was written', () async {
       final file = dbFile();
-      await createAtVersion(file, 1,
-          whileAtOldVersion: (db) => seedOperatorLog(db, hasStampColumn: false));
+      await createAtVersion(file, 1, whileAtOldVersion: (db) => seedOperatorLog(db, hasStampColumn: false));
 
       final db = HaLoDatabase(NativeDatabase(file));
       addTearDown(db.close);
 
-      await db.customStatement(
-        'INSERT INTO sequences (operation, label, next_value, start_value) VALUES (?, ?, ?, ?)',
-        ['op-1', 'cqwpx/serial', 7, 1],
-      );
+      await db.customStatement('INSERT INTO sequences (operation, label, next_value, start_value) VALUES (?, ?, ?, ?)', ['op-1', 'cqwpx/serial', 7, 1]);
       // The values, not a row count: an INSERT that returned already proves
       // the table exists, so counting rows would assert nothing.
       final seq = await db.customSelect('SELECT * FROM sequences').getSingle();
@@ -735,17 +674,11 @@ void main() {
       expect(event.read<String>('kind'), 'qso');
       expect(event.read<int>('seq'), greaterThan(0));
 
-      await db.customStatement(
-        'INSERT INTO peer_cursors (peer_device_id, operation_uuid, last_applied_seq) VALUES (?, ?, ?)',
-        ['peer-1', 'op-1', 5],
-      );
+      await db.customStatement('INSERT INTO peer_cursors (peer_device_id, operation_uuid, last_applied_seq) VALUES (?, ?, ?)', ['peer-1', 'op-1', 5]);
       final cursor = await db.customSelect('SELECT * FROM peer_cursors').getSingle();
       expect(cursor.read<int>('last_applied_seq'), 5);
 
-      await db.customStatement(
-        'INSERT INTO peer_trust (peer_device_id, name, paired_at_millis) VALUES (?, ?, ?)',
-        ['peer-1', 'Phone', 1780000000000],
-      );
+      await db.customStatement('INSERT INTO peer_trust (peer_device_id, name, paired_at_millis) VALUES (?, ?, ?)', ['peer-1', 'Phone', 1780000000000]);
       final trusted = await db.customSelect('SELECT * FROM peer_trust').getSingle();
       expect(trusted.read<String>('name'), 'Phone');
       expect(trusted.read<int?>('last_seen_at_millis'), isNull);
@@ -764,12 +697,15 @@ void main() {
       // by `v$from produces the schema a fresh install gets`, which runs
       // drift's comparator from each version in turn — including the ones
       // that already had the old shape.
-      Future<List<String>> indexesOf(HaLoDatabase db) async => (await db
-              .customSelect("SELECT name FROM sqlite_master WHERE type = 'index' "
-                  "AND name NOT LIKE 'sqlite_%' ORDER BY name")
-              .get())
-          .map((r) => r.read<String>('name'))
-          .toList();
+      Future<List<String>> indexesOf(HaLoDatabase db) async =>
+          (await db
+                  .customSelect(
+                    "SELECT name FROM sqlite_master WHERE type = 'index' "
+                    "AND name NOT LIKE 'sqlite_%' ORDER BY name",
+                  )
+                  .get())
+              .map((r) => r.read<String>('name'))
+              .toList();
 
       final file = dbFile();
       await createAtVersion(file, 1);
@@ -798,9 +734,13 @@ void main() {
       // its steps against a schema that already has them, and addColumn is a
       // one-way door.
       final file = dbFile();
-      await createAtVersion(file, currentVersion, whileAtOldVersion: (db) async {
-        await db.customStatement('PRAGMA user_version = ${currentVersion + 1}');
-      });
+      await createAtVersion(
+        file,
+        currentVersion,
+        whileAtOldVersion: (db) async {
+          await db.customStatement('PRAGMA user_version = ${currentVersion + 1}');
+        },
+      );
 
       final db = HaLoDatabase(NativeDatabase(file));
       // The TYPE and the two versions, not merely "something threw": the
@@ -811,9 +751,7 @@ void main() {
       // reduce that notice to a generic "Something went wrong".
       await expectLater(
         db.customSelect('SELECT * FROM operations').get(),
-        throwsA(isA<LogFromNewerBuild>()
-            .having((e) => e.storage, 'storage', currentVersion + 1)
-            .having((e) => e.understood, 'understood', currentVersion)),
+        throwsA(isA<LogFromNewerBuild>().having((e) => e.storage, 'storage', currentVersion + 1).having((e) => e.understood, 'understood', currentVersion)),
         reason: 'opening a newer log must fail loudly rather than restamp it',
       );
       await db.close();
@@ -821,8 +759,7 @@ void main() {
       // And the file must be left exactly as the newer build wrote it.
       final raw = sqlite3.open(file.path);
       addTearDown(raw.dispose);
-      expect(raw.userVersion, currentVersion + 1,
-          reason: 'the newer version stamp must survive the refused open');
+      expect(raw.userVersion, currentVersion + 1, reason: 'the newer version stamp must survive the refused open');
     });
 
     test('the refusal survives the background isolate the app actually opens over', () async {
@@ -835,9 +772,13 @@ void main() {
       // RECOGNIZED after crossing an isolate. Recognized here the way both
       // of them do it, through `within`.
       final file = dbFile();
-      await createAtVersion(file, currentVersion, whileAtOldVersion: (db) async {
-        await db.customStatement('PRAGMA user_version = ${currentVersion + 1}');
-      });
+      await createAtVersion(
+        file,
+        currentVersion,
+        whileAtOldVersion: (db) async {
+          await db.customStatement('PRAGMA user_version = ${currentVersion + 1}');
+        },
+      );
 
       final db = HaLoDatabase(NativeDatabase.createBackgroundConnection(file));
       Object? thrown;
@@ -851,9 +792,7 @@ void main() {
       expect(thrown, isNotNull, reason: 'a newer log must be refused over any connection');
       expect(
         LogFromNewerBuild.within(thrown),
-        isA<LogFromNewerBuild>()
-            .having((e) => e.storage, 'storage', currentVersion + 1)
-            .having((e) => e.understood, 'understood', currentVersion),
+        isA<LogFromNewerBuild>().having((e) => e.storage, 'storage', currentVersion + 1).having((e) => e.understood, 'understood', currentVersion),
         reason: 'the refusal has to be recoverable from whatever the isolate wrapped it in',
       );
     });
@@ -871,33 +810,28 @@ void main() {
       // steps run first and succeed, so if the transaction is not doing its
       // job their tables survive the throw.
       final file = dbFile();
-      await createAtVersion(file, 1, whileAtOldVersion: (db) async {
-        await seedOperatorLog(db, hasStampColumn: false);
-        await db.customStatement('ALTER TABLE operations ADD COLUMN updated_at_millis INTEGER');
-      });
+      await createAtVersion(
+        file,
+        1,
+        whileAtOldVersion: (db) async {
+          await seedOperatorLog(db, hasStampColumn: false);
+          await db.customStatement('ALTER TABLE operations ADD COLUMN updated_at_millis INTEGER');
+        },
+      );
 
       final db = HaLoDatabase(NativeDatabase(file));
-      await expectLater(
-        db.customSelect('SELECT * FROM operations').get(),
-        throwsA(anything),
-        reason: 'the poisoned step must surface as a real error',
-      );
+      await expectLater(db.customSelect('SELECT * FROM operations').get(), throwsA(anything), reason: 'the poisoned step must surface as a real error');
       await db.close();
 
       // Inspected raw, because the drift instance above is now in a failed
       // state and reopening one would just re-run the migration.
       final raw = sqlite3.open(file.path);
       addTearDown(raw.dispose);
-      final tables = raw
-          .select("SELECT name FROM sqlite_master WHERE type = 'table'")
-          .map((r) => r['name'] as String)
-          .toSet();
+      final tables = raw.select("SELECT name FROM sqlite_master WHERE type = 'table'").map((r) => r['name'] as String).toSet();
 
       expect(raw.userVersion, 1, reason: 'a failed upgrade must not advance the version');
-      expect(tables.contains('operations_backup'), isFalse,
-          reason: 'the v2 step ran before the failing one — it must have rolled back');
-      expect(tables.contains('lookups'), isFalse,
-          reason: 'the v3 step ran before the failing one — it must have rolled back');
+      expect(tables.contains('operations_backup'), isFalse, reason: 'the v2 step ran before the failing one — it must have rolled back');
+      expect(tables.contains('lookups'), isFalse, reason: 'the v3 step ran before the failing one — it must have rolled back');
       // And the operator's rows are untouched, so a fixed build can still open
       // the file.
       expect(raw.select('SELECT * FROM qsos'), hasLength(4));
@@ -910,8 +844,7 @@ void main() {
       // (the v4 addColumn would hit a duplicate column), so surviving the open
       // with the rows intact is the real assertion.
       final file = dbFile();
-      await createAtVersion(file, currentVersion,
-          whileAtOldVersion: (db) => seedOperatorLog(db, hasStampColumn: true));
+      await createAtVersion(file, currentVersion, whileAtOldVersion: (db) => seedOperatorLog(db, hasStampColumn: true));
 
       final db = HaLoDatabase(NativeDatabase(file));
       addTearDown(db.close);
@@ -935,15 +868,15 @@ void main() {
     addTearDown(fresh.close);
     final actual = await schemaOf(fresh);
 
-    expect(_goldenSchemaFile.existsSync(), isTrue,
-        reason: 'missing ${_goldenSchemaFile.path} — regenerate with tool/dump_schema.dart');
-    final golden = _goldenSchemaFile
-        .readAsLinesSync()
-        .where((line) => line.trim().isNotEmpty && !line.startsWith('--'))
-        .toList();
+    expect(_goldenSchemaFile.existsSync(), isTrue, reason: 'missing ${_goldenSchemaFile.path} — regenerate with tool/dump_schema.dart');
+    final golden = _goldenSchemaFile.readAsLinesSync().where((line) => line.trim().isNotEmpty && !line.startsWith('--')).toList();
 
-    expect(actual, golden,
-        reason: 'the schema changed — regenerate the snapshot, and check whether '
-            'schemaVersion and a migration step are owed');
+    expect(
+      actual,
+      golden,
+      reason:
+          'the schema changed — regenerate the snapshot, and check whether '
+          'schemaVersion and a migration step are owed',
+    );
   });
 }

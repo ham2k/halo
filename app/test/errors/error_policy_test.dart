@@ -16,8 +16,7 @@ import 'dart:io' show FileSystemException, HandshakeException, HttpException, So
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_extension_host/halo_extension_host.dart'
-    show ExtensionHostException, HookTimeoutException;
+import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException, HookTimeoutException;
 import 'package:http/http.dart' show ClientException;
 
 import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure;
@@ -31,18 +30,15 @@ import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.d
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
-import 'package:halo_core/halo_core.dart'
-    show LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation;
+import 'package:halo_core/halo_core.dart' show LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation;
 import 'package:ham2k_logger/services/extension_scoring.dart' show ScoringHookFailure;
 import 'package:ham2k_logger/services/extension_service.dart' show MalformedSpotDataException;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
 import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed;
-import 'package:ham2k_logger/services/extension_catalog_migration.dart'
-    show CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
+import 'package:ham2k_logger/services/extension_catalog_migration.dart' show CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
 
-ErrorDisposition dispositionFor(Object error, {FlutterErrorDetails? details}) =>
-    ErrorPolicy.decide(error, details: details).disposition;
+ErrorDisposition dispositionFor(Object error, {FlutterErrorDetails? details}) => ErrorPolicy.decide(error, details: details).disposition;
 
 /// An error whose toString() throws — the shape a matcher must survive.
 class _HostileError implements Exception {
@@ -128,20 +124,14 @@ void main() {
     });
 
     test('a different framework error about building is still loud', () {
-      expect(
-        dispositionFor(FlutterError('A build function returned null.')),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(FlutterError('A build function returned null.')), ErrorDisposition.notify);
     });
 
     test('an exception of ours quoting the same message is NOT swallowed', () {
       // Only the two types the framework raises this as are exempt. A
       // wrapper of ours that re-throws with the framework's text attached
       // is a bug of ours, and matching by message alone would silence it.
-      expect(
-        dispositionFor(StateError('setState() or markNeedsBuild() called during build.')),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(StateError('setState() or markNeedsBuild() called during build.')), ErrorDisposition.notify);
     });
   });
 
@@ -151,10 +141,7 @@ void main() {
     // The framework recovers by not moving focus; nothing is lost but a
     // caret, and there is nothing for the operator to do.
     test('is console-only', () {
-      expect(
-        dispositionFor(AssertionError("'_effectiveFocusNode.canRequestFocus': is not true.")),
-        ErrorDisposition.logOnly,
-      );
+      expect(dispositionFor(AssertionError("'_effectiveFocusNode.canRequestFocus': is not true.")), ErrorDisposition.logOnly);
     });
 
     test('a plain error merely mentioning focus is still loud', () {
@@ -172,10 +159,7 @@ void main() {
     // would be absurd — but it must not be silent either, or "the numbers row
     // doesn't work on my phone" has nothing behind it.
     test('is console-only — never uploaded, never noticed', () {
-      expect(
-        dispositionFor(const BottomChromeSqueezed('no room above the keyboard for the numbers row')),
-        ErrorDisposition.logOnly,
-      );
+      expect(dispositionFor(const BottomChromeSqueezed('no room above the keyboard for the numbers row')), ErrorDisposition.logOnly);
     });
   });
 
@@ -186,30 +170,22 @@ void main() {
     // distros) where the app is otherwise fully functional.
     test('a DBus-shaped failure is console-only', () {
       expect(dispositionFor(DBusException('service unknown')), ErrorDisposition.logOnly);
-      expect(
-        dispositionFor(const SocketException('Connection failed, path = /run/dbus/system_bus_socket')),
-        ErrorDisposition.logOnly,
-      );
+      expect(dispositionFor(const SocketException('Connection failed, path = /run/dbus/system_bus_socket')), ErrorDisposition.logOnly);
     });
 
     test('an ordinary network failure of ours is still loud', () {
       // Only the D-Bus transport is exempt: a real SocketException from an
       // app fetch must not ride along on the type alone.
-      expect(
-        dispositionFor(const SocketException('Connection refused, host example.com')),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(const SocketException('Connection refused, host example.com')), ErrorDisposition.notify);
     });
   });
 
   group('web focus-traversal null (#271)', () {
     FlutterErrorDetails focusTraversalNull() => FlutterErrorDetails(
-          exception: TypeError(),
-          library: 'widgets library',
-          context: ErrorDescription(
-            'while dispatching notifications for WidgetsBindingObserver.didChangeViewFocus',
-          ),
-        );
+      exception: TypeError(),
+      library: 'widgets library',
+      context: ErrorDescription('while dispatching notifications for WidgetsBindingObserver.didChangeViewFocus'),
+    );
 
     test('is the only rule that drops an error entirely', () {
       ErrorPolicy.debugTreatAsWeb = true;
@@ -225,9 +201,7 @@ void main() {
   group('web semantics node map inconsistency', () {
     // The engine dumps both trees into the message; only the first line is
     // stable, and it is what the rule matches on.
-    StateError inconsistentMap() => StateError(
-          'Semantics node map was inconsistent after update:\n\nBEFORE: ...\n\nAFTER: ...\n',
-        );
+    StateError inconsistentMap() => StateError('Semantics node map was inconsistent after update:\n\nBEFORE: ...\n\nAFTER: ...\n');
 
     test('is console-only — the assert it comes from is compiled out of every build a user runs', () {
       ErrorPolicy.debugTreatAsWeb = true;
@@ -251,8 +225,7 @@ void main() {
     // What DDC actually reports when a private Dart field is read off an
     // instance whose class no longer declares it — the framework's own
     // `Element._lifecycleState`, in the case that motivated this.
-    Object staleFieldTypeError() =>
-        _JsTypeErrorStub("TypeError: Cannot read properties of undefined (reading 'Symbol(_lifecycleState)')");
+    Object staleFieldTypeError() => _JsTypeErrorStub("TypeError: Cannot read properties of undefined (reading 'Symbol(_lifecycleState)')");
 
     test('is console-only — the fix is a cold start, not anything an operator can do', () {
       ErrorPolicy.debugTreatAsWeb = true;
@@ -273,8 +246,7 @@ void main() {
       // is a real bug of theirs, not a leftover of ours.
       ErrorPolicy.debugTreatAsWeb = true;
       expect(
-        dispositionFor(ExtensionHostException(
-            "TypeError: Cannot read properties of undefined (reading 'Symbol(Symbol.iterator)')")),
+        dispositionFor(ExtensionHostException("TypeError: Cannot read properties of undefined (reading 'Symbol(Symbol.iterator)')")),
         ErrorDisposition.notify,
       );
     });
@@ -284,10 +256,7 @@ void main() {
       // in our code; only the `Symbol(` — a private Dart member — says the
       // object itself is a leftover.
       ErrorPolicy.debugTreatAsWeb = true;
-      expect(
-        dispositionFor(_JsTypeErrorStub("TypeError: Cannot read properties of undefined (reading 'features')")),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(_JsTypeErrorStub("TypeError: Cannot read properties of undefined (reading 'features')")), ErrorDisposition.notify);
     });
   });
 
@@ -299,20 +268,14 @@ void main() {
     // the same expected teardown at once. Without this rule, toggling an
     // extension raises the "Something went wrong" notice for that churn.
     test('a hook call cut off by dispose() is console-only', () {
-      expect(
-        dispositionFor(ExtensionHostException('extension host disposed')),
-        ErrorDisposition.logOnly,
-      );
+      expect(dispositionFor(ExtensionHostException('extension host disposed')), ErrorDisposition.logOnly);
     });
 
     // The fail-fast for calls attempted between a crash and the backoff
     // restart. The crash itself reports once via extensions:restart; each
     // of these is a per-call duplicate of that known state.
     test('a hook call refused against a dead runtime is console-only', () {
-      expect(
-        dispositionFor(ExtensionHostException('extension runtime is dead (hook lookupService.lookupCallInfo not attempted)')),
-        ErrorDisposition.logOnly,
-      );
+      expect(dispositionFor(ExtensionHostException('extension runtime is dead (hook lookupService.lookupCallInfo not attempted)')), ErrorDisposition.logOnly);
     });
 
     test('other host exceptions are still loud', () {
@@ -320,16 +283,10 @@ void main() {
       // arrives as the same type and must keep the default tier — those
       // are the bugs worth seeing. The timeout text without the timeout
       // TYPE is some other failure quoting it, not the host's own timeout.
-      expect(
-        dispositionFor(ExtensionHostException('hook spots.fetchSpots timed out after 5000ms')),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(ExtensionHostException('hook spots.fetchSpots timed out after 5000ms')), ErrorDisposition.notify);
       // The disposed matcher is exact, not contains(): a message merely
       // embedding the text is some other failure quoting it.
-      expect(
-        dispositionFor(ExtensionHostException('wrapped: extension host disposed')),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(ExtensionHostException('wrapped: extension host disposed')), ErrorDisposition.notify);
     });
 
     test('a foreign exception quoting the message is NOT swallowed', () {
@@ -347,9 +304,7 @@ void main() {
     // could act on — the lookup returns nothing and the next keystroke
     // asks again — but the rate is worth having, hence report not logOnly.
     test('reported, not noticed', () {
-      final decision = ErrorPolicy.decide(
-        HookTimeoutException('hook lookupService.lookupCallInfo timed out after 8000ms'),
-      );
+      final decision = ErrorPolicy.decide(HookTimeoutException('hook lookupService.lookupCallInfo timed out after 8000ms'));
       expect(decision.disposition, ErrorDisposition.report);
       expect(decision.rule?.id, 'hook-timed-out');
     });
@@ -358,19 +313,14 @@ void main() {
     // ScoringHookFailure and must keep ITS rule, which is what carries the
     // reasoning about a board that reads available rather than worked.
     test('a timeout wrapped in another exception keeps that rule', () {
-      final decision = ErrorPolicy.decide(
-        ScoringHookFailure('core', 'scoreCandidates', HookTimeoutException('hook scoring.scoreCandidates timed out')),
-      );
+      final decision = ErrorPolicy.decide(ScoringHookFailure('core', 'scoreCandidates', HookTimeoutException('hook scoring.scoreCandidates timed out')));
       expect(decision.rule?.id, 'scoring-hook-failed');
     });
 
     // Matched on the type alone. A hook that throws its OWN "timed out"
     // message is an extension defect, and stays at the default tier.
     test('a hook throwing its own timeout message is still loud', () {
-      expect(
-        dispositionFor(ExtensionHostException('lookupCallInfo: the QRZ request timed out')),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(ExtensionHostException('lookupCallInfo: the QRZ request timed out')), ErrorDisposition.notify);
     });
   });
 
@@ -384,21 +334,13 @@ void main() {
     test("the platform's refusal is uploaded but not put on screen", () {
       expect(
         // Verbatim from the plugin when the user data folder is unwritable.
-        dispositionFor(WindowsWebViewUnavailable(
-          PlatformException(code: '0', message: 'Cannot create WebViewEnvironment: Access is denied.'),
-        )),
+        dispositionFor(WindowsWebViewUnavailable(PlatformException(code: '0', message: 'Cannot create WebViewEnvironment: Access is denied.'))),
         ErrorDisposition.report,
       );
-      expect(
-        dispositionFor(const WindowsWebViewUnavailable(FileSystemException('Creation failed', r'C:\ProgramData'))),
-        ErrorDisposition.report,
-      );
+      expect(dispositionFor(const WindowsWebViewUnavailable(FileSystemException('Creation failed', r'C:\ProgramData'))), ErrorDisposition.report);
       // The browser process never came up; indistinguishable to the operator
       // from a refusal, and handled the same way.
-      expect(
-        dispositionFor(WindowsWebViewUnavailable(TimeoutException('webview environment', const Duration(seconds: 30)))),
-        ErrorDisposition.report,
-      );
+      expect(dispositionFor(WindowsWebViewUnavailable(TimeoutException('webview environment', const Duration(seconds: 30)))), ErrorDisposition.report);
     });
 
     test('our own build being broken is still loud', () {
@@ -406,20 +348,14 @@ void main() {
       // the one failure that is OURS: a Windows build shipped without the
       // plugin registered fails for every user on every machine, and must not
       // hide inside a rule written for one operator's PC.
-      expect(
-        dispositionFor(WindowsWebViewUnavailable(MissingPluginException('no implementation found'))),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(WindowsWebViewUnavailable(MissingPluginException('no implementation found'))), ErrorDisposition.notify);
       expect(dispositionFor(WindowsWebViewUnavailable(TypeError())), ErrorDisposition.notify);
     });
 
     test('the same platform failure outside the webview is still loud', () {
       // The wrapper IS the rule's scope. A PlatformException reaching the
       // policy from anywhere else has no webview to blame.
-      expect(
-        dispositionFor(PlatformException(code: '0', message: 'Cannot create WebViewEnvironment: Access is denied.')),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(PlatformException(code: '0', message: 'Cannot create WebViewEnvironment: Access is denied.')), ErrorDisposition.notify);
     });
   });
 
@@ -432,26 +368,21 @@ void main() {
     test('a radio that is not answering is console-only', () {
       expect(
         // Verbatim from a Flex left switched off at launch.
-        dispositionFor(const CatConnectFailure(
-          'flexradio',
-          SocketException('Connection failed (OS Error: No route to host, errno = 65), '
-              'address = 10.0.0.66, port = 4992'),
-        )),
+        dispositionFor(
+          const CatConnectFailure(
+            'flexradio',
+            SocketException(
+              'Connection failed (OS Error: No route to host, errno = 65), '
+              'address = 10.0.0.66, port = 4992',
+            ),
+          ),
+        ),
         ErrorDisposition.logOnly,
       );
-      expect(
-        dispositionFor(CatConnectFailure('icom-network', TimeoutException('the radio did not answer: login'))),
-        ErrorDisposition.logOnly,
-      );
+      expect(dispositionFor(CatConnectFailure('icom-network', TimeoutException('the radio did not answer: login'))), ErrorDisposition.logOnly);
       // A transport's own account of the same thing, tagged CatUnreachable.
-      expect(
-        dispositionFor(const CatConnectFailure('ft891', SerialPortUnavailable('/dev/cu.usbserial', 'busy'))),
-        ErrorDisposition.logOnly,
-      );
-      expect(
-        dispositionFor(const CatConnectFailure('icom-network', IcomLoginTimeout())),
-        ErrorDisposition.logOnly,
-      );
+      expect(dispositionFor(const CatConnectFailure('ft891', SerialPortUnavailable('/dev/cu.usbserial', 'busy'))), ErrorDisposition.logOnly);
+      expect(dispositionFor(const CatConnectFailure('icom-network', IcomLoginTimeout())), ErrorDisposition.logOnly);
     });
 
     test('a bug raised inside a connect attempt is still loud', () {
@@ -460,18 +391,19 @@ void main() {
       // a bad config cast, a handshake step that gets its state wrong — and
       // those are bugs the rule must not take down with the radio.
       expect(dispositionFor(CatConnectFailure('flexradio', TypeError())), ErrorDisposition.notify);
-      expect(
-        dispositionFor(CatConnectFailure('icom-network', StateError('the radio sent a stream answer we do not understand'))),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(CatConnectFailure('icom-network', StateError('the radio sent a stream answer we do not understand'))), ErrorDisposition.notify);
     });
 
     test('the same socket failure outside a connect attempt is still loud', () {
       // The wrapper IS the rule's scope. A SocketException reaching the
       // policy from anywhere else in the app has no radio to blame.
       expect(
-        dispositionFor(const SocketException('Connection failed (OS Error: No route to host, errno = 65), '
-            'address = 10.0.0.66, port = 4992')),
+        dispositionFor(
+          const SocketException(
+            'Connection failed (OS Error: No route to host, errno = 65), '
+            'address = 10.0.0.66, port = 4992',
+          ),
+        ),
         ErrorDisposition.notify,
       );
     });
@@ -490,8 +422,7 @@ void main() {
         const HttpException('Connection closed before full header was received'),
         TimeoutException('peer dial to 10.0.0.2:41000 timed out'),
       ]) {
-        expect(dispositionFor(PeerMediaDialFailure('device-b', cause)), ErrorDisposition.logOnly,
-            reason: '$cause');
+        expect(dispositionFor(PeerMediaDialFailure('device-b', cause)), ErrorDisposition.logOnly, reason: '$cause');
       }
     });
 
@@ -500,8 +431,7 @@ void main() {
       // wrapper outright: the dial goes through an injectable PeerNetwork,
       // and an implementation throwing out of its own state is a defect
       // that the pane shows as the same "not connected" as a firewall.
-      expect(dispositionFor(PeerMediaDialFailure('device-b', StateError('lost its own state'))),
-          ErrorDisposition.notify);
+      expect(dispositionFor(PeerMediaDialFailure('device-b', StateError('lost its own state'))), ErrorDisposition.notify);
     });
   });
 
@@ -512,25 +442,16 @@ void main() {
     // SyncEngine's backoff loop) already retries, so this is worth
     // uploading in aggregate but not worth an operator notice.
     test('a connection reset is reported, not noticed', () {
-      expect(
-        dispositionFor(ExtensionHostException('ClientException: Connection reset by peer, uri=https://lofi.ham2k.net/v1/sync')),
-        ErrorDisposition.report,
-      );
+      expect(dispositionFor(ExtensionHostException('ClientException: Connection reset by peer, uri=https://lofi.ham2k.net/v1/sync')), ErrorDisposition.report);
     });
 
     test('other transport-layer failures are reported too', () {
-      expect(
-        dispositionFor(ExtensionHostException('ClientException: Connection refused, uri=https://lofi.ham2k.net/v1/sync')),
-        ErrorDisposition.report,
-      );
+      expect(dispositionFor(ExtensionHostException('ClientException: Connection refused, uri=https://lofi.ham2k.net/v1/sync')), ErrorDisposition.report);
       expect(
         dispositionFor(ExtensionHostException('ClientException: Connection closed while receiving data, uri=https://lofi.ham2k.net/v1/sync')),
         ErrorDisposition.report,
       );
-      expect(
-        dispositionFor(ExtensionHostException('TimeoutException after 0:00:15.000000: Future not completed')),
-        ErrorDisposition.report,
-      );
+      expect(dispositionFor(ExtensionHostException('TimeoutException after 0:00:15.000000: Future not completed')), ErrorDisposition.report);
     });
 
     test('a DNS lookup failure wrapped by http.IOClient is reported, not noticed', () {
@@ -540,9 +461,13 @@ void main() {
       // format the prefix check must match too, or every DNS blip on a
       // captive portal or dead WiFi notifies the operator.
       expect(
-        dispositionFor(ExtensionHostException("ClientException with SocketException: Failed host lookup: "
+        dispositionFor(
+          ExtensionHostException(
+            "ClientException with SocketException: Failed host lookup: "
             "'lofi.ham2k.net' (OS Error: No address associated with hostname, errno = 7), "
-            "uri=https://lofi.ham2k.net/v1/sync")),
+            "uri=https://lofi.ham2k.net/v1/sync",
+          ),
+        ),
         ErrorDisposition.report,
       );
     });
@@ -553,22 +478,13 @@ void main() {
       // "TimeoutException". The real one carries the host's timeout type
       // and lands on `hook-timed-out`; the same text on a bare host
       // exception is some other failure quoting it, and stays loud.
-      expect(
-        ErrorPolicy.decide(HookTimeoutException('hook spots.fetchSpots timed out after 5000ms')).rule?.id,
-        'hook-timed-out',
-      );
-      expect(
-        dispositionFor(ExtensionHostException('hook spots.fetchSpots timed out after 5000ms')),
-        ErrorDisposition.notify,
-      );
+      expect(ErrorPolicy.decide(HookTimeoutException('hook spots.fetchSpots timed out after 5000ms')).rule?.id, 'hook-timed-out');
+      expect(dispositionFor(ExtensionHostException('hook spots.fetchSpots timed out after 5000ms')), ErrorDisposition.notify);
     });
 
     test('a foreign exception quoting the message is NOT swallowed', () {
       // Only the host's own exception type is exempt.
-      expect(
-        dispositionFor(StateError('ClientException: Connection reset by peer, uri=https://lofi.ham2k.net/v1/sync')),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(StateError('ClientException: Connection reset by peer, uri=https://lofi.ham2k.net/v1/sync')), ErrorDisposition.notify);
     });
   });
 
@@ -580,10 +496,12 @@ void main() {
     // to equal the default (notify), so a disposition-only assertion could
     // pass even if the message never actually matched.
     test('is classified by its own rule, not folded into the unmatched default', () {
-      final decision = ErrorPolicy.decide(ExtensionHostException(
-        'LoFi sync failed and the backup capture also failed: LoFi request failed: HTTP 503 '
-        '(capture error: backup capture returned HTTP 500)',
-      ));
+      final decision = ErrorPolicy.decide(
+        ExtensionHostException(
+          'LoFi sync failed and the backup capture also failed: LoFi request failed: HTTP 503 '
+          '(capture error: backup capture returned HTTP 500)',
+        ),
+      );
       expect(decision.rule?.id, 'lofi-backup-capture-also-failed');
       expect(decision.disposition, ErrorDisposition.notify);
     });
@@ -607,12 +525,7 @@ void main() {
       // the cause is not always a ClientException; matched on
       // ClientException alone, a refused handshake on the six-hourly check
       // would notify the operator about a server they never asked about.
-      for (final cause in [
-        ClientException('connection refused'),
-        TimeoutException('5s'),
-        HandshakeException('tls'),
-        const SocketException('reset'),
-      ]) {
+      for (final cause in [ClientException('connection refused'), TimeoutException('5s'), HandshakeException('tls'), const SocketException('reset')]) {
         final decision = ErrorPolicy.decide(CatalogUnreachable(url, cause));
         expect(decision.rule?.id, 'catalog-unreachable', reason: '$cause');
         expect(decision.disposition, ErrorDisposition.report, reason: '$cause');
@@ -631,10 +544,7 @@ void main() {
     // from fetch-transport-transient, matched on type alone since
     // ClientException has no other cause.
     test('a connection failure is reported, not noticed', () {
-      expect(
-        dispositionFor(ClientException('Connection reset by peer')),
-        ErrorDisposition.report,
-      );
+      expect(dispositionFor(ClientException('Connection reset by peer')), ErrorDisposition.report);
     });
 
     test('a bare TimeoutException is NOT swallowed', () {
@@ -644,10 +554,7 @@ void main() {
       // which only trigger on ClientException. TimeoutException is also too
       // generic a type to match on its own app-wide — see the sibling test
       // in the fetch-transport-transience group.
-      expect(
-        dispositionFor(TimeoutException('the radio did not answer: pkt4')),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(TimeoutException('the radio did not answer: pkt4')), ErrorDisposition.notify);
     });
   });
 
@@ -659,10 +566,7 @@ void main() {
     // Reading the decision straight off ErrorPolicy is what actually catches
     // the rule being loosened to `notify` by accident.
     test('reported, not noticed — the operator cannot fix another extension\'s bug', () {
-      expect(
-        dispositionFor(MalformedSpotDataException('wwff', 'freq', '14285.0')),
-        ErrorDisposition.report,
-      );
+      expect(dispositionFor(MalformedSpotDataException('wwff', 'freq', '14285.0')), ErrorDisposition.report);
     });
   });
 
@@ -675,10 +579,7 @@ void main() {
     // for a peer app's defect, on every wrong-typed field that syncs in.
     test('reported, not noticed — nothing is broken by the time it is raised', () {
       expect(
-        dispositionFor(MalformedQsonDataException(
-          'qsos:mergeFromSync',
-          const QsonTypeViolation('mode', QsonFieldType.string, 'bool'),
-        )),
+        dispositionFor(MalformedQsonDataException('qsos:mergeFromSync', const QsonTypeViolation('mode', QsonFieldType.string, 'bool'))),
         ErrorDisposition.report,
       );
     });
@@ -691,10 +592,7 @@ void main() {
     // fresh spots. Not noticed, because an operator mid-activation can do
     // nothing about an extension's defect.
     test('reported, not noticed', () {
-      expect(
-        dispositionFor(ScoringHookFailure('core', 'scoreCandidates', TimeoutException('hook timed out'))),
-        ErrorDisposition.report,
-      );
+      expect(dispositionFor(ScoringHookFailure('core', 'scoreCandidates', TimeoutException('hook timed out'))), ErrorDisposition.report);
     });
   });
 
@@ -705,11 +603,8 @@ void main() {
     // message, or reading `details` as anything but an int, matches nothing a
     // device ever sends — and this reconstruction is the only thing standing
     // between that mistake and a green suite.
-    PlatformException keychainFailure(int status, String message) => PlatformException(
-          code: 'Unexpected security result code',
-          message: 'Code: $status, Message: $message',
-          details: status,
-        );
+    PlatformException keychainFailure(int status, String message) =>
+        PlatformException(code: 'Unexpected security result code', message: 'Code: $status, Message: $message', details: status);
 
     // The trap: catching a keychain refusal at the call site does NOT keep it
     // quiet. Both call sites that meet this one (SettingsService's equipment
@@ -766,10 +661,7 @@ void main() {
     // answers true for an integral double on web, and scripts/test.sh's
     // browser step compiles one named file, which is not this one.
     test('a double that merely equals the status stays loud', () {
-      expect(
-        dispositionFor(PlatformException(code: 'Unexpected security result code', details: -25308.0)),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(PlatformException(code: 'Unexpected security result code', details: -25308.0)), ErrorDisposition.notify);
     });
   });
 
@@ -806,9 +698,7 @@ void main() {
       ErrorPolicy.debugTreatAsWeb = true;
       final details = FlutterErrorDetails(
         exception: TypeError(),
-        context: ErrorDescription(
-          'while dispatching notifications for WidgetsBindingObserver.didChangeViewFocus',
-        ),
+        context: ErrorDescription('while dispatching notifications for WidgetsBindingObserver.didChangeViewFocus'),
       );
       final decision = ErrorPolicy.decide(TypeError(), details: details);
       final lines = capturedPrints(() {
@@ -854,10 +744,14 @@ void main() {
       "Can't re-open a database after closing it. Please create a new database connection and open "
       'that instead.',
     );
-    final closed = StateError('This database or transaction runner has already been closed and may '
-        'not be used anymore.');
-    final remote = StateError('Tried to send Request (id = 18): StatementMethod.select: SELECT 1 '
-        'with [] over isolate channel, but the connection was closed!');
+    final closed = StateError(
+      'This database or transaction runner has already been closed and may '
+      'not be used anymore.',
+    );
+    final remote = StateError(
+      'Tried to send Request (id = 18): StatementMethod.select: SELECT 1 '
+      'with [] over isolate channel, but the connection was closed!',
+    );
 
     test('is console-only once the app has committed to quitting', () {
       // Nothing else closes the database, so the quit is the only moment a
@@ -890,10 +784,7 @@ void main() {
       // "no hook registered" for every one of them. Unclassified, the default
       // tier would upload it AND put "Something went wrong" on screen for an
       // extension that is behaving exactly as intended.
-      expect(
-        dispositionFor(DataFileRemoveHookFailed('parks', Exception('no hook registered for dataFile/parks'))),
-        ErrorDisposition.logOnly,
-      );
+      expect(dispositionFor(DataFileRemoveHookFailed('parks', Exception('no hook registered for dataFile/parks'))), ErrorDisposition.logOnly);
     });
 
     test('that exists and THREW is still loud', () {
@@ -901,10 +792,7 @@ void main() {
       // still on disk. Quietening the whole wrapper — rather than the one
       // answer that means "absent" — would classify an unknown failure down
       // to silence, which is what the default tier exists to prevent.
-      expect(
-        dispositionFor(DataFileRemoveHookFailed('parks', Exception('TypeError: rows is not iterable'))),
-        ErrorDisposition.notify,
-      );
+      expect(dispositionFor(DataFileRemoveHookFailed('parks', Exception('TypeError: rows is not iterable'))), ErrorDisposition.notify);
     });
   });
 
@@ -931,10 +819,7 @@ void main() {
       // this one is what keeps the specific message the only thing shown.
       // And a refused database refuses EVERY query, so a tier that uploads
       // would send one session's worth of the same fact.
-      expect(
-        dispositionFor(const LogFromNewerBuild(storage: 14, understood: 13)),
-        ErrorDisposition.logOnly,
-      );
+      expect(dispositionFor(const LogFromNewerBuild(storage: 14, understood: 13)), ErrorDisposition.logOnly);
     });
 
     test('a StateError merely quoting the same words is still loud', () {
@@ -942,8 +827,12 @@ void main() {
       // that matched the text would keep quietening any error that happens
       // to read the same, long after the type stopped being one.
       expect(
-        dispositionFor(StateError('This log was written by a newer version of Ham2K Logger '
-            '(storage v14; this build understands v13)')),
+        dispositionFor(
+          StateError(
+            'This log was written by a newer version of Ham2K Logger '
+            '(storage v14; this build understands v13)',
+          ),
+        ),
         ErrorDisposition.notify,
       );
     });

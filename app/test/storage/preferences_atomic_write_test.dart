@@ -43,10 +43,7 @@ void main() {
     // A `write shared_preferences.json` here — instead of the temporary and
     // the rename — is the truncation window back, whatever the value below
     // says: the file is only ever whole because it is replaced in one step.
-    expect(log, [
-      'write shared_preferences.json.tmp',
-      'rename shared_preferences.json.tmp -> shared_preferences.json',
-    ]);
+    expect(log, ['write shared_preferences.json.tmp', 'rename shared_preferences.json.tmp -> shared_preferences.json']);
     expect(fs.file('/prefs/shared_preferences.json').readAsStringSync(), contains('N0DEV'));
   });
 }
@@ -88,12 +85,7 @@ class _RecordingFile extends ForwardingFileSystemEntity<File, io.File> with Forw
   Link wrapLink(io.Link delegate) => fileSystem.link(delegate.path);
 
   @override
-  void writeAsStringSync(
-    String contents, {
-    io.FileMode mode = io.FileMode.write,
-    Encoding encoding = utf8,
-    bool flush = false,
-  }) {
+  void writeAsStringSync(String contents, {io.FileMode mode = io.FileMode.write, Encoding encoding = utf8, bool flush = false}) {
     log.add('write ${p.basename(delegate.path)}');
     delegate.writeAsStringSync(contents, mode: mode, encoding: encoding, flush: flush);
   }

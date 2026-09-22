@@ -102,11 +102,7 @@ class PanelContent {
 
   @override
   bool operator ==(Object other) =>
-      other is PanelContent &&
-      other.kind == kind &&
-      other.content == content &&
-      other.title == title &&
-      listEquals(other.triggers, triggers);
+      other is PanelContent && other.kind == kind && other.content == content && other.title == title && listEquals(other.triggers, triggers);
 
   @override
   int get hashCode => Object.hash(kind, content, title, Object.hashAll(triggers));
@@ -212,14 +208,9 @@ Widget _message(BuildContext context, String text, {bool isError = false, VoidCa
           Text(
             text,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: isError ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: isError ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant),
           ),
-          if (onRetry != null) ...[
-            const SizedBox(height: Space.md),
-            TextButton(onPressed: onRetry, child: Text(context.t.operation.layout.panelRenderRetry)),
-          ],
+          if (onRetry != null) ...[const SizedBox(height: Space.md), TextButton(onPressed: onRetry, child: Text(context.t.operation.layout.panelRenderRetry))],
         ],
       ),
     ),
@@ -358,8 +349,7 @@ class _SandboxedHtmlView extends StatelessWidget {
         blockNetworkImage: true,
         contentBlockers: _blockEverything,
       ),
-      onWebViewCreated: (controller) =>
-          ErrorReportingService.breadcrumb('html extension panel webview created', category: 'webview'),
+      onWebViewCreated: (controller) => ErrorReportingService.breadcrumb('html extension panel webview created', category: 'webview'),
       shouldOverrideUrlLoading: (controller, action) async {
         // Only a navigation the OPERATOR started leaves for the browser.
         // Scripts are off, but `<meta http-equiv="refresh">` is still a

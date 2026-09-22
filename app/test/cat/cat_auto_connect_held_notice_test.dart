@@ -28,11 +28,7 @@ Future<HaLoServices> _services({List<String> marks = const []}) async {
       'version': 1,
       'radio1': _heldUuid,
       'nodes': {
-        _heldUuid: {
-          'typeKey': 'placeholder-radio',
-          'name': 'Left Radio',
-          'config': <String, dynamic>{},
-        },
+        _heldUuid: {'typeKey': 'placeholder-radio', 'name': 'Left Radio', 'config': <String, dynamic>{}},
       },
     }),
     if (marks.isNotEmpty) autoConnectInFlightKey: marks,
@@ -79,8 +75,7 @@ void main() {
 
     await services.cat.connect(_heldUuid);
 
-    expect(services.statusBar.activeNotices, isEmpty,
-        reason: 'the instruction outlived the pressing of the button it asked for');
+    expect(services.statusBar.activeNotices, isEmpty, reason: 'the instruction outlived the pressing of the button it asked for');
   });
 
   test('a mark left by a radio that has since been deleted says nothing', () async {

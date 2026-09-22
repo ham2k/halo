@@ -31,8 +31,7 @@ class PeerRemoteRadios extends ChangeNotifier {
   /// the picker does not reshuffle itself when an unrelated peer's offer
   /// arrives.
   List<PeerRemoteRadio> get all {
-    final devices = _byDevice.entries.toList()
-      ..sort((a, b) => a.value.name.toLowerCase().compareTo(b.value.name.toLowerCase()));
+    final devices = _byDevice.entries.toList()..sort((a, b) => a.value.name.toLowerCase().compareTo(b.value.name.toLowerCase()));
     return [
       for (final device in devices)
         for (final radio in [...device.value.radios]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase())))
@@ -62,7 +61,10 @@ class PeerRemoteRadios extends ChangeNotifier {
     // cannot produce it — which is exactly why nothing else would catch a
     // sender that is not.
     final seen = <String>{};
-    final unique = [for (final radio in radios) if (seen.add(radio.id)) radio];
+    final unique = [
+      for (final radio in radios)
+        if (seen.add(radio.id)) radio,
+    ];
     final before = _byDevice[deviceId];
     if (before != null && before.name == deviceName && listEquals(before.radios, unique)) return;
     _byDevice[deviceId] = (name: deviceName, radios: List.unmodifiable(unique));

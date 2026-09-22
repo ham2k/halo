@@ -7,11 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
-  const chord = KeyDownEvent(
-    physicalKey: PhysicalKeyboardKey.keyZ,
-    logicalKey: LogicalKeyboardKey.keyZ,
-    timeStamp: Duration.zero,
-  );
+  const chord = KeyDownEvent(physicalKey: PhysicalKeyboardKey.keyZ, logicalKey: LogicalKeyboardKey.keyZ, timeStamp: Duration.zero);
 
   test('delegates to the attached LoggingControls, and no-ops when detached', () async {
     final controller = LoggingControlsController();

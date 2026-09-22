@@ -69,10 +69,7 @@ void main() {
       // de-dup a scroll or a run of taps in one panel would emit a signal
       // per touch — turning "which panels get used" into "who fidgets most".
       final seen = <(String, Map<String, Object?>)>[];
-      final tracker = PanelUseTracker(
-        track: (event, [properties = const {}]) => seen.add((event, properties)),
-        screen: 'operation',
-      );
+      final tracker = PanelUseTracker(track: (event, [properties = const {}]) => seen.add((event, properties)), screen: 'operation');
 
       tracker.used('logging');
       tracker.used('logging');
@@ -81,8 +78,7 @@ void main() {
 
       expect(seen.map((e) => e.$2['panel']), ['logging', 'spots']);
       expect(seen.every((e) => e.$1 == 'panel_used'), isTrue);
-      expect(seen.first.$2['screen'], 'operation',
-          reason: 'panel names are only unique within a screen');
+      expect(seen.first.$2['screen'], 'operation', reason: 'panel names are only unique within a screen');
     });
 
     test('a new instance reports again — the count is per screen VISIT', () {
@@ -90,8 +86,7 @@ void main() {
       // fresh instance. Were this de-duplicated globally, the event could
       // never answer how often a panel is reached for.
       final seen = <String>[];
-      void track(String event, [Map<String, Object?> properties = const {}]) =>
-          seen.add(properties['panel'] as String);
+      void track(String event, [Map<String, Object?> properties = const {}]) => seen.add(properties['panel'] as String);
 
       PanelUseTracker(track: track, screen: 'operation').used('map');
       PanelUseTracker(track: track, screen: 'operation').used('map');

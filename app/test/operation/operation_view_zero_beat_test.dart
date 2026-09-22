@@ -35,14 +35,13 @@ const _spotFreqKHz = 14050.0;
 
 /// A spot as a source publishes one, put through the real spot-to-suggestion
 /// mapping the Spots panel uses on tap.
-Map<String, dynamic> _suggestion({String mode = 'CW', double freq = _spotFreqKHz}) =>
-    suggestedQsoFromSpot({
-      'their': {'call': 'N0DX'},
-      'freq': freq,
-      'band': '20m',
-      'mode': mode,
-      'refs': const [],
-    });
+Map<String, dynamic> _suggestion({String mode = 'CW', double freq = _spotFreqKHz}) => suggestedQsoFromSpot({
+  'their': {'call': 'N0DX'},
+  'freq': freq,
+  'band': '20m',
+  'mode': mode,
+  'refs': const [],
+});
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -53,13 +52,10 @@ void main() {
   late HaLoServices services;
 
   /// Services with a fake CAT radio, connected as radio1 or not.
-  Future<void> build({
-    required bool connected,
-    bool avoidZeroBeat = true,
-    bool catExperiment = true,
-  }) async {
+  Future<void> build({required bool connected, bool avoidZeroBeat = true, bool catExperiment = true}) async {
     SharedPreferences.setMockInitialValues({
-      if (catExperiment) 'experiments': jsonEncode({
+      if (catExperiment)
+        'experiments': jsonEncode({
           'gato': {'enabled': true},
         }),
     });
@@ -78,8 +74,11 @@ void main() {
     services = HaLoServices(db, settings, cat: cat);
   }
 
-  Map<String, dynamic> resolve(Map<String, dynamic> qso, {double draw = 0.0}) =>
-      zeroBeatSuggestionFor(qso, services: services, offsetter: ZeroBeatOffsetter(nextDraw: () => draw));
+  Map<String, dynamic> resolve(Map<String, dynamic> qso, {double draw = 0.0}) => zeroBeatSuggestionFor(
+    qso,
+    services: services,
+    offsetter: ZeroBeatOffsetter(nextDraw: () => draw),
+  );
 
   test('with radio1 connected, a CW suggestion is moved off the spot', () async {
     await build(connected: true);
@@ -103,14 +102,8 @@ void main() {
     // peer as `catSet`, so treating a peer pick as "no radio" tunes the far
     // rig exactly zero beat — the one outcome this setting exists to avoid.
     await build(connected: false);
-    await cat.setRadio1(const PeerRadio(PeerRadioSelection(
-      deviceId: 'device-a',
-      radioId: 'rig-1',
-      radioName: 'FTDX10',
-    )));
-    services.peerRemoteRadios.setOffers('device-a', "VE1SK's iPad", const [
-      PeerRadioOffer(id: 'rig-1', name: 'FTDX10'),
-    ]);
+    await cat.setRadio1(const PeerRadio(PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-1', radioName: 'FTDX10')));
+    services.peerRemoteRadios.setOffers('device-a', "VE1SK's iPad", const [PeerRadioOffer(id: 'rig-1', name: 'FTDX10')]);
 
     final moved = resolve(_suggestion())['freq'] as double;
     expect(moved, isNot(_spotFreqKHz));
@@ -121,11 +114,7 @@ void main() {
     // acts on a tune, so an offset would hand the operator digits to dial by
     // hand and leave the log claiming a frequency they never transmitted on.
     await build(connected: false);
-    await cat.setRadio1(const PeerRadio(PeerRadioSelection(
-      deviceId: 'device-a',
-      radioId: 'rig-1',
-      radioName: 'FTDX10',
-    )));
+    await cat.setRadio1(const PeerRadio(PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-1', radioName: 'FTDX10')));
 
     expect(resolve(_suggestion())['freq'], _spotFreqKHz);
   });

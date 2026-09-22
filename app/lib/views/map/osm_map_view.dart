@@ -36,14 +36,15 @@ class OsmMapView extends StatefulWidget {
   /// for the QSO map, which keeps its own callout.
   final ValueChanged<String>? onMarkerTap;
 
-  const OsmMapView(
-      {super.key,
-      required this.markers,
-      this.lines = const [],
-      this.shapes = const [],
-      required this.isDark,
-      this.zoomController,
-      this.onMarkerTap});
+  const OsmMapView({
+    super.key,
+    required this.markers,
+    this.lines = const [],
+    this.shapes = const [],
+    required this.isDark,
+    this.zoomController,
+    this.onMarkerTap,
+  });
 
   @override
   State<OsmMapView> createState() => _OsmMapViewState();
@@ -62,8 +63,7 @@ class _OsmMapViewState extends State<OsmMapView> {
       ..onMoveTo = _moveTo;
   }
 
-  void _moveTo(double latitude, double longitude, double zoom) =>
-      _mapController.move(LatLng(latitude, longitude), zoom);
+  void _moveTo(double latitude, double longitude, double zoom) => _mapController.move(LatLng(latitude, longitude), zoom);
 
   void _zoomIn() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1);
   void _zoomOut() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom - 1);
@@ -77,8 +77,14 @@ class _OsmMapViewState extends State<OsmMapView> {
       // keystroke's highlight update — otherwise the map pans/zooms out from
       // under the operator as they type a call.
       final baseChanged = !listEquals(
-        [for (final m in oldWidget.markers) if (!m.highlight) m],
-        [for (final m in widget.markers) if (!m.highlight) m],
+        [
+          for (final m in oldWidget.markers)
+            if (!m.highlight) m,
+        ],
+        [
+          for (final m in widget.markers)
+            if (!m.highlight) m,
+        ],
       );
       if (baseChanged) _fitCamera();
     }
@@ -86,21 +92,19 @@ class _OsmMapViewState extends State<OsmMapView> {
 
   void _fitCamera() {
     if (widget.markers.isEmpty) return;
-    _mapController.fitCamera(CameraFit.coordinates(
-      coordinates: [for (final m in widget.markers) LatLng(m.latitude, m.longitude)],
-      padding: const EdgeInsets.all(48),
-      maxZoom: 11,
-    ));
+    _mapController.fitCamera(
+      CameraFit.coordinates(coordinates: [for (final m in widget.markers) LatLng(m.latitude, m.longitude)], padding: const EdgeInsets.all(48), maxZoom: 11),
+    );
   }
 
   @override
   void dispose() {
-      // Identity-guarded, never a blind null: when the facade swaps backends
-      // (a webview probe answering, so OsmMapView gives way to the GL view),
-      // Flutter runs the incoming State's initState during the build and this
-      // dispose afterwards — so clearing unconditionally would wipe the
-      // handlers the live backend has just installed and leave the camera
-      // inert for the rest of the session.
+    // Identity-guarded, never a blind null: when the facade swaps backends
+    // (a webview probe answering, so OsmMapView gives way to the GL view),
+    // Flutter runs the incoming State's initState during the build and this
+    // dispose afterwards — so clearing unconditionally would wipe the
+    // handlers the live backend has just installed and leave the camera
+    // inert for the rest of the session.
     final controller = widget.zoomController;
     if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
     if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
@@ -112,18 +116,12 @@ class _OsmMapViewState extends State<OsmMapView> {
   @override
   Widget build(BuildContext context) {
     final points = [for (final m in widget.markers) LatLng(m.latitude, m.longitude)];
-    final selected = _selectedMarkerId == null || widget.onMarkerTap != null
-        ? null
-        : widget.markers.where((m) => m.id == _selectedMarkerId).firstOrNull;
+    final selected = _selectedMarkerId == null || widget.onMarkerTap != null ? null : widget.markers.where((m) => m.id == _selectedMarkerId).firstOrNull;
 
     return FlutterMap(
       mapController: _mapController,
       options: MapOptions(
-        initialCameraFit: CameraFit.coordinates(
-          coordinates: points,
-          padding: const EdgeInsets.all(48),
-          maxZoom: 11,
-        ),
+        initialCameraFit: CameraFit.coordinates(coordinates: points, padding: const EdgeInsets.all(48), maxZoom: 11),
         onTap: (_, _) => setState(() => _selectedMarkerId = null),
       ),
       children: [
@@ -132,9 +130,7 @@ class _OsmMapViewState extends State<OsmMapView> {
           // variant of its own — free and tokenless like the light tiles,
           // but built from OSM data via CARTO rather than OSM's own server,
           // hence the attribution swap below.
-          urlTemplate: widget.isDark
-              ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-              : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          urlTemplate: widget.isDark ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png' : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.ham2k.poloNext',
           // Otherwise a failed tile is swallowed by flutter_map and the pane
           // just shows grey squares with no evidence anywhere. The tile URL
@@ -142,37 +138,52 @@ class _OsmMapViewState extends State<OsmMapView> {
           // it): the reporter dedups by message, and one per-URL variant per
           // tile would burn its whole upload budget on one failure class.
           errorTileCallback: (tile, error, stackTrace) => MapErrorReporter.report(
-              backend: 'osm',
-              kind: 'tile-load',
-              message: '$error'.replaceAll(RegExp(r'https?://\S+'), '<tile url>'),
-              stack: stackTrace),
+            backend: 'osm',
+            kind: 'tile-load',
+            message: '$error'.replaceAll(RegExp(r'https?://\S+'), '<tile url>'),
+            stack: stackTrace,
+          ),
         ),
         // Base lines, then base markers, then the current QSO's highlight line
         // and marker in layers ABOVE them — flutter_map stacks children in
         // order, so the highlight paints over every base line AND marker.
         _shapeLayer(),
-        _lineLayer([for (final l in widget.lines) if (!l.highlight) l]),
-        _markerLayer([for (final m in widget.markers) if (!m.highlight) m]),
-        _lineLayer([for (final l in widget.lines) if (l.highlight) l]),
-        _markerLayer([for (final m in widget.markers) if (m.highlight) m]),
+        _lineLayer([
+          for (final l in widget.lines)
+            if (!l.highlight) l,
+        ]),
+        _markerLayer([
+          for (final m in widget.markers)
+            if (!m.highlight) m,
+        ]),
+        _lineLayer([
+          for (final l in widget.lines)
+            if (l.highlight) l,
+        ]),
+        _markerLayer([
+          for (final m in widget.markers)
+            if (m.highlight) m,
+        ]),
         if (selected != null)
-          MarkerLayer(markers: [
-            Marker(
-              point: LatLng(selected.latitude, selected.longitude),
-              width: MapPopupCard.maxWidth,
-              height: 96,
-              // The point sits at the popup's bottom center, so the card
-              // floats just above the tapped circle.
-              alignment: Alignment.topCenter,
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: Space.lg),
-                  child: MapPopupCard(marker: selected),
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: LatLng(selected.latitude, selected.longitude),
+                width: MapPopupCard.maxWidth,
+                height: 96,
+                // The point sits at the popup's bottom center, so the card
+                // floats just above the tapped circle.
+                alignment: Alignment.topCenter,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: Space.lg),
+                    child: MapPopupCard(marker: selected),
+                  ),
                 ),
               ),
-            ),
-          ]),
+            ],
+          ),
         _OsmAttribution(isDark: widget.isDark),
       ],
     );
@@ -182,57 +193,57 @@ class _OsmMapViewState extends State<OsmMapView> {
   /// sits inside it. Holes are the rings after the first, GeoJSON's own
   /// convention (see mapShapesFromGeojson).
   PolygonLayer _shapeLayer() => PolygonLayer(
-        // Off for the same reason as the polylines below: a boundary is a
-        // survey's own outline, and simplifying it moves the edge the
-        // activator is judging their position against.
-        simplificationTolerance: 0,
-        polygons: [
-          for (final shape in widget.shapes)
-            Polygon(
-              points: [for (final p in shape.rings.first) LatLng(p.latitude, p.longitude)],
-              holePointsList: [
-                for (final ring in shape.rings.skip(1)) [for (final p in ring) LatLng(p.latitude, p.longitude)],
-              ],
-              color: shape.color.withValues(alpha: 0.18),
-              borderColor: shape.color.withValues(alpha: 0.9),
-              borderStrokeWidth: 2,
-            ),
-        ],
-      );
+    // Off for the same reason as the polylines below: a boundary is a
+    // survey's own outline, and simplifying it moves the edge the
+    // activator is judging their position against.
+    simplificationTolerance: 0,
+    polygons: [
+      for (final shape in widget.shapes)
+        Polygon(
+          points: [for (final p in shape.rings.first) LatLng(p.latitude, p.longitude)],
+          holePointsList: [
+            for (final ring in shape.rings.skip(1)) [for (final p in ring) LatLng(p.latitude, p.longitude)],
+          ],
+          color: shape.color.withValues(alpha: 0.18),
+          borderColor: shape.color.withValues(alpha: 0.9),
+          borderStrokeWidth: 2,
+        ),
+    ],
+  );
 
   PolylineLayer _lineLayer(List<MapLineData> lines) => PolylineLayer(
-        // Off (default is ~0.4): the great-circle arcs are already densified
-        // to a smooth curve by greatCirclePoints, and flutter_map's
-        // Douglas–Peucker simplification otherwise collapses each into a few
-        // straight segments — the whole point of the densified points is lost.
-        simplificationTolerance: 0,
-        polylines: [
-          for (final line in lines)
-            Polyline(
-              points: [for (final p in line.points) LatLng(p.latitude, p.longitude)],
-              color: line.color,
-              // The current QSO's line is drawn thick so it stands out.
-              strokeWidth: line.highlight ? 6 : 1.5,
-            ),
-        ],
-      );
+    // Off (default is ~0.4): the great-circle arcs are already densified
+    // to a smooth curve by greatCirclePoints, and flutter_map's
+    // Douglas–Peucker simplification otherwise collapses each into a few
+    // straight segments — the whole point of the densified points is lost.
+    simplificationTolerance: 0,
+    polylines: [
+      for (final line in lines)
+        Polyline(
+          points: [for (final p in line.points) LatLng(p.latitude, p.longitude)],
+          color: line.color,
+          // The current QSO's line is drawn thick so it stands out.
+          strokeWidth: line.highlight ? 6 : 1.5,
+        ),
+    ],
+  );
 
-  MarkerLayer _markerLayer(List<MapMarkerData> markers) => MarkerLayer(markers: [
-        for (final marker in markers)
-          Marker(
-            point: LatLng(marker.latitude, marker.longitude),
-            // A generous transparent hit area around the small circle.
-            width: 28 * marker.sizeFactor,
-            height: 28 * marker.sizeFactor,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => widget.onMarkerTap != null
-                  ? widget.onMarkerTap!(marker.id)
-                  : setState(() => _selectedMarkerId = marker.id),
-              child: Center(child: MapCircleMarker(marker: marker)),
-            ),
+  MarkerLayer _markerLayer(List<MapMarkerData> markers) => MarkerLayer(
+    markers: [
+      for (final marker in markers)
+        Marker(
+          point: LatLng(marker.latitude, marker.longitude),
+          // A generous transparent hit area around the small circle.
+          width: 28 * marker.sizeFactor,
+          height: 28 * marker.sizeFactor,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => widget.onMarkerTap != null ? widget.onMarkerTap!(marker.id) : setState(() => _selectedMarkerId = marker.id),
+            child: Center(child: MapCircleMarker(marker: marker)),
           ),
-      ]);
+        ),
+    ],
+  );
 }
 
 /// The OSM credit the tile usage policy requires, in the map's bottom-right.

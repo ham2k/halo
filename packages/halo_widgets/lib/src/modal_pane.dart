@@ -28,11 +28,7 @@ import 'theme.dart';
 /// ([haloDialogConstraints]) — use this instead of `showDialog` directly so
 /// every dialog is held to the same box as a Modal Pane rather than each
 /// growing to fit its own content.
-Future<T?> showHaloDialog<T>({
-  required BuildContext context,
-  required WidgetBuilder builder,
-  bool barrierDismissible = true,
-}) => showDialog<T>(
+Future<T?> showHaloDialog<T>({required BuildContext context, required WidgetBuilder builder, bool barrierDismissible = true}) => showDialog<T>(
   context: context,
   barrierDismissible: barrierDismissible,
   barrierColor: haloBarrierColor(context),
@@ -207,16 +203,10 @@ class ModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute {
   Duration get transitionDuration => const Duration(milliseconds: 250);
 
   @override
-  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) =>
-      _ModalPaneScaffold(route: this);
+  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) => _ModalPaneScaffold(route: this);
 
   @override
-  Widget buildTransitions(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
+  Widget buildTransitions(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
     final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
     return FadeTransition(
       opacity: curved,
@@ -266,11 +256,7 @@ class _ModalPaneScaffold extends StatelessWidget {
           leadingWidth: route.leading != null ? null : macOSAwareLeadingWidth(context),
           leading: route.leading ?? macOSAwareBackButton(context),
           title: route.title == null ? null : shrinkToFitText(Text(route.title!)),
-          actions: [
-            ...route.headerActions,
-            if (route.trailing != null) route.trailing!,
-            windowsCaptionSpacer(context),
-          ],
+          actions: [...route.headerActions, if (route.trailing != null) route.trailing!, windowsCaptionSpacer(context)],
         ),
         body: SafeArea(
           child: route.scrollable
@@ -383,10 +369,7 @@ class _ModalPaneScaffold extends StatelessWidget {
                               color: theme.colorScheme.surface,
                               child: SizedBox(
                                 width: double.infinity,
-                                child: SingleChildScrollView(
-                                  padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
-                                  child: _body(),
-                                ),
+                                child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl), child: _body()),
                               ),
                             ),
                           )
@@ -615,16 +598,10 @@ class TopModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute 
   Duration get transitionDuration => const Duration(milliseconds: 600);
 
   @override
-  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) =>
-      _TopModalPaneScaffold(route: this);
+  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) => _TopModalPaneScaffold(route: this);
 
   @override
-  Widget buildTransitions(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
+  Widget buildTransitions(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
     return child;
   }
 }
@@ -688,8 +665,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
     // keepHeaderVisible reserves the same clearance a wide layout always
     // gets, rather than the full-screen 0 a narrow one otherwise starts
     // at — see [TopModalPaneRoute.keepHeaderVisible].
-    final topOffset =
-        (isNarrow && !route.keepHeaderVisible) ? 0.0 : MediaQuery.of(context).padding.top + headerHeight;
+    final topOffset = (isNarrow && !route.keepHeaderVisible) ? 0.0 : MediaQuery.of(context).padding.top + headerHeight;
     // How far left of [TopModalPaneRoute.leftInset] the sheet's edge sits, so
     // that the caller's header control lands centered over the sheet's own
     // leading button: the caller centers its control's content 12px in, and
@@ -721,9 +697,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
     // and a control measured while its own route is still animating in reports
     // a position off the left of the window — a negative inset that asserts
     // inside Padding rather than merely misplacing the sheet.
-    final leftInset = isNarrow
-        ? null
-        : (route.leftInset == null ? null : math.max(0.0, route.leftInset! - leftNudge));
+    final leftInset = isNarrow ? null : (route.leftInset == null ? null : math.max(0.0, route.leftInset! - leftNudge));
     // No nudge on this side: [rightInset] lines the sheet's own right EDGE up
     // with the caller's control, rather than lining a control up with the
     // sheet's leading button the way [leftInset] does.
@@ -830,80 +804,77 @@ class _TopModalPaneScaffold extends StatelessWidget {
                           // the window itself allows.
                           height: sheetMaxHeight,
                           child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: sheetWidth,
-                            maxHeight: sheetMaxHeight,
-                            // Narrow: always fills to the bottom edge, same as
-                            // the full-width requirement. Wide: only when not
-                            // scrollable.
-                            minHeight: (isNarrow || !route.scrollable) ? sheetMaxHeight : 0,
-                          ),
-                          child: Material(
-                          color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
-                          elevation: modalSurfaceElevation,
-                          shadowColor: haloDialogShadowColor,
-                          surfaceTintColor: theme.colorScheme.surfaceTint,
-                          // Square at the bottom in the narrow case — it
-                          // reaches the screen's true edge there, so a
-                          // rounded corner would just look clipped.
-                          borderRadius:
-                              isNarrow ? BorderRadius.zero : const BorderRadius.vertical(bottom: Radius.circular(28)),
-                          clipBehavior: Clip.antiAlias,
-                          // Narrow only, and only when the header behind it
-                          // isn't being kept visible: the sheet starts at the
-                          // screen's very top then, so its first row must
-                          // clear the status bar itself. Wide (or
-                          // keepHeaderVisible) starts below the app's header
-                          // instead — a SafeArea there would double-inset.
-                          child: SafeArea(
-                            top: isNarrow && !route.keepHeaderVisible,
-                            bottom: false,
-                            left: false,
-                            right: false,
-                            child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  if (route.showHeader)
-                                    HaloDialogHeader(
-                                      leading: route.leading,
-                                      title: route.title,
-                                      trailing: route.trailing ?? IconButton(
-                                        icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
-                                        onPressed: () => Navigator.of(context).maybePop(),
+                            constraints: BoxConstraints(
+                              maxWidth: sheetWidth,
+                              maxHeight: sheetMaxHeight,
+                              // Narrow: always fills to the bottom edge, same as
+                              // the full-width requirement. Wide: only when not
+                              // scrollable.
+                              minHeight: (isNarrow || !route.scrollable) ? sheetMaxHeight : 0,
+                            ),
+                            child: Material(
+                              color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
+                              elevation: modalSurfaceElevation,
+                              shadowColor: haloDialogShadowColor,
+                              surfaceTintColor: theme.colorScheme.surfaceTint,
+                              // Square at the bottom in the narrow case — it
+                              // reaches the screen's true edge there, so a
+                              // rounded corner would just look clipped.
+                              borderRadius: isNarrow ? BorderRadius.zero : const BorderRadius.vertical(bottom: Radius.circular(28)),
+                              clipBehavior: Clip.antiAlias,
+                              // Narrow only, and only when the header behind it
+                              // isn't being kept visible: the sheet starts at the
+                              // screen's very top then, so its first row must
+                              // clear the status bar itself. Wide (or
+                              // keepHeaderVisible) starts below the app's header
+                              // instead — a SafeArea there would double-inset.
+                              child: SafeArea(
+                                top: isNarrow && !route.keepHeaderVisible,
+                                bottom: false,
+                                left: false,
+                                right: false,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (route.showHeader)
+                                      HaloDialogHeader(
+                                        leading: route.leading,
+                                        title: route.title,
+                                        trailing:
+                                            route.trailing ??
+                                            IconButton(
+                                              icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
+                                              onPressed: () => Navigator.of(context).maybePop(),
+                                            ),
                                       ),
-                                    ),
-                                  if (route.scrollable)
-                                    Flexible(
-                                      child: Material(
-                                        color: theme.colorScheme.surface,
-                                        child: SizedBox(
-                                          width: double.infinity,
-                                          child: SingleChildScrollView(
-                                            padding: route.contentPadding ??
-                                                const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
-                                            child: _body(),
+                                    if (route.scrollable)
+                                      Flexible(
+                                        child: Material(
+                                          color: theme.colorScheme.surface,
+                                          child: SizedBox(
+                                            width: double.infinity,
+                                            child: SingleChildScrollView(
+                                              padding: route.contentPadding ?? const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
+                                              child: _body(),
+                                            ),
                                           ),
                                         ),
+                                      )
+                                    else
+                                      Expanded(
+                                        child: Material(color: theme.colorScheme.surface, child: _body()),
                                       ),
-                                    )
-                                  else
-                                    Expanded(
-                                      child: Material(
-                                        color: theme.colorScheme.surface,
-                                        child: _body(),
-                                      ),
-                                    ),
-                                ],
+                                  ],
+                                ),
                               ),
+                            ),
                           ),
-                        ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
               ),
             ),
             // LAST in the stack, so it takes its own taps: everything above

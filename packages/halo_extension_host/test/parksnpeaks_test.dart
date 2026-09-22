@@ -45,7 +45,9 @@ void main() {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
       extensions: [ExtensionBundle(key: 'parksnpeaks', source: bundleSource('parksnpeaks'))],
-      fetchAllowlists: const {'parksnpeaks': ['www.parksnpeaks.org']},
+      fetchAllowlists: const {
+        'parksnpeaks': ['www.parksnpeaks.org'],
+      },
       httpClient: client,
       userAgent: 'Ham2K-Test/1.0',
       onHostCall: accountCall(credentials),
@@ -56,8 +58,8 @@ void main() {
 
   Future<List<Map>> fetchSpots(http.Client client) async {
     final host = await hostWith(client);
-    final result = await host.invokeHook('spots', key: 'parksnpeaks', method: 'fetchSpots',
-        args: {'online': true}, timeout: const Duration(seconds: 20)) as List;
+    final result =
+        await host.invokeHook('spots', key: 'parksnpeaks', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)) as List;
     return result.cast<Map>();
   }
 
@@ -90,32 +92,31 @@ void main() {
       expect((spots.first['refs'] as List).first, {'ref': 'VKFF-1997', 'type': 'wwff'});
       // `actTime` carries no 'Z' and no offset but IS UTC. Parsed as local
       // time, a VK activator lands hours away from now and sorts wrong.
-      expect((spots.first['spot'] as Map)['timeInMillis'],
-          DateTime.utc(2026, 8, 5, 0, 7, 27).millisecondsSinceEpoch);
+      expect((spots.first['spot'] as Map)['timeInMillis'], DateTime.utc(2026, 8, 5, 0, 7, 27).millisecondsSinceEpoch);
       // The API's own spelling of "spotter" — matching the typo is what makes
       // the field arrive at all.
       expect(((spots.first['spot'] as Map)['sourceInfo'] as Map)['spotter'], 'VK2VW');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
-    test('keeps only WWFF and SiOTA, dropping the awards HaLo has its own source for',
-        () async {
+    test('keeps only WWFF and SiOTA, dropping the awards HaLo has its own source for', () async {
       // The endpoint is /ALL and answers with every class it knows. POTA and
       // SOTA arrive from their own extensions, so mapping these copies too
       // would show one activator twice with nothing marking them the same.
-      final rec = recorder('['
-          '${spotJson(call: 'vk1aa', cls: 'WWFF', site: 'VKFF-0001')},'
-          '${spotJson(call: 'vk1bb', cls: 'SiOTA', site: 'VK-SI0001')},'
-          '${spotJson(call: 'vk1cc', cls: 'POTA', site: 'VK-0001')},'
-          '${spotJson(call: 'vk1dd', cls: 'SOTA', site: 'VK1/AC-001')}'
-          ']');
+      final rec = recorder(
+        '['
+        '${spotJson(call: 'vk1aa', cls: 'WWFF', site: 'VKFF-0001')},'
+        '${spotJson(call: 'vk1bb', cls: 'SiOTA', site: 'VK-SI0001')},'
+        '${spotJson(call: 'vk1cc', cls: 'POTA', site: 'VK-0001')},'
+        '${spotJson(call: 'vk1dd', cls: 'SOTA', site: 'VK1/AC-001')}'
+        ']',
+      );
       final spots = await fetchSpots(rec.client);
 
       expect(spots.map((s) => (s['their'] as Map)['call']), ['VK1AA', 'VK1BB']);
       expect(spots.map((s) => (s['refs'] as List).first['type']), ['wwff', 'siota']);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
-    test('a spot with an unreadable time never evicts a good one, in either feed order',
-        () async {
+    test('a spot with an unreadable time never evicts a good one, in either feed order', () async {
       // The malformed row FIRST is the case that matters and the one a
       // good-row-first fixture cannot catch: an unreadable time left as NaN
       // fails every comparison, so it holds the slot and discards every good
@@ -130,9 +131,7 @@ void main() {
 
         expect(spots.length, 1, reason: 'malformedFirst=$malformedFirst');
         expect(spots.first['freq'], 7090, reason: 'malformedFirst=$malformedFirst');
-        expect((spots.first['spot'] as Map)['timeInMillis'],
-            DateTime.utc(2026, 8, 5, 1).millisecondsSinceEpoch,
-            reason: 'malformedFirst=$malformedFirst');
+        expect((spots.first['spot'] as Map)['timeInMillis'], DateTime.utc(2026, 8, 5, 1).millisecondsSinceEpoch, reason: 'malformedFirst=$malformedFirst');
       }
     }, timeout: const Timeout(Duration(seconds: 90)));
 
@@ -152,10 +151,12 @@ void main() {
       // the operator is actually working — and the panel's own call+freq
       // merge would have combined the two into a single row carrying both
       // references, which it cannot do for a row dropped here.
-      final rec = recorder('['
-          '${spotJson(call: 'vk7bb', cls: 'WWFF', site: 'VKFF-0300', freq: '7.090')},'
-          '${spotJson(call: 'vk7bb', cls: 'SiOTA', site: 'VK-SI0300', freq: '7.090')}'
-          ']');
+      final rec = recorder(
+        '['
+        '${spotJson(call: 'vk7bb', cls: 'WWFF', site: 'VKFF-0300', freq: '7.090')},'
+        '${spotJson(call: 'vk7bb', cls: 'SiOTA', site: 'VK-SI0300', freq: '7.090')}'
+        ']',
+      );
       final spots = await fetchSpots(rec.client);
 
       expect(spots.length, 2);
@@ -166,10 +167,12 @@ void main() {
       // app-polo keeps whichever the API returned first. A station that moved
       // band then shows where it WAS, and which spot wins depends on feed
       // order rather than on time.
-      final rec = recorder('['
-          '${spotJson(call: 'vk3xyz', freq: '7.090', time: '2026-08-05 01:00:00', site: 'VKFF-0002')},'
-          '${spotJson(call: 'vk3xyz', freq: '14.310', time: '2026-08-05 02:30:00', site: 'VKFF-0003')}'
-          ']');
+      final rec = recorder(
+        '['
+        '${spotJson(call: 'vk3xyz', freq: '7.090', time: '2026-08-05 01:00:00', site: 'VKFF-0002')},'
+        '${spotJson(call: 'vk3xyz', freq: '14.310', time: '2026-08-05 02:30:00', site: 'VKFF-0003')}'
+        ']',
+      );
       final spots = await fetchSpots(rec.client);
 
       expect(spots.length, 1);
@@ -180,19 +183,25 @@ void main() {
 
   group('spotting', () {
     Map<String, dynamic> operation() => {
-          'stationCall': 'VK2ABC',
-          'refs': [
-            {'type': 'wwffActivation', 'ref': 'VKFF-1997'}
-          ],
-        };
+      'stationCall': 'VK2ABC',
+      'refs': [
+        {'type': 'wwffActivation', 'ref': 'VKFF-1997'},
+      ],
+    };
 
     test('posts the callsign, class and MHz-shaped frequency the API expects', () async {
       final rec = recorder('Success');
       final host = await hostWith(rec.client, credentials: {'userId': 'vk2abc', 'apiKey': 'k'});
 
-      final result = await host.invokeHook('spots', key: 'parksnpeaks', method: 'postSelfSpot',
-          args: {'operation': operation(), 'freq': 7160, 'mode': 'SSB', 'comment': 'up 5'},
-          timeout: const Duration(seconds: 20)) as Map;
+      final result =
+          await host.invokeHook(
+                'spots',
+                key: 'parksnpeaks',
+                method: 'postSelfSpot',
+                args: {'operation': operation(), 'freq': 7160, 'mode': 'SSB', 'comment': 'up 5'},
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
 
       expect(result['ok'], true);
       final body = jsonDecode(rec.sent.single.body) as Map;
@@ -219,17 +228,19 @@ void main() {
         'freq': 14310,
         'mode': 'SSB',
         'refs': [
-          {'type': 'wwff', 'ref': 'VKFF-0100'}
+          {'type': 'wwff', 'ref': 'VKFF-0100'},
         ],
       };
 
       expect(
-          (await host.invokeHook('spots', key: 'parksnpeaks', method: 'isOtherSpotEnabled',
-              args: {'qso': qso}, timeout: const Duration(seconds: 20)) as Map)['enabled'],
-          true);
+        (await host.invokeHook('spots', key: 'parksnpeaks', method: 'isOtherSpotEnabled', args: {'qso': qso}, timeout: const Duration(seconds: 20))
+            as Map)['enabled'],
+        true,
+      );
 
-      final result = await host.invokeHook('spots', key: 'parksnpeaks', method: 'postOtherSpot',
-          args: {'qso': qso, 'comment': ''}, timeout: const Duration(seconds: 20)) as Map;
+      final result =
+          await host.invokeHook('spots', key: 'parksnpeaks', method: 'postOtherSpot', args: {'qso': qso, 'comment': ''}, timeout: const Duration(seconds: 20))
+              as Map;
 
       expect(result['ok'], true);
       final body = jsonDecode(rec.sent.single.body) as Map;
@@ -245,14 +256,24 @@ void main() {
       final rec = recorder('Success');
       final host = await hostWith(rec.client, credentials: {'userId': 'vk2abc', 'apiKey': 'k'});
 
-      await host.invokeHook('spots', key: 'parksnpeaks', method: 'postSelfSpot',
-          args: {'operation': operation(), 'freq': 7160.5}, timeout: const Duration(seconds: 20));
+      await host.invokeHook(
+        'spots',
+        key: 'parksnpeaks',
+        method: 'postSelfSpot',
+        args: {'operation': operation(), 'freq': 7160.5},
+        timeout: const Duration(seconds: 20),
+      );
       expect((jsonDecode(rec.sent.single.body) as Map)['freq'], '7.160');
 
       final lf = recorder('Success');
       final lfHost = await hostWith(lf.client, credentials: {'userId': 'vk2abc', 'apiKey': 'k'});
-      await lfHost.invokeHook('spots', key: 'parksnpeaks', method: 'postSelfSpot',
-          args: {'operation': operation(), 'freq': 475}, timeout: const Duration(seconds: 20));
+      await lfHost.invokeHook(
+        'spots',
+        key: 'parksnpeaks',
+        method: 'postSelfSpot',
+        args: {'operation': operation(), 'freq': 475},
+        timeout: const Duration(seconds: 20),
+      );
       expect((jsonDecode(lf.sent.single.body) as Map)['freq'], '0.475');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
@@ -263,9 +284,15 @@ void main() {
       final rec = recorder('Failure: bad API key');
       final host = await hostWith(rec.client, credentials: {'userId': 'vk2abc', 'apiKey': 'wrong'});
 
-      final result = await host.invokeHook('spots', key: 'parksnpeaks', method: 'postSelfSpot',
-          args: {'operation': operation(), 'freq': 7160},
-          timeout: const Duration(seconds: 20)) as Map;
+      final result =
+          await host.invokeHook(
+                'spots',
+                key: 'parksnpeaks',
+                method: 'postSelfSpot',
+                args: {'operation': operation(), 'freq': 7160},
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
 
       expect(result['ok'], false);
       expect(result['message'], contains('VKFF-1997'));
@@ -277,23 +304,44 @@ void main() {
       // rejected.
       final without = await hostWith(recorder('[]').client);
       expect(
-          (await without.invokeHook('spots', key: 'parksnpeaks', method: 'isSelfSpotEnabled',
-              args: {'operation': operation()}, timeout: const Duration(seconds: 20)) as Map)['enabled'],
-          false);
+        (await without.invokeHook(
+              'spots',
+              key: 'parksnpeaks',
+              method: 'isSelfSpotEnabled',
+              args: {'operation': operation()},
+              timeout: const Duration(seconds: 20),
+            )
+            as Map)['enabled'],
+        false,
+      );
 
       // Half a login is not a login: posting sends both fields, so offering
       // the source with only the key invites a post that can only be rejected.
       final halfway = await hostWith(recorder('[]').client, credentials: {'apiKey': 'k'});
       expect(
-          (await halfway.invokeHook('spots', key: 'parksnpeaks', method: 'isSelfSpotEnabled',
-              args: {'operation': operation()}, timeout: const Duration(seconds: 20)) as Map)['enabled'],
-          false);
+        (await halfway.invokeHook(
+              'spots',
+              key: 'parksnpeaks',
+              method: 'isSelfSpotEnabled',
+              args: {'operation': operation()},
+              timeout: const Duration(seconds: 20),
+            )
+            as Map)['enabled'],
+        false,
+      );
 
       final with_ = await hostWith(recorder('[]').client, credentials: {'userId': 'vk2abc', 'apiKey': 'k'});
       expect(
-          (await with_.invokeHook('spots', key: 'parksnpeaks', method: 'isSelfSpotEnabled',
-              args: {'operation': operation()}, timeout: const Duration(seconds: 20)) as Map)['enabled'],
-          true);
+        (await with_.invokeHook(
+              'spots',
+              key: 'parksnpeaks',
+              method: 'isSelfSpotEnabled',
+              args: {'operation': operation()},
+              timeout: const Duration(seconds: 20),
+            )
+            as Map)['enabled'],
+        true,
+      );
     }, timeout: const Timeout(Duration(seconds: 60)));
   });
 }

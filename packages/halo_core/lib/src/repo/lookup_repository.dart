@@ -24,11 +24,7 @@ class LookupRepository {
     await db.transaction(() async {
       await db.batch((batch) {
         for (final row in rows) {
-          batch.insert(
-            db.lookups,
-            row,
-            mode: InsertMode.insertOrReplace,
-          );
+          batch.insert(db.lookups, row, mode: InsertMode.insertOrReplace);
         }
       });
     });
@@ -41,16 +37,12 @@ class LookupRepository {
 
   /// Deletes all lookups in a category that do not have the specified updated flag value (stale data).
   Future<void> deleteCategoryStale(String category, int updatedValue) async {
-    await (db.delete(db.lookups)
-          ..where((l) => l.category.equals(category) & l.updated.equals(updatedValue).not()))
-        .go();
+    await (db.delete(db.lookups)..where((l) => l.category.equals(category) & l.updated.equals(updatedValue).not())).go();
   }
 
   /// Retrieves a single lookup row by category and key.
   Future<LookupRow?> getLookup(String category, String key) async {
-    return await (db.select(db.lookups)
-          ..where((l) => l.category.equals(category) & l.key.equals(key)))
-        .getSingleOrNull();
+    return await (db.select(db.lookups)..where((l) => l.category.equals(category) & l.key.equals(key))).getSingleOrNull();
   }
 
   /// A row this program has NOT retired: `flags` 0 is the one value that means
@@ -95,21 +87,18 @@ class LookupRepository {
   /// pattern — a literal `%` or `_` in a searched name (e.g. a park with one
   /// in its title) would otherwise be read as a SQL wildcard instead of the
   /// character it is.
-  Future<List<LookupRow>> queryLookups(
-    String category,
-    String query, {
-    String? subCategory,
-    bool activeOnly = false,
-  }) async {
+  Future<List<LookupRow>> queryLookups(String category, String query, {String? subCategory, bool activeOnly = false}) async {
     final escaped = _escapeLikePattern(query);
     final keyPrefixMatch = db.lookups.key.like('$escaped%', escapeChar: r'\');
     final namePrefixMatch = db.lookups.name.like('$escaped%', escapeChar: r'\');
     return await (db.select(db.lookups)
-          ..where((l) =>
-              l.category.equals(category) &
-              (l.key.like('%$escaped%', escapeChar: r'\') | l.name.like('%$escaped%', escapeChar: r'\')) &
-              (subCategory == null ? const Constant(true) : l.subCategory.equals(subCategory)) &
-              (activeOnly ? _notRetired(l) : const Constant(true)))
+          ..where(
+            (l) =>
+                l.category.equals(category) &
+                (l.key.like('%$escaped%', escapeChar: r'\') | l.name.like('%$escaped%', escapeChar: r'\')) &
+                (subCategory == null ? const Constant(true) : l.subCategory.equals(subCategory)) &
+                (activeOnly ? _notRetired(l) : const Constant(true)),
+          )
           ..orderBy([
             (l) => OrderingTerm(expression: keyPrefixMatch, mode: OrderingMode.desc),
             (l) => OrderingTerm(expression: namePrefixMatch, mode: OrderingMode.desc),
@@ -129,22 +118,18 @@ class LookupRepository {
   /// [activeOnly] as in [queryLookups] — and for the same reason it precedes
   /// the `limit` here too, since a swept class of reference is as likely to
   /// be clustered in SPACE as in name.
-  Future<List<LookupRow>> queryLookupsByLocation(
-    String category,
-    double lat,
-    double lon,
-    double delta, {
-    bool activeOnly = false,
-  }) async {
+  Future<List<LookupRow>> queryLookupsByLocation(String category, double lat, double lon, double delta, {bool activeOnly = false}) async {
     final latDelta = db.lookups.lat - Variable(lat);
     final lonDelta = db.lookups.lon - Variable(lon);
     final distanceSquared = latDelta * latDelta + lonDelta * lonDelta;
     return await (db.select(db.lookups)
-          ..where((l) =>
-              l.category.equals(category) &
-              l.lat.isBetweenValues(lat - delta, lat + delta) &
-              l.lon.isBetweenValues(lon - delta, lon + delta) &
-              (activeOnly ? _notRetired(l) : const Constant(true)))
+          ..where(
+            (l) =>
+                l.category.equals(category) &
+                l.lat.isBetweenValues(lat - delta, lat + delta) &
+                l.lon.isBetweenValues(lon - delta, lon + delta) &
+                (activeOnly ? _notRetired(l) : const Constant(true)),
+          )
           ..orderBy([(l) => OrderingTerm.asc(distanceSquared)])
           ..limit(100))
         .get();

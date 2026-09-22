@@ -12,16 +12,18 @@ void main() {
   PeerMessage roundTrip(PeerMessage message) => PeerMessage.decode(message.encode())!;
 
   test('the claim set survives the wire, conflict mark and ack included', () {
-    final payload = roundTrip(PeerMessage.serialClaims(
-      operationUuid: 'op-1',
-      seq: 7,
-      claims: const [
-        PeerSerialClaim(label: 'cqwpx/serial', number: 42),
-        PeerSerialClaim(label: 'r1vhf/serial/2m', number: 3, conflicted: true),
-        PeerSerialClaim(label: 'cqwpx/serial', number: 41, committed: true),
-      ],
-      ack: 5,
-    )).serialClaimsOrNull!;
+    final payload = roundTrip(
+      PeerMessage.serialClaims(
+        operationUuid: 'op-1',
+        seq: 7,
+        claims: const [
+          PeerSerialClaim(label: 'cqwpx/serial', number: 42),
+          PeerSerialClaim(label: 'r1vhf/serial/2m', number: 3, conflicted: true),
+          PeerSerialClaim(label: 'cqwpx/serial', number: 41, committed: true),
+        ],
+        ack: 5,
+      ),
+    ).serialClaimsOrNull!;
     expect(payload.operationUuid, 'op-1');
     expect(payload.seq, 7);
     expect(payload.ack, 5);
@@ -33,8 +35,7 @@ void main() {
   });
 
   test('an empty set is a real message — it is how a position says it holds nothing', () {
-    final payload = roundTrip(PeerMessage.serialClaims(operationUuid: 'op-1', seq: 1, claims: const []))
-        .serialClaimsOrNull!;
+    final payload = roundTrip(PeerMessage.serialClaims(operationUuid: 'op-1', seq: 1, claims: const [])).serialClaimsOrNull!;
     expect(payload.claims, isEmpty);
     expect(payload.ack, isNull);
   });
@@ -43,17 +44,11 @@ void main() {
     // Numbers held against the wrong operation would block a sequence that
     // never competed with them.
     expect(const PeerMessage(PeerMessageType.serialClaims, {'seq': 1, 'claims': []}).serialClaimsOrNull, isNull);
-    expect(
-      const PeerMessage(PeerMessageType.serialClaims, {'opUuid': '', 'seq': 1, 'claims': []}).serialClaimsOrNull,
-      isNull,
-    );
+    expect(const PeerMessage(PeerMessageType.serialClaims, {'opUuid': '', 'seq': 1, 'claims': []}).serialClaimsOrNull, isNull);
   });
 
   test('a message with no version is refused — nothing could order it', () {
-    expect(
-      const PeerMessage(PeerMessageType.serialClaims, {'opUuid': 'op-1', 'claims': []}).serialClaimsOrNull,
-      isNull,
-    );
+    expect(const PeerMessage(PeerMessageType.serialClaims, {'opUuid': 'op-1', 'claims': []}).serialClaimsOrNull, isNull);
   });
 
   test('an unreadable claim costs only itself', () {

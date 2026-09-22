@@ -12,21 +12,15 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
   Widget host(List<Widget> children) => MaterialApp(
-        home: Scaffold(
-          body: SizedBox(height: 400, child: SectionedListView(children: children)),
-        ),
-      );
+    home: Scaffold(
+      body: SizedBox(height: 400, child: SectionedListView(children: children)),
+    ),
+  );
 
-  List<Widget> rows(String prefix, int count) =>
-      [for (var i = 0; i < count; i++) SizedBox(height: 80, child: Text('$prefix $i'))];
+  List<Widget> rows(String prefix, int count) => [for (var i = 0; i < count; i++) SizedBox(height: 80, child: Text('$prefix $i'))];
 
   testWidgets('a band holds the top while the rows that follow it scroll under', (tester) async {
-    await tester.pumpWidget(host([
-      const SectionHeader('First'),
-      ...rows('one', 4),
-      const SectionHeader('Second'),
-      ...rows('two', 4),
-    ]));
+    await tester.pumpWidget(host([const SectionHeader('First'), ...rows('one', 4), const SectionHeader('Second'), ...rows('two', 4)]));
     await tester.pumpAndSettle();
 
     final firstBand = tester.getTopLeft(find.text('First')).dy;
@@ -37,25 +31,28 @@ void main() {
     expect(find.text('one 0'), findsNothing, reason: 'while its own rows went under it');
   });
 
-  testWidgets('a band buried inside a row fails loudly rather than pinning over rows it does not name',
-      (tester) async {
+  testWidgets('a band buried inside a row fails loudly rather than pinning over rows it does not name', (tester) async {
     // The trap this list is most likely to be walked into: a panel hands it a
     // widget that carries a heading of its own, the cutter sees one opaque
     // row, and the rows under that heading silently join the section above.
-    await tester.pumpWidget(host([
-      const SectionHeader('First'),
-      const Column(children: [SectionHeader('Buried'), SizedBox(height: 80)]),
-    ]));
+    await tester.pumpWidget(
+      host([
+        const SectionHeader('First'),
+        const Column(children: [SectionHeader('Buried'), SizedBox(height: 80)]),
+      ]),
+    );
 
     expect(tester.takeException(), isAssertionError);
   });
 
   testWidgets('a widget that must carry its own bands returns SectionedSlivers, and they pin', (tester) async {
-    await tester.pumpWidget(host([
-      const SectionHeader('First'),
-      ...rows('one', 2),
-      const SectionedSlivers(slivers: [_OwnSections()]),
-    ]));
+    await tester.pumpWidget(
+      host([
+        const SectionHeader('First'),
+        ...rows('one', 2),
+        const SectionedSlivers(slivers: [_OwnSections()]),
+      ]),
+    );
     await tester.pumpAndSettle();
 
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
@@ -76,9 +73,6 @@ class _OwnSections extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SliverMainAxisGroup(
-        slivers: sectionSlivers(context, [
-          const SectionHeader('Own'),
-          for (var i = 0; i < 8; i++) SizedBox(height: 80, child: Text('own $i')),
-        ]),
-      );
+    slivers: sectionSlivers(context, [const SectionHeader('Own'), for (var i = 0; i < 8; i++) SizedBox(height: 80, child: Text('own $i'))]),
+  );
 }

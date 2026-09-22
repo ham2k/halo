@@ -8,48 +8,49 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/spots_service.dart';
 
-Map<String, dynamic> spot(
-  String call, {
-  required int ageMinutes,
-  String source = 'pota',
-  List<Map<String, String>> refs = const [],
-}) =>
-    {
-      'their': {'call': call},
-      'refs': refs,
-      'hookKey': source,
-      'spot': {
-        'timeInMillis': DateTime.now().millisecondsSinceEpoch - Duration(minutes: ageMinutes).inMilliseconds,
-        'source': source,
-      },
-    };
+Map<String, dynamic> spot(String call, {required int ageMinutes, String source = 'pota', List<Map<String, String>> refs = const []}) => {
+  'their': {'call': call},
+  'refs': refs,
+  'hookKey': source,
+  'spot': {'timeInMillis': DateTime.now().millisecondsSinceEpoch - Duration(minutes: ageMinutes).inMilliseconds, 'source': source},
+};
 
 /// A fetch that answers with [spots] and reports every source that offered
 /// one healthy — what the great majority of these tests are about. Only the
 /// tests that care about a source in trouble build the record themselves.
 SpotsFetch feed(FutureOr<List<Map<String, dynamic>>> Function() spots) => () async {
-      final items = await spots();
-      return (
-        items: items,
-        succeeded: {for (final item in items) item['hookKey'] as String? ?? 'unknown'}.toList(),
-        unreachable: const <String>[],
-        failed: const <String>[],
-      );
-    };
+  final items = await spots();
+  return (
+    items: items,
+    succeeded: {for (final item in items) item['hookKey'] as String? ?? 'unknown'}.toList(),
+    unreachable: const <String>[],
+    failed: const <String>[],
+  );
+};
 
 void main() {
   test('spotsForCall drops spots older than maxAge', () {
     // Age is the spot's OWN posting time, not when the cache fetched it — a
     // freshly fetched but hours-old spot describes where a station WAS.
     final service = SpotsService(
-      fetchSpots: feed(() async => [
-        spot('KI2D', ageMinutes: 5, refs: [
-          {'type': 'potaHunter', 'ref': 'US-1234'}
-        ]),
-        spot('N0DEV', ageMinutes: 90, refs: [
-          {'type': 'potaHunter', 'ref': 'US-9999'}
-        ]),
-      ]),
+      fetchSpots: feed(
+        () async => [
+          spot(
+            'KI2D',
+            ageMinutes: 5,
+            refs: [
+              {'type': 'potaHunter', 'ref': 'US-1234'},
+            ],
+          ),
+          spot(
+            'N0DEV',
+            ageMinutes: 90,
+            refs: [
+              {'type': 'potaHunter', 'ref': 'US-9999'},
+            ],
+          ),
+        ],
+      ),
     );
     addTearDown(service.dispose);
 
@@ -79,14 +80,24 @@ void main() {
     // ordering is what makes an activator who moved parks contribute the one
     // they are on now.
     final service = SpotsService(
-      fetchSpots: feed(() async => [
-        spot('KI2D', ageMinutes: 20, refs: [
-          {'type': 'potaHunter', 'ref': 'US-0001'}
-        ]),
-        spot('KI2D', ageMinutes: 2, refs: [
-          {'type': 'potaHunter', 'ref': 'US-0002'}
-        ]),
-      ]),
+      fetchSpots: feed(
+        () async => [
+          spot(
+            'KI2D',
+            ageMinutes: 20,
+            refs: [
+              {'type': 'potaHunter', 'ref': 'US-0001'},
+            ],
+          ),
+          spot(
+            'KI2D',
+            ageMinutes: 2,
+            refs: [
+              {'type': 'potaHunter', 'ref': 'US-0002'},
+            ],
+          ),
+        ],
+      ),
     );
     addTearDown(service.dispose);
     await service.refresh();
@@ -162,10 +173,12 @@ void main() {
   test('a failing fetch is reported, not thrown, and clears on the next success', () async {
     // One dead spot source must not take the panel down with it.
     var fail = true;
-    final service = SpotsService(fetchSpots: feed(() async {
-      if (fail) throw StateError('network down');
-      return [spot('KI2D', ageMinutes: 1)];
-    }));
+    final service = SpotsService(
+      fetchSpots: feed(() async {
+        if (fail) throw StateError('network down');
+        return [spot('KI2D', ageMinutes: 1)];
+      }),
+    );
     addTearDown(service.dispose);
 
     await service.refresh();
@@ -198,10 +211,12 @@ void main() {
     // A widget disposed in the same frame as the service it subscribes to
     // must not restart the timer on the way out.
     var fetches = 0;
-    final service = SpotsService(fetchSpots: feed(() async {
-      fetches++;
-      return [];
-    }));
+    final service = SpotsService(
+      fetchSpots: feed(() async {
+        fetches++;
+        return [];
+      }),
+    );
     service.dispose();
 
     final release = service.subscribe();
@@ -215,10 +230,12 @@ void main() {
     // to every spot source's API.
     var fetches = 0;
     final completer = Completer<List<Map<String, dynamic>>>();
-    final service = SpotsService(fetchSpots: feed(() {
-      fetches++;
-      return completer.future;
-    }));
+    final service = SpotsService(
+      fetchSpots: feed(() {
+        fetches++;
+        return completer.future;
+      }),
+    );
     addTearDown(service.dispose);
 
     final first = service.refresh();
@@ -243,8 +260,7 @@ void main() {
     await service.refresh();
 
     expect(service.unavailableSources, ['sota']);
-    expect(service.spotsForCall('KI2D', maxAge: const Duration(minutes: 30)), hasLength(1),
-        reason: "the answering source's spots must survive");
+    expect(service.spotsForCall('KI2D', maxAge: const Duration(minutes: 30)), hasLength(1), reason: "the answering source's spots must survive");
     expect(service.error, isNull, reason: 'one silent source is not the whole fetch failing');
   });
 
@@ -296,8 +312,7 @@ void main() {
     //
     // See the resubscribe test below for why this asks who is watching NOW
     // rather than whether the subscription ever lapsed.
-    final gate = Completer<
-        ({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>();
+    final gate = Completer<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>();
     final service = SpotsService(fetchSpots: () => gate.future);
     addTearDown(service.dispose);
 
@@ -317,8 +332,7 @@ void main() {
     // throws that outage away while somebody is watching and the timer is
     // running again — no notice until the next two-minute tick, for an
     // outage already known. The question has to be who is watching NOW.
-    final gate = Completer<
-        ({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>();
+    final gate = Completer<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>();
     final service = SpotsService(fetchSpots: () => gate.future);
     addTearDown(service.dispose);
 
@@ -358,11 +372,7 @@ void main() {
     // Merging the two would tell the operator to wait out a server that is
     // up and answering 503 — it will still be answering 503 in ten minutes.
     final service = SpotsService(
-      fetchSpots: () async => (
-        items: [spot('KI2D', ageMinutes: 1)],
-        succeeded: const <String>[], unreachable: const ['sota'],
-        failed: const ['pota'],
-      ),
+      fetchSpots: () async => (items: [spot('KI2D', ageMinutes: 1)], succeeded: const <String>[], unreachable: const ['sota'], failed: const ['pota']),
     );
     addTearDown(service.dispose);
     addTearDown(service.subscribe());
@@ -371,8 +381,7 @@ void main() {
 
     expect(service.unavailableSources, ['sota']);
     expect(service.failedSources, ['pota']);
-    expect(service.spotsForCall('KI2D', maxAge: const Duration(minutes: 30)), hasLength(1),
-        reason: "a third source's spots must survive both");
+    expect(service.spotsForCall('KI2D', maxAge: const Duration(minutes: 30)), hasLength(1), reason: "a third source's spots must survive both");
     expect(service.error, isNull, reason: 'one source erroring is not the whole fetch failing');
   });
 
@@ -448,7 +457,10 @@ void main() {
     final service = SpotsService(
       fetchSpots: () async => reachable
           ? (
-              items: [spot('KI2D', ageMinutes: 3, source: 'pota'), spot('N0DEV', ageMinutes: 4, source: 'sota')],
+              items: [
+                spot('KI2D', ageMinutes: 3, source: 'pota'),
+                spot('N0DEV', ageMinutes: 4, source: 'sota'),
+              ],
               succeeded: const ['pota', 'sota'],
               unreachable: const <String>[],
               failed: const <String>[],
@@ -482,18 +494,8 @@ void main() {
     var host = true;
     final service = SpotsService(
       fetchSpots: () async => host
-          ? (
-              items: [spot('KI2D', ageMinutes: 2, source: 'pota')],
-              succeeded: const ['pota'],
-              unreachable: const <String>[],
-              failed: const <String>[],
-            )
-          : (
-              items: <Map<String, dynamic>>[],
-              succeeded: const <String>[],
-              unreachable: const <String>[],
-              failed: const <String>[],
-            ),
+          ? (items: [spot('KI2D', ageMinutes: 2, source: 'pota')], succeeded: const ['pota'], unreachable: const <String>[], failed: const <String>[])
+          : (items: <Map<String, dynamic>>[], succeeded: const <String>[], unreachable: const <String>[], failed: const <String>[]),
     );
     addTearDown(service.dispose);
     addTearDown(service.subscribe());
@@ -515,12 +517,7 @@ void main() {
     var down = false;
     final service = SpotsService(
       fetchSpots: () async => down
-          ? (
-              items: <Map<String, dynamic>>[],
-              succeeded: const <String>[],
-              unreachable: const ['pota'],
-              failed: const <String>[]
-            )
+          ? (items: <Map<String, dynamic>>[], succeeded: const <String>[], unreachable: const ['pota'], failed: const <String>[])
           : (
               items: [
                 spot('KI2D', ageMinutes: 179, source: 'pota'),
@@ -535,8 +532,7 @@ void main() {
     addTearDown(service.subscribe());
 
     await service.refresh();
-    expect(service.spotsBySource.containsKey('sota'), isFalse,
-        reason: 'a fresh answer does not license an over-age spot either');
+    expect(service.spotsBySource.containsKey('sota'), isFalse, reason: 'a fresh answer does not license an over-age spot either');
     expect(service.spotsBySource['pota'], hasLength(1));
 
     // The retained copy is judged on the same clock, so the spot that was
@@ -562,17 +558,15 @@ void main() {
     final service = SpotsService(
       fetchSpots: () async => both
           ? (
-              items: [spot('KI2D', ageMinutes: 1, source: 'pota'), spot('N0DEV', ageMinutes: 1, source: 'sota')],
+              items: [
+                spot('KI2D', ageMinutes: 1, source: 'pota'),
+                spot('N0DEV', ageMinutes: 1, source: 'sota'),
+              ],
               succeeded: const ['pota', 'sota'],
               unreachable: const <String>[],
               failed: const <String>[],
             )
-          : (
-              items: [spot('KI2D', ageMinutes: 1, source: 'pota')],
-              succeeded: const ['pota'],
-              unreachable: const <String>[],
-              failed: const <String>[],
-            ),
+          : (items: [spot('KI2D', ageMinutes: 1, source: 'pota')], succeeded: const ['pota'], unreachable: const <String>[], failed: const <String>[]),
     );
     addTearDown(service.dispose);
     addTearDown(service.subscribe());
@@ -595,7 +589,10 @@ void main() {
       fetchSpots: () async => quiet
           ? (items: <Map<String, dynamic>>[], succeeded: const ['pota'], unreachable: const <String>[], failed: const ['sota'])
           : (
-              items: [spot('KI2D', ageMinutes: 1, source: 'pota'), spot('N0DEV', ageMinutes: 1, source: 'sota')],
+              items: [
+                spot('KI2D', ageMinutes: 1, source: 'pota'),
+                spot('N0DEV', ageMinutes: 1, source: 'sota'),
+              ],
               succeeded: const ['pota', 'sota'],
               unreachable: const <String>[],
               failed: const <String>[],
@@ -634,7 +631,10 @@ void main() {
 
     expect(service.spotsBySource['pota'], hasLength(1));
     expect(service.spotsForCall('KI2D', maxAge: const Duration(minutes: 30)), hasLength(1));
-    expect(service.spotsForCall('N0DEV', maxAge: const Duration(minutes: 30)), isEmpty,
-        reason: 'the retained list must not survive an answer that replaces it');
+    expect(
+      service.spotsForCall('N0DEV', maxAge: const Duration(minutes: 30)),
+      isEmpty,
+      reason: 'the retained list must not survive an answer that replaces it',
+    );
   });
 }

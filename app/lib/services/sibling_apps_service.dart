@@ -88,8 +88,7 @@ const iosSiblingCatalog = <SiblingApp>[
 /// [catalog] minus the entry naming [running] — a build must never offer to
 /// link with itself, and the native probes cannot tell "me" from "another
 /// copy of me".
-List<SiblingApp> filterSiblings(Iterable<SiblingApp> catalog, {required Edition running}) =>
-    catalog.where((app) => app.edition != running).toList();
+List<SiblingApp> filterSiblings(Iterable<SiblingApp> catalog, {required Edition running}) => catalog.where((app) => app.edition != running).toList();
 
 /// Whether exactly one PoLo is among [found] — the case an offer may call
 /// "the older version" without saying which; two flavors must be named.
@@ -152,10 +151,7 @@ class SiblingAppsService {
   /// reported rather than painted as "could not open".
   Future<bool> open(SiblingApp app, String url) async {
     try {
-      final ok = await _channel.invokeMethod<bool>('open', {
-        'id': app.id,
-        'url': siblingLinkUrl(app, url),
-      });
+      final ok = await _channel.invokeMethod<bool>('open', {'id': app.id, 'url': siblingLinkUrl(app, url)});
       return ok ?? false;
     } on MissingPluginException {
       return false;

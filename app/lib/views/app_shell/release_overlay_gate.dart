@@ -85,12 +85,7 @@ class _ReleaseOverlayGateState extends State<ReleaseOverlayGate> {
   @override
   Widget build(BuildContext context) {
     final pending = _pending;
-    return Stack(
-      children: [
-        widget.child,
-        if (pending != null) _buildOverlay(context, pending),
-      ],
-    );
+    return Stack(children: [widget.child, if (pending != null) _buildOverlay(context, pending)]);
   }
 
   /// Same shirt-size logic as halo_widgets' Modal Panes

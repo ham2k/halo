@@ -79,8 +79,7 @@ extension on Ft891Session {
 /// The tests below assert on the exact commands the STATE poll sends, and
 /// the watch writes `TX;` to the same port several times a second. It has
 /// its own tests below.
-Ft891Session _stateOnlySession(EquipmentSink sink) =>
-    Ft891Session(sink, config: const {telemetryIntervalConfigKey: 600000});
+Ft891Session _stateOnlySession(EquipmentSink sink) => Ft891Session(sink, config: const {telemetryIntervalConfigKey: 600000});
 
 void main() {
   group('the codec', () {
@@ -139,10 +138,7 @@ void main() {
   group('framing', () {
     test('splits several commands out of one chunk', () {
       final framer = AsciiCatFramer();
-      expect(framer.add('FA014250000;MD02;'), [
-        const AsciiCatCommand('FA', '014250000'),
-        const AsciiCatCommand('MD', '02'),
-      ]);
+      expect(framer.add('FA014250000;MD02;'), [const AsciiCatCommand('FA', '014250000'), const AsciiCatCommand('MD', '02')]);
     });
 
     test('carries a partial command across chunks', () {
@@ -159,10 +155,7 @@ void main() {
       for (final char in 'MD03;FA007074000;'.split('')) {
         found.addAll(framer.add(char));
       }
-      expect(found, [
-        const AsciiCatCommand('MD', '03'),
-        const AsciiCatCommand('FA', '007074000'),
-      ]);
+      expect(found, [const AsciiCatCommand('MD', '03'), const AsciiCatCommand('FA', '007074000')]);
     });
 
     test('reset drops a partial tail so it cannot prefix the next connection', () {
@@ -469,8 +462,7 @@ void main() {
         }
         // Four seconds have passed: at the slow cadence the state poll is
         // due at least once, and it must have gone out.
-        expect(sink.sent.where((c) => c == 'FA;'), isNotEmpty,
-            reason: 'the frequency poll was starved by the TX watch');
+        expect(sink.sent.where((c) => c == 'FA;'), isNotEmpty, reason: 'the frequency poll was starved by the TX watch');
         session.teardown();
       });
     });
@@ -495,10 +487,7 @@ void main() {
     test('with the capture on, a keyed rig has its meters read', () {
       fakeAsync((async) {
         final sink = _FakeSink();
-        final session = Ft891Session(sink, config: const {
-          telemetryIntervalConfigKey: 200,
-          yaesuMeterCaptureConfigKey: true,
-        });
+        final session = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 200, yaesuMeterCaptureConfigKey: true});
         session.startUpdates();
         sink.sent.clear();
         // The transition reads them immediately: a capture that waited for
@@ -568,10 +557,13 @@ void main() {
       // reading becomes something an operator can act on. The FTDX10's own
       // table puts 89 at an SWR of 2.0 and 147 at 50 W.
       MeterCalibrations.instance.setForTesting({
-        'yaesu/ftdx10': MeterCalibration(model: 'FTdx10', tables: const {
-          MeterTable.swr: [MeterPoint(0, 1.0), MeterPoint(89, 2.0)],
-          MeterTable.power: [MeterPoint(0, 0), MeterPoint(147, 50.0)],
-        }),
+        'yaesu/ftdx10': MeterCalibration(
+          model: 'FTdx10',
+          tables: const {
+            MeterTable.swr: [MeterPoint(0, 1.0), MeterPoint(89, 2.0)],
+            MeterTable.power: [MeterPoint(0, 0), MeterPoint(147, 50.0)],
+          },
+        ),
       });
       addTearDown(() => MeterCalibrations.instance.setForTesting({}));
 
@@ -611,16 +603,16 @@ void main() {
       // this answer decides what an operator sees on a radio that has never
       // been keyed.
       MeterCalibrations.instance.setForTesting({
-        'yaesu/ftdx10': MeterCalibration(model: 'FTdx10', tables: const {
-          MeterTable.swr: [MeterPoint(0, 1.0)],
-          MeterTable.voltage: [MeterPoint(192, 13.8)],
-        }),
+        'yaesu/ftdx10': MeterCalibration(
+          model: 'FTdx10',
+          tables: const {
+            MeterTable.swr: [MeterPoint(0, 1.0)],
+            MeterTable.voltage: [MeterPoint(192, 13.8)],
+          },
+        ),
       });
       addTearDown(() => MeterCalibrations.instance.setForTesting({}));
-      expect(
-        const Ft891Driver().telemetryMetersWith(const {meterInfoConfigKey: 'yaesu/ftdx10'}),
-        {RadioMeter.swr, RadioMeter.supplyVolts},
-      );
+      expect(const Ft891Driver().telemetryMetersWith(const {meterInfoConfigKey: 'yaesu/ftdx10'}), {RadioMeter.swr, RadioMeter.supplyVolts});
     });
 
     test('the meters are deliberately not read', () {
@@ -632,5 +624,4 @@ void main() {
       expect(const Ft891Driver().telemetryMeters, isEmpty);
     });
   });
-
 }

@@ -13,19 +13,19 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Widget wrap({required bool expanded}) => TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: AccordionSection(
-              title: const Text('Icom'),
-              expanded: expanded,
-              onToggle: () {},
-              headerColor: const Color(0xFFEEEEEE),
-              onHeaderColor: const Color(0xFF000000),
-              child: const Text('rows'),
-            ),
-          ),
+    child: MaterialApp(
+      home: Scaffold(
+        body: AccordionSection(
+          title: const Text('Icom'),
+          expanded: expanded,
+          onToggle: () {},
+          headerColor: const Color(0xFFEEEEEE),
+          onHeaderColor: const Color(0xFF000000),
+          child: const Text('rows'),
         ),
-      );
+      ),
+    ),
+  );
 
   double turnsOf(WidgetTester tester) => tester.widget<AnimatedRotation>(find.byType(AnimatedRotation)).turns;
 

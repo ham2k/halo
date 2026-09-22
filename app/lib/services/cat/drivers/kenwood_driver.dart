@@ -49,7 +49,6 @@ class KenwoodDriver extends EquipmentDriver {
   @override
   String get name => 'Kenwood (CAT)';
 
-
   /// A radio whose `IF` layout we DO know — a specific model built on this
   /// driver — pins the mode's offset here rather than letting the session
   /// work it out. Read straight from the config and never rendered as a
@@ -72,8 +71,7 @@ class KenwoodDriver extends EquipmentDriver {
   /// same way. Absent — or a name no dialect answers to — keys nothing.
   static const cwDialectKey = 'cwDialect';
 
-  static KenwoodCwDialect? cwDialectFrom(Map<String, dynamic> config) =>
-      KenwoodCwDialect.values.where((d) => d.name == config[cwDialectKey]).firstOrNull;
+  static KenwoodCwDialect? cwDialectFrom(Map<String, dynamic> config) => KenwoodCwDialect.values.where((d) => d.name == config[cwDialectKey]).firstOrNull;
 
   static KenwoodVoiceDialect? voiceDialectFrom(Map<String, dynamic> config) =>
       KenwoodVoiceDialect.values.where((d) => d.name == config[voiceDialectKey]).firstOrNull;
@@ -102,25 +100,31 @@ class KenwoodDriver extends EquipmentDriver {
   int voiceMemoryCountWith(Map<String, dynamic> config) => voiceMemoriesFrom(config);
 
   @override
-  Set<String> get recognizedConfigKeys =>
-      {...super.recognizedConfigKeys, ifModeOffsetKey, cwDialectKey, voiceDialectKey, voiceMemoriesKey, voiceCeilingConfigKey};
+  Set<String> get recognizedConfigKeys => {
+    ...super.recognizedConfigKeys,
+    ifModeOffsetKey,
+    cwDialectKey,
+    voiceDialectKey,
+    voiceMemoriesKey,
+    voiceCeilingConfigKey,
+  };
 
   @override
   int get telemetryWatchBytes => kenwoodTxWatchBytes;
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => KenwoodSession(
-        sink,
-        declaredModeOffset: switch (config[ifModeOffsetKey]) {
-          final int offset when offset >= kenwoodFrequencyDigits => offset,
-          _ => null,
-        },
-        cwDialect: cwDialectFrom(config),
-        voiceDialect: voiceDialectFrom(config),
-        voiceMemories: voiceMemoriesFrom(config),
-        voiceMemoryCeiling: voiceCeilingFromConfig(config),
-        config: config,
-      );
+    sink,
+    declaredModeOffset: switch (config[ifModeOffsetKey]) {
+      final int offset when offset >= kenwoodFrequencyDigits => offset,
+      _ => null,
+    },
+    cwDialect: cwDialectFrom(config),
+    voiceDialect: voiceDialectFrom(config),
+    voiceMemories: voiceMemoriesFrom(config),
+    voiceMemoryCeiling: voiceCeilingFromConfig(config),
+    config: config,
+  );
 
   /// The keyer facts, asked only where the entry did not pin them — the
   /// generic Kenwood and Elecraft — and only of a developer: which shape of
@@ -128,50 +132,46 @@ class KenwoodDriver extends EquipmentDriver {
   /// catalogue should know, and these fields are how it learns before an
   /// entry exists (docs/design/cat.md § Voice keying).
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [
-        if (!overrides.containsKey(cwDialectKey))
-          {
-            'type': 'field',
-            'fieldType': 'select',
-            'key': cwDialectKey,
-            'label': t.settings.station.cwDialect,
-            'description': t.settings.station.cwDialectDescription,
-            'devMode': true,
-            'options': [
-              {'value': '', 'label': t.settings.station.keyerNone},
-              {'value': KenwoodCwDialect.kenwood.name, 'label': t.settings.station.cwDialectKenwood},
-              {'value': KenwoodCwDialect.elecraft.name, 'label': t.settings.station.cwDialectElecraft},
-            ],
-          },
-        if (!overrides.containsKey(voiceDialectKey))
-          {
-            'type': 'field',
-            'fieldType': 'select',
-            'key': voiceDialectKey,
-            'label': t.settings.station.voiceDialect,
-            'description': t.settings.station.voiceDialectDescription,
-            'devMode': true,
-            'options': [
-              {'value': '', 'label': t.settings.station.keyerNone},
-              {'value': KenwoodVoiceDialect.pb.name, 'label': t.settings.station.voiceDialectPb},
-              {'value': KenwoodVoiceDialect.k4.name, 'label': t.settings.station.voiceDialectK4},
-              {'value': KenwoodVoiceDialect.kx.name, 'label': t.settings.station.voiceDialectKx},
-            ],
-          },
-        if (!overrides.containsKey(voiceMemoriesKey)) voiceMemoriesConfigElement(),
-        telemetryConfigElement(),
-      ];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    if (!overrides.containsKey(cwDialectKey))
+      {
+        'type': 'field',
+        'fieldType': 'select',
+        'key': cwDialectKey,
+        'label': t.settings.station.cwDialect,
+        'description': t.settings.station.cwDialectDescription,
+        'devMode': true,
+        'options': [
+          {'value': '', 'label': t.settings.station.keyerNone},
+          {'value': KenwoodCwDialect.kenwood.name, 'label': t.settings.station.cwDialectKenwood},
+          {'value': KenwoodCwDialect.elecraft.name, 'label': t.settings.station.cwDialectElecraft},
+        ],
+      },
+    if (!overrides.containsKey(voiceDialectKey))
+      {
+        'type': 'field',
+        'fieldType': 'select',
+        'key': voiceDialectKey,
+        'label': t.settings.station.voiceDialect,
+        'description': t.settings.station.voiceDialectDescription,
+        'devMode': true,
+        'options': [
+          {'value': '', 'label': t.settings.station.keyerNone},
+          {'value': KenwoodVoiceDialect.pb.name, 'label': t.settings.station.voiceDialectPb},
+          {'value': KenwoodVoiceDialect.k4.name, 'label': t.settings.station.voiceDialectK4},
+          {'value': KenwoodVoiceDialect.kx.name, 'label': t.settings.station.voiceDialectKx},
+        ],
+      },
+    if (!overrides.containsKey(voiceMemoriesKey)) voiceMemoriesConfigElement(),
+    telemetryConfigElement(),
+  ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
-        voiceMemoriesKey => validateVoiceMemories(value),
-        telemetryIntervalConfigKey => validateTelemetryInterval(value),
-        _ => null,
-      };
+    voiceMemoriesKey => validateVoiceMemories(value),
+    telemetryIntervalConfigKey => validateTelemetryInterval(value),
+    _ => null,
+  };
 }
 
 /// `IF;` out, and the ~38-byte status packet back — much the largest TX
@@ -300,9 +300,9 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     this._voiceMemories = 0,
     this.voiceMemoryCeiling = voiceActivityCeiling,
     Map<String, dynamic> config = const {},
-  })  : _modeOffset = declaredModeOffset,
-        // ignore: prefer_initializing_formals
-        _config = config;
+  }) : _modeOffset = declaredModeOffset,
+       // ignore: prefer_initializing_formals
+       _config = config;
 
   /// The node's merged config, kept for [_telemetry]'s cadence.
   final Map<String, dynamic> _config;
@@ -345,10 +345,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   /// Reports upward, and tells the poller whether the radio is moving.
   void _report(VfoReading reading) {
-    final merged = VfoReading(
-      freqKHz: reading.freqKHz ?? _lastReported?.freqKHz,
-      mode: reading.mode ?? _lastReported?.mode,
-    );
+    final merged = VfoReading(freqKHz: reading.freqKHz ?? _lastReported?.freqKHz, mode: reading.mode ?? _lastReported?.mode);
     // The FIRST reading is the answer to the question startUpdates just
     // asked, not the radio moving — counting it as movement would drop every
     // connection into fast polling for a radio nobody is touching.

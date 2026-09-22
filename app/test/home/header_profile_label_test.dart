@@ -25,9 +25,13 @@ Future<SettingsService> makeSettings(Map<String, Object> prefs) async {
 }
 
 Future<void> pumpLabel(WidgetTester tester, SettingsService settings) {
-  return tester.pumpWidget(MaterialApp(
-    home: Scaffold(appBar: AppBar(actions: [HeaderProfileLabel(settings: settings)])),
-  ));
+  return tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(actions: [HeaderProfileLabel(settings: settings)]),
+      ),
+    ),
+  );
 }
 
 Future<HaLoServices> makeServices() async {
@@ -45,10 +49,7 @@ Future<void> drain(WidgetTester tester) async {
 
 // The callsign, rendered specifically inside the header label (not some
 // other KI2D elsewhere in the view).
-final _callsignInHeader = find.descendant(
-  of: find.byType(HeaderProfileLabel),
-  matching: find.text('KI2D'),
-);
+final _callsignInHeader = find.descendant(of: find.byType(HeaderProfileLabel), matching: find.text('KI2D'));
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -63,10 +64,7 @@ void main() {
     testWidgets('renders nothing when no callsign is set', (tester) async {
       final settings = await makeSettings({});
       await pumpLabel(tester, settings);
-      expect(
-        find.descendant(of: find.byType(HeaderProfileLabel), matching: find.byType(Text)),
-        findsNothing,
-      );
+      expect(find.descendant(of: find.byType(HeaderProfileLabel), matching: find.byType(Text)), findsNothing);
     });
 
     testWidgets('updates live when the callsign changes', (tester) async {
@@ -87,7 +85,11 @@ void main() {
       addTearDown(tester.view.reset);
 
       final services = await makeServices();
-      await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(home: HomeView(services: services)),
+        ),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -101,7 +103,11 @@ void main() {
       addTearDown(tester.view.reset);
 
       final services = await makeServices();
-      await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(home: SettingsView(services: services)),
+        ),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 

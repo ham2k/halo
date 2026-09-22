@@ -10,20 +10,12 @@
 import 'package:test/test.dart';
 import 'package:halo_core/halo_core.dart';
 
-
 void main() {
   Operation operation({String? synced, String? seated, Object? legacyLocal, String? position}) => Operation(
-        uuid: 'u',
-        data: {
-          'stationCall': 'K2SUL',
-          'operatorCall': ?synced,
-          operatorCallKeyFor(position ?? ''): ?seated,
-        },
-        localData: {
-          'operatorCall': ?legacyLocal,
-          'multiIdentifier': ?position,
-        },
-      );
+    uuid: 'u',
+    data: {'stationCall': 'K2SUL', 'operatorCall': ?synced, operatorCallKeyFor(position ?? ''): ?seated},
+    localData: {'operatorCall': ?legacyLocal, 'multiIdentifier': ?position},
+  );
 
   group('operatorCallKeyFor', () {
     // The slot has to be derived from the position and nowhere else: a writer
@@ -59,11 +51,7 @@ void main() {
     });
 
     test('a position reads its own slot, not another seat’s', () {
-      final operation = Operation(
-        uuid: 'u',
-        data: const {'operator1': 'KI2D', 'operator2': 'W2ABC'},
-        localData: const {'multiIdentifier': '1'},
-      );
+      final operation = Operation(uuid: 'u', data: const {'operator1': 'KI2D', 'operator2': 'W2ABC'}, localData: const {'multiIdentifier': '1'});
       expect(operatorCallFor(operation), 'KI2D');
     });
 
@@ -104,7 +92,9 @@ void main() {
     Map<String, dynamic> our(Map<String, dynamic> qso) => (qso['our'] as Map).cast<String, dynamic>();
 
     test('stamps the operator of the position this device is logging as', () {
-      final stamped = qsoWithOperator({'their': {'call': 'W1AW'}}, operation(position: '2', seated: 'KI2D'));
+      final stamped = qsoWithOperator({
+        'their': {'call': 'W1AW'},
+      }, operation(position: '2', seated: 'KI2D'));
 
       expect(our(stamped), {'operatorCall': 'KI2D', 'multiIdentifier': '2'});
     });
@@ -113,16 +103,17 @@ void main() {
     // when the next one sits down, and a contact already logged must keep
     // naming the one who made it.
     test('a value already on the QSO wins over the operation', () {
-      final stamped = qsoWithOperator(
-        {'our': {'operatorCall': 'W2ABC', 'multiIdentifier': '1'}},
-        operation(position: '2', seated: 'KI2D'),
-      );
+      final stamped = qsoWithOperator({
+        'our': {'operatorCall': 'W2ABC', 'multiIdentifier': '1'},
+      }, operation(position: '2', seated: 'KI2D'));
 
       expect(our(stamped), {'operatorCall': 'W2ABC', 'multiIdentifier': '1'});
     });
 
     test('an empty operator on the QSO is a value, not an absence', () {
-      final stamped = qsoWithOperator({'our': {'operatorCall': ''}}, operation(synced: 'KI2D'));
+      final stamped = qsoWithOperator({
+        'our': {'operatorCall': ''},
+      }, operation(synced: 'KI2D'));
 
       expect(our(stamped)['operatorCall'], '');
     });
@@ -132,7 +123,10 @@ void main() {
     // must not become a log made by whoever opened it. Blank stays blank, in
     // the record and in the export.
     test('a contact already in the log is never stamped', () {
-      final existing = {'uuid': 'q1', 'their': {'call': 'W1AW'}};
+      final existing = {
+        'uuid': 'q1',
+        'their': {'call': 'W1AW'},
+      };
 
       expect(qsoWithOperator(existing, operation(position: '2', seated: 'KI2D')), existing);
     });
@@ -148,29 +142,45 @@ void main() {
     // logs with another operator's callsign — permanently, and in the
     // exported log.
     test('a positionless operator is not stamped onto a seat that names nobody', () {
-      final stamped = qsoWithOperator({'their': {'call': 'W1AW'}}, operation(position: '2', synced: 'W1ABC'));
+      final stamped = qsoWithOperator({
+        'their': {'call': 'W1AW'},
+      }, operation(position: '2', synced: 'W1ABC'));
 
       expect(our(stamped), {'multiIdentifier': '2'});
     });
 
     test('nothing is written when the operation names neither', () {
-      expect(qsoWithOperator({'their': {'call': 'W1AW'}}, operation()), {'their': {'call': 'W1AW'}});
+      expect(
+        qsoWithOperator({
+          'their': {'call': 'W1AW'},
+        }, operation()),
+        {
+          'their': {'call': 'W1AW'},
+        },
+      );
     });
 
     // A break marker has no operator, and stamping one would put a callsign
     // on a row that is not a contact at all.
     test('event rows are left alone', () {
-      final marker = {'band': 'event', 'event': {'event': 'break'}};
+      final marker = {
+        'band': 'event',
+        'event': {'event': 'break'},
+      };
 
       expect(qsoWithOperator(marker, operation(position: '2', seated: 'KI2D')), marker);
     });
 
     test('does not mutate the QSO it was given', () {
-      final original = {'our': {'grid': 'FN31'}};
+      final original = {
+        'our': {'grid': 'FN31'},
+      };
 
       qsoWithOperator(original, operation(synced: 'KI2D'));
 
-      expect(original, {'our': {'grid': 'FN31'}});
+      expect(original, {
+        'our': {'grid': 'FN31'},
+      });
     });
   });
 }

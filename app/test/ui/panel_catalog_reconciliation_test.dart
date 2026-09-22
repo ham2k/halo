@@ -17,9 +17,11 @@ import 'package:ham2k_logger/services/panel_service.dart';
 void main() {
   group('reading the catalog', () {
     test('a read that could not ask keeps what the catalog had', () async {
-      final extensions = _FakeExtensions(entries: [
-        {'hookKey': 'wx', 'key': 'forecast', 'title': 'Forecast'},
-      ]);
+      final extensions = _FakeExtensions(
+        entries: [
+          {'hookKey': 'wx', 'key': 'forecast', 'title': 'Forecast'},
+        ],
+      );
       final service = PanelService(extensions);
       await service.refreshExtensionPanels();
       expect(service['ext:wx:forecast'], isNotNull);
@@ -40,9 +42,13 @@ void main() {
     });
 
     test('panels from a successful read reach the catalog', () async {
-      final service = PanelService(_FakeExtensions(entries: [
-        {'hookKey': 'wx', 'key': 'forecast', 'title': 'Forecast'},
-      ]));
+      final service = PanelService(
+        _FakeExtensions(
+          entries: [
+            {'hookKey': 'wx', 'key': 'forecast', 'title': 'Forecast'},
+          ],
+        ),
+      );
       await service.refreshExtensionPanels();
       expect(service['ext:wx:forecast']?.title, 'Forecast');
     });
@@ -126,9 +132,13 @@ void main() {
 
   group('instances', () {
     Future<PanelService> withPanel({required bool multiple}) async {
-      final service = PanelService(_FakeExtensions(entries: [
-        {'hookKey': 'notes', 'key': 'text', 'title': 'Custom Text', 'multiple': multiple},
-      ]));
+      final service = PanelService(
+        _FakeExtensions(
+          entries: [
+            {'hookKey': 'notes', 'key': 'text', 'title': 'Custom Text', 'multiple': multiple},
+          ],
+        ),
+      );
       await service.refreshExtensionPanels();
       return service;
     }
@@ -150,15 +160,17 @@ void main() {
 
     PanelService withNative({required bool multiple}) {
       final service = PanelService(_FakeExtensions(entries: const []));
-      service.registerNative(PanelDefinition(
-        id: 'clock',
-        title: 'Clock',
-        source: PanelSource.native,
-        multiple: multiple,
-        formFields: const [
-          {'type': 'field', 'key': 'zone', 'fieldType': 'select'},
-        ],
-      ));
+      service.registerNative(
+        PanelDefinition(
+          id: 'clock',
+          title: 'Clock',
+          source: PanelSource.native,
+          multiple: multiple,
+          formFields: const [
+            {'type': 'field', 'key': 'zone', 'fieldType': 'select'},
+          ],
+        ),
+      );
       return service;
     }
 
@@ -206,10 +218,14 @@ void main() {
     });
 
     test('a key containing # is refused, not read as an instance', () async {
-      final service = PanelService(_FakeExtensions(entries: [
-        {'hookKey': 'notes', 'key': 'text#2', 'title': 'Sneaky'},
-        {'hookKey': 'notes', 'key': 'text', 'title': 'Custom Text', 'multiple': true},
-      ]));
+      final service = PanelService(
+        _FakeExtensions(
+          entries: [
+            {'hookKey': 'notes', 'key': 'text#2', 'title': 'Sneaky'},
+            {'hookKey': 'notes', 'key': 'text', 'title': 'Custom Text', 'multiple': true},
+          ],
+        ),
+      );
       await service.refreshExtensionPanels();
 
       // `#` is what separates a descriptor from a placement of it, so a key
@@ -221,25 +237,27 @@ void main() {
     });
 
     test('removing an instance forgets what it held; removing a panel does not', () async {
-      final extensions = _FakeExtensions(entries: [
-        {
-          'hookKey': 'notes',
-          'key': 'text',
-          'title': 'Custom Text',
-          'multiple': true,
-          'form': [
-            {'key': 'content', 'fieldType': 'multiline'},
-          ],
-        },
-        {
-          'hookKey': 'wx',
-          'key': 'forecast',
-          'title': 'Weather',
-          'form': [
-            {'key': 'location', 'fieldType': 'text'},
-          ],
-        },
-      ]);
+      final extensions = _FakeExtensions(
+        entries: [
+          {
+            'hookKey': 'notes',
+            'key': 'text',
+            'title': 'Custom Text',
+            'multiple': true,
+            'form': [
+              {'key': 'content', 'fieldType': 'multiline'},
+            ],
+          },
+          {
+            'hookKey': 'wx',
+            'key': 'forecast',
+            'title': 'Weather',
+            'form': [
+              {'key': 'location', 'fieldType': 'text'},
+            ],
+          },
+        ],
+      );
       final service = PanelService(extensions);
       await service.refreshExtensionPanels();
 
@@ -257,17 +275,19 @@ void main() {
     });
 
     test('a panel whose extension is disabled still forgets its placement', () async {
-      final extensions = _FakeExtensions(entries: [
-        {
-          'hookKey': 'notes',
-          'key': 'text',
-          'title': 'Custom Text',
-          'multiple': true,
-          'form': [
-            {'key': 'content', 'fieldType': 'multiline'},
-          ],
-        },
-      ]);
+      final extensions = _FakeExtensions(
+        entries: [
+          {
+            'hookKey': 'notes',
+            'key': 'text',
+            'title': 'Custom Text',
+            'multiple': true,
+            'form': [
+              {'key': 'content', 'fieldType': 'multiline'},
+            ],
+          },
+        ],
+      );
       final service = PanelService(extensions);
       await service.refreshExtensionPanels();
 
@@ -373,25 +393,15 @@ class _FakeExtensions implements PanelExtensionSource {
   }
 
   @override
-  Future<Map<String, dynamic>?> renderPanel({
-    required String hookKey,
-    required String panelKey,
-    required Map<String, dynamic> args,
-  }) async => null;
+  Future<Map<String, dynamic>?> renderPanel({required String hookKey, required String panelKey, required Map<String, dynamic> args}) async => null;
 
   @override
-  Future<Map<String, dynamic>> readPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async => const {};
+  Future<Map<String, dynamic>> readPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async => const {};
 
   /// What the catalog asked to be forgotten, so a test can assert on the
   /// distinction between a placement and a panel.
   final forgotten = <String>[];
 
   @override
-  Future<void> forgetPanelConfig({
-    required String panelKey,
-    required List<Map<String, dynamic>> fields,
-  }) async => forgotten.add(panelKey);
+  Future<void> forgetPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async => forgotten.add(panelKey);
 }

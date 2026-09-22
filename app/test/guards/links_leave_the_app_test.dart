@@ -27,10 +27,7 @@ List<File> _sources() {
       fail('expected ${root.path} to exist — run this suite from the app package (cwd: ${Directory.current.path})');
     }
   }
-  return [
-    for (final root in roots)
-      ...root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart')),
-  ];
+  return [for (final root in roots) ...root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart'))];
 }
 
 void main() {
@@ -50,7 +47,8 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: 'Links leave the app: pass LaunchMode.externalApplication, or call openExternalUrl.\n'
+      reason:
+          'Links leave the app: pass LaunchMode.externalApplication, or call openExternalUrl.\n'
           'Found:\n${offenders.join('\n')}',
     );
   });
@@ -74,7 +72,8 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: 'launchUrl without `mode:` is LaunchMode.platformDefault — an in-app browser on mobile.\n'
+      reason:
+          'launchUrl without `mode:` is LaunchMode.platformDefault — an in-app browser on mobile.\n'
           'Found:\n${offenders.join('\n')}',
     );
   });

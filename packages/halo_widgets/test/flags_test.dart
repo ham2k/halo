@@ -17,8 +17,7 @@ void main() {
 
   // Built from code points rather than pasted: the tag characters are
   // invisible, so a typo would not show in source.
-  String tagFlag(String code) =>
-      String.fromCharCodes([0x1F3F4, ...code.codeUnits.map((c) => c + 0xE0000), 0xE007F]);
+  String tagFlag(String code) => String.fromCharCodes([0x1F3F4, ...code.codeUnits.map((c) => c + 0xE0000), 0xE007F]);
 
   group('flagGlyph', () {
     testWidgets('renders the emoji in the bundled font', (tester) async {
@@ -56,10 +55,18 @@ void main() {
 
   group('flagSpan', () {
     testWidgets('carries the surrounding style size into the glyph', (tester) async {
-      await tester.pumpWidget(host(Text.rich(TextSpan(children: [
-        flagSpan('🇺🇸', style: const TextStyle(fontSize: 20)),
-        const TextSpan(text: ' United States'),
-      ]))));
+      await tester.pumpWidget(
+        host(
+          Text.rich(
+            TextSpan(
+              children: [
+                flagSpan('🇺🇸', style: const TextStyle(fontSize: 20)),
+                const TextSpan(text: ' United States'),
+              ],
+            ),
+          ),
+        ),
+      );
 
       final style = tester.widget<Text>(find.text('🇺🇸')).style;
       expect(style?.fontFamily, emojiFontFamily);

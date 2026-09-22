@@ -48,21 +48,11 @@ void main() {
     await db.close();
   });
 
-  Future<Map<String, dynamic>?> interpret(
-    String input, {
-    Map<String, dynamic>? operation,
-    Map<String, dynamic>? qso,
-    bool execute = false,
-  }) async {
+  Future<Map<String, dynamic>?> interpret(String input, {Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false}) async {
     final entries = await extensions.host!.invokeHookAll(
       'command',
       method: 'interpret',
-      args: {
-        'input': input,
-        'operation': ?operation,
-        'qso': ?qso,
-        if (execute) 'execute': true,
-      },
+      args: {'input': input, 'operation': ?operation, 'qso': ?qso, if (execute) 'execute': true},
     );
     for (final entry in entries) {
       if (entry['ok'] == true && entry['value'] is Map) {
@@ -79,9 +69,8 @@ void main() {
     return {...operation.data, 'uuid': operation.uuid};
   }
 
-  List<Map<String, dynamic>> addQsosOf(Map<String, dynamic> result) => (result['commands'] as List)
-      .map((c) => ((c as Map)['addQso'] as Map).cast<String, dynamic>())
-      .toList();
+  List<Map<String, dynamic>> addQsosOf(Map<String, dynamic> result) =>
+      (result['commands'] as List).map((c) => ((c as Map)['addQso'] as Map).cast<String, dynamic>()).toList();
 
   group('SEED command interpretation (real dev-commands extension)', () {
     test('bare "SEED" seeds 10 QSOs with plausible calls, RSTs, and lookup guesses', () async {
@@ -114,12 +103,7 @@ void main() {
     });
 
     test('"SEED 5" seeds 5, inheriting band/mode from the in-progress QSO (CW gets 3-digit RSTs)', () async {
-      final result = await interpret(
-        'SEED 5',
-        operation: await makeOperation(),
-        qso: {'band': '40m', 'mode': 'CW', 'freq': 7030.0},
-        execute: true,
-      );
+      final result = await interpret('SEED 5', operation: await makeOperation(), qso: {'band': '40m', 'mode': 'CW', 'freq': 7030.0}, execute: true);
       final seeded = addQsosOf(result!);
       expect(seeded.length, 5);
       for (final qso in seeded) {

@@ -44,9 +44,18 @@ void main() {
   test('returns matching QSOs across operations, most recent first, as raw QSON', () async {
     final opA = await operations.create(stationCall: 'N0DEV');
     final opB = await operations.create(stationCall: 'N0DEV');
-    await qsos.add(opA.uuid, {'their': {'call': 'KI2D'}, 'startAtMillis': 1000});
-    final newer = await qsos.add(opB.uuid, {'their': {'call': 'KI2D'}, 'startAtMillis': 2000});
-    await qsos.add(opA.uuid, {'their': {'call': 'W1AW'}, 'startAtMillis': 3000});
+    await qsos.add(opA.uuid, {
+      'their': {'call': 'KI2D'},
+      'startAtMillis': 1000,
+    });
+    final newer = await qsos.add(opB.uuid, {
+      'their': {'call': 'KI2D'},
+      'startAtMillis': 2000,
+    });
+    await qsos.add(opA.uuid, {
+      'their': {'call': 'W1AW'},
+      'startAtMillis': 3000,
+    });
 
     final result = await extensions.debugHandleHostCall('getHistoryForCall', {'call': 'ki2d'}) as List;
 
@@ -56,7 +65,9 @@ void main() {
 
   test('a QSO carries its own uuid, so the extension can exclude itself from re-enrichment', () async {
     final op = await operations.create(stationCall: 'N0DEV');
-    final saved = await qsos.add(op.uuid, {'their': {'call': 'KI2D'}});
+    final saved = await qsos.add(op.uuid, {
+      'their': {'call': 'KI2D'},
+    });
 
     final result = await extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D'}) as List;
 
@@ -65,7 +76,9 @@ void main() {
 
   test('a deleted operation\'s QSOs are excluded, same as historyForCall', () async {
     final op = await operations.create(stationCall: 'N0DEV');
-    await qsos.add(op.uuid, {'their': {'call': 'KI2D'}});
+    await qsos.add(op.uuid, {
+      'their': {'call': 'KI2D'},
+    });
     await operations.softDelete(op.uuid);
 
     final result = await extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D'});
@@ -76,7 +89,10 @@ void main() {
   test('caps at a handful of rows — the extension only ever reads the most recent match', () async {
     final op = await operations.create(stationCall: 'N0DEV');
     for (var i = 0; i < 8; i++) {
-      await qsos.add(op.uuid, {'their': {'call': 'KI2D'}, 'startAtMillis': i});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'KI2D'},
+        'startAtMillis': i,
+      });
     }
 
     final result = await extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D'}) as List;
@@ -88,13 +104,21 @@ void main() {
   // prove the host hands the params to them rather than dropping them.
   test('options narrow the history before the cap', () async {
     final op = await operations.create(stationCall: 'N0DEV');
-    await qsos.add(op.uuid, {'their': {'call': 'KI2D'}, 'startAtMillis': 0, 'refs': [{'type': 'cwt'}]});
+    await qsos.add(op.uuid, {
+      'their': {'call': 'KI2D'},
+      'startAtMillis': 0,
+      'refs': [
+        {'type': 'cwt'},
+      ],
+    });
     for (var i = 1; i <= 6; i++) {
-      await qsos.add(op.uuid, {'their': {'call': 'KI2D'}, 'startAtMillis': i});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'KI2D'},
+        'startAtMillis': i,
+      });
     }
 
-    final result =
-        await extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'refType': 'cwt'}) as List;
+    final result = await extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'refType': 'cwt'}) as List;
 
     expect(result.map((qso) => (qso as Map)['startAtMillis']), [0]);
   });
@@ -102,28 +126,24 @@ void main() {
   test('limit raises the cap, up to 50', () async {
     final op = await operations.create(stationCall: 'N0DEV');
     for (var i = 0; i < 60; i++) {
-      await qsos.add(op.uuid, {'their': {'call': 'KI2D'}, 'startAtMillis': i});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'KI2D'},
+        'startAtMillis': i,
+      });
     }
 
-    Future<int> count(int limit) async =>
-        (await extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'limit': limit}) as List).length;
+    Future<int> count(int limit) async => (await extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'limit': limit}) as List).length;
     expect(await count(12), 12);
     expect(await count(500), 50);
   });
 
   test('a malformed option throws, so the extension\'s promise rejects', () async {
-    await expectLater(
-      extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'fromDate': 'last tuesday'}),
-      throwsFormatException,
-    );
+    await expectLater(extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'fromDate': 'last tuesday'}), throwsFormatException);
   });
 
   test('a malformed option throws even with no log to answer from', () async {
     // Resolving [] there would hide the bad option until the one host that
     // has a log rejects it.
-    await expectLater(
-      ExtensionService().debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'fromDate': 'last tuesday'}),
-      throwsFormatException,
-    );
+    await expectLater(ExtensionService().debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'fromDate': 'last tuesday'}), throwsFormatException);
   });
 }

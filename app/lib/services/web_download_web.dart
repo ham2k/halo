@@ -13,10 +13,7 @@ import 'package:web/web.dart' as web;
 /// `data:` navigations well below that — the download would simply not
 /// happen, with no error to report.
 void downloadFile({required String filename, required String content, String? mimeType}) {
-  final blob = web.Blob(
-    <JSAny>[content.toJS].toJS,
-    web.BlobPropertyBag(type: mimeType ?? 'application/octet-stream'),
-  );
+  final blob = web.Blob(<JSAny>[content.toJS].toJS, web.BlobPropertyBag(type: mimeType ?? 'application/octet-stream'));
   final url = web.URL.createObjectURL(blob);
 
   final anchor = web.document.createElement('a') as web.HTMLAnchorElement

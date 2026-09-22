@@ -38,9 +38,8 @@ const _potaInfo = ExtensionInfo(
 /// Several extensions that all answer the same search, to push the section
 /// past what its default peek can show.
 List<ExtensionInfo> _manyParks(int count) => [
-      for (var i = 0; i < count; i++)
-        ExtensionInfo(key: 'parks$i', file: 'parks$i.js', core: false, name: 'Parks Number $i', enabledByDefault: false),
-    ];
+  for (var i = 0; i < count; i++) ExtensionInfo(key: 'parks$i', file: 'parks$i.js', core: false, name: 'Parks Number $i', enabledByDefault: false),
+];
 
 class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
   // No `activity:*:suggest` stub, deliberately: no suggestion can come back
@@ -49,20 +48,12 @@ class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
   _NoActivityExtensions() : super(FakeExtensionHost({}));
 
   @override
-  Future<ControlsResult> operationControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
       (controls: const <Map<String, dynamic>>[], loadFailed: false);
 }
 
-Future<(HaLoServices, Operation)> _harness({
-  bool sectionCollapsed = false,
-  List<ExtensionInfo>? available,
-}) async {
-  SharedPreferences.setMockInitialValues({
-    if (sectionCollapsed) 'activitiesAllOptionsHidden': true,
-  });
+Future<(HaLoServices, Operation)> _harness({bool sectionCollapsed = false, List<ExtensionInfo>? available}) async {
+  SharedPreferences.setMockInitialValues({if (sectionCollapsed) 'activitiesAllOptionsHidden': true});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
   final extensions = _NoActivityExtensions()..settings = settings;
@@ -73,17 +64,20 @@ Future<(HaLoServices, Operation)> _harness({
 /// The peeking window's height — the SizedBox wrapping the collapsed
 /// section's scroll view.
 double _peekHeight(WidgetTester tester) {
-  final box = find.ancestor(
-    of: find.byType(SingleChildScrollView),
-    matching: find.byType(SizedBox),
-  );
+  final box = find.ancestor(of: find.byType(SingleChildScrollView), matching: find.byType(SizedBox));
   return tester.getSize(box.first).height;
 }
 
 Future<void> _pumpAndSearch(WidgetTester tester, HaLoServices services, Operation operation, String term) async {
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(home: Scaffold(body: OperationSheet(services: services, operation: operation))),
-  ));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: OperationSheet(services: services, operation: operation),
+        ),
+      ),
+    ),
+  );
   await tester.pumpAndSettle();
 
   await tester.enterText(find.byType(TextField).first, term);

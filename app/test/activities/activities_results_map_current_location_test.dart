@@ -19,14 +19,11 @@ import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/activities_results_map.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _parkSuggestion = {
-  'type': 'pota',
-  'ref': 'US-0001',
-  'shortLabel': 'POTA US-0001',
-  'grid': 'FN31pr',
-};
+const _parkSuggestion = {'type': 'pota', 'ref': 'US-0001', 'shortLabel': 'POTA US-0001', 'grid': 'FN31pr'};
 
-Widget _harness(Widget child) => TranslationProvider(child: MaterialApp(home: Scaffold(body: child)));
+Widget _harness(Widget child) => TranslationProvider(
+  child: MaterialApp(home: Scaffold(body: child)),
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -38,15 +35,19 @@ void main() {
 
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     try {
-      await tester.pumpWidget(_harness(ActivitiesResultsMap(
-        suggestions: const [_parkSuggestion],
-        controls: const [],
-        refs: const [],
-        settings: settings,
-        onAdd: (_) {},
-        currentLocation: const GridLocation(41.0, -74.0),
-        currentLocationColor: green,
-      )));
+      await tester.pumpWidget(
+        _harness(
+          ActivitiesResultsMap(
+            suggestions: const [_parkSuggestion],
+            controls: const [],
+            refs: const [],
+            settings: settings,
+            onAdd: (_) {},
+            currentLocation: const GridLocation(41.0, -74.0),
+            currentLocationColor: green,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       final markers = tester.widget<OsmMapView>(find.byType(OsmMapView)).markers;
@@ -68,13 +69,9 @@ void main() {
 
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     try {
-      await tester.pumpWidget(_harness(ActivitiesResultsMap(
-        suggestions: const [_parkSuggestion],
-        controls: const [],
-        refs: const [],
-        settings: settings,
-        onAdd: (_) {},
-      )));
+      await tester.pumpWidget(
+        _harness(ActivitiesResultsMap(suggestions: const [_parkSuggestion], controls: const [], refs: const [], settings: settings, onAdd: (_) {})),
+      );
       await tester.pumpAndSettle();
 
       final markers = tester.widget<OsmMapView>(find.byType(OsmMapView)).markers;

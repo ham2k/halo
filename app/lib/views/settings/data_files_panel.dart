@@ -49,8 +49,10 @@ class _DataFilesPanelState extends State<DataFilesPanel> {
   /// are independent settings (extensions/sdk/src/types.ts); keying this on
   /// `sidebar: false` would sweep in any sidebar-opt-out panel whatever its
   /// reason, whether or not it is about data files.
-  List<Map<String, dynamic>> get _dataFileScopedPanels =>
-      [for (final p in _extensionPanels) if (p['dataFilesSection'] == true) p];
+  List<Map<String, dynamic>> get _dataFileScopedPanels => [
+    for (final p in _extensionPanels)
+      if (p['dataFilesSection'] == true) p,
+  ];
 
   @override
   void initState() {
@@ -143,20 +145,17 @@ class _DataFilesPanelState extends State<DataFilesPanel> {
     if (files == null) return const SliverToBoxAdapter();
 
     final children = <Widget>[
-        SectionHeader(context.t.settings.offlineData.title),
-        if (files.isEmpty)
-          ListTile(
-            title: Text(context.t.settings.offlineData.noFiles),
-            subtitle: Text(context.t.settings.offlineData.noFilesDescription),
-          )
-        else ...[
-          _buildUpdateAllRow(context),
-          for (final file in files) _buildRow(context, file),
-        ],
-        if (_dataFileScopedPanels.isNotEmpty) ...[
-          SectionHeader(context.t.settings.offlineData.extensionsSection),
-          for (final panel in _dataFileScopedPanels) _buildExtensionPanelRow(context, panel),
-        ],
+      SectionHeader(context.t.settings.offlineData.title),
+      if (files.isEmpty)
+        ListTile(title: Text(context.t.settings.offlineData.noFiles), subtitle: Text(context.t.settings.offlineData.noFilesDescription))
+      else ...[
+        _buildUpdateAllRow(context),
+        for (final file in files) _buildRow(context, file),
+      ],
+      if (_dataFileScopedPanels.isNotEmpty) ...[
+        SectionHeader(context.t.settings.offlineData.extensionsSection),
+        for (final panel in _dataFileScopedPanels) _buildExtensionPanelRow(context, panel),
+      ],
     ];
     return SliverMainAxisGroup(slivers: sectionSlivers(context, children));
   }
@@ -252,16 +251,12 @@ String _dataFileUpdatedLabel(DateTime? updatedAt) {
   final days = diff.inDays;
   if (days > 0) {
     final hours = diff.inHours % 24;
-    return hours == 0
-        ? t.settings.offlineData.updatedDaysAgo(days: days)
-        : t.settings.offlineData.updatedDaysHoursAgo(days: days, hours: hours);
+    return hours == 0 ? t.settings.offlineData.updatedDaysAgo(days: days) : t.settings.offlineData.updatedDaysHoursAgo(days: days, hours: hours);
   }
   final hours = diff.inHours;
   if (hours > 0) {
     final minutes = diff.inMinutes % 60;
-    return minutes == 0
-        ? t.settings.offlineData.updatedHoursAgo(hours: hours)
-        : t.settings.offlineData.updatedHoursMinutesAgo(hours: hours, minutes: minutes);
+    return minutes == 0 ? t.settings.offlineData.updatedHoursAgo(hours: hours) : t.settings.offlineData.updatedHoursMinutesAgo(hours: hours, minutes: minutes);
   }
   return t.settings.offlineData.updatedMinutesAgo(minutes: diff.inMinutes);
 }

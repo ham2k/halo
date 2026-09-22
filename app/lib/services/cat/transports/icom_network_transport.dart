@@ -5,5 +5,4 @@
 // conditional-export shape as the TCP and serial transports; the web build
 // has no sockets.
 
-export 'icom_network_transport_web.dart'
-    if (dart.library.io) 'icom_network_transport_io.dart';
+export 'icom_network_transport_web.dart' if (dart.library.io) 'icom_network_transport_io.dart';

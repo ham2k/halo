@@ -34,8 +34,7 @@ void main() {
   /// every test here on a schema error, with nothing in the failure naming
   /// the cache as the reason. It is also a real file this suite would
   /// otherwise create and leave behind on a machine that has never synced.
-  Future<int> run(List<String> args) =>
-      runHaloExt(['--config', configPath, '--cache', '${temp.path}/cache', ...args]);
+  Future<int> run(List<String> args) => runHaloExt(['--config', configPath, '--cache', '${temp.path}/cache', ...args]);
 
   Map<String, Object?> storedFor(String kvKey) {
     final json = jsonDecode(File(configPath).readAsStringSync()) as Map<String, Object?>;

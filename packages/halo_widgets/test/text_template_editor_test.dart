@@ -8,17 +8,32 @@ import 'package:halo_widgets/halo_widgets.dart';
 void main() {
   testWidgets('template editor previews, rejects invalid input, and cancels without committing', (tester) async {
     String? saved;
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: TemplateEditorScope(
-      preview: (template, sample) async {
-        if (template == 'broken') throw Exception('Unclosed tag');
-        return template.replaceAll('{{ log.station }}', 'N0CALL');
-      },
-      child: Builder(builder: (context) => Scaffold(body: TextButton(
-        onPressed: () async { saved = await showTextTemplateEditor(context,
-          field: {'label': 'File name', 'defaultValue': '{{ log.station }}', 'templateContext': 'export'}, value: '{{ log.station }}'); },
-        child: const Text('Edit'),
-      ))),
-    ))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: TemplateEditorScope(
+            preview: (template, sample) async {
+              if (template == 'broken') throw Exception('Unclosed tag');
+              return template.replaceAll('{{ log.station }}', 'N0CALL');
+            },
+            child: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () async {
+                    saved = await showTextTemplateEditor(
+                      context,
+                      field: {'label': 'File name', 'defaultValue': '{{ log.station }}', 'templateContext': 'export'},
+                      value: '{{ log.station }}',
+                    );
+                  },
+                  child: const Text('Edit'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
     await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     expect(find.text('N0CALL'), findsOneWidget);
@@ -48,17 +63,32 @@ void main() {
 
   testWidgets('textTemplate forms save only the edited draft after confirmation', (tester) async {
     final changes = <String>[];
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: TemplateEditorScope(
-      preview: (template, sample) async => template,
-      child: Scaffold(body: FormRenderer(
-        formDefinition: {'elements': [
-          {'type': 'field', 'fieldType': 'textTemplate', 'key': 'name', 'label': 'File name', 'value': 'original'},
-        ]},
-        initialState: const {}, showActions: false,
-        onChange: (key, value, state) async { changes.add(value as String); return null; },
-        onSubmit: (_) {}, onCancel: () {},
-      )),
-    ))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: TemplateEditorScope(
+            preview: (template, sample) async => template,
+            child: Scaffold(
+              body: FormRenderer(
+                formDefinition: {
+                  'elements': [
+                    {'type': 'field', 'fieldType': 'textTemplate', 'key': 'name', 'label': 'File name', 'value': 'original'},
+                  ],
+                },
+                initialState: const {},
+                showActions: false,
+                onChange: (key, value, state) async {
+                  changes.add(value as String);
+                  return null;
+                },
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Sample preview: original'), findsOneWidget);
     await tester.tap(find.text('File name'));

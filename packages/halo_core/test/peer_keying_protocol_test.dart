@@ -15,10 +15,12 @@ void main() {
 
   group('the offer', () {
     test('carries what the far station will do with that radio', () {
-      final radios = roundTrip(PeerMessage.catOffer(const [
-        PeerRadioOffer(id: 'rig-1', name: 'IC-705', keysCw: true, voiceMemories: 8, recordsVoice: true),
-        PeerRadioOffer(id: 'rig-2', name: 'QMX'),
-      ])).catOffersOrNull!;
+      final radios = roundTrip(
+        PeerMessage.catOffer(const [
+          PeerRadioOffer(id: 'rig-1', name: 'IC-705', keysCw: true, voiceMemories: 8, recordsVoice: true),
+          PeerRadioOffer(id: 'rig-2', name: 'QMX'),
+        ]),
+      ).catOffersOrNull!;
 
       expect(radios.first.keysCw, isTrue);
       expect(radios.first.voiceMemories, 8);
@@ -47,29 +49,23 @@ void main() {
       // The offer is deduped before it is broadcast, so an offer that
       // compared equal on its ids alone would leave a controller believing a
       // station still keys after its key was unplugged.
-      expect(
-        const PeerRadioOffer(id: 'rig-1', name: 'IC-705', keysCw: true),
-        isNot(const PeerRadioOffer(id: 'rig-1', name: 'IC-705')),
-      );
+      expect(const PeerRadioOffer(id: 'rig-1', name: 'IC-705', keysCw: true), isNot(const PeerRadioOffer(id: 'rig-1', name: 'IC-705')));
     });
   });
 
   group('the status', () {
     test('the message going out survives the wire, timing and progress included', () {
-      final status = roundTrip(PeerMessage.keyStatus(const PeerKeyStatusPayload(
-        radioId: 'rig-1',
-        keyerSpeedWpm: 24,
-        keyerSpeedMin: 5,
-        keyerSpeedMax: 60,
-        cw: PeerCwProgressPayload(
-          id: 9,
-          text: 'CQ TEST',
-          characterEndsMs: [100, 250, 400],
-          pending: ['TU'],
-          pendingIds: [10],
-          sentCount: 2,
+      final status = roundTrip(
+        PeerMessage.keyStatus(
+          const PeerKeyStatusPayload(
+            radioId: 'rig-1',
+            keyerSpeedWpm: 24,
+            keyerSpeedMin: 5,
+            keyerSpeedMax: 60,
+            cw: PeerCwProgressPayload(id: 9, text: 'CQ TEST', characterEndsMs: [100, 250, 400], pending: ['TU'], pendingIds: [10], sentCount: 2),
+          ),
         ),
-      ))).keyStatusOrNull!;
+      ).keyStatusOrNull!;
 
       expect(status.radioId, 'rig-1');
       expect(status.keyerSpeedWpm, 24);
@@ -83,12 +79,16 @@ void main() {
     test('a memory playing crosses with its doubt intact', () {
       // Doubt is the far side's, and shown as doubt: resolving it here would
       // either hide a refused memory or claim one that is on the air ended.
-      final status = roundTrip(PeerMessage.keyStatus(const PeerKeyStatusPayload(
-        radioId: 'rig-1',
-        voice: PeerVoiceActivityPayload(memory: 3, doubtful: true),
-        voiceLabels: ['CQ', 'TU'],
-        voiceDurationsMs: [4200, 0],
-      ))).keyStatusOrNull!;
+      final status = roundTrip(
+        PeerMessage.keyStatus(
+          const PeerKeyStatusPayload(
+            radioId: 'rig-1',
+            voice: PeerVoiceActivityPayload(memory: 3, doubtful: true),
+            voiceLabels: ['CQ', 'TU'],
+            voiceDurationsMs: [4200, 0],
+          ),
+        ),
+      ).keyStatusOrNull!;
 
       expect(status.voice!.memory, 3);
       expect(status.voice!.doubtful, isTrue);
@@ -112,8 +112,7 @@ void main() {
     test('a half-missing speed range is no range at all', () {
       // A picker builds its list from both ends; one of them alone would
       // offer speeds the far keyer clamps without saying so.
-      final status =
-          PeerMessage(PeerMessageType.keyStatus, const {'radioId': 'rig-1', 'wpmMin': 5}).keyStatusOrNull!;
+      final status = PeerMessage(PeerMessageType.keyStatus, const {'radioId': 'rig-1', 'wpmMin': 5}).keyStatusOrNull!;
 
       expect(status.keyerSpeedMin, isNull);
       expect(status.keyerSpeedMax, isNull);
@@ -124,7 +123,12 @@ void main() {
       // by the same position, so keeping the texts alone is a tap that throws.
       final status = PeerMessage(PeerMessageType.keyStatus, const {
         'radioId': 'rig-1',
-        'cw': {'id': 1, 'text': 'CQ', 'pending': ['TU', 'TEST'], 'pendingIds': [7]},
+        'cw': {
+          'id': 1,
+          'text': 'CQ',
+          'pending': ['TU', 'TEST'],
+          'pendingIds': [7],
+        },
       }).keyStatusOrNull!;
 
       expect(status.cw!.pending, isEmpty);
@@ -134,11 +138,7 @@ void main() {
     test('a speed range no keyer could have is no range', () {
       // The picker builds ONE ITEM PER WPM from this: a garbled or hostile
       // `wpmMax` is the app materializing a menu until it dies.
-      final status = PeerMessage(PeerMessageType.keyStatus, const {
-        'radioId': 'rig-1',
-        'wpmMin': 5,
-        'wpmMax': 100000,
-      }).keyStatusOrNull!;
+      final status = PeerMessage(PeerMessageType.keyStatus, const {'radioId': 'rig-1', 'wpmMin': 5, 'wpmMax': 100000}).keyStatusOrNull!;
 
       expect(status.keyerSpeedMin, isNull);
       expect(status.keyerSpeedMax, isNull);
@@ -193,8 +193,7 @@ void main() {
         {'radioId': 'rig-1', 'op': 'transmitForever'},
         {'op': PeerKeyOp.stopCw},
       ]) {
-        expect(PeerMessage(PeerMessageType.keySet, fields).keyRequestOrNull, isNull,
-            reason: 'refused: $fields');
+        expect(PeerMessage(PeerMessageType.keySet, fields).keyRequestOrNull, isNull, reason: 'refused: $fields');
       }
     });
 
@@ -206,7 +205,11 @@ void main() {
       final status = PeerMessage(PeerMessageType.keyStatus, const {
         'radioId': 'rig-1',
         'durations': ['nope', 4200],
-        'cw': {'id': 1, 'text': 'CQ', 'ends': [true, 200]},
+        'cw': {
+          'id': 1,
+          'text': 'CQ',
+          'ends': [true, 200],
+        },
       }).keyStatusOrNull!;
 
       expect(status.voiceDurationsMs, [0, 4200]);
@@ -215,8 +218,7 @@ void main() {
 
     test('an unknown message type is ignored, not a broken link', () {
       // What lets these types be added without a protocol bump.
-      expect(PeerMessage(PeerMessageType.keySet, const {'radioId': 'r', 'op': PeerKeyOp.stopCw}).keyStatusOrNull,
-          isNull);
+      expect(PeerMessage(PeerMessageType.keySet, const {'radioId': 'r', 'op': PeerKeyOp.stopCw}).keyStatusOrNull, isNull);
       expect(PeerMessage('keyerSomethingNewer', const {}).keyRequestOrNull, isNull);
     });
   });

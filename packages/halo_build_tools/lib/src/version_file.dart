@@ -59,10 +59,10 @@ String rewriteBuildNumber(String source, int build) {
 
 /// The version.dart constant carrying [edition]'s expiration date.
 String expirationConstFor(Edition edition) => switch (edition) {
-      Edition.dev => 'kDevExpirationDate',
-      Edition.next => 'kNextExpirationDate',
-      Edition.prod => 'kProdExpirationDate',
-    };
+  Edition.dev => 'kDevExpirationDate',
+  Edition.next => 'kNextExpirationDate',
+  Edition.prod => 'kProdExpirationDate',
+};
 
 /// Reads [edition]'s expiration date (`YYYY-MM-DD`) out of version.dart
 /// source; null when the field is empty (= never expires). Throws
@@ -103,13 +103,12 @@ bool expirationHasPassed(DateTime expiration, DateTime now) {
 /// (stamps version.dart on the cut) and app/tool/stamp_expiration.dart
 /// (re-stamps at patch build time, so a patched install's clock restarts).
 String expirationDateForBuild(Edition edition, DateTime today) => switch (edition) {
-      Edition.dev || Edition.next => isoDate(today.add(const Duration(days: 14))),
-      Edition.prod => isoDate(plusCalendarMonths(today, 6)),
-    };
+  Edition.dev || Edition.next => isoDate(today.add(const Duration(days: 14))),
+  Edition.prod => isoDate(plusCalendarMonths(today, 6)),
+};
 
 /// `2026-08-06` for the given date.
-String isoDate(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+String isoDate(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
 /// [d] plus [months] calendar months, clamped to the target month's last day
 /// (Aug 31 + 6 → Feb 28/29, not Dart's normalized Mar 2/3) so the printed

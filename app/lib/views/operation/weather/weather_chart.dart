@@ -57,10 +57,7 @@ const double _padding = 6;
     final value = temperatures[i];
     if (value == null) continue;
     final t = (value - lo) / (hi - lo);
-    points.add(Offset(
-      weatherColumnCenter(size.width, temperatures.length, i),
-      bottom - t * (bottom - top),
-    ));
+    points.add(Offset(weatherColumnCenter(size.width, temperatures.length, i), bottom - t * (bottom - top)));
   }
 
   final path = Path()

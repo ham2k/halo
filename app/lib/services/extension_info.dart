@@ -57,10 +57,7 @@ mixin ExtensionSearchable {
   /// A non-string among them is dropped, not thrown on: the catalog's rows
   /// are whatever a publisher wrote, and one typo is not the panel's to
   /// crash over. The build index's are validated by the packer anyway.
-  List<String> keywordsFor(String locale) => [
-        ...keywords,
-        ...((translations[locale]?['keywords'] as List?) ?? const []).whereType<String>(),
-      ];
+  List<String> keywordsFor(String locale) => [...keywords, ...((translations[locale]?['keywords'] as List?) ?? const []).whereType<String>()];
 
   /// Whether a user's search text should surface this extension. Matches the
   /// key, the name and description in BOTH the given locale and English (so
@@ -144,8 +141,7 @@ int? refClaimStrength(List<String> hooks, {required String type, String? code}) 
 
 /// Whether [hooks] claims the reference [type]/[code] at all — [
 /// refClaimStrength] without the ranking, for a caller with one candidate.
-bool hooksClaimRef(List<String> hooks, {required String type, String? code}) =>
-    refClaimStrength(hooks, type: type, code: code) != null;
+bool hooksClaimRef(List<String> hooks, {required String type, String? code}) => refClaimStrength(hooks, type: type, code: code) != null;
 
 /// The extensions among [available] whose manifest claims any of [refs],
 /// strongest claim first — the manifest's own statement of which references it
@@ -162,10 +158,7 @@ bool hooksClaimRef(List<String> hooks, {required String type, String? code}) =>
 ///
 /// An extension is ranked by its BEST claim over all of [refs]: it is offered
 /// once, for whichever reference it answers most precisely.
-List<ExtensionInfo> extensionsDeclaringRefs(
-  Iterable<ExtensionInfo> available,
-  Iterable<({String type, String? code})> refs,
-) {
+List<ExtensionInfo> extensionsDeclaringRefs(Iterable<ExtensionInfo> available, Iterable<({String type, String? code})> refs) {
   final ranked = <({ExtensionInfo info, int strength})>[];
   for (final info in available) {
     int? best;
@@ -311,39 +304,34 @@ class ExtensionInfo with ExtensionSearchable {
   String get effectiveShortName => shortName ?? name;
 
   factory ExtensionInfo.fromJson(Map<String, dynamic> json) => ExtensionInfo(
-        key: json['key'] as String,
-        file: json['file'] as String? ?? '${json['key']}.js',
-        source: ExtensionSource.fromJson(json),
-        version: json['version'] as String?,
-        // A relevance the reader cannot parse is worldwide, never a crash:
-        // it is a hint, and its shape is refused upstream (the build, the
-        // packer, InstalledExtensions) rather than here.
-        relevance: json['relevance'] is Map
-            ? ExtensionRelevance.fromJson((json['relevance'] as Map).cast<String, dynamic>())
-            : null,
-        domains: ((json['domains'] as List?) ?? const []).cast<String>(),
-        allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
-        requiresLocation: json['requiresLocation'] as bool? ?? false,
-        requiresRadioRead: json['requiresRadioRead'] as bool? ?? false,
-        requiresRadioWrite: json['requiresRadioWrite'] as bool? ?? false,
-        // A stale index without metadata degrades to "everything core" —
-        // the fail-safe: nothing gets silently disabled.
-        core: json['core'] as bool? ?? true,
-        name: json['name'] as String? ?? json['key'] as String,
-        shortName: json['shortName'] as String?,
-        category: json['category'] as String?,
-        enabledByDefault: json['enabledByDefault'] as bool? ?? true,
-        experiments: ((json['experiments'] as List?) ?? const []).cast<String>(),
-        icon: json['icon'] as String?,
-        description: json['description'] as String?,
-        accentColor: json['accentColor'] as String?,
-        keywords: ((json['keywords'] as List?) ?? const []).cast<String>(),
-        hooks: ((json['hooks'] as List?) ?? const []).cast<String>(),
-        translations: {
-          for (final entry in ((json['translations'] as Map?) ?? const {}).entries)
-            entry.key as String: (entry.value as Map).cast<String, Object?>(),
-        },
-      );
+    key: json['key'] as String,
+    file: json['file'] as String? ?? '${json['key']}.js',
+    source: ExtensionSource.fromJson(json),
+    version: json['version'] as String?,
+    // A relevance the reader cannot parse is worldwide, never a crash:
+    // it is a hint, and its shape is refused upstream (the build, the
+    // packer, InstalledExtensions) rather than here.
+    relevance: json['relevance'] is Map ? ExtensionRelevance.fromJson((json['relevance'] as Map).cast<String, dynamic>()) : null,
+    domains: ((json['domains'] as List?) ?? const []).cast<String>(),
+    allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
+    requiresLocation: json['requiresLocation'] as bool? ?? false,
+    requiresRadioRead: json['requiresRadioRead'] as bool? ?? false,
+    requiresRadioWrite: json['requiresRadioWrite'] as bool? ?? false,
+    // A stale index without metadata degrades to "everything core" —
+    // the fail-safe: nothing gets silently disabled.
+    core: json['core'] as bool? ?? true,
+    name: json['name'] as String? ?? json['key'] as String,
+    shortName: json['shortName'] as String?,
+    category: json['category'] as String?,
+    enabledByDefault: json['enabledByDefault'] as bool? ?? true,
+    experiments: ((json['experiments'] as List?) ?? const []).cast<String>(),
+    icon: json['icon'] as String?,
+    description: json['description'] as String?,
+    accentColor: json['accentColor'] as String?,
+    keywords: ((json['keywords'] as List?) ?? const []).cast<String>(),
+    hooks: ((json['hooks'] as List?) ?? const []).cast<String>(),
+    translations: {for (final entry in ((json['translations'] as Map?) ?? const {}).entries) entry.key as String: (entry.value as Map).cast<String, Object?>()},
+  );
 }
 
 /// One manifest capability as the host enforces it: which of the LOADED
@@ -363,11 +351,11 @@ class CapabilityGrant {
   const CapabilityGrant({this.bundles = const {}, this.granted = const {}});
 
   CapabilityGrant.among(Iterable<ExtensionInfo> loaded, bool Function(ExtensionInfo) declares)
-      : bundles = {for (final info in loaded) info.key},
-        granted = {
-          for (final info in loaded)
-            if (declares(info)) info.key,
-        };
+    : bundles = {for (final info in loaded) info.key},
+      granted = {
+        for (final info in loaded)
+          if (declares(info)) info.key,
+      };
 
   /// [extensionKey] is the caller's identity as the KERNEL stamped it.
   bool allows(String? extensionKey) {

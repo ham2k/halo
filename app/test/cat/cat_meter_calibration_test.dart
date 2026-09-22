@@ -27,11 +27,7 @@ const _infoRoot = 'lib/services/cat/drivers/info';
 
 void main() {
   group('the shipped tables', () {
-    final files = Directory(_infoRoot)
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.json'))
-        .toList();
+    final files = Directory(_infoRoot).listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.json')).toList();
 
     test('there are some, and they are where the loader looks', () {
       // A file moved out of a declared folder is still in the tree, still
@@ -42,8 +38,7 @@ void main() {
       final declared = File('pubspec.yaml').readAsStringSync();
       for (final file in files) {
         final folder = '${File(file.path).parent.path}/';
-        expect(declared, contains(folder),
-            reason: '$folder is not declared in pubspec.yaml, so nothing in it is ever loaded');
+        expect(declared, contains(folder), reason: '$folder is not declared in pubspec.yaml, so nothing in it is ever loaded');
       }
     });
 
@@ -59,8 +54,7 @@ void main() {
         // which one decides how far to trust a reading that disagrees with
         // the radio's own meter.
         if (calibration.tables.isNotEmpty) {
-          expect(calibration.provenance, isNotNull,
-              reason: 'a calibration with no stated source cannot be checked by anyone later');
+          expect(calibration.provenance, isNotNull, reason: 'a calibration with no stated source cannot be checked by anyone later');
         }
       });
     }
@@ -72,13 +66,10 @@ void main() {
       // stretch, and the load sorts them precisely so the file need not be
       // trusted about it. This proves the sort, not the file.
       for (final file in files) {
-        final calibration = MeterCalibration.fromJson(
-          jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
-        );
+        final calibration = MeterCalibration.fromJson(jsonDecode(file.readAsStringSync()) as Map<String, dynamic>);
         for (final entry in calibration.tables.entries) {
           final values = [for (final point in entry.value) point.value];
-          expect(values, orderedEquals([...values]..sort()),
-              reason: '${calibration.model} ${entry.key.name}');
+          expect(values, orderedEquals([...values]..sort()), reason: '${calibration.model} ${entry.key.name}');
         }
       }
     });
@@ -90,9 +81,7 @@ void main() {
       // somebody is looking at a panel, which is far too late for a number
       // an operator is warned about.
       for (final file in files) {
-        final calibration = MeterCalibration.fromJson(
-          jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
-        );
+        final calibration = MeterCalibration.fromJson(jsonDecode(file.readAsStringSync()) as Map<String, dynamic>);
         final where = '${calibration.model} (${file.uri.pathSegments.last})';
         for (final point in calibration.tables[MeterTable.alc] ?? const <MeterPoint>[]) {
           // A fraction of the ALC zone, and a meter may genuinely read a
@@ -265,6 +254,4 @@ void main() {
   });
 }
 
-MeterCalibration _load(String key) => MeterCalibration.fromJson(
-      jsonDecode(File('$_infoRoot/$key.json').readAsStringSync()) as Map<String, dynamic>,
-    );
+MeterCalibration _load(String key) => MeterCalibration.fromJson(jsonDecode(File('$_infoRoot/$key.json').readAsStringSync()) as Map<String, dynamic>);

@@ -52,8 +52,7 @@ abstract class EngineRuntime {
   /// activates all extensions. Throws if any step fails.
   /// [clock] is applied BEFORE any bundle evaluates, so extensions activate on
   /// the same clock the app is on (see [ClockTravelState]).
-  Future<void> load(String kernelSource, List<ExtensionBundle> bundles,
-      {ClockTravelState clock = const ClockTravelState.real()});
+  Future<void> load(String kernelSource, List<ExtensionBundle> bundles, {ClockTravelState clock = const ClockTravelState.real()});
 
   /// Replaces one already-loaded bundle in place: unloads whatever it
   /// contributed, evaluates [bundle]'s new source, and activates what that
@@ -68,6 +67,7 @@ abstract class EngineRuntime {
   void reloadBundle(ExtensionBundle bundle, int token);
 
   void invoke(int id, String category, String? key, String method, String argsJson);
+
   /// [wantsPartials] asks the kernel to narrate the fan-out — a roster and
   /// one message per hook as it settles — so a caller that stops waiting can
   /// still keep what arrived. Off by default because it doubles how much of
@@ -107,17 +107,10 @@ class ClockTravelState {
   final int anchorVirtualMillis;
   final double speed;
 
-  const ClockTravelState({
-    required this.anchorRealMillis,
-    required this.anchorVirtualMillis,
-    required this.speed,
-  });
+  const ClockTravelState({required this.anchorRealMillis, required this.anchorVirtualMillis, required this.speed});
 
   /// Real time — no travel.
-  const ClockTravelState.real()
-      : anchorRealMillis = 0,
-        anchorVirtualMillis = 0,
-        speed = 1;
+  const ClockTravelState.real() : anchorRealMillis = 0, anchorVirtualMillis = 0, speed = 1;
 
   bool get isReal => anchorRealMillis == 0 && speed == 1;
 }

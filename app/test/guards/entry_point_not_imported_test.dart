@@ -25,11 +25,7 @@ List<File> _sources() {
   if (!root.existsSync()) {
     fail('expected ${root.path} to exist — run this suite from the app package (cwd: ${Directory.current.path})');
   }
-  return root
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((f) => f.path.endsWith('.dart') && f.path != 'lib/main.dart')
-      .toList();
+  return root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart') && f.path != 'lib/main.dart').toList();
 }
 
 void main() {
@@ -47,7 +43,8 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: 'main.dart is the composition root, not a library. Import what you need from where it lives:\n'
+      reason:
+          'main.dart is the composition root, not a library. Import what you need from where it lives:\n'
           '  HaLoServices, OperationCommandContext → services/halo_services.dart\n'
           '  runCommandAction → services/command_actions.dart\n'
           '  navigatorKey → config/navigation.dart\n'

@@ -43,13 +43,7 @@ class _StubHost implements ExtensionHost {
   _StubHost([this.answers = const {}]);
 
   @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
+  Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     final answer = answers['$key:$method'];
     if (answer is Exception) throw answer;
     return answer;
@@ -129,10 +123,7 @@ class _FakeExtensions extends ExtensionService {
   Future<Map<String, dynamic>> getScoringScopes() async => scopes;
 
   @override
-  Future<Map<String, dynamic>?> scoreQsos({
-    required String scorerKey,
-    required Map<String, dynamic> args,
-  }) async {
+  Future<Map<String, dynamic>?> scoreQsos({required String scorerKey, required Map<String, dynamic> args}) async {
     called.add(scorerKey);
     return answers[scorerKey];
   }
@@ -144,13 +135,15 @@ class _FakeExtensions extends ExtensionService {
 /// One scorer's batch result: a verdict for each uuid in [qsoScores], plus the
 /// summaries every scorer reports whether or not its verdicts win.
 Map<String, dynamic> _result(Map<String, dynamic> qsoScores, {String? tally}) => {
-      'qsoScores': qsoScores,
-      'daySections': [
-        {'day': 100, 'count': qsoScores.length, 'scores': {}},
-      ],
-      'operationSummary': {?tally: {'key': tally, 'total': qsoScores.length}},
-      'scoresheet': {'qsos': qsoScores.length},
-    };
+  'qsoScores': qsoScores,
+  'daySections': [
+    {'day': 100, 'count': qsoScores.length, 'scores': {}},
+  ],
+  'operationSummary': {
+    ?tally: {'key': tally, 'total': qsoScores.length},
+  },
+  'scoresheet': {'qsos': qsoScores.length},
+};
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -176,10 +169,7 @@ void main() {
     ],
   }) async {
     final created = await operations.create(stationCall: 'N0DEV', userTitle: 'Park');
-    await operations.saveData(Operation(
-      uuid: created.uuid,
-      data: {...created.data, 'refs': refs},
-    ));
+    await operations.saveData(Operation(uuid: created.uuid, data: {...created.data, 'refs': refs}));
     final uuids = <String>[];
     for (var i = 0; i < count; i += 1) {
       final qso = await qsos.add(created.uuid, {
@@ -201,24 +191,40 @@ void main() {
       final extensions = _FakeExtensions(
         scopes: {
           'core': 'always',
-          'pota': {'refTypes': ['potaActivation', 'pota'], 'huntingRefTypes': ['pota']},
+          'pota': {
+            'refTypes': ['potaActivation', 'pota'],
+            'huntingRefTypes': ['pota'],
+          },
         },
         answers: {
           'core': _result({
             // Worked at another park: fresh credit to POTA, a duplicate to
             // core, and only one of the two may reach the row.
-            uuids[0]: {'value': 0, 'dupe': true, 'alerts': ['duplicate']},
-            uuids[1]: {'value': 1, 'dupe': false, 'notices': ['newBand', 'newDXCC']},
+            uuids[0]: {
+              'value': 0,
+              'dupe': true,
+              'alerts': ['duplicate'],
+            },
+            uuids[1]: {
+              'value': 1,
+              'dupe': false,
+              'notices': ['newBand', 'newDXCC'],
+            },
           }, tally: 'qsoCount'),
           'pota': _result({
-            uuids[0]: {'value': 1, 'notices': ['newRef']},
-            uuids[1]: {'value': 1, 'notices': ['newDay']},
+            uuids[0]: {
+              'value': 1,
+              'notices': ['newRef'],
+            },
+            uuids[1]: {
+              'value': 1,
+              'notices': ['newDay'],
+            },
           }, tally: 'activation'),
         },
       );
 
-      await ScoringService(extensions: extensions, qsos: qsos, operations: operations)
-          .rescoreOperation(operation);
+      await ScoringService(extensions: extensions, qsos: qsos, operations: operations).rescoreOperation(operation);
 
       // `dupe` goes with the alert — a row struck by core while POTA counts the
       // contact states the contradiction a second time — leaving core's entry
@@ -228,7 +234,10 @@ void main() {
       // POTA called it a new day, so core's `newBand` — its worked-before rule
       // speaking — goes, with the `dupe` flag that says the same thing. The
       // entity notice stays: nothing else in the app reports one.
-      expect((await cachedScores(uuids[1]))?['core'], {'value': 1, 'notices': ['newDXCC']});
+      expect((await cachedScores(uuids[1]))?['core'], {
+        'value': 1,
+        'notices': ['newDXCC'],
+      });
       expect((await cachedScores(uuids[1]))?.keys, containsAll(['core', 'pota']));
     });
 
@@ -237,26 +246,41 @@ void main() {
       final extensions = _FakeExtensions(
         scopes: {
           'core': 'always',
-          'pota': {'refTypes': ['potaActivation', 'pota'], 'huntingRefTypes': ['pota']},
+          'pota': {
+            'refTypes': ['potaActivation', 'pota'],
+            'huntingRefTypes': ['pota'],
+          },
         },
         answers: {
           'core': _result({
-            uuids[0]: {'notices': ['newBand']},
+            uuids[0]: {
+              'notices': ['newBand'],
+            },
             // The stretch after a break that dropped the park ref: POTA folds
             // right past it, so core is all this contact has.
-            uuids[1]: {'value': 0, 'dupe': true, 'alerts': ['duplicate']},
+            uuids[1]: {
+              'value': 0,
+              'dupe': true,
+              'alerts': ['duplicate'],
+            },
           }, tally: 'qsoCount'),
           'pota': _result({
-            uuids[0]: {'value': 1, 'notices': ['newRef']},
+            uuids[0]: {
+              'value': 1,
+              'notices': ['newRef'],
+            },
           }, tally: 'activation'),
         },
       );
 
-      await ScoringService(extensions: extensions, qsos: qsos, operations: operations)
-          .rescoreOperation(operation);
+      await ScoringService(extensions: extensions, qsos: qsos, operations: operations).rescoreOperation(operation);
 
       expect((await cachedScores(uuids[0]))?.keys, ['pota']);
-      expect((await cachedScores(uuids[1]))?['core'], {'value': 0, 'dupe': true, 'alerts': ['duplicate']});
+      expect((await cachedScores(uuids[1]))?['core'], {
+        'value': 0,
+        'dupe': true,
+        'alerts': ['duplicate'],
+      });
     });
 
     // The same hole as on the live paths, in the stored verdict: a contest that
@@ -272,25 +296,34 @@ void main() {
       final extensions = _FakeExtensions(
         scopes: {
           'core': 'always',
-          'cqww': {'refTypes': ['cqww']},
+          'cqww': {
+            'refTypes': ['cqww'],
+          },
         },
         answers: {
           'core': _result({
-            uuids[0]: {'value': 0, 'dupe': true, 'alerts': ['duplicate']},
+            uuids[0]: {
+              'value': 0,
+              'dupe': true,
+              'alerts': ['duplicate'],
+            },
           }, tally: 'qsoCount'),
           'cqww': _result({
-            uuids[0]: {'value': 0, 'alerts': ['invalidBand']},
+            uuids[0]: {
+              'value': 0,
+              'alerts': ['invalidBand'],
+            },
           }, tally: 'contest'),
         },
       );
 
-      await ScoringService(extensions: extensions, qsos: qsos, operations: operations)
-          .rescoreOperation(operation);
+      await ScoringService(extensions: extensions, qsos: qsos, operations: operations).rescoreOperation(operation);
 
-      expect(
-        (await cachedScores(uuids[0]))?['core'],
-        {'value': 0, 'dupe': true, 'alerts': ['duplicate']},
-      );
+      expect((await cachedScores(uuids[0]))?['core'], {
+        'value': 0,
+        'dupe': true,
+        'alerts': ['duplicate'],
+      });
     });
 
     // The batched pass is the only path a `dupe` flag travels: the SDK harness
@@ -306,11 +339,17 @@ void main() {
       final extensions = _FakeExtensions(
         scopes: {
           'core': 'always',
-          'cqww': {'refTypes': ['cqww']},
+          'cqww': {
+            'refTypes': ['cqww'],
+          },
         },
         answers: {
           'core': _result({
-            uuids[0]: {'value': 0, 'dupe': true, 'alerts': ['duplicate']},
+            uuids[0]: {
+              'value': 0,
+              'dupe': true,
+              'alerts': ['duplicate'],
+            },
           }, tally: 'qsoCount'),
           'cqww': _result({
             uuids[0]: {'value': 1, 'dupe': false},
@@ -318,8 +357,7 @@ void main() {
         },
       );
 
-      await ScoringService(extensions: extensions, qsos: qsos, operations: operations)
-          .rescoreOperation(operation);
+      await ScoringService(extensions: extensions, qsos: qsos, operations: operations).rescoreOperation(operation);
 
       expect((await cachedScores(uuids[0]))?['core'], {'value': 0});
     });
@@ -329,21 +367,31 @@ void main() {
       final extensions = _FakeExtensions(
         scopes: {
           'core': 'always',
-          'pota': {'refTypes': ['potaActivation', 'pota'], 'huntingRefTypes': ['pota']},
+          'pota': {
+            'refTypes': ['potaActivation', 'pota'],
+            'huntingRefTypes': ['pota'],
+          },
         },
         answers: {
           'core': _result({
-            uuids[0]: {'value': 0, 'dupe': true, 'alerts': ['duplicate']},
+            uuids[0]: {
+              'value': 0,
+              'dupe': true,
+              'alerts': ['duplicate'],
+            },
           }, tally: 'qsoCount'),
           // `scoreQsos` reports a failed scorer as null.
           'pota': null,
         },
       );
 
-      await ScoringService(extensions: extensions, qsos: qsos, operations: operations)
-          .rescoreOperation(operation);
+      await ScoringService(extensions: extensions, qsos: qsos, operations: operations).rescoreOperation(operation);
 
-      expect((await cachedScores(uuids[0]))?['core'], {'value': 0, 'dupe': true, 'alerts': ['duplicate']});
+      expect((await cachedScores(uuids[0]))?['core'], {
+        'value': 0,
+        'dupe': true,
+        'alerts': ['duplicate'],
+      });
     });
 
     // Priority is per-QSO only. The tallies are the operation's QSO count,
@@ -354,16 +402,26 @@ void main() {
       final extensions = _FakeExtensions(
         scopes: {
           'core': 'always',
-          'pota': {'refTypes': ['potaActivation', 'pota'], 'huntingRefTypes': ['pota']},
+          'pota': {
+            'refTypes': ['potaActivation', 'pota'],
+            'huntingRefTypes': ['pota'],
+          },
         },
         answers: {
-          'core': _result({uuids[0]: {'notices': ['newDXCC']}}, tally: 'qsoCount'),
-          'pota': _result({uuids[0]: {'notices': ['newRef']}}, tally: 'activation'),
+          'core': _result({
+            uuids[0]: {
+              'notices': ['newDXCC'],
+            },
+          }, tally: 'qsoCount'),
+          'pota': _result({
+            uuids[0]: {
+              'notices': ['newRef'],
+            },
+          }, tally: 'activation'),
         },
       );
 
-      await ScoringService(extensions: extensions, qsos: qsos, operations: operations)
-          .rescoreOperation(operation);
+      await ScoringService(extensions: extensions, qsos: qsos, operations: operations).rescoreOperation(operation);
 
       final scoring = (await operations.get(operation.uuid))!.localData['scoring'] as Map;
       expect(scoring.keys, containsAll(['core', 'pota']));
@@ -376,24 +434,32 @@ void main() {
   // sees it: the call-info pills under the callsign being typed, and the strike
   // marks in the spots list.
   group('the live single-QSO path', () {
-    Future<Map<String, dynamic>?> score(Map<String, Object?> answers) =>
-        _LiveExtensions(_StubHost(answers), _potaAndCore).scoreQso(
-          operation: _parkOperationData,
-          qso: {
-            'their': {'call': 'W1AW'},
-            'band': '20m',
-            'mode': 'SSB',
-          },
-        );
+    Future<Map<String, dynamic>?> score(Map<String, Object?> answers) => _LiveExtensions(_StubHost(answers), _potaAndCore).scoreQso(
+      operation: _parkOperationData,
+      qso: {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'SSB',
+      },
+    );
 
     test('the fallback yields its dupe alert to a scorer that judged the axis', () async {
       final result = await score({
-        'core:scoreQso': {'notices': <String>[], 'alerts': ['duplicate']},
+        'core:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
         // Worked at another park: POTA has ruled on whether this station counts
         // as worked before, and its answer is the one the row states.
-        'pota:scoreQso': {'notices': ['newRef'], 'alerts': <String>[]},
+        'pota:scoreQso': {
+          'notices': ['newRef'],
+          'alerts': <String>[],
+        },
       });
-      expect(result, {'notices': ['newRef'], 'alerts': <String>[]});
+      expect(result, {
+        'notices': ['newRef'],
+        'alerts': <String>[],
+      });
     });
 
     // The hole a bare "did it answer?" test leaves. Every contest scorer's
@@ -402,8 +468,14 @@ void main() {
     // is then the only scorer that knows.
     test('a scorer that answered without judging the axis leaves the alert alone', () async {
       final result = await score({
-        'core:scoreQso': {'notices': <String>[], 'alerts': ['duplicate']},
-        'pota:scoreQso': {'notices': <String>[], 'alerts': ['invalidCategory']},
+        'core:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
+        'pota:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['invalidCategory'],
+        },
       });
       expect(result?['alerts'], ['duplicate', 'invalidCategory']);
     });
@@ -414,17 +486,29 @@ void main() {
     // contradiction this priority exists to end.
     test('a contest\'s own worked-before notice is recognized', () async {
       final result = await score({
-        'core:scoreQso': {'notices': <String>[], 'alerts': ['duplicate']},
-        'pota:scoreQso': {'notices': ['newPark'], 'alerts': <String>[]},
+        'core:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
+        'pota:scoreQso': {
+          'notices': ['newPark'],
+          'alerts': <String>[],
+        },
       });
-      expect(result, {'notices': ['newPark'], 'alerts': <String>[]});
+      expect(result, {
+        'notices': ['newPark'],
+        'alerts': <String>[],
+      });
     });
 
     // `dupe: false` IS a judgement — the scorer ran its dupe test and cleared
     // the contact — so core's contradicting alert still yields.
     test('an explicit not-a-duplicate counts as judging the axis', () async {
       final result = await score({
-        'core:scoreQso': {'notices': <String>[], 'alerts': ['duplicate']},
+        'core:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
         'pota:scoreQso': {'dupe': false, 'notices': <String>[], 'alerts': <String>[]},
       });
       expect(result, {'notices': <String>[], 'alerts': <String>[]});
@@ -436,7 +520,10 @@ void main() {
           'notices': ['newBand', 'newDXCC'],
           'alerts': <String>[],
         },
-        'pota:scoreQso': {'notices': ['newRef'], 'alerts': <String>[]},
+        'pota:scoreQso': {
+          'notices': ['newRef'],
+          'alerts': <String>[],
+        },
       });
       expect(result?['notices'], ['newDXCC', 'newRef']);
     });
@@ -444,7 +531,10 @@ void main() {
     // A scorer that says nothing at all has judged nothing at all.
     test('an empty verdict leaves the fallback speaking in full', () async {
       final result = await score({
-        'core:scoreQso': {'notices': <String>[], 'alerts': ['duplicate']},
+        'core:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
         'pota:scoreQso': {'notices': <String>[], 'alerts': <String>[]},
       });
       expect(result?['alerts'], ['duplicate']);
@@ -452,7 +542,10 @@ void main() {
 
     test('the fallback scorer speaks when nothing else answered', () async {
       final result = await score({
-        'core:scoreQso': {'notices': <String>[], 'alerts': ['duplicate']},
+        'core:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
         'pota:scoreQso': null,
       });
       expect(result?['alerts'], ['duplicate']);
@@ -462,7 +555,10 @@ void main() {
     // than core's, which at least catches the dupe.
     test('a scorer that failed does not silence the fallback', () async {
       final result = await score({
-        'core:scoreQso': {'notices': <String>[], 'alerts': ['duplicate']},
+        'core:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
         'pota:scoreQso': Exception('scorer blew up'),
       });
       expect(result?['alerts'], ['duplicate']);
@@ -470,22 +566,25 @@ void main() {
   });
 
   group('the live spots path', () {
-    Future<Map<String, Map<String, List<String>>>?> scoreWith(
-      Map<String, dynamic> scopes,
-      Map<String, dynamic> operation,
-      Map<String, Object?> answers,
-    ) =>
+    Future<Map<String, Map<String, List<String>>>?> scoreWith(Map<String, dynamic> scopes, Map<String, dynamic> operation, Map<String, Object?> answers) =>
         _LiveExtensions(_StubHost(answers), scopes).scoreCandidates(
           operation: operation,
           operationUuid: 'op-live',
           candidates: {
-            'spot-1': {'their': {'call': 'W1AW'}, 'band': '20m', 'mode': 'SSB'},
-            'spot-2': {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'},
+            'spot-1': {
+              'their': {'call': 'W1AW'},
+              'band': '20m',
+              'mode': 'SSB',
+            },
+            'spot-2': {
+              'their': {'call': 'K1ABC'},
+              'band': '20m',
+              'mode': 'SSB',
+            },
           },
         );
 
-    Future<Map<String, Map<String, List<String>>>?> score(Map<String, Object?> answers) =>
-        scoreWith(_potaAndCore, _parkOperationData, answers);
+    Future<Map<String, Map<String, List<String>>>?> score(Map<String, Object?> answers) => scoreWith(_potaAndCore, _parkOperationData, answers);
 
     // Per CANDIDATE: a batch is one bridge crossing carrying every spot on
     // screen, so a rule applied per batch would let one park spot decide how
@@ -493,31 +592,55 @@ void main() {
     test('the fallback speaks only for the candidates nothing else scored', () async {
       final result = await score({
         'core:scoreCandidates': {
-          'spot-1': {'notices': <String>[], 'alerts': ['duplicate']},
-          'spot-2': {'notices': <String>[], 'alerts': ['duplicate']},
+          'spot-1': {
+            'notices': <String>[],
+            'alerts': ['duplicate'],
+          },
+          'spot-2': {
+            'notices': <String>[],
+            'alerts': ['duplicate'],
+          },
         },
         'pota:scoreCandidates': {
-          'spot-1': {'notices': ['newRef'], 'alerts': <String>[]},
+          'spot-1': {
+            'notices': ['newRef'],
+            'alerts': <String>[],
+          },
         },
       });
-      expect(result?['spot-1'], {'notices': ['newRef'], 'alerts': <String>[]});
-      expect(result?['spot-2'], {'notices': <String>[], 'alerts': ['duplicate']});
+      expect(result?['spot-1'], {
+        'notices': ['newRef'],
+        'alerts': <String>[],
+      });
+      expect(result?['spot-2'], {
+        'notices': <String>[],
+        'alerts': ['duplicate'],
+      });
     });
 
     test('an entity notice survives on a candidate another scorer judged', () async {
       final result = await score({
         'core:scoreCandidates': {
-          'spot-1': {'notices': ['newDXCC'], 'alerts': ['duplicate']},
+          'spot-1': {
+            'notices': ['newDXCC'],
+            'alerts': ['duplicate'],
+          },
           'spot-2': {'notices': <String>[], 'alerts': <String>[]},
         },
         'pota:scoreCandidates': {
           // Worked, but at another park — so the strike goes and the entity
           // pill stays.
-          'spot-1': {'notices': ['newRef'], 'alerts': <String>[]},
+          'spot-1': {
+            'notices': ['newRef'],
+            'alerts': <String>[],
+          },
           'spot-2': {'notices': <String>[], 'alerts': <String>[]},
         },
       });
-      expect(result?['spot-1'], {'notices': ['newDXCC', 'newRef'], 'alerts': <String>[]});
+      expect(result?['spot-1'], {
+        'notices': ['newDXCC', 'newRef'],
+        'alerts': <String>[],
+      });
       // Nothing to say from either scorer — the panel gets no entry at all,
       // which is what un-strikes a spot.
       expect(result?.containsKey('spot-2'), isFalse);
@@ -529,12 +652,21 @@ void main() {
     test('a board answered without a worked-before judgement keeps its striking', () async {
       final result = await scoreWith(_vhfPark, _vhfParkOperationData, {
         'core:scoreCandidates': {
-          'spot-1': {'notices': <String>[], 'alerts': ['duplicate']},
+          'spot-1': {
+            'notices': <String>[],
+            'alerts': ['duplicate'],
+          },
           'spot-2': {'notices': <String>[], 'alerts': <String>[]},
         },
         'vhf:scoreCandidates': {
-          'spot-1': {'notices': <String>[], 'alerts': ['missingExchange']},
-          'spot-2': {'notices': <String>[], 'alerts': ['missingExchange']},
+          'spot-1': {
+            'notices': <String>[],
+            'alerts': ['missingExchange'],
+          },
+          'spot-2': {
+            'notices': <String>[],
+            'alerts': ['missingExchange'],
+          },
         },
       });
       expect(result?['spot-1']?['alerts'], ['duplicate', 'missingExchange']);

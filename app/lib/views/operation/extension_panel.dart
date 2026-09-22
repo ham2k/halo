@@ -39,15 +39,15 @@ import 'svg_scene/scene_model.dart';
 /// `template` hook (a CW message about to be keyed) are handed, so
 /// `{{ op.station }}` means the same on both.
 Map<String, dynamic> operationHookArgs(Operation operation) => {
-      ...operation.data,
-      'uuid': operation.uuid,
-      // Row COLUMNS, not QSON — `qsonPayloadFor`'s shape carries neither,
-      // and a panel is the surface that most wants to say when the
-      // operation ran. Without them a template naming the operation's
-      // date has nothing to name (see the SDK's `opValues`).
-      if (operation.startAtMillisMin != null) 'startAtMillisMin': operation.startAtMillisMin,
-      if (operation.startAtMillisMax != null) 'startAtMillisMax': operation.startAtMillisMax,
-    };
+  ...operation.data,
+  'uuid': operation.uuid,
+  // Row COLUMNS, not QSON — `qsonPayloadFor`'s shape carries neither,
+  // and a panel is the surface that most wants to say when the
+  // operation ran. Without them a template naming the operation's
+  // date has nothing to name (see the SDK's `opValues`).
+  if (operation.startAtMillisMin != null) 'startAtMillisMin': operation.startAtMillisMin,
+  if (operation.startAtMillisMax != null) 'startAtMillisMax': operation.startAtMillisMax,
+};
 
 /// What a panel renders against, gathered by the view. Compared field by
 /// field to decide whether a rebuild is worth a render — the view rebuilds
@@ -67,13 +67,7 @@ class PanelRenderContext {
   final int spotsRevision;
   final int lookupRevision;
 
-  const PanelRenderContext({
-    this.operation,
-    this.qso,
-    this.qsoCount = 0,
-    this.spotsRevision = 0,
-    this.lookupRevision = 0,
-  });
+  const PanelRenderContext({this.operation, this.qso, this.qsoCount = 0, this.spotsRevision = 0, this.lookupRevision = 0});
 
   /// The triggers that fired between [previous] and this — empty means
   /// nothing this panel could have asked for actually changed.
@@ -96,13 +90,7 @@ class ExtensionPanel extends StatefulWidget {
   /// handed upward — and it can only be known once the panel has answered.
   final ValueChanged<String?>? onTitle;
 
-  const ExtensionPanel({
-    super.key,
-    required this.panel,
-    required this.panels,
-    required this.renderContext,
-    this.onTitle,
-  });
+  const ExtensionPanel({super.key, required this.panel, required this.panels, required this.renderContext, this.onTitle});
 
   @override
   State<ExtensionPanel> createState() => _ExtensionPanelState();
@@ -249,9 +237,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     // with drift apart, which is the whole reason it borrows their helper.
     AppClock.instance.addListener(_onClockTravel);
     widget.panels.addListener(_onCatalogChanged);
-    widget.panels.extensions.runtimeGeneration.addListener(
-      _onSceneRuntimeChanged,
-    );
+    widget.panels.extensions.runtimeGeneration.addListener(_onSceneRuntimeChanged);
     _startTicker();
   }
 
@@ -276,10 +262,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   /// and keeps rendering while the catalog has no answer for its id, and
   /// asking the catalog would silently drop its descriptor's triggers for
   /// the length of that gap.
-  Set<String> get _triggers => {
-    ...widget.panel.triggers,
-    ...widget.panels.declaredTriggers(widget.panel.id),
-  };
+  Set<String> get _triggers => {...widget.panel.triggers, ...widget.panels.declaredTriggers(widget.panel.id)};
 
   /// The panel's own config was edited (its form is host-persisted, so
   /// nothing else would tell this panel its inputs changed).
@@ -309,12 +292,8 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     super.didUpdateWidget(old);
     if (old.panels != widget.panels) {
       old.panels.removeListener(_onCatalogChanged);
-      old.panels.extensions.runtimeGeneration.removeListener(
-        _onSceneRuntimeChanged,
-      );
-      widget.panels.extensions.runtimeGeneration.addListener(
-        _onSceneRuntimeChanged,
-      );
+      old.panels.extensions.runtimeGeneration.removeListener(_onSceneRuntimeChanged);
+      widget.panels.extensions.runtimeGeneration.addListener(_onSceneRuntimeChanged);
       _sceneGeneration++;
       widget.panels.addListener(_onCatalogChanged);
     }
@@ -385,11 +364,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     if (period == null || _tick != null) return;
     _tick = Timer(
       Duration(
-        milliseconds: panelTickDelayMillis(
-          periodMs: period.inMilliseconds,
-          nowMillis: nowMillis(),
-          speed: AppClock.instance.speed,
-        ),
+        milliseconds: panelTickDelayMillis(periodMs: period.inMilliseconds, nowMillis: nowMillis(), speed: AppClock.instance.speed),
       ),
       () {
         _tick = null;
@@ -422,12 +397,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     // duration, and a Timer fires on real time — pairing it with a rescaled
     // clock would make the throttle wait the wrong length.
     final wait = panelRenderDelay(lastEndedAt: _lastRenderEndedAt, now: realNowUtc());
-    switch (panelRenderRequest(
-      reason: reason,
-      rendering: _rendering,
-      scheduled: _throttle != null,
-      wait: wait,
-    )) {
+    switch (panelRenderRequest(reason: reason, rendering: _rendering, scheduled: _throttle != null, wait: wait)) {
       case PanelRenderRequest.drop:
         return;
       case PanelRenderRequest.coalesce:
@@ -472,8 +442,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       // quiet never reaches the streak's report, and nothing else prints
       // for this leg.
       debugPrint('[panels] config for ${panel.id} failed: $e');
-      ErrorReportingService.reportIfRepeated(
-        'panel:config:${panel.id}', e, stack, context: 'panel:config:${panel.id}', threshold: 1);
+      ErrorReportingService.reportIfRepeated('panel:config:${panel.id}', e, stack, context: 'panel:config:${panel.id}', threshold: 1);
       return null;
     }
   }
@@ -525,10 +494,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         'environment': _environment,
         'clock': {'nowMillis': nowMillis(), 'realNowMillis': realNowMillis()},
       });
-      if (!mounted ||
-          panel.id != widget.panel.id ||
-          generation != _sceneGeneration ||
-          sceneRevision != _sceneRevision) {
+      if (!mounted || panel.id != widget.panel.id || generation != _sceneGeneration || sceneRevision != _sceneRevision) {
         return;
       }
       final content = PanelContent.fromJson(result, previous: _content);
@@ -581,12 +547,8 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       // policy exists to surface — but a threshold above one would lose the
       // panel that renders ONCE, which is the default and the case least
       // likely to reach us any other way.
-      ErrorReportingService.reportIfRepeated(
-        'panel:render:${panel.id}', e, stack, context: 'panel:render:${panel.id}', threshold: 1);
-      if (!mounted ||
-          panel.id != widget.panel.id ||
-          generation != _sceneGeneration ||
-          sceneRevision != _sceneRevision) {
+      ErrorReportingService.reportIfRepeated('panel:render:${panel.id}', e, stack, context: 'panel:render:${panel.id}', threshold: 1);
+      if (!mounted || panel.id != widget.panel.id || generation != _sceneGeneration || sceneRevision != _sceneRevision) {
         return;
       }
       setState(() => _error = context.t.operation.layout.panelRenderFailed(panel: panel.title));
@@ -606,9 +568,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   @override
   void dispose() {
     widget.panels.removeListener(_onCatalogChanged);
-    widget.panels.extensions.runtimeGeneration.removeListener(
-      _onSceneRuntimeChanged,
-    );
+    widget.panels.extensions.runtimeGeneration.removeListener(_onSceneRuntimeChanged);
     AppClock.instance.removeListener(_onClockTravel);
     WidgetsBinding.instance.removeObserver(this);
     _throttle?.cancel();
@@ -641,10 +601,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     final panel = widget.panel;
     final generation = _sceneGeneration;
     final ctx = widget.renderContext;
-    bool current() =>
-        mounted &&
-        generation == _sceneGeneration &&
-        panel.id == widget.panel.id;
+    bool current() => mounted && generation == _sceneGeneration && panel.id == widget.panel.id;
     // Refused, NOT run against an empty config the way a render is: a config
     // is where a panel keeps which radio it commands, and an action aimed by
     // defaults is a plausible wrong answer. The failure is the config read's
@@ -658,8 +615,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       }
       if (!current()) throw StateError('Panel replaced');
       final result = await widget.panels.event(panel, {
-        if (ctx.operation != null)
-          'operation': operationHookArgs(ctx.operation!),
+        if (ctx.operation != null) 'operation': operationHookArgs(ctx.operation!),
         if (ctx.qso != null) 'qso': ctx.qso,
         'qsoCount': ctx.qsoCount,
         'config': config,
@@ -674,13 +630,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       return values;
     } catch (error, stack) {
       if (current() && !configUnreadable) {
-        ErrorReportingService.reportIfRepeated(
-          'panel:event:${panel.id}',
-          error,
-          stack,
-          context: 'panel:event:${panel.id}',
-          threshold: 1,
-        );
+        ErrorReportingService.reportIfRepeated('panel:event:${panel.id}', error, stack, context: 'panel:event:${panel.id}', threshold: 1);
       }
       rethrow;
     } finally {
@@ -695,23 +645,23 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) {
-          _paneSize = constraints.biggest;
-          // Watched only for a scene, or for a pane that has not yet said what
-          // it is. Resolving the environment is a few dozen theme lookups and a
-          // `jsonEncode` to compare against, on every layout pass of a splitter
-          // drag — and markdown and HTML never act on a change. They are handed
-          // a fresh one when they render ([_render]).
-          if (_content == null || _content!.kind == 'svgScene') {
-            _captureEnvironment(panelEnvironment(context, _paneSize));
-          }
-          return PanelContentView(
-            key: ValueKey('${widget.panel.id}:$_sceneGeneration'),
-            content: _content,
-            error: _error,
-            onRetry: _error == null ? null : _retry,
-            onSceneEvent: _sceneEvent,
-          );
-        },
+    builder: (context, constraints) {
+      _paneSize = constraints.biggest;
+      // Watched only for a scene, or for a pane that has not yet said what
+      // it is. Resolving the environment is a few dozen theme lookups and a
+      // `jsonEncode` to compare against, on every layout pass of a splitter
+      // drag — and markdown and HTML never act on a change. They are handed
+      // a fresh one when they render ([_render]).
+      if (_content == null || _content!.kind == 'svgScene') {
+        _captureEnvironment(panelEnvironment(context, _paneSize));
+      }
+      return PanelContentView(
+        key: ValueKey('${widget.panel.id}:$_sceneGeneration'),
+        content: _content,
+        error: _error,
+        onRetry: _error == null ? null : _retry,
+        onSceneEvent: _sceneEvent,
       );
+    },
+  );
 }

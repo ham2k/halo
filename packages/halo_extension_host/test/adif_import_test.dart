@@ -27,14 +27,7 @@ import 'support/bundles.dart';
 /// What one reference program's exporter writes, and therefore what its
 /// importer has to read back.
 class _Program {
-  const _Program({
-    required this.key,
-    required this.sig,
-    required this.activationType,
-    required this.reference,
-    this.huntingType,
-    this.refField,
-  });
+  const _Program({required this.key, required this.sig, required this.activationType, required this.reference, this.huntingType, this.refField});
 
   /// The extension key, which is also the hook key.
   final String key;
@@ -67,41 +60,17 @@ const _programs = [
   _Program(key: 'blha', sig: 'BLHA', activationType: 'blhaActivation', reference: 'BEL 001'),
   _Program(key: 'eca', sig: 'ECA', activationType: 'ecaActivation', reference: 'G-00001'),
   _Program(key: 'ela', sig: 'ELA', activationType: 'elaActivation', reference: 'ENG 001'),
-  _Program(
-      key: 'gma', sig: 'GMA', activationType: 'gmaActivation', huntingType: 'gma', reference: 'DL/AL-001'),
-  _Program(
-      key: 'llota',
-      sig: 'LLOTA',
-      activationType: 'llotaActivation',
-      huntingType: 'llota',
-      reference: 'LLUS-0001',
-      refField: 'llota_ref'),
-  _Program(
-      key: 'mota', sig: 'MOTA', activationType: 'motaActivation', huntingType: 'mota', reference: 'X00001'),
+  _Program(key: 'gma', sig: 'GMA', activationType: 'gmaActivation', huntingType: 'gma', reference: 'DL/AL-001'),
+  _Program(key: 'llota', sig: 'LLOTA', activationType: 'llotaActivation', huntingType: 'llota', reference: 'LLUS-0001', refField: 'llota_ref'),
+  _Program(key: 'mota', sig: 'MOTA', activationType: 'motaActivation', huntingType: 'mota', reference: 'X00001'),
   _Program(key: 'pga', sig: 'PGA', activationType: 'pgaActivation', reference: 'AB12'),
   // `adifProgram: 'SIOTA'` — the award styles itself SiOTA but its ADIF is
   // upper-case, and importing on the label would read none of its own files.
-  _Program(
-      key: 'siota',
-      sig: 'SIOTA',
-      activationType: 'siotaActivation',
-      huntingType: 'siota',
-      reference: 'VK-ABC123'),
-  _Program(
-      key: 'tota', sig: 'TOTA', activationType: 'totaActivation', huntingType: 'tota', reference: 'OKR-0001'),
+  _Program(key: 'siota', sig: 'SIOTA', activationType: 'siotaActivation', huntingType: 'siota', reference: 'VK-ABC123'),
+  _Program(key: 'tota', sig: 'TOTA', activationType: 'totaActivation', huntingType: 'tota', reference: 'OKR-0001'),
   _Program(key: 'wca', sig: 'WCA', activationType: 'wcaActivation', reference: 'ON-00558'),
-  _Program(
-      key: 'wwbota',
-      sig: 'WWBOTA',
-      activationType: 'wwbotaActivation',
-      huntingType: 'wwbota',
-      reference: 'B/G-0001'),
-  _Program(
-      key: 'zlota',
-      sig: 'ZLOTA',
-      activationType: 'zlotaActivation',
-      huntingType: 'zlota',
-      reference: 'ZLH/AA-001'),
+  _Program(key: 'wwbota', sig: 'WWBOTA', activationType: 'wwbotaActivation', huntingType: 'wwbota', reference: 'B/G-0001'),
+  _Program(key: 'zlota', sig: 'ZLOTA', activationType: 'zlotaActivation', huntingType: 'zlota', reference: 'ZLH/AA-001'),
 ];
 
 // Activation refs come back tagged `for: 'operation'`: ADIF flattens an
@@ -420,12 +389,7 @@ void main() {
         // is the single thing standing between these two fields and a
         // fabricated reference.
         final results = await importRefsFrom(program.key, [
-          {
-            'sig': 'POTA',
-            'sig_info': program.reference,
-            'my_sig': 'POTA',
-            'my_sig_info': program.reference,
-          },
+          {'sig': 'POTA', 'sig_info': program.reference, 'my_sig': 'POTA', 'my_sig_info': program.reference},
         ]);
 
         expect(results.single, isNull);
@@ -447,12 +411,7 @@ void main() {
       if (program.huntingType case final huntingType?) {
         test('reads the other station\'s reference too', () async {
           final results = await importRefsFrom(program.key, [
-            {
-              'sig': program.sig,
-              'sig_info': program.reference,
-              'my_sig': program.sig,
-              'my_sig_info': program.reference,
-            },
+            {'sig': program.sig, 'sig_info': program.reference, 'my_sig': program.sig, 'my_sig_info': program.reference},
           ]);
 
           // Same string, two ref types and two scopes: the hunted reference
@@ -481,11 +440,7 @@ void main() {
           // it would quietly import a two-reference contact as a one-reference
           // one.
           final results = await importRefsFrom(program.key, [
-            {
-              'sig': program.sig,
-              'sig_info': program.reference,
-              refField: '${program.reference},${program.reference}9',
-            },
+            {'sig': program.sig, 'sig_info': program.reference, refField: '${program.reference},${program.reference}9'},
           ]);
 
           expect(results.single['refs'], [
@@ -504,11 +459,7 @@ void main() {
 
           expect(results.single['refs'], [
             {'type': program.activationType, 'ref': program.reference, 'for': 'operation'},
-            {
-              'type': program.activationType,
-              'ref': '${program.reference}9',
-              'for': 'operation',
-            },
+            {'type': program.activationType, 'ref': '${program.reference}9', 'for': 'operation'},
           ]);
         });
       }

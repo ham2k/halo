@@ -38,11 +38,7 @@ const _handshakeBudget = Duration(seconds: 5);
 ///
 /// The port comes back over a handshake rather than being created here,
 /// because a `ReceivePort` belongs to the isolate that listens on it.
-Future<void Function(Object message)?> spawnWatchdog({
-  required Duration silence,
-  required Duration grace,
-  required int exitCode,
-}) async {
+Future<void Function(Object message)?> spawnWatchdog({required Duration silence, required Duration grace, required int exitCode}) async {
   final handshake = ReceivePort();
   try {
     await Isolate.spawn(
@@ -84,9 +80,7 @@ void _watchdogMain(_WatchdogSetup setup) {
       // process stops existing, and debugPrint's own line-rate limiter can
       // hold a message back for later — and there is no later.
       try {
-        stderr.writeln(
-          '[watchdog] the main isolate has run nothing for ${setup.silence.inSeconds}s — ending the process',
-        );
+        stderr.writeln('[watchdog] the main isolate has run nothing for ${setup.silence.inSeconds}s — ending the process');
       } catch (_) {
         // Saying so is worth a try; it is not worth the exit that follows.
       }

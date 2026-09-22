@@ -20,10 +20,7 @@ import 'package:ham2k_logger/config/version.dart';
 
 void main(List<String> args) {
   final editionArg = args.isNotEmpty ? args.first : kEdition.name;
-  final edition = Edition.values.firstWhere(
-    (e) => e.name == editionArg,
-    orElse: () => Edition.dev,
-  );
+  final edition = Edition.values.firstWhere((e) => e.name == editionArg, orElse: () => Edition.dev);
 
   print('HALO_COMPACT_BASE=${compactName(edition: edition, version: kPublicVersionInfo, build: kBuildNumber)}');
   print('HALO_FULL_BASE=${fullName(edition: edition, version: kPublicVersionInfo, build: kBuildNumber)}');

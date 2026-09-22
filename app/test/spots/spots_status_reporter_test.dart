@@ -38,12 +38,7 @@ void main() {
     disabled = {};
     filterChanges = _FilterChanges();
     spots = SpotsService(
-      fetchSpots: () async => (
-        items: const <Map<String, dynamic>>[],
-        succeeded: const <String>[],
-        unreachable: unavailable,
-        failed: failed,
-      ),
+      fetchSpots: () async => (items: const <Map<String, dynamic>>[], succeeded: const <String>[], unreachable: unavailable, failed: failed),
     );
     // An outage is only recorded while somebody is watching — which in the
     // app is always true when a fetch runs, since the Operation View holds a

@@ -7,16 +7,12 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 /// bypassing the operator's per-type privacy preferences. Missing methods
 /// return successful null entries; failed registrations must stop the load.
 Future<List<Map<String, dynamic>>> collectExportTypes(ExtensionHost host) async {
-  final entries = await host.invokeHookAll(
-    'export', method: 'getExportTypes', args: const <String, dynamic>{},
-  );
+  final entries = await host.invokeHookAll('export', method: 'getExportTypes', args: const <String, dynamic>{});
   final types = <String, Map<String, dynamic>>{};
   for (final entry in entries) {
     final hookKey = entry['key'];
     if (entry['ok'] != true) {
-      throw ExtensionHostException(
-        'Export type registration failed: $hookKey: ${entry['error'] ?? 'registration unavailable'}',
-      );
+      throw ExtensionHostException('Export type registration failed: $hookKey: ${entry['error'] ?? 'registration unavailable'}');
     }
     final value = entry['value'];
     if (value == null) continue;

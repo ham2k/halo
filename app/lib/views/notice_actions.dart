@@ -56,29 +56,21 @@ String? _urlFrom(dynamic args) {
   return null;
 }
 
-
 void _showNoticeDialog(Map<String, dynamic> args) {
   final context = navigatorKey.currentContext;
   if (context == null) return;
 
   final title = args['dialogTitle'] as String?;
   final text = (args['dialogText'] as String?) ?? '';
-  final dialogActions =
-      ((args['dialogActions'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>().map((a) => a.cast<String, dynamic>()).toList();
+  final dialogActions = ((args['dialogActions'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>().map((a) => a.cast<String, dynamic>()).toList();
 
   showHaloDialog<void>(
     context: context,
     builder: (dialogContext) => HaloDialog(
       wide: true,
       title: title != null ? Text(title) : null,
-      content: MarkdownBody(
-        data: text,
-        styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(Theme.of(dialogContext))),
-      ),
-      cancel: TextButton(
-        onPressed: () => Navigator.of(dialogContext).pop(),
-        child: Text(t.common.done),
-      ),
+      content: MarkdownBody(data: text, styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(Theme.of(dialogContext)))),
+      cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
       actions: [
         for (final action in dialogActions)
           TextButton(

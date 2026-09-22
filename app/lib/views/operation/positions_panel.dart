@@ -81,9 +81,7 @@ class _PositionsPanelState extends State<PositionsPanel> {
         padding: const EdgeInsets.all(Space.xl),
         child: Text(
           context.t.operation.positions.nobodyYet,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
+          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
         ),
       );
     }
@@ -137,9 +135,7 @@ class PositionBlockView extends StatelessWidget {
     // point of the block is telling the operator's own answers from the
     // app's, so these must not be a subtle difference.
     final entered = theme.textTheme.bodyMedium;
-    final suggested = theme.textTheme.bodyMedium?.copyWith(
-      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-    );
+    final suggested = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5));
 
     // The sender's own row, in the sender's own order — labels and all, so a
     // contest exchange renders under the name its extension gave it even on a
@@ -182,22 +178,20 @@ class PositionBlockView extends StatelessWidget {
       children: [
         Text(
           _header(context, block),
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.primary,
-            fontWeight: FontWeight.bold,
-          ),
+          style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: Space.xxs),
         Text(_vfoLine(draft.qso), style: theme.textTheme.bodyMedium),
-        if (fields.isNotEmpty)
-          Text.rich(TextSpan(children: _spaced(fields)), maxLines: 1, overflow: TextOverflow.ellipsis),
+        if (fields.isNotEmpty) Text.rich(TextSpan(children: _spaced(fields)), maxLines: 1, overflow: TextOverflow.ellipsis),
         if (name != null || (place != null && place.isNotEmpty))
           Text.rich(
-            TextSpan(children: [
-              ?name,
-              if (name != null && place != null && place.isNotEmpty) TextSpan(text: t.nameIn, style: suggested),
-              if (place != null && place.isNotEmpty) TextSpan(text: place, style: suggested),
-            ]),
+            TextSpan(
+              children: [
+                ?name,
+                if (name != null && place != null && place.isNotEmpty) TextSpan(text: t.nameIn, style: suggested),
+                if (place != null && place.isNotEmpty) TextSpan(text: place, style: suggested),
+              ],
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -230,23 +224,15 @@ class PositionBlockView extends StatelessWidget {
   /// has not answered yet leaves this blank rather than inventing a band.
   static String _vfoLine(Map<String, dynamic> qso) {
     final freq = qso['freq'];
-    return [
-      ?asQsonString(qso['band'])?.trim(),
-      ?asQsonString(qso['mode'])?.trim(),
-      if (freq is num && freq > 0) fmtFreq(freq.toDouble()),
-    ].join(' ');
+    return [?asQsonString(qso['band'])?.trim(), ?asQsonString(qso['mode'])?.trim(), if (freq is num && freq > 0) fmtFreq(freq.toDouble())].join(' ');
   }
 
   static List<TextSpan> _spaced(List<TextSpan> spans) => [
-        for (var i = 0; i < spans.length; i++) ...[
-          if (i > 0) const TextSpan(text: ' '),
-          spans[i],
-        ],
-      ];
+    for (var i = 0; i < spans.length; i++) ...[if (i > 0) const TextSpan(text: ' '), spans[i]],
+  ];
 
   static Map<String, dynamic> _mapAt(Map<String, dynamic> from, String key) {
     final value = from[key];
     return value is Map ? value.cast<String, dynamic>() : const {};
   }
-
 }

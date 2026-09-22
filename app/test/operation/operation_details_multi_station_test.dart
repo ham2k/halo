@@ -43,21 +43,25 @@ void main() {
     await settings.setDeveloperMode(developerMode);
     Operation? result;
     var opened = false;
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Builder(builder: (context) {
-          if (!opened) {
-            opened = true;
-            // After the first frame: the dialog needs a Navigator, which this
-            // builder's own context does not have until the route is up.
-            WidgetsBinding.instance.addPostFrameCallback((_) async {
-              result = await editOperationDetails(context, services, operation, save: save);
-            });
-          }
-          return const SizedBox.shrink();
-        }),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              if (!opened) {
+                opened = true;
+                // After the first frame: the dialog needs a Navigator, which this
+                // builder's own context does not have until the route is up.
+                WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  result = await editOperationDetails(context, services, operation, save: save);
+                });
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     return result;
   }
@@ -171,10 +175,7 @@ void main() {
     // so it is what gives way — and the seat being left keeps its name, for
     // whoever sits down there next.
     await operations.updateLocalData(operation.uuid, {'multiIdentifier': '1'});
-    await operations.saveData(Operation(
-      uuid: operation.uuid,
-      data: {...operation.data, 'operator1': 'KI2D', 'operator2': 'W2ABC'},
-    ));
+    await operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'operator1': 'KI2D', 'operator2': 'W2ABC'}));
     operation = (await operations.get(operation.uuid))!;
 
     await openDialog(tester, developerMode: true);
@@ -191,10 +192,7 @@ void main() {
     // Nothing to move. Written through, the empty field would erase the new
     // seat's operator on every device logging the operation.
     await operations.updateLocalData(operation.uuid, {'multiIdentifier': '1'});
-    await operations.saveData(Operation(
-      uuid: operation.uuid,
-      data: {...operation.data, 'operator2': 'W2ABC'},
-    ));
+    await operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'operator2': 'W2ABC'}));
     operation = (await operations.get(operation.uuid))!;
 
     await openDialog(tester, developerMode: true);

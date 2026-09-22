@@ -27,29 +27,38 @@ class _TemplateExtensions extends ExtensionService {
   Future<void> start() async {}
 
   @override
-  Future<String?> renderTemplate(String template, {Map<String, dynamic>? operation, Map<String, dynamic>? qso, int? qsoCount, Map<String, dynamic>? log}) async =>
-      template.replaceAll('{{ qso.call }}', ((qso?['their'] as Map?)?['call'] as String?) ?? '');
+  Future<String?> renderTemplate(
+    String template, {
+    Map<String, dynamic>? operation,
+    Map<String, dynamic>? qso,
+    int? qsoCount,
+    Map<String, dynamic>? log,
+  }) async => template.replaceAll('{{ qso.call }}', ((qso?['their'] as Map?)?['call'] as String?) ?? '');
 
   /// How many times the labels crossed the bridge — the batching is the point.
   int batches = 0;
 
   @override
-  Future<List<({String? text, String? error})>?> renderTemplates(List<String> templates,
-      {Map<String, dynamic>? operation, Map<String, dynamic>? qso, int? qsoCount}) async {
+  Future<List<({String? text, String? error})>?> renderTemplates(
+    List<String> templates, {
+    Map<String, dynamic>? operation,
+    Map<String, dynamic>? qso,
+    int? qsoCount,
+  }) async {
     batches++;
     return [for (final t in templates) (text: await renderTemplate(t, qso: qso), error: null)];
   }
 }
 
 PanelRenderContext contextFor(String call) => PanelRenderContext(
-      operation: null,
-      qso: {
-        'their': {'call': call},
-      },
-      qsoCount: 0,
-      spotsRevision: 0,
-      lookupRevision: 0,
-    );
+  operation: null,
+  qso: {
+    'their': {'call': call},
+  },
+  qsoCount: 0,
+  spotsRevision: 0,
+  lookupRevision: 0,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -65,35 +74,32 @@ void main() {
   });
 
   Future<void> connectPlaceholder(WidgetTester tester) async {
-    final node = await services.cat.addNode(
-      typeKey: 'placeholder-radio',
-      name: 'Bench Rig',
-      config: placeholderRadioModel.variants.single.defaultConfig,
-    );
+    final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
     await tester.runAsync(() => services.cat.connect(node.uuid));
     addTearDown(() => services.cat.disconnect(node.uuid));
     expect(services.cat.canKeyCw, isTrue, reason: 'sanity');
   }
 
   final sent = <int>[];
-  Widget host({bool suppressed = false, PanelRenderContext? templateContext, bool phone = false, bool enterSends = false}) =>
-      TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: Column(children: [
-              KeyerArea(
-                cat: services.cat,
-                services: services,
-                onSendMessage: sent.add,
-                suppressed: suppressed,
-                templateContext: templateContext,
-                phone: phone,
-                enterSends: enterSends,
-              ),
-            ]),
-          ),
+  Widget host({bool suppressed = false, PanelRenderContext? templateContext, bool phone = false, bool enterSends = false}) => TranslationProvider(
+    child: MaterialApp(
+      home: Scaffold(
+        body: Column(
+          children: [
+            KeyerArea(
+              cat: services.cat,
+              services: services,
+              onSendMessage: sent.add,
+              suppressed: suppressed,
+              templateContext: templateContext,
+              phone: phone,
+              enterSends: enterSends,
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
   final messageText = find.byWidgetPredicate((w) => w is Text && w.textSpan != null);
 
@@ -254,8 +260,11 @@ void main() {
     expect(find.text('Edit Messages'), findsOneWidget, reason: 'the way to the message editor heads the dialog');
     expect(find.text('Custom Message'), findsOneWidget, reason: 'its own section');
     await tester.enterText(find.widgetWithText(TextField, 'Message'), 'hello there');
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Message')).controller!.text, 'HELLO THERE',
-        reason: 'uppercased as typed, on a hardware keyboard too');
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Message')).controller!.text,
+      'HELLO THERE',
+      reason: 'uppercased as typed, on a hardware keyboard too',
+    );
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
     expect(services.cat.cwProgress.value?.text, 'HELLO THERE', reason: 'as typed, sanitized by the queue — no template');

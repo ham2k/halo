@@ -12,10 +12,10 @@ void main() {
     expect(DevBridge.instance.guess(), isNull);
 
     DevBridge.instance.stateProvider = () => {
-          'view': 'operation',
-          'call': 'W1AW',
-          'guess': {'grid': 'FN31pr'},
-        };
+      'view': 'operation',
+      'call': 'W1AW',
+      'guess': {'grid': 'FN31pr'},
+    };
     expect(DevBridge.instance.state()['call'], 'W1AW');
     expect(DevBridge.instance.guess(), {'grid': 'FN31pr'});
 

@@ -12,33 +12,25 @@ import 'package:halo_widgets/src/logging_controls_metrics.dart';
 const _stripKey = ValueKey('strip');
 const _buttonKey = ValueKey('button');
 
-Widget _host({
-  String signature = 'stats',
-  double diameter = 44,
-  bool leftieMode = false,
-  bool withStrip = false,
-}) =>
-    MaterialApp(
-      home: Scaffold(
-        body: LoggingInfoFrame(
-          buttonDiameter: diameter,
-          leftieMode: leftieMode,
-          signature: signature,
-          strip: withStrip ? const SizedBox(key: _stripKey, height: 10) : null,
-          actionButton: SizedBox(key: _buttonKey, width: diameter, height: diameter),
-          child: const Text('content'),
-        ),
-      ),
-    );
+Widget _host({String signature = 'stats', double diameter = 44, bool leftieMode = false, bool withStrip = false}) => MaterialApp(
+  home: Scaffold(
+    body: LoggingInfoFrame(
+      buttonDiameter: diameter,
+      leftieMode: leftieMode,
+      signature: signature,
+      strip: withStrip ? const SizedBox(key: _stripKey, height: 10) : null,
+      actionButton: SizedBox(key: _buttonKey, width: diameter, height: diameter),
+      child: const Text('content'),
+    ),
+  ),
+);
 
 /// The switcher's CURRENT child, keyed by the generation — the last one in
 /// its stack, since an outgoing child is still there mid-fade.
-Key? _contentKey(WidgetTester tester) =>
-    tester.widgetList<KeyedSubtree>(find.byWidgetPredicate((w) => w is KeyedSubtree && w.key is ValueKey<int>)).last.key;
+Key? _contentKey(WidgetTester tester) => tester.widgetList<KeyedSubtree>(find.byWidgetPredicate((w) => w is KeyedSubtree && w.key is ValueKey<int>)).last.key;
 
 void main() {
-  testWidgets('the cross-fade key holds while the signature holds, moves when it changes, and never repeats',
-      (tester) async {
+  testWidgets('the cross-fade key holds while the signature holds, moves when it changes, and never repeats', (tester) async {
     await tester.pumpWidget(_host(signature: 'stats'));
     final first = _contentKey(tester);
     await tester.pumpWidget(_host(signature: 'stats'));
@@ -57,15 +49,17 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('the area is at least the button tall, keeps clear of its column, and so does the strip',
-      (tester) async {
+  testWidgets('the area is at least the button tall, keeps clear of its column, and so does the strip', (tester) async {
     await tester.pumpWidget(_host(diameter: 60, withStrip: true));
     expect(tester.getSize(find.byType(ConstrainedBox).first).height, greaterThanOrEqualTo(60));
     final frame = tester.getRect(find.byType(LoggingInfoFrame));
     expect(tester.getTopRight(find.byKey(_buttonKey)).dx, frame.right, reason: 'pinned to the trailing edge');
     expect(tester.getBottomRight(find.byKey(_buttonKey)).dy, frame.bottom, reason: 'pinned under the strip too');
-    expect(tester.getTopRight(find.byKey(_stripKey)).dx, frame.right - 60 - logButtonGap,
-        reason: 'the strip ends over the rightmost field, off the button\'s column');
+    expect(
+      tester.getTopRight(find.byKey(_stripKey)).dx,
+      frame.right - 60 - logButtonGap,
+      reason: 'the strip ends over the rightmost field, off the button\'s column',
+    );
 
     await tester.pumpWidget(_host(diameter: 60, withStrip: true, leftieMode: true));
     expect(tester.getTopLeft(find.byKey(_buttonKey)).dx, frame.left);
@@ -75,18 +69,12 @@ void main() {
   testWidgets('the action button takes the diameter it is given, and a null callback disables it', (tester) async {
     var taps = 0;
     Widget button(VoidCallback? onPressed) => MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: LoggingActionButton(
-                diameter: 52,
-                icon: Icons.undo,
-                label: 'Undo',
-                onPressed: onPressed,
-                color: Colors.blue,
-              ),
-            ),
-          ),
-        );
+      home: Scaffold(
+        body: Center(
+          child: LoggingActionButton(diameter: 52, icon: Icons.undo, label: 'Undo', onPressed: onPressed, color: Colors.blue),
+        ),
+      ),
+    );
     await tester.pumpWidget(button(() => taps++));
     expect(tester.getSize(find.byType(LoggingActionButton)), const Size(52, 52));
     await tester.tap(find.byType(IconButton));

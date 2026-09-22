@@ -23,15 +23,8 @@ import 'dart:io' show FileSystemException, IOException, SocketException;
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, visibleForTesting;
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
-import 'package:halo_extension_host/halo_extension_host.dart'
-    show ExtensionHostException, HookTimeoutException;
-import 'package:halo_core/halo_core.dart'
-    show
-        LogFromNewerBuild,
-        MalformedQsonDataException,
-        SyncPayloadUnreadable,
-        SyncRecordsRejected,
-        WriteRefused;
+import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException, HookTimeoutException;
+import 'package:halo_core/halo_core.dart' show LogFromNewerBuild, MalformedQsonDataException, SyncPayloadUnreadable, SyncRecordsRejected, WriteRefused;
 import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
@@ -40,8 +33,7 @@ import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'catalog_service.dart' show CatalogUnreachable;
 import 'data_file_manager.dart' show DataFileRemoveHookFailed;
-import 'extension_catalog_migration.dart'
-    show BundleWouldNotEvaluate, CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
+import 'extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
 import 'extension_scoring.dart' show ScoringHookFailure;
 import 'extension_service.dart' show MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
@@ -95,13 +87,7 @@ class ErrorRule {
 
   final bool Function(Object error, FlutterErrorDetails? details) matches;
 
-  const ErrorRule({
-    required this.id,
-    required this.reason,
-    required this.disposition,
-    required this.matches,
-    this.logOncePerSession = false,
-  });
+  const ErrorRule({required this.id, required this.reason, required this.disposition, required this.matches, this.logOncePerSession = false});
 }
 
 /// The rule that claimed an error, if any, and what it decided.
@@ -146,7 +132,8 @@ class ErrorPolicy {
   static final List<ErrorRule> rules = [
     ErrorRule(
       id: 'write-refused',
-      reason: 'the app declined a write rather than failing at one — a travelled clock over a '
+      reason:
+          'the app declined a write rather than failing at one — a travelled clock over a '
           'record that is not test data (WritePolicy). An expected outcome with an operator-facing '
           'reason of its own, so it is never uploaded and never wears the generic "Something went '
           'wrong" notice; the reason is shown by ErrorReportingService.noticeWriteRefused. Reaching '
@@ -157,7 +144,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'sync-records-rejected',
-      reason: 'the sync server accepted the round but refused individual records (a guest editing '
+      reason:
+          'the sync server accepted the round but refused individual records (a guest editing '
           'an operation they do not own, a validation failure), or could not read some of what was '
           'sent at all. Worth knowing about in aggregate — '
           'it means data sitting on a device the server does not have — but "the server refused '
@@ -169,7 +157,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'extensions-not-wired',
-      reason: 'the extension service was handed no catalog or no settings, so nothing can be fetched or adopted '
+      reason:
+          'the extension service was handed no catalog or no settings, so nothing can be fetched or adopted '
           'and the upgrade offer cannot be made. A wiring defect rather than a server that cannot '
           'be reached — which is what it looked like for as long as the two were folded together — '
           'so it is uploaded rather than noticed: the operator can do nothing about it, and the '
@@ -179,7 +168,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'bundle-would-not-evaluate',
-      reason: 'a downloaded extension the JS engine refused, now kept out of the runtime so the '
+      reason:
+          'a downloaded extension the JS engine refused, now kept out of the runtime so the '
           'other thirty can load. The operator is told in the dialog and on the panel row, so it '
           'uploads without a notice — and it has to upload, because a refused bundle never loads '
           'again and its boot failure stops arriving under extensions:restart: the rate here is '
@@ -190,7 +180,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'upgrade-left-no-runtime',
-      reason: 'the catalog upgrade installed its twins, could not start them, reverted itself, and '
+      reason:
+          'the catalog upgrade installed its twins, could not start them, reverted itself, and '
           'the reverted set did not start either. The operator is already told in as many words, '
           'so it is uploaded rather than noticed — what the backend adds is the RATE, which is the '
           'only way to tell one corrupt download from a bundle the catalog is shipping broken to '
@@ -200,7 +191,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'web-focus-traversal-null',
-      reason: 'Flutter web focus-traversal null on view-focus change (ham2k/halo-dist#271); '
+      reason:
+          'Flutter web focus-traversal null on view-focus change (ham2k/halo-dist#271); '
           'later ones are silent',
       disposition: ErrorDisposition.ignore,
       logOncePerSession: true,
@@ -208,7 +200,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'hot-restart-stale-object',
-      reason: 'a live object left behind by a hot reload/restart, whose class no longer has the '
+      reason:
+          'a live object left behind by a hot reload/restart, whose class no longer has the '
           'field being read. A development artifact of the reload itself — nothing in the code is '
           'wrong and a cold start clears it, so it must not wear an operator notice or reach the '
           'backend. Debug builds only, so it can never quiet anything a user could see',
@@ -217,7 +210,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'bottom-chrome-squeezed',
-      reason: 'the window is too short to seat all of the bottom chrome above the keyboard, so '
+      reason:
+          'the window is too short to seat all of the bottom chrome above the keyboard, so '
           'the status footer and then the numbers row gave way (BottomChromeBudget). The '
           'operator loses status while typing and cannot tell why, which is what this line is '
           'for — it is not something they can act on mid-contact',
@@ -232,14 +226,16 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'web-semantics-node-map-inconsistent',
-      reason: 'the web engine left an orphan in its semantics node map: a debug-only assertion, '
+      reason:
+          'the web engine left an orphan in its semantics node map: a debug-only assertion, '
           'over a tree only dev builds ask for',
       disposition: ErrorDisposition.logOnly,
       matches: _isWebSemanticsNodeMapInconsistent,
     ),
     ErrorRule(
       id: 'set-state-during-build',
-      reason: 'setState()/markNeedsBuild() during build: a build-ordering bug to fix locally, '
+      reason:
+          'setState()/markNeedsBuild() during build: a build-ordering bug to fix locally, '
           'harmless to the operator',
       disposition: ErrorDisposition.logOnly,
       matches: _isSetStateDuringBuild,
@@ -252,19 +248,20 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'data-file-remove-hook-absent',
-      reason: 'removing a data file offers its extension an onRemoveRawData hook, and most do not '
+      reason:
+          'removing a data file offers its extension an onRemoveRawData hook, and most do not '
           'implement one — the kernel answers "no hook registered", which is the ordinary case '
           'rather than a fault, and nothing the operator can act on mid-removal. Matched on that '
           'ONE answer and not on the wrapper: a hook that exists and threw left the extension\'s '
           'raw data behind, and falls through to the default tier where an unclassified failure '
           'belongs',
       disposition: ErrorDisposition.logOnly,
-      matches: (error, _) =>
-          error is DataFileRemoveHookFailed && error.cause.toString().contains('no hook registered'),
+      matches: (error, _) => error is DataFileRemoveHookFailed && error.cause.toString().contains('no hook registered'),
     ),
     ErrorRule(
       id: 'extension-host-disposed',
-      reason: 'an in-flight hook call was cut off by a runtime replacement (extension toggle, '
+      reason:
+          'an in-flight hook call was cut off by a runtime replacement (extension toggle, '
           'restartOnChange, crash backoff, shutdown); callers redo the work against the new '
           'runtime or drop it by design',
       disposition: ErrorDisposition.logOnly,
@@ -272,14 +269,16 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'extension-runtime-dead',
-      reason: 'a hook call against a crashed runtime, refused without waiting out its timeout; '
+      reason:
+          'a hook call against a crashed runtime, refused without waiting out its timeout; '
           'the crash itself is reported separately (extensions:restart)',
       disposition: ErrorDisposition.logOnly,
       matches: _isExtensionRuntimeDead,
     ),
     ErrorRule(
       id: 'hook-timed-out',
-      reason: 'a hook did not answer within the timeout its caller allowed (a slow upstream '
+      reason:
+          'a hook did not answer within the timeout its caller allowed (a slow upstream '
           'service, or an extension taking too long over a large local pass). Every caller '
           'already degrades on its own — a lookup returns nothing and the next keystroke asks '
           'again, a fan-out keeps the hooks that did answer — so there is nothing here for the '
@@ -292,7 +291,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'connectivity-backend-unavailable',
-      reason: "connectivity_plus's Linux backend needs NetworkManager over D-Bus; without it the "
+      reason:
+          "connectivity_plus's Linux backend needs NetworkManager over D-Bus; without it the "
           'plugin throws out of its own stream setup, unreachable by any onError of ours. The app '
           'degrades to no reconnect-resync',
       disposition: ErrorDisposition.logOnly,
@@ -300,7 +300,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'windows-webview-unavailable',
-      reason: "Windows refused this app a webview (WebView2 missing, or its user data folder "
+      reason:
+          "Windows refused this app a webview (WebView2 missing, or its user data folder "
           'unwritable where the app was installed); the Map tab falls back to OpenStreetMap and the '
           'account login says it cannot sign in here, so there is nothing left for the operator to do',
       disposition: ErrorDisposition.report,
@@ -308,7 +309,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'cat-equipment-unreachable',
-      reason: "a radio didn't answer a connect attempt (switched off, unplugged, already held by "
+      reason:
+          "a radio didn't answer a connect attempt (switched off, unplugged, already held by "
           'another program, or refusing the login); the equipment row says so and the retry loop '
           'keeps trying',
       disposition: ErrorDisposition.logOnly,
@@ -316,7 +318,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'peer-media-unreachable',
-      reason: 'a peer refused or never answered the media link a screen pane dials (a firewall '
+      reason:
+          'a peer refused or never answered the media link a screen pane dials (a firewall '
           'between the two, a peer that left mid-dial); the pane says "not connected" and '
           're-dials on its own, and a firewall between two peers is not a defect',
       disposition: ErrorDisposition.logOnly,
@@ -324,7 +327,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'keychain-cannot-enumerate',
-      reason: 'the keychain refused to list its items (errSecParam, -50). macOS answers that for '
+      reason:
+          'the keychain refused to list its items (errSecParam, -50). macOS answers that for '
           'a readAll against the FILE keychain this app has to use, so it is a property of the '
           'platform rather than a fault: the two callers that ask — copying an extension\'s '
           'secrets to its new key, and removing them on uninstall — fall back to the account '
@@ -336,7 +340,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'keychain-locked',
-      reason: 'the keychain refused an operation (errSecInteractionNotAllowed) — it cannot serve '
+      reason:
+          'the keychain refused an operation (errSecInteractionNotAllowed) — it cannot serve '
           'one without an unlock it has no way to ask for. Usually a locked device with the app '
           'still working behind it, reading or writing a secret nobody asked it to touch just '
           'then: the CAT idle-retry loop reopening a radio, an extension fetching an account. '
@@ -353,7 +358,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'network-unreachable-while-offline',
-      reason: 'a network call failed to get an answer while the device is offline (no route, or '
+      reason:
+          'a network call failed to get an answer while the device is offline (no route, or '
           'nothing answering over the one there is); in the field that is the session\'s normal '
           'state rather than a defect, and uploading one event per retry per subsystem for the '
           'length of an activation would bury the online failures these types exist to surface',
@@ -362,7 +368,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'fetch-transport-transient',
-      reason: "a host.fetch call failed at the transport layer (connection reset, refused or "
+      reason:
+          "a host.fetch call failed at the transport layer (connection reset, refused or "
           'closed mid-body, or a fetch timeout) rather than anything our code did; worth seeing '
           'in aggregate, not worth an operator notice for a TCP blip the caller already retries',
       disposition: ErrorDisposition.report,
@@ -370,7 +377,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'lofi-backup-capture-also-failed',
-      reason: 'the ham2k-lofi extension already fell back to the standalone backup capture '
+      reason:
+          'the ham2k-lofi extension already fell back to the standalone backup capture '
           'service on a LoFi outage, and that capture attempt also failed -- this device now '
           'holds the only copy of the payload, distinct from an ordinary LoFi failure (which '
           'still has a backup somewhere) and worth an operator notice',
@@ -379,7 +387,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'http-client-connection-transient',
-      reason: 'a direct package:http call (DataFileManager and its siblings, not hostFetch) '
+      reason:
+          'a direct package:http call (DataFileManager and its siblings, not hostFetch) '
           'failed at the connection layer (DNS, refused, reset) rather than anything our code '
           'did; worth seeing in aggregate, not worth an operator notice for a caller that '
           'retries on its own schedule',
@@ -388,7 +397,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'catalog-unreachable',
-      reason: 'the extension catalog did not answer (a connection failure or the request timeout) '
+      reason:
+          'the extension catalog did not answer (a connection failure or the request timeout) '
           'on a check the operator did not ask for; the service reports it only as a failure '
           'streak, so a dead catalog is seen in aggregate and a captive portal is not noticed',
       disposition: ErrorDisposition.report,
@@ -396,7 +406,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'map-offline',
-      reason: 'a map error raised while the device was offline; a field operation without '
+      reason:
+          'a map error raised while the device was offline; a field operation without '
           'coverage fails every tile and style fetch, and that is the normal state of an '
           'off-grid activation, not a defect',
       disposition: ErrorDisposition.logOnly,
@@ -404,7 +415,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'malformed-spot-data',
-      reason: 'a spots hook returned a field of the wrong type (extension_service.dart\'s '
+      reason:
+          'a spots hook returned a field of the wrong type (extension_service.dart\'s '
           'validSpots) — a defect in that one extension, not something the operator can act on, '
           'and the spot is already dropped so the panel\'s other sources are unaffected',
       disposition: ErrorDisposition.report,
@@ -412,7 +424,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'malformed-qson-data',
-      reason: 'a QSON record reached storage carrying a field of the wrong type (qson_values.dart\'s '
+      reason:
+          'a QSON record reached storage carrying a field of the wrong type (qson_values.dart\'s '
           'normalizer) — the value is already coerced or dropped, so nothing is broken by the time '
           'this is raised; it is uploaded purely to name whatever WROTE it, which coercion alone '
           'would leave unknown',
@@ -421,7 +434,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'scoring-hook-failed',
-      reason: 'one scoring hook threw or timed out (extension_scoring.dart\'s ScoringHookFailure) '
+      reason:
+          'one scoring hook threw or timed out (extension_scoring.dart\'s ScoringHookFailure) '
           '— a defect in that extension, and nothing the operator can act on mid-activation; the '
           'pass drops that scorer\'s verdicts rather than keeping stale ones, so the board reads '
           'available rather than worked',
@@ -430,7 +444,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'website-panel-offline',
-      reason: 'a Web Site pane failed to load while the device was offline; a pane on a refresh '
+      reason:
+          'a Web Site pane failed to load while the device was offline; a pane on a refresh '
           'interval retries on a schedule, so an off-grid activation fails every one of them — '
           'that is the absence of coverage, not a defect',
       disposition: ErrorDisposition.logOnly,
@@ -438,7 +453,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'database-closed-on-exit',
-      reason: 'a write landed after the database was closed on the way out — usually a sync '
+      reason:
+          'a write landed after the database was closed on the way out — usually a sync '
           'round or a peer event whose reply arrived during the quit, but the operator\'s own '
           'last edit counts too: once the close has run, no write of any origin has anywhere '
           'to go, and saying so in a notice the process outlives by milliseconds helps nobody',
@@ -447,7 +463,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'unclean-database-quit',
-      reason: 'the PREVIOUS run could not finish closing the database, so writes it still had '
+      reason:
+          'the PREVIOUS run could not finish closing the database, so writes it still had '
           'queued went with it. Uploaded rather than noticed: what was lost is already lost, a '
           'boot is the worst moment to hand someone a fright they cannot act on, and it is the '
           'rate across installs that says whether the quit path is sound',
@@ -456,7 +473,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'log-from-newer-build',
-      reason: 'the log on disk was written by a newer build and this one refuses to migrate it '
+      reason:
+          'the log on disk was written by a newer build and this one refuses to migrate it '
           'back down (halo_core\'s LogFromNewerBuild). The operator has ALREADY been told, at '
           'boot, in a notice naming both storage versions and the folder the log is in, so the '
           'generic notice on top of that would say strictly less. Console-only rather than '
@@ -472,7 +490,8 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'preferences-file-unreadable',
-      reason: 'the preferences file could not be parsed and was repaired at boot. Uploaded '
+      reason:
+          'the preferences file could not be parsed and was repaired at boot. Uploaded '
           'rather than noticed only because the operator has ALREADY been told, in a status '
           'notice that names what was lost and where the bad file went — the generic notice '
           'on top of it would say strictly less. The rate is what says whether the atomic '
@@ -535,8 +554,7 @@ class ErrorPolicy {
   /// literally cannot happen in the release build users run.
   /// Raised by `StatusBarOverlay` itself, once per transition, when the
   /// bottom chrome cannot all be seated above the on-screen keyboard.
-  static bool _isBottomChromeSqueezed(Object error, FlutterErrorDetails? details) =>
-      error is BottomChromeSqueezed;
+  static bool _isBottomChromeSqueezed(Object error, FlutterErrorDetails? details) => error is BottomChromeSqueezed;
 
   static bool _isRenderFlexOverflow(Object error, FlutterErrorDetails? details) =>
       error is FlutterError && error.toString().contains('A RenderFlex overflowed by');
@@ -559,9 +577,7 @@ class ErrorPolicy {
   /// enter the tree as siblings of the scroll group; upstream, it is the
   /// family of flutter/flutter#170753.
   static bool _isWebSemanticsNodeMapInconsistent(Object error, FlutterErrorDetails? details) =>
-      (debugTreatAsWeb ?? kIsWeb) &&
-      error is StateError &&
-      error.message.contains('Semantics node map was inconsistent after update');
+      (debugTreatAsWeb ?? kIsWeb) && error is StateError && error.message.contains('Semantics node map was inconsistent after update');
 
   /// A stale object stranded by a hot reload or hot restart: DDC reads a
   /// private Dart field off an instance whose class no longer declares it,
@@ -740,10 +756,7 @@ class ErrorPolicy {
   /// same reason: the message is the platform's own wording, not ours to
   /// depend on.
   static bool _isKeychainCannotEnumerate(Object error, FlutterErrorDetails? details) =>
-      error is PlatformException &&
-      error.code == _keychainFailureCode &&
-      error.details is int &&
-      error.details == _errSecParam;
+      error is PlatformException && error.code == _keychainFailureCode && error.details is int && error.details == _errSecParam;
 
   static bool _isCatEquipmentUnreachable(Object error, FlutterErrorDetails? details) {
     if (error is! CatConnectFailure) return false;
@@ -788,9 +801,7 @@ class ErrorPolicy {
 
   static bool _isHostFetchTransport(Object error) {
     if (error is! ExtensionHostException) return false;
-    return error.message.startsWith('ClientException:') ||
-        error.message.startsWith('ClientException with ') ||
-        error.message.startsWith('TimeoutException');
+    return error.message.startsWith('ClientException:') || error.message.startsWith('ClientException with ') || error.message.startsWith('TimeoutException');
   }
 
   /// Whether [error] means the other end never answered — a timeout, or a
@@ -857,8 +868,7 @@ class ErrorPolicy {
   /// else (see [_isHttpClientConnectionTransient]), and a catalog response
   /// that arrived and could not be read is never wrapped in it.
   static bool _isCatalogUnreachable(Object error, FlutterErrorDetails? details) =>
-      error is CatalogUnreachable &&
-      (error.cause is ClientException || error.cause is TimeoutException || error.cause is IOException);
+      error is CatalogUnreachable && (error.cause is ClientException || error.cause is TimeoutException || error.cause is IOException);
 
   /// A [MapError] stamped offline at arrival. The stamp is the whole match:
   /// with no network there is nothing a map backend can fetch, so every
@@ -881,14 +891,11 @@ class ErrorPolicy {
   /// `ConnectivityService.isOffline` starts false and only ever becomes true
   /// once something has actually failed to answer, so the window this
   /// quietens is one the app has already measured rather than assumed.
-  static bool _isNetworkErrorWhileOffline(Object error, FlutterErrorDetails? details) =>
-      ConnectivityService.isOffline && isTransportFailure(error);
+  static bool _isNetworkErrorWhileOffline(Object error, FlutterErrorDetails? details) => ConnectivityService.isOffline && isTransportFailure(error);
 
-  static bool _isMapErrorWhileOffline(Object error, FlutterErrorDetails? details) =>
-      error is MapError && error.offline;
+  static bool _isMapErrorWhileOffline(Object error, FlutterErrorDetails? details) => error is MapError && error.offline;
 
-  static bool _isWebsitePanelErrorWhileOffline(Object error, FlutterErrorDetails? details) =>
-      error is WebsitePanelError && error.offline;
+  static bool _isWebsitePanelErrorWhileOffline(Object error, FlutterErrorDetails? details) => error is WebsitePanelError && error.offline;
 
   static final _oncePerSessionLogged = <String>{};
 
@@ -911,8 +918,10 @@ class ErrorPolicy {
       debugPrint('[error-policy] ignoring ${rule.id}: ${rule.reason}');
       return true;
     }
-    debugPrint('[error-policy] ${rule.id} (${rule.disposition.name}, ${rule.reason}): $error'
-        '${stackTrace == null ? '' : '\n$stackTrace'}');
+    debugPrint(
+      '[error-policy] ${rule.id} (${rule.disposition.name}, ${rule.reason}): $error'
+      '${stackTrace == null ? '' : '\n$stackTrace'}',
+    );
     return true;
   }
 

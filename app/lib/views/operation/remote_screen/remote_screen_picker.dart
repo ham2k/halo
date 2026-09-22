@@ -24,10 +24,7 @@ import '../../screen_source_tile.dart';
 import 'remote_screen_panel.dart';
 
 /// Returns the chosen target, or null if the operator dismissed the dialog.
-Future<PeerScreenTarget?> showRemoteScreenPicker(
-  BuildContext context, {
-  required PeerScreenViews views,
-}) {
+Future<PeerScreenTarget?> showRemoteScreenPicker(BuildContext context, {required PeerScreenViews views}) {
   return showHaloDialog<PeerScreenTarget>(
     context: context,
     builder: (dialogContext) => _RemoteScreenPicker(views: views),
@@ -77,10 +74,7 @@ class _RemoteScreenPickerState extends State<_RemoteScreenPicker> {
           // Not an error: no device is sharing anything, which is the resting
           // state. It says where to go, rather than leaving the operator to
           // guess that the switch lives on the OTHER device.
-          ? Padding(
-              padding: const EdgeInsets.all(Space.xl),
-              child: Text(t.remoteScreenPickerEmpty),
-            )
+          ? Padding(padding: const EdgeInsets.all(Space.xl), child: Text(t.remoteScreenPickerEmpty))
           : SizedBox(
               width: double.infinity,
               height: 420,
@@ -106,20 +100,16 @@ class _RemoteScreenPickerState extends State<_RemoteScreenPicker> {
                     subtitle: peerName,
                     thumbnail: widget.views.thumbnailFor(peerDeviceId, source.id),
                     selected: false,
-                    onTap: () => Navigator.of(context).pop(
-                      PeerScreenTarget(peerDeviceId, source.id),
-                    ),
+                    onTap: () => Navigator.of(context).pop(PeerScreenTarget(peerDeviceId, source.id)),
                   );
                 },
               ),
             ),
-      cancel: TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: Text(context.t.common.cancel),
-      ),
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
     );
   }
 }
+
 /// Opens the picker and stores the answer against [panelId]'s config.
 ///
 /// The pane calls this itself as well as the panel's settings dialog doing
@@ -128,11 +118,7 @@ class _RemoteScreenPickerState extends State<_RemoteScreenPicker> {
 /// (`DockHost`), so on a layout where that is the route an operator takes,
 /// the only thing left of this panel's settings is the raw target string.
 /// A pane that can be pointed somewhere by tapping it needs no route at all.
-Future<void> chooseRemoteScreenFor(
-  BuildContext context, {
-  required HaLoServices services,
-  required String panelId,
-}) async {
+Future<void> chooseRemoteScreenFor(BuildContext context, {required HaLoServices services, required String panelId}) async {
   final chosen = await showRemoteScreenPicker(context, views: services.peerScreenViews);
   if (chosen == null) return;
   final panel = services.panels[panelId];
@@ -206,28 +192,18 @@ class _RemoteScreenSettingsRowState extends State<RemoteScreenSettingsRow> {
             Navigator.of(context).maybePop();
           },
         ),
-        ListTile(
-          leading: Icon(MdiIcons.imageSizeSelectLarge),
-          title: Text(t.remoteScreenDetail),
-        ),
+        ListTile(leading: Icon(MdiIcons.imageSizeSelectLarge), title: Text(t.remoteScreenDetail)),
         Padding(
           // The list's own inset, read from the ambient theme rather than
           // named again: a surface whose rows are shifted — a pane behind a
           // resize strip — moves them all, and a hard-coded number would
           // leave this one behind in the gutter.
-          padding: EdgeInsets.only(
-            left: _rowInset(context).left,
-            right: _rowInset(context).right,
-            bottom: Space.sm,
-          ),
+          padding: EdgeInsets.only(left: _rowInset(context).left, right: _rowInset(context).right, bottom: Space.sm),
           child: SegmentedButton<int>(
             // MDI-only UI: skip the framework's Material check on the
             // selected segment (same as settings_view).
             showSelectedIcon: false,
-            segments: [
-              for (final width in remoteScreenDetailChoices)
-                ButtonSegment(value: width, label: Text(_detailLabel(context, width))),
-            ],
+            segments: [for (final width in remoteScreenDetailChoices) ButtonSegment(value: width, label: Text(_detailLabel(context, width)))],
             selected: {_detailChoice(_config[remoteScreenDetailKey])},
             onSelectionChanged: (selection) => unawaited(_setDetail(selection.first)),
           ),
@@ -241,15 +217,13 @@ class _RemoteScreenSettingsRowState extends State<RemoteScreenSettingsRow> {
     // notification: waiting on both leaves the segment the operator tapped
     // unlit for as long as they take.
     setState(() => _config = {..._config, remoteScreenDetailKey: width});
-    await saveRemoteScreenDetail(
-      services: widget.services, panelId: widget.panelId, detail: width);
+    await saveRemoteScreenDetail(services: widget.services, panelId: widget.panelId, detail: width);
   }
 
   /// Where a row in this list starts and ends — the ambient `ListTileTheme`
   /// inset, which is what every `ListTile` here is already using.
   static EdgeInsets _rowInset(BuildContext context) =>
-      ListTileTheme.of(context).contentPadding?.resolve(Directionality.of(context)) ??
-      const EdgeInsets.symmetric(horizontal: settingsRowInset);
+      ListTileTheme.of(context).contentPadding?.resolve(Directionality.of(context)) ?? const EdgeInsets.symmetric(horizontal: settingsRowInset);
 
   /// The stored width as one of the offered choices — a value from a build
   /// with different steps still has to light up a segment rather than none.
@@ -306,19 +280,10 @@ class _RemoteScreenSettingsRowState extends State<RemoteScreenSettingsRow> {
 /// Written on the way out of that mode rather than on every wheel notch:
 /// each of these is a settings commit plus a catalog notification, and the
 /// pane redraws from its own state while adjusting either way.
-Future<void> saveRemoteScreenView({
-  required HaLoServices services,
-  required String panelId,
-  required double zoom,
-  required Offset pan,
-}) async {
+Future<void> saveRemoteScreenView({required HaLoServices services, required String panelId, required double zoom, required Offset pan}) async {
   final panel = services.panels[panelId];
   if (panel == null) return;
-  final values = <String, dynamic>{
-    remoteScreenZoomKey: zoom,
-    remoteScreenPanXKey: pan.dx,
-    remoteScreenPanYKey: pan.dy,
-  };
+  final values = <String, dynamic>{remoteScreenZoomKey: zoom, remoteScreenPanXKey: pan.dx, remoteScreenPanYKey: pan.dy};
   for (final entry in values.entries) {
     await services.extensions.commitSettingsFieldValue(
       kind: 'simple',
@@ -340,11 +305,7 @@ Future<void> saveRemoteScreenView({
 /// Unlike the framing, this DOES notify: the setting is changed from a
 /// dialog and the pane is what has to act on it — it clamps its own demand
 /// by this number, and nothing else would tell it the number moved.
-Future<void> saveRemoteScreenDetail({
-  required HaLoServices services,
-  required String panelId,
-  required int detail,
-}) async {
+Future<void> saveRemoteScreenDetail({required HaLoServices services, required String panelId, required int detail}) async {
   final panel = services.panels[panelId];
   if (panel == null) return;
   await services.extensions.commitSettingsFieldValue(

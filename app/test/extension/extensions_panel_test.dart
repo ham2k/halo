@@ -32,41 +32,30 @@ import '../support/halo_test_support.dart';
 
 const _testExtensions = [
   ExtensionInfo(key: 'adif', file: 'adif.js', core: true, name: 'ADIF Export'),
-  ExtensionInfo(
-      key: 'pota', file: 'pota.js', core: false, name: 'Parks on the Air', category: 'activity',
-      description: 'Park references and spots'),
+  ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'Parks on the Air', category: 'activity', description: 'Park references and spots'),
   ExtensionInfo(key: 'sota', file: 'sota.js', core: false, name: 'Summits on the Air', category: 'activity'),
-  ExtensionInfo(
-      key: 'qrz', file: 'qrz.js', core: false, name: 'QRZ.com Callsign Lookups', category: 'lookup',
-      enabledByDefault: false),
-  ExtensionInfo(
-      key: 'gated-panel', file: 'gated-panel.js', core: false, name: 'Gated Panel', category: 'dashboard',
-      experiments: ['an-experiment']),
+  ExtensionInfo(key: 'qrz', file: 'qrz.js', core: false, name: 'QRZ.com Callsign Lookups', category: 'lookup', enabledByDefault: false),
+  ExtensionInfo(key: 'gated-panel', file: 'gated-panel.js', core: false, name: 'Gated Panel', category: 'dashboard', experiments: ['an-experiment']),
 ];
 
 /// A catalog over a MockClient: the panel fetches on open, and the default
 /// CatalogService would reach catalog.ham2k.net from the test.
-CatalogService _catalog(Future<http.Response> Function(http.Request) handler) => CatalogService(
-      client: MockClient(handler),
-      userAgent: () async => 'Ham2K Logger/test',
-      locale: () => 'en',
-    );
+CatalogService _catalog(Future<http.Response> Function(http.Request) handler) =>
+    CatalogService(client: MockClient(handler), userAgent: () async => 'Ham2K Logger/test', locale: () => 'en');
 
 CatalogService _emptyCatalog() => _catalog((_) async => http.Response(jsonEncode({'extensions': []}), 200));
 
-Map<String, Object?> _entry(String key, String name,
-        {String version = '1.0.0', Map<String, Object?>? relevance, String? accentColor}) =>
-    {
-      'key': key,
-      'name': name,
-      'version': version,
-      'sha256': 'a' * 64,
-      'bundleUrl': 'https://catalog.ham2k.net/api/v1/extensions/$key/versions/$version/bundle',
-      'category': 'activity',
-      'description': 'About $name',
-      'relevance': ?relevance,
-      'accentColor': ?accentColor,
-    };
+Map<String, Object?> _entry(String key, String name, {String version = '1.0.0', Map<String, Object?>? relevance, String? accentColor}) => {
+  'key': key,
+  'name': name,
+  'version': version,
+  'sha256': 'a' * 64,
+  'bundleUrl': 'https://catalog.ham2k.net/api/v1/extensions/$key/versions/$version/bundle',
+  'category': 'activity',
+  'description': 'About $name',
+  'relevance': ?relevance,
+  'accentColor': ?accentColor,
+};
 
 /// A `relevance` whose date is a few days out, read off the same clock the
 /// panel ranks against.
@@ -77,7 +66,8 @@ Map<String, Object?> _entry(String key, String name,
 /// would fail for a reason that has nothing to do with the panel.
 Map<String, Object?> _soon({int inDays = 3}) {
   final at = nowUtc().add(Duration(days: inDays));
-  final iso = '${at.year.toString().padLeft(4, '0')}-'
+  final iso =
+      '${at.year.toString().padLeft(4, '0')}-'
       '${at.month.toString().padLeft(2, '0')}-'
       '${at.day.toString().padLeft(2, '0')}';
   return {
@@ -89,24 +79,19 @@ Map<String, Object?> _soon({int inDays = 3}) {
 /// the "and N others" row, which is a category's own and named apart so a
 /// test about what is offered cannot pass on the row that hides the rest.
 List<String> _catalogRowKeys(WidgetTester tester) => [
-      for (final tile in tester.widgetList<ListTile>(find.byType(ListTile)))
-        if (tile.key case ValueKey<String>(value: final key)
-            when key.startsWith('catalog-') && !key.startsWith('catalog-more-'))
-          key,
-    ];
+  for (final tile in tester.widgetList<ListTile>(find.byType(ListTile)))
+    if (tile.key case ValueKey<String>(value: final key) when key.startsWith('catalog-') && !key.startsWith('catalog-more-')) key,
+];
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('isExtensionEnabled: core always wins; overrides beat defaults', () async {
-    SharedPreferences.setMockInitialValues({
-      'extensionOverrides': '{"sota": false, "qrz": true}',
-    });
+    SharedPreferences.setMockInitialValues({'extensionOverrides': '{"sota": false, "qrz": true}'});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
 
-    bool enabled(String key) =>
-        extensions.isExtensionEnabled(_testExtensions.firstWhere((e) => e.key == key));
+    bool enabled(String key) => extensions.isExtensionEnabled(_testExtensions.firstWhere((e) => e.key == key));
 
     expect(enabled('adif'), isTrue, reason: 'core is always enabled');
     expect(enabled('pota'), isTrue, reason: 'no override → enabledByDefault true');
@@ -135,10 +120,7 @@ void main() {
   test('a key naming an extension deleted from the build is pruned, once the index has loaded', () async {
     // What a migrated install looks like after the extension it toggled is
     // later removed from the build entirely (not just disabled) — e.g. HamDB.
-    SharedPreferences.setMockInitialValues({
-      'extensionOverrides': '{"gone": false, "pota": true}',
-      'extensionDisabledSince': '{"gone": 1000, "sota": 2000}',
-    });
+    SharedPreferences.setMockInitialValues({'extensionOverrides': '{"gone": false, "pota": true}', 'extensionDisabledSince': '{"gone": 1000, "sota": 2000}'});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
@@ -162,9 +144,7 @@ void main() {
   });
 
   test('never prunes before the extension index has loaded — an empty availableExtensions means unloaded, not empty', () async {
-    SharedPreferences.setMockInitialValues({
-      'extensionOverrides': '{"pota": true, "sota": true}',
-    });
+    SharedPreferences.setMockInitialValues({'extensionOverrides': '{"pota": true, "sota": true}'});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
@@ -174,8 +154,10 @@ void main() {
 
     await extensions.applyExtensionAvailability();
 
-    expect(settings.extensionOverrides, {'pota': true, 'sota': true},
-        reason: 'overrides set before the index loads must survive, not read as naming deleted extensions');
+    expect(settings.extensionOverrides, {
+      'pota': true,
+      'sota': true,
+    }, reason: 'overrides set before the index loads must survive, not read as naming deleted extensions');
   });
 
   test('ExtensionInfo.fromJson: a stale metadata-less index degrades to core', () {
@@ -217,27 +199,32 @@ void main() {
   });
 
   test('listActiveExtensions surfaces the kernel-info listing', () async {
-    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({
-      'runtime:kernel:listExtensions': [
-        {'key': 'pota', 'name': 'Parks on the Air', 'version': '0.0.1'},
-      ],
-    }));
+    final extensions = ExtensionServiceWithFakeHost(
+      FakeExtensionHost({
+        'runtime:kernel:listExtensions': [
+          {'key': 'pota', 'name': 'Parks on the Air', 'version': '0.0.1'},
+        ],
+      }),
+    );
     final listed = await extensions.listActiveExtensions();
     expect(listed.single['key'], 'pota');
     expect(listed.single['version'], '0.0.1');
   });
 
-  testWidgets('panel hides core, groups per category, searches from the top field, and toggles persist',
-      (tester) async {
+  testWidgets('panel hides core, groups per category, searches from the top field, and toggles persist', (tester) async {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     final HaLoHarness(:services, :settings, :extensions) = await makeHaLoServices(catalog: _emptyCatalog());
     extensions.debugSetAvailableExtensions(_testExtensions);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // Core never listed; categories render in order with their headers.
@@ -247,9 +234,7 @@ void main() {
     expect(find.text('Parks on the Air'), findsOneWidget);
 
     // QRZ defaults off, POTA on.
-    bool switchValue(String key) => tester
-        .widget<Switch>(find.descendant(of: find.byKey(ValueKey('extension-$key')), matching: find.byType(Switch)))
-        .value;
+    bool switchValue(String key) => tester.widget<Switch>(find.descendant(of: find.byKey(ValueKey('extension-$key')), matching: find.byType(Switch))).value;
     expect(switchValue('qrz'), isFalse);
     expect(switchValue('pota'), isTrue);
 
@@ -280,9 +265,13 @@ void main() {
     final HaLoHarness(:services, :settings, :extensions) = await makeHaLoServices(catalog: _emptyCatalog());
     extensions.debugSetAvailableExtensions(_testExtensions);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // Gated, not disabled: neither the tile nor its category header shows.
@@ -313,11 +302,23 @@ void main() {
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
-          key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
+        key: 'k2hrc-llota',
+        file: 'index.js',
+        core: false,
+        name: 'LLOTA',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '1.0.0',
+      ),
       ExtensionInfo(
-          key: 'zz-current', file: 'index.js', core: false, name: 'ZZ Current', category: 'activity',
-          source: ExtensionSource.installed, version: '2.0.0'),
+        key: 'zz-current',
+        file: 'index.js',
+        core: false,
+        name: 'ZZ Current',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '2.0.0',
+      ),
     ]);
     // The operator is K, so a `K` entry leads and a `CE` one trails; the
     // fetcher answers nothing so no flags server is reached.
@@ -329,27 +330,42 @@ void main() {
     await flags.refreshForCall('K1ABC');
     expect(flags.operatorGeo?.entityPrefix, 'K');
 
-    final catalog = _catalog((_) async => http.Response(
+    final catalog = _catalog(
+      (_) async => http.Response(
         jsonEncode({
           'extensions': [
             _entry('zz-world', 'Zulu World'),
-            _entry('ce-only', 'Chile Only', relevance: {
-              'entities': ['CE']
-            }),
+            _entry(
+              'ce-only',
+              'Chile Only',
+              relevance: {
+                'entities': ['CE'],
+              },
+            ),
             _entry('k2hrc-llota', 'LLOTA (catalog)', version: '1.1.0'),
             _entry('zz-current', 'ZZ Current (catalog)', version: '2.0.0'),
             _entry('aa-world', 'Alpha World', relevance: _soon()),
-            _entry('k-only', 'Kilo Only', relevance: {
-              'entities': ['K']
-            }),
+            _entry(
+              'k-only',
+              'Kilo Only',
+              relevance: {
+                'entities': ['K'],
+              },
+            ),
           ],
         }),
-        200));
+        200,
+      ),
+    );
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog, flags: flags);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // Near in date first, then matching this callsign; alphabetical within a
@@ -381,14 +397,8 @@ void main() {
 
     // The installed row carries the update badge, which is where an update
     // lives now.
-    expect(
-      find.descendant(of: find.byKey(const ValueKey('extension-k2hrc-llota')), matching: find.textContaining('Update available')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: find.byKey(const ValueKey('extension-zz-current')), matching: find.textContaining('Update available')),
-      findsNothing,
-    );
+    expect(find.descendant(of: find.byKey(const ValueKey('extension-k2hrc-llota')), matching: find.textContaining('Update available')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('extension-zz-current')), matching: find.textContaining('Update available')), findsNothing);
 
     // The catalog rows are part of the row set the list is keyed by
     // (docs/quirks.md): without them, the fetch resolving changes the rows
@@ -438,20 +448,23 @@ void main() {
     await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const []);
-    final catalog = _catalog((_) async => http.Response(
+    final catalog = _catalog(
+      (_) async => http.Response(
         jsonEncode({
-          'extensions': [
-            _entry('zz-world', 'Zulu World'),
-            _entry('ham2k-wwbota', 'WWBOTA', accentColor: '#5A6B72'),
-            _entry('ham2k-llota', 'LLOTA'),
-          ],
+          'extensions': [_entry('zz-world', 'Zulu World'), _entry('ham2k-wwbota', 'WWBOTA', accentColor: '#5A6B72'), _entry('ham2k-llota', 'LLOTA')],
         }),
-        200));
+        200,
+      ),
+    );
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(_catalogRowKeys(tester), ['catalog-ham2k-llota', 'catalog-ham2k-wwbota']);
@@ -460,28 +473,27 @@ void main() {
     // programme is the same square of colour here as on the catalog site.
     // Without the parse the tile is the neutral fallback and nothing else
     // about the row changes.
-    final glyph = tester.widget<Icon>(find.descendant(
-      of: find.byKey(const ValueKey('catalog-ham2k-wwbota')),
-      matching: find.descendant(of: find.byType(ExtensionIconTile), matching: find.byType(Icon)),
-    ));
+    final glyph = tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('catalog-ham2k-wwbota')),
+        matching: find.descendant(of: find.byType(ExtensionIconTile), matching: find.byType(Icon)),
+      ),
+    );
     expect(glyph.color, const Color(0xFF5A6B72));
     // On the row's own ground, not on a square of the accent: an offer wears
     // the colour in its glyph, and the filled tile is what the operator owns.
-    final box = tester.widget<Container>(find.descendant(
-      of: find.byKey(const ValueKey('catalog-ham2k-wwbota')),
-      matching: find.descendant(of: find.byType(ExtensionIconTile), matching: find.byType(Container)),
-    ));
+    final box = tester.widget<Container>(
+      find.descendant(
+        of: find.byKey(const ValueKey('catalog-ham2k-wwbota')),
+        matching: find.descendant(of: find.byType(ExtensionIconTile), matching: find.byType(Container)),
+      ),
+    );
     expect(box.decoration, isNull);
 
     // And it is faded, because nothing here is installed: an offer at full
     // strength claims a place in the panel beside the operator's own.
     expect(
-      tester
-          .widget<Opacity>(find.descendant(
-            of: find.byKey(const ValueKey('catalog-ham2k-wwbota')),
-            matching: find.byType(Opacity),
-          ))
-          .opacity,
+      tester.widget<Opacity>(find.descendant(of: find.byKey(const ValueKey('catalog-ham2k-wwbota')), matching: find.byType(Opacity))).opacity,
       kUninstalledIconOpacity,
     );
   });
@@ -510,33 +522,56 @@ void main() {
     );
     await flags.refreshForCall('K1ABC');
 
-    final catalog = _catalog((_) async => http.Response(
+    final catalog = _catalog(
+      (_) async => http.Response(
         jsonEncode({
           'extensions': [
-            _entry('tx-party', 'Texas Party', relevance: {
-              'entities': ['K'],
-              ..._soon(inDays: 180),
-            }),
-            _entry('tx-soon', 'Texas Soon', relevance: {
-              'entities': ['K'],
-              ..._soon(inDays: 5),
-            }),
-            _entry('tx-just-ran', 'Texas Just Ran', relevance: {
-              'entities': ['K'],
-              ..._soon(inDays: -3),
-            }),
-            _entry('tx-last-week', 'Texas Last Week', relevance: {
-              'entities': ['K'],
-              ..._soon(inDays: -4),
-            }),
+            _entry(
+              'tx-party',
+              'Texas Party',
+              relevance: {
+                'entities': ['K'],
+                ..._soon(inDays: 180),
+              },
+            ),
+            _entry(
+              'tx-soon',
+              'Texas Soon',
+              relevance: {
+                'entities': ['K'],
+                ..._soon(inDays: 5),
+              },
+            ),
+            _entry(
+              'tx-just-ran',
+              'Texas Just Ran',
+              relevance: {
+                'entities': ['K'],
+                ..._soon(inDays: -3),
+              },
+            ),
+            _entry(
+              'tx-last-week',
+              'Texas Last Week',
+              relevance: {
+                'entities': ['K'],
+                ..._soon(inDays: -4),
+              },
+            ),
           ],
         }),
-        200));
+        200,
+      ),
+    );
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog, flags: flags);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // Five days out and three days past are inside the window; six months out
@@ -560,25 +595,26 @@ void main() {
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     // Two installed, so the category is not yet a settled subject.
     extensions.debugSetAvailableExtensions(const [
-      ExtensionInfo(
-          key: 'mine-a', file: 'index.js', core: false, name: 'Mine A', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
-      ExtensionInfo(
-          key: 'mine-b', file: 'index.js', core: false, name: 'Mine B', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(key: 'mine-a', file: 'index.js', core: false, name: 'Mine A', category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(key: 'mine-b', file: 'index.js', core: false, name: 'Mine B', category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
     ]);
-    final catalog = _catalog((_) async => http.Response(
+    final catalog = _catalog(
+      (_) async => http.Response(
         jsonEncode({
-          'extensions': [
-            for (var i = 0; i < 8; i++) _entry('offer-$i', 'Offer $i', relevance: _soon()),
-          ],
+          'extensions': [for (var i = 0; i < 8; i++) _entry('offer-$i', 'Offer $i', relevance: _soon())],
         }),
-        200));
+        200,
+      ),
+    );
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(_catalogRowKeys(tester).length, 5, reason: 'two installed, so the full five');
@@ -600,28 +636,27 @@ void main() {
     await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
-      ExtensionInfo(
-          key: 'mine-a', file: 'index.js', core: false, name: 'Mine A', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
-      ExtensionInfo(
-          key: 'mine-b', file: 'index.js', core: false, name: 'Mine B', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
-      ExtensionInfo(
-          key: 'mine-c', file: 'index.js', core: false, name: 'Mine C', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(key: 'mine-a', file: 'index.js', core: false, name: 'Mine A', category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(key: 'mine-b', file: 'index.js', core: false, name: 'Mine B', category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(key: 'mine-c', file: 'index.js', core: false, name: 'Mine C', category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
     ]);
-    final catalog = _catalog((_) async => http.Response(
+    final catalog = _catalog(
+      (_) async => http.Response(
         jsonEncode({
-          'extensions': [
-            for (var i = 0; i < 8; i++) _entry('offer-$i', 'Offer $i', relevance: _soon()),
-          ],
+          'extensions': [for (var i = 0; i < 8; i++) _entry('offer-$i', 'Offer $i', relevance: _soon())],
         }),
-        200));
+        200,
+      ),
+    );
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(_catalogRowKeys(tester).length, 2);
@@ -647,16 +682,23 @@ void main() {
     await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const []);
-    final catalog = _catalog((_) async => http.Response(
+    final catalog = _catalog(
+      (_) async => http.Response(
         jsonEncode({
           'extensions': [_entry('zz-world', 'Zulu World')],
         }),
-        200));
+        200,
+      ),
+    );
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // Nothing is suggested — worldwide and undated — and the whole category
@@ -686,21 +728,32 @@ void main() {
     extensions.debugSetAvailableExtensions([
       for (var i = 0; i < 12; i++)
         ExtensionInfo(
-            key: 'mine-$i', file: 'index.js', core: false, name: 'Mine $i', category: 'activity',
-            source: ExtensionSource.installed, version: '1.0.0'),
+          key: 'mine-$i',
+          file: 'index.js',
+          core: false,
+          name: 'Mine $i',
+          category: 'activity',
+          source: ExtensionSource.installed,
+          version: '1.0.0',
+        ),
     ]);
-    final catalog = _catalog((_) async => http.Response(
+    final catalog = _catalog(
+      (_) async => http.Response(
         jsonEncode({
-          'extensions': [
-            for (var i = 0; i < 8; i++) _entry('offer-$i', 'Offer $i', relevance: _soon()),
-          ],
+          'extensions': [for (var i = 0; i < 8; i++) _entry('offer-$i', 'Offer $i', relevance: _soon())],
         }),
-        200));
+        200,
+      ),
+    );
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     double offset() => tester.widget<SectionedListView>(find.byType(SectionedListView)).controller!.offset;
@@ -742,12 +795,8 @@ void main() {
     await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
-      ExtensionInfo(
-          key: 'one', file: 'index.js', core: false, name: 'One', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
-      ExtensionInfo(
-          key: 'two', file: 'index.js', core: false, name: 'Two', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(key: 'one', file: 'index.js', core: false, name: 'One', category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(key: 'two', file: 'index.js', core: false, name: 'Two', category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
     ]);
     var downloads = 0;
     final catalog = _catalog((request) async {
@@ -764,9 +813,13 @@ void main() {
     });
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(OutlinedButton, 'Update all'));
@@ -798,25 +851,38 @@ void main() {
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
-          key: 'zzz-mine', file: 'index.js', core: false, name: 'ZZZ Mine', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
+        key: 'zzz-mine',
+        file: 'index.js',
+        core: false,
+        name: 'ZZZ Mine',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '1.0.0',
+      ),
     ]);
-    final catalog = _catalog((_) async => http.Response(
+    final catalog = _catalog(
+      (_) async => http.Response(
         jsonEncode({
           'extensions': [_entry('aaa-offer', 'AAA Offer', relevance: _soon())],
         }),
-        200));
+        200,
+      ),
+    );
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     List<String> rowOrder() => [
-          for (final tile in tester.widgetList<ListTile>(find.byType(ListTile)))
-            if (tile.key case ValueKey<String>(value: final key)) key,
-        ];
+      for (final tile in tester.widgetList<ListTile>(find.byType(ListTile)))
+        if (tile.key case ValueKey<String>(value: final key)) key,
+    ];
     expect(rowOrder(), ['extension-zzz-mine', 'catalog-aaa-offer']);
 
     // It arrives installed. Sorted afresh it would LEAD — `AAA Offer` sorts
@@ -824,11 +890,23 @@ void main() {
     // here swaps the two rows under the operator's pointer. It stays put.
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
-          key: 'zzz-mine', file: 'index.js', core: false, name: 'ZZZ Mine', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
+        key: 'zzz-mine',
+        file: 'index.js',
+        core: false,
+        name: 'ZZZ Mine',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '1.0.0',
+      ),
       ExtensionInfo(
-          key: 'aaa-offer', file: 'index.js', core: false, name: 'AAA Offer', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
+        key: 'aaa-offer',
+        file: 'index.js',
+        core: false,
+        name: 'AAA Offer',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '1.0.0',
+      ),
     ]);
     // A settings write is what an install ends with, and what the panel
     // actually rebuilds on — `debugSetAvailableExtensions` notifies nobody.
@@ -851,25 +929,25 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
-    extensions.debugSetAvailableExtensions(const [
-      ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'POTA', category: 'activity'),
-    ]);
+    extensions.debugSetAvailableExtensions(const [ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'POTA', category: 'activity')]);
     final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        theme: ThemeData(visualDensity: VisualDensity.compact),
-        home: Scaffold(
-          body: UiScale(
-            scale: 1.90,
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: SizedBox(width: 300, height: 700, child: ExtensionsPanel(services: services)),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: ThemeData(visualDensity: VisualDensity.compact),
+          home: Scaffold(
+            body: UiScale(
+              scale: 1.90,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(width: 300, height: 700, child: ExtensionsPanel(services: services)),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     final field = tester.getRect(find.byKey(const ValueKey('extensions-search')));
@@ -905,34 +983,34 @@ void main() {
     // is what makes this worth a test: rendering it names the app's own
     // build, which no operator can install, update or otherwise act on.
     extensions.debugSetAvailableExtensions(const [
-      ExtensionInfo(
-          key: 'pota', file: 'pota.js', core: false, name: 'Parks on the Air', category: 'activity',
-          version: '26.9.0'),
+      ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'Parks on the Air', category: 'activity', version: '26.9.0'),
     ]);
     final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        theme: ThemeData(visualDensity: VisualDensity.compact),
-        home: Scaffold(
-          body: UiScale(
-            scale: 1.90,
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: SizedBox(width: 300, height: 700, child: ExtensionsPanel(services: services)),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: ThemeData(visualDensity: VisualDensity.compact),
+          home: Scaffold(
+            body: UiScale(
+              scale: 1.90,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(width: 300, height: 700, child: ExtensionsPanel(services: services)),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
-    expect(
-        find.descendant(of: find.byKey(const ValueKey('extension-pota')), matching: find.text('Built in')),
-        findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('extension-pota')), matching: find.text('Built in')), findsOneWidget);
     expect(find.textContaining('26.9.0'), findsNothing);
     final theme = Theme.of(tester.element(find.byType(ExtensionsPanel)));
-    expect(tester.getSize(find.text('Built in')).height,
-        greaterThanOrEqualTo(theme.textTheme.bodySmall!.fontSize!),
-        reason: '"Built in" is squeezed by the switch above it');
+    expect(
+      tester.getSize(find.text('Built in')).height,
+      greaterThanOrEqualTo(theme.textTheme.bodySmall!.fontSize!),
+      reason: '"Built in" is squeezed by the switch above it',
+    );
   });
 
   testWidgets('every row states its version over the control, and the details button opens them', (tester) async {
@@ -948,22 +1026,32 @@ void main() {
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
-          key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
+        key: 'k2hrc-llota',
+        file: 'index.js',
+        core: false,
+        name: 'LLOTA',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '1.0.0',
+      ),
     ]);
-    final catalog = _catalog((_) async => http.Response(
+    final catalog = _catalog(
+      (_) async => http.Response(
         jsonEncode({
-          'extensions': [
-            _entry('k2hrc-llota', 'LLOTA (catalog)', version: '1.1.0'),
-            _entry('aa-world', 'Alpha World', version: '2.3.4', relevance: _soon()),
-          ],
+          'extensions': [_entry('k2hrc-llota', 'LLOTA (catalog)', version: '1.1.0'), _entry('aa-world', 'Alpha World', version: '2.3.4', relevance: _soon())],
         }),
-        200));
+        200,
+      ),
+    );
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     Finder inRow(String key, Finder what) => find.descendant(of: find.byKey(ValueKey(key)), matching: what);
@@ -1011,33 +1099,45 @@ void main() {
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
-          key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0', description: 'Lighthouses on the air'),
+        key: 'k2hrc-llota',
+        file: 'index.js',
+        core: false,
+        name: 'LLOTA',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '1.0.0',
+        description: 'Lighthouses on the air',
+      ),
     ]);
-    final catalog = _catalog((_) async => http.Response(
+    final catalog = _catalog(
+      (_) async => http.Response(
         jsonEncode({
           'extensions': [_entry('aa-world', 'Alpha World', version: '2.3.4', relevance: _soon())],
         }),
-        200));
+        200,
+      ),
+    );
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        // What every desktop build runs at (ThemeData's adaptive default),
-        // and the density the trailing cap is computed from.
-        theme: ThemeData(visualDensity: VisualDensity.compact),
-        home: Scaffold(
-          body: UiScale(
-            scale: 1.90,
-            child: Align(
-              alignment: Alignment.topLeft,
-              // A settings pane's width in the logical space 1.90 leaves.
-              child: SizedBox(width: 300, height: 700, child: ExtensionsPanel(services: services)),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          // What every desktop build runs at (ThemeData's adaptive default),
+          // and the density the trailing cap is computed from.
+          theme: ThemeData(visualDensity: VisualDensity.compact),
+          home: Scaffold(
+            body: UiScale(
+              scale: 1.90,
+              child: Align(
+                alignment: Alignment.topLeft,
+                // A settings pane's width in the logical space 1.90 leaves.
+                child: SizedBox(width: 300, height: 700, child: ExtensionsPanel(services: services)),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // Measured on the line, not on the trailing box: the box is clamped to
@@ -1046,11 +1146,8 @@ void main() {
     // operator cannot read.
     final theme = Theme.of(tester.element(find.byType(ExtensionsPanel)));
     final lineHeight = theme.textTheme.bodySmall!.fontSize!;
-    void expectAFullLine(String caption) => expect(
-          tester.getSize(find.text(caption)).height,
-          greaterThanOrEqualTo(lineHeight),
-          reason: '"$caption" is squeezed by the control above it',
-        );
+    void expectAFullLine(String caption) =>
+        expect(tester.getSize(find.text(caption)).height, greaterThanOrEqualTo(lineHeight), reason: '"$caption" is squeezed by the control above it');
 
     // The built-in row's own shape — a bare switch under the same cap — is
     // measured where it can still be rendered, in the built-in test above:
@@ -1060,8 +1157,7 @@ void main() {
     expectAFullLine('2.3.4'); // the install button row
   });
 
-  testWidgets('the operator geo arriving after the panel opened is a new request, and re-ranks the rows',
-      (tester) async {
+  testWidgets('the operator geo arriving after the panel opened is a new request, and re-ranks the rows', (tester) async {
     tester.view.physicalSize = const Size(1000, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -1084,22 +1180,31 @@ void main() {
     final catalog = _catalog((request) async {
       queries.add(request.url.queryParameters);
       return http.Response(
-          jsonEncode({
-            'extensions': [
-              _entry('zz-world', 'Zulu World'),
-              _entry('k-only', 'Kilo Only', relevance: {
-                'entities': ['K']
-              }),
-              _entry('aa-world', 'Alpha World', relevance: _soon()),
-            ],
-          }),
-          200);
+        jsonEncode({
+          'extensions': [
+            _entry('zz-world', 'Zulu World'),
+            _entry(
+              'k-only',
+              'Kilo Only',
+              relevance: {
+                'entities': ['K'],
+              },
+            ),
+            _entry('aa-world', 'Alpha World', relevance: _soon()),
+          ],
+        }),
+        200,
+      );
     });
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog, flags: flags);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     // Nothing known about the operator, so nothing can be suggested for
     // WHERE they are: only the one that is soon. `zz-world` is worldwide and
@@ -1138,17 +1243,33 @@ void main() {
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
-          key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
+        key: 'k2hrc-llota',
+        file: 'index.js',
+        core: false,
+        name: 'LLOTA',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '1.0.0',
+      ),
       ExtensionInfo(
-          key: 'zz-current', file: 'index.js', core: false, name: 'ZZ Current', category: 'activity',
-          source: ExtensionSource.installed, version: '2.0.0'),
+        key: 'zz-current',
+        file: 'index.js',
+        core: false,
+        name: 'ZZ Current',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '2.0.0',
+      ),
     ]);
     final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     Finder inRow(String key, Finder what) => find.descendant(of: find.byKey(ValueKey('extension-$key')), matching: what);
@@ -1175,12 +1296,15 @@ void main() {
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(_testExtensions);
     final answer = Completer<http.Response>();
-    final services =
-        HaLoServices(db, settings, extensions: extensions, catalog: _catalog((_) => answer.future));
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: _catalog((_) => answer.future));
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pump();
     expect(find.text('Loading the catalog…'), findsOneWidget);
 
@@ -1207,13 +1331,22 @@ void main() {
     var requests = 0;
     final catalog = _catalog((_) async {
       requests++;
-      return http.Response(jsonEncode({'extensions': [_entry('aa-world', 'Alpha World', relevance: _soon())]}), 200);
+      return http.Response(
+        jsonEncode({
+          'extensions': [_entry('aa-world', 'Alpha World', relevance: _soon())],
+        }),
+        200,
+      );
     });
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // Hidden entirely — no header, no status line — and NOT fetched: a
@@ -1255,33 +1388,42 @@ void main() {
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
-          key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
-          description: 'Lighthouses on the air', source: ExtensionSource.installed, version: '1.0.0',
-          domains: ['llota.cl'], hooks: ['activity', 'ref:llota']),
+        key: 'k2hrc-llota',
+        file: 'index.js',
+        core: false,
+        name: 'LLOTA',
+        category: 'activity',
+        description: 'Lighthouses on the air',
+        source: ExtensionSource.installed,
+        version: '1.0.0',
+        domains: ['llota.cl'],
+        hooks: ['activity', 'ref:llota'],
+      ),
     ]);
-    final catalog = _catalog((_) async => http.Response(
+    final catalog = _catalog(
+      (_) async => http.Response(
         jsonEncode({
           'extensions': [_entry('k2hrc-llota', 'LLOTA (catalog)', version: '1.1.0')],
         }),
-        200));
+        200,
+      ),
+    );
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // The bin is gone from the row. It sat beside the switch, one mis-aimed
     // click from a toggle, and the row could not say what would be removed.
-    expect(
-      find.descendant(of: find.byKey(const ValueKey('extension-k2hrc-llota')), matching: find.byIcon(MdiIcons.trashCanOutline)),
-      findsNothing,
-    );
+    expect(find.descendant(of: find.byKey(const ValueKey('extension-k2hrc-llota')), matching: find.byIcon(MdiIcons.trashCanOutline)), findsNothing);
 
-    await tester.tap(find.descendant(
-      of: find.byKey(const ValueKey('extension-k2hrc-llota')),
-      matching: find.byIcon(MdiIcons.informationOutline),
-    ));
+    await tester.tap(find.descendant(of: find.byKey(const ValueKey('extension-k2hrc-llota')), matching: find.byIcon(MdiIcons.informationOutline)));
     await tester.pumpAndSettle();
 
     // What it is, and the two things that can be done about it. Update is
@@ -1308,20 +1450,19 @@ void main() {
     addTearDown(db.close);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
-      ExtensionInfo(
-          key: 'pota', file: 'pota.js', core: false, name: 'POTA', category: 'activity',
-          description: 'Parks', version: '26.9.0'),
+      ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'POTA', category: 'activity', description: 'Parks', version: '26.9.0'),
     ]);
     final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.descendant(
-      of: find.byKey(const ValueKey('extension-pota')),
-      matching: find.byIcon(MdiIcons.informationOutline),
-    ));
+    await tester.tap(find.descendant(of: find.byKey(const ValueKey('extension-pota')), matching: find.byIcon(MdiIcons.informationOutline)));
     await tester.pumpAndSettle();
 
     // No version: the app's own build is not a number anybody can act on,
@@ -1349,28 +1490,32 @@ void main() {
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
-          key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
-          source: ExtensionSource.installed, version: '1.0.0'),
+        key: 'k2hrc-llota',
+        file: 'index.js',
+        core: false,
+        name: 'LLOTA',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '1.0.0',
+      ),
     ]);
     final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Catalog'), findsNothing, reason: 'the experiment is off');
 
-    await tester.tap(find.descendant(
-      of: find.byKey(const ValueKey('extension-k2hrc-llota')),
-      matching: find.byIcon(MdiIcons.informationOutline),
-    ));
+    await tester.tap(find.descendant(of: find.byKey(const ValueKey('extension-k2hrc-llota')), matching: find.byIcon(MdiIcons.informationOutline)));
     await tester.pumpAndSettle();
     final inDialog = find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, 'Update'));
     expect(inDialog, findsNothing);
     // Removing still works: it needs no catalog at all.
-    expect(
-      find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(TextButton, 'Remove')),
-      findsOneWidget,
-    );
+    expect(find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(TextButton, 'Remove')), findsOneWidget);
   });
 }

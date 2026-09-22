@@ -26,8 +26,7 @@ class _FakeUpdates implements UpdateService {
   Future<bool> checkAndApply() async => false;
 
   @override
-  Future<({bool resolved, int? number})> currentPatchNumber() async =>
-      (resolved: resolved, number: number);
+  Future<({bool resolved, int? number})> currentPatchNumber() async => (resolved: resolved, number: number);
 }
 
 void main() {
@@ -42,11 +41,7 @@ void main() {
 
   final actions = <({String key, Map<String, dynamic> action})>[];
 
-  StalenessService build({
-    bool buildExpired = false,
-    Map<String, dynamic> flags = const {},
-    DateTime Function()? now,
-  }) {
+  StalenessService build({bool buildExpired = false, Map<String, dynamic> flags = const {}, DateTime Function()? now}) {
     actions.clear();
     return StalenessService(
       statusBar: statusBar,
@@ -103,31 +98,25 @@ void main() {
     // that the service hands it the updater's own answer rather than a value
     // reconstructed on the way through.
     StalenessService withUpdater(_FakeUpdates updates, Map<String, dynamic> flags) =>
-        StalenessService(
-          statusBar: statusBar,
-          prefs: prefs,
-          isReleaseBuild: true,
-          buildExpired: () => false,
-          updates: updates,
-          onNoticeAction: null,
-        )..evaluate(flags: flags);
+        StalenessService(statusBar: statusBar, prefs: prefs, isReleaseBuild: true, buildExpired: () => false, updates: updates, onNoticeAction: null)
+          ..evaluate(flags: flags);
 
     test('an unresolved read does not push the lower-ranked notice either', () {
       // Silence about the floor must not become noise about something else.
-      withUpdater(
-        _FakeUpdates(resolved: false),
-        {'minCodePush': {'$kBuildNumber': 3}, 'latestRelease': '99.9'},
-      );
+      withUpdater(_FakeUpdates(resolved: false), {
+        'minCodePush': {'$kBuildNumber': 3},
+        'latestRelease': '99.9',
+      });
       // The notice is still allowed here — the floor signal is silent, so the
       // newer release is the top ACTIVE signal and correctly speaks.
       expect(statusBar.activeNotices.single.key, 'update:version');
     });
 
     test('a floor for a different build does not apply to this one', () {
-      withUpdater(
-        _FakeUpdates(resolved: true, number: null),
-        {'minCodePush': {'${kBuildNumber + 1}': 3}, 'latestRelease': '99.9'},
-      );
+      withUpdater(_FakeUpdates(resolved: true, number: null), {
+        'minCodePush': {'${kBuildNumber + 1}': 3},
+        'latestRelease': '99.9',
+      });
       expect(statusBar.activeNotices.single.key, 'update:version');
     });
   });
@@ -136,7 +125,14 @@ void main() {
     test('a malformed minCodePush is survivable, not fatal', () {
       // Hand-edited JSON on a server, evaluated on the boot path.
       expect(() => build(flags: {'minCodePush': 'not-a-map'}), returnsNormally);
-      expect(() => build(flags: {'minCodePush': {'$kBuildNumber': 'abc'}}), returnsNormally);
+      expect(
+        () => build(
+          flags: {
+            'minCodePush': {'$kBuildNumber': 'abc'},
+          },
+        ),
+        returnsNormally,
+      );
     });
 
     test('evaluate with no flags at all is survivable', () {

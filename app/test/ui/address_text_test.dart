@@ -13,9 +13,15 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<String> shown(WidgetTester tester, String address, double width) async {
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: Center(child: SizedBox(width: width, child: AddressText(address)))),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(width: width, child: AddressText(address)),
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     return tester.widget<Text>(find.byType(Text)).data!;
   }

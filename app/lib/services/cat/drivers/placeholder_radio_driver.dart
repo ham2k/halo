@@ -91,7 +91,6 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   @override
   String get name => 'Placeholder Radio';
 
-
   @override
   bool get canKeyCw => true;
 
@@ -100,78 +99,63 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   /// no audio chain here for one to act on, and a made-up number on a meter
   /// nobody can influence is worse than an empty slot.
   @override
-  Set<RadioMeter> get telemetryMeters =>
-      const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.supplyVolts};
+  Set<RadioMeter> get telemetryMeters => const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.supplyVolts};
 
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
-      PlaceholderRadioSession(sink, config);
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => PlaceholderRadioSession(sink, config);
 
   @override
   int voiceMemoryCountWith(Map<String, dynamic> config) => placeholderVoiceMemoryCount;
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [
-        // What the entry is FOR, said first: an operator reaching this form
-        // wants a rig on their log, and every field below it is a simulator
-        // knob that only a developer has any use for.
-        {
-          'type': 'markdown',
-          'text': t.settings.station.placeholderPurpose,
-        },
-        // Under developer mode, all of them. The name is the whole form for
-        // everyone else — and the values still exist, prefilled from
-        // defaultConfig, so a hidden field never blocks a submit.
-        if (!overrides.containsKey('placeholderFreq'))
-          {
-            'type': 'field',
-            'fieldType': 'number',
-            'key': 'placeholderFreq',
-            'label': t.settings.station.placeholderFreq,
-            'description': t.settings.station.placeholderFreqDescription,
-            'devMode': true,
-          },
-        if (!overrides.containsKey('placeholderMode'))
-          {
-            'type': 'field',
-            'fieldType': 'text',
-            'key': 'placeholderMode',
-            'label': t.settings.station.placeholderMode,
-            'description': t.settings.station.placeholderModeDescription,
-            'devMode': true,
-          },
-        if (!overrides.containsKey('placeholderPower'))
-          {
-            'type': 'field',
-            'fieldType': 'number',
-            'key': 'placeholderPower',
-            'label': t.settings.station.placeholderPower,
-            'devMode': true,
-          },
-        if (!overrides.containsKey('placeholderSwr'))
-          {
-            'type': 'field',
-            'fieldType': 'number',
-            'key': 'placeholderSwr',
-            'label': t.settings.station.placeholderSwr,
-            'description': t.settings.station.placeholderSwrDescription,
-            'devMode': true,
-          },
-        {...telemetryConfigElement(), 'devMode': true},
-        if (!overrides.containsKey('placeholderReplyDelay'))
-          {
-            'type': 'field',
-            'fieldType': 'number',
-            'key': 'placeholderReplyDelay',
-            'label': t.settings.station.placeholderReplyDelay,
-            'description': t.settings.station.placeholderReplyDelayDescription,
-            'devMode': true,
-          },
-      ];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    // What the entry is FOR, said first: an operator reaching this form
+    // wants a rig on their log, and every field below it is a simulator
+    // knob that only a developer has any use for.
+    {'type': 'markdown', 'text': t.settings.station.placeholderPurpose},
+    // Under developer mode, all of them. The name is the whole form for
+    // everyone else — and the values still exist, prefilled from
+    // defaultConfig, so a hidden field never blocks a submit.
+    if (!overrides.containsKey('placeholderFreq'))
+      {
+        'type': 'field',
+        'fieldType': 'number',
+        'key': 'placeholderFreq',
+        'label': t.settings.station.placeholderFreq,
+        'description': t.settings.station.placeholderFreqDescription,
+        'devMode': true,
+      },
+    if (!overrides.containsKey('placeholderMode'))
+      {
+        'type': 'field',
+        'fieldType': 'text',
+        'key': 'placeholderMode',
+        'label': t.settings.station.placeholderMode,
+        'description': t.settings.station.placeholderModeDescription,
+        'devMode': true,
+      },
+    if (!overrides.containsKey('placeholderPower'))
+      {'type': 'field', 'fieldType': 'number', 'key': 'placeholderPower', 'label': t.settings.station.placeholderPower, 'devMode': true},
+    if (!overrides.containsKey('placeholderSwr'))
+      {
+        'type': 'field',
+        'fieldType': 'number',
+        'key': 'placeholderSwr',
+        'label': t.settings.station.placeholderSwr,
+        'description': t.settings.station.placeholderSwrDescription,
+        'devMode': true,
+      },
+    {...telemetryConfigElement(), 'devMode': true},
+    if (!overrides.containsKey('placeholderReplyDelay'))
+      {
+        'type': 'field',
+        'fieldType': 'number',
+        'key': 'placeholderReplyDelay',
+        'label': t.settings.station.placeholderReplyDelay,
+        'description': t.settings.station.placeholderReplyDelayDescription,
+        'devMode': true,
+      },
+  ];
 
   /// Blank is rejected on every numeric field, and prefilled by
   /// [EquipmentVariant.defaultConfig] so it never comes up unasked — see
@@ -184,9 +168,7 @@ class PlaceholderRadioDriver extends EquipmentDriver {
         return (freq == null || freq <= 0) ? t.settings.station.placeholderFreqInvalid : null;
       case 'placeholderPower':
       case 'placeholderReplyDelay':
-        return numberFromConfig({...config, key: value}, key, -1) < 0
-            ? t.settings.station.placeholderWholeNumberInvalid
-            : null;
+        return numberFromConfig({...config, key: value}, key, -1) < 0 ? t.settings.station.placeholderWholeNumberInvalid : null;
       case telemetryIntervalConfigKey:
         return validateTelemetryInterval(value);
       case 'placeholderSwr':
@@ -228,10 +210,7 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
   /// rather than by a special case that only the placeholder takes.
   /// Never [TelemetryPoller.start]ed: this rig keys itself, so there is
   /// nothing to watch for and no exchange worth spending on asking.
-  late final TelemetryPoller _telemetry = TelemetryPoller(
-    onPoll: (_) => _reportMeters(),
-    txInterval: telemetryIntervalFor(_config, cycleBytes: 0),
-  );
+  late final TelemetryPoller _telemetry = TelemetryPoller(onPoll: (_) => _reportMeters(), txInterval: telemetryIntervalFor(_config, cycleBytes: 0));
 
   /// Kept for [_telemetry]'s interval, which is read once when the poller is
   /// first touched rather than in the constructor — a `late final` field
@@ -284,12 +263,12 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
   Timer? _voiceEnd;
 
   PlaceholderRadioSession(this._sink, Map<String, dynamic> config)
-      : _config = config,
-        _replyDelay = Duration(milliseconds: numberFromConfig(config, 'placeholderReplyDelay', 0)),
-        _freqKHz = freqFromConfig(config) ?? placeholderRadioDefaultFreqKHz,
-        _mode = modeFromConfig(config),
-        _watts = numberFromConfig(config, 'placeholderPower', placeholderRadioDefaultWatts),
-        _swr = _swrFromConfig(config);
+    : _config = config,
+      _replyDelay = Duration(milliseconds: numberFromConfig(config, 'placeholderReplyDelay', 0)),
+      _freqKHz = freqFromConfig(config) ?? placeholderRadioDefaultFreqKHz,
+      _mode = modeFromConfig(config),
+      _watts = numberFromConfig(config, 'placeholderPower', placeholderRadioDefaultWatts),
+      _swr = _swrFromConfig(config);
 
   static num _swrFromConfig(Map<String, dynamic> config) {
     final raw = config['placeholderSwr'];

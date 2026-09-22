@@ -10,38 +10,36 @@ import 'package:halo_core/halo_core.dart';
 import 'package:test/test.dart';
 
 Qso _qso(int atMillis, {String call = 'W1AW'}) => Qso(
-      uuid: 'q$atMillis',
-      operationUuid: 'op',
-      data: {
-        'startAtMillis': atMillis,
-        'band': '20m',
-        'mode': 'CW',
-        'their': {'call': call},
-      },
-    );
+  uuid: 'q$atMillis',
+  operationUuid: 'op',
+  data: {
+    'startAtMillis': atMillis,
+    'band': '20m',
+    'mode': 'CW',
+    'their': {'call': call},
+  },
+);
 
 Qso _event(int atMillis, String kind, {Map<String, dynamic>? operation, bool deleted = false}) => Qso(
-      uuid: 'e$atMillis',
-      operationUuid: 'op',
-      deleted: deleted,
-      data: {
-        'startAtMillis': atMillis,
-        'band': 'event',
-        'event': {'event': kind, 'operation': ?operation},
-      },
-    );
+  uuid: 'e$atMillis',
+  operationUuid: 'op',
+  deleted: deleted,
+  data: {
+    'startAtMillis': atMillis,
+    'band': 'event',
+    'event': {'event': kind, 'operation': ?operation},
+  },
+);
 
 Map<String, dynamic> _base() => {
-      'stationCall': 'N0DEV',
-      'grid': 'FN31pr',
-      'refs': [
-        {'type': 'pota', 'ref': 'US-0001'},
-      ],
-    };
+  'stationCall': 'N0DEV',
+  'grid': 'FN31pr',
+  'refs': [
+    {'type': 'pota', 'ref': 'US-0001'},
+  ],
+};
 
-Set<String> _refTypes(Map<String, dynamic> operation) => {
-      for (final ref in (operation['refs'] as List).cast<Map<String, dynamic>>()) ref['type'] as String,
-    };
+Set<String> _refTypes(Map<String, dynamic> operation) => {for (final ref in (operation['refs'] as List).cast<Map<String, dynamic>>()) ref['type'] as String};
 
 void main() {
   test('an operation with no events is one segment covering everything', () {
@@ -60,11 +58,15 @@ void main() {
       operation: _base(),
       qsos: [
         _qso(100),
-        _event(200, 'break', operation: {
-          'refs': [
-            {'type': 'pota', 'ref': 'US-0002'},
-          ],
-        }),
+        _event(
+          200,
+          'break',
+          operation: {
+            'refs': [
+              {'type': 'pota', 'ref': 'US-0002'},
+            ],
+          },
+        ),
         _qso(300),
       ],
     );
@@ -79,7 +81,9 @@ void main() {
     // segments entirely — not an accumulator.
     final s = SegmentedOperation.from(
       operation: _base(),
-      qsos: [_event(200, 'break', operation: {'grid': 'FN32aa'})],
+      qsos: [
+        _event(200, 'break', operation: {'grid': 'FN32aa'}),
+      ],
     );
     expect(s.effectiveAt(300)['grid'], 'FN32aa');
     expect(s.effectiveAt(300)['stationCall'], 'N0DEV');
@@ -91,11 +95,15 @@ void main() {
       operation: _base(),
       qsos: [
         _event(200, 'break', operation: {'grid': 'FN32aa'}),
-        _event(400, 'break', operation: {
-          'refs': [
-            {'type': 'cqww'},
-          ],
-        }),
+        _event(
+          400,
+          'break',
+          operation: {
+            'refs': [
+              {'type': 'cqww'},
+            ],
+          },
+        ),
       ],
     );
     // Segment one set a grid; segment two never mentions it, so it reverts to
@@ -113,11 +121,15 @@ void main() {
     final s = SegmentedOperation.from(
       operation: _base(),
       qsos: [
-        _event(200, 'break', operation: {
-          'refs': [
-            {'type': 'pota', 'ref': 'US-0002'},
-          ],
-        }),
+        _event(
+          200,
+          'break',
+          operation: {
+            'refs': [
+              {'type': 'pota', 'ref': 'US-0002'},
+            ],
+          },
+        ),
       ],
     );
     expect((s.effectiveAt(199)['refs'] as List).single['ref'], 'US-0001');
@@ -141,10 +153,7 @@ void main() {
   test('an `end` event is not a segment boundary', () {
     // It closes the operation and carries no override; treating it as a
     // boundary would strand anything logged after it with no refs at all.
-    final s = SegmentedOperation.from(
-      operation: _base(),
-      qsos: [_event(200, 'end')],
-    );
+    final s = SegmentedOperation.from(operation: _base(), qsos: [_event(200, 'end')]);
     expect(s.isSegmented, isFalse);
     expect((s.effectiveAt(300)['refs'] as List).single['ref'], 'US-0001');
   });
@@ -153,11 +162,16 @@ void main() {
     final s = SegmentedOperation.from(
       operation: _base(),
       qsos: [
-        _event(200, 'break', deleted: true, operation: {
-          'refs': [
-            {'type': 'pota', 'ref': 'US-0002'},
-          ],
-        }),
+        _event(
+          200,
+          'break',
+          deleted: true,
+          operation: {
+            'refs': [
+              {'type': 'pota', 'ref': 'US-0002'},
+            ],
+          },
+        ),
       ],
     );
     expect(s.isSegmented, isFalse);
@@ -175,11 +189,15 @@ void main() {
     final s = SegmentedOperation.from(
       operation: _base(),
       qsos: [
-        _event(200, 'break', operation: {
-          'refs': [
-            {'type': 'cqww'},
-          ],
-        }),
+        _event(
+          200,
+          'break',
+          operation: {
+            'refs': [
+              {'type': 'cqww'},
+            ],
+          },
+        ),
       ],
     );
     expect(_refTypes(s.current), {'cqww'});
@@ -191,11 +209,15 @@ void main() {
     final s = SegmentedOperation.from(
       operation: _base(),
       qsos: [
-        _event(200, 'break', operation: {
-          'refs': [
-            {'type': 'cqww'},
-          ],
-        }),
+        _event(
+          200,
+          'break',
+          operation: {
+            'refs': [
+              {'type': 'cqww'},
+            ],
+          },
+        ),
       ],
     );
     expect(s.allRefTypes, {'pota', 'cqww'});
@@ -220,18 +242,26 @@ void main() {
         qsos: [
           ...qsos,
           // Left the park, still in the contest.
-          _event(200, 'break', operation: {
-            'refs': [
-              {'type': 'cqww'},
-            ],
-          }),
+          _event(
+            200,
+            'break',
+            operation: {
+              'refs': [
+                {'type': 'cqww'},
+              ],
+            },
+          ),
           // Arrived at the second park.
-          _event(400, 'break', operation: {
-            'refs': [
-              {'type': 'pota', 'ref': 'US-0002'},
-              {'type': 'cqww'},
-            ],
-          }),
+          _event(
+            400,
+            'break',
+            operation: {
+              'refs': [
+                {'type': 'pota', 'ref': 'US-0002'},
+                {'type': 'cqww'},
+              ],
+            },
+          ),
         ],
       );
     });
@@ -248,10 +278,7 @@ void main() {
     });
 
     test('the contest reference covers the whole log, since every segment carries it', () {
-      expect(
-        segmented.qsosFor(qsos, {'type': 'cqww'}).map((q) => q.startAtMillis),
-        [100, 300, 500],
-      );
+      expect(segmented.qsosFor(qsos, {'type': 'cqww'}).map((q) => q.startAtMillis), [100, 300, 500]);
     });
 
     test('a reference present in no segment gets nothing', () {
@@ -260,10 +287,7 @@ void main() {
 
     test('allRefs is one entry per reference, deduped across segments', () {
       // cqww appears in all three segments and must be offered once.
-      expect(
-        segmented.allRefs.map((r) => '${r['type']}/${r['ref']}').toList()..sort(),
-        ['cqww/null', 'pota/US-0001', 'pota/US-0002'],
-      );
+      expect(segmented.allRefs.map((r) => '${r['type']}/${r['ref']}').toList()..sort(), ['cqww/null', 'pota/US-0001', 'pota/US-0002']);
     });
 
     test('on an unsegmented operation a reference takes the whole log', () {

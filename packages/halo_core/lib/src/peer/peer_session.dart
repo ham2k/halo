@@ -225,18 +225,17 @@ class PeerSession {
   Future<void> _tail = Future.value();
 
   Future<void> start() {
-    _subscription = link.inbound.listen(
-      _dispatch,
-      onError: (Object e) => log?.call('peer link error: $e'),
-    );
+    _subscription = link.inbound.listen(_dispatch, onError: (Object e) => log?.call('peer link error: $e'));
     unawaited(link.closed.then((_) => _finish(PeerSessionState.closed)));
-    _send(PeerMessage.hello(
-      deviceId: localDeviceId,
-      deviceName: localDeviceName,
-      operationUuid: _localSharing,
-      accountTag: localAccountTag,
-      capabilities: localCapabilities,
-    ));
+    _send(
+      PeerMessage.hello(
+        deviceId: localDeviceId,
+        deviceName: localDeviceName,
+        operationUuid: _localSharing,
+        accountTag: localAccountTag,
+        capabilities: localCapabilities,
+      ),
+    );
     return Future.value();
   }
 
@@ -506,10 +505,7 @@ class PeerSession {
       _refreshSyncState();
       return;
     }
-    final payload = [
-      for (final row in rows)
-        PeerEventPayload(seq: row.seq, kind: row.kind, data: _decodeRow(row.data)).toJson(),
-    ];
+    final payload = [for (final row in rows) PeerEventPayload(seq: row.seq, kind: row.kind, data: _decodeRow(row.data)).toJson()];
     final lastSeq = rows.last.seq;
     if (lastSeq > (_lastSentSeq[operationUuid] ?? 0)) _lastSentSeq[operationUuid] = lastSeq;
     // `hasMore` is honest about the batch limit, not about whether the peer

@@ -110,33 +110,27 @@ class _OfflineDetailDialogState extends State<_OfflineDetailDialog> {
       // opens, and a title saying something else reads as a different subject.
       title: Text(offline ? t.statusOffline : t.statusOnline),
       content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Which half we are in. The operator sees one offline state, but
-            // the two have different things to try: no route at all is a
-            // radio or a coverage problem, while a route that answers nothing
-            // is usually a sign-in page waiting in a browser.
-            Text(offline ? (ConnectivityService.hasNoRoute ? t.noRoute : t.unreachable) : t.reachable),
-            // What stops is only true while it is stopped — the same lines
-            // read as a warning about nothing when everything is answering.
-            if (offline) ...[
-              const SizedBox(height: Space.md),
-              Text(t.whatStops, style: theme.textTheme.bodySmall),
-            ],
-            const SizedBox(height: Space.lg),
-            Text(t.servicesTitle, style: theme.textTheme.titleSmall),
-            const SizedBox(height: Space.xs),
-            OncePerSecond(builder: (_, now) => _services(context, now)),
-            // The outcome sits in the content, not the footer: it is a report
-            // on what just happened and has to stay readable while the footer
-            // wraps on a narrow window.
-            if (_outcome != null && !_retrying) ...[
-              const SizedBox(height: Space.md),
-              Text(_outcomeMessage(t, _outcome!), style: theme.textTheme.bodySmall),
-            ],
-          ],
-        ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Which half we are in. The operator sees one offline state, but
+          // the two have different things to try: no route at all is a
+          // radio or a coverage problem, while a route that answers nothing
+          // is usually a sign-in page waiting in a browser.
+          Text(offline ? (ConnectivityService.hasNoRoute ? t.noRoute : t.unreachable) : t.reachable),
+          // What stops is only true while it is stopped — the same lines
+          // read as a warning about nothing when everything is answering.
+          if (offline) ...[const SizedBox(height: Space.md), Text(t.whatStops, style: theme.textTheme.bodySmall)],
+          const SizedBox(height: Space.lg),
+          Text(t.servicesTitle, style: theme.textTheme.titleSmall),
+          const SizedBox(height: Space.xs),
+          OncePerSecond(builder: (_, now) => _services(context, now)),
+          // The outcome sits in the content, not the footer: it is a report
+          // on what just happened and has to stay readable while the footer
+          // wraps on a narrow window.
+          if (_outcome != null && !_retrying) ...[const SizedBox(height: Space.md), Text(_outcomeMessage(t, _outcome!), style: theme.textTheme.bodySmall)],
+        ],
+      ),
       // Done is the emphasis AND the trailing button, and Retry is neither:
       // the sheet is read far more often than it is acted on, and the retry it
       // offers is one the app is already making on a schedule of its own (see
@@ -148,22 +142,19 @@ class _OfflineDetailDialogState extends State<_OfflineDetailDialog> {
       // and `dialog_footer_convention_test` fails the build on one passed
       // through `actions:`. With `actions` empty the cancel slot IS the
       // trailing edge, which is where the emphasis belongs.
-      secondary: TextButton(
-        onPressed: _retrying ? null : _retry,
-        child: Text(_retrying ? t.retrying : t.retry),
-      ),
+      secondary: TextButton(onPressed: _retrying ? null : _retry, child: Text(_retrying ? t.retrying : t.retry)),
       cancel: FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
     );
   }
 
   String _outcomeMessage(Translations$offline$en t, SyncRetryOutcome outcome) => switch (outcome) {
-        SyncRetryOutcome.reached => t.retryReached,
-        SyncRetryOutcome.unreachable => t.retryUnreachable,
-        SyncRetryOutcome.notAttempted => t.retryNotAttempted,
-        SyncRetryOutcome.throttled => t.retryThrottled,
-        SyncRetryOutcome.inFlight => t.retryInFlight,
-        SyncRetryOutcome.disabled => t.retryDisabled,
-      };
+    SyncRetryOutcome.reached => t.retryReached,
+    SyncRetryOutcome.unreachable => t.retryUnreachable,
+    SyncRetryOutcome.notAttempted => t.retryNotAttempted,
+    SyncRetryOutcome.throttled => t.retryThrottled,
+    SyncRetryOutcome.inFlight => t.retryInFlight,
+    SyncRetryOutcome.disabled => t.retryDisabled,
+  };
 
   Widget _services(BuildContext context, DateTime now) {
     final t = context.t.offline;
@@ -185,9 +176,7 @@ class _OfflineDetailDialogState extends State<_OfflineDetailDialog> {
                 // through [emojiStyle]: body text is Roboto, which resolves no
                 // emoji at all under CanvasKit — the glyph would simply be
                 // absent, with nothing in the log to say why.
-                service.isFailing
-                    ? Icon(MdiIcons.alertCircleOutline, size: 16, color: theme.colorScheme.error)
-                    : Text('✅', style: emojiStyle(fontSize: 14)),
+                service.isFailing ? Icon(MdiIcons.alertCircleOutline, size: 16, color: theme.colorScheme.error) : Text('✅', style: emojiStyle(fontSize: 14)),
                 const SizedBox(width: Space.sm),
                 Expanded(
                   child: Column(
@@ -195,9 +184,7 @@ class _OfflineDetailDialogState extends State<_OfflineDetailDialog> {
                     children: [
                       Text(service.label),
                       Text(
-                        service.lastSuccessAt == null
-                            ? t.neverSucceeded
-                            : t.lastSuccess(when: _coarse(now.difference(service.lastSuccessAt!))),
+                        service.lastSuccessAt == null ? t.neverSucceeded : t.lastSuccess(when: _coarse(now.difference(service.lastSuccessAt!))),
                         style: theme.textTheme.bodySmall,
                       ),
                     ],
@@ -211,9 +198,7 @@ class _OfflineDetailDialogState extends State<_OfflineDetailDialog> {
             // Real clock: the schedule is a Timer's, which does not travel
             // (docs/design/time.md §1), so comparing it against the app clock
             // would print a wild number in a travelled session.
-            nextAttempt.isAfter(realNowUtc())
-                ? t.nextAttempt(when: _coarse(nextAttempt.difference(realNowUtc())))
-                : t.nextAttemptNow,
+            nextAttempt.isAfter(realNowUtc()) ? t.nextAttempt(when: _coarse(nextAttempt.difference(realNowUtc()))) : t.nextAttemptNow,
             style: theme.textTheme.bodySmall,
           ),
       ],

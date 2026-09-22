@@ -91,8 +91,7 @@ void main() {
     final op = await operations.create(stationCall: 'N0DEV');
     await operations.softDelete(op.uuid);
     final tombstone = (await operations.get(op.uuid))!;
-    await (db.update(db.operations)..where((o) => o.uuid.equals(op.uuid)))
-        .write(const OperationsCompanion(synced: Value(true)));
+    await (db.update(db.operations)..where((o) => o.uuid.equals(op.uuid))).write(const OperationsCompanion(synced: Value(true)));
     // The real clock has millisecond resolution; a restore landing in the
     // tombstone's own millisecond would tie with it rather than beat it.
     await Future<void>.delayed(const Duration(milliseconds: 2));
@@ -123,10 +122,7 @@ void main() {
     await operations.purge(purged.uuid);
 
     expect((await operations.watchAll().first).map((o) => o.uuid), [live.uuid]);
-    expect(
-      (await operations.watchAll(includeDeleted: true).first).map((o) => o.uuid),
-      unorderedEquals([live.uuid, deleted.uuid]),
-    );
+    expect((await operations.watchAll(includeDeleted: true).first).map((o) => o.uuid), unorderedEquals([live.uuid, deleted.uuid]));
   });
 
   // app-polo's `deleteOperation` tombstones every QSO along with the

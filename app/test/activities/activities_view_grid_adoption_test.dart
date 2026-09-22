@@ -38,12 +38,7 @@ void main() {
     test('offers one to an operation whose stored grid names no place', () {
       for (final unplaceable in ['', 'IL2']) {
         final operation = Operation(uuid: 'op', data: {'grid': unplaceable});
-        final adopted = locationToAdoptAfterAddingRef(
-          operationLocation: operation.location,
-          gpsPosition: gps,
-          distanceKm: 1,
-          refsAfterAdd: const [],
-        );
+        final adopted = locationToAdoptAfterAddingRef(operationLocation: operation.location, gpsPosition: gps, distanceKm: 1, refsAfterAdd: const []);
         expect(adopted?.location, gps, reason: 'grid "$unplaceable" is not a location');
       }
     });
@@ -51,12 +46,7 @@ void main() {
 
   group('GPS available', () {
     test('adopts the fix itself when the added ref is within 15km', () {
-      final adopted = locationToAdoptAfterAddingRef(
-        operationLocation: null,
-        gpsPosition: gps,
-        distanceKm: 5,
-        refsAfterAdd: const [],
-      )!;
+      final adopted = locationToAdoptAfterAddingRef(operationLocation: null, gpsPosition: gps, distanceKm: 5, refsAfterAdd: const [])!;
       // The coordinate, not the square it falls in: a fix reduced to a grid on
       // the way in cannot be recovered afterwards, and every distance the
       // operation goes on to compute inherits the error.
@@ -67,34 +57,15 @@ void main() {
       expect(adopted.grid, locationToGrid6(gps.latitude, gps.longitude));
       GridPrecision.configure(GridPrecision.eight);
       addTearDown(GridPrecision.reset);
-      expect(
-        locationToAdoptAfterAddingRef(operationLocation: null, gpsPosition: gps, distanceKm: 5, refsAfterAdd: const [])!.grid,
-        hasLength(8),
-      );
+      expect(locationToAdoptAfterAddingRef(operationLocation: null, gpsPosition: gps, distanceKm: 5, refsAfterAdd: const [])!.grid, hasLength(8));
     });
 
     test('does nothing when the added ref is farther than 15km', () {
-      expect(
-        locationToAdoptAfterAddingRef(
-          operationLocation: null,
-          gpsPosition: gps,
-          distanceKm: 15.1,
-          refsAfterAdd: const [],
-        ),
-        isNull,
-      );
+      expect(locationToAdoptAfterAddingRef(operationLocation: null, gpsPosition: gps, distanceKm: 15.1, refsAfterAdd: const []), isNull);
     });
 
     test('does nothing when the ref has no known distance (e.g. manually typed)', () {
-      expect(
-        locationToAdoptAfterAddingRef(
-          operationLocation: null,
-          gpsPosition: gps,
-          distanceKm: null,
-          refsAfterAdd: const [],
-        ),
-        isNull,
-      );
+      expect(locationToAdoptAfterAddingRef(operationLocation: null, gpsPosition: gps, distanceKm: null, refsAfterAdd: const []), isNull);
     });
   });
 
@@ -164,15 +135,7 @@ void main() {
     });
 
     test('does nothing with no refs at all', () {
-      expect(
-        locationToAdoptAfterAddingRef(
-          operationLocation: null,
-          gpsPosition: null,
-          distanceKm: null,
-          refsAfterAdd: const [],
-        ),
-        isNull,
-      );
+      expect(locationToAdoptAfterAddingRef(operationLocation: null, gpsPosition: null, distanceKm: null, refsAfterAdd: const []), isNull);
     });
   });
 }

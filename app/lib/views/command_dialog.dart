@@ -102,8 +102,7 @@ class _CatalogResult extends _Result {
   /// either reorder them back or repeat the same heading down the list. The
   /// category shows as a trailing label on the row instead.
   @override
-  String section(Translations t) =>
-      suggestion ? t.commandDialog.sectionSuggestions : t.commandDialog.sectionCommands;
+  String section(Translations t) => suggestion ? t.commandDialog.sectionSuggestions : t.commandDialog.sectionCommands;
 }
 
 /// "Run what's typed" — the live interpretation of the field's text. Only
@@ -332,34 +331,30 @@ class _CommandDialogState extends State<CommandDialog> {
   void _devMove(int delta) => _moveSelection(delta, _lastResults);
 
   Map<String, dynamic> _devState() => {
-        'open': true,
-        'text': _controller.text,
-        'focused': _focusNode.hasFocus,
-        'selected': _selected,
-        'results': [
-          for (final result in _lastResults)
-            switch (result) {
-              _CatalogResult(:final command, :final params, :final describe, :final category) => {
-                  'type': 'command',
-                  'command': command,
-                  'params': ?params,
-                  'describe': describe,
-                  'category': ?category,
-                },
-              _TypedResult(:final text, :final describe) => {'type': 'typed', 'text': text, 'describe': describe},
-              _NavResult(:final label) => {'type': 'nav', 'label': label},
-              _OperationResult(:final title, :final subtitle) => {
-                  'type': 'operation',
-                  'title': title,
-                  'subtitle': subtitle,
-                },
-            },
-        ],
-        'lookupStage': _engine.lookupStage.name,
-        if (_engine.lookupCall != null) 'lookupCall': _engine.lookupCall,
-        if (_engine.lookupGuess != null) 'lookupGuess': _engine.lookupGuess,
-        if (_engine.message != null) 'message': _engine.message,
-      };
+    'open': true,
+    'text': _controller.text,
+    'focused': _focusNode.hasFocus,
+    'selected': _selected,
+    'results': [
+      for (final result in _lastResults)
+        switch (result) {
+          _CatalogResult(:final command, :final params, :final describe, :final category) => {
+            'type': 'command',
+            'command': command,
+            'params': ?params,
+            'describe': describe,
+            'category': ?category,
+          },
+          _TypedResult(:final text, :final describe) => {'type': 'typed', 'text': text, 'describe': describe},
+          _NavResult(:final label) => {'type': 'nav', 'label': label},
+          _OperationResult(:final title, :final subtitle) => {'type': 'operation', 'title': title, 'subtitle': subtitle},
+        },
+    ],
+    'lookupStage': _engine.lookupStage.name,
+    if (_engine.lookupCall != null) 'lookupCall': _engine.lookupCall,
+    if (_engine.lookupGuess != null) 'lookupGuess': _engine.lookupGuess,
+    if (_engine.message != null) 'message': _engine.message,
+  };
 
   @override
   void dispose() {
@@ -389,8 +384,7 @@ class _CommandDialogState extends State<CommandDialog> {
   /// one (SEED, NOTE, SPOT) with nothing open isn't offered at all — listing
   /// something the user can't pick is just noise, and picking it would only
   /// produce the hook's "needs an open operation" error.
-  List<Map<String, dynamic>> get _available =>
-      _hasOperation ? _catalog : _catalog.where((e) => e['needsOperation'] != true).toList();
+  List<Map<String, dynamic>> get _available => _hasOperation ? _catalog : _catalog.where((e) => e['needsOperation'] != true).toList();
 
   /// Two sample commands for an empty field, chosen once per open (not per
   /// keystroke — they must not reshuffle while the user reads them). Empty
@@ -530,11 +524,7 @@ class _CommandDialogState extends State<CommandDialog> {
     // recognizes it, running it is almost always what Enter should do.
     final interpretation = _engine.currentInterpretation;
     final describe = interpretation?['describe'];
-    if (query.isNotEmpty &&
-        interpretation != null &&
-        interpretation['error'] is! String &&
-        interpretation['expectsParams'] != true &&
-        describe is String) {
+    if (query.isNotEmpty && interpretation != null && interpretation['error'] is! String && interpretation['expectsParams'] != true && describe is String) {
       results.add(_TypedResult(text: _controller.text.trim(), describe: describe));
     }
 
@@ -578,23 +568,14 @@ class _CommandDialogState extends State<CommandDialog> {
   /// `context`: by the time these run the dialog route has been popped, so
   /// its context is defunct.
   List<_NavResult> _navResults(Translations t) => [
-        _NavResult(
-          label: t.commandDialog.goNewOperation,
-          icon: MdiIcons.plus,
-          go: _createOperation,
-        ),
-        _NavResult(
-          label: t.commandDialog.goHome,
-          icon: MdiIcons.homeOutline,
-          go: () async => navigatorKey.currentState?.popUntil((route) => route.isFirst),
-        ),
-        _NavResult(
-          label: t.commandDialog.goSettings,
-          icon: MdiIcons.cogOutline,
-          go: () async => navigatorKey.currentState
-              ?.push(MaterialPageRoute(builder: (_) => SettingsView(services: widget.services))),
-        ),
-      ];
+    _NavResult(label: t.commandDialog.goNewOperation, icon: MdiIcons.plus, go: _createOperation),
+    _NavResult(label: t.commandDialog.goHome, icon: MdiIcons.homeOutline, go: () async => navigatorKey.currentState?.popUntil((route) => route.isFirst)),
+    _NavResult(
+      label: t.commandDialog.goSettings,
+      icon: MdiIcons.cogOutline,
+      go: () async => navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => SettingsView(services: widget.services))),
+    ),
+  ];
 
   /// Same flow as the Home view's own "+" (`_newOperation`): create against
   /// the active profile's callsign, then open it on the Activities pane,
@@ -603,14 +584,16 @@ class _CommandDialogState extends State<CommandDialog> {
   /// runs, so there's no second row left to tap.
   Future<void> _createOperation() async {
     final services = widget.services;
-    final operation = await services.operations.create(
-      stationCall: services.settings.activeProfile.operatorCall,
-    );
+    final operation = await services.operations.create(stationCall: services.settings.activeProfile.operatorCall);
     services.track('operation_created');
     unawaited(services.settings.recordOnboardingShown(OnboardingFlows.newOperation));
-    unawaited(navigatorKey.currentState?.push(MaterialPageRoute<void>(
-      builder: (_) => OperationView(services: services, operationUuid: operation.uuid, openActivities: true),
-    )));
+    unawaited(
+      navigatorKey.currentState?.push(
+        MaterialPageRoute<void>(
+          builder: (_) => OperationView(services: services, operationUuid: operation.uuid, openActivities: true),
+        ),
+      ),
+    );
   }
 
   List<_Result> _selectableOf(List<_Result> results) => results.where((r) => r.selectable).toList();
@@ -656,9 +639,13 @@ class _CommandDialogState extends State<CommandDialog> {
         await go();
       case _OperationResult(:final operation):
         _close();
-        unawaited(navigatorKey.currentState?.push(MaterialPageRoute<void>(
-          builder: (_) => OperationView(services: widget.services, operationUuid: operation.uuid),
-        )));
+        unawaited(
+          navigatorKey.currentState?.push(
+            MaterialPageRoute<void>(
+              builder: (_) => OperationView(services: widget.services, operationUuid: operation.uuid),
+            ),
+          ),
+        );
     }
   }
 
@@ -691,16 +678,8 @@ class _CommandDialogState extends State<CommandDialog> {
                 // The field sits around the upper-middle of the window so
                 // the sheet has room to descend below it without the field
                 // itself moving as results come and go.
-                padding: EdgeInsets.only(
-                  top: (constraints.maxHeight * 0.22).clamp(24.0, 220.0),
-                  left: Space.xl,
-                  right: Space.xl,
-                  bottom: Space.xxl,
-                ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 640),
-                  child: _panel(theme, t, results, selectable),
-                ),
+                padding: EdgeInsets.only(top: (constraints.maxHeight * 0.22).clamp(24.0, 220.0), left: Space.xl, right: Space.xl, bottom: Space.xxl),
+                child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 640), child: _panel(theme, t, results, selectable)),
               ),
             ),
           ),
@@ -720,12 +699,8 @@ class _CommandDialogState extends State<CommandDialog> {
     // paints "Nothing matches …" in the gap after each character and is
     // replaced by the hook's own wording a moment later — two messages
     // flickering against each other on the same line.
-    final hasEmptyState = results.isEmpty &&
-        _controller.text.trim().isNotEmpty &&
-        _engine.message == null &&
-        !_engine.interpretationPending &&
-        !searching &&
-        !hasCallInfo;
+    final hasEmptyState =
+        results.isEmpty && _controller.text.trim().isNotEmpty && _engine.message == null && !_engine.interpretationPending && !searching && !hasCallInfo;
     // An error or a confirmation ALWAYS shows. Both are things that have
     // happened — a command that can't run here, or one that just ran — and
     // neither is repeated by any row, so suppressing them behind a result
@@ -761,8 +736,16 @@ class _CommandDialogState extends State<CommandDialog> {
                 // out, painted and returned by getRect while being silently
                 // untappable. The card
                 // just appears; the route's own fade is the entrance.
-                child: _resultsCard(theme, t, results, selectable,
-                    searching: searching, hasCallInfo: hasCallInfo, hasEmptyState: hasEmptyState, hasMessage: hasMessage),
+                child: _resultsCard(
+                  theme,
+                  t,
+                  results,
+                  selectable,
+                  searching: searching,
+                  hasCallInfo: hasCallInfo,
+                  hasEmptyState: hasEmptyState,
+                  hasMessage: hasMessage,
+                ),
               ),
             ),
         ],
@@ -812,12 +795,7 @@ class _CommandDialogState extends State<CommandDialog> {
           // Offset down and pulled in (negative spread) so the shadow starts
           // BELOW the card's top edge — otherwise it would smear up across
           // the bar it's attached to.
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 10,
-            spreadRadius: -4,
-            offset: const Offset(0, 6),
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 10, spreadRadius: -4, offset: const Offset(0, 6)),
         ],
       ),
       // So the results list can't paint outside the rounded corners.
@@ -896,7 +874,9 @@ class _CommandDialogState extends State<CommandDialog> {
             // searches, and the magnifier undersold it as a search box.
             Icon(MdiIcons.console, color: HaLoColors.of(context).onSurfaceAccent),
             const SizedBox(width: Space.lg),
-            Expanded(child: KeyedSubtree(key: _fieldKey, child: _textField(theme, t, results))),
+            Expanded(
+              child: KeyedSubtree(key: _fieldKey, child: _textField(theme, t, results)),
+            ),
             // Sized to the row rather than its own 48pt default, which would
             // otherwise set the bar's height on its own.
             SizedBox(
@@ -918,45 +898,42 @@ class _CommandDialogState extends State<CommandDialog> {
 
   Widget _textField(ThemeData theme, Translations t, List<_Result> results) {
     return TextField(
-        selectAllOnFocus: false,
-        controller: _controller,
-        focusNode: _focusNode,
-        style: haloMonoStyle(context, fontSize: 17),
-        // The formatters own casing, not the keyboard: a soft keyboard's
-        // capitalization is fixed when the input connection opens and is not
-        // re-sent on rebuild, so a mode chosen here could never follow the text
-        // turning from a callsign into a command mid-typing.
-        textCapitalization: TextCapitalization.none,
-        inputFormatters: commandFieldFormatters,
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          // isCollapsed: the Row above owns the spacing, so the decoration
-          // must not add padding of its own — that padding is exactly what
-          // pushed the text off the icon's centre line.
-          isCollapsed: true,
-          hintText: t.commandDialog.hint,
-          // The placeholder is prose, so it reads in the regular face; what
-          // the user types is a callsign or a command, which is monospaced
-          // (the field's own `style`). Without this the hint would inherit
-          // that mono style and read as if it were already input.
-          hintStyle: theme.textTheme.bodyLarge?.copyWith(
-            fontSize: 17,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-          ),
-        ),
-        // A tap on a result row is a tap OUTSIDE this field, and Flutter's
-        // default for that is to unfocus — which tears the field's focus down
-        // mid-gesture and the row's tap never completes. Keeping focus is
-        // also what we want anyway: picking a row shouldn't drop the caret
-        // (or, on mobile, the keyboard) out from under the next command.
-        onTapOutside: (_) {},
-        // Not onSubmitted: the default TextInputAction.done handling
-        // unfocuses before onSubmitted runs, closing the on-screen keyboard
-        // under the dialog. onEditingComplete replaces that default entirely.
-        // The results this frame was built from — the same list the arrow
-        // keys moved [_selected] through, so Enter activates the row the
-        // user is actually looking at.
-        onEditingComplete: () => _activate(results),
+      selectAllOnFocus: false,
+      controller: _controller,
+      focusNode: _focusNode,
+      style: haloMonoStyle(context, fontSize: 17),
+      // The formatters own casing, not the keyboard: a soft keyboard's
+      // capitalization is fixed when the input connection opens and is not
+      // re-sent on rebuild, so a mode chosen here could never follow the text
+      // turning from a callsign into a command mid-typing.
+      textCapitalization: TextCapitalization.none,
+      inputFormatters: commandFieldFormatters,
+      decoration: InputDecoration(
+        border: InputBorder.none,
+        // isCollapsed: the Row above owns the spacing, so the decoration
+        // must not add padding of its own — that padding is exactly what
+        // pushed the text off the icon's centre line.
+        isCollapsed: true,
+        hintText: t.commandDialog.hint,
+        // The placeholder is prose, so it reads in the regular face; what
+        // the user types is a callsign or a command, which is monospaced
+        // (the field's own `style`). Without this the hint would inherit
+        // that mono style and read as if it were already input.
+        hintStyle: theme.textTheme.bodyLarge?.copyWith(fontSize: 17, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+      ),
+      // A tap on a result row is a tap OUTSIDE this field, and Flutter's
+      // default for that is to unfocus — which tears the field's focus down
+      // mid-gesture and the row's tap never completes. Keeping focus is
+      // also what we want anyway: picking a row shouldn't drop the caret
+      // (or, on mobile, the keyboard) out from under the next command.
+      onTapOutside: (_) {},
+      // Not onSubmitted: the default TextInputAction.done handling
+      // unfocuses before onSubmitted runs, closing the on-screen keyboard
+      // under the dialog. onEditingComplete replaces that default entirely.
+      // The results this frame was built from — the same list the arrow
+      // keys moved [_selected] through, so Enter activates the row the
+      // user is actually looking at.
+      onEditingComplete: () => _activate(results),
     );
   }
 
@@ -984,31 +961,25 @@ class _CommandDialogState extends State<CommandDialog> {
     );
   }
 
-
   /// Shown the instant the text reads as a callsign, before either lookup
   /// pass has answered — the offline one is quick but the online one is a
   /// network round trip, and an empty panel meanwhile reads as "nothing
   /// found".
   Widget _lookingUpLine(ThemeData theme, Translations t) => Container(
-        height: _rowHeight,
-        padding: const EdgeInsets.symmetric(horizontal: Space.xl),
-        alignment: Alignment.centerLeft,
-        child: Row(
-          children: [
-            // Static, not a CircularProgressIndicator: a continuous animation
-            // over a focused field, for the length of the lookup. See the
-            // note in initState — kept because the working build had it.
-            Icon(MdiIcons.console, size: 16, color: HaLoColors.of(context).onSurfaceAccent),
-            const SizedBox(width: Space.lg),
-            Text(
-              t.commandDialog.lookingUp,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
-              ),
-            ),
-          ],
-        ),
-      );
+    height: _rowHeight,
+    padding: const EdgeInsets.symmetric(horizontal: Space.xl),
+    alignment: Alignment.centerLeft,
+    child: Row(
+      children: [
+        // Static, not a CircularProgressIndicator: a continuous animation
+        // over a focused field, for the length of the lookup. See the
+        // note in initState — kept because the working build had it.
+        Icon(MdiIcons.console, size: 16, color: HaLoColors.of(context).onSurfaceAccent),
+        const SizedBox(width: Space.lg),
+        Text(t.commandDialog.lookingUp, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.75))),
+      ],
+    ),
+  );
 
   /// The same panel the Call Info pane renders, so a callsign looked up here
   /// shows everything it shows there. With no operation open there's simply
@@ -1030,18 +1001,14 @@ class _CommandDialogState extends State<CommandDialog> {
   }
 
   Widget _sectionHeading(ThemeData theme, String label) => Container(
-        height: _headingHeight,
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.fromLTRB(Space.xl, Space.md, Space.xl, Space.xxs),
-        child: Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: HaLoColors.of(context).onSurfaceAccent,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.6,
-          ),
-        ),
-      );
+    height: _headingHeight,
+    alignment: Alignment.centerLeft,
+    padding: const EdgeInsets.fromLTRB(Space.xl, Space.md, Space.xl, Space.xxs),
+    child: Text(
+      label,
+      style: theme.textTheme.labelSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent, fontWeight: FontWeight.w700, letterSpacing: 0.6),
+    ),
+  );
 
   Widget _row(ThemeData theme, Translations t, _Result result, {required bool isSelected}) {
     final (IconData icon, String title, String? trailing, String? subtitle) = switch (result) {
@@ -1053,18 +1020,13 @@ class _CommandDialogState extends State<CommandDialog> {
       // glyph, and a row glyph that matches it would make the samples read
       // as more search bars (and defeat counting them in tests).
       _CatalogResult(:final command, :final params, :final describe, :final category) => (
-          MdiIcons.consoleLine,
-          params == null ? command : '$command $params',
-          category,
-          describe,
-        ),
+        MdiIcons.consoleLine,
+        params == null ? command : '$command $params',
+        category,
+        describe,
+      ),
       _NavResult(:final label, :final icon) => (icon, label, null, null),
-      _OperationResult(:final title, :final subtitle) => (
-          MdiIcons.folderOutline,
-          title,
-          null,
-          subtitle.isEmpty ? null : subtitle,
-        ),
+      _OperationResult(:final title, :final subtitle) => (MdiIcons.folderOutline, title, null, subtitle.isEmpty ? null : subtitle),
     };
 
     // Only extension-authored text is parsed as markdown. An operation's
@@ -1098,10 +1060,10 @@ class _CommandDialogState extends State<CommandDialog> {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: (result is _CatalogResult || result is _TypedResult
-                          ? haloMonoStyle(context, fontSize: 15)
-                          : theme.textTheme.bodyLarge)
-                      ?.copyWith(color: foreground, fontWeight: FontWeight.w600),
+                  style: (result is _CatalogResult || result is _TypedResult ? haloMonoStyle(context, fontSize: 15) : theme.textTheme.bodyLarge)?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 if (subtitle != null && subtitle.isNotEmpty)
                   if (markdownSubtitle)
@@ -1110,30 +1072,15 @@ class _CommandDialogState extends State<CommandDialog> {
                     // widget builds no recognizer at all, which is what keeps
                     // the tap reaching the row (see its own test) — a link in
                     // `describe` text just reads as one.
-                    InlineMarkdownText(
-                      subtitle,
-                      codeStyle: haloMonoStyle(context, fontSize: 12),
-                      maxLines: 1,
-                      style: _subtitleStyle(theme, foreground),
-                    )
+                    InlineMarkdownText(subtitle, codeStyle: haloMonoStyle(context, fontSize: 12), maxLines: 1, style: _subtitleStyle(theme, foreground))
                   else
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: _subtitleStyle(theme, foreground),
-                    ),
+                    Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: _subtitleStyle(theme, foreground)),
               ],
             ),
           ),
           if (trailing != null) ...[
             const SizedBox(width: Space.lg),
-            Text(
-              trailing,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: foreground.withValues(alpha: 0.5),
-              ),
-            ),
+            Text(trailing, style: theme.textTheme.labelSmall?.copyWith(color: foreground.withValues(alpha: 0.5))),
           ],
         ],
       ),
@@ -1144,11 +1091,7 @@ class _CommandDialogState extends State<CommandDialog> {
     // GestureDetector, not InkWell: selection is already shown by the row's
     // own background, so the ink ripple buys nothing — and `opaque` makes the
     // WHOLE row tappable (gaps included) rather than just the painted glyphs.
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _activateResult(result),
-      child: row,
-    );
+    return GestureDetector(behavior: HitTestBehavior.opaque, onTap: () => _activateResult(result), child: row);
   }
 
   /// Shared by both subtitle branches, so the markdown and plain renderings of
@@ -1156,23 +1099,19 @@ class _CommandDialogState extends State<CommandDialog> {
   /// Names the emoji font rather than relying on the theme's own fallback:
   /// a row's subtitle is an extension's `describe` text, and this style is
   /// what the markdown rendering of it resolves glyphs through.
-  TextStyle? _subtitleStyle(ThemeData theme, Color foreground) => theme.textTheme.bodySmall?.copyWith(
-        color: foreground.withValues(alpha: 0.75),
-        fontFamilyFallback: const [emojiFontFamily],
-      );
+  TextStyle? _subtitleStyle(ThemeData theme, Color foreground) =>
+      theme.textTheme.bodySmall?.copyWith(color: foreground.withValues(alpha: 0.75), fontFamilyFallback: const [emojiFontFamily]);
 
   Widget _emptyState(ThemeData theme, Translations t) => Padding(
-        padding: const EdgeInsets.fromLTRB(Space.xl, Space.xs, Space.xl, Space.xl),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            t.commandDialog.noResults(text: _controller.text.trim()),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(Space.xl, Space.xs, Space.xl, Space.xl),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        t.commandDialog.noResults(text: _controller.text.trim()),
+        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+      ),
+    ),
+  );
 
   /// The engine's own message — a command's `describe` preview while typing,
   /// its `error` when it can't run here, or its `confirm` just after running.
@@ -1188,29 +1127,26 @@ class _CommandDialogState extends State<CommandDialog> {
       width: double.infinity,
       // Same reason as the selected row's wash: at 10% alpha the color has to
       // contrast with the surface, which primary's dark value does not.
-      color: isError
-          ? theme.colorScheme.errorContainer
-          : HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.10),
+      color: isError ? theme.colorScheme.errorContainer : HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.10),
       padding: EdgeInsets.symmetric(horizontal: Space.xl, vertical: response ? Space.lg : Space.md),
       child: Row(
         children: [
-          if (isError) ...[
-            Icon(MdiIcons.alertCircle, size: response ? 20 : 16, color: theme.colorScheme.onErrorContainer),
-            const SizedBox(width: Space.md),
-          ],
+          if (isError) ...[Icon(MdiIcons.alertCircle, size: response ? 20 : 16, color: theme.colorScheme.onErrorContainer), const SizedBox(width: Space.md)],
           Expanded(
             child: MarkdownBody(
               data: message,
-              styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
-                p: theme.textTheme.bodyMedium?.copyWith(
-                  // The field's own size, in plain logical pixels — UiScale
-                  // scales the whole tree (docs/design/ui-scaling.md); never
-                  // multiply by the font scale here.
-                  fontSize: response ? 17 : null,
-                  color: isError ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
+              styleSheet: withEmojiFallback(
+                MarkdownStyleSheet.fromTheme(theme).copyWith(
+                  p: theme.textTheme.bodyMedium?.copyWith(
+                    // The field's own size, in plain logical pixels — UiScale
+                    // scales the whole tree (docs/design/ui-scaling.md); never
+                    // multiply by the font scale here.
+                    fontSize: response ? 17 : null,
+                    color: isError ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              )),
+              ),
             ),
           ),
         ],

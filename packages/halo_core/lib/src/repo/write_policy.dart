@@ -43,11 +43,7 @@ class WriteRefused implements Exception {
 /// unwritable.
 String markedForTravel(String stationCall) {
   if (!AppClock.instance.isTravelling) return stationCall;
-  return stationCall
-      .split(',')
-      .map((part) => part.trim())
-      .map((call) => isTestCall(call) ? call : '$call/TEST')
-      .join(', ');
+  return stationCall.split(',').map((part) => part.trim()).map((call) => isTestCall(call) ? call : '$call/TEST').join(', ');
 }
 
 /// Whether a record may be written right now.

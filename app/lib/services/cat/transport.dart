@@ -178,11 +178,7 @@ abstract class EquipmentTransport {
   /// (e.g. a subset of baud rates). Prefill defaults aren't a parameter
   /// here — [EquipmentType.defaultConfig] feeds the form's initial state
   /// directly, without either owner needing to know about it.
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      const [];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => const [];
 
   /// Per-field version, for the editor. Null for a key this transport
   /// doesn't own.
@@ -194,8 +190,7 @@ abstract class EquipmentTransport {
   /// config (never shown, never optional) rather than collected through a
   /// field, so a typo'd [EquipmentType.overrides]/`restrictions` key still
   /// gets caught instead of silently doing nothing.
-  Set<String> get recognizedConfigKeys =>
-      configElements().where((e) => e['type'] == 'field').map((e) => e['key'] as String).toSet();
+  Set<String> get recognizedConfigKeys => configElements().where((e) => e['type'] == 'field').map((e) => e['key'] as String).toSet();
 
   /// Turns the merged config (submitted values plus the definition's
   /// [EquipmentType.overrides]) into what [connect] needs. Identity by
@@ -214,6 +209,5 @@ abstract class EquipmentTransport {
   /// native picker, not something a declarative field can drive. Null
   /// (the default) for a transport with no actions of its own, or for a
   /// key this transport didn't declare.
-  Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) async =>
-      null;
+  Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) async => null;
 }

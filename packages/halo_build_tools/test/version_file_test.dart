@@ -85,13 +85,7 @@ void main() {
     });
 
     test('a shorebird-patched pre-release carries the .M patch counter', () {
-      const v = PublicVersion(
-        main: MainVersion(year: 26, month: 8),
-        patch: 1,
-        preRelease: 1,
-        preReleaseLabel: 'pre',
-        preReleasePatch: 2,
-      );
+      const v = PublicVersion(main: MainVersion(year: 26, month: 8), patch: 1, preRelease: 1, preReleaseLabel: 'pre', preReleasePatch: 2);
       expect(v.releaseTagName(84), 'v26.8.1-pre1.2+84');
       expect(v.releaseMessage(84), 'Release 26.8.1 pre 1.2 (84)');
     });
@@ -126,8 +120,7 @@ const kProdExpirationDate = '2027-01-23';
       s = rewriteExpirationDate(s, Edition.dev, '2026-08-06');
       expect(parseExpirationDate(s, Edition.next), '2026-08-06');
       expect(parseExpirationDate(s, Edition.dev), '2026-08-06');
-      expect(parseExpirationDate(s, Edition.prod), '2027-01-23',
-          reason: 'prod must survive a next cut (which also re-stamps dev)');
+      expect(parseExpirationDate(s, Edition.prod), '2027-01-23', reason: 'prod must survive a next cut (which also re-stamps dev)');
     });
 
     test('build horizons: two weeks for dev/next, six clamped months for prod', () {
@@ -142,8 +135,7 @@ const kProdExpirationDate = '2027-01-23';
 
     test('expiry starts the day AFTER the printed date, UTC', () {
       final expiration = DateTime.parse('2026-08-06');
-      expect(expirationHasPassed(expiration, DateTime.utc(2026, 8, 6, 23, 59)), isFalse,
-          reason: 'the expiration day itself still works');
+      expect(expirationHasPassed(expiration, DateTime.utc(2026, 8, 6, 23, 59)), isFalse, reason: 'the expiration day itself still works');
       expect(expirationHasPassed(expiration, DateTime.utc(2026, 8, 7)), isTrue);
     });
   });

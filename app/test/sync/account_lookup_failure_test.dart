@@ -40,13 +40,7 @@ class _FlakyAccountHost implements ExtensionHost {
   String accountFieldLabel = 'My Account Username';
 
   @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
+  Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
     if (category == 'settingsPanel' && key == 'myext' && method == 'getDefinition') {
       return {
         'title': 'My Extension',
@@ -77,14 +71,7 @@ class _FlakyAccountHost implements ExtensionHost {
         {
           'key': 'myext',
           'ok': true,
-          'value': {
-            'panelKey': 'myext',
-            'hookKey': 'myext',
-            'extensionKey': 'myext',
-            'title': 'My Extension',
-            'kind': 'dynamic',
-            'order': 50,
-          },
+          'value': {'panelKey': 'myext', 'hookKey': 'myext', 'extensionKey': 'myext', 'title': 'My Extension', 'kind': 'dynamic', 'order': 50},
         },
       ];
     }
@@ -146,18 +133,18 @@ void main() {
     final host = _FlakyAccountHost();
     final services = HaLoServices(db, settings, extensions: _MockHostService(host)..settings = settings);
 
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: SettingsView(services: services)),
+      ),
+    );
     await tester.pumpAndSettle();
     // Scoped to the sidebar list: the Settings panel showing beside it
     // carries a band by the same name.
     await tester.tap(find.descendant(of: find.byType(ListView).first, matching: find.text('My Extension')));
     await tester.pumpAndSettle();
 
-    expect(
-      find.widgetWithText(TextButton, 'Connect'),
-      findsOneWidget,
-      reason: "the extension's account field did not render",
-    );
+    expect(find.widgetWithText(TextButton, 'Connect'), findsOneWidget, reason: "the extension's account field did not render");
     return (host: host, services: services);
   }
 
@@ -165,11 +152,7 @@ void main() {
     // A never-started service has no runtime to ask. "No runtime" and "no
     // accounts declared" have to stay distinguishable, or every caller that
     // caches or reports on the answer gets it wrong in the same direction.
-    expect(
-      await ExtensionService().getAccounts(),
-      isNull,
-      reason: 'a service with no runtime reported a definitive "no accounts declared"',
-    );
+    expect(await ExtensionService().getAccounts(), isNull, reason: 'a service with no runtime reported a definitive "no accounts declared"');
   });
 
   testWidgets('an account field still opens its dialog after a failed account lookup', (tester) async {
@@ -195,7 +178,8 @@ void main() {
     expect(
       find.text('My Account Username'),
       findsOneWidget,
-      reason: 'the panel cached the failed lookup as "no such account", so the '
+      reason:
+          'the panel cached the failed lookup as "no such account", so the '
           'account field is dead for the rest of this panel\'s life',
     );
   });
@@ -224,7 +208,8 @@ void main() {
     expect(
       find.text('My Account Passphrase'),
       findsOneWidget,
-      reason: 'the dialog was built from accounts cached before the restart, '
+      reason:
+          'the dialog was built from accounts cached before the restart, '
           'so it describes a runtime that no longer exists',
     );
   });

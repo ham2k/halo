@@ -50,9 +50,7 @@ class _OperationRow extends StatelessWidget {
     // OperationTitleService has run at least once for this operation — until
     // then, fall back to the raw ref names so the row isn't blank.
     final suggestedSubtitle = displaySubtitleFor(operation);
-    final subtitle = suggestedSubtitle.isNotEmpty
-        ? suggestedSubtitle
-        : operation.refs.map((r) => r['name']).whereType<String>().join(' • ');
+    final subtitle = suggestedSubtitle.isNotEmpty ? suggestedSubtitle : operation.refs.map((r) => r['name']).whereType<String>().join(' • ');
 
     // A deleted operation reads as app-polo shows one: the whole row at half
     // strength, its title line struck through.
@@ -61,9 +59,7 @@ class _OperationRow extends StatelessWidget {
     final row = Material(
       color: theme.colorScheme.surface,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          slideInFromRight<void>((_) => OperationView(services: services, operationUuid: operation.uuid)),
-        ),
+        onTap: () => Navigator.of(context).push(slideInFromRight<void>((_) => OperationView(services: services, operationUuid: operation.uuid))),
         // Undelete lives in the operation's own tools menu, so a deleted row
         // has nothing to offer here.
         onLongPress: operation.deleted ? null : () => confirmDeleteOperation(context, services, operation),
@@ -81,11 +77,7 @@ class _OperationRow extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: operation.stationCall,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              fontFamily: 'RobotoMono',
-                              decoration: strike,
-                            ),
+                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, fontFamily: 'RobotoMono', decoration: strike),
                           ),
                           TextSpan(
                             text: ' ${displayTitleFor(context, operation)}',
@@ -100,10 +92,7 @@ class _OperationRow extends StatelessWidget {
                   const SizedBox(width: Space.md),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xxs),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
                     child: Text(formatNumber(operation.qsoCount), style: theme.textTheme.labelLarge),
                   ),
                 ],
@@ -129,7 +118,6 @@ class _OperationRow extends StatelessWidget {
     );
     return operation.deleted ? Opacity(opacity: 0.5, child: row) : row;
   }
-
 }
 
 class OperationListPanel extends StatelessWidget {
@@ -149,7 +137,10 @@ class OperationListPanel extends StatelessWidget {
     final color = HaLoColors.of(context).listBackground;
     if (operations.isEmpty) {
       if (loading) return ColoredBox(color: color);
-      return Container(color: color, child: Center(child: Text(context.t.home.emptyList)));
+      return Container(
+        color: color,
+        child: Center(child: Text(context.t.home.emptyList)),
+      );
     }
     return Container(
       // Shows through below the last row when there aren't enough
@@ -212,8 +203,7 @@ const _newOperationNudgeDelay = Duration(seconds: 5);
 const _fabTransitionDuration = Duration(milliseconds: 300);
 const _fabSettleSlack = Duration(milliseconds: 100);
 
-class _HomeViewState extends State<HomeView>
-    with WidgetsBindingObserver, RouteAware, TickerProviderStateMixin, DockHost<HomeView> {
+class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteAware, TickerProviderStateMixin, DockHost<HomeView> {
   @override
   HaLoServices get dockServices => widget.services;
 
@@ -237,10 +227,7 @@ class _HomeViewState extends State<HomeView>
   };
 
   @override
-  Set<String> get nativeModuleIds => const {
-    HomeView.operationsPanelId,
-    HomeView.versionPanelId,
-  };
+  Set<String> get nativeModuleIds => const {HomeView.operationsPanelId, HomeView.versionPanelId};
 
   /// Both of them. Home's panes say what they are by their own content — a
   /// list of operations, the Ham2K mark — so a title bar over each would be a
@@ -316,17 +303,16 @@ class _HomeViewState extends State<HomeView>
   /// the header. It stays addable from the sheet for an operator who wants
   /// it.
   @override
-  DockNode buildDefaultDockSpec(DockLayoutClass layoutClass, {bool migrate = true}) =>
-      switch (layoutClass) {
-        DockLayoutClass.narrow => DockGroup([HomeView.operationsPanelId]),
-        DockLayoutClass.wide => DockSplit(Axis.horizontal, [
-          DockGroup([HomeView.operationsPanelId]),
-          DockGroup([HomeView.versionPanelId]),
-          // The operator's own width if they ever set one — but never for a
-          // RESTORE, which is the one control that has to reach the shipped
-          // arrangement.
-        ], (migrate ? _migratedColumnWeights() : null) ?? _shippedColumnWeights()),
-      };
+  DockNode buildDefaultDockSpec(DockLayoutClass layoutClass, {bool migrate = true}) => switch (layoutClass) {
+    DockLayoutClass.narrow => DockGroup([HomeView.operationsPanelId]),
+    DockLayoutClass.wide => DockSplit(Axis.horizontal, [
+      DockGroup([HomeView.operationsPanelId]),
+      DockGroup([HomeView.versionPanelId]),
+      // The operator's own width if they ever set one — but never for a
+      // RESTORE, which is the one control that has to reach the shipped
+      // arrangement.
+    ], (migrate ? _migratedColumnWeights() : null) ?? _shippedColumnWeights()),
+  };
 
   /// Quick Lookup is chrome, not a pane — always on screen, below
   /// whatever the layout holds — so an arrangement that still names it is
@@ -340,22 +326,26 @@ class _HomeViewState extends State<HomeView>
   void _registerNativePanels() {
     final t = context.t.home.panels;
     final service = widget.services.panels;
-    service.registerNative(PanelDefinition(
-      id: HomeView.operationsPanelId,
-      title: t.operations,
-      description: t.operationsDescription,
-      icon: 'notebook-multiple',
-      source: PanelSource.native,
-      views: const {PanelViews.home},
-    ));
-    service.registerNative(PanelDefinition(
-      id: HomeView.versionPanelId,
-      title: t.version,
-      description: t.versionDescription,
-      icon: 'information-outline',
-      source: PanelSource.native,
-      views: const {PanelViews.home},
-    ));
+    service.registerNative(
+      PanelDefinition(
+        id: HomeView.operationsPanelId,
+        title: t.operations,
+        description: t.operationsDescription,
+        icon: 'notebook-multiple',
+        source: PanelSource.native,
+        views: const {PanelViews.home},
+      ),
+    );
+    service.registerNative(
+      PanelDefinition(
+        id: HomeView.versionPanelId,
+        title: t.version,
+        description: t.versionDescription,
+        icon: 'information-outline',
+        source: PanelSource.native,
+        views: const {PanelViews.home},
+      ),
+    );
     registerSharedDashboardPanels();
   }
 
@@ -438,9 +428,7 @@ class _HomeViewState extends State<HomeView>
     if (_creatingOperation) return;
     _creatingOperation = true;
     try {
-      final operation = await widget.services.operations.create(
-        stationCall: widget.services.settings.activeProfile.operatorCall,
-      );
+      final operation = await widget.services.operations.create(stationCall: widget.services.settings.activeProfile.operatorCall);
       widget.services.track('operation_created');
       // Counts opened new operations, not overlay displays —
       // what the FAB's nudge (_NewOperationNudge) is gated on.
@@ -452,10 +440,7 @@ class _HomeViewState extends State<HomeView>
         // double-tap window.
         unawaited(
           Navigator.of(context)
-              .push(
-                slideInFromRight<void>((_) =>
-                    OperationView(services: widget.services, operationUuid: operation.uuid, openActivities: true)),
-              )
+              .push(slideInFromRight<void>((_) => OperationView(services: widget.services, operationUuid: operation.uuid, openActivities: true)))
               .whenComplete(() => _creatingOperation = false),
         );
       } else {
@@ -579,10 +564,7 @@ class _HomeViewState extends State<HomeView>
     final theme = Theme.of(context);
     // Wraps the whole Scaffold, app bar included, so that anything the user
     // reaches for counts — not just the parts below it.
-    return Listener(
-      onPointerDown: (_) => _cancelPendingNudge(),
-      child: _buildScaffold(context, theme),
-    );
+    return Listener(onPointerDown: (_) => _cancelPendingNudge(), child: _buildScaffold(context, theme));
   }
 
   /// The operator's stored preference, mirrored here so the toggle takes
@@ -607,23 +589,20 @@ class _HomeViewState extends State<HomeView>
   /// an AnimatedSwitcher: a switcher animates both children, and coming back
   /// has to leave Home exactly where it is so that it is REVEALED rather than
   /// slid in behind.
-  late final AnimationController _settingsSlide = AnimationController(
-    vsync: this,
-    duration: layoutAnimationDuration,
-  );
+  late final AnimationController _settingsSlide = AnimationController(vsync: this, duration: layoutAnimationDuration);
 
-  late final Animation<Offset> _settingsOffset =
-      Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
-          .animate(CurvedAnimation(parent: _settingsSlide, curve: layoutAnimationCurve));
+  late final Animation<Offset> _settingsOffset = Tween<Offset>(
+    begin: const Offset(-1, 0),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _settingsSlide, curve: layoutAnimationCurve));
 
   /// Same as [_settingsSlide], for the Logs destination.
-  late final AnimationController _logsSlide = AnimationController(
-    vsync: this,
-    duration: layoutAnimationDuration,
-  );
+  late final AnimationController _logsSlide = AnimationController(vsync: this, duration: layoutAnimationDuration);
 
-  late final Animation<Offset> _logsOffset = Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
-      .animate(CurvedAnimation(parent: _logsSlide, curve: layoutAnimationCurve));
+  late final Animation<Offset> _logsOffset = Tween<Offset>(
+    begin: const Offset(-1, 0),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _logsSlide, curve: layoutAnimationCurve));
 
   void _showSettings(bool showing) {
     if (_showingSettings == showing) return;
@@ -677,7 +656,6 @@ class _HomeViewState extends State<HomeView>
     }
   }
 
-
   Widget _buildScaffold(BuildContext context, ThemeData theme) {
     final isTwoPane = ShirtSize.of(context).isTwoPane;
     // Which arrangement the dock below draws. Assigned before it is built:
@@ -698,13 +676,11 @@ class _HomeViewState extends State<HomeView>
     // at the rail's inner edge instead, which reads as sliding out of the
     // panes rather than out of the destination that was pressed.
     Widget besideRail(Widget child) => AnimatedPadding(
-          duration: layoutAnimationDuration,
-          curve: layoutAnimationCurve,
-          padding: EdgeInsets.only(
-            left: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting),
-          ),
-          child: child,
-        );
+      duration: layoutAnimationDuration,
+      curve: layoutAnimationCurve,
+      padding: EdgeInsets.only(left: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting)),
+      child: child,
+    );
 
     // Settings rides OVER Home rather than swapping with it: both directions
     // travel leftward — in from the left edge, out to it — and on the way out
@@ -749,10 +725,7 @@ class _HomeViewState extends State<HomeView>
               // no rail at all, or a Mac window where the buttons have pushed
               // the mark off the rail's column — hold what the mark overhangs
               // by, so the back button lands beside it rather than under it.
-              leadingInset: HomeRailLogo.headerReserveOf(
-                context,
-                railWidth: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting),
-              ),
+              leadingInset: HomeRailLogo.headerReserveOf(context, railWidth: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting)),
             ),
           ),
         ),
@@ -778,11 +751,8 @@ class _HomeViewState extends State<HomeView>
 
   /// The dev label's own style — shared by the label and by the measurement
   /// that decides whether the header still fits on one line.
-  TextStyle _headerDevLabelStyle(ThemeData theme) => TextStyle(
-        fontSize: 13,
-        fontStyle: FontStyle.italic,
-        color: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).withValues(alpha: 0.8),
-      );
+  TextStyle _headerDevLabelStyle(ThemeData theme) =>
+      TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).withValues(alpha: 0.8));
 
   /// What sits beside (or under) the product name, or null when there is
   /// nothing: a free-form dev label (DEV_LABEL) marking which dev
@@ -800,10 +770,7 @@ class _HomeViewState extends State<HomeView>
     if (devLabel.isNotEmpty) return Text(devLabel, style: _headerDevLabelStyle(theme));
     if (ham2kEditionBadgeAsset == null) return null;
     // Zero-offset shadows read as a glow: black for Next, white for Dev.
-    final art = Ham2kEditionBadge(
-      height: _headerEditionBadgeHeight,
-      shadows: ham2kHeaderEditionBadgeShadows,
-    );
+    final art = Ham2kEditionBadge(height: _headerEditionBadgeHeight, shadows: ham2kHeaderEditionBadgeShadows);
     if (!inline) return art;
     return Text.rich(
       WidgetSpan(
@@ -833,10 +800,7 @@ class _HomeViewState extends State<HomeView>
         // Room for the mark, which the WINDOW draws over this corner (see
         // [HomeRailLogo]) — only for the part of it the rail is not already
         // holding open, which is nothing at all in the common case.
-        leadingWidth: HomeRailLogo.headerReserveOf(
-          context,
-          railWidth: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting),
-        ),
+        leadingWidth: HomeRailLogo.headerReserveOf(context, railWidth: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting)),
         // Matches the inset of an operation row's text
         // (`PaneSafeArea.symmetricOf(context, horizontal: 16)` in
         // [_OperationRow]), so the product name and the callsigns below it
@@ -869,14 +833,11 @@ class _HomeViewState extends State<HomeView>
             final trailingHeight = devLabel.isNotEmpty
                 ? spansHeight(context, [TextSpan(text: devLabel)], _headerDevLabelStyle(theme))
                 : _headerEditionBadgeHeight;
-            final stackedHeight =
-                spansHeight(context, [TextSpan(text: ham2kProductName)], const TextStyle()) +
-                    _headerStackGap +
-                    trailingHeight;
-            final stacked = _headerTrailing(theme, inline: true) != null &&
+            final stackedHeight = spansHeight(context, [TextSpan(text: ham2kProductName)], const TextStyle()) + _headerStackGap + trailingHeight;
+            final stacked =
+                _headerTrailing(theme, inline: true) != null &&
                 constraints.maxWidth.isFinite &&
-                textWidth(context, ham2kProductName, const TextStyle()) + Space.md + trailingWidth >
-                    constraints.maxWidth &&
+                textWidth(context, ham2kProductName, const TextStyle()) + Space.md + trailingWidth > constraints.maxWidth &&
                 stackedHeight <= (theme.appBarTheme.toolbarHeight ?? kToolbarHeight);
 
             if (stacked) {
@@ -915,10 +876,7 @@ class _HomeViewState extends State<HomeView>
                 // — a 3:1 flex split shrinks the trailing group
                 // first and further, rather than shrinking both equally.
                 Flexible(flex: 3, child: shrinkToFitText(Text(ham2kProductName))),
-                if (_headerTrailing(theme, inline: true) case final trailing?) ...[
-                  const SizedBox(width: Space.md),
-                  Flexible(child: shrinkToFit(trailing)),
-                ],
+                if (_headerTrailing(theme, inline: true) case final trailing?) ...[const SizedBox(width: Space.md), Flexible(child: shrinkToFit(trailing))],
               ],
             );
           },
@@ -1003,9 +961,7 @@ class _HomeViewState extends State<HomeView>
               // that reflows: narrow ships as the list alone, which is what a
               // phone drew before this view had a narrow arrangement at all.
               // Quick Lookup is below either of them, as chrome.
-              child: withViewOverrides(
-                buildDock(children: _panes(context, theme), extraChildren: sharedDashboardPanes),
-              ),
+              child: withViewOverrides(buildDock(children: _panes(context, theme), extraChildren: sharedDashboardPanes)),
             ),
             // Pointer-down rather than a gesture, exactly as the operations
             // pane does it: this only OBSERVES, so it neither competes with
@@ -1037,138 +993,127 @@ class _HomeViewState extends State<HomeView>
         return false;
       },
       child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: StreamBuilder<List<Operation>>(
-                          stream: _operations(),
-                          builder: (context, snapshot) {
-                            // First real snapshot = bootstrap done + first data
-                            // load complete: resolve the dev bridge's `ready`
-                            // promise so agents can await it instead of
-                            // sleeping. Idempotent; only while the bridge is live.
-                            //
-                            // Anchored to the build because that's what the test
-                            // harness can drive; the cost is that on a HIDDEN web
-                            // pane (Flutter throttles frames to ~0) `ready` waits
-                            // until the pane is visible again. That's fine for the
-                            // agent workflow — agents drive a visible pane — and
-                            // it self-heals on the next frame.
-                            if (snapshot.hasData && DevBridge.instance.installed) {
-                              DevBridge.instance.signalReady();
-                            }
-                            // Pointer-down rather than a gesture: this only
-                            // OBSERVES, so it neither competes with the rows'
-                            // own taps nor changes hit testing.
-                            return Listener(
-                              onPointerDown: (_) => _panels.used('operations'),
-                              child: OperationListPanel(
-                                services: widget.services,
-                                // `snapshot.hasData` distinguishes "the stream
-                                // hasn't emitted its first snapshot yet" from "it
-                                // emitted an empty list" — collapsing both into
-                                // `snapshot.data ?? []` would leave
-                                // OperationListPanel guessing (via a fixed
-                                // delay) how long "still loading" might last.
-                                loading: !snapshot.hasData,
-                                operations: snapshot.data ?? const <Operation>[],
-                              ),
-                            );
-                          },
-                        ),
+        children: [
+          Positioned.fill(
+            child: StreamBuilder<List<Operation>>(
+              stream: _operations(),
+              builder: (context, snapshot) {
+                // First real snapshot = bootstrap done + first data
+                // load complete: resolve the dev bridge's `ready`
+                // promise so agents can await it instead of
+                // sleeping. Idempotent; only while the bridge is live.
+                //
+                // Anchored to the build because that's what the test
+                // harness can drive; the cost is that on a HIDDEN web
+                // pane (Flutter throttles frames to ~0) `ready` waits
+                // until the pane is visible again. That's fine for the
+                // agent workflow — agents drive a visible pane — and
+                // it self-heals on the next frame.
+                if (snapshot.hasData && DevBridge.instance.installed) {
+                  DevBridge.instance.signalReady();
+                }
+                // Pointer-down rather than a gesture: this only
+                // OBSERVES, so it neither competes with the rows'
+                // own taps nor changes hit testing.
+                return Listener(
+                  onPointerDown: (_) => _panels.used('operations'),
+                  child: OperationListPanel(
+                    services: widget.services,
+                    // `snapshot.hasData` distinguishes "the stream
+                    // hasn't emitted its first snapshot yet" from "it
+                    // emitted an empty list" — collapsing both into
+                    // `snapshot.data ?? []` would leave
+                    // OperationListPanel guessing (via a fixed
+                    // delay) how long "still loading" might last.
+                    loading: !snapshot.hasData,
+                    operations: snapshot.data ?? const <Operation>[],
+                  ),
+                );
+              },
+            ),
+          ),
+          // A Builder, not the outer `context`: this Stack is built
+          // directly inside _HomeViewState.build, above the
+          // PaneSafeArea established by PaneSafeArea.root — that
+          // `context` is an ANCESTOR of it, so PaneSafeArea.maybeOf
+          // would always find nothing and silently read 0. Builder
+          // gets a genuine descendant context while staying a
+          // transparent, non-RenderObject wrapper — Positioned's
+          // ParentDataWidget mechanism sees straight through it to
+          // this Stack.
+          Builder(
+            builder: (context) => Positioned(
+              // Clears the device's real bottom/right insets (home
+              // indicator, landscape cutout) so the FAB isn't drawn
+              // under them.
+              bottom: 16 + PaneSafeArea.bottomOf(context),
+              right: 16 + PaneSafeArea.rightOf(context),
+              child: ListenableBuilder(
+                listenable: widget.services.settings,
+                builder: (context, _) {
+                  final fab = AnimatedSize(
+                    // Changing this key is what forces the FAB
+                    // back to its resting state once a transition's
+                    // deadline has passed (see _setFabExtended).
+                    key: ValueKey(_fabSettleEpoch),
+                    duration: _fabTransitionDuration,
+                    curve: Curves.easeInOut,
+                    child: Container(
+                      key: _fabButtonKey,
+                      height: 56,
+                      width: _isFabExtended ? null : 56,
+                      decoration: BoxDecoration(
+                        color: fabAccentColor,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 6, offset: const Offset(0, 3))],
                       ),
-                      // A Builder, not the outer `context`: this Stack is built
-                      // directly inside _HomeViewState.build, above the
-                      // PaneSafeArea established by PaneSafeArea.root — that
-                      // `context` is an ANCESTOR of it, so PaneSafeArea.maybeOf
-                      // would always find nothing and silently read 0. Builder
-                      // gets a genuine descendant context while staying a
-                      // transparent, non-RenderObject wrapper — Positioned's
-                      // ParentDataWidget mechanism sees straight through it to
-                      // this Stack.
-                      Builder(
-                        builder: (context) => Positioned(
-                          // Clears the device's real bottom/right insets (home
-                          // indicator, landscape cutout) so the FAB isn't drawn
-                          // under them.
-                          bottom: 16 + PaneSafeArea.bottomOf(context),
-                          right: 16 + PaneSafeArea.rightOf(context),
-                          child: ListenableBuilder(
-                            listenable: widget.services.settings,
-                            builder: (context, _) {
-                              final fab = AnimatedSize(
-                                // Changing this key is what forces the FAB
-                                // back to its resting state once a transition's
-                                // deadline has passed (see _setFabExtended).
-                                key: ValueKey(_fabSettleEpoch),
-                                duration: _fabTransitionDuration,
-                                curve: Curves.easeInOut,
-                                child: Container(
-                                  key: _fabButtonKey,
-                                  height: 56,
-                                  width: _isFabExtended ? null : 56,
-                                  decoration: BoxDecoration(
-                                    color: fabAccentColor,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.15),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 3),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(16),
-                                      onTap: () => _newOperation(context),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => _newOperation(context),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: Space.xl),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(MdiIcons.plus, color: theme.colorScheme.onPrimary),
+                                AnimatedSize(
+                                  duration: _fabTransitionDuration,
+                                  curve: Curves.easeInOut,
+                                  child: SizedBox(
+                                    width: _isFabExtended ? null : 0,
+                                    child: AnimatedOpacity(
+                                      duration: _fabTransitionDuration,
+                                      curve: Curves.easeInOut,
+                                      opacity: _isFabExtended ? 1.0 : 0.0,
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: Space.xl),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(MdiIcons.plus, color: theme.colorScheme.onPrimary),
-                                            AnimatedSize(
-                                              duration: _fabTransitionDuration,
-                                              curve: Curves.easeInOut,
-                                              child: SizedBox(
-                                                width: _isFabExtended ? null : 0,
-                                                child: AnimatedOpacity(
-                                                  duration: _fabTransitionDuration,
-                                                  curve: Curves.easeInOut,
-                                                  opacity: _isFabExtended ? 1.0 : 0.0,
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.only(left: Space.md),
-                                                    child: Text(
-                                                      context.t.home.newOperation,
-                                                      maxLines: 1,
-                                                      softWrap: false,
-                                                      style: theme.textTheme.labelLarge?.copyWith(
-                                                        color: theme.colorScheme.onPrimary,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                        padding: const EdgeInsets.only(left: Space.md),
+                                        child: Text(
+                                          context.t.home.newOperation,
+                                          maxLines: 1,
+                                          softWrap: false,
+                                          style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              );
-                              final newOperationsOpened = widget.services.settings
-                                  .onboardingShownCount(OnboardingFlows.newOperation);
-                              final needsNudge =
-                                  _nudgeArmed && newOperationsOpened < _newOperationNudgeThreshold;
-                              return needsNudge ? _NewOperationNudge(child: fab) : fab;
-                            },
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ],
+                    ),
+                  );
+                  final newOperationsOpened = widget.services.settings.onboardingShownCount(OnboardingFlows.newOperation);
+                  final needsNudge = _nudgeArmed && newOperationsOpened < _newOperationNudgeThreshold;
+                  return needsNudge ? _NewOperationNudge(child: fab) : fab;
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1319,8 +1264,7 @@ class HomeQuickLookup extends StatefulWidget {
   /// has already spent. And the rail's Settings cap is this tall, so the two
   /// read as one row across the foot of the window — the cap does NOT follow
   /// the bar when it grows, which is the one direction they may differ.
-  static double heightOf(BuildContext context) =>
-      LayoutDensity.chromeHeightOf(context) + Space.md * 2;
+  static double heightOf(BuildContext context) => LayoutDensity.chromeHeightOf(context) + Space.md * 2;
 
   @override
   State<HomeQuickLookup> createState() => _HomeQuickLookupState();
@@ -1406,10 +1350,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
   /// has to be asked of the view. The raw view has no rebuild dependency, hence
   /// `didChangeMetrics` below.
   bool _shouldShowNumbersRow(BuildContext context) =>
-      isMobilePlatform &&
-      widget.services.settings.showNumbersRow &&
-      _focusNode.hasFocus &&
-      virtualKeyboardIsUp(context);
+      isMobilePlatform && widget.services.settings.showNumbersRow && _focusNode.hasFocus && virtualKeyboardIsUp(context);
 
   /// Publishes (or withdraws) this field's numbers row. Written after the
   /// frame, never during build: the overlay that draws it is an ancestor, and
@@ -1507,20 +1448,15 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
   /// dialog render, so what Enter opens here is not a second, thinner view of
   /// the same callsign.
   Future<void> _openCallInfo(CallInfoData info) => showModalPane<void>(
-        context,
-        title: info.call,
-        closeLabel: context.t.common.close,
-        // The panel is a ListView and scrolls itself; wrapped in the pane's own
-        // scroll view it would sit in unbounded height and lay out blank.
-        scrollable: false,
-        builder: (context) => CallInfoPanel(
-          operation: operationForCallInfo(widget.services),
-          services: widget.services,
-          call: info.call,
-          guess: info.guess,
-          lookups: info.lookups,
-        ),
-      );
+    context,
+    title: info.call,
+    closeLabel: context.t.common.close,
+    // The panel is a ListView and scrolls itself; wrapped in the pane's own
+    // scroll view it would sit in unbounded height and lay out blank.
+    scrollable: false,
+    builder: (context) =>
+        CallInfoPanel(operation: operationForCallInfo(widget.services), services: widget.services, call: info.call, guess: info.guess, lookups: info.lookups),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -1561,118 +1497,113 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
     _syncNumbersRow(context, theme);
 
     return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): _clearField,
-      },
+      bindings: {const SingleActivator(LogicalKeyboardKey.escape): _clearField},
       child: Material(
-      elevation: 8,
-      color: theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (hasContent)
-            Container(
-              width: double.infinity,
-              padding: PaneSafeArea.symmetricOf(context, horizontal: 16, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (commandMessage != null)
-                    Row(
-                      children: [
-                        if (_engine.isError) ...[
-                          Icon(MdiIcons.alertCircle, size: 16, color: theme.colorScheme.onPrimary),
-                          const SizedBox(width: Space.md),
-                        ],
-                        Expanded(
-                          child: MarkdownBody(
-                            data: commandMessage,
-                            styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
-                              p: theme.textTheme.bodyLarge?.copyWith(
-                                color: _engine.isConfirmation
-                                    ? theme.colorScheme.onPrimary
-                                    : theme.colorScheme.onPrimary.withValues(alpha: 0.85),
-                                fontWeight: FontWeight.w600,
+        elevation: 8,
+        color: theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasContent)
+              Container(
+                width: double.infinity,
+                padding: PaneSafeArea.symmetricOf(context, horizontal: 16, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (commandMessage != null)
+                      Row(
+                        children: [
+                          if (_engine.isError) ...[Icon(MdiIcons.alertCircle, size: 16, color: theme.colorScheme.onPrimary), const SizedBox(width: Space.md)],
+                          Expanded(
+                            child: MarkdownBody(
+                              data: commandMessage,
+                              styleSheet: withEmojiFallback(
+                                MarkdownStyleSheet.fromTheme(theme).copyWith(
+                                  p: theme.textTheme.bodyLarge?.copyWith(
+                                    color: _engine.isConfirmation ? theme.colorScheme.onPrimary : theme.colorScheme.onPrimary.withValues(alpha: 0.85),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
-                            )),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  // The very widget the logging panel's info area is, so a
-                  // callsign reads the same in both places. No distance line:
-                  // Home has no operation, so there is no location to measure
-                  // from, and no scoring keys for the same reason — see
-                  // `CommandEngine.lookupLocationLine`.
-                  if (commandMessage == null && hasSummary)
-                    InkWell(
-                      onTap: () => _openCallInfo(callInfo),
-                      child: CallInfoSummary(
-                        data: callInfo!,
-                        locationLine: _engine.lookupLocationLine,
-                        workedBeforeLabel: (times) => workedBeforeLabel(context, times),
-                        foregroundColor: theme.colorScheme.onPrimary,
-                        iconColor: theme.colorScheme.onPrimary,
-                        linkColor: theme.colorScheme.onPrimary,
-                        onOpenLink: openExternalUrl,
+                        ],
                       ),
-                    ),
-                ],
+                    // The very widget the logging panel's info area is, so a
+                    // callsign reads the same in both places. No distance line:
+                    // Home has no operation, so there is no location to measure
+                    // from, and no scoring keys for the same reason — see
+                    // `CommandEngine.lookupLocationLine`.
+                    if (commandMessage == null && hasSummary)
+                      InkWell(
+                        onTap: () => _openCallInfo(callInfo),
+                        child: CallInfoSummary(
+                          data: callInfo!,
+                          locationLine: _engine.lookupLocationLine,
+                          workedBeforeLabel: (times) => workedBeforeLabel(context, times),
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          iconColor: theme.colorScheme.onPrimary,
+                          linkColor: theme.colorScheme.onPrimary,
+                          onOpenLink: openExternalUrl,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            Padding(
+              padding: PaneSafeArea.symmetricOf(context, horizontal: 16, vertical: 8),
+              // One chrome row exactly, rather than whatever a dense
+              // `InputDecoration` and a prefix icon happen to measure. [heightOf]
+              // is what the rail's Settings cap is built to and what the window's
+              // chrome budget reserves, and both are wrong the moment this bar
+              // is a few pixels off it — a cap that does not line up with the bar
+              // beside it reads as one of them being misaligned.
+              child: SizedBox(
+                height: LayoutDensity.chromeHeightOf(context),
+                child: TextField(
+                  selectAllOnFocus: false,
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  style: haloMonoStyle(context, fontSize: 15),
+                  // The formatters own casing, not the keyboard: a soft keyboard's
+                  // capitalization is fixed when the input connection opens and is not
+                  // re-sent on rebuild, so a mode chosen here could never follow the
+                  // text turning from a callsign into a command mid-typing.
+                  textCapitalization: TextCapitalization.none,
+                  inputFormatters: commandFieldFormatters,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: theme.colorScheme.surface,
+                    prefixIcon: const Icon(MdiIcons.magnify),
+                    suffixIcon: _controller.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(MdiIcons.close, semanticLabel: context.t.common.clear),
+                            onPressed: () {
+                              _controller.clear();
+                            },
+                          )
+                        : null,
+                    hintText: context.t.home.quickLookup,
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24.0), borderSide: BorderSide.none),
+                  ),
+                  // Not onSubmitted: the default TextInputAction.done handling
+                  // unfocuses (closing the keyboard) before onSubmitted even
+                  // runs. onEditingComplete replaces that default entirely, so
+                  // the field keeps focus for the next command.
+                  onEditingComplete: _submit,
+                ),
               ),
             ),
-          Padding(
-            padding: PaneSafeArea.symmetricOf(context, horizontal: 16, vertical: 8),
-            // One chrome row exactly, rather than whatever a dense
-            // `InputDecoration` and a prefix icon happen to measure. [heightOf]
-            // is what the rail's Settings cap is built to and what the window's
-            // chrome budget reserves, and both are wrong the moment this bar
-            // is a few pixels off it — a cap that does not line up with the bar
-            // beside it reads as one of them being misaligned.
-            child: SizedBox(
-              height: LayoutDensity.chromeHeightOf(context),
-              child: TextField(
-              selectAllOnFocus: false,
-              controller: _controller,
-              focusNode: _focusNode,
-              style: haloMonoStyle(context, fontSize: 15),
-              // The formatters own casing, not the keyboard: a soft keyboard's
-              // capitalization is fixed when the input connection opens and is not
-              // re-sent on rebuild, so a mode chosen here could never follow the
-              // text turning from a callsign into a command mid-typing.
-              textCapitalization: TextCapitalization.none,
-              inputFormatters: commandFieldFormatters,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                prefixIcon: const Icon(MdiIcons.magnify),
-                suffixIcon: _controller.text.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(MdiIcons.close, semanticLabel: context.t.common.clear),
-                        onPressed: () {
-                          _controller.clear();
-                        },
-                      )
-                    : null,
-                hintText: context.t.home.quickLookup,
-                isDense: true,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24.0), borderSide: BorderSide.none),
-              ),
-              // Not onSubmitted: the default TextInputAction.done handling
-              // unfocuses (closing the keyboard) before onSubmitted even
-              // runs. onEditingComplete replaces that default entirely, so
-              // the field keeps focus for the next command.
-              onEditingComplete: _submit,
-              ),
-            ),
-          ),
-          // The numbers row is not drawn here — it is published to
-          // `StatusBarOverlay`, which draws it below the status footer and
-          // directly on the keyboard (see `_syncNumbersRow`). Same reason as
-          // the logging panel: the footer is one level up, so no route can put
-          // itself under it.
-          if (bottomReserve > 0) SizedBox(width: double.infinity, height: bottomReserve),
-        ],
-      ),
+            // The numbers row is not drawn here — it is published to
+            // `StatusBarOverlay`, which draws it below the status footer and
+            // directly on the keyboard (see `_syncNumbersRow`). Same reason as
+            // the logging panel: the footer is one level up, so no route can put
+            // itself under it.
+            if (bottomReserve > 0) SizedBox(width: double.infinity, height: bottomReserve),
+          ],
+        ),
       ),
     );
   }

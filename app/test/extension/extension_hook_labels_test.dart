@@ -30,10 +30,7 @@ void main() {
   });
 
   test('a program with both sides is hunted and activated, in that order', () {
-    expect(
-      labels(const ['ref:wwff', 'ref:wwffActivation']),
-      ['Hunting WWFF', 'Activating WWFF'],
-    );
+    expect(labels(const ['ref:wwff', 'ref:wwffActivation']), ['Hunting WWFF', 'Activating WWFF']);
   });
 
   test('a reference with no activation twin is named, never called hunting', () {

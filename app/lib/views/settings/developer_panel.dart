@@ -83,22 +83,17 @@ class DeveloperPanel extends StatelessWidget {
             // the developer-mode switch because it is meaningless without it,
             // and above the patch track because an author reaches for it far
             // more often.
-            if (settings.developerMode)
-              SectionedSlivers(slivers: [_ExtensionDevServerSection(services: services)]),
+            if (settings.developerMode) SectionedSlivers(slivers: [_ExtensionDevServerSection(services: services)]),
             // Not behind the `catalog` experiment, unlike the panel's
             // section: developer mode already gates it, and pointing the
             // app at a local catalog is how the catalog itself is worked on.
-            if (settings.developerMode)
-              SectionedSlivers(slivers: [_CatalogOverrideSection(services: services)]),
+            if (settings.developerMode) SectionedSlivers(slivers: [_CatalogOverrideSection(services: services)]),
             // Shorebird over-the-air patch track (docs/releases.md §4.3). Only
             // shown when the Shorebird engine is actually present — i.e. a
             // `shorebird release` build, not a local/debug/web one — so it's
             // invisible and inert everywhere it can't do anything.
             if (services.updates.isAvailable) ...[
-              SectionHeader(
-                context.t.settings.developer.patchTrack,
-                subtitle: Text(context.t.settings.developer.patchTrackDescription),
-              ),
+              SectionHeader(context.t.settings.developer.patchTrack, subtitle: Text(context.t.settings.developer.patchTrackDescription)),
               _sectionBody(context, [
                 SegmentedButton<String>(
                   showSelectedIcon: false,
@@ -111,15 +106,15 @@ class DeveloperPanel extends StatelessWidget {
                   onSelectionChanged: (selected) async {
                     final track = selected.first;
                     await settings.setShorebirdTrack(track);
-                    services.statusBar
-                        .setMessage(key: 'shorebird:check', text: t.settings.developer.checkingTrack(track: track));
+                    services.statusBar.setMessage(
+                      key: 'shorebird:check',
+                      text: t.settings.developer.checkingTrack(track: track),
+                    );
                     final applied = await services.updates.checkAndApply();
                     if (!context.mounted) return;
                     services.statusBar.setMessage(
                       key: 'shorebird:check',
-                      text: applied
-                          ? t.settings.developer.patchDownloaded
-                          : t.settings.developer.noNewPatch(track: track),
+                      text: applied ? t.settings.developer.patchDownloaded : t.settings.developer.noNewPatch(track: track),
                     );
                   },
                 ),
@@ -130,12 +125,8 @@ class DeveloperPanel extends StatelessWidget {
                     builder: (context, snapshot) {
                       final patch = snapshot.data?.number;
                       return Text(
-                        patch == null
-                            ? context.t.settings.developer.noPatchInstalled
-                            : context.t.settings.developer.runningPatch(patch: patch),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                        patch == null ? context.t.settings.developer.noPatchInstalled : context.t.settings.developer.runningPatch(patch: patch),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                       );
                     },
                   ),
@@ -168,8 +159,7 @@ class DeveloperPanel extends StatelessWidget {
               _infoRow(
                 context,
                 context.t.settings.sync.deviceKey,
-                settings.syncDeviceKey?.substring(0, min(8, settings.syncDeviceKey!.length)) ??
-                    context.t.settings.developer.loading,
+                settings.syncDeviceKey?.substring(0, min(8, settings.syncDeviceKey!.length)) ?? context.t.settings.developer.loading,
               ),
               _infoRowWidget(context, context.t.settings.developer.appVersion, const VersionLabel()),
               // Where the log database and the data-file cache live. Platform-
@@ -195,9 +185,7 @@ class DeveloperPanel extends StatelessWidget {
     if (!context.mounted) return;
     services.statusBar.setMessage(
       key: 'deep-link:register-schemes',
-      text: error == null
-          ? context.t.settings.developer.registerUrlSchemesDone
-          : context.t.settings.developer.registerUrlSchemesFailed(error: error),
+      text: error == null ? context.t.settings.developer.registerUrlSchemesDone : context.t.settings.developer.registerUrlSchemesFailed(error: error),
     );
   }
 
@@ -207,7 +195,9 @@ class DeveloperPanel extends StatelessWidget {
       label,
       // SelectionArea over a plain Text rather than SelectableText, which
       // styles itself apart from the row and reads off-colour in dark mode.
-      SelectionArea(child: Text(value, style: const TextStyle(fontFamily: 'RobotoMono'))),
+      SelectionArea(
+        child: Text(value, style: const TextStyle(fontFamily: 'RobotoMono')),
+      ),
     );
   }
 
@@ -236,10 +226,9 @@ class DeveloperPanel extends StatelessWidget {
 /// centring to the ideal width, so a field or button here lines up with the
 /// ListTile rows above it instead of running to the pane's edges.
 Widget _sectionBody(BuildContext context, List<Widget> children) => Padding(
-      padding: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero)
-          .add(const EdgeInsets.symmetric(vertical: Space.md)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
-    );
+  padding: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero).add(const EdgeInsets.symmetric(vertical: Space.md)),
+  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+);
 
 /// Where the log database and the data-file cache live. Platform-dependent,
 /// and relocated out of Documents on Windows and Linux (see app_storage.dart),
@@ -263,10 +252,8 @@ class _DataFolderValueState extends State<_DataFolderValue> {
   Widget build(BuildContext context) {
     return FutureBuilder(
       future: _directory,
-      builder: (context, snapshot) => SelectableText(
-        snapshot.data?.path ?? context.t.settings.developer.loading,
-        style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-      ),
+      builder: (context, snapshot) =>
+          SelectableText(snapshot.data?.path ?? context.t.settings.developer.loading, style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
     );
   }
 }
@@ -287,8 +274,7 @@ class _ExtensionDevServerSection extends StatefulWidget {
 }
 
 class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> {
-  late final TextEditingController _url =
-      TextEditingController(text: widget.services.settings.extensionDevServerUrl);
+  late final TextEditingController _url = TextEditingController(text: widget.services.settings.extensionDevServerUrl);
 
   @override
   void dispose() {
@@ -330,10 +316,7 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
             _sectionBody(context, [
               Padding(
                 padding: const EdgeInsets.only(bottom: Space.md),
-                child: Text(
-                  t.extDevServerDescription,
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
+                child: Text(t.extDevServerDescription, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
               ),
               TextField(
                 controller: _url,
@@ -345,9 +328,7 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
                   hintText: t.extDevServerHint,
                   // Hand-built decorations render their hint at full opacity
                   // without this, which reads as a filled-in value.
-                  hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
-                  ),
+                  hintStyle: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.38)),
                   border: const OutlineInputBorder(),
                   isDense: true,
                 ),
@@ -369,10 +350,7 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
               if (connected)
                 Padding(
                   padding: const EdgeInsets.only(top: Space.sm),
-                  child: Text(
-                    t.extDevServerNoSecrets,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
+                  child: Text(t.extDevServerNoSecrets, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                 ),
             ]),
           ]),
@@ -409,10 +387,7 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
             ),
             if (reload != null)
               Text(
-                t.extDevServerLastReload(
-                  key: reload.key,
-                  time: TimeOfDay.fromDateTime(reload.at).format(context),
-                ),
+                t.extDevServerLastReload(key: reload.key, time: TimeOfDay.fromDateTime(reload.at).format(context)),
                 style: subdued,
               ),
             if (failing > 0)
@@ -480,10 +455,7 @@ class _CatalogOverrideSectionState extends State<_CatalogOverrideSection> {
         _sectionBody(context, [
           Padding(
             padding: const EdgeInsets.only(bottom: Space.md),
-            child: Text(
-              t.catalogDescription,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
+            child: Text(t.catalogDescription, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ),
           TextField(
             controller: _url,
@@ -495,9 +467,7 @@ class _CatalogOverrideSectionState extends State<_CatalogOverrideSection> {
               hintText: t.catalogHint,
               // Hand-built decorations render their hint at full opacity
               // without this, which reads as a filled-in value.
-              hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
-              ),
+              hintStyle: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.38)),
               border: const OutlineInputBorder(),
               isDense: true,
             ),

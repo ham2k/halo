@@ -75,11 +75,7 @@ class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
   final enabled = <String>[];
 
   @override
-  Future<ControlsResult> operationControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
-      (controls: controls, loadFailed: false);
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async => (controls: controls, loadFailed: false);
 
   // The real one restarts the runtime; here enabling records the override,
   // which is what `isExtensionEnabled` reads, and loads SOTA's control the way
@@ -98,9 +94,7 @@ Future<(HaLoServices, Operation)> _harness({
   List<Map<String, dynamic>> controls = const [],
   bool sectionCollapsed = false,
 }) async {
-  SharedPreferences.setMockInitialValues({
-    if (sectionCollapsed) 'activitiesAllOptionsHidden': true,
-  });
+  SharedPreferences.setMockInitialValues({if (sectionCollapsed) 'activitiesAllOptionsHidden': true});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
   final extensions = _NoActivityExtensions()
@@ -110,13 +104,18 @@ Future<(HaLoServices, Operation)> _harness({
   return (HaLoServices(db, settings, extensions: extensions), Operation(uuid: 'op-1', data: {'refs': refs}));
 }
 
-String _searchText(WidgetTester tester) =>
-    tester.widget<TextField>(find.byType(TextField).first).controller!.text;
+String _searchText(WidgetTester tester) => tester.widget<TextField>(find.byType(TextField).first).controller!.text;
 
 Future<void> _pump(WidgetTester tester, HaLoServices services, Operation operation) async {
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(home: Scaffold(body: OperationSheet(services: services, operation: operation))),
-  ));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: OperationSheet(services: services, operation: operation),
+        ),
+      ),
+    ),
+  );
   await tester.pumpAndSettle();
 }
 
@@ -125,26 +124,16 @@ void main() {
 
   group('extensionsDeclaringRefs', () {
     test('matches on the ref hook alone, never on names or keywords', () {
-      expect(
-        extensionsDeclaringRefs([_lookalikeInfo, _sotaInfo], [(type: 'sotaActivation', code: null)]),
-        [_sotaInfo],
-      );
+      expect(extensionsDeclaringRefs([_lookalikeInfo, _sotaInfo], [(type: 'sotaActivation', code: null)]), [_sotaInfo]);
     });
 
     test('an empty ref set and a hook-less extension match nothing', () {
       expect(extensionsDeclaringRefs([_sotaInfo], const []), isEmpty);
-      expect(
-        extensionsDeclaringRefs(
-          [const ExtensionInfo(key: 'x', file: 'x.js', core: false, name: 'X')],
-          [(type: 'x', code: null)],
-        ),
-        isEmpty,
-      );
+      expect(extensionsDeclaringRefs([const ExtensionInfo(key: 'x', file: 'x.js', core: false, name: 'X')], [(type: 'x', code: null)]), isEmpty);
     });
   });
 
-  testWidgets('a switched-off extension declaring an unhandled ref type gets an enable row in Activity Types',
-      (tester) async {
+  testWidgets('a switched-off extension declaring an unhandled ref type gets an enable row in Activity Types', (tester) async {
     final (services, operation) = await _harness(available: const [_lookalikeInfo, _sotaInfo]);
     await _pump(tester, services, operation);
 

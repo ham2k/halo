@@ -26,42 +26,46 @@ void main() {
     final firstQso = Qso(
       uuid: 'q1',
       operationUuid: operation.uuid,
-      data: {'their': {'call': 'K1ABC'}, 'startAtMillis': 1000},
+      data: {
+        'their': {'call': 'K1ABC'},
+        'startAtMillis': 1000,
+      },
     );
     final lastRealQso = Qso(
       uuid: 'q2',
       operationUuid: operation.uuid,
-      data: {'their': {'call': 'W1XYZ'}, 'startAtMillis': 2000},
+      data: {
+        'their': {'call': 'W1XYZ'},
+        'startAtMillis': 2000,
+      },
     );
-    final trailingEventMarker = Qso(
-      uuid: 'evt',
-      operationUuid: operation.uuid,
-      data: {'band': 'event', 'startAtMillis': 3000},
-    );
+    final trailingEventMarker = Qso(uuid: 'evt', operationUuid: operation.uuid, data: {'band': 'event', 'startAtMillis': 3000});
 
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
-    Future<Map<String, dynamic>?> fakeSpotLastCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeSpotLastCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != 'SPOTLAST') return null;
       return {
         'describe': 'Spot the last logged QSO?',
         'confirm': 'Spotting last QSO…',
         'commands': [
-          {'sendSpots': {'target': 'last'}},
+          {
+            'sendSpots': {'target': 'last'},
+          },
         ],
       };
     }
 
-    await tester.pumpWidget(host(
-      log: baseLog().copyWith(qsos: [firstQso, lastRealQso, trailingEventMarker]),
-      commands: CommandHooks(interpretCommand: fakeSpotLastCommand, onCommandAction: (action, [params]) async {
-        dispatched.add(MapEntry(action, params));
-      }),
-    ));
+    await tester.pumpWidget(
+      host(
+        log: baseLog().copyWith(qsos: [firstQso, lastRealQso, trailingEventMarker]),
+        commands: CommandHooks(
+          interpretCommand: fakeSpotLastCommand,
+          onCommandAction: (action, [params]) async {
+            dispatched.add(MapEntry(action, params));
+          },
+        ),
+      ),
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SPOTLAST');
     await tester.pump();
@@ -75,8 +79,7 @@ void main() {
     expect((params['qso'] as Map)['their'], {'call': 'W1XYZ'});
   });
 
-  testWidgets("a spot carries the operation's device-local data, where the multi-station identifier lives",
-      (tester) async {
+  testWidgets("a spot carries the operation's device-local data, where the multi-station identifier lives", (tester) async {
     // `ExtensionService.spotCallForSelfSpot` builds `KI2D/OP2` out of
     // `operation['local']`. Drop it from the payload and every device of a
     // multi-station operation self-spots as the same bare call — the exact
@@ -86,12 +89,7 @@ void main() {
     operation = (await operations.get(operation.uuid))!;
 
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
-    Future<Map<String, dynamic>?> fakeSpotCommand(
-      String input, [
-      Map<String, dynamic>? operation,
-      Map<String, dynamic>? qso,
-      bool execute = false,
-    ]) async {
+    Future<Map<String, dynamic>?> fakeSpotCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != 'SPOT') return null;
       return {
         'describe': 'Self-spot?',
@@ -102,11 +100,16 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(
-      commands: CommandHooks(interpretCommand: fakeSpotCommand, onCommandAction: (action, [params]) async {
-        dispatched.add(MapEntry(action, params));
-      }),
-    ));
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(
+          interpretCommand: fakeSpotCommand,
+          onCommandAction: (action, [params]) async {
+            dispatched.add(MapEntry(action, params));
+          },
+        ),
+      ),
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SPOT');
     await tester.pump();
@@ -133,11 +136,14 @@ void main() {
       String? mode,
       String? comment,
       String? spotterCall,
-    }) async =>
-        {};
+    }) async => {};
 
     testWidgets('shows "Self-spotting" with no frequency set', (tester) async {
-      await tester.pumpWidget(host(spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend)));
+      await tester.pumpWidget(
+        host(
+          spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend),
+        ),
+      );
       await tester.pump();
       expect(find.text('Self-spotting'), findsOneWidget);
       expect(find.text('First set a frequency to spot'), findsNothing);
@@ -145,10 +151,12 @@ void main() {
 
     testWidgets('shows "Self-spotting" (not "Self-spot at ...") once a frequency is set', (tester) async {
       fakeRadio.setVfo('vfoA', freq: 14285);
-      await tester.pumpWidget(host(
-        radio: baseRadio().copyWith(radioService: fakeRadio),
-        spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend),
-      ));
+      await tester.pumpWidget(
+        host(
+          radio: baseRadio().copyWith(radioService: fakeRadio),
+          spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend),
+        ),
+      );
       await tester.pump();
       expect(find.text('Self-spotting'), findsOneWidget);
       expect(find.textContaining('Self-spot at'), findsNothing);
@@ -158,12 +166,18 @@ void main() {
       final recentQso = Qso(
         uuid: 'recent',
         operationUuid: operation.uuid,
-        data: {'their': {'call': 'KN2X'}, 'freq': 14285, 'startAtMillis': DateTime.now().millisecondsSinceEpoch},
+        data: {
+          'their': {'call': 'KN2X'},
+          'freq': 14285,
+          'startAtMillis': DateTime.now().millisecondsSinceEpoch,
+        },
       );
-      await tester.pumpWidget(host(
-        session: LoggingSession(editingQso: recentQso),
-        spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: recentQso),
+          spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend),
+        ),
+      );
       await tester.pump();
       expect(find.text('Spotting'), findsOneWidget);
       expect(find.textContaining('Spot KN2X'), findsNothing);
@@ -179,10 +193,12 @@ void main() {
           'startAtMillis': DateTime.now().subtract(const Duration(minutes: 10)).millisecondsSinceEpoch,
         },
       );
-      await tester.pumpWidget(host(
-        session: LoggingSession(editingQso: staleQso),
-        spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: staleQso),
+          spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend),
+        ),
+      );
       await tester.pump();
       expect(find.text('Spotting'), findsOneWidget);
       expect(find.textContaining('Too late'), findsNothing);
@@ -190,13 +206,17 @@ void main() {
   });
 
   testWidgets('a suggestedQso populates call/freq/band/mode for a new QSO', (tester) async {
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'W1AW'},
-      'freq': 14074.0,
-      'mode': 'FT8',
-    }),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'W1AW'},
+            'freq': 14074.0,
+            'mode': 'FT8',
+          },
+        ),
+      ),
+    );
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
 
@@ -211,14 +231,18 @@ void main() {
     // it minutes late. The suggestion's time has to become the manual time,
     // exactly as if the operator had typed it.
     const madeAt = 1750000000000;
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'W1AW'},
-      'freq': 14074.0,
-      'mode': 'FT8',
-      'startAtMillis': madeAt,
-    }),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'W1AW'},
+            'freq': 14074.0,
+            'mode': 'FT8',
+            'startAtMillis': madeAt,
+          },
+        ),
+      ),
+    );
     await tester.pump();
     // The suggestion fills the field without focusing it, and Enter is
     // delivered to whatever has focus.
@@ -234,22 +258,30 @@ void main() {
     // A spot says nothing about when a contact happens. Without the explicit
     // clear, a spot tapped after a deep link would log at the LINK's time.
     const madeAt = 1750000000000;
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'W1AW'},
-      'freq': 14074.0,
-      'mode': 'FT8',
-      'startAtMillis': madeAt,
-    }),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'W1AW'},
+            'freq': 14074.0,
+            'mode': 'FT8',
+            'startAtMillis': madeAt,
+          },
+        ),
+      ),
+    );
     await tester.pump();
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'K1ABC'},
-      'freq': 14074.0,
-      'mode': 'FT8',
-    }),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'K1ABC'},
+            'freq': 14074.0,
+            'mode': 'FT8',
+          },
+        ),
+      ),
+    );
     await tester.pump();
     await tester.tap(find.widgetWithText(TextField, 'Their call'));
     await tester.pump();
@@ -260,8 +292,7 @@ void main() {
     expect(logged.single.startAtMillis, isNot(madeAt));
   });
 
-  testWidgets('HALO-32: applying a suggestedQso with no mode of its own never runs the band-plan guess',
-      (tester) async {
+  testWidgets('HALO-32: applying a suggestedQso with no mode of its own never runs the band-plan guess', (tester) async {
     // tunedRadio (host()'s default) seeds Mode as SSB; 14074 kHz is FT8
     // territory per the band plan, but this suggestion carries no mode of
     // its own — applying it must leave the mode exactly as-is, not guess
@@ -270,12 +301,16 @@ void main() {
     // even attached — so on its own this only proves the guess doesn't fire
     // when it structurally can't. The next test below covers the path where
     // it structurally could.
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'W1AW'},
-      'freq': 14074.0,
-    }),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'W1AW'},
+            'freq': 14074.0,
+          },
+        ),
+      ),
+    );
     await tester.pump();
 
     await openControl(tester, MdiIcons.radio);
@@ -283,9 +318,7 @@ void main() {
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
   });
 
-  testWidgets(
-      'HALO-32: a second suggestedQso (didUpdateWidget, listener already attached) still never guesses the mode',
-      (tester) async {
+  testWidgets('HALO-32: a second suggestedQso (didUpdateWidget, listener already attached) still never guesses the mode', (tester) async {
     // Unlike the cold-start case above, a suggestedQso arriving via
     // didUpdateWidget (a second spot tapped on an already-mounted widget,
     // line ~1807) runs AFTER `_onFreqChanged`'s listener is attached — the
@@ -297,12 +330,16 @@ void main() {
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
 
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'W1AW'},
-      'freq': 14074.0, // FT8 territory per the band plan
-    }),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'W1AW'},
+            'freq': 14074.0, // FT8 territory per the band plan
+          },
+        ),
+      ),
+    );
     await tester.pump();
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
@@ -311,14 +348,18 @@ void main() {
 
   testWidgets('a suggestedQso moves the VFO, so a connected radio follows the spot', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 7200, mode: 'SSB');
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'W1AW'},
-      'freq': 14074.0,
-      'mode': 'FT8',
-    }),
-      radio: baseRadio().copyWith(radioService: fakeRadio),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'W1AW'},
+            'freq': 14074.0,
+            'mode': 'FT8',
+          },
+        ),
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+      ),
+    );
     await tester.pump();
 
     // Tapping a spot is specific intent — "work THIS station" — so it takes
@@ -329,25 +370,33 @@ void main() {
   });
 
   testWidgets('tapping a second spot moves the VFO again', (tester) async {
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'W1AW'},
-      'freq': 14074.0,
-      'mode': 'FT8',
-    }),
-      radio: baseRadio().copyWith(radioService: fakeRadio),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'W1AW'},
+            'freq': 14074.0,
+            'mode': 'FT8',
+          },
+        ),
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+      ),
+    );
     await tester.pump();
     expect(fakeRadio.vfoA.freq, 14074.0);
 
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'K1ABC'},
-      'freq': 7035.0,
-      'mode': 'CW',
-    }),
-      radio: baseRadio().copyWith(radioService: fakeRadio),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'K1ABC'},
+            'freq': 7035.0,
+            'mode': 'CW',
+          },
+        ),
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+      ),
+    );
     await tester.pump();
 
     expect(fakeRadio.vfoA.freq, 7035.0);
@@ -364,13 +413,17 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(suggestedQso: {
-        'their': {'call': 'W1AW'},
-        'freq': 14074.0,
-        'mode': 'FT8',
-      }),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: {
+              'their': {'call': 'W1AW'},
+              'freq': 14074.0,
+              'mode': 'FT8',
+            },
+          ),
+        ),
+      );
       await tester.pump();
 
       final callField = find.widgetWithText(TextField, 'Their call');
@@ -396,13 +449,17 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(suggestedQso: {
-        'their': {'call': 'W1AW'},
-        'freq': 14074.0,
-        'mode': 'FT8',
-      }),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: {
+              'their': {'call': 'W1AW'},
+              'freq': 14074.0,
+              'mode': 'FT8',
+            },
+          ),
+        ),
+      );
       await tester.pump();
 
       // The suggestion still filled the field — it just didn't grab focus,
@@ -452,13 +509,17 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(suggestedQso: {
-        'their': {'call': 'W1AW'},
-        'freq': 14074.0,
-        'mode': 'FT8',
-      }),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: {
+              'their': {'call': 'W1AW'},
+              'freq': 14074.0,
+              'mode': 'FT8',
+            },
+          ),
+        ),
+      );
       await tester.pump();
 
       // The keyboard clause, not the platform clause: dropping
@@ -472,14 +533,18 @@ void main() {
   });
 
   testWidgets('clicking into the frequency field after a spot does not switch live follow off', (tester) async {
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'W1AW'},
-      'freq': 14074.0,
-      'mode': 'FT8',
-    }),
-      radio: baseRadio().copyWith(radioService: fakeRadio),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'W1AW'},
+            'freq': 14074.0,
+            'mode': 'FT8',
+          },
+        ),
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+      ),
+    );
     await tester.pump();
     await openControl(tester, MdiIcons.radio);
 
@@ -503,38 +568,39 @@ void main() {
     // Flutter refuses. It surfaced only in the log, because ErrorPolicy
     // classes it logOnly.
     Widget tree(Map<String, dynamic> suggestion) => MaterialApp(
-          home: Scaffold(
-            body: Column(children: [
-              VfoWatcher(store: fakeRadio),
-              Expanded(
-                child: LoggingControls(
-                  log: baseLog(),
-                  session: LoggingSession(
-                    suggestedQso: suggestion,
-                  ),
-                  radio: RadioHookup(
-                    radioService: fakeRadio,
-                    radioUpdates: fakeRadio,
-                  ),
-                ),
+      home: Scaffold(
+        body: Column(
+          children: [
+            VfoWatcher(store: fakeRadio),
+            Expanded(
+              child: LoggingControls(
+                log: baseLog(),
+                session: LoggingSession(suggestedQso: suggestion),
+                radio: RadioHookup(radioService: fakeRadio, radioUpdates: fakeRadio),
               ),
-            ]),
-          ),
-        );
+            ),
+          ],
+        ),
+      ),
+    );
 
-    await tester.pumpWidget(tree({
-      'their': {'call': 'W1AW'},
-      'freq': 14074.0,
-      'mode': 'FT8',
-    }));
+    await tester.pumpWidget(
+      tree({
+        'their': {'call': 'W1AW'},
+        'freq': 14074.0,
+        'mode': 'FT8',
+      }),
+    );
     await tester.pumpAndSettle();
 
     // A second spot, which is what drives didUpdateWidget.
-    await tester.pumpWidget(tree({
-      'their': {'call': 'K1ABC'},
-      'freq': 7035.0,
-      'mode': 'CW',
-    }));
+    await tester.pumpWidget(
+      tree({
+        'their': {'call': 'K1ABC'},
+        'freq': 7035.0,
+        'mode': 'CW',
+      }),
+    );
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
@@ -543,12 +609,16 @@ void main() {
 
   testWidgets('a suggestion carrying no radio state leaves the VFO alone', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'W1AW'},
-    }),
-      radio: baseRadio().copyWith(radioService: fakeRadio),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'W1AW'},
+          },
+        ),
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+      ),
+    );
     await tester.pump();
 
     // A bare callsign — a deeplink, say — says nothing about where to tune,
@@ -568,14 +638,19 @@ void main() {
       },
     );
 
-    await tester.pumpWidget(host(
-      session: LoggingSession(editingQso: existingQso, suggestedQso: {
-      'their': {'call': 'K1ABC'},
-      'freq': 21000.0,
-      'mode': 'CW',
-    }),
-      radio: baseRadio().copyWith(radioService: fakeRadio),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          editingQso: existingQso,
+          suggestedQso: {
+            'their': {'call': 'K1ABC'},
+            'freq': 21000.0,
+            'mode': 'CW',
+          },
+        ),
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+      ),
+    );
     await tester.pump();
 
     expect(fakeRadio.vfoA.freq, 14285, reason: 'the suggestion was ignored, so the VFO is too');
@@ -591,31 +666,44 @@ void main() {
       },
     );
 
-    await tester.pumpWidget(host(
-      session: LoggingSession(editingQso: existingQso, suggestedQso: {
-      'their': {'call': 'K1ABC'},
-      'freq': 14074.0,
-    }),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          editingQso: existingQso,
+          suggestedQso: {
+            'their': {'call': 'K1ABC'},
+            'freq': 14074.0,
+          },
+        ),
+      ),
+    );
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
   });
 
   testWidgets('a new suggestedQso (different Map instance) re-applies over the previous one', (tester) async {
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'W1AW'},
-      'freq': 14074.0,
-    }),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'W1AW'},
+            'freq': 14074.0,
+          },
+        ),
+      ),
+    );
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
 
-    await tester.pumpWidget(host(
-      session: LoggingSession(suggestedQso: {
-      'their': {'call': 'K1ABC'},
-      'freq': 7100.0,
-    }),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          suggestedQso: {
+            'their': {'call': 'K1ABC'},
+            'freq': 7100.0,
+          },
+        ),
+      ),
+    );
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'K1ABC');
   });
 
@@ -640,20 +728,15 @@ void main() {
     }
 
     Widget build({Map<String, dynamic>? suggestedQso}) => MaterialApp(
-          home: Scaffold(
-            body: LoggingControls(
-              log: baseLog(),
-              session: LoggingSession(
-                suggestedQso: suggestedQso,
-              ),
-              radio: baseRadio(),
-              lookups: LookupHooks(
-                lookup: lookup,
-                callLocationLine: (guess) => guess['location'] as String?,
-              ),
-            ),
-          ),
-        );
+      home: Scaffold(
+        body: LoggingControls(
+          log: baseLog(),
+          session: LoggingSession(suggestedQso: suggestedQso),
+          radio: baseRadio(),
+          lookups: LookupHooks(lookup: lookup, callLocationLine: (guess) => guess['location'] as String?),
+        ),
+      ),
+    );
 
     // A live logging panel with nothing entered yet — no call, no lookup.
     await tester.pumpWidget(build());
@@ -662,11 +745,15 @@ void main() {
 
     // A spot is tapped, delivering a suggestedQso (a new Map instance, as the
     // real spot flow does — didUpdateWidget → _applySuggestedQso).
-    await tester.pumpWidget(build(suggestedQso: {
-      'their': {'call': 'W1AW'},
-      'freq': 14074.0,
-      'mode': 'FT8',
-    }));
+    await tester.pumpWidget(
+      build(
+        suggestedQso: {
+          'their': {'call': 'W1AW'},
+          'freq': 14074.0,
+          'mode': 'FT8',
+        },
+      ),
+    );
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
 
     // The populated call must be looked up, exactly as typing it would.
@@ -681,11 +768,18 @@ void main() {
   // the "work in progress" that the next suggestion — or the log request that
   // ends the very same slide — has to ask the operator about.
   group('a tentative suggestion from a slid spot row', () {
-    const spotA = {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'};
-    const spotB = {'their': {'call': 'W2DEF'}, 'band': '20m', 'mode': 'SSB'};
+    const spotA = {
+      'their': {'call': 'K1ABC'},
+      'band': '20m',
+      'mode': 'SSB',
+    };
+    const spotB = {
+      'their': {'call': 'W2DEF'},
+      'band': '20m',
+      'mode': 'SSB',
+    };
 
-    String callIn(WidgetTester tester) =>
-        tester.widget<TextField>(find.widgetWithText(TextField, 'Their call').first).controller?.text ?? '';
+    String callIn(WidgetTester tester) => tester.widget<TextField>(find.widgetWithText(TextField, 'Their call').first).controller?.text ?? '';
 
     testWidgets('fills the fields, and withdrawing it empties them again', (tester) async {
       await tester.pumpWidget(host());
@@ -714,24 +808,25 @@ void main() {
       // same widget update, so the panel never sees the fields empty. The
       // mutation this catches is counting the last peek's own fill as work —
       // which makes every spot after the first raise a prompt.
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotB,
-          suggestedQsoIsTentative: true,
-          confirmLogOverwrite: ({required bool editing}) async {
-          asked++;
-          return false;
-        },
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: spotB,
+            suggestedQsoIsTentative: true,
+            confirmLogOverwrite: ({required bool editing}) async {
+              asked++;
+              return false;
+            },
+          ),
         ),
-      ));
+      );
       await tester.pump();
 
       expect(callIn(tester), 'W2DEF');
       expect(asked, 0, reason: 'the call it replaced was the previous peek\'s, not the operator\'s');
     });
 
-    testWidgets('the operator working the call field says so; a suggestion filling it does not',
-        (tester) async {
+    testWidgets('the operator working the call field says so; a suggestion filling it does not', (tester) async {
       // What the spots list closes an open row on. A suggestion arriving must
       // never look like this, or filling the fields would close the very row
       // that filled them — and take its own fill back out on the way.
@@ -739,9 +834,11 @@ void main() {
 
       await tester.pumpWidget(host(session: LoggingSession(onCallEdited: () => edited++)));
       await tester.pump();
-      await tester.pumpWidget(host(
-        session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true, onCallEdited: () => edited++),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true, onCallEdited: () => edited++),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(callIn(tester), 'K1ABC');
       expect(edited, 0, reason: 'a spot arriving is not the operator composing anything');
@@ -752,7 +849,11 @@ void main() {
 
       // And the wipe button, which is the other way the operator empties it.
       final before = edited;
-      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotA, onCallEdited: () => edited++)));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(suggestedQso: spotA, onCallEdited: () => edited++),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(edited, before, reason: 'the suggestion that replaced it is still not an edit');
     });
@@ -769,16 +870,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(callIn(tester), 'K1ABC');
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotB,
-          suggestedQsoIsTentative: true,
-          confirmLogOverwrite: ({required bool editing}) async {
-          asked++;
-          return false;
-        },
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: spotB,
+            suggestedQsoIsTentative: true,
+            confirmLogOverwrite: ({required bool editing}) async {
+              asked++;
+              return false;
+            },
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(callIn(tester), 'W2DEF');
@@ -793,7 +896,11 @@ void main() {
       // entry is. The mutation this catches is going back to a listener flag:
       // one spurious fire and every slide after it is refused in silence.
       var asked = 0;
-      const slashed = {'their': {'call': 'EA3/KI2D'}, 'band': '20m', 'mode': 'SSB'};
+      const slashed = {
+        'their': {'call': 'EA3/KI2D'},
+        'band': '20m',
+        'mode': 'SSB',
+      };
 
       await tester.pumpWidget(host(session: LoggingSession(suggestedQso: slashed, suggestedQsoIsTentative: true)));
       await tester.pumpAndSettle();
@@ -801,33 +908,31 @@ void main() {
 
       // Rewritten to the very same text, which is what a formatter or an
       // expansion that changes nothing does — and which fires the listener.
-      tester
-          .widget<TextField>(find.widgetWithText(TextField, 'Their call').first)
-          .controller!
-          .value = const TextEditingValue(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Their call').first).controller!.value = const TextEditingValue(
         text: 'EA3/KI2D',
         selection: TextSelection.collapsed(offset: 8),
       );
       await tester.pumpAndSettle();
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotB,
-          suggestedQsoIsTentative: true,
-          confirmLogOverwrite: ({required bool editing}) async {
-          asked++;
-          return false;
-        },
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: spotB,
+            suggestedQsoIsTentative: true,
+            confirmLogOverwrite: ({required bool editing}) async {
+              asked++;
+              return false;
+            },
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(callIn(tester), 'W2DEF', reason: 'the slide still hands the fields to the new spot');
       expect(asked, 0);
     });
 
-    testWidgets('typing over the fill makes it the operator\'s, and it survives the row closing',
-        (tester) async {
+    testWidgets('typing over the fill makes it the operator\'s, and it survives the row closing', (tester) async {
       await tester.pumpWidget(host());
       await tester.pump();
       await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true)));
@@ -841,8 +946,7 @@ void main() {
       expect(callIn(tester), 'K1ABC/P', reason: 'a station the operator has worked on is theirs, not the row\'s');
     });
 
-    testWidgets('is held over a part-typed call, and put to the operator when the gesture settles',
-        (tester) async {
+    testWidgets('is held over a part-typed call, and put to the operator when the gesture settles', (tester) async {
       var asked = 0;
 
       await tester.pumpWidget(host());
@@ -850,16 +954,18 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W9XYZ');
       await tester.pump();
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotA,
-          suggestedQsoIsTentative: true,
-          confirmLogOverwrite: ({required bool editing}) async {
-          asked++;
-          return false;
-        },
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: spotA,
+            suggestedQsoIsTentative: true,
+            confirmLogOverwrite: ({required bool editing}) async {
+              asked++;
+              return false;
+            },
+          ),
         ),
-      ));
+      );
       await tester.pump();
 
       // Mid-drag. A dialog here takes the pointer while the drag runs on
@@ -867,17 +973,19 @@ void main() {
       expect(asked, 0, reason: 'the finger is still on the row');
       expect(callIn(tester), 'W9XYZ', reason: 'and the fields are still the operator\'s');
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotA,
-          suggestedQsoIsTentative: true,
-          suggestionSettledSerial: 1,
-          confirmLogOverwrite: ({required bool editing}) async {
-          asked++;
-          return false;
-        },
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: spotA,
+            suggestedQsoIsTentative: true,
+            suggestionSettledSerial: 1,
+            confirmLogOverwrite: ({required bool editing}) async {
+              asked++;
+              return false;
+            },
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(asked, 1, reason: 'the row came to rest, so the conflict can be put to them');
@@ -897,9 +1005,7 @@ void main() {
           context: context,
           builder: (context) => AlertDialog(
             content: const Text('Clear it?'),
-            actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Go back')),
-            ],
+            actions: [TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Go back'))],
           ),
         );
         return answer ?? false;
@@ -910,18 +1016,17 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W9XYZ');
       await tester.pump();
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true, confirmLogOverwrite: ask),
-      ));
-      await tester.pump();
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotA,
-          suggestedQsoIsTentative: true,
-          suggestionSettledSerial: 1,
-          confirmLogOverwrite: ask,
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true, confirmLogOverwrite: ask),
         ),
-      ));
+      );
+      await tester.pump();
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true, suggestionSettledSerial: 1, confirmLogOverwrite: ask),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull, reason: 'the dialog went up without the Navigator objecting');
@@ -938,14 +1043,16 @@ void main() {
 
       await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true)));
       await tester.pump();
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotA,
-          suggestedQsoIsTentative: true,
-          suggestionSettledSerial: 1,
-          confirmLogOverwrite: ({required bool editing}) async => true,
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: spotA,
+            suggestedQsoIsTentative: true,
+            suggestionSettledSerial: 1,
+            confirmLogOverwrite: ({required bool editing}) async => true,
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(callIn(tester), 'K1ABC');
@@ -965,24 +1072,24 @@ void main() {
       await tester.pump();
 
       // Slide row A: peek (held, a call is in progress)...
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotA,
-          suggestedQsoIsTentative: true,
-          confirmLogOverwrite: ({required bool editing}) async => true,
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true, confirmLogOverwrite: ({required bool editing}) async => true),
         ),
-      ));
+      );
       await tester.pump();
       // ...then the same drag carried through to the commit, which arrives
       // with a fresh suggestion of its own alongside the request.
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: Map<String, dynamic>.from(spotA),
-          suggestedQsoIsTentative: true,
-          logRequest: (serial: 1, qso: spotA),
-          confirmLogOverwrite: ({required bool editing}) async => true,
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: Map<String, dynamic>.from(spotA),
+            suggestedQsoIsTentative: true,
+            logRequest: (serial: 1, qso: spotA),
+            confirmLogOverwrite: ({required bool editing}) async => true,
+          ),
         ),
-      ));
+      );
       await waitForQsos(tester, 1);
 
       // Slide row B: its peek lands in an empty panel, so it simply applies.
@@ -991,9 +1098,7 @@ void main() {
       expect(callIn(tester), 'W2DEF');
 
       // B's row comes to rest.
-      await tester.pumpWidget(host(
-        session: LoggingSession(suggestedQso: spotB, suggestedQsoIsTentative: true, suggestionSettledSerial: 1),
-      ));
+      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotB, suggestedQsoIsTentative: true, suggestionSettledSerial: 1)));
       await tester.pumpAndSettle();
 
       expect(callIn(tester), 'W2DEF', reason: 'the spent peek did not reach back in and replace it');
@@ -1011,29 +1116,27 @@ void main() {
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotA,
-          suggestedQsoIsTentative: true,
-          confirmLogOverwrite: ({required bool editing}) => completer.future,
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true, confirmLogOverwrite: ({required bool editing}) => completer.future),
         ),
-      ));
+      );
       await tester.pump();
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotA,
-          suggestedQsoIsTentative: true,
-          suggestionSettledSerial: 1,
-          confirmLogOverwrite: ({required bool editing}) => completer.future,
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: spotA,
+            suggestedQsoIsTentative: true,
+            suggestionSettledSerial: 1,
+            confirmLogOverwrite: ({required bool editing}) => completer.future,
+          ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump();
 
       // The row goes away while the operator is still looking at the dialog.
-      await tester.pumpWidget(host(
-        session: LoggingSession(confirmLogOverwrite: ({required bool editing}) => completer.future),
-      ));
+      await tester.pumpWidget(host(session: LoggingSession(confirmLogOverwrite: ({required bool editing}) => completer.future)));
       await tester.pump();
 
       // ...and only then do they answer it.
@@ -1050,42 +1153,51 @@ void main() {
       // there until some unrelated rebuild (a spot poll, a clock tick) happens
       // along, by which time it lands on top of whatever has been typed since,
       // and moves the VFO with it.
-      final edited = Qso(uuid: 'q1', operationUuid: operation.uuid, data: const {'their': {'call': 'W1AW'}});
+      final edited = Qso(
+        uuid: 'q1',
+        operationUuid: operation.uuid,
+        data: const {
+          'their': {'call': 'W1AW'},
+        },
+      );
       var cancels = 0;
 
       await tester.pumpWidget(host(session: LoggingSession(editingQso: edited)));
       await tester.pump();
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          editingQso: edited,
-          suggestedQso: spotA,
-          suggestedQsoIsTentative: true,
-          suggestionSettledSerial: 1,
-          onEditCanceled: () => cancels++,
-          confirmLogOverwrite: ({required bool editing}) async => true,
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            editingQso: edited,
+            suggestedQso: spotA,
+            suggestedQsoIsTentative: true,
+            suggestionSettledSerial: 1,
+            onEditCanceled: () => cancels++,
+            confirmLogOverwrite: ({required bool editing}) async => true,
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
       expect(cancels, 1, reason: 'the operator cleared the way');
 
       // The edit going away IS the update that must apply it. Nothing else is
       // pumped here — no poll, no later rebuild to be rescued by.
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotA,
-          suggestedQsoIsTentative: true,
-          suggestionSettledSerial: 1,
-          onEditCanceled: () => cancels++,
-          confirmLogOverwrite: ({required bool editing}) async => true,
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: spotA,
+            suggestedQsoIsTentative: true,
+            suggestionSettledSerial: 1,
+            onEditCanceled: () => cancels++,
+            confirmLogOverwrite: ({required bool editing}) async => true,
+          ),
         ),
-      ));
+      );
       await tester.pump();
 
       expect(callIn(tester), 'K1ABC');
     });
 
-    testWidgets('a held suggestion whose conflict is gone is applied, not put to the operator',
-        (tester) async {
+    testWidgets('a held suggestion whose conflict is gone is applied, not put to the operator', (tester) async {
       // Held over a part-typed call; by the time the gesture settles the
       // operator has cleared it themselves. Asking anyway offers to overwrite
       // an empty panel, which teaches them the prompt means nothing.
@@ -1100,25 +1212,26 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), '');
       await tester.pump();
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotA,
-          suggestedQsoIsTentative: true,
-          suggestionSettledSerial: 1,
-          confirmLogOverwrite: ({required bool editing}) async {
-          asked++;
-          return true;
-        },
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: spotA,
+            suggestedQsoIsTentative: true,
+            suggestionSettledSerial: 1,
+            confirmLogOverwrite: ({required bool editing}) async {
+              asked++;
+              return true;
+            },
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(asked, 0);
       expect(callIn(tester), 'K1ABC', reason: 'the spot takes the fields it no longer has to fight for');
     });
 
-    testWidgets('the commit that ends the same slide does not ask about the peek\'s own fill',
-        (tester) async {
+    testWidgets('the commit that ends the same slide does not ask about the peek\'s own fill', (tester) async {
       var asked = 0;
 
       await tester.pumpWidget(host());
@@ -1130,17 +1243,19 @@ void main() {
       // Dragging on past the commit point: the panel is holding this very
       // spot's callsign, put there by this very gesture. Treating that as work
       // at risk puts a prompt in front of every slide-to-log there is.
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          suggestedQso: spotA,
-          suggestedQsoIsTentative: true,
-          logRequest: (serial: 1, qso: spotA),
-          confirmLogOverwrite: ({required bool editing}) async {
-          asked++;
-          return false;
-        },
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: spotA,
+            suggestedQsoIsTentative: true,
+            logRequest: (serial: 1, qso: spotA),
+            confirmLogOverwrite: ({required bool editing}) async {
+              asked++;
+              return false;
+            },
+          ),
         ),
-      ));
+      );
 
       final logged = await waitForQsos(tester, 1);
 
@@ -1161,21 +1276,36 @@ void main() {
       // had already fired its heavy haptic and closed the row.
       var asked = 0;
       bool? askedAboutEditing;
-      final edited = Qso(uuid: 'q1', operationUuid: operation.uuid, data: const {'their': {'call': 'W1AW'}});
+      final edited = Qso(
+        uuid: 'q1',
+        operationUuid: operation.uuid,
+        data: const {
+          'their': {'call': 'W1AW'},
+        },
+      );
 
       await tester.pumpWidget(host(session: LoggingSession(editingQso: edited)));
       await tester.pump();
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          editingQso: edited,
-          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-          confirmLogOverwrite: ({required bool editing}) async {
-          asked++;
-          askedAboutEditing = editing;
-          return false;
-        },
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            editingQso: edited,
+            logRequest: (
+              serial: 1,
+              qso: const {
+                'their': {'call': 'K1ABC'},
+                'band': '20m',
+                'mode': 'SSB',
+              },
+            ),
+            confirmLogOverwrite: ({required bool editing}) async {
+              asked++;
+              askedAboutEditing = editing;
+              return false;
+            },
+          ),
         ),
-      ));
+      );
       await tester.pump();
 
       expect(asked, 1, reason: 'the request reached the panel instead of being dropped');
@@ -1191,16 +1321,25 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W9XYZ');
       await tester.pump();
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-          confirmLogOverwrite: ({required bool editing}) async {
-          asked++;
-          askedAboutEditing = editing;
-          return false;
-        },
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            logRequest: (
+              serial: 1,
+              qso: const {
+                'their': {'call': 'K1ABC'},
+                'band': '20m',
+                'mode': 'SSB',
+              },
+            ),
+            confirmLogOverwrite: ({required bool editing}) async {
+              asked++;
+              askedAboutEditing = editing;
+              return false;
+            },
+          ),
         ),
-      ));
+      );
       await tester.pump();
 
       expect(asked, 1, reason: 'a half-typed contact is work too, and it is about to be wiped');
@@ -1219,16 +1358,25 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN31pr');
       await tester.pump();
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-          confirmLogOverwrite: ({required bool editing}) async {
-          asked++;
-          return true;
-        },
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            logRequest: (
+              serial: 1,
+              qso: const {
+                'their': {'call': 'K1ABC'},
+                'band': '20m',
+                'mode': 'SSB',
+              },
+            ),
+            confirmLogOverwrite: ({required bool editing}) async {
+              asked++;
+              return true;
+            },
+          ),
+          prefs: LoggingPreferences(showGridField: true),
         ),
-        prefs: LoggingPreferences(showGridField: true),
-      ));
+      );
 
       final logged = await waitForQsos(tester, 1);
 
@@ -1250,9 +1398,7 @@ void main() {
           context: context,
           builder: (context) => AlertDialog(
             content: const Text('Clear it?'),
-            actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Go back')),
-            ],
+            actions: [TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Go back'))],
           ),
         );
         return answer ?? false;
@@ -1263,12 +1409,21 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W9XYZ');
       await tester.pump();
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-          confirmLogOverwrite: ask,
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            logRequest: (
+              serial: 1,
+              qso: const {
+                'their': {'call': 'K1ABC'},
+                'band': '20m',
+                'mode': 'SSB',
+              },
+            ),
+            confirmLogOverwrite: ask,
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
@@ -1286,11 +1441,20 @@ void main() {
 
       await tester.pumpWidget(host());
       await tester.pump();
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            logRequest: (
+              serial: 1,
+              qso: const {
+                'their': {'call': 'K1ABC'},
+                'band': '20m',
+                'mode': 'SSB',
+              },
+            ),
+          ),
         ),
-      ));
+      );
       await waitForQsos(tester, 1);
       await tester.pump();
 
@@ -1314,12 +1478,21 @@ void main() {
       await tester.pump();
 
       // Clear-and-log: the wipe that makes room for the spot.
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-          confirmLogOverwrite: ({required bool editing}) async => true,
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            logRequest: (
+              serial: 1,
+              qso: const {
+                'their': {'call': 'K1ABC'},
+                'band': '20m',
+                'mode': 'SSB',
+              },
+            ),
+            confirmLogOverwrite: ({required bool editing}) async => true,
+          ),
         ),
-      ));
+      );
       await waitForQsos(tester, 1);
       await tester.pump();
 
@@ -1328,11 +1501,20 @@ void main() {
       // A spot carrying nothing loggable: `_log` bails, pointing at the field
       // that would have to be fixed — which on a phone is a keyboard over the
       // list, for a station the operator can do nothing about from there.
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          logRequest: (serial: 2, qso: const {'their': {'call': ''}, 'band': '20m', 'mode': 'SSB'}),
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            logRequest: (
+              serial: 2,
+              qso: const {
+                'their': {'call': ''},
+                'band': '20m',
+                'mode': 'SSB',
+              },
+            ),
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(tester.widget<TextField>(field).focusNode?.hasFocus, isFalse, reason: 'nothing to log, nothing to say here');
@@ -1343,22 +1525,30 @@ void main() {
 
       await tester.pumpWidget(host());
       await tester.pump();
-      await tester.pumpWidget(host(
-        session: LoggingSession(
-          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-          confirmLogOverwrite: ({required bool editing}) async {
-          asked++;
-          return true;
-        },
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            logRequest: (
+              serial: 1,
+              qso: const {
+                'their': {'call': 'K1ABC'},
+                'band': '20m',
+                'mode': 'SSB',
+              },
+            ),
+            confirmLogOverwrite: ({required bool editing}) async {
+              asked++;
+              return true;
+            },
+          ),
         ),
-      ));
+      );
 
       final logged = await waitForQsos(tester, 1);
 
       expect(asked, 0, reason: 'an empty panel has nothing worth interrupting the operator over');
       expect(logged.single.data['their']['call'], 'K1ABC');
     });
-
   });
 
   group('the row a peer sees', () {
@@ -1400,10 +1590,12 @@ void main() {
 
     testWidgets('the row is the operator\'s own order, so switchSentRcvd travels', (tester) async {
       final rows = <List<PeerDraftField>>[];
-      await tester.pumpWidget(host(
-        session: LoggingSession(onPeerDraftChanged: (_, fields) => rows.add(fields)),
-        prefs: LoggingPreferences(switchSentRcvd: true),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(onPeerDraftChanged: (_, fields) => rows.add(fields)),
+          prefs: LoggingPreferences(switchSentRcvd: true),
+        ),
+      );
       await tester.enterText(find.byType(TextField).first, 'KN2X');
       await tester.pump();
 
@@ -1413,10 +1605,11 @@ void main() {
     testWidgets('a field the operator switched on joins the row', (tester) async {
       final rows = <List<PeerDraftField>>[];
       await tester.pumpWidget(
-          host(
-            session: LoggingSession(onPeerDraftChanged: (_, fields) => rows.add(fields)),
-            prefs: LoggingPreferences(showStateField: true),
-          ));
+        host(
+          session: LoggingSession(onPeerDraftChanged: (_, fields) => rows.add(fields)),
+          prefs: LoggingPreferences(showStateField: true),
+        ),
+      );
       await tester.enterText(find.byType(TextField).first, 'KN2X');
       await tester.pump();
 

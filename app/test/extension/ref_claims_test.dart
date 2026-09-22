@@ -18,8 +18,7 @@ const _nyqpHooks = ['activity', 'scoring', 'ref:ny-qso-party', 'ref:qp/ny'];
 /// The bundled extension the split replaced: every party under one type.
 const _bundledQpHooks = ['activity', 'scoring', 'ref:qp'];
 
-ExtensionInfo _info(String key, List<String> hooks) =>
-    ExtensionInfo(key: key, file: 'index.js', core: false, name: key, hooks: hooks);
+ExtensionInfo _info(String key, List<String> hooks) => ExtensionInfo(key: key, file: 'index.js', core: false, name: key, hooks: hooks);
 
 void main() {
   group('refClaimOf', () {
@@ -86,19 +85,13 @@ void main() {
       // ref: 'NY'}` — the bundled extension because it owns every party, the
       // New York one because it named this reference. Offered in that order,
       // the operator installs fifty parties to get one.
-      final ranked = extensionsDeclaringRefs(
-        [_info('qp', _bundledQpHooks), _info('ham2k-nyqp', _nyqpHooks)],
-        [(type: 'qp', code: 'NY')],
-      );
+      final ranked = extensionsDeclaringRefs([_info('qp', _bundledQpHooks), _info('ham2k-nyqp', _nyqpHooks)], [(type: 'qp', code: 'NY')]);
       expect(ranked.map((i) => i.key), ['ham2k-nyqp', 'qp']);
     });
 
     test('a party that did not name this reference is not offered for it', () {
       const txqpHooks = ['activity', 'ref:txqp', 'ref:qp/tx'];
-      final ranked = extensionsDeclaringRefs(
-        [_info('ham2k-txqp', txqpHooks), _info('ham2k-nyqp', _nyqpHooks)],
-        [(type: 'qp', code: 'NY')],
-      );
+      final ranked = extensionsDeclaringRefs([_info('ham2k-txqp', txqpHooks), _info('ham2k-nyqp', _nyqpHooks)], [(type: 'qp', code: 'NY')]);
       expect(ranked.map((i) => i.key), ['ham2k-nyqp']);
     });
 
@@ -106,19 +99,13 @@ void main() {
       // Two unhandled references, one extension answering both — precisely
       // for one, broadly for the other. Ranked by the broad claim it would
       // sit under a party that answers nothing as well.
-      final ranked = extensionsDeclaringRefs(
-        [_info('ham2k-nyqp', _nyqpHooks)],
-        [(type: 'ny-qso-party', code: null), (type: 'qp', code: 'NY')],
-      );
+      final ranked = extensionsDeclaringRefs([_info('ham2k-nyqp', _nyqpHooks)], [(type: 'ny-qso-party', code: null), (type: 'qp', code: 'NY')]);
       expect(ranked.map((i) => i.key), ['ham2k-nyqp']);
     });
 
     test('nothing claimed, nothing offered', () {
       expect(extensionsDeclaringRefs([_info('ham2k-nyqp', _nyqpHooks)], const []), isEmpty);
-      expect(
-        extensionsDeclaringRefs([_info('ham2k-nyqp', _nyqpHooks)], [(type: 'pota', code: 'US-0001')]),
-        isEmpty,
-      );
+      expect(extensionsDeclaringRefs([_info('ham2k-nyqp', _nyqpHooks)], [(type: 'pota', code: 'US-0001')]), isEmpty);
     });
   });
 }

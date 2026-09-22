@@ -63,12 +63,13 @@ void main() {
 
     Future<Map> score(List<Map<String, dynamic>> qsos, {Object? resumeFrom}) async {
       return await host.invokeHook(
-        'scoring',
-        key: 'core',
-        method: 'scoreQsos',
-        args: {'operation': operation, 'qsos': qsos, 'resumeFrom': ?resumeFrom},
-        timeout: const Duration(seconds: 60),
-      ) as Map;
+            'scoring',
+            key: 'core',
+            method: 'scoreQsos',
+            args: {'operation': operation, 'qsos': qsos, 'resumeFrom': ?resumeFrom},
+            timeout: const Duration(seconds: 60),
+          )
+          as Map;
     }
 
     // Warm the engine so the first measured size doesn't absorb JIT/parse cost.
@@ -96,15 +97,19 @@ void main() {
       await score([...log, extra]);
       naiveWatch.stop();
 
-      rows.add('${size.toString().padLeft(5)} | '
-          '${'${fullWatch.elapsedMilliseconds}ms'.padLeft(9)} | '
-          '${'${resumedWatch.elapsedMilliseconds}ms'.padLeft(11)} | '
-          '${'${naiveWatch.elapsedMilliseconds}ms'.padLeft(11)}');
+      rows.add(
+        '${size.toString().padLeft(5)} | '
+        '${'${fullWatch.elapsedMilliseconds}ms'.padLeft(9)} | '
+        '${'${resumedWatch.elapsedMilliseconds}ms'.padLeft(11)} | '
+        '${'${naiveWatch.elapsedMilliseconds}ms'.padLeft(11)}',
+      );
     }
 
     // ignore: avoid_print
-    print('\n  QSOs |  full pass | append(ckpt) | append(full)\n'
-        '  -----+------------+--------------+-------------\n  ${rows.join('\n  ')}\n');
+    print(
+      '\n  QSOs |  full pass | append(ckpt) | append(full)\n'
+      '  -----+------------+--------------+-------------\n  ${rows.join('\n  ')}\n',
+    );
 
     // Deliberately loose: this documents cost, it isn't a perf gate.
     expect(true, isTrue);

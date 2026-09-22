@@ -57,10 +57,7 @@ Future<HaLoHarness> makeHaLoServices({
   CatService Function(SettingsService settings)? cat,
 }) async {
   if (prefs != null) SharedPreferences.setMockInitialValues({...prefs});
-  final settings = SettingsService(
-    await SharedPreferences.getInstance(),
-    secureStorage: secureStorage ?? FakeSecureStorage(),
-  );
+  final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: secureStorage ?? FakeSecureStorage());
   // Only a database this harness OWNS gets closed for the caller: one handed
   // in may be a double whose close is the thing under test, and closing it
   // here would fail the test in teardown rather than in its body.
@@ -117,7 +114,11 @@ Future<HaLoHarness> pumpHaLo(
     addTearDown(tester.view.reset);
   }
   addTearDown(() => tester.pumpWidget(const SizedBox()));
-  await tester.pumpWidget(TranslationProvider(child: MaterialApp(theme: theme, home: build(h.services))));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(theme: theme, home: build(h.services)),
+    ),
+  );
   await tester.pump();
   return h;
 }

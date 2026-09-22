@@ -186,8 +186,7 @@ void main() {
   });
 
   group('batteryMaxWatts — a lower cap while off external DC', () {
-    IcomCivSession qrpSession() =>
-        IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, maxWatts: 10, batteryMaxWatts: 5);
+    IcomCivSession qrpSession() => IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, maxWatts: 10, batteryMaxWatts: 5);
     void feedTo(IcomCivSession s, List<int> bytes) => s.handleData(Uint8List.fromList(bytes));
     List<int> levelFrame(int hi, int lo) => [0xFE, 0xFE, us, ic705, 0x14, 0x0A, hi, lo, 0xFD];
     List<int> dcInputFrame(int hi, int lo) => [0xFE, 0xFE, us, ic705, 0x15, 0x15, hi, lo, 0xFD];
@@ -404,9 +403,12 @@ void main() {
       // table and report no meters — a green test over a strip that stayed
       // empty on every Icom in the catalogue.
       MeterCalibrations.instance.setForTesting({
-        'icom/civ-generic': MeterCalibration(model: 'CI-V', tables: const {
-          MeterTable.swr: [MeterPoint(0, 1.0), MeterPoint(80, 2.0)],
-        }),
+        'icom/civ-generic': MeterCalibration(
+          model: 'CI-V',
+          tables: const {
+            MeterTable.swr: [MeterPoint(0, 1.0), MeterPoint(80, 2.0)],
+          },
+        ),
       });
       addTearDown(() => MeterCalibrations.instance.setForTesting({}));
       final session = const IcomCivDriver().createSession(sink, const {}) as IcomCivSession;
@@ -445,8 +447,11 @@ void main() {
         feed(_fromRadio([0x1C, 0x00, 0x00]));
         expect(sink.txReports, [true, false]);
         async.elapse(const Duration(seconds: 2));
-        expect(sink.sent.where((f) => f.length > 5 && f[4] == 0x15 && f[5] != civMeterDcInputVoltage), isEmpty,
-            reason: 'a receiving radio has no meters worth reading');
+        expect(
+          sink.sent.where((f) => f.length > 5 && f[4] == 0x15 && f[5] != civMeterDcInputVoltage),
+          isEmpty,
+          reason: 'a receiving radio has no meters worth reading',
+        );
         session.teardown();
       });
     });
@@ -462,10 +467,7 @@ void main() {
     test('batteryMaxWatts comes from config too, defaulting to no cap at all', () {
       const driver = IcomCivDriver();
       expect((driver.createSession(sink, {}) as IcomCivSession).batteryMaxWatts, isNull);
-      expect(
-        (driver.createSession(sink, {'maxWatts': 10, 'batteryMaxWatts': 5}) as IcomCivSession).batteryMaxWatts,
-        5,
-      );
+      expect((driver.createSession(sink, {'maxWatts': 10, 'batteryMaxWatts': 5}) as IcomCivSession).batteryMaxWatts, 5);
     });
   });
 
@@ -513,11 +515,12 @@ void main() {
     });
 
     test('asks for port, speed and address — and, of a developer, the keyer facts the generic entry cannot pin', () {
-      final fields = [for (final e in type.configElements()) if (e['type'] == 'field') e];
-      expect(fields.map((e) => e['key']),
-          ['port', 'baudRate', 'civAddress', 'cwKeyer', 'voiceMemories', telemetryIntervalConfigKey]);
-      expect(fields.where((e) => e['devMode'] == true).map((e) => e['key']), ['cwKeyer', 'voiceMemories'],
-          reason: 'an operator sees the first three only');
+      final fields = [
+        for (final e in type.configElements())
+          if (e['type'] == 'field') e,
+      ];
+      expect(fields.map((e) => e['key']), ['port', 'baudRate', 'civAddress', 'cwKeyer', 'voiceMemories', telemetryIntervalConfigKey]);
+      expect(fields.where((e) => e['devMode'] == true).map((e) => e['key']), ['cwKeyer', 'voiceMemories'], reason: 'an operator sees the first three only');
     });
 
     test('warns about a radio offering two serial ports at once', () {
@@ -540,10 +543,7 @@ void main() {
     });
 
     test('the row says where it is and which radio it is addressing', () {
-      expect(
-        type.describeTarget({'port': 'COM3', 'baudRate': 19200, 'civAddress': 'a4'}),
-        'COM3 @ 19200 · CI-V A4',
-      );
+      expect(type.describeTarget({'port': 'COM3', 'baudRate': 19200, 'civAddress': 'a4'}), 'COM3 @ 19200 · CI-V A4');
     });
 
     test('the registry offers it alongside the others', () {
@@ -563,5 +563,4 @@ bool _isTxWatch(List<int> frame) => frame.length > 4 && frame[4] == 0x1C;
 
 /// A complete frame FROM the IC-705 addressed to us, wrapped around
 /// [payload] — the command byte and its data.
-List<int> _fromRadio(List<int> payload) =>
-    [0xFE, 0xFE, civDefaultControllerAddress, 0xA4, ...payload, 0xFD];
+List<int> _fromRadio(List<int> payload) => [0xFE, 0xFE, civDefaultControllerAddress, 0xA4, ...payload, 0xFD];

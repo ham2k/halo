@@ -32,8 +32,7 @@ class KeyboardAccessoryVisibility extends InheritedWidget {
 
   const KeyboardAccessoryVisibility({super.key, required this.visible, required super.child});
 
-  static bool of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<KeyboardAccessoryVisibility>()?.visible ?? true;
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<KeyboardAccessoryVisibility>()?.visible ?? true;
 
   @override
   bool updateShouldNotify(KeyboardAccessoryVisibility oldWidget) => oldWidget.visible != visible;
@@ -58,13 +57,7 @@ class KeyboardAccessorySpec {
   final int backgroundColor;
   final int foregroundColor;
 
-  const KeyboardAccessorySpec({
-    required this.onKey,
-    required this.vibrate,
-    required this.backgroundColor,
-    required this.foregroundColor,
-    this.extraKey,
-  });
+  const KeyboardAccessorySpec({required this.onKey, required this.vibrate, required this.backgroundColor, required this.foregroundColor, this.extraKey});
 
   /// Value equality so a rebuild that produces an identical spec doesn't
   /// notify — the logging panel rebuilds on every QSO-stream tick, and the

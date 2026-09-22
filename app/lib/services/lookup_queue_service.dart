@@ -205,8 +205,7 @@ class LookupQueueService {
   bool _hasOnlineLookup(Qso qso) {
     final lookups = asQsonList(asQsonMap(qso.data['their'])?['lookups'])?.whereType<Map<dynamic, dynamic>>();
     if (lookups == null) return false;
-    return lookups.any((l) =>
-        l['online'] == true || (!l.containsKey('online') && _legacySourcesBeforeOnlineFlag.contains(l['source'])));
+    return lookups.any((l) => l['online'] == true || (!l.containsKey('online') && _legacySourcesBeforeOnlineFlag.contains(l['source'])));
   }
 
   void _ensureProcessing() {
@@ -214,7 +213,6 @@ class LookupQueueService {
     _processing = true;
     unawaited(_drain());
   }
-
 
   Future<void> _drain() async {
     final completed = <_CompletedLookup>[];
@@ -308,12 +306,7 @@ class LookupQueueService {
     if (_cachedOperation?.uuid != entry.operationUuid) {
       _cachedOperation = await operations.get(entry.operationUuid);
     }
-    final result = await lookup(
-      call,
-      qso: qso.data,
-      operation: _cachedOperation?.data ?? const {},
-      online: true,
-    );
+    final result = await lookup(call, qso: qso.data, operation: _cachedOperation?.data ?? const {}, online: true);
     // Nothing came back (runtime down mid-call) — leave the record alone.
     if (result == null || (result['guess'] == null && result['lookups'] == null)) return null;
     return _CompletedLookup(entry, call, result);
@@ -359,8 +352,10 @@ class LookupQueueService {
     // the trace we need. A guess with no `call` at all still passes through.
     final guessCall = asQsonString(asQsonMap(newGuess)?['call']);
     if (guessCall != null && guessCall.toUpperCase() != item.call.toUpperCase()) {
-      debugPrint('[lookup queue] DROPPED crossed result: asked for ${item.call}, '
-          'guess was for $guessCall (qso ${item.entry.qsoUuid})');
+      debugPrint(
+        '[lookup queue] DROPPED crossed result: asked for ${item.call}, '
+        'guess was for $guessCall (qso ${item.entry.qsoUuid})',
+      );
       ErrorReportingService.report(
         StateError('crossed lookup result: asked for ${item.call}, guess was for $guessCall'),
         StackTrace.current,
@@ -373,11 +368,8 @@ class LookupQueueService {
     // richer stored data: the pipeline always returns at least the offline
     // annotation entry, so "sources that answered" is the real signal. Only
     // write when the new result covers every source already stored.
-    Set<String> sourcesOf(dynamic lookups) => (asQsonList(lookups) ?? const [])
-        .whereType<Map<dynamic, dynamic>>()
-        .map((l) => l['source'])
-        .whereType<String>()
-        .toSet();
+    Set<String> sourcesOf(dynamic lookups) =>
+        (asQsonList(lookups) ?? const []).whereType<Map<dynamic, dynamic>>().map((l) => l['source']).whereType<String>().toSet();
     if (!sourcesOf(newLookups).containsAll(sourcesOf(their['lookups']))) return;
 
     // Identical result — don't dirty the record: an update restamps
@@ -403,11 +395,7 @@ class LookupQueueService {
           operationUuid: current.operationUuid,
           data: {
             ...current.data,
-            'their': {
-              ...their,
-              'guess': ?asQsonMap(newGuess),
-              'lookups': ?asQsonList(newLookups),
-            },
+            'their': {...their, 'guess': ?asQsonMap(newGuess), 'lookups': ?asQsonList(newLookups)},
           },
           deleted: current.deleted,
           scoreCache: current.scoreCache,

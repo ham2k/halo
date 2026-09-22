@@ -15,23 +15,21 @@ void main() {
   ]) {
     test('a failed registration cannot silently drop per-type privacy settings: $failure', () async {
       var resolvedPartialRegistry = false;
-      final service = ExtensionServiceWithFakeHost(FakeExtensionHost({
-        'export:*:getExportTypes': [
-          failure,
-          {'key': 'legacy', 'ok': true, 'value': null},
-        ],
-        'template:templates:exportSettings': (Object? args) {
-          resolvedPartialRegistry = true;
-          return <Map<String, dynamic>>[];
-        },
-      }));
-
-      await expectLater(
-        service.exportTypeSettings({}, (_) => {'includePrivateData': false}),
-        throwsA(isA<ExtensionHostException>()),
+      final service = ExtensionServiceWithFakeHost(
+        FakeExtensionHost({
+          'export:*:getExportTypes': [
+            failure,
+            {'key': 'legacy', 'ok': true, 'value': null},
+          ],
+          'template:templates:exportSettings': (Object? args) {
+            resolvedPartialRegistry = true;
+            return <Map<String, dynamic>>[];
+          },
+        }),
       );
-      expect(resolvedPartialRegistry, isFalse,
-        reason: 'an empty registry would send ADIF through its always-include-private legacy fallback');
+
+      await expectLater(service.exportTypeSettings({}, (_) => {'includePrivateData': false}), throwsA(isA<ExtensionHostException>()));
+      expect(resolvedPartialRegistry, isFalse, reason: 'an empty registry would send ADIF through its always-include-private legacy fallback');
     });
   }
 
@@ -42,17 +40,27 @@ void main() {
   });
 
   test('legacy missing methods remain valid and shared types retain the first registration', () async {
-    final service = ExtensionServiceWithFakeHost(FakeExtensionHost({
-      'export:*:getExportTypes': [
-        {'key': 'legacy', 'ok': true, 'value': null},
-        {'key': 'first', 'ok': true, 'value': [
-          {'exportType': 'potaActivation-adif', 'format': 'adif', 'label': 'POTA'},
-        ]},
-        {'key': 'second', 'ok': true, 'value': [
-          {'exportType': 'potaActivation-adif', 'format': 'adif', 'label': 'Other POTA'},
-        ]},
-      ],
-    }));
+    final service = ExtensionServiceWithFakeHost(
+      FakeExtensionHost({
+        'export:*:getExportTypes': [
+          {'key': 'legacy', 'ok': true, 'value': null},
+          {
+            'key': 'first',
+            'ok': true,
+            'value': [
+              {'exportType': 'potaActivation-adif', 'format': 'adif', 'label': 'POTA'},
+            ],
+          },
+          {
+            'key': 'second',
+            'ok': true,
+            'value': [
+              {'exportType': 'potaActivation-adif', 'format': 'adif', 'label': 'Other POTA'},
+            ],
+          },
+        ],
+      }),
+    );
     final definitions = await service.getExportTypes();
     expect(definitions, hasLength(1));
     expect(definitions.single['label'], 'POTA');

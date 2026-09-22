@@ -45,13 +45,7 @@ class LayoutPanelEntry {
   /// an extension from this sheet finds its panels by the name they enabled.
   final String? extensionName;
 
-  const LayoutPanelEntry({
-    required this.id,
-    required this.title,
-    this.description,
-    this.preview,
-    this.extensionName,
-  });
+  const LayoutPanelEntry({required this.id, required this.title, this.description, this.preview, this.extensionName});
 }
 
 /// A panel's preview image. SVG is drawn directly; a `data:` URI is
@@ -88,28 +82,16 @@ class _PanelPreview extends StatelessWidget {
     final trimmed = preview.trimLeft();
     Widget? image;
     if (trimmed.startsWith('<svg') || trimmed.startsWith('<?xml')) {
-      image = SvgPicture.string(
-        preview,
-        fit: BoxFit.contain,
-        errorBuilder: (error, _, _) => _dropped('SVG preview did not parse: $error'),
-      );
+      image = SvgPicture.string(preview, fit: BoxFit.contain, errorBuilder: (error, _, _) => _dropped('SVG preview did not parse: $error'));
     } else if (trimmed.startsWith('data:image/svg+xml')) {
       final decoded = _decodeSvgDataUri(trimmed);
       if (decoded != null) {
-        image = SvgPicture.string(
-          decoded,
-          fit: BoxFit.contain,
-          errorBuilder: (error, _, _) => _dropped('SVG preview did not parse: $error'),
-        );
+        image = SvgPicture.string(decoded, fit: BoxFit.contain, errorBuilder: (error, _, _) => _dropped('SVG preview did not parse: $error'));
       }
     } else if (trimmed.startsWith('data:image/')) {
       final decoded = _decodeDataUri(trimmed);
       if (decoded != null) {
-        image = Image.memory(
-          decoded,
-          fit: BoxFit.contain,
-          errorBuilder: (_, error, _) => _dropped('preview image did not decode: $error'),
-        );
+        image = Image.memory(decoded, fit: BoxFit.contain, errorBuilder: (_, error, _) => _dropped('preview image did not decode: $error'));
       }
     }
     // Inside the box either way. The row wraps this in a tap target and
@@ -117,11 +99,7 @@ class _PanelPreview extends StatelessWidget {
     // would leave a control with no hit area and nothing to say — and at
     // pane size, the `unavailable` message would never be reachable, since
     // only the two errorBuilders below get there.
-    return SizedBox(
-      width: size,
-      height: size,
-      child: image ?? _dropped('preview payload did not decode'),
-    );
+    return SizedBox(width: size, height: size, child: image ?? _dropped('preview payload did not decode'));
   }
 
   /// Whether [preview] is in a form this widget will even attempt — an SVG
@@ -275,12 +253,11 @@ class _LayoutSheetState extends State<LayoutSheet> {
     final name = info.nameFor(locale);
     return ListTile(
       tileColor: theme.colorScheme.secondaryContainer,
-      leading: ExtensionIconTile(
-        icon: info.icon,
-        accentColor: info.accentColor,
-        fallbackIcon: extensionCategoryIcon(info.category),
+      leading: ExtensionIconTile(icon: info.icon, accentColor: info.accentColor, fallbackIcon: extensionCategoryIcon(info.category)),
+      title: Text(
+        context.t.activitiesView.enableExtension(name: name),
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
-      title: Text(context.t.activitiesView.enableExtension(name: name), style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(context.t.activitiesView.enableExtensionHint),
       trailing: const Icon(MdiIcons.plus),
       onTap: _gaining ? null : () => unawaited(_gain(() => widget.onEnableExtension!(info), name)),
@@ -301,10 +278,7 @@ class _LayoutSheetState extends State<LayoutSheet> {
         padding: const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.lg, Space.md),
         child: Text(
           title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
-          ),
+          style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -366,9 +340,7 @@ class _LayoutSheetState extends State<LayoutSheet> {
                 size: _PanelPreview._paneSize,
                 unavailable: Text(
                   context.t.operation.layout.previewUnavailable,
-                  style: Theme.of(paneContext).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(paneContext).colorScheme.onSurfaceVariant,
-                      ),
+                  style: Theme.of(paneContext).textTheme.bodyMedium?.copyWith(color: Theme.of(paneContext).colorScheme.onSurfaceVariant),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -387,64 +359,75 @@ class _LayoutSheetState extends State<LayoutSheet> {
   Widget build(BuildContext context) {
     final t = context.t.operation.layout;
     final query = _searchController.text.trim();
-    final available = [for (final panel in widget.available) if (_matches(panel, query)) panel];
+    final available = [
+      for (final panel in widget.available)
+        if (_matches(panel, query)) panel,
+    ];
     final locale = LocaleSettings.currentLocale.languageCode;
     final enable = widget.onEnableExtension == null
         ? const <ExtensionInfo>[]
-        : [for (final info in widget.enableable) if (info.matchesSearch(query, locale: locale)) info];
+        : [
+            for (final info in widget.enableable)
+              if (info.matchesSearch(query, locale: locale)) info,
+          ];
     final install = widget.onInstallExtension == null
         ? const <CatalogEntry>[]
-        : [for (final entry in widget.installable) if (entry.matchesSearch(query, locale: locale)) entry];
+        : [
+            for (final entry in widget.installable)
+              if (entry.matchesSearch(query, locale: locale)) entry,
+          ];
     return Material(
       color: haloSheetListBackground(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Builder(builder: (context) {
-            final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
-            return Padding(
-            padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, Space.md),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    selectAllOnFocus: false,
-                    controller: _searchController,
-                    onChanged: (text) {
-                      setState(() {});
-                      if (text.trim().isNotEmpty) widget.onSearch?.call();
-                    },
-                    decoration: InputDecoration(
-                      isDense: true,
-                      prefixIcon: const Icon(MdiIcons.magnify, size: 18),
-                      suffixIcon: query.isEmpty
-                          ? null
-                          : IconButton(
-                              icon: Icon(MdiIcons.close, size: 18, semanticLabel: context.t.common.clear),
-                              onPressed: () => setState(_searchController.clear),
-                            ),
-                      hintText: t.searchHint,
-                      border: searchBorder,
-                      // The theme deliberately leaves `focusedBorder` unset
-                      // (see haloFocusedBorder), so a decoration that builds
-                      // its own border has to pass it through — Material's
-                      // own primary indicator is 2.67:1 on the dark surface.
-                      focusedBorder: haloFocusedBorder(searchBorder, context),
+          Builder(
+            builder: (context) {
+              final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, Space.md),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        selectAllOnFocus: false,
+                        controller: _searchController,
+                        onChanged: (text) {
+                          setState(() {});
+                          if (text.trim().isNotEmpty) widget.onSearch?.call();
+                        },
+                        decoration: InputDecoration(
+                          isDense: true,
+                          prefixIcon: const Icon(MdiIcons.magnify, size: 18),
+                          suffixIcon: query.isEmpty
+                              ? null
+                              : IconButton(
+                                  icon: Icon(MdiIcons.close, size: 18, semanticLabel: context.t.common.clear),
+                                  onPressed: () => setState(_searchController.clear),
+                                ),
+                          hintText: t.searchHint,
+                          border: searchBorder,
+                          // The theme deliberately leaves `focusedBorder` unset
+                          // (see haloFocusedBorder), so a decoration that builds
+                          // its own border has to pass it through — Material's
+                          // own primary indicator is 2.67:1 on the dark surface.
+                          focusedBorder: haloFocusedBorder(searchBorder, context),
+                        ),
+                      ),
                     ),
-                  ),
+                    if (widget.onManageExtensions != null) ...[
+                      const SizedBox(width: Space.md),
+                      IconButton(
+                        icon: Icon(MdiIcons.puzzle, semanticLabel: context.t.activitiesView.manageExtensions),
+                        onPressed: widget.onManageExtensions,
+                      ),
+                    ],
+                  ],
                 ),
-                if (widget.onManageExtensions != null) ...[
-                  const SizedBox(width: Space.md),
-                  IconButton(
-                    icon: Icon(MdiIcons.puzzle, semanticLabel: context.t.activitiesView.manageExtensions),
-                    onPressed: widget.onManageExtensions,
-                  ),
-                ],
-              ],
-            ),
-          );
-          }),
+              );
+            },
+          ),
           // A restart, and for an install a download, lie between the tap and
           // the panels arriving; rows that merely stop answering read as stuck.
           if (_gaining) const LinearProgressIndicator(),
@@ -462,9 +445,7 @@ class _LayoutSheetState extends State<LayoutSheet> {
                 // panels there ARE, and a view that already holds all of them.
                 query.isEmpty ? t.nothingToAdd : t.noPanelsMatch,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
           for (final panel in available) _panelRow(context, panel),
@@ -473,12 +454,7 @@ class _LayoutSheetState extends State<LayoutSheet> {
           // the fallback.
           for (final info in enable) _enableRow(context, info, locale),
           for (final entry in install)
-            InstallExtensionRow(
-              entry: entry,
-              onTap: _gaining
-                  ? null
-                  : () => unawaited(_gain(() => widget.onInstallExtension!(entry), entry.nameFor(locale))),
-            ),
+            InstallExtensionRow(entry: entry, onTap: _gaining ? null : () => unawaited(_gain(() => widget.onInstallExtension!(entry), entry.nameFor(locale)))),
         ],
       ),
     );

@@ -24,14 +24,14 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../support/error_reporting_fakes.dart';
 
 Map<String, dynamic> accountData({String uuid = 'acct-1', List<Map<String, dynamic>> others = const []}) => {
-      'current_account': {'uuid': uuid, 'call': 'N0CALL', 'email': 'me@example.com'},
-      'accounts': others,
-      // The current account's counts arrive top-level, not as stats — and on
-      // the device's rule (`active`/`contacts`), never the tombstone-counting
-      // `total`, which is the one the Sync panel must agree with.
-      'operations': {'total': 4, 'active': 3},
-      'qsos': {'total': 180, 'contacts': 120},
-    };
+  'current_account': {'uuid': uuid, 'call': 'N0CALL', 'email': 'me@example.com'},
+  'accounts': others,
+  // The current account's counts arrive top-level, not as stats — and on
+  // the device's rule (`active`/`contacts`), never the tombstone-counting
+  // `total`, which is the one the Sync panel must agree with.
+  'operations': {'total': 4, 'active': 3},
+  'qsos': {'total': 180, 'contacts': 120},
+};
 
 Future<void> pumpDialog(
   WidgetTester tester, {
@@ -45,39 +45,40 @@ Future<void> pumpDialog(
 }) async {
   await tester.pumpWidget(
     TranslationProvider(
-        child: MaterialApp(
-      home: Builder(
-        builder: (context) => TextButton(
-          onPressed: () async {
-            // The production path (showSwitchAccountsDialog) is a Modal
-            // Pane; opened here directly so tests can inject the poll
-            // interval and clock.
-            final result = await showModalPane<bool>(
-              context,
-              title: 'Switch Accounts',
-              barrierDismissible: false,
-              builder: (context) => SwitchAccountsPane(
-                fetchAccountData: fetchAccountData,
-                linkClient: linkClient,
-                linkClientWithEmail: linkClientWithEmail ?? (email) async => {},
-                // Mirrors showSwitchAccountsDialog. The header close icon
-                // decides where the footer needs a Cancel of its own, so this
-                // file — the DIALOG's harness — must set it; the `false`
-                // configuration is the onboarding step's, covered over in
-                // onboarding_test.dart.
-                hostHasCloseIcon: true,
-                siblings: siblings,
-                openSibling: openSibling,
-                pollInterval: const Duration(seconds: 5),
-                now: now ?? DateTime.now,
-              ),
-            );
-            results?.add(result);
-          },
-          child: const Text('open'),
+      child: MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              // The production path (showSwitchAccountsDialog) is a Modal
+              // Pane; opened here directly so tests can inject the poll
+              // interval and clock.
+              final result = await showModalPane<bool>(
+                context,
+                title: 'Switch Accounts',
+                barrierDismissible: false,
+                builder: (context) => SwitchAccountsPane(
+                  fetchAccountData: fetchAccountData,
+                  linkClient: linkClient,
+                  linkClientWithEmail: linkClientWithEmail ?? (email) async => {},
+                  // Mirrors showSwitchAccountsDialog. The header close icon
+                  // decides where the footer needs a Cancel of its own, so this
+                  // file — the DIALOG's harness — must set it; the `false`
+                  // configuration is the onboarding step's, covered over in
+                  // onboarding_test.dart.
+                  hostHasCloseIcon: true,
+                  siblings: siblings,
+                  openSibling: openSibling,
+                  pollInterval: const Duration(seconds: 5),
+                  now: now ?? DateTime.now,
+                ),
+              );
+              results?.add(result);
+            },
+            child: const Text('open'),
+          ),
         ),
       ),
-    )),
+    ),
   );
   await tester.tap(find.text('open'));
   await tester.pumpAndSettle();
@@ -90,14 +91,16 @@ void main() {
     await pumpDialog(
       tester,
       results: results,
-      fetchAccountData: () async => accountData(others: [
-        {
-          'uuid': 'acct-2',
-          'call': 'K2XYZ',
-          'email': 'other@example.com',
-          'stats': {'qso_count': 42, 'operation_count': 1},
-        },
-      ]),
+      fetchAccountData: () async => accountData(
+        others: [
+          {
+            'uuid': 'acct-2',
+            'call': 'K2XYZ',
+            'email': 'other@example.com',
+            'stats': {'qso_count': 42, 'operation_count': 1},
+          },
+        ],
+      ),
       linkClient: (email) async {
         linkedEmails.add(email);
         return {
@@ -129,11 +132,13 @@ void main() {
     final linkedEmails = <String?>[];
     await pumpDialog(
       tester,
-      fetchAccountData: () async => accountData(others: [
-        // An account reachable only via the QR/blank-permission path.
-        {'uuid': '0a1b2c3d-4e5f-6789-abcd-ef0123456789', 'call': 'K2XYZ'},
-        {'uuid': 'acct-9', 'email': 'confirmed@example.com', 'pending_email': 'unconfirmed@example.com'},
-      ]),
+      fetchAccountData: () async => accountData(
+        others: [
+          // An account reachable only via the QR/blank-permission path.
+          {'uuid': '0a1b2c3d-4e5f-6789-abcd-ef0123456789', 'call': 'K2XYZ'},
+          {'uuid': 'acct-9', 'email': 'confirmed@example.com', 'pending_email': 'unconfirmed@example.com'},
+        ],
+      ),
       linkClient: (email) async {
         linkedEmails.add(email);
         return {'permission': {}};
@@ -160,7 +165,9 @@ void main() {
       tester,
       results: results,
       fetchAccountData: () async => accountData(),
-      linkClient: (email) async => {'permission': {'status': 'pending', 'challenge_token': 'A1B2C3'}},
+      linkClient: (email) async => {
+        'permission': {'status': 'pending', 'challenge_token': 'A1B2C3'},
+      },
     );
 
     // The menu has no Back, so it carries the way out itself. Nothing is
@@ -357,9 +364,11 @@ void main() {
   testWidgets('quick switch: a revoked permission falls through to the code view with the fresh challenge', (tester) async {
     await pumpDialog(
       tester,
-      fetchAccountData: () async => accountData(others: [
-        {'uuid': 'acct-2', 'call': 'K2XYZ', 'email': 'other@example.com'},
-      ]),
+      fetchAccountData: () async => accountData(
+        others: [
+          {'uuid': 'acct-2', 'call': 'K2XYZ', 'email': 'other@example.com'},
+        ],
+      ),
       // The permission this client held was revoked server-side, so the
       // switch comes back pending — but with a usable challenge.
       linkClient: (email) async => {
@@ -443,10 +452,7 @@ void main() {
     // The QR payload is the deep link an already-linked phone consumes —
     // scheme, path, and both params, exactly as app-polo builds it. The
     // widget is keyed by its payload, which is how we can read it back.
-    expect(
-      find.byKey(const ValueKey('com.ham2k:///link_client?id=client-uuid-1&token=FFEE99')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('com.ham2k:///link_client?id=client-uuid-1&token=FFEE99')), findsOneWidget);
     expect(find.byType(QrImageView), findsOneWidget);
 
     // One poll tick with the account unchanged: dialog stays open, waiting.
@@ -510,13 +516,13 @@ void main() {
   });
 
   Map<String, dynamic> pendingPermission() => {
-        'permission': {
-          'status': 'pending',
-          'client': 'client-uuid-1',
-          'challenge_token': 'FFEE99',
-          'challenge_expires_at': DateTime.now().add(const Duration(minutes: 10)).toUtc().toIso8601String(),
-        },
-      };
+    'permission': {
+      'status': 'pending',
+      'client': 'client-uuid-1',
+      'challenge_token': 'FFEE99',
+      'challenge_expires_at': DateTime.now().add(const Duration(minutes: 10)).toUtc().toIso8601String(),
+    },
+  };
   const polo = SiblingApp(id: 'com.ham2k.polo.prod', name: 'Ham2K Portable Logger');
 
   testWidgets('sibling flow: two PoLo flavors are named, one is "the older version"', (tester) async {
@@ -524,7 +530,10 @@ void main() {
     // operator guessing.
     await pumpDialog(
       tester,
-      siblings: const [polo, SiblingApp(id: 'com.ham2k.polo.beta', name: 'Ham2K Portable Logger (Beta)')],
+      siblings: const [
+        polo,
+        SiblingApp(id: 'com.ham2k.polo.beta', name: 'Ham2K Portable Logger (Beta)'),
+      ],
       openSibling: (_, _) async => true,
       fetchAccountData: () async => accountData(),
       linkClient: (email) async => {},
@@ -692,31 +701,40 @@ void main() {
           home: Builder(
             builder: (rootContext) => Scaffold(
               body: TextButton(
-                onPressed: () => Navigator.of(rootContext).push(MaterialPageRoute(
-                  builder: (settingsContext) => Scaffold(
-                    body: TextButton(
-                      onPressed: () async => results.add(await showModalPane<bool>(
-                        settingsContext,
-                        title: 'Switch Accounts',
-                        barrierDismissible: false,
-                        builder: (_) => SwitchAccountsPane(
-                          fetchAccountData: () async {
-                            fetches++;
-                            if (fetches == 1) return {'current_account': {'uuid': 'acct-1'}, 'accounts': []};
-                            return gate.future;
-                          },
-                          linkClient: (email) async => {
-                            'permission': {'status': 'pending', 'client': 'c1', 'challenge_token': 'TOK'},
-                          },
-                          linkClientWithEmail: (email) async => const {},
-                          hostHasCloseIcon: true,
-                          pollInterval: const Duration(seconds: 5),
+                onPressed: () => Navigator.of(rootContext).push(
+                  MaterialPageRoute(
+                    builder: (settingsContext) => Scaffold(
+                      body: TextButton(
+                        onPressed: () async => results.add(
+                          await showModalPane<bool>(
+                            settingsContext,
+                            title: 'Switch Accounts',
+                            barrierDismissible: false,
+                            builder: (_) => SwitchAccountsPane(
+                              fetchAccountData: () async {
+                                fetches++;
+                                if (fetches == 1) {
+                                  return {
+                                    'current_account': {'uuid': 'acct-1'},
+                                    'accounts': [],
+                                  };
+                                }
+                                return gate.future;
+                              },
+                              linkClient: (email) async => {
+                                'permission': {'status': 'pending', 'client': 'c1', 'challenge_token': 'TOK'},
+                              },
+                              linkClientWithEmail: (email) async => const {},
+                              hostHasCloseIcon: true,
+                              pollInterval: const Duration(seconds: 5),
+                            ),
+                          ),
                         ),
-                      )),
-                      child: const Text('stand-in for Settings'),
+                        child: const Text('stand-in for Settings'),
+                      ),
                     ),
                   ),
-                )),
+                ),
                 child: const Text('root'),
               ),
             ),
@@ -739,12 +757,14 @@ void main() {
 
     // It resumes to find the account genuinely changed — the one case that
     // makes it want to declare success and pop.
-    gate.complete(const {'current_account': {'uuid': 'acct-2'}, 'accounts': []});
+    gate.complete(const {
+      'current_account': {'uuid': 'acct-2'},
+      'accounts': [],
+    });
     await tester.pumpAndSettle();
 
     expect(results, [false], reason: 'the first exit decides the answer');
-    expect(find.text('stand-in for Settings'), findsOneWidget,
-        reason: "the caller's screen must survive a late success");
+    expect(find.text('stand-in for Settings'), findsOneWidget, reason: "the caller's screen must survive a late success");
   });
 
   // Failure paths. Everything below is a way this pane can fail to do what
@@ -770,8 +790,11 @@ void main() {
     expect(find.text(t.switchAccounts.requestFailed), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing, reason: 'not left spinning');
     expect(find.text('Link account'), findsOneWidget);
-    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Link account')).onPressed,
-        isNotNull, reason: 'the operator must be able to try again');
+    expect(
+      tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Link account')).onPressed,
+      isNotNull,
+      reason: 'the operator must be able to try again',
+    );
   });
 
   testWidgets('three throws in a row are reported; one is not', (tester) async {
@@ -782,11 +805,7 @@ void main() {
     addTearDown(ErrorReportingService.resetFailureStreaks);
 
     await withErrorHooks(() async {
-      await pumpDialog(
-        tester,
-        fetchAccountData: () async => accountData(),
-        linkClient: (email) async => throw StateError('the host blew up'),
-      );
+      await pumpDialog(tester, fetchAccountData: () async => accountData(), linkClient: (email) async => throw StateError('the host blew up'));
       await tester.tap(find.text('Link with an email address'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'friend@example.com');
@@ -795,8 +814,7 @@ void main() {
         await tester.tap(find.text('Link account'));
         await tester.pumpAndSettle();
         tester.takeException();
-        expect(backend.exceptions, hasLength(attempt < 3 ? 0 : 1),
-            reason: 'upload lands on the third failure, not before and not twice');
+        expect(backend.exceptions, hasLength(attempt < 3 ? 0 : 1), reason: 'upload lands on the third failure, not before and not twice');
       }
     }, backend: backend);
   });
@@ -807,10 +825,14 @@ void main() {
     // message the spinner just stops and the row reads as a dead control.
     await pumpDialog(
       tester,
-      fetchAccountData: () async => accountData(others: [
-        {'uuid': 'acct-2', 'email': 'other@example.com'},
-      ]),
-      linkClient: (email) async => {'permission': {'status': 'revoked'}},
+      fetchAccountData: () async => accountData(
+        others: [
+          {'uuid': 'acct-2', 'email': 'other@example.com'},
+        ],
+      ),
+      linkClient: (email) async => {
+        'permission': {'status': 'revoked'},
+      },
     );
 
     await tester.tap(find.text('other@example.com'));
@@ -824,11 +846,7 @@ void main() {
     // A null permission still moved to the code view and started polling: an
     // em dash under "Waiting for confirmation…", waiting on a challenge the
     // server never made. An empty map is enough to trigger it.
-    await pumpDialog(
-      tester,
-      fetchAccountData: () async => accountData(),
-      linkClient: (email) async => const {},
-    );
+    await pumpDialog(tester, fetchAccountData: () async => accountData(), linkClient: (email) async => const {});
 
     await tester.tap(find.text('Link with an email address'));
     await tester.pumpAndSettle();
@@ -837,8 +855,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(t.switchAccounts.noConfirmationCode), findsOneWidget);
-    expect(find.text(t.switchAccounts.waitingForConfirmation), findsNothing,
-        reason: 'nothing is being waited for');
+    expect(find.text(t.switchAccounts.waitingForConfirmation), findsNothing, reason: 'nothing is being waited for');
     expect(find.text('—'), findsNothing, reason: 'no code was ever issued');
     expect(find.text(t.switchAccounts.emailAddress), findsOneWidget, reason: 'still on the email step');
   });
@@ -852,15 +869,16 @@ void main() {
         attempts++;
         // First attempt unreachable, second works.
         if (attempts == 1) return null;
-        return {'permission': {'client': 'c1', 'challenge_token': 'TOK'}};
+        return {
+          'permission': {'client': 'c1', 'challenge_token': 'TOK'},
+        };
       },
     );
 
     await tester.tap(find.text('Link with a QR code'));
     await tester.pumpAndSettle();
     expect(find.text(t.switchAccounts.serverUnreachable), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsNothing,
-        reason: 'a failed request must not leave a spinner claiming to be loading');
+    expect(find.byType(CircularProgressIndicator), findsNothing, reason: 'a failed request must not leave a spinner claiming to be loading');
 
     // Back out and retry: the code now renders, and the red text is gone.
     await tester.tap(find.text('Back'));
@@ -1058,8 +1076,7 @@ void main() {
     await tester.tap(find.text(t.switchAccounts.linkAccount));
     await tester.pumpAndSettle();
     expect(find.text(t.switchAccounts.emailRequired), findsOneWidget);
-    expect(find.text(t.switchAccounts.serverUnreachable), findsNothing,
-        reason: 'the stale message must not outlive the attempt it described');
+    expect(find.text(t.switchAccounts.serverUnreachable), findsNothing, reason: 'the stale message must not outlive the attempt it described');
     expect(calls, 1, reason: 'an empty field makes no request');
 
     // The soft keyboard's Go key reaches _submitEmail without the button.
@@ -1077,12 +1094,14 @@ void main() {
         child: MaterialApp(
           home: Builder(
             builder: (context) => TextButton(
-              onPressed: () async => results.add(await showSwitchAccountsDialog(
-                context,
-                fetchAccountData: () async => accountData(),
-                linkClient: (email) async => const {},
-                linkClientWithEmail: (email) async => const {},
-              )),
+              onPressed: () async => results.add(
+                await showSwitchAccountsDialog(
+                  context,
+                  fetchAccountData: () async => accountData(),
+                  linkClient: (email) async => const {},
+                  linkClientWithEmail: (email) async => const {},
+                ),
+              ),
               child: const Text('open'),
             ),
           ),
@@ -1167,12 +1186,7 @@ void main() {
 
   testWidgets('server unreachable: linking reports it and never fakes success', (tester) async {
     final results = <bool?>[];
-    await pumpDialog(
-      tester,
-      results: results,
-      fetchAccountData: () async => accountData(),
-      linkClient: (email) async => null,
-    );
+    await pumpDialog(tester, results: results, fetchAccountData: () async => accountData(), linkClient: (email) async => null);
 
     await tester.tap(find.text('Link with an email address'));
     await tester.pumpAndSettle();

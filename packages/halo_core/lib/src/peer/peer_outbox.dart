@@ -189,6 +189,7 @@ class PeerOutbox {
       void includeInWatermark(int? updatedAtMillis) {
         if (updatedAtMillis != null && updatedAtMillis > newWatermark) newWatermark = updatedAtMillis;
       }
+
       for (final row in opRows) {
         includeInWatermark(row.updatedAtMillis);
       }
@@ -251,10 +252,7 @@ class PeerOutbox {
       // unbounded growth, which is recoverable; failing to insert costs a QSO
       // that never reaches the other device.
       try {
-        await _pruneSuperseded(
-          operationUuid,
-          {...opRows.map((r) => r.uuid), ...qsoRows.map((r) => r.uuid)},
-        );
+        await _pruneSuperseded(operationUuid, {...opRows.map((r) => r.uuid), ...qsoRows.map((r) => r.uuid)});
       } catch (e) {
         log?.call('outbox prune failed for $operationUuid (rows will accumulate): $e');
       }
@@ -360,9 +358,7 @@ class PeerCursorStore {
   /// already applied — 0 if the pair has never synced this operation, which
   /// is also the right "since" value to request a full catch-up.
   Future<int> lastAppliedSeq(String peerDeviceId, String operationUuid) async {
-    final row = await (db.select(db.peerCursors)
-          ..where((c) => c.peerDeviceId.equals(peerDeviceId) & c.operationUuid.equals(operationUuid)))
-        .getSingleOrNull();
+    final row = await (db.select(db.peerCursors)..where((c) => c.peerDeviceId.equals(peerDeviceId) & c.operationUuid.equals(operationUuid))).getSingleOrNull();
     return row?.lastAppliedSeq ?? 0;
   }
 
@@ -376,11 +372,9 @@ class PeerCursorStore {
     await db.transaction(() async {
       final current = await lastAppliedSeq(peerDeviceId, operationUuid);
       if (seq <= current) return;
-      await db.into(db.peerCursors).insertOnConflictUpdate(PeerCursorsCompanion.insert(
-            peerDeviceId: peerDeviceId,
-            operationUuid: operationUuid,
-            lastAppliedSeq: Value(seq),
-          ));
+      await db
+          .into(db.peerCursors)
+          .insertOnConflictUpdate(PeerCursorsCompanion.insert(peerDeviceId: peerDeviceId, operationUuid: operationUuid, lastAppliedSeq: Value(seq)));
     });
   }
 }

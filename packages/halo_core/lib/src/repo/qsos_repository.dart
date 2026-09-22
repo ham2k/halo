@@ -64,10 +64,7 @@ class QsosRepository {
   /// logging path pays for this with one boolean.
   Future<void> _refuseNewQso(String operationUuid, {String ourCall = ''}) async {
     if (!AppClock.instance.isTravelling) return;
-    final refusal = WritePolicy.forQso(
-      operation: await _operationFor(operationUuid),
-      ourCall: operationUuid.isEmpty ? ourCall : '',
-    );
+    final refusal = WritePolicy.forQso(operation: await _operationFor(operationUuid), ourCall: operationUuid.isEmpty ? ourCall : '');
     if (refusal != null) throw refusal;
   }
 
@@ -86,10 +83,7 @@ class QsosRepository {
     final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(uuid))).getSingleOrNull();
     if (row == null) return;
     final stored = qsoFromRow(row);
-    final refusal = WritePolicy.forQso(
-      operation: await _operationFor(stored.operationUuid),
-      ourCall: stored.operationUuid.isEmpty ? stored.ourCall : '',
-    );
+    final refusal = WritePolicy.forQso(operation: await _operationFor(stored.operationUuid), ourCall: stored.operationUuid.isEmpty ? stored.ourCall : '');
     if (refusal != null) throw refusal;
   }
 
@@ -121,9 +115,7 @@ class QsosRepository {
   /// batch shares one `refs` list across every `add()`, so mutating in place
   /// would give every call in the batch the first one's number.
   Future<Qso> _withAllocatedSerial(String operationUuid, Qso qso, SequenceRequest request) async {
-    final refs = [
-      for (final ref in qso.refs) Map<String, dynamic>.from(ref),
-    ];
+    final refs = [for (final ref in qso.refs) Map<String, dynamic>.from(ref)];
     final index = refs.indexWhere((r) => r['type'] == request.refType);
 
     final existing = index < 0 ? null : refs[index][request.field];
@@ -162,11 +154,7 @@ class QsosRepository {
   /// [serialSequences] are the sequences the operation's contests declared
   /// (docs/design/contests.md §5.8); each fills its field on the QSO's ref
   /// unless the operator typed a number themselves.
-  Future<Qso> add(
-    String operationUuid,
-    Map<String, dynamic> qsoData, {
-    List<SequenceDescriptor> serialSequences = const [],
-  }) async {
+  Future<Qso> add(String operationUuid, Map<String, dynamic> qsoData, {List<SequenceDescriptor> serialSequences = const []}) async {
     final data = Map<String, dynamic>.from(qsoData);
     data['startAtMillis'] ??= nowMillis();
     data['uuid'] ??= uuidGenerator.v4();
@@ -204,13 +192,7 @@ class QsosRepository {
     onChange?.call();
     // Structured dev event — real contacts only, not timeline markers.
     if (!qso.isEvent) {
-      DevLog.instance.log('qso', {
-        'uuid': qso.uuid,
-        'op': operationUuid,
-        'call': (data['their'] as Map?)?['call'],
-        'band': data['band'],
-        'mode': data['mode'],
-      });
+      DevLog.instance.log('qso', {'uuid': qso.uuid, 'op': operationUuid, 'call': (data['their'] as Map?)?['call'], 'band': data['band'], 'mode': data['mode']});
     }
     return qso;
   }
@@ -229,13 +211,7 @@ class QsosRepository {
   /// an async hook call per ref, which a list row cannot make. Null when the
   /// caller could not compose one; the row then renders what it can from
   /// the override itself.
-  Future<Qso> addEvent(
-    String operationUuid, {
-    required String kind,
-    required int atMillis,
-    Map<String, dynamic>? operation,
-    String? description,
-  }) {
+  Future<Qso> addEvent(String operationUuid, {required String kind, required int atMillis, Map<String, dynamic>? operation, String? description}) {
     return add(operationUuid, {
       'band': 'event',
       // Placeholder calls, the shape polo's own markers have always had
@@ -250,11 +226,7 @@ class QsosRepository {
       'our': {'call': 'EVENT'},
       'their': {'call': kind.toUpperCase()},
       'startAtMillis': atMillis,
-      'event': {
-        'event': kind,
-        'operation': ?operation,
-        'description': ?description,
-      },
+      'event': {'event': kind, 'operation': ?operation, 'description': ?description},
     });
   }
 
@@ -326,19 +298,21 @@ class QsosRepository {
       // uuid rather than falling back.
       final supplied = data['uuid'];
       final uuid = supplied is String && supplied.isNotEmpty ? supplied : uuidGenerator.v4();
-      toInsert.add(Qso(
-        uuid: uuid,
-        operationUuid: operationUuid,
-        data: {
-          ...data,
-          'uuid': uuid,
-          // Coerced, not passed through: a file can carry "1721736000000" as
-          // a string, and drift's typed column would throw a cast error
-          // partway through the batch rather than rejecting the record.
-          'startAtMillis': _millisOf(data['startAtMillis']) ?? nowMillis(),
-          'updatedAtMillis': realNowMillis(),
-        },
-      ));
+      toInsert.add(
+        Qso(
+          uuid: uuid,
+          operationUuid: operationUuid,
+          data: {
+            ...data,
+            'uuid': uuid,
+            // Coerced, not passed through: a file can carry "1721736000000" as
+            // a string, and drift's typed column would throw a cast error
+            // partway through the batch rather than rejecting the record.
+            'startAtMillis': _millisOf(data['startAtMillis']) ?? nowMillis(),
+            'updatedAtMillis': realNowMillis(),
+          },
+        ),
+      );
     }
 
     // A row's own `operationUuid` is what gets written, so an update carrying a
@@ -350,11 +324,7 @@ class QsosRepository {
     final targeted = <String>{};
     for (final qso in updates) {
       if (qso.operationUuid != operationUuid) {
-        throw ArgumentError.value(
-          qso.operationUuid,
-          'updates',
-          'QSO ${qso.uuid} belongs to a different operation than this batch',
-        );
+        throw ArgumentError.value(qso.operationUuid, 'updates', 'QSO ${qso.uuid} belongs to a different operation than this batch');
       }
       // Two updates for one row would apply in order, the second discarding
       // the first's merge, and BOTH would count as written. A plan that
@@ -395,12 +365,7 @@ class QsosRepository {
         // `watchForOperation`, which excludes deleted rows, so a plan should
         // never target one.
         final stampedByUuid = <String, Qso>{
-          for (final qso in updates)
-            qso.uuid: _restamped(Qso(
-              uuid: qso.uuid,
-              operationUuid: qso.operationUuid,
-              data: {...qso.data, 'uuid': qso.uuid},
-            )),
+          for (final qso in updates) qso.uuid: _restamped(Qso(uuid: qso.uuid, operationUuid: qso.operationUuid, data: {...qso.data, 'uuid': qso.uuid})),
         };
         // `batch.update` has no return value, unlike the row-by-row `.write()`
         // this replaces — so which uuids actually exist is checked up front,
@@ -427,11 +392,12 @@ class QsosRepository {
             // [historyForCalls] routes through an isolate above 200 rows —
             // and a single corrupt blob would abort a batch whose UPDATE
             // would have overwritten it anyway.
-            final rows = await (db.selectOnly(db.qsos)
-                  ..addColumns([db.qsos.uuid])
-                  ..where(db.qsos.uuid.isIn(chunk)))
-                .map((row) => row.read(db.qsos.uuid)!)
-                .get();
+            final rows =
+                await (db.selectOnly(db.qsos)
+                      ..addColumns([db.qsos.uuid])
+                      ..where(db.qsos.uuid.isIn(chunk)))
+                    .map((row) => row.read(db.qsos.uuid)!)
+                    .get();
             existingUuids.addAll(rows);
             continue;
           }
@@ -456,17 +422,18 @@ class QsosRepository {
               continue;
             }
             if (current.data['updatedAtMillis'] == base.data['updatedAtMillis']) continue;
-            stampedByUuid[row.uuid] = _restamped(Qso(
-              uuid: row.uuid,
-              operationUuid: planned.operationUuid,
-              data: mergeConcurrentEdit(base: base.data, current: current.data, edited: planned.data),
-            ));
+            stampedByUuid[row.uuid] = _restamped(
+              Qso(
+                uuid: row.uuid,
+                operationUuid: planned.operationUuid,
+                data: mergeConcurrentEdit(base: base.data, current: current.data, edited: planned.data),
+              ),
+            );
           }
         }
         await db.batch((batch) {
           for (final uuid in existingUuids) {
-            batch.update(db.qsos, _companionFor(stampedByUuid[uuid]!, 'qsos:writeBatch'),
-                where: (q) => q.uuid.equals(uuid));
+            batch.update(db.qsos, _companionFor(stampedByUuid[uuid]!, 'qsos:writeBatch'), where: (q) => q.uuid.equals(uuid));
           }
         });
         written += existingUuids.length;
@@ -495,15 +462,16 @@ class QsosRepository {
       if (basedOn != null) {
         final current = await get(qso.uuid);
         if (current != null && current.data['updatedAtMillis'] != basedOn.data['updatedAtMillis']) {
-          stamped = _restamped(Qso(
-            uuid: qso.uuid,
-            operationUuid: qso.operationUuid,
-            data: mergeConcurrentEdit(base: basedOn.data, current: current.data, edited: qso.data),
-          ));
+          stamped = _restamped(
+            Qso(
+              uuid: qso.uuid,
+              operationUuid: qso.operationUuid,
+              data: mergeConcurrentEdit(base: basedOn.data, current: current.data, edited: qso.data),
+            ),
+          );
         }
       }
-      await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid)))
-          .write(_companionFor(stamped, 'qsos:update'));
+      await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(_companionFor(stamped, 'qsos:update'));
       await refreshOperationCounters(stamped.operationUuid);
     });
     // An edit can change a serial by hand, and never routes through the
@@ -521,21 +489,18 @@ class QsosRepository {
   Future<void> markSerialConflict(String operationUuid, SequenceRequest request, int number) async {
     final rows = await (db.select(db.qsos)..where((q) => q.operation.equals(operationUuid))).get();
     for (final row in rows) {
-      final qso = Qso(
-        uuid: row.uuid,
-        operationUuid: row.operation,
-        data: jsonDecode(row.data) as Map<String, dynamic>,
-        deleted: row.deleted,
-      );
+      final qso = Qso(uuid: row.uuid, operationUuid: row.operation, data: jsonDecode(row.data) as Map<String, dynamic>, deleted: row.deleted);
       if (qso.isEvent || qso.serialConflict || !request.includes(qso)) continue;
       if (request.serialOn(qso) != number) continue;
-      await update(Qso(
-        uuid: qso.uuid,
-        operationUuid: qso.operationUuid,
-        data: {...qso.data, Qso.serialConflictKey: true},
-        deleted: qso.deleted,
-        scoreCache: qso.scoreCache,
-      ));
+      await update(
+        Qso(
+          uuid: qso.uuid,
+          operationUuid: qso.operationUuid,
+          data: {...qso.data, Qso.serialConflictKey: true},
+          deleted: qso.deleted,
+          scoreCache: qso.scoreCache,
+        ),
+      );
       return;
     }
   }
@@ -589,9 +554,7 @@ class QsosRepository {
   /// with no operation at all — every loose contact on the account, since sync
   /// carries them between devices, but still not the size of the log.
   Future<List<Qso>> testQsosWithoutOperation() async {
-    final rows = await (db.select(db.qsos)
-          ..where((q) => q.operation.equals('') & q.purged.equals(false)))
-        .get();
+    final rows = await (db.select(db.qsos)..where((q) => q.operation.equals('') & q.purged.equals(false))).get();
     return (await qsosFromRows(rows)).where((qso) => isTestCall(qso.ourCall)).toList();
   }
 
@@ -677,9 +640,7 @@ class QsosRepository {
   /// after a purged operation's row has already been hard-deleted so an
   /// orphaned QSO never outlives its operation.
   Future<void> hardDeletePurgedForOperation(String operationUuid) async {
-    await (db.delete(db.qsos)
-          ..where((q) => q.operation.equals(operationUuid) & q.purged.equals(true) & q.synced.equals(true)))
-        .go();
+    await (db.delete(db.qsos)..where((q) => q.operation.equals(operationUuid) & q.purged.equals(true) & q.synced.equals(true))).go();
   }
 
   /// Removes every QSO of [operationUuid], no flags checked — for a
@@ -721,9 +682,7 @@ class QsosRepository {
   /// removal, and `synced` is what proves the other devices have been told.
   Future<int> hardDeletePurgedOrphans() async {
     final liveOperations = db.selectOnly(db.operations)..addColumns([db.operations.uuid]);
-    return (db.delete(db.qsos)
-          ..where((q) => q.purged.equals(true) & q.synced.equals(true) & q.operation.isNotInQuery(liveOperations)))
-        .go();
+    return (db.delete(db.qsos)..where((q) => q.purged.equals(true) & q.synced.equals(true) & q.operation.isNotInQuery(liveOperations))).go();
   }
 
   /// A copy of [qso] with a fresh revision stamp in its data — every local
@@ -731,13 +690,13 @@ class QsosRepository {
   /// column never diverge (a divergent pair would make `markSynced`'s
   /// stamp comparison fail forever and the row re-push in a loop).
   Qso _restamped(Qso qso) => Qso(
-        uuid: qso.uuid,
-        operationUuid: qso.operationUuid,
-        data: {...qso.data, 'updatedAtMillis': realNowMillis()},
-        deleted: qso.deleted,
-        purged: qso.purged,
-        scoreCache: qso.scoreCache,
-      );
+    uuid: qso.uuid,
+    operationUuid: qso.operationUuid,
+    data: {...qso.data, 'updatedAtMillis': realNowMillis()},
+    deleted: qso.deleted,
+    purged: qso.purged,
+    scoreCache: qso.scoreCache,
+  );
 
   /// A timestamp as milliseconds, whatever shape it arrived in. Mirrors
   /// `qso_merge.dart`'s reader: if the two disagree about a string timestamp,
@@ -802,11 +761,13 @@ class QsosRepository {
     // Described in PARALLEL: each description is an extension fan-out with
     // its own timeout, and a save awaits this whole pass — a rover's dozen
     // segments must cost one hook latency, not twelve in a row.
-    final descriptions = await Future.wait(rows.map((row) {
-      final stored = (row.event?['operation'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
-      final rowOverride = row.uuid == latest!.uuid ? override : stored;
-      return describe?.call(row.eventKind ?? 'break', rowOverride) ?? Future<String?>.value();
-    }));
+    final descriptions = await Future.wait(
+      rows.map((row) {
+        final stored = (row.event?['operation'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+        final rowOverride = row.uuid == latest!.uuid ? override : stored;
+        return describe?.call(row.eventKind ?? 'break', rowOverride) ?? Future<String?>.value();
+      }),
+    );
 
     var written = false;
     for (final (i, row) in rows.indexed) {
@@ -818,18 +779,17 @@ class QsosRepository {
       final keepDescription = description == null && !overrideChanged;
       final descriptionChanged = !keepDescription && description != event['description'];
       if (!overrideChanged && !descriptionChanged) continue;
-      await update(Qso(
-        uuid: row.uuid,
-        operationUuid: row.operationUuid,
-        data: {
-          ...row.data,
-          'event': {
-            ...event,
-            'operation': rowOverride,
-            if (!keepDescription) 'description': description,
-          }..removeWhere((key, value) => key == 'description' && value == null),
-        },
-      ));
+      await update(
+        Qso(
+          uuid: row.uuid,
+          operationUuid: row.operationUuid,
+          data: {
+            ...row.data,
+            'event': {...event, 'operation': rowOverride, if (!keepDescription) 'description': description}
+              ..removeWhere((key, value) => key == 'description' && value == null),
+          },
+        ),
+      );
       written = true;
     }
     return written;
@@ -902,17 +862,13 @@ class QsosRepository {
     final min = db.qsos.startAtMillis.min();
     final query = db.selectOnly(db.qsos)
       ..addColumns([min])
-      ..where(db.qsos.operation.equals(operationUuid) &
-          db.qsos.deleted.equals(false) &
-          db.qsos.band.equals('event').not());
+      ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false) & db.qsos.band.equals('event').not());
     return (await query.getSingleOrNull())?.read(min);
   }
 
   SimpleSelectStatement<$QsosTable, QsoRow> _forOperationQuery(String operationUuid, {required bool includeDeleted}) {
     return db.select(db.qsos)
-      ..where((q) => includeDeleted
-          ? q.operation.equals(operationUuid)
-          : q.operation.equals(operationUuid) & q.deleted.equals(false))
+      ..where((q) => includeDeleted ? q.operation.equals(operationUuid) : q.operation.equals(operationUuid) & q.deleted.equals(false))
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]);
   }
 
@@ -943,14 +899,14 @@ class QsosRepository {
   Future<List<Qso>> historyForCall(String call, {int? limit, HistoryFilter filter = HistoryFilter.none}) async {
     final normalized = call.trim().toUpperCase();
     if (normalized.isEmpty) return const [];
-    final query = db.select(db.qsos).join([
-      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
-    ])
-      ..where(db.qsos.theirCall.equals(normalized) &
-          db.qsos.deleted.equals(false) &
-          _isContact &
-          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()) &
-          filter.toSql(db.qsos, db.operations))
+    final query = db.select(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
+      ..where(
+        db.qsos.theirCall.equals(normalized) &
+            db.qsos.deleted.equals(false) &
+            _isContact &
+            (db.operations.deleted.equals(false) | db.operations.uuid.isNull()) &
+            filter.toSql(db.qsos, db.operations),
+      )
       ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis, mode: OrderingMode.desc)]);
     if (limit != null) query.limit(limit);
     final rows = await query.get();
@@ -974,15 +930,15 @@ class QsosRepository {
   Future<List<int>> historyStartTimesForCall(String call, {String? excludingUuid}) async {
     final normalized = call.trim().toUpperCase();
     if (normalized.isEmpty) return const [];
-    final query = db.selectOnly(db.qsos).join([
-      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
-    ])
+    final query = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
       ..addColumns([db.qsos.startAtMillis])
-      ..where(db.qsos.theirCall.equals(normalized) &
-          db.qsos.deleted.equals(false) &
-          _isContact &
-          (excludingUuid == null ? const Constant(true) : db.qsos.uuid.equals(excludingUuid).not()) &
-          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
+      ..where(
+        db.qsos.theirCall.equals(normalized) &
+            db.qsos.deleted.equals(false) &
+            _isContact &
+            (excludingUuid == null ? const Constant(true) : db.qsos.uuid.equals(excludingUuid).not()) &
+            (db.operations.deleted.equals(false) | db.operations.uuid.isNull()),
+      )
       ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis, mode: OrderingMode.desc)]);
     final rows = await query.get();
     return [for (final row in rows) row.read(db.qsos.startAtMillis) ?? 0];
@@ -1005,12 +961,8 @@ class QsosRepository {
     final results = <Qso>[];
     for (var i = 0; i < normalized.length; i += _inClauseChunkSize) {
       final chunk = normalized.sublist(i, math.min(i + _inClauseChunkSize, normalized.length));
-      final query = db.select(db.qsos).join([
-        leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
-      ])
-        ..where(db.qsos.theirCall.isIn(chunk) &
-            db.qsos.deleted.equals(false) &
-            (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
+      final query = db.select(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
+        ..where(db.qsos.theirCall.isIn(chunk) & db.qsos.deleted.equals(false) & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
       final rows = await query.get();
       // `qsosFromRows`, not a bare `.map(qsoFromRow)` — a chunk from an
       // established callsign can itself clear the isolate-offload
@@ -1039,21 +991,21 @@ class QsosRepository {
   /// them.
   Stream<Map<String, int>> watchDistinctOurCalls() {
     final count = db.qsos.uuid.count();
-    final query = db.selectOnly(db.qsos).join([
-      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
-    ])
+    final query = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
       ..addColumns([db.qsos.ourCall, count])
-      ..where(db.qsos.ourCall.isNotNull() &
-          db.qsos.ourCall.equals('').not() &
-          db.qsos.deleted.equals(false) &
-          // Event markers (start/break/end) carry no real callsign —
-          // excluded the same way `historyForCall` excludes them from a
-          // QSO list, or a callsign whose only rows are markers shows up
-          // in this picker with nothing behind it. `_isContact`, not a
-          // bare `band != 'event'`: that reads NULL — not true — for a
-          // QSO logged without a band, silently dropping it too.
-          _isContact &
-          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
+      ..where(
+        db.qsos.ourCall.isNotNull() &
+            db.qsos.ourCall.equals('').not() &
+            db.qsos.deleted.equals(false) &
+            // Event markers (start/break/end) carry no real callsign —
+            // excluded the same way `historyForCall` excludes them from a
+            // QSO list, or a callsign whose only rows are markers shows up
+            // in this picker with nothing behind it. `_isContact`, not a
+            // bare `band != 'event'`: that reads NULL — not true — for a
+            // QSO logged without a band, silently dropping it too.
+            _isContact &
+            (db.operations.deleted.equals(false) | db.operations.uuid.isNull()),
+      )
       ..groupBy([db.qsos.ourCall]);
     return query.watch().map((rows) {
       final calls = <String, int>{};
@@ -1076,12 +1028,8 @@ class QsosRepository {
   Stream<List<Qso>> watchForOurCalls(Iterable<String> calls) {
     final normalized = calls.map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty).toSet().toList();
     if (normalized.isEmpty) return Stream.value(const []);
-    final query = db.select(db.qsos).join([
-      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
-    ])
-      ..where(db.qsos.ourCall.isIn(normalized) &
-          db.qsos.deleted.equals(false) &
-          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
+    final query = db.select(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
+      ..where(db.qsos.ourCall.isIn(normalized) & db.qsos.deleted.equals(false) & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
       ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis)]);
     return query.watch().asyncMap((rows) async {
       final decoded = await qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);
@@ -1100,16 +1048,18 @@ class QsosRepository {
   /// round and nothing behind it would ever be offered again.
   Future<List<Qso>> unsyncedBatch(int limit, {Set<String> excluding = const {}}) async {
     final query = (db.select(db.qsos)
-      ..where((q) => excluding.isEmpty
-          ? q.synced.equals(false)
-          : q.synced.equals(false) & q.uuid.isNotIn(excluding.toList()))
+      ..where((q) => excluding.isEmpty ? q.synced.equals(false) : q.synced.equals(false) & q.uuid.isNotIn(excluding.toList()))
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis, mode: OrderingMode.desc)])
       ..limit(limit));
     return (await query.get()).map(qsoFromRow).toList();
   }
 
   Future<bool> hasUnsynced() async {
-    final row = await (db.select(db.qsos)..where((q) => q.synced.equals(false))..limit(1)).getSingleOrNull();
+    final row =
+        await (db.select(db.qsos)
+              ..where((q) => q.synced.equals(false))
+              ..limit(1))
+            .getSingleOrNull();
     return row != null;
   }
 
@@ -1122,10 +1072,7 @@ class QsosRepository {
     await db.transaction(() async {
       for (final q in list) {
         final stamp = q.updatedAtMillis;
-        await (db.update(db.qsos)
-              ..where((row) =>
-                  row.uuid.equals(q.uuid) &
-                  (stamp == null ? row.updatedAtMillis.isNull() : row.updatedAtMillis.equals(stamp))))
+        await (db.update(db.qsos)..where((row) => row.uuid.equals(q.uuid) & (stamp == null ? row.updatedAtMillis.isNull() : row.updatedAtMillis.equals(stamp))))
             .write(const QsosCompanion(synced: Value(true)));
       }
     });
@@ -1154,13 +1101,9 @@ class QsosRepository {
   Future<({int total, int pending})> syncCounts() async {
     final count = db.qsos.uuid.count();
 
-    final totalQuery = db.selectOnly(db.qsos).join([
-      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
-    ])
+    final totalQuery = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
       ..addColumns([count])
-      ..where(db.qsos.deleted.equals(false) &
-          _isContact &
-          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
+      ..where(db.qsos.deleted.equals(false) & _isContact & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
     final totalCount = (await totalQuery.getSingle()).read(count) ?? 0;
 
     final pendingQuery = db.selectOnly(db.qsos)
@@ -1182,14 +1125,9 @@ class QsosRepository {
   /// magnitude and direction.
   Future<int> unsyncedContactCount() async {
     final count = db.qsos.uuid.count();
-    final query = db.selectOnly(db.qsos).join([
-      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
-    ])
+    final query = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
       ..addColumns([count])
-      ..where(db.qsos.synced.equals(false) &
-          db.qsos.deleted.equals(false) &
-          _isContact &
-          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
+      ..where(db.qsos.synced.equals(false) & db.qsos.deleted.equals(false) & _isContact & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
     return (await query.getSingle()).read(count) ?? 0;
   }
 
@@ -1201,10 +1139,11 @@ class QsosRepository {
   Future<({int total, int pending, int eventTotal, int eventPending})> syncCountsForOperation(String operationUuid) async {
     final count = db.qsos.uuid.count();
     Future<int> countWhere(Expression<bool> where) async {
-      final result = await (db.selectOnly(db.qsos)
-            ..addColumns([count])
-            ..where(where))
-          .getSingle();
+      final result =
+          await (db.selectOnly(db.qsos)
+                ..addColumns([count])
+                ..where(where))
+              .getSingle();
       return result.read(count) ?? 0;
     }
 
@@ -1229,9 +1168,7 @@ class QsosRepository {
     final affectedOperations = <String>{};
     final incomingUuids = [for (final m in qsos) m['uuid']].whereType<String>().toList();
     await db.transaction(() async {
-      final existingRows = incomingUuids.isEmpty
-          ? const <QsoRow>[]
-          : await (db.select(db.qsos)..where((q) => q.uuid.isIn(incomingUuids))).get();
+      final existingRows = incomingUuids.isEmpty ? const <QsoRow>[] : await (db.select(db.qsos)..where((q) => q.uuid.isIn(incomingUuids))).get();
       final existingByUuid = {for (final r in existingRows) r.uuid: r};
 
       for (final incoming in qsos) {
@@ -1283,8 +1220,7 @@ class QsosRepository {
             incomingDeleted: deleted,
             incomingUpdatedAtMillis: incomingUpdatedAtMillis,
           )) {
-            await (db.update(db.qsos)..where((q) => q.uuid.equals(uuid)))
-                .write(const QsosCompanion(deleted: Value(true)));
+            await (db.update(db.qsos)..where((q) => q.uuid.equals(uuid))).write(const QsosCompanion(deleted: Value(true)));
             // The contact leaves the operation's cached count, which is a
             // column no query recomputes on its own.
             if (existing.operation.isNotEmpty) affectedOperations.add(existing.operation);
@@ -1294,9 +1230,10 @@ class QsosRepository {
 
         final qso = Qso(uuid: uuid, operationUuid: operationUuid, data: data);
 
-        await db.into(db.qsos).insertOnConflictUpdate(
-              _companionFor(qso, 'qsos:mergeFromSync')
-                  .copyWith(synced: const Value(true), deleted: Value(deleted), purged: Value(purged)),
+        await db
+            .into(db.qsos)
+            .insertOnConflictUpdate(
+              _companionFor(qso, 'qsos:mergeFromSync').copyWith(synced: const Value(true), deleted: Value(deleted), purged: Value(purged)),
             );
         // `''` names no operation, so there are no counters to refresh.
         if (operationUuid.isNotEmpty) affectedOperations.add(operationUuid);
@@ -1330,9 +1267,7 @@ class QsosRepository {
     final affectedOperations = <String>{};
     final incomingUuids = [for (final m in qsos) m['uuid']].whereType<String>().toList();
     await db.transaction(() async {
-      final existingRows = incomingUuids.isEmpty
-          ? const <QsoRow>[]
-          : await (db.select(db.qsos)..where((q) => q.uuid.isIn(incomingUuids))).get();
+      final existingRows = incomingUuids.isEmpty ? const <QsoRow>[] : await (db.select(db.qsos)..where((q) => q.uuid.isIn(incomingUuids))).get();
       final existingByUuid = {for (final r in existingRows) r.uuid: r};
 
       for (final incoming in qsos) {
@@ -1365,9 +1300,7 @@ class QsosRepository {
         }
 
         final qso = Qso(uuid: uuid, operationUuid: operationUuid, data: data);
-        await db.into(db.qsos).insertOnConflictUpdate(
-              _companionFor(qso, 'qsos:mergeFromPeer').copyWith(deleted: Value(deleted), purged: Value(purged)),
-            );
+        await db.into(db.qsos).insertOnConflictUpdate(_companionFor(qso, 'qsos:mergeFromPeer').copyWith(deleted: Value(deleted), purged: Value(purged)));
         affectedOperations.add(operationUuid);
       }
       for (final operationUuid in affectedOperations) {
@@ -1390,14 +1323,18 @@ class QsosRepository {
     await db.transaction(() async {
       final rows = await db.select(db.qsos).get();
       for (final row in rows) {
-        await db.into(db.qsosBackup).insert(QsosBackupCompanion.insert(
-              backupId: backupId,
-              backupAtMillis: now,
-              uuid: row.uuid,
-              operation: row.operation,
-              data: row.data,
-              deleted: Value(row.deleted),
-            ));
+        await db
+            .into(db.qsosBackup)
+            .insert(
+              QsosBackupCompanion.insert(
+                backupId: backupId,
+                backupAtMillis: now,
+                uuid: row.uuid,
+                operation: row.operation,
+                data: row.data,
+                deleted: Value(row.deleted),
+              ),
+            );
       }
       await db.delete(db.qsos).go();
     });
@@ -1414,11 +1351,7 @@ class QsosRepository {
     if (scoreCacheByUuid.isEmpty) return;
     await db.batch((batch) {
       for (final entry in scoreCacheByUuid.entries) {
-        batch.update(
-          db.qsos,
-          QsosCompanion(scoreCache: Value(entry.value)),
-          where: (q) => q.uuid.equals(entry.key),
-        );
+        batch.update(db.qsos, QsosCompanion(scoreCache: Value(entry.value)), where: (q) => q.uuid.equals(entry.key));
       }
     });
   }
@@ -1429,17 +1362,17 @@ class QsosRepository {
   /// our own importer wrote, which is the only question those reports exist
   /// to answer.
   QsosCompanion _companionFor(Qso qso, String context) => QsosCompanion(
-        uuid: Value(qso.uuid),
-        operation: Value(qso.operationUuid),
-        ourCall: Value(qso.ourCall),
-        theirCall: Value(qso.theirCall),
-        band: Value(qso.band),
-        mode: Value(qso.mode),
-        startAtMillis: Value(qso.startAtMillis),
-        data: Value(encodeQsoData(qso.data, context)),
-        synced: const Value(false),
-        updatedAtMillis: Value(qso.updatedAtMillis),
-      );
+    uuid: Value(qso.uuid),
+    operation: Value(qso.operationUuid),
+    ourCall: Value(qso.ourCall),
+    theirCall: Value(qso.theirCall),
+    band: Value(qso.band),
+    mode: Value(qso.mode),
+    startAtMillis: Value(qso.startAtMillis),
+    data: Value(encodeQsoData(qso.data, context)),
+    synced: const Value(false),
+    updatedAtMillis: Value(qso.updatedAtMillis),
+  );
 
   /// `qsoCount`/`startAtMillisMin/Max` are a locally derived cache — never
   /// part of the JSON payload sync sends (see `SyncEngine._buildPayload`) —
@@ -1472,11 +1405,7 @@ class QsosRepository {
       final row = await query.getSingle();
 
       await (db.update(db.operations)..where((op) => op.uuid.equals(operationUuid))).write(
-        OperationsCompanion(
-          qsoCount: Value(row.read(count) ?? 0),
-          startAtMillisMin: Value(row.read(minStart)),
-          startAtMillisMax: Value(row.read(maxStart)),
-        ),
+        OperationsCompanion(qsoCount: Value(row.read(count) ?? 0), startAtMillisMin: Value(row.read(minStart)), startAtMillisMax: Value(row.read(maxStart))),
       );
     });
   }

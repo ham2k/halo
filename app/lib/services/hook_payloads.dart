@@ -43,7 +43,4 @@ Map<String, dynamic> qsonPayloadFor({required Operation operation, required List
 /// was called about — and anything it asks the host about that operation
 /// (`ctx.getQsos`, above all) answers about nothing. [qsonPayloadFor] is the
 /// same shape for the export and scoring hooks.
-Map<String, dynamic> operationPayloadFor(Operation operation) => {
-      ...operation.data,
-      'uuid': operation.uuid,
-    };
+Map<String, dynamic> operationPayloadFor(Operation operation) => {...operation.data, 'uuid': operation.uuid};

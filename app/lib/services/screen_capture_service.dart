@@ -72,19 +72,13 @@ class ScreenCaptureService {
 
   /// Binary codec, not the standard one: the native side hands over packed
   /// frame bytes and nothing here needs them turned into a Dart map first.
-  static const _frames = BasicMessageChannel<ByteData?>(
-    'ham2k/screen_capture/frames',
-    BinaryCodec(),
-  );
+  static const _frames = BasicMessageChannel<ByteData?>('ham2k/screen_capture/frames', BinaryCodec());
 
   ScreenCaptureService() {
     if (!isSupportedPlatform) return;
     _frames.setMessageHandler((message) async {
       if (message == null || _frameController.isClosed) return null;
-      _frameController.add(message.buffer.asUint8List(
-        message.offsetInBytes,
-        message.lengthInBytes,
-      ));
+      _frameController.add(message.buffer.asUint8List(message.offsetInBytes, message.lengthInBytes));
       return null;
     });
     _methods.setMethodCallHandler((call) async {
@@ -92,10 +86,7 @@ class ScreenCaptureService {
         final args = (call.arguments as Map?)?.cast<String, dynamic>() ?? const {};
         final id = args['id'];
         if (id is String && id.isNotEmpty && !_stoppedController.isClosed) {
-          _stoppedController.add(ScreenCaptureStopped(
-            id,
-            (args['reason'] as String?) ?? 'The capture ended',
-          ));
+          _stoppedController.add(ScreenCaptureStopped(id, (args['reason'] as String?) ?? 'The capture ended'));
         }
       }
       return null;
@@ -120,9 +111,7 @@ class ScreenCaptureService {
   Future<ScreenCaptureAvailability> availability() async {
     if (!isSupportedPlatform) return ScreenCaptureAvailability.unsupportedPlatform;
     final available = await _invoke<bool>('available') ?? false;
-    return available
-        ? ScreenCaptureAvailability.available
-        : ScreenCaptureAvailability.unsupportedVersion;
+    return available ? ScreenCaptureAvailability.available : ScreenCaptureAvailability.unsupportedVersion;
   }
 
   /// What the OS says right now.
@@ -152,9 +141,7 @@ class ScreenCaptureService {
   Future<List<PeerScreenSource>> listSources() async {
     if (!isSupportedPlatform) return const [];
     final raw = await _invoke<List<Object?>>('listSources') ?? const [];
-    return [
-      for (final entry in raw) ?PeerScreenSource.from(entry),
-    ];
+    return [for (final entry in raw) ?PeerScreenSource.from(entry)];
   }
 
   /// Starts (or restarts, at new terms) one source. Restarting is how a
@@ -163,13 +150,7 @@ class ScreenCaptureService {
   /// [maxWidth] sizes the picture that is SENT — under a [crop] it is the
   /// width of the cropped region, so the native side captures at whatever
   /// scale puts that many pixels across the part being watched.
-  Future<void> start(
-    String sourceId, {
-    int maxWidth = 1280,
-    int fps = 10,
-    double quality = 0.6,
-    PeerScreenCrop? crop,
-  }) async {
+  Future<void> start(String sourceId, {int maxWidth = 1280, int fps = 10, double quality = 0.6, PeerScreenCrop? crop}) async {
     if (!isSupportedPlatform) {
       throw const ScreenCaptureException('This device cannot share its screen', code: 'unsupported');
     }
@@ -222,10 +203,7 @@ class ScreenCaptureService {
     } on PlatformException catch (e) {
       throw ScreenCaptureException(e.message ?? 'Screen capture failed', code: e.code);
     } on MissingPluginException {
-      throw const ScreenCaptureException(
-        'This build cannot share its screen',
-        code: 'unsupported',
-      );
+      throw const ScreenCaptureException('This build cannot share its screen', code: 'unsupported');
     }
   }
 }

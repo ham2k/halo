@@ -202,8 +202,7 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
     });
   }
 
-  static bool _visibleIn(AppLifecycleState state) =>
-      state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+  static bool _visibleIn(AppLifecycleState state) => state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -438,8 +437,7 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
 
               // The operator clicked something. Off it goes, and the pane
               // stays on the page they configured.
-              final byHand = action.hasGesture == true ||
-                  action.navigationType == NavigationType.LINK_ACTIVATED;
+              final byHand = action.hasGesture == true || action.navigationType == NavigationType.LINK_ACTIVATED;
               if (byHand) {
                 openExternalUrl(target);
                 return NavigationActionPolicy.CANCEL;
@@ -456,10 +454,7 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
             // Denied outright. The app holds a location entitlement, so an
             // unwired handler defaults to PROMPT and a page could raise a
             // system prompt that looks like HaLo asking.
-            onPermissionRequest: (controller, request) async => PermissionResponse(
-              resources: request.resources,
-              action: PermissionResponseAction.DENY,
-            ),
+            onPermissionRequest: (controller, request) async => PermissionResponse(resources: request.resources, action: PermissionResponseAction.DENY),
             onLoadStop: (controller, url) async {
               _loadInFlight = false;
               _loadedAt = widget.now();
@@ -570,10 +565,7 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
             ),
             if (url != null) ...[
               const SizedBox(height: Space.md),
-              TextButton(
-                onPressed: () => openExternalUrl(url),
-                child: Text(context.t.operation.layout.panels.websiteOpenExternally),
-              ),
+              TextButton(onPressed: () => openExternalUrl(url), child: Text(context.t.operation.layout.panels.websiteOpenExternally)),
             ],
           ],
         ),

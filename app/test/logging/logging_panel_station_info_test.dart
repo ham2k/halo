@@ -32,20 +32,13 @@ void main() {
   });
 
   Widget wrap(Widget child) => TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: SizedBox(width: 400, height: 800, child: child),
-          ),
-        ),
-      );
+    child: MaterialApp(
+      home: Scaffold(body: SizedBox(width: 400, height: 800, child: child)),
+    ),
+  );
 
-  LoggingPanel panel() => LoggingPanel(
-        operation: operation,
-        services: services,
-        qsos: const [],
-        loggingControls: const [],
-        onCommandAction: (action, [params]) async {},
-      );
+  LoggingPanel panel() =>
+      LoggingPanel(operation: operation, services: services, qsos: const [], loggingControls: const [], onCommandAction: (action, [params]) async {});
 
   Future<Map<String, dynamic>> decorate(WidgetTester tester, Map<String, dynamic> qso) {
     final controls = tester.widget<LoggingControls>(find.byType(LoggingControls));

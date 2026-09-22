@@ -35,10 +35,7 @@ List<File> _uiSources() {
       fail('expected ${root.path} to exist — run this suite from the app package (cwd: ${Directory.current.path})');
     }
   }
-  return [
-    for (final root in roots)
-      ...root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart')),
-  ];
+  return [for (final root in roots) ...root.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart'))];
 }
 
 void main() {

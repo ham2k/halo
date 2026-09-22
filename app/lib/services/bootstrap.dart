@@ -12,8 +12,7 @@ import 'dart:async';
 import 'package:intl/intl.dart';
 
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kDebugMode, kIsWeb, visibleForTesting, TargetPlatform;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kDebugMode, kIsWeb, visibleForTesting, TargetPlatform;
 // Prefixed separately from the AppExitResponse import above: some import in
 // this file's graph makes the bare name `TextDirection` resolve to something
 // without an `.ltr` getter, so the real dart:ui one needs this to be reached
@@ -81,8 +80,7 @@ Future<void> _preloadEmojiFont() async {
     (TextPainter(
       text: TextSpan(text: '🇨🇦', style: emojiStyle()),
       textDirection: dart_ui.TextDirection.ltr,
-    )..layout())
-        .dispose();
+    )..layout()).dispose();
   } catch (error, stackTrace) {
     debugPrint('[boot] emoji font preload failed: $error\n$stackTrace');
     ErrorReportingService.report(error, stackTrace, context: 'boot:emoji-font-preload');
@@ -93,12 +91,7 @@ Future<void> _preloadEmojiFont() async {
 /// returns the assembled services bundle. Distribution-specific entrypoints
 /// (e.g. a private `main_dist.dart`) call this with real implementations of
 /// the distribution-only services instead of the OSS no-op defaults.
-Future<HaLoServices> bootstrap({
-  MetricsService? metrics,
-  PurchaseService? purchases,
-  UpdateService? updates,
-  UpdateCheckService? updateCheck,
-}) async {
+Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purchases, UpdateService? updates, UpdateCheckService? updateCheck}) async {
   WidgetsFlutterBinding.ensureInitialized();
   // Before everything else: settles where the app's files live and moves any
   // left in an older location, which SettingsService.load() below depends on
@@ -110,20 +103,18 @@ Future<HaLoServices> bootstrap({
   // [reportWebStorageHealth] once the (lazy) database has opened, so boot
   // can warn when the browser degraded to storage that can lose the log.
   WasmDatabaseResult? webDbResult;
-  final db = HaLoDatabase(driftDatabase(
-    name: kDatabaseName,
-    web: kIsWeb
-        ? DriftWebOptions(
-            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-            driftWorker: Uri.parse('drift_worker.js'),
-            onResult: (result) => webDbResult = result,
-          )
-        : null,
-    // drift resolves this lazily, right before opening the file — which is
-    // what makes it the correct place to hang the one-shot relocation off
-    // Documents: no boot step can accidentally open the database first.
-    native: kIsWeb ? null : DriftNativeOptions(databaseDirectory: appDataDirectory),
-  ));
+  final db = HaLoDatabase(
+    driftDatabase(
+      name: kDatabaseName,
+      web: kIsWeb
+          ? DriftWebOptions(sqlite3Wasm: Uri.parse('sqlite3.wasm'), driftWorker: Uri.parse('drift_worker.js'), onResult: (result) => webDbResult = result)
+          : null,
+      // drift resolves this lazily, right before opening the file — which is
+      // what makes it the correct place to hang the one-shot relocation off
+      // Documents: no boot step can accidentally open the database first.
+      native: kIsWeb ? null : DriftNativeOptions(databaseDirectory: appDataDirectory),
+    ),
+  );
   // Opened HERE rather than left to whichever query happens to be first.
   // drift runs its migration on the first statement, so a log written by a
   // newer build refuses to open somewhere deep in a sync round or a list
@@ -275,9 +266,7 @@ Future<HaLoServices> bootstrap({
   // macOS app-menu actions (see WindowChromeService and macos/Runner): "About"
   // shows the release overlay, "Preferences…" (⌘,) opens the Settings view.
   WindowChromeService.onShowReleaseOverlay = services.devSplashTrigger.trigger;
-  WindowChromeService.onOpenSettings = () => navigatorKey.currentState?.push(
-        MaterialPageRoute<void>(builder: (_) => SettingsView(services: services)),
-      );
+  WindowChromeService.onOpenSettings = () => navigatorKey.currentState?.push(MaterialPageRoute<void>(builder: (_) => SettingsView(services: services)));
   WindowChromeService.onCheckForUpdates = () => unawaited(const AutoUpdateService().checkForUpdatesInteractively());
 
   // The panel catalog is read HERE, before bootstrap returns and the first
@@ -308,32 +297,35 @@ Future<HaLoServices> bootstrap({
   }
 
   // Await the extension system being fully booted, then initialize and sync data files
-  unawaited(extensions.start().then((_) async {
-    // BEFORE the data files, and awaited: connecting replaces the runtime, and
-    // a replacement landing mid-load kills it against a disposed host — after
-    // which the sync behind it fetches a 304, finds nothing to import, and the
-    // session simply runs without that data (HALO-429). Sequenced here so
-    // there is one runtime swap and then one load, against the runtime that
-    // will actually serve it. Only ever with developer mode on AND the toggle
-    // set — no address is ever discovered, only typed.
-    if (settings.developerMode &&
-        settings.extensionDevServerEnabled &&
-        settings.extensionDevServerUrl.isNotEmpty) {
-      // Never throws — the client records a failed connection as status
-      // rather than an error, so a dev server that has since been stopped
-      // costs a restarting app nothing but a line in Developer settings.
-      await services.extensionDev.connect(settings.extensionDevServerUrl);
-    }
-    await services.dataFiles.loadRawDataFiles();
-    // Unattended (no user action prompted this): a persistent failure notice
-    // here would repeat on every single offline boot.
-    await services.dataFiles.syncAllDataFiles(notifyOnFailure: false);
-    // After the enabled extensions have refreshed their data-file ownership
-    // records, drop the data of any extension disabled long enough ago.
-    await services.dataFiles.purgeStaleExtensionData(settings.extensionDisabledSince);
-  }).catchError((Object e) {
-    debugPrint('[boot] failed to initialize data files: $e');
-  }));
+  unawaited(
+    extensions
+        .start()
+        .then((_) async {
+          // BEFORE the data files, and awaited: connecting replaces the runtime, and
+          // a replacement landing mid-load kills it against a disposed host — after
+          // which the sync behind it fetches a 304, finds nothing to import, and the
+          // session simply runs without that data (HALO-429). Sequenced here so
+          // there is one runtime swap and then one load, against the runtime that
+          // will actually serve it. Only ever with developer mode on AND the toggle
+          // set — no address is ever discovered, only typed.
+          if (settings.developerMode && settings.extensionDevServerEnabled && settings.extensionDevServerUrl.isNotEmpty) {
+            // Never throws — the client records a failed connection as status
+            // rather than an error, so a dev server that has since been stopped
+            // costs a restarting app nothing but a line in Developer settings.
+            await services.extensionDev.connect(settings.extensionDevServerUrl);
+          }
+          await services.dataFiles.loadRawDataFiles();
+          // Unattended (no user action prompted this): a persistent failure notice
+          // here would repeat on every single offline boot.
+          await services.dataFiles.syncAllDataFiles(notifyOnFailure: false);
+          // After the enabled extensions have refreshed their data-file ownership
+          // records, drop the data of any extension disabled long enough ago.
+          await services.dataFiles.purgeStaleExtensionData(settings.extensionDisabledSince);
+        })
+        .catchError((Object e) {
+          debugPrint('[boot] failed to initialize data files: $e');
+        }),
+  );
 
   // The unattended catalog update check, once the runtime is up — on its own
   // chain like the flags refresh below, not at the tail of the data-files one:
@@ -341,11 +333,16 @@ Future<HaLoServices> bootstrap({
   // session, and a check the operator did not ask for must not delay a step
   // they did. It asks only about the installed store's extensions, and the
   // service keeps a dead catalog to a console line and a failure streak.
-  unawaited(extensions.start().then((_) {
-    services.catalogUpdateCheck.start();
-  }).catchError((Object e) {
-    debugPrint('[boot] failed to start the catalog update check: $e');
-  }));
+  unawaited(
+    extensions
+        .start()
+        .then((_) {
+          services.catalogUpdateCheck.start();
+        })
+        .catchError((Object e) {
+          debugPrint('[boot] failed to start the catalog update check: $e');
+        }),
+  );
 
   // Settled BEFORE the flags refresh below, not merely before `return`: the
   // notice environment reads this global to report `appCodePush`, and a
@@ -359,11 +356,16 @@ Future<HaLoServices> bootstrap({
   // Fetch feature flags + notices for the current callsign once the runtime
   // is up (the callsign→DXCC-entity annotation needs it). Fire-and-forget;
   // failures leave flags empty and are logged inside the service.
-  unawaited(extensions.start().then((_) {
-    return services.flags.refreshForCall(settings.activeProfile.operatorCall);
-  }).catchError((Object e) {
-    debugPrint('[boot] failed to fetch feature flags: $e');
-  }));
+  unawaited(
+    extensions
+        .start()
+        .then((_) {
+          return services.flags.refreshForCall(settings.activeProfile.operatorCall);
+        })
+        .catchError((Object e) {
+          debugPrint('[boot] failed to fetch feature flags: $e');
+        }),
+  );
 
   // Fire-and-forget like the boot steps above: neither the persistence
   // request nor the health warning is worth delaying first paint for.
@@ -405,8 +407,10 @@ Future<void> reportWebStorageHealth(HaLoServices services, WasmDatabaseResult? F
   }
   final negotiated = result();
   if (negotiated == null) return;
-  debugPrint('[web-storage] using ${negotiated.chosenImplementation}'
-      '${negotiated.missingFeatures.isEmpty ? '' : ', missing ${negotiated.missingFeatures}'}');
+  debugPrint(
+    '[web-storage] using ${negotiated.chosenImplementation}'
+    '${negotiated.missingFeatures.isEmpty ? '' : ', missing ${negotiated.missingFeatures}'}',
+  );
   switch (negotiated.chosenImplementation) {
     case WasmStorageImplementation.inMemory:
       services.statusBar.showNotice(key: 'webStorage', icon: 'database-alert', text: t.notices.webStorageInMemory);
@@ -555,19 +559,7 @@ Future<void> showLogFromNewerBuildNotice(HaLoServices services, LogFromNewerBuil
   // splicing an English "this browser" into the sentence would leave every
   // other locale reading its own words and then a foreign phrase.
   final text = kIsWeb
-      ? t.notices.logFromNewerBuildNoLocation(
-          storage: refusal.storage.toString(),
-          understood: refusal.understood.toString(),
-        )
-      : t.notices.logFromNewerBuild(
-          storage: refusal.storage.toString(),
-          understood: refusal.understood.toString(),
-          location: (await appDataDirectory()).path,
-        );
-  services.statusBar.showNotice(
-    key: 'logFromNewerBuild',
-    icon: 'database-alert',
-    title: t.notices.logFromNewerBuildTitle,
-    text: text,
-  );
+      ? t.notices.logFromNewerBuildNoLocation(storage: refusal.storage.toString(), understood: refusal.understood.toString())
+      : t.notices.logFromNewerBuild(storage: refusal.storage.toString(), understood: refusal.understood.toString(), location: (await appDataDirectory()).path);
+  services.statusBar.showNotice(key: 'logFromNewerBuild', icon: 'database-alert', title: t.notices.logFromNewerBuildTitle, text: text);
 }

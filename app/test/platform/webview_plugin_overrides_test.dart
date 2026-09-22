@@ -111,14 +111,16 @@ void main() {
       expect(
         plugin,
         isNotNull,
-        reason: 'flutter_inappwebview endorses a Linux implementation; if it '
+        reason:
+            'flutter_inappwebview endorses a Linux implementation; if it '
             'resolves to nothing at all the override has been replaced by '
             'something that changes how the plugin is declared',
       );
       expect(
         _posixPath(plugin!['path']),
         contains('packages/flutter_inappwebview_linux_stub'),
-        reason: 'resolving to the published package pulls in WPE WebKit, whose '
+        reason:
+            'resolving to the published package pulls in WPE WebKit, whose '
             'CMakeLists is a FATAL_ERROR on every distro we build on',
       );
     });
@@ -181,7 +183,8 @@ void main() {
         expect(
           _overridesIn('pubspec.yaml')[entry.key],
           entry.value,
-          reason: 'a deleted or edited pin fails here first: of the two checks '
+          reason:
+              'a deleted or edited pin fails here first: of the two checks '
               'below, one cannot see a deletion and the other never runs',
         );
         // Both of the below are a consistency cross-check, not independent
@@ -193,13 +196,15 @@ void main() {
         expect(
           locked.version,
           entry.value,
-          reason: 'the lock is what a build resolves against, so this says the '
+          reason:
+              'the lock is what a build resolves against, so this says the '
               'pin above is the version builds actually get',
         );
         expect(
           locked.kind,
           'direct overridden',
-          reason: 'anything else means this version arrived through ordinary '
+          reason:
+              'anything else means this version arrived through ordinary '
               'resolution rather than through the pin, and the next '
               '`pub upgrade` is free to move it',
         );
@@ -216,13 +221,15 @@ void main() {
       expect(
         _declaredConstraint('pubspec.yaml', 'flutter_inappwebview'),
         '6.2.0-beta.3',
-        reason: 'must be the bare version: a caret or a range here lets '
+        reason:
+            'must be the bare version: a caret or a range here lets '
             '`pub upgrade` move the umbrella out from under the family',
       );
       expect(
         _locked('flutter_inappwebview').version,
         '6.2.0-beta.3',
-        reason: 'the lock is what a build resolves against, so a declaration '
+        reason:
+            'the lock is what a build resolves against, so a declaration '
             'the lock disagrees with is a pin nobody applied',
       );
     });
@@ -244,7 +251,8 @@ void main() {
     // and a copy that stops after the first half leaves the assertion above
     // true. Nothing in ./scripts/test.sh compiles Swift, so this one line is
     // the only part of the patch a Dart test can see at all.
-    const manifestPath = '../packages/flutter_inappwebview_macos_patched/'
+    const manifestPath =
+        '../packages/flutter_inappwebview_macos_patched/'
         'macos/flutter_inappwebview_macos/Package.swift';
     final manifest = File(manifestPath);
     if (!manifest.existsSync()) {
@@ -254,18 +262,21 @@ void main() {
       );
     }
     final source = manifest.readAsStringSync();
-    const failure = "protocol 'ASWebAuthenticationPresentationContextProviding' "
+    const failure =
+        "protocol 'ASWebAuthenticationPresentationContextProviding' "
         "requires 'presentationAnchor(for:)' to be available in macOS 10.14 and newer";
     expect(
       source,
       contains('.macOS("10.15")'),
-      reason: 'raising the SPM minimum IS the patch; without it the first '
+      reason:
+          'raising the SPM minimum IS the patch; without it the first '
           'signal is a tag-triggered macOS release failing with "$failure"',
     );
     expect(
       source,
       isNot(contains('.macOS("10.14")')),
-      reason: 'a 10.14 minimum anywhere in this manifest is upstream\'s own '
+      reason:
+          'a 10.14 minimum anywhere in this manifest is upstream\'s own '
           'value, which fails the release build with "$failure"',
     );
   });
@@ -286,7 +297,8 @@ void main() {
     // fixed the race", and a copy that stops after the first half leaves the
     // assertion above true. Nothing in ./scripts/test.sh compiles C++, so
     // this is the only part of the patch a Dart test can see at all.
-    const sourcePath = '../packages/flutter_inappwebview_windows_patched/'
+    const sourcePath =
+        '../packages/flutter_inappwebview_windows_patched/'
         'windows/custom_platform_view/custom_platform_view.cc';
     final file = File(sourcePath);
     if (!file.existsSync()) {
@@ -300,7 +312,8 @@ void main() {
     expect(
       source,
       contains('texture_registrar_->UnregisterTexture(texture_id_, [bridge, texture]() {});'),
-      reason: 'deferring texture_bridge_/flutter_texture_ destruction to the '
+      reason:
+          'deferring texture_bridge_/flutter_texture_ destruction to the '
           'UnregisterTexture completion callback IS the patch; without it '
           'the first signal is a Windows-only native crash on window close '
           '(HALO-290/HALO-NEXT-3), not a test failure',
@@ -308,7 +321,8 @@ void main() {
     expect(
       source,
       contains('texture_bridge_->Stop();'),
-      reason: 'deferring texture_bridge_ destruction without first stopping '
+      reason:
+          'deferring texture_bridge_ destruction without first stopping '
           'it re-opens a narrower use-after-free: its capture thread keeps '
           'calling a frame-available callback that captures the '
           'CustomPlatformView this destructor is in the middle of '
@@ -317,13 +331,15 @@ void main() {
     expect(
       source,
       isNot(contains('UnregisterTexture(texture_id_, nullptr)')),
-      reason: 'a nullptr callback anywhere in this destructor is upstream\'s '
+      reason:
+          'a nullptr callback anywhere in this destructor is upstream\'s '
           'own unpatched line, which reintroduces the use-after-free',
     );
     expect(
       source,
       contains('event_channel_->SetStreamHandler(nullptr);'),
-      reason: 'clearing the event channel\'s stream handler IS the messenger '
+      reason:
+          'clearing the event channel\'s stream handler IS the messenger '
           'callback race patch; without it a dangling [this] capture stays '
           'registered in the messenger\'s callback map after every dispose '
           '(HALO-290/HALO-NEXT-59), not a test failure',
@@ -335,7 +351,8 @@ void main() {
     // being in it" caveat as the destructor test above, for the
     // in_app_webview_manager.cpp half of the messenger callback race patch
     // (PATCH.md's "The messenger callback race" section).
-    const sourcePath = '../packages/flutter_inappwebview_windows_patched/'
+    const sourcePath =
+        '../packages/flutter_inappwebview_windows_patched/'
         'windows/in_app_webview/in_app_webview_manager.cpp';
     final file = File(sourcePath);
     if (!file.existsSync()) {
@@ -349,7 +366,8 @@ void main() {
     expect(
       source,
       contains('oldPlatformView->UnregisterMethodCallHandler();'),
-      reason: 'unregistering the previous CustomPlatformView before erasing '
+      reason:
+          'unregistering the previous CustomPlatformView before erasing '
           'it on keep-alive reuse IS the patch; without it the old and new '
           'platform views race registering channels on the same messenger '
           '(HALO-290/HALO-NEXT-59), not a test failure',
@@ -361,7 +379,8 @@ void main() {
     // being in it" caveat as the other two Windows-patch tests, for the
     // webview_environment.cpp third of the messenger callback race patch
     // (PATCH.md's "The messenger callback race" section).
-    const sourcePath = '../packages/flutter_inappwebview_windows_patched/'
+    const sourcePath =
+        '../packages/flutter_inappwebview_windows_patched/'
         'windows/webview_environment/webview_environment.cpp';
     final file = File(sourcePath);
     if (!file.existsSync()) {
@@ -375,7 +394,8 @@ void main() {
     expect(
       source,
       contains('channelDelegate->UnregisterMethodCallHandler();'),
-      reason: 'unregistering channelDelegate in ~WebViewEnvironment() IS the '
+      reason:
+          'unregistering channelDelegate in ~WebViewEnvironment() IS the '
           'patch; without it a dangling channelDelegate capture stays '
           'registered in the messenger\'s callback map after the '
           'environment is destroyed (HALO-290/HALO-NEXT-59), not a test '
@@ -391,11 +411,14 @@ void main() {
     // pointer unchecked in Release. Without these guards every quit that has
     // ever hosted a webview dies in engine teardown (HALO-394 /
     // HALO-NEXT-71/72/76). Same re-vendor caveat as the other tests here.
-    const pluginPath = '../packages/flutter_inappwebview_windows_patched/'
+    const pluginPath =
+        '../packages/flutter_inappwebview_windows_patched/'
         'windows/flutter_inappwebview_windows_plugin.cpp';
-    const viewPath = '../packages/flutter_inappwebview_windows_patched/'
+    const viewPath =
+        '../packages/flutter_inappwebview_windows_patched/'
         'windows/custom_platform_view/custom_platform_view.cc';
-    const environmentPath = '../packages/flutter_inappwebview_windows_patched/'
+    const environmentPath =
+        '../packages/flutter_inappwebview_windows_patched/'
         'windows/webview_environment/webview_environment.cpp';
     for (final path in [pluginPath, viewPath, environmentPath]) {
       if (!File(path).existsSync()) fail('No $path — this test cannot answer the question it exists to answer.');
@@ -403,7 +426,8 @@ void main() {
     expect(
       File(pluginPath).readAsStringSync(),
       contains('FlutterDesktopMessengerIsAvailable('),
-      reason: 'the plugin answers isMessengerAvailable() from the engine\'s own '
+      reason:
+          'the plugin answers isMessengerAvailable() from the engine\'s own '
           'availability check; a flag of our own would have to be set at '
           'exactly the right moment, and this is the moment the engine '
           'already tracks',
@@ -411,14 +435,16 @@ void main() {
     expect(
       File(viewPath).readAsStringSync(),
       contains('if (event_channel_ && plugin_ && plugin_->isMessengerAvailable()) {'),
-      reason: 'the event-channel unregister in ~CustomPlatformView must be '
+      reason:
+          'the event-channel unregister in ~CustomPlatformView must be '
           'skipped once the engine is gone, or it reads through a null '
           'engine at every quit',
     );
     expect(
       File(environmentPath).readAsStringSync(),
       contains('if (channelDelegate && plugin && plugin->isMessengerAvailable()) {'),
-      reason: 'the delegate unregister in ~WebViewEnvironment must be skipped '
+      reason:
+          'the delegate unregister in ~WebViewEnvironment must be skipped '
           'once the engine is gone, or it reads through a null engine at '
           'every quit',
     );
@@ -430,7 +456,8 @@ void main() {
     // CMakeLists.txt fourth of the messenger callback race patch (PATCH.md's
     // "The messenger callback race" section) — instrumentation, not a bugfix,
     // but dropped just as silently on a careless re-vendor.
-    const sourcePath = '../packages/flutter_inappwebview_windows_patched/'
+    const sourcePath =
+        '../packages/flutter_inappwebview_windows_patched/'
         'windows/CMakeLists.txt';
     final file = File(sourcePath);
     if (!file.existsSync()) {
@@ -444,7 +471,8 @@ void main() {
     expect(
       source,
       contains(r'target_compile_options(${PLUGIN_NAME} PRIVATE $<$<CONFIG:Release>:/Zi>)'),
-      reason: 'emitting a Release PDB for this plugin IS the patch; without '
+      reason:
+          'emitting a Release PDB for this plugin IS the patch; without '
           'it a native crash whose actual site is inside this plugin\'s own '
           'code resolves in Sentry the same way one inside the Flutter '
           'engine does — nearest-export only, no line, no non-exported '
@@ -453,7 +481,8 @@ void main() {
     expect(
       source,
       contains(r'target_link_options(${PLUGIN_NAME} PRIVATE $<$<CONFIG:Release>:/DEBUG>)'),
-      reason: 'MSVC emits the linked PDB only with the linker\'s /DEBUG -- '
+      reason:
+          'MSVC emits the linked PDB only with the linker\'s /DEBUG -- '
           '/Zi alone produces compiler-side PDBs the upload step in '
           'app_dist/ci/build-windows.ps1 never finds, so dropping just this '
           'line on a re-vendor defeats the whole hunk while the /Zi check '

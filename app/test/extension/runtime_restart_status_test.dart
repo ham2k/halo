@@ -19,17 +19,13 @@ void main() {
 
   /// [returning] is what the next generation loads — the fixture's whole
   /// variable, since it decides whether a notice has an owner to come back to.
-  Future<(ExtensionServiceWithFakeHost, StatusBarService)> serviceWithStatusBar({
-    List<String> returning = const ['ham2k-pota'],
-  }) async {
+  Future<(ExtensionServiceWithFakeHost, StatusBarService)> serviceWithStatusBar({List<String> returning = const ['ham2k-pota']}) async {
     SharedPreferences.setMockInitialValues(const {});
     final statusBar = StatusBarService(await SharedPreferences.getInstance());
     final extensions = ExtensionServiceWithFakeHost()
       ..statusBar = statusBar
       ..debugLoadedExtensionKeys = {'ham2k-pota'}
-      ..debugSetAvailableExtensions([
-        for (final key in returning) ExtensionInfo(key: key, file: '$key.js', core: false, name: key),
-      ]);
+      ..debugSetAvailableExtensions([for (final key in returning) ExtensionInfo(key: key, file: '$key.js', core: false, name: key)]);
     return (extensions, statusBar);
   }
 
@@ -58,14 +54,7 @@ void main() {
     // the bundle that just killed the runtime.
     final (extensions, _) = await serviceWithStatusBar();
     extensions.debugSetAvailableExtensions(const [
-      ExtensionInfo(
-        key: 'ham2k-qrz',
-        file: 'ham2k-qrz.js',
-        source: ExtensionSource.installed,
-        core: false,
-        name: 'QRZ',
-        version: '0.2.0',
-      ),
+      ExtensionInfo(key: 'ham2k-qrz', file: 'ham2k-qrz.js', source: ExtensionSource.installed, core: false, name: 'QRZ', version: '0.2.0'),
     ]);
     extensions.debugLastStartFailure = 'evaluating ham2k-qrz: TypeError';
     expect(extensions.lastStartFailureKey, 'ham2k-qrz');
@@ -109,8 +98,7 @@ void main() {
     await extensions.restartRuntime();
 
     expect(statusBar.activeNotices, isEmpty);
-    expect(statusBar.history.map((n) => n.key), contains('ham2k-pota:account'),
-        reason: 'dismissed, not deleted — Recent Notices keeps it');
+    expect(statusBar.history.map((n) => n.key), contains('ham2k-pota:account'), reason: 'dismissed, not deleted — Recent Notices keeps it');
   });
 
   test('and leaves the app\'s own footer items alone', () async {

@@ -17,10 +17,7 @@ void main() {
   });
 
   test('different times on the same day are still one date', () {
-    expect(
-      formatOperationDateRange(DateTime.utc(2026, 1, 3, 1), DateTime.utc(2026, 1, 3, 23)),
-      'Jan 3',
-    );
+    expect(formatOperationDateRange(DateTime.utc(2026, 1, 3, 1), DateTime.utc(2026, 1, 3, 23)), 'Jan 3');
   });
 
   test('within a month the month is not repeated', () {

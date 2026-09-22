@@ -44,8 +44,7 @@ void main() {
       }
       return null;
     });
-    addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, null));
+    addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
     return (store: store, reads: reads);
   }
 
@@ -198,8 +197,9 @@ void main() {
     // Written by another device (iCloud Keychain), not by this process.
     keychain.store['account_creds_qrz'] = '{"username":"synced"}';
     expect(await service.getAccountCredentials('qrz'), {'username': 'synced'});
-    expect((await getAccount(service, 'qrz'))['credentials'], {'username': 'synced'},
-        reason: 'hooks still used the old credentials the Accounts panel no longer shows');
+    expect((await getAccount(service, 'qrz'))['credentials'], {
+      'username': 'synced',
+    }, reason: 'hooks still used the old credentials the Accounts panel no longer shows');
   });
 
   test('the Accounts UI reading a keyring that now works clears a cached failure', () async {

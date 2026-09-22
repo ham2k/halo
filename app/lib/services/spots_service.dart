@@ -13,13 +13,7 @@ import 'package:halo_core/halo_core.dart';
 /// The three key lists together name every source that was actually asked.
 /// All three empty is not "every band is quiet": it is the fan-out itself
 /// not running, which says nothing about any source.
-typedef SpotsFetch = Future<
-    ({
-      List<Map<String, dynamic>> items,
-      List<String> succeeded,
-      List<String> unreachable,
-      List<String> failed
-    })> Function();
+typedef SpotsFetch = Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> Function();
 
 /// The one place fetched spots live, shared by the Spots Panel (which
 /// displays them) and the `spot-history` lookup extension (which mines them
@@ -37,12 +31,7 @@ typedef SpotsFetch = Future<
 /// looked up against spots whether or not the Spots Panel was ever opened,
 /// which is the whole point of the lookup.
 class SpotsService extends ChangeNotifier {
-  SpotsService({
-    required this._fetchSpots,
-    this.refreshInterval = const Duration(minutes: 2),
-    this.isOffline,
-    Stream<bool>? offlineChanges,
-  }) {
+  SpotsService({required this._fetchSpots, this.refreshInterval = const Duration(minutes: 2), this.isOffline, Stream<bool>? offlineChanges}) {
     // Straight away on recovery rather than up to a whole refreshInterval
     // later: the board an operator comes back to is stale by exactly the
     // length of the outage, and that is the moment they look at it.
@@ -233,8 +222,7 @@ class SpotsService extends ChangeNotifier {
       // throws degrades to the same empty answer.
       final retained = {
         for (final entry in _bySource.entries)
-          if (!answered.containsKey(entry.key) && (askedNothing || outOfTouch.contains(entry.key)))
-            entry.key: entry.value,
+          if (!answered.containsKey(entry.key) && (askedNothing || outOfTouch.contains(entry.key))) entry.key: entry.value,
       };
       // Nothing older than [maxSpotAge] is kept, whoever offered it. Spots
       // have no open-ended life here: a source that goes on failing empties

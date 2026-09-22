@@ -57,10 +57,7 @@ class _Session implements TransceiverSession {
     for (final line in utf8.decode(chunk).split('\n')) {
       if (line.trim().isEmpty) continue;
       final parts = line.trim().split(' ');
-      sink.report(VfoReading(
-        freqKHz: parts[0] == '-' ? null : double.tryParse(parts[0]),
-        mode: parts.length > 1 ? parts[1] : null,
-      ));
+      sink.report(VfoReading(freqKHz: parts[0] == '-' ? null : double.tryParse(parts[0]), mode: parts.length > 1 ? parts[1] : null));
     }
   }
 
@@ -113,13 +110,11 @@ void main() {
   late List<EquipmentNode> proven;
 
   EquipmentModel model(EquipmentTransport transport) => EquipmentModel(
-        key: 'proof-model',
-        category: kCategoryTransceiver,
-        name: _modelName,
-        variants: [
-          EquipmentVariant(key: 'proof-type', driver: const _Driver(), transport: transport),
-        ],
-      );
+    key: 'proof-model',
+    category: kCategoryTransceiver,
+    name: _modelName,
+    variants: [EquipmentVariant(key: 'proof-type', driver: const _Driver(), transport: transport)],
+  );
 
   Future<void> makeService() async {
     settings = SettingsService(await SharedPreferences.getInstance());
@@ -207,12 +202,10 @@ void main() {
       expect(isRadioProven(settings.prefs, node, registry), isTrue);
 
       final reordered = node.copyWith(config: {'baudRate': 9600, 'host': 'radio.local'});
-      expect(isRadioProven(settings.prefs, reordered, registry), isTrue,
-          reason: 'key order is not a setting');
+      expect(isRadioProven(settings.prefs, reordered, registry), isTrue, reason: 'key order is not a setting');
 
       final rewired = node.copyWith(config: {'host': 'radio.local', 'baudRate': 19200});
-      expect(isRadioProven(settings.prefs, rewired, registry), isFalse,
-          reason: 'a different baud rate is a different answer');
+      expect(isRadioProven(settings.prefs, rewired, registry), isFalse, reason: 'a different baud rate is a different answer');
     });
 
     test('one mark per node, however many settings it has worked under', () async {
@@ -220,8 +213,7 @@ void main() {
       // operator tries another baud rate, and never shrinks.
       final node = await addRadio(config: {'host': 'radio.local', 'baudRate': 9600});
       await markRadioProven(settings.prefs, node, cat.registry);
-      await markRadioProven(settings.prefs, node.copyWith(config: {'host': 'radio.local', 'baudRate': 19200}),
-          cat.registry);
+      await markRadioProven(settings.prefs, node.copyWith(config: {'host': 'radio.local', 'baudRate': 19200}), cat.registry);
 
       expect(provenRadioMarks(settings.prefs), hasLength(1));
     });

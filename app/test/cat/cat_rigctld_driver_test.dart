@@ -76,8 +76,7 @@ extension on RigctldSession {
 /// cadences. Unlike flrig, nothing here would be misread — rigctld labels
 /// every extended answer — so this is about keeping those assertions about
 /// the poll they are describing. The watch has its own tests below.
-RigctldSession _stateOnlySession(EquipmentSink sink) =>
-    RigctldSession(sink, const {telemetryIntervalConfigKey: 600000});
+RigctldSession _stateOnlySession(EquipmentSink sink) => RigctldSession(sink, const {telemetryIntervalConfigKey: 600000});
 
 void main() {
   group('mode names', () {
@@ -231,8 +230,7 @@ void main() {
         final session = _stateOnlySession(sink);
         session.startUpdates();
         session.feed('Frequency: 14250000\n');
-        expect(session.pollInterval, kPollSlow,
-            reason: 'the first reading is the answer to startUpdates, not movement');
+        expect(session.pollInterval, kPollSlow, reason: 'the first reading is the answer to startUpdates, not movement');
         async.elapse(kPollSlow + const Duration(milliseconds: 10));
         session.feed('Frequency: 14260000\n');
         expect(session.pollInterval, kPollFast);
@@ -358,12 +356,7 @@ void main() {
         session.feed('ALC: 0.250000\n');
         session.feed('VD_METER: 13.600000\n');
         session.feed('RFPOWER_METER_WATTS: 48.5\n');
-        expect(sink.meterReports, [
-          (RadioMeter.swr, 1.4),
-          (RadioMeter.alc, 0.25),
-          (RadioMeter.supplyVolts, 13.6),
-          (RadioMeter.powerOut, 48.5),
-        ]);
+        expect(sink.meterReports, [(RadioMeter.swr, 1.4), (RadioMeter.alc, 0.25), (RadioMeter.supplyVolts, 13.6), (RadioMeter.powerOut, 48.5)]);
         // Hamlib is the one protocol here whose "power" IS a measurement,
         // so the same reading is both the app's power and the meter — see
         // the note at the parse.
@@ -388,8 +381,7 @@ void main() {
           async.elapse(const Duration(milliseconds: 200));
           session.feed('RFPOWER_METER_WATTS: 48.5\n');
         }
-        expect(sink.sent.where((c) => c == '+f\n'), isNotEmpty,
-            reason: 'the frequency poll was starved while transmitting');
+        expect(sink.sent.where((c) => c == '+f\n'), isNotEmpty, reason: 'the frequency poll was starved while transmitting');
         session.teardown();
       });
     });
@@ -405,5 +397,4 @@ void main() {
       session.teardown();
     });
   });
-
 }

@@ -39,7 +39,11 @@ const _userPotaControl = <String, dynamic>{
 const _cwtControl = <String, dynamic>{
   'key': 'k2hrc-cwt/setup',
   'label': 'CWT',
-  'input': {'kind': 'form', 'refType': 'cwt', 'form': {'title': 'CWT', 'elements': []}},
+  'input': {
+    'kind': 'form',
+    'refType': 'cwt',
+    'form': {'title': 'CWT', 'elements': []},
+  },
 };
 
 /// Stock POTA, switched off — with the user-published one serving its type.
@@ -54,14 +58,7 @@ const _stockPotaInfo = ExtensionInfo(
 
 /// Mentions POTA in its keywords, as State Parks does; the loose search
 /// would match it, and a scope must not.
-const _lookalikeInfo = ExtensionInfo(
-  key: 'lookalike',
-  file: 'lookalike.js',
-  core: false,
-  name: 'Parks Lookalike',
-  keywords: ['pota'],
-  enabledByDefault: false,
-);
+const _lookalikeInfo = ExtensionInfo(key: 'lookalike', file: 'lookalike.js', core: false, name: 'Parks Lookalike', keywords: ['pota'], enabledByDefault: false);
 
 class _ScopedExtensions extends ExtensionServiceWithFakeHost {
   _ScopedExtensions({required this.controls}) : super(FakeExtensionHost({}));
@@ -72,11 +69,7 @@ class _ScopedExtensions extends ExtensionServiceWithFakeHost {
   final askedKeys = <List<String>?>[];
 
   @override
-  Future<ControlsResult> operationControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
-      (controls: controls, loadFailed: false);
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async => (controls: controls, loadFailed: false);
 
   @override
   Future<ActivitySuggestionResult> suggestActivities(
@@ -102,9 +95,15 @@ Future<(HaLoServices, _ScopedExtensions)> _harness(
   extensions.debugSetAvailableExtensions(available);
   final operation = Operation(uuid: 'op-1', data: const {'refs': []});
 
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(home: Scaffold(body: OperationSheet(services: services, operation: operation))),
-  ));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: OperationSheet(services: services, operation: operation),
+        ),
+      ),
+    ),
+  );
   await tester.pumpAndSettle();
   return (services, extensions);
 }
@@ -116,8 +115,7 @@ Future<void> _type(WidgetTester tester, String text) async {
   await tester.pumpAndSettle();
 }
 
-String _searchText(WidgetTester tester) =>
-    tester.widget<TextField>(find.byType(TextField).first).controller!.text;
+String _searchText(WidgetTester tester) => tester.widget<TextField>(find.byType(TextField).first).controller!.text;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -132,8 +130,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_searchText(tester), 'pota: ');
-    expect(extensions.askedKeys.last, ['pota', 'ki2d-pota'],
-        reason: 'the scope is the type; the tapped extension must be among the hooks asked');
+    expect(extensions.askedKeys.last, ['pota', 'ki2d-pota'], reason: 'the scope is the type; the tapped extension must be among the hooks asked');
   });
 
   testWidgets('a form control\'s ref type scopes too, by the type and not the key', (tester) async {
@@ -145,11 +142,7 @@ void main() {
   testWidgets('typing the key of a switched-off extension offers it even when its word is a scope', (tester) async {
     // Stock POTA off, KI2D's on: `pota` parses as KI2D's scope, and typing
     // that key is still how stock POTA gets switched back on from here.
-    final (_, extensions) = await _harness(
-      tester,
-      controls: const [_userPotaControl],
-      available: const [_stockPotaInfo, _lookalikeInfo],
-    );
+    final (_, extensions) = await _harness(tester, controls: const [_userPotaControl], available: const [_stockPotaInfo, _lookalikeInfo]);
     await _type(tester, 'pota');
     expect(extensions.askedKeys.last, ['ki2d-pota']);
     expect(find.text('Enable Parks on the Air'), findsOneWidget);

@@ -90,8 +90,7 @@ List<Object?>? asQsonList(Object? value) => value is List ? value : null;
 /// Enumerated rather than probed for truthiness for a second reason: `0` is
 /// truthy in Ruby, and probing is exactly how the server once marked live
 /// QSOs deleted.
-bool asQsonBool(Object? value) =>
-    value == true || value == 1 || value == 'true' || value == '1';
+bool asQsonBool(Object? value) => value == true || value == 1 || value == 'true' || value == '1';
 
 /// A QSON field whose value was dropped as unusable, as reported to the crash
 /// backend — the shape [onQsonTypeViolation]'s wiring hands to
@@ -220,10 +219,7 @@ const _qsoTheirFields = <String, QsonFieldType>{
 
 /// `their.guess` reads field-for-field like `their` itself, plus the ref
 /// suggestions only a guess carries.
-final _qsoGuessFields = <String, QsonFieldType>{
-  ..._qsoTheirFields,
-  'refs': QsonFieldType.list,
-};
+final _qsoGuessFields = <String, QsonFieldType>{..._qsoTheirFields, 'refs': QsonFieldType.list};
 
 /// `event`'s own kind, which [Qso.eventKind] reads.
 const _qsoEventFields = <String, QsonFieldType>{'event': QsonFieldType.string};
@@ -232,11 +228,7 @@ const _qsoEventFields = <String, QsonFieldType>{'event': QsonFieldType.string};
 /// descends into in turn. Hoisted rather than written at the call site: this
 /// runs once per row on every query, so a map literal there would allocate
 /// per row for a table that never changes.
-final _qsoNested = <String, Map<String, QsonFieldType>>{
-  'our': _qsoOurFields,
-  'their': _qsoTheirFields,
-  'event': _qsoEventFields,
-};
+final _qsoNested = <String, Map<String, QsonFieldType>>{'our': _qsoOurFields, 'their': _qsoTheirFields, 'event': _qsoEventFields};
 final _theirNested = <String, Map<String, QsonFieldType>>{'guess': _qsoGuessFields};
 
 const _operationFields = <String, QsonFieldType>{
@@ -265,13 +257,13 @@ const _operationFields = <String, QsonFieldType>{
 };
 
 Object? _coerce(Object? value, QsonFieldType type) => switch (type) {
-      QsonFieldType.string => asQsonString(value),
-      QsonFieldType.number => asQsonNum(value),
-      QsonFieldType.latitude => asQsonCoordinate(value, latitude: true),
-      QsonFieldType.longitude => asQsonCoordinate(value, latitude: false),
-      QsonFieldType.map => asQsonMap(value),
-      QsonFieldType.list => asQsonList(value),
-    };
+  QsonFieldType.string => asQsonString(value),
+  QsonFieldType.number => asQsonNum(value),
+  QsonFieldType.latitude => asQsonCoordinate(value, latitude: true),
+  QsonFieldType.longitude => asQsonCoordinate(value, latitude: false),
+  QsonFieldType.map => asQsonMap(value),
+  QsonFieldType.list => asQsonList(value),
+};
 
 /// One axis of a coordinate as this app stores it, from whatever a writer
 /// put in the field — a number, a numeric string, or ADIF's `N041 41.250`.
@@ -283,17 +275,16 @@ Object? _coerce(Object? value, QsonFieldType type) => switch (type) {
 /// coordinate the way storage will: anything judging a record BEFORE it is
 /// normalized (`repairStatedLocation`) would otherwise find no coordinate on
 /// exactly the records that arrive in the ADIF form.
-num? asQsonCoordinate(Object? value, {required bool latitude}) =>
-    asQsonNum(value) ?? (value is String ? parseAdifCoordinate(value, latitude: latitude) : null);
+num? asQsonCoordinate(Object? value, {required bool latitude}) => asQsonNum(value) ?? (value is String ? parseAdifCoordinate(value, latitude: latitude) : null);
 
 /// True when [value] already satisfies [type] with nothing to rewrite, so a
 /// clean record can be returned unchanged rather than rebuilt.
 bool _isClean(Object? value, QsonFieldType type) => switch (type) {
-      QsonFieldType.string => value is String,
-      QsonFieldType.number || QsonFieldType.latitude || QsonFieldType.longitude => value is num,
-      QsonFieldType.map => value is Map,
-      QsonFieldType.list => value is List,
-    };
+  QsonFieldType.string => value is String,
+  QsonFieldType.number || QsonFieldType.latitude || QsonFieldType.longitude => value is num,
+  QsonFieldType.map => value is Map,
+  QsonFieldType.list => value is List,
+};
 
 Map<String, dynamic> _normalize(
   Map<String, dynamic> data,
@@ -349,13 +340,7 @@ Map<String, dynamic> _normalize(
     final key = entry.key;
     final sub = asQsonMap((rebuilt ?? data)[key]);
     if (sub == null) continue;
-    final normalizedSub = _normalize(
-      sub,
-      entry.value,
-      '$prefix$key.',
-      found,
-      key == 'their' ? _theirNested : const {},
-    );
+    final normalizedSub = _normalize(sub, entry.value, '$prefix$key.', found, key == 'their' ? _theirNested : const {});
     if (!identical(normalizedSub, sub)) mutable()[key] = normalizedSub;
   }
 
@@ -375,15 +360,9 @@ Map<String, dynamic> _normalize(
 /// they run per row on every query, and a record healed there has no writer
 /// left to name. Passing no list also costs no allocation, which is what
 /// keeps the read path to the scan alone.
-Map<String, dynamic> normalizeQsoQson(
-  Map<String, dynamic> data, {
-  List<QsonTypeViolation>? violations,
-}) =>
+Map<String, dynamic> normalizeQsoQson(Map<String, dynamic> data, {List<QsonTypeViolation>? violations}) =>
     _normalize(data, _qsoFields, '', violations, _qsoNested);
 
 /// [normalizeQsoQson] for an operation's QSON.
-Map<String, dynamic> normalizeOperationQson(
-  Map<String, dynamic> data, {
-  List<QsonTypeViolation>? violations,
-}) =>
+Map<String, dynamic> normalizeOperationQson(Map<String, dynamic> data, {List<QsonTypeViolation>? violations}) =>
     _normalize(data, _operationFields, '', violations, const {});

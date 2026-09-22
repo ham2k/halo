@@ -18,31 +18,26 @@ class _NyqpControls extends ExtensionServiceWithFakeHost {
   _NyqpControls() : super(FakeExtensionHost({}));
 
   @override
-  Future<ControlsResult> operationControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
-      (
-        controls: const [
-          {
-            'key': 'ham2k-new-york-qso-party/setup',
-            'icon': 'pine-tree',
-            'input': {
-              'kind': 'refList',
-              'refType': 'ny-qso-party',
-              'alsoHandles': ['qp/ny'],
-            },
-          },
-        ],
-        loadFailed: false,
-      );
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async => (
+    controls: const [
+      {
+        'key': 'ham2k-new-york-qso-party/setup',
+        'icon': 'pine-tree',
+        'input': {
+          'kind': 'refList',
+          'refType': 'ny-qso-party',
+          'alsoHandles': ['qp/ny'],
+        },
+      },
+    ],
+    loadFailed: false,
+  );
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('a suggested-location ref from an unsupported extension shows a pale-red tile and question mark (issue #261)',
-      (tester) async {
+  testWidgets('a suggested-location ref from an unsupported extension shows a pale-red tile and question mark (issue #261)', (tester) async {
     // Empty host: no activity control is ever registered, so any ref type
     // is "unknown" — same setup as activities_disabled_extension_test.dart.
     final HaLoHarness(:services) = await makeHaLoServices();
@@ -56,11 +51,13 @@ void main() {
       },
     );
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationLocationScreen(services: services, operation: operation),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationLocationScreen(services: services, operation: operation),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     final tileFinder = find.ancestor(of: find.text('UN-9999'), matching: find.byType(ListTile));
@@ -92,11 +89,13 @@ void main() {
       },
     );
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationLocationScreen(services: services, operation: operation),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationLocationScreen(services: services, operation: operation),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     final tileFinder = find.ancestor(of: find.text('NY'), matching: find.byType(ListTile));
@@ -109,8 +108,7 @@ void main() {
     expect(find.descendant(of: tileFinder, matching: find.byIcon(MdiIcons.pineTree)), findsOneWidget);
   });
 
-  testWidgets('does not flash the unknown-type treatment on the very first frame, before controls finish loading',
-      (tester) async {
+  testWidgets('does not flash the unknown-type treatment on the very first frame, before controls finish loading', (tester) async {
     final HaLoHarness(:services) = await makeHaLoServices();
 
     final operation = Operation(
@@ -129,18 +127,23 @@ void main() {
     // controls list is empty either way here, so the *only* thing that can
     // distinguish "still loading" from "loaded and genuinely unknown" is
     // _loadingControls itself).
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationLocationScreen(services: services, operation: operation),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationLocationScreen(services: services, operation: operation),
+        ),
       ),
-    ));
+    );
 
     final tileFinder = find.ancestor(of: find.text('UN-9999'), matching: find.byType(ListTile));
     expect(tileFinder, findsOneWidget);
     final tile = tester.widget<ListTile>(tileFinder);
     final theme = Theme.of(tester.element(tileFinder));
-    expect(tile.tileColor, isNot(theme.colorScheme.errorContainer.withValues(alpha: 0.4)),
-        reason: 'must not show the unknown-type treatment while controls are still loading');
+    expect(
+      tile.tileColor,
+      isNot(theme.colorScheme.errorContainer.withValues(alpha: 0.4)),
+      reason: 'must not show the unknown-type treatment while controls are still loading',
+    );
     expect(find.descendant(of: tileFinder, matching: find.byIcon(MdiIcons.help)), findsNothing);
 
     // Once loading finishes, THIS ref (its extension genuinely isn't
@@ -160,21 +163,23 @@ void main() {
       final operation = Operation(uuid: 'op-1', data: const {'refs': []});
 
       Map<String, dynamic>? popped;
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () async {
-                popped = await showDialog<Map<String, dynamic>>(
-                  context: context,
-                  builder: (_) => OperationLocationScreen(services: services, operation: operation),
-                );
-              },
-              child: const Text('open'),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  popped = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (_) => OperationLocationScreen(services: services, operation: operation),
+                  );
+                },
+                child: const Text('open'),
+              ),
             ),
           ),
         ),
-      ));
+      );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
 
@@ -226,21 +231,23 @@ void main() {
       popped = null;
       final HaLoHarness(:services) = await makeHaLoServices();
 
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () async {
-                popped = await showDialog<Map<String, dynamic>>(
-                  context: context,
-                  builder: (_) => OperationLocationScreen(services: services, operation: operation),
-                );
-              },
-              child: const Text('open'),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  popped = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (_) => OperationLocationScreen(services: services, operation: operation),
+                  );
+                },
+                child: const Text('open'),
+              ),
             ),
           ),
         ),
-      ));
+      );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
     }
@@ -251,19 +258,13 @@ void main() {
     }
 
     Operation withPark({double? lat, double? lon}) => Operation(
-          uuid: 'op-1',
-          data: {
-            'refs': [
-              {
-                'type': 'potaActivation',
-                'ref': 'US-1234',
-                'grid': 'FN31',
-                'lat': ?lat,
-                'lon': ?lon,
-              },
-            ],
-          },
-        );
+      uuid: 'op-1',
+      data: {
+        'refs': [
+          {'type': 'potaActivation', 'ref': 'US-1234', 'grid': 'FN31', 'lat': ?lat, 'lon': ?lon},
+        ],
+      },
+    );
 
     testWidgets("adopting a ref stores the coordinate its program published, not just the square", (tester) async {
       await open(tester, withPark(lat: 41.7135, lon: -72.7278));
@@ -358,13 +359,7 @@ void main() {
       // says where it came from).
       await open(
         tester,
-        Operation(uuid: 'op-1', data: {
-          'grid': locationToGrid8(41.7135, -72.7278),
-          'gridSource': 'gps',
-          'lat': 41.7135,
-          'lon': -72.7278,
-          'refs': const [],
-        }),
+        Operation(uuid: 'op-1', data: {'grid': locationToGrid8(41.7135, -72.7278), 'gridSource': 'gps', 'lat': 41.7135, 'lon': -72.7278, 'refs': const []}),
       );
       await save(tester);
 

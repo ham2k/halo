@@ -18,10 +18,7 @@ class UpperCaseTextFormatter extends TextInputFormatter {
   const UpperCaseTextFormatter();
 
   @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }
@@ -37,10 +34,7 @@ class GridCaseTextFormatter extends TextInputFormatter {
   const GridCaseTextFormatter();
 
   @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     final text = newValue.text;
     final buffer = StringBuffer();
     for (var i = 0; i < text.length; i++) {
@@ -60,10 +54,7 @@ class CapitalizeFirstLetterTextFormatter extends TextInputFormatter {
   const CapitalizeFirstLetterTextFormatter();
 
   @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     final text = newValue.text;
     if (text.isEmpty) return newValue;
     final capitalized = text[0].toUpperCase() + text.substring(1);
@@ -155,10 +146,7 @@ class MobileDotToSlashFormatter extends TextInputFormatter {
   static final _whitespace = RegExp(r'\s');
 
   @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     final text = newValue.text;
     if (!text.contains('.') || !_callsignPrefix.hasMatch(text)) {
       return newValue;
@@ -249,10 +237,7 @@ class VirtualSpaceFormatter extends TextInputFormatter {
     // The exit gesture, arriving disguised as punctuation. Gated on the same
     // predicate as a real space, so it stays confined to the fields that opted
     // into space-accepting behavior.
-    if (shouldIntercept != null &&
-        onPeriodShortcut != null &&
-        _isIOSPeriodShortcut(oldValue, newValue) &&
-        shouldIntercept!(oldValue)) {
+    if (shouldIntercept != null && onPeriodShortcut != null && _isIOSPeriodShortcut(oldValue, newValue) && shouldIntercept!(oldValue)) {
       // The text as it was before the gesture — see [onPeriodShortcut]. Both of
       // iOS's edits are applied synchronously before any microtask runs, so a
       // handler that looked at the controller instead would find "NOTE HI. "

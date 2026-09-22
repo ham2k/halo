@@ -50,8 +50,7 @@ class _FakeTransport extends EquipmentTransport {
   @override
   String get key => 'fake';
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async =>
-      _FakeConnection();
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async => _FakeConnection();
 }
 
 class _RadioSession implements TransceiverSession {

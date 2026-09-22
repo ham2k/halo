@@ -17,18 +17,7 @@ void main() {
   group('segmentsForDigit', () {
     // Spelled out rather than generated: a table generated from the same
     // reasoning as the code under test agrees with it by construction.
-    const expected = {
-      0: 'abcdef',
-      1: 'bc',
-      2: 'abged',
-      3: 'abgcd',
-      4: 'fgbc',
-      5: 'afgcd',
-      6: 'afgecd',
-      7: 'abc',
-      8: 'abcdefg',
-      9: 'abcdfg',
-    };
+    const expected = {0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgecd', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg'};
 
     test('lights the segments each digit is made of', () {
       for (final entry in expected.entries) {
@@ -73,8 +62,7 @@ void main() {
     const cell = Size(100, 180);
     const stroke = 18.0;
 
-    Rect boundsOf(ClockSegment s) =>
-        segmentPath(s, cellSize: cell, stroke: stroke).getBounds();
+    Rect boundsOf(ClockSegment s) => segmentPath(s, cellSize: cell, stroke: stroke).getBounds();
 
     test('every segment stays inside its cell', () {
       // A segment escaping the cell overlaps its neighbour, and the digits

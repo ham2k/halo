@@ -36,10 +36,7 @@ void main() {
     final node = await services.cat.addNode(
       typeKey: 'placeholder-radio',
       name: 'Bench Rig',
-      config: {
-        ...placeholderRadioModel.variants.single.defaultConfig,
-        if (!records) 'placeholderNoVoiceRecording': true,
-      },
+      config: {...placeholderRadioModel.variants.single.defaultConfig, if (!records) 'placeholderNoVoiceRecording': true},
     );
     await tester.runAsync(() => services.cat.connect(node.uuid));
     addTearDown(() => services.cat.disconnect(node.uuid));
@@ -47,17 +44,14 @@ void main() {
   }
 
   Widget host() => TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => TextButton(
-                onPressed: () => showVoiceMessagesDialog(context, services),
-                child: const Text('open'),
-              ),
-            ),
-          ),
+    child: MaterialApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(onPressed: () => showVoiceMessagesDialog(context, services), child: const Text('open')),
         ),
-      );
+      ),
+    ),
+  );
 
   Future<void> open(WidgetTester tester) async {
     await tester.pumpWidget(host());

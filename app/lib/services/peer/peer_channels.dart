@@ -45,17 +45,7 @@ import 'peer_station_radios.dart';
 import 'serial_claims.dart';
 
 class PeerChannels {
-  PeerChannels({
-    required this.peers,
-    required this.location,
-    this.radio,
-    this.screens,
-    this.views,
-    this.drafts,
-    this.claims,
-    this.station,
-    this.remoteRadios,
-  }) {
+  PeerChannels({required this.peers, required this.location, this.radio, this.screens, this.views, this.drafts, this.claims, this.station, this.remoteRadios}) {
     peers.onEphemeral = _onEphemeral;
     peers.onSessionEstablished = _onSessionEstablished;
     peers.addListener(_onPeersChanged);
@@ -161,8 +151,7 @@ class PeerChannels {
     }
   }
 
-  bool get _anyEstablished =>
-      peers.peers.values.any((runtime) => runtime.session?.established ?? false);
+  bool get _anyEstablished => peers.peers.values.any((runtime) => runtime.session?.established ?? false);
 
   void _onPeersChanged() {
     // Start this device's GPS only while someone is there to receive it, and
@@ -205,21 +194,23 @@ class PeerChannels {
 
   void _startGps() {
     final attempt = ++_gpsAttempt;
-    unawaited(location.startIfPermitted().then((started) {
-      if (!started) {
-        // Permission missing. Clear the intent only if nothing newer set it
-        // again — a grant-then-reconnect in the window must not be undone.
-        if (attempt == _gpsAttempt) _sharingGps = false;
-        return;
-      }
-      if (attempt != _gpsAttempt) {
-        // The peer left (or this router was disposed) while the check was in
-        // flight. The listener WAS taken — release exactly it.
-        location.stop();
-        return;
-      }
-      _gpsHeld = true;
-    }));
+    unawaited(
+      location.startIfPermitted().then((started) {
+        if (!started) {
+          // Permission missing. Clear the intent only if nothing newer set it
+          // again — a grant-then-reconnect in the window must not be undone.
+          if (attempt == _gpsAttempt) _sharingGps = false;
+          return;
+        }
+        if (attempt != _gpsAttempt) {
+          // The peer left (or this router was disposed) while the check was in
+          // flight. The listener WAS taken — release exactly it.
+          location.stop();
+          return;
+        }
+        _gpsHeld = true;
+      }),
+    );
   }
 
   void _onLocationChanged() {
@@ -417,8 +408,7 @@ class PeerChannels {
     if (vfo.freq == null && vfo.mode == null) return;
     final session = peers.peers[selection.deviceId]?.session;
     if (session == null) return;
-    session.sendEphemeral(
-        PeerMessage.catSet(radioId: selection.radioId, freqKHz: vfo.freq, mode: vfo.mode));
+    session.sendEphemeral(PeerMessage.catSet(radioId: selection.radioId, freqKHz: vfo.freq, mode: vfo.mode));
   }
 
   void _onSessionEstablished(PeerSession session) {
@@ -545,8 +535,7 @@ class PeerChannels {
       // Remembered whether or not it is the picked one: the establish-time
       // snapshot is the only time most of these are heard, and a radio
       // picked afterwards has to have something to show. See [_peerVfos].
-      _peerVfos['$peerDeviceId/${vfo.radioId}'] =
-          VfoReading(freqKHz: vfo.freqKHz, mode: vfo.mode);
+      _peerVfos['$peerDeviceId/${vfo.radioId}'] = VfoReading(freqKHz: vfo.freqKHz, mode: vfo.mode);
       if (station?.followedPeerRadio?.matches(peerDeviceId, vfo.radioId) ?? false) {
         _appliedSelection = station?.followedPeerRadio;
         radio?.setVfo('vfoA', freq: vfo.freqKHz, mode: vfo.mode, origin: VfoOrigin.radio);

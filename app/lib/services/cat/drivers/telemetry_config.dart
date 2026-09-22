@@ -23,12 +23,12 @@ const _maxTelemetryIntervalMillis = 10000;
 /// silently disregards, and an operator who set it would have every right to
 /// believe it took.
 Map<String, dynamic> telemetryConfigElement() => {
-      'type': 'field',
-      'fieldType': 'number',
-      'key': telemetryIntervalConfigKey,
-      'label': t.settings.station.telemetryInterval,
-      'description': t.settings.station.telemetryIntervalDescription,
-    };
+  'type': 'field',
+  'fieldType': 'number',
+  'key': telemetryIntervalConfigKey,
+  'label': t.settings.station.telemetryInterval,
+  'description': t.settings.station.telemetryIntervalDescription,
+};
 
 /// Blank, or a whole number of milliseconds within the offered range.
 ///
@@ -42,13 +42,7 @@ Map<String, dynamic> telemetryConfigElement() => {
 String? validateTelemetryInterval(dynamic value) {
   if (value == null || (value is String && value.trim().isEmpty)) return null;
   final n = value is num ? value : num.tryParse('$value');
-  return (n != null &&
-          n >= kTelemetryFloorFast.inMilliseconds &&
-          n <= _maxTelemetryIntervalMillis &&
-          n == n.roundToDouble())
+  return (n != null && n >= kTelemetryFloorFast.inMilliseconds && n <= _maxTelemetryIntervalMillis && n == n.roundToDouble())
       ? null
-      : t.settings.station.telemetryIntervalInvalid(
-          min: kTelemetryFloorFast.inMilliseconds,
-          max: _maxTelemetryIntervalMillis,
-        );
+      : t.settings.station.telemetryIntervalInvalid(min: kTelemetryFloorFast.inMilliseconds, max: _maxTelemetryIntervalMillis);
 }

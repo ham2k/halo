@@ -133,11 +133,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// dropdowns, and the VFO mirror. See [RadioControlModel]; what stays here
   /// is when it moves and what moves with it.
   late final RadioControlModel _radio = RadioControlModel(
-    config: () => (
-      radio: widget.radio,
-      powerInPlay: () => _powerInPlay,
-      editingQso: widget.session.editingQso,
-    ),
+    config: () => (radio: widget.radio, powerInPlay: () => _powerInPlay, editingQso: widget.session.editingQso),
     draft: _draft,
     onRescore: _lookup.scheduleScore,
   );
@@ -156,8 +152,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   final _rcvdFocus = FocusNode();
   final _gridFocus = FocusNode();
   final _stateFocus = FocusNode();
-
-
 
   /// Which secondary control (if any) currently has its input expanded.
   String? _selectedControlKey;
@@ -201,10 +195,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   );
 
   /// The Time control — when the entry is stamped. See [TimeControlModel].
-  late final TimeControlModel _time = TimeControlModel(
-    config: () => (editingQso: widget.session.editingQso),
-    draft: _draft,
-  );
+  late final TimeControlModel _time = TimeControlModel(config: () => (editingQso: widget.session.editingQso), draft: _draft);
 
   /// The contest exchange fields — see [ExchangeFieldsModel]. What stays
   /// here is WHICH controls are exchange fields ([_textControls]), and when
@@ -296,8 +287,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The operation resolved into its segments. `widget.log.qsos` is the whole log,
   /// which is what carries the `break`/`start` event rows; an unsegmented
   /// operation resolves to a single segment that is its own data, unchanged.
-  SegmentedOperation get _segmented =>
-      SegmentedOperation.from(operation: widget.log.operation.data, qsos: widget.log.qsos);
+  SegmentedOperation get _segmented => SegmentedOperation.from(operation: widget.log.operation.data, qsos: widget.log.qsos);
 
   /// Ref types the operation is actually running right now.
   ///
@@ -317,7 +307,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         if (ref['type'] case final String type) type,
     };
   }
-
 
   /// Every typed-exchange activity control currently contributed — `text` and
   /// `serial` alike, since both render the same way and differ only in who
@@ -386,7 +375,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       for (final control in _textControls)
         if ((control['input'] as Map?)?['kind'] != 'serial') control['key'] as String,
     };
-    return [for (final field in _primaryFields) if (keys.contains(field.key)) field];
+    return [
+      for (final field in _primaryFields)
+        if (keys.contains(field.key)) field,
+    ];
   }
 
   /// Enter Sends Messages: keys what [esmStep] picks and answers whether this
@@ -418,10 +410,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         final target = empty.isNotEmpty
             ? empty.first
             : exchange.isNotEmpty
-                ? exchange.first
-                : fields.length > 1
-                    ? fields[1]
-                    : null;
+            ? exchange.first
+            : fields.length > 1
+            ? fields[1]
+            : null;
         target?.focus.requestFocus();
         return true;
       case EsmThen.log:
@@ -441,7 +433,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final at = data['startAtMillis'] as int?;
     return decorate(data, at == null ? _segmented.current : _segmented.effectiveAt(at));
   }
-
 
   /// Set while editing an existing QSO and Delete has been tapped but not
   /// yet saved — mirrors app-polo's `_willBeDeleted` staged-delete flag.
@@ -479,8 +470,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// calls: those throw, which tells the operator after the fact that the
   /// contact they typed did not land. Locking the form means it was never
   /// typeable, which is the difference between a refusal and a lost contact.
-  bool get _fieldsLocked =>
-      _pendingDelete || (widget.session.editingQso?.deleted ?? false) || _writeRefusal != null;
+  bool get _fieldsLocked => _pendingDelete || (widget.session.editingQso?.deleted ?? false) || _writeRefusal != null;
 
   /// The default-focus rule's backstop (docs/design/logging-fields.md
   /// § Which field has focus), which owns the panel's Tab-trapping scope.
@@ -531,8 +521,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// literal space and the operator would be stuck in the field.
   late final VirtualSpaceFormatter _commandVirtualSpace = VirtualSpaceFormatter(
     _handleSpace,
-    shouldIntercept: (old) =>
-        old.text.endsWith(' ') && old.selection.isCollapsed && old.selection.baseOffset == old.text.length,
+    shouldIntercept: (old) => old.text.endsWith(' ') && old.selection.isCollapsed && old.selection.baseOffset == old.text.length,
     onPeriodShortcut: _exitOnPeriodShortcut,
   );
 
@@ -563,16 +552,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// space bar, and a signed-number type there would instead drop to a numeric
   /// pad that loses the letters RSTs occasionally need — so each field keeps
   /// its existing keyboard on other platforms.
-  TextInputType? get _numbersAndPunctuationOnIOS =>
-      isIOSPlatform ? const TextInputType.numberWithOptions(signed: true) : null;
+  TextInputType? get _numbersAndPunctuationOnIOS => isIOSPlatform ? const TextInputType.numberWithOptions(signed: true) : null;
 
   /// The keyboard for the frequency and power fields: iOS's
   /// NumbersAndPunctuation (the decimal separators, the symbols, and a space
   /// bar for Space-to-advance), the decimal pad elsewhere. Not the entry
   /// row's: there a null deliberately keeps the RST fields' letter-bearing
   /// default keyboard.
-  TextInputType get _decimalKeyboardType =>
-      _numbersAndPunctuationOnIOS ?? const TextInputType.numberWithOptions(decimal: true);
+  TextInputType get _decimalKeyboardType => _numbersAndPunctuationOnIOS ?? const TextInputType.numberWithOptions(decimal: true);
 
   void _scheduleSubmitButtonMeasurement() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -689,9 +676,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       focus.addListener(() {
         if (focus.hasFocus) {
           _ladder.notePrimaryFocus(focus);
-          controller.selection = TextSelection.collapsed(
-            offset: _ladder.takePendingCaretOffset(focus, controller) ?? controller.text.length,
-          );
+          controller.selection = TextSelection.collapsed(offset: _ladder.takePendingCaretOffset(focus, controller) ?? controller.text.length);
           if (identical(focus, _radio.freqFocus)) _radio.onFreqFocusChanged(hasFocus: true);
         } else if (identical(focus, _radio.freqFocus)) {
           _radio.onFreqFocusChanged(hasFocus: false);
@@ -826,7 +811,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // none. Decided from the inputs rather than a remembered flag: a `late`
     // field's initializer runs on its first READ, which is here, and would
     // simply record the new state and see no change.
-    final controlsChanged = oldWidget.radio.trackingPower != widget.radio.trackingPower ||
+    final controlsChanged =
+        oldWidget.radio.trackingPower != widget.radio.trackingPower ||
         !const ListEquality<String>().equals(oldWidget.strip.controlOrder, widget.strip.controlOrder) ||
         !const SetEquality<String>().equals(oldWidget.strip.hiddenControlKeys, widget.strip.hiddenControlKeys);
     if (controlsChanged) _radio.seedPowerFromVfo();
@@ -1320,8 +1306,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // callsign (a deeplink, say) must not retune anything. And the push is
     // immediate rather than debounced — the operator picked a specific
     // station, there is nothing more to wait for.
-    if (widget.session.editingQso == null &&
-        (data['freq'] != null || data['band'] != null || data['mode'] != null)) {
+    if (widget.session.editingQso == null && (data['freq'] != null || data['band'] != null || data['mode'] != null)) {
       _radio.cancelPendingPush();
       // AFTER the frame, not now. Both callers — initState and
       // didUpdateWidget — run inside the build phase, and `setVfo` notifies
@@ -1372,11 +1357,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // and saved untouched round-trips exactly — trimming just this side
     // would make selecting a row with incidental whitespace read as
     // "changed" on its own, with no edit made.
-    _eventTextController.text =
-        (event?['description'] as String?) ?? (event?['note'] as String?) ?? '';
+    _eventTextController.text = (event?['description'] as String?) ?? (event?['note'] as String?) ?? '';
     final eventData = event?['data'];
-    _eventTodoDone =
-        (eventData is Map && eventData['done'] == true) || event?['done'] == true;
+    _eventTodoDone = (eventData is Map && eventData['done'] == true) || event?['done'] == true;
   }
 
   /// The `data` to save for an edited event row: the original payload with
@@ -1409,9 +1392,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // in qso_list.dart): a malformed/cross-client value here must not
         // crash the panel just because this row got selected.
         final rawEventData = event['data'];
-        final eventData = Map<String, dynamic>.from(
-          rawEventData is Map ? rawEventData.cast<String, dynamic>() : const {},
-        );
+        final eventData = Map<String, dynamic>.from(rawEventData is Map ? rawEventData.cast<String, dynamic>() : const {});
         eventData['done'] = _eventTodoDone;
         event['data'] = eventData;
         // Older synced logs may also carry a bare `event.done` (the fallback
@@ -1557,11 +1538,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The call field as the panel reads it — see [CallFieldText] for the
   /// rules. A fresh snapshot of the text and the cursor on every read, so a
   /// rule never sees a cursor that moved after the text it was paired with.
-  CallFieldText get _callText => CallFieldText(
-        _callController.text,
-        cursor: _callController.selection.baseOffset,
-        stacking: widget.session.editingQso == null,
-      );
+  CallFieldText get _callText => CallFieldText(_callController.text, cursor: _callController.selection.baseOffset, stacking: widget.session.editingQso == null);
 
   String get _call => _callText.call;
   List<String> get _callList => _callText.callList;
@@ -1581,10 +1558,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// need the uuid to fetch log data through the runtime's
   /// `ctx.getOperation`/`ctx.getQsos` (e.g. dev-commands' SEED reading the
   /// existing log's time range); the QSON alone doesn't carry it.
-  Map<String, dynamic> get _operationDataForCommands => {
-        ...widget.log.operation.data,
-        'uuid': widget.log.operation.uuid,
-      };
+  Map<String, dynamic> get _operationDataForCommands => {...widget.log.operation.data, 'uuid': widget.log.operation.uuid};
 
   bool get _canLog {
     // Call stacking (issue #7): "//" takes priority over a comma-separated
@@ -1706,12 +1680,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// write would be worse than no hint.
   String? get _rstPlaceholder => widget.session.editingQso == null ? _defaultRST : null;
 
-  String get _defaultRST => defaultRSTFor(
-        _radio.mode,
-        phone: widget.prefs.defaultReport,
-        cw: widget.prefs.defaultReportCW,
-        snr: widget.prefs.defaultReportFT8,
-      );
+  String get _defaultRST => defaultRSTFor(_radio.mode, phone: widget.prefs.defaultReport, cw: widget.prefs.defaultReportCW, snr: widget.prefs.defaultReportFT8);
 
   /// Where a report becomes what actually gets stored: the placeholder if the
   /// field is blank, otherwise the operator's own shorthand completed by
@@ -1752,9 +1721,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _onExchangeFocusChanged(FocusNode node, TextEditingController controller) {
     _ladder.notePrimaryFocus(node);
     if (node.hasFocus) {
-      controller.selection = TextSelection.collapsed(
-        offset: _ladder.takePendingCaretOffset(node, controller) ?? controller.text.length,
-      );
+      controller.selection = TextSelection.collapsed(offset: _ladder.takePendingCaretOffset(node, controller) ?? controller.text.length);
     }
   }
 
@@ -1808,11 +1775,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       case 'time':
         return [(_time.timeFocus, _time.timeController), (_time.dateFocus, _time.dateController)];
       case 'radio':
-        return [
-          (_radio.bandFocus, _radio.bandController),
-          (_radio.freqFocus, _radio.freqController),
-          (_radio.modeFocus, _radio.modeController),
-        ];
+        return [(_radio.bandFocus, _radio.bandController), (_radio.freqFocus, _radio.freqController), (_radio.modeFocus, _radio.modeController)];
       case 'power':
         return [(_radio.powerFocus, _radio.powerController)];
       case 'spotting':
@@ -1882,48 +1845,42 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The strip's specs, in row order, each carrying the panel's keyboard
   /// policy. Which controls appear is [_catalog]'s call; what each one shows
   /// is its model's.
-  List<SecondaryControlSpec> _buildSecondaryControls(
-    ThemeData theme,
-    HaLoColors poloColors, {
-    bool Function(String key)? enabledFor,
-  }) {
+  List<SecondaryControlSpec> _buildSecondaryControls(ThemeData theme, HaLoColors poloColors, {bool Function(String key)? enabledFor}) {
     final specs = <SecondaryControlSpec>[];
     for (final descriptor in _catalog.visibleControls()) {
       switch (descriptor.key) {
         case 'time':
           specs.add(timeControlSpec(_time));
         case 'radio':
-          specs.add(radioControlSpec(
-            _radio,
-            theme,
-            selected: _selectedControlKey == 'radio',
-            freqInputFormatters: [_virtualSpace],
-            freqKeyboardType: _decimalKeyboardType,
-            onFreqSubmitted: () => _ladder.closeExpandedControl('radio'),
-            onPicked: _callFocus.requestFocus,
-          ));
+          specs.add(
+            radioControlSpec(
+              _radio,
+              theme,
+              selected: _selectedControlKey == 'radio',
+              freqInputFormatters: [_virtualSpace],
+              freqKeyboardType: _decimalKeyboardType,
+              onFreqSubmitted: () => _ladder.closeExpandedControl('radio'),
+              onPicked: _callFocus.requestFocus,
+            ),
+          );
         case 'power':
           specs.add(powerControlSpec(_radio, keyboardType: _decimalKeyboardType));
         case 'spotting':
           specs.add(spottingControlSpec(_spotting, theme, poloColors));
         case 'notes':
-          specs.add(notesControlSpec(theme,
-              controller: _notesController, focusNode: _notesFocus, onChanged: _onNotesChanged));
+          specs.add(notesControlSpec(theme, controller: _notesController, focusNode: _notesFocus, onChanged: _onNotesChanged));
         case 'more':
           specs.add(moreControlSpec());
         default:
           if (descriptor.activityControl case final control?) {
-            specs.add(activityControlSpec(_refs, control,
-                onRefsChanged: _relookupForRefsChanged, decorate: widget.activities.decorateRef));
+            specs.add(activityControlSpec(_refs, control, onRefsChanged: _relookupForRefsChanged, decorate: widget.activities.decorateRef));
           }
       }
     }
     // The strip's keys, for the arrow keys to walk. Recorded from the list
     // actually handed to the row, so the two can't drift apart.
     _ladder.pillOrder = [for (final spec in specs) spec.key];
-    return [
-      for (final spec in specs) _ladder.withKeyboardNavigation(spec, enabled: enabledFor?.call(spec.key) ?? true),
-    ];
+    return [for (final spec in specs) _ladder.withKeyboardNavigation(spec, enabled: enabledFor?.call(spec.key) ?? true)];
   }
 
   /// The contact's own note. Wider than the other controls' fields — a note
@@ -2047,63 +2004,41 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Rebuilt on every call: `showRSTFields`/`showStateField`/`showGridField`
   /// change at runtime, and so does the set of contest controls.
   List<PrimaryField> get _primaryFields => [
+    (key: 'call', label: t.loggingControls.theirCall, focus: _callFocus, controller: _callController, hint: null),
+    // Display order, not Sent-then-Rcvd: the keyboard walks the row the
+    // operator is looking at (see [_rstPair]).
+    if (widget.prefs.showRSTFields)
+      for (final field in _rstPair)
         (
-          key: 'call',
-          label: t.loggingControls.theirCall,
-          focus: _callFocus,
-          controller: _callController,
-          hint: null,
+          key: identical(field.controller, _sentController) ? 'sent' : 'rcvd',
+          label: field.label,
+          focus: field.focus,
+          controller: field.controller,
+          hint: _rstPlaceholder,
         ),
-        // Display order, not Sent-then-Rcvd: the keyboard walks the row the
-        // operator is looking at (see [_rstPair]).
-        if (widget.prefs.showRSTFields)
-          for (final field in _rstPair)
-            (
-              key: identical(field.controller, _sentController) ? 'sent' : 'rcvd',
-              label: field.label,
-              focus: field.focus,
-              controller: field.controller,
-              hint: _rstPlaceholder,
-            ),
-        // Only nodes already attached to a built field: creating one here for a
-        // control whose widget hasn't been built leaves an orphan with no
-        // context, which Flutter's focus traversal null-checks while sorting —
-        // taking down the whole frame rather than just misordering focus.
-        for (final control in _textControls)
-          if (_exchange.attachedFocusFor(control['key'] as String) case final focus?)
-            (
-              key: control['key'] as String,
-              label: (control['label'] as String?) ?? control['key'] as String,
-              focus: focus,
-              controller: _exchange.controllerFor(control['key'] as String),
-              hint: (control['input'] as Map?)?['placeholder'] as String?,
-            ),
-        if (widget.prefs.showStateField)
-          (
-            key: 'state',
-            label: t.qsoEditForm.theirState,
-            focus: _stateFocus,
-            controller: _stateController,
-            hint: _guessStateHint,
-          ),
-        if (widget.prefs.showGridField)
-          (
-            key: 'grid',
-            label: t.qsoEditForm.theirGrid,
-            focus: _gridFocus,
-            controller: _gridController,
-            hint: _guessGridHint,
-          ),
-      ];
+    // Only nodes already attached to a built field: creating one here for a
+    // control whose widget hasn't been built leaves an orphan with no
+    // context, which Flutter's focus traversal null-checks while sorting —
+    // taking down the whole frame rather than just misordering focus.
+    for (final control in _textControls)
+      if (_exchange.attachedFocusFor(control['key'] as String) case final focus?)
+        (
+          key: control['key'] as String,
+          label: (control['label'] as String?) ?? control['key'] as String,
+          focus: focus,
+          controller: _exchange.controllerFor(control['key'] as String),
+          hint: (control['input'] as Map?)?['placeholder'] as String?,
+        ),
+    if (widget.prefs.showStateField) (key: 'state', label: t.qsoEditForm.theirState, focus: _stateFocus, controller: _stateController, hint: _guessStateHint),
+    if (widget.prefs.showGridField) (key: 'grid', label: t.qsoEditForm.theirGrid, focus: _gridFocus, controller: _gridController, hint: _guessGridHint),
+  ];
 
   /// Whether the caret sits at the end of a value that already ends in a space
   /// — the double-space that exits a field which otherwise accepts spaces (see
   /// `_handleSpace`'s free-text branch and [VirtualSpaceFormatter]).
   static bool _atTrailingSpace(TextEditingController controller) {
     final selection = controller.selection;
-    return controller.text.endsWith(' ') &&
-        selection.isCollapsed &&
-        selection.baseOffset == controller.text.length;
+    return controller.text.endsWith(' ') && selection.isCollapsed && selection.baseOffset == controller.text.length;
   }
 
   /// Drops the space [_atTrailingSpace] found, so the value the operator leaves
@@ -2263,11 +2198,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               // Unlike that field, this fires once per dispatched command with
               // a final, already-complete frequency — no mid-typing prefix to
               // guard against — so a null guess simply leaves `_radio.mode` alone.
-              final guess = modeForFrequency(
-                freq.toDouble(),
-                ituRegion: widget.radio.ourItuRegion,
-                countryCode: widget.radio.ourCountryCode,
-              );
+              final guess = modeForFrequency(freq.toDouble(), ituRegion: widget.radio.ourItuRegion, countryCode: widget.radio.ourCountryCode);
               if (guess != null) _radio.applyModeGuess(guess);
             }
           });
@@ -2296,8 +2227,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       } else if (map['updateSettings'] is Map) {
         // A settings write is the app's, like every other named action; the
         // panel holds no settings engine of its own.
-        await widget.commands.onCommandAction
-            ?.call('updateSettings', (map['updateSettings'] as Map).cast<String, dynamic>());
+        await widget.commands.onCommandAction?.call('updateSettings', (map['updateSettings'] as Map).cast<String, dynamic>());
       } else if (map['setCallField'] is Map) {
         // Note expansion (`//KEY`, issue #17): the interpreted command
         // replaces the call field wholesale. Set text and selection in one
@@ -2379,10 +2309,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // Same shape as updateOperation: this widget names the open
         // operation, the app writes the event rows (and opens the location
         // screen for ROVERQTH).
-        await widget.commands.onCommandAction?.call('markSegment', {
-          ...(map['markSegment'] as Map).cast<String, dynamic>(),
-          'uuid': widget.log.operation.uuid,
-        });
+        await widget.commands.onCommandAction?.call('markSegment', {...(map['markSegment'] as Map).cast<String, dynamic>(), 'uuid': widget.log.operation.uuid});
       } else if (map['setPower'] is Map) {
         // No QSO-scoped widget state of its own — same dispatch shape as
         // updateSetting/openSettings above, straight through to the app layer.
@@ -2418,9 +2345,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   Future<void> _openMoreEditor() async {
     final millis = _time.effectiveStartAtMillis;
-    final dt = millis != null
-        ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true)
-        : nowUtc();
+    final dt = millis != null ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true) : nowUtc();
     // Captured so the Save handler below can tell "the user actually edited
     // Grid/State in this pane" from "the pane merely displayed whatever
     // was already there" — the latter must not turn a passive lookup guess
@@ -2849,10 +2774,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // and not which of them a lookup proposed, and the wipe below is what
     // forgets that.
     _undoGuesses = _refs.takeGuessSnapshot();
-    _draft.undoSlot.set(_draft.toData(), onExpire: () {
-      _undoGuesses = null;
-      if (mounted) setState(() {});
-    });
+    _draft.undoSlot.set(
+      _draft.toData(),
+      onExpire: () {
+        _undoGuesses = null;
+        if (mounted) setState(() {});
+      },
+    );
     _wipe();
   }
 
@@ -2926,40 +2854,36 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// dimensions, which LayoutBuilder explicitly doesn't support — so the icon
   /// just uses a fixed, comfortable size.) #236: stable id for agent/browser
   /// tooling. [_submitButtonKey] is for the post-frame measurement.
-  Widget _buildSubmitButton(ThemeData accentTheme, {required bool editing, required bool deletedQso}) =>
-      semanticId(
-          'action.log',
-          AspectRatio(
-            key: _submitButtonKey,
-            aspectRatio: 1,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: FilledButton(
-                // Disabled while viewing a deleted QSO — there's nothing to
-                // save; restore first. `_command.hasExecutableCommand` lets
-                // the button accept a command too, matching Enter (a command
-                // isn't a callsign, so `_canLog` alone would leave it
-                // disabled — see that getter). `_editingEvent` skips both: an
-                // event row has neither a callsign nor a command to accept.
-                onPressed:
-                    (!deletedQso && (_pendingDelete || _canLog || _command.hasExecutableCommand || _editingEvent))
-                        ? _log
-                        : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: accentTheme.colorScheme.tertiary,
-                  foregroundColor: accentTheme.colorScheme.onTertiary,
-                  minimumSize: Size.zero,
-                  padding: EdgeInsets.zero,
-                  shape: const CircleBorder(),
-                ),
-                child: Icon(
-                  _pendingDelete ? MdiIcons.trashCan : (editing ? MdiIcons.contentSave : MdiIcons.upload),
-                  size: 24 * 1.2 * MediaQuery.textScalerOf(context).scale(1.0),
-                ),
-              ),
-            ),
+  Widget _buildSubmitButton(ThemeData accentTheme, {required bool editing, required bool deletedQso}) => semanticId(
+    'action.log',
+    AspectRatio(
+      key: _submitButtonKey,
+      aspectRatio: 1,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: FilledButton(
+          // Disabled while viewing a deleted QSO — there's nothing to
+          // save; restore first. `_command.hasExecutableCommand` lets
+          // the button accept a command too, matching Enter (a command
+          // isn't a callsign, so `_canLog` alone would leave it
+          // disabled — see that getter). `_editingEvent` skips both: an
+          // event row has neither a callsign nor a command to accept.
+          onPressed: (!deletedQso && (_pendingDelete || _canLog || _command.hasExecutableCommand || _editingEvent)) ? _log : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: accentTheme.colorScheme.tertiary,
+            foregroundColor: accentTheme.colorScheme.onTertiary,
+            minimumSize: Size.zero,
+            padding: EdgeInsets.zero,
+            shape: const CircleBorder(),
           ),
-      );
+          child: Icon(
+            _pendingDelete ? MdiIcons.trashCan : (editing ? MdiIcons.contentSave : MdiIcons.upload),
+            size: 24 * 1.2 * MediaQuery.textScalerOf(context).scale(1.0),
+          ),
+        ),
+      ),
+    ),
+  );
 
   /// Which action the info row's second button is right now — per the state
   /// machine in the class doc comment above — as a [LoggingActionButton]
@@ -3205,11 +3129,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _isLogging = true;
     try {
       await widget.log.qsosRepository.update(
-        Qso(
-          uuid: editingQso.uuid,
-          operationUuid: widget.log.operation.uuid,
-          data: _eventDataForSave(editingQso),
-        ),
+        Qso(uuid: editingQso.uuid, operationUuid: widget.log.operation.uuid, data: _eventDataForSave(editingQso)),
         basedOn: editingQso,
       );
     } catch (e, stack) {
@@ -3247,8 +3167,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // about the call it was made for — the raw stacked field text never
       // matches it.
       final baseData = _draft.toData(callOverride: stacked?.calls.first);
-      final baseStartAtMillis =
-          (baseData['startAtMillis'] as int?) ?? nowMillis();
+      final baseStartAtMillis = (baseData['startAtMillis'] as int?) ?? nowMillis();
 
       // The record being edited (index 0, when editing) survives untouched
       // even once more calls are added to its list — same as an ordinary
@@ -3293,11 +3212,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           // pull moved the row while the editor sat open, only the fields
           // actually edited here overwrite it (see mergeConcurrentEdit).
           await widget.log.qsosRepository.update(
-            Qso(
-              uuid: editingQso.uuid,
-              operationUuid: widget.log.operation.uuid,
-              data: await _decorated(dataFor(calls.first, 0)),
-            ),
+            Qso(uuid: editingQso.uuid, operationUuid: widget.log.operation.uuid, data: await _decorated(dataFor(calls.first, 0))),
             basedOn: editingQso,
           );
         } catch (e, stack) {
@@ -3312,8 +3227,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           final data = dataFor(calls[i], i)..remove('uuid');
           final Qso qso;
           try {
-            qso = await widget.log.qsosRepository.add(widget.log.operation.uuid, await _decorated(_exchange.withSerialConflicts(data)),
-                serialSequences: _exchange.serialSequences);
+            qso = await widget.log.qsosRepository.add(
+              widget.log.operation.uuid,
+              await _decorated(_exchange.withSerialConflicts(data)),
+              serialSequences: _exchange.serialSequences,
+            );
           } catch (e, stack) {
             // Calls before [i] are already committed: keep the edited
             // record's own call plus only the still-unlogged ones in the
@@ -3337,8 +3255,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           final Qso qso;
           try {
             qso = await widget.log.qsosRepository.add(
-                widget.log.operation.uuid, await _decorated(_exchange.withSerialConflicts(dataFor(calls[i], i))),
-                serialSequences: _exchange.serialSequences);
+              widget.log.operation.uuid,
+              await _decorated(_exchange.withSerialConflicts(dataFor(calls[i], i))),
+              serialSequences: _exchange.serialSequences,
+            );
           } catch (e, stack) {
             // Nothing is wiped on failure — the fields keep every typed
             // value. With calls already committed (i > 0), the field is
@@ -3347,9 +3267,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             // the committed calls twice.
             if (i > 0) {
               final unlogged = calls.sublist(i).join(',');
-              final text = stacked == null || stacked.remainder.isEmpty
-                  ? unlogged
-                  : '$unlogged//${stacked.remainder}';
+              final text = stacked == null || stacked.remainder.isEmpty ? unlogged : '$unlogged//${stacked.remainder}';
               _callController.value = TextEditingValue(
                 text: text,
                 selection: TextSelection.collapsed(offset: unlogged.length),
@@ -3406,9 +3324,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // button) or selecting away (ham2k/halo-dist#59).
     final deletedQso = widget.session.editingQso?.deleted ?? false;
     final fieldsLocked = _fieldsLocked;
-    final accentPoloColors = editing
-        ? poloColors.copyWith(tertiaryLight: poloColors.secondaryLight)
-        : poloColors;
+    final accentPoloColors = editing ? poloColors.copyWith(tertiaryLight: poloColors.secondaryLight) : poloColors;
     final accentTheme = editing
         ? theme.copyWith(
             colorScheme: theme.colorScheme.copyWith(
@@ -3459,8 +3375,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                 // `secondaryPanelHorizontalInset` only, so its expanded
                 // panel still stops short of the physical edge by that
                 // device inset instead of bleeding into it.
-                padding: PaneSafeArea.symmetricOf(context, horizontal: secondaryPanelHorizontalInset)
-                    .add(const EdgeInsets.only(bottom: Space.md)),
+                padding: PaneSafeArea.symmetricOf(context, horizontal: secondaryPanelHorizontalInset).add(const EdgeInsets.only(bottom: Space.md)),
                 // Scoped so every field's label/underline reads clearly
                 // against the tertiary-tinted panel, without touching the
                 // rest of the theme (the log button keeps its own
@@ -3473,26 +3388,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       // the panel's own (tertiary-tinted) background.
                       filled: true,
                       fillColor: accentTheme.colorScheme.surface,
-                      labelStyle: TextStyle(
-                        color: accentTheme.colorScheme.onTertiaryContainer.withValues(
-                          alpha: 0.85,
-                        ),
-                      ),
-                      floatingLabelStyle: TextStyle(
-                        color: accentTheme.colorScheme.onTertiaryContainer,
-                      ),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: accentTheme.colorScheme.onTertiaryContainer
-                              .withValues(alpha: 0.4),
-                        ),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: accentTheme.colorScheme.tertiary,
-                          width: 3,
-                        ),
-                      ),
+                      labelStyle: TextStyle(color: accentTheme.colorScheme.onTertiaryContainer.withValues(alpha: 0.85)),
+                      floatingLabelStyle: TextStyle(color: accentTheme.colorScheme.onTertiaryContainer),
+                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: accentTheme.colorScheme.onTertiaryContainer.withValues(alpha: 0.4))),
+                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accentTheme.colorScheme.tertiary, width: 3)),
                     ),
                   ),
                   child: Column(
@@ -3511,11 +3410,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             // override has no editing UI yet either
                             // (docs/design/contests.md §5.1.3), so it stays
                             // disabled along with the rest.
-                            controls: _buildSecondaryControls(
-                              accentTheme,
-                              accentPoloColors,
-                              enabledFor: _editingEvent ? (key) => key == 'time' : null,
-                            ),
+                            controls: _buildSecondaryControls(accentTheme, accentPoloColors, enabledFor: _editingEvent ? (key) => key == 'time' : null),
                             selectedKey: _selectedControlKey,
                             onSelect: _onSelectControl,
                             onOpenSettings: _openControlSettingsDialog,
@@ -3533,9 +3428,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         signature: _infoAreaSignature(fieldsLocked: fieldsLocked, deletedQso: deletedQso),
                         strip: widget.strip.aboveEntryRow,
                         actionButton: _buildWipeOrEditButton(accentTheme),
-                        child: fieldsLocked
-                            ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso))
-                            : _buildInfoArea(accentTheme),
+                        child: fieldsLocked ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso)) : _buildInfoArea(accentTheme),
                       ),
                       const SizedBox(height: Space.md),
                       // A Stack so the `options` suggestion pills can float over
@@ -3547,53 +3440,52 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
-                      LoggingEntryRow(
-                        call: (controller: _callController, focus: _callFocus),
-                        rstFields: widget.prefs.showRSTFields ? _rstPair : const [],
-                        rstPlaceholder: _rstPlaceholder,
-                        numericKeyboardType: _numbersAndPunctuationOnIOS,
-                        exchange: _exchange,
-                        textControls: _textControls,
-                        state: widget.prefs.showStateField ? (controller: _stateController, focus: _stateFocus) : null,
-                        stateHint: _guessStateHint,
-                        onStateChanged: (_) {
-                          _draft.stateTouched = true;
-                          // Scored on (New State / New Province), so a typed
-                          // state has to reach the scorer like a band or mode
-                          // change does.
-                          _lookup.scheduleScore();
-                        },
-                        grid: widget.prefs.showGridField ? (controller: _gridController, focus: _gridFocus) : null,
-                        gridHint: _guessGridHint,
-                        onGridChanged: (_) => _draft.markGridTouched(),
-                        command: _command,
-                        virtualSpace: _virtualSpace,
-                        commandVirtualSpace: _commandVirtualSpace,
-                        enabled: !fieldsLocked,
-                        leftieMode: widget.prefs.leftieMode,
-                        // The log button is a circle as tall as the row, so the
-                        // height already measured for it is also its width. The
-                        // 44 fallback (first frame, before that measurement
-                        // lands) matches the info area's own above.
-                        buttonWidth: _editButtonDiameter ?? 44,
-                        submitButton: _buildSubmitButton(accentTheme, editing: editing, deletedQso: deletedQso),
-                        eventFields: _editingEvent
-                            ? EventFieldRow(
-                                editingQso: widget.session.editingQso!,
-                                textController: _eventTextController,
-                                textFocus: _eventTextFocus,
-                                enabled: !fieldsLocked,
-                                todoDone: _eventTodoDone,
-                                onTodoDoneChanged: (done) => setState(() => _eventTodoDone = done),
-                                onSubmitted: _log,
-                              )
-                            : null,
-                        onSubmitted: () => _log(fromEnter: true),
-                        onExchangeSubmitted: _handleEnter,
-                        onCallTyped: widget.session.onCallTyped,
-                      ),
-                          if (exchangeMenu != null)
-                            ExchangeSuggestionsMenu(model: _exchange, menu: exchangeMenu, theme: accentTheme),
+                          LoggingEntryRow(
+                            call: (controller: _callController, focus: _callFocus),
+                            rstFields: widget.prefs.showRSTFields ? _rstPair : const [],
+                            rstPlaceholder: _rstPlaceholder,
+                            numericKeyboardType: _numbersAndPunctuationOnIOS,
+                            exchange: _exchange,
+                            textControls: _textControls,
+                            state: widget.prefs.showStateField ? (controller: _stateController, focus: _stateFocus) : null,
+                            stateHint: _guessStateHint,
+                            onStateChanged: (_) {
+                              _draft.stateTouched = true;
+                              // Scored on (New State / New Province), so a typed
+                              // state has to reach the scorer like a band or mode
+                              // change does.
+                              _lookup.scheduleScore();
+                            },
+                            grid: widget.prefs.showGridField ? (controller: _gridController, focus: _gridFocus) : null,
+                            gridHint: _guessGridHint,
+                            onGridChanged: (_) => _draft.markGridTouched(),
+                            command: _command,
+                            virtualSpace: _virtualSpace,
+                            commandVirtualSpace: _commandVirtualSpace,
+                            enabled: !fieldsLocked,
+                            leftieMode: widget.prefs.leftieMode,
+                            // The log button is a circle as tall as the row, so the
+                            // height already measured for it is also its width. The
+                            // 44 fallback (first frame, before that measurement
+                            // lands) matches the info area's own above.
+                            buttonWidth: _editButtonDiameter ?? 44,
+                            submitButton: _buildSubmitButton(accentTheme, editing: editing, deletedQso: deletedQso),
+                            eventFields: _editingEvent
+                                ? EventFieldRow(
+                                    editingQso: widget.session.editingQso!,
+                                    textController: _eventTextController,
+                                    textFocus: _eventTextFocus,
+                                    enabled: !fieldsLocked,
+                                    todoDone: _eventTodoDone,
+                                    onTodoDoneChanged: (done) => setState(() => _eventTodoDone = done),
+                                    onSubmitted: _log,
+                                  )
+                                : null,
+                            onSubmitted: () => _log(fromEnter: true),
+                            onExchangeSubmitted: _handleEnter,
+                            onCallTyped: widget.session.onCallTyped,
+                          ),
+                          if (exchangeMenu != null) ExchangeSuggestionsMenu(model: _exchange, menu: exchangeMenu, theme: accentTheme),
                         ],
                       ),
                     ],
@@ -3617,11 +3509,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               // row reads as continuing into the strip); otherwise it's the
               // panel's own background (Material above), so the home-indicator
               // strip matches the panel.
-              if (_bottomReserve > 0)
-                SizedBox(
-                  width: double.infinity,
-                  height: _bottomReserve,
-                ),
+              if (_bottomReserve > 0) SizedBox(width: double.infinity, height: _bottomReserve),
             ],
           ),
         ),
@@ -3635,12 +3523,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // still cross the boundary freely — only keyboard traversal is confined.
     return FocusScope(
       node: _focusBackstop.panelScope,
-      child: Focus(
-        canRequestFocus: false,
-        skipTraversal: true,
-        onKeyEvent: (node, event) => _handleChord(event),
-        child: panel,
-      ),
+      child: Focus(canRequestFocus: false, skipTraversal: true, onKeyEvent: (node, event) => _handleChord(event), child: panel),
     );
   }
 
@@ -3719,10 +3602,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             // reads as chrome in every mode. (appBarTheme isn't remapped by
             // the editing accent, so `theme` here being the accent theme is
             // fine.)
-            backgroundColor:
-                (theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary).toARGB32(),
-            foregroundColor:
-                (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).toARGB32(),
+            backgroundColor: (theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary).toARGB32(),
+            foregroundColor: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).toARGB32(),
           )
         : null;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -3825,9 +3706,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return (refusal != null)
         ? refusal.reason
         : (kind != null)
-        ? (deletedQso
-            ? t.loggingControls.deletedEventWarning(kind: kind)
-            : t.loggingControls.pendingDeleteEventWarning(kind: kind))
+        ? (deletedQso ? t.loggingControls.deletedEventWarning(kind: kind) : t.loggingControls.pendingDeleteEventWarning(kind: kind))
         : (deletedQso ? t.loggingControls.deletedQsoWarning : t.loggingControls.pendingDeleteWarning);
   }
 
@@ -3947,7 +3826,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final sig = data == null
         ? null
         : '${data.call}|${_lookup.lookupFor}|${data.isEditing}|${g?['name']}|${g?['grid']}|${g?['image']}|${g?['note']}'
-            '|${data.alertKeys.join(",")}|${data.noticeKeys.join(",")}';
+              '|${data.alertKeys.join(",")}|${data.noticeKeys.join(",")}';
     if (sig == _lastCallInfoSig) return;
     _lastCallInfoSig = sig;
     widget.lookups.onCallInfoChanged!(data);
@@ -4006,13 +3885,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// because a report reaches the draft with its placeholder already folded
   /// in by `_rstOrDefault`.
   List<PeerDraftField> _peerDraftFields() => [
-        for (final field in _primaryFields)
-          (
-            key: field.key,
-            label: field.label,
-            value: field.controller.text.trim(),
-            hint: field.hint?.trim(),
-          ),
-      ];
-
+    for (final field in _primaryFields) (key: field.key, label: field.label, value: field.controller.text.trim(), hint: field.hint?.trim()),
+  ];
 }

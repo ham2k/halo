@@ -68,13 +68,24 @@ void main() {
     expect(echo, {'x': 1});
 
     // Single-hook invoke hits the highest-priority lookup.
-    final single = await host.invokeHook('lookup', key: 'good', method: 'lookupCall',
-        args: {'callInfo': {'call': 'W1AW'}});
+    final single = await host.invokeHook(
+      'lookup',
+      key: 'good',
+      method: 'lookupCall',
+      args: {
+        'callInfo': {'call': 'W1AW'},
+      },
+    );
     expect(single['name'], 'Test Name');
 
     // invokeAll returns one entry per source; the failing one is isolated.
-    final all = await host.invokeHookAll('lookup', method: 'lookupCall',
-        args: {'callInfo': {'call': 'W1AW'}});
+    final all = await host.invokeHookAll(
+      'lookup',
+      method: 'lookupCall',
+      args: {
+        'callInfo': {'call': 'W1AW'},
+      },
+    );
     expect(all, hasLength(2));
     expect(all[0]['key'], 'good');
     expect(all[0]['ok'], true);
@@ -85,15 +96,11 @@ void main() {
 
     // KV: extension sees what the host seeded, namespaced.
     host.setKV('test-extension', 'greeting', 'hello');
-    final fromHost = await host.invokeHook('kv', key: 'kv', method: 'roundTrip',
-        args: {'key': 'other', 'value': 42});
+    final fromHost = await host.invokeHook('kv', key: 'kv', method: 'roundTrip', args: {'key': 'other', 'value': 42});
     expect(fromHost, 42);
 
     // Unknown hooks fail fast with a useful error.
-    await expectLater(
-      host.invokeHook('lookup', key: 'missing', method: 'lookupCall', args: {}),
-      throwsA(isA<ExtensionHostException>()),
-    );
+    await expectLater(host.invokeHook('lookup', key: 'missing', method: 'lookupCall', args: {}), throwsA(isA<ExtensionHostException>()));
   });
 
   test('kernel passes settings (locale) to hook context', () async {
@@ -118,16 +125,13 @@ __polo.defineExtension({
     })
   },
 })
-'''
-        )
+''',
+        ),
       ],
       useIsolate: false,
       onHostCall: (method, params) async {
         if (method == 'getSettings') {
-          return {
-            'developerMode': true,
-            'locale': 'es',
-          };
+          return {'developerMode': true, 'locale': 'es'};
         }
         return null;
       },
@@ -135,10 +139,7 @@ __polo.defineExtension({
     addTearDown(host.dispose);
 
     final result = await host.invokeHook('localeTest', key: 'test', method: 'checkContext', args: {});
-    expect(result, {
-      'locale': 'es',
-      'online': true,
-    });
+    expect(result, {'locale': 'es', 'online': true});
   });
 
   test('ADIF export extension generates a valid file from QSON', () async {
@@ -149,35 +150,42 @@ __polo.defineExtension({
     );
     addTearDown(host.dispose);
 
-    final result = await host.invokeHook('export', key: 'adif', method: 'generateExport', args: {
-      'operation': {'uuid': 'op-1', 'stationCall': 'KI2D', 'title': 'Test Op'},
-      'qsos': [
-        {
-          'our': {'call': 'KI2D', 'sent': '59'},
-          'their': {'call': 'W1AW', 'sent': '57', 'name': 'ARRL HQ', 'grid': 'FN31pr', 'state': 'CT'},
-          'freq': 14285.0,
-          'band': '20m',
-          'mode': 'SSB',
-          'startAtMillis': DateTime.utc(2026, 7, 5, 18, 30).millisecondsSinceEpoch,
-        },
-        {
-          'our': {'call': 'KI2D', 'sent': '599'},
-          // The lookup layer composes a QRZ nickname as First “Nick” Last;
-          // ADIF is read by decades of software that cannot be trusted with
-          // typographic quotes, and the length prefix counts UTF-16 units
-          // while a byte-counting reader sees three bytes per curly quote.
-          'their': {'call': 'EA4XYZ', 'sent': '579', 'name': 'John “Jack” Smith'},
-          'freq': 7025.0,
-          'band': '40m',
-          'mode': 'CW',
-          'startAtMillis': DateTime.utc(2026, 7, 5, 18, 45).millisecondsSinceEpoch,
-        },
-      ],
-      // What the app passes for the whole-log export: it declares
-      // `alwaysIncludePrivateData`, so this is the complete field set. The
-      // withholding default has its own tests in activity_export_test.dart.
-      'includePrivateData': true,
-    }) as Map;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': {'uuid': 'op-1', 'stationCall': 'KI2D', 'title': 'Test Op'},
+                'qsos': [
+                  {
+                    'our': {'call': 'KI2D', 'sent': '59'},
+                    'their': {'call': 'W1AW', 'sent': '57', 'name': 'ARRL HQ', 'grid': 'FN31pr', 'state': 'CT'},
+                    'freq': 14285.0,
+                    'band': '20m',
+                    'mode': 'SSB',
+                    'startAtMillis': DateTime.utc(2026, 7, 5, 18, 30).millisecondsSinceEpoch,
+                  },
+                  {
+                    'our': {'call': 'KI2D', 'sent': '599'},
+                    // The lookup layer composes a QRZ nickname as First “Nick” Last;
+                    // ADIF is read by decades of software that cannot be trusted with
+                    // typographic quotes, and the length prefix counts UTF-16 units
+                    // while a byte-counting reader sees three bytes per curly quote.
+                    'their': {'call': 'EA4XYZ', 'sent': '579', 'name': 'John “Jack” Smith'},
+                    'freq': 7025.0,
+                    'band': '40m',
+                    'mode': 'CW',
+                    'startAtMillis': DateTime.utc(2026, 7, 5, 18, 45).millisecondsSinceEpoch,
+                  },
+                ],
+                // What the app passes for the whole-log export: it declares
+                // `alwaysIncludePrivateData`, so this is the complete field set. The
+                // withholding default has its own tests in activity_export_test.dart.
+                'includePrivateData': true,
+              },
+            )
+            as Map;
 
     expect(result['filename'], '2026-07-05 KI2D Test Op Full.adi');
     final content = result['content'] as String;
@@ -209,30 +217,37 @@ __polo.defineExtension({
     );
     addTearDown(host.dispose);
 
-    final result = await host.invokeHook('export', key: 'adif', method: 'generateExport', args: {
-      'operation': {'uuid': 'op-1', 'stationCall': 'KI2D', 'title': 'Test Op'},
-      'qsos': [
-        {
-          'our': {'call': 'KI2D', 'sent': '59'},
-          'their': {
-            'call': 'W1AW',
-            'sent': '57',
-            'state': 'CT',
-            // A bare county name, as a lookup answers and as the More pane
-            // takes it — the state beside it is what makes it a CNTY.
-            'county': 'Hartford',
-            'cqZone': 5,
-            'ituZone': 8,
-            'arrlSection': 'CT',
-            'power': 100,
-          },
-          'band': '20m',
-          'mode': 'SSB',
-          'startAtMillis': DateTime.utc(2026, 7, 5, 18, 30).millisecondsSinceEpoch,
-        },
-      ],
-      'includePrivateData': false,
-    }) as Map;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': {'uuid': 'op-1', 'stationCall': 'KI2D', 'title': 'Test Op'},
+                'qsos': [
+                  {
+                    'our': {'call': 'KI2D', 'sent': '59'},
+                    'their': {
+                      'call': 'W1AW',
+                      'sent': '57',
+                      'state': 'CT',
+                      // A bare county name, as a lookup answers and as the More pane
+                      // takes it — the state beside it is what makes it a CNTY.
+                      'county': 'Hartford',
+                      'cqZone': 5,
+                      'ituZone': 8,
+                      'arrlSection': 'CT',
+                      'power': 100,
+                    },
+                    'band': '20m',
+                    'mode': 'SSB',
+                    'startAtMillis': DateTime.utc(2026, 7, 5, 18, 30).millisecondsSinceEpoch,
+                  },
+                ],
+                'includePrivateData': false,
+              },
+            )
+            as Map;
 
     final content = result['content'] as String;
     expect(content, contains('<CNTY:11>CT,Hartford'));
@@ -269,12 +284,7 @@ __polo.defineExtension({
     };
 
     Future<String> nameFor(String method, {required bool compact}) async {
-      final result = await host.invokeHook(
-        'export',
-        key: 'adif',
-        method: method,
-        args: {...payload, 'compactFilenames': compact},
-      );
+      final result = await host.invokeHook('export', key: 'adif', method: method, args: {...payload, 'compactFilenames': compact});
       final value = method == 'suggestExportOptions' ? (result as List).first as Map : result as Map;
       return value['filename'] as String;
     }
@@ -298,33 +308,45 @@ __polo.defineExtension({
     addTearDown(host.dispose);
 
     // POTA ref validation works without network.
-    final validation = await host.invokeHook('ref:pota', method: 'validateRef',
-        args: {'ref': {'type': 'pota', 'ref': 'us-1234'}});
+    final validation = await host.invokeHook(
+      'ref:pota',
+      method: 'validateRef',
+      args: {
+        'ref': {'type': 'pota', 'ref': 'us-1234'},
+      },
+    );
     expect(validation['valid'], true);
     expect(validation['normalized'], 'US-1234');
 
-    final result = await host.invokeHook('export', key: 'adif', method: 'generateExport', args: {
-      'operation': {
-        'stationCall': 'KI2D',
-        'title': 'Park run',
-        'refs': [
-          {'type': 'potaActivation', 'ref': 'US-5678'},
-        ],
-      },
-      'qsos': [
-        {
-          'their': {'call': 'W1AW', 'sent': '59'},
-          'our': {'call': 'KI2D', 'sent': '59'},
-          'mode': 'SSB',
-          'band': '20m',
-          'startAtMillis': DateTime.utc(2026, 7, 5, 19).millisecondsSinceEpoch,
-          'refs': [
-            {'type': 'pota', 'ref': 'US-1234'},
-            {'type': 'pota', 'ref': 'US-4321'},
-          ],
-        },
-      ],
-    }) as Map;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': {
+                  'stationCall': 'KI2D',
+                  'title': 'Park run',
+                  'refs': [
+                    {'type': 'potaActivation', 'ref': 'US-5678'},
+                  ],
+                },
+                'qsos': [
+                  {
+                    'their': {'call': 'W1AW', 'sent': '59'},
+                    'our': {'call': 'KI2D', 'sent': '59'},
+                    'mode': 'SSB',
+                    'band': '20m',
+                    'startAtMillis': DateTime.utc(2026, 7, 5, 19).millisecondsSinceEpoch,
+                    'refs': [
+                      {'type': 'pota', 'ref': 'US-1234'},
+                      {'type': 'pota', 'ref': 'US-4321'},
+                    ],
+                  },
+                ],
+              },
+            )
+            as Map;
 
     final content = result['content'] as String;
     // Two hunted parks means two records, one per park, each separately
@@ -338,11 +360,7 @@ __polo.defineExtension({
   });
 
   test('samples list is capped instead of growing without bound', () async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: const [],
-      useIsolate: false,
-    );
+    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: const [], useIsolate: false);
     addTearDown(host.dispose);
 
     const callCount = 2100; // above the 2000-sample cap
@@ -379,8 +397,10 @@ __polo.defineExtension({
       'describe': 'Change frequency to **14.285 MHz**?',
       'confirm': 'Frequency set to **14.285 MHz**',
       'commands': [
-        {'setVfo': {'freq': 14285.0}}
-      ]
+        {
+          'setVfo': {'freq': 14285.0},
+        },
+      ],
     });
 
     // Plain kHz input still works.
@@ -388,8 +408,10 @@ __polo.defineExtension({
       'describe': 'Change frequency to **14.285 MHz**?',
       'confirm': 'Frequency set to **14.285 MHz**',
       'commands': [
-        {'setVfo': {'freq': 14285.0}}
-      ]
+        {
+          'setVfo': {'freq': 14285.0},
+        },
+      ],
     });
 
     // Band and mode commands.
@@ -397,22 +419,28 @@ __polo.defineExtension({
       'describe': 'Change band to **20m**?',
       'confirm': 'Band set to **20m**',
       'commands': [
-        {'setVfo': {'band': '20m'}}
-      ]
+        {
+          'setVfo': {'band': '20m'},
+        },
+      ],
     });
     expect(await interpretCommand('20'), {
       'describe': 'Change band to **20m**?',
       'confirm': 'Band set to **20m**',
       'commands': [
-        {'setVfo': {'band': '20m'}}
-      ]
+        {
+          'setVfo': {'band': '20m'},
+        },
+      ],
     });
     expect(await interpretCommand('cw'), {
       'describe': 'Change mode to **CW**?',
       'confirm': 'Mode set to **CW**',
       'commands': [
-        {'setVfo': {'mode': 'CW'}}
-      ]
+        {
+          'setVfo': {'mode': 'CW'},
+        },
+      ],
     });
 
     // Nonsense input matches nothing.
@@ -426,8 +454,10 @@ __polo.defineExtension({
       'describe': 'Change band to **160m**?',
       'confirm': 'Band set to **160m**',
       'commands': [
-        {'setVfo': {'band': '160m'}}
-      ]
+        {
+          'setVfo': {'band': '160m'},
+        },
+      ],
     });
   });
 
@@ -447,7 +477,7 @@ __polo.defineExtension({
           {
             'their': {'call': params['call']},
             'refs': [
-              {'type': 'potaHunter', 'ref': 'US-1234'}
+              {'type': 'potaHunter', 'ref': 'US-1234'},
             ],
             'spot': {'timeInMillis': 0, 'source': 'test'},
           },
@@ -458,12 +488,17 @@ __polo.defineExtension({
     await host.activated;
 
     Future<Map<String, dynamic>> lookup({required bool recentContext}) async {
-      final result = await host.invokeHook('lookupService', key: 'core', method: 'lookupCallInfo', args: {
-        'callInfo': {'call': 'KI2D'},
-        'qso': <String, dynamic>{},
-        'operation': <String, dynamic>{},
-        'recentContext': recentContext,
-      });
+      final result = await host.invokeHook(
+        'lookupService',
+        key: 'core',
+        method: 'lookupCallInfo',
+        args: {
+          'callInfo': {'call': 'KI2D'},
+          'qso': <String, dynamic>{},
+          'operation': <String, dynamic>{},
+          'recentContext': recentContext,
+        },
+      );
       return (result['guess'] as Map).cast<String, dynamic>();
     }
 
@@ -483,8 +518,16 @@ __polo.defineExtension({
 
     // Omitting the flag entirely behaves like false — every pre-existing
     // caller passes no such key.
-    final result = await host.invokeHook('lookupService', key: 'core', method: 'lookupCallInfo',
-        args: {'callInfo': {'call': 'KI2D'}, 'qso': {}, 'operation': {}});
+    final result = await host.invokeHook(
+      'lookupService',
+      key: 'core',
+      method: 'lookupCallInfo',
+      args: {
+        'callInfo': {'call': 'KI2D'},
+        'qso': {},
+        'operation': {},
+      },
+    );
     expect((result['guess'] as Map).containsKey('refs'), isFalse);
     expect(spotCalls, hasLength(1));
   });
@@ -517,11 +560,7 @@ __polo.defineExtension({
     // incidental timing elsewhere.
     await host.activated;
     final defsBeforeLoad = await host.invokeHookAll('dataFile', method: 'getDefinition');
-    expect(
-      defsBeforeLoad.any((e) => (e['value'] as Map?)?['key'] == 'hams-of-note'),
-      isTrue,
-      reason: 'the builtin dataFile hook must be registered by now',
-    );
+    expect(defsBeforeLoad.any((e) => (e['value'] as Map?)?['key'] == 'hams-of-note'), isTrue, reason: 'the builtin dataFile hook must be registered by now');
 
     // The exact invocations DataFileManager._processRaw makes for a
     // fetchType 'raw' data file: parse the body, then hand the (JSON-cached)
@@ -530,27 +569,48 @@ __polo.defineExtension({
     // extension's key — HALO-53 gave every note source (this builtin, plus
     // any user-added custom file) its own dataFile registration, so they
     // can be fetched/cached/enabled independently of one another.
-    const body = '# TITLE: Hams of Note\n'
+    const body =
+        '# TITLE: Hams of Note\n'
         '\n'
         'KI2D 🤩 Sebastián - Ham2K PoLo Creator\n'
         'KI2D 😁 also an Elmer\n'
         'DAN WD4DAN,WD4JMM\n';
-    final parsed = await host.invokeHook('dataFile', key: 'hams-of-note', method: 'rawToJSONData',
-        args: {'body': body, 'url': 'https://ham2k.com/data/hams-of-note.txt', 'options': {}});
+    final parsed = await host.invokeHook(
+      'dataFile',
+      key: 'hams-of-note',
+      method: 'rawToJSONData',
+      args: {'body': body, 'url': 'https://ham2k.com/data/hams-of-note.txt', 'options': {}},
+    );
     expect((parsed as Map)['KI2D'], hasLength(2));
     await host.invokeHook('dataFile', key: 'hams-of-note', method: 'onLoadRawData', args: parsed);
 
     // The full lookup pipeline (annotation pre-step + fan-out + merge)
     // carries the combined note and marker emoji onto the guess.
-    final result = await host.invokeHook('lookupService', key: 'core', method: 'lookupCallInfo',
-        args: {'callInfo': {'call': 'KI2D'}, 'qso': {}, 'operation': {}});
+    final result = await host.invokeHook(
+      'lookupService',
+      key: 'core',
+      method: 'lookupCallInfo',
+      args: {
+        'callInfo': {'call': 'KI2D'},
+        'qso': {},
+        'operation': {},
+      },
+    );
     final guess = (result['guess'] as Map).cast<String, dynamic>();
     expect(guess['note'], '🤩😁 Sebastián - Ham2K PoLo Creator');
     expect(guess['emoji'], '🤩');
 
     // A call with no notes gets no note field.
-    final blank = await host.invokeHook('lookupService', key: 'core', method: 'lookupCallInfo',
-        args: {'callInfo': {'call': 'W1AW'}, 'qso': {}, 'operation': {}});
+    final blank = await host.invokeHook(
+      'lookupService',
+      key: 'core',
+      method: 'lookupCallInfo',
+      args: {
+        'callInfo': {'call': 'W1AW'},
+        'qso': {},
+        'operation': {},
+      },
+    );
     expect((blank['guess'] as Map).containsKey('note'), isFalse);
 
     Future<Map<String, dynamic>?> interpretCommand(String input) async {
@@ -565,8 +625,10 @@ __polo.defineExtension({
     expect(await interpretCommand('//dan'), {
       'describe': 'Expand to WD4DAN,WD4JMM?',
       'commands': [
-        {'setCallField': {'text': 'WD4DAN,WD4JMM'}}
-      ]
+        {
+          'setCallField': {'text': 'WD4DAN,WD4JMM'},
+        },
+      ],
     });
     // ...but never one with emoji/free-text (issue #17), an unknown key, or
     // ordinary call-stacking input ("//" not at the start).
@@ -587,32 +649,44 @@ __polo.defineExtension({
     addTearDown(host.dispose);
 
     // SOTA ref validation works without network.
-    final validation = await host.invokeHook('ref:sota', method: 'validateRef',
-        args: {'ref': {'type': 'sota', 'ref': 'w6/sd-026'}});
+    final validation = await host.invokeHook(
+      'ref:sota',
+      method: 'validateRef',
+      args: {
+        'ref': {'type': 'sota', 'ref': 'w6/sd-026'},
+      },
+    );
     expect(validation['valid'], true);
     expect(validation['normalized'], 'W6/SD-026');
 
-    final result = await host.invokeHook('export', key: 'adif', method: 'generateExport', args: {
-      'operation': {
-        'stationCall': 'KI2D',
-        'title': 'Summit run',
-        'refs': [
-          {'type': 'sotaActivation', 'ref': 'W6/SD-026'},
-        ],
-      },
-      'qsos': [
-        {
-          'their': {'call': 'W1AW', 'sent': '59'},
-          'our': {'call': 'KI2D', 'sent': '59'},
-          'mode': 'SSB',
-          'band': '20m',
-          'startAtMillis': DateTime.utc(2026, 7, 5, 19).millisecondsSinceEpoch,
-          'refs': [
-            {'type': 'sota', 'ref': 'G/LD-001'},
-          ],
-        },
-      ],
-    }) as Map;
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': {
+                  'stationCall': 'KI2D',
+                  'title': 'Summit run',
+                  'refs': [
+                    {'type': 'sotaActivation', 'ref': 'W6/SD-026'},
+                  ],
+                },
+                'qsos': [
+                  {
+                    'their': {'call': 'W1AW', 'sent': '59'},
+                    'our': {'call': 'KI2D', 'sent': '59'},
+                    'mode': 'SSB',
+                    'band': '20m',
+                    'startAtMillis': DateTime.utc(2026, 7, 5, 19).millisecondsSinceEpoch,
+                    'refs': [
+                      {'type': 'sota', 'ref': 'G/LD-001'},
+                    ],
+                  },
+                ],
+              },
+            )
+            as Map;
 
     final content = result['content'] as String;
     expect(content, contains('<SOTA_REF:8>G/LD-001'));
@@ -630,57 +704,64 @@ __polo.defineExtension({
     final day1 = DateTime.utc(2026, 7, 5, 18);
     final day2 = DateTime.utc(2026, 7, 6, 12);
 
-    final result = await host.invokeHook('scoring', key: 'core', method: 'scoreQsos', args: {
-      'operation': {'uuid': 'op-1', 'stationCall': 'KI2D'},
-      'qsos': [
-        {
-          'uuid': 'q1',
-          'our': {'call': 'KI2D'},
-          'their': {'call': 'W1AW'},
-          'band': '20m',
-          'mode': 'SSB',
-          'startAtMillis': day1.millisecondsSinceEpoch,
-        },
-        // Same call/band/mode as q1 — should score as a duplicate.
-        {
-          'uuid': 'q2',
-          'our': {'call': 'KI2D'},
-          'their': {'call': 'W1AW'},
-          'band': '20m',
-          'mode': 'SSB',
-          'startAtMillis': day1.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
-        },
-        // Different DXCC entity, still day 1.
-        {
-          'uuid': 'q3',
-          'our': {'call': 'KI2D'},
-          'their': {'call': 'EA4XYZ'},
-          'band': '40m',
-          'mode': 'CW',
-          'startAtMillis': day1.add(const Duration(minutes: 10)).millisecondsSinceEpoch,
-        },
-        // Next day — new day section, DXCC/bands/modes tallies carry over.
-        {
-          'uuid': 'q4',
-          'our': {'call': 'KI2D'},
-          'their': {'call': 'JA1ABC'},
-          'band': '20m',
-          'mode': 'SSB',
-          'startAtMillis': day2.millisecondsSinceEpoch,
-        },
-        // New band (15m), but mode (SSB) was already worked on q1/q4 — must
-        // still score as a new band, not get zeroed out just because the
-        // mode was already known.
-        {
-          'uuid': 'q5',
-          'our': {'call': 'KI2D'},
-          'their': {'call': 'G4ABC'},
-          'band': '15m',
-          'mode': 'SSB',
-          'startAtMillis': day2.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
-        },
-      ],
-    }) as Map;
+    final result =
+        await host.invokeHook(
+              'scoring',
+              key: 'core',
+              method: 'scoreQsos',
+              args: {
+                'operation': {'uuid': 'op-1', 'stationCall': 'KI2D'},
+                'qsos': [
+                  {
+                    'uuid': 'q1',
+                    'our': {'call': 'KI2D'},
+                    'their': {'call': 'W1AW'},
+                    'band': '20m',
+                    'mode': 'SSB',
+                    'startAtMillis': day1.millisecondsSinceEpoch,
+                  },
+                  // Same call/band/mode as q1 — should score as a duplicate.
+                  {
+                    'uuid': 'q2',
+                    'our': {'call': 'KI2D'},
+                    'their': {'call': 'W1AW'},
+                    'band': '20m',
+                    'mode': 'SSB',
+                    'startAtMillis': day1.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
+                  },
+                  // Different DXCC entity, still day 1.
+                  {
+                    'uuid': 'q3',
+                    'our': {'call': 'KI2D'},
+                    'their': {'call': 'EA4XYZ'},
+                    'band': '40m',
+                    'mode': 'CW',
+                    'startAtMillis': day1.add(const Duration(minutes: 10)).millisecondsSinceEpoch,
+                  },
+                  // Next day — new day section, DXCC/bands/modes tallies carry over.
+                  {
+                    'uuid': 'q4',
+                    'our': {'call': 'KI2D'},
+                    'their': {'call': 'JA1ABC'},
+                    'band': '20m',
+                    'mode': 'SSB',
+                    'startAtMillis': day2.millisecondsSinceEpoch,
+                  },
+                  // New band (15m), but mode (SSB) was already worked on q1/q4 — must
+                  // still score as a new band, not get zeroed out just because the
+                  // mode was already known.
+                  {
+                    'uuid': 'q5',
+                    'our': {'call': 'KI2D'},
+                    'their': {'call': 'G4ABC'},
+                    'band': '15m',
+                    'mode': 'SSB',
+                    'startAtMillis': day2.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
+                  },
+                ],
+              },
+            )
+            as Map;
 
     // One verdict per QSO, not one per rule: a scorer's internal rules stay
     // private to its scoresheet, so only points, notices and alerts surface
@@ -801,8 +882,8 @@ __polo.defineExtension({
     });
   },
 })
-'''
-        )
+''',
+        ),
       ],
       useIsolate: false,
       onHostCall: (method, params) async {
@@ -815,38 +896,58 @@ __polo.defineExtension({
 
           final formId = params['formId'] as String;
 
-          final validationResult = await host?.invokeHook('form', key: formId, method: 'validateField', args: {
-            'fieldKey': 'call',
-            'value': 'ki',
-            'state': {'call': 'ki'}
-          });
+          final validationResult = await host?.invokeHook(
+            'form',
+            key: formId,
+            method: 'validateField',
+            args: {
+              'fieldKey': 'call',
+              'value': 'ki',
+              'state': {'call': 'ki'},
+            },
+          );
           expect(validationResult, 'Short call');
 
-          final validationResultOk = await host?.invokeHook('form', key: formId, method: 'validateField', args: {
-            'fieldKey': 'call',
-            'value': 'ki2d',
-            'state': {'call': 'ki2d'}
-          });
+          final validationResultOk = await host?.invokeHook(
+            'form',
+            key: formId,
+            method: 'validateField',
+            args: {
+              'fieldKey': 'call',
+              'value': 'ki2d',
+              'state': {'call': 'ki2d'},
+            },
+          );
           expect(validationResultOk, isNull);
 
-          final transformed = await host?.invokeHook('form', key: formId, method: 'transformField', args: {
-            'fieldKey': 'call',
-            'value': 'ki2d',
-            'state': {'call': 'ki2d'}
-          });
+          final transformed = await host?.invokeHook(
+            'form',
+            key: formId,
+            method: 'transformField',
+            args: {
+              'fieldKey': 'call',
+              'value': 'ki2d',
+              'state': {'call': 'ki2d'},
+            },
+          );
           expect(transformed, 'KI2D');
 
-          final onChangeResult = await host?.invokeHook('form', key: formId, method: 'onChangeField', args: {
-            'fieldKey': 'call',
-            'value': 'update',
-            'state': {'call': 'update'}
-          });
+          final onChangeResult = await host?.invokeHook(
+            'form',
+            key: formId,
+            method: 'onChangeField',
+            args: {
+              'fieldKey': 'call',
+              'value': 'update',
+              'state': {'call': 'update'},
+            },
+          );
           expect(onChangeResult, {'otherField': 'W1AW'});
 
           return {'call': transformed};
         }
         return null;
-      }
+      },
     );
     addTearDown(host.dispose);
 
@@ -854,32 +955,52 @@ __polo.defineExtension({
     expect(def['title'], 'Test Static Form');
     expect(def['elements'][0]['key'], 'name');
 
-    final err1 = await host.invokeHook('form', key: 'test-form', method: 'validateField', args: {
-      'fieldKey': 'name',
-      'value': '',
-      'state': {'name': ''}
-    });
+    final err1 = await host.invokeHook(
+      'form',
+      key: 'test-form',
+      method: 'validateField',
+      args: {
+        'fieldKey': 'name',
+        'value': '',
+        'state': {'name': ''},
+      },
+    );
     expect(err1, 'Name cannot be empty');
 
-    final err2 = await host.invokeHook('form', key: 'test-form', method: 'validateField', args: {
-      'fieldKey': 'name',
-      'value': 'John',
-      'state': {'name': 'John'}
-    });
+    final err2 = await host.invokeHook(
+      'form',
+      key: 'test-form',
+      method: 'validateField',
+      args: {
+        'fieldKey': 'name',
+        'value': 'John',
+        'state': {'name': 'John'},
+      },
+    );
     expect(err2, isNull);
 
-    final trans = await host.invokeHook('form', key: 'test-form', method: 'transformField', args: {
-      'fieldKey': 'name',
-      'value': ' john ',
-      'state': {'name': ' john '}
-    });
+    final trans = await host.invokeHook(
+      'form',
+      key: 'test-form',
+      method: 'transformField',
+      args: {
+        'fieldKey': 'name',
+        'value': ' john ',
+        'state': {'name': ' john '},
+      },
+    );
     expect(trans, 'JOHN');
 
-    final changeRes = await host.invokeHook('form', key: 'test-form', method: 'onChangeField', args: {
-      'fieldKey': 'name',
-      'value': 'trigger',
-      'state': {'name': 'trigger'}
-    });
+    final changeRes = await host.invokeHook(
+      'form',
+      key: 'test-form',
+      method: 'onChangeField',
+      args: {
+        'fieldKey': 'name',
+        'value': 'trigger',
+        'state': {'name': 'trigger'},
+      },
+    );
     expect(changeRes, {'otherField': 'triggered'});
 
     final dynamicResult = await host.invokeHook('testTrigger', key: 'trigger', method: 'runDynamicForm', args: {});
@@ -910,8 +1031,8 @@ __polo.defineExtension({
     })
   },
 })
-'''
-        )
+''',
+        ),
       ],
       useIsolate: false,
     );
@@ -949,8 +1070,8 @@ __polo.defineExtension({
     })
   },
 })
-'''
-        )
+''',
+        ),
       ],
       useIsolate: false,
       onHostCall: (method, params) async {
@@ -989,8 +1110,8 @@ __polo.defineExtension({
     })
   },
 })
-'''
-        )
+''',
+        ),
       ],
       useIsolate: false,
     );
@@ -1029,8 +1150,8 @@ __polo.defineExtension({
   },
 })
 var boundHostCall = null
-'''
-        )
+''',
+        ),
       ],
       useIsolate: false,
     );
@@ -1063,8 +1184,8 @@ __polo.defineExtension({ key: 'honest', name: 'Honest', version: '0.0.1', onActi
 __polo.defineExtension({ key: 'victim', name: 'Impersonator', version: '0.0.1', onActivation: function (api) {
   api.registerHook('impersonate', { key: 'victim', hook: { ping: async function () { return 'i am victim' } } })
 } })
-'''
-        )
+''',
+        ),
       ],
       useIsolate: false,
     );
@@ -1073,10 +1194,7 @@ __polo.defineExtension({ key: 'victim', name: 'Impersonator', version: '0.0.1', 
     final logs = host.logLines.join('\n');
     expect(logs, contains("tried to define extension 'victim'"));
     // The spoofed hook never registered.
-    await expectLater(
-      host.invokeHook('impersonate', key: 'victim', method: 'ping'),
-      throwsA(isA<ExtensionHostException>()),
-    );
+    await expectLater(host.invokeHook('impersonate', key: 'victim', method: 'ping'), throwsA(isA<ExtensionHostException>()));
   });
 
   test('host.fetch is refused for a domain the extension did not declare', () async {
@@ -1101,18 +1219,19 @@ __polo.defineExtension({
   },
 })
 var boundFetch = null
-'''
-        )
+''',
+        ),
       ],
       useIsolate: false,
-      fetchAllowlists: const {'fetcher': ['api.allowed.example']},
+      fetchAllowlists: const {
+        'fetcher': ['api.allowed.example'],
+      },
     );
     addTearDown(host.dispose);
 
     // A declared host would pass the gate (and then fail the real network,
     // which we don't exercise); an undeclared one is blocked before any I/O.
-    final blocked = await host.invokeHook('fetchTest', key: 'fetcher', method: 'grab',
-        args: {'url': 'https://evil.example/steal'});
+    final blocked = await host.invokeHook('fetchTest', key: 'fetcher', method: 'grab', args: {'url': 'https://evil.example/steal'});
     expect(blocked, startsWith('blocked:'));
     expect(blocked, contains('declared domains'));
   });
@@ -1159,46 +1278,30 @@ var boundFetch = null
     const custom = {'User-Agent': 'CustomBot/9'};
 
     test('stamps the canonical UA when the extension set none', () {
-      expect(
-        resolveFetchUserAgent(canonical: canonical, extensionKey: 'pota', overrides: const {}, callerHeaders: const {}),
-        canonical,
-      );
+      expect(resolveFetchUserAgent(canonical: canonical, extensionKey: 'pota', overrides: const {}, callerHeaders: const {}), canonical);
     });
 
     test('overrides a non-whitelisted extension that set its own UA', () {
-      expect(
-        resolveFetchUserAgent(canonical: canonical, extensionKey: 'pota', overrides: const {}, callerHeaders: custom),
-        canonical,
-      );
+      expect(resolveFetchUserAgent(canonical: canonical, extensionKey: 'pota', overrides: const {}, callerHeaders: custom), canonical);
     });
 
     test('keeps a whitelisted extension\'s own UA', () {
-      expect(
-        resolveFetchUserAgent(canonical: canonical, extensionKey: 'sync-x', overrides: const {'sync-x'}, callerHeaders: custom),
-        'CustomBot/9',
-      );
+      expect(resolveFetchUserAgent(canonical: canonical, extensionKey: 'sync-x', overrides: const {'sync-x'}, callerHeaders: custom), 'CustomBot/9');
     });
 
     test('matches the whitelisted UA header case-insensitively', () {
       expect(
-        resolveFetchUserAgent(
-            canonical: canonical, extensionKey: 'sync-x', overrides: const {'sync-x'}, callerHeaders: const {'user-agent': 'CustomBot/9'}),
+        resolveFetchUserAgent(canonical: canonical, extensionKey: 'sync-x', overrides: const {'sync-x'}, callerHeaders: const {'user-agent': 'CustomBot/9'}),
         'CustomBot/9',
       );
     });
 
     test('still stamps canonical for a whitelisted extension that set none', () {
-      expect(
-        resolveFetchUserAgent(canonical: canonical, extensionKey: 'sync-x', overrides: const {'sync-x'}, callerHeaders: const {}),
-        canonical,
-      );
+      expect(resolveFetchUserAgent(canonical: canonical, extensionKey: 'sync-x', overrides: const {'sync-x'}, callerHeaders: const {}), canonical);
     });
 
     test('falls back to the caller UA when no canonical is configured', () {
-      expect(
-        resolveFetchUserAgent(canonical: null, extensionKey: 'pota', overrides: const {}, callerHeaders: custom),
-        'CustomBot/9',
-      );
+      expect(resolveFetchUserAgent(canonical: null, extensionKey: 'pota', overrides: const {}, callerHeaders: custom), 'CustomBot/9');
     });
   });
 
@@ -1219,8 +1322,8 @@ __polo.defineExtension({
     api.registerHook('ctxTest', { key: 'ctx-extension_b', priority: 5, hook: { probe: async function (args, ctx) { return ctx.locale } } })
   },
 })
-'''
-        )
+''',
+        ),
       ],
       useIsolate: false,
       onHostCall: (method, params) async {

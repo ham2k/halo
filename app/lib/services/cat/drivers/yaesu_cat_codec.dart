@@ -41,9 +41,7 @@ const yaesuModeCodes = <String, String>{
   'AM-N': 'D',
 };
 
-final Map<String, String> _modeNamesByCode = {
-  for (final entry in yaesuModeCodes.entries) entry.value: entry.key,
-};
+final Map<String, String> _modeNamesByCode = {for (final entry in yaesuModeCodes.entries) entry.value: entry.key};
 
 String? modeNameForCode(String code) => _modeNamesByCode[code];
 
@@ -86,7 +84,6 @@ String buildReadPowerCommand() => 'PC;';
 /// `PC100;` → 100. Null unless it's exactly three digits.
 int? parsePowerParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
 
-
 /// Asks whether the radio is transmitting.
 ///
 /// READ ONLY — `TX1;`/`TX2;` would KEY the radio, so the bare `TX;` is the
@@ -103,10 +100,10 @@ String buildReadTransmitStatusCommand() => 'TX;';
 /// radio that does not answer the command rather than one that is
 /// receiving — the difference decides whether an antenna relay may move.
 bool? parseTransmitStatusParams(String params) => switch (params.trim()) {
-      '0' => false,
-      '1' || '2' => true,
-      _ => null,
-    };
+  '0' => false,
+  '1' || '2' => true,
+  _ => null,
+};
 
 /// The meter reads, by the numbers Yaesu's own CAT manuals give them.
 ///
@@ -179,8 +176,7 @@ String buildReadKeyerSpeedCommand() => 'KS;';
 const yaesuKeyerSpeedMin = 4;
 const yaesuKeyerSpeedMax = 60;
 
-String buildSetKeyerSpeedCommand(int wpm) =>
-    'KS${wpm.clamp(yaesuKeyerSpeedMin, yaesuKeyerSpeedMax).toString().padLeft(3, '0')};';
+String buildSetKeyerSpeedCommand(int wpm) => 'KS${wpm.clamp(yaesuKeyerSpeedMin, yaesuKeyerSpeedMax).toString().padLeft(3, '0')};';
 
 /// `KS020;` → 20. Null unless it's exactly three digits.
 int? parseKeyerSpeedParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
@@ -222,7 +218,6 @@ String buildPlayVoiceMemoryCommand(int n) => 'PB0${n.clamp(1, yaesuVoiceMemoryCo
 /// saying its own PTT is down — so it is never sent.
 String buildSetTxCommand(bool on) => 'TX${on ? 1 : 0};';
 
-
 /// `PB00;` — stops playback.
 String buildStopVoiceMemoryCommand() => 'PB00;';
 
@@ -245,8 +240,7 @@ String buildStopVoiceRecordingCommand() => 'LM00;';
 String buildReadVoiceRecordingCommand() => 'LM0;';
 
 /// `0n` → n, for both `PB` and `LM` answers. Null for anything else.
-int? parseVoiceChannelParams(String params) =>
-    RegExp(r'^0\d$').hasMatch(params) ? int.tryParse(params.substring(1)) : null;
+int? parseVoiceChannelParams(String params) => RegExp(r'^0\d$').hasMatch(params) ? int.tryParse(params.substring(1)) : null;
 
 /// `FA014250000;` → 14250000 Hz. Null unless it's exactly nine digits —
 /// a truncated or over-long response is not a frequency.

@@ -44,26 +44,25 @@ class _AccountListCommand extends AccountCommandBase {
 
   @override
   Future<int> run() => withRuntime((runtime) async {
-        final accounts = await definitions(runtime);
-        emit([
-          for (final account in accounts)
-            {
-              'key': account.key,
-              'kvKey': account.kvKey,
-              'label': account.label,
-              if (account.description != null) 'description': account.description,
-              'fields': [
-                for (final field in account.fields)
-                  {'key': field.key, 'label': field.label, 'type': field.type},
-              ],
-              'oauth2': account.usesOAuth,
-              // Whether, not what.
-              'storedCredentials': stored(account.kvKey, 'credentials').keys.toList()..sort(),
-              'hasSession': stored(account.kvKey, 'session').isNotEmpty,
-            },
-        ]);
-        return 0;
-      });
+    final accounts = await definitions(runtime);
+    emit([
+      for (final account in accounts)
+        {
+          'key': account.key,
+          'kvKey': account.kvKey,
+          'label': account.label,
+          if (account.description != null) 'description': account.description,
+          'fields': [
+            for (final field in account.fields) {'key': field.key, 'label': field.label, 'type': field.type},
+          ],
+          'oauth2': account.usesOAuth,
+          // Whether, not what.
+          'storedCredentials': stored(account.kvKey, 'credentials').keys.toList()..sort(),
+          'hasSession': stored(account.kvKey, 'session').isNotEmpty,
+        },
+    ]);
+    return 0;
+  });
 }
 
 /// Stores credentials for one account.
@@ -77,13 +76,14 @@ class _AccountSetCommand extends AccountCommandBase {
 
   _AccountSetCommand() {
     argParser
-      ..addFlag('test',
-          negatable: false,
-          help: "Call the extension's testCredentials with what you entered, before storing.")
-      ..addFlag('stdin',
-          negatable: false,
-          help: 'Read field values as `key=value` lines on stdin instead of prompting. '
-              'For scripts; nothing is echoed either way.');
+      ..addFlag('test', negatable: false, help: "Call the extension's testCredentials with what you entered, before storing.")
+      ..addFlag(
+        'stdin',
+        negatable: false,
+        help:
+            'Read field values as `key=value` lines on stdin instead of prompting. '
+            'For scripts; nothing is echoed either way.',
+      );
   }
 
   @override
@@ -91,58 +91,56 @@ class _AccountSetCommand extends AccountCommandBase {
 
   @override
   Future<int> run() => withRuntime((runtime) async {
-        final account = await resolve(runtime, accountArg);
-        final useStdin = argResults!.flag('stdin');
-        final given = assignmentsFor(
-          account: account,
-          commandLine: argResults!.rest.skip(1),
-          stdinLines: useStdin ? _stdinLines() : const [],
+    final account = await resolve(runtime, accountArg);
+    final useStdin = argResults!.flag('stdin');
+    final given = assignmentsFor(account: account, commandLine: argResults!.rest.skip(1), stdinLines: useStdin ? _stdinLines() : const []);
+
+    final values = <String, Object?>{...stored(account.kvKey, 'credentials'), ...given};
+    if (useStdin) {
+      // Already folded in by assignmentsFor.
+    } else if (stdin.hasTerminal) {
+      for (final field in account.fields) {
+        if (given.containsKey(field.key)) continue;
+        final entered = _prompt(field, current: values[field.key]);
+        if (entered != null) values[field.key] = entered;
+      }
+    } else {
+      // No terminal — a script, a CI step, a test. Prompting here would
+      // block on a stdin nobody is going to type into, which reads as a
+      // hang rather than as a question. Take what was passed, and name
+      // what is still missing so a half-configured account is not
+      // mistaken for a working one.
+      final missing = account.fields.where((field) => !values.containsKey(field.key));
+      if (missing.isNotEmpty) {
+        stderr.writeln(
+          'halo-ext: no terminal to prompt on; ${account.kvKey} still has no '
+          '${missing.map((field) => '`${field.key}`').join(', ')} '
+          '(pass `field=value`, or feed `--stdin`)',
         );
+      }
+    }
 
-        final values = <String, Object?>{...stored(account.kvKey, 'credentials'), ...given};
-        if (useStdin) {
-          // Already folded in by assignmentsFor.
-        } else if (stdin.hasTerminal) {
-          for (final field in account.fields) {
-            if (given.containsKey(field.key)) continue;
-            final entered = _prompt(field, current: values[field.key]);
-            if (entered != null) values[field.key] = entered;
-          }
-        } else {
-          // No terminal — a script, a CI step, a test. Prompting here would
-          // block on a stdin nobody is going to type into, which reads as a
-          // hang rather than as a question. Take what was passed, and name
-          // what is still missing so a half-configured account is not
-          // mistaken for a working one.
-          final missing = account.fields.where((field) => !values.containsKey(field.key));
-          if (missing.isNotEmpty) {
-            stderr.writeln('halo-ext: no terminal to prompt on; ${account.kvKey} still has no '
-                '${missing.map((field) => '`${field.key}`').join(', ')} '
-                '(pass `field=value`, or feed `--stdin`)');
-          }
-        }
+    if (argResults!.flag('test')) {
+      final verdict = await test(runtime, account, values);
+      stderr.writeln('halo-ext: $verdict');
+    }
 
-        if (argResults!.flag('test')) {
-          final verdict = await test(runtime, account, values);
-          stderr.writeln('halo-ext: $verdict');
-        }
-
-        config.accounts.putIfAbsent(account.kvKey, () => {})['credentials'] = values;
-        config.save();
-        stderr.writeln('halo-ext: stored ${values.keys.length} field(s) for ${account.kvKey} '
-            'in ${config.file?.path}');
-        emit({'kvKey': account.kvKey, 'storedCredentials': values.keys.toList()..sort()});
-        return 0;
-      });
+    config.accounts.putIfAbsent(account.kvKey, () => {})['credentials'] = values;
+    config.save();
+    stderr.writeln(
+      'halo-ext: stored ${values.keys.length} field(s) for ${account.kvKey} '
+      'in ${config.file?.path}',
+    );
+    emit({'kvKey': account.kvKey, 'storedCredentials': values.keys.toList()..sort()});
+    return 0;
+  });
 
   /// Asks for one field. Secrets are read with the terminal's echo off, and
   /// an empty answer keeps whatever is already stored rather than blanking it
   /// — retyping a password to change an unrelated field is not a thing.
   String? _prompt(AccountField field, {Object? current}) {
     final known = current != null && '$current'.isNotEmpty;
-    final suffix = field.isSecret
-        ? (known ? ' [stored, Enter to keep]' : '')
-        : (known ? ' [$current]' : '');
+    final suffix = field.isSecret ? (known ? ' [stored, Enter to keep]' : '') : (known ? ' [$current]' : '');
     // stderr, not stdout: stdout is the JSON result, and a prompt written
     // into it corrupts whatever is parsing the output.
     stderr.write('${field.label.isEmpty ? field.key : field.label}$suffix: ');
@@ -182,7 +180,6 @@ class _AccountSetCommand extends AccountCommandBase {
       if (line.trim().isNotEmpty) yield line;
     }
   }
-
 }
 
 /// The `field=value` assignments for one `account set`, from the command line
@@ -193,11 +190,7 @@ class _AccountSetCommand extends AccountCommandBase {
 /// silently, leaving the account looking configured while the extension read
 /// null for the field it actually asked for. Pure, so the rule can be tested
 /// without a terminal or a subprocess.
-Map<String, String> assignmentsFor({
-  required AccountDefinition account,
-  Iterable<String> commandLine = const [],
-  Iterable<String> stdinLines = const [],
-}) {
+Map<String, String> assignmentsFor({required AccountDefinition account, Iterable<String> commandLine = const [], Iterable<String> stdinLines = const []}) {
   final values = <String, String>{};
   for (final assignment in [...commandLine, ...stdinLines]) {
     final split = assignment.indexOf('=');
@@ -207,8 +200,10 @@ Map<String, String> assignmentsFor({
 
   final unknown = values.keys.where((key) => !account.fields.any((field) => field.key == key));
   if (unknown.isNotEmpty) {
-    throw CliUsageError('${account.kvKey} has no field ${unknown.map((key) => '`$key`').join(', ')} — '
-        'it takes ${account.fields.map((field) => '`${field.key}`').join(', ')}');
+    throw CliUsageError(
+      '${account.kvKey} has no field ${unknown.map((key) => '`$key`').join(', ')} — '
+      'it takes ${account.fields.map((field) => '`${field.key}`').join(', ')}',
+    );
   }
   return values;
 }
@@ -224,14 +219,14 @@ class _AccountTestCommand extends AccountCommandBase {
 
   @override
   Future<int> run() => withRuntime((runtime) async {
-        final account = await resolve(runtime, accountArg);
-        final credentials = stored(account.kvKey, 'credentials');
-        if (credentials.isEmpty) {
-          throw CliUsageError('nothing stored for ${account.kvKey} — run `halo-ext account set ${account.key}`');
-        }
-        emit({'kvKey': account.kvKey, 'result': await test(runtime, account, credentials)});
-        return 0;
-      });
+    final account = await resolve(runtime, accountArg);
+    final credentials = stored(account.kvKey, 'credentials');
+    if (credentials.isEmpty) {
+      throw CliUsageError('nothing stored for ${account.kvKey} — run `halo-ext account set ${account.key}`');
+    }
+    emit({'kvKey': account.kvKey, 'result': await test(runtime, account, credentials)});
+    return 0;
+  });
 }
 
 /// Removes what is stored, which is the counterpart of storing it.
@@ -254,8 +249,10 @@ class _AccountForgetCommand extends AccountCommandBase {
     final removed = config.accounts.remove(accountArg);
     if (removed == null) {
       final stored = config.accounts.keys.toList()..sort();
-      throw CliUsageError('nothing stored for `$accountArg`'
-          '${stored.isEmpty ? ' (nothing is stored at all)' : ' — stored: ${stored.join(', ')}'}');
+      throw CliUsageError(
+        'nothing stored for `$accountArg`'
+        '${stored.isEmpty ? ' (nothing is stored at all)' : ' — stored: ${stored.join(', ')}'}',
+      );
     }
     config.save();
     stderr.writeln('halo-ext: forgot $accountArg');
@@ -273,26 +270,19 @@ class AccountDefinition {
   final List<AccountField> fields;
   final bool usesOAuth;
 
-  AccountDefinition({
-    required this.key,
-    required this.kvKey,
-    required this.label,
-    required this.description,
-    required this.fields,
-    required this.usesOAuth,
-  });
+  AccountDefinition({required this.key, required this.kvKey, required this.label, required this.description, required this.fields, required this.usesOAuth});
 
   factory AccountDefinition.fromJson(Map<String, Object?> json) => AccountDefinition(
-        key: json['key'] as String? ?? json['kvKey'] as String? ?? '?',
-        kvKey: json['kvKey'] as String? ?? json['key'] as String? ?? '?',
-        label: json['label'] as String? ?? json['key'] as String? ?? '?',
-        description: json['description'] as String?,
-        fields: [
-          for (final field in (json['fields'] as List? ?? const []))
-            if (field is Map) AccountField.fromJson(field.cast<String, Object?>()),
-        ],
-        usesOAuth: json['oauth2'] != null,
-      );
+    key: json['key'] as String? ?? json['kvKey'] as String? ?? '?',
+    kvKey: json['kvKey'] as String? ?? json['key'] as String? ?? '?',
+    label: json['label'] as String? ?? json['key'] as String? ?? '?',
+    description: json['description'] as String?,
+    fields: [
+      for (final field in (json['fields'] as List? ?? const []))
+        if (field is Map) AccountField.fromJson(field.cast<String, Object?>()),
+    ],
+    usesOAuth: json['oauth2'] != null,
+  );
 }
 
 class AccountField {
@@ -303,10 +293,10 @@ class AccountField {
   AccountField({required this.key, required this.label, required this.type});
 
   factory AccountField.fromJson(Map<String, Object?> json) => AccountField(
-        key: json['key'] as String? ?? '?',
-        label: json['label'] as String? ?? json['key'] as String? ?? '?',
-        type: json['type'] as String? ?? 'text',
-      );
+    key: json['key'] as String? ?? '?',
+    label: json['label'] as String? ?? json['key'] as String? ?? '?',
+    type: json['type'] as String? ?? 'text',
+  );
 
   bool get isSecret => type == 'secret';
 }
@@ -325,8 +315,7 @@ abstract class AccountCommandBase extends ExtCommand {
     final entries = await invokeAll(runtime, 'account', method: 'getDefinition');
     return [
       for (final entry in entries)
-        if (entry['ok'] == true && entry['value'] is Map)
-          AccountDefinition.fromJson((entry['value'] as Map).cast<String, Object?>()),
+        if (entry['ok'] == true && entry['value'] is Map) AccountDefinition.fromJson((entry['value'] as Map).cast<String, Object?>()),
     ];
   }
 
@@ -335,8 +324,10 @@ abstract class AccountCommandBase extends ExtCommand {
     for (final account in accounts) {
       if (account.key == wanted || account.kvKey == wanted) return account;
     }
-    throw CliUsageError('no account `$wanted` among ${accounts.map((a) => a.key).join(', ')} — '
-        'is the extension that offers it loaded? (`--all-extensions` loads the ones off by default)');
+    throw CliUsageError(
+      'no account `$wanted` among ${accounts.map((a) => a.key).join(', ')} — '
+      'is the extension that offers it loaded? (`--all-extensions` loads the ones off by default)',
+    );
   }
 
   /// `testCredentials` is keyed by the HOOK key, not the kvKey: the kvKey
@@ -346,8 +337,7 @@ abstract class AccountCommandBase extends ExtCommand {
     // credential map itself as its args (types.ts: `Record<string,string>`),
     // not a context bag, so folding `online` in would hand the extension a
     // field its own account never declared.
-    final verdict = await runtime.host.invokeHook('account',
-        key: account.key, method: 'testCredentials', args: credentials, timeout: hookTimeout);
+    final verdict = await runtime.host.invokeHook('account', key: account.key, method: 'testCredentials', args: credentials, timeout: hookTimeout);
     return verdict is String ? verdict : '$verdict';
   }
 

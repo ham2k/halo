@@ -91,7 +91,11 @@ void main() {
       extensions: extensions,
     );
 
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: SettingsView(services: services)),
+      ),
+    );
     await tester.pumpAndSettle();
     // Tapped by its description, not its title: once a profile has a callsign
     // the row's title renders as a span (title + mono detail) and find.text
@@ -105,10 +109,7 @@ void main() {
     await pumpProfilesPanel(tester, entityPrefix: 'K');
 
     expect(find.text('Personal Info'), findsOneWidget);
-    expect(
-      find.text('This might be included in generated logs when relevant for submissions'),
-      findsOneWidget,
-    );
+    expect(find.text('This might be included in generated logs when relevant for submissions'), findsOneWidget);
     expect(find.text('Name'), findsOneWidget);
     expect(find.text('Email'), findsOneWidget);
     expect(find.text('Club'), findsOneWidget);
@@ -261,12 +262,7 @@ void main() {
   // whose prefix simply failed to resolve would be telling them something
   // untrue about their own section.
   testWidgets('a stored section stays visible, unattributed, when the entity is unknown', (tester) async {
-    await pumpProfilesPanel(
-      tester,
-      call: 'VE3ABC',
-      entityPrefix: null,
-      profileFields: const {'operatorSection': 'ONE'},
-    );
+    await pumpProfilesPanel(tester, call: 'VE3ABC', entityPrefix: null, profileFields: const {'operatorSection': 'ONE'});
 
     expect(find.text('Section'), findsOneWidget);
     expect(find.text('ARRL Section'), findsNothing);
@@ -274,12 +270,7 @@ void main() {
   });
 
   testWidgets('a stored section stays visible for a non-US entity', (tester) async {
-    await pumpProfilesPanel(
-      tester,
-      call: 'G3ABC',
-      entityPrefix: 'G',
-      profileFields: const {'operatorSection': 'ENY'},
-    );
+    await pumpProfilesPanel(tester, call: 'G3ABC', entityPrefix: 'G', profileFields: const {'operatorSection': 'ENY'});
 
     expect(find.text('Section'), findsOneWidget);
     expect(find.text('ARRL Section'), findsNothing);

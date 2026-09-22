@@ -20,9 +20,7 @@ void main() {
     });
 
     test('a single suggestion carries each field straight through', () {
-      final fragments = mergeOperationTitleSuggestions(const [
-        OperationTitleSuggestion(atText: 'K-1234', subtitle: 'Some Park'),
-      ]);
+      final fragments = mergeOperationTitleSuggestions(const [OperationTitleSuggestion(atText: 'K-1234', subtitle: 'Some Park')]);
       expect(fragments.atText, 'K-1234');
       expect(fragments.subtitle, 'Some Park');
       expect(fragments.forText, isEmpty);
@@ -84,17 +82,18 @@ void main() {
   });
 
   group('Operation.titleFragments', () {
-    Operation operation({Map<String, dynamic>? localData}) =>
-        Operation(uuid: 'u', data: const {}, localData: localData ?? const {});
+    Operation operation({Map<String, dynamic>? localData}) => Operation(uuid: 'u', data: const {}, localData: localData ?? const {});
 
     test('empty when nothing has been cached yet', () {
       expect(operation().titleFragments.isEmpty, isTrue);
     });
 
     test('reads OperationTitleService\'s cached fragments', () {
-      final fragments = operation(localData: {
-        'titleSuggestion': {'title': '', 'for': '', 'at': 'K-1234', 'subtitle': 'Some Park'},
-      }).titleFragments;
+      final fragments = operation(
+        localData: {
+          'titleSuggestion': {'title': '', 'for': '', 'at': 'K-1234', 'subtitle': 'Some Park'},
+        },
+      ).titleFragments;
       expect(fragments.atText, 'K-1234');
       expect(fragments.subtitle, 'Some Park');
     });

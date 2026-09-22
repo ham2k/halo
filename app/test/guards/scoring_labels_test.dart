@@ -71,24 +71,24 @@ void main() {
     expect(emitted.length, greaterThanOrEqualTo(8), reason: 'the scan found suspiciously few keys');
 
     late BuildContext ctx;
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Builder(builder: (context) {
-          ctx = context;
-          return const SizedBox();
-        }),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              ctx = context;
+              return const SizedBox();
+            },
+          ),
+        ),
       ),
-    ));
+    );
 
     final unlabelled = [
       for (final key in emitted)
         if (scoreNoticeLabel(ctx, key) == key) key,
     ]..sort();
 
-    expect(
-      unlabelled,
-      isEmpty,
-      reason: 'these reach the operator as raw camelCase; add them to scoreNoticeLabel and both i18n catalogs',
-    );
+    expect(unlabelled, isEmpty, reason: 'these reach the operator as raw camelCase; add them to scoreNoticeLabel and both i18n catalogs');
   });
 }

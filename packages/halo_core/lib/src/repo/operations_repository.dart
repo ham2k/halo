@@ -73,13 +73,17 @@ class OperationsRepository {
         'updatedAtMillis': realNowMillis(),
       },
     );
-    await db.into(db.operations).insert(OperationsCompanion.insert(
-          uuid: operation.uuid,
-          data: Value(encodeOperationData(operation.data, 'operations:create')),
-          // The column mirrors the revision stamp inside `data`, so it reads
-          // the same real clock.
-          updatedAtMillis: Value(asQsonNum(operation.data['updatedAtMillis'])!.toInt()),
-        ));
+    await db
+        .into(db.operations)
+        .insert(
+          OperationsCompanion.insert(
+            uuid: operation.uuid,
+            data: Value(encodeOperationData(operation.data, 'operations:create')),
+            // The column mirrors the revision stamp inside `data`, so it reads
+            // the same real clock.
+            updatedAtMillis: Value(asQsonNum(operation.data['updatedAtMillis'])!.toInt()),
+          ),
+        );
     onChange?.call();
     return operation;
   }
@@ -91,8 +95,7 @@ class OperationsRepository {
     // Sorting falls back to fields within the JSON data blob (like
     // createdAtMillis) for operations with no QSOs, so the sort happens
     // in Dart rather than SQL.
-    final query = (db.select(db.operations)
-      ..where((op) => includeDeleted ? op.purged.equals(false) : op.deleted.equals(false)));
+    final query = (db.select(db.operations)..where((op) => includeDeleted ? op.purged.equals(false) : op.deleted.equals(false)));
     return query.watch().map((rows) {
       final list = rows.map(_operationFromRow).toList();
       list.sort((a, b) {
@@ -122,9 +125,7 @@ class OperationsRepository {
   /// there's no stale copy or hand-rolled `localData` merge to keep in sync.
   /// Emits null if the operation doesn't exist (or is hard-deleted).
   Stream<Operation?> watchOperation(String uuid) {
-    return (db.select(db.operations)..where((op) => op.uuid.equals(uuid)))
-        .watchSingleOrNull()
-        .map((row) => row == null ? null : _operationFromRow(row));
+    return (db.select(db.operations)..where((op) => op.uuid.equals(uuid))).watchSingleOrNull().map((row) => row == null ? null : _operationFromRow(row));
   }
 
   /// Throws [WriteRefused] while the clock is travelled unless BOTH the stored
@@ -136,14 +137,9 @@ class OperationsRepository {
     // that adds /TEST to a real operation must not be the thing that lets
     // itself through.
     final existing = await get(operation.uuid);
-    final refusal = WritePolicy.forOperation(existing) ??
-        WritePolicy.forOperationStayingTest(Operation(uuid: operation.uuid, data: data));
+    final refusal = WritePolicy.forOperation(existing) ?? WritePolicy.forOperationStayingTest(Operation(uuid: operation.uuid, data: data));
     if (refusal != null) throw refusal;
-    var companion = OperationsCompanion(
-      data: Value(encodeOperationData(data, 'operations:saveData')),
-      synced: const Value(false),
-      updatedAtMillis: Value(now),
-    );
+    var companion = OperationsCompanion(data: Value(encodeOperationData(data, 'operations:saveData')), synced: const Value(false), updatedAtMillis: Value(now));
     // A pending purge only makes sense while the operation still reads as a
     // Test Operation. If the station call was just edited away from /T or
     // /TEST — fixing a misclassification, or received an update via sync
@@ -159,11 +155,7 @@ class OperationsRepository {
     // here would "fix" the misclassification while still losing the
     // operation from every list that DOES filter on it, with no path back.
     if (existing != null && existing.purged && !Operation(uuid: operation.uuid, data: data).isTestOperation) {
-      companion = companion.copyWith(
-        deleted: const Value(false),
-        purged: const Value(false),
-        purgedLocally: const Value(false),
-      );
+      companion = companion.copyWith(deleted: const Value(false), purged: const Value(false), purgedLocally: const Value(false));
     }
     await (db.update(db.operations)..where((op) => op.uuid.equals(operation.uuid))).write(companion);
     // The row is already committed, so the change HAS to be announced —
@@ -190,12 +182,14 @@ class OperationsRepository {
     if (operation == null || !operation.deleted || operation.purged) return false;
     final refusal = WritePolicy.forOperation(operation);
     if (refusal != null) throw refusal;
-    await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(OperationsCompanion(
-      deleted: const Value(false),
-      synced: const Value(false),
-      updatedAtMillis: Value(now),
-      data: Value(encodeOperationData({...operation.data, 'updatedAtMillis': now}, 'operations:undelete')),
-    ));
+    await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(
+      OperationsCompanion(
+        deleted: const Value(false),
+        synced: const Value(false),
+        updatedAtMillis: Value(now),
+        data: Value(encodeOperationData({...operation.data, 'updatedAtMillis': now}, 'operations:undelete')),
+      ),
+    );
     onChange?.call();
     return true;
   }
@@ -236,8 +230,7 @@ class OperationsRepository {
       updatedAtMillis: Value(now),
     );
     if (operation != null) {
-      companion = companion.copyWith(
-          data: Value(encodeOperationData({...operation.data, 'updatedAtMillis': now}, 'operations:delete')));
+      companion = companion.copyWith(data: Value(encodeOperationData({...operation.data, 'updatedAtMillis': now}, 'operations:delete')));
     }
     await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(companion);
     onChange?.call();
@@ -259,9 +252,7 @@ class OperationsRepository {
   /// row this device only received via `mergeFromSync` has `purgedLocally:
   /// false` and is never touched here — see [watchReceivedPurgesPending].
   Future<List<String>> hardDeletePurged() async {
-    final rows = await (db.select(db.operations)
-          ..where((op) => op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(true)))
-        .get();
+    final rows = await (db.select(db.operations)..where((op) => op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(true))).get();
     if (rows.isEmpty) return const [];
     final purgedUuids = rows.map((r) => r.uuid).toList();
     await (db.delete(db.operations)..where((op) => op.uuid.isIn(purgedUuids))).go();
@@ -276,8 +267,7 @@ class OperationsRepository {
   /// like any other delete on receipt), so this deliberately does NOT filter
   /// on `deleted` the way [watchAll] does.
   Stream<List<Operation>> watchReceivedPurgesPending() {
-    final query = (db.select(db.operations)
-      ..where((op) => op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(false)));
+    final query = (db.select(db.operations)..where((op) => op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(false)));
     return query.watch().map((rows) => rows.map(_operationFromRow).toList());
   }
 
@@ -312,23 +302,26 @@ class OperationsRepository {
   /// irreversible delete in a sync round that no operator confirmed.
   Future<List<String>> hardDeleteEmptyReceivedPurges() async {
     return db.transaction(() async {
-      final rows = await (db.select(db.operations)
-            ..where((op) =>
-                op.purged.equals(true) &
-                op.synced.equals(true) &
-                op.purgedLocally.equals(false) &
-                op.deleted.equals(true)))
-          .get();
+      final rows = await (db.select(
+        db.operations,
+      )..where((op) => op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(false) & op.deleted.equals(true))).get();
       if (rows.isEmpty) return const <String>[];
-      final uuids = [for (final r in rows) if (_operationFromRow(r).isTestOperation) r.uuid];
+      final uuids = [
+        for (final r in rows)
+          if (_operationFromRow(r).isTestOperation) r.uuid,
+      ];
       if (uuids.isEmpty) return const <String>[];
-      final held = await (db.selectOnly(db.qsos)
-            ..addColumns([db.qsos.operation])
-            ..where(db.qsos.operation.isIn(uuids))
-            ..groupBy([db.qsos.operation]))
-          .get();
+      final held =
+          await (db.selectOnly(db.qsos)
+                ..addColumns([db.qsos.operation])
+                ..where(db.qsos.operation.isIn(uuids))
+                ..groupBy([db.qsos.operation]))
+              .get();
       final withQsos = {for (final r in held) r.read(db.qsos.operation)};
-      final empty = [for (final uuid in uuids) if (!withQsos.contains(uuid)) uuid];
+      final empty = [
+        for (final uuid in uuids)
+          if (!withQsos.contains(uuid)) uuid,
+      ];
       if (empty.isEmpty) return const <String>[];
       await (db.delete(db.operations)..where((op) => op.uuid.isIn(empty))).go();
       return empty;
@@ -352,10 +345,9 @@ class OperationsRepository {
   Future<List<String>> eligibleReceivedPurges(Iterable<String> uuids) async {
     final list = uuids.toList();
     if (list.isEmpty) return const [];
-    final rows = await (db.select(db.operations)
-          ..where((op) =>
-              op.uuid.isIn(list) & op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(false)))
-        .get();
+    final rows = await (db.select(
+      db.operations,
+    )..where((op) => op.uuid.isIn(list) & op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(false))).get();
     return rows.map((r) => r.uuid).toList();
   }
 
@@ -371,12 +363,8 @@ class OperationsRepository {
   /// (`sync.js`'s `queryOperations('WHERE synced IS false ...')`).
   Future<List<Operation>> unsyncedBatch(int limit, {Set<String> excluding = const {}}) async {
     final query = (db.select(db.operations)
-      ..where((op) => excluding.isEmpty
-          ? op.synced.equals(false)
-          : op.synced.equals(false) & op.uuid.isNotIn(excluding.toList()))
-      ..orderBy([
-        (op) => OrderingTerm(expression: op.startAtMillisMax, mode: OrderingMode.desc, nulls: NullsOrder.first),
-      ])
+      ..where((op) => excluding.isEmpty ? op.synced.equals(false) : op.synced.equals(false) & op.uuid.isNotIn(excluding.toList()))
+      ..orderBy([(op) => OrderingTerm(expression: op.startAtMillisMax, mode: OrderingMode.desc, nulls: NullsOrder.first)])
       ..limit(limit));
     return (await query.get()).map(_operationFromRow).toList();
   }
@@ -392,7 +380,10 @@ class OperationsRepository {
 
   Future<bool> hasUnsynced() async {
     final row =
-        await (db.select(db.operations)..where((op) => op.synced.equals(false))..limit(1)).getSingleOrNull();
+        await (db.select(db.operations)
+              ..where((op) => op.synced.equals(false))
+              ..limit(1))
+            .getSingleOrNull();
     return row != null;
   }
 
@@ -408,9 +399,7 @@ class OperationsRepository {
       for (final o in list) {
         final stamp = o.updatedAtMillis;
         await (db.update(db.operations)
-              ..where((op) =>
-                  op.uuid.equals(o.uuid) &
-                  (stamp == null ? op.updatedAtMillis.isNull() : op.updatedAtMillis.equals(stamp))))
+              ..where((op) => op.uuid.equals(o.uuid) & (stamp == null ? op.updatedAtMillis.isNull() : op.updatedAtMillis.equals(stamp))))
             .write(const OperationsCompanion(synced: Value(true)));
       }
     });
@@ -432,10 +421,7 @@ class OperationsRepository {
       return (await query.getSingle()).read(count) ?? 0;
     }
 
-    return (
-      total: await countWhere(db.operations.deleted.equals(false)),
-      pending: await countWhere(db.operations.synced.equals(false)),
-    );
+    return (total: await countWhere(db.operations.deleted.equals(false)), pending: await countWhere(db.operations.synced.equals(false)));
   }
 
   /// The operations side of `QsosRepository.unsyncedContactCount` — what this
@@ -524,9 +510,7 @@ class OperationsRepository {
     var repaired = false;
     final incomingUuids = [for (final m in operations) m['uuid']].whereType<String>().toList();
     await db.transaction(() async {
-      final existingRows = incomingUuids.isEmpty
-          ? const <OperationRow>[]
-          : await (db.select(db.operations)..where((op) => op.uuid.isIn(incomingUuids))).get();
+      final existingRows = incomingUuids.isEmpty ? const <OperationRow>[] : await (db.select(db.operations)..where((op) => op.uuid.isIn(incomingUuids))).get();
       final existingByUuid = {for (final r in existingRows) r.uuid: r};
 
       for (final incoming in operations) {
@@ -590,8 +574,7 @@ class OperationsRepository {
             incomingDeleted: deleted,
             incomingUpdatedAtMillis: incomingUpdatedAtMillis,
           )) {
-            await (db.update(db.operations)..where((op) => op.uuid.equals(uuid)))
-                .write(const OperationsCompanion(deleted: Value(true)));
+            await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(const OperationsCompanion(deleted: Value(true)));
           }
           continue;
         }
@@ -607,14 +590,18 @@ class OperationsRepository {
         final defended = !identical(merged, data);
         if (defended) merged['updatedAtMillis'] = _repairedStamp(asQsonNum(data['updatedAtMillis'])?.toInt());
         repaired = repaired || defended;
-        await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
-              uuid: Value(uuid),
-              data: Value(encodeOperationData(merged, 'operations:mergeFromSync')),
-              deleted: Value(deleted),
-              purged: Value(purged),
-              synced: Value(!defended),
-              updatedAtMillis: Value(asQsonNum(merged['updatedAtMillis'])?.toInt()),
-            ));
+        await db
+            .into(db.operations)
+            .insertOnConflictUpdate(
+              OperationsCompanion(
+                uuid: Value(uuid),
+                data: Value(encodeOperationData(merged, 'operations:mergeFromSync')),
+                deleted: Value(deleted),
+                purged: Value(purged),
+                synced: Value(!defended),
+                updatedAtMillis: Value(asQsonNum(merged['updatedAtMillis'])?.toInt()),
+              ),
+            );
       }
     });
     // Only when a row came out dirty: everything merged untouched is already
@@ -636,9 +623,7 @@ class OperationsRepository {
   Future<void> mergeFromPeer(List<Map<String, dynamic>> operations) async {
     final incomingUuids = [for (final m in operations) m['uuid']].whereType<String>().toList();
     await db.transaction(() async {
-      final existingRows = incomingUuids.isEmpty
-          ? const <OperationRow>[]
-          : await (db.select(db.operations)..where((op) => op.uuid.isIn(incomingUuids))).get();
+      final existingRows = incomingUuids.isEmpty ? const <OperationRow>[] : await (db.select(db.operations)..where((op) => op.uuid.isIn(incomingUuids))).get();
       final existingByUuid = {for (final r in existingRows) r.uuid: r};
 
       for (final incoming in operations) {
@@ -678,14 +663,18 @@ class OperationsRepository {
         if (!identical(merged, data)) {
           merged['updatedAtMillis'] = _repairedStamp(asQsonNum(data['updatedAtMillis'])?.toInt());
         }
-        await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
-              uuid: Value(uuid),
-              data: Value(encodeOperationData(merged, 'operations:mergeFromPeer')),
-              deleted: Value(deleted),
-              purged: Value(purged),
-              synced: const Value(false),
-              updatedAtMillis: Value(asQsonNum(merged['updatedAtMillis'])?.toInt()),
-            ));
+        await db
+            .into(db.operations)
+            .insertOnConflictUpdate(
+              OperationsCompanion(
+                uuid: Value(uuid),
+                data: Value(encodeOperationData(merged, 'operations:mergeFromPeer')),
+                deleted: Value(deleted),
+                purged: Value(purged),
+                synced: const Value(false),
+                updatedAtMillis: Value(asQsonNum(merged['updatedAtMillis'])?.toInt()),
+              ),
+            );
       }
     });
     onChange?.call();
@@ -712,16 +701,20 @@ class OperationsRepository {
     await db.transaction(() async {
       final rows = await db.select(db.operations).get();
       for (final row in rows) {
-        await db.into(db.operationsBackup).insert(OperationsBackupCompanion.insert(
-              backupId: backupId,
-              backupAtMillis: now,
-              uuid: row.uuid,
-              data: row.data,
-              startAtMillisMin: Value(row.startAtMillisMin),
-              startAtMillisMax: Value(row.startAtMillisMax),
-              qsoCount: Value(row.qsoCount),
-              deleted: Value(row.deleted),
-            ));
+        await db
+            .into(db.operationsBackup)
+            .insert(
+              OperationsBackupCompanion.insert(
+                backupId: backupId,
+                backupAtMillis: now,
+                uuid: row.uuid,
+                data: row.data,
+                startAtMillisMin: Value(row.startAtMillisMin),
+                startAtMillisMax: Value(row.startAtMillisMax),
+                qsoCount: Value(row.qsoCount),
+                deleted: Value(row.deleted),
+              ),
+            );
       }
       await db.delete(db.operations).go();
     });
@@ -748,16 +741,16 @@ class OperationsRepository {
   }
 
   Operation _operationRowToModel(OperationRow row, List<QsonTypeViolation> violations) => Operation(
-        uuid: row.uuid,
-        data: normalizeOperationQson(jsonDecode(row.data) as Map<String, dynamic>, violations: violations),
-        qsoCount: row.qsoCount,
-        startAtMillisMin: row.startAtMillisMin,
-        startAtMillisMax: row.startAtMillisMax,
-        deleted: row.deleted,
-        synced: row.synced,
-        purged: row.purged,
-        localData: row.localData == null ? const {} : jsonDecode(row.localData!) as Map<String, dynamic>,
-      );
+    uuid: row.uuid,
+    data: normalizeOperationQson(jsonDecode(row.data) as Map<String, dynamic>, violations: violations),
+    qsoCount: row.qsoCount,
+    startAtMillisMin: row.startAtMillisMin,
+    startAtMillisMax: row.startAtMillisMax,
+    deleted: row.deleted,
+    synced: row.synced,
+    purged: row.purged,
+    localData: row.localData == null ? const {} : jsonDecode(row.localData!) as Map<String, dynamic>,
+  );
 
   /// Merges [patch] into this operation's device-local, never-synced state
   /// (e.g. `ScoringService` writing its `scoring` summary blob under that
@@ -767,9 +760,7 @@ class OperationsRepository {
       final operation = await get(uuid);
       if (operation == null) return;
       final merged = {...operation.localData, ...patch};
-      await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(
-        OperationsCompanion(localData: Value(jsonEncode(merged))),
-      );
+      await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(OperationsCompanion(localData: Value(jsonEncode(merged))));
     });
   }
 }

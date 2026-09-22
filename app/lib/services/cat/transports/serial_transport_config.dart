@@ -78,24 +78,23 @@ class SerialPortOption {
 
   /// The same port, told where it sits among its device's ports.
   SerialPortOption at({required int index, required int count}) => SerialPortOption(
-        name: name,
-        description: description,
-        manufacturer: manufacturer,
-        productName: productName,
-        serialNumber: serialNumber,
-        vendorId: vendorId,
-        productId: productId,
-        portIndex: index,
-        portCount: count,
-      );
+    name: name,
+    description: description,
+    manufacturer: manufacturer,
+    productName: productName,
+    serialNumber: serialNumber,
+    vendorId: vendorId,
+    productId: productId,
+    portIndex: index,
+    portCount: count,
+  );
 
   /// What the descriptors say this is, with no device node — empty when they
   /// said nothing.
   String hardware({required bool withPort}) => [
-        if (description != null) description! else ...[?manufacturer, ?productName],
-        if (withPort && portIndex != null && portCount != null)
-          '(${t.settings.station.serialPortOrdinal(n: portIndex! + 1, total: portCount!)})',
-      ].join(' ');
+    if (description != null) description! else ...[?manufacturer, ?productName],
+    if (withPort && portIndex != null && portCount != null) '(${t.settings.station.serialPortOrdinal(n: portIndex! + 1, total: portCount!)})',
+  ].join(' ');
 
   String _label({required bool withPort}) {
     final detail = hardware(withPort: withPort);
@@ -129,23 +128,9 @@ class PortChoice {
   /// port is.
   final bool justNow;
 
-  const PortChoice({
-    required this.name,
-    required this.label,
-    required this.hardware,
-    required this.device,
-    this.suggested = false,
-    this.justNow = false,
-  });
+  const PortChoice({required this.name, required this.label, required this.hardware, required this.device, this.suggested = false, this.justNow = false});
 
-  PortChoice withHardware(String hardware) => PortChoice(
-        name: name,
-        label: label,
-        hardware: hardware,
-        device: device,
-        suggested: suggested,
-        justNow: justNow,
-      );
+  PortChoice withHardware(String hardware) => PortChoice(name: name, label: label, hardware: hardware, device: device, suggested: suggested, justNow: justNow);
 
   /// Whether [pickerLabel] was made from the device node rather than read
   /// off the hardware — which is what says the node has nothing to add
@@ -169,9 +154,9 @@ class PortChoice {
   /// no longer the string the operator can look for in `dmesg` or type into
   /// another program.
   static String _titleCase(String device) => [
-        for (final word in device.split(_separators))
-          if (word.isNotEmpty) word == word.toLowerCase() ? '${word[0].toUpperCase()}${word.substring(1)}' : word,
-      ].join(' ');
+    for (final word in device.split(_separators))
+      if (word.isNotEmpty) word == word.toLowerCase() ? '${word[0].toUpperCase()}${word.substring(1)}' : word,
+  ].join(' ');
 
   static final _separators = RegExp(r'[-_\s]+');
 
@@ -181,9 +166,7 @@ class PortChoice {
   String get pickerIcon => justNow ? 'new-box' : 'usb';
 
   /// The short markers between the name and the device node.
-  List<String> get pickerTags => [
-        if (suggested) t.settings.station.serialPortSuggested,
-      ];
+  List<String> get pickerTags => [if (suggested) t.settings.station.serialPortSuggested];
 
   /// The line under the name, for a port that was not there a moment ago —
   /// a sentence rather than a pill, because it is the row's own news and not
@@ -197,46 +180,42 @@ mixin SerialTransportConfig implements EquipmentTransport {
   List<SerialPortOption> get availablePorts;
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [
-        if (!overrides.containsKey('port'))
-          {
-            'type': 'field',
-            'fieldType': 'select',
-            'key': 'port',
-            'label': t.settings.station.serialPort,
-            'description': t.settings.station.serialPortDescription,
-            'options': [
-              for (final choice in portChoices(restrictions['port']))
-                {
-                  'value': choice.name,
-                  'label': choice.pickerLabel,
-                  'tags': choice.pickerTags,
-                  'subtitle': ?choice.pickerSubtitle,
-                  'icon': choice.pickerIcon,
-                  // Only where the name came from the DESCRIPTORS. A name
-                  // this code derived from the node says nothing the node did
-                  // not, so printing both is one row saying one thing twice.
-                  if (!choice.isDerivedName) 'trailing': choice.device,
-                  if (choice.suggested) 'emphasis': true,
-                },
-            ],
-          },
-        if (!overrides.containsKey('baudRate'))
-          {
-            'type': 'field',
-            'fieldType': 'select',
-            'key': 'baudRate',
-            'label': t.settings.station.baudRate,
-            'description': t.settings.station.baudRateDescription,
-            'options': [
-              for (final rate in _allowedBaudRates(restrictions)) {'value': rate, 'label': '$rate'},
-            ],
-          },
-      ];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    if (!overrides.containsKey('port'))
+      {
+        'type': 'field',
+        'fieldType': 'select',
+        'key': 'port',
+        'label': t.settings.station.serialPort,
+        'description': t.settings.station.serialPortDescription,
+        'options': [
+          for (final choice in portChoices(restrictions['port']))
+            {
+              'value': choice.name,
+              'label': choice.pickerLabel,
+              'tags': choice.pickerTags,
+              'subtitle': ?choice.pickerSubtitle,
+              'icon': choice.pickerIcon,
+              // Only where the name came from the DESCRIPTORS. A name
+              // this code derived from the node says nothing the node did
+              // not, so printing both is one row saying one thing twice.
+              if (!choice.isDerivedName) 'trailing': choice.device,
+              if (choice.suggested) 'emphasis': true,
+            },
+        ],
+      },
+    if (!overrides.containsKey('baudRate'))
+      {
+        'type': 'field',
+        'fieldType': 'select',
+        'key': 'baudRate',
+        'label': t.settings.station.baudRate,
+        'description': t.settings.station.baudRateDescription,
+        'options': [
+          for (final rate in _allowedBaudRates(restrictions)) {'value': rate, 'label': '$rate'},
+        ],
+      },
+  ];
 
   /// The ports as enumerated, with a macOS multi-port bridge's siblings
   /// recognised as such.
@@ -291,13 +270,8 @@ mixin SerialTransportConfig implements EquipmentTransport {
   /// name is all there is and that pair would still be read as one bridge:
   /// the residual risk this inference carries, and the reason it only ever
   /// suggests a port rather than hiding its sibling.
-  static String _siblingKey(SerialPortOption port) => [
-        port.name.substring(0, port.name.length - 1),
-        port.description,
-        port.manufacturer,
-        port.productName,
-        port.serialNumber,
-      ].join('\u0000');
+  static String _siblingKey(SerialPortOption port) =>
+      [port.name.substring(0, port.name.length - 1), port.description, port.manufacturer, port.productName, port.serialNumber].join('\u0000');
 
   /// The picker's entries once a `port` restriction has had its say.
   ///
@@ -335,7 +309,10 @@ mixin SerialTransportConfig implements EquipmentTransport {
     // Nothing else needs suppressing: the sightings' baseline already means
     // the ports that were there at launch are never "just now", however
     // recently the app first looked at them.
-    final recent = {for (final port in ports) if (SerialPortSightings.isRecent(port.name)) port.name};
+    final recent = {
+      for (final port in ports)
+        if (SerialPortSightings.isRecent(port.name)) port.name,
+    };
     final markRecent = ports.length > 1;
 
     final choices = <PortChoice>[
@@ -431,11 +408,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
     // fails for every port, and gating `match` on it would switch off the
     // one clause that works on that platform — see the pattern's own note.
     if (suggest is! Map) {
-      return index is int &&
-          index >= 0 &&
-          port.portIndex != null &&
-          index < (port.portCount ?? 0) &&
-          (vendorId == null || port.vendorId == vendorId);
+      return index is int && index >= 0 && port.portIndex != null && index < (port.portCount ?? 0) && (vendorId == null || port.vendorId == vendorId);
     }
 
     final usb = suggest['usb'];
@@ -518,18 +491,17 @@ mixin SerialTransportConfig implements EquipmentTransport {
 
   @override
   Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
-        'port': serialPort(config),
-        'baudRate': serialBaudRate(config),
-        'stopBits': serialStopBits(config),
-      };
+    'port': serialPort(config),
+    'baudRate': serialBaudRate(config),
+    'stopBits': serialStopBits(config),
+  };
 
   @override
   String describeTarget(Map<String, dynamic> config) => '${serialPort(config)} @ ${serialBaudRate(config)}';
 
   static String serialPort(Map<String, dynamic> config) => stringFromConfig(config, 'port').trim();
 
-  static int serialBaudRate(Map<String, dynamic> config) =>
-      numberFromConfig(config, 'baudRate', supportedBaudRates.first);
+  static int serialBaudRate(Map<String, dynamic> config) => numberFromConfig(config, 'baudRate', supportedBaudRates.first);
 
   /// 1 unless the model says 2; nothing here uses 1.5.
   static int serialStopBits(Map<String, dynamic> config) => numberFromConfig(config, 'stopBits', 1) == 2 ? 2 : 1;

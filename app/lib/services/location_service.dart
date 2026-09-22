@@ -50,8 +50,7 @@ class LocationService extends ChangeNotifier {
   // dev/testing doesn't need to grant OS location permissions or wait on a
   // real fix. Parsed once — it's a launch-time flag, not something that
   // changes mid-process.
-  static final GridLocation? _devLocation =
-      parseDevLocation(debugEnvFlag(const String.fromEnvironment('DEV_LOCATION'), 'DEV_LOCATION'));
+  static final GridLocation? _devLocation = parseDevLocation(debugEnvFlag(const String.fromEnvironment('DEV_LOCATION'), 'DEV_LOCATION'));
 
   // `DEV_LOCATION_STATUS=permissionDenied` pins the service at one status so
   // the states behind it can be looked at on demand. Denied permission and a
@@ -59,22 +58,21 @@ class LocationService extends ChangeNotifier {
   // an OS permission or taking the hardware away, which makes reviewing what
   // they put on screen far harder than reading the code that draws it.
   // Outranks DEV_LOCATION: a pinned status is the more specific instruction.
-  static final LocationStatus? _devStatus = parseDevLocationStatus(
-      debugEnvFlag(const String.fromEnvironment('DEV_LOCATION_STATUS'), 'DEV_LOCATION_STATUS'));
+  static final LocationStatus? _devStatus = parseDevLocationStatus(debugEnvFlag(const String.fromEnvironment('DEV_LOCATION_STATUS'), 'DEV_LOCATION_STATUS'));
 
   static Position _mockPosition(GridLocation location) => Position(
-        latitude: location.latitude,
-        longitude: location.longitude,
-        timestamp: nowLocal(),
-        accuracy: 0,
-        altitude: 0,
-        altitudeAccuracy: 0,
-        heading: 0,
-        headingAccuracy: 0,
-        speed: 0,
-        speedAccuracy: 0,
-        isMocked: true,
-      );
+    latitude: location.latitude,
+    longitude: location.longitude,
+    timestamp: nowLocal(),
+    accuracy: 0,
+    altitude: 0,
+    altitudeAccuracy: 0,
+    heading: 0,
+    headingAccuracy: 0,
+    speed: 0,
+    speedAccuracy: 0,
+    isMocked: true,
+  );
 
   Position? _position;
   LocationStatus _status = LocationStatus.unknown;
@@ -109,9 +107,7 @@ class LocationService extends ChangeNotifier {
   }
 
   bool get _localCannotDeliver =>
-      _status == LocationStatus.unavailable ||
-      _status == LocationStatus.permissionDenied ||
-      _status == LocationStatus.permissionBlocked;
+      _status == LocationStatus.unavailable || _status == LocationStatus.permissionDenied || _status == LocationStatus.permissionBlocked;
 
   /// True when [position] is currently answering with a peer's fix rather
   /// than this device's own — what the outbound share reads so a relayed fix
@@ -139,6 +135,7 @@ class LocationService extends ChangeNotifier {
   /// peer hides the problem — resurfacing the moment the peer walks away.
   LocationStatus get localStatus => _status;
   Position? get position => positionIsFromPeer ? _peerPosition : _position;
+
   /// The fix as a 6-character locator. Kept beside [displayGrid] for the one
   /// comparison that has to happen at six characters: an operation stored
   /// before `gridSource` existed carries a 6-character grid, and deciding
@@ -252,9 +249,7 @@ class LocationService extends ChangeNotifier {
         return;
       }
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        _status = permission == LocationPermission.deniedForever
-            ? LocationStatus.permissionBlocked
-            : LocationStatus.permissionDenied;
+        _status = permission == LocationPermission.deniedForever ? LocationStatus.permissionBlocked : LocationStatus.permissionDenied;
         notifyListeners();
         return;
       }
@@ -326,9 +321,7 @@ class LocationService extends ChangeNotifier {
       return false;
     }
     if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-      _status = permission == LocationPermission.deniedForever
-          ? LocationStatus.permissionBlocked
-          : LocationStatus.permissionDenied;
+      _status = permission == LocationPermission.deniedForever ? LocationStatus.permissionBlocked : LocationStatus.permissionDenied;
       notifyListeners();
       return false;
     }

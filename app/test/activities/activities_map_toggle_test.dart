@@ -25,27 +25,25 @@ const _parkControl = {
   'input': {'kind': 'refList', 'refType': 'pota'},
 };
 
-const _parkSuggestion = {
-  'type': 'pota',
-  'ref': 'US-0001',
-  'label': 'POTA US-0001',
-  'shortLabel': 'POTA US-0001',
-  'name': 'Some Park',
-  'grid': 'FN21ab',
-};
+const _parkSuggestion = {'type': 'pota', 'ref': 'US-0001', 'label': 'POTA US-0001', 'shortLabel': 'POTA US-0001', 'name': 'Some Park', 'grid': 'FN21ab'};
 
 class _MapToggleExtensions extends ExtensionServiceWithFakeHost {
   _MapToggleExtensions()
-      : super(FakeExtensionHost({
+    : super(
+        FakeExtensionHost({
           'activity:*:suggest': [
-            {'key': 'pota', 'ok': true, 'value': [_parkSuggestion]},
+            {
+              'key': 'pota',
+              'ok': true,
+              'value': [_parkSuggestion],
+            },
           ],
-        }));
+        }),
+      );
 
   @override
   Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
       (controls: const [_parkControl], loadFailed: false);
-
 }
 
 void main() {
@@ -63,17 +61,15 @@ void main() {
     // check fires before an `addTearDown` callback would.
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     try {
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(
-            body: OperationSheet(
-              services: services,
-              operation: operation,
-              onOperationChanged: (op) => latest = op,
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: OperationSheet(services: services, operation: operation, onOperationChanged: (op) => latest = op),
             ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('POTA US-0001'), findsOneWidget);
@@ -115,19 +111,26 @@ void main() {
     // A ref already on the operation, distinct from the search suggestion —
     // proves the row surviving the toggle is the CURRENT ACTIVITIES one, not
     // a coincidental match against the suggestion's own text.
-    final operation = Operation(uuid: 'op-1', data: const {
-      'refs': [
-        {'type': 'pota', 'ref': 'US-9999', 'shortLabel': 'POTA US-9999'},
-      ],
-    });
+    final operation = Operation(
+      uuid: 'op-1',
+      data: const {
+        'refs': [
+          {'type': 'pota', 'ref': 'US-9999', 'shortLabel': 'POTA US-9999'},
+        ],
+      },
+    );
 
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     try {
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(body: OperationSheet(services: services, operation: operation)),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: OperationSheet(services: services, operation: operation),
+            ),
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('POTA US-9999'), findsOneWidget);
@@ -136,11 +139,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(OsmMapView), findsOneWidget);
-      expect(
-        find.text('POTA US-9999'),
-        findsOneWidget,
-        reason: 'the map only replaces the results area — refs already on the operation must stay visible',
-      );
+      expect(find.text('POTA US-9999'), findsOneWidget, reason: 'the map only replaces the results area — refs already on the operation must stay visible');
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }

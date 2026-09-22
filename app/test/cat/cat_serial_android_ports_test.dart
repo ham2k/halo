@@ -19,8 +19,8 @@ import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart';
 
 /// Descriptors the way `UsbInterfacesChannel.kt` reports them, one per class.
 List<Map<String, int>> descriptors(List<int> classes) => [
-      for (final (i, c) in classes.indexed) {'index': i, 'interfaceClass': c, 'interfaceSubclass': 0, 'interfaceProtocol': 0},
-    ];
+  for (final (i, c) in classes.indexed) {'index': i, 'interfaceClass': c, 'interfaceSubclass': 0, 'interfaceProtocol': 0},
+];
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -96,9 +96,11 @@ void main() {
     });
 
     test('a malformed answer is a bug in our own channel, and stays loud', () async {
-      answer((_) async => [
-            {'interfaceClass': 10},
-          ]);
+      answer(
+        (_) async => [
+          {'interfaceClass': 10},
+        ],
+      );
       expect(androidSerialInterfaces('/dev/bus/usb/001/004', vendorId: 0x1D6B), throwsA(isA<TypeError>()));
     });
   });
@@ -107,12 +109,7 @@ void main() {
     test('a device with two serial interfaces gets one entry per interface, numbered in order', () {
       // Audio interfaces at 0-2, then two ACM pairs: control 3 / data 4,
       // control 5 / data 6. Only the data interfaces are serial ports.
-      final options = androidSerialPortOptions(
-        deviceName: '/dev/bus/usb/001/004',
-        manufacturer: 'Xiegu',
-        productName: 'X6100',
-        serialInterfaces: [4, 6],
-      );
+      final options = androidSerialPortOptions(deviceName: '/dev/bus/usb/001/004', manufacturer: 'Xiegu', productName: 'X6100', serialInterfaces: [4, 6]);
 
       expect(options.map((o) => o.name), ['/dev/bus/usb/001/004#4', '/dev/bus/usb/001/004#6']);
       expect(options[0].label, contains('port 1 of 2'));
@@ -139,12 +136,11 @@ void main() {
     });
 
     test('a single-port device keeps its bare name, so stored configs still match', () {
-      for (final interfaces in [<int>[], [0]]) {
-        final options = androidSerialPortOptions(
-          deviceName: '/dev/bus/usb/001/002',
-          productName: 'CP2102',
-          serialInterfaces: interfaces,
-        );
+      for (final interfaces in [
+        <int>[],
+        [0],
+      ]) {
+        final options = androidSerialPortOptions(deviceName: '/dev/bus/usb/001/002', productName: 'CP2102', serialInterfaces: interfaces);
         expect(options.map((o) => o.name), ['/dev/bus/usb/001/002']);
         expect(options.single.label, isNot(contains('port 1')));
       }

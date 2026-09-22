@@ -23,6 +23,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../services/halo_services.dart';
+
 /// What the two command fields do to each keystroke.
 ///
 /// Positional, never interpreted: nothing here may wait on `interpret`. Its
@@ -45,10 +46,10 @@ import '../services/halo_services.dart';
 /// anything read it, which under test is decided by the order the cases run
 /// in.
 List<TextInputFormatter> get commandFieldFormatters => <TextInputFormatter>[
-      const CollapseWhitespaceFormatter(),
-      if (isMobilePlatform) MobileDotToSlashFormatter(),
-      const CommandWordCaseFormatter(),
-    ];
+  const CollapseWhitespaceFormatter(),
+  if (isMobilePlatform) MobileDotToSlashFormatter(),
+  const CommandWordCaseFormatter(),
+];
 
 /// Reduces every run of whitespace to one plain space, and drops one with
 /// nothing yet to separate.
@@ -112,8 +113,7 @@ class CollapseWhitespaceFormatter extends TextInputFormatter {
     final newExtent = extent < 0 ? extent : extent - droppedBeforeExtent;
     // Not a clamp: a caret past the end is this loop having miscounted, and
     // silently moving it somewhere plausible is how that stays unnoticed.
-    assert(newBase <= result.length && newExtent <= result.length,
-        'whitespace collapse miscounted: $base/$extent -> $newBase/$newExtent in "$result"');
+    assert(newBase <= result.length && newExtent <= result.length, 'whitespace collapse miscounted: $base/$extent -> $newBase/$newExtent in "$result"');
     return TextEditingValue(
       text: result,
       selection: newValue.selection.copyWith(baseOffset: newBase, extentOffset: newExtent),
@@ -305,9 +305,7 @@ class CommandEngine extends ChangeNotifier {
 
   /// Whether [message] should read as bad news — either a command that could
   /// not run, or one that ran and failed.
-  bool get isError =>
-      _message != null &&
-      (_messageKind == CommandMessageKind.error || _messageKind == CommandMessageKind.failure);
+  bool get isError => _message != null && (_messageKind == CommandMessageKind.error || _messageKind == CommandMessageKind.failure);
 
   /// Whether [message] is a just-executed command's confirmation.
   bool get isConfirmation => _message != null && _messageKind == CommandMessageKind.confirmation;
@@ -315,9 +313,7 @@ class CommandEngine extends ChangeNotifier {
   /// Whether [message] is a finished command's ANSWER — what it did, or why it
   /// could not. Both kinds sit over an emptied field and share the clock; only
   /// their styling differs.
-  bool get isResponse =>
-      _message != null &&
-      (_messageKind == CommandMessageKind.confirmation || _messageKind == CommandMessageKind.failure);
+  bool get isResponse => _message != null && (_messageKind == CommandMessageKind.confirmation || _messageKind == CommandMessageKind.failure);
 
   /// Whether an interpretation of the CURRENT text is still on its way —
   /// true from the keystroke until its debounced `interpret` answers.
@@ -377,8 +373,7 @@ class CommandEngine extends ChangeNotifier {
     _controller?.removeListener(_onTextChanged);
     _controller = controller;
     controller.addListener(_onTextChanged);
-    _interpretationUpdatesSub ??=
-        services.extensions.commandInterpretationUpdates.listen(_onInterpretationUpdate);
+    _interpretationUpdatesSub ??= services.extensions.commandInterpretationUpdates.listen(_onInterpretationUpdate);
   }
 
   /// A `command` hook pushing a later interpretation for an input it has
@@ -508,9 +503,7 @@ class CommandEngine extends ChangeNotifier {
         // needs is that [_interpreting] not stay true if one escapes — and
         // only when this call is still the current one, since a newer
         // keystroke has already claimed the flag.
-        final result = await services.extensions
-            .interpretCommand(text, operationContext())
-            .whenComplete(() {
+        final result = await services.extensions.interpretCommand(text, operationContext()).whenComplete(() {
           if (generation != _interpretGeneration) return;
           _interpreting = false;
           // Notified here as well as below, because an exception on the way
@@ -588,9 +581,7 @@ class CommandEngine extends ChangeNotifier {
     if (result != null) {
       _lookupGuess = (result['guess'] as Map?)?.cast<String, dynamic>();
       final records = result['lookups'];
-      _lookupRecords = records is List
-          ? records.whereType<Map<dynamic, dynamic>>().map((m) => m.cast<String, dynamic>()).toList()
-          : const [];
+      _lookupRecords = records is List ? records.whereType<Map<dynamic, dynamic>>().map((m) => m.cast<String, dynamic>()).toList() : const [];
     }
     _lookupFor = call;
     _lookupStage = stage;
@@ -634,11 +625,7 @@ class CommandEngine extends ChangeNotifier {
       // one, rather than `guess.grid` as the merge stored it: that is always
       // six characters, so an operator who asked for eight would be shown a
       // coarser square than the lookup actually placed the station in.
-      gridForDisplay(
-        lat: locationFromGuess(guess)?.latitude,
-        lon: locationFromGuess(guess)?.longitude,
-        grid: asQsonString(guess['grid']),
-      ),
+      gridForDisplay(lat: locationFromGuess(guess)?.latitude, lon: locationFromGuess(guess)?.longitude, grid: asQsonString(guess['grid'])),
     ].whereType<String>().where((s) => s.isNotEmpty).toList();
     return parts.isEmpty ? null : parts.join(' • ');
   }

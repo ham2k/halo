@@ -10,13 +10,13 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/src/logging_controls_event_row.dart';
 
 Qso _event(String kind, {Map<String, dynamic> extra = const {}}) => Qso(
-      uuid: 'e1',
-      operationUuid: 'op',
-      data: {
-        'band': 'event',
-        'event': {'event': kind, ...extra},
-      },
-    );
+  uuid: 'e1',
+  operationUuid: 'op',
+  data: {
+    'band': 'event',
+    'event': {'event': kind, ...extra},
+  },
+);
 
 class _Harness {
   _Harness() {
@@ -32,18 +32,18 @@ class _Harness {
   int submitted = 0;
 
   Widget host(Qso qso, {bool enabled = true, bool todoDone = false}) => MaterialApp(
-        home: Scaffold(
-          body: EventFieldRow(
-            editingQso: qso,
-            textController: controller,
-            textFocus: focus,
-            enabled: enabled,
-            todoDone: todoDone,
-            onTodoDoneChanged: doneChanges.add,
-            onSubmitted: () => submitted++,
-          ),
-        ),
-      );
+    home: Scaffold(
+      body: EventFieldRow(
+        editingQso: qso,
+        textController: controller,
+        textFocus: focus,
+        enabled: enabled,
+        todoDone: todoDone,
+        onTodoDoneChanged: doneChanges.add,
+        onSubmitted: () => submitted++,
+      ),
+    ),
+  );
 }
 
 void main() {
@@ -58,8 +58,7 @@ void main() {
     expect(h.submitted, 1);
   });
 
-  testWidgets('a TODO row carries its done box; the panel hears a tap, and a locked row\'s box is inert',
-      (tester) async {
+  testWidgets('a TODO row carries its done box; the panel hears a tap, and a locked row\'s box is inert', (tester) async {
     final h = _Harness();
     await tester.pumpWidget(h.host(_event('todo')));
     expect(find.text('TODO'), findsOneWidget);

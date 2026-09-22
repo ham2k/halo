@@ -118,8 +118,7 @@ void main() {
   // getter, so it stays a statement about what the operator sees.
   group('the panel does not reserve the home indicator under the keyboard', () {
     double gapBelowFields(WidgetTester tester) =>
-        tester.getBottomLeft(find.byType(LoggingControls)).dy -
-        tester.getBottomLeft(find.widgetWithText(TextField, 'Their call')).dy;
+        tester.getBottomLeft(find.byType(LoggingControls)).dy - tester.getBottomLeft(find.widgetWithText(TextField, 'Their call')).dy;
 
     Future<double> gapWith(WidgetTester tester, {required bool keyboardUp, bool hostHoldsStrip = false}) async {
       final dpr = tester.view.devicePixelRatio;
@@ -143,15 +142,13 @@ void main() {
       // A host that draws its own chrome over the bottom edge — the app's
       // status footer — takes the strip out of the MediaQuery it hands down,
       // which is exactly how this panel is told not to hold it twice.
-      await tester.pumpWidget(hostHoldsStrip
-          ? Builder(
-              builder: (context) => MediaQuery.removePadding(
-                context: context,
-                removeBottom: true,
-                child: host(),
-              ),
-            )
-          : host());
+      await tester.pumpWidget(
+        hostHoldsStrip
+            ? Builder(
+                builder: (context) => MediaQuery.removePadding(context: context, removeBottom: true, child: host()),
+              )
+            : host(),
+      );
       await tester.pump(const Duration(milliseconds: 100));
       return gapBelowFields(tester);
     }
@@ -225,9 +222,11 @@ void main() {
   // so the retry logs them twice.
   testWidgets('a failed insert keeps the typed call, says so in the panel, and reports the error', (tester) async {
     final errors = <Object>[];
-    await tester.pumpWidget(host(
-      log: baseLog().copyWith(qsosRepository: FailingQsosRepository(db), onWriteError: (e, _) => errors.add(e)),
-    ));
+    await tester.pumpWidget(
+      host(
+        log: baseLog().copyWith(qsosRepository: FailingQsosRepository(db), onWriteError: (e, _) => errors.add(e)),
+      ),
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
@@ -242,9 +241,7 @@ void main() {
   });
 
   testWidgets('a mid-list insert failure keeps only the unlogged calls, so a retry cannot duplicate', (tester) async {
-    await tester.pumpWidget(host(
-      log: baseLog().copyWith(qsosRepository: FailingQsosRepository(db, addsBeforeFailure: 1)),
-    ));
+    await tester.pumpWidget(host(log: baseLog().copyWith(qsosRepository: FailingQsosRepository(db, addsBeforeFailure: 1))));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC,N2XYZ');
     await tester.pump();
@@ -407,12 +404,14 @@ void main() {
   });
 
   testWidgets('editing a QSO with a comma-separated call list updates the original and adds new QSOs for the rest', (tester) async {
-    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'W1AW'},
-          'startAtMillis': 1000000,
-          'freq': 7100,
-          'mode': 'SSB',
-        })))!;
+    final existingQso = (await tester.runAsync(
+      () => qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'startAtMillis': 1000000,
+        'freq': 7100,
+        'mode': 'SSB',
+      }),
+    ))!;
     await tester.pumpWidget(host(session: LoggingSession(editingQso: existingQso)));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
@@ -448,15 +447,17 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: LoggingControls(
-        log: baseLog(),
-        radio: baseRadio(),
-        lookups: LookupHooks(
-          lookup: lookup,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            lookups: LookupHooks(lookup: lookup),
+          ),
         ),
-      )),
-    ));
+      ),
+    );
 
     // Cursor ends up at the end (last segment, "W1AW") after enterText.
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC, W1AW');
@@ -469,9 +470,11 @@ void main() {
 
   testWidgets('onCommandMessageChanged does not fire on every keystroke when the message is unchanged', (tester) async {
     final messages = <String?>[];
-    await tester.pumpWidget(host(
-      commands: CommandHooks(interpretCommand: fakeInterpretCommand, onCommandMessageChanged: messages.add),
-    ));
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(interpretCommand: fakeInterpretCommand, onCommandMessageChanged: messages.add),
+      ),
+    );
 
     // Typing an ordinary callsign never produces a command message: the
     // callback must stay silent rather than firing null on every character
@@ -503,17 +506,21 @@ void main() {
     expect(infos.last.isEditing, isFalse, reason: 'composing a new QSO');
 
     // Editing an existing QSO → isEditing true (its call auto-populates the field).
-    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
-          'their': {'call': 'K1ABC'},
-          'startAtMillis': 1000000,
-          'freq': 7100,
-          'mode': 'SSB',
-        })))!;
+    final existingQso = (await tester.runAsync(
+      () => qsos.add(operation.uuid, {
+        'their': {'call': 'K1ABC'},
+        'startAtMillis': 1000000,
+        'freq': 7100,
+        'mode': 'SSB',
+      }),
+    ))!;
     infos.clear();
-    await tester.pumpWidget(host(
-      session: LoggingSession(editingQso: existingQso),
-      lookups: LookupHooks(onCallInfoChanged: capture),
-    ));
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(editingQso: existingQso),
+        lookups: LookupHooks(onCallInfoChanged: capture),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 200));
     expect(infos, isNotEmpty);
     expect(infos.last.isEditing, isTrue, reason: 'editing an existing QSO');
@@ -578,18 +585,16 @@ void main() {
 
   testWidgets('onCallListLogged fires once after a comma-separated list logs, never for a single call', (tester) async {
     var callListLoggedCount = 0;
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: LogHooks(
-            operation: operation,
-            qsosRepository: qsos,
-            onCallListLogged: () => callListLoggedCount++,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: operation, qsosRepository: qsos, onCallListLogged: () => callListLoggedCount++),
+            radio: baseRadio(),
           ),
-          radio: baseRadio(),
         ),
       ),
-    ));
+    );
 
     // Single call — must NOT fire.
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -644,18 +649,17 @@ void main() {
     }
 
     final enqueued = <Qso>[];
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoggingControls(
-          log: baseLog(),
-          radio: baseRadio(),
-          lookups: LookupHooks(
-            lookup: lookup,
-            enqueueLookup: enqueued.add,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            lookups: LookupHooks(lookup: lookup, enqueueLookup: enqueued.add),
           ),
         ),
       ),
-    ));
+    );
 
     // Cursor ends up at the end (last segment, "W1AW") after enterText.
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
@@ -808,9 +812,8 @@ void main() {
   });
 
   group('wipe/undo, delete/undo, revert-changes button', () {
-    IconButton secondButton(WidgetTester tester, IconData icon) => tester.widget<IconButton>(
-          find.ancestor(of: find.byIcon(icon), matching: find.byType(IconButton)),
-        );
+    IconButton secondButton(WidgetTester tester, IconData icon) =>
+        tester.widget<IconButton>(find.ancestor(of: find.byIcon(icon), matching: find.byType(IconButton)));
 
     final wipeIcon = MdiIcons.backspaceOutline;
     final undoIcon = MdiIcons.undo;
@@ -860,8 +863,7 @@ void main() {
       expect(logged.single.theirGrid, 'FN31pr');
     });
 
-    testWidgets('wipe stays disabled for a fresh new QSO even though the Radio control shows the VFO frequency',
-        (tester) async {
+    testWidgets('wipe stays disabled for a fresh new QSO even though the Radio control shows the VFO frequency', (tester) async {
       fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
       await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await openControl(tester, MdiIcons.radio);
@@ -904,17 +906,17 @@ void main() {
         },
       );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            session: LoggingSession(
-              editingQso: existingQso,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: existingQso),
+              radio: baseRadio(),
             ),
-            radio: baseRadio(),
           ),
         ),
-      ));
+      );
 
       expect(secondButton(tester, deleteIcon).onPressed, isNotNull);
       expect(find.byIcon(undoIcon), findsNothing);
@@ -946,17 +948,17 @@ void main() {
         },
       );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            session: LoggingSession(
-              editingQso: existingQso,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: existingQso),
+              radio: baseRadio(),
             ),
-            radio: baseRadio(),
           ),
         ),
-      ));
+      );
 
       // Two fields, so that whatever text undo does to the focused one, the
       // other still tells a revert apart from it.
@@ -982,17 +984,17 @@ void main() {
         },
       );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            session: LoggingSession(
-              editingQso: existingQso,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: existingQso),
+              radio: baseRadio(),
             ),
-            radio: baseRadio(),
           ),
         ),
-      ));
+      );
 
       expect(find.byIcon(deleteIcon), findsOneWidget);
 
@@ -1025,21 +1027,25 @@ void main() {
       // a record missing one never compares equal to the draft and would show
       // Revert from the moment it opened — a fixture that cannot reach
       // "unchanged" cannot test a button for returning to it.
-      final existing = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'their': {'call': 'W1AW', 'sent': '59', 'grid': 'FN31pr'},
-            'our': {'call': 'KI2D', 'sent': '59'},
-            'band': '20m',
-            'mode': 'SSB',
-            'freq': 14285.0,
-            'startAtMillis': 1000000,
-            'refs': <dynamic>[],
-          })))!;
+      final existing = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW', 'sent': '59', 'grid': 'FN31pr'},
+          'our': {'call': 'KI2D', 'sent': '59'},
+          'band': '20m',
+          'mode': 'SSB',
+          'freq': 14285.0,
+          'startAtMillis': 1000000,
+          'refs': <dynamic>[],
+        }),
+      ))!;
       expect((existing.data['their'] as Map)['lat'], isNull, reason: 'an imported record with a square and no fix');
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(editingQso: existing, onEditCanceled: () {}),
-        prefs: const LoggingPreferences(showGridField: true),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: existing, onEditCanceled: () {}),
+          prefs: const LoggingPreferences(showGridField: true),
+        ),
+      );
       await tester.pump();
       expect(find.byIcon(deleteIcon), findsOneWidget, reason: 'nothing edited yet');
 
@@ -1053,8 +1059,7 @@ void main() {
       // As stored, not uppercased: the formatter acts on what is typed, and
       // this value was put back by the panel.
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Grid')).controller!.text, 'FN31pr');
-      expect(find.byIcon(deleteIcon), findsOneWidget,
-          reason: 'the record is unchanged again, so the button is Delete once more');
+      expect(find.byIcon(deleteIcon), findsOneWidget, reason: 'the record is unchanged again, so the button is Delete once more');
       expect(find.byIcon(undoIcon), findsNothing);
 
       // And the save that follows writes nothing new. Polled on the write
@@ -1068,8 +1073,11 @@ void main() {
         await tester.pump(const Duration(milliseconds: 10));
         saved = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!.single;
       }
-      expect(saved.data['updatedAtMillis'], isNot(existing.data['updatedAtMillis']),
-          reason: 'the save really ran, so what follows is a claim about what it wrote');
+      expect(
+        saved.data['updatedAtMillis'],
+        isNot(existing.data['updatedAtMillis']),
+        reason: 'the save really ran, so what follows is a claim about what it wrote',
+      );
 
       final their = saved.data['their'] as Map;
       expect(their['grid'], 'FN31pr', reason: 'the stored square, exactly as it was');
@@ -1078,25 +1086,26 @@ void main() {
     });
 
     testWidgets('Escape while editing discards changes and ends the editing session, unlike Revert (issue #199)', (tester) async {
-      final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'their': {'call': 'W1AW', 'sent': '59'},
-            'our': {'sent': '59', 'call': 'KI2D'},
-            'mode': 'SSB',
-          })))!;
+      final existingQso = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW', 'sent': '59'},
+          'our': {'sent': '59', 'call': 'KI2D'},
+          'mode': 'SSB',
+        }),
+      ))!;
 
       var editCanceled = false;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            session: LoggingSession(
-              editingQso: existingQso,
-              onEditCanceled: () => editCanceled = true,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: existingQso, onEditCanceled: () => editCanceled = true),
+              radio: baseRadio(),
             ),
-            radio: baseRadio(),
           ),
         ),
-      ));
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
       await tester.pump();
@@ -1126,18 +1135,17 @@ void main() {
       }))!;
 
       var editCanceled = false;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            session: LoggingSession(
-              editingQso: deletedQso,
-              onEditCanceled: () => editCanceled = true,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: deletedQso, onEditCanceled: () => editCanceled = true),
+              radio: baseRadio(),
             ),
-            radio: baseRadio(),
           ),
         ),
-      ));
+      );
 
       // Restore replaces delete/revert entirely, the fields are read-only,
       // and both save paths (button and Enter) are inert until restored.
@@ -1170,12 +1178,10 @@ void main() {
   });
 
   group('editing an event/annotation row', () {
-    IconButton secondButton(WidgetTester tester, IconData icon) => tester.widget<IconButton>(
-          find.ancestor(of: find.byIcon(icon), matching: find.byType(IconButton)),
-        );
+    IconButton secondButton(WidgetTester tester, IconData icon) =>
+        tester.widget<IconButton>(find.ancestor(of: find.byIcon(icon), matching: find.byType(IconButton)));
 
-    testWidgets('a NOTE swaps the main fields for its label and text, and disables every pill but Time',
-        (tester) async {
+    testWidgets('a NOTE swaps the main fields for its label and text, and disables every pill but Time', (tester) async {
       final note = Qso(
         uuid: 'note-uuid',
         operationUuid: operation.uuid,
@@ -1202,9 +1208,7 @@ void main() {
       // opened; nothing else applies to a non-contact row.
       expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget);
       expect(find.byIcon(MdiIcons.radio), findsOneWidget);
-      ChoiceChip chipFor(IconData icon) => tester.widget<ChoiceChip>(
-            find.ancestor(of: find.byIcon(icon), matching: find.byType(ChoiceChip)),
-          );
+      ChoiceChip chipFor(IconData icon) => tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(icon), matching: find.byType(ChoiceChip)));
       expect(chipFor(MdiIcons.clockOutline).onSelected, isNotNull);
       expect(chipFor(MdiIcons.radio).onSelected, isNull);
     });
@@ -1216,13 +1220,20 @@ void main() {
         operationUuid: operation.uuid,
         // freq: 0, mode: 'break' — meaningless for a Radio-control display,
         // unlike an ordinary QSO's own recorded freq/mode.
-        data: {'band': 'event', 'freq': 0, 'mode': 'break', 'event': {'event': 'break'}},
+        data: {
+          'band': 'event',
+          'freq': 0,
+          'mode': 'break',
+          'event': {'event': 'break'},
+        },
       );
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(editingQso: marker),
-        radio: baseRadio().copyWith(radioService: fakeRadio),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: marker),
+          radio: baseRadio().copyWith(radioService: fakeRadio),
+        ),
+      );
 
       expect(find.text('14,285 • CW'), findsOneWidget);
 
@@ -1249,7 +1260,12 @@ void main() {
       final marker = Qso(
         uuid: 'marker-uuid',
         operationUuid: operation.uuid,
-        data: {'band': 'event', 'freq': 0, 'mode': 'break', 'event': {'event': 'break'}},
+        data: {
+          'band': 'event',
+          'freq': 0,
+          'mode': 'break',
+          'event': {'event': 'break'},
+        },
       );
 
       await tester.pumpWidget(host(session: LoggingSession(editingQso: note)));
@@ -1307,12 +1323,14 @@ void main() {
     });
 
     testWidgets('the pending-delete warning names the event kind, not "QSO"', (tester) async {
-      final marker = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'band': 'event',
-            'freq': 0,
-            'mode': 'break',
-            'event': {'event': 'break'},
-          })))!;
+      final marker = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'band': 'event',
+          'freq': 0,
+          'mode': 'break',
+          'event': {'event': 'break'},
+        }),
+      ))!;
 
       await tester.pumpWidget(host(session: LoggingSession(editingQso: marker)));
       await tester.tap(find.byIcon(MdiIcons.trashCanOutline));
@@ -1323,17 +1341,23 @@ void main() {
     });
 
     testWidgets('editing a NOTE and saving writes the new text back through the repository', (tester) async {
-      final note = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'band': 'event',
-            'freq': 0,
-            'mode': 'note',
-            'our': {'call': 'EVENT'},
-            'their': {'call': 'NOTE'},
-            'event': {'event': 'note', 'note': 'check later'},
-          })))!;
+      final note = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'band': 'event',
+          'freq': 0,
+          'mode': 'note',
+          'our': {'call': 'EVENT'},
+          'their': {'call': 'NOTE'},
+          'event': {'event': 'note', 'note': 'check later'},
+        }),
+      ))!;
 
       var canceled = false;
-      await tester.pumpWidget(host(session: LoggingSession(editingQso: note, onEditCanceled: () => canceled = true)));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: note, onEditCanceled: () => canceled = true),
+        ),
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Note'), 'call back tomorrow');
       await tester.pump();
@@ -1348,21 +1372,27 @@ void main() {
     });
 
     testWidgets("a TODO's checkbox and text both round-trip through save", (tester) async {
-      final todo = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'band': 'event',
-            'freq': 0,
-            'mode': 'todo',
-            'our': {'call': 'EVENT'},
-            'their': {'call': 'TODO'},
-            'event': {
-              'event': 'todo',
-              'note': 'check later',
-              'data': {'done': false},
-            },
-          })))!;
+      final todo = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'band': 'event',
+          'freq': 0,
+          'mode': 'todo',
+          'our': {'call': 'EVENT'},
+          'their': {'call': 'TODO'},
+          'event': {
+            'event': 'todo',
+            'note': 'check later',
+            'data': {'done': false},
+          },
+        }),
+      ))!;
 
       var canceled = false;
-      await tester.pumpWidget(host(session: LoggingSession(editingQso: todo, onEditCanceled: () => canceled = true)));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: todo, onEditCanceled: () => canceled = true),
+        ),
+      );
 
       expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse);
       await tester.tap(find.byType(Checkbox));
@@ -1377,17 +1407,19 @@ void main() {
     });
 
     testWidgets('unchecking a legacy TODO (bare event.done, no event.data) actually sticks', (tester) async {
-      final legacyTodo = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'band': 'event',
-            'freq': 0,
-            'mode': 'todo',
-            'our': {'call': 'EVENT'},
-            'their': {'call': 'TODO'},
-            // Older synced logs store done as a bare field, not event.data.done
-            // (see _applyEventFieldsFromData's fallback) — saving must clear
-            // this one too, or the OR'd read-back keeps reviving `true`.
-            'event': {'event': 'todo', 'note': 'check later', 'done': true},
-          })))!;
+      final legacyTodo = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'band': 'event',
+          'freq': 0,
+          'mode': 'todo',
+          'our': {'call': 'EVENT'},
+          'their': {'call': 'TODO'},
+          // Older synced logs store done as a bare field, not event.data.done
+          // (see _applyEventFieldsFromData's fallback) — saving must clear
+          // this one too, or the OR'd read-back keeps reviving `true`.
+          'event': {'event': 'todo', 'note': 'check later', 'done': true},
+        }),
+      ))!;
 
       await tester.pumpWidget(host(session: LoggingSession(editingQso: legacyTodo)));
       expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
@@ -1403,18 +1435,20 @@ void main() {
     });
 
     testWidgets('editing a NOTE synced in under "description" (not "note") saves back to that key', (tester) async {
-      final synced = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'band': 'event',
-            'freq': 0,
-            'mode': 'note',
-            'our': {'call': 'EVENT'},
-            'their': {'call': 'NOTE'},
-            // AnnotationRow reads description before note (qso_list.dart)
-            // — a row synced in under that key must keep agreeing with what
-            // the log shows for it after an edit, not silently gain a
-            // separate `note` nothing displays.
-            'event': {'event': 'note', 'description': 'check later'},
-          })))!;
+      final synced = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'band': 'event',
+          'freq': 0,
+          'mode': 'note',
+          'our': {'call': 'EVENT'},
+          'their': {'call': 'NOTE'},
+          // AnnotationRow reads description before note (qso_list.dart)
+          // — a row synced in under that key must keep agreeing with what
+          // the log shows for it after an edit, not silently gain a
+          // separate `note` nothing displays.
+          'event': {'event': 'note', 'description': 'check later'},
+        }),
+      ))!;
 
       await tester.pumpWidget(host(session: LoggingSession(editingQso: synced)));
       final noteField = tester.widget<TextField>(find.widgetWithText(TextField, 'Note'));
@@ -1430,8 +1464,7 @@ void main() {
       expect(stored.event?['note'], isNull);
     });
 
-    testWidgets('Enter from the QSO list focuses a NOTE\'s text field, not an unmounted callsign field',
-        (tester) async {
+    testWidgets('Enter from the QSO list focuses a NOTE\'s text field, not an unmounted callsign field', (tester) async {
       final note = Qso(
         uuid: 'note-uuid',
         operationUuid: operation.uuid,
@@ -1446,18 +1479,17 @@ void main() {
       );
       final controller = LoggingControlsController();
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            session: LoggingSession(
-              editingQso: note,
-              controller: controller,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: note, controller: controller),
+              radio: baseRadio(),
             ),
-            radio: baseRadio(),
           ),
         ),
-      ));
+      );
       final noteField = tester.widget<TextField>(find.widgetWithText(TextField, 'Note'));
 
       // Simulates logging_panel.dart's own Enter handler, which hands the
@@ -1469,8 +1501,7 @@ void main() {
       expect(noteField.focusNode!.hasFocus, isTrue);
     });
 
-    testWidgets('a NOTE synced in with incidental whitespace does not read as changed just from being selected',
-        (tester) async {
+    testWidgets('a NOTE synced in with incidental whitespace does not read as changed just from being selected', (tester) async {
       final untrimmed = Qso(
         uuid: 'note-uuid',
         operationUuid: operation.uuid,
@@ -1515,21 +1546,26 @@ void main() {
       expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse);
     });
 
-    testWidgets('an unmodified event offers Delete (not Revert); saving while pending soft-deletes it',
-        (tester) async {
+    testWidgets('an unmodified event offers Delete (not Revert); saving while pending soft-deletes it', (tester) async {
       final deleteIcon = MdiIcons.trashCanOutline;
       final undoIcon = MdiIcons.undo;
-      final note = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'band': 'event',
-            'freq': 0,
-            'mode': 'note',
-            'our': {'call': 'EVENT'},
-            'their': {'call': 'NOTE'},
-            'event': {'event': 'note', 'note': 'check later'},
-          })))!;
+      final note = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'band': 'event',
+          'freq': 0,
+          'mode': 'note',
+          'our': {'call': 'EVENT'},
+          'their': {'call': 'NOTE'},
+          'event': {'event': 'note', 'note': 'check later'},
+        }),
+      ))!;
 
       var deleted = false;
-      await tester.pumpWidget(host(session: LoggingSession(editingQso: note, onEditCanceled: () => deleted = true)));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: note, onEditCanceled: () => deleted = true),
+        ),
+      );
 
       // Nothing was touched, so the second button reads Delete, exactly as
       // it would for an unmodified QSO — not Revert, which comparing against
@@ -1546,8 +1582,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 10));
       }
 
-      final stored =
-          (await tester.runAsync(() => qsos.watchForOperation(operation.uuid, includeDeleted: true).first))!.single;
+      final stored = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid, includeDeleted: true).first))!.single;
       expect(stored.deleted, isTrue);
       expect(deleted, isTrue);
     });
@@ -1558,11 +1593,13 @@ void main() {
     // the list, a list click, and Down back out all drive from the app (see
     // LoggingPanel) — exercising it directly here covers all three at once.
     testWidgets('Escape after browsing to an earlier QSO restores the draft, not a blank form', (tester) async {
-      final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'their': {'call': 'W1AW', 'sent': '59'},
-            'mode': 'SSB',
-            'freq': 14285.0,
-          })))!;
+      final existingQso = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW', 'sent': '59'},
+          'mode': 'SSB',
+          'freq': 14285.0,
+        }),
+      ))!;
 
       var editCanceled = false;
       await tester.pumpWidget(host(session: LoggingSession(onEditCanceled: () => editCanceled = true)));
@@ -1571,9 +1608,11 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
       await tester.pump();
 
-      await tester.pumpWidget(host(
-        session: LoggingSession(editingQso: existingQso, onEditCanceled: () => editCanceled = true),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: existingQso, onEditCanceled: () => editCanceled = true),
+        ),
+      );
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -1584,17 +1623,22 @@ void main() {
       // as LoggingPanel's own wiring.
       await tester.pumpWidget(host(session: LoggingSession(onEditCanceled: () => editCanceled = true)));
 
-      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'N0CALL',
-          reason: 'the draft the operator was composing comes back, not a blank form');
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text,
+        'N0CALL',
+        reason: 'the draft the operator was composing comes back, not a blank form',
+      );
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '57');
     });
 
     testWidgets('the draft comes back after saving the edit too, not just after canceling it', (tester) async {
-      final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'their': {'call': 'W1AW', 'sent': '59'},
-            'mode': 'SSB',
-            'freq': 14285.0,
-          })))!;
+      final existingQso = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW', 'sent': '59'},
+          'mode': 'SSB',
+          'freq': 14285.0,
+        }),
+      ))!;
 
       await tester.pumpWidget(host());
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'N0CALL');
@@ -1621,22 +1665,28 @@ void main() {
 
       // The parent responds to onLogged by clearing editingQso too.
       await tester.pumpWidget(host());
-      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'N0CALL',
-          reason: 'saving an earlier edit must not lose the QSO being composed');
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text,
+        'N0CALL',
+        reason: 'saving an earlier edit must not lose the QSO being composed',
+      );
     });
 
-    testWidgets('switching directly between two earlier QSOs keeps the original draft, not the first one\'s',
-        (tester) async {
-      final first = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'their': {'call': 'W1AW', 'sent': '59'},
-            'mode': 'SSB',
-            'freq': 14285.0,
-          })))!;
-      final second = (await tester.runAsync(() => qsos.add(operation.uuid, {
-            'their': {'call': 'K1ABC', 'sent': '59'},
-            'mode': 'SSB',
-            'freq': 14285.0,
-          })))!;
+    testWidgets('switching directly between two earlier QSOs keeps the original draft, not the first one\'s', (tester) async {
+      final first = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW', 'sent': '59'},
+          'mode': 'SSB',
+          'freq': 14285.0,
+        }),
+      ))!;
+      final second = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'K1ABC', 'sent': '59'},
+          'mode': 'SSB',
+          'freq': 14285.0,
+        }),
+      ))!;
 
       var editCanceled = false;
       await tester.pumpWidget(host(session: LoggingSession(onEditCanceled: () => editCanceled = true)));
@@ -1645,12 +1695,16 @@ void main() {
 
       // Into the first, then straight across to the second — the way arrow
       // keys walk the list without ever passing back through null.
-      await tester.pumpWidget(host(
-        session: LoggingSession(editingQso: first, onEditCanceled: () => editCanceled = true),
-      ));
-      await tester.pumpWidget(host(
-        session: LoggingSession(editingQso: second, onEditCanceled: () => editCanceled = true),
-      ));
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: first, onEditCanceled: () => editCanceled = true),
+        ),
+      );
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: second, onEditCanceled: () => editCanceled = true),
+        ),
+      );
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'K1ABC');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -1658,8 +1712,11 @@ void main() {
       expect(editCanceled, isTrue);
       await tester.pumpWidget(host(session: LoggingSession(onEditCanceled: () => editCanceled = true)));
 
-      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'N0CALL',
-          reason: 'the snapshot taken on the way into "first" must survive the trip through "second" too');
+      expect(
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text,
+        'N0CALL',
+        reason: 'the snapshot taken on the way into "first" must survive the trip through "second" too',
+      );
     });
   });
 
@@ -1672,14 +1729,12 @@ void main() {
     /// Counted across every TextField rather than singling one out: "the
     /// fields are disabled" is the actual claim, and an assertion on one
     /// field would pass while the rest of the row stayed typeable.
-    int enabledFields(WidgetTester tester) =>
-        tester.widgetList<TextField>(find.byType(TextField)).where((f) => f.enabled ?? true).length;
+    int enabledFields(WidgetTester tester) => tester.widgetList<TextField>(find.byType(TextField)).where((f) => f.enabled ?? true).length;
 
     testWidgets('every entry field is disabled while the clock is travelled', (tester) async {
       await tester.pumpWidget(host());
       await tester.pump();
-      expect(enabledFields(tester), greaterThan(0),
-          reason: 'sanity: a real operation is writable on a real clock');
+      expect(enabledFields(tester), greaterThan(0), reason: 'sanity: a real operation is writable on a real clock');
 
       AppClock.instance.travel(delta: const Duration(days: 3));
       await tester.pump();

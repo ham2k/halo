@@ -46,10 +46,7 @@ File _panelContentView() {
 /// does — with it left in, deleting the guard outright still left the
 /// placement check below comparing the IMPORT's line number against
 /// `_HtmlPanelView`'s and passing.
-List<String> _codeLines() => _panelContentView()
-    .readAsLinesSync()
-    .where((l) => !l.trimLeft().startsWith('//') && !l.trimLeft().startsWith('import '))
-    .toList();
+List<String> _codeLines() => _panelContentView().readAsLinesSync().where((l) => !l.trimLeft().startsWith('//') && !l.trimLeft().startsWith('import ')).toList();
 
 void main() {
   test('the html panel kind is guarded by kIsWeb', () {
@@ -58,7 +55,8 @@ void main() {
     expect(
       guards,
       isNotEmpty,
-      reason: 'panel_content_view.dart must refuse `html` panels on the web — an iframe cannot hold an\n'
+      reason:
+          'panel_content_view.dart must refuse `html` panels on the web — an iframe cannot hold an\n'
           "extension's document to the no-navigation rule. See docs/quirks.md.",
     );
     // The guard has to RETURN, not merely mention kIsWeb — a condition whose
@@ -79,11 +77,7 @@ void main() {
     // change no other test would notice.
     final guards = _codeLines().where((l) => l.contains('kIsWeb')).join('\n');
 
-    expect(
-      guards.contains('htmlPanelUnsupportedOnWeb'),
-      isTrue,
-      reason: 'the web refusal must use htmlPanelUnsupportedOnWeb:\n$guards',
-    );
+    expect(guards.contains('htmlPanelUnsupportedOnWeb'), isTrue, reason: 'the web refusal must use htmlPanelUnsupportedOnWeb:\n$guards');
   });
 
   test('the guard sits ahead of the web view widget, not inside it', () {
@@ -100,10 +94,6 @@ void main() {
 
     expect(guard, isNonNegative);
     expect(htmlPanelView, isNonNegative);
-    expect(
-      guard,
-      lessThan(htmlPanelView),
-      reason: 'the kIsWeb refusal must come before _HtmlPanelView is built, at the `case \'html\'` branch',
-    );
+    expect(guard, lessThan(htmlPanelView), reason: 'the kIsWeb refusal must come before _HtmlPanelView is built, at the `case \'html\'` branch');
   });
 }

@@ -219,8 +219,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   }
 
   @override
-  HaLoColors lerp(HaLoColors? other, double t) =>
-      t < 0.5 ? this : (other ?? this);
+  HaLoColors lerp(HaLoColors? other, double t) => t < 0.5 ? this : (other ?? this);
 
   /// The fallback follows the ambient brightness rather than always being
   /// [light]: a subtree that loses the extension is exactly where a wrong
@@ -246,12 +245,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
 /// once here, once again when `Text` resolves its effective scaler — so
 /// mono text would grow quadratically with the font-scale setting instead
 /// of linearly like the rest of the UI.
-TextStyle haloMonoStyle(
-  BuildContext context, {
-  double? fontSize,
-  FontWeight? fontWeight,
-  Color? color,
-}) {
+TextStyle haloMonoStyle(BuildContext context, {double? fontSize, FontWeight? fontWeight, Color? color}) {
   return TextStyle(
     fontFamily: 'RobotoMono',
     // Named here rather than left to the ambient style, because this is used
@@ -275,8 +269,7 @@ TextStyle haloMonoStyle(
 /// and scaled by the current `textScaler`. Sizing a fixed column to this keeps
 /// it matching what paints — and not clipping under OS/accessibility text
 /// scaling. Shared by the QSO list and the spots panel so the two can't drift.
-double textWidth(BuildContext context, String text, TextStyle style) =>
-    spansWidth(context, [TextSpan(text: text)], style);
+double textWidth(BuildContext context, String text, TextStyle style) => spansWidth(context, [TextSpan(text: text)], style);
 
 /// [textWidth] for a span tree — same ambient-style and text-scaler folding, so
 /// a measurement of formatted text can't drift from the plain-text one.
@@ -285,12 +278,7 @@ double textWidth(BuildContext context, String text, TextStyle style) =>
 /// measured. [placeholders] must give one entry per `WidgetSpan` in [spans], in
 /// tree order — `TextPainter` asserts deep in the framework without them, so
 /// the count is checked here where the message can name the caller's mistake.
-double spansWidth(
-  BuildContext context,
-  List<InlineSpan> spans,
-  TextStyle? style, {
-  List<PlaceholderDimensions> placeholders = const [],
-}) =>
+double spansWidth(BuildContext context, List<InlineSpan> spans, TextStyle? style, {List<PlaceholderDimensions> placeholders = const []}) =>
     _layoutSpans(context, spans, style, placeholders: placeholders).width;
 
 /// The rendered height of one line of [spans] in [style] — see [spansWidth]'s
@@ -307,8 +295,7 @@ double spansHeight(
   TextStyle? style, {
   List<PlaceholderDimensions> placeholders = const [],
   TextScaler? textScaler,
-}) =>
-    _layoutSpans(context, spans, style, placeholders: placeholders, textScaler: textScaler).height;
+}) => _layoutSpans(context, spans, style, placeholders: placeholders, textScaler: textScaler).height;
 
 Size _layoutSpans(
   BuildContext context,
@@ -391,8 +378,7 @@ TextStyle emojiStyle({double fontSize = 16}) => TextStyle(fontSize: fontSize, fo
 MarkdownStyleSheet withEmojiFallback(MarkdownStyleSheet base) {
   // Appends, like _withTabularFigures does with fontFeatures: a style that
   // already names a fallback keeps it, and the emoji font goes last.
-  TextStyle? f(TextStyle? style) =>
-      style?.copyWith(fontFamilyFallback: [...?style.fontFamilyFallback, emojiFontFamily]);
+  TextStyle? f(TextStyle? style) => style?.copyWith(fontFamilyFallback: [...?style.fontFamilyFallback, emojiFontFamily]);
   return base.copyWith(
     p: f(base.p),
     a: f(base.a),
@@ -486,11 +472,9 @@ Color haloDialogBandColorAt(BuildContext context) {
 /// Deliberately fixed values, not scheme roles: no role in this scheme sits
 /// between `surface` and the band color with enough contrast to separate a
 /// row from the space around it.
-Color haloSheetListBackground(BuildContext context) =>
-    Theme.of(context).brightness == Brightness.dark ? const Color(0xFF141618) : const Color(0xFFF3F4F6);
+Color haloSheetListBackground(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? const Color(0xFF141618) : const Color(0xFFF3F4F6);
 
-Color haloSheetRowColor(BuildContext context) =>
-    Theme.of(context).brightness == Brightness.dark ? const Color(0xFF212426) : Colors.white;
+Color haloSheetRowColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? const Color(0xFF212426) : Colors.white;
 
 /// A vivid cyan-leaning version of colorScheme.primary (#006783, same hue,
 /// lightness pushed up) — the fill for the app's standout action buttons
@@ -540,10 +524,9 @@ BoxConstraints haloDialogConstraints(BuildContext context) {
 /// it.
 TextStyle poloFieldLabelStyle(BuildContext context, {Color? labelColor}) {
   final theme = Theme.of(context);
-  return (theme.textTheme.bodyLarge ?? const TextStyle()).merge(TextStyle(
-    fontSize: 14 * MediaQuery.textScalerOf(context).scale(1.0),
-    color: labelColor ?? theme.colorScheme.onSurfaceVariant,
-  ));
+  return (theme.textTheme.bodyLarge ?? const TextStyle()).merge(
+    TextStyle(fontSize: 14 * MediaQuery.textScalerOf(context).scale(1.0), color: labelColor ?? theme.colorScheme.onSurfaceVariant),
+  );
 }
 
 /// Ham2K's compact text-field decoration, used for every text field in the
@@ -569,6 +552,7 @@ InputDecoration poloFieldDecoration(
   String? hintText,
   String? errorText,
   int? labelMaxLines,
+
   /// Drops the label slot entirely, for a field whose own surface already
   /// names it (a settings editor dialog, whose title is the field's label).
   ///
@@ -589,9 +573,7 @@ InputDecoration poloFieldDecoration(
     // The style comes from the decorator's own AnimatedDefaultTextStyle either
     // way, so the widget form looks identical to the plain text one.
     labelText: !showLabel || labelMaxLines != null ? null : label,
-    label: !showLabel || labelMaxLines == null
-        ? null
-        : Text(label, maxLines: labelMaxLines, overflow: TextOverflow.ellipsis),
+    label: !showLabel || labelMaxLines == null ? null : Text(label, maxLines: labelMaxLines, overflow: TextOverflow.ellipsis),
     hintText: hintText,
     // Much lighter than the label/value — a hint (e.g. a POTA "US-...")
     // must read as a faint format cue, not as if it were an actual value
@@ -611,12 +593,7 @@ InputDecoration poloFieldDecoration(
     // font scale (UiScale already handles that one): padding around text the
     // OS enlarged legitimately grows with it, so density scales the base and
     // the OS scales the result.
-    contentPadding: EdgeInsets.fromLTRB(
-      4 * scale,
-      metrics.fieldPaddingTop * scale,
-      4 * scale,
-      metrics.fieldPaddingBottom * scale,
-    ),
+    contentPadding: EdgeInsets.fromLTRB(4 * scale, metrics.fieldPaddingTop * scale, 4 * scale, metrics.fieldPaddingBottom * scale),
     focusedBorder: haloFocusedInputBorder(isDarkTheme),
   );
 }
@@ -639,8 +616,7 @@ InputDecoration poloFieldDecoration(
 /// Width matches Material's own default focused-border weight (2.0) —
 /// overriding `focusedBorder` at all drops that default back to a plain
 /// BorderSide's 1.0, so it has to be restored explicitly.
-UnderlineInputBorder haloFocusedInputBorder(bool isDark) =>
-    UnderlineInputBorder(borderSide: _haloFocusedSide(isDark));
+UnderlineInputBorder haloFocusedInputBorder(bool isDark) => UnderlineInputBorder(borderSide: _haloFocusedSide(isDark));
 
 /// [base] recolored to the focus indicator and left otherwise untouched, for
 /// the `focusedBorder` of a decoration that builds its own [border].
@@ -668,8 +644,7 @@ UnderlineInputBorder haloFocusedInputBorder(bool isDark) =>
 InputBorder haloFocusedBorder(InputBorder base, BuildContext context) =>
     base.copyWith(borderSide: _haloFocusedSide(Theme.of(context).brightness == Brightness.dark));
 
-BorderSide _haloFocusedSide(bool isDark) =>
-    BorderSide(color: isDark ? Colors.white : Colors.black, width: 2.0);
+BorderSide _haloFocusedSide(bool isDark) => BorderSide(color: isDark ? Colors.white : Colors.black, width: 2.0);
 
 /// The underline a field wears while its value isn't one its own rules
 /// recognize — a contest exchange the rules don't know, a reference that
@@ -684,18 +659,15 @@ BorderSide _haloFocusedSide(bool isDark) =>
 ///
 /// [width] takes the same weights as the normal borders — 1 idle, 2 focused,
 /// matching Material's own focused default — so the tint costs no layout.
-UnderlineInputBorder haloInvalidInputBorder(BuildContext context, {required double width}) =>
-    UnderlineInputBorder(
-      borderSide: BorderSide(color: Theme.of(context).colorScheme.error, width: width),
-    );
+UnderlineInputBorder haloInvalidInputBorder(BuildContext context, {required double width}) => UnderlineInputBorder(
+  borderSide: BorderSide(color: Theme.of(context).colorScheme.error, width: width),
+);
 
 /// Adds tabular figures to every style in a Roboto [TextTheme] so digit runs
 /// (QSO counts, dates) stay aligned — `TextTheme.apply` has no fontFeatures
 /// parameter, so each style needs it added explicitly.
 TextTheme _withTabularFigures(TextTheme theme) {
-  TextStyle? add(TextStyle? style) => style?.copyWith(
-    fontFeatures: [...?style.fontFeatures, ..._tabularFigures],
-  );
+  TextStyle? add(TextStyle? style) => style?.copyWith(fontFeatures: [...?style.fontFeatures, ..._tabularFigures]);
 
   return theme.copyWith(
     displayLarge: add(theme.displayLarge),
@@ -727,8 +699,7 @@ TextTheme _withTabularFigures(TextTheme theme) {
 // this file need a hot restart to show up.
 final Map<Brightness, ThemeData> _haloThemeCache = {};
 
-ThemeData buildHaLoTheme(Brightness brightness) =>
-    _haloThemeCache[brightness] ??= _buildHaLoTheme(brightness);
+ThemeData buildHaLoTheme(Brightness brightness) => _haloThemeCache[brightness] ??= _buildHaLoTheme(brightness);
 
 ThemeData _buildHaLoTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
@@ -882,15 +853,11 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
         fontFamilyFallback: const [emojiFontFamily],
         fontFamily: 'RobotoSlab',
         fontSize: 18,
-        fontWeight: FontWeight
-            .w900, // "Roboto Slab Black" in app-polo's globalStyles.js
+        fontWeight: FontWeight.w900, // "Roboto Slab Black" in app-polo's globalStyles.js
         color: colorScheme.onPrimary,
       ),
     ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: colorScheme.primaryContainer,
-      foregroundColor: colorScheme.onPrimaryContainer,
-    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(backgroundColor: colorScheme.primaryContainer, foregroundColor: colorScheme.onPrimaryContainer),
     // The next four themes all correct the same Material 3 default: an
     // unstyled TextButton, OutlinedButton, progress indicator and text cursor
     // each paint `colorScheme.primary` DIRECTLY ON `surface`, which this
@@ -906,9 +873,7 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
     // their colors (form_renderer's `destructive` error red, status_bar's
     // `onNotice` ink on the post-it), but a call site that passes a style
     // setting only padding or a background still takes the foreground below.
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(foregroundColor: haloColors.onSurfaceAccent),
-    ),
+    textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: haloColors.onSurfaceAccent)),
     outlinedButtonTheme: OutlinedButtonThemeData(
       // copyWith rather than styleFrom's own `side:`, which takes a single
       // BorderSide for every state — the point here is to change exactly one
@@ -987,11 +952,7 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
       // otherwise sits flush against the AppBar/pane color.
       dividerHeight: 0,
     ),
-    dividerTheme: DividerThemeData(
-      color: colorScheme.outlineVariant,
-      thickness: 0.5,
-      space: 0.5,
-    ),
+    dividerTheme: DividerThemeData(color: colorScheme.outlineVariant, thickness: 0.5, space: 0.5),
     inputDecorationTheme: InputDecorationTheme(
       isDense: true,
       border: const UnderlineInputBorder(),
@@ -1019,9 +980,7 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
           return TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.38));
         }
         if (states.contains(WidgetState.error)) {
-          return TextStyle(
-            color: states.contains(WidgetState.hovered) ? colorScheme.onErrorContainer : colorScheme.error,
-          );
+          return TextStyle(color: states.contains(WidgetState.hovered) ? colorScheme.onErrorContainer : colorScheme.error);
         }
         if (states.contains(WidgetState.focused)) {
           return TextStyle(color: haloColors.onSurfaceAccent);

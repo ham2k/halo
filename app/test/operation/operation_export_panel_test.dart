@@ -56,11 +56,10 @@ void main() {
     });
 
     test('Android saves AND shares, and its rows share', () {
-      expect(
-        bulkExportActions(isWeb: false, platform: TargetPlatform.android),
-        [ExportAction.save, ExportAction.share],
-        reason: 'Save leads: it is the platform default verb, Share is the addition',
-      );
+      expect(bulkExportActions(isWeb: false, platform: TargetPlatform.android), [
+        ExportAction.save,
+        ExportAction.share,
+      ], reason: 'Save leads: it is the platform default verb, Share is the addition');
       expect(rowExportAction(isWeb: false, platform: TargetPlatform.android), ExportAction.share);
     });
   });
@@ -94,11 +93,15 @@ void main() {
       tester.view.physicalSize = const Size(1000, 900);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(body: OperationExportPanel(services: services, operation: operation)),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: OperationExportPanel(services: services, operation: operation),
+            ),
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
     }
 
@@ -112,11 +115,15 @@ void main() {
       tester.view.physicalSize = const Size(1000, 900);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(body: OperationExportPanel(services: services, operation: operation)),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: OperationExportPanel(services: services, operation: operation),
+            ),
+          ),
         ),
-      ));
+      );
 
       await tester.pump();
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -157,8 +164,7 @@ void main() {
       // The ADIF row is second — priority -1 sorts it under the activity's.
       await tester.tap(find.byType(Checkbox).last);
       await tester.pumpAndSettle();
-      expect(find.text('Save 2 files'), findsOneWidget,
-          reason: 'the count is in the button, not in a heading above it');
+      expect(find.text('Save 2 files'), findsOneWidget, reason: 'the count is in the button, not in a heading above it');
     });
 
     // The whole-log ADIF is the backup an operator takes as well; the
@@ -166,10 +172,7 @@ void main() {
     testWidgets('the full ADIF export sorts below the activity exports', (tester) async {
       await pump(tester);
 
-      expect(
-        tester.getCenter(find.text('POTA US-1234')).dy,
-        lessThan(tester.getCenter(find.text('Full ADIF Export')).dy),
-      );
+      expect(tester.getCenter(find.text('POTA US-1234')).dy, lessThan(tester.getCenter(find.text('Full ADIF Export')).dy));
     });
 
     testWidgets('with nothing ticked the primary button is disabled rather than hidden', (tester) async {
@@ -191,11 +194,13 @@ void main() {
       await pump(tester);
 
       final report = find.text('Operation has unsynced changes');
-      expect(find.descendant(of: find.byType(CustomScrollView), matching: report), findsNothing,
-          reason: 'inside the list it scrolls away, and the operator has to go find it');
+      expect(
+        find.descendant(of: find.byType(CustomScrollView), matching: report),
+        findsNothing,
+        reason: 'inside the list it scrolls away, and the operator has to go find it',
+      );
       expect(tester.getCenter(report).dy, greaterThan(tester.getCenter(find.text('POTA US-1234')).dy));
-      expect(tester.getCenter(report).dy, lessThan(tester.getCenter(find.text('Done')).dy),
-          reason: 'under the list, over the way out');
+      expect(tester.getCenter(report).dy, lessThan(tester.getCenter(find.text('Done')).dy), reason: 'under the list, over the way out');
     });
 
     // Two rows made a routine "everything is synced" read as two separate
@@ -232,10 +237,8 @@ void main() {
       expect(find.text('Save 1 file'), findsOneWidget);
       expect(find.text('Share 1 file'), findsOneWidget);
       final count = find.text('1 QSO in this operation');
-      expect(tester.getSize(count).height, oneLine,
-          reason: 'the count keeps its line instead of wrapping into a column of characters');
-      expect(tester.getTopLeft(count).dy, lessThan(tester.getTopLeft(find.text('Save 1 file')).dy),
-          reason: 'the buttons took their own row under it');
+      expect(tester.getSize(count).height, oneLine, reason: 'the count keeps its line instead of wrapping into a column of characters');
+      expect(tester.getTopLeft(count).dy, lessThan(tester.getTopLeft(find.text('Save 1 file')).dy), reason: 'the buttons took their own row under it');
     });
 
     // "Save 3 files" says nothing about the log until the operator has read
@@ -275,10 +278,7 @@ void main() {
       expect(tester.widget<Container>(band).color, isNotNull, reason: 'a tinted band, not bare list ground');
       expect(
         tester.widget<Container>(band).color,
-        tester.widget<Container>(find.ancestor(
-          of: find.text('Operation has unsynced changes'),
-          matching: find.byType(Container),
-        ).first).color,
+        tester.widget<Container>(find.ancestor(of: find.text('Operation has unsynced changes'), matching: find.byType(Container)).first).color,
         reason: 'the batch and the sync report are the two ends of one list, on one band',
       );
       expect(tester.getSize(band).width, 1000, reason: 'full-bleed, the way the group headers band');
@@ -288,8 +288,7 @@ void main() {
       // under it is one the operator has to aim around.
       final panelRight = tester.getBottomRight(find.byType(OperationExportPanel)).dx;
       expect(tester.getTopRight(buttons).dx, panelRight - Space.xl);
-      expect(tester.getTopRight(buttons).dx,
-          lessThan(tester.getTopRight(find.byType(Checkbox).first).dx));
+      expect(tester.getTopRight(buttons).dx, lessThan(tester.getTopRight(find.byType(Checkbox).first).dx));
     });
 
     // The batch action moved out of the footer and up next to the ticks it
@@ -297,18 +296,12 @@ void main() {
     testWidgets('the batch button sits above the list, and the footer is just Done', (tester) async {
       await pump(tester);
 
-      expect(
-        tester.getCenter(find.text('Save 1 file')).dy,
-        lessThan(tester.getCenter(find.text('POTA US-1234')).dy),
-      );
+      expect(tester.getCenter(find.text('Save 1 file')).dy, lessThan(tester.getCenter(find.text('POTA US-1234')).dy));
       // A plain TextButton, not filled: the exports have already happened by
       // the time this is pressed, so it dismisses rather than confirms.
       expect(find.widgetWithText(TextButton, 'Done'), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'Done'), findsNothing);
-      expect(
-        tester.getCenter(find.text('Done')).dy,
-        greaterThan(tester.getCenter(find.text('Full ADIF Export')).dy),
-      );
+      expect(tester.getCenter(find.text('Done')).dy, greaterThan(tester.getCenter(find.text('Full ADIF Export')).dy));
     });
 
     testWidgets("a row's own button exports only that row, ignoring the ticks", (tester) async {
@@ -339,8 +332,7 @@ void main() {
 
       final node = tester.getSemantics(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op Full.adi'));
       expect(node.flagsCollection.isButton, isTrue);
-      expect(node.flagsCollection.isChecked, CheckedState.none,
-          reason: 'a checked state here means it merged into the checkbox again');
+      expect(node.flagsCollection.isChecked, CheckedState.none, reason: 'a checked state here means it merged into the checkbox again');
 
       // The row's tap target is excluded from semantics, so the checkbox is
       // the ONLY thing naming the option to a screen reader. Unlabelled, it
@@ -400,8 +392,11 @@ void main() {
       await settings.setUseCompactFileNames(true);
       await tester.pumpAndSettle();
 
-      expect(find.text('N0CALL-20260715-test-op-full.adi'), findsOneWidget,
-          reason: 'the extensions rebuild their names; the panel re-asks rather than rewriting them');
+      expect(
+        find.text('N0CALL-20260715-test-op-full.adi'),
+        findsOneWidget,
+        reason: 'the extensions rebuild their names; the panel re-asks rather than rewriting them',
+      );
       expect(find.text('2026-07-15 N0CALL Test Op Full.adi'), findsNothing);
       expect(find.text('Save 2 files'), findsOneWidget, reason: 'a relist must not silently drop selections');
     });
@@ -426,7 +421,12 @@ void main() {
         db,
         settings,
         extensions: _ExtensionsWithControls(const [
-          {'key': 'pota/ref', 'color': '#3C8C3C', 'icon': 'pine-tree', 'input': {'refType': 'potaActivation'}},
+          {
+            'key': 'pota/ref',
+            'color': '#3C8C3C',
+            'icon': 'pine-tree',
+            'input': {'refType': 'potaActivation'},
+          },
         ]),
         exports: exports,
       );
@@ -452,15 +452,19 @@ void main() {
         db,
         settings,
         extensions: _ExtensionsWithControls(const [
-          {'key': 'cqww/ref', 'color': '#3C8C3C', 'icon': 'trophy', 'input': {'refType': 'cqww'}},
+          {
+            'key': 'cqww/ref',
+            'color': '#3C8C3C',
+            'icon': 'trophy',
+            'input': {'refType': 'cqww'},
+          },
         ]),
         exports: exports,
       );
       await pump(tester);
 
       expect(find.byIcon(MdiIcons.trophy), findsOneWidget);
-      expect(find.byIcon(MdiIcons.fileExport), findsOneWidget,
-          reason: "only the whole-log ADIF, which asks for that glyph by name");
+      expect(find.byIcon(MdiIcons.fileExport), findsOneWidget, reason: "only the whole-log ADIF, which asks for that glyph by name");
     });
 
     // Falling back on a name that doesn't RESOLVE, not merely on a missing
@@ -475,23 +479,26 @@ void main() {
         db,
         settings,
         extensions: _ExtensionsWithControls(const [
-          {'key': 'cqww/ref', 'color': '#3C8C3C', 'icon': 'trophy', 'input': {'refType': 'cqww'}},
+          {
+            'key': 'cqww/ref',
+            'color': '#3C8C3C',
+            'icon': 'trophy',
+            'input': {'refType': 'cqww'},
+          },
         ]),
         exports: exports,
       );
       await pump(tester);
 
       expect(find.byIcon(MdiIcons.trophy), findsOneWidget);
-      expect(find.byIcon(MdiIcons.fileExport), findsOneWidget,
-          reason: "only the whole-log ADIF, which asks for that glyph by name");
+      expect(find.byIcon(MdiIcons.fileExport), findsOneWidget, reason: "only the whole-log ADIF, which asks for that glyph by name");
     });
 
     // `controlForRefType` matches on equality, so a control that declares no
     // refType of its own answers for a null one. The whole-log ADIF claims no
     // activity and must not be branded with whichever extension happens to
     // have shipped a control without an input refType.
-    testWidgets('an option with no refType claims no activity, whatever the controls say',
-        (tester) async {
+    testWidgets('an option with no refType claims no activity, whatever the controls say', (tester) async {
       services = HaLoServices(
         db,
         settings,
@@ -525,20 +532,19 @@ void main() {
         // A control claiming potaActivation is green — the ADIF option must
         // not take it, and must not take the theme accent either.
         extensions: _ExtensionsWithControls(const [
-          {'key': 'pota/ref', 'color': '#3C8C3C', 'icon': 'pine-tree', 'input': {'refType': 'potaActivation'}},
+          {
+            'key': 'pota/ref',
+            'color': '#3C8C3C',
+            'icon': 'pine-tree',
+            'input': {'refType': 'potaActivation'},
+          },
         ]),
         exports: exports,
       );
       await pump(tester);
 
-      final colors = tester
-          .widgetList<CircleAvatar>(find.byType(CircleAvatar))
-          .map((a) => a.backgroundColor)
-          .toSet();
-      expect(colors, {
-        const Color(0xFF3C8C3C).withValues(alpha: 0.6),
-        const Color(0xFF9E9E9E).withValues(alpha: 0.6),
-      });
+      final colors = tester.widgetList<CircleAvatar>(find.byType(CircleAvatar)).map((a) => a.backgroundColor).toSet();
+      expect(colors, {const Color(0xFF3C8C3C).withValues(alpha: 0.6), const Color(0xFF9E9E9E).withValues(alpha: 0.6)});
     });
 
     testWidgets('one callsign gets no group header — grouping one group is noise', (tester) async {
@@ -644,10 +650,7 @@ void main() {
 
       // It belongs to no activity, so it declares no colour and was the one
       // bare glyph in a column of circled ones.
-      final circle = tester.widget<CircleAvatar>(find.ancestor(
-        of: find.byIcon(MdiIcons.briefcaseUpload),
-        matching: find.byType(CircleAvatar),
-      ));
+      final circle = tester.widget<CircleAvatar>(find.ancestor(of: find.byIcon(MdiIcons.briefcaseUpload), matching: find.byType(CircleAvatar)));
       expect(circle.backgroundColor, HaLoColors.light.devMode.withValues(alpha: 0.6));
       expect(find.text('N0CALL'), findsNothing, reason: 'still a single-station operation');
       expect(find.text('Save 1 file'), findsOneWidget, reason: 'the batch button stays at the top');
@@ -681,11 +684,15 @@ void main() {
       tester.view.physicalSize = const Size(1100, 1000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(body: OperationExportPanel(services: services, operation: operation)),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: OperationExportPanel(services: services, operation: operation),
+            ),
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
     }
 
@@ -697,10 +704,7 @@ void main() {
       expect(find.text('Full ADIF Export'), findsNWidgets(2), reason: 'one per call');
 
       // The header sits above the exports it owns.
-      expect(
-        tester.getCenter(find.text('N0CALL')).dy,
-        lessThan(tester.getCenter(find.text('W1AW')).dy),
-      );
+      expect(tester.getCenter(find.text('N0CALL')).dy, lessThan(tester.getCenter(find.text('W1AW')).dy));
     });
 
     testWidgets("a group's button exports only that group's ticks", (tester) async {
@@ -716,8 +720,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(exports.generated, hasLength(1));
-      expect(exports.generated.single.single['stationCall'], 'W1AW',
-          reason: "N0CALL's ticked export must not ride along");
+      expect(exports.generated.single.single['stationCall'], 'W1AW', reason: "N0CALL's ticked export must not ride along");
 
       await readAndDismissResult(tester);
     });
@@ -748,8 +751,7 @@ void main() {
       final combinedY = tester.getCenter(find.text('Save combined 2 files')).dy;
       expect(combinedY, lessThan(tester.getCenter(find.text('N0CALL')).dy));
       expect(combinedY, lessThan(tester.getCenter(find.text('W1AW')).dy));
-      expect(combinedY, lessThan(tester.getCenter(find.text('Full ADIF Export').first).dy),
-          reason: 'above the first export row, not merely the first header');
+      expect(combinedY, lessThan(tester.getCenter(find.text('Full ADIF Export').first).dy), reason: 'above the first export row, not merely the first header');
     });
 
     // Three bands a shade apart read as three unrelated things rather than as
@@ -757,9 +759,7 @@ void main() {
     testWidgets('the callsign bands and the batch band paint the same ground', (tester) async {
       await pump(tester);
 
-      Color? bandUnder(Finder text) => tester
-          .widget<Container>(find.ancestor(of: text, matching: find.byType(Container)).first)
-          .color;
+      Color? bandUnder(Finder text) => tester.widget<Container>(find.ancestor(of: text, matching: find.byType(Container)).first).color;
 
       final callsignBand = bandUnder(find.text('N0CALL'));
       expect(callsignBand, isNotNull);
@@ -780,8 +780,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Save 1 file'), findsNothing, reason: 'the label is what did not fit');
-      expect(find.descendant(of: find.byType(FilledButton), matching: find.text('1')),
-          findsNWidgets(2), reason: 'one per callsign');
+      expect(
+        find.descendant(of: find.byType(FilledButton), matching: find.text('1')),
+        findsNWidgets(2),
+        reason: 'one per callsign',
+      );
       // No tooltips in this app, so the accessible name is the only name the
       // button has — "1" tells a screen-reader user nothing.
       expect(find.bySemanticsLabel('Save 1 file'), findsWidgets);
@@ -797,11 +800,7 @@ void main() {
 
       final band = find.ancestor(of: find.text('N0CALL'), matching: find.byType(Container)).first;
       final button = find.widgetWithText(FilledButton, 'Save 1 file').first;
-      expect(
-        tester.getSize(band).height,
-        tester.getSize(button).height + Space.lg * 2,
-        reason: 'the declared extent must be what the band actually needs',
-      );
+      expect(tester.getSize(band).height, tester.getSize(button).height + Space.lg * 2, reason: 'the declared extent must be what the band actually needs');
     });
 
     // Every group offers the same formats under a different callsign, so a
@@ -824,8 +823,7 @@ void main() {
       expect(tester.getTopLeft(firstRow).dy, lessThanOrEqualTo(rowBefore - 100), reason: 'the rows moved');
       expect(find.text('N0CALL'), findsOneWidget, reason: 'its band did not go with them');
       final band = find.ancestor(of: find.text('N0CALL'), matching: find.byType(Container)).first;
-      expect(tester.getTopLeft(band).dy, closeTo(0, 0.5),
-          reason: 'the band is stuck to the top of the viewport');
+      expect(tester.getTopLeft(band).dy, closeTo(0, 0.5), reason: 'the band is stuck to the top of the viewport');
     });
 
     testWidgets('the combined batch is right-aligned, like the group buttons', (tester) async {
@@ -835,11 +833,9 @@ void main() {
       // Share button sits to its right and the Save button's own edge says
       // nothing about the row's alignment.
       final panelRight = tester.getBottomRight(find.byType(OperationExportPanel)).dx;
-      final combinedRight =
-          tester.getBottomRight(find.widgetWithText(OutlinedButton, 'Share combined 2 files')).dx;
+      final combinedRight = tester.getBottomRight(find.widgetWithText(OutlinedButton, 'Share combined 2 files')).dx;
 
-      expect(panelRight - combinedRight, lessThan(24),
-          reason: 'hugs the trailing edge, inside its own padding');
+      expect(panelRight - combinedRight, lessThan(24), reason: 'hugs the trailing edge, inside its own padding');
     });
   });
 }
@@ -847,46 +843,39 @@ void main() {
 /// Two callsigns, each offering the same single export — the shape
 /// `ExportService.getExportOptions` produces for `stationCall: 'N0CALL, W1AW'`.
 class _MultiCallExportService extends ExportService {
-  _MultiCallExportService(SettingsService settings)
-      : super(extensions: ExtensionService(), qsos: _UnusedQsos(), settings: settings);
+  _MultiCallExportService(SettingsService settings) : super(extensions: ExtensionService(), qsos: _UnusedQsos(), settings: settings);
 
   final List<List<Map<String, dynamic>>> generated = [];
 
   @override
   Future<List<Map<String, dynamic>>> getExportOptions(Operation operation) async => [
-        for (final call in operation.stationCalls)
-          {
-            'hookKey': 'adif',
-            'exportType': 'adif',
-            'format': 'adif',
-            'stationCall': call,
-            'label': 'Full ADIF Export',
-            'filename': '2026-07-15 $call Multi Full.adi',
-            'selectedByDefault': true,
-            'priority': -1,
-          },
-      ];
+    for (final call in operation.stationCalls)
+      {
+        'hookKey': 'adif',
+        'exportType': 'adif',
+        'format': 'adif',
+        'stationCall': call,
+        'label': 'Full ADIF Export',
+        'filename': '2026-07-15 $call Multi Full.adi',
+        'selectedByDefault': true,
+        'priority': -1,
+      },
+  ];
 
   @override
-  Future<List<Map<String, dynamic>>> generateExports(
-    Operation operation,
-    List<Map<String, dynamic>> selectedOptions,
-  ) async {
+  Future<List<Map<String, dynamic>>> generateExports(Operation operation, List<Map<String, dynamic>> selectedOptions) async {
     generated.add(selectedOptions);
     return [
-      for (final option in selectedOptions)
-        {'filename': option['filename'], 'mimeType': 'text/plain', 'content': 'x'},
+      for (final option in selectedOptions) {'filename': option['filename'], 'mimeType': 'text/plain', 'content': 'x'},
     ];
   }
 
   @override
-  Future<({String location, int count, bool namesFiles})?> saveToDisk(
-          List<Map<String, dynamic>> files) async =>
+  Future<({String location, int count, bool namesFiles})?> saveToDisk(List<Map<String, dynamic>> files) async =>
       (location: '/tmp/exports', count: files.length, namesFiles: false);
 
   @override
-  Future<bool> shareFiles(List<Map<String, dynamic>> files, {Rect? sharePositionOrigin}) async =>
-      true;
+  Future<bool> shareFiles(List<Map<String, dynamic>> files, {Rect? sharePositionOrigin}) async => true;
 }
 
 /// Supplies activity controls (for their accent colors) without a runtime.
@@ -895,11 +884,7 @@ class _ExtensionsWithControls extends ExtensionService {
   _ExtensionsWithControls(this.controls);
 
   @override
-  Future<ControlsResult> operationControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
-      (controls: controls, loadFailed: false);
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async => (controls: controls, loadFailed: false);
 
   @override
   Future<void> start() async {}
@@ -910,10 +895,7 @@ class _ExtensionsWithControls extends ExtensionService {
 /// Done too, and a bare `find.text('Done')` would match it and pass with no
 /// dialog on screen at all.
 Future<String> readAndDismissResult(WidgetTester tester) async {
-  final body = tester
-      .widgetList<Text>(find.descendant(of: find.byType(HaloDialog), matching: find.byType(Text)))
-      .map((t) => t.data ?? '')
-      .join(' | ');
+  final body = tester.widgetList<Text>(find.descendant(of: find.byType(HaloDialog), matching: find.byType(Text))).map((t) => t.data ?? '').join(' | ');
   await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.text('Done')));
   await tester.pumpAndSettle();
   expect(find.byType(HaloDialog), findsNothing, reason: 'Done dismisses the confirmation');
@@ -926,8 +908,7 @@ Future<String> readAndDismissResult(WidgetTester tester) async {
 class _FakeExportService extends ExportService {
   final SettingsService _settings;
 
-  _FakeExportService(this._settings)
-      : super(extensions: ExtensionService(), qsos: _UnusedQsos(), settings: _settings);
+  _FakeExportService(this._settings) : super(extensions: ExtensionService(), qsos: _UnusedQsos(), settings: _settings);
 
   final List<List<Map<String, dynamic>>> generated = [];
   final List<Map<String, dynamic>> savedFiles = [];
@@ -1030,15 +1011,11 @@ class _FakeExportService extends ExportService {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> generateExports(
-    Operation operation,
-    List<Map<String, dynamic>> selectedOptions,
-  ) async {
+  Future<List<Map<String, dynamic>>> generateExports(Operation operation, List<Map<String, dynamic>> selectedOptions) async {
     generated.add(selectedOptions);
     if (generateThrows != null) throw generateThrows!;
     return [
-      for (final option in selectedOptions)
-        {'filename': option['filename'], 'mimeType': 'text/plain', 'content': 'x'},
+      for (final option in selectedOptions) {'filename': option['filename'], 'mimeType': 'text/plain', 'content': 'x'},
     ];
   }
 
@@ -1056,15 +1033,10 @@ class _FakeExportService extends ExportService {
   bool saveNamesFiles = false;
 
   @override
-  Future<({String location, int count, bool namesFiles})?> saveToDisk(
-      List<Map<String, dynamic>> files) async {
+  Future<({String location, int count, bool namesFiles})?> saveToDisk(List<Map<String, dynamic>> files) async {
     savedFiles.addAll(files);
     if (!saveSucceeds) return null;
-    return (
-      location: '/tmp/exports',
-      count: saveCount ?? files.length,
-      namesFiles: saveNamesFiles,
-    );
+    return (location: '/tmp/exports', count: saveCount ?? files.length, namesFiles: saveNamesFiles);
   }
 
   /// What the share sheet answered. False stands for the operator dismissing

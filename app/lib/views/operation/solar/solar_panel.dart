@@ -60,9 +60,7 @@ const Duration _historyFetchTimeout = Duration(seconds: 45);
 /// distinction [_Failure.transport] is drawn from.
 typedef SolarFetch = Future<({int status, String body})> Function(Uri url);
 
-Future<({int status, String body})> _httpFetch(Uri url) => _request(url).timeout(
-  url == solarWindHistoryUrl() ? _historyFetchTimeout : _fetchTimeout,
-);
+Future<({int status, String body})> _httpFetch(Uri url) => _request(url).timeout(url == solarWindHistoryUrl() ? _historyFetchTimeout : _fetchTimeout);
 
 /// The timeout wraps THIS, resolving the User-Agent included. Left outside,
 /// a UA resolution that never completes (it is a platform channel, and on web
@@ -97,12 +95,7 @@ Future<({int status, String body})> _request(Uri url) async {
 /// clock, so a reading goes stale in step with the rest of the app when DEVTT
 /// moves it. [realNow] paces requests to third parties and must not travel —
 /// docs/design/time.md.
-bool solarFetchIsDue({
-  required DateTime? attemptedAtReal,
-  required DateTime realNow,
-  required SolarReading? reading,
-  required DateTime now,
-}) {
+bool solarFetchIsDue({required DateTime? attemptedAtReal, required DateTime realNow, required SolarReading? reading, required DateTime now}) {
   // However many times something invites a retry. Every visibility change
   // reaches this, and without the floor an operator switching between two
   // dock tabs sends a request per switch.
@@ -206,8 +199,7 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
   }
 
-  static bool _visibleIn(AppLifecycleState state) =>
-      state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+  static bool _visibleIn(AppLifecycleState state) => state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -253,12 +245,7 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
 
   Future<void> _fetchIfDue() async {
     if (_inFlight) return;
-    if (!solarFetchIsDue(
-      attemptedAtReal: _attemptedAtReal,
-      realNow: realNowUtc(),
-      reading: _reading,
-      now: nowUtc(),
-    )) {
+    if (!solarFetchIsDue(attemptedAtReal: _attemptedAtReal, realNow: realNowUtc(), reading: _reading, now: nowUtc())) {
       return;
     }
 
@@ -279,10 +266,7 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
       // with the previous one rather than throwing — so only hamqsl can fail
       // this round, and the charts survive a SWPC outage.
       // The big wind file only when it is due — everything else every round.
-      final historyDue = solarWindHistoryIsDue(
-        fetchedAtReal: _windHistoryAtReal,
-        realNow: realNowUtc(),
-      );
+      final historyDue = solarWindHistoryIsDue(fetchedAtReal: _windHistoryAtReal, realNow: realNowUtc());
       // Stamped on the ATTEMPT and BEFORE the await, which is the whole
       // pacing guarantee. Stamped on the result instead, every way this round
       // can fail asks for the megabyte again on the next one: hamqsl throwing
@@ -297,10 +281,7 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
         _series(fetch, solarFluxSeriesUrl(), parseFluxSeries, _flux),
         _series(fetch, solarKpSeriesUrl(), parseKpSeries, _kp),
         _series(fetch, solarWindSeriesUrl(), parseSolarWindSeries, const []),
-        if (historyDue)
-          _series(fetch, solarWindHistoryUrl(), parseSolarWindSeries, const [])
-        else
-          Future.value(const <SolarPoint>[]),
+        if (historyDue) _series(fetch, solarWindHistoryUrl(), parseSolarWindSeries, const []) else Future.value(const <SolarPoint>[]),
       ]);
       answers = results;
     } catch (e, stack) {
@@ -371,12 +352,7 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
   /// including a transport failure, which is why this catches where
   /// [_conditions] throws. A chart is worth keeping through an outage; it is
   /// not worth failing the pane over.
-  Future<List<SolarPoint>> _series(
-    SolarFetch fetch,
-    Uri url,
-    List<SolarPoint> Function(String) parse,
-    List<SolarPoint> previous,
-  ) async {
+  Future<List<SolarPoint>> _series(SolarFetch fetch, Uri url, List<SolarPoint> Function(String) parse, List<SolarPoint> previous) async {
     try {
       final response = await fetch(url);
       if (response.status != 200) {
@@ -451,12 +427,7 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
       if (failure != null) {
         return _message(failure.transport ? t.solarUnreachable : t.solarUnreadable);
       }
-      return Center(
-        child: SizedBox.square(
-          dimension: 24,
-          child: _fetching ? const CircularProgressIndicator(strokeWidth: 2) : null,
-        ),
-      );
+      return Center(child: SizedBox.square(dimension: 24, child: _fetching ? const CircularProgressIndicator(strokeWidth: 2) : null));
     }
     return _SolarReadout(reading: reading, staleFetch: _failure != null);
   }
@@ -467,9 +438,7 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
     ),
   );
@@ -484,8 +453,7 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
 /// rounds to reach, a good reading with a failed refresh behind it, is
 /// reachable only by building the readout directly.
 @visibleForTesting
-Widget solarReadoutForTest({required SolarReading reading, required bool staleFetch}) =>
-    _SolarReadout(reading: reading, staleFetch: staleFetch);
+Widget solarReadoutForTest({required SolarReading reading, required bool staleFetch}) => _SolarReadout(reading: reading, staleFetch: staleFetch);
 
 /// A response that ARRIVED and was not usable, as opposed to one that never
 /// arrived — the two the operator is told apart.
@@ -612,6 +580,7 @@ class _SolarReadoutState extends State<_SolarReadout> {
   /// The stale-reading glyph, in a pane too small for the stamp that would
   /// otherwise carry the news.
   static const double _staleGlyph = 14;
+
   /// The grid's floor answers to the HEADLINE as much as to the grid: the
   /// flux number is sized at `height * 0.22`, so every point of pane height
   /// this floor is lowered by buys the grid only about three quarters of a
@@ -645,8 +614,7 @@ class _SolarReadoutState extends State<_SolarReadout> {
   /// A floor at the text size actually in force. Every floor above gates a
   /// band of type, so each one moves with the scaler by the same amount the
   /// thing it is protecting does.
-  static double _scaled(BuildContext context, double floor) =>
-      MediaQuery.textScalerOf(context).scale(floor);
+  static double _scaled(BuildContext context, double floor) => MediaQuery.textScalerOf(context).scale(floor);
 
   /// How much bigger the scaler makes a given font size. Taken as a ratio off
   /// a real size rather than assumed linear — `TextScaler` need not be, and
@@ -661,10 +629,7 @@ class _SolarReadoutState extends State<_SolarReadout> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final box = Size(
-          constraints.maxWidth - safe.horizontal,
-          constraints.maxHeight - safe.vertical,
-        );
+        final box = Size(constraints.maxWidth - safe.horizontal, constraints.maxHeight - safe.vertical);
         // Nothing at all below one line of the smallest text plus the inset.
         // A Column cannot shrink a Text, so what happens instead of this is a
         // RenderFlex overflow on every frame — in a pane far too small to
@@ -689,8 +654,7 @@ class _SolarReadoutState extends State<_SolarReadout> {
         // on, so a mark here and a bar below it cover the same period.
         final wind = SolarReading.lastDays(reading.wind, now, _chartDays);
 
-        final showStamp = contentWidth >= _scaled(context, _stampContentWidthFloor) &&
-            box.height >= _scaled(context, _stampFloor);
+        final showStamp = contentWidth >= _scaled(context, _stampContentWidthFloor) && box.height >= _scaled(context, _stampFloor);
         // The credit line is the FIRST claim on the pane, not the last: it
         // sits at the foot, below the charts, so every section above it is
         // choosing from what it leaves rather than from the pane. Read the
@@ -698,12 +662,8 @@ class _SolarReadoutState extends State<_SolarReadout> {
         // back to a Column one line shorter than they were told.
         final room = box.height - (showStamp ? _scaled(context, _footerLine) : 0.0);
 
-        final showPairs =
-            room >= _scaled(context, _pairsFloor) &&
-            contentWidth >= _scaled(context, _pairsContentWidthFloor);
-        final showGrid = reading.bands.isNotEmpty &&
-            room >= _scaled(context, _gridFloor) &&
-            contentWidth >= _scaled(context, _gridContentWidthFloor);
+        final showPairs = room >= _scaled(context, _pairsFloor) && contentWidth >= _scaled(context, _pairsContentWidthFloor);
+        final showGrid = reading.bands.isNotEmpty && room >= _scaled(context, _gridFloor) && contentWidth >= _scaled(context, _gridContentWidthFloor);
         final showKp = kp.length >= 2 && room >= _scaled(context, _kpFloor);
         final showFlux = flux.length >= 2 && room >= _scaled(context, _fluxFloor);
         final showWind = wind.length >= 2 && room >= _scaled(context, _windFloor);
@@ -722,10 +682,7 @@ class _SolarReadoutState extends State<_SolarReadout> {
         // unbounded height by the Column, so it shrinks for width and never
         // for height.
         final ratio = _scaleRatio(context);
-        final fluxSize = math.min(
-          math.min(math.max(room * 0.22, 20.0), 52.0),
-          math.min(roomForFlux / (_fluxLineHeight * ratio), contentWidth * 0.34 / ratio),
-        );
+        final fluxSize = math.min(math.min(math.max(room * 0.22, 20.0), 52.0), math.min(roomForFlux / (_fluxLineHeight * ratio), contentWidth * 0.34 / ratio));
 
         return Padding(
           padding: safe,
@@ -776,99 +733,90 @@ class _SolarReadoutState extends State<_SolarReadout> {
                   // wrong band, or in none.
                   child: Builder(
                     builder: (context) => MouseRegion(
-                    // `opaque: false` so the pane behind still sees the
-                    // pointer — this sits over the pane's background, and
-                    // swallowing enter/exit here would strand any hover state
-                    // above it.
-                    opaque: false,
-                    onHover: (event) => _hoverCharts(
-                      context,
-                      event.localPosition,
-                      [if (showFlux) flux, if (showWind) wind, if (showKp) kp],
-                    ),
-                    onExit: (_) => _hoveredAt.value = null,
-                    child: Column(
-                    children: [
-                      if (showFlux)
-                        Expanded(
-                          child: _HoverChart(
-                            key: const ValueKey('solar-chart-flux'),
-                            points: flux,
-                            hoveredAt: _hoveredAt,
-                            // With the hour, now that the curve carries all
-                            // three of the day's observations: a date alone
-                            // would name three different marks.
-                            hoverLabel: (point) => (
-                              metric: 'SFI ${point.value.round()}',
-                              detail: '${_chartDate(context, point.utc)} ${_chartTime(point.utc)}',
+                      // `opaque: false` so the pane behind still sees the
+                      // pointer — this sits over the pane's background, and
+                      // swallowing enter/exit here would strand any hover state
+                      // above it.
+                      opaque: false,
+                      onHover: (event) => _hoverCharts(context, event.localPosition, [if (showFlux) flux, if (showWind) wind, if (showKp) kp]),
+                      onExit: (_) => _hoveredAt.value = null,
+                      child: Column(
+                        children: [
+                          if (showFlux)
+                            Expanded(
+                              child: _HoverChart(
+                                key: const ValueKey('solar-chart-flux'),
+                                points: flux,
+                                hoveredAt: _hoveredAt,
+                                // With the hour, now that the curve carries all
+                                // three of the day's observations: a date alone
+                                // would name three different marks.
+                                hoverLabel: (point) =>
+                                    (metric: 'SFI ${point.value.round()}', detail: '${_chartDate(context, point.utc)} ${_chartTime(point.utc)}'),
+                                painterFor: (hovered, labels) => SolarLineChartPainter(
+                                  values: [for (final point in flux) point.value],
+                                  line: HaLoColors.of(context).onSurfaceAccent,
+                                  fill: HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.20),
+                                  labelStyle: _chartLabelStyle(context),
+                                  labelPlate: _chartLabelPlate(context),
+                                  labels: labels,
+                                  hovered: hovered,
+                                ),
+                              ),
                             ),
-                            painterFor: (hovered, labels) => SolarLineChartPainter(
-                              values: [for (final point in flux) point.value],
-                              line: HaLoColors.of(context).onSurfaceAccent,
-                              fill: HaLoColors.of(context).onSurfaceAccent.withValues(alpha: 0.20),
-                              labelStyle: _chartLabelStyle(context),
-                              labelPlate: _chartLabelPlate(context),
-                              labels: labels,
-                              hovered: hovered,
+                          if (showWind)
+                            Expanded(
+                              child: _HoverChart(
+                                key: const ValueKey('solar-chart-wind'),
+                                points: wind,
+                                hoveredAt: _hoveredAt,
+                                // The bucket's START, which is what the Kp bars
+                                // name too — "Aug 24 03:00z" is the three hours
+                                // from 03:00, on both charts.
+                                hoverLabel: (point) =>
+                                    (metric: 'SW ${point.value.round()}', detail: '${_chartDate(context, point.utc)} ${_chartTime(point.utc)}'),
+                                painterFor: (hovered, labels) => SolarLineChartPainter(
+                                  values: [for (final point in wind) point.value],
+                                  // Neutral rather than accented: the flux curve
+                                  // above already owns the accent, and two
+                                  // accented lines in one pane read as one series
+                                  // split in half.
+                                  line: scheme.onSurfaceVariant,
+                                  fill: scheme.onSurfaceVariant.withValues(alpha: 0.16),
+                                  minSpan: solarMinWindSpan,
+                                  labelStyle: _chartLabelStyle(context),
+                                  labelPlate: _chartLabelPlate(context),
+                                  labels: labels,
+                                  hovered: hovered,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      if (showWind)
-                        Expanded(
-                          child: _HoverChart(
-                            key: const ValueKey('solar-chart-wind'),
-                            points: wind,
-                            hoveredAt: _hoveredAt,
-                            // The bucket's START, which is what the Kp bars
-                            // name too — "Aug 24 03:00z" is the three hours
-                            // from 03:00, on both charts.
-                            hoverLabel: (point) => (
-                              metric: 'SW ${point.value.round()}',
-                              detail: '${_chartDate(context, point.utc)} ${_chartTime(point.utc)}',
+                          if (showKp)
+                            Expanded(
+                              child: _HoverChart(
+                                key: const ValueKey('solar-chart-kp'),
+                                points: kp,
+                                hoveredAt: _hoveredAt,
+                                // Date AND time: a bar is one three-hour period,
+                                // and three days of them means a date alone names
+                                // eight different bars.
+                                hoverLabel: (point) => (
+                                  metric: '${context.t.operation.layout.panels.solarKIndex} ${_plain(point.value)}',
+                                  detail: '${_chartDate(context, point.utc)} ${_chartTime(point.utc)}',
+                                ),
+                                painterFor: (hovered, labels) => SolarKpChartPainter(
+                                  values: [for (final point in kp) point.value],
+                                  storm: scheme.outlineVariant,
+                                  highlight: scheme.onSurface,
+                                  labelStyle: _chartLabelStyle(context),
+                                  labelPlate: _chartLabelPlate(context),
+                                  labels: labels,
+                                  hovered: hovered,
+                                ),
+                              ),
                             ),
-                            painterFor: (hovered, labels) => SolarLineChartPainter(
-                              values: [for (final point in wind) point.value],
-                              // Neutral rather than accented: the flux curve
-                              // above already owns the accent, and two
-                              // accented lines in one pane read as one series
-                              // split in half.
-                              line: scheme.onSurfaceVariant,
-                              fill: scheme.onSurfaceVariant.withValues(alpha: 0.16),
-                              minSpan: solarMinWindSpan,
-                              labelStyle: _chartLabelStyle(context),
-                              labelPlate: _chartLabelPlate(context),
-                              labels: labels,
-                              hovered: hovered,
-                            ),
-                          ),
-                        ),
-                      if (showKp)
-                        Expanded(
-                          child: _HoverChart(
-                            key: const ValueKey('solar-chart-kp'),
-                            points: kp,
-                            hoveredAt: _hoveredAt,
-                            // Date AND time: a bar is one three-hour period,
-                            // and three days of them means a date alone names
-                            // eight different bars.
-                            hoverLabel: (point) => (
-                              metric:
-                                  '${context.t.operation.layout.panels.solarKIndex} ${_plain(point.value)}',
-                              detail: '${_chartDate(context, point.utc)} ${_chartTime(point.utc)}',
-                            ),
-                            painterFor: (hovered, labels) => SolarKpChartPainter(
-                              values: [for (final point in kp) point.value],
-                              storm: scheme.outlineVariant,
-                              highlight: scheme.onSurface,
-                              labelStyle: _chartLabelStyle(context),
-                              labelPlate: _chartLabelPlate(context),
-                              labels: labels,
-                              hovered: hovered,
-                            ),
-                          ),
-                        ),
-                    ],
-                    ),
+                        ],
+                      ),
                     ),
                   ),
                 )
@@ -929,11 +877,7 @@ class _SolarReadoutState extends State<_SolarReadout> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(
-            MdiIcons.whiteBalanceSunny,
-            size: size * 0.80,
-            color: sfi == null ? theme.colorScheme.onSurfaceVariant : solarFluxColor(sfi),
-          ),
+          Icon(MdiIcons.whiteBalanceSunny, size: size * 0.80, color: sfi == null ? theme.colorScheme.onSurfaceVariant : solarFluxColor(sfi)),
           SizedBox(width: Space.sm),
           Text('SFI ${sfi ?? '—'}', style: style),
           if (showPairs) ...[
@@ -949,14 +893,8 @@ class _SolarReadoutState extends State<_SolarReadout> {
             ]),
             SizedBox(width: Space.lg),
             _pair(context, size, [
-              if (reading.aIndex case final a?)
-                (label: context.t.operation.layout.panels.solarAIndex, value: '$a', color: solarAColor(a)),
-              if (reading.kIndex case final k?)
-                (
-                  label: context.t.operation.layout.panels.solarKIndex,
-                  value: '$k',
-                  color: solarKColor(k.toDouble()),
-                ),
+              if (reading.aIndex case final a?) (label: context.t.operation.layout.panels.solarAIndex, value: '$a', color: solarAColor(a)),
+              if (reading.kIndex case final k?) (label: context.t.operation.layout.panels.solarKIndex, value: '$k', color: solarKColor(k.toDouble())),
             ]),
           ],
         ],
@@ -983,19 +921,13 @@ class _SolarReadoutState extends State<_SolarReadout> {
             children: [
               Text(
                 row.label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontSize: size * 0.24,
-                  color: theme.colorScheme.outline,
-                ),
+                style: theme.textTheme.labelSmall?.copyWith(fontSize: size * 0.24, color: theme.colorScheme.outline),
               ),
               SizedBox(width: Space.xs),
               Text(
                 row.value,
                 maxLines: 1,
-                style: _valueStyle(theme, row.color)?.copyWith(
-                  fontSize: size * 0.30,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+                style: _valueStyle(theme, row.color)?.copyWith(fontSize: size * 0.30, fontFeatures: const [FontFeature.tabularFigures()]),
               ),
             ],
           ),
@@ -1009,10 +941,8 @@ class _SolarReadoutState extends State<_SolarReadout> {
   /// real font. `panel_solar_overflow_test.dart` loads the app's own and
   /// sweeps the block across pane widths, where an under-measure surfaces as
   /// the horizontal overflow it is.
-  static TextStyle? _valueStyle(ThemeData theme, Color? color) => theme.textTheme.labelMedium?.copyWith(
-    color: color ?? theme.colorScheme.onSurfaceVariant,
-    fontWeight: FontWeight.w600,
-  );
+  static TextStyle? _valueStyle(ThemeData theme, Color? color) =>
+      theme.textTheme.labelMedium?.copyWith(color: color ?? theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600);
 
   /// What the labels on both charts are drawn in. Resolved here rather than
   /// inside the painters: a `TextPainter` needs a size and a colour, and a
@@ -1052,16 +982,11 @@ class _SolarReadoutState extends State<_SolarReadout> {
         ],
         Flexible(
           child: Text(
-            context.t.operation.layout.panels.solarSources(
-              primary: solarSourceHost,
-              secondary: solarSeriesSource,
-            ),
+            context.t.operation.layout.panels.solarSources(primary: solarSourceHost, secondary: solarSeriesSource),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: staleFetch ? theme.colorScheme.error : theme.colorScheme.outline,
-            ),
+            style: theme.textTheme.labelSmall?.copyWith(color: staleFetch ? theme.colorScheme.error : theme.colorScheme.outline),
           ),
         ),
       ],
@@ -1102,8 +1027,7 @@ class _SolarReadoutState extends State<_SolarReadout> {
   /// plate is a hole in the chart, and one you can still faintly see the
   /// curve through reads as a label lying ON the chart rather than as a gap
   /// cut out of it.
-  static Color _chartLabelPlate(BuildContext context) =>
-      Theme.of(context).colorScheme.surface.withValues(alpha: 0.88);
+  static Color _chartLabelPlate(BuildContext context) => Theme.of(context).colorScheme.surface.withValues(alpha: 0.88);
 
   /// The day a mark belongs to, in the operator's locale. Month names are
   /// localized (`DateFormat.MMMd`) rather than assembled here, the same way
@@ -1112,20 +1036,17 @@ class _SolarReadoutState extends State<_SolarReadout> {
   /// The DateTime is UTC and stays that way: these are UTC observations shown
   /// beside a UTC clock, and a date silently converted to local time would
   /// disagree with the [_chartTime] next to it by a day for half the world.
-  String _chartDate(BuildContext context, DateTime utc) =>
-      DateFormat.MMMd(Localizations.localeOf(context).toLanguageTag()).format(utc);
+  String _chartDate(BuildContext context, DateTime utc) => DateFormat.MMMd(Localizations.localeOf(context).toLanguageTag()).format(utc);
 
   /// The hour a Kp bar covers, on the app's UTC clock — the `z` is what says
   /// so, and it is the same suffix every other time in the app carries.
   String _chartTime(DateTime utc) => '${DateFormat('HH:mm').format(utc)}z';
-
 }
 
 /// A whole number without its trailing zero: Kp arrives from SWPC as 1.33 or
 /// 2.0, and "Kp 2.0" beside a column of integers reads as a different kind of
 /// number rather than the same one.
-String _plain(double value) =>
-    value == value.roundToDouble() ? '${value.round()}' : value.toStringAsFixed(2);
+String _plain(double value) => value == value.roundToDouble() ? '${value.round()}' : value.toStringAsFixed(2);
 
 /// One chart band, drawn for whatever instant the readout is pointing at.
 ///
@@ -1152,13 +1073,7 @@ class _HoverChart extends StatelessWidget {
 
   final CustomPainter Function(int? hovered, List<SolarChartLabel> labels) painterFor;
 
-  const _HoverChart({
-    super.key,
-    required this.points,
-    required this.hoveredAt,
-    required this.hoverLabel,
-    required this.painterFor,
-  });
+  const _HoverChart({super.key, required this.points, required this.hoveredAt, required this.hoverLabel, required this.painterFor});
 
   /// This chart's mark nearest [instant], or null when it has none.
   ///
@@ -1188,12 +1103,7 @@ class _HoverChart extends StatelessWidget {
       builder: (context, instant, _) {
         final hovered = instant == null ? null : _nearest(instant);
         final labels = <SolarChartLabel>[
-          if (hovered != null)
-            (
-              index: hovered,
-              metric: hoverLabel(points[hovered]).metric,
-              detail: hoverLabel(points[hovered]).detail,
-            ),
+          if (hovered != null) (index: hovered, metric: hoverLabel(points[hovered]).metric, detail: hoverLabel(points[hovered]).detail),
         ];
         // A boundary of its own: hovering repaints ONE chart band rather than
         // the pane it sits in, and the pointer moves as often as a drag does.
@@ -1202,9 +1112,7 @@ class _HoverChart extends StatelessWidget {
         // its size from `preferredSize` — zero — wherever the constraints are
         // loose, and the Column above hands out loose widths.
         return RepaintBoundary(
-          child: SizedBox.expand(
-            child: CustomPaint(painter: painterFor(hovered, labels)),
-          ),
+          child: SizedBox.expand(child: CustomPaint(painter: painterFor(hovered, labels))),
         );
       },
     );
@@ -1234,8 +1142,14 @@ class _BandGrid extends StatelessWidget {
         Row(
           children: [
             const Spacer(),
-            Expanded(flex: 2, child: Text(t.solarBandDay, textAlign: TextAlign.center, style: headerStyle)),
-            Expanded(flex: 2, child: Text(t.solarBandNight, textAlign: TextAlign.center, style: headerStyle)),
+            Expanded(
+              flex: 2,
+              child: Text(t.solarBandDay, textAlign: TextAlign.center, style: headerStyle),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(t.solarBandNight, textAlign: TextAlign.center, style: headerStyle),
+            ),
           ],
         ),
         for (final band in bands)
@@ -1277,10 +1191,7 @@ class _BandGrid extends StatelessWidget {
         // Height, never width: the cell is inside an Expanded and a
         // Container with an alignment would stretch to fill the row.
         padding: EdgeInsets.symmetric(vertical: Space.xxs),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(3),
-        ),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(3)),
         child: Text(
           label,
           textAlign: TextAlign.center,

@@ -16,11 +16,7 @@ class Source extends FakePanelExtensions {
   final bool scene;
   final calls = <Map<String, dynamic>>[];
   @override
-  Future<Map<String, dynamic>?> renderPanel({
-    required String hookKey,
-    required String panelKey,
-    required Map<String, dynamic> args,
-  }) async {
+  Future<Map<String, dynamic>?> renderPanel({required String hookKey, required String panelKey, required Map<String, dynamic> args}) async {
     calls.add(args);
     if (!scene) {
       return {
@@ -51,13 +47,7 @@ class Source extends FakePanelExtensions {
   }
 }
 
-const _panel = PanelDefinition(
-  id: 'ext:test:scene',
-  title: 'Scene',
-  source: PanelSource.extension,
-  hookKey: 'test',
-  panelKey: 'scene',
-);
+const _panel = PanelDefinition(id: 'ext:test:scene', title: 'Scene', source: PanelSource.extension, hookKey: 'test', panelKey: 'scene');
 
 Future<void> _show(WidgetTester tester, PanelService service, {double width = 400, int spotsRevision = 0}) async {
   await tester.pumpWidget(
@@ -86,20 +76,12 @@ Future<void> _show(WidgetTester tester, PanelService service, {double width = 40
 }
 
 void main() {
-  testWidgets('resolved environment reaches the first render and changes respect visibility and budget', (
-    tester,
-  ) async {
+  testWidgets('resolved environment reaches the first render and changes respect visibility and budget', (tester) async {
     final source = Source();
     // Use one service/runtime for every rebuild, just like a dock placement.
     final service = PanelService(source);
     addTearDown(service.dispose);
-    Future<void> show({
-      Brightness brightness = Brightness.light,
-      double width = 400,
-      bool visible = true,
-      double scale = 1,
-      bool reduced = false,
-    }) async {
+    Future<void> show({Brightness brightness = Brightness.light, double width = 400, bool visible = true, double scale = 1, bool reduced = false}) async {
       await tester.pumpWidget(
         TranslationProvider(
           child: MaterialApp(
@@ -157,9 +139,7 @@ void main() {
   // Markdown and HTML are themed and laid out by the host. Re-rendering them
   // on a resize is a bridge call per pane per throttle window of a splitter
   // drag — and a web view reload for HTML — for an answer that cannot differ.
-  testWidgets('a resize does not re-render a panel that is not a scene, and its next render sees the new size', (
-    tester,
-  ) async {
+  testWidgets('a resize does not re-render a panel that is not a scene, and its next render sees the new size', (tester) async {
     final source = Source(scene: false);
     final service = PanelService(source);
     addTearDown(service.dispose);
@@ -192,7 +172,10 @@ void main() {
     Future<void> show(double inset) => tester.pumpWidget(
       MaterialApp(
         home: MediaQuery(
-          data: MediaQueryData(size: const Size(800, 600), viewInsets: EdgeInsets.only(bottom: inset)),
+          data: MediaQueryData(
+            size: const Size(800, 600),
+            viewInsets: EdgeInsets.only(bottom: inset),
+          ),
           child: probe,
         ),
       ),

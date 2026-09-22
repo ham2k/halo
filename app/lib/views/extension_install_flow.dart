@@ -79,6 +79,7 @@ Future<String?> installExtensionFromBytes(
   required Future<List<int>> Function() read,
   String? from,
   BundleProvenance? provenance,
+
   /// False only for a bulk update the operator has already asked for as a
   /// whole — see where the screen is shown below. Never for a file, a deep
   /// link, or anything an extension can reach.
@@ -186,7 +187,10 @@ Future<String?> installFromCatalog(
   // which is unbounded cardinality and leaks what the operator uses (the
   // same reason settings_view reports every extension panel as one).
   services.track('extension_installed', {});
-  services.statusBar.setMessage(key: 'extensions:installed', text: t.extensionsPanel.installedMessage(name: name));
+  services.statusBar.setMessage(
+    key: 'extensions:installed',
+    text: t.extensionsPanel.installedMessage(name: name),
+  );
   return name;
 }
 
@@ -206,20 +210,19 @@ Future<bool> _isInstalled(InstalledExtensions store, InspectedBundle bundle) asy
 /// refusal decided before the flow starts (a catalog key that is built in)
 /// as much as for one it decides itself.
 Future<void> showInstallRefusal(BuildContext context, String message) => showDialog<void>(
-      context: context,
-      builder: (context) => HaloDialog(
-        title: Text(context.t.extensionsPanel.installFailed),
-        content: Text(message),
-        // The way out goes in `cancel:`, not `actions:` — see HaloDialog and
-        // dialog_footer_convention_test.
-        cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
-      ),
-    );
+  context: context,
+  builder: (context) => HaloDialog(
+    title: Text(context.t.extensionsPanel.installFailed),
+    content: Text(message),
+    // The way out goes in `cancel:`, not `actions:` — see HaloDialog and
+    // dialog_footer_convention_test.
+    cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
+  ),
+);
 
 /// Shows what [bundle] will be able to reach, and returns whether the operator
 /// agreed to it.
-Future<bool> showConsentDialog(BuildContext context,
-        {required InspectedBundle bundle, required bool replacing, String? from}) async =>
+Future<bool> showConsentDialog(BuildContext context, {required InspectedBundle bundle, required bool replacing, String? from}) async =>
     await showDialog<bool>(
       context: context,
       builder: (context) => _ConsentDialog(bundle: bundle, replacing: replacing, from: from),
@@ -248,56 +251,46 @@ class _ConsentDialog extends StatelessWidget {
       // the name is the thing the operator is actually deciding about.
       title: Text(bundle.name),
       content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (bundle.version.isNotEmpty)
-              Text(t.installVersion(version: bundle.version), style: theme.textTheme.bodySmall),
-            // Named prominently, not tucked away: a bundle that arrived from a
-            // link is one the operator did not choose off their own disk, and
-            // where it came from is most of what tells them whether to trust
-            // it.
-            if (from != null) ...[
-              const SizedBox(height: Space.sm),
-              _Capability(icon: MdiIcons.downloadOutline, label: t.installedFrom(source: from!)),
-            ],
-            if (bundle.description != null) ...[
-              const SizedBox(height: Space.md),
-              Text(bundle.description!),
-            ],
-            const SizedBox(height: Space.xl),
-            // The capabilities, given the most room. The domains list is not a
-            // summary of this extension's network access — it IS that access,
-            // since host.fetch permits nothing else.
-            if (!bundle.claimsCapabilities)
-              Text(t.noCapabilities, style: theme.textTheme.bodyMedium)
-            else ...[
-              Text(t.canReach, style: theme.textTheme.titleSmall),
-              const SizedBox(height: Space.sm),
-              for (final domain in bundle.domains)
-                _Capability(icon: MdiIcons.web, label: domain),
-              if (bundle.requiresLocation) _Capability(icon: MdiIcons.crosshairsGps, label: t.canUseLocation),
-              // One line, the stronger one: write implies read.
-              if (bundle.requiresRadioWrite)
-                _Capability(icon: MdiIcons.radio, label: t.canControlRadio)
-              else if (bundle.requiresRadioRead)
-                _Capability(icon: MdiIcons.radio, label: t.canReadRadio),
-              if (bundle.allowUserAgentOverride) _Capability(icon: MdiIcons.cardAccountDetailsOutline, label: t.canSetUserAgent),
-            ],
-            const SizedBox(height: Space.xl),
-            Text(
-              t.sandboxNote,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (bundle.version.isNotEmpty) Text(t.installVersion(version: bundle.version), style: theme.textTheme.bodySmall),
+          // Named prominently, not tucked away: a bundle that arrived from a
+          // link is one the operator did not choose off their own disk, and
+          // where it came from is most of what tells them whether to trust
+          // it.
+          if (from != null) ...[
+            const SizedBox(height: Space.sm),
+            _Capability(
+              icon: MdiIcons.downloadOutline,
+              label: t.installedFrom(source: from!),
             ),
           ],
+          if (bundle.description != null) ...[const SizedBox(height: Space.md), Text(bundle.description!)],
+          const SizedBox(height: Space.xl),
+          // The capabilities, given the most room. The domains list is not a
+          // summary of this extension's network access — it IS that access,
+          // since host.fetch permits nothing else.
+          if (!bundle.claimsCapabilities)
+            Text(t.noCapabilities, style: theme.textTheme.bodyMedium)
+          else ...[
+            Text(t.canReach, style: theme.textTheme.titleSmall),
+            const SizedBox(height: Space.sm),
+            for (final domain in bundle.domains) _Capability(icon: MdiIcons.web, label: domain),
+            if (bundle.requiresLocation) _Capability(icon: MdiIcons.crosshairsGps, label: t.canUseLocation),
+            // One line, the stronger one: write implies read.
+            if (bundle.requiresRadioWrite)
+              _Capability(icon: MdiIcons.radio, label: t.canControlRadio)
+            else if (bundle.requiresRadioRead)
+              _Capability(icon: MdiIcons.radio, label: t.canReadRadio),
+            if (bundle.allowUserAgentOverride) _Capability(icon: MdiIcons.cardAccountDetailsOutline, label: t.canSetUserAgent),
+          ],
+          const SizedBox(height: Space.xl),
+          Text(t.sandboxNote, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        ],
       ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-      actions: [
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(replacing ? t.updateAction : t.installAction),
-        ),
-      ],
+      actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(replacing ? t.updateAction : t.installAction))],
     );
   }
 }
@@ -369,12 +362,7 @@ Future<bool> confirmUpdateAll(BuildContext context, {required int count}) async 
           // Confirming is this dialog's whole purpose, so the verb takes the
           // trailing edge and the way out sits to its left — the same shape as
           // the remove confirmation.
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(t.updateAllAction),
-            ),
-          ],
+          actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.updateAllAction))],
         ),
       ) ??
       false;
@@ -472,17 +460,11 @@ Future<ExtensionDetailsAction?> showExtensionDetails(
   String? installedFrom,
   IconData? installedFromIcon,
   String? updateVersion,
-}) =>
-    showDialog<ExtensionDetailsAction>(
-      context: context,
-      builder: (context) => _DetailsDialog(
-        info: info,
-        locale: locale,
-        installedFrom: installedFrom,
-        installedFromIcon: installedFromIcon,
-        updateVersion: updateVersion,
-      ),
-    );
+}) => showDialog<ExtensionDetailsAction>(
+  context: context,
+  builder: (context) =>
+      _DetailsDialog(info: info, locale: locale, installedFrom: installedFrom, installedFromIcon: installedFromIcon, updateVersion: updateVersion),
+);
 
 class _DetailsDialog extends StatelessWidget {
   final ExtensionInfo info;
@@ -494,13 +476,7 @@ class _DetailsDialog extends StatelessWidget {
   final IconData? installedFromIcon;
   final String? updateVersion;
 
-  const _DetailsDialog({
-    required this.info,
-    required this.locale,
-    required this.installedFrom,
-    required this.installedFromIcon,
-    required this.updateVersion,
-  });
+  const _DetailsDialog({required this.info, required this.locale, required this.installedFrom, required this.installedFromIcon, required this.updateVersion});
 
   @override
   Widget build(BuildContext context) {
@@ -513,11 +489,8 @@ class _DetailsDialog extends StatelessWidget {
     final version = info.isInstalled ? info.version : null;
     // The same things `InspectedBundle.claimsCapabilities` asks of a bundle
     // at install, asked of the extension afterwards.
-    final claimsCapabilities = info.domains.isNotEmpty ||
-        info.requiresLocation ||
-        info.requiresRadioRead ||
-        info.requiresRadioWrite ||
-        info.allowUserAgentOverride;
+    final claimsCapabilities =
+        info.domains.isNotEmpty || info.requiresLocation || info.requiresRadioRead || info.requiresRadioWrite || info.allowUserAgentOverride;
     final hookLabels = extensionHookLabels(info.hooks, t);
 
     return HaloDialog(
@@ -527,18 +500,12 @@ class _DetailsDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (version != null) Text(t.installVersion(version: version), style: theme.textTheme.bodySmall),
-          if (description != null) ...[
-            const SizedBox(height: Space.md),
-            Text(description),
-          ],
+          if (description != null) ...[const SizedBox(height: Space.md), Text(description)],
           const SizedBox(height: Space.xl),
           // Where it came from, in the same words the consent screen used
           // when it arrived. For an extension the app ships there is nothing
           // to say beyond that it does.
-          _Capability(
-            icon: installedFromIcon ?? MdiIcons.packageVariantClosed,
-            label: installedFrom ?? t.builtIn,
-          ),
+          _Capability(icon: installedFromIcon ?? MdiIcons.packageVariantClosed, label: installedFrom ?? t.builtIn),
           const SizedBox(height: Space.xl),
           // The same capability list the operator agreed to at install, so
           // "what did I let this reach" is answerable afterwards and not only
@@ -554,8 +521,7 @@ class _DetailsDialog extends StatelessWidget {
               _Capability(icon: MdiIcons.radio, label: t.canControlRadio)
             else if (info.requiresRadioRead)
               _Capability(icon: MdiIcons.radio, label: t.canReadRadio),
-            if (info.allowUserAgentOverride)
-              _Capability(icon: MdiIcons.cardAccountDetailsOutline, label: t.canSetUserAgent),
+            if (info.allowUserAgentOverride) _Capability(icon: MdiIcons.cardAccountDetailsOutline, label: t.canSetUserAgent),
           ],
           if (hookLabels.isNotEmpty) ...[
             const SizedBox(height: Space.xl),
@@ -580,10 +546,7 @@ class _DetailsDialog extends StatelessWidget {
       // out of the dialog, which is exactly what `secondary:` is for.
       secondary: updateVersion == null
           ? null
-          : FilledButton(
-              onPressed: () => Navigator.of(context).pop(ExtensionDetailsAction.update),
-              child: Text(t.updateAction),
-            ),
+          : FilledButton(onPressed: () => Navigator.of(context).pop(ExtensionDetailsAction.update), child: Text(t.updateAction)),
       // Done, not Close: the footer convention retires Close, and this dialog
       // has nothing to commit (docs/design/user-interface.md §Dialogs). With
       // no `actions:` it lands on the trailing edge itself — the last button
@@ -633,8 +596,7 @@ List<String> extensionHookLabels(List<String> hooks, Translations$extensionsPane
     final code = hook.substring(refPrefix.length);
     if (refClaimOf(hook)?.code != null) continue;
     if (code.endsWith(activationSuffix)) {
-      labels.add(t.hookActivating(
-          program: _programName(code.substring(0, code.length - activationSuffix.length))));
+      labels.add(t.hookActivating(program: _programName(code.substring(0, code.length - activationSuffix.length))));
     } else if (hooks.contains('$hook$activationSuffix')) {
       labels.add(t.hookHunting(program: _programName(code)));
     } else {

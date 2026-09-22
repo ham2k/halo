@@ -32,13 +32,7 @@ class DiscoveredEquipment {
   /// added with no typing at all.
   final Map<String, dynamic> config;
 
-  const DiscoveredEquipment({
-    required this.typeKey,
-    required this.id,
-    required this.name,
-    required this.config,
-    this.detail,
-  });
+  const DiscoveredEquipment({required this.typeKey, required this.id, required this.name, required this.config, this.detail});
 }
 
 /// Implemented by an [EquipmentType] whose equipment announces itself.

@@ -42,12 +42,7 @@ class ClockPanel extends StatefulWidget {
   /// Names the tab after the zone, so two clocks are told apart.
   final ValueChanged<String?>? onTitle;
 
-  const ClockPanel({
-    super.key,
-    required this.panelId,
-    required this.panels,
-    this.onTitle,
-  });
+  const ClockPanel({super.key, required this.panelId, required this.panels, this.onTitle});
 
   @override
   State<ClockPanel> createState() => _ClockPanelState();
@@ -148,7 +143,8 @@ class _ClockPanelState extends State<ClockPanel> {
     final wall = reading.wall;
     final round = _face != clockFaceLcd;
     final zoneText = reading.abbreviation ?? offsetLabel(reading.offset);
-    final label = '${_two(wall.hour)}:${_two(wall.minute)}'
+    final label =
+        '${_two(wall.hour)}:${_two(wall.minute)}'
         '${_showSeconds ? ':${_two(wall.second)}' : ''} $zoneText';
 
     final form = clockFormFor(box, round: round, showSeconds: _showSeconds);
@@ -169,9 +165,7 @@ class _ClockPanelState extends State<ClockPanel> {
       // (docs/design/user-interface.md).
       return Text(
         '${_two(wall.hour)}:${_two(wall.minute)}',
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
       );
     }
 
@@ -189,11 +183,7 @@ class _ClockPanelState extends State<ClockPanel> {
       ];
       return CustomPaint(
         size: box,
-        painter: LcdFacePainter(
-          digits: digits,
-          colonsAfter: withSeconds ? const {1, 3} : const {1},
-          palette: palette,
-        ),
+        painter: LcdFacePainter(digits: digits, colonsAfter: withSeconds ? const {1, 3} : const {1}, palette: palette),
       );
     }
 
@@ -229,11 +219,6 @@ ClockPalette clockPaletteFor(BuildContext context, String face) {
       return lcdPalette(theme.brightness);
     default:
       final scheme = theme.colorScheme;
-      return ClockPalette(
-        face: scheme.surface,
-        ink: scheme.onSurface,
-        ghost: scheme.outlineVariant,
-        accent: HaLoColors.of(context).onSurfaceAccent,
-      );
+      return ClockPalette(face: scheme.surface, ink: scheme.onSurface, ghost: scheme.outlineVariant, accent: HaLoColors.of(context).onSurfaceAccent);
   }
 }

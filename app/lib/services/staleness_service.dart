@@ -42,10 +42,11 @@ class StalenessService with WidgetsBindingObserver {
     DateTime Function()? now,
     bool Function()? buildExpired,
     required this._onNoticeAction,
-  })  : _buildExpired = buildExpired ?? isBuildExpired,
-        _now = now ?? nowLocal;
+  }) : _buildExpired = buildExpired ?? isBuildExpired,
+       _now = now ?? nowLocal;
 
   final StatusBarService statusBar;
+
   /// Where the nag tier puts its dialog. Null where there is nowhere to put
   /// one — a test exercising only the notice tier, or any caller with no
   /// Navigator — and the nag then no-ops rather than inventing a surface.
@@ -120,18 +121,17 @@ class StalenessService with WidgetsBindingObserver {
         floor: floor,
       ),
       buildExpired: _buildExpired(),
-      releaseWorthAnnouncing: _isReleaseBuild &&
-          isReleaseWorthAnnouncing(
-            currentVersion: kPublicVersion,
-            latest: _latestRelease,
-            dismissed: _prefs?.getString(_dismissedReleaseKey),
-          ),
+      releaseWorthAnnouncing:
+          _isReleaseBuild &&
+          isReleaseWorthAnnouncing(currentVersion: kPublicVersion, latest: _latestRelease, dismissed: _prefs?.getString(_dismissedReleaseKey)),
     );
     // Logged every time, verdict or not: a mistyped build key in `minCodePush`
     // otherwise fails completely silently — no nag, no trace, and a server
     // that believes the floor is enforced on installs where it reaches nobody.
-    debugPrint('[staleness] floor=$floor push=$currentCodePush resolved=$currentCodePushResolved '
-        'expired=${_buildExpired()} latest=$_latestRelease → ${signal?.name ?? 'none'}');
+    debugPrint(
+      '[staleness] floor=$floor push=$currentCodePush resolved=$currentCodePushResolved '
+      'expired=${_buildExpired()} latest=$_latestRelease → ${signal?.name ?? 'none'}',
+    );
     if (signal == null) return;
 
     if (!mayPresentAgain(dismissedAt: _dismissedAt[signal], now: _now())) return;
@@ -166,8 +166,7 @@ class StalenessService with WidgetsBindingObserver {
     final latest = _latestRelease;
     if (latest == null) return;
     // Already showing this exact release — don't reset it on every refresh.
-    if (statusBar.activeNotices.any((n) => n.key == stalenessNoticeKey) &&
-        _prefs?.getString(stalenessShownReleaseKey) == latest) {
+    if (statusBar.activeNotices.any((n) => n.key == stalenessNoticeKey) && _prefs?.getString(stalenessShownReleaseKey) == latest) {
       return;
     }
     _prefs?.setString(stalenessShownReleaseKey, latest);
@@ -217,8 +216,7 @@ class StalenessService with WidgetsBindingObserver {
   void _promoteDismissedRelease() {
     final shown = _prefs?.getString(stalenessShownReleaseKey);
     if (shown == null) return;
-    final dismissedInBar =
-        statusBar.history.any((n) => n.key == stalenessNoticeKey && n.dismissedAt != null);
+    final dismissedInBar = statusBar.history.any((n) => n.key == stalenessNoticeKey && n.dismissedAt != null);
     if (!dismissedInBar) return;
     final mark = _prefs?.getString(_dismissedReleaseKey);
     if (mark == null || isReleaseWorthAnnouncing(currentVersion: mark, latest: shown, dismissed: null)) {

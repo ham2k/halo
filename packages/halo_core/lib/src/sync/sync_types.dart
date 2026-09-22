@@ -8,7 +8,6 @@
 
 import '../models/models.dart';
 
-
 /// Calls the highest-priority `syncTransport` hook's `method` with `args`
 /// and returns its JSON result. Implemented by the app layer (wrapping
 /// `ExtensionHost.invokeHook`) so this package stays free of a Flutter/

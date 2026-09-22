@@ -52,14 +52,16 @@ void main() {
     var typed = 0;
     await tester.pumpWidget(host(session: LoggingSession(onCallTyped: () => typed++)));
     await tester.pump();
-    await tester.pumpWidget(host(
-      session: LoggingSession(
-        onCallTyped: () => typed++,
-        suggestedQso: {
-          'their': {'call': 'W9XYZ'},
-        },
+    await tester.pumpWidget(
+      host(
+        session: LoggingSession(
+          onCallTyped: () => typed++,
+          suggestedQso: {
+            'their': {'call': 'W9XYZ'},
+          },
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(tester.widget<TextField>(callField).controller!.text, 'W9XYZ');
     expect(typed, 0);
@@ -70,10 +72,12 @@ void main() {
     try {
       var typed = 0;
       raiseKeyboard(tester);
-      await tester.pumpWidget(host(
-        prefs: LoggingPreferences(showNumbersRow: true),
-        session: LoggingSession(onCallTyped: () => typed++),
-      ));
+      await tester.pumpWidget(
+        host(
+          prefs: LoggingPreferences(showNumbersRow: true),
+          session: LoggingSession(onCallTyped: () => typed++),
+        ),
+      );
       await tester.tap(callField); // mobile starts unfocused
       await tester.pump();
       await tester.pump();

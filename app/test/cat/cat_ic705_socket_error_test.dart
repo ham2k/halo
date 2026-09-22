@@ -28,11 +28,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.dart';
 
-Map<String, dynamic> _target() => {
-      'host': '127.0.0.1',
-      'username': 'N0CALL',
-      'password': 'hunter2',
-    };
+Map<String, dynamic> _target() => {'host': '127.0.0.1', 'username': 'N0CALL', 'password': 'hunter2'};
 
 /// A [length]-byte packet of zeros with specific byte offsets overridden —
 /// far less error-prone than hand-concatenating spreads for a wire format
@@ -78,10 +74,8 @@ class _FakeIcomSocket extends Stream<RawSocketEvent> implements RawDatagramSocke
   void emitSocketError(Object error) => _controller.addError(error);
 
   @override
-  StreamSubscription<RawSocketEvent> listen(void Function(RawSocketEvent event)? onData,
-          {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
-      _controller.stream
-          .listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+  StreamSubscription<RawSocketEvent> listen(void Function(RawSocketEvent event)? onData, {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
+      _controller.stream.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
 
   @override
   Datagram? receive() => _incoming.isEmpty ? null : _incoming.removeFirst();
@@ -187,13 +181,13 @@ void main() {
     };
 
     final stopwatch = Stopwatch()..start();
-    await expectLater(
-      const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()),
-      throwsA(isA<SocketException>()),
-    );
+    await expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
     stopwatch.stop();
-    expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)),
-        reason: 'a socket error must fail the pending step immediately, not wait out _handshakeTimeout');
+    expect(
+      stopwatch.elapsed,
+      lessThan(const Duration(seconds: 1)),
+      reason: 'a socket error must fail the pending step immediately, not wait out _handshakeTimeout',
+    );
   });
 
   test('a socket error during the login wait propagates as itself, not the curated IcomLoginTimeout', () {
@@ -204,15 +198,16 @@ void main() {
     // own doc comment warns against. A raw SocketException surfacing here is
     // the same behavior CatConnectFailure already gives a TCP or serial
     // radio whose connect fails at the socket layer.
-    _wireSession(control, answerLogin: false, onEachSend: (bytes) {
-      if (bytes[0] == 0x80) control.emitSocketError(const SocketException('Network is unreachable'));
-    });
+    _wireSession(
+      control,
+      answerLogin: false,
+      onEachSend: (bytes) {
+        if (bytes[0] == 0x80) control.emitSocketError(const SocketException('Network is unreachable'));
+      },
+    );
     _wireSession(serial);
 
-    return expectLater(
-      const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()),
-      throwsA(isA<SocketException>()),
-    );
+    return expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
   });
 
   test('a socket error during awaitStreamToken fails fast instead of being silently dropped', () async {
@@ -220,21 +215,21 @@ void main() {
     // its own _failPending hook a socket error here has nowhere to go —
     // onLost isn't wired up yet either, this early — and vanishes into a
     // debugPrint while the attempt rides out the full 3s poll deadline.
-    _wireSession(control, answerStreamToken: false, onEachSend: (bytes) {
-      if (bytes.length == 64 && bytes[0] == 0x40 && bytes[21] == 0x05) {
-        control.emitSocketError(const SocketException('No route to host'));
-      }
-    });
+    _wireSession(
+      control,
+      answerStreamToken: false,
+      onEachSend: (bytes) {
+        if (bytes.length == 64 && bytes[0] == 0x40 && bytes[21] == 0x05) {
+          control.emitSocketError(const SocketException('No route to host'));
+        }
+      },
+    );
     _wireSession(serial);
 
     final stopwatch = Stopwatch()..start();
-    await expectLater(
-      const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()),
-      throwsA(isA<SocketException>()),
-    );
+    await expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
     stopwatch.stop();
-    expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)),
-        reason: 'must fail immediately, not ride out the ~3s stream-token poll deadline');
+    expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)), reason: 'must fail immediately, not ride out the ~3s stream-token poll deadline');
   });
 
   test('a socket error during connect-failure cleanup logout still closes every socket and keeps the real cause', () async {
@@ -244,13 +239,18 @@ void main() {
     // control?.close(), and rethrow. The escaping error would also silently
     // replace the ORIGINAL failure (here, the stream request being
     // rejected) with an unrelated logout-time error.
-    _wireSession(control, answerStreams: false, answerLogout: false, onEachSend: (bytes) {
-      if (bytes[0] == 0x90) {
-        control.queueReply(_streamAnswerAuthFailedReply());
-      } else if (bytes.length == 64 && bytes[0] == 0x40 && bytes[21] == 0x01) {
-        control.emitSocketError(const SocketException('No route to host (logout)'));
-      }
-    });
+    _wireSession(
+      control,
+      answerStreams: false,
+      answerLogout: false,
+      onEachSend: (bytes) {
+        if (bytes[0] == 0x90) {
+          control.queueReply(_streamAnswerAuthFailedReply());
+        } else if (bytes.length == 64 && bytes[0] == 0x40 && bytes[21] == 0x01) {
+          control.emitSocketError(const SocketException('No route to host (logout)'));
+        }
+      },
+    );
     _wireSession(serial);
 
     await expectLater(
@@ -275,20 +275,24 @@ void main() {
     // what lets ErrorPolicy's cat-equipment-unreachable rule still recognize
     // it as an ordinary unreachable-radio event rather than an app bug.
     _wireSession(serial);
-    _wireSession(control, answerStreams: false, onEachSend: (bytes) {
-      if (bytes[0] == 0x90) {
-        serial.emitSocketError(const SocketException('No route to host (serial, mid-setup)'));
-      }
-    });
+    _wireSession(
+      control,
+      answerStreams: false,
+      onEachSend: (bytes) {
+        if (bytes[0] == 0x90) {
+          serial.emitSocketError(const SocketException('No route to host (serial, mid-setup)'));
+        }
+      },
+    );
 
     final stopwatch = Stopwatch()..start();
-    await expectLater(
-      const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()),
-      throwsA(isA<SocketException>()),
-    );
+    await expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
     stopwatch.stop();
-    expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)),
-        reason: 'must fail fast via the interim onLost, not wait out control\'s own stream-answer timeout');
+    expect(
+      stopwatch.elapsed,
+      lessThan(const Duration(seconds: 1)),
+      reason: 'must fail fast via the interim onLost, not wait out control\'s own stream-answer timeout',
+    );
   });
 
   test('a socket error on control while serial is opening still surfaces once requestStreams runs', () async {
@@ -301,16 +305,16 @@ void main() {
     // real cause rather than silently succeeding on a control session that
     // is already dead.
     _wireSession(control);
-    _wireSession(serial, onEachSend: (bytes) {
-      if (bytes.length >= 8 && bytes[0] == 0x10 && bytes[4] == 0x03) {
-        control.emitSocketError(const SocketException('No route to host (control, mid-setup)'));
-      }
-    });
-
-    await expectLater(
-      const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()),
-      throwsA(isA<SocketException>()),
+    _wireSession(
+      serial,
+      onEachSend: (bytes) {
+        if (bytes.length >= 8 && bytes[0] == 0x10 && bytes[4] == 0x03) {
+          control.emitSocketError(const SocketException('No route to host (control, mid-setup)'));
+        }
+      },
     );
+
+    await expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
   });
 
   test('a control error survives even when serial\'s own un-raced open() times out on its own', () async {
@@ -322,16 +326,17 @@ void main() {
     // SocketException over the generic TimeoutException that produces,
     // once serial's open() finally gives up and throws.
     _wireSession(control);
-    _wireSession(serial, answerHandshake: false, onEachSend: (bytes) {
-      if (bytes.length >= 8 && bytes[0] == 0x10 && bytes[4] == 0x03) {
-        control.emitSocketError(const SocketException('No route to host (control, mid-setup)'));
-      }
-    });
-
-    await expectLater(
-      const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()),
-      throwsA(isA<SocketException>()),
+    _wireSession(
+      serial,
+      answerHandshake: false,
+      onEachSend: (bytes) {
+        if (bytes.length >= 8 && bytes[0] == 0x10 && bytes[4] == 0x03) {
+          control.emitSocketError(const SocketException('No route to host (control, mid-setup)'));
+        }
+      },
     );
+
+    await expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
   }, timeout: const Timeout(Duration(seconds: 10)));
 
   test('a socket error once the session is up routes through onLost, same as the radio going quiet', () async {

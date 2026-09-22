@@ -41,12 +41,16 @@ Future<void> _pumpHome(WidgetTester tester, HaLoServices services, {required Siz
   // Through the shell the ROOT uses, not HomeView bare: the rail is a sibling
   // of the window's chrome now, so a test that pumped the view alone would be
   // exercising a composition that does not ship.
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(home: HomeRailShell(
-      services: services,
-      routes: HomeView(services: services),
-    )),
-  ));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: HomeRailShell(
+          services: services,
+          routes: HomeView(services: services),
+        ),
+      ),
+    ),
+  );
 
   // Home is `MaterialApp.home` and arms two timers on mount — the FAB's
   // settle deadline and the first-run nudge's wait. A test that simply ends
@@ -97,11 +101,7 @@ void main() {
       greaterThanOrEqualTo(list.bottom - 1),
       reason: 'Quick Lookup sits BELOW the arrangement, as it always has — it is chrome now, not a pane in it',
     );
-    expect(
-      lookup.right,
-      greaterThan(list.right),
-      reason: 'and it spans the whole layer beside the rail, not the column the list happens to be in',
-    );
+    expect(lookup.right, greaterThan(list.right), reason: 'and it spans the whole layer beside the rail, not the column the list happens to be in');
     expect(
       list.right,
       lessThan(tester.getSize(find.byType(HomeView)).width * 0.9),
@@ -114,16 +114,13 @@ void main() {
     final services = await _services();
     await _pumpHome(tester, services, size: const Size(400, 800));
 
-    expect(
-      find.byType(DockLayoutView),
-      findsOneWidget,
-      reason: 'a phone is arrangeable too — it just arranges a different tree',
-    );
+    expect(find.byType(DockLayoutView), findsOneWidget, reason: 'a phone is arrangeable too — it just arranges a different tree');
     expect(find.byType(OperationListPanel), findsOneWidget);
     expect(
       tester.getRect(find.byType(OperationListPanel)).right,
       greaterThan(tester.getSize(find.byType(HomeView)).width * 0.9),
-      reason: 'the narrow default is the list ALONE. The wide tree names no widths, so drawn here it '
+      reason:
+          'the narrow default is the list ALONE. The wide tree names no widths, so drawn here it '
           'would spend a third of a 400px window on the branding column beside it',
     );
     expect(find.byType(HomeQuickLookup), findsOneWidget);
@@ -131,11 +128,7 @@ void main() {
     // railless header has room for the cog and nothing beside it.
     await tester.tap(find.bySemanticsLabel('Show or hide the navigation labels'));
     await settleFrames(tester);
-    expect(
-      find.byIcon(MdiIcons.viewDashboard),
-      findsOneWidget,
-      reason: 'a phone can arrange its tree too, and needs a route into doing it',
-    );
+    expect(find.byIcon(MdiIcons.viewDashboard), findsOneWidget, reason: 'a phone can arrange its tree too, and needs a route into doing it');
     await _endOfTest(tester);
   });
 
@@ -147,10 +140,14 @@ void main() {
     // still names it, and it has to be dropped without taking the rest with it.
     await services.settings.setLayoutData(
       LayoutKeys.homeDock,
-      DockSplit(Axis.horizontal, [
-        DockGroup([HomeView.versionPanelId]),
-        DockGroup([HomeView.operationsPanelId, HomeView.retiredLookupPanelId]),
-      ], [1, 1]).toJson(),
+      DockSplit(
+        Axis.horizontal,
+        [
+          DockGroup([HomeView.versionPanelId]),
+          DockGroup([HomeView.operationsPanelId, HomeView.retiredLookupPanelId]),
+        ],
+        [1, 1],
+      ).toJson(),
     );
 
     await _pumpHome(tester, services, size: const Size(1200, 800));
@@ -162,11 +159,7 @@ void main() {
       greaterThan(version.width * 0.4),
       reason: 'the saved arrangement put the list on the RIGHT; finding it on the left means the default won',
     );
-    expect(
-      find.byType(HomeQuickLookup),
-      findsOneWidget,
-      reason: 'and exactly one Quick Lookup — the retired pane dropped, the chrome one still there',
-    );
+    expect(find.byType(HomeQuickLookup), findsOneWidget, reason: 'and exactly one Quick Lookup — the retired pane dropped, the chrome one still there');
     await _endOfTest(tester);
   });
 
@@ -175,15 +168,8 @@ void main() {
     await _pumpHome(tester, services, size: const Size(1200, 800));
 
     final homeCatalog = services.panels.catalogFor(PanelViews.home).map((p) => p.id).toSet();
-    expect(
-      homeCatalog,
-      containsAll([HomeView.operationsPanelId, HomeView.versionPanelId]),
-    );
-    expect(
-      homeCatalog.intersection({'logging', 'info', 'spots', 'map'}),
-      isEmpty,
-      reason: 'a logging pane on Home has no operation to log into',
-    );
+    expect(homeCatalog, containsAll([HomeView.operationsPanelId, HomeView.versionPanelId]));
+    expect(homeCatalog.intersection({'logging', 'info', 'spots', 'map'}), isEmpty, reason: 'a logging pane on Home has no operation to log into');
 
     final sharedDashboardIds = {clockPanelId, weatherPanelId, solarPanelId, websitePanelId};
     final operationCatalog = services.panels.catalogFor(PanelViews.operation).map((p) => p.id).toSet();
@@ -202,18 +188,9 @@ void main() {
 
   testWidgets('an extension panel names no view, so both offer it', (tester) async {
     final services = await _services();
-    services.panels.registerNative(const PanelDefinition(
-      id: 'nativeHomeOnly',
-      title: 'Home only',
-      source: PanelSource.native,
-      views: {PanelViews.home},
-    ));
+    services.panels.registerNative(const PanelDefinition(id: 'nativeHomeOnly', title: 'Home only', source: PanelSource.native, views: {PanelViews.home}));
     // What `fromExtensionEntry` produces: no `views`, so no view scope.
-    const anywhere = PanelDefinition(
-      id: 'ext:dash:clock',
-      title: 'Clock',
-      source: PanelSource.extension,
-    );
+    const anywhere = PanelDefinition(id: 'ext:dash:clock', title: 'Clock', source: PanelSource.extension);
     expect(anywhere.availableIn(PanelViews.home), isTrue);
     expect(anywhere.availableIn(PanelViews.operation), isTrue);
     await _endOfTest(tester);

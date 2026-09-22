@@ -59,31 +59,33 @@ void main() {
   testWidgets('a Placeholder Radio shows the meter strip before it has ever transmitted', (tester) async {
     final node = await placeholderInInventory();
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => SizedBox(
-              width: 320,
-              height: 160,
-              child: RadioReadout(
-                node: node,
-                state: cat.stateFor(node.uuid),
-                live: true,
-                style: radioStyleModern,
-                palette: radioPaletteFor(context, radioStyleModern),
-                power: null,
-                // What the PANE works out, exercised here rather than typed
-                // in by the test — see this file's header.
-                meters: cat.typeFor(node)?.driver.telemetryMeters ?? const {},
-                onTune: null,
-                powerButton: null,
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => SizedBox(
+                width: 320,
+                height: 160,
+                child: RadioReadout(
+                  node: node,
+                  state: cat.stateFor(node.uuid),
+                  live: true,
+                  style: radioStyleModern,
+                  palette: radioPaletteFor(context, radioStyleModern),
+                  power: null,
+                  // What the PANE works out, exercised here rather than typed
+                  // in by the test — see this file's header.
+                  meters: cat.typeFor(node)?.driver.telemetryMeters ?? const {},
+                  onTune: null,
+                  powerButton: null,
+                ),
               ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
 
     final p = t.operation.layout.panels;

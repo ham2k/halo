@@ -84,9 +84,7 @@ class HomeNavigationRail extends StatelessWidget {
   /// Deliberately not animated: a view that tracked the width frame by frame
   /// would re-lay-out through every push (see [HomeRailShell]).
   static double widthFor(BuildContext context, {required bool expanded}) {
-    final resting = ShirtSize.of(context).isTwoPane
-        ? (expanded ? expandedWidth : collapsedWidth)
-        : (expanded ? collapsedWidth : 0);
+    final resting = ShirtSize.of(context).isTwoPane ? (expanded ? expandedWidth : collapsedWidth) : (expanded ? collapsedWidth : 0);
     // A landscape cutout falls on the RAIL, since the rail is what touches
     // that edge — and it is taken by GROWING, because the widths above are
     // sized to hold a glyph and a label and an inset subtracted from them
@@ -96,8 +94,7 @@ class HomeNavigationRail extends StatelessWidget {
 
   /// Whether the rail is on screen at all — false only on a narrow window with
   /// the toggle off, where the header carries the logo and a settings button.
-  static bool presentIn(BuildContext context, {required bool expanded}) =>
-      widthFor(context, expanded: expanded) > 0;
+  static bool presentIn(BuildContext context, {required bool expanded}) => widthFor(context, expanded: expanded) > 0;
 
   /// The box the mark occupies, at the top of the icon column. The same in
   /// every state — see [HomeRailLogo], which is why it is a measurement and
@@ -108,9 +105,7 @@ class HomeNavigationRail extends StatelessWidget {
   /// window buttons rather than under them. A box that reserved the
   /// traffic-light clearance vertically would push it down into the rail and
   /// leave the rail's first destination a row lower than the panes beside it.
-  static double logoBoxHeightOf(BuildContext context) =>
-      Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight;
-
+  static double logoBoxHeightOf(BuildContext context) => Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight;
 
   /// The rail's leading inset — exactly where a glyph CENTRED in the icon
   /// column sits, so that the destinations do not shift sideways when the
@@ -167,128 +162,121 @@ class HomeNavigationRail extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               onTap: onToggle,
               child: ColoredBox(
-              // A light surface, not the header's: the rail is a surface the
-              // panes sit beside, and the boundary is drawn by the shadow they
-              // cast onto it rather than by a change of colour.
-              color: theme.colorScheme.surfaceContainerHighest,
-              // SCROLLS when the box is too short for it — a rail standing
-              // clear of the keyboard on a landscape phone at a large font
-              // scale is shorter than its own two chrome caps. Tall enough,
-              // `minHeight` keeps it exactly as it was, so the Expanded below
-              // still pins Settings to the bottom.
-              child: LayoutBuilder(
-                builder: (context, constraints) => SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                    child: IntrinsicHeight(
-                      child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // The mark's slot. The mark ITSELF is drawn by the window
-                  // (see [HomeRailLogo]) — only its ground and its space belong
-                  // to the rail, so the destinations start below the header
-                  // line whether or not the rail is the thing under it.
-                  SizedBox(height: capTop, child: ColoredBox(color: chromeColor)),
-                  Expanded(
-                    child: Padding(
-                      // The LEFT inset is handled by [leftInset] widening the
-                      // whole rail; this is where it is spent. Padding it off a
-                      // fixed 64pt box instead would eat a 44pt cutout out of
-                      // it and overflow the 35pt glyph.
-                      padding: EdgeInsets.only(left: leftInset),
-                      child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  const SizedBox(height: Space.md),
-                                  _RailDestination(
-                                    solid: MdiIcons.notebookMultiple,
-                                    // MDI has no `notebook-multiple-outline`,
-                                    // so this one destination cannot be built
-                                    // the two-tone way (see [_TwoToneIcon]) and
-                                    // falls back to the muted solid.
-                                    outline: null,
-                                    label: t.operations,
-                                    expanded: expanded,
-                                    selected: destination == HomeDestination.operations,
-                                    // Inert only while it names where the
-                                    // operator already is — a control that
-                                    // reloads the screen you are on is a
-                                    // control that does nothing.
-                                    onTap: destination == HomeDestination.operations
-                                        ? null
-                                        : () => onDestination(HomeDestination.operations),
-                                  ),
-                                  if (showLogs) ...[
-                                    const SizedBox(height: Space.lg),
-                                    _RailDestination(
-                                      // MDI has no `file-cabinet-outline`
-                                      // either, same fallback as Operations.
-                                      solid: MdiIcons.fileCabinet,
-                                      outline: null,
-                                      label: t.logs,
-                                      expanded: expanded,
-                                      selected: destination == HomeDestination.logs,
-                                      onTap: destination == HomeDestination.logs
-                                          ? null
-                                          : () => onDestination(HomeDestination.logs),
-                                    ),
-                                  ],
-                                  const Spacer(),
-                                ],
-                      ),
-                    ),
-                  ),
-                  // The bottom cap: Settings, on the chrome's colour, in the
-                  // rail's own column rather than beside it. It is as tall as
-                  // Quick Lookup's resting height because the two read as one
-                  // row across the foot of the window — and BOTTOM-aligned, so
-                  // a lookup line growing that bar upward leaves the glyph on
-                  // the window's edge instead of drifting up a taller cell.
-                  SizedBox(
-                    height: HomeQuickLookup.heightOf(context) + MediaQuery.paddingOf(context).bottom,
-                    child: ColoredBox(
-                      color: chromeColor,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          left: leftInset,
-                          bottom: MediaQuery.paddingOf(context).bottom + Space.md,
-                        ),
-                        child: Align(
-                          alignment: Alignment.bottomCenter,
-                          child: _RailDestination(
-                            solid: MdiIcons.cog,
-                            outline: MdiIcons.cogOutline,
-                            label: t.settings,
-                            expanded: expanded,
-                            selected: destination == HomeDestination.settings,
-                            // On chrome rather than on the rail's own surface,
-                            // so it takes the chrome's foreground: the muted
-                            // surface colours the other destinations use are
-                            // unreadable on it.
-                            onChrome: true,
-                            // A TOGGLE, unlike Operations or Logs: pressing
-                            // the entry for the screen already open puts
-                            // Settings away again, back to whichever of
-                            // Operations/Logs was open before — the gesture
-                            // the operator reaches for after opening it from
-                            // here.
-                            onTap: () => onDestination(
-                              destination == HomeDestination.settings
-                                  ? _returnFromSettingsDestination()
-                                  : HomeDestination.settings,
+                // A light surface, not the header's: the rail is a surface the
+                // panes sit beside, and the boundary is drawn by the shadow they
+                // cast onto it rather than by a change of colour.
+                color: theme.colorScheme.surfaceContainerHighest,
+                // SCROLLS when the box is too short for it — a rail standing
+                // clear of the keyboard on a landscape phone at a large font
+                // scale is shorter than its own two chrome caps. Tall enough,
+                // `minHeight` keeps it exactly as it was, so the Expanded below
+                // still pins Settings to the bottom.
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // The mark's slot. The mark ITSELF is drawn by the window
+                            // (see [HomeRailLogo]) — only its ground and its space belong
+                            // to the rail, so the destinations start below the header
+                            // line whether or not the rail is the thing under it.
+                            SizedBox(
+                              height: capTop,
+                              child: ColoredBox(color: chromeColor),
                             ),
-                          ),
+                            Expanded(
+                              child: Padding(
+                                // The LEFT inset is handled by [leftInset] widening the
+                                // whole rail; this is where it is spent. Padding it off a
+                                // fixed 64pt box instead would eat a 44pt cutout out of
+                                // it and overflow the 35pt glyph.
+                                padding: EdgeInsets.only(left: leftInset),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    const SizedBox(height: Space.md),
+                                    _RailDestination(
+                                      solid: MdiIcons.notebookMultiple,
+                                      // MDI has no `notebook-multiple-outline`,
+                                      // so this one destination cannot be built
+                                      // the two-tone way (see [_TwoToneIcon]) and
+                                      // falls back to the muted solid.
+                                      outline: null,
+                                      label: t.operations,
+                                      expanded: expanded,
+                                      selected: destination == HomeDestination.operations,
+                                      // Inert only while it names where the
+                                      // operator already is — a control that
+                                      // reloads the screen you are on is a
+                                      // control that does nothing.
+                                      onTap: destination == HomeDestination.operations ? null : () => onDestination(HomeDestination.operations),
+                                    ),
+                                    if (showLogs) ...[
+                                      const SizedBox(height: Space.lg),
+                                      _RailDestination(
+                                        // MDI has no `file-cabinet-outline`
+                                        // either, same fallback as Operations.
+                                        solid: MdiIcons.fileCabinet,
+                                        outline: null,
+                                        label: t.logs,
+                                        expanded: expanded,
+                                        selected: destination == HomeDestination.logs,
+                                        onTap: destination == HomeDestination.logs ? null : () => onDestination(HomeDestination.logs),
+                                      ),
+                                    ],
+                                    const Spacer(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // The bottom cap: Settings, on the chrome's colour, in the
+                            // rail's own column rather than beside it. It is as tall as
+                            // Quick Lookup's resting height because the two read as one
+                            // row across the foot of the window — and BOTTOM-aligned, so
+                            // a lookup line growing that bar upward leaves the glyph on
+                            // the window's edge instead of drifting up a taller cell.
+                            SizedBox(
+                              height: HomeQuickLookup.heightOf(context) + MediaQuery.paddingOf(context).bottom,
+                              child: ColoredBox(
+                                color: chromeColor,
+                                child: Padding(
+                                  padding: EdgeInsets.only(left: leftInset, bottom: MediaQuery.paddingOf(context).bottom + Space.md),
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: _RailDestination(
+                                      solid: MdiIcons.cog,
+                                      outline: MdiIcons.cogOutline,
+                                      label: t.settings,
+                                      expanded: expanded,
+                                      selected: destination == HomeDestination.settings,
+                                      // On chrome rather than on the rail's own surface,
+                                      // so it takes the chrome's foreground: the muted
+                                      // surface colours the other destinations use are
+                                      // unreadable on it.
+                                      onChrome: true,
+                                      // A TOGGLE, unlike Operations or Logs: pressing
+                                      // the entry for the screen already open puts
+                                      // Settings away again, back to whichever of
+                                      // Operations/Logs was open before — the gesture
+                                      // the operator reaches for after opening it from
+                                      // here.
+                                      onTap: () =>
+                                          onDestination(destination == HomeDestination.settings ? _returnFromSettingsDestination() : HomeDestination.settings),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                  ),
-                ],
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
             ),
           ),
           // The chrome and the panes all cast INWARD onto the rail — the rail
@@ -296,18 +284,8 @@ class HomeNavigationRail extends StatelessWidget {
           // any of them: one painted by the caster would fall on the caster's
           // own side of the boundary. Paint-only, so every destination under
           // them stays clickable.
-          _RailShadow(
-            edge: _RailShadowEdge.underTopCap,
-            top: capTop,
-            color: shadowColor,
-            alpha: shadowAlpha,
-          ),
-          _RailShadow(
-            edge: _RailShadowEdge.fromPanes,
-            top: capTop,
-            color: shadowColor,
-            alpha: shadowAlpha,
-          ),
+          _RailShadow(edge: _RailShadowEdge.underTopCap, top: capTop, color: shadowColor, alpha: shadowAlpha),
+          _RailShadow(edge: _RailShadowEdge.fromPanes, top: capTop, color: shadowColor, alpha: shadowAlpha),
         ],
       ),
     );
@@ -363,7 +341,10 @@ class _RailShadow extends StatelessWidget {
                 _RailShadowEdge.underTopCap => Alignment.bottomCenter,
                 _RailShadowEdge.fromPanes => Alignment.centerLeft,
               },
-              colors: [color.withValues(alpha: alpha), color.withValues(alpha: 0.0)],
+              colors: [
+                color.withValues(alpha: alpha),
+                color.withValues(alpha: 0.0),
+              ],
             ),
           ),
         ),
@@ -408,25 +389,27 @@ class _TwoToneIcon extends StatelessWidget {
   /// distance is the whole mechanism and this stays tuned for the glyph.
   static const _soloOpacity = 0.55;
 
-  const _TwoToneIcon({
-    required this.solid,
-    required this.outline,
-    required this.selected,
-    required this.color,
-    required this.size,
-  });
+  const _TwoToneIcon({required this.solid, required this.outline, required this.selected, required this.color, required this.size});
 
   @override
   Widget build(BuildContext context) {
     if (selected) return Icon(solid, size: size, color: color);
     final outlineIcon = outline;
     if (outlineIcon == null) {
-      return Icon(solid, size: size, color: color.withValues(alpha: _soloOpacity));
+      return Icon(
+        solid,
+        size: size,
+        color: color.withValues(alpha: _soloOpacity),
+      );
     }
     return Stack(
       alignment: Alignment.center,
       children: [
-        Icon(solid, size: size, color: color.withValues(alpha: _fillOpacity)),
+        Icon(
+          solid,
+          size: size,
+          color: color.withValues(alpha: _fillOpacity),
+        ),
         Icon(outlineIcon, size: size, color: color),
       ],
     );
@@ -473,8 +456,7 @@ class _RailDestination extends StatelessWidget {
     this.onChrome = false,
   });
 
-  Color _selectedColor(ThemeData theme) =>
-      theme.brightness == Brightness.dark ? _selectedDark : _selectedLight;
+  Color _selectedColor(ThemeData theme) => theme.brightness == Brightness.dark ? _selectedDark : _selectedLight;
 
   @override
   Widget build(BuildContext context) {
@@ -496,13 +478,7 @@ class _RailDestination extends StatelessWidget {
         // distinction the surface destinations draw with hue.
         ? onChromeColor.withValues(alpha: selected ? 1.0 : 0.7)
         : (selected ? _selectedColor(theme) : theme.colorScheme.onSurfaceVariant);
-    final icon = _TwoToneIcon(
-      solid: solid,
-      outline: outline,
-      selected: selected,
-      color: color,
-      size: HomeNavigationRail.iconSize,
-    );
+    final icon = _TwoToneIcon(solid: solid, outline: outline, selected: selected, color: color, size: HomeNavigationRail.iconSize);
     return Semantics(
       button: onTap != null,
       selected: selected,
@@ -571,8 +547,7 @@ class HomeRailLogo extends StatelessWidget {
 
   /// The column the mark occupies, cutout included — what a view beside it
   /// holds open so its own leading control lands clear of the mark.
-  static double widthOf(BuildContext context) =>
-      HomeNavigationRail.collapsedWidth + MediaQuery.paddingOf(context).left;
+  static double widthOf(BuildContext context) => HomeNavigationRail.collapsedWidth + MediaQuery.paddingOf(context).left;
 
   /// Where that column starts, measured from the window's leading edge.
   ///
@@ -580,8 +555,7 @@ class HomeRailLogo extends StatelessWidget {
   /// window buttons own that corner and the mark takes its place after them,
   /// on the same line. Zero again in native full screen, where the buttons
   /// leave the header entirely.
-  static double leftOf(BuildContext context) =>
-      isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0;
+  static double leftOf(BuildContext context) => isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0;
 
   /// What a header BESIDE the mark must hold open for it, given the rail
   /// width that header already starts after.
@@ -591,8 +565,7 @@ class HomeRailLogo extends StatelessWidget {
   /// reaches past that column — no rail at all, or a macOS window where the
   /// buttons have pushed the mark off the rail and onto the header's line —
   /// that need the room, and only for the part that actually overhangs.
-  static double headerReserveOf(BuildContext context, {required double railWidth}) =>
-      max(0.0, leftOf(context) + widthOf(context) - railWidth);
+  static double headerReserveOf(BuildContext context, {required double railWidth}) => max(0.0, leftOf(context) + widthOf(context) - railWidth);
 
   /// Sized to sit fully inside the slot it shares with the header's title — the
   /// SHORTER of the icon column's width and the header's height, less a little
@@ -600,9 +573,7 @@ class HomeRailLogo extends StatelessWidget {
   /// which is the part that does not change, and scaling it with the rail would
   /// blow it up to 200-odd points the moment the operator asked for labels.
   static double sizeOf(BuildContext context) =>
-      min(HomeNavigationRail.collapsedWidth,
-          Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight) -
-      Space.xs;
+      min(HomeNavigationRail.collapsedWidth, Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight) - Space.xs;
 
   @override
   Widget build(BuildContext context) {
@@ -747,7 +718,6 @@ class HomeRailShell extends StatefulWidget {
   /// consumer inside a view read it from there.
   final bool bottomInsetHeldByChrome;
 
-
   const HomeRailShell({
     super.key,
     required this.services,
@@ -848,9 +818,7 @@ class _HomeRailShellState extends State<HomeRailShell> {
             // Carries the cutout too: this is a TIGHT width for the rail, so
             // one that left the inset out would clamp away the widening the
             // rail does for it and squeeze the glyph out of its own column.
-            final contents = showingLabels
-                ? HomeNavigationRail.expandedWidth + MediaQuery.paddingOf(context).left
-                : iconOnly;
+            final contents = showingLabels ? HomeNavigationRail.expandedWidth + MediaQuery.paddingOf(context).left : iconOnly;
             // KEYED, both of them, because the two swap places in the Stack
             // below. Without keys the framework matches children by position,
             // finds a Positioned in each slot, and updates each element with
@@ -972,15 +940,13 @@ class _SlideInFromRightRoute<T> extends PageRouteBuilder<T> {
   static const _duration = Duration(milliseconds: 400);
 
   _SlideInFromRightRoute(WidgetBuilder builder)
-      : super(
-          transitionDuration: _duration,
-          reverseTransitionDuration: _duration,
-          pageBuilder: (context, animation, secondaryAnimation) => builder(context),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) => SlideTransition(
-            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
-                .animate(CurvedAnimation(parent: animation, curve: layoutAnimationCurve)),
-            child: child,
-          ),
-        );
-
+    : super(
+        transitionDuration: _duration,
+        reverseTransitionDuration: _duration,
+        pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) => SlideTransition(
+          position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: layoutAnimationCurve)),
+          child: child,
+        ),
+      );
 }

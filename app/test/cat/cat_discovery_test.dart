@@ -33,7 +33,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// `fpc_mac=` is empty in the middle of the payload, and several field
 /// names CONTAIN the one we want (`inuse_ip`, `gui_client_ips` alongside
 /// `ip`) — which is exactly how a sloppy parser picks the wrong address.
-const _payload = 'discovery_protocol_version=3.1.0.4 model=FLEX-6600 serial=0000-0000-6600-0000 '
+const _payload =
+    'discovery_protocol_version=3.1.0.4 model=FLEX-6600 serial=0000-0000-6600-0000 '
     'version=4.2.20.41343 nickname=RadioRoom callsign=N0CALL ip=10.0.0.66 port=4992 '
     'status=Available inuse_ip=10.0.0.123 inuse_host=Shack-PC max_licensed_version=v4 '
     'radio_license_id=00-00-00-00-00-00 fpc_mac= wan_connected=1 licensed_clients=2 '
@@ -48,13 +49,38 @@ const _payload = 'discovery_protocol_version=3.1.0.4 model=FLEX-6600 serial=0000
 /// reproduced because both are what the parser has to see past — the
 /// header in particular contains bytes that are printable ASCII.
 Uint8List _vita49Frame(String payload) => Uint8List.fromList([
-      0x38, 0x58, 0x00, 0xaf, 0x00, 0x00, 0x08, 0x00,
-      0x00, 0x00, 0x1c, 0x2d, 0x53, 0x4c, 0xff, 0xff,
-      0x6a, 0x69, 0x3e, 0xfc, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00,
-      ...utf8.encode(payload),
-      0, 0,
-    ]);
+  0x38,
+  0x58,
+  0x00,
+  0xaf,
+  0x00,
+  0x00,
+  0x08,
+  0x00,
+  0x00,
+  0x00,
+  0x1c,
+  0x2d,
+  0x53,
+  0x4c,
+  0xff,
+  0xff,
+  0x6a,
+  0x69,
+  0x3e,
+  0xfc,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  ...utf8.encode(payload),
+  0,
+  0,
+]);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -85,8 +111,7 @@ void main() {
     test('empty fields read as absent, not as empty strings', () {
       // `inuse_ip=` and friends are empty in the real payload; a nickname
       // can be too, and the UI falls back to the model for the name.
-      final found = parseFlexDiscovery(
-          _vita49Frame('model=FLEX-6400 serial=1 nickname= ip=10.0.0.7 port=4992'))!;
+      final found = parseFlexDiscovery(_vita49Frame('model=FLEX-6400 serial=1 nickname= ip=10.0.0.7 port=4992'))!;
       expect(found.nickname, isNull);
       expect(found.model, 'FLEX-6400');
     });
@@ -151,8 +176,7 @@ void main() {
       // `anyIPv4`+`reusePort` socket, so the first version of this test
       // passed with the fix reverted and guarded nothing at all.
       await Future<void>.delayed(const Duration(milliseconds: 200));
-      final rebound = await RawDatagramSocket.bind(InternetAddress.anyIPv4, port,
-          reuseAddress: false, reusePort: false);
+      final rebound = await RawDatagramSocket.bind(InternetAddress.anyIPv4, port, reuseAddress: false, reusePort: false);
       addTearDown(rebound.close);
       expect(rebound.port, port);
     });
@@ -167,10 +191,7 @@ void main() {
       announcements = StreamController<DiscoveredEquipment>.broadcast();
       cat = CatService(
         SettingsService(await SharedPreferences.getInstance()),
-        registry: EquipmentRegistry(
-          models: [_fakeDiscoverableModel(announcements.stream)],
-          transports: const {},
-        ),
+        registry: EquipmentRegistry(models: [_fakeDiscoverableModel(announcements.stream)], transports: const {}),
       );
     });
 
@@ -181,12 +202,7 @@ void main() {
 
     /// One announcement, delivered.
     Future<void> announce({required String id, required String host, String name = 'RadioRoom'}) async {
-      announcements.add(DiscoveredEquipment(
-        typeKey: 'fake-discoverable',
-        id: id,
-        name: name,
-        config: {'host': host, 'port': 4992},
-      ));
+      announcements.add(DiscoveredEquipment(typeKey: 'fake-discoverable', id: id, name: name, config: {'host': host, 'port': 4992}));
       await pumpEventQueue();
     }
 
@@ -318,12 +334,7 @@ void main() {
     });
 
     Future<void> announce() async {
-      announcements.add(const DiscoveredEquipment(
-        typeKey: 'fake-flex-tcp',
-        id: 'serial-1',
-        name: 'RadioRoom',
-        config: {'host': '192.168.1.50', 'port': 4992},
-      ));
+      announcements.add(const DiscoveredEquipment(typeKey: 'fake-flex-tcp', id: 'serial-1', name: 'RadioRoom', config: {'host': '192.168.1.50', 'port': 4992}));
       await pumpEventQueue();
     }
 
@@ -386,18 +397,18 @@ void main() {
 /// A type that announces itself on a stream the test controls, so the
 /// service's dedupe and filtering can be exercised without a socket.
 EquipmentModel _fakeDiscoverableModel(Stream<DiscoveredEquipment> announcements) => EquipmentModel(
-      key: 'fake-discoverable-radio',
-      category: kCategoryTransceiver,
-      name: () => 'Fake Discoverable Radio',
-      variants: [
-        EquipmentVariant(
-          key: 'fake-discoverable',
-          driver: const _NeverConnectsDriver(),
-          transport: const _NeverConnectsTransport(),
-          discoverer: _FakeDiscoverer(announcements),
-        ),
-      ],
-    );
+  key: 'fake-discoverable-radio',
+  category: kCategoryTransceiver,
+  name: () => 'Fake Discoverable Radio',
+  variants: [
+    EquipmentVariant(
+      key: 'fake-discoverable',
+      driver: const _NeverConnectsDriver(),
+      transport: const _NeverConnectsTransport(),
+      discoverer: _FakeDiscoverer(announcements),
+    ),
+  ],
+);
 
 class _FakeDiscoverer implements EquipmentDiscoverer {
   final Stream<DiscoveredEquipment> announcements;
@@ -417,10 +428,8 @@ class _NeverConnectsDriver extends EquipmentDriver {
   @override
   String get name => 'fake';
 
-
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
-      throw UnimplementedError('discovery never connects');
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => throw UnimplementedError('discovery never connects');
 }
 
 class _NeverConnectsTransport extends EquipmentTransport {
@@ -430,12 +439,10 @@ class _NeverConnectsTransport extends EquipmentTransport {
   String get key => 'fake';
 
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
-      throw UnimplementedError('discovery never connects');
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) => throw UnimplementedError('discovery never connects');
 
   @override
-  Map<String, dynamic> targetFor(Map<String, dynamic> config) =>
-      {'host': config['host'], 'port': config['port']};
+  Map<String, dynamic> targetFor(Map<String, dynamic> config) => {'host': config['host'], 'port': config['port']};
 
   @override
   String describeTarget(Map<String, dynamic> config) => '${config['host']}:${config['port']}';

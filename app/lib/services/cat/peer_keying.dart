@@ -71,8 +71,7 @@ class PeerKeying {
     _statuses.removeWhere((key, _) => key.startsWith(prefix) && !_offers.containsKey(key));
   }
 
-  void rememberStatus(String deviceId, PeerKeyStatusPayload status) =>
-      _statuses[_key(deviceId, status.radioId)] = status;
+  void rememberStatus(String deviceId, PeerKeyStatusPayload status) => _statuses[_key(deviceId, status.radioId)] = status;
 
   /// That peer is out of reach — everything it said goes with it.
   void forgetDevice(String deviceId) {
@@ -81,11 +80,9 @@ class PeerKeying {
     _statuses.removeWhere((key, _) => key.startsWith(prefix));
   }
 
-  PeerRadioOffer? offerFor(String? deviceId, String? radioId) =>
-      deviceId == null || radioId == null ? null : _offers[_key(deviceId, radioId)];
+  PeerRadioOffer? offerFor(String? deviceId, String? radioId) => deviceId == null || radioId == null ? null : _offers[_key(deviceId, radioId)];
 
-  PeerKeyStatusPayload? statusFor(String? deviceId, String? radioId) =>
-      deviceId == null || radioId == null ? null : _statuses[_key(deviceId, radioId)];
+  PeerKeyStatusPayload? statusFor(String? deviceId, String? radioId) => deviceId == null || radioId == null ? null : _statuses[_key(deviceId, radioId)];
 
   /// Whether the far station said it will key CW on that radio at all. Not
   /// on its own an answer about where a message goes — a key of this
@@ -152,24 +149,10 @@ class PeerKeying {
   /// between the check and the keypress.
   /// Answers whether anything was sent, which is what a caller arming a
   /// repeat on it needs to know.
-  bool request(
-    String? radioId,
-    String op, {
-    String text = '',
-    int? wpm,
-    int? memory,
-    int? queuedId,
-  }) {
+  bool request(String? radioId, String op, {String text = '', int? wpm, int? memory, int? queuedId}) {
     final send = this.send;
     if (radioId == null || send == null) return false;
-    send(PeerKeyRequestPayload(
-      radioId: radioId,
-      op: op,
-      text: text,
-      wpm: wpm,
-      memory: memory,
-      queuedId: queuedId,
-    ));
+    send(PeerKeyRequestPayload(radioId: radioId, op: op, text: text, wpm: wpm, memory: memory, queuedId: queuedId));
     return true;
   }
 }
@@ -218,9 +201,5 @@ PeerVoiceActivityPayload? voiceActivityToWire(VoiceActivity? activity) {
 
 VoiceActivity? voiceActivityFromWire(PeerVoiceActivityPayload? activity) {
   if (activity == null) return null;
-  return VoiceActivity(
-    memory: activity.memory,
-    recording: activity.recording,
-    doubtful: activity.doubtful,
-  );
+  return VoiceActivity(memory: activity.memory, recording: activity.recording, doubtful: activity.doubtful);
 }

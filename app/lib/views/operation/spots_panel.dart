@@ -48,6 +48,7 @@ const _spotsProgressHeight = 4.0;
 /// getter every other spot's build depends on. `getSpots` (extension_service.dart)
 /// reports a wrong-typed field once, silently, per source; nothing here does.
 String? _callOf(Map<String, dynamic> spot) => asSpotString(asSpotMap(spot['their'])?['call']);
+
 /// The individual operator callsigns within a `their.call` — a comma-joined
 /// compound for a multi-op spot (see `mergeSpotsByFreqAndRefs`), a single call
 /// otherwise. Empty segments are dropped. Everything that keys off `_callNotes`
@@ -59,12 +60,14 @@ String? _modeOf(Map<String, dynamic> spot) => asSpotString(spot['mode']);
 List<Map<String, dynamic>> _refsOf(Map<String, dynamic> spot) {
   final refs = spot['refs'];
   if (refs is! List) return const [];
-  return [for (final ref in refs) if (ref is Map) ref.cast<String, dynamic>()];
+  return [
+    for (final ref in refs)
+      if (ref is Map) ref.cast<String, dynamic>(),
+  ];
 }
 
 int _timeOf(Map<String, dynamic> spot) => asSpotNum(asSpotMap(spot['spot'])?['timeInMillis'])?.toInt() ?? 0;
-String? _iconOf(Map<String, dynamic> spot) =>
-    asSpotString(spot['icon']) ?? asSpotString(asSpotMap(spot['spot'])?['icon']);
+String? _iconOf(Map<String, dynamic> spot) => asSpotString(spot['icon']) ?? asSpotString(asSpotMap(spot['spot'])?['icon']);
 String? _labelOf(Map<String, dynamic> spot) => asSpotString(asSpotMap(spot['spot'])?['label']);
 bool _isDigital(String? mode) => mode != null && _digitalModes.contains(mode.toUpperCase());
 
@@ -98,11 +101,14 @@ String normalizeModeFilter(String value) {
 /// mode), 'any' never narrows, [phoneCwModeFilter] admits Phone and CW,
 /// and a super mode admits itself. Public for unit testing.
 Set<String>? superModesForModeFilter(String filter, String? vfoMode) => switch (filter) {
-      'auto' => switch (superModeForMode(vfoMode)) { final m? => {m}, null => null },
-      'any' => null,
-      phoneCwModeFilter => _phoneCwSuperModes,
-      final m => {m},
-    };
+  'auto' => switch (superModeForMode(vfoMode)) {
+    final m? => {m},
+    null => null,
+  },
+  'any' => null,
+  phoneCwModeFilter => _phoneCwSuperModes,
+  final m => {m},
+};
 
 /// The `groupByBand` value to assume for a persisted filter map that
 /// predates that setting — from when time-sorting alone implied a flat
@@ -125,19 +131,26 @@ List<Map<String, dynamic>> mergeSpotsByCallAndFreq(List<Map<String, dynamic>> sp
       // instance held in `_spotsBySource`; if this object were later chosen
       // as a merge target in the second pass, mutating it in place would
       // corrupt the panel's persisted state across rebuilds.
-      merged.add({...spot, 'refs': [..._refsOf(spot)]});
+      merged.add({
+        ...spot,
+        'refs': [..._refsOf(spot)],
+      });
       continue;
     }
     final existing = byCall[call];
     final freq = _freqOf(spot);
     final existingFreq = existing == null ? null : _freqOf(existing);
-    final closeEnough = existing != null &&
+    final closeEnough =
+        existing != null &&
         freq != null &&
         existingFreq != null &&
         (freq - existingFreq).abs() <= 0.5 &&
         (_timeOf(spot) - _timeOf(existing)).abs() <= 30 * 60 * 1000;
     if (!closeEnough) {
-      final copy = {...spot, 'refs': [..._refsOf(spot)]};
+      final copy = {
+        ...spot,
+        'refs': [..._refsOf(spot)],
+      };
       byCall[call] = copy;
       merged.add(copy);
     } else {
@@ -270,12 +283,12 @@ List<({String key, List<Map<String, dynamic>> spots})> sectionSpots(
 /// would leak spot bookkeeping into a real QSO record. Public for
 /// `spots_panel_merge_test.dart`.
 Map<String, dynamic> suggestedQsoFromSpot(Map<String, dynamic> spot) => {
-      'their': {'call': _callOf(spot) ?? ''},
-      if (_freqOf(spot) != null) 'freq': _freqOf(spot),
-      if (_bandOf(spot) != null) 'band': _bandOf(spot),
-      if (_modeOf(spot) != null) 'mode': _modeOf(spot),
-      'refs': _refsOf(spot),
-    };
+  'their': {'call': _callOf(spot) ?? ''},
+  if (_freqOf(spot) != null) 'freq': _freqOf(spot),
+  if (_bandOf(spot) != null) 'band': _bandOf(spot),
+  if (_modeOf(spot) != null) 'mode': _modeOf(spot),
+  'refs': _refsOf(spot),
+};
 
 /// Whether a spot survives the Continent filter. `call` is the spot's
 /// `their.call`, which for a multi-op spot is the comma-joined compound of
@@ -291,11 +304,7 @@ Map<String, dynamic> suggestedQsoFromSpot(Map<String, dynamic> spot) => {
 /// the "unknown continent never hides a spot" rule means we only hide a spot
 /// when EVERY known operator is on a disabled continent. Public for
 /// `spots_panel_merge_test.dart`.
-bool spotPassesContinentFilter(
-  String? call,
-  Set<String> disabledContinents,
-  String? Function(String call) continentOf,
-) {
+bool spotPassesContinentFilter(String? call, Set<String> disabledContinents, String? Function(String call) continentOf) {
   if (disabledContinents.isEmpty) return true;
   final calls = _callsIn(call);
   if (calls.isEmpty) return true;
@@ -316,10 +325,7 @@ bool spotPassesContinentFilter(
 /// with no band at all is kept, since there is no band for the operator to
 /// have disabled, and an empty [enabledBands] narrows nothing.
 /// Public for `spots_panel_merge_test.dart`.
-List<Map<String, dynamic>> spotsOnEnabledBands(
-  List<Map<String, dynamic>> spots,
-  Set<String> enabledBands,
-) {
+List<Map<String, dynamic>> spotsOnEnabledBands(List<Map<String, dynamic>> spots, Set<String> enabledBands) {
   if (enabledBands.isEmpty) return spots;
   return spots.where((s) {
     final band = _bandOf(s);
@@ -335,19 +341,10 @@ List<Map<String, dynamic>> spotsOnEnabledBands(
 /// unfilterable), and the [selected] one (a filter persisted before its band
 /// was disabled stays on screen instead of the dropdown disagreeing with what
 /// is actually filtering). Public for `spots_panel_merge_test.dart`.
-List<String> spotsFilterBandOptions({
-  required Set<String> enabledBands,
-  required Map<String, int> bandSpotCounts,
-  required String selected,
-}) =>
-    [
-      for (final band in bands.map((b) => b.name))
-        if (enabledBands.isEmpty ||
-            enabledBands.contains(band) ||
-            (bandSpotCounts[band] ?? 0) > 0 ||
-            band == selected)
-          band,
-    ];
+List<String> spotsFilterBandOptions({required Set<String> enabledBands, required Map<String, int> bandSpotCounts, required String selected}) => [
+  for (final band in bands.map((b) => b.name))
+    if (enabledBands.isEmpty || enabledBands.contains(band) || (bandSpotCounts[band] ?? 0) > 0 || band == selected) band,
+];
 
 /// Every source worth a row in the filter dialog, sorted: the ones that
 /// offered spots, plus the ones that went quiet or answered with an error.
@@ -360,11 +357,7 @@ List<String> spotsFilterBandOptions({
 /// which is not always the same as having nothing to offer: a hook that opts
 /// out by returning an empty list (WWFF with no API key) is indistinguishable
 /// here from a quiet band. Public for `spots_panel_merge_test.dart`.
-List<String> spotsFilterSourceList({
-  required Iterable<String> withSpots,
-  required Iterable<String> unavailable,
-  required Iterable<String> failed,
-}) =>
+List<String> spotsFilterSourceList({required Iterable<String> withSpots, required Iterable<String> unavailable, required Iterable<String> failed}) =>
     {...withSpots, ...unavailable, ...failed}.toList()..sort();
 
 String _timeAgo(int millis) {
@@ -409,13 +402,13 @@ String _spotModeFor(Map<String, dynamic> spot) => (_modeOf(spot) ?? '').toUpperC
 /// lower-cased spot would never match the log and never strike through.
 /// Public for `spots_panel_scoring_test.dart`.
 Map<String, dynamic> spotCandidateQso(String call, Map<String, dynamic> spot, {required int now}) => {
-      'their': {'call': call.toUpperCase()},
-      if (_freqOf(spot) != null) 'freq': _freqOf(spot),
-      if (_bandOf(spot) != null) 'band': _bandOf(spot),
-      if (_modeOf(spot) != null) 'mode': _spotModeFor(spot),
-      'refs': _refsOf(spot),
-      'startAtMillis': now,
-    };
+  'their': {'call': call.toUpperCase()},
+  if (_freqOf(spot) != null) 'freq': _freqOf(spot),
+  if (_bandOf(spot) != null) 'band': _bandOf(spot),
+  if (_modeOf(spot) != null) 'mode': _spotModeFor(spot),
+  'refs': _refsOf(spot),
+  'startAtMillis': now,
+};
 
 /// Whether [spot] is for the callsign being logged right now — [currentCall],
 /// already uppercased, like [spotDisplayFlags]'s `ourCall`. Any operator on a
@@ -455,11 +448,8 @@ bool spotIsSelfOnly(Map<String, dynamic> spot, {String? ourCall}) {
 /// brightnesses: the row is an echo of the logging panel and must read weaker
 /// than it, and in dark mode a literally lighter tint is the brighter of the
 /// two. Public for `spots_panel_current_qso_test.dart`.
-Color currentQsoHighlight(ColorScheme scheme, {required bool editing}) => Color.lerp(
-      scheme.surface,
-      editing ? scheme.secondaryContainer : scheme.tertiaryContainer,
-      0.5,
-    )!;
+Color currentQsoHighlight(ColorScheme scheme, {required bool editing}) =>
+    Color.lerp(scheme.surface, editing ? scheme.secondaryContainer : scheme.tertiaryContainer, 0.5)!;
 
 /// Everything a spot row is made of EXCEPT its density-driven spacing: the two
 /// text lines [_SpotTile] paints, and the hairline divider (which is a
@@ -494,11 +484,7 @@ const _spotRowEmojiHeight = 1.0;
 /// must stay the exact arithmetic the tile itself performs — every pixel of
 /// disagreement is multiplied by the number of rows above the one being
 /// revealed.
-double spotRowHeightFor({
-  required LayoutMetrics metrics,
-  required bool hasLabel,
-  required bool hasEmoji,
-}) =>
+double spotRowHeightFor({required LayoutMetrics metrics, required bool hasLabel, required bool hasEmoji}) =>
     metrics.spotTilePaddingV * 2 +
     metrics.spotTileLineGap +
     _spotRowContentHeight +
@@ -638,11 +624,7 @@ double? spotScrollTarget({
     if (score == null || !score.alerts.contains('duplicate')) worked = false;
     notices.addAll(score?.notices ?? const []);
   }
-  return (
-    worked: worked && notices.isEmpty,
-    isSelf: ourCall != null && calls.any((c) => c.toUpperCase() == ourCall),
-    notices: notices,
-  );
+  return (worked: worked && notices.isEmpty, isSelf: ourCall != null && calls.any((c) => c.toUpperCase() == ourCall), notices: notices);
 }
 
 class SpotsPanel extends StatefulWidget {
@@ -748,6 +730,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
 
   String _bandFilter = 'auto';
   String _modeFilter = 'auto';
+
   /// Never null and never wider than [_ageOptionsInMinutes]' last: the board
   /// is not open-ended, so there is no "any age" to fall back to.
   int _ageMinutes = _ageOptionsInMinutes.last;
@@ -782,6 +765,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
 
   String? _lastVfoBand;
   String? _lastVfoMode;
+
   /// Mirrors Settings › Logging › Bands, kept here rather than read per build
   /// so `_onSettingsChanged` can tell an edit to THIS list from the many other
   /// settings writes that notify — including this panel's own filter persist.
@@ -1024,15 +1008,15 @@ class _SpotsPanelState extends State<SpotsPanel> {
   }
 
   Future<void> _persistFilters() => widget.services.settings.setSpottingFilters({
-        'bandFilter': _bandFilter,
-        'modeFilter': _modeFilter,
-        'ageMinutes': _ageMinutes,
-        'disabledSources': _disabledSources.toList(),
-        'disabledContinents': _disabledContinents.toList(),
-        'sortBy': _sortBy,
-        'groupByBand': _groupByBand,
-        'groupCallsWithNotes': _groupCallsWithNotes,
-      });
+    'bandFilter': _bandFilter,
+    'modeFilter': _modeFilter,
+    'ageMinutes': _ageMinutes,
+    'disabledSources': _disabledSources.toList(),
+    'disabledContinents': _disabledContinents.toList(),
+    'sortBy': _sortBy,
+    'groupByBand': _groupByBand,
+    'groupCallsWithNotes': _groupCallsWithNotes,
+  });
 
   /// Only the VFO's band/mode feed the "auto" filter (see `_filteredSpots`)
   /// — skip the rebuild (and the merge/filter pipeline it triggers) when
@@ -1137,10 +1121,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
         final candidates = <String, Map<String, dynamic>>{};
         for (final spot in _mergedRawSpots) {
           for (final call in _callsIn(_callOf(spot))) {
-            candidates.putIfAbsent(
-              spotCandidateKey(call, spot),
-              () => spotCandidateQso(call, spot, now: now),
-            );
+            candidates.putIfAbsent(spotCandidateKey(call, spot), () => spotCandidateQso(call, spot, now: now));
           }
         }
         if (candidates.isEmpty) {
@@ -1171,11 +1152,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
         if (scored != null) {
           setState(() {
             _spotScores = {
-              for (final entry in scored.entries)
-                entry.key: (
-                  notices: entry.value['notices'] ?? const [],
-                  alerts: entry.value['alerts'] ?? const [],
-                ),
+              for (final entry in scored.entries) entry.key: (notices: entry.value['notices'] ?? const [], alerts: entry.value['alerts'] ?? const []),
             };
           });
         }
@@ -1188,8 +1165,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// The activity types this operation has hunted, cached by `ScoringService`.
   /// What makes POTA's rules apply to a chaser's spots at all — an operation
   /// that activates nothing names no activity on its own refs.
-  Set<String> get _huntedRefTypes =>
-      ((widget.operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet();
+  Set<String> get _huntedRefTypes => ((widget.operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet();
 
   /// This operation's own station callsign, uppercased — the spot to tint
   /// rather than offer as a contact.
@@ -1204,8 +1180,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     return call.isEmpty ? null : call;
   }
 
-  ({bool worked, bool isSelf, Set<String> notices}) _flagsFor(Map<String, dynamic> spot) =>
-      spotDisplayFlags(spot, scores: _spotScores, ourCall: _ourCall);
+  ({bool worked, bool isSelf, Set<String> notices}) _flagsFor(Map<String, dynamic> spot) => spotDisplayFlags(spot, scores: _spotScores, ourCall: _ourCall);
 
   /// The filter-row refresh button's handler: drives a fetch while showing a
   /// spinner in place of the button's icon. Pull-to-refresh calls the cache
@@ -1219,11 +1194,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
       // status-bar offline icon is a passive state indicator somewhere else
       // on screen; it is not an answer to this button.
       if (_spots.lastRefreshWasSkipped && mounted) {
-        widget.services.statusBar.setMessage(
-          key: 'spots:not-refreshed',
-          icon: 'cloud-off',
-          text: context.t.spotting.notRefreshedOffline,
-        );
+        widget.services.statusBar.setMessage(key: 'spots:not-refreshed', icon: 'cloud-off', text: context.t.spotting.notRefreshedOffline);
       }
     } finally {
       if (mounted) setState(() => _refreshing = false);
@@ -1231,9 +1202,9 @@ class _SpotsPanelState extends State<SpotsPanel> {
   }
 
   List<Map<String, dynamic>> get _rawSpots => [
-        for (final entry in _spotsBySource.entries)
-          if (!_disabledSources.contains(entry.key)) ...entry.value,
-      ];
+    for (final entry in _spotsBySource.entries)
+      if (!_disabledSources.contains(entry.key)) ...entry.value,
+  ];
 
   /// Looks up (and caches) each currently-fetched spot's callsign info —
   /// whether it has a note (the "Calls of Note" grouping,
@@ -1257,19 +1228,16 @@ class _SpotsPanelState extends State<SpotsPanel> {
     }..removeWhere(_callNotes.containsKey);
     if (calls.isEmpty) return;
 
-    final results = await Future.wait(calls.map((call) async {
-      final result = await widget.services.extensions.lookupCall(
-        call,
-        qso: const {},
-        operation: widget.operation.data,
-        online: false,
-      );
-      final guess = result?['guess'] as Map?;
-      final emoji = guess?['emoji'] as String?;
-      final hasNote = guess != null && (emoji != null || guess['note'] != null);
-      final continent = guess?['continent'] as String?;
-      return MapEntry(call, (hasNote: hasNote, emoji: emoji, continent: continent));
-    }));
+    final results = await Future.wait(
+      calls.map((call) async {
+        final result = await widget.services.extensions.lookupCall(call, qso: const {}, operation: widget.operation.data, online: false);
+        final guess = result?['guess'] as Map?;
+        final emoji = guess?['emoji'] as String?;
+        final hasNote = guess != null && (emoji != null || guess['note'] != null);
+        final continent = guess?['continent'] as String?;
+        return MapEntry(call, (hasNote: hasNote, emoji: emoji, continent: continent));
+      }),
+    );
     if (!mounted) return;
     setState(() {
       for (final entry in results) {
@@ -1293,17 +1261,16 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// is exactly when the filters (an 'auto' band following a wandering VFO
   /// most of all) would have hidden it. All of them, newest first, whatever
   /// `sortBy` says.
-  ({List<Map<String, dynamic>> filtered, List<Map<String, dynamic>> selfSpots, int total})
-      get _filteredSpotsSummary {
+  ({List<Map<String, dynamic>> filtered, List<Map<String, dynamic>> selfSpots, int total}) get _filteredSpotsSummary {
     final vfo = widget.services.radio.vfoA;
     final band = _bandFilter == 'auto' ? vfo.band : _bandFilter;
     final superModes = superModesForModeFilter(_modeFilter, vfo.mode);
 
     final merged = _mergedRawSpots;
-    final selfSpots = sortSpots(
-      [for (final spot in merged) if (spotIsSelfOnly(spot, ourCall: _ourCall)) spot],
-      'time',
-    );
+    final selfSpots = sortSpots([
+      for (final spot in merged)
+        if (spotIsSelfOnly(spot, ourCall: _ourCall)) spot,
+    ], 'time');
 
     final singleBand = band != null && band != 'any';
     var spots = singleBand ? merged : spotsOnEnabledBands(merged, _enabledBands);
@@ -1320,9 +1287,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     if (_disabledContinents.isNotEmpty) {
       // Per-operator so multi-op spots narrow correctly; an unresolved
       // continent never hides a spot. See spotPassesContinentFilter.
-      spots = spots
-          .where((s) => spotPassesContinentFilter(_callOf(s), _disabledContinents, (c) => _callNotes[c]?.continent))
-          .toList();
+      spots = spots.where((s) => spotPassesContinentFilter(_callOf(s), _disabledContinents, (c) => _callNotes[c]?.continent)).toList();
     }
     spots = sortSpots(spots, _sortBy);
     return (filtered: spots, selfSpots: selfSpots, total: total);
@@ -1380,10 +1345,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
 
   Map<int, int> _ageSpotCountsOf(List<Map<String, dynamic>> merged) {
     final now = nowMillis();
-    return {
-      for (final minutes in _ageOptionsInMinutes)
-        minutes: merged.where((s) => now - _timeOf(s) <= minutes * 60000).length,
-    };
+    return {for (final minutes in _ageOptionsInMinutes) minutes: merged.where((s) => now - _timeOf(s) <= minutes * 60000).length};
   }
 
   Future<void> _openFilterDialog() {
@@ -1398,73 +1360,63 @@ class _SpotsPanelState extends State<SpotsPanel> {
     // operator there is something out there worth switching bands for.
     final onEnabledBands = spotsOnEnabledBands(merged, _enabledBands);
     return showHaloDialog<void>(
-        context: context,
-        builder: (context) => _SpotsFilterDialog(
-          bandFilter: _bandFilter,
-          modeFilter: _modeFilter,
-          ageMinutes: _ageMinutes,
-          autoBand: widget.services.radio.vfoA.band,
-          autoMode: superModeForMode(widget.services.radio.vfoA.mode),
-          enabledBands: _enabledBands,
-          totalSpotCount: onEnabledBands.length,
-          bandSpotCounts: _bandSpotCountsOf(merged),
-          modeSpotCounts: _modeSpotCountsOf(onEnabledBands),
-          ageSpotCounts: _ageSpotCountsOf(onEnabledBands),
-          sortBy: _sortBy,
-          groupByBand: _groupByBand,
-          groupCallsWithNotes: _groupCallsWithNotes,
-          sources: spotsFilterSourceList(
-            withSpots: _spotsBySource.keys,
-            unavailable: _spots.unavailableSources,
-            failed: _spots.failedSources,
-          ),
-          sourceNames: _sourceNames,
-          sourceSpotCounts: _spotsBySource.map((key, spots) => MapEntry(key, spots.length)),
-          unavailableSources: _spots.unavailableSources.toSet(),
-          failedSources: _spots.failedSources.toSet(),
-          disabledSources: _disabledSources,
-          continentSpotCounts: _continentSpotCounts,
-          disabledContinents: _disabledContinents,
-          onBandChanged: (v) {
-            setState(() => _bandFilter = v);
-            unawaited(_persistFilters());
-          },
-          onModeChanged: (v) {
-            setState(() => _modeFilter = v);
-            unawaited(_persistFilters());
-          },
-          onAgeChanged: (v) {
-            setState(() => _ageMinutes = v);
-            unawaited(_persistFilters());
-          },
-          onSortByChanged: (v) {
-            setState(() => _sortBy = v);
-            unawaited(_persistFilters());
-          },
-          onGroupByBandChanged: (v) {
-            setState(() => _groupByBand = v);
-            unawaited(_persistFilters());
-          },
-          onGroupCallsWithNotesChanged: (v) {
-            setState(() => _groupCallsWithNotes = v);
-            unawaited(_persistFilters());
-          },
-          onToggleSource: (key) {
-            setState(
-              () => _disabledSources.contains(key) ? _disabledSources.remove(key) : _disabledSources.add(key),
-            );
-            unawaited(_persistFilters());
-          },
-          onToggleContinent: (code) {
-            setState(
-              () => _disabledContinents.contains(code)
-                  ? _disabledContinents.remove(code)
-                  : _disabledContinents.add(code),
-            );
-            unawaited(_persistFilters());
-          },
-        ),
-      );
+      context: context,
+      builder: (context) => _SpotsFilterDialog(
+        bandFilter: _bandFilter,
+        modeFilter: _modeFilter,
+        ageMinutes: _ageMinutes,
+        autoBand: widget.services.radio.vfoA.band,
+        autoMode: superModeForMode(widget.services.radio.vfoA.mode),
+        enabledBands: _enabledBands,
+        totalSpotCount: onEnabledBands.length,
+        bandSpotCounts: _bandSpotCountsOf(merged),
+        modeSpotCounts: _modeSpotCountsOf(onEnabledBands),
+        ageSpotCounts: _ageSpotCountsOf(onEnabledBands),
+        sortBy: _sortBy,
+        groupByBand: _groupByBand,
+        groupCallsWithNotes: _groupCallsWithNotes,
+        sources: spotsFilterSourceList(withSpots: _spotsBySource.keys, unavailable: _spots.unavailableSources, failed: _spots.failedSources),
+        sourceNames: _sourceNames,
+        sourceSpotCounts: _spotsBySource.map((key, spots) => MapEntry(key, spots.length)),
+        unavailableSources: _spots.unavailableSources.toSet(),
+        failedSources: _spots.failedSources.toSet(),
+        disabledSources: _disabledSources,
+        continentSpotCounts: _continentSpotCounts,
+        disabledContinents: _disabledContinents,
+        onBandChanged: (v) {
+          setState(() => _bandFilter = v);
+          unawaited(_persistFilters());
+        },
+        onModeChanged: (v) {
+          setState(() => _modeFilter = v);
+          unawaited(_persistFilters());
+        },
+        onAgeChanged: (v) {
+          setState(() => _ageMinutes = v);
+          unawaited(_persistFilters());
+        },
+        onSortByChanged: (v) {
+          setState(() => _sortBy = v);
+          unawaited(_persistFilters());
+        },
+        onGroupByBandChanged: (v) {
+          setState(() => _groupByBand = v);
+          unawaited(_persistFilters());
+        },
+        onGroupCallsWithNotesChanged: (v) {
+          setState(() => _groupCallsWithNotes = v);
+          unawaited(_persistFilters());
+        },
+        onToggleSource: (key) {
+          setState(() => _disabledSources.contains(key) ? _disabledSources.remove(key) : _disabledSources.add(key));
+          unawaited(_persistFilters());
+        },
+        onToggleContinent: (code) {
+          setState(() => _disabledContinents.contains(code) ? _disabledContinents.remove(code) : _disabledContinents.add(code));
+          unawaited(_persistFilters());
+        },
+      ),
+    );
   }
 
   @override
@@ -1478,7 +1430,9 @@ class _SpotsPanelState extends State<SpotsPanel> {
       // latched, the call being logged would be retired against a list the
       // operator never saw, and the rebuilt one would never scroll to it.
       _revealedCall = null;
-      return Center(child: Text(t.operation.spots.error(error: _error!), style: theme.textTheme.bodyMedium));
+      return Center(
+        child: Text(t.operation.spots.error(error: _error!), style: theme.textTheme.bodyMedium),
+      );
     }
 
     final summary = _filteredSpotsSummary;
@@ -1498,14 +1452,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
         ),
         // Clears the bottom safe area (home indicator) itself — the status
         // footer doesn't reserve it globally; the panel fills behind.
-        Expanded(
-          child: SafeArea(
-            top: false,
-            left: false,
-            right: false,
-            child: _buildSpotsList(context, summary.filtered, summary.selfSpots),
-          ),
-        ),
+        Expanded(child: SafeArea(top: false, left: false, right: false, child: _buildSpotsList(context, summary.filtered, summary.selfSpots))),
       ],
     );
   }
@@ -1523,11 +1470,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// `_groupByBand` then decides band sections vs. one flat section; either
   /// way `filtered` is already sorted per `_sortBy`, so that order is what
   /// shows within each band (or across the whole flat list).
-  Widget _buildSpotsList(
-    BuildContext context,
-    List<Map<String, dynamic>> filtered,
-    List<Map<String, dynamic>> selfSpots,
-  ) {
+  Widget _buildSpotsList(BuildContext context, List<Map<String, dynamic>> filtered, List<Map<String, dynamic>> selfSpots) {
     final t = context.t;
     final theme = Theme.of(context);
 
@@ -1537,16 +1480,10 @@ class _SpotsPanelState extends State<SpotsPanel> {
               if (entry.value.hasNote) entry.key,
           }
         : const <String>{};
-    final rawSections =
-        sectionSpots(filtered, selfSpots: selfSpots, callsWithNotes: callsWithNotes, groupByBand: _groupByBand);
+    final rawSections = sectionSpots(filtered, selfSpots: selfSpots, callsWithNotes: callsWithNotes, groupByBand: _groupByBand);
     final sections = [
       for (final section in rawSections)
-        (
-          key: section.key,
-          label:
-              '${_sectionLabel(t, section.key)} - ${t.operation.spots.spotsCount(count: section.spots.length)}',
-          spots: section.spots,
-        ),
+        (key: section.key, label: '${_sectionLabel(t, section.key)} - ${t.operation.spots.spotsCount(count: section.spots.length)}', spots: section.spots),
     ];
     // Same adaptive Hz-digit rule as qso_list.dart's DayHeaderRow/QSO rows —
     // computed across every currently-visible spot, not per-tile, so every
@@ -1561,9 +1498,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     final leftWidth = _spotLeftColumnWidth(context, visibleSpots, hzDigits);
 
     final currentCall = widget.callInfo?.call.toUpperCase();
-    final highlight = widget.callInfo == null
-        ? null
-        : currentQsoHighlight(theme.colorScheme, editing: widget.callInfo!.isEditing);
+    final highlight = widget.callInfo == null ? null : currentQsoHighlight(theme.colorScheme, editing: widget.callInfo!.isEditing);
     _locateCurrentRow(sections, currentCall);
     // The height every section header is FORCED into, and the same figure
     // [_locateCurrentRow] counts a header as — a pinned sliver states its
@@ -1591,13 +1526,15 @@ class _SpotsPanelState extends State<SpotsPanel> {
           // not necessarily none exist (matches activities_view.dart's
           // own loading/empty-message split).
           ? (_loading
-              ? const SizedBox.shrink()
-              : ListView(children: [
-                  Padding(
-                    padding: const EdgeInsets.all(Space.xxl),
-                    child: Center(child: Text(t.operation.spots.empty, style: theme.textTheme.bodyMedium)),
-                  ),
-                ]))
+                ? const SizedBox.shrink()
+                : ListView(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(Space.xxl),
+                        child: Center(child: Text(t.operation.spots.empty, style: theme.textTheme.bodyMedium)),
+                      ),
+                    ],
+                  ))
           // Scrolling deliberately leaves an open row open: the operator
           // peeking at one spot's action while scanning the rest of the board
           // is reading, not abandoning the peek, and a row that snapped shut
@@ -1611,149 +1548,149 @@ class _SpotsPanelState extends State<SpotsPanel> {
                 // group, so a short section's header is pushed off by the next
                 // section's instead of both staying stuck at the top at once.
                 for (final (sectionIndex, section) in sections.indexed)
-                  SliverMainAxisGroup(slivers: [
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _SpotsSectionHeaderDelegate(label: section.label, extent: headerExtent),
-                    ),
-                    SliverList.list(children: [
-                      for (final (index, spot) in section.spots.indexed)
-                        if (_flagsFor(spot) case final flags)
-                          if (_isWorked(spot, scored: flags.worked) case final worked)
-                          // The SAME predicate the pinned section is built from,
-                          // so a row under "Your Spots" can never fall through to
-                          // the suggest/log affordances — and vice versa.
-                          if (spotIsSelfOnly(spot, ourCall: _ourCall) case final selfOnly)
-                          // The slide wraps the tile rather than living inside it,
-                          // and carries a key of its OWN that never changes. The
-                          // tile's key does change — it takes `_currentRowKey` on
-                          // becoming the current QSO, which is exactly what a
-                          // slide causes — and a widget whose key changes has its
-                          // subtree discarded. A gesture in there dies mid-drag.
-                          _SlidableSpotRow(
-                            // Keyed on the SECTION's key, not its label: the label
-                            // carries the section's spot count, so keying on it
-                            // would change every row's key on any poll that adds
-                            // or drops one spot — discarding the slide State of
-                            // every row in the section, which is the failure this
-                            // wrapper exists to prevent. The spot's own time
-                            // separates two rows for one call on one frequency,
-                            // which the merge passes allow when they are more
-                            // than 30 minutes apart.
-                            key: ValueKey('${section.key}|${_callOf(spot)}|${_freqOf(spot)}|${_timeOf(spot)}'),
-                            group: _slideGroup,
-                            background: theme.colorScheme.surface,
-                            // Our own station is not a contact to log — no
-                            // slide-to-log on a row that is ours alone, same
-                            // reasoning as the tap below.
-                            leading: widget.onLogQso == null || selfOnly
-                                ? null
-                                : _SlideAction(
-                                    icon: MdiIcons.upload,
-                                    label: t.operation.spots.slideLogIt,
-                                    // The logging panel's own submit accent and
-                                    // glyph: the gesture ends in the act that
-                                    // button performs, so it may not look like a
-                                    // different one.
-                                    background: theme.colorScheme.tertiary,
-                                    foreground: theme.colorScheme.onTertiary,
-                                    // The peek is SPENT here, not withdrawn (see
-                                    // [_SlidableSpotRowState._fire]), so nothing
-                                    // fires `onWithdrawn` on this path and the
-                                    // call has to be given up by hand — otherwise
-                                    // it stays this panel's peek for the session,
-                                    // and meeting the same station again on
-                                    // another band would silently reveal nothing.
-                                    onPressed: () {
-                                      _peekedCall = null;
-                                      _logSpot(spot);
-                                    },
-                                    // Opening fills the logging fields with this
-                                    // spot, so what the commit is about to log is
-                                    // on screen before it is logged.
-                                    onRevealed: widget.onSuggestQso == null
+                  SliverMainAxisGroup(
+                    slivers: [
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _SpotsSectionHeaderDelegate(label: section.label, extent: headerExtent),
+                      ),
+                      SliverList.list(
+                        children: [
+                          for (final (index, spot) in section.spots.indexed)
+                            if (_flagsFor(spot) case final flags)
+                              if (_isWorked(spot, scored: flags.worked) case final worked)
+                                // The SAME predicate the pinned section is built from,
+                                // so a row under "Your Spots" can never fall through to
+                                // the suggest/log affordances — and vice versa.
+                                if (spotIsSelfOnly(spot, ourCall: _ourCall) case final selfOnly)
+                                  // The slide wraps the tile rather than living inside it,
+                                  // and carries a key of its OWN that never changes. The
+                                  // tile's key does change — it takes `_currentRowKey` on
+                                  // becoming the current QSO, which is exactly what a
+                                  // slide causes — and a widget whose key changes has its
+                                  // subtree discarded. A gesture in there dies mid-drag.
+                                  _SlidableSpotRow(
+                                    // Keyed on the SECTION's key, not its label: the label
+                                    // carries the section's spot count, so keying on it
+                                    // would change every row's key on any poll that adds
+                                    // or drops one spot — discarding the slide State of
+                                    // every row in the section, which is the failure this
+                                    // wrapper exists to prevent. The spot's own time
+                                    // separates two rows for one call on one frequency,
+                                    // which the merge passes allow when they are more
+                                    // than 30 minutes apart.
+                                    key: ValueKey('${section.key}|${_callOf(spot)}|${_freqOf(spot)}|${_timeOf(spot)}'),
+                                    group: _slideGroup,
+                                    background: theme.colorScheme.surface,
+                                    // Our own station is not a contact to log — no
+                                    // slide-to-log on a row that is ours alone, same
+                                    // reasoning as the tap below.
+                                    leading: widget.onLogQso == null || selfOnly
                                         ? null
-                                        : () {
-                                            _peekedCall = _callOf(spot)?.toUpperCase();
-                                            widget.onSuggestQso!(suggestedQsoFromSpot(spot), reveal: false);
-                                          },
-                                    // The fill lasts as long as the row is open —
-                                    // a spot the operator dragged back or set
-                                    // aside is not the station they are working,
-                                    // and leaving it in the fields makes the next
-                                    // Log a contact with whoever was slid last.
-                                    // Scrolling is not one of those: it leaves the
-                                    // row open, and so leaves the fill alone.
-                                    // Unconditional, unlike the suggestion it
-                                    // reports: [_peekedCall] is this panel's own
-                                    // state, and hanging its clearing off an
-                                    // optional callback would leave the peek
-                                    // standing for good wherever that callback is
-                                    // absent.
-                                    onWithdrawn: () {
-                                      // Only its own: dragging out through the
-                                      // middle and back out the other side
-                                      // withdraws before the incoming side
-                                      // reveals, and a blind clear there would
-                                      // drop the new peek.
-                                      if (_peekedCall == _callOf(spot)?.toUpperCase()) _peekedCall = null;
-                                      widget.onWithdrawSuggestion?.call(_callOf(spot));
-                                    },
-                                    onSettled: widget.onSuggestionSettled,
+                                        : _SlideAction(
+                                            icon: MdiIcons.upload,
+                                            label: t.operation.spots.slideLogIt,
+                                            // The logging panel's own submit accent and
+                                            // glyph: the gesture ends in the act that
+                                            // button performs, so it may not look like a
+                                            // different one.
+                                            background: theme.colorScheme.tertiary,
+                                            foreground: theme.colorScheme.onTertiary,
+                                            // The peek is SPENT here, not withdrawn (see
+                                            // [_SlidableSpotRowState._fire]), so nothing
+                                            // fires `onWithdrawn` on this path and the
+                                            // call has to be given up by hand — otherwise
+                                            // it stays this panel's peek for the session,
+                                            // and meeting the same station again on
+                                            // another band would silently reveal nothing.
+                                            onPressed: () {
+                                              _peekedCall = null;
+                                              _logSpot(spot);
+                                            },
+                                            // Opening fills the logging fields with this
+                                            // spot, so what the commit is about to log is
+                                            // on screen before it is logged.
+                                            onRevealed: widget.onSuggestQso == null
+                                                ? null
+                                                : () {
+                                                    _peekedCall = _callOf(spot)?.toUpperCase();
+                                                    widget.onSuggestQso!(suggestedQsoFromSpot(spot), reveal: false);
+                                                  },
+                                            // The fill lasts as long as the row is open —
+                                            // a spot the operator dragged back or set
+                                            // aside is not the station they are working,
+                                            // and leaving it in the fields makes the next
+                                            // Log a contact with whoever was slid last.
+                                            // Scrolling is not one of those: it leaves the
+                                            // row open, and so leaves the fill alone.
+                                            // Unconditional, unlike the suggestion it
+                                            // reports: [_peekedCall] is this panel's own
+                                            // state, and hanging its clearing off an
+                                            // optional callback would leave the peek
+                                            // standing for good wherever that callback is
+                                            // absent.
+                                            onWithdrawn: () {
+                                              // Only its own: dragging out through the
+                                              // middle and back out the other side
+                                              // withdraws before the incoming side
+                                              // reveals, and a blind clear there would
+                                              // drop the new peek.
+                                              if (_peekedCall == _callOf(spot)?.toUpperCase()) _peekedCall = null;
+                                              widget.onWithdrawSuggestion?.call(_callOf(spot));
+                                            },
+                                            onSettled: widget.onSuggestionSettled,
+                                          ),
+                                    // Always the reverse of what the row currently says, so
+                                    // the gesture reads the same whether the row was dimmed
+                                    // by scoring or by an earlier slide: undo puts a worked
+                                    // spot back on the board, backspace takes a live one off
+                                    // it.
+                                    trailing: _SlideAction(
+                                      icon: worked ? MdiIcons.undoVariant : MdiIcons.backspace,
+                                      label: worked ? t.operation.spots.slideRestore : t.operation.spots.slideIgnore,
+                                      background: theme.colorScheme.surfaceContainerHighest,
+                                      foreground: theme.colorScheme.onSurface,
+                                      onPressed: () => _toggleWorked(spot, worked: worked),
+                                    ),
+                                    child: _SpotTile(
+                                      key: _isCurrentRow(sectionIndex, index) ? _currentRowKey : (sectionIndex == 0 && index == 0 ? _calibrationKey : null),
+                                      spot: spot,
+                                      noteEmoji: _noteEmojiOf(spot),
+                                      hzDigits: hzDigits,
+                                      leftWidth: leftWidth,
+                                      sortByAge: _sortBy == 'time',
+                                      activityControls: _activityControls,
+                                      // A spot set aside by a slide dims like one scoring
+                                      // calls worked, and a slide can equally put a scored
+                                      // duplicate back on the board — but neither gesture
+                                      // touches the strikethrough, which answers only
+                                      // "is this call in the log" — see [_isWorked].
+                                      worked: worked,
+                                      logged: flags.worked,
+                                      isSelf: flags.isSelf,
+                                      notices: flags.notices,
+                                      highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
+                                      // A spot that is ours alone suggests no QSO — there
+                                      // is no one to work. Tapping it re-tunes instead:
+                                      // the VFO goes back to the spotted state, which is
+                                      // what the operator wants back after wandering off
+                                      // to hunt.
+                                      // Every tap closes whatever is open first: a tap is
+                                      // the operator choosing a station outright, which
+                                      // answers the question the open row was asking. The
+                                      // close runs BEFORE the suggestion so the row's own
+                                      // withdrawal cannot land on top of it.
+                                      onTap: selfOnly
+                                          ? _closingFirst(_retuneActionFor(spot))
+                                          : widget.onSuggestQso == null
+                                          ? null
+                                          : _closingFirst(() => widget.onSuggestQso!(suggestedQsoFromSpot(spot))),
+                                    ),
                                   ),
-                            // Always the reverse of what the row currently says, so
-                            // the gesture reads the same whether the row was dimmed
-                            // by scoring or by an earlier slide: undo puts a worked
-                            // spot back on the board, backspace takes a live one off
-                            // it.
-                            trailing: _SlideAction(
-                              icon: worked ? MdiIcons.undoVariant : MdiIcons.backspace,
-                              label: worked
-                                  ? t.operation.spots.slideRestore
-                                  : t.operation.spots.slideIgnore,
-                              background: theme.colorScheme.surfaceContainerHighest,
-                              foreground: theme.colorScheme.onSurface,
-                              onPressed: () => _toggleWorked(spot, worked: worked),
-                            ),
-                            child: _SpotTile(
-                              key: _isCurrentRow(sectionIndex, index)
-                                  ? _currentRowKey
-                                  : (sectionIndex == 0 && index == 0 ? _calibrationKey : null),
-                              spot: spot,
-                              noteEmoji: _noteEmojiOf(spot),
-                              hzDigits: hzDigits,
-                              leftWidth: leftWidth,
-                              sortByAge: _sortBy == 'time',
-                              activityControls: _activityControls,
-                              // A spot set aside by a slide dims like one scoring
-                              // calls worked, and a slide can equally put a scored
-                              // duplicate back on the board — but neither gesture
-                              // touches the strikethrough, which answers only
-                              // "is this call in the log" — see [_isWorked].
-                              worked: worked,
-                              logged: flags.worked,
-                              isSelf: flags.isSelf,
-                              notices: flags.notices,
-                              highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
-                              // A spot that is ours alone suggests no QSO — there
-                              // is no one to work. Tapping it re-tunes instead:
-                              // the VFO goes back to the spotted state, which is
-                              // what the operator wants back after wandering off
-                              // to hunt.
-                              // Every tap closes whatever is open first: a tap is
-                              // the operator choosing a station outright, which
-                              // answers the question the open row was asking. The
-                              // close runs BEFORE the suggestion so the row's own
-                              // withdrawal cannot land on top of it.
-                              onTap: selfOnly
-                                  ? _closingFirst(_retuneActionFor(spot))
-                                  : widget.onSuggestQso == null
-                                      ? null
-                                      : _closingFirst(() => widget.onSuggestQso!(suggestedQsoFromSpot(spot))),
-                            ),
-                          ),
-                    ]),
-                  ]),
+                        ],
+                      ),
+                    ],
+                  ),
               ],
             ),
     );
@@ -1763,11 +1700,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// The note emoji is read from the same cache the tile draws it from, so a
   /// board whose note lookups have not landed yet is summed a few pixels short
   /// per noted row — which is what [_correctRevealFor] is left to close.
-  double _spotRowHeightOf(Map<String, dynamic> spot) => spotRowHeightFor(
-        metrics: _metrics,
-        hasLabel: _labelOf(spot) != null,
-        hasEmoji: _noteEmojiOf(spot) != null,
-      );
+  double _spotRowHeightOf(Map<String, dynamic> spot) =>
+      spotRowHeightFor(metrics: _metrics, hasLabel: _labelOf(spot) != null, hasEmoji: _noteEmojiOf(spot) != null);
 
   /// Whether [spot] reads as worked, [scored] being what candidate scoring
   /// says about it.
@@ -1866,10 +1800,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// scaled only one of the two would drift by a header on every section.
   /// For the header that is not an estimate but the extent the sliver is
   /// pinned at — see [_sectionHeaderExtent].
-  void _locateCurrentRow(
-    List<({String key, String label, List<Map<String, dynamic>> spots})> sections,
-    String? currentCall,
-  ) {
+  void _locateCurrentRow(List<({String key, String label, List<Map<String, dynamic>> spots})> sections, String? currentCall) {
     final found = locateCurrentSpotRow(
       [for (final section in sections) section.spots],
       currentCall: currentCall,
@@ -2045,11 +1976,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
       maxExtent: position.maxScrollExtent,
     );
     if (target == null) return null;
-    return _scrollController.animateTo(
-      target,
-      duration: const Duration(milliseconds: 120),
-      curve: Curves.easeOut,
-    );
+    return _scrollController.animateTo(target, duration: const Duration(milliseconds: 120), curve: Curves.easeOut);
   }
 
   /// Maps a `sectionSpots` section key to its display label. The flat
@@ -2057,12 +1984,12 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// narrowed to one — "All Spots" while filtered to a single band would
   /// misleadingly suggest the filter had no effect.
   String _sectionLabel(Translations t, String key) => switch (key) {
-        'self' => t.operation.spots.yourSpots,
-        'notes' => t.operation.spots.callsOfNote,
-        'spots' => _isSingleBandFilter ? _bandFilter : t.operation.spots.allSpots,
-        '?' => t.operation.spots.unknownBand,
-        _ => key,
-      };
+    'self' => t.operation.spots.yourSpots,
+    'notes' => t.operation.spots.callsOfNote,
+    'spots' => _isSingleBandFilter ? _bandFilter : t.operation.spots.allSpots,
+    '?' => t.operation.spots.unknownBand,
+    _ => key,
+  };
 
   /// Whether the Band filter has narrowed to one specific band ('auto' and
   /// 'any' both leave multiple bands possible).
@@ -2115,18 +2042,12 @@ class _SpotsSectionHeader extends StatelessWidget {
       alignment: Alignment.centerLeft,
       color: theme.colorScheme.surfaceContainerHighest,
       foregroundDecoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: theme.colorScheme.outline, width: 3),
-        ),
+        border: Border(bottom: BorderSide(color: theme.colorScheme.outline, width: 3)),
       ),
       // Background stays edge-to-edge; the label insets by the split's
       // grab-strip clearance and the real device inset, like the spot rows
       // below it.
-      padding: PaneSafeArea.symmetricOf(
-        context,
-        horizontal: Space.lg,
-        vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
-      ),
+      padding: PaneSafeArea.symmetricOf(context, horizontal: Space.lg, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV),
       child: Text(
         label,
         // The band is what the operator is looking for, and the row is exactly
@@ -2135,11 +2056,7 @@ class _SpotsSectionHeader extends StatelessWidget {
         // would clip off.
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurface,
-          fontWeight: FontWeight.w700,
-          height: 1.0,
-        ),
+        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w700, height: 1.0),
       ),
     );
   }
@@ -2178,9 +2095,7 @@ double _spotLeftColumnWidth(BuildContext context, List<Map<String, dynamic>> spo
     // segment — each measured the way a Text lays it out (see [textWidth], which
     // folds in the ambient DefaultTextStyle's letter-spacing and text scaler so
     // the cell isn't a hair too tight).
-    width = textWidth(context, '0' * maxMhzLen, boldMono) +
-        textWidth(context, '.', mono) +
-        textWidth(context, '000', mono);
+    width = textWidth(context, '0' * maxMhzLen, boldMono) + textWidth(context, '.', mono) + textWidth(context, '000', mono);
     if (hzDigits > 0) {
       width += textWidth(context, '.', mono) + textWidth(context, '0' * hzDigits, hzMono);
     }
@@ -2286,8 +2201,7 @@ class _SpotTile extends StatelessWidget {
     final baseColor = faded(isSelf ? theme.colorScheme.tertiary : theme.colorScheme.onSurface);
     final decoration = logged ? TextDecoration.lineThrough : null;
 
-    final mono = haloMonoStyle(context, fontSize: 14, color: baseColor)
-        .copyWith(decoration: decoration, decorationColor: baseColor);
+    final mono = haloMonoStyle(context, fontSize: 14, color: baseColor).copyWith(decoration: decoration, decorationColor: baseColor);
     // Band/mode and the reference label are names, not structured data —
     // proportional, like everywhere else names/labels appear (e.g. the DX
     // flag/state field in qso_list.dart), unlike the monospace fields
@@ -2308,14 +2222,11 @@ class _SpotTile extends StatelessWidget {
     final freqAccent = notices.contains('newBand') ? important : null;
     final modeAccent = notices.contains('newMode') ? important : null;
     final callAccent = notices.contains('newMult') ? multiplier : null;
-    final refAccent = notices.contains('newMult')
-        ? multiplier
-        : (notices.contains('newDay') || notices.contains('newRef') ? important : null);
+    final refAccent = notices.contains('newMult') ? multiplier : (notices.contains('newDay') || notices.contains('newRef') ? important : null);
     // An accented field is bold as well as colored — color alone is not a
     // signal an operator can rely on (docs/design/user-interface.md), and at
     // spot-row size the weight is what actually catches the eye.
-    TextStyle? accented(TextStyle? style, Color? accent) =>
-        accent == null ? style : style?.copyWith(color: accent, fontWeight: FontWeight.w700);
+    TextStyle? accented(TextStyle? style, Color? accent) => accent == null ? style : style?.copyWith(color: accent, fontWeight: FontWeight.w700);
 
     final freqKHz = _freqOf(spot);
     final spotBand = _bandOf(spot);
@@ -2366,27 +2277,26 @@ class _SpotTile extends StatelessWidget {
     // sort key. Re-derived once a second (scoped to this label via the shared
     // wall-clock heartbeat) so ages don't sit stale between spot refetches —
     // every visible row's label updates in the same frame.
-    final ageField = OncePerSecond(builder: (_, _) => Text(
-      _timeAgo(_timeOf(spot)),
-      style: proportional?.copyWith(fontWeight: sortByAge ? FontWeight.w700 : null),
-    ));
+    final ageField = OncePerSecond(
+      builder: (_, _) => Text(_timeAgo(_timeOf(spot)), style: proportional?.copyWith(fontWeight: sortByAge ? FontWeight.w700 : null)),
+    );
 
     // One row line: the fixed-width left column (right-aligned, sized by the
     // panel to the widest freq/mode on screen) beside the expanded right
     // column, baseline-aligned so the freq/mode text sits on the same baseline
     // as the call/label across the gap.
     Widget line(Widget left, Widget right) => Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            SizedBox(
-              width: leftWidth,
-              child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [left]),
-            ),
-            const SizedBox(width: Space.xl),
-            Expanded(child: right),
-          ],
-        );
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        SizedBox(
+          width: leftWidth,
+          child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [left]),
+        ),
+        const SizedBox(width: Space.xl),
+        Expanded(child: right),
+      ],
+    );
 
     final callLine = Row(
       crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -2414,7 +2324,10 @@ class _SpotTile extends StatelessWidget {
                 // rather than every visible row of a scroll.
                 dim == 1.0
                     ? flagGlyph(noteEmoji!, shadows: glyphGlow(theme))
-                    : Opacity(opacity: dim, child: flagGlyph(noteEmoji!, shadows: glyphGlow(theme))),
+                    : Opacity(
+                        opacity: dim,
+                        child: flagGlyph(noteEmoji!, shadows: glyphGlow(theme)),
+                      ),
               ],
             ],
           ),
@@ -2430,11 +2343,7 @@ class _SpotTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Icon(
-                resolveIconName(refIcon),
-                size: mono.fontSize,
-                color: refIconColor,
-              ),
+              Icon(resolveIconName(refIcon), size: mono.fontSize, color: refIconColor),
               const SizedBox(width: Space.xs),
               Expanded(
                 child: Text(
@@ -2452,11 +2361,7 @@ class _SpotTile extends StatelessWidget {
       // content inset grows by the split's grab-strip clearance on the left
       // and the real device inset on both edges
       // so nothing interactive sits under the divider overlay or a cutout.
-      padding: PaneSafeArea.symmetricOf(
-        context,
-        horizontal: 12,
-        vertical: metrics.spotTilePaddingV,
-      ),
+      padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: metrics.spotTilePaddingV),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2468,8 +2373,7 @@ class _SpotTile extends StatelessWidget {
               // The error color outranks the `newMode` accent: a sideband this
               // band doesn't run is a reason not to tap the spot, where a new
               // mode is a reason to.
-              style: accented(proportional, modeUnexpected ? faded(theme.colorScheme.error) : modeAccent) ??
-                  proportional,
+              style: accented(proportional, modeUnexpected ? faded(theme.colorScheme.error) : modeAccent) ?? proportional,
             ),
             labelLine,
           ),
@@ -2636,15 +2540,9 @@ class _SlideSemanticsDelegate extends SemanticsGestureDelegate {
   @override
   void assignSemantics(RenderSemanticsGestureHandler renderObject) {
     renderObject.onHorizontalDragUpdate = (details) {
-      onStart(DragStartDetails(
-        globalPosition: details.globalPosition,
-        localPosition: details.localPosition,
-      ));
+      onStart(DragStartDetails(globalPosition: details.globalPosition, localPosition: details.localPosition));
       onUpdate(details);
-      onEnd(DragEndDetails(
-        globalPosition: details.globalPosition,
-        localPosition: details.localPosition,
-      ));
+      onEnd(DragEndDetails(globalPosition: details.globalPosition, localPosition: details.localPosition));
     };
   }
 }
@@ -2715,14 +2613,7 @@ class _SlidableSpotRow extends StatefulWidget {
   final _SlideGroup group;
   final Widget child;
 
-  const _SlidableSpotRow({
-    super.key,
-    required this.group,
-    required this.background,
-    required this.child,
-    this.leading,
-    this.trailing,
-  });
+  const _SlidableSpotRow({super.key, required this.group, required this.background, required this.child, this.leading, this.trailing});
 
   @override
   State<_SlidableSpotRow> createState() => _SlidableSpotRowState();
@@ -2905,12 +2796,7 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
     }
   }
 
-  Widget _actionPanel(
-    _SlideAction action, {
-    required bool leading,
-    required double width,
-    required double revealed,
-  }) {
+  Widget _actionPanel(_SlideAction action, {required bool leading, required double width, required double revealed}) {
     // Grows with the drag, so past the commit threshold the action fills the
     // row and reads as the thing about to happen rather than as a button
     // waiting to be pressed.
@@ -2922,9 +2808,7 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
     // well and sits centred in it once the row rests open, like the button it
     // still is. The move is the visible half of what the heavy tick says:
     // this is armed now.
-    final alignment = past
-        ? (leading ? Alignment.centerRight : Alignment.centerLeft)
-        : Alignment.center;
+    final alignment = past ? (leading ? Alignment.centerRight : Alignment.centerLeft) : Alignment.center;
     return Align(
       alignment: leading ? Alignment.centerLeft : Alignment.centerRight,
       child: SizedBox(
@@ -2964,103 +2848,97 @@ class _SlidableSpotRowState extends State<_SlidableSpotRow> {
     // 3px rule so rows read as subdivisions within a group. OUTSIDE the
     // slide, so the ruling between rows stays put while a row moves under it.
     Widget ruled(Widget child) => DecoratedBox(
-          position: DecorationPosition.foreground,
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
-          ),
-          child: child,
-        );
+      position: DecorationPosition.foreground,
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+      ),
+      child: child,
+    );
 
     if (widget.leading == null && widget.trailing == null) return ruled(widget.child);
-    return ruled(LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        return Listener(
-          // The only place a cancelled touch can be told apart from a lifted
-          // one — see [_downPointers]. Behaviour left at the default,
-          // `deferToChild`, so this listens over exactly the region the
-          // gesture below it drags on, and widens nothing.
-          onPointerDown: (event) => _downPointers.add(event.pointer),
-          onPointerUp: (event) => _downPointers.remove(event.pointer),
-          onPointerCancel: (event) {
-            _downPointers.remove(event.pointer);
-            if (_downPointers.isEmpty) _cancelled = true;
-          },
-          child: RawGestureDetector(
-            // Horizontal only — the enclosing scroll view keeps the vertical
-            // axis, and the narrow layout's TabBarView has page-swiping
-            // disabled, so nothing else is competing for this drag. Raw rather
-            // than a `GestureDetector` for the sake of the recognizer, which is
-            // the one thing keeping a scroll from opening a row.
-            gestures: <Type, GestureRecognizerFactory>{
-              _AxisLockedHorizontalDragGestureRecognizer:
-                  GestureRecognizerFactoryWithHandlers<_AxisLockedHorizontalDragGestureRecognizer>(
-                () => _AxisLockedHorizontalDragGestureRecognizer(debugOwner: this),
-                (instance) {
-                  instance
-                    ..onStart = _onDragStart
-                    ..onUpdate = ((d) => _onDragUpdate(d, width))
-                    ..onEnd = ((d) => _onDragEnd(d, width))
-                    // The device's own slop, as a `GestureDetector` would have
-                    // set it — the enclosing list reads the same one.
-                    ..gestureSettings = MediaQuery.maybeGestureSettingsOf(context);
-                },
-              ),
+    return ruled(
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          return Listener(
+            // The only place a cancelled touch can be told apart from a lifted
+            // one — see [_downPointers]. Behaviour left at the default,
+            // `deferToChild`, so this listens over exactly the region the
+            // gesture below it drags on, and widens nothing.
+            onPointerDown: (event) => _downPointers.add(event.pointer),
+            onPointerUp: (event) => _downPointers.remove(event.pointer),
+            onPointerCancel: (event) {
+              _downPointers.remove(event.pointer);
+              if (_downPointers.isEmpty) _cancelled = true;
             },
-            semantics: _SlideSemanticsDelegate(
-              onStart: _onDragStart,
-              onUpdate: (d) => _onDragUpdate(d, width),
-              onEnd: (d) => _onDragEnd(d, width),
-            ),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(end: _dx),
-              // Zero while the finger is down, so the row tracks it exactly
-              // rather than lagging behind its own gesture.
-              duration: _dragging ? Duration.zero : const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              // The panel behind is sized from the SAME animating value as the
-              // row in front, so the two stay edge to edge through a snap
-              // instead of the panel jumping to its target while the row eases.
-              builder: (context, dx, child) {
-                final stack = Stack(
-                  children: [
-                    // Only while there is something to see: an idle row pays for
-                    // no extra layer, which matters on a board scrolled fast.
-                    if (dx != 0)
-                      Positioned.fill(
-                        child: dx > 0
-                            ? _actionPanel(widget.leading!, leading: true, width: width, revealed: dx)
-                            : _actionPanel(widget.trailing!, leading: false, width: width, revealed: -dx),
-                      ),
-                    Transform.translate(
-                      offset: Offset(dx, 0),
-                      // Opaque ONLY while displaced: the actions sit behind the
-                      // row, so a transparent row would show the one it has not
-                      // uncovered — but a row at rest must paint exactly what it
-                      // painted before it could slide, down to having no fill.
-                      child: dx == 0 ? child! : ColoredBox(color: widget.background, child: child!),
-                    ),
-                  ],
-                );
-                // The displaced content is clipped to the row's box — the width
-                // of the list itself — so a row dragged to the edge stops at it
-                // instead of painting over whatever sits beside the spot list.
-                // `Clip.none` rather than dropping the widget while the row
-                // rests: it allocates no layer either, and keeping the widget
-                // type stable across that boundary keeps the row's subtree —
-                // global keys, ink splashes and all — from being re-inflated at
-                // the frame a slide starts and again at the one it ends.
-                return ClipRect(
-                  clipBehavior: dx == 0 ? Clip.none : Clip.hardEdge,
-                  child: stack,
-                );
+            child: RawGestureDetector(
+              // Horizontal only — the enclosing scroll view keeps the vertical
+              // axis, and the narrow layout's TabBarView has page-swiping
+              // disabled, so nothing else is competing for this drag. Raw rather
+              // than a `GestureDetector` for the sake of the recognizer, which is
+              // the one thing keeping a scroll from opening a row.
+              gestures: <Type, GestureRecognizerFactory>{
+                _AxisLockedHorizontalDragGestureRecognizer: GestureRecognizerFactoryWithHandlers<_AxisLockedHorizontalDragGestureRecognizer>(
+                  () => _AxisLockedHorizontalDragGestureRecognizer(debugOwner: this),
+                  (instance) {
+                    instance
+                      ..onStart = _onDragStart
+                      ..onUpdate = ((d) => _onDragUpdate(d, width))
+                      ..onEnd = ((d) => _onDragEnd(d, width))
+                      // The device's own slop, as a `GestureDetector` would have
+                      // set it — the enclosing list reads the same one.
+                      ..gestureSettings = MediaQuery.maybeGestureSettingsOf(context);
+                  },
+                ),
               },
-              child: widget.child,
+              semantics: _SlideSemanticsDelegate(onStart: _onDragStart, onUpdate: (d) => _onDragUpdate(d, width), onEnd: (d) => _onDragEnd(d, width)),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(end: _dx),
+                // Zero while the finger is down, so the row tracks it exactly
+                // rather than lagging behind its own gesture.
+                duration: _dragging ? Duration.zero : const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                // The panel behind is sized from the SAME animating value as the
+                // row in front, so the two stay edge to edge through a snap
+                // instead of the panel jumping to its target while the row eases.
+                builder: (context, dx, child) {
+                  final stack = Stack(
+                    children: [
+                      // Only while there is something to see: an idle row pays for
+                      // no extra layer, which matters on a board scrolled fast.
+                      if (dx != 0)
+                        Positioned.fill(
+                          child: dx > 0
+                              ? _actionPanel(widget.leading!, leading: true, width: width, revealed: dx)
+                              : _actionPanel(widget.trailing!, leading: false, width: width, revealed: -dx),
+                        ),
+                      Transform.translate(
+                        offset: Offset(dx, 0),
+                        // Opaque ONLY while displaced: the actions sit behind the
+                        // row, so a transparent row would show the one it has not
+                        // uncovered — but a row at rest must paint exactly what it
+                        // painted before it could slide, down to having no fill.
+                        child: dx == 0 ? child! : ColoredBox(color: widget.background, child: child!),
+                      ),
+                    ],
+                  );
+                  // The displaced content is clipped to the row's box — the width
+                  // of the list itself — so a row dragged to the edge stops at it
+                  // instead of painting over whatever sits beside the spot list.
+                  // `Clip.none` rather than dropping the widget while the row
+                  // rests: it allocates no layer either, and keeping the widget
+                  // type stable across that boundary keeps the row's subtree —
+                  // global keys, ink splashes and all — from being re-inflated at
+                  // the frame a slide starts and again at the one it ends.
+                  return ClipRect(clipBehavior: dx == 0 ? Clip.none : Clip.hardEdge, child: stack);
+                },
+                child: widget.child,
+              ),
             ),
-          ),
-        );
-      },
-    ));
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -3122,16 +3000,14 @@ class _SpotsFilterPill extends StatelessWidget {
                       // Desktop-only manual refresh — mobile refreshes by
                       // pull-to-refresh instead (RefreshIndicator on the list below).
                       if (!isMobilePlatform) ...[
-                        _FilterInfoPill(
-                          icon: 'refresh',
-                          loading: refreshing,
-                          onTap: refreshing ? null : onRefresh,
-                        ),
+                        _FilterInfoPill(icon: 'refresh', loading: refreshing, onTap: refreshing ? null : onRefresh),
                         const SizedBox(width: Space.sm),
                       ],
                       // The only pill that can grow; flex it so it ellipsizes on a
                       // narrow panel rather than overflowing the row.
-                      Flexible(child: _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap)),
+                      Flexible(
+                        child: _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap),
+                      ),
                       const SizedBox(width: Space.sm),
                       _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
                       const SizedBox(width: Space.sm),
@@ -3187,10 +3063,7 @@ class _FilterInfoPill extends StatelessWidget {
 
     final pill = Container(
       padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.sm),
-      decoration: BoxDecoration(
-        color: poloColors.tertiaryLight,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: BoxDecoration(color: poloColors.tertiaryLight, borderRadius: BorderRadius.circular(8)),
       // Fixed height regardless of whether `label` is present, so the
       // icon-only tune pill matches the icon+text filter-summary pills
       // instead of coming out shorter.
@@ -3201,11 +3074,7 @@ class _FilterInfoPill extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (loading)
-              SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2, color: effectiveColor),
-              )
+              SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: effectiveColor))
             else
               Icon(resolveIconName(icon), size: 14, color: effectiveColor),
             if (label != null) ...[
@@ -3233,11 +3102,7 @@ class _FilterInfoPill extends StatelessWidget {
     if (onTap == null) return pill;
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: pill,
-      ),
+      child: InkWell(borderRadius: BorderRadius.circular(8), onTap: onTap, child: pill),
     );
   }
 }
@@ -3251,19 +3116,19 @@ const _continentCodes = ['AF', 'AS', 'EU', 'NA', 'OC', 'SA', 'AN'];
 /// use the exact same wording for its collapsed summary — "Auto (20m)"/"All
 /// Bands", never a bare "auto"/"any".
 String _bandOptionLabel(Translations t, String option, String? autoBand) => switch (option) {
-      'auto' => autoBand != null ? t.operation.spots.autoValue(value: autoBand) : t.operation.spots.auto,
-      'any' => t.operation.spots.allBands,
-      _ => option,
-    };
+  'auto' => autoBand != null ? t.operation.spots.autoValue(value: autoBand) : t.operation.spots.auto,
+  'any' => t.operation.spots.allBands,
+  _ => option,
+};
 
 /// `autoMode` is the VFO's current *super* mode (Phone/CW/Digital), so "Auto"
 /// reads "Auto (Phone)" — the running band/super-mode the filter follows.
 String _modeOptionLabel(Translations t, String option, String? autoMode) => switch (option) {
-      'auto' => autoMode != null ? t.operation.spots.autoValue(value: autoMode) : t.operation.spots.auto,
-      'any' => t.operation.spots.allModes,
-      phoneCwModeFilter => t.operation.spots.phoneAndCw,
-      _ => option,
-    };
+  'auto' => autoMode != null ? t.operation.spots.autoValue(value: autoMode) : t.operation.spots.auto,
+  'any' => t.operation.spots.allModes,
+  phoneCwModeFilter => t.operation.spots.phoneAndCw,
+  _ => option,
+};
 
 /// The band/mode summary for the collapsed filter pill: the RESOLVED value
 /// first, tagged as followed (e.g. "20m (Auto)", "Phone (Auto)") — the
@@ -3272,17 +3137,17 @@ String _modeOptionLabel(Translations t, String option, String? autoMode) => swit
 /// [_bandOptionLabel]/[_modeOptionLabel].) 'auto' with no resolved band/mode
 /// falls back to the all-bands/all-modes label. Public for unit testing.
 String spotsFilterBandPillLabel(Translations t, String option, String? autoBand) => switch (option) {
-      'auto' => autoBand != null ? t.operation.spots.valueAuto(value: autoBand) : t.operation.spots.allBands,
-      'any' => t.operation.spots.allBands,
-      _ => option,
-    };
+  'auto' => autoBand != null ? t.operation.spots.valueAuto(value: autoBand) : t.operation.spots.allBands,
+  'any' => t.operation.spots.allBands,
+  _ => option,
+};
 
 String spotsFilterModePillLabel(Translations t, String option, String? autoMode) => switch (option) {
-      'auto' => autoMode != null ? t.operation.spots.valueAuto(value: autoMode) : t.operation.spots.allModes,
-      'any' => t.operation.spots.allModes,
-      phoneCwModeFilter => t.operation.spots.phoneAndCw,
-      _ => option,
-    };
+  'auto' => autoMode != null ? t.operation.spots.valueAuto(value: autoMode) : t.operation.spots.allModes,
+  'any' => t.operation.spots.allModes,
+  phoneCwModeFilter => t.operation.spots.phoneAndCw,
+  _ => option,
+};
 
 /// Shared width for the band/mode/age dropdowns so all three line up — 2/3
 /// of the dialog's own content width (400), unlike the sorting
@@ -3303,6 +3168,7 @@ class _SpotsFilterDialog extends StatefulWidget {
   final int ageMinutes;
   final String? autoBand;
   final String? autoMode;
+
   /// The operator's enabled bands, which decide the Band dropdown's entries
   /// (see [spotsFilterBandOptions]).
   final Set<String> enabledBands;
@@ -3392,8 +3258,8 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
       widget.unavailableSources.contains(source)
           ? t.operation.spots.filters.sourceNoReply
           : widget.failedSources.contains(source)
-              ? t.operation.spots.filters.sourceError
-              : t.operation.spots.spotsCount(count: widget.sourceSpotCounts[source] ?? 0),
+          ? t.operation.spots.filters.sourceError
+          : t.operation.spots.spotsCount(count: widget.sourceSpotCounts[source] ?? 0),
       style: trouble ? TextStyle(color: theme.colorScheme.error) : null,
     );
   }
@@ -3405,11 +3271,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
     final bandOptions = [
       'auto',
       'any',
-      ...spotsFilterBandOptions(
-        enabledBands: widget.enabledBands,
-        bandSpotCounts: widget.bandSpotCounts,
-        selected: _bandFilter,
-      ),
+      ...spotsFilterBandOptions(enabledBands: widget.enabledBands, bandSpotCounts: widget.bandSpotCounts, selected: _bandFilter),
     ];
     final modeOptions = ['auto', 'any', phoneCwModeFilter, ..._superModes];
 
@@ -3433,10 +3295,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                 _filterDropdown(
                   label: t.operation.spots.filters.band,
                   initialSelection: _bandFilter,
-                  entries: [
-                    for (final option in bandOptions)
-                      DropdownMenuEntry(value: option, label: _bandEntryLabel(t, option)),
-                  ],
+                  entries: [for (final option in bandOptions) DropdownMenuEntry(value: option, label: _bandEntryLabel(t, option))],
                   onSelected: (value) {
                     if (value == null) return;
                     setState(() => _bandFilter = value);
@@ -3446,10 +3305,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                 _filterDropdown(
                   label: t.operation.spots.filters.mode,
                   initialSelection: _modeFilter,
-                  entries: [
-                    for (final option in modeOptions)
-                      DropdownMenuEntry(value: option, label: _modeEntryLabel(t, option)),
-                  ],
+                  entries: [for (final option in modeOptions) DropdownMenuEntry(value: option, label: _modeEntryLabel(t, option))],
                   onSelected: (value) {
                     if (value == null) return;
                     setState(() => _modeFilter = value);
@@ -3463,8 +3319,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                     for (final minutes in _ageOptionsInMinutes)
                       DropdownMenuEntry(
                         value: minutes,
-                        label:
-                            '${t.operation.spots.ageMinutes(minutes: minutes)} (${widget.ageSpotCounts[minutes] ?? 0})',
+                        label: '${t.operation.spots.ageMinutes(minutes: minutes)} (${widget.ageSpotCounts[minutes] ?? 0})',
                       ),
                   ],
                   onSelected: (value) {
@@ -3476,79 +3331,83 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
               ],
             ),
           ),
-          SectionHeader.section(context, t.operation.spots.filters.sorting, children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: settingsRowInset, vertical: Space.sm),
-              child: SegmentedButton<String>(
-                // MDI-only UI: skip the framework's Material check on the
-                // selected segment (same as settings_view).
-                showSelectedIcon: false,
-                segments: [
-                  ButtonSegment(value: 'frequency', label: Text(t.operation.spots.filters.sortByFrequency)),
-                  ButtonSegment(value: 'time', label: Text(t.operation.spots.filters.sortByTime)),
-                ],
-                selected: {_sortBy},
-                onSelectionChanged: (selection) {
-                  setState(() => _sortBy = selection.first);
-                  widget.onSortByChanged(selection.first);
-                },
-              ),
-            ),
-            _toggleRow(
-              title: t.operation.spots.filters.groupByBand,
-              value: _groupByBand,
-              // Grouping by band is meaningless once the Band filter has
-              // already narrowed to one band — every spot would land in
-              // the same single section anyway.
-              onChanged: _isSingleBandFilter
-                  ? null
-                  : (value) {
-                      setState(() => _groupByBand = value);
-                      widget.onGroupByBandChanged(value);
-                    },
-            ),
-            _toggleRow(
-              title: t.operation.spots.filters.groupCallsWithNotes,
-              value: _groupCallsWithNotes,
-              onChanged: (value) {
-                setState(() => _groupCallsWithNotes = value);
-                widget.onGroupCallsWithNotesChanged(value);
-              },
-            ),
-          ]),
-          if (widget.sources.isNotEmpty)
-            SectionHeader.section(context, t.operation.spots.filters.sources, children: [
-              for (final source in widget.sources)
-                _toggleRow(
-                  title: widget.sourceNames[source] ?? source,
-                  value: !_disabledSources.contains(source),
-                  trailing: _sourceStatus(source),
-                  onChanged: (_) {
-                    setState(
-                      () => _disabledSources.contains(source)
-                          ? _disabledSources.remove(source)
-                          : _disabledSources.add(source),
-                    );
-                    widget.onToggleSource(source);
+          SectionHeader.section(
+            context,
+            t.operation.spots.filters.sorting,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: settingsRowInset, vertical: Space.sm),
+                child: SegmentedButton<String>(
+                  // MDI-only UI: skip the framework's Material check on the
+                  // selected segment (same as settings_view).
+                  showSelectedIcon: false,
+                  segments: [
+                    ButtonSegment(value: 'frequency', label: Text(t.operation.spots.filters.sortByFrequency)),
+                    ButtonSegment(value: 'time', label: Text(t.operation.spots.filters.sortByTime)),
+                  ],
+                  selected: {_sortBy},
+                  onSelectionChanged: (selection) {
+                    setState(() => _sortBy = selection.first);
+                    widget.onSortByChanged(selection.first);
                   },
                 ),
-            ]),
-          SectionHeader.section(context, t.operation.spots.filters.continent, children: [
-            for (final code in _continentCodes)
+              ),
               _toggleRow(
-                title: _continentLabel(t, code),
-                value: !_disabledContinents.contains(code),
-                trailing: Text(t.operation.spots.spotsCount(count: widget.continentSpotCounts[code] ?? 0)),
-                onChanged: (_) {
-                  setState(
-                    () => _disabledContinents.contains(code)
-                        ? _disabledContinents.remove(code)
-                        : _disabledContinents.add(code),
-                  );
-                  widget.onToggleContinent(code);
+                title: t.operation.spots.filters.groupByBand,
+                value: _groupByBand,
+                // Grouping by band is meaningless once the Band filter has
+                // already narrowed to one band — every spot would land in
+                // the same single section anyway.
+                onChanged: _isSingleBandFilter
+                    ? null
+                    : (value) {
+                        setState(() => _groupByBand = value);
+                        widget.onGroupByBandChanged(value);
+                      },
+              ),
+              _toggleRow(
+                title: t.operation.spots.filters.groupCallsWithNotes,
+                value: _groupCallsWithNotes,
+                onChanged: (value) {
+                  setState(() => _groupCallsWithNotes = value);
+                  widget.onGroupCallsWithNotesChanged(value);
                 },
               ),
-          ]),
+            ],
+          ),
+          if (widget.sources.isNotEmpty)
+            SectionHeader.section(
+              context,
+              t.operation.spots.filters.sources,
+              children: [
+                for (final source in widget.sources)
+                  _toggleRow(
+                    title: widget.sourceNames[source] ?? source,
+                    value: !_disabledSources.contains(source),
+                    trailing: _sourceStatus(source),
+                    onChanged: (_) {
+                      setState(() => _disabledSources.contains(source) ? _disabledSources.remove(source) : _disabledSources.add(source));
+                      widget.onToggleSource(source);
+                    },
+                  ),
+              ],
+            ),
+          SectionHeader.section(
+            context,
+            t.operation.spots.filters.continent,
+            children: [
+              for (final code in _continentCodes)
+                _toggleRow(
+                  title: _continentLabel(t, code),
+                  value: !_disabledContinents.contains(code),
+                  trailing: Text(t.operation.spots.spotsCount(count: widget.continentSpotCounts[code] ?? 0)),
+                  onChanged: (_) {
+                    setState(() => _disabledContinents.contains(code) ? _disabledContinents.remove(code) : _disabledContinents.add(code));
+                    widget.onToggleContinent(code);
+                  },
+                ),
+            ],
+          ),
         ],
       ),
 
@@ -3564,12 +3423,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
   /// title, whatever the row has to report about itself, and a switch the
   /// WHOLE row works — a title that looks like the rest of the list and does
   /// nothing reads as a broken row.
-  Widget _toggleRow({
-    required String title,
-    required bool value,
-    required ValueChanged<bool>? onChanged,
-    Widget? trailing,
-  }) {
+  Widget _toggleRow({required String title, required bool value, required ValueChanged<bool>? onChanged, Widget? trailing}) {
     final theme = Theme.of(context);
     return ListTile(
       title: Text(title, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
@@ -3595,21 +3449,21 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
     required List<DropdownMenuEntry<T>> entries,
     required ValueChanged<T?> onSelected,
   }) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: Space.sm),
-        child: DropdownMenu<T>(
-          trailingIcon: dropdownTrailingIcon,
-          selectedTrailingIcon: dropdownSelectedTrailingIcon,
-          initialSelection: initialSelection,
-          width: _dropdownWidth,
-          menuHeight: dropdownMenuMaxHeight(context),
-          // Pick-only; search's rebuild-time scrollToHighlight would snap the
-          // open menu back to the selection whenever spots stream in.
-          enableSearch: false,
-          label: Text(label),
-          dropdownMenuEntries: entries,
-          onSelected: onSelected,
-        ),
-      );
+    padding: const EdgeInsets.symmetric(vertical: Space.sm),
+    child: DropdownMenu<T>(
+      trailingIcon: dropdownTrailingIcon,
+      selectedTrailingIcon: dropdownSelectedTrailingIcon,
+      initialSelection: initialSelection,
+      width: _dropdownWidth,
+      menuHeight: dropdownMenuMaxHeight(context),
+      // Pick-only; search's rebuild-time scrollToHighlight would snap the
+      // open menu back to the selection whenever spots stream in.
+      enableSearch: false,
+      label: Text(label),
+      dropdownMenuEntries: entries,
+      onSelected: onSelected,
+    ),
+  );
 
   /// Whether the Band filter has narrowed to one specific band ('auto' and
   /// 'any' both leave multiple bands possible).
@@ -3632,13 +3486,13 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
   }
 
   String _continentLabel(Translations t, String code) => switch (code) {
-        'AF' => t.operation.spots.continents.af,
-        'AS' => t.operation.spots.continents.as,
-        'EU' => t.operation.spots.continents.eu,
-        'NA' => t.operation.spots.continents.na,
-        'OC' => t.operation.spots.continents.oc,
-        'SA' => t.operation.spots.continents.sa,
-        'AN' => t.operation.spots.continents.an,
-        _ => code,
-      };
+    'AF' => t.operation.spots.continents.af,
+    'AS' => t.operation.spots.continents.as,
+    'EU' => t.operation.spots.continents.eu,
+    'NA' => t.operation.spots.continents.na,
+    'OC' => t.operation.spots.continents.oc,
+    'SA' => t.operation.spots.continents.sa,
+    'AN' => t.operation.spots.continents.an,
+    _ => code,
+  };
 }

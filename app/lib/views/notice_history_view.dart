@@ -13,6 +13,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
+
 class NoticeHistoryView extends StatelessWidget {
   final HaLoServices services;
 
@@ -31,13 +32,7 @@ class NoticeHistoryView extends StatelessWidget {
             itemBuilder: (context, index) {
               final notice = history[index];
               return NoticeCard(
-                notice: StatusBarNoticeData(
-                  key: notice.key,
-                  icon: notice.icon,
-                  title: notice.title,
-                  text: notice.text,
-                  createdAt: notice.createdAt,
-                ),
+                notice: StatusBarNoticeData(key: notice.key, icon: notice.icon, title: notice.title, text: notice.text, createdAt: notice.createdAt),
               );
             },
           );

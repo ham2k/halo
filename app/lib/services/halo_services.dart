@@ -12,8 +12,7 @@ import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:intl/number_symbols.dart';
 
-import 'package:flutter/foundation.dart'
-    show kIsWeb, setEquals;
+import 'package:flutter/foundation.dart' show kIsWeb, setEquals;
 // Prefixed separately from the AppExitResponse import above: some import in
 // this file's graph makes the bare name `TextDirection` resolve to something
 // without an `.ltr` getter, so the real dart:ui one needs this to be reached
@@ -161,11 +160,7 @@ class HaLoServices {
       // description is composed from the operation's title, which an edit to
       // anything the title reads can change. An unsegmented log costs one
       // query here; only a segmented one pays the extension fan-out per row.
-      await qsos.restampSegments(
-        after.uuid,
-        override,
-        describe: (kind, rowOverride) => segmentDescription(after, rowOverride, kind: kind),
-      );
+      await qsos.restampSegments(after.uuid, override, describe: (kind, rowOverride) => segmentDescription(after, rowOverride, kind: kind));
     },
   );
   late final SequencesRepository sequences = SequencesRepository(db);
@@ -191,7 +186,8 @@ class HaLoServices {
   /// on, so a lazy `late final` that nobody touches costs an operator who
   /// never uses this exactly nothing.
   final PeerService? _peerServiceOverride;
-  late final PeerService peerService = _peerServiceOverride ??
+  late final PeerService peerService =
+      _peerServiceOverride ??
       PeerService(
         db: db,
         outbox: peerOutbox,
@@ -246,10 +242,10 @@ class HaLoServices {
   /// Reads [cat], which builds CatService on first touch: call it behind the
   /// same experiment gate its callers already have.
   bool get radio1IsLive => switch (cat.radio1) {
-        LocalRadio(:final uuid) => cat.stateFor(uuid).status == EquipmentStatus.connected,
-        PeerRadio(:final selection) => peerRemoteRadios.find(selection.deviceId, selection.radioId) != null,
-        null => false,
-      };
+    LocalRadio(:final uuid) => cat.stateFor(uuid).status == EquipmentStatus.connected,
+    PeerRadio(:final selection) => peerRemoteRadios.find(selection.deviceId, selection.radioId) != null,
+    null => false,
+  };
 
   /// What to call whatever drives `vfoA`, or null when there is nothing to
   /// call it — a peer's remembered name is all there is while that device is
@@ -259,13 +255,14 @@ class HaLoServices {
   /// is filled from, and an id there is worse than an empty field. A row
   /// that would otherwise render blank falls back to the id itself.
   String? get radio1Name => switch (cat.radio1) {
-        LocalRadio(:final uuid) => switch (cat.nodeFor(uuid)) {
-            final node? => cat.displayNameFor(node),
-            null => null,
-          },
-        PeerRadio(:final selection) => selection.radioName.isEmpty ? null : selection.radioName,
-        null => null,
-      };
+    LocalRadio(:final uuid) => switch (cat.nodeFor(uuid)) {
+      final node? => cat.displayNameFor(node),
+      null => null,
+    },
+    PeerRadio(:final selection) => selection.radioName.isEmpty ? null : selection.radioName,
+    null => null,
+  };
+
   /// The producer half of screen sharing (HALO-369). Lazy like the rest, and
   /// for a stronger reason than most: constructing it registers the native
   /// capture channel's handlers, and an install that never turns the
@@ -294,8 +291,7 @@ class HaLoServices {
         if (peerService.hasSession(deviceId)) deviceId,
     ],
     send: (deviceId, message) => peerService.sendEphemeralTo(deviceId, message, allowBle: true),
-    onCommittedConflict: (operationUuid, request, number) =>
-        unawaited(qsos.markSerialConflict(operationUuid, request, number)),
+    onCommittedConflict: (operationUuid, request, number) => unawaited(qsos.markSerialConflict(operationUuid, request, number)),
   );
 
   /// The viewer half — what this device's peers offer, and what its Remote
@@ -315,9 +311,9 @@ class HaLoServices {
   late final GeoshapeService geoshapes = GeoshapeService(extensions: extensions, lookups: lookups);
   late final InboundCaptureRepository inboundCaptures = InboundCaptureRepository(db);
   final ExportService? _exportsOverride;
-  late final ExportService exports =
-      _exportsOverride ?? ExportService(extensions: extensions, qsos: qsos, settings: settings);
+  late final ExportService exports = _exportsOverride ?? ExportService(extensions: extensions, qsos: qsos, settings: settings);
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
+
   /// The panel catalog a customizable view arranges (docs/design/layouts.md).
   /// Lazy like the rest: nothing asks the extensions for panels until a view
   /// that can hold one is actually built.
@@ -339,8 +335,7 @@ class HaLoServices {
     });
   }
 
-  Future<bool> undeleteOperation(String uuid) =>
-      undeleteOperationWithQsos(db: db, operations: operations, qsos: qsos, uuid: uuid);
+  Future<bool> undeleteOperation(String uuid) => undeleteOperationWithQsos(db: db, operations: operations, qsos: qsos, uuid: uuid);
 
   /// The operator confirmed the "these were removed elsewhere" prompt
   /// ([watchReceivedTestOperationPurges] below) for [uuids] — hard-deletes them and
@@ -381,6 +376,7 @@ class HaLoServices {
     }
     return (eligible: eligibleUuids.length, removed: removedCount);
   }
+
   late final RadioService radio = _buildRadioService();
 
   /// The VFO store, with the one-time migration of the operator's stated
@@ -395,6 +391,7 @@ class HaLoServices {
     if (service.vfoA.power == null && legacy != null) service.setVfo('vfoA', power: legacy);
     return service;
   }
+
   // Station equipment and CAT control, behind the `cat` experiment
   // (docs/design/cat.md). Lazy: nothing connects until the user asks it to
   // from Settings → Station Configuration, so this costs nothing while the
@@ -403,8 +400,7 @@ class HaLoServices {
   /// built over a fake transport — the real one can only reach `connected`
   /// through hardware.
   final CatService? _catOverride;
-  late final CatService cat = _catOverride ??
-      (CatService(settings, radio: radio, onTrack: track)..onRadioProven = reportWorkingRadio);
+  late final CatService cat = _catOverride ?? (CatService(settings, radio: radio, onTrack: track)..onRadioProven = reportWorkingRadio);
   late final PanelRadioService panelRadio = PanelRadioService(cat, radio);
 
   /// Injectable like [_exportsOverride]: `permissionDenied` and `unavailable`
@@ -412,6 +408,7 @@ class HaLoServices {
   /// widget test of what those states put on screen has no other way in.
   final LocationService? _locationOverride;
   late final LocationService location = _locationOverride ?? LocationService();
+
   /// Injectable like [_exportsOverride]: the real one reads
   /// `AppLinks().uriLinkStream`, a platform channel with no implementation
   /// under `flutter test`, so a redirect coming back from the OS is
@@ -468,8 +465,7 @@ class HaLoServices {
   /// `_doOAuth`, for the `webhookClientToken` its `state` param carries) can
   /// go through this one place rather than re-registering by hand.
   Future<LofiClientRegistration?> connectLofiRealtime({bool refreshWebhookToken = false}) async {
-    final registration =
-        await extensions.ensureLofiClientRegistered(refreshWebhookToken: refreshWebhookToken);
+    final registration = await extensions.ensureLofiClientRegistered(refreshWebhookToken: refreshWebhookToken);
     if (registration != null) pusher?.subscribe(registration.pushChannelName);
     return registration;
   }
@@ -479,10 +475,10 @@ class HaLoServices {
   /// the ping, then calls [ExtensionService.fetchLofiWebhookEvents] for the
   /// payload (the push itself only ever carries an event id, never the
   /// sensitive payload — deliberately).
-  Stream<PusherEvent> get webhookEvents =>
-      pusher?.events.where((e) => e.event == 'webhook_event') ?? const Stream.empty();
+  Stream<PusherEvent> get webhookEvents => pusher?.events.where((e) => e.event == 'webhook_event') ?? const Stream.empty();
   final DataFileManager? _dataFilesOverride;
-  late final DataFileManager dataFiles = _dataFilesOverride ??
+  late final DataFileManager dataFiles =
+      _dataFilesOverride ??
       DataFileManager(
         lookups: lookups,
         extensions: extensions,
@@ -501,6 +497,7 @@ class HaLoServices {
   /// `StatusBarOverlay` can draw it below the status footer and directly on
   /// the keyboard — an order no single route can produce for itself.
   final KeyboardAccessoryController keyboardAccessory = KeyboardAccessoryController();
+
   /// Spots fetched once and shared by the Spots Panel and the `spot-history`
   /// lookup hook. Idle until something subscribes (see SpotsService).
   late final SpotsService spots = SpotsService(
@@ -510,7 +507,8 @@ class HaLoServices {
   );
 
   final LookupQueueService? _lookupQueueOverride;
-  late final LookupQueueService lookupQueue = _lookupQueueOverride ??
+  late final LookupQueueService lookupQueue =
+      _lookupQueueOverride ??
       LookupQueueService(
         lookup: extensions.lookupCall,
         qsos: qsos,
@@ -529,7 +527,8 @@ class HaLoServices {
   /// otherwise never bind the socket, even though the operator turned
   /// listening on in a previous session.
   final InboundQsoListenerService? _inboundQsosOverride;
-  late final InboundQsoListenerService inboundQsos = _inboundQsosOverride ??
+  late final InboundQsoListenerService inboundQsos =
+      _inboundQsosOverride ??
       InboundQsoListenerService(
         settings: settings,
         captures: inboundCaptures,
@@ -566,7 +565,8 @@ class HaLoServices {
   /// server on every refresh, and a widget test of what the operator's
   /// callsign ranks (the catalog section) needs `operatorGeo` without that.
   final FlagsService? _flagsOverride;
-  late final FlagsService flags = _flagsOverride ??
+  late final FlagsService flags =
+      _flagsOverride ??
       FlagsService(
         statusBar: statusBar,
         annotate: (call) async {
@@ -656,8 +656,7 @@ class HaLoServices {
   /// keyboard shortcut has no path to. When the app grows real multi-window
   /// support (docs/design/user-interface.md, "Future directions"), this
   /// becomes per-window rather than app-wide.
-  Map<String, dynamic>? get currentOperationContext =>
-      _operationStack.isEmpty ? null : _operationStack.last.operation;
+  Map<String, dynamic>? get currentOperationContext => _operationStack.isEmpty ? null : _operationStack.last.operation;
 
   /// The front-most logging panel's `CommandAction` dispatcher, or null when
   /// no operation is open.
@@ -669,8 +668,7 @@ class HaLoServices {
   /// nothing. Routing the whole batch through here instead makes a command
   /// from the palette behave exactly as if it had been typed into the call
   /// field — `LoggingControls`' dispatcher handles the app-scoped actions too.
-  CommandActionsDispatcher? get currentCommandDispatch =>
-      _operationStack.isEmpty ? null : _operationStack.last.dispatch;
+  CommandActionsDispatcher? get currentCommandDispatch => _operationStack.isEmpty ? null : _operationStack.last.dispatch;
 
   /// The front-most open operation's stack entry, or null when none is open.
   ///
@@ -679,8 +677,7 @@ class HaLoServices {
   /// `suggestQso`, because the caller also has to ask whether that operation
   /// is the visible route before deciding what to tell the operator. Same
   /// stack, same reasoning as [currentCommandDispatch].
-  OperationCommandContext? get frontOperationContext =>
-      _operationStack.isEmpty ? null : _operationStack.last;
+  OperationCommandContext? get frontOperationContext => _operationStack.isEmpty ? null : _operationStack.last;
 
   /// Where a command action's message goes: the command bar that is running a
   /// command right now, on its own response line, rather than the status bar
@@ -735,8 +732,7 @@ class HaLoServices {
     // this is the ONE path that starts discovery, binds a socket or opens a
     // link, so gating it means an install without the experiment is not
     // merely missing the UI — it is not on the network at all.
-    final wanted =
-        settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ && settings.peerSyncEnabled;
+    final wanted = settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ && settings.peerSyncEnabled;
     // [_peerSyncTouched] latches so turning the experiment (or the switch)
     // back OFF still reaches the service to tear everything down, while an
     // install that never turned it on never constructs it at all.
@@ -753,9 +749,7 @@ class HaLoServices {
     // exactly that reason — read once at hello, "a rig is connected right
     // now" would say whatever happened to be true the moment the pair formed
     // and never correct itself.
-    peerService.localCapabilities = () => [
-          if (cat.nodes.any((node) => cat.typeFor(node)?.category == kCategoryTransceiver)) 'cat',
-        ];
+    peerService.localCapabilities = () => [if (cat.nodes.any((node) => cat.typeFor(node)?.category == kCategoryTransceiver)) 'cat'];
     peerService.localAccountTag = () => peerAccountTag(settings);
     // A peer link is expected to come and go — a device carried out of
     // range, a park with no WiFi — so both edges are news the operator can
@@ -788,8 +782,7 @@ class HaLoServices {
     // unconstructed — the router builds it whenever the experiment is on,
     // and so does opening the Peers panel; the experiment is what gates the
     // native channel, not this.
-    final wantsScreens =
-        wanted && settings.experimentEnabled('remote') /* stored key, see experiments.yaml */ && settings.peerScreenShareEnabled;
+    final wantsScreens = wanted && settings.experimentEnabled('remote') /* stored key, see experiments.yaml */ && settings.peerScreenShareEnabled;
     if (wantsScreens || _peerScreensTouched) {
       _peerScreensTouched = true;
       if (wantsScreens) {
@@ -807,7 +800,7 @@ class HaLoServices {
     // left to say about anyone else's: every draft held was read against an
     // operation this device is no longer in. Reached through the same latch,
     // so switching OFF still tears down what switching on built.
-    if (!wanted && settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */) {
+    if (!wanted && settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ ) {
       peerDrafts.clearLocal();
       // And the numbers held: the panel stops asking this source the moment
       // sharing is off, so nothing else would ever let them go.
@@ -881,8 +874,10 @@ class HaLoServices {
   /// Opens Settings at [panel] — how a notice's button reaches the screen that
   /// can act on what it reported.
   void openSettingsPanel(String panel) => navigatorKey.currentState?.push(
-        MaterialPageRoute<void>(builder: (_) => SettingsView(services: this, initialPanel: panel)),
-      );
+    MaterialPageRoute<void>(
+      builder: (_) => SettingsView(services: this, initialPanel: panel),
+    ),
+  );
 
   /// The server has rejected this device's registration for several rounds
   /// running (SyncEngine's [SyncEngine.authErrorNotifyThreshold]) — not a
@@ -913,13 +908,7 @@ class HaLoServices {
       // empty account completes backfill on its first round, and "history
       // downloaded" out of nowhere would just confuse.
       if (statusBar.items.any((item) => item.key == syncProgressStatusKey)) {
-        statusBar.setProgress(
-          key: syncProgressStatusKey,
-          icon: 'cloud-sync',
-          title: 'Sync',
-          text: 'Account history downloaded',
-          value: 1.0,
-        );
+        statusBar.setProgress(key: syncProgressStatusKey, icon: 'cloud-sync', title: 'Sync', text: 'Account history downloaded', value: 1.0);
       }
       return;
     }
@@ -932,9 +921,7 @@ class HaLoServices {
       key: syncProgressStatusKey,
       icon: 'cloud-sync',
       title: 'Syncing in progress…',
-      text: qsoTotal > 0
-          ? '${formatNumber(qsoDone)} of ${formatNumber(qsoTotal)} QSOs'
-          : '${formatNumber(done)} of ${formatNumber(total)} records',
+      text: qsoTotal > 0 ? '${formatNumber(qsoDone)} of ${formatNumber(qsoTotal)} QSOs' : '${formatNumber(done)} of ${formatNumber(total)} records',
       value: done / total,
     );
   }
@@ -962,32 +949,32 @@ class HaLoServices {
     SiblingAppsService? siblingApps,
     CatalogService? catalog,
     FlagsService? flags,
-  })  : _catOverride = cat,
-        _catalogOverride = catalog,
-        _flagsOverride = flags,
-        _deepLinksOverride = deepLinks,
-        _siblingAppsOverride = siblingApps,
-        _peerServiceOverride = peerService,
-        _inboundQsosOverride = inboundQsos,
-        _locationOverride = location,
-        _pusherOverride = pusher,
-        extensions = extensions ?? ExtensionService(),
-        metrics = metrics ?? const NoopMetricsService(),
-        purchases = purchases ?? const NoopPurchaseService(),
-        // Defaults to no-op so tests (which construct HaLoServices directly)
-        // never touch the Shorebird FFI; bootstrap() injects the real
-        // ShorebirdUpdateService for the running app.
-        updates = updates ?? const NoopUpdateService(),
-        // Defaults to the web-only build-SHA check; app_dist's main_dist.dart
-        // injects a real Shorebird+Sparkle-aware implementation (see
-        // update_check_service.dart).
-        updateCheck = updateCheck ?? const WebFreshnessUpdateCheckService(),
-        _dataFilesOverride = dataFiles,
-        _lookupQueueOverride = lookupQueue,
-        // A widget test of the Exports panel can't use the real one: its
-        // option listing awaits a drift stream's `.first`, which never
-        // resolves under `testWidgets` (see operation_export_panel_test).
-        _exportsOverride = exports {
+  }) : _catOverride = cat,
+       _catalogOverride = catalog,
+       _flagsOverride = flags,
+       _deepLinksOverride = deepLinks,
+       _siblingAppsOverride = siblingApps,
+       _peerServiceOverride = peerService,
+       _inboundQsosOverride = inboundQsos,
+       _locationOverride = location,
+       _pusherOverride = pusher,
+       extensions = extensions ?? ExtensionService(),
+       metrics = metrics ?? const NoopMetricsService(),
+       purchases = purchases ?? const NoopPurchaseService(),
+       // Defaults to no-op so tests (which construct HaLoServices directly)
+       // never touch the Shorebird FFI; bootstrap() injects the real
+       // ShorebirdUpdateService for the running app.
+       updates = updates ?? const NoopUpdateService(),
+       // Defaults to the web-only build-SHA check; app_dist's main_dist.dart
+       // injects a real Shorebird+Sparkle-aware implementation (see
+       // update_check_service.dart).
+       updateCheck = updateCheck ?? const WebFreshnessUpdateCheckService(),
+       _dataFilesOverride = dataFiles,
+       _lookupQueueOverride = lookupQueue,
+       // A widget test of the Exports panel can't use the real one: its
+       // option listing awaits a drift stream's `.first`, which never
+       // resolves under `testWidgets` (see operation_export_panel_test).
+       _exportsOverride = exports {
     _wireExtensions();
     // Time travel is developer-mode-only, and this is the ONE place that can
     // see developer mode go off no matter which surface turned it off (DEVMODE,
@@ -1078,12 +1065,7 @@ class HaLoServices {
         // missing locale. A locale that groups with a non-breaking space
         // (fr, ru) keeps it: coercing that to a comma would contradict what
         // the device shows everywhere else.
-        final applied = symbols != null &&
-            NumberFormatting.instance.configure(
-              decimal: symbols.DECIMAL_SEP,
-              grouping: symbols.GROUP_SEP,
-              locale: tag,
-            );
+        final applied = symbols != null && NumberFormatting.instance.configure(decimal: symbols.DECIMAL_SEP, grouping: symbols.GROUP_SEP, locale: tag);
         if (!applied) {
           NumberFormatting.instance.configure(decimal: '.', grouping: ',', locale: 'en_US');
         }
@@ -1137,12 +1119,7 @@ class HaLoServices {
       // back forever as a dead husk with no working Review button once
       // this session ends.
       persist: false,
-      actions: [
-        StatusBarAction(
-          label: t.commands.receivedPurgesReview,
-          onTap: () => _confirmReceivedPurgesFromNotice(pending),
-        ),
-      ],
+      actions: [StatusBarAction(label: t.commands.receivedPurgesReview, onTap: () => _confirmReceivedPurgesFromNotice(pending))],
     );
   }
 
@@ -1169,34 +1146,36 @@ class HaLoServices {
       _onReceivedPurgesPending(pending);
     }
 
-    unawaited(confirmReceivedTestOperationPurgesDialog(context, pending).then((confirmed) async {
-      if (confirmed != true) {
-        // The dismiss above already ran; without this, cancelling — the
-        // common case, an operator tapping Review to look and backing out —
-        // leaves the notice gone for the rest of the session, same as an
-        // unhandled throw would.
-        reArmNotice();
-        return;
-      }
-      try {
-        final result = await confirmReceivedTestOperationPurges(pending.map((op) => op.uuid));
-        // Against `eligible`, not `pending.length`: some of `pending` can be
-        // legitimately gone already (the callsign-edit escape hatch fired
-        // between listing and confirming) without anything having failed.
-        final text = result.removed == result.eligible
-            ? t.commands.testOperationsPurged(count: result.removed)
-            : t.commands.receivedPurgesSomeFailed(removed: result.removed, total: result.eligible);
-        statusBar.setMessage(key: 'commandAction', text: text);
-      } catch (e, st) {
-        // `eligibleReceivedPurges` itself failing (not one of the per-uuid
-        // deletes, which `confirmReceivedTestOperationPurges` already
-        // isolates) — nothing was removed, so `pending` is still exactly
-        // accurate.
-        ErrorReportingService.report(e, st, context: 'confirmReceivedPurgesFromNotice');
-        reArmNotice();
-        statusBar.setMessage(key: 'commandAction', text: t.commands.receivedPurgesFailed);
-      }
-    }));
+    unawaited(
+      confirmReceivedTestOperationPurgesDialog(context, pending).then((confirmed) async {
+        if (confirmed != true) {
+          // The dismiss above already ran; without this, cancelling — the
+          // common case, an operator tapping Review to look and backing out —
+          // leaves the notice gone for the rest of the session, same as an
+          // unhandled throw would.
+          reArmNotice();
+          return;
+        }
+        try {
+          final result = await confirmReceivedTestOperationPurges(pending.map((op) => op.uuid));
+          // Against `eligible`, not `pending.length`: some of `pending` can be
+          // legitimately gone already (the callsign-edit escape hatch fired
+          // between listing and confirming) without anything having failed.
+          final text = result.removed == result.eligible
+              ? t.commands.testOperationsPurged(count: result.removed)
+              : t.commands.receivedPurgesSomeFailed(removed: result.removed, total: result.eligible);
+          statusBar.setMessage(key: 'commandAction', text: text);
+        } catch (e, st) {
+          // `eligibleReceivedPurges` itself failing (not one of the per-uuid
+          // deletes, which `confirmReceivedTestOperationPurges` already
+          // isolates) — nothing was removed, so `pending` is still exactly
+          // accurate.
+          ErrorReportingService.report(e, st, context: 'confirmReceivedPurgesFromNotice');
+          reArmNotice();
+          statusBar.setMessage(key: 'commandAction', text: t.commands.receivedPurgesFailed);
+        }
+      }),
+    );
   }
 
   void _enforceTimeTravelGate() {
@@ -1215,9 +1194,11 @@ class HaLoServices {
     // later in the sequence (the status item, the heartbeat, restarting sync)
     // would otherwise surface only as an unhandled async error and leave the
     // chip on screen over a clock that is no longer travelling.
-    unawaited(_endTimeTravel().catchError((Object e, StackTrace stack) {
-      ErrorReportingService.report(e, stack, context: 'clock:end-time-travel');
-    }));
+    unawaited(
+      _endTimeTravel().catchError((Object e, StackTrace stack) {
+        ErrorReportingService.report(e, stack, context: 'clock:end-time-travel');
+      }),
+    );
   }
 
   /// The ONE gate for analytics: forwards to
@@ -1271,20 +1252,12 @@ class HaLoServices {
         // the mark written below makes that the only report this
         // configuration ever sends.
         await type.transport.prepareConfigElements();
-        final lines = equipmentSetupLines(
-          node: node,
-          type: type,
-          state: cat.stateFor(node.uuid),
-          registry: cat.registry,
-        );
+        final lines = equipmentSetupLines(node: node, type: type, state: cat.stateFor(node.uuid), registry: cat.registry);
         // Titled by the pairing, so Sentry groups every operator's IC-705 on
         // one issue and the bodies underneath are the shack-by-shack detail.
         // The node's own name stays OUT of the title for the same reason: an
         // operator's label for their rig would mint an issue per shack.
-        if (!ErrorReportingService.diagnostic(
-          title: 'Radio working: ${type.key}',
-          body: lines.join('\n'),
-        )) {
+        if (!ErrorReportingService.diagnostic(title: 'Radio working: ${type.key}', body: lines.join('\n'))) {
           // The backend refused it, so nothing was reported: leaving the mark
           // unwritten is what lets the next launch try again.
           return;
@@ -1304,10 +1277,7 @@ class HaLoServices {
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, call);
     final deviceKey = await settings.ensureSyncDeviceKey();
     if (deviceKey != null) {
-      await extensions.setSyncCredentials(
-        deviceKey: deviceKey,
-        operatorCall: settings.activeProfile.operatorCall,
-      );
+      await extensions.setSyncCredentials(deviceKey: deviceKey, operatorCall: settings.activeProfile.operatorCall);
       // Independent of QSO sync being enabled — see connectLofiRealtime's
       // doc comment. Not awaited, same reasoning as the flags
       // refresh below.
@@ -1372,13 +1342,7 @@ class HaLoServices {
     // a hang. Updated every `_benchProgressEvery` contacts rather than every
     // one — repainting the bar per contact would have the bench measuring the
     // repaints as much as the work.
-    statusBar.setProgress(
-      key: 'devbench',
-      icon: 'speedometer',
-      title: 'Benchmarking',
-      text: '0 of $qsoCount QSOs',
-      value: 0,
-    );
+    statusBar.setProgress(key: 'devbench', icon: 'speedometer', title: 'Benchmarking', text: '0 of $qsoCount QSOs', value: 0);
     try {
       final result = await runContestBench(
         qsos: qsos,
@@ -1389,13 +1353,7 @@ class HaLoServices {
         purge: purgeOperation,
         onProgress: (done, total) {
           if (done % _benchProgressEvery != 0 && done != total) return;
-          statusBar.setProgress(
-            key: 'devbench',
-            icon: 'speedometer',
-            title: 'Benchmarking',
-            text: '$done of $total QSOs',
-            value: done / total,
-          );
+          statusBar.setProgress(key: 'devbench', icon: 'speedometer', title: 'Benchmarking', text: '$done of $total QSOs', value: done / total);
         },
       );
 
@@ -1437,10 +1395,7 @@ class HaLoServices {
       // The one outcome that leaves the log dirty, so it says so instead of
       // being reported as an ordinary failure.
       ErrorReportingService.report(error, stackTrace, context: 'devbench:cleanup');
-      return (
-        text: 'Benchmark left its test operation behind — run PURGETESTS to remove it',
-        failed: true,
-      );
+      return (text: 'Benchmark left its test operation behind — run PURGETESTS to remove it', failed: true);
     } on BenchNotConfigured catch (error) {
       // The operator's to fix, so it is NOT reported: an unconfigured run is
       // not a defect, and uploading it would put it in the crash stream.
@@ -1487,7 +1442,10 @@ class HaLoServices {
     final speed = (params?['speed'] as num?)?.toDouble();
     ClockListenerException? notFollowed;
     try {
-      AppClock.instance.travel(delta: Duration(milliseconds: deltaMillis), speed: speed);
+      AppClock.instance.travel(
+        delta: Duration(milliseconds: deltaMillis),
+        speed: speed,
+      );
     } on ArgumentError catch (e) {
       // Validation, which runs before any mutation: nothing moved.
       return (text: 'Time travel refused: ${e.message}', failed: true);
@@ -1605,10 +1563,7 @@ class HaLoServices {
         // itself); only the engine could not start. Not a refusal.
         return true;
       }
-      await extensions.setSyncCredentials(
-        deviceKey: deviceKey,
-        operatorCall: settings.activeProfile.operatorCall,
-      );
+      await extensions.setSyncCredentials(deviceKey: deviceKey, operatorCall: settings.activeProfile.operatorCall);
       unawaited(connectLofiRealtime());
     }
     syncEngine.start();
@@ -1637,29 +1592,36 @@ class HaLoServices {
         // call-field's command flow on it. Each matched data file already
         // reports its own transient progress/completion in the status bar
         // (see DataFileManager), so no separate summary is shown here.
-        unawaited(dataFiles.syncAllDataFiles(force: true, categoryFilter: target == 'ALL' ? null : target).then((matched) {
-          if (matched == 0) {
-            statusBar.setProgress(
-              key: 'command:reloadDataFiles',
-              text: t.commands.noDataFilesMatched(target: target),
-              value: 1.0,
-            );
-          }
-        }).catchError((Object e) {
-          // Belt-and-suspenders: syncAllDataFiles already isolates each data
-          // file's own errors, but this still needs to fail loud (not just
-          // silently drop the failure) for anything unexpected that slips
-          // past that per-entry try/catch.
-          debugPrint('[data-file] reloadDataFiles failed: $e');
-          statusBar.setProgress(key: 'command:reloadDataFiles', text: t.commands.reloadFailed(error: e), value: 1.0);
-        }));
-        return (
-          text: target == 'ALL' ? t.commands.reloadingAll : t.commands.reloadingTarget(target: target),
-          failed: false,
+        unawaited(
+          dataFiles
+              .syncAllDataFiles(force: true, categoryFilter: target == 'ALL' ? null : target)
+              .then((matched) {
+                if (matched == 0) {
+                  statusBar.setProgress(
+                    key: 'command:reloadDataFiles',
+                    text: t.commands.noDataFilesMatched(target: target),
+                    value: 1.0,
+                  );
+                }
+              })
+              .catchError((Object e) {
+                // Belt-and-suspenders: syncAllDataFiles already isolates each data
+                // file's own errors, but this still needs to fail loud (not just
+                // silently drop the failure) for anything unexpected that slips
+                // past that per-entry try/catch.
+                debugPrint('[data-file] reloadDataFiles failed: $e');
+                statusBar.setProgress(
+                  key: 'command:reloadDataFiles',
+                  text: t.commands.reloadFailed(error: e),
+                  value: 1.0,
+                );
+              }),
         );
+        return (text: target == 'ALL' ? t.commands.reloadingAll : t.commands.reloadingTarget(target: target), failed: false);
       case 'devNotice':
         final p = params ?? const {};
-        final devNoticeKey = p['key'] as String? ??
+        final devNoticeKey =
+            p['key'] as String? ??
             // Real: a uniqueness token, and a clock moved BACKWARD can hand back
             // an instant already used — replacing an unrelated notice instead of
             // adding one, from the command whose job is testing notices.
@@ -1674,12 +1636,7 @@ class HaLoServices {
       case 'devStatus':
         final p = params ?? const {};
         final devStatusKey = p['key'] as String? ?? 'devStatus';
-        statusBar.setMessage(
-          key: 'command:devStatus:$devStatusKey',
-          icon: p['icon'] as String?,
-          title: p['title'] as String?,
-          text: p['text'] as String?,
-        );
+        statusBar.setMessage(key: 'command:devStatus:$devStatusKey', icon: p['icon'] as String?, title: p['title'] as String?, text: p['text'] as String?);
         return null;
       case 'devProgress':
         final p = params ?? const {};
@@ -1714,24 +1671,15 @@ class HaLoServices {
         return _travelTime(params);
       case 'devPopup':
         if (!kIsWeb) return (text: 'DEVPOPUP is web-only', failed: true);
-        return openPopupWindow()
-            ? (text: 'Opened in a standalone window', failed: false)
-            : (text: 'Popup blocked — allow popups for this site', failed: true);
+        return openPopupWindow() ? (text: 'Opened in a standalone window', failed: false) : (text: 'Popup blocked — allow popups for this site', failed: true);
       case 'devSentry':
         // DEVSENTRY [message]: push a synthetic error through the real
         // reporting pipeline to verify the Sentry wiring end to end.
         // Deliberately report(), not throw — the point is testing upload
         // + feedback, not exercising the error UI (DEVNOTICE covers that).
         final message = (params?['message'] as String? ?? 'test message').trim();
-        ErrorReportingService.report(
-          StateError('DEVSENTRY: $message'),
-          StackTrace.current,
-          context: 'devsentry',
-        );
-        return (
-          text: ErrorReportingService.reportingEnabled ? t.commands.sentryTestSent : t.commands.sentryTestLocalOnly,
-          failed: false,
-        );
+        ErrorReportingService.report(StateError('DEVSENTRY: $message'), StackTrace.current, context: 'devsentry');
+        return (text: ErrorReportingService.reportingEnabled ? t.commands.sentryTestSent : t.commands.sentryTestLocalOnly, failed: false);
       case 'devBench':
         return _runContestBench(params);
       case 'sendSpots':
@@ -1752,12 +1700,7 @@ class HaLoServices {
         // experiment revealing or hiding gated extensions) — don't hold
         // the command's feedback on it.
         unawaited(extensions.applyExtensionAvailability());
-        return (
-          text: enabled
-              ? t.commands.experimentEnabled(name: experiment.name)
-              : t.commands.experimentDisabled(name: experiment.name),
-          failed: false,
-        );
+        return (text: enabled ? t.commands.experimentEnabled(name: experiment.name) : t.commands.experimentDisabled(name: experiment.name), failed: false);
       case 'updateSetting':
         // SET/SHOW/HIDE: the hook already resolved the key and coerced the
         // value through `searchSettings`, so this only writes. Returns null on
@@ -1801,12 +1744,7 @@ class HaLoServices {
         if (context == null) return null;
         final keys = (params?['keys'] as List?)?.whereType<String>().toList() ?? const <String>[];
         if (keys.isEmpty) return null;
-        unawaited(showSettingsForKeys(
-          context,
-          services: this,
-          keys: keys,
-          title: params?['title'] as String? ?? t.settings.title,
-        ));
+        unawaited(showSettingsForKeys(context, services: this, keys: keys, title: params?['title'] as String? ?? t.settings.title));
         return null;
       default:
         return null;
@@ -1905,9 +1843,7 @@ class HaLoServices {
     // `kind` decides the wording: a break says what is NOW true, a start (or
     // the start a first break has to open) states it plainly.
     final description = await segmentDescription(operation, override, kind: kind);
-    final startDescription = kind == 'start'
-        ? description
-        : await segmentDescription(operation, override, kind: 'start');
+    final startDescription = kind == 'start' ? description : await segmentDescription(operation, override, kind: 'start');
     final hasStart = events.any((q) => q.eventKind == 'start');
     final hasSegment = events.any((q) => eventKindOpensSegment(q.eventKind));
 
@@ -1940,23 +1876,22 @@ class HaLoServices {
         if (previous == null) {
           await qsos.addEvent(operation.uuid, kind: 'stop', atMillis: nowMillis(), operation: override, description: description);
         } else {
-          await qsos.update(Qso(
-            uuid: previous.uuid,
-            operationUuid: previous.operationUuid,
-            data: {
-              ...previous.data,
-              'startAtMillis': nowMillis(),
-              // The override is being restated, so a description that
-              // could not be composed in full is CLEARED rather than kept:
-              // the old line would describe the stretch this row no longer
-              // states (see [segmentDescription]).
-              'event': {
-                ...?previous.event,
-                'operation': override,
-                'description': description,
-              }..removeWhere((key, value) => key == 'description' && value == null),
-            },
-          ));
+          await qsos.update(
+            Qso(
+              uuid: previous.uuid,
+              operationUuid: previous.operationUuid,
+              data: {
+                ...previous.data,
+                'startAtMillis': nowMillis(),
+                // The override is being restated, so a description that
+                // could not be composed in full is CLEARED rather than kept:
+                // the old line would describe the stretch this row no longer
+                // states (see [segmentDescription]).
+                'event': {...?previous.event, 'operation': override, 'description': description}
+                  ..removeWhere((key, value) => key == 'description' && value == null),
+              },
+            ),
+          );
         }
     }
 
@@ -2044,8 +1979,7 @@ class HaLoServices {
     // Throwing a plain StateError here made each launch count a sync failure
     // and file a crash report for a race that clears in seconds.
     if (host == null) throw const SyncTransportNotReady();
-    final result =
-        await host.invokeHook('syncTransport', method: method, args: args, timeout: const Duration(seconds: 30));
+    final result = await host.invokeHook('syncTransport', method: method, args: args, timeout: const Duration(seconds: 30));
     return (result as Map).cast<String, dynamic>();
   }
 }

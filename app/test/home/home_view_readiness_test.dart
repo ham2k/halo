@@ -25,8 +25,8 @@ void main() {
   }
 
   Widget wrap(HaLoServices services) => TranslationProvider(
-        child: MaterialApp(home: HomeView(services: services)),
-      );
+    child: MaterialApp(home: HomeView(services: services)),
+  );
 
   testWidgets('resolves ready once the operations list first loads (bridge installed)', (tester) async {
     tester.view.physicalSize = const Size(1000, 800);

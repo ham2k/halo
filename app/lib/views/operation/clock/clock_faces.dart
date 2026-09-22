@@ -37,12 +37,7 @@ class ClockPalette {
   /// The second hand, and nothing else.
   final Color accent;
 
-  const ClockPalette({
-    required this.face,
-    required this.ink,
-    required this.ghost,
-    required this.accent,
-  });
+  const ClockPalette({required this.face, required this.ink, required this.ghost, required this.accent});
 }
 
 /// The palette every seven-segment replica in the app wears — the clock's LCD
@@ -56,12 +51,7 @@ class ClockPalette {
 /// that fade — an opaque one lands at the dimmed ink's own strength and turns
 /// every digit into a solid 8.
 ClockPalette lcdPalette(Brightness brightness) => brightness == Brightness.dark
-    ? ClockPalette(
-        face: const Color(0xFF0D1418),
-        ink: fabAccentColor,
-        ghost: fabAccentColor.withValues(alpha: 0.13),
-        accent: fabAccentColor,
-      )
+    ? ClockPalette(face: const Color(0xFF0D1418), ink: fabAccentColor, ghost: fabAccentColor.withValues(alpha: 0.13), accent: fabAccentColor)
     : ClockPalette(
         face: const Color(0xFFA9B79F),
         ink: const Color(0xFF161A12),
@@ -97,10 +87,7 @@ class LcdFacePainter extends CustomPainter {
     // The glass. Without it the segments float on whatever the pane's own
     // background is, and the ghosts — which only make sense against a
     // display — read as damage.
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(size.shortestSide * 0.07)),
-      Paint()..color = palette.face,
-    );
+    canvas.drawRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(size.shortestSide * 0.07)), Paint()..color = palette.face);
 
     final inset = size.shortestSide * _margin;
     final glassSize = Size(size.width - inset * 2, size.height - inset * 2);
@@ -154,10 +141,7 @@ class LcdFacePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(LcdFacePainter old) =>
-      !listEquals(old.digits, digits) ||
-      !setEquals(old.colonsAfter, colonsAfter) ||
-      old.palette.ink != palette.ink;
+  bool shouldRepaint(LcdFacePainter old) => !listEquals(old.digits, digits) || !setEquals(old.colonsAfter, colonsAfter) || old.palette.ink != palette.ink;
 }
 
 /// A plain round face: minute ticks, hour marks, three tapered hands.
@@ -169,13 +153,7 @@ class AnalogFacePainter extends CustomPainter {
   final bool showSeconds;
   final ClockPalette palette;
 
-  const AnalogFacePainter({
-    required this.hourAngle,
-    required this.minuteAngle,
-    required this.secondAngle,
-    required this.showSeconds,
-    required this.palette,
-  });
+  const AnalogFacePainter({required this.hourAngle, required this.minuteAngle, required this.secondAngle, required this.showSeconds, required this.palette});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -201,11 +179,7 @@ class AnalogFacePainter extends CustomPainter {
         ..strokeCap = StrokeCap.round;
       final inner = r * (isHour ? 0.80 : 0.86);
       final angle = i * math.pi / 30 - math.pi / 2;
-      canvas.drawLine(
-        Offset(math.cos(angle) * inner, math.sin(angle) * inner),
-        Offset(math.cos(angle) * r * 0.91, math.sin(angle) * r * 0.91),
-        paint,
-      );
+      canvas.drawLine(Offset(math.cos(angle) * inner, math.sin(angle) * inner), Offset(math.cos(angle) * r * 0.91, math.sin(angle) * r * 0.91), paint);
     }
 
     void hand(double degrees, double length, double width, Color color, {double tail = 0.0}) {

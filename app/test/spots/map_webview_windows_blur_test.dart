@@ -21,11 +21,14 @@ const _blurListener = "window.addEventListener('blur'";
 const _glSentinel = '/* maplibre library goes here */';
 
 String _page({required bool suppressWindowBlur}) => MapboxWebviewMapView.pageHtml(
-      false, mapDefaultStyleUrl, mapDefaultStyleUrlDark, false,
-      suppressWindowBlur: suppressWindowBlur,
-      glSource: _glSentinel,
-      glCss: '/* maplibre css goes here */',
-    );
+  false,
+  mapDefaultStyleUrl,
+  mapDefaultStyleUrlDark,
+  false,
+  suppressWindowBlur: suppressWindowBlur,
+  glSource: _glSentinel,
+  glCss: '/* maplibre css goes here */',
+);
 
 void main() {
   test('on Windows the page swallows window blur before MapLibre sees it', () {

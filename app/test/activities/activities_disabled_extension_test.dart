@@ -27,30 +27,26 @@ void main() {
       },
     );
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(
-          body: OperationSheet(
-            services: services,
-            operation: operation,
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: OperationSheet(services: services, operation: operation),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
-    final listTileFinder = find.ancestor(
-      of: find.text('UN-9999'),
-      matching: find.byType(ListTile),
-    );
+    final listTileFinder = find.ancestor(of: find.text('UN-9999'), matching: find.byType(ListTile));
     expect(listTileFinder, findsOneWidget);
 
     final listTile = tester.widget<ListTile>(listTileFinder);
-    
+
     // Icon should be question mark inside CircleAvatar
     final leadingFinder = find.descendant(of: listTileFinder, matching: find.byType(CircleAvatar));
     expect(leadingFinder, findsOneWidget);
-    
+
     final iconFinder = find.descendant(of: leadingFinder, matching: find.byIcon(MdiIcons.help));
     expect(iconFinder, findsOneWidget);
     // Same 16px the pre-shared-helper inline markup used — activityRefIcon
@@ -62,8 +58,7 @@ void main() {
     expect(listTile.tileColor, theme.colorScheme.errorContainer.withValues(alpha: 0.4));
   });
 
-  testWidgets('the same treatment applies to an unsupported ref resurfaced as a Suggestion (issue #261)',
-      (tester) async {
+  testWidgets('the same treatment applies to an unsupported ref resurfaced as a Suggestion (issue #261)', (tester) async {
     final HaLoHarness(:services) = await makeHaLoServices();
 
     final operation = Operation(
@@ -75,11 +70,15 @@ void main() {
       },
     );
 
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: Scaffold(body: OperationSheet(services: services, operation: operation)),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: OperationSheet(services: services, operation: operation),
+          ),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // Deleting the unsupported ref resurfaces it as a Suggestion (so the

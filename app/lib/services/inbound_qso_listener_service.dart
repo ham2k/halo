@@ -289,7 +289,12 @@ class InboundQsoListenerService extends ChangeNotifier {
     if (error == null) {
       statusBar?.dismissNotice(_captureNoticeKey);
     } else {
-      statusBar?.showNotice(key: _captureNoticeKey, icon: 'database-alert', text: t.operation.import.captureFailed(error: error), persist: false);
+      statusBar?.showNotice(
+        key: _captureNoticeKey,
+        icon: 'database-alert',
+        text: t.operation.import.captureFailed(error: error),
+        persist: false,
+      );
     }
     if (!_disposed) notifyListeners();
   }
@@ -346,8 +351,7 @@ class InboundQsoListenerService extends ChangeNotifier {
     final pending = rows.where((r) => r.addedToOperation == null).toList();
     if (pending.isEmpty) return const [];
     final operation = await operations.get(operationUuid);
-    final stationCall =
-        operation != null && operation.stationCalls.length == 1 ? operation.stationCalls.first : null;
+    final stationCall = operation != null && operation.stationCalls.length == 1 ? operation.stationCalls.first : null;
 
     final added = <Qso>[];
     final addedUuids = <String>[];

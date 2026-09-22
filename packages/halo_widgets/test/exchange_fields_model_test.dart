@@ -27,9 +27,13 @@ const _serial = {
     'kind': 'serial',
     'refType': 'cq',
     'field': 'serial',
-    'sequence': {'key': 'serial', 'scope': ['band']},
+    'sequence': {
+      'key': 'serial',
+      'scope': ['band'],
+    },
   },
 };
+
 /// A second, unscoped sequence beside the per-band one.
 const _other = {
   'key': 'cq/other',
@@ -94,14 +98,7 @@ class _Harness {
   final focusEvents = <FocusNode>[];
 
   late final model = ExchangeFieldsModel(
-    config: () => (
-      textControls: () => controls,
-      editingQso: editingQso,
-      operationUuid: 'op',
-      serialNumbers: source,
-      sequences: sequences,
-      call: call,
-    ),
+    config: () => (textControls: () => controls, editingQso: editingQso, operationUuid: 'op', serialNumbers: source, sequences: sequences, call: call),
     draftQsoData: () => draft,
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
     onFocusChanged: (node, controller) => focusEvents.add(node),
@@ -109,20 +106,20 @@ class _Harness {
 
   /// The fields, built so their focus nodes are attached.
   Widget host() => MaterialApp(
-        home: Scaffold(
-          body: Column(
-            children: [
-              for (final control in controls)
-                TextField(
-                  key: ValueKey<String>(control['key'] as String),
-                  controller: model.controllerFor(control['key'] as String),
-                  focusNode: model.focusFor(control['key'] as String),
-                  onChanged: (text) => model.typed(control['key'] as String, text),
-                ),
-            ],
-          ),
-        ),
-      );
+    home: Scaffold(
+      body: Column(
+        children: [
+          for (final control in controls)
+            TextField(
+              key: ValueKey<String>(control['key'] as String),
+              controller: model.controllerFor(control['key'] as String),
+              focusNode: model.focusFor(control['key'] as String),
+              onChanged: (text) => model.typed(control['key'] as String, text),
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 void main() {
@@ -166,9 +163,14 @@ void main() {
     test('a later call in a list loses only the serial, never the exchange beside it', () {
       final h = _Harness(controls: [_zone, _serial]);
       addTearDown(h.model.dispose);
-      expect(h.model.refsWithoutSerials([{'type': 'cq', 'serial': 1, 'zone': '05'}]), [
-        {'type': 'cq', 'zone': '05'},
-      ]);
+      expect(
+        h.model.refsWithoutSerials([
+          {'type': 'cq', 'serial': 1, 'zone': '05'},
+        ]),
+        [
+          {'type': 'cq', 'zone': '05'},
+        ],
+      );
     });
 
     test('a field is read from the first control that has a value for it', () {
@@ -176,7 +178,12 @@ void main() {
         'key': 'vhf/grid',
         'input': {'kind': 'text', 'refType': 'vhf', 'field': 'grid'},
       };
-      final h = _Harness(controls: [grid, {...grid, 'key': 'other/grid'}]);
+      final h = _Harness(
+        controls: [
+          grid,
+          {...grid, 'key': 'other/grid'},
+        ],
+      );
       addTearDown(h.model.dispose);
       h.model.typed('other/grid', 'FN20aa');
       expect(h.model.valueForField('grid'), 'FN20aa', reason: 'the first control is empty; it does not answer');
@@ -185,16 +192,23 @@ void main() {
     test('a ref left with nothing but its type is dropped', () {
       final h = _Harness(controls: [_zone]);
       addTearDown(h.model.dispose);
-      expect(h.model.refsWithTextValues([{'type': 'cq', 'zone': '04'}]), isEmpty);
+      expect(
+        h.model.refsWithTextValues([
+          {'type': 'cq', 'zone': '04'},
+        ]),
+        isEmpty,
+      );
     });
 
     test('a value restored off a saved QSO counts as typed, so a suggestion never overwrites it', () {
-      final h = _Harness(controls: [
-        {
-          ..._zone,
-          'input': {..._zone['input'] as Map, 'suggestedValue': '14'},
-        },
-      ]);
+      final h = _Harness(
+        controls: [
+          {
+            ..._zone,
+            'input': {..._zone['input'] as Map, 'suggestedValue': '14'},
+          },
+        ],
+      );
       addTearDown(h.model.dispose);
       h.model.applySuggestedValues(call: 'W1AW');
       expect(h.model.controllerFor('cq/zone').text, '14', reason: 'untouched: the lookup fills it');
@@ -212,9 +226,14 @@ void main() {
       // dropped — never reaches `applySuggestedValues`, and the old guess left
       // behind is a legal value in an untouched field, which nothing tints and
       // `refsWithTextValues` files as the new station's exchange.
-      final h = _Harness(controls: [
-        {..._zone, 'input': {..._zone['input'] as Map, 'suggestedValue': '14'}},
-      ]);
+      final h = _Harness(
+        controls: [
+          {
+            ..._zone,
+            'input': {..._zone['input'] as Map, 'suggestedValue': '14'},
+          },
+        ],
+      );
       addTearDown(h.model.dispose);
       h.model.applySuggestedValues(call: 'W6ABC');
       expect(h.model.valueOf('cq/zone'), '14');
@@ -226,7 +245,10 @@ void main() {
 
       // And the new caller's own suggestion goes in once it arrives.
       h.controls = [
-        {..._zone, 'input': {..._zone['input'] as Map, 'suggestedValue': '05'}},
+        {
+          ..._zone,
+          'input': {..._zone['input'] as Map, 'suggestedValue': '05'},
+        },
       ];
       h.model.applySuggestedValues(call: 'W2XYZ');
       expect(h.model.valueOf('cq/zone'), '05');
@@ -241,9 +263,14 @@ void main() {
       // refresh — and every contest then declares no `suggestedValue`. That is
       // "nobody was asked", not "no suggestion for this caller": treated
       // alike, any other refresh of the panel would wipe the prefill.
-      final h = _Harness(controls: [
-        {..._zone, 'input': {..._zone['input'] as Map, 'suggestedValue': '14'}},
-      ]);
+      final h = _Harness(
+        controls: [
+          {
+            ..._zone,
+            'input': {..._zone['input'] as Map, 'suggestedValue': '14'},
+          },
+        ],
+      );
       addTearDown(h.model.dispose);
       h.model.applySuggestedValues(call: 'W6ABC');
       expect(h.model.valueOf('cq/zone'), '14');
@@ -259,9 +286,14 @@ void main() {
       // with the station at the cursor's exchange, it would be logged as the
       // other's too — and adding the second call takes back a prefill already
       // made for the first, for the same reason.
-      final h = _Harness(controls: [
-        {..._zone, 'input': {..._zone['input'] as Map, 'suggestedValue': '14'}},
-      ]);
+      final h = _Harness(
+        controls: [
+          {
+            ..._zone,
+            'input': {..._zone['input'] as Map, 'suggestedValue': '14'},
+          },
+        ],
+      );
       addTearDown(h.model.dispose);
       h.model.applySuggestedValues(call: '');
       expect(h.model.valueOf('cq/zone'), '', reason: 'the panel passes no call for a multi-call field');
@@ -273,9 +305,14 @@ void main() {
     });
 
     test('what the operator typed over a prefill is theirs, and never taken back', () {
-      final h = _Harness(controls: [
-        {..._zone, 'input': {..._zone['input'] as Map, 'suggestedValue': '14'}},
-      ]);
+      final h = _Harness(
+        controls: [
+          {
+            ..._zone,
+            'input': {..._zone['input'] as Map, 'suggestedValue': '14'},
+          },
+        ],
+      );
       addTearDown(h.model.dispose);
       h.model.applySuggestedValues(call: 'W6ABC');
       h.model.typed('cq/zone', '15');
@@ -289,8 +326,7 @@ void main() {
       final h = _Harness(controls: [_county]);
       addTearDown(h.model.dispose);
       h.model.focusFor('qp/county');
-      expect(h.model.attachedFocusFor('qp/county'), isNull,
-          reason: 'a node with no field yet is an orphan the focus ladder must not sort');
+      expect(h.model.attachedFocusFor('qp/county'), isNull, reason: 'a node with no field yet is an orphan the focus ladder must not sort');
       await tester.pumpWidget(h.host());
       expect(h.model.attachedFocusFor('qp/county'), isNotNull);
       expect(h.model.suggestions, isEmpty, reason: 'no options field has focus');
@@ -326,12 +362,10 @@ void main() {
       expect(h.model.controllerFor('qp/county').text, 'ASD');
       expect(h.model.isTouched('qp/county'), isTrue);
       expect(h.notifications, greaterThan(before), reason: 'the field repaints on an accept');
-      expect(h.model.acceptSuggestion(index: 0, explicit: true), isFalse,
-          reason: 'accepting the value already in the field is a no-op, not a second write');
+      expect(h.model.acceptSuggestion(index: 0, explicit: true), isFalse, reason: 'accepting the value already in the field is a no-op, not a second write');
     });
 
-    testWidgets('a walked highlight is taken by Space as-is, and Enter takes it instead of logging',
-        (tester) async {
+    testWidgets('a walked highlight is taken by Space as-is, and Enter takes it instead of logging', (tester) async {
       final h = _Harness(controls: [_county]);
       addTearDown(h.model.dispose);
       await tester.pumpWidget(h.host());
@@ -371,29 +405,29 @@ void main() {
       expect(h.model.acceptPendingChoice(), isFalse);
     });
 
-    testWidgets('a multi-value field replaces only the value the cursor is in, borrowing the first prefix',
-        (tester) async {
-      final h = _Harness(controls: [
-        {
-          ..._county,
-          'input': {
-            ..._county['input'] as Map,
-            'options': const [
-              {'code': 'ORDES', 'name': 'Deschutes'},
-              {'code': 'ORJEF', 'name': 'Jefferson'},
-              {'code': 'IDJEF', 'name': 'Jefferson'},
-            ],
-            'multiValue': {'separator': '/', 'inheritPrefix': 2},
+    testWidgets('a multi-value field replaces only the value the cursor is in, borrowing the first prefix', (tester) async {
+      final h = _Harness(
+        controls: [
+          {
+            ..._county,
+            'input': {
+              ..._county['input'] as Map,
+              'options': const [
+                {'code': 'ORDES', 'name': 'Deschutes'},
+                {'code': 'ORJEF', 'name': 'Jefferson'},
+                {'code': 'IDJEF', 'name': 'Jefferson'},
+              ],
+              'multiValue': {'separator': '/', 'inheritPrefix': 2},
+            },
           },
-        },
-      ]);
+        ],
+      );
       addTearDown(h.model.dispose);
       await tester.pumpWidget(h.host());
       h.model.focusFor('qp/county').requestFocus();
       await tester.pump();
       await tester.enterText(find.byKey(const ValueKey('qp/county')), 'ORDES/JEF');
-      expect([for (final o in h.model.suggestions) o.code], ['ORJEF', 'IDJEF'],
-          reason: 'the borrowed prefix names Oregon; the literal name match follows');
+      expect([for (final o in h.model.suggestions) o.code], ['ORJEF', 'IDJEF'], reason: 'the borrowed prefix names Oregon; the literal name match follows');
       expect(h.model.acceptOnLeave(), isTrue);
       expect(h.model.controllerFor('qp/county').text, 'ORDES/ORJEF');
       expect(h.model.controllerFor('qp/county').selection.baseOffset, 'ORDES/ORJEF'.length);
@@ -423,8 +457,7 @@ void main() {
 
     tearDown(() => db.close());
 
-    testWidgets('an idle draft holds no number; the first edit takes one; a wipe lets it go and refills',
-        (tester) async {
+    testWidgets('an idle draft holds no number; the first edit takes one; a wipe lets it go and refills', (tester) async {
       final sequences = SequencesRepository(db);
       final h = _Harness(controls: [_serial, _other], sequences: sequences, source: _Source(sequences));
       addTearDown(h.model.dispose);
@@ -455,8 +488,7 @@ void main() {
       // already shown, so the fill would run — but must not overwrite it.
       h.model.typed('cq/serial', '57');
       await tester.pump();
-      sequences.noteIssued('op', h.model.serialSequences.first.requestFor(
-          const Qso(uuid: '', operationUuid: 'op', data: {'band': '15m'})), 7);
+      sequences.noteIssued('op', h.model.serialSequences.first.requestFor(const Qso(uuid: '', operationUuid: 'op', data: {'band': '15m'})), 7);
       h.draft = {'band': '15m'};
       await h.model.refreshSerialPreviews();
       expect(h.model.valueOf('cq/serial'), '57');
@@ -504,8 +536,7 @@ void main() {
       final h = _Harness(controls: [_serial], sequences: sequences, source: _Source(sequences));
       addTearDown(h.model.dispose);
       // 20m has issued up to 7, so its next is 8; 40m starts at 1.
-      sequences.noteIssued('op', h.model.serialSequences.single.requestFor(
-          const Qso(uuid: '', operationUuid: 'op', data: {'band': '20m'})), 7);
+      sequences.noteIssued('op', h.model.serialSequences.single.requestFor(const Qso(uuid: '', operationUuid: 'op', data: {'band': '20m'})), 7);
       h.source!.gates['cq/serial|20m'] = Completer<void>();
       h.draft = {'band': '20m'};
       h.call = 'W1';

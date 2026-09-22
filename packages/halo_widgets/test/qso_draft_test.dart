@@ -23,8 +23,7 @@ class _FakeVfoStore implements VfoStore {
   @override
   Vfo vfoA = const Vfo(freq: 14285, mode: 'SSB');
   @override
-  void setVfo(String key,
-      {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {}
+  void setVfo(String key, {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {}
 }
 
 /// The panel's side of the draft: its controllers, its models and its
@@ -47,36 +46,20 @@ class _Harness {
   String get callText => call.text.trim().toUpperCase();
 
   late final RadioControlModel radio = RadioControlModel(
-    config: () => (
-      radio: RadioHookup(radioService: store, ourItuRegion: 2, ourCountryCode: 'US'),
-      powerInPlay: () => powerInPlay,
-      editingQso: editingQso,
-    ),
+    config: () => (radio: RadioHookup(radioService: store, ourItuRegion: 2, ourCountryCode: 'US'), powerInPlay: () => powerInPlay, editingQso: editingQso),
     draft: draft,
     onRescore: () {},
   )..bind();
   late final TimeControlModel time = TimeControlModel(config: () => (editingQso: editingQso), draft: draft)..bind();
   late final ExchangeFieldsModel exchange = ExchangeFieldsModel(
-    config: () => (
-      textControls: () => const <Map<String, dynamic>>[],
-      editingQso: editingQso,
-      operationUuid: 'op',
-      serialNumbers: null,
-      sequences: null,
-      call: callText,
-    ),
+    config: () =>
+        (textControls: () => const <Map<String, dynamic>>[], editingQso: editingQso, operationUuid: 'op', serialNumbers: null, sequences: null, call: callText),
     draftQsoData: () => draft.toData(),
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
     onFocusChanged: (node, controller) {},
   );
   late final ActivityRefsModel refs = ActivityRefsModel(
-    config: () => (
-      activityControls: controls,
-      refreshActivityControls: null,
-      editingQso: editingQso,
-      fieldsLocked: () => false,
-      callAtCursor: () => callText,
-    ),
+    config: () => (activityControls: controls, refreshActivityControls: null, editingQso: editingQso, fieldsLocked: () => false, callAtCursor: () => callText),
     draft: draft,
     draftQsoData: (call) => draft.toData(callOverride: call),
     onControlsRefreshed: () {},
@@ -164,8 +147,7 @@ void main() {
       h.draft.populate(() => h.radio.setFrequency(14285));
 
       final data = h.draft.toData();
-      expect(data['our'], {'call': 'KI2D', 'sent': '59', 'operatorCall': 'N0DEV'},
-          reason: 'the FIRST station call, and the placeholder report');
+      expect(data['our'], {'call': 'KI2D', 'sent': '59', 'operatorCall': 'N0DEV'}, reason: 'the FIRST station call, and the placeholder report');
       final their = data['their'] as Map<String, dynamic>;
       expect(their['call'], 'W1AW');
       expect(their['sent'], '57');
@@ -210,7 +192,11 @@ void main() {
       // A deep link or a spot that names a grid: shown, and left for the
       // lookup to keep tracking — a touched grid would stick across every
       // call of a list, and put a grid-center pair on the record.
-      h.draft.populate(() => h.draft.applyData({'their': {'call': 'W1AW', 'grid': 'FN31pr'}}));
+      h.draft.populate(
+        () => h.draft.applyData({
+          'their': {'call': 'W1AW', 'grid': 'FN31pr'},
+        }),
+      );
       expect(h.grid.text, 'FN31pr');
       expect(h.draft.gridTouched, isFalse);
       expect((h.draft.toData()['their'] as Map).containsKey('grid'), isFalse);
@@ -234,7 +220,12 @@ void main() {
       final h = _Harness();
       addTearDown(h.dispose);
       h.radio.mode = 'CW';
-      h.draft.populate(() => h.draft.applyData({'their': {'call': 'W1AW'}, 'band': '40m'}));
+      h.draft.populate(
+        () => h.draft.applyData({
+          'their': {'call': 'W1AW'},
+          'band': '40m',
+        }),
+      );
       expect(h.radio.band, '40m');
       expect(h.radio.freq, isNull);
       expect(h.radio.mode, 'CW');
@@ -252,7 +243,12 @@ void main() {
       ];
       final park = {'type': 'potaHunter', 'ref': 'US-1234'};
       final summit = {'type': 'sotaHunter', 'ref': 'W7O/CN-001'};
-      h.draft.populate(() => h.draft.applyData({'their': {'call': 'W1AW'}, 'refs': [summit, park]}));
+      h.draft.populate(
+        () => h.draft.applyData({
+          'their': {'call': 'W1AW'},
+          'refs': [summit, park],
+        }),
+      );
       expect(h.refs.refsFor('pota/hunter'), [park]);
       expect(h.refs.allRefs, containsAll([park, summit]), reason: 'a ref no control shows still round-trips');
       expect(h.draft.toData()['refs'], containsAll([park, summit]));
@@ -290,16 +286,20 @@ void main() {
       addTearDown(h.dispose);
       // A stored record carries its uuid in the data too — that is what tells
       // the draft it is not looking at one of its own snapshots.
-      final qso = Qso(uuid: 'q1', operationUuid: 'op', data: {
-        'uuid': 'q1',
-        'our': {'call': 'KI2D', 'sent': '59', 'operatorCall': 'N0DEV'},
-        'their': {'call': 'W1AW', 'sent': '57', 'city': 'Newington', 'grid': 'FN31pr'},
-        'freq': 14285,
-        'band': '20m',
-        'mode': 'SSB',
-        'power': 100,
-        'startAtMillis': 1700000000000,
-      });
+      final qso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op',
+        data: {
+          'uuid': 'q1',
+          'our': {'call': 'KI2D', 'sent': '59', 'operatorCall': 'N0DEV'},
+          'their': {'call': 'W1AW', 'sent': '57', 'city': 'Newington', 'grid': 'FN31pr'},
+          'freq': 14285,
+          'band': '20m',
+          'mode': 'SSB',
+          'power': 100,
+          'startAtMillis': 1700000000000,
+        },
+      );
       h.editingQso = qso;
       // Left over from the draft the operator was composing: the record's
       // own block replaces it, or it would ride into a contact it never met.
@@ -323,11 +323,15 @@ void main() {
       final h = _Harness();
       addTearDown(h.dispose);
       expect(h.draft.toData().containsKey('notes'), isFalse);
-      final qso = Qso(uuid: 'q1', operationUuid: 'op', data: {
-        'uuid': 'q1',
-        'their': {'call': 'W1AW'},
-        'notes': 'the old note',
-      });
+      final qso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op',
+        data: {
+          'uuid': 'q1',
+          'their': {'call': 'W1AW'},
+          'notes': 'the old note',
+        },
+      );
       h.editingQso = qso;
       h.draft.populate(() => h.draft.applyData(qso.data));
       h.draft.setNote('');
@@ -365,7 +369,9 @@ void main() {
       h.time.manualStartAtMillis = 1700000000000;
       expect(h.draft.hasComposedValues, isTrue);
       h.time.manualStartAtMillis = null;
-      h.refs.setRefs('pota/hunter', [{'type': 'potaHunter', 'ref': 'US-1234'}]);
+      h.refs.setRefs('pota/hunter', [
+        {'type': 'potaHunter', 'ref': 'US-1234'},
+      ]);
       expect(h.draft.hasComposedValues, isTrue);
       h.refs.clear();
       h.exchange.typed('cq/zone', '05');
@@ -384,10 +390,14 @@ void main() {
     h.draft.setNote('mid-contact');
     // Stepping into an earlier record: the configuration already shows it by
     // the time the snapshot is taken.
-    h.editingQso = Qso(uuid: 'q1', operationUuid: 'op', data: {
-      'their': {'call': 'K1ABC', 'city': 'Boston'},
-      'startAtMillis': 1700000000000,
-    });
+    h.editingQso = Qso(
+      uuid: 'q1',
+      operationUuid: 'op',
+      data: {
+        'their': {'call': 'K1ABC', 'city': 'Boston'},
+        'startAtMillis': 1700000000000,
+      },
+    );
     h.draft.snapshotComposing();
     final parked = h.draft.takeComposingSnapshot()!;
     expect((parked['their'] as Map)['call'], 'W1AW');
@@ -416,9 +426,61 @@ void main() {
   });
 
   test('records compare as data: lists as multisets, and absent, null and empty alike', () {
-    expect(qsoDataEquivalent({'refs': [{'type': 'a'}, {'type': 'b'}]}, {'refs': [{'type': 'b'}, {'type': 'a'}]}), isTrue);
-    expect(qsoDataEquivalent({'refs': [], 'their': {'sent': ''}}, {'their': {'sent': null}}), isTrue);
-    expect(qsoDataEquivalent({'their': {'call': 'W1AW'}}, {'their': {'call': 'W1AX'}}), isFalse);
-    expect(qsoDataEquivalent({'refs': [{'type': 'a'}]}, {'refs': [{'type': 'a'}, {'type': 'a'}]}), isFalse);
+    expect(
+      qsoDataEquivalent(
+        {
+          'refs': [
+            {'type': 'a'},
+            {'type': 'b'},
+          ],
+        },
+        {
+          'refs': [
+            {'type': 'b'},
+            {'type': 'a'},
+          ],
+        },
+      ),
+      isTrue,
+    );
+    expect(
+      qsoDataEquivalent(
+        {
+          'refs': [],
+          'their': {'sent': ''},
+        },
+        {
+          'their': {'sent': null},
+        },
+      ),
+      isTrue,
+    );
+    expect(
+      qsoDataEquivalent(
+        {
+          'their': {'call': 'W1AW'},
+        },
+        {
+          'their': {'call': 'W1AX'},
+        },
+      ),
+      isFalse,
+    );
+    expect(
+      qsoDataEquivalent(
+        {
+          'refs': [
+            {'type': 'a'},
+          ],
+        },
+        {
+          'refs': [
+            {'type': 'a'},
+            {'type': 'a'},
+          ],
+        },
+      ),
+      isFalse,
+    );
   });
 }

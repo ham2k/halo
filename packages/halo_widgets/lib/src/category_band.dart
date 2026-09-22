@@ -47,8 +47,7 @@ class CategoryBand extends StatelessWidget {
     // The rows' own inset, and their own default for "none" — a band whose
     // idea of no-inset differs from theirs lands its title off the rows it
     // heads, which is the trap halo_dialog.dart's contentPadding note names.
-    final inset = (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero)
-        .resolve(Directionality.of(context));
+    final inset = (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero).resolve(Directionality.of(context));
     return Material(
       color: haloDialogBandColorAt(context),
       child: Padding(

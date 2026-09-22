@@ -47,9 +47,13 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     final operation = await services.operations.create(stationCall: 'KI2D');
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(home: OperationView(services: services, operationUuid: operation.uuid)),
-    ));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -102,8 +106,7 @@ void main() {
     final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
-    final layoutButton = find.byWidgetPredicate(
-        (w) => w is Icon && w.icon == MdiIcons.viewDashboard && w.semanticLabel == t.editLayout);
+    final layoutButton = find.byWidgetPredicate((w) => w is Icon && w.icon == MdiIcons.viewDashboard && w.semanticLabel == t.editLayout);
     // No semanticLabel in the predicate: it only exists on the icon-only
     // variant, and this width carries labels.
     final toolsButton = find.byWidgetPredicate((w) => w is Icon && w.icon == MdiIcons.tools);
@@ -128,13 +131,8 @@ void main() {
     // undimmed header and read as faint rather than disabled — so the pair
     // is asserted, not each one independently.
     final opacities = layoutButton.evaluate().map((icon) {
-      return tester
-          .widget<Opacity>(find
-              .ancestor(of: find.byElementPredicate((e) => identical(e, icon)), matching: find.byType(Opacity))
-              .first)
-          .opacity;
-    }).toList()
-      ..sort();
+      return tester.widget<Opacity>(find.ancestor(of: find.byElementPredicate((e) => identical(e, icon)), matching: find.byType(Opacity)).first).opacity;
+    }).toList()..sort();
     expect(opacities.first, closeTo(0.0, 0.01), reason: "the copy reserves the width and paints nothing");
     expect(opacities.last, closeTo(0.38, 0.01), reason: 'exactly one row reads as disabled');
 
@@ -173,13 +171,11 @@ void main() {
     expect(settings.layoutData(LayoutKeys.operationDock), isNull, reason: 'entering edit mode writes nothing');
 
     await dragToDelete(tester, tabs.info);
-    expect(settings.layoutData(LayoutKeys.operationDock), isNull,
-        reason: 'a draft that reached storage is a discard button that promises nothing');
+    expect(settings.layoutData(LayoutKeys.operationDock), isNull, reason: 'a draft that reached storage is a discard button that promises nothing');
 
     await tester.tap(find.text(t.saveLayout));
     await tester.pumpAndSettle();
-    expect(DockNode.fromJson(settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
-        ['logging', 'spots', 'map']);
+    expect(DockNode.fromJson(settings.layoutData(LayoutKeys.operationDock))!.collectModules(), ['logging', 'spots', 'map']);
     expect(find.text(t.saveLayout), findsNothing, reason: 'saving leaves edit mode');
 
     await unmount(tester);
@@ -213,8 +209,7 @@ void main() {
     // whether or not one is already in the view, and none of the three ships
     // in the default arrangement besides. Every pane the discard restored is
     // gone from this list, which is what it is asserting.
-    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website'],
-        reason: 'every single-placement pane is in the view again');
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website'], reason: 'every single-placement pane is in the view again');
 
     await unmount(tester);
   });
@@ -245,8 +240,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LayoutSheet), findsNothing, reason: 'adding a panel dismisses the sheet');
     await openAddSheet(tester);
-    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website'],
-        reason: 'and once back, it is no longer on offer');
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website'], reason: 'and once back, it is no longer on offer');
 
     await unmount(tester);
   });
@@ -293,10 +287,7 @@ void main() {
     // Serialized BEFORE the forget, the map would carry the gone pane's title
     // to disk — where the next pane handed that id inherits it, which is the
     // whole thing forgetting a removed pane exists to stop.
-    expect(
-      (services.settings.layoutData(LayoutKeys.operationPaneOptions) as Map?)?.containsKey('info') ?? false,
-      isFalse,
-    );
+    expect((services.settings.layoutData(LayoutKeys.operationPaneOptions) as Map?)?.containsKey('info') ?? false, isFalse);
 
     await unmount(tester);
   });
@@ -317,8 +308,11 @@ void main() {
     // A BUTTON with a plus: each offered panel row draws one too, as the
     // row's own cue, and the row is what takes the tap.
     expect(find.widgetWithIcon(IconButton, MdiIcons.plus), findsNothing);
-    expect(find.descendant(of: find.byType(LayoutSheet), matching: find.byIcon(MdiIcons.plus)), findsWidgets,
-        reason: 'the rows are listed, so the assertion above is not vacuous');
+    expect(
+      find.descendant(of: find.byType(LayoutSheet), matching: find.byIcon(MdiIcons.plus)),
+      findsWidgets,
+      reason: 'the rows are listed, so the assertion above is not vacuous',
+    );
     expect(find.text(t.saveLayout), findsOneWidget);
 
     // And the guard behind it still refuses, so no other caller can stack one.
@@ -352,11 +346,7 @@ void main() {
     expect(find.text(t.viewName), findsOneWidget, reason: 'still editing, and still saying so');
     expect(find.text(t.saveLayout), findsOneWidget);
     expect(find.byType(DockLayoutView), findsOneWidget, reason: 'the narrow arrangement is a dock too');
-    expect(
-      find.text(tabs.spots),
-      findsOneWidget,
-      reason: 'and it is the NARROW tree — its own default, not the wide one this edit has been changing',
-    );
+    expect(find.text(tabs.spots), findsOneWidget, reason: 'and it is the NARROW tree — its own default, not the wide one this edit has been changing');
 
     // The wide draft is state, not settings, so it is still there to come
     // back to.
@@ -387,12 +377,15 @@ void main() {
     await tester.tap(find.text(t.saveLayout));
     await tester.pumpAndSettle();
 
-    expect(DockNode.fromJson(settings.layoutData(LayoutKeys.operationNarrowDock))!.collectModules(),
-        ['logging', 'map'],
-        reason: 'the class the Save was pressed in');
-    expect(DockNode.fromJson(settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
-        ['logging', 'spots', 'map'],
-        reason: 'and the one that was off screen when it was — its key, not the other class\'s');
+    expect(DockNode.fromJson(settings.layoutData(LayoutKeys.operationNarrowDock))!.collectModules(), [
+      'logging',
+      'map',
+    ], reason: 'the class the Save was pressed in');
+    expect(
+      DockNode.fromJson(settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
+      ['logging', 'spots', 'map'],
+      reason: 'and the one that was off screen when it was — its key, not the other class\'s',
+    );
 
     await unmount(tester);
   });
@@ -427,12 +420,19 @@ void main() {
     // and the arrangement it has to refuse is one tab holding everything.
     await services.settings.setLayoutData(
       LayoutKeys.operationDock,
-      DockGroup(['nested#1'], nested: {
-        'nested#1': DockSplit(Axis.vertical, [
-          DockGroup(['logging']),
-          DockGroup(['info']),
-        ], [1, 1]),
-      }).toJson(),
+      DockGroup(
+        ['nested#1'],
+        nested: {
+          'nested#1': DockSplit(
+            Axis.vertical,
+            [
+              DockGroup(['logging']),
+              DockGroup(['info']),
+            ],
+            [1, 1],
+          ),
+        },
+      ).toJson(),
     );
     await pumpWide(tester, services);
 
@@ -622,10 +622,7 @@ void main() {
     // the view's scope, not beside it.
     await pumpWide(tester, services);
     expect(tester.takeException(), isNull);
-    expect(
-      find.ancestor(of: find.byType(DockLayoutView), matching: find.byType(SubtreeUiScale)),
-      findsOneWidget,
-    );
+    expect(find.ancestor(of: find.byType(DockLayoutView), matching: find.byType(SubtreeUiScale)), findsOneWidget);
 
     await unmount(tester);
   });
@@ -682,14 +679,16 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       final operation = await services.operations.create(stationCall: 'KI2D');
-      await tester.pumpWidget(TranslationProvider(
-        child: MaterialApp(
-          home: StatusBarOverlay(
-            services: services,
-            child: OperationView(services: services, operationUuid: operation.uuid),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: StatusBarOverlay(
+              services: services,
+              child: OperationView(services: services, operationUuid: operation.uuid),
+            ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
@@ -709,16 +708,24 @@ void main() {
       await tester.tap(find.text(t.saveLayout));
       await tester.pumpAndSettle();
 
-      expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
-          ['logging', 'logging'],
-          reason: 'the unreadable original must survive until the operator accepts the recovered default');
+      expect(
+        DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
+        ['logging', 'logging'],
+        reason: 'the unreadable original must survive until the operator accepts the recovered default',
+      );
       // The guard once covered only the spec write — paneOptions/viewOptions
       // persisted unconditionally and could describe the provisional default
       // rather than the operator's real, still-unaccepted arrangement.
-      expect(services.settings.layoutData(LayoutKeys.operationPaneOptions), isNull,
-          reason: 'nothing describing the provisional default may reach storage either, until accepted');
-      expect(services.settings.layoutData(LayoutKeys.operationViewOptions), isNull,
-          reason: 'nothing describing the provisional default may reach storage either, until accepted');
+      expect(
+        services.settings.layoutData(LayoutKeys.operationPaneOptions),
+        isNull,
+        reason: 'nothing describing the provisional default may reach storage either, until accepted',
+      );
+      expect(
+        services.settings.layoutData(LayoutKeys.operationViewOptions),
+        isNull,
+        reason: 'nothing describing the provisional default may reach storage either, until accepted',
+      );
 
       await unmount(tester);
     });
@@ -732,17 +739,21 @@ void main() {
       services.statusBar.dismissNotice('layout:operation:wide:unreadable');
       await tester.pumpAndSettle();
 
-      expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules().toSet(),
-          isNot({'logging'}), // the duplicate spec's one module
-          reason: 'any dismissal accepts the default — the notice cannot come back to ask again this session');
+      expect(
+        DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules().toSet(),
+        isNot({'logging'}), // the duplicate spec's one module
+        reason: 'any dismissal accepts the default — the notice cannot come back to ask again this session',
+      );
 
       await startEditing(tester);
       await dragToDelete(tester, tabs.info);
       await tester.tap(find.text(t.saveLayout));
       await tester.pumpAndSettle();
-      expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
-          isNot(contains('info')),
-          reason: 'saving must not still be silently suppressed after the notice is gone');
+      expect(
+        DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
+        isNot(contains('info')),
+        reason: 'saving must not still be silently suppressed after the notice is gone',
+      );
 
       await unmount(tester);
     });
@@ -779,9 +790,11 @@ void main() {
       notice.actions.single.onTap();
       await tester.pumpAndSettle();
 
-      expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules().toSet(),
-          isNot({'logging'}), // the duplicate spec's one module
-          reason: 'accepting writes the default over the unreadable original');
+      expect(
+        DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules().toSet(),
+        isNot({'logging'}), // the duplicate spec's one module
+        reason: 'accepting writes the default over the unreadable original',
+      );
       expect(services.statusBar.activeNotices.map((n) => n.key), isNot(contains('layout:operation:wide:unreadable')));
 
       // Ordinary saving is back to normal — the guard only held while the
@@ -790,8 +803,7 @@ void main() {
       await dragToDelete(tester, tabs.info);
       await tester.tap(find.text(t.saveLayout));
       await tester.pumpAndSettle();
-      expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
-          isNot(contains('info')));
+      expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(), isNot(contains('info')));
 
       await unmount(tester);
     });
@@ -810,9 +822,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-          DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
-          contains('info'),
-          reason: 'accepting must write the plain default that was shown, not the still-unsaved draft on screen');
+        DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules(),
+        contains('info'),
+        reason: 'accepting must write the plain default that was shown, not the still-unsaved draft on screen',
+      );
 
       await unmount(tester);
     });

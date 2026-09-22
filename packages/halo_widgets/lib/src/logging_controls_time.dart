@@ -50,14 +50,11 @@ class TimeControlModel extends ChangeNotifier with PanelModel {
   /// an edit the next time the cursor moved.
   String _lastText = '';
 
-
   bool _bound = false;
 
-  static String fmtTime(DateTime dt) =>
-      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  static String fmtTime(DateTime dt) => '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   static String fmtTimeWithSeconds(DateTime dt) => '${fmtTime(dt)}:${dt.second.toString().padLeft(2, '0')}';
-  static String fmtDate(DateTime dt) =>
-      '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+  static String fmtDate(DateTime dt) => '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
 
   /// The best-known timestamp for the entry being composed/edited: a manual
   /// override if one's been set, else the existing QSO's recorded time when
@@ -164,10 +161,7 @@ class TimeControlModel extends ChangeNotifier with PanelModel {
 /// The Time control's expanded row: the time and date fields, and a "Now"
 /// button back to automatic timestamping when the model offers one.
 class TimeControlFields extends StatelessWidget {
-  const TimeControlFields({
-    super.key,
-    required this.model,
-  });
+  const TimeControlFields({super.key, required this.model});
 
   final TimeControlModel model;
 
@@ -203,10 +197,7 @@ class TimeControlFields extends StatelessWidget {
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9-]'))],
           ),
         ),
-        if (model.canResetToNow) ...[
-          const SizedBox(width: Space.md),
-          TextButton(onPressed: model.resetToNow, child: Text(t.loggingControls.now)),
-        ],
+        if (model.canResetToNow) ...[const SizedBox(width: Space.md), TextButton(onPressed: model.resetToNow, child: Text(t.loggingControls.now))],
       ],
     );
   }
@@ -217,14 +208,14 @@ const timeChipIcon = MdiIcons.clockOutline;
 
 /// The Time chip and its expanded fields, read from [model].
 SecondaryControlSpec timeControlSpec(TimeControlModel model) => SecondaryControlSpec(
-      key: 'time',
-      icon: timeChipIcon,
-      summary: model.summary,
-      // Live clock only while nothing overrides the timestamp (a manually
-      // set time, or editing an existing — necessarily historical — QSO);
-      // the chip re-reads this once per second without rebuilding the
-      // panel (a panel-level ticker calling setState on the whole logging
-      // panel would cost a full panel rebuild per tick).
-      liveSummary: model.isLive ? () => model.summary : null,
-      expandedBuilder: (context) => TimeControlFields(model: model),
-    );
+  key: 'time',
+  icon: timeChipIcon,
+  summary: model.summary,
+  // Live clock only while nothing overrides the timestamp (a manually
+  // set time, or editing an existing — necessarily historical — QSO);
+  // the chip re-reads this once per second without rebuilding the
+  // panel (a panel-level ticker calling setState on the whole logging
+  // panel would cost a full panel rebuild per tick).
+  liveSummary: model.isLive ? () => model.summary : null,
+  expandedBuilder: (context) => TimeControlFields(model: model),
+);

@@ -21,7 +21,8 @@ import 'support/bundles.dart';
 
 /// One extension whose hook answers [answer], so a reload is observable as a
 /// changed return value. Also round-trips KV, to show what a reload keeps.
-String _versioned(String answer) => '''
+String _versioned(String answer) =>
+    '''
 __polo.defineExtension({
   key: 'reloadable',
   name: 'Reloadable',
@@ -60,7 +61,8 @@ var boundHostCall = null
 /// define its own key plus any key it prefixes. Unload works per bundle for
 /// exactly this reason, and a version keyed only on the extension name would
 /// leave the second one behind.
-String _multiKey(String answer) => '''
+String _multiKey(String answer) =>
+    '''
 __polo.defineExtension({
   key: 'multi',
   name: 'Multi',
@@ -82,8 +84,7 @@ __polo.defineExtension({
 void main() {
   requireBundles();
 
-  Future<ExtensionHost> hostWith(List<ExtensionBundle> extensions,
-      {Map<String, List<String>> allowlists = const {}, http.Client? httpClient}) async {
+  Future<ExtensionHost> hostWith(List<ExtensionBundle> extensions, {Map<String, List<String>> allowlists = const {}, http.Client? httpClient}) async {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
       extensions: extensions,
@@ -97,8 +98,7 @@ void main() {
     return host;
   }
 
-  Future<Object?> answerOf(ExtensionHost host, String key) =>
-      host.invokeHook('bench', key: key, method: 'answer');
+  Future<Object?> answerOf(ExtensionHost host, String key) => host.invokeHook('bench', key: key, method: 'answer');
 
   test('a reload replaces the extension\'s code, leaving every other one running', () async {
     final host = await hostWith([
@@ -110,8 +110,7 @@ void main() {
     await host.reloadBundle(ExtensionBundle(key: 'reloadable', source: _versioned('second')));
 
     expect(await answerOf(host, 'reloadable'), 'second');
-    expect(await answerOf(host, 'bystander'), 'bystander',
-        reason: 'reloading one bundle must not disturb any other');
+    expect(await answerOf(host, 'bystander'), 'bystander', reason: 'reloading one bundle must not disturb any other');
   });
 
   test('the previous version is unregistered, not merely outranked', () async {
@@ -168,8 +167,7 @@ void main() {
     // to put back, and a dev server that failed to build has nothing to serve.
     // The operator sees the build error; the runtime does not pretend.
     await expectLater(answerOf(host, 'reloadable'), throwsA(isA<ExtensionHostException>()));
-    expect(await answerOf(host, 'bystander'), 'bystander',
-        reason: 'a broken bundle must not take the runtime down with it');
+    expect(await answerOf(host, 'bystander'), 'bystander', reason: 'a broken bundle must not take the runtime down with it');
 
     // The recovery path is the one an author actually walks — save a typo,
     // fix it, save again — so a runtime that could not accept the fix would
@@ -209,13 +207,12 @@ var boundHostCall = null
 
     final host = await hostWith(
       [const ExtensionBundle(key: 'fetcher', source: fetcher)],
-      allowlists: {'fetcher': const ['first.example.com']},
+      allowlists: {
+        'fetcher': const ['first.example.com'],
+      },
       httpClient: client,
     );
-    expect(
-      await host.invokeHook('bench', key: 'fetcher', method: 'get', args: {'url': 'https://second.example.com/x'}),
-      'blocked',
-    );
+    expect(await host.invokeHook('bench', key: 'fetcher', method: 'get', args: {'url': 'https://second.example.com/x'}), 'blocked');
 
     // `domains` is a manifest field, so a dev build can change it between two
     // saves. Without carrying it through the reload the runtime would enforce
@@ -226,10 +223,7 @@ var boundHostCall = null
       const ExtensionBundle(key: 'fetcher', source: fetcher),
       domains: const ['first.example.com', 'second.example.com'],
     );
-    expect(
-      await host.invokeHook('bench', key: 'fetcher', method: 'get', args: {'url': 'https://second.example.com/x'}),
-      'allowed',
-    );
+    expect(await host.invokeHook('bench', key: 'fetcher', method: 'get', args: {'url': 'https://second.example.com/x'}), 'allowed');
     expect(requested, ['second.example.com']);
   });
 
@@ -252,7 +246,9 @@ var boundHostCall = null
 ''';
     final host = await hostWith(
       [const ExtensionBundle(key: 'fetcher', source: fetcher)],
-      allowlists: {'fetcher': const ['first.example.com']},
+      allowlists: {
+        'fetcher': const ['first.example.com'],
+      },
       httpClient: client,
     );
 
@@ -260,9 +256,6 @@ var boundHostCall = null
     // that as "no domains" would silently revoke the extension's network
     // access on every reload.
     await host.reloadBundle(const ExtensionBundle(key: 'fetcher', source: fetcher));
-    expect(
-      await host.invokeHook('bench', key: 'fetcher', method: 'get', args: {'url': 'https://first.example.com/x'}),
-      'allowed',
-    );
+    expect(await host.invokeHook('bench', key: 'fetcher', method: 'get', args: {'url': 'https://first.example.com/x'}), 'allowed');
   });
 }

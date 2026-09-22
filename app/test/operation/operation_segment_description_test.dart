@@ -24,17 +24,11 @@ void main() {
     // Merged by kind as the title is — two "at" refs join into one place list
     // — rather than one phrase per ref; the square joins that list rather
     // than getting an "at" of its own.
-    expect(
-      segmentDescriptionFor(t, suggestions, 'FN21rq', kind: 'start'),
-      'For NJQP: MORR at US-1234, KFF-1234, FN21rq',
-    );
+    expect(segmentDescriptionFor(t, suggestions, 'FN21rq', kind: 'start'), 'For NJQP: MORR at US-1234, KFF-1234, FN21rq');
   });
 
   test('a break says what is now true', () {
-    expect(
-      segmentDescriptionFor(t, suggestions, 'FN21rq', kind: 'break'),
-      'Now for NJQP: MORR at US-1234, KFF-1234, FN21rq',
-    );
+    expect(segmentDescriptionFor(t, suggestions, 'FN21rq', kind: 'break'), 'Now for NJQP: MORR at US-1234, KFF-1234, FN21rq');
   });
 
   test('a square alone is still a place, and nothing at all is nothing', () {

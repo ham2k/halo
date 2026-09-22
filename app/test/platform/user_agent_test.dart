@@ -54,17 +54,20 @@ void main() {
 
     Future<void> resolveIn(String zone) {
       final done = Completer<void>();
-      runZonedGuarded(() async {
-        try {
-          answered[zone] = await ham2kUserAgent();
-        } catch (e) {
-          answered[zone] = e;
-        }
-        if (!done.isCompleted) done.complete();
-      }, (e, _) {
-        uncaught.add(e);
-        if (!done.isCompleted) done.complete();
-      });
+      runZonedGuarded(
+        () async {
+          try {
+            answered[zone] = await ham2kUserAgent();
+          } catch (e) {
+            answered[zone] = e;
+          }
+          if (!done.isCompleted) done.complete();
+        },
+        (e, _) {
+          uncaught.add(e);
+          if (!done.isCompleted) done.complete();
+        },
+      );
       return done.future;
     }
 
@@ -75,10 +78,6 @@ void main() {
 
     expect(uncaught, isEmpty, reason: 'an error reached a zone no caller was listening in');
     expect(answered['first'], isA<MissingPluginException>(), reason: '`flutter test` registers no plugins');
-    expect(
-      answered['second'],
-      isA<MissingPluginException>(),
-      reason: 'the second caller must resolve in its own zone, not wait forever on the first',
-    );
+    expect(answered['second'], isA<MissingPluginException>(), reason: 'the second caller must resolve in its own zone, not wait forever on the first');
   });
 }

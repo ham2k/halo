@@ -52,11 +52,7 @@ SettingCommandKind _kindFrom(String? raw) => switch (raw) {
 /// Always answers; never throws. A query matching nothing reports
 /// `found: false` rather than an error, because this runs on every keystroke
 /// of a half-typed command and "no match yet" is the normal state.
-Future<Map<String, dynamic>> searchSettingsForCommand(
-  HaLoServices services, {
-  required String args,
-  String? kind,
-}) async {
+Future<Map<String, dynamic>> searchSettingsForCommand(HaLoServices services, {required String args, String? kind}) async {
   final commandKind = _kindFrom(kind);
   final catalog = await buildSettingsCatalog(services, developerMode: services.settings.developerMode);
 
@@ -78,10 +74,10 @@ Future<Map<String, dynamic>> searchSettingsForCommand(
   // and a name that IS the query is never as good as one that merely starts
   // with it (both earn the same raw score — see [settingNameEquals]).
   final runnerUp = matches.length > 1 ? matches[1] : null;
-  final isAmbiguous = runnerUp != null &&
+  final isAmbiguous =
+      runnerUp != null &&
       runnerUp.viaDescription == best.viaDescription &&
-      settingNameEquals(best.entry, name, kind: commandKind) ==
-          settingNameEquals(runnerUp.entry, name, kind: commandKind) &&
+      settingNameEquals(best.entry, name, kind: commandKind) == settingNameEquals(runnerUp.entry, name, kind: commandKind) &&
       fuzzyScoresTie(best.score, runnerUp.score);
 
   final entry = best.entry;
@@ -112,8 +108,7 @@ Future<Map<String, dynamic>> searchSettingsForCommand(
     // The whole catalog is only a few dozen entries; sending all of them costs
     // nothing worth optimizing.
     'candidates': [
-      for (final match in matches)
-        {'key': match.entry.key, 'label': match.entry.label, 'section': match.entry.section},
+      for (final match in matches) {'key': match.entry.key, 'label': match.entry.label, 'section': match.entry.section},
     ],
   };
 
@@ -209,11 +204,7 @@ bool _isUnchanged(SettingsCatalogEntry entry, dynamic newValue) {
 /// outright and kept only as the fallback for reporting what it does accept.
 ///
 /// SHOW/HIDE take no value at all, so they only ever try the whole string.
-(List<SettingMatch>, String, String?)? _splitArgs(
-  String args,
-  List<SettingsCatalogEntry> catalog,
-  SettingCommandKind kind,
-) {
+(List<SettingMatch>, String, String?)? _splitArgs(String args, List<SettingsCatalogEntry> catalog, SettingCommandKind kind) {
   final tokens = args.trim().split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
   if (tokens.isEmpty) return null;
 
@@ -289,11 +280,7 @@ bool _isUnchanged(SettingsCatalogEntry entry, dynamic newValue) {
 /// than trusting a key resolved milliseconds ago: an extension restart or a
 /// dev-mode toggle between preview and Enter can retire a setting, and writing
 /// to a stale route would put the value somewhere nothing reads.
-Future<String?> applySettingCommand(
-  HaLoServices services, {
-  required String key,
-  required dynamic value,
-}) async {
+Future<String?> applySettingCommand(HaLoServices services, {required String key, required dynamic value}) async {
   ScannedSetting? target;
   for (final scanned in await scanSettings(services)) {
     if (scanned.isField && scanned.key == key) {
@@ -357,13 +344,7 @@ Future<String?> applySettingCommand(
   if (error != null) return error;
 
   final committedValue = route.kind == 'dynamic'
-      ? await services.extensions.transformSettingsField(
-          hookKey: route.hookKey,
-          panelKey: route.panelKey,
-          fieldKey: route.fieldKey,
-          value: value,
-          state: state,
-        )
+      ? await services.extensions.transformSettingsField(hookKey: route.hookKey, panelKey: route.panelKey, fieldKey: route.fieldKey, value: value, state: state)
       : value;
 
   await services.extensions.commitSettingsFieldValue(

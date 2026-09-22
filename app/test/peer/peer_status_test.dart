@@ -19,7 +19,6 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
 import 'package:ham2k_logger/views/peers_panel.dart';
 
-
 import '../support/halo_test_support.dart';
 
 /// A peer service whose live links are stated rather than dialled.
@@ -76,14 +75,15 @@ void main() {
   /// Navigator and its own context has none), so a tree without one takes the
   /// tap, logs a line, and opens nothing.
   Future<void> pumpOverlay(WidgetTester tester) async {
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        builder: (context, child) =>
-            StatusBarOverlay(services: services, child: child ?? const SizedBox.shrink()),
-        home: const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand()),
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => StatusBarOverlay(services: services, child: child ?? const SizedBox.shrink()),
+          home: const Scaffold(resizeToAvoidBottomInset: false, body: SizedBox.expand()),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
@@ -130,8 +130,10 @@ void main() {
 
     await tester.tap(find.byIcon(MdiIcons.lanConnect));
     await tester.pumpAndSettle();
-    expect(find.text(TranslationProvider.of(tester.element(find.byType(StatusBarOverlay)))
-        .translations.settings.peers.statusPerma(connected: 0, linked: 2)), findsOneWidget);
+    expect(
+      find.text(TranslationProvider.of(tester.element(find.byType(StatusBarOverlay))).translations.settings.peers.statusPerma(connected: 0, linked: 2)),
+      findsOneWidget,
+    );
 
     // The entry opens the panel itself, not a summary of it. Explicit pumps
     // from here: the panel's device list is a StreamBuilder over a live drift
@@ -163,13 +165,14 @@ void main() {
     await pumpOverlay(tester);
 
     expect(find.text('1'), findsOneWidget);
-    expect(tester.widget<Icon>(find.byIcon(MdiIcons.lanConnect)).color!.a, 1.0,
-        reason: 'a live link is not a status standing down');
+    expect(tester.widget<Icon>(find.byIcon(MdiIcons.lanConnect)).color!.a, 1.0, reason: 'a live link is not a status standing down');
 
     await tester.tap(find.byIcon(MdiIcons.lanConnect));
     await tester.pumpAndSettle();
-    expect(find.text(TranslationProvider.of(tester.element(find.byType(StatusBarOverlay)))
-        .translations.settings.peers.statusPerma(connected: 1, linked: 2)), findsOneWidget);
+    expect(
+      find.text(TranslationProvider.of(tester.element(find.byType(StatusBarOverlay))).translations.settings.peers.statusPerma(connected: 1, linked: 2)),
+      findsOneWidget,
+    );
   });
 
   testWidgets('forgetting the last device takes the status away again', (tester) async {

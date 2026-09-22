@@ -120,8 +120,7 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
   /// The editor's troubleshooting note tells the operator that; this stays
   /// one attempt.
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
-      _attempt(target, cancel: cancel);
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) => _attempt(target, cancel: cancel);
 
   Future<EquipmentConnection> _attempt(Map<String, dynamic> target, {required CatCancelToken cancel}) async {
     if (cancel.isCancelled) throw const CatCancelledException();
@@ -155,6 +154,7 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
         if (!lost.isCompleted) lost.completeError(error);
       };
     }
+
     // For the two steps below that can't be raced (see their own comment):
     // if the step ALSO fails on its own — the same outage that killed the
     // other session plausibly kills this one's handshake too — prefer
@@ -196,21 +196,15 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
       audio = audioSocket;
       // Bound and never read (see the file header) — an error here has no
       // connection to tear down, only a socket to stop draining.
-      audioSocket.listen(
-          (_) => audioSocket.receive(), onError: (Object e) => debugPrint('[cat] icom audio socket error: $e'));
+      audioSocket.listen((_) => audioSocket.receive(), onError: (Object e) => debugPrint('[cat] icom audio socket error: $e'));
 
       if (cancel.isCancelled) throw const CatCancelledException();
 
-      await raceLost(control.requestStreams(
-        authId: authId,
-        token: token,
-        username: username,
-        serialPort: serialSession.localPort,
-        audioPort: audioSocket.port,
-      ));
+      await raceLost(
+        control.requestStreams(authId: authId, token: token, username: username, serialPort: serialSession.localPort, audioPort: audioSocket.port),
+      );
 
-      serialSession.sendTracked(
-          buildSerialOpen(serialSession.localSid, serialSession.remoteSid, 0, magic: icomSerialOpenMagic));
+      serialSession.sendTracked(buildSerialOpen(serialSession.localSid, serialSession.remoteSid, 0, magic: icomSerialOpenMagic));
 
       control.onSetupLost = null;
       serialSession.onSetupLost = null;
@@ -338,8 +332,7 @@ class _IcomSession {
     socket.listen(session._onEvent, onError: session._onSocketError);
     // From the local PORT alone, little-endian in the top half — a capture
     // settled this; polo derived it from the IP and got intermittency.
-    session.localSid =
-        (((socket.port & 0xFF) << 24) | (((socket.port >> 8) & 0xFF) << 16)) & 0xFFFFFFFF;
+    session.localSid = (((socket.port & 0xFF) << 24) | (((socket.port >> 8) & 0xFF) << 16)) & 0xFFFFFFFF;
 
     // Everything from here can throw on a timeout, and both failures leave
     // something behind if we simply propagate. The socket leaks — one per
@@ -350,13 +343,11 @@ class _IcomSession {
     // transport spent a long time being blamed for.
     try {
       session._send(buildPkt3(session.localSid, 0));
-      final pkt4 = await session._expect(
-          'pkt4', (b) => b.length == 16 && icomPrefixIs(b, [0x10, 0, 0, 0, 0x04, 0, 0, 0]));
+      final pkt4 = await session._expect('pkt4', (b) => b.length == 16 && icomPrefixIs(b, [0x10, 0, 0, 0, 0x04, 0, 0, 0]));
       session.remoteSid = readBe32(pkt4, 8);
 
       session._send(buildPkt6(session.localSid, session.remoteSid));
-      await session._expect('pkt6 answer',
-          (b) => b.length == 16 && icomPrefixIs(b, [0x10, 0, 0, 0, 0x06, 0, 0x01, 0]));
+      await session._expect('pkt6 answer', (b) => b.length == 16 && icomPrefixIs(b, [0x10, 0, 0, 0, 0x06, 0, 0x01, 0]));
     } catch (_) {
       // Only worth a disconnect once the radio has told us its session id;
       // before pkt4 there is nothing on its side to release.
@@ -444,7 +435,6 @@ class _IcomSession {
 
     // Anything at all proves the radio is still there.
     _pingsUnanswered = 0;
-
 
     // The radio pings us; not answering gets the session dropped.
     if (bytes.length == 21 && bytes[4] == 0x07 && bytes[16] == 0x00) {
@@ -579,14 +569,7 @@ class _IcomSession {
 
   Future<List<int>> login({required String username, required String password}) async {
     final start = [Random().nextInt(256), Random().nextInt(256)];
-    sendTracked(buildLogin(
-      local: localSid,
-      remote: remoteSid,
-      innerSeq: _innerSeq++,
-      authStartId: start,
-      username: username,
-      password: password,
-    ));
+    sendTracked(buildLogin(local: localSid, remote: remoteSid, innerSeq: _innerSeq++, authStartId: start, username: username, password: password));
     final List<int> answer;
     try {
       // Six bytes, NOT eight. Bytes 6..7 are the sender's outer sequence
@@ -623,8 +606,7 @@ class _IcomSession {
     final authId = answer.sublist(26, 32);
     _authId = authId;
 
-    sendTracked(buildAuth(
-        local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x02, authId: authId));
+    sendTracked(buildAuth(local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x02, authId: authId));
 
     // Started HERE, not in _startKeepalives, because only a session that has
     // logged in has anything to re-authenticate. _startKeepalives runs for the
@@ -633,8 +615,7 @@ class _IcomSession {
     // check in another method. See [_reauthInterval] for why it exists.
     _reauthTimer = Timer.periodic(_reauthInterval, (_) {
       if (_closed) return;
-      sendTracked(buildAuth(
-          local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x05, authId: authId));
+      sendTracked(buildAuth(local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x05, authId: authId));
     });
     return authId;
   }
@@ -647,8 +628,7 @@ class _IcomSession {
       if (b.length == 168 && icomPrefixIs(b, [0xa8, 0, 0, 0, 0, 0])) token = b.sublist(66, 82);
     });
     _failPending = (error) => socketError = error;
-    sendTracked(buildAuth(
-        local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x05, authId: _authId!));
+    sendTracked(buildAuth(local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x05, authId: _authId!));
 
     // Real time: a protocol timeout measures how long the radio actually took
     // to answer, which has nothing to do with what time the app thinks it is.
@@ -675,22 +655,23 @@ class _IcomSession {
     required int serialPort,
     required int audioPort,
   }) async {
-    sendTracked(buildRequestStreams(
-      local: localSid,
-      remote: remoteSid,
-      innerSeq: _innerSeq++,
-      authId: authId,
-      a8ReplyId: token,
-      username: username,
-      ourSerialPort: serialPort,
-      ourAudioPort: audioPort,
-      audioSampleRate: icomAudioSampleRate,
-      txBufferMs: icomTxBufferMs,
-    ));
+    sendTracked(
+      buildRequestStreams(
+        local: localSid,
+        remote: remoteSid,
+        innerSeq: _innerSeq++,
+        authId: authId,
+        a8ReplyId: token,
+        username: username,
+        ourSerialPort: serialPort,
+        ourAudioPort: audioPort,
+        audioSampleRate: icomAudioSampleRate,
+        txBufferMs: icomTxBufferMs,
+      ),
+    );
 
     // The answer is an 0x50, not the 0x90 the radio also sends unprompted.
-    final answer = await _expect('stream answer',
-        (b) => b.length == 80 && icomPrefixIs(b, [0x50, 0, 0, 0, 0, 0]) && b[20] == 0x02);
+    final answer = await _expect('stream answer', (b) => b.length == 80 && icomPrefixIs(b, [0x50, 0, 0, 0, 0, 0]) && b[20] == 0x02);
 
     // A POSITIVE test — never a hunt for a refusal marker with "not found"
     // treated as success (see readStreamAnswer): an AUTH FAILURE would pass
@@ -735,8 +716,7 @@ class _IcomSession {
     // Listen before sending: the ack came back in 71ms on the capture, but
     // nothing says it cannot beat our own next line.
     final ack = _expect('logout acknowledgement', isLogoutAck, timeout: _logoutAckTimeout);
-    sendTracked(buildAuth(
-        local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x01, authId: authId));
+    sendTracked(buildAuth(local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x01, authId: authId));
     try {
       await ack;
     } catch (e) {
@@ -795,12 +775,7 @@ class _IcomConnection implements EquipmentConnection {
   int _civSeq = 1;
   var _open = true;
 
-  _IcomConnection({
-    required this.control,
-    required this.serial,
-    required this.audio,
-    required this.authId,
-  }) {
+  _IcomConnection({required this.control, required this.serial, required this.audio, required this.authId}) {
     serial.onMessage((bytes) {
       if (!isCivData(bytes)) return;
       if (!_dataController.isClosed) {

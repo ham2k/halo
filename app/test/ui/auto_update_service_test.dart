@@ -100,11 +100,7 @@ void main() {
   ({List<String> builds, List<bool> automatic}) installShimStub({required bool applied}) {
     final builds = <String>[];
     final automatic = <bool>[];
-    AutoUpdateService.debugConfigureWinSparkle = ({
-      required String buildVersion,
-      required int checkIntervalSeconds,
-      required bool automaticChecks,
-    }) {
+    AutoUpdateService.debugConfigureWinSparkle = ({required String buildVersion, required int checkIntervalSeconds, required bool automaticChecks}) {
       builds.add(buildVersion);
       automatic.add(automaticChecks);
       platform.events.add('winSparkleConfig');
@@ -305,10 +301,7 @@ void main() {
       // install on a path that 404s silently and forever (see _platform's own
       // comment). A loose endsWith/contains assertion would wave that through.
       // Tests run off Windows, so _platform resolves to the macOS variant.
-      expect(
-        const AutoUpdateService().feedUrl,
-        'https://updates.ham2k.net/halo-${kEdition.name}/macos-universal/appcast.xml',
-      );
+      expect(const AutoUpdateService().feedUrl, 'https://updates.ham2k.net/halo-${kEdition.name}/macos-universal/appcast.xml');
     });
   });
 

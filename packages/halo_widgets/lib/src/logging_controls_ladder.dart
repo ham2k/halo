@@ -74,11 +74,7 @@ typedef FocusLadderConfig = ({
 /// own focus listeners repaint. Disposed with the panel; a post-frame
 /// callback that outlives it checks before touching a node.
 class LoggingFocusLadder {
-  LoggingFocusLadder({
-    required this.config,
-    required this.selectControl,
-    required this.showControl,
-  });
+  LoggingFocusLadder({required this.config, required this.selectControl, required this.showControl});
 
   /// The panel as it stands right now.
   final FocusLadderConfig Function() config;
@@ -303,10 +299,7 @@ class LoggingFocusLadder {
   /// themselves are rebuilt constantly and animate in and out.
   final Map<String, FocusNode> _pillFocus = {};
 
-  FocusNode pillFocusFor(String key) => _pillFocus[key] ??= FocusNode(
-        debugLabel: 'pill:$key',
-        onKeyEvent: (node, event) => onPillKeyEvent(key, event),
-      );
+  FocusNode pillFocusFor(String key) => _pillFocus[key] ??= FocusNode(debugLabel: 'pill:$key', onKeyEvent: (node, event) => onPillKeyEvent(key, event));
 
   /// The pill keys on the strip, in display order — recorded by the panel
   /// as it assembles the specs, so the arrow keys walk exactly what is on
@@ -332,21 +325,14 @@ class LoggingFocusLadder {
     final order = pillOrder;
     if (order.isEmpty) return null;
     final remembered = _lastPillKey;
-    final target = (key != null && order.contains(key))
-        ? key
-        : (remembered != null && order.contains(remembered) ? remembered : order.first);
+    final target = (key != null && order.contains(key)) ? key : (remembered != null && order.contains(remembered) ? remembered : order.first);
     _lastPillKey = target;
     final node = pillFocusFor(target);
     node.requestFocus();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final context = node.context;
       if (context == null || _disposed) return;
-      Scrollable.ensureVisible(
-        context,
-        alignment: 0.5,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-      );
+      Scrollable.ensureVisible(context, alignment: 0.5, duration: const Duration(milliseconds: 150), curve: Curves.easeOut);
     });
     return target;
   }
@@ -620,9 +606,7 @@ class LoggingFocusLadder {
       _closeExpandedControlToQsoList(key);
       return KeyEventResult.handled;
     }
-    if (logicalKey == LogicalKeyboardKey.arrowDown ||
-        logicalKey == LogicalKeyboardKey.enter ||
-        logicalKey == LogicalKeyboardKey.numpadEnter) {
+    if (logicalKey == LogicalKeyboardKey.arrowDown || logicalKey == LogicalKeyboardKey.enter || logicalKey == LogicalKeyboardKey.numpadEnter) {
       closeExpandedControl(key);
       return KeyEventResult.handled;
     }
@@ -665,17 +649,17 @@ class LoggingFocusLadder {
   /// re-listing the fields here drops any the spec grows later, and a chip
   /// rendering the default is not a failure anything reports.
   SecondaryControlSpec withKeyboardNavigation(SecondaryControlSpec spec, {bool enabled = true}) => spec.copyWith(
-        focusNode: pillFocusFor(spec.key),
-        enabled: enabled,
-        expandedBuilder: (context) => Focus(
-          // Not a stop on the way anywhere: it exists only to see key events
-          // on their way up from whatever inside the control has focus.
-          canRequestFocus: false,
-          skipTraversal: true,
-          onKeyEvent: (node, event) => onExpandedKeyEvent(spec.key, event),
-          child: spec.expandedBuilder(context),
-        ),
-      );
+    focusNode: pillFocusFor(spec.key),
+    enabled: enabled,
+    expandedBuilder: (context) => Focus(
+      // Not a stop on the way anywhere: it exists only to see key events
+      // on their way up from whatever inside the control has focus.
+      canRequestFocus: false,
+      skipTraversal: true,
+      onKeyEvent: (node, event) => onExpandedKeyEvent(spec.key, event),
+      child: spec.expandedBuilder(context),
+    ),
+  );
 
   void dispose() {
     _disposed = true;

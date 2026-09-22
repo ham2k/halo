@@ -115,6 +115,7 @@ class SyncEngine {
   static const defaultLargeBatchSize = 100; // matches sync.js
   static const debounceDelay = Duration(milliseconds: 500);
   static const debounceMaxWait = Duration(seconds: 3);
+
   /// The wait after a full page while paging through a large set — the
   /// server's `suggested_sync_loop_delay`, which api-lofi clamps to clear its
   /// own per-client cooldown (`Client#meta_for_client`), so a round that waits
@@ -180,14 +181,8 @@ class SyncEngine {
   /// `synced_since` ascending. The server refuses a cursor minted for the
   /// other window, so a shared key would cost a round every time the phase
   /// flips — and a phase flips back on every forced resync.
-  static const backfillCursorKeys = {
-    'operations': 'backfillOperationCursor',
-    'qsos': 'backfillQSOCursor',
-  };
-  static const forwardCursorKeys = {
-    'operations': 'forwardOperationCursor',
-    'qsos': 'forwardQSOCursor',
-  };
+  static const backfillCursorKeys = {'operations': 'backfillOperationCursor', 'qsos': 'backfillQSOCursor'};
+  static const forwardCursorKeys = {'operations': 'forwardOperationCursor', 'qsos': 'forwardQSOCursor'};
 
   int _largeBatchSize = defaultLargeBatchSize;
 
@@ -282,7 +277,6 @@ class SyncEngine {
   /// (`QsosRepository.hardDeletePurgedOrphans`) — see its call site for why
   /// that sweep is not run on every round.
   bool _sweptPurgedOrphans = false;
-
 
   /// When the loop timer will next fire, on the REAL clock — a scheduled
   /// wall-clock instant whose remainder becomes a `Timer` duration, so it
@@ -622,8 +616,7 @@ class SyncEngine {
   /// The pull limit as it stands this round: the page, grown by the backfill
   /// tie boost, held under the failure cap, and never past what the server
   /// will send or below one merge slice.
-  int get _pullLimit =>
-      (backfillPullLimit * _backfillLimitBoost).clamp(mergeChunkSize, _pullPageCap.clamp(mergeChunkSize, serverMaxPullLimit));
+  int get _pullLimit => (backfillPullLimit * _backfillLimitBoost).clamp(mergeChunkSize, _pullPageCap.clamp(mergeChunkSize, serverMaxPullLimit));
 
   /// Once linked, a "small batch" round (a debounced reaction to a local
   /// edit) always has something to push, by construction, and never pulls.
@@ -723,14 +716,10 @@ class SyncEngine {
       // Read from the same state `_buildPayload` reads a line below.
       final sentCursors = <String, String?>{
         if (pull)
-          for (final entry in (backfilling ? backfillCursorKeys : forwardCursorKeys).entries)
-            entry.key: settings.state[entry.value] as String?,
+          for (final entry in (backfilling ? backfillCursorKeys : forwardCursorKeys).entries) entry.key: settings.state[entry.value] as String?,
       };
       _pullInFlight = pull;
-      final response = await _callTransport(
-        'sync',
-        await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit),
-      );
+      final response = await _callTransport('sync', await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit));
       if (_pullInFlight) _pullPageCap = serverMaxPullLimit;
       _pullInFlight = false;
       if (generation != _generation) return _abandonRound();
@@ -804,8 +793,14 @@ class SyncEngine {
       // Passes the sent models, not just uuids: markSynced compares each
       // row's revision stamp against the copy that actually went out, so an
       // edit made during the network await above stays dirty and re-pushes.
-      final acceptedOperations = [for (final o in batch.operations) if (!rejectedOperations.containsKey(o.uuid)) o];
-      final acceptedQsos = [for (final q in batch.qsos) if (!rejectedQsos.containsKey(q.uuid)) q];
+      final acceptedOperations = [
+        for (final o in batch.operations)
+          if (!rejectedOperations.containsKey(o.uuid)) o,
+      ];
+      final acceptedQsos = [
+        for (final q in batch.qsos)
+          if (!rejectedQsos.containsKey(q.uuid)) q,
+      ];
       await operations.markSynced(acceptedOperations);
       await qsos.markSynced(acceptedQsos);
 
@@ -816,8 +811,7 @@ class SyncEngine {
       // would otherwise loop against the server for as long as the app runs —
       // records stay dirty by design here, so "something is pending" is no
       // longer evidence that trying again immediately can achieve anything.
-      final pushProgressed =
-          !batch.isEmpty && (acceptedOperations.isNotEmpty || acceptedQsos.isNotEmpty);
+      final pushProgressed = !batch.isEmpty && (acceptedOperations.isNotEmpty || acceptedQsos.isNotEmpty);
 
       // The deferred half of a Test Operation purge (`OperationsRepository.
       // purge`): sweeps every operation that is confirmed both `purged` and
@@ -835,11 +829,14 @@ class SyncEngine {
       final opWatermark = inboundOperations.isEmpty ? null : await operations.mergeFromSync(inboundOperations);
       final qsoWatermark = inboundQsos.isEmpty
           ? null
-          : await mergeQsosReportingProgress(qsos, inboundQsos, response,
+          : await mergeQsosReportingProgress(
+              qsos,
+              inboundQsos,
+              response,
               sliceSize: mergeChunkSize,
               onProgress: backfilling ? onProgress : null,
-              abandoned: () => generation != _generation);
-
+              abandoned: () => generation != _generation,
+            );
 
       // The QSOs the `hardDeletePurgedForOperation` loop above can no longer
       // reach: their operation row is already gone (an earlier round's
@@ -883,15 +880,16 @@ class SyncEngine {
       // records that an operation row was removed here.
       final droppedPurges = await operations.hardDeleteEmptyReceivedPurges();
       if (droppedPurges.isNotEmpty) {
-        log?.call('[sync] dropped ${droppedPurges.length} received purge(s) with nothing held here: '
-            '${droppedPurges.join(', ')}');
+        log?.call(
+          '[sync] dropped ${droppedPurges.length} received purge(s) with nothing held here: '
+          '${droppedPurges.join(', ')}',
+        );
       }
 
       _errorCount = 0;
 
       if (!smallBatch) {
-        final morePending =
-            pushProgressed && (await operations.hasUnsynced() || await qsos.hasUnsynced());
+        final morePending = pushProgressed && (await operations.hasUnsynced() || await qsos.hasUnsynced());
         onPushBacklog?.call(morePending);
         final fullPage = inboundOperations.length >= pullLimit || inboundQsos.length >= pullLimit;
         // Three different waits. A push backlog goes straight back out:
@@ -903,11 +901,13 @@ class SyncEngine {
         // fastest the cooldown allows, and there is no slower rate to fall
         // back to that is not the idle one. Caught up, the check period sets
         // the idle rate.
-        _scheduleLoop(morePending
-            ? Duration.zero
-            : fullPage && !(_lastPageStuck && _loopDelay == Duration.zero)
-                ? _loopDelay
-                : _checkPeriod);
+        _scheduleLoop(
+          morePending
+              ? Duration.zero
+              : fullPage && !(_lastPageStuck && _loopDelay == Duration.zero)
+              ? _loopDelay
+              : _checkPeriod,
+        );
       }
     } on SyncTransportNotReady catch (e) {
       // Not a failure: the extension host simply has not finished loading. Do
@@ -1116,12 +1116,7 @@ class SyncEngine {
     return pagination is Map && pagination['cursor'] != null;
   }
 
-  Future<Map<String, dynamic>> _buildPayload(
-    SyncBatch batch, {
-    required bool pull,
-    required bool backfilling,
-    required int limit,
-  }) async {
+  Future<Map<String, dynamic>> _buildPayload(SyncBatch batch, {required bool pull, required bool backfilling, required int limit}) async {
     final operationCounts = await operations.syncCounts();
     final qsoCounts = await qsos.syncCounts();
     final state = settings.state;
@@ -1138,8 +1133,7 @@ class SyncEngine {
     return {
       if (batch.operations.isNotEmpty)
         'operations': [
-          for (final o in batch.operations)
-            {...o.data, 'uuid': o.uuid, if (o.deleted) 'deleted': true, if (o.purged) 'purged': true},
+          for (final o in batch.operations) {...o.data, 'uuid': o.uuid, if (o.deleted) 'deleted': true, if (o.purged) 'purged': true},
         ],
       if (batch.qsos.isNotEmpty)
         'qsos': [
@@ -1186,8 +1180,7 @@ class SyncEngine {
               ? {
                   'operations': {
                     'syncedUntilMillis': (state['earliestOperationSyncedAtMillis'] as num?)?.toInt() ?? backfillFrom,
-                    if (state[backfillCursorKeys['operations']!] != null)
-                      'cursor': state[backfillCursorKeys['operations']!],
+                    if (state[backfillCursorKeys['operations']!] != null) 'cursor': state[backfillCursorKeys['operations']!],
                     'limit': limit,
                     'anyClient': true,
                   },
@@ -1201,8 +1194,7 @@ class SyncEngine {
               : {
                   'operations': {
                     'syncedSinceMillis': (state['latestOperationSyncedAtMillis'] as num?)?.toInt() ?? 0,
-                    if (state[forwardCursorKeys['operations']!] != null)
-                      'cursor': state[forwardCursorKeys['operations']!],
+                    if (state[forwardCursorKeys['operations']!] != null) 'cursor': state[forwardCursorKeys['operations']!],
                     'limit': limit,
                     'anyClient': false,
                   },
@@ -1386,8 +1378,7 @@ class SyncEngine {
         }
       }
 
-      advanceCursor('operations', 'earliestOperationSyncedAtMillis', backfillCursorKeys['operations']!, opWatermark,
-          inboundOperationsCount);
+      advanceCursor('operations', 'earliestOperationSyncedAtMillis', backfillCursorKeys['operations']!, opWatermark, inboundOperationsCount);
       advanceCursor('qsos', 'earliestQSOSyncedAtMillis', backfillCursorKeys['qsos']!, qsoWatermark, inboundQsosCount);
 
       // Trust the server's own records-left counts to decide whether older
@@ -1451,13 +1442,15 @@ class SyncEngine {
     final (:qsosLeft, :qsosTotal, :operationsLeft, :operationsTotal) = serverCounts(meta);
     if (!completed && qsosLeft == null && qsosTotal == null && operationsLeft == null && operationsTotal == null) return;
 
-    onProgress!(SyncProgress(
-      backfilling: !completed,
-      qsosTotal: qsosTotal,
-      qsosLeft: completed ? 0 : qsosLeft,
-      operationsTotal: operationsTotal,
-      operationsLeft: completed ? 0 : operationsLeft,
-    ));
+    onProgress!(
+      SyncProgress(
+        backfilling: !completed,
+        qsosTotal: qsosTotal,
+        qsosLeft: completed ? 0 : qsosLeft,
+        operationsTotal: operationsTotal,
+        operationsLeft: completed ? 0 : operationsLeft,
+      ),
+    );
   }
 
   /// A round overtaken by a reconciliation: its response was discarded, but

@@ -43,8 +43,7 @@ Future<Map<String, dynamic>> resetDevFixture(HaLoServices services) async {
   final operatorCall = services.settings.activeProfile.operatorCall;
   final stationCall = operatorCall.isNotEmpty ? operatorCall : 'N0DEV';
   final operation = await services.operations.create(stationCall: stationCall, userTitle: 'HALO Fixture');
-  await services.operations
-      .saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'grid': fixtureOperationGrid}));
+  await services.operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'grid': fixtureOperationGrid}));
 
   final seeds = fixtureQsos(nowMillis());
   for (final qso in seeds) {
@@ -53,10 +52,14 @@ Future<Map<String, dynamic>> resetDevFixture(HaLoServices services) async {
 
   // Land in the seeded operation, clearing whatever was on the stack (keep the
   // home route beneath so Back still works).
-  unawaited(navigatorKey.currentState?.pushAndRemoveUntil(
-    MaterialPageRoute<void>(builder: (_) => OperationView(services: services, operationUuid: operation.uuid)),
-    (route) => route.isFirst,
-  ));
+  unawaited(
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute<void>(
+        builder: (_) => OperationView(services: services, operationUuid: operation.uuid),
+      ),
+      (route) => route.isFirst,
+    ),
+  );
 
   // `backupId` lets a caller find the pre-reset data in the backup tables.
   return {'uuid': operation.uuid, 'stationCall': stationCall, 'qsoCount': seeds.length, 'backupId': backupId};

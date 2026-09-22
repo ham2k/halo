@@ -27,10 +27,7 @@ void main() {
   });
 
   test('the current spelling wins when a record somehow carries both', () {
-    const operation = Operation(uuid: 'op', data: {
-      'createdAtMillis': 2,
-      'createdOnMillis': 1,
-    });
+    const operation = Operation(uuid: 'op', data: {'createdAtMillis': 2, 'createdOnMillis': 1});
     expect(operation.createdAtMillis, 2);
   });
 
@@ -47,12 +44,7 @@ void main() {
 
     test('an inbound legacy record keeps its dates, under the current names', () async {
       await operations.mergeFromSync([
-        {
-          'uuid': 'legacy-op',
-          'stationCall': 'N0DEV',
-          'createdOnMillis': 1700000000000,
-          'updatedOnMillis': 1700000000001,
-        },
+        {'uuid': 'legacy-op', 'stationCall': 'N0DEV', 'createdOnMillis': 1700000000000, 'updatedOnMillis': 1700000000001},
       ]);
 
       final stored = (await operations.get('legacy-op'))!;

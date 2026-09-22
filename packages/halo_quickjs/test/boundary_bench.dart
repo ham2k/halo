@@ -77,8 +77,10 @@ void main() {
     print('t3 eval string literal:    ${sw3.elapsedMilliseconds} ms   -> ${r3.text}');
     print('t4 JSON.parse:             ${sw4.elapsedMilliseconds} ms   -> ${r4.text}');
     print('t5 eval object literal:    ${sw5.elapsedMilliseconds} ms   -> ${r5.text}');
-    print('CURRENT total transport (t1+t2+t3+t4): '
-        '${sw1.elapsedMilliseconds + sw2.elapsedMilliseconds + sw3.elapsedMilliseconds + sw4.elapsedMilliseconds} ms');
+    print(
+      'CURRENT total transport (t1+t2+t3+t4): '
+      '${sw1.elapsedMilliseconds + sw2.elapsedMilliseconds + sw3.elapsedMilliseconds + sw4.elapsedMilliseconds} ms',
+    );
     print('OBJECT-LITERAL total       (t1+t5):    ${sw1.elapsedMilliseconds + sw5.elapsedMilliseconds} ms');
 
     js.dispose();

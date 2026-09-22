@@ -69,10 +69,7 @@ class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
   final bool offersNearby;
 
   @override
-  Future<ControlsResult> operationControls(
-    Map<String, dynamic> operationData, {
-    Map<String, dynamic>? qso,
-  }) async =>
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
       (controls: const <Map<String, dynamic>>[], loadFailed: false);
 
   /// How many times the view has asked — the only way to see that a search
@@ -107,17 +104,11 @@ class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
   }
 }
 
-Future<(HaLoServices, Operation)> _harness(
-  LocationStatus status, {
-  String? grid,
-  bool offersNearby = true,
-  bool allSourcesFail = false,
-}) async {
+Future<(HaLoServices, Operation)> _harness(LocationStatus status, {String? grid, bool offersNearby = true, bool allSourcesFail = false}) async {
   SharedPreferences.setMockInitialValues({});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
-  final extensions = _NoActivityExtensions(offersNearby: offersNearby, allSourcesFail: allSourcesFail)
-    ..settings = settings;
+  final extensions = _NoActivityExtensions(offersNearby: offersNearby, allSourcesFail: allSourcesFail)..settings = settings;
   extensions.debugSetAvailableExtensions(const []);
   return (
     HaLoServices(db, settings, extensions: extensions, location: _FixedLocation(status)),
@@ -125,26 +116,23 @@ Future<(HaLoServices, Operation)> _harness(
   );
 }
 
-Future<void> _pump(
-  WidgetTester tester,
-  HaLoServices services,
-  Operation operation, {
-  Key? sheetKey,
-}) async {
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(
-      home: Scaffold(body: OperationSheet(key: sheetKey, services: services, operation: operation)),
+Future<void> _pump(WidgetTester tester, HaLoServices services, Operation operation, {Key? sheetKey}) async {
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: OperationSheet(key: sheetKey, services: services, operation: operation),
+        ),
+      ),
     ),
-  ));
+  );
   await tester.pumpAndSettle();
 }
 
 int _searchCount(HaLoServices services) => (services.extensions as _NoActivityExtensions).searches;
 
 /// The notice's headline paragraph.
-Finder _headline(String headline) => find.byWidgetPredicate(
-      (w) => w is Text && (w.textSpan?.toPlainText() ?? '').startsWith(headline),
-    );
+Finder _headline(String headline) => find.byWidgetPredicate((w) => w is Text && (w.textSpan?.toPlainText() ?? '').startsWith(headline));
 
 /// The whole notice — the tappable block the headline sits in, so an assertion
 /// scopes to it rather than to anything on the sheet that happens to match.
@@ -197,10 +185,7 @@ void main() {
 
     // The pin the hint tells the operator to tap is really drawn, inside the
     // notice's own text rather than anywhere on the sheet.
-    expect(
-      find.descendant(of: _notice(t.locationUnavailableTitle), matching: find.byType(Icon)),
-      findsOneWidget,
-    );
+    expect(find.descendant(of: _notice(t.locationUnavailableTitle), matching: find.byType(Icon)), findsOneWidget);
   });
 
   testWidgets('denied permission is named apart from a location that simply is not there', (tester) async {
@@ -253,9 +238,7 @@ void main() {
     expect(find.text('Some Park'), findsNothing, reason: 'nothing is nearby until there is a grid');
 
     // What the location editor's own result does when it comes back.
-    sheetKey.currentState!.updateOperation(
-      Operation(uuid: operation.uuid, data: {...operation.data, 'grid': 'FN31pr'}),
-    );
+    sheetKey.currentState!.updateOperation(Operation(uuid: operation.uuid, data: {...operation.data, 'grid': 'FN31pr'}));
     await tester.pumpAndSettle();
 
     expect(find.text('Some Park'), findsOneWidget);
@@ -271,9 +254,7 @@ void main() {
     final (services, operation) = await _harness(LocationStatus.unavailable);
     await _pump(tester, services, operation, sheetKey: sheetKey);
 
-    sheetKey.currentState!.updateOperation(
-      Operation(uuid: operation.uuid, data: {...operation.data, 'state': 'NY'}),
-    );
+    sheetKey.currentState!.updateOperation(Operation(uuid: operation.uuid, data: {...operation.data, 'state': 'NY'}));
     await tester.pumpAndSettle();
 
     // The fake answers on the grid, so the observable proof is that a search

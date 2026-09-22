@@ -102,10 +102,7 @@ void main() {
     });
 
     test('only the middle five are selectable; the extremes are shortcut-only', () {
-      expect(
-        FontScale.selectableValues,
-        [FontScale.smallest, FontScale.smaller, FontScale.normal, FontScale.larger, FontScale.largest],
-      );
+      expect(FontScale.selectableValues, [FontScale.smallest, FontScale.smaller, FontScale.normal, FontScale.larger, FontScale.largest]);
       // Ascending order is load-bearing: increase/decrease step by index.
       final factors = FontScale.values.map((s) => s.scaleFactor).toList();
       expect(factors, orderedEquals([...factors]..sort()), reason: 'enum must stay in ascending scale order');
@@ -138,11 +135,13 @@ void main() {
             textDirection: TextDirection.ltr,
             child: UiScale(
               scale: 2.0,
-              child: Builder(builder: (context) {
-                innerSize = MediaQuery.sizeOf(context);
-                reportedScale = UiScale.of(context);
-                return const SizedBox(key: Key('box'), width: 400, height: 400);
-              }),
+              child: Builder(
+                builder: (context) {
+                  innerSize = MediaQuery.sizeOf(context);
+                  reportedScale = UiScale.of(context);
+                  return const SizedBox(key: Key('box'), width: 400, height: 400);
+                },
+              ),
             ),
           ),
         ),
@@ -211,10 +210,12 @@ void main() {
           textDirection: TextDirection.ltr,
           child: UiScale(
             scale: 1.0,
-            child: Builder(builder: (context) {
-              reportedScale = UiScale.of(context);
-              return const SizedBox();
-            }),
+            child: Builder(
+              builder: (context) {
+                reportedScale = UiScale.of(context);
+                return const SizedBox();
+              },
+            ),
           ),
         ),
       );
@@ -249,13 +250,15 @@ void main() {
                 height: 400,
                 child: SubtreeUiScale(
                   scale: 2.0,
-                  child: Builder(builder: (context) {
-                    reportedScale = UiScale.of(context);
-                    return const Align(
-                      alignment: Alignment.topLeft,
-                      child: SizedBox(key: Key('square'), width: 50, height: 50),
-                    );
-                  }),
+                  child: Builder(
+                    builder: (context) {
+                      reportedScale = UiScale.of(context);
+                      return const Align(
+                        alignment: Alignment.topLeft,
+                        child: SizedBox(key: Key('square'), width: 50, height: 50),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -313,27 +316,29 @@ void main() {
     testWidgets('SubtreeUiScale at the scale already in force draws the same and keeps its shape', (tester) async {
       late Size innerSize;
       Future<void> pumpAt(double subtree) => tester.pumpWidget(
-            MediaQuery(
-              data: const MediaQueryData(size: Size(800, 800)),
-              child: Directionality(
-                textDirection: TextDirection.ltr,
-                child: UiScale(
-                  scale: 1.4,
-                  child: SizedBox(
-                    width: 400,
-                    height: 400,
-                    child: SubtreeUiScale(
-                      scale: subtree,
-                      child: Builder(builder: (context) {
-                        innerSize = MediaQuery.sizeOf(context);
-                        return const SizedBox(key: Key('box'), width: 100, height: 100);
-                      }),
-                    ),
+        MediaQuery(
+          data: const MediaQueryData(size: Size(800, 800)),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: UiScale(
+              scale: 1.4,
+              child: SizedBox(
+                width: 400,
+                height: 400,
+                child: SubtreeUiScale(
+                  scale: subtree,
+                  child: Builder(
+                    builder: (context) {
+                      innerSize = MediaQuery.sizeOf(context);
+                      return const SizedBox(key: Key('box'), width: 100, height: 100);
+                    },
                   ),
                 ),
               ),
             ),
-          );
+          ),
+        ),
+      );
 
       // Asking for the level already in effect is a no-op in what it DRAWS —
       // the relative factor is 1.0, so nothing below is divided or magnified.
@@ -401,11 +406,7 @@ void main() {
       // is what separates them rather than the logical key alone.
       await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
       HardwareKeyboard.instance.handleKeyEvent(
-        const KeyDownEvent(
-          physicalKey: PhysicalKeyboardKey.minus,
-          logicalKey: LogicalKeyboardKey.underscore,
-          timeStamp: Duration.zero,
-        ),
+        const KeyDownEvent(physicalKey: PhysicalKeyboardKey.minus, logicalKey: LogicalKeyboardKey.underscore, timeStamp: Duration.zero),
       );
       await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
       await tester.pump();
@@ -447,11 +448,7 @@ void main() {
 
       final height = tester.getSize(find.byType(AppBar).first).height;
       final devicePixels = height * FontScale.smaller.scaleFactor * 2.0;
-      expect(
-        devicePixels,
-        moreOrLessEquals(devicePixels.roundToDouble()),
-        reason: 'header height $height is off the device grid',
-      );
+      expect(devicePixels, moreOrLessEquals(devicePixels.roundToDouble()), reason: 'header height $height is off the device grid');
       // Snapping moves it by less than a device pixel, not to some other size.
       expect(height, moreOrLessEquals(48.0, epsilon: 1.0));
 

@@ -32,8 +32,10 @@ mixin ExtensionStoreSettings on ChangeNotifier {
   /// ExtensionService.isExtensionEnabled).
   static const _extensionOverridesKey = 'extensionOverrides';
 
-  Map<String, bool> get extensionOverrides =>
-      {for (final e in jsonMapPref(_extensionOverridesKey).entries) if (e.value is bool) e.key: e.value as bool};
+  Map<String, bool> get extensionOverrides => {
+    for (final e in jsonMapPref(_extensionOverridesKey).entries)
+      if (e.value is bool) e.key: e.value as bool,
+  };
 
   Future<void> setExtensionOverrides(Map<String, bool> overrides) async {
     await prefs.setString(_extensionOverridesKey, jsonEncode(overrides));
@@ -55,8 +57,10 @@ mixin ExtensionStoreSettings on ChangeNotifier {
   /// it back on the next launch.
   static const _extensionPreloadedKey = 'extensionPreloaded';
 
-  Map<String, String> get extensionPreloaded =>
-      {for (final e in jsonMapPref(_extensionPreloadedKey).entries) if (e.value is String) e.key: e.value as String};
+  Map<String, String> get extensionPreloaded => {
+    for (final e in jsonMapPref(_extensionPreloadedKey).entries)
+      if (e.value is String) e.key: e.value as String,
+  };
 
   Future<void> setExtensionPreloaded(Map<String, String> preloaded) async {
     await prefs.setString(_extensionPreloadedKey, jsonEncode(preloaded));
@@ -102,8 +106,10 @@ mixin ExtensionStoreSettings on ChangeNotifier {
   /// an extension away is the operator's decision, not one to undo at boot.
   static const _extensionAdoptedKey = 'extensionAdopted';
 
-  Map<String, String> get extensionAdopted =>
-      {for (final e in jsonMapPref(_extensionAdoptedKey).entries) if (e.value is String) e.key: e.value as String};
+  Map<String, String> get extensionAdopted => {
+    for (final e in jsonMapPref(_extensionAdoptedKey).entries)
+      if (e.value is String) e.key: e.value as String,
+  };
 
   Future<void> setExtensionAdopted(Map<String, String> adopted) async {
     await prefs.setString(_extensionAdoptedKey, jsonEncode(adopted));
@@ -120,8 +126,10 @@ mixin ExtensionStoreSettings on ChangeNotifier {
   /// by an ordinary update, with nobody having to notice anything.
   static const _extensionRefusedKey = 'extensionRefused';
 
-  Map<String, String> get extensionRefused =>
-      {for (final e in jsonMapPref(_extensionRefusedKey).entries) if (e.value is String) e.key: e.value as String};
+  Map<String, String> get extensionRefused => {
+    for (final e in jsonMapPref(_extensionRefusedKey).entries)
+      if (e.value is String) e.key: e.value as String,
+  };
 
   Future<void> setExtensionRefused(Map<String, String> refused) async {
     await prefs.setString(_extensionRefusedKey, jsonEncode(refused));
@@ -135,8 +143,10 @@ mixin ExtensionStoreSettings on ChangeNotifier {
   /// ExtensionService as extensions toggle; an entry vanishes on re-enable.
   static const _extensionDisabledSinceKey = 'extensionDisabledSince';
 
-  Map<String, int> get extensionDisabledSince =>
-      {for (final e in jsonMapPref(_extensionDisabledSinceKey).entries) if (e.value is int) e.key: e.value as int};
+  Map<String, int> get extensionDisabledSince => {
+    for (final e in jsonMapPref(_extensionDisabledSinceKey).entries)
+      if (e.value is int) e.key: e.value as int,
+  };
 
   Future<void> setExtensionDisabledSince(Map<String, int> disabledSince) async {
     await prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
@@ -153,13 +163,13 @@ mixin ExtensionStoreSettings on ChangeNotifier {
   static const _extensionInstalledFromKey = 'extensionInstalledFrom';
 
   Map<String, Map<String, String>> get extensionInstalledFrom => {
-        for (final e in jsonMapPref(_extensionInstalledFromKey).entries)
-          if (e.value is Map)
-            e.key: {
-              for (final f in (e.value as Map).entries)
-                if (f.key is String && f.value is String) f.key as String: f.value as String,
-            },
-      };
+    for (final e in jsonMapPref(_extensionInstalledFromKey).entries)
+      if (e.value is Map)
+        e.key: {
+          for (final f in (e.value as Map).entries)
+            if (f.key is String && f.value is String) f.key as String: f.value as String,
+        },
+  };
 
   Future<void> setExtensionInstalledFrom(Map<String, Map<String, String>> installedFrom) async {
     await prefs.setString(_extensionInstalledFromKey, jsonEncode(installedFrom));
@@ -176,13 +186,13 @@ mixin ExtensionStoreSettings on ChangeNotifier {
   static const _extensionRevokedKey = 'extensionRevoked';
 
   Map<String, Map<String, String>> get extensionRevoked => {
-        for (final e in jsonMapPref(_extensionRevokedKey).entries)
-          if (e.value is Map && (e.value as Map)['version'] is String)
-            e.key: {
-              for (final f in (e.value as Map).entries)
-                if (f.key is String && f.value is String) f.key as String: f.value as String,
-            },
-      };
+    for (final e in jsonMapPref(_extensionRevokedKey).entries)
+      if (e.value is Map && (e.value as Map)['version'] is String)
+        e.key: {
+          for (final f in (e.value as Map).entries)
+            if (f.key is String && f.value is String) f.key as String: f.value as String,
+        },
+  };
 
   Future<void> setExtensionRevoked(Map<String, Map<String, String>> revoked) async {
     await prefs.setString(_extensionRevokedKey, jsonEncode(revoked));

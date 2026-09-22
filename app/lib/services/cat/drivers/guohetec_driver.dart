@@ -74,7 +74,6 @@ class GuohetecDriver extends EquipmentDriver {
   @override
   String get name => 'Guohetec (Q900, PMR-171)';
 
-
   /// This protocol has a keyer speed and a sidetone, but no command that
   /// keys TEXT — nothing that takes a message and sends it as CW. Nothing
   /// to declare.
@@ -114,28 +113,21 @@ class GuohetecDriver extends EquipmentDriver {
   int get telemetryCycleBytes => guohetecMeterCycleBytes;
 
   @override
-  Set<String> get recognizedConfigKeys => {
-        ...super.recognizedConfigKeys,
-        meterInfoConfigKey,
-        guohetecMaxWattsConfigKey,
-      };
+  Set<String> get recognizedConfigKeys => {...super.recognizedConfigKeys, meterInfoConfigKey, guohetecMaxWattsConfigKey};
 
   @override
-  List<Map<String, dynamic>> configElements({
-    Map<String, dynamic> overrides = const {},
-    Map<String, dynamic> restrictions = const {},
-  }) =>
-      [telemetryConfigElement()];
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    telemetryConfigElement(),
+  ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
-        telemetryIntervalConfigKey => validateTelemetryInterval(value),
-        _ => null,
-      };
+    telemetryIntervalConfigKey => validateTelemetryInterval(value),
+    _ => null,
+  };
 
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
-      GuohetecSession(sink, config: config);
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => GuohetecSession(sink, config: config);
 }
 
 class GuohetecSession implements TransceiverSession {
@@ -161,16 +153,8 @@ class GuohetecSession implements TransceiverSession {
   /// what reading does.
   late final TelemetryPoller _telemetry = TelemetryPoller(
     onPoll: (_) => _send(buildMetersCommand()),
-    idleInterval: telemetryIntervalFor(
-      _config,
-      cycleBytes: guohetecMeterCycleBytes,
-      baudRate: serialBaudRateOrNull(_config),
-    ),
-    txInterval: telemetryIntervalFor(
-      _config,
-      cycleBytes: guohetecMeterCycleBytes,
-      baudRate: serialBaudRateOrNull(_config),
-    ),
+    idleInterval: telemetryIntervalFor(_config, cycleBytes: guohetecMeterCycleBytes, baudRate: serialBaudRateOrNull(_config)),
+    txInterval: telemetryIntervalFor(_config, cycleBytes: guohetecMeterCycleBytes, baudRate: serialBaudRateOrNull(_config)),
   );
 
   /// The last complete picture of the radio.
@@ -206,9 +190,9 @@ class GuohetecSession implements TransceiverSession {
   bool _saidCrcFailing = false;
 
   GuohetecSession(this._sink, {Map<String, dynamic> config = const {}})
-      : _config = config,
-        _meterInfoKey = config[meterInfoConfigKey] as String?,
-        _maxWatts = _ratedWatts(config[guohetecMaxWattsConfigKey]);
+    : _config = config,
+      _meterInfoKey = config[meterInfoConfigKey] as String?,
+      _maxWatts = _ratedWatts(config[guohetecMaxWattsConfigKey]);
 
   /// The node's rated output, however a stored config spells it.
   ///
@@ -247,7 +231,8 @@ class GuohetecSession implements TransceiverSession {
   void _checkCrcHealth() {
     if (_everFramed || _saidCrcFailing || _framer.crcFailures == 0) return;
     _saidCrcFailing = true;
-    final note = 'every packet fails its CRC (${_framer.crcFailures} so far) — '
+    final note =
+        'every packet fails its CRC (${_framer.crcFailures} so far) — '
         'the radio checksums differently than the manual describes';
     _sink.reportDiagnostic(note);
     debugPrint('[cat] guohetec $note');
@@ -292,9 +277,11 @@ class GuohetecSession implements TransceiverSession {
         // radio answering anything else is a model this driver has never
         // been told about — most likely a PMR-171, which shares the
         // protocol. Worth a developer seeing which.
-        _sink.reportDiagnostic(frame.data.first == GuohetecEquipmentType.q900
-            ? 'radio identifies as Q900'
-            : 'radio reports unknown equipment type 0x${frame.data.first.toRadixString(16)}');
+        _sink.reportDiagnostic(
+          frame.data.first == GuohetecEquipmentType.q900
+              ? 'radio identifies as Q900'
+              : 'radio reports unknown equipment type 0x${frame.data.first.toRadixString(16)}',
+        );
 
       // Every other packet here answers a set command, and the radio has
       // already acted on it. Nothing to read out: what the app shows comes

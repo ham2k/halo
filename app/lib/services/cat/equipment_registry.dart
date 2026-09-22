@@ -206,9 +206,9 @@ class EquipmentModel {
     String Function()? recordingHelp,
     this.manufacturer,
     this.hiddenFromCatalog = false,
-  })  : _nameBuilder = name,
-        _recordingHelpBuilder = recordingHelp,
-        _suggestedNameBuilder = suggestedName;
+  }) : _nameBuilder = name,
+       _recordingHelpBuilder = recordingHelp,
+       _suggestedNameBuilder = suggestedName;
 
   String get name => _nameBuilder();
 
@@ -270,7 +270,6 @@ class EquipmentType {
   /// UI can leave the slot empty rather than draw a wrong one.
   String? get transportIconName => transportIconNameFor(transportKey);
 
-
   /// False for a pairing whose transport can't connect on this platform at
   /// all (TCP and Icom-network on web) — used to keep the Add dialog from
   /// offering a radio that would only fail loudly once picked.
@@ -286,10 +285,10 @@ class EquipmentType {
   /// device-specific settings: transport section, then driver section,
   /// then this pairing's own notes.
   List<Map<String, dynamic>> configElements() => [
-        ...transport.configElements(overrides: overrides, restrictions: restrictions),
-        ...driver.configElements(overrides: overrides, restrictions: restrictions),
-        ...notes,
-      ];
+    ...transport.configElements(overrides: overrides, restrictions: restrictions),
+    ...driver.configElements(overrides: overrides, restrictions: restrictions),
+    ...notes,
+  ];
 
   Map<String, dynamic> _merged(Map<String, dynamic> config) => {...config, ...overrides};
 
@@ -309,14 +308,12 @@ class EquipmentType {
   /// holding a node has its stored config, not the merged one, and asking
   /// the driver with the stored map would leave a named radio looking like a
   /// generic one.
-  Set<RadioMeter> telemetryMetersFor(Map<String, dynamic> config) =>
-      driver.telemetryMetersWith(_merged(config));
+  Set<RadioMeter> telemetryMetersFor(Map<String, dynamic> config) => driver.telemetryMetersWith(_merged(config));
 
   /// The meter cadence a node on this pairing falls back to — again for the
   /// MERGED config, so the speed prefilled by the entry counts even when the
   /// operator has never opened the box.
-  Duration defaultTelemetryIntervalFor(Map<String, dynamic> config) =>
-      driver.defaultTelemetryInterval(_merged(config));
+  Duration defaultTelemetryIntervalFor(Map<String, dynamic> config) => driver.defaultTelemetryInterval(_merged(config));
 
   /// A one-line "where is it" for the equipment list.
   ///
@@ -332,8 +329,7 @@ class EquipmentType {
 
   /// Which channel of a multi-channel radio this node is — see
   /// [EquipmentDriver.describeChannel].
-  String? describeChannel(Map<String, dynamic> config) =>
-      driver.describeChannel(_merged(config), overrides: overrides);
+  String? describeChannel(Map<String, dynamic> config) => driver.describeChannel(_merged(config), overrides: overrides);
 
   /// Per-field version, for the editor: FormRenderer validates one field at
   /// a time and anchors the message on that field. Tries the transport
@@ -369,8 +365,7 @@ class EquipmentType {
   /// (a newly-granted device's port) is exactly the kind of thing the
   /// operator just did, so it's never something a radio definition would
   /// want to override out from under them.
-  Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) =>
-      transport.runAction(actionKey, method, state);
+  Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) => transport.runAction(actionKey, method, state);
 }
 
 /// The operator-facing name of a transport, by key. Kept here rather than on
@@ -405,13 +400,13 @@ String? transportLabelFor(String transportKey) {
 /// `resolveIconName` answers an unknown name with a puzzle-piece glyph and
 /// no error at all, so a typo here ships silently.
 String? transportIconNameFor(String transportKey) => switch (transportKey) {
-      SerialTransport.transportKey => 'usb-port',
-      TcpTransport.transportKey || IcomNetworkTransport.transportKey => 'wifi',
-      // Not a way of plugging anything in — the exception the rule above
-      // allows for, because what this transport connects to is nothing.
-      PlaceholderTransport.transportKey => 'flask-outline',
-      _ => null,
-    };
+  SerialTransport.transportKey => 'usb-port',
+  TcpTransport.transportKey || IcomNetworkTransport.transportKey => 'wifi',
+  // Not a way of plugging anything in — the exception the rule above
+  // allows for, because what this transport connects to is nothing.
+  PlaceholderTransport.transportKey => 'flask-outline',
+  _ => null,
+};
 
 const _flexRadioTcpKey = 'flexradio-tcp';
 const _ft891SerialKey = 'ft891-serial';
@@ -493,12 +488,7 @@ const ft891Model = EquipmentModel(
       // The meter scales, which Yaesu publishes nowhere — see
       // drivers/info/README.md. Named per ENTRY rather than per driver
       // because one driver serves the whole line and the scales do not.
-      overrides: {
-        cwKeyerConfigKey: true,
-        voiceMemoriesConfigKey: yaesuVoiceMemoryCount,
-        voiceCeilingConfigKey: 20,
-        meterInfoConfigKey: 'yaesu/ft-891',
-      },
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 20, meterInfoConfigKey: 'yaesu/ft-891'},
       restrictions: {'port': Ft891Driver.cp2105CatPort},
       // The failure this driver actually produces is silence: the commands
       // go out, nothing comes back, and nothing anywhere reports an error.
@@ -515,14 +505,15 @@ String _ft891RecordingHelp() => t.settings.radio.voiceMessages.recordHelpFt891;
 String _ft891Name() => t.settings.station.models.ft891;
 
 List<Map<String, dynamic>> _ft891SerialNotes() => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.troubleshootingTitle}**\n\n'
-            '${t.settings.station.ft891Troubleshooting}',
-      },
-    ];
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.troubleshootingTitle}**\n\n'
+        '${t.settings.station.ft891Troubleshooting}',
+  },
+];
 
 /// Yaesu FT-710 over its built-in USB CAT port.
 ///
@@ -544,11 +535,7 @@ const ft710Model = EquipmentModel(
       transport: SerialTransport(),
       // The radio's own CAT RATE default, unlike the FT-891's 4800.
       defaultConfig: {'baudRate': 38400},
-      overrides: {
-        cwKeyerConfigKey: true,
-        voiceMemoriesConfigKey: yaesuVoiceMemoryCount,
-        meterInfoConfigKey: 'yaesu/ft-710',
-      },
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, meterInfoConfigKey: 'yaesu/ft-710'},
     ),
   ],
 );
@@ -570,12 +557,7 @@ const ftdx10Model = EquipmentModel(
       transport: SerialTransport(),
       defaultConfig: {'baudRate': 38400},
       // Ninety seconds a memory, on the SD card, per the Operation Manual.
-      overrides: {
-        cwKeyerConfigKey: true,
-        voiceMemoriesConfigKey: yaesuVoiceMemoryCount,
-        voiceCeilingConfigKey: 90,
-        meterInfoConfigKey: 'yaesu/ftdx10',
-      },
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 90, meterInfoConfigKey: 'yaesu/ftdx10'},
       restrictions: {'port': Ft891Driver.cp2105CatPort},
     ),
   ],
@@ -699,24 +681,26 @@ const q900Model = EquipmentModel(
 String _q900Name() => t.settings.station.models.q900;
 
 List<Map<String, dynamic>> _guohetecSerialNotes() => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.guohetecTroubleshootingTitle}**\n\n'
-            '${t.settings.station.guohetecTroubleshooting}',
-      },
-    ];
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.guohetecTroubleshootingTitle}**\n\n'
+        '${t.settings.station.guohetecTroubleshooting}',
+  },
+];
 
 List<Map<String, dynamic>> _yaesuBinarySerialNotes() => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.yaesuBinaryTroubleshootingTitle}**\n\n'
-            '${t.settings.station.yaesuBinaryTroubleshooting}',
-      },
-    ];
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.yaesuBinaryTroubleshootingTitle}**\n\n'
+        '${t.settings.station.yaesuBinaryTroubleshooting}',
+  },
+];
 
 /// Shared by the FTDX10 and the FT-710: the same DVS procedure, and one
 /// string rather than two copies that can drift apart in translation. The
@@ -761,14 +745,15 @@ const yaesuGenericModel = EquipmentModel(
 String _yaesuGenericName() => t.settings.station.models.yaesuGeneric;
 
 List<Map<String, dynamic>> _yaesuSerialNotes() => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.yaesuTroubleshootingTitle}**\n\n'
-            '${t.settings.station.yaesuTroubleshooting}',
-      },
-    ];
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.yaesuTroubleshootingTitle}**\n\n'
+        '${t.settings.station.yaesuTroubleshooting}',
+  },
+];
 
 /// Any radio speaking Kenwood CAT over a serial port — the Kenwood line, and
 /// equally the SDR front-ends that implement the same protocol. Elecraft is
@@ -805,14 +790,15 @@ const kenwoodGenericModel = EquipmentModel(
 String _kenwoodGenericName() => t.settings.station.models.kenwoodGeneric;
 
 List<Map<String, dynamic>> _kenwoodSerialNotes() => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.kenwoodTroubleshootingTitle}**\n\n'
-            '${t.settings.station.kenwoodTroubleshooting}',
-      },
-    ];
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.kenwoodTroubleshootingTitle}**\n\n'
+        '${t.settings.station.kenwoodTroubleshooting}',
+  },
+];
 
 /// QRP Labs QMX, which speaks Kenwood CAT over its USB serial port.
 ///
@@ -872,12 +858,7 @@ const fx4crModel = EquipmentModel(
       driver: KenwoodDriver(),
       transport: SerialTransport(),
       defaultConfig: {'baudRate': 115200},
-      overrides: {
-        KenwoodDriver.ifModeOffsetKey: 27,
-        KenwoodDriver.cwDialectKey: '',
-        KenwoodDriver.voiceDialectKey: '',
-        KenwoodDriver.voiceMemoriesKey: 0,
-      },
+      overrides: {KenwoodDriver.ifModeOffsetKey: 27, KenwoodDriver.cwDialectKey: '', KenwoodDriver.voiceDialectKey: '', KenwoodDriver.voiceMemoriesKey: 0},
       notes: _kenwoodSerialNotes,
     ),
   ],
@@ -969,7 +950,6 @@ const kx3Model = EquipmentModel(
   ],
 );
 
-
 /// How long an Icom voice memory holds — "up to 1.5 minutes" per the
 /// IC-7300's manual, and the line's figure.
 const _icomVoiceSeconds = 90;
@@ -986,14 +966,15 @@ String _kx2Name() => t.settings.station.models.kx2;
 String _kx3Name() => t.settings.station.models.kx3;
 
 List<Map<String, dynamic>> _elecraftSerialNotes() => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.elecraftTroubleshootingTitle}**\n\n'
-            '${t.settings.station.elecraftTroubleshooting}',
-      },
-    ];
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.elecraftTroubleshootingTitle}**\n\n'
+        '${t.settings.station.elecraftTroubleshooting}',
+  },
+];
 
 /// Where CI-V sits when an Icom presents more than one USB serial port OF ITS
 /// OWN — which is what limits who may declare it.
@@ -1060,14 +1041,15 @@ const icomGenericModel = EquipmentModel(
 String _icomGenericName() => t.settings.station.models.icomGeneric;
 
 List<Map<String, dynamic>> _icomGenericSerialNotes({String extra = ''}) => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.icomCivTroubleshootingTitle}**\n\n'
-            '${t.settings.station.icomCivTroubleshooting}$extra',
-      },
-    ];
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.icomCivTroubleshootingTitle}**\n\n'
+        '${t.settings.station.icomCivTroubleshooting}$extra',
+  },
+];
 
 /// Icom IC-7300 over its built-in USB CI-V port.
 ///
@@ -1097,17 +1079,17 @@ String _ic7300Name() => t.settings.station.models.ic7300;
 /// The shared CI-V "it connected and says nothing" note, plus whatever this
 /// radio adds to it — where to find the MK2, for the IC-7300.
 List<Map<String, dynamic>> _civSerialNotes({String extra = ''}) => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.civAddressTroubleshootingTitle}**\n\n'
-            '${t.settings.station.civAddressTroubleshooting}$extra',
-      },
-    ];
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.civAddressTroubleshootingTitle}**\n\n'
+        '${t.settings.station.civAddressTroubleshooting}$extra',
+  },
+];
 
-List<Map<String, dynamic>> _ic7300SerialNotes() =>
-    _civSerialNotes(extra: t.settings.station.ic7300Mk2Note);
+List<Map<String, dynamic>> _ic7300SerialNotes() => _civSerialNotes(extra: t.settings.station.ic7300Mk2Note);
 
 List<Map<String, dynamic>> _ic7300mk2SerialNotes() => _civSerialNotes();
 
@@ -1198,8 +1180,7 @@ String _ic7100Name() => t.settings.station.models.ic7100;
 /// The address note plus the family's two-port one: this radio presents both
 /// ports and now has one of them marked, so the operator gets the reason for
 /// the marker and the escape hatch if it points the wrong way.
-List<Map<String, dynamic>> _ic7610SerialNotes() =>
-    _civSerialNotes(extra: '\n\n${t.settings.station.icomCivTroubleshooting}');
+List<Map<String, dynamic>> _ic7610SerialNotes() => _civSerialNotes(extra: '\n\n${t.settings.station.icomCivTroubleshooting}');
 
 /// Icom IC-7610 over its built-in USB CI-V port.
 ///
@@ -1227,8 +1208,7 @@ const ic7610Model = EquipmentModel(
 
 String _ic7610Name() => t.settings.station.models.ic7610;
 
-List<Map<String, dynamic>> _ic7760SerialNotes() =>
-    _civSerialNotes(extra: t.settings.station.ic7760PortNote);
+List<Map<String, dynamic>> _ic7760SerialNotes() => _civSerialNotes(extra: t.settings.station.ic7760PortNote);
 
 /// Icom IC-7760 over CI-V.
 ///
@@ -1255,8 +1235,7 @@ const ic7760Model = EquipmentModel(
 
 String _ic7760Name() => t.settings.station.models.ic7760;
 
-List<Map<String, dynamic>> _x6100SerialNotes() =>
-    _civSerialNotes(extra: t.settings.station.x6100PortNote);
+List<Map<String, dynamic>> _x6100SerialNotes() => _civSerialNotes(extra: t.settings.station.x6100PortNote);
 
 /// Xiegu X6100 — a Xiegu radio that happens to speak Icom's CI-V, not the
 /// Kenwood protocol its documentation and much of the community suggest.
@@ -1280,7 +1259,9 @@ const x6100Model = EquipmentModel(
       overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
       // CI-V is on the second of the radio's two serial ports; the picker
       // points at that one where it can, and never hides the other.
-      restrictions: {'port': {'index': 1}},
+      restrictions: {
+        'port': {'index': 1},
+      },
       notes: _x6100SerialNotes,
     ),
   ],
@@ -1362,18 +1343,18 @@ const ic705Model = EquipmentModel(
 
 String _ic705Name() => t.settings.station.models.ic705;
 
-List<Map<String, dynamic>> _ic705SerialNotes() =>
-    _icomGenericSerialNotes(extra: t.settings.station.ic705PortNote);
+List<Map<String, dynamic>> _ic705SerialNotes() => _icomGenericSerialNotes(extra: t.settings.station.ic705PortNote);
 
 List<Map<String, dynamic>> _ic705NetworkNotes() => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.ic705TroubleshootingTitle}**\n\n'
-            '${t.settings.station.ic705Troubleshooting}',
-      },
-    ];
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.ic705TroubleshootingTitle}**\n\n'
+        '${t.settings.station.ic705Troubleshooting}',
+  },
+];
 
 /// A radio that isn't there — see placeholder_radio_driver.dart and
 /// placeholder_transport.dart for what it is for and what it deliberately isn't.
@@ -1435,10 +1416,7 @@ const antennaGeniusModel = EquipmentModel(
       key: _antennaGeniusTcpKey,
       driver: AntennaGeniusDriver(),
       transport: TcpTransport(),
-      defaultConfig: {
-        'port': antennaGeniusDefaultPort,
-        switchLayoutConfigKey: switchLayoutDevicePorts,
-      },
+      defaultConfig: {'port': antennaGeniusDefaultPort, switchLayoutConfigKey: switchLayoutDevicePorts},
       discoverer: AntennaGeniusDiscoverer(typeKey: _antennaGeniusTcpKey),
     ),
   ],
@@ -1470,10 +1448,7 @@ const sierraCoaxModel = EquipmentModel(
       // which also takes the baud picker out of the editor. Every module on
       // the bus runs at this rate and one that did not could not be on it.
       overrides: {'baudRate': sierraDcnBaudRate},
-      defaultConfig: {
-        sierraAddressConfigKey: sierraCoaxDefaultAddress,
-        switchLayoutConfigKey: switchLayoutDevicePorts,
-      },
+      defaultConfig: {sierraAddressConfigKey: sierraCoaxDefaultAddress, switchLayoutConfigKey: switchLayoutDevicePorts},
     ),
   ],
 );
@@ -1491,9 +1466,7 @@ const antennaModel = EquipmentModel(
   category: kCategoryAntenna,
   name: _antennaModelName,
   hiddenFromCatalog: true,
-  variants: [
-    EquipmentVariant(key: _antennaKey, driver: AntennaDriver(), transport: NoneTransport()),
-  ],
+  variants: [EquipmentVariant(key: _antennaKey, driver: AntennaDriver(), transport: NoneTransport())],
 );
 
 String _antennaModelName() => t.settings.station.models.antenna;
@@ -1506,9 +1479,7 @@ const keyModel = EquipmentModel(
   category: kCategoryKey,
   name: _keyModelName,
   hiddenFromCatalog: true,
-  variants: [
-    EquipmentVariant(key: _keyKey, driver: KeyDriver(), transport: NoneTransport()),
-  ],
+  variants: [EquipmentVariant(key: _keyKey, driver: KeyDriver(), transport: NoneTransport())],
 );
 
 String _keyModelName() => t.settings.station.models.key;
@@ -1593,18 +1564,19 @@ class EquipmentRegistry {
   final List<EquipmentType> types;
 
   EquipmentRegistry({List<EquipmentModel>? models, Map<String, EquipmentTransport>? transports})
-      : models = models ?? _defaultModels,
-        types = [
-          for (final model in models ?? _defaultModels)
-            for (final variant in model.variants) EquipmentType(model, variant),
-        ],
-        transports = transports ??
-            {
-              TcpTransport.transportKey: const TcpTransport(),
-              SerialTransport.transportKey: const SerialTransport(),
-              IcomNetworkTransport.transportKey: const IcomNetworkTransport(),
-              PlaceholderTransport.transportKey: const PlaceholderTransport(),
-            };
+    : models = models ?? _defaultModels,
+      types = [
+        for (final model in models ?? _defaultModels)
+          for (final variant in model.variants) EquipmentType(model, variant),
+      ],
+      transports =
+          transports ??
+          {
+            TcpTransport.transportKey: const TcpTransport(),
+            SerialTransport.transportKey: const SerialTransport(),
+            IcomNetworkTransport.transportKey: const IcomNetworkTransport(),
+            PlaceholderTransport.transportKey: const PlaceholderTransport(),
+          };
 
   /// Every config key that is a credential for ANY pairing in the catalogue.
   ///
@@ -1617,9 +1589,7 @@ class EquipmentRegistry {
   ///
   /// The opposite question — "what does THIS connection need?" — is still the
   /// pairing's, and [EquipmentType.secretFields] answers it.
-  late final Set<String> allSecretFields = {
-    for (final type in types) ...type.secretFields,
-  };
+  late final Set<String> allSecretFields = {for (final type in types) ...type.secretFields};
 
   EquipmentType? typeFor(String? key) {
     for (final type in types) {

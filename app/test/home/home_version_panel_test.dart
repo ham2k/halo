@@ -34,14 +34,18 @@ Future<void> _pumpHomeAt(WidgetTester tester, Size size) async {
   // Through the shell the ROOT uses, not HomeView bare: the rail is a sibling
   // of the window's chrome now, so a test that pumped the view alone would be
   // exercising a composition that does not ship.
-  await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(home: HomeRailShell(
-      services: services,
-      routes: HomeView(services: services),
-      // The same slot the root fills: Quick Lookup is window chrome now,
-      // not a pane inside the arrangement.
-    )),
-  ));
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: HomeRailShell(
+          services: services,
+          routes: HomeView(services: services),
+          // The same slot the root fills: Quick Lookup is window chrome now,
+          // not a pane inside the arrangement.
+        ),
+      ),
+    ),
+  );
 
   // Home is `MaterialApp.home` and arms two timers on mount — the FAB's
   // settle deadline and the first-run nudge's wait. A test that simply ends
@@ -77,9 +81,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('the version pane paints the newest release photo behind the branding', (tester) async {
-    setReleaseNotesForTesting(const [
-      ReleaseNotesEntry(version: '26.8.0', name: "August '26", photoCaption: 'x', changes: []),
-    ]);
+    setReleaseNotesForTesting(const [ReleaseNotesEntry(version: '26.8.0', name: "August '26", photoCaption: 'x', changes: [])]);
     await _pumpHome(tester);
 
     final photo = find.byType(ReleasePhoto);
@@ -182,8 +184,7 @@ void main() {
     await _pumpHome(tester);
 
     expect(kEdition, Edition.dev, reason: 'the rule under test only applies to Dev builds');
-    expect(versionBuildLine(bareBuildNumber: true), isNotEmpty,
-        reason: 'an empty needle would make find.text below match nothing whatever the pane renders');
+    expect(versionBuildLine(bareBuildNumber: true), isNotEmpty, reason: 'an empty needle would make find.text below match nothing whatever the pane renders');
     // Presence first, both times: an absence assertion against a pane that
     // isn't there, or that has stopped naming the version at all, passes while
     // checking nothing — and "silent about the version" is the other half of

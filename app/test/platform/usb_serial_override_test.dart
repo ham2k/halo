@@ -26,7 +26,8 @@ void main() {
     expect(
       decoded['usb_serial'],
       {'path': '../packages/usb_serial_patched'},
-      reason: 'without this override, resolution falls back to the published '
+      reason:
+          'without this override, resolution falls back to the published '
           '0.5.2, whose android/build.gradle fails the Android build under AGP 9',
     );
 
@@ -40,14 +41,12 @@ void main() {
     expect(
       entry['source'],
       'path',
-      reason: 'anything else means usb_serial resolved through ordinary pub '
+      reason:
+          'anything else means usb_serial resolved through ordinary pub '
           'resolution rather than through the override, and the next '
           '`pub upgrade` is free to move it back to the published package',
     );
-    expect(
-      (entry['description'] as YamlMap)['path'],
-      '../packages/usb_serial_patched',
-    );
+    expect((entry['description'] as YamlMap)['path'], '../packages/usb_serial_patched');
   });
 
   test('the vendored copy still carries the AGP-9 fix', () {
@@ -70,7 +69,8 @@ void main() {
     expect(
       source,
       contains("id 'com.android.library'"),
-      reason: 'applying AGP through the plugins{} block IS the fix; without '
+      reason:
+          'applying AGP through the plugins{} block IS the fix; without '
           'it kotlin-android finds no Android plugin already applied and the '
           'Android build fails with "\'kotlin-android\' plugin requires one '
           'of the Android Gradle plugins"',
@@ -78,7 +78,8 @@ void main() {
     expect(
       source,
       isNot(contains('apply plugin:')),
-      reason: 'the legacy apply-plugin form anywhere in this file is '
+      reason:
+          'the legacy apply-plugin form anywhere in this file is '
           'upstream\'s own unpatched line, which reintroduces the AGP-9 failure',
     );
   });

@@ -67,19 +67,21 @@ class _PeersPanelState extends State<PeersPanel> {
     final settings = widget.services.settings;
     final trimmed = value.trim();
     if (trimmed == settings.peerDeviceName) return;
-    unawaited(settings.setPeerDeviceName(trimmed).then((_) {
-      // A cleared field falls back to the derived default name — put that
-      // name INTO the field, or it would sit blank while the network
-      // broadcasts the fallback, and every later blur would re-commit ''
-      // forever (empty never compares equal to the computed getter).
-      if (trimmed.isEmpty && mounted) {
-        _nameController.text = settings.peerDeviceName;
-      }
-      // Re-applies the name to the running service — beacons and future
-      // sessions carry it from here; without this the network keeps the old
-      // name until something else happens to reconcile.
-      widget.services.updatePeerSharing();
-    }));
+    unawaited(
+      settings.setPeerDeviceName(trimmed).then((_) {
+        // A cleared field falls back to the derived default name — put that
+        // name INTO the field, or it would sit blank while the network
+        // broadcasts the fallback, and every later blur would re-commit ''
+        // forever (empty never compares equal to the computed getter).
+        if (trimmed.isEmpty && mounted) {
+          _nameController.text = settings.peerDeviceName;
+        }
+        // Re-applies the name to the running service — beacons and future
+        // sessions carry it from here; without this the network keeps the old
+        // name until something else happens to reconcile.
+        widget.services.updatePeerSharing();
+      }),
+    );
   }
 
   void _onSettingsChanged() {
@@ -98,16 +100,8 @@ class _PeersPanelState extends State<PeersPanel> {
       builder: (dialogContext) => HaloDialog(
         title: Text(t.forgetTitle(name: name)),
         content: Text(t.forgetBody),
-        cancel: TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: Text(dialogContext.t.common.cancel),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(t.forget),
-          ),
-        ],
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(dialogContext.t.common.cancel)),
+        actions: [FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(t.forget))],
       ),
     );
     if (confirmed != true) return;
@@ -130,17 +124,11 @@ class _PeersPanelState extends State<PeersPanel> {
           // The list's OWN inset, read from the ambient ListTileTheme rather
           // than guessed at — a hard-coded number drifts out of line with
           // every row around it the moment the theme's changes.
-          padding: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero)
-              .add(const EdgeInsets.symmetric(vertical: Space.md)),
+          padding: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero).add(const EdgeInsets.symmetric(vertical: Space.md)),
           child: TextField(
             controller: _nameController,
             focusNode: _nameFocus,
-            decoration: InputDecoration(
-              labelText: t.deviceName,
-              helperText: t.deviceNameHint,
-              helperMaxLines: 2,
-              border: const OutlineInputBorder(),
-            ),
+            decoration: InputDecoration(labelText: t.deviceName, helperText: t.deviceNameHint, helperMaxLines: 2, border: const OutlineInputBorder()),
             // On submit and focus loss rather than on every keystroke: this
             // name is broadcast, and re-announcing on each character typed
             // would be noise on the network and a jittery name on every
@@ -192,22 +180,24 @@ class _PeersPanelState extends State<PeersPanel> {
         // Nearby one: both name rows the stream decides, and a band pins
         // only over rows its own list holds. Which makes it slivers, so the
         // list above is told rather than left to guess.
-        SectionedSlivers(slivers: [
-          _DeviceList(
-          services: widget.services,
-          onForget: _forget,
-          // Clears a previous decline or forget and dials if there is no
-          // session; the prompt itself is raised by the app-wide listener in
-          // main.dart, which fires on the notification this causes. Raising
-          // one here too would stack two dialogs over one request, and
-          // answering them differently would record trust and then refuse it.
-            onAllow: _peers.offerPairingAgain,
-          ),
-        ]),
+        SectionedSlivers(
+          slivers: [
+            _DeviceList(
+              services: widget.services,
+              onForget: _forget,
+              // Clears a previous decline or forget and dials if there is no
+              // session; the prompt itself is raised by the app-wide listener in
+              // main.dart, which fires on the notification this causes. Raising
+              // one here too would stack two dialogs over one request, and
+              // answering them differently would record trust and then refuse it.
+              onAllow: _peers.offerPairingAgain,
+            ),
+          ],
+        ),
         // Last, past the devices: it is a section in its own right rather
         // than a sub-switch of the master one, and everything above it is
         // about reaching the other devices at all.
-        if (enabled && settings.experimentEnabled('remote') /* stored key, see experiments.yaml */)
+        if (enabled && settings.experimentEnabled('remote') /* stored key, see experiments.yaml */ )
           SectionedSlivers(slivers: [PeerScreenSources(services: widget.services)]),
       ],
     );
@@ -221,9 +211,9 @@ class _PeersPanelState extends State<PeersPanel> {
 /// over a database fault nothing reported — sends them to fix the wrong
 /// thing.
 Widget _listProblem(BuildContext context, Object problem) => ListTile(
-      leading: Icon(MdiIcons.alertCircleOutline, color: Theme.of(context).colorScheme.error),
-      title: Text(context.t.settings.peers.deviceListProblem(error: '$problem')),
-    );
+  leading: Icon(MdiIcons.alertCircleOutline, color: Theme.of(context).colorScheme.error),
+  title: Text(context.t.settings.peers.deviceListProblem(error: '$problem')),
+);
 
 /// The trust store's rows, with a failure reported once when it happens.
 ///
@@ -231,13 +221,14 @@ Widget _listProblem(BuildContext context, Object problem) => ListTile(
 /// StreamBuilder holds an error snapshot until the next event, and these
 /// panels rebuild on every beacon — reporting from `build` would upload the
 /// same fault several times a second.
-Stream<List<PeerTrustRow>> _reportingTrustStream(PeerService peers) =>
-    peers.trust.watchAll().transform(StreamTransformer.fromHandlers(
-      handleError: (error, stack, sink) {
-        ErrorReportingService.report(error, stack, context: 'PeersPanel:trustStream');
-        sink.addError(error, stack);
-      },
-    ));
+Stream<List<PeerTrustRow>> _reportingTrustStream(PeerService peers) => peers.trust.watchAll().transform(
+  StreamTransformer.fromHandlers(
+    handleError: (error, stack, sink) {
+      ErrorReportingService.report(error, stack, context: 'PeersPanel:trustStream');
+      sink.addError(error, stack);
+    },
+  ),
+);
 
 /// A present device's own beacon wins; the trust row is the fallback for one
 /// that is not on the network.
@@ -259,8 +250,10 @@ String peerDisplayName(PeerTrustRow? row, PeerRuntime? runtime, String deviceId)
 /// carries its live status — listing it here as well would show one box as
 /// two, which is what having a Nearby section beside an Allowed Devices one
 /// did.
-List<String> unlinkedPeerDeviceIds(Set<String> linked, Iterable<String> present) =>
-    [for (final id in present) if (!linked.contains(id)) id];
+List<String> unlinkedPeerDeviceIds(Set<String> linked, Iterable<String> present) => [
+  for (final id in present)
+    if (!linked.contains(id)) id,
+];
 
 String _statusLabel(BuildContext context, PeerRuntime? runtime) {
   final t = context.t.settings.peers;
@@ -275,9 +268,7 @@ String _statusLabel(BuildContext context, PeerRuntime? runtime) {
     // Answered on this side, still `needsPairing` because the far device's
     // operator has not confirmed — saying it "wants to share" again would
     // read as this operator's own answer having been lost.
-    PeerSessionState.needsPairing => runtime?.session?.localTrusts == true
-        ? t.waitingForThem
-        : '${runtime?.beacon.deviceName ?? ''} ${t.wantsToPair}'.trim(),
+    PeerSessionState.needsPairing => runtime?.session?.localTrusts == true ? t.waitingForThem : '${runtime?.beacon.deviceName ?? ''} ${t.wantsToPair}'.trim(),
     _ => t.notConnected,
   };
   // Which pipe carries the pair matters in the field: "connected via
@@ -294,15 +285,13 @@ String _statusLabel(BuildContext context, PeerRuntime? runtime) {
 /// forbids those outright).
 Widget _statusDot(BuildContext context, PeerRuntime? runtime) {
   final theme = Theme.of(context);
-  final live = runtime?.session?.state == PeerSessionState.live ||
-      runtime?.session?.state == PeerSessionState.connected;
-  final busy = runtime?.session?.state == PeerSessionState.syncing ||
-      runtime?.session?.state == PeerSessionState.handshaking;
+  final live = runtime?.session?.state == PeerSessionState.live || runtime?.session?.state == PeerSessionState.connected;
+  final busy = runtime?.session?.state == PeerSessionState.syncing || runtime?.session?.state == PeerSessionState.handshaking;
   final color = live
       ? Colors.green
       : busy
-          ? theme.colorScheme.tertiary
-          : theme.disabledColor;
+      ? theme.colorScheme.tertiary
+      : theme.disabledColor;
   return Semantics(
     label: _statusLabel(context, runtime),
     child: Container(
@@ -350,9 +339,7 @@ class _DeviceListState extends State<_DeviceList> {
     return StreamBuilder<List<PeerTrustRow>>(
       stream: _trusted,
       builder: (context, snapshot) {
-        final trusted = {
-          for (final row in snapshot.data ?? const <PeerTrustRow>[]) row.peerDeviceId: row,
-        };
+        final trusted = {for (final row in snapshot.data ?? const <PeerTrustRow>[]) row.peerDeviceId: row};
         final peers = widget.services.peerService.peers;
         final nearby = unlinkedPeerDeviceIds(trusted.keys.toSet(), peers.keys);
         // Its own sections, cut here rather than by the list above: the
@@ -373,10 +360,7 @@ class _DeviceListState extends State<_DeviceList> {
               // Not while the first query is still in flight: "no devices
               // linked yet" is a positive claim, and devices that ARE linked
               // would carry it for the first frames.
-              if (snapshot.connectionState != ConnectionState.waiting)
-                ListTile(title: Text(t.noPairedDevices))
-              else
-                const SizedBox.shrink(),
+              if (snapshot.connectionState != ConnectionState.waiting) ListTile(title: Text(t.noPairedDevices)) else const SizedBox.shrink(),
             for (final row in trusted.values)
               _DeviceRow(
                 deviceId: row.peerDeviceId,
@@ -403,7 +387,6 @@ class _DeviceListState extends State<_DeviceList> {
       },
     );
   }
-
 }
 
 /// One device's row. Both actions are optional: read-only surfaces outside
@@ -418,22 +401,13 @@ class _DeviceRow extends StatelessWidget {
   final Future<void> Function(String deviceId, String name)? onForget;
   final void Function(String deviceId)? onAllow;
 
-  const _DeviceRow({
-    required this.deviceId,
-    required this.name,
-    required this.runtime,
-    required this.linked,
-    this.onForget,
-    this.onAllow,
-  });
+  const _DeviceRow({required this.deviceId, required this.name, required this.runtime, required this.linked, this.onForget, this.onAllow});
 
   @override
   Widget build(BuildContext context) {
     final t = context.t.settings.peers;
     // Asking us right now, and this operator has not answered.
-    final wantsPairing = onAllow != null &&
-        runtime?.session?.state == PeerSessionState.needsPairing &&
-        runtime?.session?.localTrusts != true;
+    final wantsPairing = onAllow != null && runtime?.session?.state == PeerSessionState.needsPairing && runtime?.session?.localTrusts != true;
     // Present but not linked, with no request in flight — the operator
     // starts one. Without this a device forgotten while it keeps beaconing
     // is an inert row forever: nothing re-dials a peer that has not moved,
@@ -449,24 +423,20 @@ class _DeviceRow extends StatelessWidget {
           // Right-aligned on the name's own line rather than under it: it is
           // an identifier to check at a glance, not a second label, and a
           // column of ids reads as a column.
-          Text(
-            shortPeerDeviceId(deviceId),
-            style: haloMonoStyle(context, fontSize: 11)
-                .copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
+          Text(shortPeerDeviceId(deviceId), style: haloMonoStyle(context, fontSize: 11).copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
       subtitle: Text(_statusLabel(context, runtime)),
       trailing: wantsPairing
           ? FilledButton(onPressed: () => onAllow!(deviceId), child: Text(t.allow))
           : canLink
-              ? TextButton(onPressed: () => onAllow!(deviceId), child: Text(t.link))
-              : (linked && onForget != null)
-              ? IconButton(
-                  icon: Icon(MdiIcons.close, semanticLabel: t.forget),
-                  onPressed: () => unawaited(onForget!(deviceId, name)),
-                )
-              : null,
+          ? TextButton(onPressed: () => onAllow!(deviceId), child: Text(t.link))
+          : (linked && onForget != null)
+          ? IconButton(
+              icon: Icon(MdiIcons.close, semanticLabel: t.forget),
+              onPressed: () => unawaited(onForget!(deviceId, name)),
+            )
+          : null,
     );
   }
 }
@@ -524,8 +494,7 @@ class _LinkedDevicesListState extends State<LinkedDevicesList> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (snapshot.error case final problem?) _listProblem(context, problem),
-            if (rows.isEmpty && snapshot.connectionState != ConnectionState.waiting)
-              ListTile(title: Text(t.noPairedDevices)),
+            if (rows.isEmpty && snapshot.connectionState != ConnectionState.waiting) ListTile(title: Text(t.noPairedDevices)),
             for (final row in rows)
               _DeviceRow(
                 deviceId: row.peerDeviceId,

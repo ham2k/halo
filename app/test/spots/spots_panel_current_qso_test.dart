@@ -13,20 +13,16 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
 
 Map<String, dynamic> _spot(String call) => {
-      'their': {'call': call},
-      'refs': const <Map<String, dynamic>>[],
-      'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test'},
-    };
+  'their': {'call': call},
+  'refs': const <Map<String, dynamic>>[],
+  'spot': {'timeInMillis': nowMillis() - 60000, 'source': 'test'},
+};
 
 /// How much of `container` survives in `color` once it has been blended into
 /// `surface` — 0 is the bare surface, 1 the container itself. Read off the
 /// channel the two differ most in, so a near-tie doesn't decide it.
 double _strengthOf(Color color, {required Color surface, required Color container}) {
-  final channels = [
-    (color.r, surface.r, container.r),
-    (color.g, surface.g, container.g),
-    (color.b, surface.b, container.b),
-  ];
+  final channels = [(color.r, surface.r, container.r), (color.g, surface.g, container.g), (color.b, surface.b, container.b)];
   channels.sort((a, b) => (b.$3 - b.$2).abs().compareTo((a.$3 - a.$2).abs()));
   final (value, from, to) = channels.first;
   return (value - from) / (to - from);
@@ -35,18 +31,22 @@ double _strengthOf(Color color, {required Color surface, required Color containe
 /// A section's spots. The label is taken but unused: `locateCurrentSpotRow`
 /// sums geometry and never reads it, and the tests read better naming the
 /// band they mean.
-List<Map<String, dynamic>> _section(String label, List<String> calls) =>
-    [for (final call in calls) _spot(call)];
+List<Map<String, dynamic>> _section(String label, List<String> calls) => [for (final call in calls) _spot(call)];
 
 void main() {
   group('locateCurrentSpotRow', () {
     // Every row is plain here, so the offset is headers + whole rows: one
     // header of 30, then two 20m rows and W3GHI, then its own 40m header.
     test('sums the headers and rows above the match into a scroll offset', () {
-      final found = locateCurrentSpotRow([
-        _section('20m', ['K1ABC', 'W2DEF']),
-        _section('40m', ['W3GHI', 'K4JKL', 'N5MNO']),
-      ], currentCall: 'K4JKL', headerHeight: 30, heightOf: (_) => 40);
+      final found = locateCurrentSpotRow(
+        [
+          _section('20m', ['K1ABC', 'W2DEF']),
+          _section('40m', ['W3GHI', 'K4JKL', 'N5MNO']),
+        ],
+        currentCall: 'K4JKL',
+        headerHeight: 30,
+        heightOf: (_) => 40,
+      );
 
       expect(found, isNotNull);
       expect(found!.top, closeTo(30 + 2 * 40 + 30 + 40, 0.001));
@@ -59,17 +59,17 @@ void main() {
     // far enough that the correction pass can no longer even measure the
     // target, because it was never mounted.
     test('rows above of differing heights each contribute their own', () {
-      double heightOf(Map<String, dynamic> spot) =>
-          (spot['their'] as Map)['call'] == 'W2DEF' ? 80.0 : 40.0;
+      double heightOf(Map<String, dynamic> spot) => (spot['their'] as Map)['call'] == 'W2DEF' ? 80.0 : 40.0;
       final found = locateCurrentSpotRow(
-        [_section('20m', ['K1ABC', 'W2DEF', 'K4JKL'])],
+        [
+          _section('20m', ['K1ABC', 'W2DEF', 'K4JKL']),
+        ],
         currentCall: 'K4JKL',
         headerHeight: 30,
         heightOf: heightOf,
       );
 
-      expect(found!.top, closeTo(30 + 40 + 80, 0.001),
-          reason: 'the taller row pushes the target down by its own height, not the average');
+      expect(found!.top, closeTo(30 + 40 + 80, 0.001), reason: 'the taller row pushes the target down by its own height, not the average');
     });
 
     // "Calls of Note" pins a duplicate of a spot that also appears in its band
@@ -78,10 +78,15 @@ void main() {
     // names exactly one, and the first copy is the one nearest the top.
     test('names the row by position, so a pinned duplicate names only one tile', () {
       final shared = _spot('K1ABC');
-      final found = locateCurrentSpotRow([
-        [shared],                          // Calls of Note
-        [_spot('W2DEF'), shared],          // 20m
-      ], currentCall: 'K1ABC', headerHeight: 30, heightOf: (_) => 40);
+      final found = locateCurrentSpotRow(
+        [
+          [shared], // Calls of Note
+          [_spot('W2DEF'), shared], // 20m
+        ],
+        currentCall: 'K1ABC',
+        headerHeight: 30,
+        heightOf: (_) => 40,
+      );
 
       expect((found!.section, found.index), (0, 0));
       expect(found.top, closeTo(30, 0.001), reason: 'directly under the first header');
@@ -90,19 +95,28 @@ void main() {
     test('no match anywhere is null, not a zeroed position', () {
       final args = (headerHeight: 30.0, heightOf: (Map<String, dynamic> _) => 40.0);
       expect(
-        locateCurrentSpotRow([_section('20m', ['K1ABC'])],
-            currentCall: 'W9XYZ', headerHeight: args.headerHeight, heightOf: args.heightOf),
+        locateCurrentSpotRow(
+          [
+            _section('20m', ['K1ABC']),
+          ],
+          currentCall: 'W9XYZ',
+          headerHeight: args.headerHeight,
+          heightOf: args.heightOf,
+        ),
         isNull,
       );
       expect(
-        locateCurrentSpotRow([_section('20m', ['K1ABC'])],
-            currentCall: null, headerHeight: args.headerHeight, heightOf: args.heightOf),
+        locateCurrentSpotRow(
+          [
+            _section('20m', ['K1ABC']),
+          ],
+          currentCall: null,
+          headerHeight: args.headerHeight,
+          heightOf: args.heightOf,
+        ),
         isNull,
       );
-      expect(
-        locateCurrentSpotRow([], currentCall: 'K1ABC', headerHeight: args.headerHeight, heightOf: args.heightOf),
-        isNull,
-      );
+      expect(locateCurrentSpotRow([], currentCall: 'K1ABC', headerHeight: args.headerHeight, heightOf: args.heightOf), isNull);
     });
   });
 
@@ -142,13 +156,8 @@ void main() {
         // difference between two rungs is the tile's padding and the gap
         // between its two lines — nothing else on the row moves.
         expect(
-          spotRowHeightFor(metrics: roomier, hasLabel: true, hasEmoji: true) -
-              spotRowHeightFor(metrics: tighter, hasLabel: true, hasEmoji: true),
-          closeTo(
-            (roomier.spotTilePaddingV - tighter.spotTilePaddingV) * 2 +
-                (roomier.spotTileLineGap - tighter.spotTileLineGap),
-            0.001,
-          ),
+          spotRowHeightFor(metrics: roomier, hasLabel: true, hasEmoji: true) - spotRowHeightFor(metrics: tighter, hasLabel: true, hasEmoji: true),
+          closeTo((roomier.spotTilePaddingV - tighter.spotTilePaddingV) * 2 + (roomier.spotTileLineGap - tighter.spotTileLineGap), 0.001),
         );
       }
     });
@@ -156,10 +165,7 @@ void main() {
     test('normal is the pre-density row height', () {
       // 50 is what every row was before the tile joined the ladder; changing
       // it is a change to what existing operators see, not a density tweak.
-      expect(
-        spotRowHeightFor(metrics: LayoutDensity.normal.metrics, hasLabel: false, hasEmoji: false),
-        50,
-      );
+      expect(spotRowHeightFor(metrics: LayoutDensity.normal.metrics, hasLabel: false, hasEmoji: false), 50);
     });
   });
 
@@ -169,8 +175,7 @@ void main() {
     // moves — at their logical-pixel sizes. So the invariant across a rung
     // change is the painted height of the text, not the ratio itself.
     double textHeightAt(LayoutMetrics m, double scale) =>
-        spotRowHeightFor(metrics: m, hasLabel: false, hasEmoji: false) * scale -
-        (m.spotTilePaddingV * 2 + m.spotTileLineGap);
+        spotRowHeightFor(metrics: m, hasLabel: false, hasEmoji: false) * scale - (m.spotTilePaddingV * 2 + m.spotTileLineGap);
 
     test('carries the text stretch across every pair of rungs', () {
       // 1.158 is what a real 1.3 text scale calibrates to at `normal`, per
@@ -180,11 +185,7 @@ void main() {
       for (final from in LayoutDensity.values) {
         for (final to in LayoutDensity.values) {
           final converted = spotRowScaleFor(learned, from: from.metrics, to: to.metrics);
-          expect(
-            textHeightAt(to.metrics, converted),
-            closeTo(textHeightAt(from.metrics, learned), 0.001),
-            reason: '$from -> $to',
-          );
+          expect(textHeightAt(to.metrics, converted), closeTo(textHeightAt(from.metrics, learned), 0.001), reason: '$from -> $to');
         }
       }
     });
@@ -203,14 +204,8 @@ void main() {
       // The fixed spacing shrinks while the stretched text does not, so the
       // stretch is a bigger share of a denser row. Getting this backwards
       // would double the error instead of removing it.
-      expect(
-        spotRowScaleFor(1.158, from: LayoutMetrics.normal, to: LayoutMetrics.densest),
-        greaterThan(1.158),
-      );
-      expect(
-        spotRowScaleFor(1.158, from: LayoutMetrics.normal, to: LayoutMetrics.sparsest),
-        lessThan(1.158),
-      );
+      expect(spotRowScaleFor(1.158, from: LayoutMetrics.normal, to: LayoutMetrics.densest), greaterThan(1.158));
+      expect(spotRowScaleFor(1.158, from: LayoutMetrics.normal, to: LayoutMetrics.sparsest), lessThan(1.158));
     });
   });
 
@@ -218,22 +213,8 @@ void main() {
     // Viewport 300 tall, scrolled to 100, so 100..400 is on screen. No header
     // by default, so each case below states the geometry it is about; the
     // pinned inset gets its own test.
-    double? target(
-      double top,
-      double bottom, {
-      double pixels = 100,
-      double maxExtent = 1000,
-      double headerHeight = 0,
-    }) =>
-        spotScrollTarget(
-          top: top,
-          bottom: bottom,
-          pixels: pixels,
-          viewport: 300,
-          headerHeight: headerHeight,
-          minExtent: 0,
-          maxExtent: maxExtent,
-        );
+    double? target(double top, double bottom, {double pixels = 100, double maxExtent = 1000, double headerHeight = 0}) =>
+        spotScrollTarget(top: top, bottom: bottom, pixels: pixels, viewport: 300, headerHeight: headerHeight, minExtent: 0, maxExtent: maxExtent);
 
     // The contract the whole feature rests on: a spot already in front of the
     // operator must not move. Without it every keystroke that resolves to a
@@ -317,14 +298,8 @@ void main() {
         final composing = currentQsoHighlight(scheme, editing: false);
         final editing = currentQsoHighlight(scheme, editing: true);
         expect(composing, isNot(editing));
-        expect(
-          _strengthOf(composing, surface: scheme.surface, container: scheme.tertiaryContainer),
-          closeTo(0.5, 0.01),
-        );
-        expect(
-          _strengthOf(editing, surface: scheme.surface, container: scheme.secondaryContainer),
-          closeTo(0.5, 0.01),
-        );
+        expect(_strengthOf(composing, surface: scheme.surface, container: scheme.tertiaryContainer), closeTo(0.5, 0.01));
+        expect(_strengthOf(editing, surface: scheme.surface, container: scheme.secondaryContainer), closeTo(0.5, 0.01));
       });
 
       // The row is an ECHO of the logging panel, and has to stay the quieter of
@@ -335,11 +310,7 @@ void main() {
         for (final editing in [false, true]) {
           final tint = currentQsoHighlight(scheme, editing: editing);
           final container = editing ? scheme.secondaryContainer : scheme.tertiaryContainer;
-          for (final channel in [
-            (tint.r, scheme.surface.r, container.r),
-            (tint.g, scheme.surface.g, container.g),
-            (tint.b, scheme.surface.b, container.b),
-          ]) {
+          for (final channel in [(tint.r, scheme.surface.r, container.r), (tint.g, scheme.surface.g, container.g), (tint.b, scheme.surface.b, container.b)]) {
             final (value, surface, fill) = channel;
             expect(value, inInclusiveRange(surface < fill ? surface : fill, surface < fill ? fill : surface));
           }

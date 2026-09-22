@@ -15,7 +15,7 @@ import 'package:ham2k_logger/services/extension_service.dart';
 import '../support/fake_extension_host.dart';
 
 const _source = [
-  {'hookKey': 'pota'}
+  {'hookKey': 'pota'},
 ];
 
 const _operation = {'stationCall': 'N0DEV'};
@@ -41,12 +41,7 @@ void main() {
     // different mode rather than as the same operator on the same band.
     final captured = serviceCapturing('postSelfSpot');
 
-    await captured.service.sendSpot(
-      sources: _source,
-      operation: _operation,
-      freq: 7185,
-      mode: 'LSB',
-    );
+    await captured.service.sendSpot(sources: _source, operation: _operation, freq: 7185, mode: 'LSB');
 
     expect(captured.calls.single['mode'], 'SSB');
   });
@@ -57,12 +52,7 @@ void main() {
     // send every reader to the wrong sideband.
     final captured = serviceCapturing('postSelfSpot');
 
-    await captured.service.sendSpot(
-      sources: _source,
-      operation: _operation,
-      freq: 14250,
-      mode: 'LSB',
-    );
+    await captured.service.sendSpot(sources: _source, operation: _operation, freq: 14250, mode: 'LSB');
 
     expect(captured.calls.single['mode'], 'LSB');
   });
@@ -72,12 +62,7 @@ void main() {
     // would be spotting a mode nobody is on.
     final captured = serviceCapturing('postSelfSpot');
 
-    await captured.service.sendSpot(
-      sources: _source,
-      operation: _operation,
-      freq: 7074,
-      mode: 'FT8',
-    );
+    await captured.service.sendSpot(sources: _source, operation: _operation, freq: 7074, mode: 'FT8');
 
     expect(captured.calls.single['mode'], 'FT8');
   });
@@ -95,7 +80,7 @@ void main() {
         'freq': 14250.0,
         'band': '20m',
         'mode': 'USB',
-        'their': {'call': 'K1ABC'}
+        'their': {'call': 'K1ABC'},
       },
     );
 
@@ -111,11 +96,7 @@ void main() {
     // dropping the one case worth spelling out.
     final captured = serviceCapturing('postOtherSpot');
 
-    await captured.service.sendSpot(
-      sources: _source,
-      operation: _operation,
-      qso: {'band': '20m', 'mode': 'LSB'},
-    );
+    await captured.service.sendSpot(sources: _source, operation: _operation, qso: {'band': '20m', 'mode': 'LSB'});
 
     expect(((captured.calls.single['qso'] as Map)['mode']), 'LSB');
   });
@@ -127,11 +108,7 @@ void main() {
     // would throw the whole spot away with a raw TypeError.
     final captured = serviceCapturing('postOtherSpot');
 
-    await captured.service.sendSpot(
-      sources: _source,
-      operation: _operation,
-      qso: {'freq': '7185', 'mode': 'LSB'},
-    );
+    await captured.service.sendSpot(sources: _source, operation: _operation, qso: {'freq': '7185', 'mode': 'LSB'});
 
     expect(((captured.calls.single['qso'] as Map)['mode']), 'SSB');
   });

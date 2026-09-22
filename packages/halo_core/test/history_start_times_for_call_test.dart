@@ -26,17 +26,29 @@ void main() {
   test('counts contacts across operations, matching the list, case-insensitively', () async {
     final a = await operations.create(stationCall: 'N0DEV');
     final b = await operations.create(stationCall: 'N0DEV');
-    await qsos.add(a.uuid, {'their': {'call': 'W1AW'}, 'band': '20m', 'startAtMillis': 1000});
-    await qsos.add(a.uuid, {'their': {'call': 'W1AW'}, 'band': '40m', 'startAtMillis': 3000});
-    await qsos.add(b.uuid, {'their': {'call': 'W1AW'}, 'band': '20m', 'startAtMillis': 2000});
-    await qsos.add(b.uuid, {'their': {'call': 'K2ABC'}, 'band': '20m'});
+    await qsos.add(a.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'startAtMillis': 1000,
+    });
+    await qsos.add(a.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '40m',
+      'startAtMillis': 3000,
+    });
+    await qsos.add(b.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'startAtMillis': 2000,
+    });
+    await qsos.add(b.uuid, {
+      'their': {'call': 'K2ABC'},
+      'band': '20m',
+    });
 
     expect(await qsos.historyStartTimesForCall('w1aw'), [3000, 2000, 1000]);
     // The same rows the list answers with, in the list's order.
-    expect(
-      await qsos.historyStartTimesForCall('W1AW'),
-      [for (final q in await qsos.historyForCall('W1AW')) q.startAtMillis],
-    );
+    expect(await qsos.historyStartTimesForCall('W1AW'), [for (final q in await qsos.historyForCall('W1AW')) q.startAtMillis]);
     expect(await qsos.historyStartTimesForCall(''), isEmpty);
     expect((await qsos.historyStartTimesForCall('NOBODY')).length, 0);
   });
@@ -44,9 +56,15 @@ void main() {
   test('a soft-deleted QSO and a deleted operation both leave the count', () async {
     final live = await operations.create(stationCall: 'N0DEV');
     final doomed = await operations.create(stationCall: 'N0DEV');
-    await qsos.add(live.uuid, {'their': {'call': 'W1AW'}});
-    final byHand = await qsos.add(live.uuid, {'their': {'call': 'W1AW'}});
-    await qsos.add(doomed.uuid, {'their': {'call': 'W1AW'}});
+    await qsos.add(live.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    final byHand = await qsos.add(live.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    await qsos.add(doomed.uuid, {
+      'their': {'call': 'W1AW'},
+    });
     expect((await qsos.historyStartTimesForCall('W1AW')).length, 3);
 
     await qsos.softDelete(byHand);
@@ -61,16 +79,26 @@ void main() {
     // A marker that happens to carry a callsign must not count; a QSO logged
     // with no band at all must — `band != 'event'` is NULL for it, not true,
     // and a query written that way drops it.
-    await qsos.add(op.uuid, {'their': {'call': 'W1AW'}, 'band': 'event', 'event': {'event': 'break'}});
-    await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+    await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': 'event',
+      'event': {'event': 'break'},
+    });
+    await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+    });
 
     expect((await qsos.historyStartTimesForCall('W1AW')).length, 1);
   });
 
   test('excludingUuid leaves the QSO being edited out of its own history', () async {
     final op = await operations.create(stationCall: 'N0DEV');
-    final earlier = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
-    final editing = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+    final earlier = await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    final editing = await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+    });
 
     expect((await qsos.historyStartTimesForCall('W1AW', excludingUuid: editing.uuid)).length, 1);
     expect((await qsos.historyStartTimesForCall('W1AW', excludingUuid: earlier.uuid)).length, 1);

@@ -83,10 +83,10 @@ void main() {
     // and a list that pretended otherwise would stop noticing when one is
     // added.
     expect(keys, ['port', 'baudRate', yaesuMeterCaptureConfigKey, telemetryIntervalConfigKey]);
-    expect(
-      [for (final e in type.configElements()) if (e['devMode'] == true) e['key']],
-      contains(yaesuMeterCaptureConfigKey),
-    );
+    expect([
+      for (final e in type.configElements())
+        if (e['devMode'] == true) e['key'],
+    ], contains(yaesuMeterCaptureConfigKey));
   });
 
   test('and tells the operator why a connected radio can still say nothing', () {

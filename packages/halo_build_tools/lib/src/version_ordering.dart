@@ -18,9 +18,7 @@
 bool isNewerRelease({required String current, required String available}) {
   final currentParts = _releaseParts(current);
   final availableParts = _releaseParts(available);
-  final length = currentParts.length > availableParts.length
-      ? currentParts.length
-      : availableParts.length;
+  final length = currentParts.length > availableParts.length ? currentParts.length : availableParts.length;
 
   for (var i = 0; i < length; i++) {
     final c = i < currentParts.length ? currentParts[i] : 0;

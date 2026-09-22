@@ -72,16 +72,16 @@ const _largeQsoCount = 201;
 const _settleDeadline = Duration(milliseconds: 800);
 
 List<Qso> _buildQsos(String operationUuid, int count) => [
-      for (var i = 0; i < count; i++)
-        Qso(
-          uuid: 'qso-$i',
-          operationUuid: operationUuid,
-          data: const {
-            'their': {'call': 'W1AW', 'sent': '59'},
-            'mode': 'SSB',
-          },
-        ),
-    ];
+  for (var i = 0; i < count; i++)
+    Qso(
+      uuid: 'qso-$i',
+      operationUuid: operationUuid,
+      data: const {
+        'their': {'call': 'W1AW', 'sent': '59'},
+        'mode': 'SSB',
+      },
+    ),
+];
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -111,34 +111,36 @@ void main() {
     final qsos = _buildQsos(operation.uuid, _largeQsoCount);
 
     Widget buildApp({required bool ticking}) => TranslationProvider(
-          child: TickerMode(
-            enabled: ticking,
-            child: MaterialApp(
-              home: Builder(
-                builder: (context) => Scaffold(
-                  body: Center(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => Scaffold(
-                          body: _MountNextFrame(
-                            builder: (_) => LoggingPanel(
-                              operation: operation,
-                              services: services,
-                              qsos: qsos,
-                              loggingControls: const [],
-                              onCommandAction: (_, [resultCallback]) async {},
-                            ),
+      child: TickerMode(
+        enabled: ticking,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => Scaffold(
+                        body: _MountNextFrame(
+                          builder: (_) => LoggingPanel(
+                            operation: operation,
+                            services: services,
+                            qsos: qsos,
+                            loggingControls: const [],
+                            onCommandAction: (_, [resultCallback]) async {},
                           ),
                         ),
-                      )),
-                      child: const Text('Open'),
+                      ),
                     ),
                   ),
+                  child: const Text('Open'),
                 ),
               ),
             ),
           ),
-        );
+        ),
+      ),
+    );
 
     await tester.pumpWidget(buildApp(ticking: true));
     await tester.tap(find.text('Open'));
@@ -219,7 +221,8 @@ void main() {
     expect(
       find.byType(CircularProgressIndicator),
       findsNothing,
-      reason: 'largeEnough flipping true via didUpdateWidget must still resolve readiness, not just '
+      reason:
+          'largeEnough flipping true via didUpdateWidget must still resolve readiness, not just '
           "didChangeDependencies' one-time check",
     );
   });

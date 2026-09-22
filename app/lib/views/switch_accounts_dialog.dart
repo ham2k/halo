@@ -42,8 +42,7 @@ import '../tools/sync_account_identity.dart';
 
 /// How the other device's deep link is assembled — same scheme and params
 /// as app-polo's SyncAccountDialog (`com.ham2k:///link_client?id=…&token=…`).
-String linkClientQrUrl({required String clientUuid, required String challengeToken}) =>
-    'com.ham2k:///link_client?id=$clientUuid&token=$challengeToken';
+String linkClientQrUrl({required String clientUuid, required String challengeToken}) => 'com.ham2k:///link_client?id=$clientUuid&token=$challengeToken';
 
 /// Returns true when the device ended up linked to a different account (the
 /// caller should kick a sync round so reconciliation starts right away).
@@ -156,6 +155,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
   final _emailController = TextEditingController();
   bool _busy = false;
   String? _error;
+
   /// Set by whichever exit runs first, and the reason both check it: `mounted`
   /// does NOT mean "still on screen". A route stays mounted for its whole exit
   /// animation, so a host call suspended across a dismissal wakes on a live
@@ -294,8 +294,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
   }
 
   Future<void> _loadAccountData() async {
-    final data = await _attempt('account-data', widget.fetchAccountData,
-        paintError: false, operatorAction: false);
+    final data = await _attempt('account-data', widget.fetchAccountData, paintError: false, operatorAction: false);
     if (!mounted) return;
     setState(() {
       _accountData = data;
@@ -310,10 +309,8 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
     });
   }
 
-  List<Map<String, dynamic>> get _otherAccounts => ((_accountData?['accounts'] as List?) ?? const [])
-      .whereType<Map<dynamic, dynamic>>()
-      .map((a) => a.cast<String, dynamic>())
-      .toList();
+  List<Map<String, dynamic>> get _otherAccounts =>
+      ((_accountData?['accounts'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>().map((a) => a.cast<String, dynamic>()).toList();
 
   /// "N QSOs · M operations", or null when the server sent no counts at all
   /// (e.g. an account payload without stats).
@@ -412,8 +409,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
   Future<void> _renewEmailChallenge({bool operatorAction = true}) async {
     final email = _pendingEmail;
     if (email == null) return;
-    final result = await _attempt('renew-challenge', () => widget.linkClient(email),
-        emailForNotFound: email, operatorAction: operatorAction);
+    final result = await _attempt('renew-challenge', () => widget.linkClient(email), emailForNotFound: email, operatorAction: operatorAction);
     if (!mounted) return;
     final permission = (result?['permission'] as Map?)?.cast<String, dynamic>();
     if (permission == null) {
@@ -481,8 +477,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
       // every one of those tells nobody anything. The same call failing three
       // times running is the defect, and that does report.
       if (operatorAction) {
-        ErrorReportingService.reportIfRepeated('switch-accounts:$key', e, st,
-            context: 'switch-accounts:$key');
+        ErrorReportingService.reportIfRepeated('switch-accounts:$key', e, st, context: 'switch-accounts:$key');
       }
       if (paintError) _error = t.switchAccounts.requestFailed;
       return null;
@@ -610,8 +605,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
   }
 
   Future<void> _requestQrPermission({bool operatorAction = true}) async {
-    final result =
-        await _attempt('request-qr', () => widget.linkClient(null), operatorAction: operatorAction);
+    final result = await _attempt('request-qr', () => widget.linkClient(null), operatorAction: operatorAction);
     if (!mounted) return;
     final permission = (result?['permission'] as Map?)?.cast<String, dynamic>();
     final clientUuid = permission?['client'] as String?;
@@ -687,8 +681,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
       ErrorReportingService.recordSuccess('switch-accounts:open-sibling');
     } catch (e, st) {
       debugPrint('[switch-accounts] open-sibling failed: $e\n$st');
-      ErrorReportingService.reportIfRepeated('switch-accounts:open-sibling', e, st,
-          context: 'switch-accounts:open-sibling');
+      ErrorReportingService.reportIfRepeated('switch-accounts:open-sibling', e, st, context: 'switch-accounts:open-sibling');
     }
     if (!mounted) return;
     setState(() {
@@ -748,8 +741,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
   /// so it says Back. Otherwise the verb follows what leaving would discard:
   /// Cancel abandons the challenge a sub-mode has in flight, while the menu
   /// has nothing outstanding to abandon.
-  String get _cancelLabel =>
-      widget.cancelLabel ?? (_mode == _Mode.menu ? t.common.done : t.common.cancel);
+  String get _cancelLabel => widget.cancelLabel ?? (_mode == _Mode.menu ? t.common.done : t.common.cancel);
 
   bool get _showPrimaryAction => _mode == _Mode.email;
 
@@ -803,14 +795,9 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
           // in the child list — here, last, i.e. exactly where every other
           // dialog in the app puts its confirm action.
           haloDialogFooterRow(
-            secondary: _showBackToMenu
-                ? TextButton(onPressed: _busy ? null : _backToMenu, child: Text(context.t.onboarding.back))
-                : null,
+            secondary: _showBackToMenu ? TextButton(onPressed: _busy ? null : _backToMenu, child: Text(context.t.onboarding.back)) : null,
             cancel: _showCancel ? TextButton(onPressed: _doCancel, child: Text(_cancelLabel)) : null,
-            actions: [
-              if (_showPrimaryAction)
-                FilledButton(onPressed: _busy ? null : _submitEmail, child: Text(context.t.switchAccounts.linkAccount)),
-            ],
+            actions: [if (_showPrimaryAction) FilledButton(onPressed: _busy ? null : _submitEmail, child: Text(context.t.switchAccounts.linkAccount))],
           ),
         ],
       ),
@@ -894,8 +881,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
               // PoLo flavors side by side would read identically, so then
               // each is named.
               title: Text(switch (sibling) {
-                SiblingApp(edition: null) when onlyPolo(widget.siblings) =>
-                  context.t.switchAccounts.linkWithPolo,
+                SiblingApp(edition: null) when onlyPolo(widget.siblings) => context.t.switchAccounts.linkWithPolo,
                 SiblingApp(edition: null) => context.t.onboarding.linkWithApp(app: sibling.name),
                 _ => context.t.switchAccounts.linkWithSibling,
               }),
@@ -965,18 +951,13 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          context.t.switchAccounts.codePrompt(email: '$_pendingEmail'),
-        ),
+        Text(context.t.switchAccounts.codePrompt(email: '$_pendingEmail')),
         const SizedBox(height: Space.xl),
         Center(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                _challengeCode ?? '—',
-                style: theme.textTheme.displayMedium?.copyWith(fontFamily: 'RobotoMono', letterSpacing: 4),
-              ),
+              Text(_challengeCode ?? '—', style: theme.textTheme.displayMedium?.copyWith(fontFamily: 'RobotoMono', letterSpacing: 4)),
               if (_challengeCode != null) ...[
                 const SizedBox(width: Space.md),
                 IconButton(
@@ -992,10 +973,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
         Center(child: Text(context.t.switchAccounts.waitingForConfirmation)),
         const SizedBox(height: Space.lg),
         Center(
-          child: OutlinedButton(
-            onPressed: _busy ? null : _sendConfirmationEmail,
-            child: Text(context.t.switchAccounts.sendEmailInstead),
-          ),
+          child: OutlinedButton(onPressed: _busy ? null : _sendConfirmationEmail, child: Text(context.t.switchAccounts.sendEmailInstead)),
         ),
         ..._errorAndBusy(context),
       ],
@@ -1025,9 +1003,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          context.t.switchAccounts.qrPrompt,
-        ),
+        Text(context.t.switchAccounts.qrPrompt),
         const SizedBox(height: Space.xl),
         // The spinner belongs to the request, not to the absence of a code:
         // gated on _qrUrl alone it spins forever after a failed one, saying
@@ -1064,18 +1040,15 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
       children: [
         Text(context.t.switchAccounts.siblingPrompt(app: name)),
         if (hasLink) ...[const SizedBox(height: Space.xl), Center(child: Text(context.t.switchAccounts.waitingForConfirmation))],
-        if (_linkRenewed) ...[
-          const SizedBox(height: Space.lg),
-          Text(context.t.switchAccounts.siblingLinkRenewed(app: name), textAlign: TextAlign.center),
-        ],
+        if (_linkRenewed) ...[const SizedBox(height: Space.lg), Text(context.t.switchAccounts.siblingLinkRenewed(app: name), textAlign: TextAlign.center)],
         const SizedBox(height: Space.lg),
         Center(
           child: OutlinedButton(
             onPressed: _busy || sibling == null
                 ? null
                 : hasLink
-                    ? _openSibling
-                    : () => _startWithSibling(sibling),
+                ? _openSibling
+                : () => _startWithSibling(sibling),
             child: Text(hasLink ? context.t.switchAccounts.openSiblingAgain(app: name) : context.t.switchAccounts.tryAgain),
           ),
         ),
@@ -1106,10 +1079,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
   List<Widget> _errorAndBusy(BuildContext context) {
     final theme = Theme.of(context);
     return [
-      if (_error != null) ...[
-        const SizedBox(height: Space.lg),
-        Text(_error!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
-      ],
+      if (_error != null) ...[const SizedBox(height: Space.lg), Text(_error!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error))],
       if (_busy) ...[const SizedBox(height: Space.lg), const Center(child: CircularProgressIndicator())],
     ];
   }

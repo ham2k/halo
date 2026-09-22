@@ -49,14 +49,15 @@ String _rigctldName() => t.settings.station.models.rigctld;
 String _rigctldNodeName() => t.settings.station.models.rigctldNodeName;
 
 List<Map<String, dynamic>> _rigctldTcpNotes() => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.rigctldTroubleshootingTitle}**\n\n'
-            '${t.settings.station.rigctldTroubleshooting}',
-      },
-    ];
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.rigctldTroubleshootingTitle}**\n\n'
+        '${t.settings.station.rigctldTroubleshooting}',
+  },
+];
 
 /// Any radio flrig has a definition for, through an flrig instance the
 /// operator already runs — the app connects to flrig's XML-RPC server,
@@ -86,11 +87,12 @@ String _flrigName() => t.settings.station.models.flrig;
 String _flrigNodeName() => t.settings.station.models.flrigNodeName;
 
 List<Map<String, dynamic>> _flrigTcpNotes() => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.flrigTroubleshootingTitle}**\n\n'
-            '${t.settings.station.flrigTroubleshooting}',
-      },
-    ];
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.flrigTroubleshootingTitle}**\n\n'
+        '${t.settings.station.flrigTroubleshooting}',
+  },
+];

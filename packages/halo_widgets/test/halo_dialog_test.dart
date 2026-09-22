@@ -16,25 +16,21 @@ void main() {
   Finder footerRow() => find.ancestor(of: find.byType(OverflowBar), matching: find.byType(Row)).first;
   Future<ThemeData> pump(WidgetTester tester, Brightness brightness) async {
     final theme = buildHaLoTheme(brightness);
-    await tester.pumpWidget(MaterialApp(
-      theme: theme,
-      home: const Scaffold(
-        body: HaloDialog(
-          title: Text('Title'),
-          content: Text('Body'),
-          actions: [Text('OK')],
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: const Scaffold(
+          body: HaloDialog(title: Text('Title'), content: Text('Body'), actions: [Text('OK')]),
         ),
       ),
-    ));
+    );
     return theme;
   }
 
   // The card colour IS the band colour — the header and footer are just it
   // showing around the content, so there's no separate band widget to find.
-  Finder contentSurface(ThemeData theme) => find.descendant(
-        of: find.byType(HaloDialog),
-        matching: find.byWidgetPredicate((w) => w is Material && w.color == theme.colorScheme.surface),
-      );
+  Finder contentSurface(ThemeData theme) =>
+      find.descendant(of: find.byType(HaloDialog), matching: find.byWidgetPredicate((w) => w is Material && w.color == theme.colorScheme.surface));
 
   testWidgets('light mode: bands in surfaceContainerHighest, content on near-white surface', (tester) async {
     final theme = await pump(tester, Brightness.light);
@@ -60,21 +56,23 @@ void main() {
     // so showHaloDialog's ConstrainedBox silently did nothing until it was
     // wrapped in a Center — a 5000px-wide child rendered a 720px card on an
     // 800px screen, blowing straight past the cap.
-    await tester.pumpWidget(MaterialApp(
-      theme: buildHaLoTheme(Brightness.light),
-      home: Builder(
-        builder: (context) => ElevatedButton(
-          onPressed: () => showHaloDialog<void>(
-            context: context,
-            builder: (_) => const HaloDialog(
-              title: Text('Wide'),
-              content: SizedBox(width: 5000, child: Text('very wide content')),
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => showHaloDialog<void>(
+              context: context,
+              builder: (_) => const HaloDialog(
+                title: Text('Wide'),
+                content: SizedBox(width: 5000, child: Text('very wide content')),
+              ),
             ),
+            child: const Text('open'),
           ),
-          child: const Text('open'),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
@@ -121,35 +119,33 @@ void main() {
       return left;
     }
 
-    expect(
-      await rowLeft(ambient: const EdgeInsets.symmetric(horizontal: 220)),
-      await rowLeft(),
-    );
+    expect(await rowLeft(ambient: const EdgeInsets.symmetric(horizontal: 220)), await rowLeft());
   });
 
   testWidgets('a plain prompt stays compact; wide dialogs get the full cap', (tester) async {
     Future<double> cardWidth({required bool wide}) async {
-      await tester.pumpWidget(MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        home: Builder(
-          builder: (context) => ElevatedButton(
-            onPressed: () => showHaloDialog<void>(
-              context: context,
-              builder: (_) => HaloDialog(
-                title: const Text('T'),
-                wide: wide,
-                // Far wider than either cap, so the cap is what's measured.
-                content: const SizedBox(width: 5000, child: Text('x')),
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => showHaloDialog<void>(
+                context: context,
+                builder: (_) => HaloDialog(
+                  title: const Text('T'),
+                  wide: wide,
+                  // Far wider than either cap, so the cap is what's measured.
+                  content: const SizedBox(width: 5000, child: Text('x')),
+                ),
               ),
+              child: const Text('open'),
             ),
-            child: const Text('open'),
           ),
         ),
-      ));
+      );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
-      final width =
-          tester.getSize(find.descendant(of: find.byType(Dialog), matching: find.byType(Material)).first).width;
+      final width = tester.getSize(find.descendant(of: find.byType(Dialog), matching: find.byType(Material)).first).width;
       // Dismiss, or the next measurement taps this dialog's barrier instead of
       // the button and just re-measures this one.
       tester.state<NavigatorState>(find.byType(Navigator).last).pop();
@@ -187,16 +183,19 @@ void main() {
     // band the usual sight, so the shrink comes first and the band grows only
     // where the words genuinely need the room.
     Future<double> pumpTitle(WidgetTester tester, String title) async {
-      await tester.pumpWidget(MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        home: Scaffold(body: HaloDialog(title: Text(title), content: const Text('Body'))),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Scaffold(
+            body: HaloDialog(title: Text(title), content: const Text('Body')),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       return tester.getSize(find.byType(HaloDialogHeader)).height;
     }
 
-    double fontOf(WidgetTester tester, String title) =>
-        tester.widget<Text>(find.text(title)).style!.fontSize!;
+    double fontOf(WidgetTester tester, String title) => tester.widget<Text>(find.text(title)).style!.fontSize!;
 
     testWidgets('a short one is untouched, and the band is exactly a view header tall', (tester) async {
       final height = await pumpTitle(tester, 'Title');
@@ -241,33 +240,42 @@ void main() {
       // The OS accessibility text scale composes on top of everything the app
       // does, so a title the app cannot shrink out of is normal at a large
       // one. The band is a floor, not a cage.
-      await tester.pumpWidget(MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        home: const MediaQuery(
-          data: MediaQueryData(textScaler: TextScaler.linear(1.6)),
-          child: Scaffold(body: HaloDialog(title: Text('Parks on the Air (POTA)'), content: Text('Body'))),
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: const MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(1.6)),
+            child: Scaffold(
+              body: HaloDialog(title: Text('Parks on the Air (POTA)'), content: Text('Body')),
+            ),
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
       final theme = Theme.of(tester.element(find.text('Parks on the Air (POTA)')));
-      expect(
-        tester.getSize(find.byType(HaloDialogHeader)).height,
-        greaterThan(theme.appBarTheme.toolbarHeight!),
-      );
+      expect(tester.getSize(find.byType(HaloDialogHeader)).height, greaterThan(theme.appBarTheme.toolbarHeight!));
     });
 
     testWidgets('a title that is not a Text is laid out as it stands', (tester) async {
       // Three call sites pass a Row, a builder and a Padding. What to shrink
       // inside an arbitrary subtree is not the header's to guess.
-      await tester.pumpWidget(MaterialApp(
-        theme: buildHaLoTheme(Brightness.light),
-        home: const Scaffold(
-          body: HaloDialog(
-            title: Row(children: [Icon(Icons.warning), SizedBox(width: 8), Flexible(child: Text('Kept'))]),
-            content: Text('Body'),
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: const Scaffold(
+            body: HaloDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.warning),
+                  SizedBox(width: 8),
+                  Flexible(child: Text('Kept')),
+                ],
+              ),
+              content: Text('Body'),
+            ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.warning), findsOneWidget);
       final theme = Theme.of(tester.element(find.text('Kept')));
@@ -278,19 +286,17 @@ void main() {
   testWidgets('a Modal Pane uses the very same header as a dialog', (tester) async {
     // Regression: the pane hand-rolled its own header, so it kept headlineSmall
     // and a content-driven height while dialogs moved to the view-header type.
-    await tester.pumpWidget(MaterialApp(
-      theme: buildHaLoTheme(Brightness.light),
-      home: Builder(
-        builder: (context) => ElevatedButton(
-          onPressed: () => showModalPane<void>(
-            context,
-            title: 'Pane Title',
-            builder: (_) => const Text('body'),
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => showModalPane<void>(context, title: 'Pane Title', builder: (_) => const Text('body')),
+            child: const Text('open'),
           ),
-          child: const Text('open'),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
@@ -303,17 +309,19 @@ void main() {
   });
 
   testWidgets('cancel joins the trailing group, one deliberate gap short of the primary', (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      theme: buildHaLoTheme(Brightness.light),
-      home: const Scaffold(
-        body: HaloDialog(
-          title: Text('Title'),
-          content: Text('Body'),
-          cancel: TextButton(onPressed: null, child: Text('Cancel')),
-          actions: [FilledButton(onPressed: null, child: Text('Save'))],
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: const Scaffold(
+          body: HaloDialog(
+            title: Text('Title'),
+            content: Text('Body'),
+            cancel: TextButton(onPressed: null, child: Text('Cancel')),
+            actions: [FilledButton(onPressed: null, child: Text('Save'))],
+          ),
         ),
       ),
-    ));
+    );
 
     final cancel = tester.getRect(find.text('Cancel'));
     final save = tester.getRect(find.text('Save'));
@@ -341,20 +349,22 @@ void main() {
     // `wide`, because four verbs do not fit a compact dialog and the footer
     // correctly STACKS instead — see the test below, which covers that case.
     // This one is about the side-by-side order, so it needs the room for it.
-    await tester.pumpWidget(MaterialApp(
-      theme: buildHaLoTheme(Brightness.light),
-      home: const Scaffold(
-        body: HaloDialog(
-          wide: true,
-          title: Text('Title'),
-          content: Text('Body'),
-          destructive: TextButton(onPressed: null, child: Text('Remove')),
-          secondary: TextButton(onPressed: null, child: Text('Report')),
-          cancel: TextButton(onPressed: null, child: Text('Cancel')),
-          actions: [FilledButton(onPressed: null, child: Text('Save'))],
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: const Scaffold(
+          body: HaloDialog(
+            wide: true,
+            title: Text('Title'),
+            content: Text('Body'),
+            destructive: TextButton(onPressed: null, child: Text('Remove')),
+            secondary: TextButton(onPressed: null, child: Text('Report')),
+            cancel: TextButton(onPressed: null, child: Text('Cancel')),
+            actions: [FilledButton(onPressed: null, child: Text('Save'))],
+          ),
         ),
       ),
-    ));
+    );
 
     final remove = tester.getRect(find.text('Remove'));
     final report = tester.getRect(find.text('Report'));
@@ -383,16 +393,18 @@ void main() {
     // placeholder is load-bearing: without it every footer that has no
     // destructive action — nearly all of them — throws its buttons to the
     // wrong edge.
-    await tester.pumpWidget(MaterialApp(
-      theme: buildHaLoTheme(Brightness.light),
-      home: const Scaffold(
-        body: HaloDialog(
-          title: Text('Title'),
-          content: Text('Body'),
-          actions: [FilledButton(onPressed: null, child: Text('Done'))],
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: const Scaffold(
+          body: HaloDialog(
+            title: Text('Title'),
+            content: Text('Body'),
+            actions: [FilledButton(onPressed: null, child: Text('Done'))],
+          ),
         ),
       ),
-    ));
+    );
 
     final done = tester.getRect(find.text('Done'));
     final footer = tester.getRect(footerRow());
@@ -409,18 +421,20 @@ void main() {
     // lands. Measured against the actions-only case rather than a constant, so
     // the two shapes are held to each other.
     Future<double> inset({required bool useCancelSlot}) async {
-      await tester.pumpWidget(MaterialApp(
-        key: ValueKey(useCancelSlot),
-        theme: buildHaLoTheme(Brightness.light),
-        home: Scaffold(
-          body: HaloDialog(
-            title: const Text('T'),
-            content: const Text('B'),
-            cancel: useCancelSlot ? const TextButton(onPressed: null, child: Text('Done')) : null,
-            actions: useCancelSlot ? const [] : const [TextButton(onPressed: null, child: Text('Done'))],
+      await tester.pumpWidget(
+        MaterialApp(
+          key: ValueKey(useCancelSlot),
+          theme: buildHaLoTheme(Brightness.light),
+          home: Scaffold(
+            body: HaloDialog(
+              title: const Text('T'),
+              content: const Text('B'),
+              cancel: useCancelSlot ? const TextButton(onPressed: null, child: Text('Done')) : null,
+              actions: useCancelSlot ? const [] : const [TextButton(onPressed: null, child: Text('Done'))],
+            ),
           ),
         ),
-      ));
+      );
       final button = tester.getRect(find.widgetWithText(TextButton, 'Done'));
       return tester.getRect(footerRow()).right - button.right;
     }
@@ -432,19 +446,21 @@ void main() {
     // The fallback the OverflowBar exists for: a Row would paint red stripes
     // across the primary action rather than give ground. The groups stack,
     // trailing edge aligned, so the primary stays where the thumb expects it.
-    await tester.pumpWidget(MaterialApp(
-      theme: buildHaLoTheme(Brightness.light),
-      home: const Scaffold(
-        body: HaloDialog(
-          title: Text('Title'),
-          content: Text('Body'),
-          destructive: TextButton(onPressed: null, child: Text('Remove')),
-          secondary: TextButton(onPressed: null, child: Text('Report')),
-          cancel: TextButton(onPressed: null, child: Text('Cancel')),
-          actions: [FilledButton(onPressed: null, child: Text('Save'))],
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: const Scaffold(
+          body: HaloDialog(
+            title: Text('Title'),
+            content: Text('Body'),
+            destructive: TextButton(onPressed: null, child: Text('Remove')),
+            secondary: TextButton(onPressed: null, child: Text('Report')),
+            cancel: TextButton(onPressed: null, child: Text('Cancel')),
+            actions: [FilledButton(onPressed: null, child: Text('Save'))],
+          ),
         ),
       ),
-    ));
+    );
 
     expect(tester.takeException(), isNull);
     final remove = tester.getRect(find.text('Remove'));
@@ -466,20 +482,22 @@ void main() {
     // footer cannot stack at all: with the leading slot empty the bar sees a
     // single child that has clamped itself to maxWidth, concludes it fits, and
     // lets it paint red stripes instead.
-    await tester.pumpWidget(MaterialApp(
-      theme: buildHaLoTheme(Brightness.light),
-      home: Scaffold(
-        body: Center(
-          child: SizedBox(
-            width: 220,
-            child: haloDialogFooterRow(
-              cancel: const TextButton(onPressed: null, child: Text('Cancelar')),
-              actions: const [FilledButton(onPressed: null, child: Text('Guardar operación'))],
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 220,
+              child: haloDialogFooterRow(
+                cancel: const TextButton(onPressed: null, child: Text('Cancelar')),
+                actions: const [FilledButton(onPressed: null, child: Text('Guardar operación'))],
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
 
     expect(tester.takeException(), isNull, reason: 'a footer this narrow must stack, not overflow');
     final cancel = tester.getRect(find.text('Cancelar'));
@@ -490,9 +508,7 @@ void main() {
   testWidgets('with no cancel, actions still pack to the trailing edge as before', (tester) async {
     await pump(tester, Brightness.light);
     final actionsRight = tester.getTopRight(find.text('OK')).dx;
-    final cardRight = tester
-        .getTopRight(find.descendant(of: find.byType(Dialog), matching: find.byType(Material)).first)
-        .dx;
+    final cardRight = tester.getTopRight(find.descendant(of: find.byType(Dialog), matching: find.byType(Material)).first).dx;
 
     // OK hugs the card's own trailing edge (minus the footer's padding) —
     // unchanged from before `cancel` existed.
@@ -500,10 +516,12 @@ void main() {
   });
 
   testWidgets('header and footer are optional', (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      theme: buildHaLoTheme(Brightness.light),
-      home: const Scaffold(body: HaloDialog(content: Text('Body only'))),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: const Scaffold(body: HaloDialog(content: Text('Body only'))),
+      ),
+    );
 
     expect(find.text('Body only'), findsOneWidget);
     expect(tester.takeException(), isNull);

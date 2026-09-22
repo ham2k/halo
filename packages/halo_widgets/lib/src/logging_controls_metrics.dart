@@ -94,12 +94,7 @@ const fieldWidthDuration = Duration(milliseconds: 100);
 /// it: the gap before it, the width it asks for, the node whose focus exempts
 /// it from being squeezed, and how to build it at whatever width and inner
 /// padding it ends up with.
-typedef MainField = ({
-  double gapBefore,
-  double minWidth,
-  FocusNode focusNode,
-  Widget Function(double width, double padding, Duration duration) build,
-});
+typedef MainField = ({double gapBefore, double minWidth, FocusNode focusNode, Widget Function(double width, double padding, Duration duration) build});
 
 /// One main logging field as everything OUTSIDE the row needs it: what it is
 /// called, what the operator has typed into it, and the hint standing in while
@@ -110,13 +105,7 @@ typedef MainField = ({
 /// empty controller and its suggestion here. A report is the case that needs
 /// it — `_rstOrDefault` folds the placeholder into the DRAFT, where a default
 /// `59` and a typed `59` become the same three characters.
-typedef PrimaryField = ({
-  String key,
-  String label,
-  FocusNode focus,
-  TextEditingController controller,
-  String? hint,
-});
+typedef PrimaryField = ({String key, String label, FocusNode focus, TextEditingController controller, String? hint});
 
 /// What [resolveMainFieldLayout] settles on for the
 /// row: a width for each trailing field, and — once even the floors don't fit
@@ -128,8 +117,7 @@ typedef MainFieldLayout = ({List<double> widths, double gapScale, double fieldPa
 /// same font size across all of them, built on the app-wide field styling
 /// (theme.dart), tinted to read against the panel's tertiaryContainer
 /// background.
-TextStyle mainFieldStyle(BuildContext context, {required FontWeight fontWeight}) =>
-    haloMonoStyle(context, fontSize: 15, fontWeight: fontWeight);
+TextStyle mainFieldStyle(BuildContext context, {required FontWeight fontWeight}) => haloMonoStyle(context, fontSize: 15, fontWeight: fontWeight);
 
 /// A main field's decoration, with the label always pinned to the top-left
 /// corner (not the "large placeholder until focused" default) so the row's
@@ -145,12 +133,7 @@ TextStyle mainFieldStyle(BuildContext context, {required FontWeight fontWeight})
 /// The vertical padding is left alone: it sets the row's height, and
 /// squeezing that would move every control and the submit button as the
 /// panel narrowed.
-InputDecoration mainFieldDecoration(
-  BuildContext context,
-  String label, {
-  String? hintText,
-  required double horizontalPadding,
-}) {
+InputDecoration mainFieldDecoration(BuildContext context, String label, {String? hintText, required double horizontalPadding}) {
   final base = poloFieldDecoration(
     context,
     label,
@@ -164,7 +147,9 @@ InputDecoration mainFieldDecoration(
   );
   final side = (horizontalPadding - materialFilledInputGap) / 2;
   final padding = base.contentPadding! as EdgeInsets;
-  return base.copyWith(contentPadding: padding.copyWith(left: side, right: side));
+  return base.copyWith(
+    contentPadding: padding.copyWith(left: side, right: side),
+  );
 }
 
 /// Which of a control's two labels a field [width] wide can actually show.
@@ -192,13 +177,7 @@ InputDecoration mainFieldDecoration(
 ///
 /// [mainFieldLabelWidth] is the arithmetic, kept apart because the only honest
 /// test of it renders a real field and compares the two.
-String mainFieldLabel(
-  BuildContext context, {
-  required String label,
-  String? shortLabel,
-  required double width,
-  required double horizontalPadding,
-}) {
+String mainFieldLabel(BuildContext context, {required String label, String? shortLabel, required double width, required double horizontalPadding}) {
   if (shortLabel == null || shortLabel.isEmpty || shortLabel == label) return label;
   final available = mainFieldLabelWidth(width: width, horizontalPadding: horizontalPadding);
   return textWidth(context, label, poloFieldLabelStyle(context)) <= available ? label : shortLabel;
@@ -233,10 +212,10 @@ double mainFieldValueWidth(BuildContext context, int chars) =>
 typedef MainFieldFloors = ({double callValue, double fieldValue, double fullPadding});
 
 MainFieldFloors mainFieldFloors(BuildContext context) => (
-      callValue: mainFieldValueWidth(context, callFieldMinChars),
-      fieldValue: mainFieldValueWidth(context, mainFieldMinChars),
-      fullPadding: mainFieldContentPadding * MediaQuery.textScalerOf(context).scale(1.0) + materialFilledInputGap,
-    );
+  callValue: mainFieldValueWidth(context, callFieldMinChars),
+  fieldValue: mainFieldValueWidth(context, mainFieldMinChars),
+  fullPadding: mainFieldContentPadding * MediaQuery.textScalerOf(context).scale(1.0) + materialFilledInputGap,
+);
 
 /// Resolves how the main logging row fills [maxWidth], and whether it had to
 /// squeeze anything to do it.

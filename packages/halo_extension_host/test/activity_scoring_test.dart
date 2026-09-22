@@ -19,39 +19,36 @@ void main() {
   /// Distinct callsigns, one minute apart, so nothing here trips the duplicate
   /// rules by accident.
   List<Map<String, dynamic>> contacts(int n, {int day = 1, String band = '20m'}) => [
-        for (var i = 0; i < n; i++)
-          {
-            'uuid': 'q$day-$i',
-            'startAtMillis': DateTime.utc(2026, 7, day, 12, i).millisecondsSinceEpoch,
-            'band': band,
-            'mode': 'SSB',
-            'our': {'call': 'N0DEV'},
-            'their': {'call': 'W${i}ABC'},
-          },
-      ];
+    for (var i = 0; i < n; i++)
+      {
+        'uuid': 'q$day-$i',
+        'startAtMillis': DateTime.utc(2026, 7, day, 12, i).millisecondsSinceEpoch,
+        'band': band,
+        'mode': 'SSB',
+        'our': {'call': 'N0DEV'},
+        'their': {'call': 'W${i}ABC'},
+      },
+  ];
 
   Map<String, dynamic> activating(List<String> parks) => {
-        'uuid': 'op',
-        'stationCall': 'N0DEV',
-        'refs': [for (final park in parks) {'type': 'potaActivation', 'ref': park}],
-      };
+    'uuid': 'op',
+    'stationCall': 'N0DEV',
+    'refs': [
+      for (final park in parks) {'type': 'potaActivation', 'ref': park},
+    ],
+  };
 
-  Future<Map<String, dynamic>?> score(
-    Map<String, dynamic> operation,
-    List<Map<String, dynamic>> qsos,
-  ) async {
+  Future<Map<String, dynamic>?> score(Map<String, dynamic> operation, List<Map<String, dynamic>> qsos) async {
     final host = await sharedHost(['pota']);
-    final result = await host.invokeHook(
-      'scoring',
-      key: 'pota',
-      method: 'scoreQsos',
-      args: {
-        'operation': operation,
-        'qsos': qsos,
-        'ref': (operation['refs'] as List).isEmpty ? null : (operation['refs'] as List).first,
-      },
-      timeout: const Duration(seconds: 20),
-    ) as Map?;
+    final result =
+        await host.invokeHook(
+              'scoring',
+              key: 'pota',
+              method: 'scoreQsos',
+              args: {'operation': operation, 'qsos': qsos, 'ref': (operation['refs'] as List).isEmpty ? null : (operation['refs'] as List).first},
+              timeout: const Duration(seconds: 20),
+            )
+            as Map?;
     return result?.cast<String, dynamic>();
   }
 

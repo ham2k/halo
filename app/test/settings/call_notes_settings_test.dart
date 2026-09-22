@@ -113,8 +113,11 @@ void main() {
     expect(list['restartOnChange'], true);
     expect(list['inline'], true);
     expect(list['itemLabel'], isNotEmpty);
-    expect(list['itemTitle'], r'${name}',
-        reason: r'the renderer templates ${key}, not {{key}} — a Mustache-style template would show literally, unsubstituted');
+    expect(
+      list['itemTitle'],
+      r'${name}',
+      reason: r'the renderer templates ${key}, not {{key}} — a Mustache-style template would show literally, unsubstituted',
+    );
 
     final help = elements.firstWhere((el) => el['type'] == 'markdown');
     expect(help['collapsible'], true);
@@ -172,12 +175,7 @@ void main() {
   /// makes.
   Future<void> loadHamsOfNoteBody(String body) async {
     final host = extensions.host!;
-    final processed = await host.invokeHook(
-      'dataFile',
-      key: 'hams-of-note',
-      method: 'rawToJSONData',
-      args: {'body': body, 'url': '', 'options': const {}},
-    );
+    final processed = await host.invokeHook('dataFile', key: 'hams-of-note', method: 'rawToJSONData', args: {'body': body, 'url': '', 'options': const {}});
     await host.invokeHook('dataFile', key: 'hams-of-note', method: 'onLoadRawData', args: processed);
   }
 
@@ -240,7 +238,8 @@ void main() {
     expect(
       await allCalls(),
       isNot(contains('KI2D')),
-      reason: 'allCalls (dev-commands\' SEED draws from this) must stay consistent with entriesFor — a call whose '
+      reason:
+          'allCalls (dev-commands\' SEED draws from this) must stay consistent with entriesFor — a call whose '
           'notes are hidden by a disabled source should not still appear via the directory hook',
     );
   });

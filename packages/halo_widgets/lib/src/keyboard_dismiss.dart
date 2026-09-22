@@ -174,11 +174,6 @@ class _TapToDismissEmptyFieldState extends State<TapToDismissEmptyField> {
     // Listener, not GestureDetector: this must observe taps without entering
     // the gesture arena, where it would compete with the field's own tap
     // recognizer (and with scrolling).
-    return Listener(
-      onPointerDown: _onPointerDown,
-      onPointerUp: _onPointerUp,
-      onPointerCancel: _onPointerCancel,
-      child: widget.child,
-    );
+    return Listener(onPointerDown: _onPointerDown, onPointerUp: _onPointerUp, onPointerCancel: _onPointerCancel, child: widget.child);
   }
 }

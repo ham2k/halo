@@ -12,7 +12,11 @@ const kUpcomingTesterNotesKey = 'upcoming';
 
 /// A top-level `upcoming:` key, quoted either way. `^` in multiline mode is
 /// what makes it top-level: nested keys are indented and can't match.
-final _upcomingKey = RegExp('^(["\']?)$kUpcomingTesterNotesKey' r'\1[ \t]*:', multiLine: true);
+final _upcomingKey = RegExp(
+  '^(["\']?)$kUpcomingTesterNotesKey'
+  r'\1[ \t]*:',
+  multiLine: true,
+);
 
 /// Returns `app/assets/tester-notes.yaml` [source] with its `upcoming:` key
 /// renamed to [build], or null when there is nothing to ship: no such key, or
@@ -71,9 +75,7 @@ String? renameUpcomingTesterNotes(String source, int build) {
     // The parse found the key and this didn't, so it's spelled in a way the
     // rename can't rewrite (a flow mapping, an explicit `? ` key) — or twice,
     // in two spellings yaml counts as distinct keys.
-    throw FormatException(
-      "tester-notes.yaml: expected exactly one plain '$kUpcomingTesterNotesKey:' key to rename, found ${matches.length}",
-    );
+    throw FormatException("tester-notes.yaml: expected exactly one plain '$kUpcomingTesterNotesKey:' key to rename, found ${matches.length}");
   }
   final renamed = source.replaceRange(matches.first.start, matches.first.end, '"$build":');
 

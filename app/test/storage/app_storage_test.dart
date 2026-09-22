@@ -230,11 +230,8 @@ void main() {
     File prefs() => File(p.join(target.path, kPreferencesFileName));
     File backup() => File(p.join(target.path, kPreferencesBackupFileName));
 
-    Future<List<String>> quarantined() async => target
-        .list()
-        .map((e) => p.basename(e.path))
-        .where((name) => name.startsWith(kPreferencesQuarantinePrefix))
-        .toList();
+    Future<List<String>> quarantined() async =>
+        target.list().map((e) => p.basename(e.path)).where((name) => name.startsWith(kPreferencesQuarantinePrefix)).toList();
 
     test('takes a backup of a file it can read', () async {
       await prefs().writeAsString('{"flutter.call":"N0DEV"}');
@@ -383,8 +380,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('operatorCall', 'N0DEV');
 
-      expect(await sandboxPreferences().exists(), isTrue,
-          reason: 'the sandbox owns its settings file, wherever the platform would have put one');
+      expect(await sandboxPreferences().exists(), isTrue, reason: 'the sandbox owns its settings file, wherever the platform would have put one');
       expect(await sandboxPreferences().readAsString(), contains('N0DEV'));
     });
 
