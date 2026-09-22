@@ -23,12 +23,15 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import '../services/cat/cat_service.dart';
 import '../services/cat/equipment.dart';
+import '../services/catalog_service.dart';
+import '../services/error_reporting_service.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
 import '../settings/settings_target_dialog.dart';
 import 'extensions_panel.dart';
 import 'operation/clock/clock_panel.dart';
+import 'operation/activities_catalog_tier.dart' show CatalogTier, installCatalogExtension;
 import 'operation/clock/clock_zones.dart';
 import 'operation/extension_panel.dart';
 import 'operation/layout_sheet.dart';
@@ -1372,6 +1375,9 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     // rebuilds on `revision` rather than reading the catalog once.
     unawaited(dockServices.panels.refreshExtensionPanels());
     final revision = _sheetRevision = ValueNotifier<int>(0);
+    // Per sheet, so a sheet fetches the catalog at most once however much is
+    // typed into it.
+    final catalogTier = CatalogTier();
     final t = _t;
     setState(() => layoutSheetOpen = true);
     try {
@@ -1424,9 +1430,14 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
             onPressed: () => Navigator.of(buttonContext).pop(),
           ),
         ),
-        builder: (_) => ValueListenableBuilder<int>(
+        builder: (sheetContext) => ValueListenableBuilder<int>(
           valueListenable: revision,
           builder: (context, _, _) {
+            final extensions = dockServices.extensions;
+            final locale = LocaleSettings.currentLocale.languageCode;
+            String? extensionName(String? key) => key == null
+                ? null
+                : extensions.availableExtensions.where((info) => info.key == key).firstOrNull?.nameFor(locale);
             // Re-read per build: the dock can go out from under an open sheet
             // (a resize past a breakpoint), and the list is then about an
             // arrangement that is not on screen. Falling back to the draft
@@ -1452,8 +1463,42 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                       title: panel.title,
                       description: panel.description,
                       preview: panel.preview,
+                      extensionName: panel.source == PanelSource.extension ? extensionName(panel.hookKey) : null,
                     ),
               ],
+              // Not a core one (always on), not one an experiment gates (enabling
+              // it could not load it) — the same rule [_hasPanelExtensions] uses.
+              enableable: [
+                for (final info in extensions.availableExtensions)
+                  if (!info.core &&
+                      info.hooks.contains('panel') &&
+                      extensions.isExtensionAvailable(info) &&
+                      !extensions.isExtensionEnabled(info))
+                    info,
+              ],
+              installable: switch (catalogTier.entries) {
+                final entries? => orderedCatalogEntries(
+                    [
+                      for (final entry in entries)
+                        if (entry.hooks.contains('panel') &&
+                            !extensions.availableExtensions.any((info) => info.key == entry.key))
+                          entry,
+                    ],
+                    dockServices.flags.operatorGeo,
+                    locale,
+                  ),
+                null => const [],
+              },
+              onSearch: CatalogTier.shownFor(dockServices)
+                  ? () => catalogTier.ensureFetched(dockServices, bumpSheet)
+                  : null,
+              onEnableExtension: (info) => _gainPanelExtension(() async {
+                await extensions.setExtensionEnabled(info.key, true);
+                return true;
+              }),
+              onInstallExtension: (entry) => _gainPanelExtension(
+                () => installCatalogExtension(context, services: dockServices, entry: entry),
+              ),
               onAdd: (id) {
                 // Adding an instanceable panel places a NEW one rather than
                 // re-adding the descriptor: its id is what its config is stored
@@ -1467,6 +1512,9 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                 // through a callback the sheet is still holding.
                 if (dock == null) return;
                 final panel = dockServices.panels[id];
+                // Adding is what the operator came here for; the sheet has
+                // nothing more to say once it is done.
+                Navigator.of(sheetContext).pop();
                 dock.addModule(
                   panel != null && panel.multiple
                       // Ids waiting to be forgotten are NOT free. Their config
@@ -1516,6 +1564,23 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       // The sheet's own close, an Escape and a tap on the barrier all land
       // here.
       if (mounted) setState(() => layoutSheetOpen = false);
+    }
+  }
+
+  /// Enables or installs an extension from the Add a Panel sheet, then waits
+  /// for its panels to be listed, so the sheet's search lands on them. False
+  /// covers a cancelled install and a failure, which is reported here; the
+  /// sheet then only stops its progress bar and leaves the search as it was.
+  Future<bool> _gainPanelExtension(Future<bool> Function() gain) async {
+    try {
+      if (!await gain()) return false;
+      await dockServices.panels.refreshExtensionPanels();
+      bumpSheet();
+      return true;
+    } catch (e, stack) {
+      debugPrint('[layout] gaining a panel extension failed: $e');
+      ErrorReportingService.report(e, stack, context: 'layout:gain-panel-extension');
+      return false;
     }
   }
 

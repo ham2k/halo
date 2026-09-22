@@ -158,7 +158,9 @@ List<CatalogEntry> catalogExtensionsMatching(
 /// row that said "Enable" for it would be asking one thing and doing another.
 class InstallExtensionRow extends StatelessWidget {
   final CatalogEntry entry;
-  final VoidCallback onTap;
+
+  /// Null while an install is already under way, which makes the row inert.
+  final VoidCallback? onTap;
 
   const InstallExtensionRow({super.key, required this.entry, required this.onTap});
 

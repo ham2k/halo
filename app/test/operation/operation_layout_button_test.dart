@@ -240,8 +240,11 @@ void main() {
     // Catalog order is registration order, so the repeatable Clock trails the
     // single-placement panes.
     expect(sheetOf(tester).available.map((p) => p.id), ['info', 'clock', 'weather', 'solar', 'website']);
-    sheetOf(tester).onAdd!('info');
+    // The whole row, not just its plus — and the add is the sheet's last act.
+    await tester.tap(find.descendant(of: find.byType(LayoutSheet), matching: find.text(tabs.info)));
     await tester.pumpAndSettle();
+    expect(find.byType(LayoutSheet), findsNothing, reason: 'adding a panel dismisses the sheet');
+    await openAddSheet(tester);
     expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website'],
         reason: 'and once back, it is no longer on offer');
 
@@ -261,8 +264,6 @@ void main() {
     await dragToDelete(tester, 'Chart');
     await openAddSheet(tester);
     sheetOf(tester).onAdd!('info');
-    await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(MdiIcons.check));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text(t.saveLayout));
@@ -313,13 +314,11 @@ void main() {
     // does nothing is worse than one that is not there. Discard and Save are
     // what the operator needs up there.
     //
-    // Scoped to the HEADER rather than to the whole tree: each offered panel
-    // row carries its own plus, so a bare "no plus anywhere" assertion only
-    // held while the sheet happened to list nothing.
-    final plusButtons = find.widgetWithIcon(IconButton, MdiIcons.plus);
-    final plusInSheet = find.descendant(of: find.byType(LayoutSheet), matching: plusButtons);
-    expect(plusButtons.evaluate(), hasLength(plusInSheet.evaluate().length),
-        reason: 'every plus on screen belongs to a row inside the sheet');
+    // A BUTTON with a plus: each offered panel row draws one too, as the
+    // row's own cue, and the row is what takes the tap.
+    expect(find.widgetWithIcon(IconButton, MdiIcons.plus), findsNothing);
+    expect(find.descendant(of: find.byType(LayoutSheet), matching: find.byIcon(MdiIcons.plus)), findsWidgets,
+        reason: 'the rows are listed, so the assertion above is not vacuous');
     expect(find.text(t.saveLayout), findsOneWidget);
 
     // And the guard behind it still refuses, so no other caller can stack one.

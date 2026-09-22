@@ -615,12 +615,21 @@ control on its TAB, present only while the layout is being used: the logging
 panel's tune dialog, and an extension panel's own config form, which
 configures that pane alone and has nowhere else to go.
 
-The sheet carries a **search** — matching a panel's description as well as
-its name, since a panel is often easier to describe than to name — and beside
-it a button opening the **extensions screen filtered to the ones that
-contribute panels** (`ExtensionsPanel.onlyHook`). The sheet lists what is
-INSTALLED; an operator who cannot find the panel they want needs the other
-screen, and sending them to hunt for it is worse than a button.
+A tap anywhere on a row adds that panel and **dismisses the sheet** — adding
+is what the operator came for. The row's thumbnail is the one exception: it
+opens the preview at pane scale. A panel with no drawable preview shows a
+placeholder in that slot, which adds like the rest of the row.
+
+The sheet carries a **search** — matching a panel's description and its
+extension's name as well as its own name, since a panel is often easier to
+describe than to name — and beside it a button opening the **extensions
+screen filtered to the ones that contribute panels**
+(`ExtensionsPanel.onlyHook`). A search also offers, below the panels it
+matched, the extensions that would contribute one: **Enable X** for an
+installed one that is switched off, and **Install X** from the catalog (the
+same tiers, rows and experiment gate as the operation sheet's activity
+search; the catalog is fetched on the first search, once per sheet). Gaining
+one puts its name in the search box, which lands the list on its panels.
 
 **Layout options** are the dock's business rather than the panel's, and every
 pane has them whichever panel is in it. They are reached while editing and

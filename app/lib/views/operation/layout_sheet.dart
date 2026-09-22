@@ -10,6 +10,7 @@
 // second list of what is already in the view would be a second place to do
 // that, and the two would disagree the moment one of them was wrong.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -18,6 +19,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+
+import '../../services/catalog_service.dart';
+import '../../services/extension_info.dart';
+import '../extensions_panel.dart' show extensionCategoryIcon;
+import 'activities_catalog_tier.dart' show InstallExtensionRow;
 
 /// One row of the sheet: a panel that could be added to the view.
 class LayoutPanelEntry {
@@ -34,7 +40,18 @@ class LayoutPanelEntry {
   /// the panel list into a fetch.
   final String? preview;
 
-  const LayoutPanelEntry({required this.id, required this.title, this.description, this.preview});
+  /// The name of the extension that contributes this panel, null for one of
+  /// the app's own. Searched like the title: an operator who just enabled
+  /// an extension from this sheet finds its panels by the name they enabled.
+  final String? extensionName;
+
+  const LayoutPanelEntry({
+    required this.id,
+    required this.title,
+    this.description,
+    this.preview,
+    this.extensionName,
+  });
 }
 
 /// A panel's preview image. SVG is drawn directly; a `data:` URI is
@@ -167,6 +184,8 @@ class LayoutSheet extends StatefulWidget {
   /// one of them is correct.
   static const availableSectionKey = Key('layoutSection-available');
 
+  static const previewPlaceholderKey = Key('layoutSheet-previewPlaceholder');
+
   /// Panels this view knows how to show. A panel already in the layout is
   /// listed only if it can be placed more than once, in which case this row
   /// IS the "add another" control.
@@ -174,13 +193,41 @@ class LayoutSheet extends StatefulWidget {
 
   final void Function(String id)? onAdd;
 
+  /// Installed extensions that contribute panels but are switched off, and
+  /// catalog extensions that contribute panels and are not installed —
+  /// offered as "Enable X" / "Install X" rows when the search matches them,
+  /// the same tiers the operation sheet's activity search offers. Unfiltered:
+  /// the sheet owns the search text, so it does the matching.
+  final List<ExtensionInfo> enableable;
+  final List<CatalogEntry> installable;
+
+  /// Called on every non-empty search, so the host can fetch the catalog
+  /// lazily — a sheet opened only to add a Clock asks the catalog nothing.
+  final VoidCallback? onSearch;
+
+  /// Gain the extension, answering whether it is now running with its panels
+  /// listed. On true the search is replaced by the extension's name, which
+  /// is what lists its panels.
+  final Future<bool> Function(ExtensionInfo info)? onEnableExtension;
+  final Future<bool> Function(CatalogEntry entry)? onInstallExtension;
+
   /// Opens the extensions screen, filtered to the ones that contribute
   /// panels. The list here is only what is INSTALLED; an operator who cannot
   /// find the panel they want needs the other screen, and sending them to
   /// hunt for it is worse than a button.
   final VoidCallback? onManageExtensions;
 
-  const LayoutSheet({super.key, this.available = const [], this.onAdd, this.onManageExtensions});
+  const LayoutSheet({
+    super.key,
+    this.available = const [],
+    this.onAdd,
+    this.onManageExtensions,
+    this.enableable = const [],
+    this.installable = const [],
+    this.onSearch,
+    this.onEnableExtension,
+    this.onInstallExtension,
+  });
 
   @override
   State<LayoutSheet> createState() => _LayoutSheetState();
@@ -188,6 +235,11 @@ class LayoutSheet extends StatefulWidget {
 
 class _LayoutSheetState extends State<LayoutSheet> {
   final _searchController = TextEditingController();
+
+  /// Held from the tap on an Enable/Install row until the extension is
+  /// running: both end in a runtime restart, and a second tap would queue
+  /// another on top of the first.
+  bool _gaining = false;
 
   @override
   void dispose() {
@@ -202,7 +254,37 @@ class _LayoutSheetState extends State<LayoutSheet> {
     if (query.isEmpty) return true;
     final needle = query.toLowerCase();
     return panel.title.toLowerCase().contains(needle) ||
-        (panel.description?.toLowerCase().contains(needle) ?? false);
+        (panel.description?.toLowerCase().contains(needle) ?? false) ||
+        (panel.extensionName?.toLowerCase().contains(needle) ?? false);
+  }
+
+  Future<void> _gain(Future<bool> Function() gain, String name) async {
+    if (_gaining) return;
+    setState(() => _gaining = true);
+    try {
+      final gained = await gain();
+      if (!mounted || !gained) return;
+      _searchController.text = name;
+    } finally {
+      if (mounted) setState(() => _gaining = false);
+    }
+  }
+
+  Widget _enableRow(BuildContext context, ExtensionInfo info, String locale) {
+    final theme = Theme.of(context);
+    final name = info.nameFor(locale);
+    return ListTile(
+      tileColor: theme.colorScheme.secondaryContainer,
+      leading: ExtensionIconTile(
+        icon: info.icon,
+        accentColor: info.accentColor,
+        fallbackIcon: extensionCategoryIcon(info.category),
+      ),
+      title: Text(context.t.activitiesView.enableExtension(name: name), style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(context.t.activitiesView.enableExtensionHint),
+      trailing: const Icon(MdiIcons.plus),
+      onTap: _gaining ? null : () => unawaited(_gain(() => widget.onEnableExtension!(info), name)),
+    );
   }
 
   /// A section band, in the operation setup sheet's own idiom: the pane's
@@ -228,15 +310,22 @@ class _LayoutSheetState extends State<LayoutSheet> {
     );
   }
 
-  Widget _panelRow(BuildContext context, LayoutPanelEntry panel, {required Widget? trailing}) {
+  Widget _panelRow(BuildContext context, LayoutPanelEntry panel) {
     final t = context.t.operation.layout;
     final preview = panel.preview;
+    final onAdd = widget.onAdd;
     return ListTile(
       // Opaque, like the operation sheet's rows: the sheet's own background
       // shows straight through a row that doesn't paint one.
       tileColor: haloSheetRowColor(context),
+      // A placeholder where there is no preview, so every title starts at the
+      // same inset — and a plain box, not a control: there is nothing to open.
       leading: preview == null || !_PanelPreview.isDrawableForm(preview)
-          ? null
+          ? SizedBox.square(
+              key: LayoutSheet.previewPlaceholderKey,
+              dimension: _PanelPreview._thumbnailSize,
+              child: Icon(MdiIcons.viewDashboardOutline, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            )
           : Semantics(
               button: true,
               label: t.showPreview(panel: panel.title),
@@ -250,7 +339,10 @@ class _LayoutSheetState extends State<LayoutSheet> {
             ),
       title: Text(panel.title, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: panel.description == null ? null : Text(panel.description!),
-      trailing: trailing,
+      // The whole row adds; the plus only says so. It is not a second
+      // control — two focus stops doing one thing is one too many.
+      trailing: onAdd == null ? null : Icon(MdiIcons.plus, semanticLabel: t.addPanel(panel: panel.title)),
+      onTap: onAdd == null ? null : () => onAdd(panel.id),
     );
   }
 
@@ -296,6 +388,13 @@ class _LayoutSheetState extends State<LayoutSheet> {
     final t = context.t.operation.layout;
     final query = _searchController.text.trim();
     final available = [for (final panel in widget.available) if (_matches(panel, query)) panel];
+    final locale = LocaleSettings.currentLocale.languageCode;
+    final enable = widget.onEnableExtension == null
+        ? const <ExtensionInfo>[]
+        : [for (final info in widget.enableable) if (info.matchesSearch(query, locale: locale)) info];
+    final install = widget.onInstallExtension == null
+        ? const <CatalogEntry>[]
+        : [for (final entry in widget.installable) if (entry.matchesSearch(query, locale: locale)) entry];
     return Material(
       color: haloSheetListBackground(context),
       child: Column(
@@ -312,7 +411,10 @@ class _LayoutSheetState extends State<LayoutSheet> {
                   child: TextField(
                     selectAllOnFocus: false,
                     controller: _searchController,
-                    onChanged: (_) => setState(() {}),
+                    onChanged: (text) {
+                      setState(() {});
+                      if (text.trim().isNotEmpty) widget.onSearch?.call();
+                    },
                     decoration: InputDecoration(
                       isDense: true,
                       prefixIcon: const Icon(MdiIcons.magnify, size: 18),
@@ -343,11 +445,16 @@ class _LayoutSheetState extends State<LayoutSheet> {
             ),
           );
           }),
+          // A restart, and for an install a download, lie between the tap and
+          // the panels arriving; rows that merely stop answering read as stuck.
+          if (_gaining) const LinearProgressIndicator(),
           _sectionHeader(context, t.availableSection, key: LayoutSheet.availableSectionKey),
           // A sheet that renders nothing at all reads as one that failed to
           // load. There IS a way to get here with nothing to add — every
           // panel placed, none of them instanceable.
-          if (available.isEmpty)
+          // Not beside an Enable/Install row: "no panel matches" above an
+          // offer of one would contradict it.
+          if (available.isEmpty && enable.isEmpty && install.isEmpty)
             Padding(
               padding: const EdgeInsets.all(Space.xl),
               child: Text(
@@ -360,16 +467,17 @@ class _LayoutSheetState extends State<LayoutSheet> {
                     ),
               ),
             ),
-          for (final panel in available)
-            _panelRow(
-              context,
-              panel,
-              trailing: widget.onAdd == null
+          for (final panel in available) _panelRow(context, panel),
+          // Below what is already here: a panel the operator has is the
+          // answer, and one that has to be enabled or downloaded first is
+          // the fallback.
+          for (final info in enable) _enableRow(context, info, locale),
+          for (final entry in install)
+            InstallExtensionRow(
+              entry: entry,
+              onTap: _gaining
                   ? null
-                  : IconButton(
-                      icon: Icon(MdiIcons.plus, semanticLabel: t.addPanel(panel: panel.title)),
-                      onPressed: () => widget.onAdd!(panel.id),
-                    ),
+                  : () => unawaited(_gain(() => widget.onInstallExtension!(entry), entry.nameFor(locale))),
             ),
         ],
       ),
