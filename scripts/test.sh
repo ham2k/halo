@@ -874,13 +874,16 @@ check_clock_discipline
 check_app_test_layout
 
 if [[ "$QUICK" -eq 1 ]]; then
-  echo "▶ extensions: install, typecheck (quick mode: no tests)"
+  echo "▶ extensions: install, typecheck, format check (quick mode: no tests)"
 else
-  echo "▶ extensions: install, typecheck, unit tests"
+  echo "▶ extensions: install, typecheck, format check, unit tests"
 fi
 cd "$ROOT_DIR/extensions"
 npm ci
 npm run typecheck
+# The pinned Prettier, configured in extensions/.prettierrc.json — the
+# extensions' counterpart of check_dart_format.
+npm run format:check
 if [[ "$QUICK" -eq 0 ]]; then
   npm test
 fi

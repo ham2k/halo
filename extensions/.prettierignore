@@ -1,0 +1,9 @@
+# Generated: the bundles, and the SDK's packed output.
+build/
+sdk/dist/
+sdk/docs/
+sdk/samples/
+package-lock.json
+
+# Prose is wrapped by hand.
+*.md

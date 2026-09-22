@@ -161,6 +161,11 @@ Dart code is formatted at **160 columns**. Every first-party package's
 `--line-length`. The full gate and `--quick` both fail on an unformatted file
 (generated `.g.dart` files are exempt). The width is read through the
 `include:` chain, so a package without `pub get` formats at the default 80.
+The extensions' TypeScript, `.mjs` and JSON are formatted by the Prettier
+pinned in `extensions/package.json`, at the same width and without
+semicolons (`extensions/.prettierrc.json`): `npm run format` there, or an
+editor's Prettier integration, which picks the config up. The gate runs
+`npm run format:check`; Markdown is wrapped by hand and exempt.
 A commit that only reformats goes in `.git-blame-ignore-revs`; run
 `git config blame.ignoreRevsFile .git-blame-ignore-revs` once per clone so
 `git blame` looks past it (GitHub's blame view already does). Git refuses to

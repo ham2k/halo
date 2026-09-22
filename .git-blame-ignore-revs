@@ -5,3 +5,6 @@
 # Dart code is formatted at 160 columns
 b3d7a6cc62eafb3ddf8797fe18c472dfcea336db
 3128dd1a01096a030bd2585ddca83b4e17ca3404
+
+# The extensions' code and JSON are formatted by Prettier at 160 columns
+d37c0e3675e354768a05d8d6426a36baabcba077
