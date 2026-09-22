@@ -906,7 +906,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
 
   /// F1-F8 key the matching CW message through the key in use — or, while
   /// the draft contact is in a Phone mode, play the matching voice memory
-  /// of radio1; Escape stops either while it is still going out. Only while
+  /// of radio1; Escape stops every message, chain and repeat. Only while
   /// this view is the front-most route — a dialog over it (the message
   /// editors included) owns the keyboard — and only with a radio that can
   /// key (or play), so on a station without one the keys stay free for
@@ -916,27 +916,9 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     if (testerOverlayCovering.value) return false;
     if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
     final services = widget.services;
-    // ANY key ends a repeat, before anything else here decides whether this
-    // one is the keyer's: an operator typing a call has come back to the
-    // radio, and a CQ keying over what they are about to send is the one
-    // thing a repeating CQ must never do. Pressing F1 itself lands here
-    // first and then arms a fresh chain below.
-    services.cat.cancelKeyerRepeat();
-    // An ESM voice sequence is a chain too, and ends the same way.
-    services.cat.cancelVoiceSequence();
-    // And the memory on the air goes with it. Typing is the operator working
-    // the contact, which a CQ still playing over the top of is worse than a
-    // message cut short — so the play is stopped without CLAIMING the key,
-    // which belongs to the field being typed into. Escape is left to the
-    // handler below: it stops the same play but must also answer `true`, or
-    // the same keystroke also cancels an edit in the logging fields
-    // (logging-fields.md).
-    // A recording is never touched: it only runs from a dialog, where this
-    // handler is not the front route at all.
-    final playing = services.cat.voiceActivity.value;
-    if (playing != null && !playing.recording && event.logicalKey != LogicalKeyboardKey.escape) {
-      services.cat.stopVoice();
-    }
+    // A keypress by itself stops nothing: what a call typed over a CQ stops
+    // is decided by the callsign field (LoggingSession.onCallTyped), which
+    // hears every way a call is entered and not only a hardware key.
     if (!services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return false;
     if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return false;
     final cat = services.cat;
@@ -952,13 +934,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       // capability gate below, and for either keyer whatever the mode: a CW
       // message keyed just before the draft went to SSB is still the one
       // to stop, on a station whose radio plays no voice at all.
-      if (cat.voiceActivity.value != null) {
-        cat.stopVoice();
-        return true;
-      }
-      if (!cat.cwSending) return false;
-      cat.stopCw();
-      return true;
+      return cat.stopKeying();
     }
 
     // The DRAFT's mode decides — [_keyingPhone], the same answer the keyer
@@ -976,13 +952,23 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       // buttons while one runs, and a key must not do what a button cannot
       // — on a K4 the recording would be lost unsaved.
       if (cat.voiceActivity.value?.recording ?? false) return true;
+      _endChainsForKey();
       cat.playVoiceMemory(n);
       return true;
     }
     final template = services.settings.cwMessage(n);
     if (template.trim().isEmpty) return false;
+    _endChainsForKey();
     unawaited(_sendCwMessage(n, template));
     return true;
+  }
+
+  /// A message key ends whatever repeat or sequence is running: another
+  /// message is the operator moving on, and F1 starts a FRESH chain with its
+  /// own five minutes rather than extending the one it lands in.
+  void _endChainsForKey() {
+    widget.services.cat.cancelKeyerRepeat();
+    widget.services.cat.cancelVoiceSequence();
   }
 
   /// The function key each Enter Sends Messages message lives on — N1MM's
@@ -1118,7 +1104,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       services.cat.cancelKeyerRepeat();
       return;
     }
-    services.cat.sendCw(text);
+    services.cat.sendCw(text, hasMessageOne: messages.any((m) => m.n == 1));
     // Nothing keying after the send is a message the queue dropped (empty
     // once sanitized) or a radio that went away — either way there is no end
     // coming to start the next wait on.

@@ -78,8 +78,8 @@ class KeyerRepeat {
   /// testable.
   int? get deadlineMillis => _until;
 
-  /// Every stop is one the operator makes in the app — a key, Escape, a tap,
-  /// the setting. The radio keying on its own (a mic or a paddle during the
+  /// Every stop is one the operator makes in the app — an entered call,
+  /// Escape, a tap, the setting. The radio keying on its own (a mic or a paddle during the
   /// wait) does NOT stop the chain, because nothing reports transmit state
   /// upward: no driver has a TX read wired to a sink, so there is no signal
   /// to listen to. Adding one is a driver capability, not a check here.

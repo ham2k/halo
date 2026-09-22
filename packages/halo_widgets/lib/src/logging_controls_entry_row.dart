@@ -58,6 +58,7 @@ class LoggingEntryRow extends StatefulWidget {
     required this.eventFields,
     required this.onSubmitted,
     required this.onExchangeSubmitted,
+    this.onCallTyped,
   });
 
   /// The callsign field — `Expanded` over whatever the others leave it, and
@@ -125,6 +126,10 @@ class LoggingEntryRow extends StatefulWidget {
 
   /// Enter in an exchange field, which may be picking a suggestion instead.
   final VoidCallback onExchangeSubmitted;
+
+  /// The operator's own edit of the call field — see
+  /// [LoggingSession.onCallTyped].
+  final VoidCallback? onCallTyped;
 
   @override
   State<LoggingEntryRow> createState() => _LoggingEntryRowState();
@@ -441,6 +446,9 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
                     t.loggingControls.theirCall,
                     horizontalPadding: fieldLayout.fieldPadding,
                   ),
+                  // `onChanged`, not the controller: it hears only what the
+                  // operator entered, never the panel's own writes.
+                  onChanged: widget.onCallTyped == null ? null : (_) => widget.onCallTyped!(),
                   onEditingComplete: () => finishEditingWithoutBlur(widget.call.controller),
                   onSubmitted: (_) => widget.onSubmitted(),
                 ),

@@ -586,6 +586,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         // Locked QSOs are `_handlePanelEscape`'s own business — it declines,
         // and the disabled call field declines the focus too, so the keyboard
         // simply stays here.
+        if (widget.services.cat.escapeStoppedKeying) return KeyEventResult.handled;
         _handlePanelEscape();
         _loggingController.focusCall();
         return KeyEventResult.handled;
@@ -608,6 +609,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// never gets a chance to run — this mirrors that guard here so Escape
   /// doesn't close the read-only view it's meant to protect.
   void _handlePanelEscape() {
+    // An Escape OperationView's key handler spent on stopping keying is spent
+    // here too — the same rule LoggingSession.escapeClaimed carries into the
+    // fields.
+    if (widget.services.cat.escapeStoppedKeying) return;
     if (_selectedQso == null || _loggingController.isFieldsLocked) return;
     setState(() => _selectedQso = null);
   }
@@ -829,20 +834,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
               controller: _loggingController,
               // Only with CAT: the strip reads CatService.cwProgress, which
               // nothing writes without a keyer-capable radio.
-              // Escape stops a CW message, or a voice memory, before it closes
-              // or cancels anything — see LoggingSession.escapeClaimed.
-              escapeClaimed: _gatoEnabled && _keyerEnabled
-                  ? () {
-                      final cat = widget.services.cat;
-                      if (cat.voiceActivity.value != null) {
-                        cat.stopVoice();
-                        return true;
-                      }
-                      if (!cat.cwSending) return false;
-                      cat.stopCw();
-                      return true;
-                    }
-                  : null,
+              // Escape stops every message, chain and repeat before it closes
+              // or cancels anything — see LoggingSession.escapeClaimed. The
+              // stop itself is OperationView's key handler's, which runs first.
+              escapeClaimed: _gatoEnabled && _keyerEnabled ? () => widget.services.cat.escapeStoppedKeying : null,
+              // A call typed over a CQ stops it — see CatService.stopMessageOne.
+              onCallTyped: _gatoEnabled && _keyerEnabled ? widget.services.cat.stopMessageOne : null,
               enterSends: _enterSends,
               editingQso: _selectedQso,
               suggestedQso: widget.suggestedQso,

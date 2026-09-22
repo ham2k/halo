@@ -144,6 +144,143 @@ void main() {
     });
   });
 
+  group('a callsign typed over message 1', () {
+    // CatService.stopMessageOne, which the logging panel calls on every
+    // operator edit of the callsign field. Only message 1 goes, with any
+    // chain holding it: an exchange or a TU keying while the operator
+    // corrects the call is the contact being worked, and stopping it would
+    // cut the answer short.
+    const long = 'CQ CQ TEST N0DEV N0DEV TEST';
+
+    test('stops a CW message 1 and its chain', () async {
+      await connectPlaceholder();
+      cat.sendCw(long, hasMessageOne: true);
+      cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: long, send: () {});
+      expect(cat.cwSending, isTrue);
+
+      cat.stopMessageOne();
+      expect(cat.cwSending, isFalse);
+      expect(cat.keyerRepeating, isFalse);
+    });
+
+    test('leaves any other CW message keying', () async {
+      await connectPlaceholder();
+      cat.sendCw(long);
+      cat.stopMessageOne();
+      expect(cat.cwSending, isTrue, reason: 'an exchange is the contact, not a CQ');
+      cat.stopCw();
+    });
+
+    test('a newer send than the CQ is not the CQ', () async {
+      // The queue carries no message numbers, so what is on the air is read
+      // off the NEWEST send — a message 2 behind the CQ makes it not a CQ.
+      await connectPlaceholder();
+      cat.sendCw(long, hasMessageOne: true);
+      cat.sendCw(long);
+      cat.stopMessageOne();
+      expect(cat.cwSending, isTrue);
+      cat.stopCw();
+    });
+
+    test('stops voice memory 1, and leaves any other memory playing', () async {
+      await connectPlaceholder();
+      cat.playVoiceMemory(2);
+      await pumpEventQueue();
+      cat.stopMessageOne();
+      expect(cat.voiceActivity.value?.memory, 2);
+      cat.stopVoice();
+      await pumpEventQueue();
+
+      await services.settings.setVoiceRepeatDelay(3);
+      cat.playVoiceMemory(1);
+      await pumpEventQueue();
+      expect(cat.keyerRepeating, isTrue);
+      cat.stopMessageOne();
+      await pumpEventQueue();
+      expect(cat.voiceActivity.value, isNull);
+      expect(cat.keyerRepeating, isFalse);
+    });
+
+    test('a voice chain holding memory 1 stops whole, whichever memory is playing', () async {
+      // CW keys a chain as one message the queue cannot split, so voice
+      // stops a chain holding memory 1 whole too, and the two keyers answer
+      // a typed call alike.
+      await connectPlaceholder();
+      cat.playVoiceSequence([3, 1]);
+      await pumpEventQueue();
+      expect(cat.voiceActivity.value?.memory, 3);
+      cat.stopMessageOne();
+      await pumpEventQueue();
+      expect(cat.voiceActivity.value, isNull);
+      await Future<void>.delayed(placeholderVoicePlayDuration + const Duration(milliseconds: 300));
+      expect(cat.voiceActivity.value, isNull, reason: 'and the CQ never starts');
+    });
+
+    test('a voice chain WITHOUT memory 1 plays on', () async {
+      await connectPlaceholder();
+      cat.playVoiceSequence([2, 3]);
+      await pumpEventQueue();
+      cat.stopMessageOne();
+      await Future<void>.delayed(placeholderVoicePlayDuration + const Duration(milliseconds: 300));
+      expect(cat.voiceActivity.value?.memory, 3, reason: 'the exchange and its thanks are the contact');
+      cat.stopVoice();
+    });
+
+    test('a finished chain with memory 1 does not make the next memory one', () async {
+      // The chain's memory-1 mark lasts until its LAST memory ends, and no
+      // longer — a memory 2 played by hand afterwards is only an exchange.
+      await connectPlaceholder();
+      cat.playVoiceSequence([1]);
+      await pumpEventQueue();
+      await Future<void>.delayed(placeholderVoicePlayDuration + const Duration(milliseconds: 300));
+      expect(cat.voiceActivity.value, isNull);
+      cat.playVoiceMemory(2);
+      await pumpEventQueue();
+      cat.stopMessageOne();
+      expect(cat.voiceActivity.value?.memory, 2);
+      cat.stopVoice();
+    });
+  });
+
+  group('Escape', () {
+    // CatService.stopKeying: every message, chain and repeat, whatever it
+    // holds — and false with nothing to stop, which is what leaves Escape
+    // its usual meaning in the logging fields.
+    test('stops any CW message', () async {
+      await connectPlaceholder();
+      cat.sendCw('CQ CQ TEST N0DEV N0DEV TEST');
+      expect(cat.stopKeying(), isTrue);
+      expect(cat.cwSending, isFalse);
+    });
+
+    test('ends a repeat while it waits, with nothing on the air', () async {
+      // A keypress ends no chain on its own, so a wait Escape left running
+      // would bring the CQ back with nothing to stop it.
+      await connectPlaceholder();
+      cat.sendCw('E');
+      cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+      await pumpEventQueue();
+      await Future<void>.delayed(const Duration(seconds: 1));
+      expect(cat.keyerRepeat.value, isNotNull, reason: 'waiting, not keying');
+      expect(cat.stopKeying(), isTrue);
+      expect(cat.keyerRepeating, isFalse);
+    });
+
+    test('stops any voice memory and its chain', () async {
+      await connectPlaceholder();
+      cat.playVoiceSequence([2, 3]);
+      await pumpEventQueue();
+      expect(cat.stopKeying(), isTrue);
+      await Future<void>.delayed(placeholderVoicePlayDuration + const Duration(milliseconds: 300));
+      expect(cat.voiceActivity.value, isNull);
+    });
+
+    test('is not claimed with nothing to stop', () async {
+      await connectPlaceholder();
+      expect(cat.stopKeying(), isFalse);
+    });
+  });
+
   group('voice', () {
     test('memory 1 repeats when the setting says so; the rest end a chain', () async {
       await connectPlaceholder();

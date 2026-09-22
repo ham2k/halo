@@ -196,6 +196,64 @@ void main() {
       expect(cat.keyerRepeat.value?.delay, const Duration(seconds: 3));
     });
 
+    test('a CQ the link never took marks nothing', () async {
+      // A lost request leaves nothing on the air to end the mark, so the next
+      // message on the shared radio — another operator's — would inherit it,
+      // and a typed call here would stop it.
+      await followPeerRadio();
+      final send = cat.sendPeerKeyRequest;
+      cat.sendPeerKeyRequest = null;
+      cat.sendCw('CQ', hasMessageOne: true);
+      cat.playVoiceMemory(1);
+      cat.sendPeerKeyRequest = send;
+      cat.notePeerKeyStatus(pick.deviceId,
+          const PeerKeyStatusPayload(radioId: 'rig-1', cw: PeerCwProgressPayload(id: 7, text: 'TU 5NN')));
+
+      cat.stopMessageOne();
+
+      expect(requests.where((r) => r.op == PeerKeyOp.stopCw), isEmpty);
+      cat.notePeerKeyStatus(pick.deviceId,
+          const PeerKeyStatusPayload(radioId: 'rig-1', voice: PeerVoiceActivityPayload(memory: 1)));
+      cat.stopMessageOne();
+      expect(requests.where((r) => r.op == PeerKeyOp.stopVoice), isEmpty);
+    });
+
+    test('a lone memory 1 that never plays leaves no mark on the next memory', () async {
+      // A one-memory sequence has no start timeout, so a play lost on the
+      // way would leave a sequence mark standing forever — and every later
+      // exchange stopped by a typed call. It is marked as a plain play,
+      // which the next play replaces.
+      await followPeerRadio();
+      cat.playVoiceSequence([1]); // requested; the far radio never reports it
+      cat.playVoiceMemory(2);
+      cat.notePeerKeyStatus(pick.deviceId,
+          const PeerKeyStatusPayload(radioId: 'rig-1', voice: PeerVoiceActivityPayload(memory: 2)));
+      requests.clear();
+
+      cat.stopMessageOne();
+
+      expect(requests.where((r) => r.op == PeerKeyOp.stopVoice), isEmpty);
+    });
+
+    test('a call typed after this operator\'s CQ ended leaves the next message on the shared radio alone',
+        () async {
+      // The far queue's next message is somebody else's — another operator
+      // following the same radio. The message-1 mark has to end with the CQ
+      // it marked, or stopMessageOne sends a stop that cuts theirs off.
+      await followPeerRadio();
+      cat.sendCw('CQ', hasMessageOne: true);
+      cat.notePeerKeyStatus(pick.deviceId,
+          const PeerKeyStatusPayload(radioId: 'rig-1', cw: PeerCwProgressPayload(id: 1, text: 'CQ')));
+      cat.notePeerKeyStatus(pick.deviceId, const PeerKeyStatusPayload(radioId: 'rig-1'));
+      cat.notePeerKeyStatus(pick.deviceId,
+          const PeerKeyStatusPayload(radioId: 'rig-1', cw: PeerCwProgressPayload(id: 2, text: 'TU 5NN')));
+      requests.clear();
+
+      cat.stopMessageOne();
+
+      expect(requests.where((r) => r.op == PeerKeyOp.stopCw), isEmpty);
+    });
+
     test('the memories are the far radio\'s, and so are their names and lengths', () async {
       await followPeerRadio();
       await settings.setVoiceMessageLabel(1, 'MY CQ');
@@ -574,6 +632,23 @@ void main() {
       cat.handleKeyRequest(PeerKeyRequestPayload(radioId: node.uuid, op: PeerKeyOp.voice, memory: 1));
 
       expect(cat.keyerRepeating, isFalse);
+    });
+
+    test('a peer\'s memory 1 is not this operator\'s CQ to stop with a typed call', () async {
+      // This operator's own memory 1 is on the air when the peer's replaces
+      // it — no quiet moment in between to end the mark on, so the request
+      // itself has to.
+      final node = await connectPlaceholder();
+      cat.playVoiceMemory(1);
+      await pumpEventQueue();
+      cat.handleKeyRequest(PeerKeyRequestPayload(radioId: node.uuid, op: PeerKeyOp.voice, memory: 1));
+      await pumpEventQueue();
+
+      cat.stopMessageOne();
+      await pumpEventQueue();
+
+      expect(cat.voiceActivity.value?.memory, 1, reason: 'the peer\'s CQ is theirs to stop');
+      cat.stopVoice();
     });
 
     test('a station with keying switched off offers nothing keyable, and keys nothing', () async {

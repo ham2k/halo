@@ -1050,8 +1050,8 @@ pane. The renderer lives in the extension runtime and nowhere else, which is why
 it. A template that does not parse is shown as a notice, not keyed with its braces in Morse. The
 handler is a `HardwareKeyboard` handler in `OperationView` (which owns the draft QSO), claimed only
 while that route is front-most — a dialog over it, the message editor included, keeps the keyboard —
-and only for a bare function key with a message behind it; Escape is claimed only while a message is
-still going out, and stops it.
+and only for a bare function key with a message behind it; Escape is claimed only while something —
+a message, a chain, a repeat — is running, and stops all of it.
 
 **Neither protocol says when its keyer is free**, and both hold less than a CQ. CI-V's `0x17` takes
 30 characters and NAKs a second command while the first is still keying; a Yaesu memory takes 50.
@@ -1171,10 +1171,33 @@ send is supplied by whoever armed it, since rendering a template against the dra
 view's job while a voice memory needs nothing prepared. The keyer area shows the wait as a bar that
 EMPTIES, with the buttons down for the whole chain — including the render-long gap between a wait
 ending and the next message reaching the radio, which is why `keyerRepeatActive` is a notifier and
-not a getter. A chain ends on any keypress (an operator typing a call has come back to the radio),
-on Escape or a stop, on a tap of the countdown, on another message, on the setting going to No, and
-in any case after five minutes — an unattended CQ that keys forever is a transmitter nobody is
-watching. Every send that keys NOTHING cancels too (a failed render, a dead runtime, a message that
+not a getter. A chain ends on Escape or a stop, on a tap of the countdown, on another message, on a
+call entered, on the setting going to No, and in any case after five minutes — an unattended CQ that
+keys forever is a transmitter nobody is watching. A keypress by itself stops nothing.
+
+What stops is decided by what the operator did, the same for CW and voice:
+
+- **Escape** stops every message, Enter Sends Messages chain and repeat (`CatService.stopKeying`),
+  whoever started it — a peer's included — and is claimed only when there was something to stop.
+  The operation view's key handler does the stopping; the logging fields, which hear the same
+  keystroke after it, read its answer (`escapeStoppedKeying`) rather than asking again, since asked
+  again the stop just made reads as nothing running and the Escape also ends a QSO edit.
+- **A tap** on the keyer area's message line stops that keyer's message and everything behind it; a
+  tap on the countdown ends the repeat.
+- **A call entered** — any operator input into the callsign field: a key, the on-screen keyboard, a
+  paste, the numbers row (`LoggingSession.onCallTyped`, which hears none of the panel's own writes,
+  the wipe after an Enter above all) — stops message 1, any Enter Sends Messages chain holding it,
+  and any repeat (`CatService.stopMessageOne`). A command typed there is input like any other: its
+  first character stops the CQ. Every other message plays out: an exchange or a TU
+  keying while the call is corrected is the contact being worked. The CW queue carries no message
+  numbers, so "message 1 is on the air" is "the newest send held message 1 and the key is still
+  busy" — a message queued behind it makes it not message 1, and one queued ahead of it goes with
+  the stop. A voice chain holding memory 1 stops whole, whichever memory is playing, since CW keys
+  the same chain as one message the queue cannot split. Only this operator's own message 1: the
+  mark is set only on a send the keyer (or the peer link) took, ends with the message it marked, and
+  a peer's play or message on a shared transmitter never carries it — their CQ is theirs to stop.
+
+Every send that keys NOTHING cancels too (a failed render, a dead runtime, a message that
 sanitizes away, a radio gone between repeats): the wait starts on the message ending, so a chain
 armed with nothing running would wait for an end that never comes.
 
@@ -1459,7 +1482,7 @@ its `CwSendProgress.id` included, plus a WinKeyer's real `sentCount` — the far
 actually waiting on those numbers, and a second estimate here would drift against it. A status is
 the WHOLE state every time and an empty one is the state that matters: it is how a message ending
 crosses, which is also what starts a repeat's wait on the controller. The repeat chain stays with
-the operator who armed it (`armKeyerRepeat` supplies the send), and breaks on their own keypress.
+the operator who armed it (`armKeyerRepeat` supplies the send), and breaks on their own Escape or entered call.
 
 **A stop is a stop, whoever asked.** A peer's `stopCw` or `stopVoice` ends the local repeat chain too:
 the transmitter is shared, and a stop that left an unattended CQ re-keying it five seconds later is

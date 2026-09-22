@@ -82,6 +82,16 @@ class CatKeying {
     required this.peer,
   }) {
     voiceActivity.addListener(_onVoiceActivityForSequence);
+    // A message-1 mark lasts while its message does. Left standing, the
+    // next message on a shared transmitter — a peer's, or a third
+    // station's on the radio this device follows — would read as this
+    // operator's CQ, and a typed call would stop it.
+    cwProgress.addListener(() {
+      if (cwProgress.value == null) _lastCwHasMessageOne = false;
+    });
+    voiceActivity.addListener(() {
+      if (voiceActivity.value == null) _voiceMessageOne = false;
+    });
   }
 
   final KeyingStation station;
@@ -266,26 +276,88 @@ class CatKeying {
   /// the surfaces that call this only exist while [canKeyCw], so reaching
   /// here without a keyer is the radio dropping between the check and the
   /// keypress.
-  void sendCw(String text) {
+  void sendCw(String text, {bool hasMessageOne = false}) {
+    // Marked only on a send that was taken: a lost request leaves nothing on
+    // the air to end the mark, and the next message on a shared radio —
+    // somebody else's — would inherit it.
+    _lastCwHasMessageOne = false;
     // Already rendered by the time it gets here — a template is rendered
     // against the DRAFT contact of whoever pressed the key, so text is the
     // only thing a far station could act on. Sanitizing it is still the
     // receiving queue's job, exactly as it is for a message typed here.
     if (keysOverPeer) {
-      requestPeerKey(PeerKeyOp.cw, text: text);
+      _lastCwHasMessageOne = requestPeerKey(PeerKeyOp.cw, text: text) && hasMessageOne;
       return;
     }
-    sendCwLocally(text);
+    _lastCwHasMessageOne = sendCwLocally(text) && hasMessageOne;
   }
 
-  void sendCwLocally(String text) {
+  /// Whether the key in use took [text].
+  bool sendCwLocally(String text) {
     final session = _cwKeyer;
-    if (session == null) return;
+    if (session == null) return false;
     try {
       session.sendCw(text);
+      return true;
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:send-cw');
+      return false;
     }
+  }
+
+  /// Whether the memory this operator last played is memory 1 — cleared
+  /// when a peer's request plays one here, and when the play ends, so a
+  /// memory 1 somebody else put on the air is theirs to stop.
+  bool _voiceMessageOne = false;
+
+  /// Whether [stopKeying] stopped something on the keystroke being
+  /// dispatched — true only until that dispatch returns.
+  bool escapeStoppedKeying = false;
+
+  /// Whether the newest [sendCw] carried message 1 — alone, or as part of
+  /// an Enter Sends Messages chain keyed as one message. The queue carries
+  /// no message numbers, so "message 1 is on the air" is read as "the
+  /// newest send held message 1 and the key is still busy".
+  bool _lastCwHasMessageOne = false;
+
+  /// A callsign entered over message 1: message 1 stops, CW or voice, along
+  /// with any Enter Sends Messages chain holding it and any repeat — the
+  /// operator has an answer, and a CQ keying over it is the one thing a
+  /// repeat must not do. Any other message is left to finish: an exchange
+  /// or a TU is the contact being worked (docs/design/cat.md § CW keying).
+  void stopMessageOne() {
+    chain.cancel();
+    final playing = voiceActivity.value;
+    if (_voiceSequenceHasOne || (playing != null && !playing.recording && _voiceMessageOne)) {
+      if (playing != null && !playing.recording) {
+        stopVoice();
+      } else {
+        cancelVoiceSequence();
+      }
+    }
+    // stopCw empties the whole queue, so a message queued AHEAD of the CQ
+    // goes with it; one queued behind it moves [_lastCwHasMessageOne] off.
+    if (_lastCwHasMessageOne && cwSending) stopCw();
+  }
+
+  /// Escape: stops every message, chain and repeat, whatever the keyer, the
+  /// mode, or whose they are. False when there was nothing to stop, so the
+  /// key keeps its usual meaning in the logging fields.
+  bool stopKeying() {
+    final busy = chain.running || _voiceSequence.isNotEmpty || voiceActivity.value != null || cwSending;
+    if (!busy) return false;
+    // The logging fields hear the same keystroke AFTER the operation view's
+    // key handler has run this, and read the answer through
+    // [escapeStoppedKeying] rather than asking again: asked again, the stop
+    // just made reads as nothing running, and the same Escape also ends a
+    // QSO edit.
+    escapeStoppedKeying = true;
+    scheduleMicrotask(() => escapeStoppedKeying = false);
+    chain.cancel();
+    cancelVoiceSequence();
+    if (voiceActivity.value != null) stopVoice();
+    if (cwSending) stopCw();
+    return true;
   }
 
   /// Stops whatever [sendCw] still has to send — see [CwKeyerSession.stopCw]
@@ -531,11 +603,13 @@ class CatKeying {
     // it), so an unattended CQ would key forever — over the link, somebody
     // else's transmitter.
     final chaining = repeat && n == 1 && settings.voiceRepeatDelay > Duration.zero;
+    // Marked only once the play is taken, the same rule [sendCw] states.
+    _voiceMessageOne = false;
     if (playsVoiceOverPeer) {
       // The chain is armed HERE and the memory plays THERE: the repeat
       // engine waits on the activity ending, which arrives as the far
-      // radio's status, and a chain must break on the keypress of the
-      // operator who started it.
+      // radio's status, and a chain must break on the Escape or the
+      // entered call of the operator who started it.
       if (!chaining) chain.cancel();
       // Armed only once the request has gone, the same rule the local branch
       // states for a session that throws: the M1 button is live off the last
@@ -544,6 +618,7 @@ class CatKeying {
         chain.cancel();
         return;
       }
+      _voiceMessageOne = n == 1;
       if (chaining) {
         chain.arm(
           delay: settings.voiceRepeatDelay,
@@ -565,6 +640,7 @@ class CatKeying {
       if (!chaining) chain.cancel();
       _startMeasurement(n);
       session.playVoiceMemory(n);
+      _voiceMessageOne = n == 1;
       // Armed only once the session has taken it: a throw above would
       // otherwise leave a chain armed with nothing playing, and nothing
       // ending to start its next wait.
@@ -610,6 +686,9 @@ class CatKeying {
   void playVoiceLocally(String uuid, int n) {
     final session = voiceKeyerFor(uuid);
     if (session == null) return;
+    // A peer's memory 1 is not this operator's CQ, the same rule the CW
+    // request states at [handleRequest].
+    if (uuid == station.localRadio1) _voiceMessageOne = false;
     try {
       // Measured only on radio1, which is the rig whose memory lengths this
       // device stores — a second offered radio's memories are timed by
@@ -700,6 +779,12 @@ class CatKeying {
   final List<int> _voiceSequence = [];
   bool _sequenceStarted = false;
 
+  /// Whether the sequence running holds memory 1 anywhere — played, playing
+  /// or still waiting — until its last memory ends. Set only for two or
+  /// more memories: a lone one is a plain play, marked by [_voiceMessageOne],
+  /// and has no start timeout to clear a mark its play never ended.
+  bool _voiceSequenceHasOne = false;
+
   /// How long a queued memory waits to be heard starting before the
   /// sequence is given up: a play refused or lost on the way would otherwise
   /// leave the rest queued behind the next memory the operator plays by
@@ -712,6 +797,7 @@ class CatKeying {
   void playVoiceSequence(List<int> memories) {
     cancelVoiceSequence();
     if (memories.isEmpty) return;
+    _voiceSequenceHasOne = memories.length > 1 && memories.contains(1);
     _voiceSequence.addAll(memories.skip(1));
     _awaitSequenceStart();
     playVoiceMemory(memories.first, repeat: memories.length == 1);
@@ -719,6 +805,7 @@ class CatKeying {
 
   void cancelVoiceSequence() {
     _voiceSequence.clear();
+    _voiceSequenceHasOne = false;
     _sequenceStarted = false;
     _sequenceStartTimer?.cancel();
     _sequenceStartTimer = null;
@@ -732,8 +819,12 @@ class CatKeying {
   }
 
   void _onVoiceActivityForSequence() {
-    if (_voiceSequence.isEmpty) return;
     final activity = voiceActivity.value;
+    if (_voiceSequence.isEmpty) {
+      // The last memory has ended, and the sequence with it.
+      if (activity == null) _voiceSequenceHasOne = false;
+      return;
+    }
     if (activity != null) {
       // A recording is nobody's sequence; the operator is at the editor.
       if (activity.recording) return cancelVoiceSequence();
@@ -860,6 +951,9 @@ class CatKeying {
   void handleRequest(PeerKeyRequestPayload request) {
     switch (request.op) {
       case PeerKeyOp.cw:
+        // The peer's message is now the newest on this transmitter, and it
+        // is not this operator's message 1.
+        _lastCwHasMessageOne = false;
         sendCwLocally(request.text);
       case PeerKeyOp.stopCw:
         stopCwLocally();

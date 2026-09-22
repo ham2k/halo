@@ -2192,7 +2192,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (field == null || _fieldsLocked) return;
     final (focus, controller) = field;
     _insertAtCursor(controller, key);
-    if (identical(focus, _gridFocus)) {
+    if (identical(focus, _callFocus)) {
+      widget.session.onCallTyped?.call();
+    } else if (identical(focus, _gridFocus)) {
       _draft.markGridTouched();
     } else if (identical(focus, _stateFocus)) {
       _draft.stateTouched = true;
@@ -3563,6 +3565,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             : null,
                         onSubmitted: () => _log(fromEnter: true),
                         onExchangeSubmitted: _handleEnter,
+                        onCallTyped: widget.session.onCallTyped,
                       ),
                           if (exchangeMenu != null)
                             ExchangeSuggestionsMenu(model: _exchange, menu: exchangeMenu, theme: accentTheme),

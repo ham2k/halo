@@ -251,6 +251,7 @@ class LoggingSession {
     this.confirmLogOverwrite,
     this.suggestedQsoIsTentative = false,
     this.onCallEdited,
+    this.onCallTyped,
     this.suggestionSettledSerial = 0,
     this.onEditCanceled,
     this.onNavigateToQsoList,
@@ -321,6 +322,14 @@ class LoggingSession {
   /// open question about which station to work, and an operator who has gone
   /// to the fields and started typing has answered it somewhere else.
   final VoidCallback? onCallEdited;
+
+  /// Fires on the operator's own input into the callsign field — a key, the
+  /// on-screen keyboard, a paste, the numbers row — and on nothing the panel
+  /// writes itself: not the wipe after a log, not a suggestion, not a
+  /// command's expansion. Narrower than [onCallEdited], which hears the wipe:
+  /// what listens here is the keyer, stopping a CQ, and a field the panel
+  /// empties after a log is no call the operator entered.
+  final VoidCallback? onCallTyped;
 
   /// Bumped when the gesture behind a tentative [suggestedQso] comes to rest:
   /// the row is open and the finger is off it. A suggestion held back over

@@ -117,6 +117,82 @@ void main() {
     await drainLookupQueueTimer(tester);
   });
 
+  testWidgets('an Escape that stops keying does not also end the QSO edit', (tester) async {
+    // OperationView's HardwareKeyboard handler stops the keying, and the
+    // logging fields hear the same keystroke AFTER it. Were they to ask
+    // "is anything running?" again, the stop just made would read as
+    // nothing, and one Escape would kill the repeat AND drop the edit.
+    await services.settings.setExperimentEnabled('gato', true);
+    await services.settings.setExperimentEnabled('keyer', true);
+    // Stands in for OperationView's handler: same place in the dispatch,
+    // same call.
+    bool viewHandler(KeyEvent event) {
+      if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.escape) return false;
+      return services.cat.stopKeying();
+    }
+
+    HardwareKeyboard.instance.addHandler(viewHandler);
+    addTearDown(() => HardwareKeyboard.instance.removeHandler(viewHandler));
+
+    await tester.pumpWidget(wrap(LoggingPanel(
+      operation: operation,
+      services: services,
+      qsos: [qso],
+      loggingControls: const [],
+      onCommandAction: (action, [params]) async {},
+    )));
+    await tester.pump();
+    await tester.tap(find.text('W1AW'));
+    await tester.pump();
+    expect(isEditing(tester), isTrue);
+
+    services.cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(services.cat.keyerRepeating, isFalse, reason: 'the repeat stopped');
+    expect(isEditing(tester), isTrue, reason: 'and that Escape was spent on it');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(isEditing(tester), isFalse, reason: 'with nothing running, Escape is the way out again');
+    await drainLookupQueueTimer(tester);
+  });
+
+  testWidgets('the same holds with focus in a compose field', (tester) async {
+    // The fields' own Escape (LoggingSession.escapeClaimed), not the
+    // panel's: the two read the same answer from the one stop.
+    await services.settings.setExperimentEnabled('gato', true);
+    await services.settings.setExperimentEnabled('keyer', true);
+    bool viewHandler(KeyEvent event) {
+      if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.escape) return false;
+      return services.cat.stopKeying();
+    }
+
+    HardwareKeyboard.instance.addHandler(viewHandler);
+    addTearDown(() => HardwareKeyboard.instance.removeHandler(viewHandler));
+
+    await tester.pumpWidget(wrap(LoggingPanel(
+      operation: operation,
+      services: services,
+      qsos: [qso],
+      loggingControls: const [],
+      onCommandAction: (action, [params]) async {},
+    )));
+    await tester.pump();
+    await tester.tap(find.text('W1AW'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(TextField, 'Their call'));
+    await tester.pump();
+    expect(isEditing(tester), isTrue);
+
+    services.cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(services.cat.keyerRepeating, isFalse);
+    expect(isEditing(tester), isTrue);
+    await drainLookupQueueTimer(tester);
+  });
+
   testWidgets('a second Escape does NOT re-select the QSO the first one deselected', (tester) async {
     // Escape used to toggle: a second press within a few seconds brought the
     // QSO back, mirroring the compose form's wipe-undo. APP-19 removed that.
