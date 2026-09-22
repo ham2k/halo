@@ -17,7 +17,7 @@ import { normalizeGuess } from "./normalizeGuess"
 import manifest from "../manifest.json" with { type: "json" }
 
 async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Promise<LookupServiceResult> {
-  const call = (args.callInfo.call || '').trim().toUpperCase()
+  const call = (args.callInfo.call || "").trim().toUpperCase()
 
   const preAnnotation = annotateCallsign(call)
   const seeded = runLookupPipeline(args.callInfo, [preAnnotation])
@@ -32,13 +32,7 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
     return { ...(currentArgs as Record<string, unknown>), callInfo: guess }
   }
 
-  const entries = await hooks.invokeAllSequential(
-    'lookup',
-    'lookupCall',
-    { callInfo: guess, qso: args.qso, operation: args.operation },
-    fold,
-    ctx.online,
-  )
+  const entries = await hooks.invokeAllSequential("lookup", "lookupCall", { callInfo: guess, qso: args.qso, operation: args.operation }, fold, ctx.online)
 
   // Hooks whose answer describes what the station is doing right now, run
   // only for a contact being composed — see RecentContextLookupHook. Last,
@@ -47,8 +41,8 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
   if (args.recentContext) {
     entries.push(
       ...(await hooks.invokeAllSequential(
-        'recentContextLookup',
-        'lookupCall',
+        "recentContextLookup",
+        "lookupCall",
         { callInfo: guess, qso: args.qso, operation: args.operation },
         fold,
         ctx.online,
@@ -78,6 +72,6 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('lookupService', { hook: { lookupCallInfo }, key: 'core' })
+    registerHook("lookupService", { hook: { lookupCallInfo }, key: "core" })
   },
 })

@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MIT
 
-import i18next from "i18next";
+import i18next from "i18next"
 
 /**
  * The standard per-extension translator: takes the extension's i18next
@@ -15,16 +15,16 @@ import i18next from "i18next";
  *   export const tFor = createCachedTranslator({ en: { translation: en }, es: { translation: es } })
  */
 export function createCachedTranslator(resources: Record<string, any>) {
-  let cachedLocale: string | undefined;
-  let cachedT: ReturnType<typeof createTranslator> | undefined;
+  let cachedLocale: string | undefined
+  let cachedT: ReturnType<typeof createTranslator> | undefined
   return (ctx: { locale?: string }): ReturnType<typeof createTranslator> => {
-    const locale = ctx.locale ?? "en";
+    const locale = ctx.locale ?? "en"
     if (!cachedT || cachedLocale !== locale) {
-      cachedLocale = locale;
-      cachedT = createTranslator(resources, locale);
+      cachedLocale = locale
+      cachedT = createTranslator(resources, locale)
     }
-    return cachedT;
-  };
+    return cachedT
+  }
 }
 
 /**
@@ -32,7 +32,7 @@ export function createCachedTranslator(resources: Record<string, any>) {
  * initialized with the given resources and active locale.
  */
 export function createTranslator(resources: Record<string, any>, currentLocale: string) {
-  const instance = i18next.createInstance();
+  const instance = i18next.createInstance()
   instance.init({
     lng: currentLocale,
     fallbackLng: "en",
@@ -53,8 +53,8 @@ export function createTranslator(resources: Record<string, any>, currentLocale: 
     interpolation: {
       escapeValue: false, // Not in a browser/HTML environment
     },
-  });
+  })
   // i18next types `t` very broadly (objects for `returnObjects`, etc.);
   // this translator only ever resolves plain strings.
-  return (key: string, options?: any): string => instance.t(key, options) as string;
+  return (key: string, options?: any): string => instance.t(key, options) as string
 }

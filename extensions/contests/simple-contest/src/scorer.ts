@@ -33,7 +33,7 @@ export type SimpleContestScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 function bandModeKey(qso: Record<string, JSONValue>): string {
@@ -68,7 +68,7 @@ export const SimpleContestScorer: ContestScorer<SimpleContestScoresheet> = {
 
     let score: QsoScoreVerdict
     if (isDupe) {
-      score = { value: 0, dupe: true, alerts: ['duplicate'] }
+      score = { value: 0, dupe: true, alerts: ["duplicate"] }
     } else {
       // Worked before, but on a different band or mode — worth flagging, the
       // same notices app-polo raises.
@@ -76,8 +76,8 @@ export const SimpleContestScorer: ContestScorer<SimpleContestScoresheet> = {
       if (seen.length > 0) {
         const band = str(qso.band)
         const mode = str(qso.mode)
-        if (!seen.some((combo) => combo.endsWith(`|${mode}`))) notices.push('newMode')
-        if (!seen.some((combo) => combo.startsWith(`${band}|`))) notices.push('newBand')
+        if (!seen.some((combo) => combo.endsWith(`|${mode}`))) notices.push("newMode")
+        if (!seen.some((combo) => combo.startsWith(`${band}|`))) notices.push("newBand")
       }
       score = notices.length > 0 ? { value: 1, notices } : { value: 1 }
     }
@@ -96,20 +96,20 @@ export const SimpleContestScorer: ContestScorer<SimpleContestScoresheet> = {
   },
 
   summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const points = isDay ? scoresheet.dayPoints : scoresheet.points
     const qsos = isDay ? scoresheet.dayQsos : scoresheet.qsos
 
     return {
       contest: {
-        key: 'contest',
+        key: "contest",
         for: scope,
-        icon: 'flag-checkered',
+        icon: "flag-checkered",
         total: points,
         count: qsos,
         // Counts and scores shown to the user carry thousands separators
         // (docs/extensions/README.md).
-        label: points === 1 ? '1 point' : `${fmtInteger(points)} points`,
+        label: points === 1 ? "1 point" : `${fmtInteger(points)} points`,
         summary: fmtInteger(points),
       },
     }

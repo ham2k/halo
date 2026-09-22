@@ -19,20 +19,14 @@
 // The rules: https://www.winterfieldday.org/
 
 import { tally } from "@ham2k/extension-sdk"
-import type {
-  ContestScorer,
-  HookContext,
-  JSONValue,
-  QsoScoreVerdict,
-  ScoreTally,
-} from "@ham2k/extension-sdk"
+import type { ContestScorer, HookContext, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { superModeForMode } from "@ham2k/lib-operation-data"
 
 import { ABBREVIATED_SECTION_NAMES, ARRL_SECTIONS, RAC_SECTIONS } from "./sections.ts"
 import { tFor } from "./i18n.ts"
 
-export const TYPE = 'wfd'
+export const TYPE = "wfd"
 
 /// `1H`, `3O`. The letter is the category — Home, Indoor, Mobile, Outdoor —
 /// and unlike ARRL Field Day there is no "please copy" prefix.
@@ -42,10 +36,10 @@ export const CLASS_REGEX = /^([1-9][0-9]*)([HIMO])$/
 const POINTS: Record<string, number> = { PHONE: 1, CW: 2, DATA: 2 }
 
 /// Winter Field Day excludes the same four WARC bands as ARRL Field Day.
-const INVALID_BANDS = new Set(['60m', '30m', '17m', '12m'])
+const INVALID_BANDS = new Set(["60m", "30m", "17m", "12m"])
 
 /// Valid to receive, but not sections — they are tallied on their own.
-const NON_SECTION_LOCATIONS = new Set(['MX', 'DX'])
+const NON_SECTION_LOCATIONS = new Set(["MX", "DX"])
 
 export type WFDScoresheet = {
   /// `call|band|superMode`. The dupe rule is per band AND mode, so the same
@@ -80,21 +74,15 @@ export type WFDScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value.trim() : ''
+  return typeof value === "string" ? value.trim() : ""
 }
 
-function refsOfType(
-  container: Record<string, JSONValue> | undefined,
-  type: string,
-): Record<string, JSONValue>[] {
+function refsOfType(container: Record<string, JSONValue> | undefined, type: string): Record<string, JSONValue>[] {
   const refs = (container?.refs as Record<string, JSONValue>[] | undefined) ?? []
   return Array.isArray(refs) ? refs.filter((r) => r?.type === type) : []
 }
 
-export function refOfType(
-  container: Record<string, JSONValue> | undefined,
-  type: string,
-): Record<string, JSONValue> | undefined {
+export function refOfType(container: Record<string, JSONValue> | undefined, type: string): Record<string, JSONValue> | undefined {
   const refs = (container?.refs as Record<string, JSONValue>[] | undefined) ?? []
   return Array.isArray(refs) ? refs.find((r) => r?.type === type) : undefined
 }
@@ -176,12 +164,12 @@ export const WFDScorer: ContestScorer<WFDScoresheet> = {
     // later real SSB contact with the same station on the same band would not
     // be caught. `stateparks` and `naqp` guard it the same way.
     const mode = str(qso.mode)
-    const superMode = mode ? superModeForMode(mode) : ''
+    const superMode = mode ? superModeForMode(mode) : ""
 
     if (INVALID_BANDS.has(band)) {
       // An alert rather than silence: an operator who has drifted onto 30m
       // wants to know while they can still move.
-      return { scoresheet: sheet, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: sheet, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     const qsoRef = refOfType(qso, TYPE)
@@ -190,7 +178,7 @@ export const WFDScorer: ContestScorer<WFDScoresheet> = {
 
     const key = `${call}|${band}|${superMode}`
     if (sheet.worked[key] === true) {
-      return { scoresheet: sheet, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: sheet, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     const notices: string[] = []
@@ -198,8 +186,8 @@ export const WFDScorer: ContestScorer<WFDScoresheet> = {
     const seenModes = sheet.modesByCall[call]
     // Only news for a station already worked — on a first contact every band is
     // a new band, which is not worth saying.
-    if (seenBands && !seenBands[band]) notices.push('newBand')
-    if (seenModes && !seenModes[superMode]) notices.push('newMode')
+    if (seenBands && !seenBands[band]) notices.push("newBand")
+    if (seenModes && !seenModes[superMode]) notices.push("newMode")
 
     // A stable KEY, never the section's display name. `notices` is a
     // translation-key vocabulary (app/lib/tools/scoring_labels.dart) that falls
@@ -208,12 +196,12 @@ export const WFDScorer: ContestScorer<WFDScoresheet> = {
     // that way. Every other scorer emits keys only.
     const known = ARRL_SECTIONS[section] ?? RAC_SECTIONS[section]
     const firstOfItsSection = Boolean(section) && !sheet.sectionsSeen[section]
-    if (known && firstOfItsSection) notices.push('newSection')
+    if (known && firstOfItsSection) notices.push("newSection")
 
     // Satellite contacts count toward the objectives but NOT toward QSO
     // points — the rules say so twice. The `satellites` extension is what
     // records them, so the ref it writes is the signal.
-    const viaSatellite = refsOfType(qso, 'satellite').length > 0
+    const viaSatellite = refsOfType(qso, "satellite").length > 0
     // An unknown or absent mode is worth the phone rate, not the data rate.
     const value = viaSatellite ? 0 : (POINTS[superMode] ?? 1)
 
@@ -244,7 +232,7 @@ export const WFDScorer: ContestScorer<WFDScoresheet> = {
 
   summarizeScore({ scoresheet, scope }, ctx): Record<string, ScoreTally> {
     const t = tFor(ctx)
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     // Latched during the fold, not read off `ref` — the ref handed here is the
     // FIRST segment's, which loses a mid-contest power change.
     const multiplier = scoresheet.multiplier
@@ -255,26 +243,23 @@ export const WFDScorer: ContestScorer<WFDScoresheet> = {
     // being counted again on each one — the rule `stateparks` states.
     const total = points * multiplier
 
-    const sections =
-      Object.keys(scoresheet.arrlSections).length +
-      Object.keys(scoresheet.racSections).length +
-      Object.keys(scoresheet.otherSections).length
+    const sections = Object.keys(scoresheet.arrlSections).length + Object.keys(scoresheet.racSections).length + Object.keys(scoresheet.otherSections).length
 
     return {
       contest: tally(TYPE, scope, total, {
         // Without an icon the day-header renderer drops the whole badge, not
         // just the glyph (qso_list.dart).
-        icon: 'snowflake',
-        label: t('scoreLabel'),
-        summary: t('scoreSummary', { total: fmtInteger(total) }),
+        icon: "snowflake",
+        label: t("scoreLabel"),
+        summary: t("scoreSummary", { total: fmtInteger(total) }),
         // Spelled out because an operator checking a claimed score wants the
         // arithmetic, not just the answer.
         longSummary: [
-          t('scoreQsos', { qsos: fmtInteger(qsos), points: fmtInteger(points), multiplier }),
-          t('scoreSections', { sections: fmtInteger(sections) }),
+          t("scoreQsos", { qsos: fmtInteger(qsos), points: fmtInteger(points), multiplier }),
+          t("scoreSections", { sections: fmtInteger(sections) }),
         ]
           .filter((line) => line)
-          .join('\n'),
+          .join("\n"),
       }),
     }
   },

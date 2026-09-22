@@ -41,20 +41,9 @@
     "YOR": "York"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE",
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE", "MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

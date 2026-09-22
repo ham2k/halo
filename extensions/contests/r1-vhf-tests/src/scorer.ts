@@ -39,9 +39,25 @@ import { trimmedGrid } from "./exchange.ts"
 /// Exported for rsgb-vhf-tests, which uses the identical ramp under RSGB's
 /// own rules rather than duplicating the table.
 export const BAND_MULTIPLIERS: Record<string, number> = {
-  '6m': 1, '5m': 1, '4m': 1, '2m': 1, '1.25m': 1, '70cm': 1, '33cm': 1,
-  '23cm': 1, '13cm': 1, '9cm': 1, '6cm': 1, '3cm': 1, '1.25cm': 1,
-  '6mm': 2, '4mm': 3, '2.5mm': 4, '2mm': 8, '1mm': 10, submm: 10,
+  "6m": 1,
+  "5m": 1,
+  "4m": 1,
+  "2m": 1,
+  "1.25m": 1,
+  "70cm": 1,
+  "33cm": 1,
+  "23cm": 1,
+  "13cm": 1,
+  "9cm": 1,
+  "6cm": 1,
+  "3cm": 1,
+  "1.25cm": 1,
+  "6mm": 2,
+  "4mm": 3,
+  "2.5mm": 4,
+  "2mm": 8,
+  "1mm": 10,
+  submm: 10,
 }
 
 export type R1VHFScoresheet = {
@@ -58,14 +74,22 @@ export type R1VHFScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 export const R1VHFScorer: ContestScorer<R1VHFScoresheet> = {
   startScoresheet(): R1VHFScoresheet {
     return {
-      worked: {}, bands: {}, qsos: 0, points: 0, distanceTotal: 0,
-      maxDistance: 0, maxDistancePerBand: {}, dupeCount: 0, dayQsos: 0, dayPoints: 0,
+      worked: {},
+      bands: {},
+      qsos: 0,
+      points: 0,
+      distanceTotal: 0,
+      maxDistance: 0,
+      maxDistancePerBand: {},
+      dupeCount: 0,
+      dayQsos: 0,
+      dayPoints: 0,
     }
   },
 
@@ -85,31 +109,29 @@ export const R1VHFScorer: ContestScorer<R1VHFScoresheet> = {
 
     const band = str(qso.band)
     if (!event.bands.includes(band)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     const ourGrid = trimmedGrid(str(operation.grid))
-    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find(
-      (r) => r?.type === 'r1-vhf-tests',
-    )
+    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === "r1-vhf-tests")
     const theirGrid = trimmedGrid(str(contestRef?.grid))
 
     if (!ourGrid) {
-      return { scoresheet: base, score: { value: 0, alerts: ['ourGrid'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["ourGrid"] } }
     }
     if (!theirGrid) {
-      return { scoresheet: base, score: { value: 0, alerts: ['missingExchange'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["missingExchange"] } }
     }
 
     const key = `${call}|${band}|${ourGrid}`
     const priorGrids = base.worked[key] ?? []
     if (priorGrids.includes(theirGrid)) {
       base.dupeCount += 1
-      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     const distance = distanceForRegion1VHFContests(ourGrid, theirGrid)
-    if (distance === null) return { scoresheet: base, score: { value: 0, alerts: ['invalidExchange'] } }
+    if (distance === null) return { scoresheet: base, score: { value: 0, alerts: ["invalidExchange"] } }
     const value = distance * (BAND_MULTIPLIERS[band] ?? 0)
 
     base.worked[key] = [...priorGrids, theirGrid]
@@ -127,30 +149,33 @@ export const R1VHFScorer: ContestScorer<R1VHFScoresheet> = {
   },
 
   summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const points = isDay ? scoresheet.dayPoints : scoresheet.points
     const qsos = isDay ? scoresheet.dayQsos : scoresheet.qsos
 
     const summary = `${fmtInteger(points)} pts (${fmtInteger(scoresheet.distanceTotal)} km total)`
 
-    const bandLines = Object.keys(scoresheet.bands).sort().map((band) => {
-      const count = scoresheet.bands[band] ?? 0
-      if (!count) return null
-      return `**${band}**: ${fmtInteger(count)} QSOs • Longest: ${fmtInteger(scoresheet.maxDistancePerBand[band] ?? 0)} km`
-    }).filter((line): line is string => line !== null)
+    const bandLines = Object.keys(scoresheet.bands)
+      .sort()
+      .map((band) => {
+        const count = scoresheet.bands[band] ?? 0
+        if (!count) return null
+        return `**${band}**: ${fmtInteger(count)} QSOs • Longest: ${fmtInteger(scoresheet.maxDistancePerBand[band] ?? 0)} km`
+      })
+      .filter((line): line is string => line !== null)
 
     return {
-      'r1-vhf-tests': {
-        key: 'r1-vhf-tests',
+      "r1-vhf-tests": {
+        key: "r1-vhf-tests",
         for: scope,
-        icon: 'flag-checkered',
+        icon: "flag-checkered",
         total: points,
         qsos,
         summary,
         longSummary: [
-          summary + (scoresheet.dupeCount > 0 ? ` (${fmtInteger(scoresheet.dupeCount)} dupe${scoresheet.dupeCount > 1 ? 's' : ''})` : ''),
+          summary + (scoresheet.dupeCount > 0 ? ` (${fmtInteger(scoresheet.dupeCount)} dupe${scoresheet.dupeCount > 1 ? "s" : ""})` : ""),
           ...bandLines,
-        ].join('\n'),
+        ].join("\n"),
       },
     }
   },

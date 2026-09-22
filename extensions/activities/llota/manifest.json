@@ -8,34 +8,13 @@
   "enabledByDefault": false,
   "icon": "waves",
   "accentColor": "#2F7FA6",
-  "keywords": [
-    "lakes",
-    "lagoons",
-    "activation",
-    "hunting"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "ref:llota",
-    "ref:llotaActivation",
-    "scoring",
-    "spots"
-  ],
-  "domains": [
-    "llota.app"
-  ],
+  "keywords": ["lakes", "lagoons", "activation", "hunting"],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:llota", "ref:llotaActivation", "scoring", "spots"],
+  "domains": ["llota.app"],
   "translations": {
     "es": {
       "description": "Referencias de lagos, activación y caza, spots y spotting",
-      "keywords": [
-        "lagos",
-        "lagunas",
-        "activación"
-      ]
+      "keywords": ["lagos", "lagunas", "activación"]
     }
   }
 }

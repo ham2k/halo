@@ -8,38 +8,16 @@
   "enabledByDefault": false,
   "icon": "flag-checkered",
   "accentColor": "#6A1B9A",
-  "keywords": [
-    "contest",
-    "vhf",
-    "uhf",
-    "grid",
-    "distance",
-    "reg1test",
-    "edi",
-    "iaru"
-  ],
+  "keywords": ["contest", "vhf", "uhf", "grid", "distance", "reg1test", "edi", "iaru"],
   "relevance": {
-    "ituRegions": [
-      1
-    ]
+    "ituRegions": [1]
   },
-  "hooks": [
-    "activity",
-    "adifFields",
-    "export",
-    "ref:r1-vhf-tests",
-    "scoring"
-  ],
+  "hooks": ["activity", "adifFields", "export", "ref:r1-vhf-tests", "scoring"],
   "translations": {
     "es": {
       "name": "Concursos VHF de IARU R1",
       "description": "Distancia de gran círculo y puntos por banda en la familia de concursos VHF/UHF/microondas de la Región 1 de IARU, enviado como REG1TEST/EDI",
-      "keywords": [
-        "concurso",
-        "vhf",
-        "distancia",
-        "iaru"
-      ]
+      "keywords": ["concurso", "vhf", "distancia", "iaru"]
     }
   }
 }

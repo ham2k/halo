@@ -132,20 +132,9 @@
     "WOOD": "Woodford"
   },
   "entryClasses": {
-    "operator": [
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "PORTABLE",
-      "ROVER"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE", "PORTABLE", "ROVER"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

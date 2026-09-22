@@ -35,17 +35,26 @@ export interface SvgSceneLayer {
   /** Exactly one of literal/value. Use text layers, not SVG <text>, for font support.
    * Size is unscaled; the host applies OS text scaling once. */
   text?: {
-    value?: string; literal?: string; prefix?: string; suffix?: string
-    decimals?: number; size?: number; color?: string; samples?: (number | string)[]
+    value?: string
+    literal?: string
+    prefix?: string
+    suffix?: string
+    decimals?: number
+    size?: number
+    color?: string
+    samples?: (number | string)[]
     /** Multiply numeric text values before formatting. Defaults to 1. */
     scale?: number
     /** Numeric formatting after scaling: truncate, then modulo, then zero padding. */
     truncate?: boolean
     modulo?: number
     minIntegerDigits?: number
-    fontFamily?: string; fontWeight?: number; lineHeight?: number; letterSpacing?: number
+    fontFamily?: string
+    fontWeight?: number
+    lineHeight?: number
+    letterSpacing?: number
     /** Horizontal alignment within the layer. Defaults to start. */
-    align?: 'start' | 'center' | 'end'
+    align?: "start" | "center" | "end"
   }
   rotation?: SceneBinding
   translateX?: SceneBinding
@@ -61,7 +70,7 @@ export interface SvgSceneLayer {
 export interface SvgSceneControl {
   id: string
   label: string
-  kind: 'button' | 'slider' | 'knob'
+  kind: "button" | "slider" | "knob"
   /** A button can open a native dropdown. Picking an item sends its event as the action. */
   menu?: { label: string; event: string }[]
   x: number
@@ -89,7 +98,7 @@ export interface SvgSceneControl {
 export interface PanelSceneEvent {
   controlId: string
   action: string
-  phase: 'activate' | 'change' | 'commit'
+  phase: "activate" | "change" | "commit"
   sequence: number
   value?: number
 }

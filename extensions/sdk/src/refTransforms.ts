@@ -20,21 +20,21 @@ export type RefTransform = { pattern: string; replacement: string; flags?: strin
 export function transformsForPrefix(prefix: string): RefTransform[] {
   return [
     // a run of spaces between two refs -> ", " (normalize to one separator style)
-    { pattern: '([A-Z0-9]-\\d+|TEST) +(?=[A-Z0-9])', replacement: '${1}, ', flags: 'gi' },
+    { pattern: "([A-Z0-9]-\\d+|TEST) +(?=[A-Z0-9])", replacement: "${1}, ", flags: "gi" },
     // bare number (or "TEST"), at the start or right after a separator -> prefix-number
     // (the separator itself is captured and replayed, not consumed, so a
     // pasted "US-1234,5678" keeps its comma instead of merging into one ref).
     // Braced `${1}`/`${2}`, not bare `$1`/`$2` — `prefix` can itself start
     // with a digit (e.g. DXCC "3D2" for Fiji), and a bare "$1" immediately
     // followed by that would misparse as capture group 13.
-    { pattern: '(^|,\\s*)(\\d\\d+|TEST)', replacement: `\${1}${prefix}-\${2}`, flags: 'gi' },
+    { pattern: "(^|,\\s*)(\\d\\d+|TEST)", replacement: `\${1}${prefix}-\${2}`, flags: "gi" },
     // "US1234" -> "US-1234". Anchored with a negative lookbehind so it only
     // fires at the START of a not-yet-dashed reference — without it, a
     // multi-character DXCC prefix that mixes letters and digits (e.g.
     // Fiji's "3D2") gets its OWN internal "D2" mismatched as an undashed
     // reference once transform 2 above has already inserted "3D2-1234",
     // corrupting it into "3D-2-1234".
-    { pattern: '(?<![A-Z0-9])([A-Z]+)(\\d+|TEST)', replacement: '${1}-${2}', flags: 'gi' },
+    { pattern: "(?<![A-Z0-9])([A-Z]+)(\\d+|TEST)", replacement: "${1}-${2}", flags: "gi" },
     // NOTE: deliberately no "eagerly insert the next prefix right after a
     // trailing comma" rule here (app-polo's inputs have one) — transform 2
     // above already prefixes a second reference once 2+ digits appear after
@@ -46,6 +46,6 @@ export function transformsForPrefix(prefix: string): RefTransform[] {
     // reinserted, so the comma itself could never be reached.
 
     // strip anything that can't appear in a reference list
-    { pattern: '[^A-Z0-9\\-, ]', replacement: '', flags: 'gi' },
+    { pattern: "[^A-Z0-9\\-, ]", replacement: "", flags: "gi" },
   ]
 }

@@ -41,7 +41,7 @@ const INITIALS_REGEX = /^[A-Z]{2}$/
 // capitalizeString consults a per-content exception table for 'address' (NSW,
 // VIC, QLD, PEI…) that its published `content` type doesn't list — the type
 // lags the implementation, so the value has to be asserted in.
-const ADDRESS_CONTENT = 'address' as 'text'
+const ADDRESS_CONTENT = "address" as "text"
 
 // A short all-caps value is a code rather than a word — `country` holds ISO
 // alpha-2 for everything the Ham2K lookup service doesn't have a full name
@@ -52,7 +52,7 @@ const CODE_REGEX = /^[A-Z]{2,3}$/
 /// or more commas is a form we can't read (suffixes, organizations), and is
 /// left in its original order.
 function reorderName(name: string): string {
-  const parts = name.split(',')
+  const parts = name.split(",")
   if (parts.length !== 2) return name
   const [last, first] = parts.map((p) => p.trim())
   if (!last || !first) return name
@@ -92,14 +92,14 @@ export function normalizeName(name: string): string {
       capitalizeNamePart(trimmed.slice(nickname.index + nickname[0].length)),
     ]
       .filter(Boolean)
-      .join(' ')
+      .join(" ")
   }
 
   return capitalizeNamePart(reorderName(trimmed))
 }
 
 /// A place name, capitalized under the same ASCII caveat as a personal one.
-function capitalizePlace(value: string, content: 'text' = 'text'): string {
+function capitalizePlace(value: string, content: "text" = "text"): string {
   if (!ASCII_LETTER_REGEX.test(value)) return value
   return capitalizeString(value, { content, force: false })
 }
@@ -126,7 +126,7 @@ export function normalizeGuess(guess: CallInfo): CallInfo {
     // has to match: `city` and `location` reach the merged guess from
     // different sources routinely, and a bare prefix test splices them
     // ("SPRING" + "SPRINGFIELD, IL" -> "SpringFIELD, IL").
-    const location = next.location ? `${next.location}` : ''
+    const location = next.location ? `${next.location}` : ""
     const rest = location.slice(city.length)
     if (location.toLowerCase().startsWith(city.toLowerCase()) && !/^[A-Za-z0-9]/.test(rest)) {
       next.location = cleanCity + rest

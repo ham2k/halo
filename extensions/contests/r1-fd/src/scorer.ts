@@ -20,13 +20,13 @@ import { parseCallsign } from "@ham2k/lib-callsigns"
 import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
-export const TYPE = 'r1-fd'
+export const TYPE = "r1-fd"
 
 /// A field-day is an HF contest: the WARC bands are excluded by the rules.
-export const VALID_BANDS = ['160m', '80m', '40m', '20m', '15m', '10m']
+export const VALID_BANDS = ["160m", "80m", "40m", "20m", "15m", "10m"]
 
 /// The suffixes that make a worked station portable for points (rule 9).
-const PORTABLE_INDICATORS = ['P', 'M', 'MM', 'AM']
+const PORTABLE_INDICATORS = ["P", "M", "MM", "AM"]
 
 export type R1FDScoresheet = {
   /// call → bands already worked with it (one QSO per band is allowed).
@@ -46,22 +46,22 @@ export type R1FDScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 export function refOfType(container: Record<string, JSONValue>, type: string): Record<string, JSONValue> | undefined {
-  return (((container.refs as Record<string, JSONValue>[] | undefined) ?? [])).find((r) => r?.type === type)
+  return ((container.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === type)
 }
 
 /// The running's mode, off a ref's `${mode}-${year}` key ("SSB-2026").
 export function modeOfRef(refString: string | undefined): string {
-  const mode = (refString ?? '').split('-')[0]?.toUpperCase() ?? ''
-  return mode === 'CW' || mode === 'SSB' ? mode : ''
+  const mode = (refString ?? "").split("-")[0]?.toUpperCase() ?? ""
+  return mode === "CW" || mode === "SSB" ? mode : ""
 }
 
 export function yearOfRef(refString: string | undefined): string {
-  const year = (refString ?? '').split('-')[1] ?? ''
-  return /^\d{4}$/.test(year) ? year : ''
+  const year = (refString ?? "").split("-")[1] ?? ""
+  return /^\d{4}$/.test(year) ? year : ""
 }
 
 /// Whether a call signs portable for points. `parseCallsign` isolates the
@@ -75,16 +75,22 @@ export function signsPortable(call: string): boolean {
 /// report; an unconfigured ref filters nothing.
 function modeMatches(contestMode: string, qsoMode: string): boolean {
   if (!contestMode) return true
-  if (contestMode === 'SSB') return qsoMode === 'SSB' || qsoMode === 'USB' || qsoMode === 'LSB'
+  if (contestMode === "SSB") return qsoMode === "SSB" || qsoMode === "USB" || qsoMode === "LSB"
   return qsoMode === contestMode
 }
 
 export const R1FDScorer: ContestScorer<R1FDScoresheet> = {
   startScoresheet({ ref }): R1FDScoresheet {
     return {
-      workedByCall: {}, mults: {}, bands: {}, bandPoints: {},
-      qsos: 0, points: 0, dayQsos: 0, dayPoints: 0,
-      ourFixed: str(ref?.ourStationType) === 'FIXED',
+      workedByCall: {},
+      mults: {},
+      bands: {},
+      bandPoints: {},
+      qsos: 0,
+      points: 0,
+      dayQsos: 0,
+      dayPoints: 0,
+      ourFixed: str(ref?.ourStationType) === "FIXED",
     }
   },
 
@@ -104,16 +110,16 @@ export const R1FDScorer: ContestScorer<R1FDScoresheet> = {
     const mode = str(qso.mode)
 
     if (!modeMatches(modeOfRef(str(ref?.ref)), mode)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidMode'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidMode"] } }
     }
     if (!VALID_BANDS.includes(band)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     // One QSO per station per band.
     const worked = base.workedByCall[call] ?? []
     if (worked.includes(band)) {
-      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     // WAE resolution, on both axes at once: the mult list gains the WAE-only
@@ -125,7 +131,7 @@ export const R1FDScorer: ContestScorer<R1FDScoresheet> = {
     // the field — with the fixed-to-fixed pairing worth zero. There is no
     // low-band doubling and own-country QSOs count like any other.
     const theirPortable = signsPortable(call)
-    const inEurope = theirInfo.continent === 'EU'
+    const inEurope = theirInfo.continent === "EU"
     let points: number
     if (theirPortable) points = inEurope ? 4 : 6
     else if (base.ourFixed) points = 0
@@ -135,7 +141,7 @@ export const R1FDScorer: ContestScorer<R1FDScoresheet> = {
     //
     // A zero-point fixed-to-fixed QSO still counts it: the rules zero the
     // POINTS for that pairing and say nothing about the country worked.
-    const entity = theirInfo.entityPrefix ?? ''
+    const entity = theirInfo.entityPrefix ?? ""
     let isNewMult = false
     if (entity) {
       const multKey = `${band}|${entity}`
@@ -155,8 +161,8 @@ export const R1FDScorer: ContestScorer<R1FDScoresheet> = {
 
     const score: QsoScoreVerdict = { value: points, band }
     const notices: string[] = []
-    if (isNewMult) notices.push('newMult')
-    if (worked.length > 0) notices.push('newBand')
+    if (isNewMult) notices.push("newMult")
+    if (worked.length > 0) notices.push("newBand")
     if (notices.length > 0) score.notices = notices
     if (entity) score.entity = entity
 
@@ -164,7 +170,7 @@ export const R1FDScorer: ContestScorer<R1FDScoresheet> = {
   },
 
   summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const multCount = Object.keys(scoresheet.mults).length
     const points = isDay ? scoresheet.dayPoints : scoresheet.points
     // Multipliers accumulate across the whole running, so a day's "score" is
@@ -173,9 +179,9 @@ export const R1FDScorer: ContestScorer<R1FDScoresheet> = {
 
     return {
       r1fd: {
-        key: 'r1fd',
+        key: "r1fd",
         for: scope,
-        icon: 'tent',
+        icon: "tent",
         total,
         points,
         mults: multCount,
@@ -196,9 +202,7 @@ function breakdown(sheet: R1FDScoresheet): string {
     const qsos = sheet.bands[band] ?? 0
     const points = sheet.bandPoints[band] ?? 0
     const mults = Object.keys(sheet.mults).filter((key) => key.startsWith(`${band}|`)).length
-    return qsos === 0
-      ? `**${band}**: —`
-      : `**${band}**: ${fmtInteger(qsos)} QSOs, ${fmtInteger(points)} pts, ${fmtInteger(mults)} countries`
+    return qsos === 0 ? `**${band}**: —` : `**${band}**: ${fmtInteger(qsos)} QSOs, ${fmtInteger(points)} pts, ${fmtInteger(mults)} countries`
   })
-  return lines.join('\n')
+  return lines.join("\n")
 }

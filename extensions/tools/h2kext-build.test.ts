@@ -30,9 +30,7 @@ async function bundleWith(source: string, pluginOptions: Record<string, unknown>
   // A stand-in for the real package, so a build that DOESN'T externalise has
   // something to inline and the two outcomes are distinguishable.
   await mkdir(join(dir, "node_modules/i18next"), { recursive: true })
-  await writeFile(
-    join(dir, "node_modules/i18next/package.json"),
-    JSON.stringify({ name: "i18next", version: "23.0.0", main: "index.js" }))
+  await writeFile(join(dir, "node_modules/i18next/package.json"), JSON.stringify({ name: "i18next", version: "23.0.0", main: "index.js" }))
   await writeFile(join(dir, "node_modules/i18next/index.js"), "module.exports = { INLINED_COPY: true }")
 
   const result = await build({
@@ -48,9 +46,7 @@ async function bundleWith(source: string, pluginOptions: Record<string, unknown>
 }
 
 test("a declared library is taken from the host rather than bundled", async () => {
-  const out = await bundleWith(
-    'import i18next from "i18next"; globalThis.x = i18next',
-    { sharedDependencies: { i18next: "^23.0.0" } })
+  const out = await bundleWith('import i18next from "i18next"; globalThis.x = i18next', { sharedDependencies: { i18next: "^23.0.0" } })
 
   assert.deepEqual(findSharedModuleReferences(out), ["i18next"])
   // The mutation this guards: a plugin that resolves the name but forgets to
@@ -68,15 +64,14 @@ test("using a library the host carries without declaring it fails the build", as
       assert.match(e.message, /does not declare it/)
       assert.match(e.message, /sharedDependencies/)
       return true
-    })
+    },
+  )
 })
 
 test("inline says the second copy is deliberate, and produces one", async () => {
   // The escape hatch has to actually work, or its own error message is a lie:
   // shipping your own copy is how you use a version the host does not carry.
-  const out = await bundleWith(
-    'import i18next from "i18next"; globalThis.x = i18next',
-    { inline: ["i18next"] })
+  const out = await bundleWith('import i18next from "i18next"; globalThis.x = i18next', { inline: ["i18next"] })
 
   assert.ok(out.includes("INLINED_COPY"), "inline did not bundle the local copy")
   assert.deepEqual(findSharedModuleReferences(out), [])
@@ -87,15 +82,15 @@ test("a package the host does not carry is left alone", async () => {
   // as a regex rather than escaped, `@ham2k/lib-callsigns` would also claim
   // names it merely resembles — and claiming one the host has no instance of
   // yields `sharedModules[...]` === undefined at runtime, not a build error.
-  const out = await bundleWith(
-    'import x from "i18next-extra"; globalThis.x = x',
-    {
-      sharedDependencies: { i18next: "^23.0.0" },
-      // Everything else the API offers is undeclared, so a leaky filter would
-      // fail this build rather than merely mis-resolve it.
-      inline: [],
-    })
-    .then((text) => text, (e: Error) => e)
+  const out = await bundleWith('import x from "i18next-extra"; globalThis.x = x', {
+    sharedDependencies: { i18next: "^23.0.0" },
+    // Everything else the API offers is undeclared, so a leaky filter would
+    // fail this build rather than merely mis-resolve it.
+    inline: [],
+  }).then(
+    (text) => text,
+    (e: Error) => e,
+  )
 
   // i18next-extra does not exist, so esbuild fails to RESOLVE it — the point
   // is that it fails as an unresolved import, not as one of ours.
@@ -153,9 +148,7 @@ test("declaring a library the host does not carry is refused, not externalised",
   // Externalising it would emit `sharedModules["lodash"]` — `undefined` at the
   // first call. The build succeeds and the bundle cannot work, which is the
   // one outcome worse than a build error.
-  assert.throws(
-    () => sharedModulesPlugin({ sharedDependencies: { lodash: "^4.0.0" } }),
-    /does not carry \(lodash\)/)
+  assert.throws(() => sharedModulesPlugin({ sharedDependencies: { lodash: "^4.0.0" } }), /does not carry \(lodash\)/)
 })
 
 test("declaring a library and also inlining it is refused", async () => {
@@ -163,9 +156,7 @@ test("declaring a library and also inlining it is refused", async () => {
   // order that silently settles it — declared wins, so an author who added
   // `inline` precisely because the host's version was wrong for them would
   // get the host's copy anyway.
-  assert.throws(
-    () => sharedModulesPlugin({ sharedDependencies: { i18next: "^23.0.0" }, inline: ["i18next"] }),
-    /both sharedDependencies and inline/)
+  assert.throws(() => sharedModulesPlugin({ sharedDependencies: { i18next: "^23.0.0" }, inline: ["i18next"] }), /both sharedDependencies and inline/)
 })
 
 test("a relative dir still finds liquidjs, rather than silently dropping the alias", async () => {
@@ -196,14 +187,10 @@ test("a liquidjs that cannot be resolved fails loudly instead of losing the alia
   const dir = await mkdtemp(join(tmpdir(), "h2kext-build-exports-"))
   await mkdir(join(dir, "src"), { recursive: true })
   await mkdir(join(dir, "node_modules/liquidjs"), { recursive: true })
-  await writeFile(
-    join(dir, "node_modules/liquidjs/package.json"),
-    JSON.stringify({ name: "liquidjs", version: "10.0.0", exports: { ".": "./main.js" } }))
+  await writeFile(join(dir, "node_modules/liquidjs/package.json"), JSON.stringify({ name: "liquidjs", version: "10.0.0", exports: { ".": "./main.js" } }))
   await writeFile(join(dir, "node_modules/liquidjs/main.js"), "module.exports = {}")
   await writeFile(join(dir, "src/index.ts"), "globalThis.x = 1")
   await writeFile(join(dir, "manifest.json"), JSON.stringify({ key: "w7abc-t", api: H2KEXT_API_VERSION }))
 
-  await assert.rejects(
-    () => buildExtension(build, { dir, inline: ["liquidjs"] }),
-    /ERR_PACKAGE_PATH_NOT_EXPORTED|is not defined by "exports"/)
+  await assert.rejects(() => buildExtension(build, { dir, inline: ["liquidjs"] }), /ERR_PACKAGE_PATH_NOT_EXPORTED|is not defined by "exports"/)
 })

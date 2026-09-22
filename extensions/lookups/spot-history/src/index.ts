@@ -22,7 +22,7 @@ defineExtension({
     // composed. Registering as an ordinary lookup would also fire this for
     // every callsign on the spots board and for every saved QSO the
     // background queue re-enriches — answers nobody wants and nobody reads.
-    registerHook('recentContextLookup', { hook: { lookupCall }, priority: 0 })
+    registerHook("recentContextLookup", { hook: { lookupCall }, priority: 0 })
   },
 })
 
@@ -35,18 +35,16 @@ async function lookupCall(
   { callInfo, qso }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
   ctx: HookContext,
 ): Promise<LookupResult> {
-  const call = (callInfo.call || '').trim().toUpperCase()
+  const call = (callInfo.call || "").trim().toUpperCase()
   if (call.length < 3 || !ctx.getSpotsForCall) return []
 
   const spots = await ctx.getSpotsForCall(call, MAX_SPOT_AGE_MINUTES)
   if (!spots?.length) return []
 
-  const existingTypes = ((qso?.refs as RefInfo[] | undefined) ?? [])
-    .map((ref) => ref?.type)
-    .filter((type): type is string => !!type)
+  const existingTypes = ((qso?.refs as RefInfo[] | undefined) ?? []).map((ref) => ref?.type).filter((type): type is string => !!type)
 
   const refs = collectRefsFromSpots(spots, existingTypes)
   if (refs.length === 0) return []
 
-  return [{ call, source: 'Spot History', refs }]
+  return [{ call, source: "Spot History", refs }]
 }

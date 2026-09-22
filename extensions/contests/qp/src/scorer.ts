@@ -62,26 +62,9 @@ import { superModeForMode } from "@ham2k/lib-operation-data"
 import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 
 import { isMobile, ourLocationText, powerMultiplier, refOfType, str, TYPE } from "./entry.ts"
-import {
-  allInParty,
-  defaultTheirLocation,
-  entityPrefixOf,
-  type PartyLocation,
-  parseLocations,
-  type Standing,
-} from "./location.ts"
+import { allInParty, defaultTheirLocation, entityPrefixOf, type PartyLocation, parseLocations, type Standing } from "./location.ts"
 import { CANADIAN_PROVINCES, US_STATES } from "./locations.ts"
-import {
-  isInParty,
-  normalizeCode,
-  partyStates,
-  partyFor,
-  pointsForMode,
-  type QsoParty,
-  scoringModeFor,
-  stateForCounty,
-  WARC_BANDS,
-} from "./parties.ts"
+import { isInParty, normalizeCode, partyStates, partyFor, pointsForMode, type QsoParty, scoringModeFor, stateForCounty, WARC_BANDS } from "./parties.ts"
 
 export type QpScoresheet = {
   /// The party these totals are for, recorded from the first QSO scored —
@@ -150,19 +133,14 @@ export type QpScoresheet = {
 /// and a party setting the out-of-state twin (NH) got the in-state rule applied
 /// to everyone. Read as written here: the two side-specific options widen the
 /// per-band rule for the side they name, and nothing else changes.
-export function multiplierPrefix(
-  party: QsoParty,
-  { band, mode, weAreInParty }: { band: string; mode: string; weAreInParty: boolean },
-): string {
+export function multiplierPrefix(party: QsoParty, { band, mode, weAreInParty }: { band: string; mode: string; weAreInParty: boolean }): string {
   const o = party.options
-  const perBand = o.multsPerBand
-    || (o.inStateMultsPerBand && weAreInParty)
-    || (o.outOfStateMultsPerBand && !weAreInParty)
+  const perBand = o.multsPerBand || (o.inStateMultsPerBand && weAreInParty) || (o.outOfStateMultsPerBand && !weAreInParty)
   const perMode = o.multsPerMode
   if (o.multsPerBandMode || (perBand && perMode)) return `${band}:${mode}:`
   if (perBand) return `${band}:`
   if (perMode) return `${mode}:`
-  return ''
+  return ""
 }
 
 /// The prefix a bonus station's key carries — the same idea for bonuses, which
@@ -171,7 +149,7 @@ export function multiplierPrefix(
 function bonusPrefix(party: QsoParty, band: string, mode: string): string {
   if (party.options.bonusPerBandMode) return `${band}:${mode}:`
   if (party.options.bonusPerMode) return `${mode}:`
-  return ''
+  return ""
 }
 
 /// What a bonus station pays US. A party may scale it by which side we are on;
@@ -180,9 +158,7 @@ function bonusPrefix(party: QsoParty, band: string, mode: string): string {
 function bonusValue(party: QsoParty, call: string, weAreInParty: boolean): number {
   const base = party.bonusStations[call]
   if (base === undefined) return 0
-  const factor = weAreInParty
-    ? party.options.bonusStationInStateMult
-    : party.options.bonusStationOutOfStateMult
+  const factor = weAreInParty ? party.options.bonusStationInStateMult : party.options.bonusStationOutOfStateMult
   return base * (factor ?? 1)
 }
 
@@ -199,7 +175,7 @@ function baseCallOf(qso: Record<string, JSONValue>): string {
 /// The DX entity a location stands for — its prefix where each entity
 /// multiplies separately, the single key `DX` where they share one.
 function entityOf(location: PartyLocation): string {
-  return location.multCode.startsWith('DX:') ? location.multCode.slice(3) : 'DX'
+  return location.multCode.startsWith("DX:") ? location.multCode.slice(3) : "DX"
 }
 
 /// The multiplier keys one of their locations contributes, and the tables it
@@ -208,7 +184,12 @@ function entityOf(location: PartyLocation): string {
 function multipliersFor(
   party: QsoParty,
   location: PartyLocation,
-  { prefix, weAreInParty, entityCount, worked }: {
+  {
+    prefix,
+    weAreInParty,
+    entityCount,
+    worked,
+  }: {
     prefix: string
     weAreInParty: boolean
     entityCount: number
@@ -246,10 +227,10 @@ function multipliersFor(
     }
   }
 
-  if (US_STATES[code] || code === 'DC') return { keys: [`${prefix}${code}`], state: code }
+  if (US_STATES[code] || code === "DC") return { keys: [`${prefix}${code}`], state: code }
   if (CANADIAN_PROVINCES[code]) return { keys: [`${prefix}${code}`], province: code }
 
-  if (code === 'DX') {
+  if (code === "DX") {
     const entity = entityOf(location)
     if (!party.options.dxIsMultiplier && !party.options.dxEntityIsMultiplier) {
       // A valid contact worth points, and no multiplier — most parties.
@@ -272,10 +253,24 @@ function multipliersFor(
 export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
   startScoresheet(): QpScoresheet {
     return {
-      mults: {}, counties: {}, states: {}, provinces: {}, entities: {}, creditedEntities: {},
-      rareCounties: {}, bonuses: {}, bonusStations: {}, activatedCounties: {},
-      worked: {}, lastLocation: {}, bands: {}, modes: {}, bandModes: {},
-      qsos: 0, points: 0, dupes: 0,
+      mults: {},
+      counties: {},
+      states: {},
+      provinces: {},
+      entities: {},
+      creditedEntities: {},
+      rareCounties: {},
+      bonuses: {},
+      bonusStations: {},
+      activatedCounties: {},
+      worked: {},
+      lastLocation: {},
+      bands: {},
+      modes: {},
+      bandModes: {},
+      qsos: 0,
+      points: 0,
+      dupes: 0,
     }
   },
 
@@ -287,7 +282,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     // placeholder with no counties: 0 points and a visible alert, rather than
     // scoring against a county list that isn't theirs.
     const party = partyFor(ref?.ref)
-    if (!party?.supported) return { scoresheet: sheet, score: { value: 0, alerts: ['unknownEvent'] } }
+    if (!party?.supported) return { scoresheet: sheet, score: { value: 0, alerts: ["unknownEvent"] } }
     sheet.partyKey ??= party.key
 
     const their = (qso.their as Record<string, JSONValue>) ?? {}
@@ -296,14 +291,14 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
 
     const band = str(qso.band)
     if (!band || WARC_BANDS.includes(band)) {
-      return { scoresheet: sheet, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: sheet, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     // A QSO with no mode keeps the per-QSO default rather than being judged:
     // `superModeForMode('')` answers `DATA`, which would price an import that
     // lost its MODE column as a digital contact.
     const rawMode = str(qso.mode)
-    const superMode = rawMode ? superModeForMode(rawMode) : ''
+    const superMode = rawMode ? superModeForMode(rawMode) : ""
     const mode = scoringModeFor(party, superMode)
 
     // OUR side, from the segment-effective ref: this is what a rover changes.
@@ -311,7 +306,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     if (ourLocations.length === 0) {
       // Nothing can be scored until the operator says where they are — every
       // QSO is worth our-counties × theirs, and ours is zero.
-      return { scoresheet: sheet, score: { value: 0, alerts: ['ourLocation'] } }
+      return { scoresheet: sheet, score: { value: 0, alerts: ["ourLocation"] } }
     }
     const weAreInParty = allInParty(ourLocations)
     // An operator inside the party who typed their STATE where their county
@@ -321,8 +316,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     // contact still counts for what it is worth; the operator is told, on every
     // QSO, that the setup needs a county.
     const ourStates = weAreInParty ? undefined : partyStates(party)
-    const typedOurState = ourStates !== undefined
-      && ourLocations.some((location) => ourStates.has(location.code))
+    const typedOurState = ourStates !== undefined && ourLocations.some((location) => ourStates.has(location.code))
     sheet.weAreInParty ??= weAreInParty
     // The first DECLARED multiplier wins, not the first QSO's answer: `??=`
     // would latch the 1 that stands for "no class declared".
@@ -352,21 +346,20 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     if (theirLocations.length === 0) {
       return {
         scoresheet: sheet,
-        score: { value: 0, alerts: [typed ? 'invalidExchange' : 'missingExchange'] },
+        score: { value: 0, alerts: [typed ? "invalidExchange" : "missingExchange"] },
       }
     }
 
     // The party is between its own people and everyone else: two out-of-party
     // stations working each other is not a contest QSO at all.
     if (!weAreInParty && !theyAreInParty) {
-      return { scoresheet: sheet, score: { value: 0, alerts: ['invalidExchange'] } }
+      return { scoresheet: sheet, score: { value: 0, alerts: ["invalidExchange"] } }
     }
 
     // Every pairing of our counties with theirs is its own contact — the N×M a
     // county line earns.
-    const perContact = !theyAreInParty && party.options.pointsWhenTheyAreOutOfParty !== undefined
-      ? party.options.pointsWhenTheyAreOutOfParty
-      : pointsForMode(party, superMode)
+    const perContact =
+      !theyAreInParty && party.options.pointsWhenTheyAreOutOfParty !== undefined ? party.options.pointsWhenTheyAreOutOfParty : pointsForMode(party, superMode)
     let value = perContact * ourLocations.length * theirLocations.length
     if (party.options.inStateToOutOfStatePointsDouble && weAreInParty && !theyAreInParty) value *= 2
 
@@ -379,7 +372,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
         value *= rare
       }
     }
-    if (rareCounties.length > 0) notices.push('rareCounty')
+    if (rareCounties.length > 0) notices.push("rareCounty")
 
     // Duplicates, against the pairs already credited. A slot is one band, one
     // mode and one of OUR counties, so a rover who drives into the next county
@@ -393,16 +386,16 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     }
     const repeat = pairs.some(({ slot, code }) => (bySlot[slot] ?? []).includes(code))
 
-    sheet.lastLocation[call] = theirLocations.map((location) => location.code).join('/')
+    sheet.lastLocation[call] = theirLocations.map((location) => location.code).join("/")
 
     if (repeat) {
       sheet.dupes += 1
-      return { scoresheet: sheet, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: sheet, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     if (workedBefore) {
-      if (!slots.some((slot) => slot.startsWith(`${band}|`))) notices.push('newBand')
-      if (!slots.some((slot) => slot.split('|')[1] === mode)) notices.push('newMode')
+      if (!slots.some((slot) => slot.startsWith(`${band}|`))) notices.push("newBand")
+      if (!slots.some((slot) => slot.split("|")[1] === mode)) notices.push("newMode")
     }
 
     const prefix = multiplierPrefix(party, { band, mode, weAreInParty })
@@ -410,8 +403,8 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     // Our own county can be a multiplier without working anyone in it (NC, VA;
     // TN for a rover only). Claimed on every QSO rather than once, so that a
     // party counting multipliers per band claims it on each band we operate.
-    const selfCounts = party.options.selfCountsForCounty
-      || (party.options.selfMobileCountsForCounty && isMobile(operation, ref as Record<string, unknown>, party))
+    const selfCounts =
+      party.options.selfCountsForCounty || (party.options.selfMobileCountsForCounty && isMobile(operation, ref as Record<string, unknown>, party))
     if (selfCounts) {
       for (const ours of ourLocations) {
         if (!ours.inParty) continue
@@ -450,7 +443,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
         if (keys.length > 0) sheet.creditedEntities[entity] = (sheet.creditedEntities[entity] ?? 0) + 1
       }
     }
-    if (newMult) notices.push('newMult')
+    if (newMult) notices.push("newMult")
 
     // A bonus station pays once per bonus slot; later contacts with it are
     // ordinary QSOs.
@@ -461,7 +454,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
       if (sheet.bonuses[key] === undefined) {
         sheet.bonuses[key] = bonus
         sheet.bonusStations[baseCall] = (sheet.bonusStations[baseCall] ?? 0) + bonus
-        notices.push('bonusStation')
+        notices.push("bonusStation")
       }
     }
 
@@ -473,7 +466,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     sheet.bands[band] = (sheet.bands[band] ?? 0) + 1
     if (mode) sheet.modes[mode] = (sheet.modes[mode] ?? 0) + 1
     if (superMode) {
-      const byMode = (sheet.bandModes ??= {})[band] ??= {}
+      const byMode = ((sheet.bandModes ??= {})[band] ??= {})
       byMode[superMode] = (byMode[superMode] ?? 0) + 1
     }
     sheet.qsos += 1
@@ -481,7 +474,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
 
     const score: QsoScoreVerdict = { value, band }
     if (notices.length > 0) score.notices = notices
-    if (typedOurState) score.alerts = ['ourLocation']
+    if (typedOurState) score.alerts = ["ourLocation"]
     return { scoresheet: sheet, score }
   },
 
@@ -495,9 +488,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
 
     // A party that adds its bonus after the multiplier says so; the rest fold
     // it in before.
-    const total = Math.round(party?.options.bonusPostMultiplier
-      ? points * mult * power + bonusPoints
-      : (points + bonusPoints) * mult * power)
+    const total = Math.round(party?.options.bonusPostMultiplier ? points * mult * power + bonusPoints : (points + bonusPoints) * mult * power)
 
     // A QSO party is ONE period, however many UTC days it straddles — the
     // sponsors publish one total, and the multipliers and bonuses are won
@@ -506,14 +497,14 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     // hands over the sheet as it stood then), which on the last day IS the
     // final score. The detail stays with the operation tally; a day shows
     // the number alone.
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
 
     const arithmetic = arithmeticFor({ points, mult, bonusPoints, power })
     return {
       [TYPE]: {
         key: TYPE,
         for: scope,
-        icon: 'star',
+        icon: "star",
         total,
         points,
         mults: mult,
@@ -524,11 +515,9 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
         // arithmetic behind the total opens the detail.
         // A day carries the number alone in the score column, so its title is
         // the event's name alone — the total would otherwise read twice.
-        label: isDay ? party?.short ?? 'QSO Party' : `${party?.short ?? 'QSO Party'}: ${fmtInteger(total)}`,
+        label: isDay ? (party?.short ?? "QSO Party") : `${party?.short ?? "QSO Party"}: ${fmtInteger(total)}`,
         summary: `${fmtInteger(total)}`,
-        longSummary: isDay
-          ? ''
-          : party ? [arithmetic, longSummaryFor(party, sheet, bonusPoints)].join('\n\n') : arithmetic,
+        longSummary: isDay ? "" : party ? [arithmetic, longSummaryFor(party, sheet, bonusPoints)].join("\n\n") : arithmetic,
         grid: true,
       },
     }
@@ -539,9 +528,12 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
 /// in, zeros included — an unworked mode is what an operator scanning the
 /// table is looking for — then the band's contacts.
 function modeBreakdown(byMode: Record<string, number>, total: number): string {
-  const cells = [['CW', 'CW'], ['PHONE', 'SSB'], ['DATA', 'Digital']]
-    .map(([superMode, name]) => `${fmtInteger(byMode[superMode] ?? 0)} ${name}`)
-  return `${cells.join(', ')}, **${fmtInteger(total)} total**`
+  const cells = [
+    ["CW", "CW"],
+    ["PHONE", "SSB"],
+    ["DATA", "Digital"],
+  ].map(([superMode, name]) => `${fmtInteger(byMode[superMode] ?? 0)} ${name}`)
+  return `${cells.join(", ")}, **${fmtInteger(total)} total**`
 }
 
 /// Longest wavelength first — the order a band table reads in — rather than
@@ -551,7 +543,7 @@ function byWavelength(a: string, b: string): number {
     const match = /^([\d.]+)(m|cm|mm)$/.exec(band)
     if (!match) return -1
     const n = Number(match[1])
-    return match[2] === 'm' ? n : match[2] === 'cm' ? n / 100 : n / 1000
+    return match[2] === "m" ? n : match[2] === "cm" ? n / 100 : n / 1000
   }
   return meters(b) - meters(a) || a.localeCompare(b)
 }
@@ -562,8 +554,7 @@ function oneTimeBonuses(party: QsoParty, sheet: QpScoresheet): number {
   let total = Object.values(sheet.bonuses).reduce((sum, points) => sum + points, 0)
 
   if (party.bonus.rareCountySweep > 0) {
-    const needed = party.bonus.rareCountySweepMinimumCount
-      || Object.keys(party.rareCountyMultipliers).length
+    const needed = party.bonus.rareCountySweepMinimumCount || Object.keys(party.rareCountyMultipliers).length
     if (needed > 0 && Object.keys(sheet.rareCounties).length >= needed) {
       total += party.bonus.rareCountySweep
     }
@@ -572,8 +563,7 @@ function oneTimeBonuses(party: QsoParty, sheet: QpScoresheet): number {
   // The bonus-station sweep, which polo's NOTES documents and its accumulator
   // never pays — ID's four `K7x` stations are worth 100 more together.
   if (party.bonus.bonusStationSweep > 0) {
-    const needed = party.bonus.bonusStationSweepMinimumCount
-      || Object.keys(party.bonusStations).length
+    const needed = party.bonus.bonusStationSweepMinimumCount || Object.keys(party.bonusStations).length
     if (needed > 0 && Object.keys(sheet.bonusStations).length >= needed) {
       total += party.bonus.bonusStationSweep
     }
@@ -605,7 +595,7 @@ function arithmeticFor({ points, mult, bonusPoints, power }: { points: number; m
   // Only shown when it is doing something: every party but six has no power
   // table at all, and an entrant who declared no class multiplies by 1.
   if (power !== 1) parts.push(`× ${power}`)
-  return parts.join(' ')
+  return parts.join(" ")
 }
 
 /// The tables an operator reads while operating: which counties are still out
@@ -614,26 +604,25 @@ function arithmeticFor({ points, mult, bonusPoints, power }: { points: number; m
 /// (`grid: true`).
 function longSummaryFor(party: QsoParty, sheet: QpScoresheet, bonusPoints: number): string {
   const parts: string[] = []
-  const worked = (table: Record<string, number>, code: string) =>
-    table[code] !== undefined ? `**~~${code}~~**` : code
+  const worked = (table: Record<string, number>, code: string) => (table[code] !== undefined ? `**~~${code}~~**` : code)
 
   const activated = activatedCounties(party, sheet)
-  if (activated.length > 0 && party.bonus.perActivatedCounty > 0
-      && (!party.bonus.perActivatedCountyRoverOnly || sheet.mobile)) {
-    parts.push(`**Activated:** ${activated.map((county) => `${county} (${fmtInteger(sheet.activatedCounties[county])})`).join(' • ')}`)
+  if (activated.length > 0 && party.bonus.perActivatedCounty > 0 && (!party.bonus.perActivatedCountyRoverOnly || sheet.mobile)) {
+    parts.push(`**Activated:** ${activated.map((county) => `${county} (${fmtInteger(sheet.activatedCounties[county])})`).join(" • ")}`)
   }
 
   const countyCodes = Object.keys(party.counties)
   const countiesWorked = countyCodes.filter((code) => sheet.counties[code] !== undefined).length
   parts.push(`### ${fmtInteger(countiesWorked)} of ${fmtInteger(countyCodes.length)} ${party.short} ${party.options.labelForCounties}`)
-  parts.push(countyCodes.map((code) => worked(sheet.counties, code)).join(' '))
+  parts.push(countyCodes.map((code) => worked(sheet.counties, code)).join(" "))
 
   if (Object.keys(party.rareCountyMultipliers).length > 0) {
     const rare = Object.keys(party.rareCountyMultipliers).sort()
-    const swept = party.bonus.rareCountySweep > 0
-      && Object.keys(sheet.rareCounties).length >= (party.bonus.rareCountySweepMinimumCount || rare.length)
-    parts.push(`### ${fmtInteger(Object.keys(sheet.rareCounties).length)} Rare ${party.options.labelForCounties}${swept ? ` • **Sweep! +${fmtInteger(party.bonus.rareCountySweep)}**` : ''}`)
-    parts.push(rare.map((code) => worked(sheet.rareCounties, code)).join(' '))
+    const swept = party.bonus.rareCountySweep > 0 && Object.keys(sheet.rareCounties).length >= (party.bonus.rareCountySweepMinimumCount || rare.length)
+    parts.push(
+      `### ${fmtInteger(Object.keys(sheet.rareCounties).length)} Rare ${party.options.labelForCounties}${swept ? ` • **Sweep! +${fmtInteger(party.bonus.rareCountySweep)}**` : ""}`,
+    )
+    parts.push(rare.map((code) => worked(sheet.rareCounties, code)).join(" "))
   }
 
   // The states-and-provinces sweep belongs to the party's own entrants: an
@@ -642,11 +631,15 @@ function longSummaryFor(party: QsoParty, sheet: QpScoresheet, bonusPoints: numbe
   if (sheet.weAreInParty) {
     parts.push(`### ${fmtInteger(Object.keys(sheet.states).length)} US States`)
     const states = Object.keys(US_STATES)
-    if (!party.options.dcCountsAsMaryland) states.push('DC')
-    parts.push(states.map((code) => worked(sheet.states, code)).join(' '))
+    if (!party.options.dcCountsAsMaryland) states.push("DC")
+    parts.push(states.map((code) => worked(sheet.states, code)).join(" "))
 
     parts.push(`### ${fmtInteger(Object.keys(sheet.provinces).length)} Canadian Provinces`)
-    parts.push(Object.keys(CANADIAN_PROVINCES).map((code) => worked(sheet.provinces, code)).join(' '))
+    parts.push(
+      Object.keys(CANADIAN_PROVINCES)
+        .map((code) => worked(sheet.provinces, code))
+        .join(" "),
+    )
 
     if (party.options.dxEntityIsMultiplier || party.options.dxIsMultiplier) {
       const entities = Object.keys(sheet.entities).sort()
@@ -655,15 +648,17 @@ function longSummaryFor(party: QsoParty, sheet: QpScoresheet, bonusPoints: numbe
       // who works twelve entities is credited ten, and "12 of 10" is the one
       // number on this line that cannot be right.
       const claimed = max ? Object.keys(sheet.creditedEntities).length : entities.length
-      parts.push(`### ${fmtInteger(claimed)}${max ? ` of ${fmtInteger(max)}` : ''} DX ${party.options.dxEntityIsMultiplier ? 'Entities' : 'Multiplier'}`)
-      if (entities.length > 0) parts.push(entities.map((code) => `**~~${code}~~**`).join(' '))
+      parts.push(`### ${fmtInteger(claimed)}${max ? ` of ${fmtInteger(max)}` : ""} DX ${party.options.dxEntityIsMultiplier ? "Entities" : "Multiplier"}`)
+      if (entities.length > 0) parts.push(entities.map((code) => `**~~${code}~~**`).join(" "))
     }
   }
 
   const bonusCalls = Object.keys(party.bonusStations)
   if (bonusCalls.length > 0) {
-    parts.push(`### ${fmtInteger(Object.keys(sheet.bonusStations).length)} of ${fmtInteger(bonusCalls.length)} Bonus Stations${bonusPoints > 0 ? ` • ${fmtInteger(bonusPoints)} pts` : ''}`)
-    parts.push(bonusCalls.map((code) => worked(sheet.bonusStations, code)).join(' '))
+    parts.push(
+      `### ${fmtInteger(Object.keys(sheet.bonusStations).length)} of ${fmtInteger(bonusCalls.length)} Bonus Stations${bonusPoints > 0 ? ` • ${fmtInteger(bonusPoints)} pts` : ""}`,
+    )
+    parts.push(bonusCalls.map((code) => worked(sheet.bonusStations, code)).join(" "))
   }
 
   const bands = Object.keys(sheet.bands).sort(byWavelength)
@@ -674,12 +669,14 @@ function longSummaryFor(party: QsoParty, sheet: QpScoresheet, bonusPoints: numbe
     for (const band of bands) {
       for (const [superMode, count] of Object.entries(byMode[band] ?? {})) all[superMode] = (all[superMode] ?? 0) + count
     }
-    parts.push([
-      ...bands.map((band) => `**${band}**: ${modeBreakdown(byMode[band] ?? {}, sheet.bands[band])}`),
-      ...(bands.length > 1 ? [`**All bands**: ${modeBreakdown(all, sheet.qsos)}`] : []),
-    ].join('\n'))
+    parts.push(
+      [
+        ...bands.map((band) => `**${band}**: ${modeBreakdown(byMode[band] ?? {}, sheet.bands[band])}`),
+        ...(bands.length > 1 ? [`**All bands**: ${modeBreakdown(all, sheet.qsos)}`] : []),
+      ].join("\n"),
+    )
   }
-  if (sheet.dupes > 0) parts.push(`${fmtInteger(sheet.dupes)} duplicate${sheet.dupes === 1 ? '' : 's'}`)
+  if (sheet.dupes > 0) parts.push(`${fmtInteger(sheet.dupes)} duplicate${sheet.dupes === 1 ? "" : "s"}`)
 
-  return parts.join('\n\n')
+  return parts.join("\n\n")
 }

@@ -82,27 +82,10 @@
     "YORK": "York"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE",
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "EXPEDITION"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "DIGITAL",
-      "MIXED"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE", "MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE", "EXPEDITION"],
+    "mode": ["CW", "PHONE", "DIGITAL", "MIXED"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5W",
       "LOW": "100W",

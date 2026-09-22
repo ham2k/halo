@@ -34,7 +34,7 @@ import { parseCallsign } from "@ham2k/lib-callsigns"
 
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
-export const TYPE = 'nrrl-nfd'
+export const TYPE = "nrrl-nfd"
 
 /// The suffixes that make a worked station portable or mobile for points.
 ///
@@ -45,7 +45,7 @@ export const TYPE = 'nrrl-nfd'
 /// reading and matches what Norwegian entrants send — every NFD station signs
 /// /P by its own rules — but it is an INFERENCE here where it is quoted law
 /// there, and an import would hide that difference behind a shared symbol.
-const PORTABLE_INDICATORS = ['P', 'M', 'MM', 'AM']
+const PORTABLE_INDICATORS = ["P", "M", "MM", "AM"]
 
 export function signsPortable(call: string): boolean {
   const indicators = (parseCallsign(call.trim().toUpperCase()).postindicators ?? []) as string[]
@@ -54,7 +54,7 @@ export function signsPortable(call: string): boolean {
 
 /// "1,8; 3,5; 5; 7; 14; 21; 28" — note 5 MHz, which the IARU R1 field days
 /// exclude.
-export const VALID_BANDS = ['160m', '80m', '60m', '40m', '20m', '15m', '10m']
+export const VALID_BANDS = ["160m", "80m", "60m", "40m", "20m", "15m", "10m"]
 
 /// The contest's three modes. "Det er tre modes: CW, SSB, og DIGIMODE. Til
 /// DIGIMODE regnes alt som ikke er enten telefoni eller telegrafi" — which is
@@ -65,10 +65,10 @@ export const VALID_BANDS = ['160m', '80m', '60m', '40m', '20m', '15m', '10m']
 /// answers DATA for an empty string, so a mode-less QSO would otherwise be
 /// scored, and counted as a digimode multiplier, in silence.
 export function nfdMode(mode: string): string {
-  if (!mode) return ''
+  if (!mode) return ""
   const superMode = superModeForMode(mode)
-  if (superMode === 'CW') return 'CW'
-  return superMode === 'PHONE' ? 'SSB' : 'DIGI'
+  if (superMode === "CW") return "CW"
+  return superMode === "PHONE" ? "SSB" : "DIGI"
 }
 
 export type NFDScoresheet = {
@@ -93,13 +93,10 @@ export type NFDScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value.trim() : ''
+  return typeof value === "string" ? value.trim() : ""
 }
 
-export function refOfType(
-  container: Record<string, JSONValue> | undefined,
-  type: string,
-): Record<string, JSONValue> | undefined {
+export function refOfType(container: Record<string, JSONValue> | undefined, type: string): Record<string, JSONValue> | undefined {
   const refs = (container?.refs as Record<string, JSONValue>[] | undefined) ?? []
   return Array.isArray(refs) ? refs.find((r) => r?.type === type) : undefined
 }
@@ -129,24 +126,24 @@ export function bonusPoints(ref: Record<string, JSONValue> | undefined): number 
 
   // Recruits: 5,000 for one continuous hour, 10,000 for six cumulative — and
   // 50,000 for all of them together however they are made up.
-  total += Math.min(num('bonusRecruits1h') * 5000 + num('bonusRecruits6h') * 10000, 50000)
+  total += Math.min(num("bonusRecruits1h") * 5000 + num("bonusRecruits6h") * 10000, 50000)
 
-  if (flag('bonusPublicActivity')) total += 10000
-  if (flag('bonusOrienteering')) total += 10000
+  if (flag("bonusPublicActivity")) total += 10000
+  if (flag("bonusOrienteering")) total += 10000
 
   // Media is PER OUTLET, not per category: "det gis poeng for hver avis,
   // radio, og TV-kanal. Hvert medium gir kun én poengsum uansett antall
   // innlegg" — three newspapers is 30,000, three articles in one is 10,000.
   // So these are counts of outlets, and the form asks for them that way.
-  total += (num('bonusNewspapers') + num('bonusRadioChannels') + num('bonusTvChannels')) * 10000
+  total += (num("bonusNewspapers") + num("bonusRadioChannels") + num("bonusTvChannels")) * 10000
 
   // One video only, worth 1,000 plus 10 per like in the week after, capped at
   // 10,000. The likes are counted a week later, so this is a figure the
   // operator comes back and fills in rather than one HaLo could know.
-  if (flag('bonusYoutubeVideo')) total += Math.min(1000 + num('bonusYoutubeLikes') * 10, 10000)
+  if (flag("bonusYoutubeVideo")) total += Math.min(1000 + num("bonusYoutubeLikes") * 10, 10000)
 
-  if (flag('bonusLocation')) total += 10000
-  if (flag('bonusReport')) total += 10000
+  if (flag("bonusLocation")) total += 10000
+  if (flag("bonusReport")) total += 10000
 
   return total
 }
@@ -154,8 +151,15 @@ export function bonusPoints(ref: Record<string, JSONValue> | undefined): number 
 export const NFDScorer: ContestScorer<NFDScoresheet> = {
   startScoresheet({ ref }): NFDScoresheet {
     return {
-      worked: {}, mults: {}, bands: {}, bandPoints: {}, byMode: {},
-      qsos: 0, points: 0, dayQsos: 0, dayPoints: 0,
+      worked: {},
+      mults: {},
+      bands: {},
+      bandPoints: {},
+      byMode: {},
+      qsos: 0,
+      points: 0,
+      dayQsos: 0,
+      dayPoints: 0,
       bonus: bonusPoints(ref),
     }
   },
@@ -175,9 +179,9 @@ export const NFDScorer: ContestScorer<NFDScoresheet> = {
     const band = str(qso.band)
     const mode = nfdMode(str(qso.mode))
 
-    if (!mode) return { scoresheet: base, score: { value: 0, alerts: ['invalidMode'] } }
+    if (!mode) return { scoresheet: base, score: { value: 0, alerts: ["invalidMode"] } }
     if (!VALID_BANDS.includes(band)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     // "En stasjon må bare kontaktes én gang per bånd og per mode." Both parts
@@ -185,7 +189,7 @@ export const NFDScorer: ContestScorer<NFDScoresheet> = {
     // band — the opposite of `r1-fd`, where a second mode is a duplicate.
     const workedKey = `${call}|${band}|${mode}`
     if (base.worked[workedKey]) {
-      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     // DXCC, not WAE: "hvert DXCC-land (inkl. Norge)". So Sicily scores as
@@ -196,7 +200,7 @@ export const NFDScorer: ContestScorer<NFDScoresheet> = {
     // the field. No low-band doubling, and Norway counts like any other
     // European country ("inkl. Norge").
     const theirPortable = signsPortable(call)
-    const inEurope = theirInfo.continent === 'EU'
+    const inEurope = theirInfo.continent === "EU"
     let points: number
     if (theirPortable) points = inEurope ? 3 : 4
     else points = inEurope ? 1 : 2
@@ -208,7 +212,7 @@ export const NFDScorer: ContestScorer<NFDScoresheet> = {
     // BAND counts too — country x mode would make the first and third one
     // multiplier. The total agrees: "summen av alle multiplikatorer på alle
     // bånd og alle modi".
-    const entity = theirInfo.entityPrefix ?? ''
+    const entity = theirInfo.entityPrefix ?? ""
     let isNewMult = false
     if (entity) {
       const multKey = `${band}|${mode}|${entity}`
@@ -226,14 +230,14 @@ export const NFDScorer: ContestScorer<NFDScoresheet> = {
     base.dayPoints += points
 
     const score: QsoScoreVerdict = { value: points, band }
-    if (isNewMult) score.notices = ['newMult']
+    if (isNewMult) score.notices = ["newMult"]
     if (entity) score.entity = entity
 
     return { scoresheet: base, score }
   },
 
   summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const multCount = Object.keys(scoresheet.mults).length
     const points = isDay ? scoresheet.dayPoints : scoresheet.points
     const qsos = isDay ? scoresheet.dayQsos : scoresheet.qsos
@@ -257,7 +261,7 @@ export const NFDScorer: ContestScorer<NFDScoresheet> = {
         for: scope,
         // Without an icon the day-header renderer drops the whole badge, not
         // just the glyph (qso_list.dart).
-        icon: 'pine-tree',
+        icon: "pine-tree",
         total,
         points,
         mults: multCount,
@@ -280,24 +284,22 @@ function breakdown(sheet: NFDScoresheet, points: number, mults: number, bonus: n
   const lines: string[] = []
   if (bonus > 0) {
     lines.push(`**${fmtInteger(points)} × ${fmtInteger(mults)} + ${fmtInteger(bonus)} bonus**`)
-    lines.push('')
+    lines.push("")
   }
 
-  lines.push(...VALID_BANDS.map((band) => {
-    const bandQsos = sheet.bands[band] ?? 0
-    const bandPoints = sheet.bandPoints[band] ?? 0
-    const bandMults = Object.keys(sheet.mults).filter((key) => key.startsWith(`${band}|`)).length
-    return bandQsos === 0
-      ? `**${band}**: —`
-      : `**${band}**: ${fmtInteger(bandQsos)} QSOs, ${fmtInteger(bandPoints)} pts, ${fmtInteger(bandMults)} mults`
-  }))
+  lines.push(
+    ...VALID_BANDS.map((band) => {
+      const bandQsos = sheet.bands[band] ?? 0
+      const bandPoints = sheet.bandPoints[band] ?? 0
+      const bandMults = Object.keys(sheet.mults).filter((key) => key.startsWith(`${band}|`)).length
+      return bandQsos === 0 ? `**${band}**: —` : `**${band}**: ${fmtInteger(bandQsos)} QSOs, ${fmtInteger(bandPoints)} pts, ${fmtInteger(bandMults)} mults`
+    }),
+  )
 
-  const modes = ['CW', 'SSB', 'DIGI']
-    .filter((mode) => sheet.byMode[mode])
-    .map((mode) => `${mode} ${fmtInteger(sheet.byMode[mode])}`)
+  const modes = ["CW", "SSB", "DIGI"].filter((mode) => sheet.byMode[mode]).map((mode) => `${mode} ${fmtInteger(sheet.byMode[mode])}`)
   if (modes.length > 0) {
-    lines.push('')
-    lines.push(modes.join(' · '))
+    lines.push("")
+    lines.push(modes.join(" · "))
   }
-  return lines.join('\n')
+  return lines.join("\n")
 }

@@ -8,35 +8,16 @@
   "enabledByDefault": false,
   "icon": "radio-tower",
   "accentColor": "#1565C0",
-  "keywords": [
-    "contest",
-    "vhf",
-    "uhf",
-    "grid",
-    "distance",
-    "cabrillo"
-  ],
+  "keywords": ["contest", "vhf", "uhf", "grid", "distance", "cabrillo"],
   "relevance": {
-    "continents": [
-      "NA"
-    ]
+    "continents": ["NA"]
   },
-  "hooks": [
-    "activity",
-    "adifFields",
-    "export",
-    "ref:arrl-vhf-tests",
-    "scoring"
-  ],
+  "hooks": ["activity", "adifFields", "export", "ref:arrl-vhf-tests", "scoring"],
   "translations": {
     "es": {
       "name": "Concursos VHF de ARRL",
       "description": "Distancia de gran círculo y puntos por banda en la familia de concursos VHF/UHF/microondas de ARRL",
-      "keywords": [
-        "concurso",
-        "vhf",
-        "distancia"
-      ]
+      "keywords": ["concurso", "vhf", "distancia"]
     }
   }
 }

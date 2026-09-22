@@ -25,12 +25,7 @@
 // `true` — the verb means what it says regardless of how the setting was named.
 
 import { defineExtension, host } from "@ham2k/extension-sdk"
-import type {
-  CommandCatalogEntry,
-  CommandInterpretation,
-  HookContext,
-  SettingsSearchResult,
-} from "@ham2k/extension-sdk"
+import type { CommandCatalogEntry, CommandInterpretation, HookContext, SettingsSearchResult } from "@ham2k/extension-sdk"
 
 import { tFor } from "./i18n.ts"
 
@@ -50,8 +45,8 @@ const HIDE_MATCH = /^HIDE(?:\s+(.+))?$/i
 /// section too when there's one to name, since two settings can reasonably
 /// share a label across sections.
 function describeCurrent(t: Translator, result: SettingsSearchResult): string {
-  const params = { label: result.label ?? '', value: result.valueLabel ?? '', section: result.section ?? '' }
-  return result.section ? t('currentIn', params) : t('current', params)
+  const params = { label: result.label ?? "", value: result.valueLabel ?? "", section: result.section ?? "" }
+  return result.section ? t("currentIn", params) : t("current", params)
 }
 
 /// Opens the settings dialog rather than writing anything — for a setting that
@@ -66,31 +61,28 @@ function describeCurrent(t: Translator, result: SettingsSearchResult): string {
 function openSettings(t: Translator, result: SettingsSearchResult, query: string): CommandInterpretation {
   const candidates = result.candidates ?? []
   const keys = candidates.length ? candidates.map((c) => c.key) : [result.key as string]
-  const label = result.label ?? ''
+  const label = result.label ?? ""
   return {
     mixedCase: true,
     // The preview names the BEST match and its current value — the one useful
     // thing to show while the operator is still typing, and often enough to
     // refine the query without opening anything. When there are others behind
     // it, say so, so the dialog's extra rows aren't a surprise.
-    describe: keys.length > 1
-      ? t('currentAndMore', { label, value: result.valueLabel ?? '', count: keys.length - 1 })
-      : describeCurrent(t, result),
-    commands: [{
-      openSettings: {
-        keys,
-        title: keys.length > 1 ? t('matchingSettings', { query }) : label,
+    describe: keys.length > 1 ? t("currentAndMore", { label, value: result.valueLabel ?? "", count: keys.length - 1 }) : describeCurrent(t, result),
+    commands: [
+      {
+        openSettings: {
+          keys,
+          title: keys.length > 1 ? t("matchingSettings", { query }) : label,
+        },
       },
-    }],
+    ],
   }
 }
 
 /// The shared body of all three commands: everything past parsing is the same
 /// once the app has resolved the query.
-async function interpretSettingCommand(
-  t: Translator,
-  { args, kind }: { args: string; kind: 'set' | 'show' | 'hide' },
-): Promise<CommandInterpretation> {
+async function interpretSettingCommand(t: Translator, { args, kind }: { args: string; kind: "set" | "show" | "hide" }): Promise<CommandInterpretation> {
   const result = await host.searchSettings({ args, kind })
   // What the app decided the setting's NAME was, for the messages below —
   // echoing the whole of `args` back would quote the value too.
@@ -100,7 +92,7 @@ async function interpretSettingCommand(
   // a callsign) but not runnable, and left open for more typing, because this
   // is also what every prefix of a correct query looks like.
   if (!result.found || !result.key) {
-    return { mixedCase: true, expectsParams: true, describe: t('noMatch', { query }) }
+    return { mixedCase: true, expectsParams: true, describe: t("noMatch", { query }) }
   }
 
   // A value that doesn't fit is a mistake worth reporting rather than
@@ -108,7 +100,7 @@ async function interpretSettingCommand(
   // fit. While the query is still ambiguous, complaining about the value of a
   // setting we only guessed at would be noise.
   if (result.expects && !result.ambiguous) {
-    return { mixedCase: true, error: t('expects', { label: result.label ?? '', expects: result.expects }) }
+    return { mixedCase: true, error: t("expects", { label: result.label ?? "", expects: result.expects }) }
   }
 
   // No value asked for, a setting the command line can't express, or a query
@@ -117,8 +109,8 @@ async function interpretSettingCommand(
     return openSettings(t, result, query)
   }
 
-  const label = result.label ?? ''
-  const valueLabel = result.newValueLabel ?? ''
+  const label = result.label ?? ""
+  const valueLabel = result.newValueLabel ?? ""
 
   // Already there: say so and do nothing. Reporting "set to X" for a write
   // that never happened teaches the operator to distrust the confirmations.
@@ -129,14 +121,14 @@ async function interpretSettingCommand(
   // was reading vanishes with it and Enter reads as having done nothing at
   // all. `confirm` is what survives the execution to say why.
   if (result.unchanged) {
-    const already = t('alreadySet', { label, value: valueLabel })
+    const already = t("alreadySet", { label, value: valueLabel })
     return { mixedCase: true, describe: already, confirm: already }
   }
 
   return {
     mixedCase: true,
-    describe: t('change', { label, value: valueLabel }),
-    confirm: t('confirmChanged', { label, value: valueLabel }),
+    describe: t("change", { label, value: valueLabel }),
+    confirm: t("confirmChanged", { label, value: valueLabel }),
     commands: [{ updateSetting: { key: result.key, value: result.newValue } }],
   }
 }
@@ -150,24 +142,26 @@ const SetCommand = {
     // first keystroke: a text setting's value is typed into this same field
     // and must not be uppercased on its way in.
     if (!args) return { expectsParams: true, mixedCase: true }
-    return interpretSettingCommand(tFor(ctx), { args, kind: 'set' })
+    return interpretSettingCommand(tFor(ctx), { args, kind: "set" })
   },
 
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     const t = tFor(ctx)
-    return [{
-      command: 'SET',
-      params: t('catalogSetParams'),
-      describe: t('catalogSet'),
-      category: t('catalogCategory'),
-      expectsParams: true,
-    }]
+    return [
+      {
+        command: "SET",
+        params: t("catalogSetParams"),
+        describe: t("catalogSet"),
+        category: t("catalogCategory"),
+        expectsParams: true,
+      },
+    ]
   },
 }
 
 /// SHOW and HIDE differ only in which way they push the toggle — the app
 /// works out what that means for a setting named `hide…` rather than `show…`.
-function visibilityCommand(kind: 'show' | 'hide', pattern: RegExp, describeKey: string, paramsKey: string) {
+function visibilityCommand(kind: "show" | "hide", pattern: RegExp, describeKey: string, paramsKey: string) {
   const word = kind.toUpperCase()
   return {
     async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
@@ -184,25 +178,27 @@ function visibilityCommand(kind: 'show' | 'hide', pattern: RegExp, describeKey: 
 
     async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
       const t = tFor(ctx)
-      return [{
-        command: word,
-        params: t(paramsKey),
-        describe: t(describeKey),
-        category: t('catalogCategory'),
-        expectsParams: true,
-      }]
+      return [
+        {
+          command: word,
+          params: t(paramsKey),
+          describe: t(describeKey),
+          category: t("catalogCategory"),
+          expectsParams: true,
+        },
+      ]
     },
   }
 }
 
-const ShowCommand = visibilityCommand('show', SHOW_MATCH, 'catalogShow', 'catalogShowParams')
-const HideCommand = visibilityCommand('hide', HIDE_MATCH, 'catalogHide', 'catalogHideParams')
+const ShowCommand = visibilityCommand("show", SHOW_MATCH, "catalogShow", "catalogShowParams")
+const HideCommand = visibilityCommand("hide", HIDE_MATCH, "catalogHide", "catalogHideParams")
 
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('command', { key: 'settings-commands-set', hook: SetCommand, priority: 100 })
-    registerHook('command', { key: 'settings-commands-show', hook: ShowCommand, priority: 100 })
-    registerHook('command', { key: 'settings-commands-hide', hook: HideCommand, priority: 100 })
+    registerHook("command", { key: "settings-commands-set", hook: SetCommand, priority: 100 })
+    registerHook("command", { key: "settings-commands-show", hook: ShowCommand, priority: 100 })
+    registerHook("command", { key: "settings-commands-hide", hook: HideCommand, priority: 100 })
   },
 })

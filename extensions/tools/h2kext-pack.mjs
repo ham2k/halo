@@ -10,11 +10,11 @@
 // The directory holds a built `index.js`, a `manifest.json`, and optionally an
 // `assets/` folder. Nothing here compiles anything — see h2kext.mjs.
 
-import { pack, PackError, H2KEXT_API_VERSION, RESERVED_PREFIX } from './h2kext.mjs'
+import { pack, PackError, H2KEXT_API_VERSION, RESERVED_PREFIX } from "./h2kext.mjs"
 
 const args = process.argv.slice(2)
 
-if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
+if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
   console.log(`Package an extension directory into a .h2kext bundle.
 
   h2kext-pack <directory> [-o <out.h2kext>] [--force-name]
@@ -37,19 +37,19 @@ Defaults to <key>-<version>.h2kext in the working directory.`)
 
 // Walked by index rather than matched by value: `args.indexOf(a)` finds the
 // FIRST occurrence, so `-o foo foo` mistook the output path for the directory.
-const forceName = args.includes('--force-name')
+const forceName = args.includes("--force-name")
 let dir
 let outPath
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '-o') {
+  if (args[i] === "-o") {
     outPath = args[++i]
-  } else if (!args[i].startsWith('-') && dir === undefined) {
+  } else if (!args[i].startsWith("-") && dir === undefined) {
     dir = args[i]
   }
 }
 
 if (!dir) {
-  console.error('h2kext-pack: name the directory to package')
+  console.error("h2kext-pack: name the directory to package")
   process.exit(1)
 }
 
@@ -58,11 +58,11 @@ try {
   const assets = result.files.length - 2
   console.log(`${result.outPath}`)
   console.log(`  ${result.manifest.key} ${result.manifest.version} — ${result.manifest.name}`)
-  console.log(`  ${assets} asset${assets === 1 ? '' : 's'}`)
+  console.log(`  ${assets} asset${assets === 1 ? "" : "s"}`)
   if (result.manifest.domains?.length) {
     // Named on the way out, because this is the one part of the manifest the
     // person installing it will be asked to approve.
-    console.log(`  may reach: ${result.manifest.domains.join(', ')}`)
+    console.log(`  may reach: ${result.manifest.domains.join(", ")}`)
   }
 } catch (e) {
   if (e instanceof PackError) {

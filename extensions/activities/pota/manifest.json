@@ -8,34 +8,13 @@
   "enabledByDefault": true,
   "icon": "pine-tree",
   "accentColor": "#068541",
-  "keywords": [
-    "parks",
-    "activation",
-    "hunting"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "lookup",
-    "ref:pota",
-    "ref:potaActivation",
-    "scoring",
-    "spots"
-  ],
-  "domains": [
-    "api.pota.app",
-    "pota.app"
-  ],
+  "keywords": ["parks", "activation", "hunting"],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "lookup", "ref:pota", "ref:potaActivation", "scoring", "spots"],
+  "domains": ["api.pota.app", "pota.app"],
   "translations": {
     "es": {
       "description": "Referencias de parques, spots y registro de activaciones",
-      "keywords": [
-        "parques",
-        "activación"
-      ]
+      "keywords": ["parques", "activación"]
     }
   }
 }

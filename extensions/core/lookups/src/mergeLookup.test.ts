@@ -98,10 +98,7 @@ test("a grid a decoder cannot place is dropped on its own, not with the result a
   // HamDB sent the literal "NOT_FOUND" before it started filtering. The whole
   // result must survive it: the name and city in the same record are good,
   // and only the grid is junk.
-  const withJunkGrid = mergeLookupIntoGuess(
-    { call: "X" },
-    { call: "X", source: "a", scope: "general", grid: "NOT_FOUND", city: "Newington" },
-  )
+  const withJunkGrid = mergeLookupIntoGuess({ call: "X" }, { call: "X", source: "a", scope: "general", grid: "NOT_FOUND", city: "Newington" })
   assert.equal(withJunkGrid.grid, undefined)
   assert.equal(withJunkGrid.city, "Newington")
 })
@@ -146,7 +143,10 @@ test("a pinless result's town lands only on a guess with no location at all — 
   // filling only the empty state slot would put b's state under a's city.
   // Its country is refused with the rest of its group, though country counts
   // as neither town nor pin on the landing side.
-  const withTown = mergeLookupIntoGuess({ call: "X", city: "Springfield" }, { call: "X", source: "b", scope: "general", city: "Shelbyville", state: "TX", country: "Canada" })
+  const withTown = mergeLookupIntoGuess(
+    { call: "X", city: "Springfield" },
+    { call: "X", source: "b", scope: "general", city: "Shelbyville", state: "TX", country: "Canada" },
+  )
   assert.equal(withTown.city, "Springfield")
   assert.equal(withTown.state, undefined)
   assert.equal(withTown.country, undefined)
@@ -268,8 +268,32 @@ test("regression: free-tier QRZ (town, no pin) then the Ham2K service — the pi
   // established town (clearing keyed on written fields — the guess collapses
   // to flag+name+grid) or leaves QRZ's town sitting under the service's pin;
   // instead the service's own town/county/pin replace QRZ's town together.
-  const qrzFree: CallInfoLookup = { call: "X", source: "qrz.com", scope: "general", locationScope: "qth", name: "Some Op", location: "Newington, CT", city: "Newington", state: "CT", country: "United States" }
-  const ham2k: CallInfoLookup = { call: "X", source: "services.ham2k.net", scope: "general", locationScope: "qth", name: "SOME OP", location: "Newington, CT", city: "Newington", state: "CT", county: "Hartford", country: "United States", grid: "FN31pr", lat: 41.71, lon: -72.72 }
+  const qrzFree: CallInfoLookup = {
+    call: "X",
+    source: "qrz.com",
+    scope: "general",
+    locationScope: "qth",
+    name: "Some Op",
+    location: "Newington, CT",
+    city: "Newington",
+    state: "CT",
+    country: "United States",
+  }
+  const ham2k: CallInfoLookup = {
+    call: "X",
+    source: "services.ham2k.net",
+    scope: "general",
+    locationScope: "qth",
+    name: "SOME OP",
+    location: "Newington, CT",
+    city: "Newington",
+    state: "CT",
+    county: "Hartford",
+    country: "United States",
+    grid: "FN31pr",
+    lat: 41.71,
+    lon: -72.72,
+  }
 
   // The initial guess carries the annotation's entity-level country — which
   // must not count as "already located" and block QRZ's pinless town.
@@ -287,7 +311,15 @@ test("a pin-bearing result replaces a pinless established town wholesale, even w
   // Per-field first-wins would keep Springfield and accept only the grid,
   // labeling source b's pin with source a's town.
   let guess: CallInfo = { call: "X", locationScope: "qth" }
-  guess = mergeLookupIntoGuess(guess, { call: "X", source: "a", scope: "general", locationScope: "qth", city: "Springfield", state: "IL", country: "United States" })
+  guess = mergeLookupIntoGuess(guess, {
+    call: "X",
+    source: "a",
+    scope: "general",
+    locationScope: "qth",
+    city: "Springfield",
+    state: "IL",
+    country: "United States",
+  })
   guess = mergeLookupIntoGuess(guess, { call: "X", source: "b", scope: "general", locationScope: "qth", grid: "FN31pr", city: "Newington", state: "CT" })
   assert.equal(guess.city, "Newington")
   assert.equal(guess.state, "CT")
@@ -347,8 +379,24 @@ test("half a lat/lon pair is not a pin", () => {
 
 // ── issue #185: keep the most precise same-scope location ──────────────────
 
-const pota: Located = { call: "X", source: "pota", scope: "qso", locationScope: "portable", grid: "DN60ns", location: "US-1 Park", locAccuracy: LOCATION_ACCURACY.REASONABLE }
-const sota: Located = { call: "X", source: "sota", scope: "qso", locationScope: "portable", grid: "FN31aa", location: "W2/GC-001 Summit", locAccuracy: LOCATION_ACCURACY.ACCURATE }
+const pota: Located = {
+  call: "X",
+  source: "pota",
+  scope: "qso",
+  locationScope: "portable",
+  grid: "DN60ns",
+  location: "US-1 Park",
+  locAccuracy: LOCATION_ACCURACY.REASONABLE,
+}
+const sota: Located = {
+  call: "X",
+  source: "sota",
+  scope: "qso",
+  locationScope: "portable",
+  grid: "FN31aa",
+  location: "W2/GC-001 Summit",
+  locAccuracy: LOCATION_ACCURACY.ACCURATE,
+}
 
 test("#185: the more precise same-scope ref wins regardless of fold order (SOTA summit over POTA park)", () => {
   // POTA folded first, then the more precise SOTA refines it.
@@ -394,7 +442,15 @@ test("#185: a home lookup that INHERITED the portable scope can't thrash away a 
   const results: Located[] = [
     { call: "W1WC", source: "callsign-annotation", scope: "general", locationScope: "qth", entityPrefix: "K" },
     { call: "W1WC", source: "call-notes", scope: "general", name: "Some Op" },
-    { call: "W1WC", source: "pota", scope: "qso", locationScope: "portable", grid: "FN41bb", location: "US-2005 US-NY Amsterdam Beach State Park", locAccuracy: LOCATION_ACCURACY.REASONABLE },
+    {
+      call: "W1WC",
+      source: "pota",
+      scope: "qso",
+      locationScope: "portable",
+      grid: "FN41bb",
+      location: "US-2005 US-NY Amsterdam Beach State Park",
+      locAccuracy: LOCATION_ACCURACY.REASONABLE,
+    },
     { call: "W1WC", source: "qrz.com", scope: "general", locationScope: "portable", grid: "EM64mn", city: "Hartselle", state: "AL", location: "Hartselle, AL" },
     { call: "W1WC", source: "hamdb.org", scope: "general", locationScope: "portable", grid: "EM64mn", city: "Hartselle", state: "AL" },
   ]

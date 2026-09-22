@@ -8,27 +8,13 @@
   "enabledByDefault": false,
   "icon": "flag-variant",
   "accentColor": "#00205B",
-  "keywords": [
-    "contest",
-    "dx",
-    "arrl",
-    "cabrillo"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "export",
-    "ref:arrl-dx",
-    "scoring"
-  ],
+  "keywords": ["contest", "dx", "arrl", "cabrillo"],
+  "hooks": ["activity", "adifFields", "export", "ref:arrl-dx", "scoring"],
   "translations": {
     "es": {
       "name": "Concurso ARRL International DX",
       "description": "Las estaciones W/VE trabajan DX y viceversa: estados y provincias contra potencia",
-      "keywords": [
-        "concurso",
-        "potencia"
-      ]
+      "keywords": ["concurso", "potencia"]
     }
   }
 }

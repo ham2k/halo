@@ -75,7 +75,7 @@ interface KernelApi {
   }
 }
 
-let currentExtensionKey = 'unknown'
+let currentExtensionKey = "unknown"
 
 /// Privileged host-call functions handed over by the kernel at activation,
 /// one per extension this bundle defines ('pota' also defines
@@ -87,7 +87,7 @@ const privilegedHostCalls: Record<string, (method: string, params: Record<string
 
 function kernel(): KernelApi {
   const k = (globalThis as Record<string, unknown>).__polo as KernelApi | undefined
-  if (!k) throw new Error('polo kernel not loaded; kernel.js must be evaluated before extension bundles')
+  if (!k) throw new Error("polo kernel not loaded; kernel.js must be evaluated before extension bundles")
   return k
 }
 
@@ -106,7 +106,7 @@ export function defineExtension(def: ExtensionDefinition): void {
   kernel().defineExtension({
     ...def,
     onActivation(api) {
-      if (typeof api.hostCall === 'function') privilegedHostCalls[def.key] = api.hostCall
+      if (typeof api.hostCall === "function") privilegedHostCalls[def.key] = api.hostCall
       return def.onActivation(api)
     },
   })
@@ -146,23 +146,23 @@ export const hooks = {
 
 export const host = {
   async listRadios(): Promise<PanelRadioState[]> {
-    return await hostCallFn()('listRadios', {}) as PanelRadioState[]
+    return (await hostCallFn()("listRadios", {})) as PanelRadioState[]
   },
   async readRadio(id?: string): Promise<PanelRadioState | null> {
-    return await hostCallFn()('readRadio', { ...(id ? { id } : {}) }) as PanelRadioState | null
+    return (await hostCallFn()("readRadio", { ...(id ? { id } : {}) })) as PanelRadioState | null
   },
   async setRadioConnection(args: { id: string; selection?: string; connected: boolean }): Promise<PanelRadioTuneResult> {
-    return await hostCallFn()('setRadioConnection', { ...args }) as PanelRadioTuneResult
+    return (await hostCallFn()("setRadioConnection", { ...args })) as PanelRadioTuneResult
   },
   async tuneRadio(args: PanelRadioTune): Promise<PanelRadioTuneResult> {
-    return await hostCallFn()('tuneRadio', { ...args }) as PanelRadioTuneResult
+    return (await hostCallFn()("tuneRadio", { ...args })) as PanelRadioTuneResult
   },
   async fetch(url: string, options?: FetchOptions): Promise<FetchResponse> {
-    return (await hostCallFn()('fetch', { url, ...options })) as FetchResponse
+    return (await hostCallFn()("fetch", { url, ...options })) as FetchResponse
   },
 
   async kvGet(key: string): Promise<JSONValue | null> {
-    return (await hostCallFn()('kvGet', { ns: currentExtensionKey, key })) as JSONValue | null
+    return (await hostCallFn()("kvGet", { ns: currentExtensionKey, key })) as JSONValue | null
   },
 
   /// The device's current GPS position, or null when location is
@@ -170,14 +170,14 @@ export const host = {
   /// location fix and has no operation grid to fall back to. May prompt the
   /// user for location permission the first time it's called.
   async getLocation(): Promise<DeviceLocation | null> {
-    return (await hostCallFn()('getLocation', {})) as DeviceLocation | null
+    return (await hostCallFn()("getLocation", {})) as DeviceLocation | null
   },
 
   /// Read-only build identity — platform, edition, version, build number,
   /// git sha — for a command (REPORT) that needs to say exactly what build it
   /// ran on. `buildNumber` is null on Dev; see VersionInfo.
   async getVersionInfo(): Promise<VersionInfo> {
-    return (await hostCallFn()('getVersionInfo', {})) as VersionInfo
+    return (await hostCallFn()("getVersionInfo", {})) as VersionInfo
   },
 
   /// The app's settings, read-only: resolved core values (theme, locale,
@@ -187,7 +187,7 @@ export const host = {
   /// live in the platform keychain via the account hook system, not in
   /// settings.
   async getSettings(): Promise<Record<string, JSONValue>> {
-    return (await hostCallFn()('getSettings', {})) as Record<string, JSONValue>
+    return (await hostCallFn()("getSettings", {})) as Record<string, JSONValue>
   },
 
   /// Writes settings into THIS extension's own group (surfaced to other
@@ -195,7 +195,7 @@ export const host = {
   /// is injected here — core settings and other extensions' groups are not
   /// writable.
   async setSettings(values: Record<string, JSONValue>): Promise<void> {
-    await hostCallFn()('setSettings', { ns: currentExtensionKey, values })
+    await hostCallFn()("setSettings", { ns: currentExtensionKey, values })
   },
 
   /// Resolves what a SET/SHOW/HIDE command names against the app's settings.
@@ -212,23 +212,23 @@ export const host = {
   /// `'set'` only. Never rejects: an unmatched query answers `{found: false}`,
   /// which is the normal state of a half-typed command.
   async searchSettings(params: SearchSettingsParams): Promise<SettingsSearchResult> {
-    return (await hostCallFn()('searchSettings', { ...params })) as SettingsSearchResult
+    return (await hostCallFn()("searchSettings", { ...params })) as SettingsSearchResult
   },
 
   async kvSet(key: string, value: JSONValue): Promise<void> {
-    await hostCallFn()('kvSet', { ns: currentExtensionKey, key, value })
+    await hostCallFn()("kvSet", { ns: currentExtensionKey, key, value })
   },
 
   async setAccountSession(session: Record<string, string>): Promise<void> {
     const kvKey = kernel().getAccountKvKey(currentExtensionKey)
-    await hostCallFn()('setAccountSession', { ns: currentExtensionKey, kvKey, session })
+    await hostCallFn()("setAccountSession", { ns: currentExtensionKey, kvKey, session })
   },
 
   /// Presents a ResultMessage imperatively — for hooks whose results can't
   /// carry a `userMessage` (e.g. a lookup hitting an auth error). Hooks
   /// that CAN return one (spots posting) should prefer that instead.
   async showMessage(message: ResultMessage): Promise<void> {
-    await hostCallFn()('showMessage', { ...message, ns: currentExtensionKey })
+    await hostCallFn()("showMessage", { ...message, ns: currentExtensionKey })
   },
 
   /// Looks up a string from the app's own translations (app/lib/i18n/
@@ -239,7 +239,7 @@ export const host = {
   /// key doesn't exist or isn't a plain string (e.g. it needs interpolation
   /// params, which this doesn't support).
   async translate(key: string): Promise<string | null> {
-    return (await hostCallFn()('translate', { key })) as string | null
+    return (await hostCallFn()("translate", { key })) as string | null
   },
 
   /// Same lookup as `translate`, but for many keys in one bridge round
@@ -247,7 +247,7 @@ export const host = {
   /// fewer JS↔Dart hops than calling `translate` in a loop. Missing/non-
   /// string keys come back as null, same as `translate`.
   async translateAll(keys: string[]): Promise<Record<string, string | null>> {
-    return (await hostCallFn()('translateAll', { keys })) as Record<string, string | null>
+    return (await hostCallFn()("translateAll", { keys })) as Record<string, string | null>
   },
 
   /// A build-time secret by name, or null when this build has no such value.
@@ -268,11 +268,11 @@ export const host = {
   /// This is a stopgap around a flat map. A real secrets service, and flags to
   /// gate the calls that use these, are follow-up work.
   async secret(name: string): Promise<string | null> {
-    return (await hostCallFn()('secret', { name })) as string | null
+    return (await hostCallFn()("secret", { name })) as string | null
   },
 
   async dbLookupSelectOne(category: string, key: string): Promise<LookupRow | null> {
-    return (await hostCallFn()('dbLookupSelectOne', { category, key })) as LookupRow | null
+    return (await hostCallFn()("dbLookupSelectOne", { category, key })) as LookupRow | null
   },
 
   /// [subCategory], when given, filters IN THE QUERY rather than after —
@@ -293,23 +293,12 @@ export const host = {
   /// delists a whole class at once), so a search for a word that class shares
   /// can fill the cap with retired rows and leave the live matches just past
   /// it. A row that never said (`flags` null) is NOT retired and survives.
-  async dbLookupSelectAll(
-    category: string,
-    query: string,
-    subCategory?: string,
-    activeOnly?: boolean,
-  ): Promise<LookupRow[]> {
-    return (await hostCallFn()('dbLookupSelectAll', { category, query, subCategory, activeOnly })) as LookupRow[]
+  async dbLookupSelectAll(category: string, query: string, subCategory?: string, activeOnly?: boolean): Promise<LookupRow[]> {
+    return (await hostCallFn()("dbLookupSelectAll", { category, query, subCategory, activeOnly })) as LookupRow[]
   },
 
-  async dbLookupSelectByLocation(
-    category: string,
-    lat: number,
-    lon: number,
-    delta: number,
-    activeOnly?: boolean,
-  ): Promise<LookupRow[]> {
-    return (await hostCallFn()('dbLookupSelectByLocation', { category, lat, lon, delta, activeOnly })) as LookupRow[]
+  async dbLookupSelectByLocation(category: string, lat: number, lon: number, delta: number, activeOnly?: boolean): Promise<LookupRow[]> {
+    return (await hostCallFn()("dbLookupSelectByLocation", { category, lat, lon, delta, activeOnly })) as LookupRow[]
   },
 
   async showForm(form: FormDefinition, state: Record<string, any> = {}): Promise<Record<string, any> | null> {
@@ -321,29 +310,29 @@ export const host = {
     /// the same `key`. `key` is automatically namespaced to this extension —
     /// other extensions can't see or clear it.
     async setMessage(params: StatusBarMessageParams): Promise<void> {
-      await hostCallFn()('statusBarSetMessage', { ...params, ns: currentExtensionKey })
+      await hostCallFn()("statusBarSetMessage", { ...params, ns: currentExtensionKey })
     },
 
     /// A transient progress bar under `key`; omit `value` for indeterminate.
     async setProgress(params: StatusBarProgressParams): Promise<void> {
-      await hostCallFn()('statusBarSetProgress', { ...params, ns: currentExtensionKey })
+      await hostCallFn()("statusBarSetProgress", { ...params, ns: currentExtensionKey })
     },
 
     /// Removes the message/progress item under `key`, if any.
     async clear(key: string): Promise<void> {
-      await hostCallFn()('statusBarClear', { key, ns: currentExtensionKey })
+      await hostCallFn()("statusBarClear", { key, ns: currentExtensionKey })
     },
 
     /// A richer, dismissible notice, replacing any prior undismissed notice
     /// under the same `key`. Stays in the user's notice history after
     /// dismissal.
     async showNotice(params: StatusBarNoticeParams): Promise<void> {
-      await hostCallFn()('statusBarShowNotice', { ...params, ns: currentExtensionKey })
+      await hostCallFn()("statusBarShowNotice", { ...params, ns: currentExtensionKey })
     },
 
     /// Dismisses the active notice under `key`, if any.
     async dismissNotice(key: string): Promise<void> {
-      await hostCallFn()('statusBarDismissNotice', { key, ns: currentExtensionKey })
+      await hostCallFn()("statusBarDismissNotice", { key, ns: currentExtensionKey })
     },
   },
 

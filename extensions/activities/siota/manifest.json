@@ -8,38 +8,16 @@
   "enabledByDefault": false,
   "icon": "silo",
   "accentColor": "#B08C4F",
-  "keywords": [
-    "silos",
-    "australia",
-    "activation",
-    "chasing"
-  ],
+  "keywords": ["silos", "australia", "activation", "chasing"],
   "relevance": {
-    "entities": [
-      "VK"
-    ]
+    "entities": ["VK"]
   },
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "ref:siota",
-    "ref:siotaActivation",
-    "scoring"
-  ],
-  "domains": [
-    "www.silosontheair.com"
-  ],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:siota", "ref:siotaActivation", "scoring"],
+  "domains": ["www.silosontheair.com"],
   "translations": {
     "es": {
       "description": "Referencias de silos, activación y caza",
-      "keywords": [
-        "silos",
-        "australia",
-        "activación"
-      ]
+      "keywords": ["silos", "australia", "activación"]
     }
   }
 }

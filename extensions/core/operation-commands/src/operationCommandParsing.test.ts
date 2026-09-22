@@ -67,12 +67,12 @@ test("parsePositionCommand: unrelated input doesn't match", () => {
 })
 
 test("parseSegmentCommand: each word names its segment kind", () => {
-  assert.deepEqual(parseSegmentCommand("START"), { kind: 'start', setLocation: false })
-  assert.deepEqual(parseSegmentCommand("BREAK"), { kind: 'break', setLocation: false })
-  assert.deepEqual(parseSegmentCommand("STOP"), { kind: 'stop', setLocation: false })
+  assert.deepEqual(parseSegmentCommand("START"), { kind: "start", setLocation: false })
+  assert.deepEqual(parseSegmentCommand("BREAK"), { kind: "break", setLocation: false })
+  assert.deepEqual(parseSegmentCommand("STOP"), { kind: "stop", setLocation: false })
   // END is polo's alias for STOP, and writes the same `stop` row.
-  assert.deepEqual(parseSegmentCommand("END"), { kind: 'stop', setLocation: false })
-  assert.deepEqual(parseSegmentCommand("roverqth"), { kind: 'break', setLocation: true })
+  assert.deepEqual(parseSegmentCommand("END"), { kind: "stop", setLocation: false })
+  assert.deepEqual(parseSegmentCommand("roverqth"), { kind: "break", setLocation: true })
 })
 
 test("parseSegmentCommand: the whole word and nothing longer", () => {

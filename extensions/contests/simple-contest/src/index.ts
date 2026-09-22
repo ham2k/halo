@@ -36,7 +36,7 @@ import { SimpleContestScorer } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const TYPE = 'simple-contest'
+const TYPE = "simple-contest"
 
 function refOfType(container: Record<string, JSONValue>, type: string): Record<string, JSONValue> | undefined {
   const refs = (container.refs as Record<string, JSONValue>[] | undefined) ?? []
@@ -44,13 +44,13 @@ function refOfType(container: Record<string, JSONValue>, type: string): Record<s
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// The contest identifier the operator set at setup, defaulting to app-polo's
 /// "TEST" so an unconfigured operation still exports something sane.
 function contestId(operation: Record<string, JSONValue>, ctx: HookContext): string {
-  return str(refOfType(operation, TYPE)?.contestIdentifier) || tFor(ctx)('defaultContestId')
+  return str(refOfType(operation, TYPE)?.contestIdentifier) || tFor(ctx)("defaultContestId")
 }
 
 const ActivityHook = {
@@ -60,42 +60,39 @@ const ActivityHook = {
   /// schema keeps enum fields (a mode, a station type) available to the
   /// contests that follow without growing the input catalog
   /// (docs/design/contests.md §5.4).
-  async operationControls(
-    _args: { operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls(_args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx)
     return [
       {
-        key: 'simple-contest/setup',
+        key: "simple-contest/setup",
         // Names the contest family, not the act of configuring it — this is
         // what the Activity Types list shows, where "… Setup" reads as a
         // settings screen rather than the thing being added. The dialog itself
         // still says "Setup" below, matching the other three contests.
-        label: t('activityLabel'),
+        label: t("activityLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'form',
+          kind: "form",
           refType: TYPE,
           form: {
-            title: t('setupLabel'),
+            title: t("setupLabel"),
             elements: [
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'contestIdentifier',
-                label: t('contestIdLabel'),
-                placeholder: t('contestIdPlaceholder'),
+                type: "field",
+                fieldType: "text",
+                key: "contestIdentifier",
+                label: t("contestIdLabel"),
+                placeholder: t("contestIdPlaceholder"),
                 uppercase: true,
               },
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'exchange',
-                label: t('sentExchangeLabel'),
-                placeholder: t('exchangePlaceholder'),
+                type: "field",
+                fieldType: "text",
+                key: "exchange",
+                label: t("sentExchangeLabel"),
+                placeholder: t("exchangePlaceholder"),
                 uppercase: true,
               },
             ],
@@ -121,7 +118,7 @@ const ActivityHook = {
     if (!refOfType(args.operation, TYPE)) return []
 
     const t = tFor(ctx)
-    const their = ((args.qso?.their as Record<string, JSONValue>) ?? {})
+    const their = (args.qso?.their as Record<string, JSONValue>) ?? {}
     const guess = (their.guess as Record<string, JSONValue>) ?? {}
     // Only a real guess for this QSO — an example exchange as placeholder
     // would read as a value the operator had already entered.
@@ -129,13 +126,13 @@ const ActivityHook = {
 
     return [
       {
-        key: 'simple-contest/exchange',
-        label: t('exchangeLabel'),
+        key: "simple-contest/exchange",
+        label: t("exchangeLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
-        optionType: 'optional',
-        input: { kind: 'text', refType: TYPE, field: 'exchange', placeholder: hint || undefined },
+        optionType: "optional",
+        input: { kind: "text", refType: TYPE, field: "exchange", placeholder: hint || undefined },
       },
     ]
   },
@@ -159,7 +156,7 @@ const ActivityHook = {
     // `ExchangeFieldsModel.refsWithTextValues`). Returning null there would leave the previous
     // save's `their.exchange` showing in the QSO row and in a plain ADIF export,
     // so a cleared exchange has to project the blank.
-    if (!exchange) return qsoRef && 'exchange' in qsoRef ? { their: { exchange: '' } } : null
+    if (!exchange) return qsoRef && "exchange" in qsoRef ? { their: { exchange: "" } } : null
     return { their: { exchange } }
   },
 }
@@ -168,7 +165,7 @@ const RefHandler = {
   async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
     // Any exchange the operator types is acceptable — this contest makes no
     // claim about the format, which is the point of it being generic.
-    return { valid: true, normalized: (ref.ref ?? '').trim() }
+    return { valid: true, normalized: (ref.ref ?? "").trim() }
   },
 
   /// A contest ref has no reference *code* the way a park or summit does, so
@@ -178,19 +175,16 @@ const RefHandler = {
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const id = str((ref as Record<string, JSONValue>).contestIdentifier)
     const sent = str((ref as Record<string, JSONValue>).exchange)
-    const label = id || tFor(ctx)('unconfigured')
+    const label = id || tFor(ctx)("unconfigured")
     // No `notConfigured` here, unlike the named contests: this one's sent
     // exchange is genuinely optional — a serial-only contest has no static
     // exchange to type — so an empty one is not evidence of anything. Its
     // unconfigured state is carried by `label`, which reads `unconfigured`
     // until the identifier is set.
-    return { ...ref, program: 'Contest', label, shortLabel: label, name: sent || undefined }
+    return { ...ref, program: "Contest", label, shortLabel: label, name: sent || undefined }
   },
 
-  async suggestOperationTitle(
-    { ref, operation }: { ref: Ref; operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ) {
+  async suggestOperationTitle({ ref, operation }: { ref: Ref; operation: Record<string, JSONValue> }, ctx: HookContext) {
     const id = str((ref as Record<string, JSONValue>).contestIdentifier) || contestId(operation, ctx)
     return { for: id, subtitle: str((ref as Record<string, JSONValue>).exchange) || undefined }
   },
@@ -204,11 +198,11 @@ const AdifFieldsHook = {
     const opRef = refOfType(operation, TYPE)
     if (!opRef) return []
 
-    const fields: { name: string; value: string }[] = [{ name: 'CONTEST_ID', value: contestId(operation, ctx) }]
+    const fields: { name: string; value: string }[] = [{ name: "CONTEST_ID", value: contestId(operation, ctx) }]
     const sent = str(opRef.exchange)
     const received = str(refOfType(qso, TYPE)?.exchange)
-    if (sent) fields.push({ name: 'STX_STRING', value: sent })
-    if (received) fields.push({ name: 'SRX_STRING', value: received })
+    if (sent) fields.push({ name: "STX_STRING", value: sent })
+    if (received) fields.push({ name: "SRX_STRING", value: received })
     return fields
   },
 }
@@ -216,12 +210,12 @@ const AdifFieldsHook = {
 /// Cabrillo wants an RST alongside each exchange; a contest that doesn't log
 /// them still has to emit something, so fall back to the mode's conventional
 /// default the way app-polo does.
-function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): string {
+function reportFor(qso: Record<string, JSONValue>, side: "our" | "their"): string {
   const sideData = (qso[side] as Record<string, JSONValue>) ?? {}
   const sent = str(sideData.sent)
   if (sent) return sent
   const mode = str(qso.mode)
-  return mode === 'CW' || mode === 'RTTY' ? '599' : '59'
+  return mode === "CW" || mode === "RTTY" ? "599" : "59"
 }
 
 /// The contest's own name for this operation's file — whatever identifier the
@@ -232,12 +226,7 @@ function contestTag(operation: Record<string, JSONValue>): string {
   return str(refOfType(operation, TYPE)?.contestIdentifier) || manifest.shortName
 }
 
-function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  extension: string,
-  compact?: boolean,
-): string {
+function filenameFor(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], extension: string, compact?: boolean): string {
   return exportFilename({
     stationCall: operation.stationCall,
     activity: contestTag(operation),
@@ -249,29 +238,28 @@ function filenameFor(
 
 const ExportHook = {
   async getExportTypes() {
-    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+    return [exportTypeDefinition(TYPE, "adif", manifest.shortName), exportTypeDefinition(TYPE, "cabrillo", manifest.shortName)]
   },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
-    const named = (extension: string) =>
-      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
+    const named = (extension: string) => filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
       {
         exportType: `${TYPE}-adif`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'adif',
-        label: t('adifExport', { contest: manifest.shortName }),
-        filename: named('adi'),
+        format: "adif",
+        label: t("adifExport", { contest: manifest.shortName }),
+        filename: named("adi"),
         selectedByDefault: true,
         refType: TYPE,
       },
       {
         exportType: `${TYPE}-cabrillo`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'cabrillo',
-        label: t('cabrilloExport', { contest: manifest.shortName }),
-        filename: named('log'),
+        format: "cabrillo",
+        label: t("cabrilloExport", { contest: manifest.shortName }),
+        filename: named("log"),
         selectedByDefault: true,
         refType: TYPE,
       },
@@ -284,7 +272,7 @@ const ExportHook = {
     // exportType it never offered makes the ADIF delegation recurse into
     // itself.
     if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
-      return { filename: '', mimeType: '', content: '' }
+      return { filename: "", mimeType: "", content: "" }
     }
 
     const operation = args.operation
@@ -295,23 +283,23 @@ const ExportHook = {
     if (args.exportType === `${TYPE}-cabrillo`) {
       const content = qsonToCabrillo(args.qsos, {
         headers: [
-          ['CONTEST', id],
-          ['CALLSIGN', ourCall],
-          ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
-          ['GRID-LOCATOR', str(operation.grid)],
+          ["CONTEST", id],
+          ["CALLSIGN", ourCall],
+          ["OPERATORS", str((operation.local as Record<string, JSONValue>)?.operatorCall)],
+          ["GRID-LOCATOR", str(operation.grid)],
         ],
         qsoParts: (qso) => [
-          ourCall || '-',
-          reportFor(qso, 'our'),
-          str(opRef?.exchange) || '-',
-          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || '-',
-          reportFor(qso, 'their'),
-          str(refOfType(qso, TYPE)?.exchange) || '-',
+          ourCall || "-",
+          reportFor(qso, "our"),
+          str(opRef?.exchange) || "-",
+          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || "-",
+          reportFor(qso, "their"),
+          str(refOfType(qso, TYPE)?.exchange) || "-",
         ],
       })
       return {
-        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
-        mimeType: 'text/plain',
+        filename: filenameFor(operation, args.qsos, "log", args.compactFilenames),
+        mimeType: "text/plain",
         content,
       }
     }
@@ -333,8 +321,8 @@ const ExportHook = {
       mainHandler: TYPE,
     })
     return {
-      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
-      mimeType: 'text/plain',
+      filename: filenameFor(operation, args.qsos, "adi", args.compactFilenames),
+      mimeType: "text/plain",
       content,
     }
   },
@@ -343,13 +331,13 @@ const ExportHook = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('activity', { hook: ActivityHook, key: TYPE })
+    registerHook("activity", { hook: ActivityHook, key: TYPE })
     registerHook(`ref:${TYPE}`, { hook: RefHandler, key: TYPE })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: TYPE })
-    registerHook('export', { hook: ExportHook, key: TYPE })
+    registerHook("adifFields", { hook: AdifFieldsHook, key: TYPE })
+    registerHook("export", { hook: ExportHook, key: TYPE })
     // Ref-gated: the core skips this scorer entirely on operations that don't
     // carry a simple-contest ref, rather than invoking it to be told "not mine".
-    registerHook('scoring', {
+    registerHook("scoring", {
       hook: contestScorer(SimpleContestScorer, { scope: { refTypes: [TYPE] } }),
       key: TYPE,
     })

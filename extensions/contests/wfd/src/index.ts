@@ -14,12 +14,7 @@
 // a suggestions list here; HaLo already has the control.
 
 import { exportTypeDefinition } from "@ham2k/extension-sdk"
-import {
-  adifForExport,
-  contestScorer,
-  defineExtension,
-  host,
-} from "@ham2k/extension-sdk"
+import { adifForExport, contestScorer, defineExtension, host } from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
   ExportOption,
@@ -43,7 +38,7 @@ import { tFor } from "./i18n.ts"
 import manifest from "../manifest.json" with { type: "json" }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value.trim() : ''
+  return typeof value === "string" ? value.trim() : ""
 }
 
 /// Every section as a selectable option, with its name — what the operator
@@ -51,7 +46,7 @@ function str(value: JSONValue | undefined): string {
 /// What a search has to contain to offer this event. Matched as "does the
 /// alias contain what was typed", so "fd" finds both Field Days — they are both
 /// field days, and the date ranking decides which comes first.
-const ALIASES = ['WFD', 'WINTER FIELD DAY', 'WINTERFIELDDAY', 'WINTER FD', 'WINTER', 'FIELD DAY', 'FIELDDAY']
+const ALIASES = ["WFD", "WINTER FIELD DAY", "WINTERFIELDDAY", "WINTER FD", "WINTER", "FIELD DAY", "FIELDDAY"]
 
 /// Precomputed beside the option list: rebuilding both per keystroke costs
 /// ~120 allocations and an 86-entry scan to answer a question that only
@@ -61,7 +56,7 @@ const PREFIX_ENTRIES = Object.entries(PREFIX_TO_LOCATION)
 const SECTIONS_BY_CALL_AREA: Record<number, string[]> = (() => {
   const byArea: Record<number, string[]> = {}
   for (const [section, area] of Object.entries(CALL_AREA_FOR_SECTION)) {
-    if (typeof area === 'number') (byArea[area] ??= []).push(section)
+    if (typeof area === "number") (byArea[area] ??= []).push(section)
   }
   return byArea
 })()
@@ -89,7 +84,7 @@ function preferredSections(call: string, entityPrefix: string): string[] {
   }
   // Canada has no single answer — Ontario alone is four sections — so offer
   // none rather than a wrong one. Anything outside K/VE sends DX.
-  if (entityPrefix && entityPrefix !== 'K') return []
+  if (entityPrefix && entityPrefix !== "K") return []
   const digit = /[0-9]/.exec(upper)
   if (!digit) return []
   return SECTIONS_BY_CALL_AREA[Number(digit[0])] ?? []
@@ -128,24 +123,21 @@ async function ourSectionDefault(): Promise<string> {
 }
 
 const ActivityHook = {
-  async operationControls(
-    _args: { operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls(_args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx)
     const profileSection = await ourSectionDefault()
     return [
       {
-        key: 'wfd/setup',
-        label: t('activityLabel'),
+        key: "wfd/setup",
+        label: t("activityLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'form',
+          kind: "form",
           refType: TYPE,
           form: {
-            title: t('setupLabel'),
+            title: t("setupLabel"),
             elements: [
               // The RUNNING this setup is for, and the ref's identity.
               //
@@ -156,10 +148,10 @@ const ActivityHook = {
               // adding from the search REPLACES a configured setup with a bare
               // ref, silently losing class, section, power and every bonus.
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'ref',
-                label: t('runningLabel'),
+                type: "field",
+                fieldType: "text",
+                key: "ref",
+                label: t("runningLabel"),
                 value: String(nextRunningYear(Date.now())),
               },
               // `ourClass`/`ourSection`, not `class`/`location`: a form field key
@@ -167,41 +159,40 @@ const ActivityHook = {
               // what the OTHER station sent. Sharing the names would have our
               // setup and their exchange overwrite each other.
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'ourClass',
-                label: t('ourClassLabel'),
-                placeholder: t('ourClassPlaceholder'),
+                type: "field",
+                fieldType: "text",
+                key: "ourClass",
+                label: t("ourClassLabel"),
+                placeholder: t("ourClassPlaceholder"),
                 uppercase: true,
               },
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'ourSection',
-                label: t('ourSectionLabel'),
-                placeholder: t('ourSectionPlaceholder'),
+                type: "field",
+                fieldType: "text",
+                key: "ourSection",
+                label: t("ourSectionLabel"),
+                placeholder: t("ourSectionPlaceholder"),
                 uppercase: true,
                 value: profileSection,
               },
-              { type: 'header', title: t('objectivesHeader') },
+              { type: "header", title: t("objectivesHeader") },
               // Each objective adds its OWN weight, 1 to 6 — Winter Field Day
               // has no power multiplier and no separate bonus points, so these
               // are the whole of both.
-              { type: 'markdown', text: t('objectivesNote') },
+              { type: "markdown", text: t("objectivesNote") },
               ...OBJECTIVE_KEYS.map((key: string) => ({
-                type: 'field' as const,
-                fieldType: 'checkbox' as const,
+                type: "field" as const,
+                fieldType: "checkbox" as const,
                 key,
                 label: t(key),
               })),
-              { type: 'markdown', text: t('rulesLink') },
+              { type: "markdown", text: t("rulesLink") },
             ],
           },
         },
       },
     ]
   },
-
 
   /// Offered in the activity search by NAME and by NEARNESS.
   ///
@@ -215,7 +206,7 @@ const ActivityHook = {
   /// which in June is one and in January the other.
   async suggest({ searchTerm }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
     const t = tFor(ctx)
-    const term = (searchTerm ?? '').trim().toUpperCase()
+    const term = (searchTerm ?? "").trim().toUpperCase()
     if (term && !ALIASES.some((alias) => alias.includes(term))) return []
 
     const now = Date.now()
@@ -240,9 +231,9 @@ const ActivityHook = {
         // added, so the line has to say what the event IS. A reference
         // activity puts its reference's real name here (a park's name); an
         // event has no such name, so it describes itself instead.
-        program: 'Contest',
-        name: t('activityDescription'),
-        label: `${t('activityLabel')} ${year}`,
+        program: "Contest",
+        name: t("activityDescription"),
+        label: `${t("activityLabel")} ${year}`,
         // Must match what `decorateRef` composes: the same running added by
         // tapping this suggestion and by the setup form has to read the same
         // on every surface.
@@ -264,10 +255,10 @@ const ActivityHook = {
     if (!refOfType(args.operation, TYPE)) return null
 
     const qsoRef = refOfType(args.qso, TYPE)
-    const exchange = [str(qsoRef?.class), str(qsoRef?.location)].filter((part) => part).join(' ')
+    const exchange = [str(qsoRef?.class), str(qsoRef?.location)].filter((part) => part).join(" ")
     if (!exchange) return null
 
-    const their = ((args.qso.their as Record<string, JSONValue>) ?? {})
+    const their = (args.qso.their as Record<string, JSONValue>) ?? {}
     return { their: { ...their, exchange } as unknown as JSONValue }
   },
 
@@ -289,16 +280,16 @@ const ActivityHook = {
 
     return [
       {
-        key: 'wfd/class',
-        label: t('theirClassLabel'),
+        key: "wfd/class",
+        label: t("theirClassLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'text',
+          kind: "text",
           refType: TYPE,
-          field: 'class',
-          placeholder: t('ourClassPlaceholder'),
+          field: "class",
+          placeholder: t("ourClassPlaceholder"),
           uppercase: true,
           // Tints when it isn't a class. `H`/`I`/`M`/`O` are the categories,
           // and unlike ARRL Field Day there is no "please copy" prefix.
@@ -306,15 +297,15 @@ const ActivityHook = {
         },
       },
       {
-        key: 'wfd/section',
-        label: t('theirSectionLabel'),
+        key: "wfd/section",
+        label: t("theirSectionLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 20,
         input: {
-          kind: 'options',
+          kind: "options",
           refType: TYPE,
-          field: 'location',
+          field: "location",
           options: SECTION_OPTIONS,
           preferredCodes: preferredSections(call, entityPrefix),
           // `MX` and `DX` are legal to receive and are not in the list, so an
@@ -332,9 +323,7 @@ const ActivityHook = {
 const RefHandler = {
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const t = tFor(ctx)
-    const own = [str((ref as Record<string, JSONValue>).ourClass), str((ref as Record<string, JSONValue>).ourSection)]
-      .filter((part) => part)
-      .join(' ')
+    const own = [str((ref as Record<string, JSONValue>).ourClass), str((ref as Record<string, JSONValue>).ourSection)].filter((part) => part).join(" ")
     const year = str((ref as Record<string, JSONValue>).ref)
     // Display keys split the event from the exchange (contests.md §5.4):
     // `label` names the event in full, `shortLabel` names the SAME event
@@ -349,24 +338,22 @@ const RefHandler = {
       // the signal that survives the extension being switched off, when there
       // is no control left to infer a contest from. A ref built by the setup
       // form never passes through `suggest`, so without this it has none.
-      program: 'Contest',
-      name: own || t('notConfigured'),
-      label: [t('activityLabel'), year].filter((part) => part).join(' '),
-      shortLabel: ['WFD', year].filter((part) => part).join(' '),
+      program: "Contest",
+      name: own || t("notConfigured"),
+      label: [t("activityLabel"), year].filter((part) => part).join(" "),
+      shortLabel: ["WFD", year].filter((part) => part).join(" "),
     }
   },
 
   async suggestOperationTitle({ ref }: { ref: Ref }, _ctx: HookContext): Promise<TitleSuggestion | null> {
-    const own = [str((ref as Record<string, JSONValue>).ourClass), str((ref as Record<string, JSONValue>).ourSection)]
-      .filter((part) => part)
-      .join(' ')
-    return { for: 'WFD', subtitle: own || undefined }
+    const own = [str((ref as Record<string, JSONValue>).ourClass), str((ref as Record<string, JSONValue>).ourSection)].filter((part) => part).join(" ")
+    return { for: "WFD", subtitle: own || undefined }
   },
 
   /// The contest's published rules — a reference here names an event, not a
   /// place, so what there is to read about it is the rules it is run under.
   async linkForRef(_args: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
-    return { url: 'https://www.winterfieldday.org/', label: 'Winter Field Day' }
+    return { url: "https://www.winterfieldday.org/", label: "Winter Field Day" }
   },
 }
 
@@ -382,25 +369,31 @@ const AdifFieldsHook = {
     if (!refOfType(operation, TYPE)) return []
 
     const qsoRef = refOfType(qso, TYPE)
-    const fields = [{ name: 'CONTEST_ID', value: 'WFD' }]
+    const fields = [{ name: "CONTEST_ID", value: "WFD" }]
     const theirClass = str(qsoRef?.class).toUpperCase()
     const theirSection = str(qsoRef?.location).toUpperCase()
-    if (theirClass) fields.push({ name: 'CLASS', value: theirClass })
-    if (theirSection) fields.push({ name: 'ARRL_SECT', value: theirSection })
+    if (theirClass) fields.push({ name: "CLASS", value: theirClass })
+    if (theirSection) fields.push({ name: "ARRL_SECT", value: theirSection })
     return fields
   },
 }
 
 const ExportHook = {
   async getExportTypes() {
-    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName)]
+    return [exportTypeDefinition(TYPE, "adif", manifest.shortName)]
   },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
     return [
-      { exportType: `${TYPE}-adif`,
-        templateData: { activity: manifest.shortName }, format: 'adif', label: t('adifExport'), selectedByDefault: true, refType: TYPE },
+      {
+        exportType: `${TYPE}-adif`,
+        templateData: { activity: manifest.shortName },
+        format: "adif",
+        label: t("adifExport"),
+        selectedByDefault: true,
+        refType: TYPE,
+      },
     ]
   },
 
@@ -408,7 +401,7 @@ const ExportHook = {
     // ADIF only: Winter Field Day asks entrants NOT to submit Cabrillo, so
     // offering it by default would hand over a file the organizers reject.
     if (args.exportType !== `${TYPE}-adif`) {
-      return { filename: '', mimeType: '', content: '' }
+      return { filename: "", mimeType: "", content: "" }
     }
 
     const operation = args.operation
@@ -416,7 +409,7 @@ const ExportHook = {
     const ourCall = str(operation.stationCall)
     const ourClass = str(opRef?.ourClass).toUpperCase()
     const ourSection = str(opRef?.ourSection).toUpperCase()
-    const stamp = `WFD-${ourCall || 'log'}`.replace(/[^A-Za-z0-9_-]+/g, '-')
+    const stamp = `WFD-${ourCall || "log"}`.replace(/[^A-Za-z0-9_-]+/g, "-")
 
     const content = await adifForExport({
       operation: args.operation,
@@ -434,11 +427,11 @@ const ExportHook = {
       // A satellite QSO earns this contest a bonus, and PROP_MODE/SAT_NAME
       // describe the contact rather than claiming it — so they ride along
       // in our file when the operator has that extension on.
-      includeFieldsFrom: ['satellites'],
+      includeFieldsFrom: ["satellites"],
     })
     return {
       filename: `${stamp}.adi`,
-      mimeType: 'text/plain',
+      mimeType: "text/plain",
       content,
     }
   },
@@ -447,11 +440,11 @@ const ExportHook = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('activity', { hook: ActivityHook, key: TYPE })
+    registerHook("activity", { hook: ActivityHook, key: TYPE })
     registerHook(`ref:${TYPE}`, { hook: RefHandler, key: TYPE })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: TYPE })
-    registerHook('export', { hook: ExportHook, key: TYPE })
-    registerHook('scoring', {
+    registerHook("adifFields", { hook: AdifFieldsHook, key: TYPE })
+    registerHook("export", { hook: ExportHook, key: TYPE })
+    registerHook("scoring", {
       hook: contestScorer(WFDScorer, { scope: { refTypes: [TYPE] } }),
       key: TYPE,
     })

@@ -18,13 +18,7 @@
     "PHONE": 1,
     "CW": 1
   },
-   "bands": [
-    "80m",
-    "40m",
-    "20m",
-    "15m",
-    "10m"
-  ],
+  "bands": ["80m", "40m", "20m", "15m", "10m"],
   "parkAbbreviations": {
     "ADA": "Adams Lake SP",
     "ALU": "Alum Creek SP",

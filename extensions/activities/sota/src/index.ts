@@ -13,7 +13,18 @@
 import { parseCallsign } from "@ham2k/lib-callsigns"
 import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, looksLikeReference, LOCATION_ACCURACY } from "@ham2k/extension-sdk"
+import {
+  activityAdifImport,
+  activityExportHook,
+  activityScorer,
+  applyLatLonFromApiFields,
+  contestScorer,
+  defineExtension,
+  host,
+  huntingExportHook,
+  looksLikeReference,
+  LOCATION_ACCURACY,
+} from "@ham2k/extension-sdk"
 import type {
   AnnotatedCallInfo,
   FetchOptions,
@@ -48,12 +59,12 @@ import manifest from "../manifest.json" with { type: "json" }
 
 export { REFERENCE_REGEX, TRANSFORMS } from "./refFormatting.ts"
 
-const HUNTING_TYPE = 'sota'
-const ACTIVATION_TYPE = 'sotaActivation'
+const HUNTING_TYPE = "sota"
+const ACTIVATION_TYPE = "sotaActivation"
 
 /// api-db2 is SOTA's current database API; the api2 host it replaced is on
 /// its way out. Spot payloads differ between the two — see `SOTAApiSpot`.
-const SOTA_API = 'https://api-db2.sota.org.uk/api'
+const SOTA_API = "https://api-db2.sota.org.uk/api"
 const SOTA_SUMMITS_API = `${SOTA_API}/summits`
 
 // See POTA's identical note on why this loads at module scope: resolves
@@ -73,14 +84,14 @@ const ASSOCIATION_CODE_OVERRIDES: Record<string, string> = {
   // South Georgia & the South Sandwich Islands: DXCC lists this under the
   // compound prefix "VP8/g" (distinct from the Falkland Islands' plain
   // "VP8", which is what "VP0" would otherwise collide with if simplified).
-  VP0: 'VP8/g',
+  VP0: "VP8/g",
   // UK South Atlantic: SOTA's one "ZD" association actually spans three
   // distinct DXCC entities — Ascension (ZD8), Saint Helena (ZD7), Tristan
   // da Cunha & Gough (ZD9) — that a 2-letter code can't disambiguate.
   // Stored as the literal "ZD" family marker rather than guessing one;
   // `suggest`'s subCategory comparison below treats any caller entity
   // starting with "ZD" as a match for it.
-  ZD: 'ZD',
+  ZD: "ZD",
 }
 
 // Only ~150-500 distinct association codes exist worldwide, but
@@ -123,7 +134,7 @@ function resolveEntityPrefixForAssociationCode(code: string): string | undefined
 // needs a prefix check, not equality, unlike every other subCategory value.
 function subCategoryMatchesCaller(rowSubCategory: string | undefined, callerEntity: string): boolean {
   if (rowSubCategory === callerEntity) return true
-  return rowSubCategory === 'ZD' && callerEntity.startsWith('ZD')
+  return rowSubCategory === "ZD" && callerEntity.startsWith("ZD")
 }
 
 // See POTA's identical note: bounding-box nearby query, real distance after.
@@ -134,7 +145,7 @@ function relevanceForMatch(row: LookupRow, searchTerm?: string): number {
   if (!searchTerm) return row.flags ? 1 : 0.6
   const term = searchTerm.toUpperCase()
   const key = row.key.toUpperCase()
-  const name = (row.name ?? '').toUpperCase()
+  const name = (row.name ?? "").toUpperCase()
   if (key === term) return 1
   if (name.startsWith(term)) return 0.9
   if (key.includes(term)) return 0.85
@@ -163,9 +174,9 @@ const summitCache = new Map<string, SOTASummitInfo | null>()
 
 function isValidDateAsOfToday(str: string): boolean {
   if (!str) return false
-  if (str === '31/12/2099') return true
+  if (str === "31/12/2099") return true
 
-  const parts = str.split('/').map(Number)
+  const parts = str.split("/").map(Number)
   if (parts.length !== 3) return false
   const [day, month, year] = parts
   const date = new Date(year, month - 1, day)
@@ -179,14 +190,14 @@ async function fetchSummit(ref: string): Promise<SOTASummitInfo | null> {
 
   // 1. Try querying the offline local lookups database first
   try {
-    const row = await host.dbLookupSelectOne('sota', ref)
+    const row = await host.dbLookupSelectOne("sota", ref)
     if (row && row.data) {
       const info: SOTASummitInfo = {
         summitCode: row.key,
-        name: row.name ?? '',
-        associationName: row.data.association ?? '',
-        regionName: row.data.region ?? '',
-        locator: row.data.grid ?? '',
+        name: row.name ?? "",
+        associationName: row.data.association ?? "",
+        regionName: row.data.region ?? "",
+        locator: row.data.grid ?? "",
         points: row.data.points ?? 0,
         altM: row.data.altitude ?? 0,
         valid: true,
@@ -205,9 +216,9 @@ async function fetchSummit(ref: string): Promise<SOTASummitInfo | null> {
   try {
     // Per segment: a summit reference carries a slash ("W7O/WV-096") that is
     // part of the API's path, and the server 404s on a percent-encoded one.
-    const path = ref.split('/').map(encodeURIComponent).join('/')
+    const path = ref.split("/").map(encodeURIComponent).join("/")
     const response = await host.fetch(`${SOTA_SUMMITS_API}/${path}`)
-    if (response.status === 200 && response.body && response.body !== 'null') {
+    if (response.status === 200 && response.body && response.body !== "null") {
       summit = JSON.parse(response.body) as SOTASummitInfo
       // The live API names these `latitude`/`longitude`, not this
       // interface's `lat`/`lon` — bridged here rather than renamed
@@ -225,13 +236,13 @@ async function fetchSummit(ref: string): Promise<SOTASummitInfo | null> {
 
 const RefHandler = {
   async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
-    const normalized = (ref.ref ?? '').toUpperCase().trim()
+    const normalized = (ref.ref ?? "").toUpperCase().trim()
     return { valid: REFERENCE_REGEX.test(normalized), normalized }
   },
 
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const t = tFor(ctx)
-    const reference = (ref.ref ?? '').toUpperCase().trim()
+    const reference = (ref.ref ?? "").toUpperCase().trim()
     // A reference that resolved to nothing keeps NONE of the old one's
     // decoration, whether it failed the pattern or merely isn't in the list.
     // `label`/`shortLabel` are what the activity row renders in preference to
@@ -251,12 +262,12 @@ const RefHandler = {
       location: undefined,
     })
 
-    if (!REFERENCE_REGEX.test(reference)) return undecorated(t('invalidReference'))
+    if (!REFERENCE_REGEX.test(reference)) return undecorated(t("invalidReference"))
 
     const summit = await fetchSummit(reference)
-    if (!summit?.name) return undecorated(t('unknownSummit'))
+    if (!summit?.name) return undecorated(t("unknownSummit"))
 
-    const location = [summit.regionName, summit.associationName].filter((x) => x).join(', ')
+    const location = [summit.regionName, summit.associationName].filter((x) => x).join(", ")
 
     return {
       ...ref,
@@ -266,7 +277,7 @@ const RefHandler = {
       lat: summit.lat,
       lon: summit.lon,
       location,
-      program: 'SOTA',
+      program: "SOTA",
       label: `SOTA ${reference}: ${summit.name}`,
       shortLabel: `SOTA ${reference}`,
     }
@@ -279,34 +290,31 @@ const RefHandler = {
   /// The summit page's own path already carries the association and region as
   /// path segments, so the reference's slash goes through unescaped.
   async linkForRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
-    const reference = (ref.ref ?? '').toUpperCase().trim()
+    const reference = (ref.ref ?? "").toUpperCase().trim()
     if (!REFERENCE_REGEX.test(reference)) return null
     return { url: `https://www.sotadata.org.uk/en/summit/${reference}` }
   },
 
   async geojsonUrlForRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<RefGeojson | null> {
-    const url = activationZoneUrl(ref.ref ?? '')
+    const url = activationZoneUrl(ref.ref ?? "")
     return url ? { url } : null
   },
 }
 
 const ActivityHook = {
-  async loggingControls(
-    _args: { operation: Record<string, unknown>; qso?: Record<string, unknown> },
-    _ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async loggingControls(_args: { operation: Record<string, unknown>; qso?: Record<string, unknown> }, _ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     return [
       {
-        key: 'sota/hunter',
-        label: 'SOTA',
-        icon: 'image-filter-hdr',
+        key: "sota/hunter",
+        label: "SOTA",
+        icon: "image-filter-hdr",
         color: manifest.accentColor,
         order: 10,
-        optionType: 'optional',
+        optionType: "optional",
         input: {
-          kind: 'refList',
+          kind: "refList",
           refType: HUNTING_TYPE,
-          placeholder: 'W6/SD-...',
+          placeholder: "W6/SD-...",
           pattern: REFERENCE_REGEX.source,
           transforms: TRANSFORMS,
         },
@@ -314,22 +322,19 @@ const ActivityHook = {
     ]
   },
 
-  async operationControls(
-    _args: { operation: Record<string, unknown>; qso?: Record<string, unknown> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls(_args: { operation: Record<string, unknown>; qso?: Record<string, unknown> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     return [
       {
-        key: 'sota/activation',
-        label: tFor(ctx)('activationControl'),
-        icon: 'image-filter-hdr',
+        key: "sota/activation",
+        label: tFor(ctx)("activationControl"),
+        icon: "image-filter-hdr",
         color: manifest.accentColor,
         order: 10,
-        optionType: 'optional',
+        optionType: "optional",
         input: {
-          kind: 'refList',
+          kind: "refList",
           refType: ACTIVATION_TYPE,
-          placeholder: 'W6/SD-...',
+          placeholder: "W6/SD-...",
           pattern: REFERENCE_REGEX.source,
           transforms: TRANSFORMS,
         },
@@ -339,9 +344,9 @@ const ActivityHook = {
 
   async suggest({ location, searchTerm, callsign, scoped }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
     const rows: LookupRow[] = searchTerm
-      ? await host.dbLookupSelectAll('sota', searchTerm)
+      ? await host.dbLookupSelectAll("sota", searchTerm)
       : location
-        ? await host.dbLookupSelectByLocation('sota', location.lat, location.lon, NEARBY_DELTA)
+        ? await host.dbLookupSelectByLocation("sota", location.lat, location.lon, NEARBY_DELTA)
         : []
 
     // Entity-restrict name/code search results to the caller's own DXCC
@@ -356,10 +361,7 @@ const ActivityHook = {
 
     const withDistance = filteredRows.map((row) => ({
       row,
-      distance:
-        location && row.lat != null && row.lon != null
-          ? (distanceOnEarth(location, { lat: row.lat, lon: row.lon }) ?? undefined)
-          : undefined,
+      distance: location && row.lat != null && row.lon != null ? (distanceOnEarth(location, { lat: row.lat, lon: row.lon }) ?? undefined) : undefined,
     }))
     // See POTA's identical note: nearby (no search term) results must be
     // ranked by real distance before truncating to MAX_SUGGESTIONS.
@@ -369,7 +371,7 @@ const ActivityHook = {
 
     const suggestions: ActivitySuggestion[] = withDistance.slice(0, MAX_SUGGESTIONS).map(({ row, distance }) => {
       const data = (row.data ?? {}) as Record<string, any>
-      const associationRegion = [data.region, data.association].filter((x) => x).join(', ')
+      const associationRegion = [data.region, data.association].filter((x) => x).join(", ")
 
       return {
         type: ACTIVATION_TYPE,
@@ -379,8 +381,8 @@ const ActivityHook = {
         lat: row.lat,
         lon: row.lon,
         location: associationRegion,
-        program: 'SOTA',
-        label: `SOTA ${row.key}: ${row.name ?? ''}`,
+        program: "SOTA",
+        label: `SOTA ${row.key}: ${row.name ?? ""}`,
         shortLabel: `SOTA ${row.key}`,
         distance,
         relevance: relevanceForMatch(row, searchTerm),
@@ -400,12 +402,12 @@ const ActivityHook = {
     // `looksLikeReference` is what keeps a NAME search out of it: `sota: bear`
     // is someone looking for a summit called Bear, and must not also be offered
     // an invented BEAR summit at the head of the list.
-    const typed = scoped ? (searchTerm ?? '').toUpperCase().trim() : ''
+    const typed = scoped ? (searchTerm ?? "").toUpperCase().trim() : ""
     if (typed && looksLikeReference(typed, REFERENCE_REGEX) && !suggestions.some((s) => s.ref === typed)) {
       const t = tFor(ctx)
       const valid = REFERENCE_REGEX.test(typed)
       const summit = valid ? await fetchSummit(typed) : null
-      const name = summit?.name || (valid ? t('unknownSummit') : t('invalidReference'))
+      const name = summit?.name || (valid ? t("unknownSummit") : t("invalidReference"))
       if (suggestions.length >= MAX_SUGGESTIONS) suggestions.pop()
       suggestions.unshift({
         type: ACTIVATION_TYPE,
@@ -418,8 +420,8 @@ const ActivityHook = {
         // unresolved summit: this suggestion is stored on the operation as it
         // stands, and a present-but-blank value satisfies every `??` fallback
         // downstream while saying nothing.
-        location: summit ? [summit.regionName, summit.associationName].filter((x) => x).join(', ') : undefined,
-        program: 'SOTA',
+        location: summit ? [summit.regionName, summit.associationName].filter((x) => x).join(", ") : undefined,
+        program: "SOTA",
         label: `SOTA ${typed}: ${name}`,
         shortLabel: `SOTA ${typed}`,
         distance: undefined,
@@ -432,7 +434,7 @@ const ActivityHook = {
 }
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
-  return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
+  return ((container.refs as Ref[] | undefined) ?? []).filter((r) => r.type === type && r.ref)
 }
 
 /// See POTA's `lookupCall` for the rationale: a summit hunted on this qso is a
@@ -451,8 +453,10 @@ async function lookupCall(
   const summit = await fetchSummit(refs[0].ref!.toUpperCase())
   if (!summit?.locator) return []
 
-  const location = [summit.summitCode, summit.regionName, summit.name].filter((x) => x).join(' ')
-  return [{ call: callInfo.call, source: 'sota', scope: 'qso', locationScope: 'portable', grid: summit.locator, location, locAccuracy: LOCATION_ACCURACY.ACCURATE }]
+  const location = [summit.summitCode, summit.regionName, summit.name].filter((x) => x).join(" ")
+  return [
+    { call: callInfo.call, source: "sota", scope: "qso", locationScope: "portable", grid: summit.locator, location, locAccuracy: LOCATION_ACCURACY.ACCURATE },
+  ]
 }
 
 const AdifFieldsHook = {
@@ -465,10 +469,10 @@ const AdifFieldsHook = {
     const activationRefs = refsOfType(operation, ACTIVATION_TYPE)
 
     if (huntingRefs.length > 0) {
-      fields.push({ name: 'SOTA_REF', value: huntingRefs.map((r) => r.ref).join(',') })
+      fields.push({ name: "SOTA_REF", value: huntingRefs.map((r) => r.ref).join(",") })
     }
     if (activationRefs.length > 0) {
-      fields.push({ name: 'MY_SOTA_REF', value: activationRefs.map((r) => r.ref).join(',') })
+      fields.push({ name: "MY_SOTA_REF", value: activationRefs.map((r) => r.ref).join(",") })
     }
     return fields
   },
@@ -481,10 +485,10 @@ const AdifFieldsHook = {
 /// `REFERENCE_REGEX` is what keeps another program's SIG_INFO from importing
 /// as a summit that doesn't exist: every reference program writes that field.
 const AdifImportHook = activityAdifImport({
-  sig: 'SOTA',
+  sig: "SOTA",
   huntingType: HUNTING_TYPE,
   activationType: ACTIVATION_TYPE,
-  refField: 'sota_ref',
+  refField: "sota_ref",
   // Case and whitespace only. A summit that fails REFERENCE_REGEX is imported
   // as written rather than dropped: both paths into this hook have already
   // established the reference is SOTA's — `SOTA_REF` by its field name, and
@@ -501,7 +505,7 @@ const AdifImportHook = activityAdifImport({
 // into the account *session* (the one credential store extensions can
 // write), so `currentTokens` overlays session over credentials.
 
-const SOTA_SSO_REALM = 'https://sso.sota.org.uk/auth/realms/SOTA'
+const SOTA_SSO_REALM = "https://sso.sota.org.uk/auth/realms/SOTA"
 
 // ONE Keycloak client for every edition — `polo`, shared with PoLo — and a
 // SEPARATE registered redirect URL per edition. That split is not a
@@ -518,9 +522,9 @@ const SOTA_SSO_REALM = 'https://sso.sota.org.uk/auth/realms/SOTA'
 // edition falls back to `dev`, the same default
 // `packages/halo_build_tools`' Edition uses for an unset HALO_EDITION define.
 const SOTA_OAUTH2_BY_EDITION: Record<string, { clientId: string; redirectUrl: string }> = {
-  prod: { clientId: 'polo', redirectUrl: 'com.ham2k.logger.prod.auth://sota' },
-  next: { clientId: 'polo', redirectUrl: 'com.ham2k.logger.next.auth://sota' },
-  dev: { clientId: 'polo', redirectUrl: 'com.ham2k.logger.dev.auth://sota' },
+  prod: { clientId: "polo", redirectUrl: "com.ham2k.logger.prod.auth://sota" },
+  next: { clientId: "polo", redirectUrl: "com.ham2k.logger.next.auth://sota" },
+  dev: { clientId: "polo", redirectUrl: "com.ham2k.logger.dev.auth://sota" },
 }
 
 // Web, Linux and Windows go through LoFi's webhook-relay callback instead of
@@ -545,7 +549,7 @@ const SOTA_OAUTH2_BY_EDITION: Record<string, { clientId: string; redirectUrl: st
 // serve. If a second OAuth-based extension shows up, that's the point to
 // hoist this — until then, both sides just have to be kept in sync by hand
 // if LoFi's webhook endpoint URL ever moves.
-const SOTA_OAUTH_WEBHOOK_REDIRECT_URL = 'https://lofi.ham2k.net/v1/webhooks/client/oauth'
+const SOTA_OAUTH_WEBHOOK_REDIRECT_URL = "https://lofi.ham2k.net/v1/webhooks/client/oauth"
 
 /// The registered client for an edition, from the table above.
 ///
@@ -568,13 +572,13 @@ function sotaOAuth2Config(edition: string | undefined): {
   webhookRedirectUrl: string
   scopes: string[]
 } {
-  const registered = SOTA_OAUTH2_BY_EDITION[edition ?? 'dev'] ?? SOTA_OAUTH2_BY_EDITION.dev
+  const registered = SOTA_OAUTH2_BY_EDITION[edition ?? "dev"] ?? SOTA_OAUTH2_BY_EDITION.dev
   return {
     issuer: SOTA_SSO_REALM,
     clientId: registered.clientId,
     redirectUrl: registered.redirectUrl,
     webhookRedirectUrl: SOTA_OAUTH_WEBHOOK_REDIRECT_URL,
-    scopes: ['openid'],
+    scopes: ["openid"],
   }
 }
 
@@ -607,13 +611,13 @@ async function refreshTokens(ctx: HookContext, { persistSession = true } = {}): 
   for (const refreshToken of candidates) {
     try {
       const response = await host.fetch(`${SOTA_SSO_REALM}/protocol/openid-connect/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: [
-          'grant_type=refresh_token',
+          "grant_type=refresh_token",
           `client_id=${encodeURIComponent(sotaOAuth2Config(ctx.edition).clientId)}`,
           `refresh_token=${encodeURIComponent(refreshToken)}`,
-        ].join('&'),
+        ].join("&"),
       })
       if (response.status !== 200) {
         // Only a response that IDENTIFIES ITSELF as an OAuth rejection may
@@ -657,12 +661,7 @@ async function refreshTokens(ctx: HookContext, { persistSession = true } = {}): 
 /// `host.fetch` with the SOTA bearer/id_token headers, retrying once through
 /// a token refresh when the API rejects the current access token. Returns
 /// null when there's no logged-in account at all.
-async function authorizedFetch(
-  url: string,
-  options: FetchOptions,
-  ctx: HookContext,
-  { persistSession = true } = {},
-): Promise<FetchResponse | null> {
+async function authorizedFetch(url: string, options: FetchOptions, ctx: HookContext, { persistSession = true } = {}): Promise<FetchResponse | null> {
   let tokens = currentTokens(ctx)
   if (!tokens.accessToken) {
     const refreshed = await refreshTokens(ctx, { persistSession })
@@ -695,9 +694,9 @@ async function authorizedFetch(
 }
 
 const AccountHook = {
-  label: 'SOTAWatch',
-  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('accountDescription'),
-  kvKey: 'sota',
+  label: "SOTAWatch",
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("accountDescription"),
+  kvKey: "sota",
   oauth2: (_args: Record<string, never>, ctx: HookContext) => sotaOAuth2Config(ctx.edition),
 
   async testCredentials(credentials: Record<string, string>, ctx: HookContext): Promise<string> {
@@ -709,19 +708,16 @@ const AccountHook = {
       // hasn't pressed Save.
       const testingUnsaved = credentials && Object.keys(credentials).length > 0
       const testCtx = testingUnsaved ? { ...ctx, account: { credentials } } : ctx
-      const response = await authorizedFetch(
-        `${SOTA_SSO_REALM}/account`,
-        { headers: { Accept: 'application/json' } },
-        testCtx,
-        { persistSession: !testingUnsaved },
-      )
-      if (!response) return tFor(ctx)('notLoggedIn')
-      if (response.status !== 200) return tFor(ctx)('ssoHttpError', { status: response.status })
+      const response = await authorizedFetch(`${SOTA_SSO_REALM}/account`, { headers: { Accept: "application/json" } }, testCtx, {
+        persistSession: !testingUnsaved,
+      })
+      if (!response) return tFor(ctx)("notLoggedIn")
+      if (response.status !== 200) return tFor(ctx)("ssoHttpError", { status: response.status })
       const account = JSON.parse(response.body) as Record<string, any>
       const callsign = account?.attributes?.Callsign?.[0] ?? account?.username
-      return `✅ **${callsign ?? 'unknown'}**`
+      return `✅ **${callsign ?? "unknown"}**`
     } catch (e) {
-      return tFor(ctx)('accountCheckError', { error: e instanceof Error ? e.message : String(e) })
+      return tFor(ctx)("accountCheckError", { error: e instanceof Error ? e.message : String(e) })
     }
   },
 }
@@ -732,18 +728,29 @@ const AccountHook = {
 function reconnectMessage(ctx: HookContext): ResultMessage {
   const t = tFor(ctx)
   return {
-    presentation: 'dialog',
-    title: t('reconnectTitle'),
-    text: t('reconnectText'),
-    actions: [{ label: t('reconnectAction'), type: 'account', key: 'sota' }],
+    presentation: "dialog",
+    title: t("reconnectTitle"),
+    text: t("reconnectText"),
+    actions: [{ label: t("reconnectAction"), type: "account", key: "sota" }],
   }
 }
 
-async function postSpotToSOTA(
-  { activatorCallsign, freq, mode, comment, ref, ctx }:
-  { activatorCallsign: string; freq: number; mode?: string; comment?: string; ref: Ref; ctx: HookContext },
-): Promise<PostResult> {
-  if (!activatorCallsign) return { ok: false, message: 'No station callsign to spot' }
+async function postSpotToSOTA({
+  activatorCallsign,
+  freq,
+  mode,
+  comment,
+  ref,
+  ctx,
+}: {
+  activatorCallsign: string
+  freq: number
+  mode?: string
+  comment?: string
+  ref: Ref
+  ctx: HookContext
+}): Promise<PostResult> {
+  if (!activatorCallsign) return { ok: false, message: "No station callsign to spot" }
   // SOTAWatch is told the association and the summit as two fields, so a
   // reference with nothing to split on cannot name a summit at all — and
   // `JSON.stringify` drops an undefined `summitCode` without a word, which
@@ -751,7 +758,7 @@ async function postSpotToSOTA(
   // A reference this app merely doubts is still spotted: only one it cannot
   // take apart is refused, and the operator is told why rather than left
   // believing the chasers were called.
-  const [associationCode, summitCode] = String(ref.ref).split('/', 2)
+  const [associationCode, summitCode] = String(ref.ref).split("/", 2)
   if (!associationCode || !summitCode) {
     return { ok: false, message: `Not a summit reference SOTAWatch can be told about: ${ref.ref}` }
   }
@@ -763,24 +770,28 @@ async function postSpotToSOTA(
     frequency: (freq / 1000).toFixed(6), // kHz -> MHz, as a string
     mode: spotModeFor(mode),
     // Tags spots posted through HaLo.
-    comments: comment ? `${comment} [H2K]` : '[H2K]',
+    comments: comment ? `${comment} [H2K]` : "[H2K]",
     // 'TEST' spots are accepted by the API but hidden from SOTAWatch users —
     // a comment mentioning "test" posts one, so a first try doesn't summon
     // real chasers.
-    type: (comment ?? '').match(/QRT/i) ? 'QRT' : (comment ?? '').match(/\bTEST\b/i) ? 'TEST' : 'NORMAL',
+    type: (comment ?? "").match(/QRT/i) ? "QRT" : (comment ?? "").match(/\bTEST\b/i) ? "TEST" : "NORMAL",
   }
 
   try {
-    const response = await authorizedFetch(SOTA_SPOTS_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(body),
-    }, ctx)
+    const response = await authorizedFetch(
+      SOTA_SPOTS_API,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(body),
+      },
+      ctx,
+    )
     if (!response) {
-      return { ok: false, message: 'Log in to your SOTA account in Settings to post SOTAwatch spots', userMessage: reconnectMessage(ctx) }
+      return { ok: false, message: "Log in to your SOTA account in Settings to post SOTAwatch spots", userMessage: reconnectMessage(ctx) }
     }
     if (response.status === 401 || response.status === 403) {
-      return { ok: false, message: 'SOTA account logged out. Please log in again in Settings', userMessage: reconnectMessage(ctx) }
+      return { ok: false, message: "SOTA account logged out. Please log in again in Settings", userMessage: reconnectMessage(ctx) }
     }
     if (response.status !== 200 && response.status !== 201) {
       return { ok: false, message: `SOTA API returned HTTP ${response.status}` }
@@ -794,7 +805,7 @@ async function postSpotToSOTA(
 /// `-1` asks for the last hour rather than a count of spots. An activator
 /// spotted longer ago than that has almost certainly moved or packed up, so
 /// a wider window costs bandwidth to deliver rows a chaser can't use.
-const SOTA_SPOTS_WINDOW = '-1/all/all/'
+const SOTA_SPOTS_WINDOW = "-1/all/all/"
 
 const SOTA_EPOCH_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -812,7 +823,7 @@ let lastSpotsEpoch: string | undefined
 let lastSpots: Spot[] = []
 
 const SpotsHook = {
-  sourceName: 'SOTAWatch',
+  sourceName: "SOTAWatch",
 
   async fetchSpots(_args: Record<string, never>, ctx: HookContext): Promise<Spot[]> {
     if (!ctx.online) return []
@@ -830,7 +841,7 @@ const SpotsHook = {
     let epoch: string | undefined
     try {
       const epochResponse = await host.fetch(`${SOTA_SPOTS_API}/epoch`, { timeout: SOTA_EPOCH_TIMEOUT })
-      const body = epochResponse.status === 200 ? epochResponse.body.trim() : ''
+      const body = epochResponse.status === 200 ? epochResponse.body.trim() : ""
       // Only a UUID counts. A captive portal or proxy answering 200 with a
       // constant page would otherwise pin the epoch to it and short-circuit
       // every later poll — the spots request never runs, so nothing throws
@@ -857,19 +868,19 @@ const SpotsHook = {
   },
 
   async isSelfSpotEnabled({ operation }: { operation: Record<string, JSONValue> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: 'image-filter-hdr' } : { enabled: false }
+    return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: "image-filter-hdr" } : { enabled: false }
   },
 
   async isOtherSpotEnabled({ qso }: { qso: Record<string, JSONValue> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(qso, HUNTING_TYPE).length > 0 ? { enabled: true, icon: 'image-filter-hdr' } : { enabled: false }
+    return refsOfType(qso, HUNTING_TYPE).length > 0 ? { enabled: true, icon: "image-filter-hdr" } : { enabled: false }
   },
 
   async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(operation, ACTIVATION_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No SOTA activation on this operation' }
-    if (!freq) return { ok: false, message: 'No frequency to spot' }
+    if (refs.length === 0) return { ok: false, message: "No SOTA activation on this operation" }
+    if (!freq) return { ok: false, message: "No frequency to spot" }
     return postSpotToSOTA({
-      activatorCallsign: String(operation.stationCall ?? ''),
+      activatorCallsign: String(operation.stationCall ?? ""),
       freq,
       mode,
       comment,
@@ -880,12 +891,12 @@ const SpotsHook = {
 
   async postOtherSpot({ qso, comment }: PostOtherSpotRequest, ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(qso, HUNTING_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No SOTA reference on this QSO' }
+    if (refs.length === 0) return { ok: false, message: "No SOTA reference on this QSO" }
     const freq = Number(qso.freq)
-    if (!freq) return { ok: false, message: 'This QSO has no frequency to spot' }
+    if (!freq) return { ok: false, message: "This QSO has no frequency to spot" }
     const their = (qso.their ?? {}) as Record<string, JSONValue>
     return postSpotToSOTA({
-      activatorCallsign: String(their.call ?? ''),
+      activatorCallsign: String(their.call ?? ""),
       freq,
       mode: qso.mode ? String(qso.mode) : undefined,
       comment,
@@ -896,17 +907,17 @@ const SpotsHook = {
 }
 
 const sotaDataFile: DataFileDefinition = {
-  key: 'sota-all-summits',
-  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
-  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
-  url: 'https://www.sotadata.org.uk/summitslist.csv',
+  key: "sota-all-summits",
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileName"),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileDescription"),
+  url: "https://www.sotadata.org.uk/summitslist.csv",
   maxAgeInDays: 30,
-  fetchType: 'csv',
-  category: 'sota',
+  fetchType: "csv",
+  category: "sota",
   csvOptions: {
     hasHeaders: true,
     skipRows: 1,
-    delimiter: ',',
+    delimiter: ",",
   },
   csvToLookupEntry: (row: Record<string, string> | string[]) => {
     const r = row as Record<string, string>
@@ -924,7 +935,7 @@ const sotaDataFile: DataFileDefinition = {
     // resolving one to its DXCC entity the same way POTA's numeric entityId
     // does, so `suggest` can filter on subCategory consistently across
     // activities.
-    const dxccPrefix = entityPrefixForAssociationCode(ref.split('/')[0])
+    const dxccPrefix = entityPrefixForAssociationCode(ref.split("/")[0])
 
     return {
       subCategory: dxccPrefix,
@@ -956,68 +967,68 @@ const sotaDataFile: DataFileDefinition = {
 /// band and mode are not. There are no n-fers: one summit at a time, and a QSO
 /// credits only its first summit ref.
 const SOTA_SCORING = {
-  label: 'SOTA',
-  icon: 'image-filter-hdr',
+  label: "SOTA",
+  icon: "image-filter-hdr",
   activationType: ACTIVATION_TYPE,
   huntingType: HUNTING_TYPE,
   qsosToActivate: 4,
   allowsMultipleReferences: false,
-  uniquePer: ['day', 'ref'] as const,
-  activates: 'daily' as const,
-  refNoun: (ctx: HookContext) => tFor(ctx)('summit'),
-  refNounPlural: (ctx: HookContext) => tFor(ctx)('summitsPlural'),
-  p2pLabel: (ctx: HookContext) => tFor(ctx)('s2s'),
+  uniquePer: ["day", "ref"] as const,
+  activates: "daily" as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)("summit"),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)("summitsPlural"),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)("s2s"),
 }
 
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook(`ref:${HUNTING_TYPE}`, { hook: RefHandler, key: 'sota' })
-    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: RefHandler, key: 'sota' })
-    registerHook('activity', { hook: ActivityHook, key: 'sota' })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: 'sota' })
-    registerHook('adifImport', { hook: AdifImportHook, key: 'sota' })
-    registerHook('spots', { hook: SpotsHook, key: 'sota' })
-    registerHook('account', { hook: AccountHook, key: 'sota' })
+    registerHook(`ref:${HUNTING_TYPE}`, { hook: RefHandler, key: "sota" })
+    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: RefHandler, key: "sota" })
+    registerHook("activity", { hook: ActivityHook, key: "sota" })
+    registerHook("adifFields", { hook: AdifFieldsHook, key: "sota" })
+    registerHook("adifImport", { hook: AdifImportHook, key: "sota" })
+    registerHook("spots", { hook: SpotsHook, key: "sota" })
+    registerHook("account", { hook: AccountHook, key: "sota" })
     // Priority 100 — see POTA's identical comment: must run before every
     // lookup source (QRZ 99, ...) so the summit's grid is resolved before a
     // home-QTH lookup can set callInfo.grid and trip this hook's
     // early-return guard.
-    registerHook('lookup', { hook: { lookupCall }, key: 'sota', priority: 100 })
-    registerHook('dataFile', { hook: sotaDataFile, key: 'sota-all-summits' })
+    registerHook("lookup", { hook: { lookupCall }, key: "sota", priority: 100 })
+    registerHook("dataFile", { hook: sotaDataFile, key: "sota-all-summits" })
     // Ref-scoped, not 'always' — see POTA's identical comment for why, and for
     // what a hunting-only operation loses by it.
-    registerHook('scoring', {
+    registerHook("scoring", {
       hook: contestScorer(activityScorer(SOTA_SCORING), {
         scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
-      key: 'sota',
+      key: "sota",
     })
     // SOTA has no n-fers, so this is always a single option — but it is still
     // the summit-scoped log rather than the whole operation's, which is what a
     // summit sat between two breaks needs.
-    registerHook('export', {
+    registerHook("export", {
       hook: activityExportHook({
-        key: 'sota',
-        label: 'SOTA',
+        key: "sota",
+        label: "SOTA",
         activationType: ACTIVATION_TYPE,
-        icon: 'image-filter-hdr',
+        icon: "image-filter-hdr",
       }),
-      key: 'sota',
+      key: "sota",
     })
     // The chaser side: every summit hunted, across the whole log — a
     // different key so it doesn't collide with the activator registration
     // above.
-    registerHook('export', {
+    registerHook("export", {
       hook: huntingExportHook({
-        key: 'sota',
-        label: 'SOTA',
+        key: "sota",
+        label: "SOTA",
         huntingType: HUNTING_TYPE,
         activationType: ACTIVATION_TYPE,
-        icon: 'image-filter-hdr',
+        icon: "image-filter-hdr",
         color: manifest.accentColor,
       }),
-      key: 'sota-hunter',
+      key: "sota-hunter",
     })
   },
 })

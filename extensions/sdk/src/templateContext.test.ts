@@ -90,7 +90,10 @@ test("the reports are named by direction, not by QSON's field name", () => {
 test("serials are found on whichever ref carries them", () => {
   const qso = qsoValues({
     their: { call: "W1AW" },
-    refs: [{ type: "pota", ref: "US-1234" }, { type: "cqwpx", ourSerial: 12, theirSerial: "345" }],
+    refs: [
+      { type: "pota", ref: "US-1234" },
+      { type: "cqwpx", ourSerial: 12, theirSerial: "345" },
+    ],
   })
   assert.equal(qso.serialSent, "12")
   assert.equal(qso.serialRcvd, "345")

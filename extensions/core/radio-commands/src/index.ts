@@ -33,15 +33,14 @@ import manifest from "../manifest.json" with { type: "json" }
 // an experiment ships ungated). BAND/MODE/frequency predate it and stay
 // ungated; only POWER checks this, per-call via ctx.enabledExperiments
 // rather than manifest.experiments, which would gate the whole file.
-const GATO_EXPERIMENT = 'gato'
+const GATO_EXPERIMENT = "gato"
 
 // CW keying sits behind its own experiment on top of CAT (app/experiments.yaml).
-const KEYER_EXPERIMENT = 'keyer'
-const keyerEnabled = (ctx: HookContext) =>
-  !!ctx.enabledExperiments?.includes(GATO_EXPERIMENT) && !!ctx.enabledExperiments?.includes(KEYER_EXPERIMENT)
+const KEYER_EXPERIMENT = "keyer"
+const keyerEnabled = (ctx: HookContext) => !!ctx.enabledExperiments?.includes(GATO_EXPERIMENT) && !!ctx.enabledExperiments?.includes(KEYER_EXPERIMENT)
 
 // Enter Sends Messages, on top of keying (app/experiments.yaml).
-const ESM_EXPERIMENT = 'esm'
+const ESM_EXPERIMENT = "esm"
 const esmEnabled = (ctx: HookContext) => keyerEnabled(ctx) && !!ctx.enabledExperiments?.includes(ESM_EXPERIMENT)
 
 const MODE_MATCH = /^(CW|SSB|USB|LSB|FM|AM|FT8|FT4|FT2|RTTY)$/i
@@ -54,8 +53,8 @@ const BandCommand = {
     if (!band) return null
     const t = tFor(ctx)
     return {
-      describe: t('bandDescribe', { band }),
-      confirm: t('bandConfirm', { band }),
+      describe: t("bandDescribe", { band }),
+      confirm: t("bandConfirm", { band }),
       commands: [{ setVfo: { band } }],
     }
   },
@@ -66,10 +65,10 @@ const BandCommand = {
     const t = tFor(ctx)
     return [
       {
-        command: '20M',
-        params: '(80M, 20M, 70CM, 2MM…)',
-        describe: t('catalogBand'),
-        category: t('catalogCategory'),
+        command: "20M",
+        params: "(80M, 20M, 70CM, 2MM…)",
+        describe: t("catalogBand"),
+        category: t("catalogCategory"),
         expectsParams: true,
         suggest: true,
       },
@@ -88,8 +87,8 @@ const GigBandCommand = {
     const band = `${parsed.designation} (${parsed.band})`
     const t = tFor(ctx)
     return {
-      describe: t('bandDescribe', { band }),
-      confirm: t('bandConfirm', { band }),
+      describe: t("bandDescribe", { band }),
+      confirm: t("bandConfirm", { band }),
       commands: [{ setVfo: { band: parsed.band } }],
     }
   },
@@ -98,10 +97,10 @@ const GigBandCommand = {
     const t = tFor(ctx)
     return [
       {
-        command: '10G',
-        params: '(1.2G, 24G, 47G…)',
-        describe: t('catalogGigBand'),
-        category: t('catalogCategory'),
+        command: "10G",
+        params: "(1.2G, 24G, 47G…)",
+        describe: t("catalogGigBand"),
+        category: t("catalogCategory"),
         expectsParams: true,
         suggest: true,
       },
@@ -110,10 +109,7 @@ const GigBandCommand = {
 }
 
 const FrequencyCommand = {
-  async interpret(
-    { input, qso }: { input: string; qso?: Record<string, any> },
-    ctx: HookContext,
-  ): Promise<CommandInterpretation | null> {
+  async interpret({ input, qso }: { input: string; qso?: Record<string, any> }, ctx: HookContext): Promise<CommandInterpretation | null> {
     const trimmed = input.trim()
     // Require at least 3 characters so short band-only numbers ("20") don't
     // get treated as frequencies before the (higher-priority) band command
@@ -121,11 +117,11 @@ const FrequencyCommand = {
     if (trimmed.length < 3) return null
 
     let freq: number | null = null
-    const qsoFreq = typeof qso?.freq === 'number' ? qso.freq : null
+    const qsoFreq = typeof qso?.freq === "number" ? qso.freq : null
 
-    if (trimmed.startsWith('..') && qsoFreq) {
+    if (trimmed.startsWith("..") && qsoFreq) {
       freq = parseFreq(`${Math.round(qsoFreq / 1000)}${trimmed.substring(1)}`)
-    } else if ((trimmed.startsWith('.') || trimmed.startsWith(',')) && qsoFreq) {
+    } else if ((trimmed.startsWith(".") || trimmed.startsWith(",")) && qsoFreq) {
       freq = parseFreq(`${Math.floor(qsoFreq / 1000)}${trimmed}`)
     } else if (FREQUENCY_MATCH.test(trimmed)) {
       freq = parseFreq(canonicalNumber(trimmed, ctx))
@@ -136,13 +132,13 @@ const FrequencyCommand = {
     // bandForFrequency falls back to the literal string 'other' for
     // unrecognized frequencies rather than a falsy value.
     const band = freq ? bandForFrequency(freq) : undefined
-    if (!band || band === 'other') return null
+    if (!band || band === "other") return null
 
     const formattedFreq = localizeFormattedNumber(fmtFreq(freq), ctx)
     const t = tFor(ctx)
     return {
-      describe: t('freqDescribe', { freq: formattedFreq }),
-      confirm: t('freqConfirm', { freq: formattedFreq }),
+      describe: t("freqDescribe", { freq: formattedFreq }),
+      confirm: t("freqConfirm", { freq: formattedFreq }),
       commands: [{ setVfo: { freq } }],
     }
   },
@@ -151,10 +147,10 @@ const FrequencyCommand = {
     const t = tFor(ctx)
     return [
       {
-        command: '14.285',
-        params: '(14285, 14.285…)',
-        describe: t('catalogFreq'),
-        category: t('catalogCategory'),
+        command: "14.285",
+        params: "(14285, 14.285…)",
+        describe: t("catalogFreq"),
+        category: t("catalogCategory"),
         expectsParams: true,
         suggest: true,
       },
@@ -169,8 +165,8 @@ const ModeCommand = {
     const mode = match[1].toUpperCase()
     const t = tFor(ctx)
     return {
-      describe: t('modeDescribe', { mode }),
-      confirm: t('modeConfirm', { mode }),
+      describe: t("modeDescribe", { mode }),
+      confirm: t("modeConfirm", { mode }),
       commands: [{ setVfo: { mode } }],
     }
   },
@@ -179,10 +175,10 @@ const ModeCommand = {
     const t = tFor(ctx)
     return [
       {
-        command: 'CW',
-        params: '(CW, SSB, FT8…)',
-        describe: t('catalogMode'),
-        category: t('catalogCategory'),
+        command: "CW",
+        params: "(CW, SSB, FT8…)",
+        describe: t("catalogMode"),
+        category: t("catalogCategory"),
         expectsParams: true,
         suggest: true,
       },
@@ -197,8 +193,8 @@ const PowerCommand = {
     if (watts == null) return null
     const t = tFor(ctx)
     return {
-      describe: t('powerDescribe', { watts }),
-      confirm: t('powerConfirm', { watts }),
+      describe: t("powerDescribe", { watts }),
+      confirm: t("powerConfirm", { watts }),
       commands: [{ setPower: { watts } }],
     }
   },
@@ -208,10 +204,10 @@ const PowerCommand = {
     const t = tFor(ctx)
     return [
       {
-        command: '5W',
-        params: '(1W, 5W, 50W…)',
-        describe: t('catalogPower'),
-        category: t('catalogCategory'),
+        command: "5W",
+        params: "(1W, 5W, 50W…)",
+        describe: t("catalogPower"),
+        category: t("catalogCategory"),
         expectsParams: true,
         suggest: true,
       },
@@ -229,8 +225,8 @@ const WpmCommand = {
     if (wpm == null) return null
     const t = tFor(ctx)
     return {
-      describe: t('wpmDescribe', { wpm }),
-      confirm: t('wpmConfirm', { wpm }),
+      describe: t("wpmDescribe", { wpm }),
+      confirm: t("wpmConfirm", { wpm }),
       commands: [{ setKeyerSpeed: { wpm } }],
     }
   },
@@ -240,10 +236,10 @@ const WpmCommand = {
     const t = tFor(ctx)
     return [
       {
-        command: '20WPM',
-        params: '(18WPM, 25WPM…)',
-        describe: t('catalogWpm'),
-        category: t('catalogCategory'),
+        command: "20WPM",
+        params: "(18WPM, 25WPM…)",
+        describe: t("catalogWpm"),
+        category: t("catalogCategory"),
         expectsParams: true,
         suggest: true,
       },
@@ -259,8 +255,8 @@ const KeyerCommand = {
     if (!parseKeyerCommand(input)) return null
     const t = tFor(ctx)
     return {
-      describe: t('keyerDescribe'),
-      confirm: t('keyerConfirm'),
+      describe: t("keyerDescribe"),
+      confirm: t("keyerConfirm"),
       commands: [{ showKeyer: {} }],
     }
   },
@@ -270,10 +266,10 @@ const KeyerCommand = {
     const t = tFor(ctx)
     return [
       {
-        command: 'KEYER',
-        params: '(MACROS)',
-        describe: t('catalogKeyer'),
-        category: t('catalogCategory'),
+        command: "KEYER",
+        params: "(MACROS)",
+        describe: t("catalogKeyer"),
+        category: t("catalogCategory"),
         suggest: true,
       },
     ]
@@ -289,7 +285,7 @@ const EnterSendsCommand = {
     const ask = parseEnterSendsCommand(input)
     if (!ask) return null
     const t = tFor(ctx)
-    const which = !ask.on ? 'esmOff' : ask.running === true ? 'esmRun' : ask.running === false ? 'esmSp' : 'esmOn'
+    const which = !ask.on ? "esmOff" : ask.running === true ? "esmRun" : ask.running === false ? "esmSp" : "esmOn"
     return {
       describe: t(`${which}Describe`),
       confirm: t(`${which}Confirm`),
@@ -301,9 +297,9 @@ const EnterSendsCommand = {
     if (!esmEnabled(ctx)) return []
     const t = tFor(ctx)
     return [
-      { command: 'ESM', params: '(OFF)', describe: t('catalogEsm'), category: t('catalogCategory'), suggest: true },
-      { command: 'RUN', describe: t('catalogRun'), category: t('catalogCategory'), suggest: true },
-      { command: 'SP', params: '(S&P)', describe: t('catalogSp'), category: t('catalogCategory'), suggest: true },
+      { command: "ESM", params: "(OFF)", describe: t("catalogEsm"), category: t("catalogCategory"), suggest: true },
+      { command: "RUN", describe: t("catalogRun"), category: t("catalogCategory"), suggest: true },
+      { command: "SP", params: "(S&P)", describe: t("catalogSp"), category: t("catalogCategory"), suggest: true },
     ]
   },
 }
@@ -311,13 +307,13 @@ const EnterSendsCommand = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('command', { key: 'radio-commands-band', hook: BandCommand, priority: 100 })
-    registerHook('command', { key: 'radio-commands-mode', hook: ModeCommand, priority: 100 })
-    registerHook('command', { key: 'radio-commands-gig-band', hook: GigBandCommand, priority: 100 })
-    registerHook('command', { key: 'radio-commands-frequency', hook: FrequencyCommand, priority: 99 })
-    registerHook('command', { key: 'radio-commands-power', hook: PowerCommand, priority: 100 })
-    registerHook('command', { key: 'radio-commands-wpm', hook: WpmCommand, priority: 100 })
-    registerHook('command', { key: 'radio-commands-keyer', hook: KeyerCommand, priority: 100 })
-    registerHook('command', { key: 'radio-commands-enter-sends', hook: EnterSendsCommand, priority: 100 })
+    registerHook("command", { key: "radio-commands-band", hook: BandCommand, priority: 100 })
+    registerHook("command", { key: "radio-commands-mode", hook: ModeCommand, priority: 100 })
+    registerHook("command", { key: "radio-commands-gig-band", hook: GigBandCommand, priority: 100 })
+    registerHook("command", { key: "radio-commands-frequency", hook: FrequencyCommand, priority: 99 })
+    registerHook("command", { key: "radio-commands-power", hook: PowerCommand, priority: 100 })
+    registerHook("command", { key: "radio-commands-wpm", hook: WpmCommand, priority: 100 })
+    registerHook("command", { key: "radio-commands-keyer", hook: KeyerCommand, priority: 100 })
+    registerHook("command", { key: "radio-commands-enter-sends", hook: EnterSendsCommand, priority: 100 })
   },
 })

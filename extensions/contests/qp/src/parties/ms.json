@@ -109,14 +109,7 @@
     "YAZ": "Yazoo"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "PORTABLE"
-    ]
+    "operator": ["SINGLE-OP", "MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE", "PORTABLE"]
   }
 }

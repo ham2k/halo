@@ -29,14 +29,11 @@ import manifest from "../manifest.json" with { type: "json" }
 // panel (e.g. the home screen's quick search) they answer with an `error`
 // the UI presents rather than a silent non-match.
 const SelfSpotCommand = {
-  async interpret(
-    { input, operation }: { input: string; operation?: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<CommandInterpretation | null> {
+  async interpret({ input, operation }: { input: string; operation?: Record<string, JSONValue> }, ctx: HookContext): Promise<CommandInterpretation | null> {
     const parsed = parseSelfSpotCommand(input)
     if (!parsed) return null
     const t = tFor(ctx)
-    if (!operation) return { error: t('needsOperation') }
+    if (!operation) return { error: t("needsOperation") }
     const { comment } = parsed
     return {
       // The comment is free prose for other operators (same as the Spotting
@@ -44,60 +41,61 @@ const SelfSpotCommand = {
       // to uppercase or treat space as advance-focus. mixedCase, not
       // expectsParams: a bare "SPOT" is already executable on Enter.
       mixedCase: true,
-      describe: comment ? t('selfSpotWithComment', { comment }) : t('selfSpot'),
-      confirm: comment ? t('selfSpottingComment', { comment }) : t('selfSpotting'),
-      commands: [{ sendSpots: { comment: comment || undefined, target: 'self' } }],
+      describe: comment ? t("selfSpotWithComment", { comment }) : t("selfSpot"),
+      confirm: comment ? t("selfSpottingComment", { comment }) : t("selfSpotting"),
+      commands: [{ sendSpots: { comment: comment || undefined, target: "self" } }],
     }
   },
 
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     const t = tFor(ctx)
-    return [{
-      command: 'SPOT',
-      params: '[comment]',
-      describe: t('catalogSelfSpot'),
-      category: t('catalogCategory'),
-      needsOperation: true,
-      // Types in rather than running: SPOT posts to the public cluster, and
-      // it's offered as an empty-field sample to users who don't yet know
-      // that — picking it must not publish in one click. Enter still runs
-      // the bare form; the [comment] stays optional.
-      expectsParams: true,
-      suggest: true,
-    }]
+    return [
+      {
+        command: "SPOT",
+        params: "[comment]",
+        describe: t("catalogSelfSpot"),
+        category: t("catalogCategory"),
+        needsOperation: true,
+        // Types in rather than running: SPOT posts to the public cluster, and
+        // it's offered as an empty-field sample to users who don't yet know
+        // that — picking it must not publish in one click. Enter still runs
+        // the bare form; the [comment] stays optional.
+        expectsParams: true,
+        suggest: true,
+      },
+    ]
   },
 }
 
 const LastSpotCommand = {
-  async interpret(
-    { input, operation }: { input: string; operation?: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<CommandInterpretation | null> {
+  async interpret({ input, operation }: { input: string; operation?: Record<string, JSONValue> }, ctx: HookContext): Promise<CommandInterpretation | null> {
     if (!isLastSpotCommand(input)) return null
     const t = tFor(ctx)
-    if (!operation) return { error: t('needsOperation') }
+    if (!operation) return { error: t("needsOperation") }
     return {
-      describe: t('spotLast'),
-      confirm: t('spottingLast'),
-      commands: [{ sendSpots: { target: 'last' } }],
+      describe: t("spotLast"),
+      confirm: t("spottingLast"),
+      commands: [{ sendSpots: { target: "last" } }],
     }
   },
 
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     const t = tFor(ctx)
-    return [{
-      command: 'SPOTLAST',
-      describe: t('catalogSpotLast'),
-      category: t('catalogCategory'),
-      needsOperation: true,
-    }]
+    return [
+      {
+        command: "SPOTLAST",
+        describe: t("catalogSpotLast"),
+        category: t("catalogCategory"),
+        needsOperation: true,
+      },
+    ]
   },
 }
 
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('command', { key: 'spot-commands-self', hook: SelfSpotCommand, priority: 100 })
-    registerHook('command', { key: 'spot-commands-last', hook: LastSpotCommand, priority: 100 })
+    registerHook("command", { key: "spot-commands-self", hook: SelfSpotCommand, priority: 100 })
+    registerHook("command", { key: "spot-commands-last", hook: LastSpotCommand, priority: 100 })
   },
 })

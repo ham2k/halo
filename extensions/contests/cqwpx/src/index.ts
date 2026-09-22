@@ -31,50 +31,51 @@ import { CQWPXScorer } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const TYPE = 'cqwpx'
+const TYPE = "cqwpx"
 
 function refOfType(container: Record<string, JSONValue>, type: string): Record<string, JSONValue> | undefined {
-  return (((container.refs as Record<string, JSONValue>[] | undefined) ?? [])).find((r) => r?.type === type)
+  return ((container.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === type)
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// A serial as it should appear in an export: whatever is on the ref, as digits.
 function serial(qso: Record<string, JSONValue>, field: string): string {
   const value = refOfType(qso, TYPE)?.[field]
-  if (typeof value === 'number') return String(value)
+  if (typeof value === "number") return String(value)
   const digits = str(value).trim()
-  return /^\d+$/.test(digits) ? String(parseInt(digits, 10)) : ''
+  return /^\d+$/.test(digits) ? String(parseInt(digits, 10)) : ""
 }
 
 const ActivityHook = {
-  async operationControls(
-    _args: { operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls(_args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx)
     return [
       {
-        key: 'cqwpx/setup',
-        label: t('activityLabel'),
+        key: "cqwpx/setup",
+        label: t("activityLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'form',
+          kind: "form",
           refType: TYPE,
           form: {
-            title: t('setupLabel'),
+            title: t("setupLabel"),
             elements: [
               {
-                type: 'field',
-                fieldType: 'radio',
-                key: 'mode',
-                label: t('modeLabel'),
+                type: "field",
+                fieldType: "radio",
+                key: "mode",
+                label: t("modeLabel"),
                 // CQ WPX runs these as separate contests on separate weekends.
-                options: [{ value: 'CW', label: 'CW' }, { value: 'SSB', label: 'SSB' }, { value: 'RTTY', label: 'RTTY' }],
+                options: [
+                  { value: "CW", label: "CW" },
+                  { value: "SSB", label: "SSB" },
+                  { value: "RTTY", label: "RTTY" },
+                ],
               },
             ],
           },
@@ -103,28 +104,28 @@ const ActivityHook = {
     const t = tFor(ctx)
     return [
       {
-        key: 'cqwpx/ourSerial',
-        label: t('ourSerialLabel'),
+        key: "cqwpx/ourSerial",
+        label: t("ourSerialLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'serial',
+          kind: "serial",
           refType: TYPE,
-          field: 'ourSerial',
-          sequence: { key: 'serial' },
+          field: "ourSerial",
+          sequence: { key: "serial" },
         },
       },
       {
-        key: 'cqwpx/theirSerial',
-        label: t('theirSerialLabel'),
+        key: "cqwpx/theirSerial",
+        label: t("theirSerialLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 20,
         input: {
-          kind: 'text',
+          kind: "text",
           refType: TYPE,
-          field: 'theirSerial',
+          field: "theirSerial",
           numeric: true,
           maxLength: 5,
           // No placeholder: there is nothing to guess about the number another
@@ -161,21 +162,21 @@ const ActivityHook = {
   ): Promise<Record<string, JSONValue> | null> {
     if (!refOfType(args.operation, TYPE)) return null
     const qsoRef = refOfType(args.qso, TYPE)
-    const patch: Record<string, JSONValue> = { our: { exchange: serial(args.qso, 'ourSerial') } }
-    if (qsoRef && 'theirSerial' in qsoRef) patch.their = { exchange: serial(args.qso, 'theirSerial') }
+    const patch: Record<string, JSONValue> = { our: { exchange: serial(args.qso, "ourSerial") } }
+    if (qsoRef && "theirSerial" in qsoRef) patch.their = { exchange: serial(args.qso, "theirSerial") }
     return patch
   },
 }
 
 const RefHandler = {
   async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
-    return { valid: true, normalized: (ref.ref ?? '').trim() }
+    return { valid: true, normalized: (ref.ref ?? "").trim() }
   },
 
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const mode = str((ref as Record<string, JSONValue>).mode)
-    const label = mode ? `CQ WPX ${mode}` : tFor(ctx)('unconfigured')
-    return { ...ref, program: 'Contest', label, shortLabel: label }
+    const label = mode ? `CQ WPX ${mode}` : tFor(ctx)("unconfigured")
+    return { ...ref, program: "Contest", label, shortLabel: label }
   },
 
   /// "KI2D for CQWPX CW", subtitled with what the exchange is — unlike CQ WW's
@@ -183,15 +184,15 @@ const RefHandler = {
   async suggestOperationTitle({ ref }: { ref: Ref }, ctx: HookContext) {
     const mode = str((ref as Record<string, JSONValue>).mode)
     return {
-      for: ['CQWPX', mode].filter((x) => x).join(' '),
-      subtitle: tFor(ctx)('serialSubtitle'),
+      for: ["CQWPX", mode].filter((x) => x).join(" "),
+      subtitle: tFor(ctx)("serialSubtitle"),
     }
   },
 
   /// The contest's published rules — a reference here names an event, not a
   /// place, so what there is to read about it is the rules it is run under.
   async linkForRef(_args: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
-    return { url: 'https://www.cqwpx.com/rules.htm', label: 'CQ WPX' }
+    return { url: "https://www.cqwpx.com/rules.htm", label: "CQ WPX" }
   },
 }
 
@@ -204,22 +205,20 @@ const AdifFieldsHook = {
     if (!opRef) return []
     const mode = str(opRef.mode)
 
-    const fields: { name: string; value: string }[] = [
-      { name: 'CONTEST_ID', value: mode ? `CQ-WPX-${mode}` : 'CQ-WPX' },
-    ]
-    const sent = serial(qso, 'ourSerial')
-    const received = serial(qso, 'theirSerial')
-    if (sent) fields.push({ name: 'STX', value: sent })
-    if (received) fields.push({ name: 'SRX', value: received })
+    const fields: { name: string; value: string }[] = [{ name: "CONTEST_ID", value: mode ? `CQ-WPX-${mode}` : "CQ-WPX" }]
+    const sent = serial(qso, "ourSerial")
+    const received = serial(qso, "theirSerial")
+    if (sent) fields.push({ name: "STX", value: sent })
+    if (received) fields.push({ name: "SRX", value: received })
     return fields
   },
 }
 
-function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): string {
+function reportFor(qso: Record<string, JSONValue>, side: "our" | "their"): string {
   const sideData = (qso[side] as Record<string, JSONValue>) ?? {}
   const sent = str(sideData.sent)
   if (sent) return sent
-  return str(qso.mode) === 'CW' || str(qso.mode) === 'RTTY' ? '599' : '59'
+  return str(qso.mode) === "CW" || str(qso.mode) === "RTTY" ? "599" : "59"
 }
 
 /// The contest's own name for this operation's file — the mode is part of
@@ -227,15 +226,10 @@ function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): strin
 /// with separate submissions.
 function contestTag(operation: Record<string, JSONValue>): string {
   const mode = str(refOfType(operation, TYPE)?.mode)
-  return `CQ-WPX-${mode || 'DX'}`
+  return `CQ-WPX-${mode || "DX"}`
 }
 
-function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  extension: string,
-  compact?: boolean,
-): string {
+function filenameFor(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], extension: string, compact?: boolean): string {
   return exportFilename({
     stationCall: operation.stationCall,
     activity: contestTag(operation),
@@ -247,29 +241,28 @@ function filenameFor(
 
 const ExportHook = {
   async getExportTypes() {
-    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+    return [exportTypeDefinition(TYPE, "adif", manifest.shortName), exportTypeDefinition(TYPE, "cabrillo", manifest.shortName)]
   },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
-    const named = (extension: string) =>
-      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
+    const named = (extension: string) => filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
       {
         exportType: `${TYPE}-adif`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'adif',
-        label: t('adifExport', { contest: manifest.shortName }),
-        filename: named('adi'),
+        format: "adif",
+        label: t("adifExport", { contest: manifest.shortName }),
+        filename: named("adi"),
         selectedByDefault: true,
         refType: TYPE,
       },
       {
         exportType: `${TYPE}-cabrillo`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'cabrillo',
-        label: t('cabrilloExport', { contest: manifest.shortName }),
-        filename: named('log'),
+        format: "cabrillo",
+        label: t("cabrilloExport", { contest: manifest.shortName }),
+        filename: named("log"),
         selectedByDefault: true,
         refType: TYPE,
       },
@@ -282,7 +275,7 @@ const ExportHook = {
     // exportType it never offered makes the ADIF delegation recurse into
     // itself.
     if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
-      return { filename: '', mimeType: '', content: '' }
+      return { filename: "", mimeType: "", content: "" }
     }
 
     const operation = args.operation
@@ -292,23 +285,23 @@ const ExportHook = {
     if (args.exportType === `${TYPE}-cabrillo`) {
       const content = qsonToCabrillo(args.qsos, {
         headers: [
-          ['CONTEST', mode ? `CQ-WPX-${mode}` : 'CQ-WPX'],
-          ['CALLSIGN', ourCall],
-          ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
-          ['GRID-LOCATOR', str(operation.grid)],
+          ["CONTEST", mode ? `CQ-WPX-${mode}` : "CQ-WPX"],
+          ["CALLSIGN", ourCall],
+          ["OPERATORS", str((operation.local as Record<string, JSONValue>)?.operatorCall)],
+          ["GRID-LOCATOR", str(operation.grid)],
         ],
         qsoParts: (qso) => [
-          ourCall || '-',
-          reportFor(qso, 'our'),
-          serial(qso, 'ourSerial') || '0',
-          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || '-',
-          reportFor(qso, 'their'),
-          serial(qso, 'theirSerial') || '0',
+          ourCall || "-",
+          reportFor(qso, "our"),
+          serial(qso, "ourSerial") || "0",
+          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || "-",
+          reportFor(qso, "their"),
+          serial(qso, "theirSerial") || "0",
         ],
       })
       return {
-        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
-        mimeType: 'text/plain',
+        filename: filenameFor(operation, args.qsos, "log", args.compactFilenames),
+        mimeType: "text/plain",
         content,
       }
     }
@@ -328,8 +321,8 @@ const ExportHook = {
       mainHandler: TYPE,
     })
     return {
-      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
-      mimeType: 'text/plain',
+      filename: filenameFor(operation, args.qsos, "adi", args.compactFilenames),
+      mimeType: "text/plain",
       content,
     }
   },
@@ -338,11 +331,11 @@ const ExportHook = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('activity', { hook: ActivityHook, key: TYPE })
+    registerHook("activity", { hook: ActivityHook, key: TYPE })
     registerHook(`ref:${TYPE}`, { hook: RefHandler, key: TYPE })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: TYPE })
-    registerHook('export', { hook: ExportHook, key: TYPE })
-    registerHook('scoring', {
+    registerHook("adifFields", { hook: AdifFieldsHook, key: TYPE })
+    registerHook("export", { hook: ExportHook, key: TYPE })
+    registerHook("scoring", {
       hook: contestScorer(CQWPXScorer, { scope: { refTypes: [TYPE] } }),
       key: TYPE,
     })

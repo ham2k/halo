@@ -9,20 +9,12 @@
 // so the bundles an author iterates on are built exactly like the ones that
 // ship. This file is only the writing of them.
 
-import { build } from 'esbuild'
-import { mkdir, writeFile, readdir, unlink } from 'node:fs/promises'
-import { join } from 'node:path'
+import { build } from "esbuild"
+import { mkdir, writeFile, readdir, unlink } from "node:fs/promises"
+import { join } from "node:path"
 
-import {
-  bundles,
-  buildOptionsFor,
-  fixturesDir,
-  indexEntryFor,
-  loadHostSharedVersions,
-  loadManifests,
-  outDir,
-} from './build-config.mjs'
-import { checkHooksAgainstManifests } from './hook-check.mjs'
+import { bundles, buildOptionsFor, fixturesDir, indexEntryFor, loadHostSharedVersions, loadManifests, outDir } from "./build-config.mjs"
+import { checkHooksAgainstManifests } from "./hook-check.mjs"
 
 const hostSharedVersions = await loadHostSharedVersions()
 await loadManifests()
@@ -30,29 +22,31 @@ await loadManifests()
 await mkdir(outDir, { recursive: true })
 await mkdir(fixturesDir, { recursive: true })
 
-const dirFor = (bundle) => (bundle.kind === 'fixture' ? fixturesDir : outDir)
+const dirFor = (bundle) => (bundle.kind === "fixture" ? fixturesDir : outDir)
 
 for (const bundle of bundles) {
-  const result = await build(buildOptionsFor(bundle, {
-    hostSharedVersions,
-    outfile: join(dirFor(bundle), `${bundle.key}.js`),
-  }))
+  const result = await build(
+    buildOptionsFor(bundle, {
+      hostSharedVersions,
+      outfile: join(dirFor(bundle), `${bundle.key}.js`),
+    }),
+  )
   const bytes = Object.values(result.metafile.outputs)[0].bytes
   console.log(`${bundle.key}.js — ${(bytes / 1024).toFixed(1)} KB`)
 }
 
 await writeFile(
-  join(outDir, 'index.json'),
+  join(outDir, "index.json"),
   JSON.stringify(
     {
-      kernel: 'kernel.js',
+      kernel: "kernel.js",
       // What this build's kernel carries, for extensions that declare
       // `sharedDependencies` rather than inlining their own copies. The host
       // checks a declared range against these before loading an installed
       // bundle (HALO-422) — which is only possible if the versions travel
       // where Dart can read them without booting the runtime.
       sharedModules: hostSharedVersions,
-      extensions: bundles.filter((b) => b.kind === 'extension').map(indexEntryFor),
+      extensions: bundles.filter((b) => b.kind === "extension").map(indexEntryFor),
     },
     null,
     2,
@@ -71,7 +65,7 @@ await writeFile(
 // most, since everything in that directory ships.
 for (const dir of [outDir, fixturesDir]) {
   const expected = new Set(bundles.filter((b) => dirFor(b) === dir).map((b) => `${b.key}.js`))
-  if (dir === outDir) expected.add('index.json')
+  if (dir === outDir) expected.add("index.json")
   for (const name of await readdir(dir)) {
     if (expected.has(name)) continue
     await unlink(join(dir, name))
@@ -79,9 +73,9 @@ for (const dir of [outDir, fixturesDir]) {
   }
 }
 
-console.log(`index.json — ${bundles.filter((b) => b.kind === 'extension').length} extensions`)
+console.log(`index.json — ${bundles.filter((b) => b.kind === "extension").length} extensions`)
 
 // Last, because it evaluates what was just written: every manifest's `hooks`
 // must be what its code registers (hook-check.mjs).
 await checkHooksAgainstManifests({ bundles, outDir })
-console.log('hooks — every manifest matches what its bundle registers')
+console.log("hooks — every manifest matches what its bundle registers")

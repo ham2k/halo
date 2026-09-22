@@ -62,8 +62,8 @@ export function spotsFromTOTAApi(apiSpots: TOTAApiSpot[]): TOTASpotMapping {
     .filter((spot) => spot)
     .map((spot) => ({
       spot,
-      timeInMillis: Date.parse(spot.time_utc ?? ''),
-      isQrt: QRT_COMMENT.test(spot.comment ?? ''),
+      timeInMillis: Date.parse(spot.time_utc ?? ""),
+      isQrt: QRT_COMMENT.test(spot.comment ?? ""),
     }))
   const undated = dated.filter(({ timeInMillis }) => Number.isNaN(timeInMillis)).length
 
@@ -77,13 +77,13 @@ export function spotsFromTOTAApi(apiSpots: TOTAApiSpot[]): TOTASpotMapping {
     // A row naming no station is dropped outright rather than deduped: it
     // would publish a blank entry to the board and then claim the empty-string
     // slot, silently swallowing every other call-less row behind it.
-    const call = (spot.callsign ?? '').toUpperCase()
+    const call = (spot.callsign ?? "").toUpperCase()
     if (!call) continue
     if (claimedCalls.has(call)) continue
     claimedCalls.add(call)
     if (isQrt) continue
 
-    const parsed = typeof spot.frequency === 'string' ? Number.parseFloat(spot.frequency) : spot.frequency
+    const parsed = typeof spot.frequency === "string" ? Number.parseFloat(spot.frequency) : spot.frequency
     const freq = parsed && !Number.isNaN(parsed) ? parsed : undefined
     const sourceInfo: Record<string, string> = {}
     if (spot.comment != null) sourceInfo.comments = spot.comment
@@ -96,14 +96,14 @@ export function spotsFromTOTAApi(apiSpots: TOTAApiSpot[]): TOTASpotMapping {
       mode: spot.mode?.toUpperCase(),
       // 'tota' is index.ts's HUNTING_TYPE; it can't be imported from there
       // without a cycle, and it's the extension key, so it doesn't drift.
-      refs: spot.tower_ref ? [{ ref: spot.tower_ref, type: 'tota' }] : [],
+      refs: spot.tower_ref ? [{ ref: spot.tower_ref, type: "tota" }] : [],
       spot: {
         timeInMillis,
-        source: 'tota',
+        source: "tota",
         // The tower's NAME comes from the local list, which the spots panel
         // resolves from the ref — app-polo looks it up here, but that is a
         // database round trip per spot.
-        label: spot.tower_ref ?? '',
+        label: spot.tower_ref ?? "",
         sourceInfo,
       },
     })

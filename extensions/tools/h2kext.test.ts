@@ -82,12 +82,15 @@ test("a bundle that externalises the host's shared modules is refused", async ()
   // from anything the author can see.
   const dir = await bundleDir({}, 'var x = globalThis.__polo.sharedModules["@ham2k/lib-callsigns"];')
 
-  await assert.rejects(() => pack(dir, { outPath: join(dir, "out.h2kext") }), (e: Error) => {
-    assert.ok(e instanceof PackError)
-    assert.match(e.message, /shared modules/)
-    assert.match(e.message, /@ham2k\/lib-callsigns/)
-    return true
-  })
+  await assert.rejects(
+    () => pack(dir, { outPath: join(dir, "out.h2kext") }),
+    (e: Error) => {
+      assert.ok(e instanceof PackError)
+      assert.match(e.message, /shared modules/)
+      assert.match(e.message, /@ham2k\/lib-callsigns/)
+      return true
+    },
+  )
 })
 
 test("findSharedModuleReferences names every library, once each", () => {
@@ -197,12 +200,15 @@ test("an unbuilt directory says so, rather than producing an empty bundle", asyn
   const dir = await mkdtemp(join(tmpdir(), "h2kext-test-"))
   await writeFile(join(dir, "manifest.json"), JSON.stringify(validManifest))
 
-  await assert.rejects(() => pack(dir, { outPath: join(dir, "out.h2kext") }), (e: Error) => {
-    // The packer packages; it does not compile. Saying that here is what stops
-    // an author waiting for a build that is never going to happen.
-    assert.match(e.message, /this packages, it does not compile/)
-    return true
-  })
+  await assert.rejects(
+    () => pack(dir, { outPath: join(dir, "out.h2kext") }),
+    (e: Error) => {
+      // The packer packages; it does not compile. Saying that here is what stops
+      // an author waiting for a build that is never going to happen.
+      assert.match(e.message, /this packages, it does not compile/)
+      return true
+    },
+  )
 })
 
 test("manifest.json that is not JSON says which file and why", async () => {
@@ -210,10 +216,13 @@ test("manifest.json that is not JSON says which file and why", async () => {
   await writeFile(join(dir, "manifest.json"), "{ not json")
   await writeFile(join(dir, "index.js"), "(() => {})()")
 
-  await assert.rejects(() => pack(dir, { outPath: join(dir, "out.h2kext") }), (e: Error) => {
-    assert.match(e.message, /manifest\.json is not valid JSON/)
-    return true
-  })
+  await assert.rejects(
+    () => pack(dir, { outPath: join(dir, "out.h2kext") }),
+    (e: Error) => {
+      assert.match(e.message, /manifest\.json is not valid JSON/)
+      return true
+    },
+  )
 })
 
 test("the packer's shared-module list matches what the build actually externalises", () => {
@@ -228,21 +237,21 @@ test("the packer's shared-module list matches what the build actually externalis
 test("using a shared module without declaring it is refused", async () => {
   const dir = await bundleDir({}, 'var x = __polo.sharedModules["i18next"];')
 
-  await assert.rejects(() => pack(dir, { outPath: join(dir, "out.h2kext") }), (e: Error) => {
-    // Undeclared is the dangerous case: the host carries whatever version that
-    // build shipped with, so an undeclared use loads happily and dies at the
-    // first call into a library that turned out to be a different major.
-    assert.match(e.message, /without declaring them \(i18next\)/)
-    assert.match(e.message, /sharedDependencies/)
-    return true
-  })
+  await assert.rejects(
+    () => pack(dir, { outPath: join(dir, "out.h2kext") }),
+    (e: Error) => {
+      // Undeclared is the dangerous case: the host carries whatever version that
+      // build shipped with, so an undeclared use loads happily and dies at the
+      // first call into a library that turned out to be a different major.
+      assert.match(e.message, /without declaring them \(i18next\)/)
+      assert.match(e.message, /sharedDependencies/)
+      return true
+    },
+  )
 })
 
 test("declaring a shared module makes using it fine", async () => {
-  const dir = await bundleDir(
-    { sharedDependencies: { i18next: "^23.0.0" } },
-    'var x = __polo.sharedModules["i18next"];',
-  )
+  const dir = await bundleDir({ sharedDependencies: { i18next: "^23.0.0" } }, 'var x = __polo.sharedModules["i18next"];')
 
   // The point of the whole mechanism: a bundle that says what it needs may use
   // the host's copy, and skips carrying ~1.4MB of its own.
@@ -343,9 +352,7 @@ test("a manifest still naming the field 'geo' is refused", () => {
   // without this it packs, publishes and installs as WORLDWIDE — the
   // author's audience discarded rather than refused. It is the one stale key
   // certain to arrive, because it is what every older manifest says.
-  assert.match(
-    validateManifest({ ...validManifest, geo: { countries: ["us"] } }).join(" | "),
-    /'geo' is now 'relevance'/)
+  assert.match(validateManifest({ ...validManifest, geo: { countries: ["us"] } }).join(" | "), /'geo' is now 'relevance'/)
   assert.deepEqual(validateManifest({ ...validManifest, relevance: { countries: ["us"] } }), [])
 })
 
@@ -371,9 +378,7 @@ test("a distributed bundle may not say whether it starts out enabled", () => {
   // got, so a manifest carrying `enabledByDefault: false` describes a state
   // it cannot reach — and copying a built-in's manifest is exactly how an
   // author would arrive at one.
-  assert.match(
-    validateManifest({ ...validManifest, enabledByDefault: false }).join(" | "),
-    /'enabledByDefault' applies to an app's built-in extensions/)
+  assert.match(validateManifest({ ...validManifest, enabledByDefault: false }).join(" | "), /'enabledByDefault' applies to an app's built-in extensions/)
   assert.match(validateManifest({ ...validManifest, enabledByDefault: true }).join(" | "), /enabledByDefault/)
   assert.deepEqual(validateManifest(validManifest), [])
 })
@@ -384,10 +389,8 @@ test("relevance: the built-in build applies the same rules, by importing them", 
   // build that stopped calling it would ship a malformed relevance into
   // index.json, where the host reads it as worldwide.
   const manifest = { key: "x", name: "X", version: "1.0.0", description: "d", relevance: { continents: ["EUR"] } }
-  assert.throws(
-    () => validateBuiltInManifest(manifest, "x", new Set(), "x/manifest.json"), /invalid 'relevance'.*EUR/)
-  assert.doesNotThrow(() =>
-    validateBuiltInManifest({ ...manifest, relevance: { continents: ["EU"] } }, "x", new Set(), "x/manifest.json"))
+  assert.throws(() => validateBuiltInManifest(manifest, "x", new Set(), "x/manifest.json"), /invalid 'relevance'.*EUR/)
+  assert.doesNotThrow(() => validateBuiltInManifest({ ...manifest, relevance: { continents: ["EU"] } }, "x", new Set(), "x/manifest.json"))
 })
 
 test("index.json carries version for every extension, and relevance when declared", () => {

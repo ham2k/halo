@@ -40,11 +40,7 @@ const HelloPanel: PanelHook = {
   async render(_args: PanelRenderArgs, _ctx: HookContext): Promise<PanelContent> {
     return {
       kind: "markdown",
-      content: [
-        "# Hello, World!",
-        "",
-        "This panel came from an extension installed from a `.h2kext` file.",
-      ].join("\n"),
+      content: ["# Hello, World!", "", "This panel came from an extension installed from a `.h2kext` file."].join("\n"),
     }
   },
 }

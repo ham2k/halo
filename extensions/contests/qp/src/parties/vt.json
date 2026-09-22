@@ -10,9 +10,7 @@
   "lastUpdated": "2026-01-20 15:00Z",
   "status": "Revised for 2026",
   "openQuestions": "Does any county count as VT multiplier for in-state stations?",
-  "specialCalls": [
-    "W1NVT"
-  ],
+  "specialCalls": ["W1NVT"],
   "options": {
     "dcCountsAsMaryland": true,
     "stateCountsForInState": true,
@@ -77,15 +75,8 @@
     "WNS": "Windsor"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "150 watts",

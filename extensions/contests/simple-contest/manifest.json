@@ -8,26 +8,13 @@
   "enabledByDefault": false,
   "icon": "flag-checkered",
   "accentColor": "#B3541E",
-  "keywords": [
-    "contest",
-    "exchange",
-    "cabrillo"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "export",
-    "ref:simple-contest",
-    "scoring"
-  ],
+  "keywords": ["contest", "exchange", "cabrillo"],
+  "hooks": ["activity", "adifFields", "export", "ref:simple-contest", "scoring"],
   "translations": {
     "es": {
       "name": "Concurso Genérico",
       "description": "Registra cualquier concurso con un solo intercambio libre, puntuando un punto por contacto",
-      "keywords": [
-        "concurso",
-        "intercambio"
-      ]
+      "keywords": ["concurso", "intercambio"]
     }
   }
 }

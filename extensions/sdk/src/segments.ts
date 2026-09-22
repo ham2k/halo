@@ -25,7 +25,7 @@ export function operationForQso(
   segments?: OperationSegmentPayload[],
 ): Record<string, JSONValue> {
   if (!segments || segments.length === 0) return base
-  const at = typeof qso.startAtMillis === 'number' ? qso.startAtMillis : 0
+  const at = typeof qso.startAtMillis === "number" ? qso.startAtMillis : 0
   let effective = base
   for (const segment of segments) {
     if (segment.fromMillis > at) break

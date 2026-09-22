@@ -8,33 +8,13 @@
   "enabledByDefault": false,
   "icon": "wind-turbine",
   "accentColor": "#8A6F3B",
-  "keywords": [
-    "mills",
-    "windmills",
-    "activation",
-    "chasing"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "ref:mota",
-    "ref:motaActivation",
-    "scoring",
-    "spots"
-  ],
-  "domains": [
-    "www.cqgma.org"
-  ],
+  "keywords": ["mills", "windmills", "activation", "chasing"],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:mota", "ref:motaActivation", "scoring", "spots"],
+  "domains": ["www.cqgma.org"],
   "translations": {
     "es": {
       "description": "Referencias de molinos, activación y caza, y spotting",
-      "keywords": [
-        "molinos",
-        "activación"
-      ]
+      "keywords": ["molinos", "activación"]
     }
   }
 }

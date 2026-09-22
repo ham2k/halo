@@ -85,17 +85,17 @@ test("a TEST spot doesn't take the activator's live spot down with it", () => {
     apiSpot({ id: 2, type: "TEST", timeStamp: "2026-08-05T21:46:18Z" }),
     apiSpot({ id: 1, type: "NORMAL", frequency: 14.062, timeStamp: "2026-08-05T21:10:00Z" }),
   ])
-  assert.deepEqual(spots.map((spot) => spot.spot.sourceInfo?.id), [1])
+  assert.deepEqual(
+    spots.map((spot) => spot.spot.sourceInfo?.id),
+    [1],
+  )
 })
 
 test("two spots sharing a timestamp break the tie by id, not by the order the feed sent them", () => {
   // Without the tiebreak the sort is stable and falls back to feed order —
   // the very thing the sort exists not to trust.
   const sameTime = "2026-08-05T21:46:18Z"
-  const spots = spotsFromSOTAApi([
-    apiSpot({ id: 1, type: "NORMAL", timeStamp: sameTime }),
-    apiSpot({ id: 2, type: "QRT", timeStamp: sameTime }),
-  ])
+  const spots = spotsFromSOTAApi([apiSpot({ id: 1, type: "NORMAL", timeStamp: sameTime }), apiSpot({ id: 2, type: "QRT", timeStamp: sameTime })])
   assert.deepEqual(spots, [])
 })
 
@@ -112,7 +112,10 @@ test("only the newest spot per activator survives, whatever else they are spotte
     apiSpot({ id: 1, frequency: 14.062, timeStamp: "2026-08-05T21:10:00Z" }),
     apiSpot({ id: 3, activatorCallsign: "W1AW", timeStamp: "2026-08-05T21:40:00Z" }),
   ])
-  assert.deepEqual(spots.map((spot) => spot.spot.sourceInfo?.id), [2, 3])
+  assert.deepEqual(
+    spots.map((spot) => spot.spot.sourceInfo?.id),
+    [2, 3],
+  )
 })
 
 test("the label carries points as a glyph and altitude from AltM, not from free text", () => {

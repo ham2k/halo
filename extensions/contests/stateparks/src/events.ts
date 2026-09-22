@@ -42,10 +42,10 @@ import ohsp from "./events/ohsp.json" with { type: "json" }
 /// Every event excludes the WARC bands — they are closed to contests by IARU
 /// convention, not by any one sponsor's rules, which is why polo hard-codes the
 /// same list for all four. An event may narrow further with `bands`.
-export const WARC_BANDS = ['60m', '30m', '17m', '12m']
+export const WARC_BANDS = ["60m", "30m", "17m", "12m"]
 
 /// How an event counts multipliers, from `options.multipliers`.
-export type MultiplierRule = 'none' | 'stateParksActivated' | 'stateParksActivatedAndHunted'
+export type MultiplierRule = "none" | "stateParksActivated" | "stateParksActivatedAndHunted"
 
 /// The sponsors that dictate the log's filename, by event key.
 ///
@@ -61,7 +61,7 @@ export type MultiplierRule = 'none' | 'stateParksActivated' | 'stateParksActivat
 /// recommended POTA log format" and §7.5.3 that there be one file per park,
 /// which POTA's own per-park export already is, under whatever name the
 /// operator's setting gives it. Ohio takes no ADIF at all.
-const NAMED_PARK_ADIF = ['TXSP', 'GASP']
+const NAMED_PARK_ADIF = ["TXSP", "GASP"]
 
 /// A power class an event publishes: the value stored on our ref, and the
 /// sponsor's own ceiling for it.
@@ -84,13 +84,13 @@ export interface PowerClass {
 /// so asking would be a question with nowhere to go.
 const POWER_CLASSES: Record<string, PowerClass[]> = {
   TXSP: [
-    { value: 'QRP', watts: '≤5W CW/digital, ≤10W SSB' },
-    { value: 'LP', watts: '≤150W' },
-    { value: 'HP', watts: '>150W' },
+    { value: "QRP", watts: "≤5W CW/digital, ≤10W SSB" },
+    { value: "LP", watts: "≤150W" },
+    { value: "HP", watts: ">150W" },
   ],
   OHSP: [
-    { value: 'LP', watts: '0.1–100W' },
-    { value: 'HP', watts: '>100W' },
+    { value: "LP", watts: "0.1–100W" },
+    { value: "HP", watts: ">100W" },
   ],
 }
 
@@ -104,11 +104,11 @@ export interface EntryCategory {
   /// `CATEGORY-TRANSMITTER`, where the category settles it. Undefined for the
   /// categories whose own definition says "Single or Multi" — those get no
   /// header rather than a guess.
-  transmitter?: 'SINGLE' | 'MULTI'
+  transmitter?: "SINGLE" | "MULTI"
   /// `CATEGORY-POWER`, where the category settles it. Six of Ohio's nine codes
   /// end in L or H and so name the power themselves; the rest fall back to the
   /// power class the operator chose.
-  power?: 'LOW' | 'HIGH'
+  power?: "LOW" | "HIGH"
 }
 
 /// OSPOTA's nine entry categories, from their rules PDF's "Entry Categories"
@@ -124,22 +124,22 @@ export interface EntryCategory {
 /// power-bearing ones say "at one Ohio State Park", which is what makes them not
 /// MPO, and the wattages are on the Power field right above.
 const OHIO_CATEGORIES: EntryCategory[] = [
-  { value: 'SL', description: 'Single Op, Low Power', transmitter: 'SINGLE', power: 'LOW' },
-  { value: 'SH', description: 'Single Op, High Power', transmitter: 'SINGLE', power: 'HIGH' },
-  { value: 'MSL', description: 'Multi-Op, Single TX, Low Power', transmitter: 'SINGLE', power: 'LOW' },
-  { value: 'MSH', description: 'Multi-Op, Single TX, High Power', transmitter: 'SINGLE', power: 'HIGH' },
-  { value: 'MML', description: 'Multi-Op, Multi-TX, Low Power', transmitter: 'MULTI', power: 'LOW' },
-  { value: 'MMH', description: 'Multi-Op, Multi-TX, High Power', transmitter: 'MULTI', power: 'HIGH' },
+  { value: "SL", description: "Single Op, Low Power", transmitter: "SINGLE", power: "LOW" },
+  { value: "SH", description: "Single Op, High Power", transmitter: "SINGLE", power: "HIGH" },
+  { value: "MSL", description: "Multi-Op, Single TX, Low Power", transmitter: "SINGLE", power: "LOW" },
+  { value: "MSH", description: "Multi-Op, Single TX, High Power", transmitter: "SINGLE", power: "HIGH" },
+  { value: "MML", description: "Multi-Op, Multi-TX, Low Power", transmitter: "MULTI", power: "LOW" },
+  { value: "MMH", description: "Multi-Op, Multi-TX, High Power", transmitter: "MULTI", power: "HIGH" },
   // MPO names its transmitter count in the definitions section rather than in
   // the code: "Entries where one or more persons perform the operating and/or
   // logging functions using only one transmitter operating at multiple Ohio
   // State Parks (one at a time)". It is single-transmitter, multi-op, and says
   // nothing about power.
-  { value: 'MPO', description: 'Multi-Park Operator(s)', transmitter: 'SINGLE' },
+  { value: "MPO", description: "Multi-Park Operator(s)", transmitter: "SINGLE" },
   // These two say "(Single or Multi)" — of OPERATORS. The rules define no
   // transmitter count for either, so neither gets one invented.
-  { value: 'INOH', description: 'Inside Ohio, not at a state park' },
-  { value: 'OUT', description: 'Outside Ohio' },
+  { value: "INOH", description: "Inside Ohio, not at a state park" },
+  { value: "OUT", description: "Outside Ohio" },
 ]
 
 /// One park in an event's list: its POTA reference, and — where the event runs
@@ -252,7 +252,7 @@ interface RawEvent {
 /// rank the whole list wrong. An unparseable value answers 0, which reads as
 /// "no date" everywhere below rather than as a date in the past.
 export function parseEventTime(value: string | undefined): number {
-  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})/.exec(value ?? '')
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})/.exec(value ?? "")
   if (!match) return 0
   return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]))
 }
@@ -267,10 +267,10 @@ function normalize(raw: RawEvent): StateParkEvent {
   // reads); the other three have only `parks`.
   const parks: EventPark[] = usesParkAbbreviations
     ? Object.keys(abbreviations).map((abbreviation) => ({
-      abbreviation,
-      ref: references[abbreviation] ?? '',
-      name: abbreviations[abbreviation],
-    }))
+        abbreviation,
+        ref: references[abbreviation] ?? "",
+        name: abbreviations[abbreviation],
+      }))
     : Object.keys(raw.parks ?? {}).map((ref) => ({ ref }))
 
   const parkByRef: Record<string, EventPark> = {}
@@ -296,7 +296,7 @@ function normalize(raw: RawEvent): StateParkEvent {
     key: raw.key,
     name: raw.name,
     short: raw.short ?? raw.key,
-    url: raw.url ?? '',
+    url: raw.url ?? "",
     startMillis: parseEventTime(raw.start),
     endMillis: parseEventTime(raw.end),
     notes: raw.notes,
@@ -305,7 +305,7 @@ function normalize(raw: RawEvent): StateParkEvent {
 
     points,
     pointsPerDistinctPark,
-    multipliers: (raw.options?.multipliers as MultiplierRule) ?? 'none',
+    multipliers: (raw.options?.multipliers as MultiplierRule) ?? "none",
     validBands: raw.bands ?? [],
     excludedBands: [...WARC_BANDS, ...(raw.excludedBands ?? [])],
     bonusStations,
@@ -313,7 +313,7 @@ function normalize(raw: RawEvent): StateParkEvent {
 
     powerMultipliers: raw.powerMultipliers ?? {},
     powerClasses: POWER_CLASSES[raw.key] ?? [],
-    categories: raw.key === 'OHSP' ? OHIO_CATEGORIES : [],
+    categories: raw.key === "OHSP" ? OHIO_CATEGORIES : [],
 
     usesParkAbbreviations,
     exportsCabrillo: raw.options?.exportCabrillo === true,

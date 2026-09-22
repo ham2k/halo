@@ -18,11 +18,11 @@ const REGEX = /^X-[0-9]+$/i
 
 function baseConfig(allowsMultiple?: boolean) {
   return {
-    key: 'test',
-    label: 'TEST',
-    activationType: 'testActivation',
+    key: "test",
+    label: "TEST",
+    activationType: "testActivation",
     referenceRegex: REGEX,
-    placeholder: 'X-0001',
+    placeholder: "X-0001",
     tFor: () => (key: string) => key,
     ...(allowsMultiple === undefined ? {} : { allowsMultiple }),
   }

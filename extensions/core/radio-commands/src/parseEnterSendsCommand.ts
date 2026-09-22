@@ -15,7 +15,7 @@ const SP_MATCH = /^(SP|S&P)$/i
 export function parseEnterSendsCommand(input: string): { on: boolean; running?: boolean } | null {
   const text = input.trim()
   const esm = ESM_MATCH.exec(text)
-  if (esm) return { on: esm[1]?.toUpperCase() !== 'OFF' }
+  if (esm) return { on: esm[1]?.toUpperCase() !== "OFF" }
   if (RUN_MATCH.test(text)) return { on: true, running: true }
   if (SP_MATCH.test(text)) return { on: true, running: false }
   return null

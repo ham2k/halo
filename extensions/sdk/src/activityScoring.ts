@@ -47,7 +47,7 @@ const DAY_IN_MILLIS = 1000 * 60 * 60 * 24
 /// instead of being a duplicate. Applied in the fixed order day → band → mode →
 /// ref, which is app-polo's order and is what decides WHICH notice a fresh
 /// contact gets when several axes changed at once.
-export type UniqueAxis = 'day' | 'band' | 'mode' | 'ref'
+export type UniqueAxis = "day" | "band" | "mode" | "ref"
 
 export interface ActivityScoringRules {
   /// Short program name, used as the tally label — 'POTA', 'WWFF'.
@@ -101,7 +101,7 @@ export interface ActivityScoringRules {
   /// tally reports that day alone. `'once'` — the count accrues across the
   /// whole operation (WWFF's 44 contacts may span days), so the day tally
   /// reports the running total. Defaults to `'daily'`.
-  activates?: 'daily' | 'once'
+  activates?: "daily" | "once"
 
   /// Singular/plural noun for one reference of this program's own kind —
   /// POTA's is 'park'/'parks', SOTA's 'summit'/'summits' — used in the
@@ -124,12 +124,8 @@ export interface ActivityScoringRules {
 /// Resolves a rule field that may be the activity's own translator function
 /// (see [ActivityScoringRules.refNoun]) or a plain string, falling back to
 /// this module's own generic wording when the activity declares neither.
-function resolveRuleText(
-  value: string | ((ctx: HookContext) => string) | undefined,
-  ctx: HookContext,
-  fallback: string,
-): string {
-  return typeof value === 'function' ? value(ctx) : (value ?? fallback)
+function resolveRuleText(value: string | ((ctx: HookContext) => string) | undefined, ctx: HookContext, fallback: string): string {
+  return typeof value === "function" ? value(ctx) : (value ?? fallback)
 }
 
 /// Everything the rules accumulate. A type alias, not an interface, so it stays
@@ -156,15 +152,13 @@ export type ActivityScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined
+  return typeof value === "string" && value.length > 0 ? value : undefined
 }
 
 /// Refs of one type carried by a QSO or an operation, in the order stored.
 function refsOfType(container: Record<string, JSONValue>, type: string): string[] {
   const refs = (container.refs as Record<string, JSONValue>[] | undefined) ?? []
-  return refs
-    .filter((r) => r && r.type === type && typeof r.ref === 'string' && r.ref.length > 0)
-    .map((r) => r.ref as string)
+  return refs.filter((r) => r && r.type === type && typeof r.ref === "string" && r.ref.length > 0).map((r) => r.ref as string)
 }
 
 // --- DUPE RECORDS ----------------------------------------------------------
@@ -174,7 +168,7 @@ function refsOfType(container: Record<string, JSONValue>, type: string): string[
 // test. Days are stored as a day NUMBER, not millis, so the field is short.
 
 function packContact(day: number, band: string, mode: string, refs: string[]): string {
-  return `${day}|${band}|${mode}|${[...refs].sort().join(',')}`
+  return `${day}|${band}|${mode}|${[...refs].sort().join(",")}`
 }
 
 interface Contact {
@@ -185,12 +179,12 @@ interface Contact {
 }
 
 function unpackContact(packed: string): Contact {
-  const [day, band, mode, refs] = packed.split('|')
+  const [day, band, mode, refs] = packed.split("|")
   return {
     day: Number(day),
     band,
     mode,
-    refs: refs ? refs.split(',') : [],
+    refs: refs ? refs.split(",") : [],
   }
 }
 
@@ -200,12 +194,12 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
   /// until it knows which references those are.
   function thresholdFor(activatedRefs: string[]): number {
     const rule = rules.qsosToActivate ?? 10
-    return typeof rule === 'function' ? rule(activatedRefs) : rule
+    return typeof rule === "function" ? rule(activatedRefs) : rule
   }
   const freshRefRescuesActivation = rules.freshRefRescuesActivation ?? true
   const tracksActivation = rules.tracksActivation ?? true
   const allowsMultiple = rules.allowsMultipleReferences ?? false
-  const activatesDaily = (rules.activates ?? 'daily') === 'daily'
+  const activatesDaily = (rules.activates ?? "daily") === "daily"
   const unique = new Set<UniqueAxis>(rules.uniquePer ?? [])
 
   /// The references this operation is activating.
@@ -242,59 +236,61 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
   /// contact carries no reference of its own — worked before, with nothing to
   /// report about it. The caller tells them apart by what it credited, which is
   /// what decides whether it rules on the worked-before axis at all.
-  function judge(priors: string[], now: Contact): 'duplicate' | UniqueAxis | undefined {
+  function judge(priors: string[], now: Contact): "duplicate" | UniqueAxis | undefined {
     if (priors.length === 0) return undefined
 
     let candidates = priors.map(unpackContact)
     let notice: UniqueAxis | undefined
 
-    if (unique.has('day')) {
+    if (unique.has("day")) {
       candidates = candidates.filter((c) => c.day === now.day)
-      if (candidates.length === 0) notice ??= 'day'
+      if (candidates.length === 0) notice ??= "day"
     }
-    if (unique.has('band')) {
+    if (unique.has("band")) {
       candidates = candidates.filter((c) => c.band === now.band)
-      if (candidates.length === 0) notice ??= 'band'
+      if (candidates.length === 0) notice ??= "band"
     }
-    if (unique.has('mode')) {
+    if (unique.has("mode")) {
       // Not `===`: a prior logged on `USB` and a contact spotted as `SSB` are
       // the same emission at two resolutions — see [modesMatchForDupe].
       candidates = candidates.filter((c) => modesMatchForDupe(c.mode, now.mode))
-      if (candidates.length === 0) notice ??= 'mode'
+      if (candidates.length === 0) notice ??= "mode"
     }
-    if (unique.has('ref')) {
+    if (unique.has("ref")) {
       // A prior stays a duplicate when it shares a hunted reference with this
       // contact, or when neither carries one at all.
-      candidates = candidates.filter(
-        (c) =>
-          (c.refs.length === 0 && now.refs.length === 0) ||
-          c.refs.some((r) => now.refs.includes(r)),
-      )
+      candidates = candidates.filter((c) => (c.refs.length === 0 && now.refs.length === 0) || c.refs.some((r) => now.refs.includes(r)))
       // Unlike the other axes, a fresh reference is only news when there IS
       // one — dropping every candidate because this contact has no reference
       // yet is not a new reference.
-      if (candidates.length === 0 && now.refs.length > 0) notice ??= 'ref'
+      if (candidates.length === 0 && now.refs.length > 0) notice ??= "ref"
     }
 
     if (notice) return notice
-    return candidates.length > 0 ? 'duplicate' : undefined
+    return candidates.length > 0 ? "duplicate" : undefined
   }
 
   const NOTICE_KEYS: Record<UniqueAxis, string> = {
-    day: 'newDay',
-    band: 'newBand',
-    mode: 'newMode',
-    ref: 'newRef',
+    day: "newDay",
+    band: "newBand",
+    mode: "newMode",
+    ref: "newRef",
   }
 
   return {
     startScoresheet(): ActivityScoresheet {
       return {
         workedByCall: {},
-        activatedRefs: {}, huntedRefs: {},
-        activatedQsos: 0, huntedQsos: 0, duplicates: 0,
-        dayActivatedRefs: {}, dayHuntedRefs: {},
-        dayActivatedQsos: 0, dayHuntedQsos: 0, dayDuplicates: 0,
+        activatedRefs: {},
+        huntedRefs: {},
+        activatedQsos: 0,
+        huntedQsos: 0,
+        duplicates: 0,
+        dayActivatedRefs: {},
+        dayHuntedRefs: {},
+        dayActivatedQsos: 0,
+        dayHuntedQsos: 0,
+        dayDuplicates: 0,
       }
     },
 
@@ -330,31 +326,31 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
       //
       // Only `allowsMultipleReferences` programs can reach a count above one;
       // elsewhere `huntedRefsOf` has already sliced to at most one reference.
-      const activationValue = activationRefs.length > 0 ? (huntedRefs.length || 1) : 0
+      const activationValue = activationRefs.length > 0 ? huntedRefs.length || 1 : 0
       // The hunting side is per-reference too: working a station in three parks
       // earns three park credits.
       const huntingValue = huntedRefs.length
 
       const day = Math.floor(Number(qso.startAtMillis ?? 0) / DAY_IN_MILLIS)
-      const band = str(qso.band) ?? ''
-      const mode = str(qso.mode) ?? ''
+      const band = str(qso.band) ?? ""
+      const mode = str(qso.mode) ?? ""
       const now: Contact = { day, band, mode, refs: huntedRefs }
 
       const priors = sheet.workedByCall[call] ?? []
       const verdict = judge(priors, now)
-      const isDupe = verdict === 'duplicate'
+      const isDupe = verdict === "duplicate"
 
       // A contact that is only fresh because it hands over a reference this
       // station hasn't given before. It earns the reference-to-reference
       // credit, but for MOTA and SiOTA it does NOT advance the activation —
       // the operator already worked this station on this band and day.
-      const freshRefOnly = verdict === 'ref' && !freshRefRescuesActivation
+      const freshRefOnly = verdict === "ref" && !freshRefRescuesActivation
       const activationCredit = freshRefOnly ? 0 : activationValue
 
       const score: QsoScoreVerdict = { value: isDupe ? 0 : activationCredit + huntingValue }
       if (isDupe) {
         score.dupe = true
-        score.alerts = ['duplicate']
+        score.alerts = ["duplicate"]
       } else if (verdict) {
         score.notices = [NOTICE_KEYS[verdict]]
       } else if (priors.length > 0 && score.value > 0 && freshRefRescuesActivation) {
@@ -420,7 +416,7 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
       // never reach the threshold it is shown against. This is app-polo's
       // choice of accumulator per activity, expressed as a rule rather than as
       // which function got registered.
-      const perDay = scope === 'day' && activatesDaily
+      const perDay = scope === "day" && activatesDaily
 
       const tallies: Record<string, ScoreTally> = {}
       const activatedRefs = perDay ? scoresheet.dayActivatedRefs : scoresheet.activatedRefs
@@ -461,7 +457,7 @@ function summarizeActivation(
   qsos: number,
   duplicates: number,
   huntedQsos: number,
-  scope: 'day' | 'operation',
+  scope: "day" | "operation",
   qsosToActivate: number,
   rules: ActivityScoringRules,
   t: Translator,
@@ -476,7 +472,7 @@ function summarizeActivation(
   // stop being countable at a glance and become "✓ x 8".
   let summary: string
   if (!activated) summary = `${fmtInteger(lowest)}/${fmtInteger(qsosToActivate)}`
-  else if (refKeys.length < 6) summary = `${fmtInteger(lowest)} ${'✓'.repeat(refKeys.length)}`
+  else if (refKeys.length < 6) summary = `${fmtInteger(lowest)} ${"✓".repeat(refKeys.length)}`
   else summary = `${fmtInteger(lowest)} ✓ x ${fmtInteger(refKeys.length)}`
 
   // One line per reference, even for a single park: the operation-info
@@ -492,29 +488,23 @@ function summarizeActivation(
   // "POTA: 47 activation QSOs, 2 P2P QSOs" — singular/plural by explicit
   // ternary, not i18next's `count` pluralization, which needs
   // Intl.PluralRules, absent in QuickJS (core/scoring says the same).
-  const parts = [
-    qsos === 1 ? t('activationQsoOne') : t('activationQsoMany', { formatted: fmtInteger(qsos) }),
-  ]
+  const parts = [qsos === 1 ? t("activationQsoOne") : t("activationQsoMany", { formatted: fmtInteger(qsos) })]
   if (huntedQsos > 0) {
-    const p2p = resolveRuleText(rules.p2pLabel, ctx, t('ref2ref'))
-    parts.push(
-      huntedQsos === 1
-        ? t('p2pQsoOne', { label: p2p })
-        : t('p2pQsoMany', { label: p2p, formatted: fmtInteger(huntedQsos) }),
-    )
+    const p2p = resolveRuleText(rules.p2pLabel, ctx, t("ref2ref"))
+    parts.push(huntedQsos === 1 ? t("p2pQsoOne", { label: p2p }) : t("p2pQsoMany", { label: p2p, formatted: fmtInteger(huntedQsos) }))
   }
 
   return {
-    key: 'activation',
+    key: "activation",
     for: scope,
     icon: rules.icon,
     total: qsos,
     activated,
     activatedRefs,
     duplicates,
-    label: `${rules.label}: ${parts.join(', ')}`,
+    label: `${rules.label}: ${parts.join(", ")}`,
     summary,
-    longSummary: detail.join('\n'),
+    longSummary: detail.join("\n"),
   }
 }
 
@@ -530,7 +520,7 @@ function summarizeActivation(
 function summarizeHunting(
   huntedRefs: Record<string, number>,
   qsos: number,
-  scope: 'day' | 'operation',
+  scope: "day" | "operation",
   rules: ActivityScoringRules,
   t: Translator,
   ctx: HookContext,
@@ -539,16 +529,14 @@ function summarizeHunting(
   // The noun ("park"/"parks") is the activity's own translated vocabulary;
   // the sentence wrapping it ("N ___ hunted") is this module's own, so it
   // stays translatable even when an activity supplies no noun of its own.
-  const noun = count === 1
-    ? resolveRuleText(rules.refNoun, ctx, t('reference'))
-    : resolveRuleText(rules.refNounPlural, ctx, t('referencesPlural'))
+  const noun = count === 1 ? resolveRuleText(rules.refNoun, ctx, t("reference")) : resolveRuleText(rules.refNounPlural, ctx, t("referencesPlural"))
   return {
-    key: 'hunting',
+    key: "hunting",
     for: scope,
     icon: rules.icon,
     total: count,
     huntedRefs,
     huntedQsos: qsos,
-    label: `${rules.label}: ${count === 1 ? t('huntedOne', { noun }) : t('huntedMany', { noun, formatted: fmtInteger(count) })}`,
+    label: `${rules.label}: ${count === 1 ? t("huntedOne", { noun }) : t("huntedMany", { noun, formatted: fmtInteger(count) })}`,
   }
 }

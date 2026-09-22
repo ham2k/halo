@@ -153,25 +153,10 @@
     "WOO": "Woodford"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "EXPEDITION"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "MIXED"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE"],
+    "station": ["FIXED", "MOBILE", "EXPEDITION"],
+    "mode": ["CW", "PHONE", "MIXED"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

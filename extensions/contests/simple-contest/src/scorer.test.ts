@@ -13,9 +13,9 @@ import { SimpleContestScorer } from "./scorer.ts"
 import type { JSONValue } from "@ham2k/extension-sdk"
 
 const ctx = { online: false } as never
-const op = { uuid: 'op-1' }
+const op = { uuid: "op-1" }
 
-function qso(call: string, band = '20m', mode = 'SSB'): Record<string, JSONValue> {
+function qso(call: string, band = "20m", mode = "SSB"): Record<string, JSONValue> {
   return { their: { call }, band, mode }
 }
 
@@ -31,51 +31,51 @@ function run(qsos: Record<string, JSONValue>[]) {
   return { sheet, scores }
 }
 
-test('a contact scores one point', () => {
-  const { scores, sheet } = run([qso('W1AW')])
+test("a contact scores one point", () => {
+  const { scores, sheet } = run([qso("W1AW")])
   assert.equal(scores[0].value, 1)
   assert.equal(sheet.points, 1)
 })
 
-test('the same call on the same band and mode is a dupe worth nothing', () => {
-  const { scores, sheet } = run([qso('W1AW'), qso('W1AW')])
+test("the same call on the same band and mode is a dupe worth nothing", () => {
+  const { scores, sheet } = run([qso("W1AW"), qso("W1AW")])
   assert.equal(scores[1].value, 0)
   assert.equal(scores[1].dupe, true)
-  assert.deepEqual(scores[1].alerts, ['duplicate'])
+  assert.deepEqual(scores[1].alerts, ["duplicate"])
   // The dupe must not inflate the score the operator reports.
   assert.equal(sheet.points, 1)
 })
 
-test('the same call on a new band still counts, and says so', () => {
-  const { scores, sheet } = run([qso('W1AW', '20m'), qso('W1AW', '40m')])
+test("the same call on a new band still counts, and says so", () => {
+  const { scores, sheet } = run([qso("W1AW", "20m"), qso("W1AW", "40m")])
   assert.equal(scores[1].value, 1)
   assert.equal(scores[1].dupe, undefined)
-  assert.ok(scores[1].notices?.includes('newBand'))
+  assert.ok(scores[1].notices?.includes("newBand"))
   assert.equal(sheet.points, 2)
 })
 
-test('the same call on a new mode still counts, and says so', () => {
-  const { scores } = run([qso('W1AW', '20m', 'SSB'), qso('W1AW', '20m', 'CW')])
+test("the same call on a new mode still counts, and says so", () => {
+  const { scores } = run([qso("W1AW", "20m", "SSB"), qso("W1AW", "20m", "CW")])
   assert.equal(scores[1].value, 1)
-  assert.ok(scores[1].notices?.includes('newMode'))
+  assert.ok(scores[1].notices?.includes("newMode"))
 })
 
-test('different calls never collide', () => {
-  const { sheet } = run([qso('W1AW'), qso('K2ABC'), qso('N3XYZ')])
+test("different calls never collide", () => {
+  const { sheet } = run([qso("W1AW"), qso("K2ABC"), qso("N3XYZ")])
   assert.equal(sheet.points, 3)
   assert.equal(sheet.qsos, 3)
 })
 
-test('a QSO with no callsign is ignored rather than counted', () => {
-  const { scores, sheet } = run([{ band: '20m', mode: 'SSB', their: {} }])
+test("a QSO with no callsign is ignored rather than counted", () => {
+  const { scores, sheet } = run([{ band: "20m", mode: "SSB", their: {} }])
   assert.equal(scores[0].value, 0)
   assert.equal(sheet.qsos, 0)
 })
 
-test('a new day resets the day counters but not dupe detection', () => {
+test("a new day resets the day counters but not dupe detection", () => {
   let sheet = SimpleContestScorer.startScoresheet({ operation: op }, ctx)
-  sheet = SimpleContestScorer.scoreQso({ scoresheet: sheet, qso: qso('W1AW'), operation: op, isNewDay: false }, ctx).scoresheet
-  const next = SimpleContestScorer.scoreQso({ scoresheet: sheet, qso: qso('W1AW'), operation: op, isNewDay: true }, ctx)
+  sheet = SimpleContestScorer.scoreQso({ scoresheet: sheet, qso: qso("W1AW"), operation: op, isNewDay: false }, ctx).scoresheet
+  const next = SimpleContestScorer.scoreQso({ scoresheet: sheet, qso: qso("W1AW"), operation: op, isNewDay: true }, ctx)
 
   // Day totals restart...
   assert.equal(next.scoresheet.dayQsos, 1)
@@ -85,12 +85,12 @@ test('a new day resets the day counters but not dupe detection', () => {
   assert.equal(next.scoresheet.points, 1)
 })
 
-test('summaries report points for the requested scope', () => {
-  const { sheet } = run([qso('W1AW'), qso('K2ABC')])
-  const operation = SimpleContestScorer.summarizeScore({ scoresheet: sheet, operation: op, scope: 'operation' }, ctx)
+test("summaries report points for the requested scope", () => {
+  const { sheet } = run([qso("W1AW"), qso("K2ABC")])
+  const operation = SimpleContestScorer.summarizeScore({ scoresheet: sheet, operation: op, scope: "operation" }, ctx)
   assert.equal(operation.contest.total, 2)
-  assert.equal(operation.contest.for, 'operation')
+  assert.equal(operation.contest.for, "operation")
 
-  const day = SimpleContestScorer.summarizeScore({ scoresheet: sheet, operation: op, scope: 'day' }, ctx)
-  assert.equal(day.for === undefined ? day.contest.for : day.contest.for, 'day')
+  const day = SimpleContestScorer.summarizeScore({ scoresheet: sheet, operation: op, scope: "day" }, ctx)
+  assert.equal(day.for === undefined ? day.contest.for : day.contest.for, "day")
 })

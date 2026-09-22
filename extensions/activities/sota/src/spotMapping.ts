@@ -40,12 +40,12 @@ export interface SOTAApiSpot {
 /// same glyph scheme app-polo uses for SOTA spot points. Summits only ever
 /// score 1-10, matching that block, so anything outside it isn't a real value.
 export function summitGlyphForPoints(points: number | undefined): string {
-  return points && points >= 1 && points <= 10 ? String.fromCodePoint(10121 + points) : ''
+  return points && points >= 1 && points <= 10 ? String.fromCodePoint(10121 + points) : ""
 }
 
 function spotType(spot: SOTAApiSpot): string {
   // Most spotters never set the field, and an unset type is a normal spot.
-  return (spot.type ?? '').toUpperCase() || 'NORMAL'
+  return (spot.type ?? "").toUpperCase() || "NORMAL"
 }
 
 /// api-db2 sends the `Z`; the fallback covers the naive timestamp the field
@@ -54,7 +54,7 @@ function spotType(spot: SOTAApiSpot): string {
 /// ranks a naive row hours off a UTC one, which is enough to put an older
 /// NORMAL above the QRT that followed it.
 function timeOf(spot: SOTAApiSpot): number {
-  return Date.parse(spot.timeStamp.endsWith('Z') ? spot.timeStamp : spot.timeStamp + 'Z')
+  return Date.parse(spot.timeStamp.endsWith("Z") ? spot.timeStamp : spot.timeStamp + "Z")
 }
 
 /// The newest spot per activator, mapped for the spots board.
@@ -74,50 +74,50 @@ function timeOf(spot: SOTAApiSpot): number {
 /// row beating the QRT that followed it. `id` breaks ties, because two spots
 /// sharing a timestamp would otherwise fall back to that same feed order.
 export function spotsFromSOTAApi(apiSpots: SOTAApiSpot[]): Spot[] {
-  const newestFirst = apiSpots
-    .filter((spot) => spotType(spot) !== 'TEST')
-    .sort((a, b) => timeOf(b) - timeOf(a) || b.id - a.id)
+  const newestFirst = apiSpots.filter((spot) => spotType(spot) !== "TEST").sort((a, b) => timeOf(b) - timeOf(a) || b.id - a.id)
 
   const newestPerCall: SOTAApiSpot[] = []
   const includedCalls = new Set<string>()
   for (const spot of newestFirst) {
-    const call = (spot.activatorCallsign ?? '').toUpperCase()
+    const call = (spot.activatorCallsign ?? "").toUpperCase()
     if (call && !includedCalls.has(call)) {
       includedCalls.add(call)
       newestPerCall.push(spot)
     }
   }
 
-  return newestPerCall
-    // An allowlist, not `!== 'QRT'`: `spotType` already reads an unset type
-    // as NORMAL, so the two agree on today's payload, but a type SOTA adds
-    // later — a soft-delete marker, say — would render as a live spot under
-    // a denylist. Dropping what we don't understand claims less.
-    .filter((spot) => spotType(spot) === 'NORMAL')
-    .map((spot) => {
-      const freq = Number(spot.frequency) * 1000 // MHz -> kHz
-      const ref = (spot.summitCode ?? '').toUpperCase()
-      const glyph = summitGlyphForPoints(spot.points)
-      const summit = [spot.summitName, spot.AltM ? `${spot.AltM}m` : ''].filter((x) => x).join(', ')
-      return {
-        their: { call: spot.activatorCallsign },
-        freq: freq || undefined,
-        band: freq ? bandForFrequency(freq) : undefined,
-        mode: spot.mode ? spot.mode.toUpperCase() : undefined,
-        // 'sota' is index.ts's HUNTING_TYPE; it can't be imported from there
-        // without a cycle, and it's the extension key, so it doesn't drift.
-        refs: [{ ref, type: 'sota' }],
-        icon: 'image-filter-hdr',
-        spot: {
-          timeInMillis: timeOf(spot),
-          source: 'sota',
-          label: `${glyph ? glyph + ' ' : ''}${ref}: ${summit}`,
-          sourceInfo: {
-            id: spot.id,
-            comments: spot.comments ?? '',
-            spotter: spot.callsign,
+  return (
+    newestPerCall
+      // An allowlist, not `!== 'QRT'`: `spotType` already reads an unset type
+      // as NORMAL, so the two agree on today's payload, but a type SOTA adds
+      // later — a soft-delete marker, say — would render as a live spot under
+      // a denylist. Dropping what we don't understand claims less.
+      .filter((spot) => spotType(spot) === "NORMAL")
+      .map((spot) => {
+        const freq = Number(spot.frequency) * 1000 // MHz -> kHz
+        const ref = (spot.summitCode ?? "").toUpperCase()
+        const glyph = summitGlyphForPoints(spot.points)
+        const summit = [spot.summitName, spot.AltM ? `${spot.AltM}m` : ""].filter((x) => x).join(", ")
+        return {
+          their: { call: spot.activatorCallsign },
+          freq: freq || undefined,
+          band: freq ? bandForFrequency(freq) : undefined,
+          mode: spot.mode ? spot.mode.toUpperCase() : undefined,
+          // 'sota' is index.ts's HUNTING_TYPE; it can't be imported from there
+          // without a cycle, and it's the extension key, so it doesn't drift.
+          refs: [{ ref, type: "sota" }],
+          icon: "image-filter-hdr",
+          spot: {
+            timeInMillis: timeOf(spot),
+            source: "sota",
+            label: `${glyph ? glyph + " " : ""}${ref}: ${summit}`,
+            sourceInfo: {
+              id: spot.id,
+              comments: spot.comments ?? "",
+              spotter: spot.callsign,
+            },
           },
-        },
-      }
-    })
+        }
+      })
+  )
 }

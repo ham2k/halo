@@ -29,16 +29,11 @@ import type { JSONValue } from "@ham2k/extension-sdk"
 
 import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
 
-import {
-  CANADIAN_PROVINCES,
-  DISTRICT_OF_COLUMBIA,
-  MARYLAND_AND_DC,
-  US_STATES,
-} from "./locations.ts"
+import { CANADIAN_PROVINCES, DISTRICT_OF_COLUMBIA, MARYLAND_AND_DC, US_STATES } from "./locations.ts"
 import { isInParty, type QsoParty, stateForCounty } from "./parties.ts"
 
 function str(value: unknown): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// A single resolved location — one side of a contact may have two of these
@@ -80,14 +75,14 @@ export interface Standing {
 /// state multiplier it is. `naqp/exchange.ts` documents the same correction
 /// against the same bundled country file; `KL7` is kept alongside it because a
 /// synced or imported record may carry what polo wrote.
-const STATE_ENTITIES: Record<string, string> = { KL: 'AK', KL7: 'AK', KH6: 'HI' }
+const STATE_ENTITIES: Record<string, string> = { KL: "AK", KL7: "AK", KH6: "HI" }
 
 /// The separators a county line may be typed with. A comma is accepted because
 /// the operator may well reach for one; the canonical form written back out is
 /// the slash, which is what the sponsors' Cabrillo samples use.
 const SEPARATORS = /[/,]/
 
-export const COUNTY_LINE_SEPARATOR = '/'
+export const COUNTY_LINE_SEPARATOR = "/"
 
 /// `ORDES/ORJEF` → `['ORDES', 'ORJEF']`, and 7QP's shorthand `ORDES/JEF` with
 /// it: where the first code carries a state prefix, a later short code inherits
@@ -95,7 +90,10 @@ export const COUNTY_LINE_SEPARATOR = '/'
 /// party-based is that only the multi-state parties have codes long enough for
 /// the shorthand to be unambiguous.
 export function splitLocations(text: string | undefined): string[] {
-  const codes = (text ?? '').split(SEPARATORS).map((code) => code.trim().toUpperCase()).filter((code) => code)
+  const codes = (text ?? "")
+    .split(SEPARATORS)
+    .map((code) => code.trim().toUpperCase())
+    .filter((code) => code)
   if (codes.length > 1 && codes[0].length > 4) {
     const state = codes[0].slice(0, 2)
     return codes.map((code) => (code.length < 4 ? state + code : code))
@@ -118,8 +116,8 @@ export function entityPrefixOf(qso: Record<string, unknown> | undefined): string
   // this a DX station whose exchange was never typed resolves to NOTHING —
   // scored `missingExchange` at zero, with no DX multiplier in the twenty
   // parties that count them, and an Alaskan station never reaching `AK`.
-  const call = typeof their.call === 'string' ? their.call : ''
-  return call ? (entityPrefixForCall(call) ?? '').toUpperCase() : ''
+  const call = typeof their.call === "string" ? their.call : ""
+  return call ? (entityPrefixForCall(call) ?? "").toUpperCase() : ""
 }
 
 /// The state the other station is in, as looked up rather than sent — the
@@ -141,13 +139,9 @@ export function guessedStateOf(qso: Record<string, unknown> | undefined): string
 /// Takes no `standing`: which side each end is on decides what a location
 /// MULTIPLIES (`multCodeFor`), never what it resolves to — a county stays the
 /// county that was sent, in the log, the checklist and the Cabrillo alike.
-export function normalizeLocation(
-  party: QsoParty,
-  code: string,
-  { entityPrefix = '' }: { entityPrefix?: string } = {},
-): string {
+export function normalizeLocation(party: QsoParty, code: string, { entityPrefix = "" }: { entityPrefix?: string } = {}): string {
   let location = code.trim().toUpperCase()
-  if (!location) return ''
+  if (!location) return ""
 
   // A county is a county. Where a party does not count counties as in-party
   // multipliers it is the MULTIPLIER that becomes the state (`multCodeFor`) —
@@ -161,11 +155,11 @@ export function normalizeLocation(
   // in its first two characters — a neighbouring party's county, or a typo.
   if (location.length > 4) location = location.slice(0, 2)
 
-  if (location === 'DC' || location === 'MD') {
-    return party.options.dcCountsAsMaryland ? 'MD' : location
+  if (location === "DC" || location === "MD") {
+    return party.options.dcCountsAsMaryland ? "MD" : location
   }
   if (US_STATES[location]) {
-    if (party.options.alaskaAndHawaiiAreDX && (location === 'AK' || location === 'HI')) return 'DX'
+    if (party.options.alaskaAndHawaiiAreDX && (location === "AK" || location === "HI")) return "DX"
     return location
   }
   if (CANADIAN_PROVINCES[location]) return location
@@ -174,15 +168,15 @@ export function normalizeLocation(
   // station with no entity at all resolves to nothing rather than to `DX` —
   // an unlookup-able callsign is a QSO we cannot place, not a DX contact.
   const state = STATE_ENTITIES[entityPrefix]
-  if (state) return party.options.alaskaAndHawaiiAreDX ? 'DX' : state
+  if (state) return party.options.alaskaAndHawaiiAreDX ? "DX" : state
   // A station in the party's OWN country sends a county or a state, so an
   // unrecognized value from one is a typo and resolves to nothing — which the
   // scorer reports as a bad exchange, with the QSO still in front of the
   // operator to fix. polo answers `DX` here, which scores the contact, claims a
   // `DX:K` multiplier in the twenty parties that count entities separately, and
   // lists "K" among the DX entities worked.
-  if (entityPrefix === 'K' || entityPrefix === 'VE') return ''
-  return entityPrefix ? 'DX' : ''
+  if (entityPrefix === "K" || entityPrefix === "VE") return ""
+  return entityPrefix ? "DX" : ""
 }
 
 /// The multiplier key a resolved location contributes.
@@ -191,25 +185,24 @@ function multCodeFor(party: QsoParty, code: string, entityPrefix: string, standi
   // NEQP writes `countiesAreMultForInState: false`, while ACQP, CPQP and DEQP
   // write `countiesCountForInState: false` — polo's own NOTES gives the two
   // options the same description, so they are one rule under two spellings.
-  const countiesMultiplyInParty = party.options.countiesAreMultForInState
-    && party.options.countiesCountForInState
+  const countiesMultiplyInParty = party.options.countiesAreMultForInState && party.options.countiesCountForInState
   if (!countiesMultiplyInParty && standing?.weAreInParty && standing?.theyAreInParty && isInParty(party, code)) {
     return stateForCounty(party, code)
   }
-  if (code === 'DX' && party.options.dxEntityIsMultiplier) return `DX:${entityPrefix}`
+  if (code === "DX" && party.options.dxEntityIsMultiplier) return `DX:${entityPrefix}`
   return code
 }
 
 /// What to call a location out loud.
-export function nameForLocation(party: QsoParty, code: string, entityPrefix = ''): string {
+export function nameForLocation(party: QsoParty, code: string, entityPrefix = ""): string {
   const location = code.toUpperCase()
   const county = party.counties[location] ?? party.otherCounties[location]
   if (county) return county
-  if (location === 'DC') return party.options.dcCountsAsMaryland ? MARYLAND_AND_DC : DISTRICT_OF_COLUMBIA
-  if (location === 'MD') return party.options.dcCountsAsMaryland ? MARYLAND_AND_DC : US_STATES.MD
+  if (location === "DC") return party.options.dcCountsAsMaryland ? MARYLAND_AND_DC : DISTRICT_OF_COLUMBIA
+  if (location === "MD") return party.options.dcCountsAsMaryland ? MARYLAND_AND_DC : US_STATES.MD
   if (US_STATES[location]) return US_STATES[location]
   if (CANADIAN_PROVINCES[location]) return CANADIAN_PROVINCES[location]
-  if (location === 'DX') return party.options.dxEntityIsMultiplier && entityPrefix ? `DX: ${entityPrefix}` : 'DX'
+  if (location === "DX") return party.options.dxEntityIsMultiplier && entityPrefix ? `DX: ${entityPrefix}` : "DX"
   return location
 }
 
@@ -217,7 +210,7 @@ export function nameForLocation(party: QsoParty, code: string, entityPrefix = ''
 export function parseLocations(
   party: QsoParty,
   text: string | undefined,
-  { entityPrefix = '', standing }: { entityPrefix?: string; standing?: Standing } = {},
+  { entityPrefix = "", standing }: { entityPrefix?: string; standing?: Standing } = {},
 ): PartyLocation[] {
   const seen = new Set<string>()
   const locations: PartyLocation[] = []
@@ -230,7 +223,7 @@ export function parseLocations(
       multCode: multCodeFor(party, code, entityPrefix, standing),
       name: nameForLocation(party, code, entityPrefix),
       inParty: isInParty(party, code),
-      sent: code === 'DX' && party.options.dxLocationIsPrefix && entityPrefix ? entityPrefix : code,
+      sent: code === "DX" && party.options.dxLocationIsPrefix && entityPrefix ? entityPrefix : code,
     })
   }
   return locations
@@ -259,8 +252,8 @@ export function defaultTheirLocation(party: QsoParty, qso: Record<string, JSONVa
   // (`normalizeLocation` draws the same line). Answering `DX` here would slip
   // past the scorer, which normalizes it back to nothing without an entity,
   // and be offered as the suggestion in an empty entry row.
-  if (!entityPrefix) return ''
-  if (entityPrefix === 'K' || entityPrefix === 'VE') {
+  if (!entityPrefix) return ""
+  if (entityPrefix === "K" || entityPrefix === "VE") {
     const guessed = guessedStateOf(qso as Record<string, unknown>)
     // A state CODE, and only that. `normalizeLocation` reads anything longer
     // than four characters as a county carrying its state in its first two, so
@@ -269,7 +262,7 @@ export function defaultTheirLocation(party: QsoParty, qso: Record<string, JSONVa
     // with nothing looking wrong anywhere. Every US state, DC and every
     // Canadian province is two characters; a longer answer has told us nothing
     // we can file.
-    if (guessed.length !== 2 || !normalizeLocation(party, guessed, { entityPrefix })) return ''
+    if (guessed.length !== 2 || !normalizeLocation(party, guessed, { entityPrefix })) return ""
     return guessed
   }
   // Alaska and Hawaii are US STATES that do not send `K`, and the scorer
@@ -278,14 +271,14 @@ export function defaultTheirLocation(party: QsoParty, qso: Record<string, JSONVa
   // as DX, which none of the shipped ones does.
   const state = stateForEntity(entityPrefix)
   if (state && !party.options.alaskaAndHawaiiAreDX) return state
-  return party.options.dxLocationIsPrefix && entityPrefix ? entityPrefix : 'DX'
+  return party.options.dxLocationIsPrefix && entityPrefix ? entityPrefix : "DX"
 }
 
 /// The state an entity's stations are in, for the two that are US states but
 /// do not send `K` — read by the export so its fallback cannot disagree with
 /// the scorer about an Alaskan or Hawaiian contact.
 export function stateForEntity(entityPrefix: string): string {
-  return STATE_ENTITIES[entityPrefix] ?? ''
+  return STATE_ENTITIES[entityPrefix] ?? ""
 }
 
 /// Whether every location given is inside the party — the test both sides'

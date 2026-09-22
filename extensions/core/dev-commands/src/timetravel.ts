@@ -9,10 +9,7 @@
 /// What a DEVTT input asks for. `error` is a recognized command with an
 /// unusable argument — the field must SAY so rather than quietly treating
 /// "DEVTT +3hours" as a callsign.
-export type TimeTravelRequest =
-  | { kind: 'reset' }
-  | { kind: 'travel'; deltaMillis: number; speed: number | null }
-  | { kind: 'error'; error: string }
+export type TimeTravelRequest = { kind: "reset" } | { kind: "travel"; deltaMillis: number; speed: number | null } | { kind: "error"; error: string }
 
 const COMMAND_MATCH = /^DEV(?:TT|TIMETRAVEL)(?:\s+(.*))?$/i
 
@@ -52,8 +49,8 @@ export function parseTimeTravelCommand(input: string): TimeTravelRequest | null 
   const match = COMMAND_MATCH.exec(input.trim())
   if (!match) return null
 
-  const args = (match[1] ?? '').trim()
-  if (!args) return { kind: 'reset' }
+  const args = (match[1] ?? "").trim()
+  if (!args) return { kind: "reset" }
 
   let deltaMillis = 0
   let speed: number | null = null
@@ -62,9 +59,9 @@ export function parseTimeTravelCommand(input: string): TimeTravelRequest | null 
     const delta = DELTA_TOKEN.exec(token)
     if (delta) {
       const [, sign, amount, unit] = delta
-      deltaMillis += (sign === '-' ? -1 : 1) * Number(amount) * UNIT_MILLIS[unit]
+      deltaMillis += (sign === "-" ? -1 : 1) * Number(amount) * UNIT_MILLIS[unit]
       if (Math.abs(deltaMillis) > MAX_DELTA_MILLIS) {
-        return { kind: 'error', error: 'DEVTT: that is further than a century — the clock stops there' }
+        return { kind: "error", error: "DEVTT: that is further than a century — the clock stops there" }
       }
       continue
     }
@@ -75,17 +72,17 @@ export function parseTimeTravelCommand(input: string): TimeTravelRequest | null 
       // A stopped or reversed clock isn't a slow one: every elapsed-time label,
       // sequence number and staleness check in the app assumes time moves
       // forward, so this is refused rather than passed on to break them.
-      if (!(value > 0)) return { kind: 'error', error: `DEVTT: ${token} would stop the clock` }
+      if (!(value > 0)) return { kind: "error", error: `DEVTT: ${token} would stop the clock` }
       // Matching AppClock.maxSpeed. Refused here too so the message names the
       // limit instead of the app reporting a bare rejection.
-      if (value > MAX_SPEED) return { kind: 'error', error: `DEVTT: ${token} is faster than ${MAX_SPEED}x` }
-      if (speed !== null) return { kind: 'error', error: 'DEVTT: only one speed at a time' }
+      if (value > MAX_SPEED) return { kind: "error", error: `DEVTT: ${token} is faster than ${MAX_SPEED}x` }
+      if (speed !== null) return { kind: "error", error: "DEVTT: only one speed at a time" }
       speed = value
       continue
     }
 
     return {
-      kind: 'error',
+      kind: "error",
       error: `DEVTT: "${token}" is neither an offset (+3h, -1d) nor a speed (2x)`,
     }
   }
@@ -93,28 +90,28 @@ export function parseTimeTravelCommand(input: string): TimeTravelRequest | null 
   // Every token parsed, but none of them said anything — only reachable via a
   // zero offset like `+0h`, which would otherwise read as a silent reset.
   if (deltaMillis === 0 && speed === null) {
-    return { kind: 'error', error: 'DEVTT: that changes nothing — bare DEVTT returns to real time' }
+    return { kind: "error", error: "DEVTT: that changes nothing — bare DEVTT returns to real time" }
   }
 
-  return { kind: 'travel', deltaMillis, speed }
+  return { kind: "travel", deltaMillis, speed }
 }
 
 /// The question the call field asks before running it, e.g.
 /// `Jump 3h forward and run at 2x?`. Developer-facing, so plain English with no
 /// i18n catalog — like the rest of dev-commands.
 export function describeTimeTravel(request: TimeTravelRequest): string {
-  if (request.kind === 'reset') return 'Return to real time?'
-  if (request.kind === 'error') return request.error
+  if (request.kind === "reset") return "Return to real time?"
+  if (request.kind === "error") return request.error
 
   const clauses: string[] = []
   if (request.deltaMillis !== 0) {
-    const direction = request.deltaMillis < 0 ? 'back' : 'forward'
+    const direction = request.deltaMillis < 0 ? "back" : "forward"
     clauses.push(`Jump ${formatMillis(Math.abs(request.deltaMillis))} ${direction}`)
   }
   if (request.speed !== null) {
-    clauses.push(`${clauses.length ? 'and run' : 'Run'} at ${request.speed}x`)
+    clauses.push(`${clauses.length ? "and run" : "Run"} at ${request.speed}x`)
   }
-  return `${clauses.join(' ')}?`
+  return `${clauses.join(" ")}?`
 }
 
 /// The largest two whole units of a positive duration, e.g. `3d 2h`, `90m` as
@@ -122,7 +119,12 @@ export function describeTimeTravel(request: TimeTravelRequest): string {
 function formatMillis(millis: number): string {
   const parts: string[] = []
   let rest = millis
-  for (const [unit, size] of [['d', UNIT_MILLIS.D], ['h', UNIT_MILLIS.H], ['m', UNIT_MILLIS.M], ['s', UNIT_MILLIS.S]] as [string, number][]) {
+  for (const [unit, size] of [
+    ["d", UNIT_MILLIS.D],
+    ["h", UNIT_MILLIS.H],
+    ["m", UNIT_MILLIS.M],
+    ["s", UNIT_MILLIS.S],
+  ] as [string, number][]) {
     const whole = Math.floor(rest / size)
     rest -= whole * size
     if (whole === 0 && parts.length === 0) continue
@@ -130,5 +132,5 @@ function formatMillis(millis: number): string {
     parts.push(`${whole}${unit}`)
     if (parts.length === 2) break
   }
-  return parts.length ? parts.join(' ') : '0s'
+  return parts.length ? parts.join(" ") : "0s"
 }

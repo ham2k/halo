@@ -134,22 +134,10 @@
     "YORK": "York"
   },
   "entryClasses": {
-    "operator": [
-      "MULTI-ONE"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "PORTABLE"
-    ],
-    "mode": [
-      "DIGITAL"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["MULTI-ONE"],
+    "station": ["FIXED", "MOBILE", "PORTABLE"],
+    "mode": ["DIGITAL"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

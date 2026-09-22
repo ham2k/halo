@@ -43,14 +43,14 @@ function roundHalfExpand(absolute: number, digits: number): string {
   const source = String(absolute)
   // Exponential form (very small values); rare here and not worth reproducing
   // by hand, so defer to the engine rather than get it subtly wrong.
-  if (source.includes('e') || source.includes('E')) return absolute.toFixed(digits)
+  if (source.includes("e") || source.includes("E")) return absolute.toFixed(digits)
 
-  const dot = source.indexOf('.')
+  const dot = source.indexOf(".")
   const whole = dot < 0 ? source : source.slice(0, dot)
-  const fraction = dot < 0 ? '' : source.slice(dot + 1)
+  const fraction = dot < 0 ? "" : source.slice(dot + 1)
 
   if (fraction.length <= digits) {
-    const padded = fraction.padEnd(digits, '0')
+    const padded = fraction.padEnd(digits, "0")
     return digits === 0 ? whole : `${whole}.${padded}`
   }
 
@@ -58,26 +58,26 @@ function roundHalfExpand(absolute: number, digits: number): string {
   if (fraction.charCodeAt(digits) - 48 >= 5) {
     // Increment the kept digits as one decimal integer, carrying as needed —
     // 9.9995 to 3 digits has to become 10.000, not 9.9990 + 1.
-    const chars = kept.split('')
+    const chars = kept.split("")
     let i = chars.length - 1
     for (;;) {
       if (i < 0) {
-        chars.unshift('1')
+        chars.unshift("1")
         break
       }
-      if (chars[i] === '9') {
-        chars[i] = '0'
+      if (chars[i] === "9") {
+        chars[i] = "0"
         i--
       } else {
         chars[i] = String(Number(chars[i]) + 1)
         break
       }
     }
-    kept = chars.join('')
+    kept = chars.join("")
   }
 
   const split = kept.length - digits
-  const wholeOut = kept.slice(0, split) || '0'
+  const wholeOut = kept.slice(0, split) || "0"
   return digits === 0 ? wholeOut : `${wholeOut}.${kept.slice(split)}`
 }
 
@@ -104,19 +104,19 @@ export function formatNumberEnUS(n: number, options?: NumberFormatOptions): stri
   let text = roundHalfExpand(absolute, maximum)
   if (maximum > minimum) {
     // Trim back to `minimum`, the way Intl does.
-    text = text.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')
-    const dot = text.indexOf('.')
+    text = text.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "")
+    const dot = text.indexOf(".")
     const decimals = dot < 0 ? 0 : text.length - dot - 1
     if (decimals < minimum) {
-      text = (dot < 0 ? `${text}.` : text) + '0'.repeat(minimum - decimals)
+      text = (dot < 0 ? `${text}.` : text) + "0".repeat(minimum - decimals)
     }
   }
 
-  const parts = text.split('.')
+  const parts = text.split(".")
   if (options?.useGrouping !== false) {
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
   }
-  const out = parts.join('.')
+  const out = parts.join(".")
   return negative ? `-${out}` : out
 }
 
@@ -127,7 +127,7 @@ export function formatNumberEnUS(n: number, options?: NumberFormatOptions): stri
 /// on the web runtime (a Worker, with full Intl) and on any future engine that
 /// grows one, instead of replacing a correct implementation with this subset.
 export function installNumberFormatPolyfill(): void {
-  const engineFormats = (1234.5).toLocaleString('en-US', { maximumFractionDigits: 0 }) === '1,235'
+  const engineFormats = (1234.5).toLocaleString("en-US", { maximumFractionDigits: 0 }) === "1,235"
   if (engineFormats) return
 
   // eslint-disable-next-line no-extend-native

@@ -137,34 +137,11 @@
     "WYA": "Wyandotte"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE",
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "PORTABLE",
-      "ROVER",
-      "EXPEDITION",
-      "COUNTY-LINE",
-      "CLUB"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "DIGITAL",
-      "MIXED"
-    ],
-    "overlay": [
-      "YOUTH"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE", "MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE", "PORTABLE", "ROVER", "EXPEDITION", "COUNTY-LINE", "CLUB"],
+    "mode": ["CW", "PHONE", "DIGITAL", "MIXED"],
+    "overlay": ["YOUTH"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

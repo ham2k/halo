@@ -14,7 +14,7 @@ const TITLE_MAX = 120
 /// `ReportsController::VALID_KINDS`). It travels as a field, not as a word in
 /// the title: CaBo's `createCard` writes `cmd.kind` verbatim and parses
 /// nothing out of the title.
-export type ReportKind = 'idea' | 'task' | 'bug'
+export type ReportKind = "idea" | "task" | "bug"
 
 // A type alias, not an interface: only an alias gets an implicit index
 // signature, which is what makes the payload assignable to JSONValue without
@@ -45,9 +45,9 @@ export interface ReportContext {
 /// server's JSON parser rejects outright — losing the whole report over an
 /// emoji landing on the boundary.
 function titleFor(text: string): string {
-  const oneLine = text.replace(/\s+/g, ' ').trim()
+  const oneLine = text.replace(/\s+/g, " ").trim()
   const chars = [...oneLine]
-  return chars.length > TITLE_MAX ? `${chars.slice(0, TITLE_MAX - 1).join('')}…` : oneLine
+  return chars.length > TITLE_MAX ? `${chars.slice(0, TITLE_MAX - 1).join("")}…` : oneLine
 }
 
 /// `{type, ref}` pairs, rendered as "pota US-0001, sota W1/AM-001".
@@ -55,12 +55,12 @@ function formatRefs(operation: Record<string, JSONValue> | undefined): string | 
   const refs = operation?.refs
   if (!Array.isArray(refs)) return null
   const formatted = refs
-    .filter((r): r is Record<string, JSONValue> => !!r && typeof r === 'object' && !Array.isArray(r))
+    .filter((r): r is Record<string, JSONValue> => !!r && typeof r === "object" && !Array.isArray(r))
     // The value is what makes a row real — a type on its own is a row still
     // being filled in, and "pota" with no reference reports nothing.
-    .filter((r) => typeof r.ref === 'string' && r.ref)
-    .map((r) => (typeof r.type === 'string' && r.type ? `${r.type} ${r.ref}` : `${r.ref}`))
-  return formatted.length > 0 ? formatted.join(', ') : null
+    .filter((r) => typeof r.ref === "string" && r.ref)
+    .map((r) => (typeof r.type === "string" && r.type ? `${r.type} ${r.ref}` : `${r.ref}`))
+  return formatted.length > 0 ? formatted.join(", ") : null
 }
 
 /// Who filed this, from where, on what — the block every report carries
@@ -87,7 +87,7 @@ function contextLines(context: ReportContext): string[] {
 
   const facts = [
     ...(operatorCall ? [`Operator: ${operatorCall}`] : []),
-    ...(typeof stationCall === 'string' && stationCall ? [`Station: ${stationCall}`] : []),
+    ...(typeof stationCall === "string" && stationCall ? [`Station: ${stationCall}`] : []),
     ...(refs ? [`References: ${refs}`] : []),
     `Platform: ${version.platform}`,
     `Version: ${version.versionName} (${version.version})`,
@@ -95,14 +95,14 @@ function contextLines(context: ReportContext): string[] {
     // rather than the running build's — the SHA is the only true identity
     // there, and naming a build that isn't running misdirects triage.
     ...(version.buildNumber == null ? [] : [`Build: ${version.buildNumber}`]),
-    `SHA: ${version.gitSha || '(none)'}`,
+    `SHA: ${version.gitSha || "(none)"}`,
   ]
 
-  return ['---', facts.join(' • ')]
+  return ["---", facts.join(" • ")]
 }
 
 export function buildReportPayload(text: string, context: ReportContext): ReportPayload {
-  return { title: titleFor(text), body: [text, '', ...contextLines(context)].join('\n'), kind: 'bug' }
+  return { title: titleFor(text), body: [text, "", ...contextLines(context)].join("\n"), kind: "bug" }
 }
 
 /// A report whose title, body and kind were composed by the caller — the
@@ -116,7 +116,7 @@ export function buildReportPayload(text: string, context: ReportContext): Report
 export function attachReportContext(report: ReportPayload, context: ReportContext): ReportPayload {
   return {
     title: titleFor(report.title),
-    body: [report.body, '', ...contextLines(context)].join('\n'),
+    body: [report.body, "", ...contextLines(context)].join("\n"),
     kind: report.kind,
   }
 }

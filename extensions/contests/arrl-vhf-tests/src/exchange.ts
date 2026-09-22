@@ -11,14 +11,14 @@ import type { JSONValue } from "@ham2k/extension-sdk"
 
 import type { VhfEvent } from "./events.ts"
 
-const GRID4_PATTERN = '^[A-R]{2}[0-9]{2}$'
-const GRID6_PATTERN = '^[A-R]{2}[0-9]{2}[A-X]{2}$'
+const GRID4_PATTERN = "^[A-R]{2}[0-9]{2}$"
+const GRID6_PATTERN = "^[A-R]{2}[0-9]{2}[A-X]{2}$"
 
 /// Trims a grid to the precision this event's exchange actually wants — a
 /// station that types or is looked up with 6+ characters, in a 4-character
 /// event, sends only the field/square the sponsor's exchange calls for.
 export function trimmedGrid(grid: string | undefined | null, event: VhfEvent): string {
-  return (grid ?? '').trim().toUpperCase().substring(0, event.gridChars)
+  return (grid ?? "").trim().toUpperCase().substring(0, event.gridChars)
 }
 
 /// The regex source this event's grid field validates against — anchored and

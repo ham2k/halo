@@ -21,18 +21,8 @@
 // Neither needed a core change. Letting controls emit command actions is the
 // reusable fix and is written up as the alternative in §3.5.
 
-import {
-  defineExtension,
-  host,
-} from "@ham2k/extension-sdk"
-import type {
-  CommandCatalogEntry, CommandInterpretation,
-  DataFileDefinition,
-  HookContext,
-  JSONValue,
-  LookupRow,
-  Ref,
-} from "@ham2k/extension-sdk"
+import { defineExtension, host } from "@ham2k/extension-sdk"
+import type { CommandCatalogEntry, CommandInterpretation, DataFileDefinition, HookContext, JSONValue, LookupRow, Ref } from "@ham2k/extension-sdk"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { capitalizeString } from "@ham2k/lib-format-tools"
 
@@ -40,8 +30,8 @@ import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const REF_TYPE = 'satellite'
-const CATEGORY = 'satellites'
+const REF_TYPE = "satellite"
+const CATEGORY = "satellites"
 
 interface Link {
   mode?: string
@@ -63,11 +53,11 @@ interface Satellite {
 /// renders QO-100's 10489.5 MHz as "10.489.500", which app-polo's labels
 /// inherit. Satellite data is published in MHz, so it is shown in MHz.
 function fmtMHz(mhz: number | undefined): string {
-  return typeof mhz === 'number' ? mhz.toFixed(3) : ''
+  return typeof mhz === "number" ? mhz.toFixed(3) : ""
 }
 
 function textOf(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : ''
+  return typeof value === "string" ? value.trim() : ""
 }
 
 function refsOfType(container: Record<string, unknown> | undefined, type: string): Ref[] {
@@ -100,14 +90,14 @@ function transpondersOf(sat: Satellite): Transponder[] {
     // a mismatched bird usable rather than dropping it, which is app-polo's
     // choice too.
     const down = sat.downlinks?.[index] ?? sat.downlinks?.[0]
-    const arrow = [fmtMHz(up?.lowerMHz), fmtMHz(down?.upperMHz)].filter((x) => x).join(' → ')
+    const arrow = [fmtMHz(up?.lowerMHz), fmtMHz(down?.upperMHz)].filter((x) => x).join(" → ")
     return {
       code: `${name}/${up?.lowerMHz}/${up?.mode}`,
-      label: `${name} • ${capitalizeString(up?.mode ?? '')}${arrow ? `: ${arrow}` : ''}`,
+      label: `${name} • ${capitalizeString(up?.mode ?? "")}${arrow ? `: ${arrow}` : ""}`,
       satName: name,
-      uplinkKHz: typeof up?.lowerMHz === 'number' ? up.lowerMHz * 1000 : undefined,
-      uplinkMode: up?.mode === 'fm' ? 'FM' : undefined,
-      downlinkBand: typeof down?.upperMHz === 'number' ? bandForFrequency(down.upperMHz) : undefined,
+      uplinkKHz: typeof up?.lowerMHz === "number" ? up.lowerMHz * 1000 : undefined,
+      uplinkMode: up?.mode === "fm" ? "FM" : undefined,
+      downlinkBand: typeof down?.upperMHz === "number" ? bandForFrequency(down.upperMHz) : undefined,
     }
   })
 }
@@ -126,7 +116,7 @@ async function transponders({ refresh = false } = {}): Promise<Transponder[]> {
   // An empty query matches everything, capped at 100 rows — comfortable for the
   // ~40 active birds, and the reason this stores one row per BIRD rather than
   // one per transponder.
-  const rows: LookupRow[] = await host.dbLookupSelectAll(CATEGORY, '')
+  const rows: LookupRow[] = await host.dbLookupSelectAll(CATEGORY, "")
   cached = rows.flatMap((row) => transpondersOf((row.data ?? {}) as Satellite))
   return cached
 }
@@ -139,7 +129,7 @@ const refHandler = {
   async decorateRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<Ref> {
     const code = textOf(ref.ref)
     if (!code) return ref
-    const [satName] = code.split('/')
+    const [satName] = code.split("/")
     const match = transponderFor(code, cached ?? [])
     return {
       ...ref,
@@ -158,31 +148,26 @@ const activityHook = {
   /// than the `options` control below because `operationControls` renders only
   /// `refList` and `form` — and a `select` of forty labelled transponders reads
   /// better here than a code field anyway.
-  async operationControls(
-    _args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
-    ctx: HookContext,
-  ) {
+  async operationControls(_args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> }, ctx: HookContext) {
     const t = tFor(ctx)
     const options = (await transponders({ refresh: true })).map((tr) => ({ label: tr.label, value: tr.code }))
     return [
       {
-        key: 'satellites/satellite',
-        label: t('operationControl'),
+        key: "satellites/satellite",
+        label: t("operationControl"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
-        optionType: 'optional',
+        optionType: "optional",
         input: {
-          kind: 'form',
+          kind: "form",
           refType: REF_TYPE,
           form: {
-            title: t('setupTitle'),
+            title: t("setupTitle"),
             // Empty until the data file has landed. The control still appears:
             // an empty picker says "the list is not here yet", where hiding the
             // activity entirely would look like it does not exist.
-            elements: [
-              { type: 'field', fieldType: 'select', key: 'ref', label: t('satelliteLabel'), options },
-            ],
+            elements: [{ type: "field", fieldType: "select", key: "ref", label: t("satelliteLabel"), options }],
           },
         },
       },
@@ -192,25 +177,22 @@ const activityHook = {
   /// Per QSO. Mandatory once the operation names a bird — on a satellite pass
   /// every contact goes through one, and a QSO that forgot to say which is a
   /// QSO that cannot be uploaded as a satellite contact.
-  async loggingControls(
-    { operation }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
-    ctx: HookContext,
-  ) {
+  async loggingControls({ operation }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> }, ctx: HookContext) {
     const t = tFor(ctx)
     const all = await transponders({ refresh: true })
     const operationSatellite = textOf(refsOfType(operation, REF_TYPE)[0]?.ref)
     return [
       {
-        key: 'satellites/qso',
-        label: t('loggingControl'),
+        key: "satellites/qso",
+        label: t("loggingControl"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
-        optionType: operationSatellite ? 'mandatory' : 'optional',
+        optionType: operationSatellite ? "mandatory" : "optional",
         input: {
-          kind: 'options',
+          kind: "options",
           refType: REF_TYPE,
-          field: 'ref',
+          field: "ref",
           options: all.map((tr) => ({ code: tr.code, name: tr.label })),
           // The operation's bird, so a pass is one choice rather than one per
           // contact — app-polo's `operation.satellite` without a second place
@@ -234,17 +216,17 @@ const adifFieldsHook = {
   ): Promise<{ name: string; value: string }[]> {
     const code = textOf(refsOfType(qso, REF_TYPE)[0]?.ref)
     if (!code) return []
-    const [satName] = code.split('/')
+    const [satName] = code.split("/")
     if (!satName) return []
 
     const fields = [
-      { name: 'PROP_MODE', value: 'SAT' },
-      { name: 'SAT_NAME', value: satName },
+      { name: "PROP_MODE", value: "SAT" },
+      { name: "SAT_NAME", value: satName },
     ]
     // BAND_RX is the DOWNLINK's band, which is why the transponder is part of
     // the reference: AO-7 answers on 10m from one and 2m from the other.
     const band = transponderFor(code, await transponders())?.downlinkBand
-    if (band) fields.push({ name: 'BAND_RX', value: band })
+    if (band) fields.push({ name: "BAND_RX", value: band })
     return fields
   },
 }
@@ -253,7 +235,7 @@ const adifFieldsHook = {
 /// the same bird. The exporter above writes the table's own spelling, but other
 /// software writes what the operator typed.
 function satKey(name: string): string {
-  return name.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  return name.toUpperCase().replace(/[^A-Z0-9]/g, "")
 }
 
 /// The band a record says the station TRANSMITTED on. `FREQ` is the uplink by
@@ -270,10 +252,10 @@ function uplinkBandOf(fields: Record<string, string>): string | undefined {
   const band = textOf(fields.band).toLowerCase()
   if (band) return band
   // MHz, as ADIF writes it. `bandForFrequency` reads either MHz or kHz.
-  const freq = Number.parseFloat(fields.freq ?? '')
+  const freq = Number.parseFloat(fields.freq ?? "")
   if (Number.isNaN(freq)) return undefined
   const uplink = bandForFrequency(freq)
-  return uplink === 'other' ? undefined : uplink
+  return uplink === "other" ? undefined : uplink
 }
 
 /// The inverse of `adifFieldsHook`, and lossy in one direction: the log stores
@@ -305,9 +287,7 @@ function satelliteRefFor(fields: Record<string, string>, all: Transponder[]): st
 
   const uplinkBand = uplinkBandOf(fields)
   if (uplinkBand) {
-    candidates = candidates.filter(
-      (t) => t.uplinkKHz != null && bandForFrequency(t.uplinkKHz) === uplinkBand,
-    )
+    candidates = candidates.filter((t) => t.uplinkKHz != null && bandForFrequency(t.uplinkKHz) === uplinkBand)
   }
 
   // Exactly one, or none of it — two survivors mean the record does not say
@@ -317,10 +297,7 @@ function satelliteRefFor(fields: Record<string, string>, all: Transponder[]): st
 }
 
 const adifImportHook = {
-  async refsForRecords(
-    { records }: { records: { fields: Record<string, string> }[] },
-    _ctx: HookContext,
-  ): Promise<({ refs: Ref[] } | null)[]> {
+  async refsForRecords({ records }: { records: { fields: Record<string, string> }[] }, _ctx: HookContext): Promise<({ refs: Ref[] } | null)[]> {
     // Refreshed once for the whole batch rather than trusted from the cache: an
     // import can be the first thing a session does, and `transponders()` would
     // otherwise memoize the empty table it found before the data file landed.
@@ -349,8 +326,8 @@ const SatCommand = {
     if (!match) return null
     const t = tFor(ctx)
 
-    const term = (match[1] ?? '').trim()
-    if (!term) return { expectsParams: true, describe: t('commandExpects') }
+    const term = (match[1] ?? "").trim()
+    if (!term) return { expectsParams: true, describe: t("commandExpects") }
 
     const all = await transponders()
     const upper = term.toUpperCase()
@@ -362,7 +339,7 @@ const SatCommand = {
       all.find((tr) => tr.satName.toUpperCase() === upper) ??
       all.find((tr) => tr.satName.toUpperCase().startsWith(upper))
 
-    if (!hit) return { error: t('commandUnknown', { name: term }) }
+    if (!hit) return { error: t("commandUnknown", { name: term }) }
 
     // Merged, not replaced: `updateQso` writes whole fields, so returning a
     // bare refs list would drop the park or summit this QSO is also for.
@@ -383,37 +360,39 @@ const SatCommand = {
     }
 
     return {
-      describe: t('commandDescribe', { label: hit.label }),
-      confirm: t('commandConfirm', { name: hit.satName }),
-      commands: commands as unknown as CommandInterpretation['commands'],
+      describe: t("commandDescribe", { label: hit.label }),
+      confirm: t("commandConfirm", { name: hit.satName }),
+      commands: commands as unknown as CommandInterpretation["commands"],
     }
   },
 
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     const t = tFor(ctx)
-    return [{
-      command: 'SAT',
-      params: t('catalogSatParams'),
-      describe: t('catalogSat'),
-      category: t('catalogCategory'),
-      // Its commands are updateQso/setVfo, which only the logging panel's
-      // dispatcher can apply — without an open operation they go nowhere.
-      needsOperation: true,
-      expectsParams: true,
-      suggest: true,
-    }]
+    return [
+      {
+        command: "SAT",
+        params: t("catalogSatParams"),
+        describe: t("catalogSat"),
+        category: t("catalogCategory"),
+        // Its commands are updateQso/setVfo, which only the logging panel's
+        // dispatcher can apply — without an open operation they go nowhere.
+        needsOperation: true,
+        expectsParams: true,
+        suggest: true,
+      },
+    ]
   },
 }
 
 /// AMSAT's active birds, republished by Ham2K in the shape app-polo reads: one
 /// entry per satellite with parallel `uplinks`/`downlinks` arrays.
 const satelliteDataFile: DataFileDefinition = {
-  key: 'satellite-data',
-  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
-  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
-  url: 'https://polo.ham2k.com/data/satellites.json',
+  key: "satellite-data",
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileName"),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileDescription"),
+  url: "https://polo.ham2k.com/data/satellites.json",
   maxAgeInDays: 28,
-  fetchType: 'json',
+  fetchType: "json",
   category: CATEGORY,
   jsonToLookupEntry: (entry: Record<string, any>) => {
     const name = textOf(entry?.name)
@@ -433,12 +412,12 @@ const satelliteDataFile: DataFileDefinition = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook(`ref:${REF_TYPE}`, { hook: refHandler, key: 'satellites' })
-    registerHook('activity', { hook: activityHook, key: 'satellites' })
-    registerHook('adifFields', { hook: adifFieldsHook, key: 'satellites' })
-    registerHook('adifImport', { hook: adifImportHook, key: 'satellites' })
-    registerHook('dataFile', { hook: satelliteDataFile, key: 'satellite-data' })
-    registerHook('command', { hook: SatCommand, key: 'satellites-sat' })
+    registerHook(`ref:${REF_TYPE}`, { hook: refHandler, key: "satellites" })
+    registerHook("activity", { hook: activityHook, key: "satellites" })
+    registerHook("adifFields", { hook: adifFieldsHook, key: "satellites" })
+    registerHook("adifImport", { hook: adifImportHook, key: "satellites" })
+    registerHook("dataFile", { hook: satelliteDataFile, key: "satellite-data" })
+    registerHook("command", { hook: SatCommand, key: "satellites-sat" })
     // No `scoring` and no `export`: nothing is activated and nothing is
     // counted, so there is no threshold to report and no per-reference file to
     // submit. app-polo registers neither either.

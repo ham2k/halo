@@ -86,27 +86,10 @@
     "YRK": "York Regional Municipality"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE",
-      "MULTI-TWO",
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "ROVER"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "MIXED"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE", "MULTI-TWO", "MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE", "ROVER"],
+    "mode": ["CW", "PHONE", "MIXED"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5W",
       "LOW": "150W",

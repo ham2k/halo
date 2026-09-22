@@ -15,7 +15,7 @@ export function oauthErrorCode(body: string): string | null {
   try {
     const parsed = JSON.parse(body) as Record<string, unknown>
     const error = parsed?.error
-    return typeof error === 'string' && error ? error : null
+    return typeof error === "string" && error ? error : null
   } catch {
     return null
   }

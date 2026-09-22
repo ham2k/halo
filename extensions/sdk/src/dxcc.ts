@@ -50,9 +50,7 @@ export function flagForDxccCode(dxccCode: number | undefined): string | undefine
 /// `countryCode` matches band_plan_segments.dart's `countries` values
 /// exactly (both come from this same upstream data), so the two can be
 /// compared directly with no further normalization.
-export function regionAndCountryForDxccCode(
-  dxccCode: number | undefined,
-): { ituRegion?: number; countryCode?: string } {
+export function regionAndCountryForDxccCode(dxccCode: number | undefined): { ituRegion?: number; countryCode?: string } {
   if (dxccCode == null) return {}
   const entity = DXCC_BY_CODE[dxccCode]
   return { ituRegion: entity?.ituRegion, countryCode: entity?.countryCode }
@@ -82,9 +80,7 @@ export function countryPrefixForCall(call: string | undefined): string | undefin
 /// continent-sized entity spans several of those, and which one a station is
 /// in does not follow from its callsign. Whatever fills those has to know
 /// where the station actually is.
-export function entityForCall(
-  call: string | undefined,
-): Pick<AnnotatedCallInfo, 'dxccCode' | 'continent' | 'entityName'> {
+export function entityForCall(call: string | undefined): Pick<AnnotatedCallInfo, "dxccCode" | "continent" | "entityName"> {
   if (!call) return {}
   const { dxccCode, continent, entityName } = annotateCallAgainstCountryFile(call)
   return { dxccCode, continent, entityName }

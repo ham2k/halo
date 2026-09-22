@@ -9,10 +9,7 @@
   "notes": "",
   "lastUpdated": "2026-01-20 15:00Z",
   "status": "Revised for 2026",
-  "exchange": [
-    "Name",
-    "Location"
-  ],
+  "exchange": ["Name", "Location"],
   "options": {
     "dcCountsAsMaryland": false,
     "stateCountsForInState": false,
@@ -143,25 +140,10 @@
     "YEL": "Yellow Medicine"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "ROVER"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "MIXED"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE"],
+    "station": ["FIXED", "MOBILE", "ROVER"],
+    "mode": ["CW", "PHONE", "MIXED"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

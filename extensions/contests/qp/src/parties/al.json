@@ -90,25 +90,10 @@
     "WINS": "Winston"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE",
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "MIXED"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE", "MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE"],
+    "mode": ["CW", "PHONE", "MIXED"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "150 watts",

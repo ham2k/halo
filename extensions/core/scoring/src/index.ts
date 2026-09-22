@@ -28,6 +28,6 @@ defineExtension({
     // this scorer's dupe warning is then the only one the operator gets. The
     // entity and state notices, which nothing else in the app reports, always
     // survive (docs/design/contests.md §5.1).
-    registerHook('scoring', { hook: coreScoringHook, key: 'core' })
+    registerHook("scoring", { hook: coreScoringHook, key: "core" })
   },
 })

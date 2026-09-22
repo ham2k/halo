@@ -11,8 +11,7 @@ import { LoFiRequestError } from "./backupCapture.ts"
 
 /// The reports endpoint, shared so the request and the reading of its
 /// rejection cannot name it differently.
-export const REPORTS_PATH = 'v1/reports'
-
+export const REPORTS_PATH = "v1/reports"
 
 /// The human-readable complaint in a rejected response, or undefined when
 /// there isn't one.
@@ -26,23 +25,23 @@ export const REPORTS_PATH = 'v1/reports'
 /// exactly the two the email flow exists to report: an address already
 /// taken, and a resend with nothing pending.
 export function loFiErrorMessage(json: Record<string, JSONValue>): string | undefined {
-  if (typeof json.error === 'string' && json.error) return json.error
+  if (typeof json.error === "string" && json.error) return json.error
 
   for (const [key, value] of Object.entries(json)) {
     // `account_errors`, `permission_errors`, and whatever the next
     // controller calls its own — the suffix is the convention, not the
     // prefix.
-    if (!key.endsWith('_errors')) continue
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) continue
+    if (!key.endsWith("_errors")) continue
+    if (typeof value !== "object" || value === null || Array.isArray(value)) continue
 
     for (const entries of Object.values(value as Record<string, JSONValue>)) {
       const first = Array.isArray(entries) ? entries[0] : entries
-      if (typeof first !== 'object' || first === null || Array.isArray(first)) continue
+      if (typeof first !== "object" || first === null || Array.isArray(first)) continue
       const message = (first as Record<string, JSONValue>).error
       // A validation that fails on a bare symbol (`validates_format_of`)
       // serializes as "invalid" — terse, but it names the problem, which
       // "HTTP 422" does not.
-      if (typeof message === 'string' && message) return message
+      if (typeof message === "string" && message) return message
     }
   }
   return undefined
@@ -54,7 +53,7 @@ export function loFiErrorMessage(json: Record<string, JSONValue>): string | unde
 /// undefined for anything that isn't a non-empty string, so two absent
 /// values never compare equal.
 export function normalizedEmail(value: JSONValue | undefined): string | undefined {
-  if (typeof value !== 'string') return undefined
+  if (typeof value !== "string") return undefined
   const normalized = value.trim().toLowerCase()
   return normalized || undefined
 }
@@ -69,11 +68,7 @@ export function normalizedEmail(value: JSONValue | undefined): string | undefine
 /// that permanent. The real reply always carries `success`, `meta` and
 /// `account` (api-lofi SyncController#sync — its cooldown branch included),
 /// so requiring any one of them costs a genuine reply nothing.
-export function isRecognizableSyncResponse(response: {
-  success?: boolean
-  meta?: Record<string, JSONValue>
-  account?: Record<string, JSONValue>
-}): boolean {
+export function isRecognizableSyncResponse(response: { success?: boolean; meta?: Record<string, JSONValue>; account?: Record<string, JSONValue> }): boolean {
   return response.success === true || response.meta != null || response.account != null
 }
 
@@ -85,7 +80,7 @@ export function isRecognizableSyncResponse(response: {
 /// instead. An empty body and a literal `{}` are not garbage: they are the
 /// server actually saying nothing.
 export function isUnparseableBody(body: string): boolean {
-  if (body.trim() === '') return false
+  if (body.trim() === "") return false
   try {
     JSON.parse(body)
     return false

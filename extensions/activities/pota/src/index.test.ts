@@ -4,7 +4,14 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { REFERENCE_REGEX, normalizeReference, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix, potaCountryPrefixForCall } from "./refFormatting.ts"
+import {
+  REFERENCE_REGEX,
+  normalizeReference,
+  transformsForPrefix,
+  hunterDefaultPrefix,
+  activationDefaultPrefix,
+  potaCountryPrefixForCall,
+} from "./refFormatting.ts"
 import { suggestOperationTitleForPota } from "./titleSuggestion.ts"
 
 // Mirrors the group-expansion logic in
@@ -98,16 +105,7 @@ test("transformsForPrefix stays correct when the prefix itself starts with a dig
 // happens once 2+ digits appear, same as at the start of the field.
 test("deleting back through a second reference does not regrow its prefix", () => {
   const transforms = transformsForPrefix("US")
-  const sequence = [
-    "US-1234,US-5678",
-    "US-1234,US-567",
-    "US-1234,US-56",
-    "US-1234,US-5",
-    "US-1234,US-",
-    "US-1234,US",
-    "US-1234,U",
-    "US-1234,",
-  ]
+  const sequence = ["US-1234,US-5678", "US-1234,US-567", "US-1234,US-56", "US-1234,US-5", "US-1234,US-", "US-1234,US", "US-1234,U", "US-1234,"]
   for (const text of sequence) {
     assert.equal(applyTransforms(text, transforms), text)
   }
@@ -126,10 +124,7 @@ test("potaCountryPrefixForCall uses POTA's country code, not the DXCC entity pre
 })
 
 test("hunterDefaultPrefix prefers the other station's country, falls back to our own, then to US", () => {
-  assert.equal(
-    hunterDefaultPrefix({ stationCall: "W1AW" }, { their: { call: "VE3ABC" } }),
-    "CA",
-  )
+  assert.equal(hunterDefaultPrefix({ stationCall: "W1AW" }, { their: { call: "VE3ABC" } }), "CA")
   assert.equal(
     hunterDefaultPrefix({ stationCall: "KH6ABC" }, undefined),
     "US", // resolves from our own station call when the other one is unknown
@@ -147,18 +142,12 @@ test("activationDefaultPrefix always uses our own station's country", () => {
 })
 
 test("suggestOperationTitleForPota suggests the park reference as 'at' and the park's decorated name as subtitle (ham2k/halo-dist#174)", () => {
-  const suggestion = suggestOperationTitleForPota(
-    { type: "potaActivation", ref: "US-0757", name: "Golden Gate NRA" },
-    "potaActivation",
-  )
+  const suggestion = suggestOperationTitleForPota({ type: "potaActivation", ref: "US-0757", name: "Golden Gate NRA" }, "potaActivation")
   assert.deepEqual(suggestion, { at: "US-0757", subtitle: "Golden Gate NRA" })
 })
 
 test("suggestOperationTitleForPota returns null for a hunting ref — that's a station worked, not where this operation is", () => {
-  const suggestion = suggestOperationTitleForPota(
-    { type: "pota", ref: "US-0757", name: "Golden Gate NRA" },
-    "potaActivation",
-  )
+  const suggestion = suggestOperationTitleForPota({ type: "pota", ref: "US-0757", name: "Golden Gate NRA" }, "potaActivation")
   assert.equal(suggestion, null)
 })
 

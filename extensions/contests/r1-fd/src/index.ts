@@ -36,17 +36,15 @@ import type { R1FdMode } from "./schedule.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const RULES_URL = 'https://www.darc.de/der-club/referate/conteste/iaru-region-1-fieldday/rules/'
+const RULES_URL = "https://www.darc.de/der-club/referate/conteste/iaru-region-1-fieldday/rules/"
 
 /// What a search has to contain to offer these events. Matched as "does the
 /// alias contain what was typed", so "fd" finds every field day and the date
 /// ranking decides which comes first.
-const ALIASES = [
-  'R1FD', 'R1 FD', 'REGION 1 FIELD DAY', 'IARU FIELD DAY', 'FIELD DAY', 'FIELDDAY', 'FD', 'DARC', 'IARU',
-]
+const ALIASES = ["R1FD", "R1 FD", "REGION 1 FIELD DAY", "IARU FIELD DAY", "FIELD DAY", "FIELDDAY", "FD", "DARC", "IARU"]
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value.trim() : ''
+  return typeof value === "string" ? value.trim() : ""
 }
 
 /// A serial as it should appear in an export: whatever is on the ref, as
@@ -54,9 +52,9 @@ function str(value: JSONValue | undefined): string {
 /// one may already be a number.
 function serial(qso: Record<string, JSONValue>, field: string): string {
   const value = refOfType(qso, TYPE)?.[field]
-  if (typeof value === 'number') return String(value)
+  if (typeof value === "number") return String(value)
   const digits = str(value)
-  return /^\d+$/.test(digits) ? String(parseInt(digits, 10)) : ''
+  return /^\d+$/.test(digits) ? String(parseInt(digits, 10)) : ""
 }
 
 /// The next running of [mode] as a ref key, "SSB-2026".
@@ -67,14 +65,14 @@ function nextRunningKey(nowMillis: number, mode: R1FdMode): string {
 /// The running nearest on the calendar, for defaults — in July that is
 /// September's SSB, in May June's CW.
 function nearestMode(nowMillis: number): R1FdMode {
-  return relevanceFor(nowMillis, 'CW') >= relevanceFor(nowMillis, 'SSB') ? 'CW' : 'SSB'
+  return relevanceFor(nowMillis, "CW") >= relevanceFor(nowMillis, "SSB") ? "CW" : "SSB"
 }
 
 function runningLabel(t: (key: string, args?: Record<string, string>) => string, refKey: string): string {
   const mode = modeOfRef(refKey)
   const year = yearOfRef(refKey)
-  if (!mode) return t('unconfigured')
-  return [t(mode === 'CW' ? 'cwRunning' : 'ssbRunning'), year].filter((part) => part).join(' ')
+  if (!mode) return t("unconfigured")
+  return [t(mode === "CW" ? "cwRunning" : "ssbRunning"), year].filter((part) => part).join(" ")
 }
 
 const ActivityHook = {
@@ -83,7 +81,7 @@ const ActivityHook = {
   /// "field day" in May leads with CW.
   async suggest({ searchTerm }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
     const t = tFor(ctx)
-    const term = (searchTerm ?? '').trim().toUpperCase()
+    const term = (searchTerm ?? "").trim().toUpperCase()
     if (term && !ALIASES.some((alias) => alias.includes(term))) return []
 
     const now = Date.now()
@@ -97,19 +95,16 @@ const ActivityHook = {
         ref: key,
         // A suggestion is persisted VERBATIM and never runs through
         // `decorateRef`, so everything the operation row reads has to be here.
-        program: 'Contest',
-        name: t('activityDescription'),
-        label: `${t('activityLabel')} ${runningLabel(t, key)}`,
+        program: "Contest",
+        name: t("activityDescription"),
+        label: `${t("activityLabel")} ${runningLabel(t, key)}`,
         shortLabel: `R1FD ${mode}`,
         relevance: relevanceFor(now, mode),
       }
     })
   },
 
-  async operationControls(
-    { operation }: { operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls({ operation }: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx)
     const now = Date.now()
     const currentKey = str(refOfType(operation, TYPE)?.ref)
@@ -125,10 +120,10 @@ const ActivityHook = {
 
     const elements: FormElement[] = [
       {
-        type: 'field',
-        fieldType: 'select',
-        key: 'ref',
-        label: t('runningLabel'),
+        type: "field",
+        fieldType: "select",
+        key: "ref",
+        label: t("runningLabel"),
         value: currentKey || nextRunningKey(now, nearestMode(now)),
         options,
       },
@@ -136,54 +131,54 @@ const ActivityHook = {
       // fixed-to-fixed is worth zero, so it changes every verdict — while the
       // rest only describe the entry to the Cabrillo CATEGORY headers.
       {
-        type: 'field',
-        fieldType: 'select',
-        key: 'ourStationType',
-        label: t('stationTypeLabel'),
-        value: 'PORTABLE',
+        type: "field",
+        fieldType: "select",
+        key: "ourStationType",
+        label: t("stationTypeLabel"),
+        value: "PORTABLE",
         options: [
-          { value: 'PORTABLE', label: t('stationPortable') },
-          { value: 'FIXED', label: t('stationFixed') },
+          { value: "PORTABLE", label: t("stationPortable") },
+          { value: "FIXED", label: t("stationFixed") },
         ],
       },
       {
-        type: 'field',
-        fieldType: 'select',
-        key: 'ourOperators',
-        label: t('operatorsLabel'),
+        type: "field",
+        fieldType: "select",
+        key: "ourOperators",
+        label: t("operatorsLabel"),
         options: [
-          { value: 'SINGLE-OP', label: t('operatorsSingle') },
-          { value: 'MULTI-OP', label: t('operatorsMulti') },
+          { value: "SINGLE-OP", label: t("operatorsSingle") },
+          { value: "MULTI-OP", label: t("operatorsMulti") },
         ],
       },
       {
-        type: 'field',
-        fieldType: 'select',
-        key: 'ourPower',
-        label: t('powerLabel'),
+        type: "field",
+        fieldType: "select",
+        key: "ourPower",
+        label: t("powerLabel"),
         options: [
-          { value: 'QRP', label: t('powerQrp') },
-          { value: 'LOW', label: t('powerLow') },
-          { value: 'HIGH', label: t('powerHigh') },
+          { value: "QRP", label: t("powerQrp") },
+          { value: "LOW", label: t("powerLow") },
+          { value: "HIGH", label: t("powerHigh") },
         ],
       },
       {
-        type: 'field',
-        fieldType: 'checkbox',
-        key: 'ourAssisted',
-        label: t('assistedLabel'),
+        type: "field",
+        fieldType: "checkbox",
+        key: "ourAssisted",
+        label: t("assistedLabel"),
       },
-      { type: 'markdown', text: t('rulesLink', { url: RULES_URL }) },
+      { type: "markdown", text: t("rulesLink", { url: RULES_URL }) },
     ]
 
     return [
       {
-        key: 'r1-fd/setup',
-        label: t('activityLabel'),
+        key: "r1-fd/setup",
+        label: t("activityLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
-        input: { kind: 'form', refType: TYPE, form: { title: t('setupLabel'), elements } },
+        input: { kind: "form", refType: TYPE, form: { title: t("setupLabel"), elements } },
       },
     ]
   },
@@ -205,28 +200,28 @@ const ActivityHook = {
     const t = tFor(ctx)
     return [
       {
-        key: 'r1-fd/ourSerial',
-        label: t('ourSerialLabel'),
+        key: "r1-fd/ourSerial",
+        label: t("ourSerialLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'serial',
+          kind: "serial",
           refType: TYPE,
-          field: 'ourSerial',
-          sequence: { key: 'serial' },
+          field: "ourSerial",
+          sequence: { key: "serial" },
         },
       },
       {
-        key: 'r1-fd/theirSerial',
-        label: t('theirSerialLabel'),
+        key: "r1-fd/theirSerial",
+        label: t("theirSerialLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 20,
         input: {
-          kind: 'text',
+          kind: "text",
           refType: TYPE,
-          field: 'theirSerial',
+          field: "theirSerial",
           numeric: true,
           maxLength: 5,
           // No placeholder: there is nothing to guess about the number another
@@ -247,18 +242,18 @@ const ActivityHook = {
   ): Promise<Record<string, JSONValue> | null> {
     if (!refOfType(args.operation, TYPE)) return null
     const qsoRef = refOfType(args.qso, TYPE)
-    const exchange = serial(args.qso, 'theirSerial')
+    const exchange = serial(args.qso, "theirSerial")
     // A field the operator EMPTIED is present-but-blank rather than absent.
     // Returning null there would leave the previous save's `their.exchange`
     // showing, so a cleared exchange has to project the blank.
-    if (!exchange) return qsoRef && 'theirSerial' in qsoRef ? { their: { exchange: '' } } : null
+    if (!exchange) return qsoRef && "theirSerial" in qsoRef ? { their: { exchange: "" } } : null
     return { their: { exchange } }
   },
 }
 
 const RefHandler = {
   async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
-    return { valid: true, normalized: (ref.ref ?? '').trim().toUpperCase() }
+    return { valid: true, normalized: (ref.ref ?? "").trim().toUpperCase() }
   },
 
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
@@ -267,25 +262,25 @@ const RefHandler = {
     const mode = modeOfRef(key)
     return {
       ...ref,
-      program: 'Contest',
-      name: t('activityDescription'),
-      label: [t('activityLabel'), runningLabel(t, key)].filter((part) => part).join(' '),
-      shortLabel: mode ? `R1FD ${mode}` : 'R1FD',
+      program: "Contest",
+      name: t("activityDescription"),
+      label: [t("activityLabel"), runningLabel(t, key)].filter((part) => part).join(" "),
+      shortLabel: mode ? `R1FD ${mode}` : "R1FD",
     }
   },
 
   async suggestOperationTitle({ ref }: { ref: Ref }, ctx: HookContext): Promise<TitleSuggestion | null> {
     const mode = modeOfRef(str(ref.ref as JSONValue))
     return {
-      for: mode ? `R1FD ${mode}` : 'R1FD',
-      subtitle: tFor(ctx)('serialSubtitle'),
+      for: mode ? `R1FD ${mode}` : "R1FD",
+      subtitle: tFor(ctx)("serialSubtitle"),
     }
   },
 
   /// The contest's published rules — a reference here names an event, not a
   /// place, so what there is to read about it is the rules it is run under.
   async linkForRef(_args: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
-    return { url: RULES_URL, label: 'IARU Region 1 Field Day' }
+    return { url: RULES_URL, label: "IARU Region 1 Field Day" }
   },
 }
 
@@ -294,7 +289,7 @@ const RefHandler = {
 /// enumeration, so the submission's own name is the least surprising value.
 function contestIdFor(operation: Record<string, JSONValue>): string {
   const mode = modeOfRef(str(refOfType(operation, TYPE)?.ref))
-  return mode ? `IARU-FD-R1-DARC-${mode}` : 'IARU-FD-R1-DARC'
+  return mode ? `IARU-FD-R1-DARC-${mode}` : "IARU-FD-R1-DARC"
 }
 
 const AdifFieldsHook = {
@@ -304,34 +299,27 @@ const AdifFieldsHook = {
   ): Promise<{ name: string; value: string }[]> {
     if (!refOfType(operation, TYPE)) return []
 
-    const fields: { name: string; value: string }[] = [
-      { name: 'CONTEST_ID', value: contestIdFor(operation) },
-    ]
-    const sent = serial(qso, 'ourSerial')
-    const received = serial(qso, 'theirSerial')
-    if (sent) fields.push({ name: 'STX', value: sent })
-    if (received) fields.push({ name: 'SRX', value: received })
+    const fields: { name: string; value: string }[] = [{ name: "CONTEST_ID", value: contestIdFor(operation) }]
+    const sent = serial(qso, "ourSerial")
+    const received = serial(qso, "theirSerial")
+    if (sent) fields.push({ name: "STX", value: sent })
+    if (received) fields.push({ name: "SRX", value: received })
     return fields
   },
 }
 
-function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): string {
+function reportFor(qso: Record<string, JSONValue>, side: "our" | "their"): string {
   const sideData = (qso[side] as Record<string, JSONValue>) ?? {}
   const sent = str(sideData.sent)
   if (sent) return sent
-  return str(qso.mode) === 'CW' ? '599' : '59'
+  return str(qso.mode) === "CW" ? "599" : "59"
 }
 
-function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  extension: string,
-  compact?: boolean,
-): string {
+function filenameFor(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], extension: string, compact?: boolean): string {
   const mode = modeOfRef(str(refOfType(operation, TYPE)?.ref))
   return exportFilename({
     stationCall: operation.stationCall,
-    activity: mode ? `R1-FD-${mode}` : 'R1-FD',
+    activity: mode ? `R1-FD-${mode}` : "R1-FD",
     startAtMillis: startMillisOf(operation, qsos),
     extension,
     compact,
@@ -340,29 +328,32 @@ function filenameFor(
 
 const ExportHook = {
   async getExportTypes() {
-    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+    return [exportTypeDefinition(TYPE, "adif", manifest.shortName), exportTypeDefinition(TYPE, "cabrillo", manifest.shortName)]
   },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
-    const named = (extension: string) =>
-      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
+    const named = (extension: string) => filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
       {
         exportType: `${TYPE}-adif`,
-        templateData: { activity: modeOfRef(str(refOfType(args.operation, TYPE)?.ref)) ? `R1-FD-${modeOfRef(str(refOfType(args.operation, TYPE)?.ref))}` : 'R1-FD' },
-        format: 'adif',
-        label: t('adifExport', { contest: manifest.shortName }),
-        filename: named('adi'),
+        templateData: {
+          activity: modeOfRef(str(refOfType(args.operation, TYPE)?.ref)) ? `R1-FD-${modeOfRef(str(refOfType(args.operation, TYPE)?.ref))}` : "R1-FD",
+        },
+        format: "adif",
+        label: t("adifExport", { contest: manifest.shortName }),
+        filename: named("adi"),
         selectedByDefault: true,
         refType: TYPE,
       },
       {
         exportType: `${TYPE}-cabrillo`,
-        templateData: { activity: modeOfRef(str(refOfType(args.operation, TYPE)?.ref)) ? `R1-FD-${modeOfRef(str(refOfType(args.operation, TYPE)?.ref))}` : 'R1-FD' },
-        format: 'cabrillo',
-        label: t('cabrilloExport', { contest: manifest.shortName }),
-        filename: named('log'),
+        templateData: {
+          activity: modeOfRef(str(refOfType(args.operation, TYPE)?.ref)) ? `R1-FD-${modeOfRef(str(refOfType(args.operation, TYPE)?.ref))}` : "R1-FD",
+        },
+        format: "cabrillo",
+        label: t("cabrilloExport", { contest: manifest.shortName }),
+        filename: named("log"),
         selectedByDefault: true,
         refType: TYPE,
       },
@@ -374,7 +365,7 @@ const ExportHook = {
     // exportType it never offered makes the ADIF delegation recurse into
     // itself.
     if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
-      return { filename: '', mimeType: '', content: '' }
+      return { filename: "", mimeType: "", content: "" }
     }
 
     const operation = args.operation
@@ -387,28 +378,28 @@ const ExportHook = {
       const mode = modeOfRef(str(opRef?.ref))
       const content = qsonToCabrillo(args.qsos, {
         headers: [
-          ['CONTEST', contestIdFor(operation)],
-          ['CALLSIGN', ourCall],
-          ['CATEGORY-STATION', str(opRef?.ourStationType)],
-          ['CATEGORY-OPERATOR', str(opRef?.ourOperators)],
-          ['CATEGORY-POWER', str(opRef?.ourPower)],
-          ['CATEGORY-ASSISTED', opRef?.ourAssisted === true ? 'ASSISTED' : 'NON-ASSISTED'],
-          ['CATEGORY-MODE', mode],
-          ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
-          ['GRID-LOCATOR', str(operation.grid)],
+          ["CONTEST", contestIdFor(operation)],
+          ["CALLSIGN", ourCall],
+          ["CATEGORY-STATION", str(opRef?.ourStationType)],
+          ["CATEGORY-OPERATOR", str(opRef?.ourOperators)],
+          ["CATEGORY-POWER", str(opRef?.ourPower)],
+          ["CATEGORY-ASSISTED", opRef?.ourAssisted === true ? "ASSISTED" : "NON-ASSISTED"],
+          ["CATEGORY-MODE", mode],
+          ["OPERATORS", str((operation.local as Record<string, JSONValue>)?.operatorCall)],
+          ["GRID-LOCATOR", str(operation.grid)],
         ],
         qsoParts: (qso) => [
-          ourCall || '-',
-          reportFor(qso, 'our'),
-          serial(qso, 'ourSerial') || '0',
-          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || '-',
-          reportFor(qso, 'their'),
-          serial(qso, 'theirSerial') || '0',
+          ourCall || "-",
+          reportFor(qso, "our"),
+          serial(qso, "ourSerial") || "0",
+          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || "-",
+          reportFor(qso, "their"),
+          serial(qso, "theirSerial") || "0",
         ],
       })
       return {
-        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
-        mimeType: 'text/plain',
+        filename: filenameFor(operation, args.qsos, "log", args.compactFilenames),
+        mimeType: "text/plain",
         content,
       }
     }
@@ -427,8 +418,8 @@ const ExportHook = {
       mainHandler: TYPE,
     })
     return {
-      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
-      mimeType: 'text/plain',
+      filename: filenameFor(operation, args.qsos, "adi", args.compactFilenames),
+      mimeType: "text/plain",
       content,
     }
   },
@@ -437,11 +428,11 @@ const ExportHook = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('activity', { hook: ActivityHook, key: TYPE })
+    registerHook("activity", { hook: ActivityHook, key: TYPE })
     registerHook(`ref:${TYPE}`, { hook: RefHandler, key: TYPE })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: TYPE })
-    registerHook('export', { hook: ExportHook, key: TYPE })
-    registerHook('scoring', {
+    registerHook("adifFields", { hook: AdifFieldsHook, key: TYPE })
+    registerHook("export", { hook: ExportHook, key: TYPE })
+    registerHook("scoring", {
       hook: contestScorer(R1FDScorer, { scope: { refTypes: [TYPE] } }),
       key: TYPE,
     })

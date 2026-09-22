@@ -48,27 +48,10 @@
     "YMA": "Yuma"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE",
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "EXPEDITION",
-      "COUNTY-LINE"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "MIXED"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE", "MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE", "EXPEDITION", "COUNTY-LINE"],
+    "mode": ["CW", "PHONE", "MIXED"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

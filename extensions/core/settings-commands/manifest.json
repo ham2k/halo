@@ -3,7 +3,5 @@
   "name": "Settings Commands",
   "version": "0.0.1",
   "description": "Call-field shortcuts for finding and changing settings: SET, SHOW, HIDE",
-  "hooks": [
-    "command"
-  ]
+  "hooks": ["command"]
 }

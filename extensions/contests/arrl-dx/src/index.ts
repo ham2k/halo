@@ -29,66 +29,66 @@ import { ARRLDXScorer, POWER_PATTERN, isWveCall, weAreWve } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const TYPE = 'arrl-dx'
+const TYPE = "arrl-dx"
 
 function refOfType(container: Record<string, JSONValue>, type: string): Record<string, JSONValue> | undefined {
-  return (((container.refs as Record<string, JSONValue>[] | undefined) ?? [])).find((r) => r?.type === type)
+  return ((container.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === type)
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 const ActivityHook = {
-  async operationControls(
-    args: { operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls(args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx)
     const ref = refOfType(args.operation, TYPE)
     const ours = weAreWve(args.operation, ref)
 
     return [
       {
-        key: 'arrl-dx/setup',
+        key: "arrl-dx/setup",
         // See CQ WW: the Activity Types list names the contest family.
-        label: t('activityLabel'),
+        label: t("activityLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'form',
+          kind: "form",
           refType: TYPE,
           form: {
-            title: t('setupLabel'),
+            title: t("setupLabel"),
             elements: [
               {
-                type: 'field',
-                fieldType: 'radio',
-                key: 'mode',
-                label: t('modeLabel'),
-                options: [{ value: 'CW', label: 'CW' }, { value: 'Phone', label: 'Phone' }],
-              },
-              {
-                type: 'field',
-                fieldType: 'radio',
-                key: 'stationType',
-                label: t('stationTypeLabel'),
-                // Pre-answered from our own callsign; the operator only has to
-                // touch it when they're operating from somewhere unexpected.
+                type: "field",
+                fieldType: "radio",
+                key: "mode",
+                label: t("modeLabel"),
                 options: [
-                  { value: 'wve', label: t('stationTypeWve') },
-                  { value: 'dx', label: t('stationTypeDx') },
+                  { value: "CW", label: "CW" },
+                  { value: "Phone", label: "Phone" },
                 ],
               },
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'exchange',
+                type: "field",
+                fieldType: "radio",
+                key: "stationType",
+                label: t("stationTypeLabel"),
+                // Pre-answered from our own callsign; the operator only has to
+                // touch it when they're operating from somewhere unexpected.
+                options: [
+                  { value: "wve", label: t("stationTypeWve") },
+                  { value: "dx", label: t("stationTypeDx") },
+                ],
+              },
+              {
+                type: "field",
+                fieldType: "text",
+                key: "exchange",
                 // What we send is the other half of the asymmetry: a W/VE
                 // station sends its state, a DX station sends its power.
-                label: ours ? t('ourStateLabel') : t('ourPowerLabel'),
-                placeholder: ours ? t('ourStatePlaceholder') : t('ourPowerPlaceholder'),
+                label: ours ? t("ourStateLabel") : t("ourPowerLabel"),
+                placeholder: ours ? t("ourStatePlaceholder") : t("ourPowerPlaceholder"),
                 uppercase: true,
               },
             ],
@@ -117,30 +117,28 @@ const ActivityHook = {
     const t = tFor(ctx)
     const ours = weAreWve(args.operation, ref)
 
-    const their = ((args.qso?.their as Record<string, JSONValue>) ?? {})
+    const their = (args.qso?.their as Record<string, JSONValue>) ?? {}
     const guess = (their.guess as Record<string, JSONValue>) ?? {}
     // Only worth hinting the state side: nothing can predict a power level.
     const stateHint = str(their.state) || str(guess.state)
 
     return [
       {
-        key: 'arrl-dx/exchange',
-        label: ours ? t('theirPowerLabel') : t('theirStateLabel'),
+        key: "arrl-dx/exchange",
+        label: ours ? t("theirPowerLabel") : t("theirStateLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'text',
+          kind: "text",
           refType: TYPE,
-          field: 'theirExchange',
+          field: "theirExchange",
           // A W/VE station receives power, which is validated; a DX station
           // receives a state or province, which is not — the sections and
           // abbreviations in use are broader than a pattern should presume.
           // No informational placeholder: nothing can guess a power level, and
           // the state hint only shows when the lookup actually produced one.
-          ...(ours
-            ? { pattern: POWER_PATTERN, maxLength: 4 }
-            : { placeholder: stateHint || undefined, maxLength: 4 }),
+          ...(ours ? { pattern: POWER_PATTERN, maxLength: 4 } : { placeholder: stateHint || undefined, maxLength: 4 }),
         },
       },
     ]
@@ -165,35 +163,32 @@ const ActivityHook = {
     // `ExchangeFieldsModel.refsWithTextValues`). Returning null there would leave the previous
     // save's `their.exchange` showing in the QSO row and in a plain ADIF export,
     // so a cleared exchange has to project the blank.
-    if (!exchange) return qsoRef && 'theirExchange' in qsoRef ? { their: { exchange: '' } } : null
+    if (!exchange) return qsoRef && "theirExchange" in qsoRef ? { their: { exchange: "" } } : null
     return { their: { exchange } }
   },
 }
 
 const RefHandler = {
   async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
-    return { valid: true, normalized: (ref.ref ?? '').trim() }
+    return { valid: true, normalized: (ref.ref ?? "").trim() }
   },
 
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const r = ref as Record<string, JSONValue>
     const mode = str(r.mode)
-    const label = mode ? `ARRL DX ${mode}` : tFor(ctx)('unconfigured')
+    const label = mode ? `ARRL DX ${mode}` : tFor(ctx)("unconfigured")
     const sent = str(r.exchange)
-    return { ...ref, program: 'Contest', label, shortLabel: label, name: sent || tFor(ctx)('notConfigured') }
+    return { ...ref, program: "Contest", label, shortLabel: label, name: sent || tFor(ctx)("notConfigured") }
   },
 
   /// Same reasoning as CQ WW: what we send goes in the subtitle. For ARRL DX
   /// that's our state/province or our power, depending on which side we're on.
-  async suggestOperationTitle(
-    { ref }: { ref: Ref; operation: Record<string, JSONValue> },
-    _ctx: HookContext,
-  ) {
+  async suggestOperationTitle({ ref }: { ref: Ref; operation: Record<string, JSONValue> }, _ctx: HookContext) {
     const r = ref as Record<string, JSONValue>
     const mode = str(r.mode)
     const sent = str(r.exchange)
     return {
-      for: ['ARRL DX', mode].filter((x) => x).join(' '),
+      for: ["ARRL DX", mode].filter((x) => x).join(" "),
       subtitle: sent || undefined,
     }
   },
@@ -201,7 +196,7 @@ const RefHandler = {
   /// The contest's published rules — a reference here names an event, not a
   /// place, so what there is to read about it is the rules it is run under.
   async linkForRef(_args: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
-    return { url: 'https://www.arrl.org/arrl-dx', label: 'ARRL DX' }
+    return { url: "https://www.arrl.org/arrl-dx", label: "ARRL DX" }
   },
 }
 
@@ -214,22 +209,20 @@ const AdifFieldsHook = {
     if (!opRef) return []
     const mode = str(opRef.mode)
 
-    const fields: { name: string; value: string }[] = [
-      { name: 'CONTEST_ID', value: mode === 'Phone' ? 'ARRL-DX-SSB' : mode ? `ARRL-DX-${mode}` : 'ARRL-DX' },
-    ]
+    const fields: { name: string; value: string }[] = [{ name: "CONTEST_ID", value: mode === "Phone" ? "ARRL-DX-SSB" : mode ? `ARRL-DX-${mode}` : "ARRL-DX" }]
     const sent = str(opRef.exchange)
     const received = str(refOfType(qso, TYPE)?.theirExchange)
-    if (sent) fields.push({ name: 'STX_STRING', value: sent })
-    if (received) fields.push({ name: 'SRX_STRING', value: received })
+    if (sent) fields.push({ name: "STX_STRING", value: sent })
+    if (received) fields.push({ name: "SRX_STRING", value: received })
     return fields
   },
 }
 
-function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): string {
+function reportFor(qso: Record<string, JSONValue>, side: "our" | "their"): string {
   const sideData = (qso[side] as Record<string, JSONValue>) ?? {}
   const sent = str(sideData.sent)
   if (sent) return sent
-  return str(qso.mode) === 'CW' || str(qso.mode) === 'RTTY' ? '599' : '59'
+  return str(qso.mode) === "CW" || str(qso.mode) === "RTTY" ? "599" : "59"
 }
 
 /// The contest's own name for this operation's file — the mode is part of the
@@ -237,15 +230,10 @@ function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): strin
 /// with separate submissions.
 function contestTag(operation: Record<string, JSONValue>): string {
   const mode = str(refOfType(operation, TYPE)?.mode)
-  return `ARRL-DX-${mode || 'DX'}`
+  return `ARRL-DX-${mode || "DX"}`
 }
 
-function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  extension: string,
-  compact?: boolean,
-): string {
+function filenameFor(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], extension: string, compact?: boolean): string {
   return exportFilename({
     stationCall: operation.stationCall,
     activity: contestTag(operation),
@@ -257,29 +245,28 @@ function filenameFor(
 
 const ExportHook = {
   async getExportTypes() {
-    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+    return [exportTypeDefinition(TYPE, "adif", manifest.shortName), exportTypeDefinition(TYPE, "cabrillo", manifest.shortName)]
   },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
-    const named = (extension: string) =>
-      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
+    const named = (extension: string) => filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
       {
         exportType: `${TYPE}-adif`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'adif',
-        label: t('adifExport', { contest: manifest.shortName }),
-        filename: named('adi'),
+        format: "adif",
+        label: t("adifExport", { contest: manifest.shortName }),
+        filename: named("adi"),
         selectedByDefault: true,
         refType: TYPE,
       },
       {
         exportType: `${TYPE}-cabrillo`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'cabrillo',
-        label: t('cabrilloExport', { contest: manifest.shortName }),
-        filename: named('log'),
+        format: "cabrillo",
+        label: t("cabrilloExport", { contest: manifest.shortName }),
+        filename: named("log"),
         selectedByDefault: true,
         refType: TYPE,
       },
@@ -292,7 +279,7 @@ const ExportHook = {
     // exportType it never offered makes the ADIF delegation recurse into
     // itself.
     if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
-      return { filename: '', mimeType: '', content: '' }
+      return { filename: "", mimeType: "", content: "" }
     }
 
     const operation = args.operation
@@ -303,23 +290,23 @@ const ExportHook = {
     if (args.exportType === `${TYPE}-cabrillo`) {
       const content = qsonToCabrillo(args.qsos, {
         headers: [
-          ['CONTEST', mode === 'Phone' ? 'ARRL-DX-SSB' : mode ? `ARRL-DX-${mode}` : 'ARRL-DX'],
-          ['CALLSIGN', ourCall],
-          ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
-          ['GRID-LOCATOR', str(operation.grid)],
+          ["CONTEST", mode === "Phone" ? "ARRL-DX-SSB" : mode ? `ARRL-DX-${mode}` : "ARRL-DX"],
+          ["CALLSIGN", ourCall],
+          ["OPERATORS", str((operation.local as Record<string, JSONValue>)?.operatorCall)],
+          ["GRID-LOCATOR", str(operation.grid)],
         ],
         qsoParts: (qso) => [
-          ourCall || '-',
-          reportFor(qso, 'our'),
-          str(opRef?.exchange) || '-',
-          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || '-',
-          reportFor(qso, 'their'),
-          str(refOfType(qso, TYPE)?.theirExchange) || '-',
+          ourCall || "-",
+          reportFor(qso, "our"),
+          str(opRef?.exchange) || "-",
+          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || "-",
+          reportFor(qso, "their"),
+          str(refOfType(qso, TYPE)?.theirExchange) || "-",
         ],
       })
       return {
-        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
-        mimeType: 'text/plain',
+        filename: filenameFor(operation, args.qsos, "log", args.compactFilenames),
+        mimeType: "text/plain",
         content,
       }
     }
@@ -339,8 +326,8 @@ const ExportHook = {
       mainHandler: TYPE,
     })
     return {
-      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
-      mimeType: 'text/plain',
+      filename: filenameFor(operation, args.qsos, "adi", args.compactFilenames),
+      mimeType: "text/plain",
       content,
     }
   },
@@ -351,11 +338,11 @@ export { isWveCall }
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('activity', { hook: ActivityHook, key: TYPE })
+    registerHook("activity", { hook: ActivityHook, key: TYPE })
     registerHook(`ref:${TYPE}`, { hook: RefHandler, key: TYPE })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: TYPE })
-    registerHook('export', { hook: ExportHook, key: TYPE })
-    registerHook('scoring', {
+    registerHook("adifFields", { hook: AdifFieldsHook, key: TYPE })
+    registerHook("export", { hook: ExportHook, key: TYPE })
+    registerHook("scoring", {
       hook: contestScorer(ARRLDXScorer, { scope: { refTypes: [TYPE] } }),
       key: TYPE,
     })

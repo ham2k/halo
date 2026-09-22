@@ -8,27 +8,13 @@
   "enabledByDefault": false,
   "icon": "earth",
   "accentColor": "#C8102E",
-  "keywords": [
-    "contest",
-    "dx",
-    "zone",
-    "cabrillo"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "export",
-    "ref:cqww",
-    "scoring"
-  ],
+  "keywords": ["contest", "dx", "zone", "cabrillo"],
+  "hooks": ["activity", "adifFields", "export", "ref:cqww", "scoring"],
   "translations": {
     "es": {
       "name": "Concurso CQ World Wide DX",
       "description": "Trabaja el mundo: multiplicadores de zona y país en cada banda",
-      "keywords": [
-        "concurso",
-        "zona"
-      ]
+      "keywords": ["concurso", "zona"]
     }
   }
 }

@@ -30,16 +30,16 @@ import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
 /// IARU HF is an HF contest: the WARC bands are excluded by the rules.
-export const VALID_BANDS = ['160m', '80m', '40m', '20m', '15m', '10m']
+export const VALID_BANDS = ["160m", "80m", "40m", "20m", "15m", "10m"]
 
 /// The four IARU offices, which are exchanges in their own right rather than
 /// societies. Matched before the numeric test, since neither overlaps.
-export const OFFICIAL_CODES = ['AC', 'R1', 'R2', 'R3']
+export const OFFICIAL_CODES = ["AC", "R1", "R2", "R3"]
 
 /// An ITU zone (1-90), a society abbreviation, or an IARU office — the field
 /// accepts all three because the operator can't know which they'll get until
 /// the other station sends it.
-export const EXCHANGE_PATTERN = '[A-Za-z0-9]{1,10}'
+export const EXCHANGE_PATTERN = "[A-Za-z0-9]{1,10}"
 
 export type IARUHFScoresheet = {
   /// call → `band|superMode` combinations already worked with it. IARU counts
@@ -60,7 +60,7 @@ export type IARUHFScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// A zone as sent, reduced to canonical form: "08" and "8" are one multiplier
@@ -72,27 +72,25 @@ function str(value: JSONValue | undefined): string {
 /// [parseExchange], inventing a society called "99" and a multiplier that does
 /// not exist — a worse outcome for a typo than recording it as typed.
 export function normalizeZone(value: JSONValue | undefined): string {
-  const digits = String(value ?? '').trim()
-  if (!/^\d+$/.test(digits)) return ''
+  const digits = String(value ?? "").trim()
+  if (!/^\d+$/.test(digits)) return ""
   const zone = parseInt(digits, 10)
-  return zone > 0 ? String(zone) : ''
+  return zone > 0 ? String(zone) : ""
 }
 
-export type ParsedExchange =
-  | { kind: 'zone'; value: string }
-  | { kind: 'hq'; value: string }
-  | { kind: 'official'; value: string }
-  | { kind: 'none' }
+export type ParsedExchange = { kind: "zone"; value: string } | { kind: "hq"; value: string } | { kind: "official"; value: string } | { kind: "none" }
 
 /// Which of the three things an exchange is. Order matters: `R1` is letters
 /// and digits both, so the office list is consulted before anything else.
 export function parseExchange(raw: JSONValue | undefined): ParsedExchange {
-  const text = String(raw ?? '').trim().toUpperCase()
-  if (!text) return { kind: 'none' }
-  if (OFFICIAL_CODES.includes(text)) return { kind: 'official', value: text }
+  const text = String(raw ?? "")
+    .trim()
+    .toUpperCase()
+  if (!text) return { kind: "none" }
+  if (OFFICIAL_CODES.includes(text)) return { kind: "official", value: text }
   const zone = normalizeZone(text)
-  if (zone) return { kind: 'zone', value: zone }
-  return { kind: 'hq', value: text }
+  if (zone) return { kind: "zone", value: zone }
+  return { kind: "hq", value: text }
 }
 
 /// What WE send, which depends on what kind of station we are. Shared with the
@@ -100,8 +98,8 @@ export function parseExchange(raw: JSONValue | undefined): ParsedExchange {
 /// the operation is set up to send.
 export function ourExchange(operation: Record<string, JSONValue>, ref?: Record<string, JSONValue>): string {
   const stationType = str(ref?.stationType)
-  if (stationType === 'hq') return str(ref?.society).toUpperCase()
-  if (stationType === 'official') return str(ref?.official).toUpperCase()
+  if (stationType === "hq") return str(ref?.society).toUpperCase()
+  if (stationType === "official") return str(ref?.official).toUpperCase()
   const configured = normalizeZone(ref?.zone)
   if (configured) return configured
   // Not set up yet: the country file's zone for our own call is right for the
@@ -114,9 +112,9 @@ export function ourExchange(operation: Record<string, JSONValue>, ref?: Record<s
 function modeIsValid(restriction: string, mode: string): boolean {
   const superMode = superModeForMode(mode)
   // Digital never counts, whatever the category.
-  if (superMode !== 'CW' && superMode !== 'PHONE') return false
-  if (restriction === 'CW') return superMode === 'CW'
-  if (restriction === 'Phone') return superMode === 'PHONE'
+  if (superMode !== "CW" && superMode !== "PHONE") return false
+  if (restriction === "CW") return superMode === "CW"
+  if (restriction === "Phone") return superMode === "PHONE"
   return true
 }
 
@@ -124,8 +122,15 @@ export const IARUHFScorer: ContestScorer<IARUHFScoresheet> = {
   startScoresheet({ operation, ref }): IARUHFScoresheet {
     const ours = annotateCallAgainstCountryFile(str(operation.stationCall))
     return {
-      workedByCall: {}, mults: {}, bandMults: {}, bands: {}, bandPoints: {},
-      qsos: 0, points: 0, dayQsos: 0, dayPoints: 0,
+      workedByCall: {},
+      mults: {},
+      bandMults: {},
+      bands: {},
+      bandPoints: {},
+      qsos: 0,
+      points: 0,
+      dayQsos: 0,
+      dayPoints: 0,
       ourContinent: ours.continent,
       // Our zone comes from setup when given, since an operator away from home
       // is exactly who needs to override it.
@@ -149,10 +154,10 @@ export const IARUHFScorer: ContestScorer<IARUHFScoresheet> = {
     const mode = str(qso.mode)
 
     if (!modeIsValid(str(ref?.modeRestriction), mode)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidMode'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidMode"] } }
     }
     if (!VALID_BANDS.includes(band)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     // One QSO per station per band PER MODE — working someone on 20m CW does
@@ -160,13 +165,13 @@ export const IARUHFScorer: ContestScorer<IARUHFScoresheet> = {
     const slot = `${band}|${superModeForMode(mode)}`
     const worked = base.workedByCall[call] ?? []
     if (worked.includes(slot)) {
-      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     // The exchange the operator typed wins; the country file's ITU zone for
     // that call is the fallback, so a QSO logged without an exchange still
     // scores. Note this is a ZONE guess only — nothing can guess an HQ society.
-    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === 'iaru-hf')
+    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === "iaru-hf")
     const theirInfo = annotateCallAgainstCountryFile(call)
     // PRESENCE of the field decides, not truthiness — the core writes
     // `theirExchange: ''` for one the operator deliberately emptied and drops
@@ -175,22 +180,22 @@ export const IARUHFScorer: ContestScorer<IARUHFScoresheet> = {
     // rather than left to `??`, which happens to do the right thing here only
     // because '' is not nullish.
     const exchange = parseExchange(
-      contestRef && 'theirExchange' in contestRef
+      contestRef && "theirExchange" in contestRef
         ? contestRef.theirExchange
-        : their.ituZone ?? (their.guess as Record<string, JSONValue>)?.ituZone ?? theirInfo.ituZone,
+        : (their.ituZone ?? (their.guess as Record<string, JSONValue>)?.ituZone ?? theirInfo.ituZone),
     )
 
     let points = 0
-    let mult = ''
-    if (exchange.kind === 'official') {
+    let mult = ""
+    if (exchange.kind === "official") {
       points = 1
       mult = `${band}|${exchange.value}`
-    } else if (exchange.kind === 'hq') {
+    } else if (exchange.kind === "hq") {
       // Namespaced so a society that happens to be called "R1" can never
       // collide with the office of the same name.
       points = 1
       mult = `${band}|HQ:${exchange.value}`
-    } else if (exchange.kind === 'zone') {
+    } else if (exchange.kind === "zone") {
       const theirContinent = str(their.continent) || theirInfo.continent
       if (base.ourZone && base.ourZone === exchange.value) {
         points = 1
@@ -234,22 +239,22 @@ export const IARUHFScorer: ContestScorer<IARUHFScoresheet> = {
 
     const score: QsoScoreVerdict = { value: points, band }
     const notices: string[] = []
-    if (newMult) notices.push('newMult')
+    if (newMult) notices.push("newMult")
     // Already worked, but on a different band or in a different mode — which is
     // a fresh contact here, so say which.
-    if (newBand) notices.push('newBand')
-    if (newMode) notices.push('newMode')
+    if (newBand) notices.push("newBand")
+    if (newMode) notices.push("newMode")
     if (notices.length > 0) score.notices = notices
-    if (exchange.kind === 'zone') score.zone = exchange.value
+    if (exchange.kind === "zone") score.zone = exchange.value
     // Counted, but earning nothing until an exchange is entered — say so, or
     // the operator has no way to know a multiplier is going unclaimed.
-    if (exchange.kind === 'none') score.alerts = ['missingExchange']
+    if (exchange.kind === "none") score.alerts = ["missingExchange"]
 
     return { scoresheet: base, score }
   },
 
   summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const multCount = Object.keys(scoresheet.mults).length
     const points = isDay ? scoresheet.dayPoints : scoresheet.points
     // Multipliers accumulate across the whole contest, so a day's "score" is
@@ -257,10 +262,10 @@ export const IARUHFScorer: ContestScorer<IARUHFScoresheet> = {
     const total = points * (multCount || 0)
 
     return {
-      'iaru-hf': {
-        key: 'iaru-hf',
+      "iaru-hf": {
+        key: "iaru-hf",
         for: scope,
-        icon: 'earth',
+        icon: "earth",
         total,
         points,
         mults: multCount,
@@ -279,8 +284,6 @@ function bandBreakdown(sheet: IARUHFScoresheet): string {
     const qsos = sheet.bands[band] ?? 0
     const points = sheet.bandPoints[band] ?? 0
     const mults = Object.keys(sheet.bandMults[band] ?? {}).length
-    return qsos === 0 && mults === 0
-      ? `**${band}**: —`
-      : `**${band}**: ${fmtInteger(qsos)} QSOs, ${fmtInteger(points)} pts, ${fmtInteger(mults)} mults`
-  }).join('\n')
+    return qsos === 0 && mults === 0 ? `**${band}**: —` : `**${band}**: ${fmtInteger(qsos)} QSOs, ${fmtInteger(points)} pts, ${fmtInteger(mults)} mults`
+  }).join("\n")
 }

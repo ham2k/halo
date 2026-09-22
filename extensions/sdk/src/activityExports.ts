@@ -70,7 +70,7 @@ export interface ActivityExportRules {
 /// freely — which is why the split is by prefix LENGTH below rather than by
 /// searching for a colon. Don't switch this to `split(':')`: it would truncate
 /// such a reference and then fail to match it back against the operation.
-const SEPARATOR = ':'
+const SEPARATOR = ":"
 
 interface ActivationRef {
   ref: string
@@ -83,8 +83,8 @@ interface ActivationRef {
 function refsOfType(container: Record<string, JSONValue>, type: string): ActivationRef[] {
   const refs = (container.refs as Record<string, JSONValue>[] | undefined) ?? []
   return refs
-    .filter((r) => r && r.type === type && typeof r.ref === 'string' && r.ref.length > 0)
-    .map((r) => ({ ref: r.ref as string, name: typeof r.name === 'string' ? r.name : undefined }))
+    .filter((r) => r && r.type === type && typeof r.ref === "string" && r.ref.length > 0)
+    .map((r) => ({ ref: r.ref as string, name: typeof r.name === "string" ? r.name : undefined }))
 }
 
 /// Shared by the option listing and the generated result, which must agree —
@@ -92,17 +92,12 @@ function refsOfType(container: Record<string, JSONValue>, type: string): Activat
 /// expression would eventually disagree in front of the user. (The core also
 /// prefers the offered name over this one, so the promise holds even if they
 /// do; this keeps them honest for a hook invoked outside the panel.)
-function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  ref: string,
-  compact?: boolean,
-): string {
+function filenameFor(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], ref: string, compact?: boolean): string {
   return exportFilename({
     stationCall: operation.stationCall,
     ref,
     startAtMillis: startMillisOf(operation, qsos),
-    extension: 'adi',
+    extension: "adi",
     compact,
   })
 }
@@ -118,19 +113,18 @@ export function activityExportHook(rules: ActivityExportRules) {
 
   return {
     async getExportTypes(): Promise<ExportTypeDefinition[]> {
-      return [{
-        ...exportTypeDefinition(rules.activationType, 'adif', rules.label),
-        templateCategory: 'reference',
-        templateSample: rules.templateSample ?? {
-          log: { ref: 'REF-1234', refName: 'Example Reference' },
-          operation: { refs: [{ type: rules.activationType, ref: 'REF-1234' }] },
+      return [
+        {
+          ...exportTypeDefinition(rules.activationType, "adif", rules.label),
+          templateCategory: "reference",
+          templateSample: rules.templateSample ?? {
+            log: { ref: "REF-1234", refName: "Example Reference" },
+            operation: { refs: [{ type: rules.activationType, ref: "REF-1234" }] },
+          },
         },
-      }]
+      ]
     },
-    async suggestExportOptions(
-      { operation, qsos, compactFilenames }: ExportOptionsRequest,
-      ctx: HookContext,
-    ): Promise<ExportOption[]> {
+    async suggestExportOptions({ operation, qsos, compactFilenames }: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
       // No activation, nothing to submit. A pure hunting log is the plain ADIF
       // export's business, not ours.
       const refs = refsOfType(operation, rules.activationType)
@@ -138,13 +132,13 @@ export function activityExportHook(rules: ActivityExportRules) {
 
       return refs.map((ref) => ({
         exportType: `${rules.activationType}-adif`,
-        templateData: { ref: ref.ref, refName: ref.name ?? '', activity: rules.label },
+        templateData: { ref: ref.ref, refName: ref.name ?? "", activity: rules.label },
         exportKey: `${prefix}${SEPARATOR}${ref.ref}`,
-        format: 'adif',
+        format: "adif",
         // The FORMAT leads: a park activated on a contest weekend offers
         // several files for the same reference, and "POTA US-1234" alone said
         // nothing about which of them this was.
-        label: t('adifForRef', { program: rules.label, ref: ref.ref }),
+        label: t("adifForRef", { program: rules.label, ref: ref.ref }),
         // The WHOLE log's first QSO dates the file, not this reference's
         // slice: the slice isn't known until `generateExport`, and a name
         // that changed between being shown and being written would break the
@@ -161,8 +155,8 @@ export function activityExportHook(rules: ActivityExportRules) {
       // Answer ONLY for the export type and keys suggested above. Answering
       // for one never offered makes the ADIF delegation below recurse into
       // itself and hang the export (see contest_export_test.dart).
-      const exportType = String(args.exportType ?? '')
-      const exportKey = String(args.exportKey ?? '')
+      const exportType = String(args.exportType ?? "")
+      const exportKey = String(args.exportKey ?? "")
       if (exportType !== `${rules.activationType}-adif` || !exportKey.startsWith(`${prefix}${SEPARATOR}`)) {
         throw new Error(`${rules.key}: unknown export type/key '${exportType}' / '${exportKey}'`)
       }
@@ -208,7 +202,7 @@ export function activityExportHook(rules: ActivityExportRules) {
       })
       return {
         filename: filenameFor(args.operation, args.qsos, wanted, args.compactFilenames),
-        mimeType: 'text/plain',
+        mimeType: "text/plain",
         content,
       }
     },
@@ -251,17 +245,12 @@ export interface HuntingExportRules {
 /// activator file, which claims one reference, a hunter file spans every
 /// reference the operator worked, so it takes the "for POTA"/"for SOTA" shape
 /// instead of the "at US-1234" one.
-function filenameForHunt(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  activity: string,
-  compact?: boolean,
-): string {
+function filenameForHunt(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], activity: string, compact?: boolean): string {
   return exportFilename({
     stationCall: operation.stationCall,
     activity,
     startAtMillis: startMillisOf(operation, qsos),
-    extension: 'adi',
+    extension: "adi",
     compact,
   })
 }
@@ -283,37 +272,36 @@ export function huntingExportHook(rules: HuntingExportRules) {
 
   return {
     async getExportTypes(): Promise<ExportTypeDefinition[]> {
-      return [{ exportType, format: 'adif', label: `${rules.label} Hunter Log` }]
+      return [{ exportType, format: "adif", label: `${rules.label} Hunter Log` }]
     },
-    async suggestExportOptions(
-      { operation, qsos, compactFilenames }: ExportOptionsRequest,
-      ctx: HookContext,
-    ): Promise<ExportOption[]> {
+    async suggestExportOptions({ operation, qsos, compactFilenames }: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
       // Already owes an activator log for this program — see the field's doc.
       if (refsOfType(operation, rules.activationType).length > 0) return []
       // Nothing hunted, nothing to submit.
       if (huntedQsos(qsos ?? []).length === 0) return []
       const t = tFor(ctx)
 
-      return [{
-        exportType,
-        qsoCount: huntedQsos(qsos ?? []).length,
-        templateData: { activity: rules.label },
-        format: 'adif',
-        label: t('adifForHunter', { program: rules.label }),
-        filename: filenameForHunt(operation, qsos ?? [], rules.label, compactFilenames),
-        icon: rules.icon,
-        color: rules.color,
-        selectedByDefault: true,
-        // No `refType`: hunted refs live on QSOs, not on operation segments,
-        // so this isn't the segment-scoped slice `activityExportHook` uses —
-        // it spans the whole log. (See `HuntingExportRules.color` for why the
-        // accent has to be threaded explicitly instead.)
-      }]
+      return [
+        {
+          exportType,
+          qsoCount: huntedQsos(qsos ?? []).length,
+          templateData: { activity: rules.label },
+          format: "adif",
+          label: t("adifForHunter", { program: rules.label }),
+          filename: filenameForHunt(operation, qsos ?? [], rules.label, compactFilenames),
+          icon: rules.icon,
+          color: rules.color,
+          selectedByDefault: true,
+          // No `refType`: hunted refs live on QSOs, not on operation segments,
+          // so this isn't the segment-scoped slice `activityExportHook` uses —
+          // it spans the whole log. (See `HuntingExportRules.color` for why the
+          // accent has to be threaded explicitly instead.)
+        },
+      ]
     },
 
     async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
-      const requested = String(args.exportType ?? '')
+      const requested = String(args.exportType ?? "")
       if (requested !== exportType) {
         throw new Error(`${rules.key}: unknown export type '${requested}'`)
       }
@@ -347,7 +335,7 @@ export function huntingExportHook(rules: HuntingExportRules) {
         // The FULL qsos list, matching the option's filename — see
         // `filenameFor`'s identical comment above.
         filename: filenameForHunt(args.operation, args.qsos ?? [], rules.label, args.compactFilenames),
-        mimeType: 'text/plain',
+        mimeType: "text/plain",
         content,
       }
     },
@@ -370,33 +358,42 @@ export function huntingExportHook(rules: HuntingExportRules) {
 /// includes the CALLER's own `generateExport`, which would take the same
 /// branch and delegate again, forever. Being await-based there is no stack
 /// overflow to stop it — the export simply never returns.
-export async function adifForExport(
-  { operation, qsos, segments, includePrivateData, includeLookupData, exportSettings, exportData, exportTitle, mainHandler, includeFieldsFrom }: {
-    operation: Record<string, JSONValue>
-    qsos: Record<string, JSONValue>[]
-    /// Forwarded as `ExportRequest.segments`, so the core generator hands
-    /// `adifFields` the segment-effective operation per contact. A delegating
-    /// export that drops it exports a rover's whole log under one county.
-    segments?: OperationSegmentPayload[]
-    includePrivateData?: boolean
-    includeLookupData?: boolean
-    exportSettings?: ExportSettings
-    exportData?: Record<string, JSONValue>
-    exportTitle?: string
-    mainHandler: string
-    includeFieldsFrom?: string[]
-  },
-): Promise<string> {
+export async function adifForExport({
+  operation,
+  qsos,
+  segments,
+  includePrivateData,
+  includeLookupData,
+  exportSettings,
+  exportData,
+  exportTitle,
+  mainHandler,
+  includeFieldsFrom,
+}: {
+  operation: Record<string, JSONValue>
+  qsos: Record<string, JSONValue>[]
+  /// Forwarded as `ExportRequest.segments`, so the core generator hands
+  /// `adifFields` the segment-effective operation per contact. A delegating
+  /// export that drops it exports a rover's whole log under one county.
+  segments?: OperationSegmentPayload[]
+  includePrivateData?: boolean
+  includeLookupData?: boolean
+  exportSettings?: ExportSettings
+  exportData?: Record<string, JSONValue>
+  exportTitle?: string
+  mainHandler: string
+  includeFieldsFrom?: string[]
+}): Promise<string> {
   // Imported dynamically: a static import of the SDK barrel from inside the SDK
   // is circular (the barrel re-exports this module), and it would drag
   // `defineExtension` — which needs the kernel global — into this module's
   // `node --test` runs.
   const { hooks } = await import("@ham2k/extension-sdk")
-  const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
+  const entries = await hooks.invokeOne("export", "adif", "generateExport", {
     operation,
     qsos,
     segments,
-    exportType: 'adif',
+    exportType: "adif",
     // Forwarded, or the delegate defaults to withholding and the user's
     // "include private info" setting silently does nothing here.
     includePrivateData,
@@ -419,7 +416,7 @@ export async function adifForExport(
   // report anything.
   if (!content) {
     const failed = entries.find((e) => !e.ok)?.error
-    throw new Error(`${mainHandler}: the ADIF exporter produced no file${failed ? ` (${failed})` : ''}`)
+    throw new Error(`${mainHandler}: the ADIF exporter produced no file${failed ? ` (${failed})` : ""}`)
   }
   return content
 }

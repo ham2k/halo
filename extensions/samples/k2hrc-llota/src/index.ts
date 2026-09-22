@@ -19,12 +19,7 @@
 // API key the program issues, and the export hooks that submit a log. See
 // `docs/hooks.md` §`spots` and §`export`.
 
-import {
-  activityScorer,
-  contestScorer,
-  defineExtension,
-  referenceActivity,
-} from "@ham2k/extension-sdk"
+import { activityScorer, contestScorer, defineExtension, referenceActivity } from "@ham2k/extension-sdk"
 import type { DataFileDefinition, HookContext } from "@ham2k/extension-sdk"
 import { locationToGrid6 } from "@ham2k/lib-geo-tools"
 
@@ -116,7 +111,9 @@ const referenceList: DataFileDefinition = {
   category: "k2hrc-llota",
 
   jsonToLookupEntry: (entry: Record<string, any>) => {
-    const ref = String(entry?.reference_code ?? "").trim().toUpperCase()
+    const ref = String(entry?.reference_code ?? "")
+      .trim()
+      .toUpperCase()
     // Returning null drops the entry. A list of this size will contain a few
     // rows that are not references, and throwing would abandon the rest.
     if (!ref) return null

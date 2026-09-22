@@ -19,20 +19,14 @@
 // The rules: https://field-day.arrl.org/
 
 import { tally } from "@ham2k/extension-sdk"
-import type {
-  ContestScorer,
-  HookContext,
-  JSONValue,
-  QsoScoreVerdict,
-  ScoreTally,
-} from "@ham2k/extension-sdk"
+import type { ContestScorer, HookContext, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { superModeForMode } from "@ham2k/lib-operation-data"
 
 import { ABBREVIATED_SECTION_NAMES, ARRL_SECTIONS, RAC_SECTIONS } from "./sections.ts"
 import { tFor } from "./i18n.ts"
 
-export const TYPE = 'fd'
+export const TYPE = "fd"
 
 /// `1A`, `14F`, and `PC2B` for a station asking you to copy a bulletin.
 export const CLASS_REGEX = /^(PC)?([1-9][0-9]*)([ABCDEF])$/
@@ -42,10 +36,10 @@ const POINTS: Record<string, number> = { PHONE: 1, CW: 2, DATA: 2 }
 
 /// Field Day does not run on the WARC bands. A contact there is logged and
 /// submitted; it simply earns nothing.
-const INVALID_BANDS = new Set(['60m', '30m', '17m', '12m'])
+const INVALID_BANDS = new Set(["60m", "30m", "17m", "12m"])
 
 /// Valid to receive, but not sections — they are tallied on their own.
-const NON_SECTION_LOCATIONS = new Set(['MX', 'DX'])
+const NON_SECTION_LOCATIONS = new Set(["MX", "DX"])
 
 export type FDScoresheet = {
   /// `call|band|superMode`. The dupe rule is per band AND mode, so the same
@@ -84,13 +78,10 @@ export type FDScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value.trim() : ''
+  return typeof value === "string" ? value.trim() : ""
 }
 
-export function refOfType(
-  container: Record<string, JSONValue> | undefined,
-  type: string,
-): Record<string, JSONValue> | undefined {
+export function refOfType(container: Record<string, JSONValue> | undefined, type: string): Record<string, JSONValue> | undefined {
   const refs = (container?.refs as Record<string, JSONValue>[] | undefined) ?? []
   return Array.isArray(refs) ? refs.find((r) => r?.type === type) : undefined
 }
@@ -103,8 +94,8 @@ export function refOfType(
 export function powerMultiplier(ref: Record<string, JSONValue> | undefined): number {
   const power = str(ref?.ourPower).toUpperCase()
   const source = str(ref?.ourPowerSource).toUpperCase()
-  if (power === '5W' && source === 'BATTERIES') return 5
-  if (power === '5W' || power === '100W') return 2
+  if (power === "5W" && source === "BATTERIES") return 5
+  if (power === "5W" || power === "100W") return 2
   return 1
 }
 
@@ -127,14 +118,14 @@ export function bonusPoints(ref: Record<string, JSONValue> | undefined): number 
   // emergency power. There is no standalone per-transmitter bonus: awarding one
   // gives a mains-powered home station points it is not entitled to, and gives
   // a station that IS on emergency power the same amount twice.
-  if (flag('bonusEmergencyPower')) total += Math.min(num('bonusTransmitters'), 20) * 100
+  if (flag("bonusEmergencyPower")) total += Math.min(num("bonusTransmitters"), 20) * 100
 
   // 10 per formal message, capped at 10 messages.
-  total += Math.min(num('bonusNTSMessages'), 10) * 10
+  total += Math.min(num("bonusNTSMessages"), 10) * 10
   // 5 per GOTA contact, uncapped, plus a flat 100 if a coach ran the station.
-  total += num('bonusGotaQsos') * 5
+  total += num("bonusGotaQsos") * 5
   // 20 per youth participant who made at least one contact, capped at 100.
-  total += Math.min(num('bonusYouthParticipants') * 20, 100)
+  total += Math.min(num("bonusYouthParticipants") * 20, 100)
 
   for (const [key, points] of Object.entries(CLAIMED_BONUSES)) {
     if (flag(key)) total += points
@@ -215,12 +206,12 @@ export const FDScorer: ContestScorer<FDScoresheet> = {
     // later real SSB contact with the same station on the same band would not
     // be caught. `stateparks` and `naqp` guard it the same way.
     const mode = str(qso.mode)
-    const superMode = mode ? superModeForMode(mode) : ''
+    const superMode = mode ? superModeForMode(mode) : ""
 
     if (INVALID_BANDS.has(band)) {
       // An alert rather than silence: an operator who has drifted onto 30m
       // wants to know while they can still move.
-      return { scoresheet: sheet, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: sheet, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     const qsoRef = refOfType(qso, TYPE)
@@ -229,7 +220,7 @@ export const FDScorer: ContestScorer<FDScoresheet> = {
 
     const key = `${call}|${band}|${superMode}`
     if (sheet.worked[key] === true) {
-      return { scoresheet: sheet, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: sheet, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     const notices: string[] = []
@@ -237,8 +228,8 @@ export const FDScorer: ContestScorer<FDScoresheet> = {
     const seenModes = sheet.modesByCall[call]
     // Only news for a station already worked — on a first contact every band is
     // a new band, which is not worth saying.
-    if (seenBands && !seenBands[band]) notices.push('newBand')
-    if (seenModes && !seenModes[superMode]) notices.push('newMode')
+    if (seenBands && !seenBands[band]) notices.push("newBand")
+    if (seenModes && !seenModes[superMode]) notices.push("newMode")
 
     // A stable KEY, never the section's display name. `notices` is a
     // translation-key vocabulary (app/lib/tools/scoring_labels.dart) that falls
@@ -247,7 +238,7 @@ export const FDScorer: ContestScorer<FDScoresheet> = {
     // that way. Every other scorer emits keys only.
     const known = ARRL_SECTIONS[section] ?? RAC_SECTIONS[section]
     const firstOfItsSection = Boolean(section) && !sheet.sectionsSeen[section]
-    if (known && firstOfItsSection) notices.push('newSection')
+    if (known && firstOfItsSection) notices.push("newSection")
 
     // An unknown or absent mode is worth the phone rate, not the data rate.
     const value = POINTS[superMode] ?? 1
@@ -261,7 +252,7 @@ export const FDScorer: ContestScorer<FDScoresheet> = {
     sheet.dayPoints += value
     if (section) sheet.sectionsSeen[section] = true
     sheet.byMode[superMode] = (sheet.byMode[superMode] ?? 0) + 1
-    if (CLASS_REGEX.test(theirClass) && theirClass.startsWith('PC')) sheet.pleaseCopy += 1
+    if (CLASS_REGEX.test(theirClass) && theirClass.startsWith("PC")) sheet.pleaseCopy += 1
 
     if (section) {
       if (ARRL_SECTIONS[section]) {
@@ -280,7 +271,7 @@ export const FDScorer: ContestScorer<FDScoresheet> = {
 
   summarizeScore({ scoresheet, scope }, ctx): Record<string, ScoreTally> {
     const t = tFor(ctx)
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     // Latched during the fold, not read off `ref` — the ref handed here is the
     // FIRST segment's, which loses a mid-contest power change.
     const multiplier = scoresheet.multiplier
@@ -292,28 +283,25 @@ export const FDScorer: ContestScorer<FDScoresheet> = {
     const bonus = isDay ? 0 : scoresheet.bonus
     const total = points * multiplier + bonus
 
-    const sections =
-      Object.keys(scoresheet.arrlSections).length +
-      Object.keys(scoresheet.racSections).length +
-      Object.keys(scoresheet.otherSections).length
+    const sections = Object.keys(scoresheet.arrlSections).length + Object.keys(scoresheet.racSections).length + Object.keys(scoresheet.otherSections).length
 
     return {
       contest: tally(TYPE, scope, total, {
         // Without an icon the day-header renderer drops the whole badge, not
         // just the glyph (qso_list.dart).
-        icon: 'weather-sunny',
-        label: t('scoreLabel'),
-        summary: t('scoreSummary', { total: fmtInteger(total) }),
+        icon: "weather-sunny",
+        label: t("scoreLabel"),
+        summary: t("scoreSummary", { total: fmtInteger(total) }),
         // Spelled out because an operator checking a claimed score wants the
         // arithmetic, not just the answer.
         longSummary: [
-          t('scoreQsos', { qsos: fmtInteger(qsos), points: fmtInteger(points), multiplier }),
-          bonus > 0 ? t('scoreBonus', { bonus: fmtInteger(bonus) }) : '',
-          t('scoreSections', { sections: fmtInteger(sections) }),
-          scoresheet.pleaseCopy > 0 ? t('scorePleaseCopy', { copies: fmtInteger(scoresheet.pleaseCopy) }) : '',
+          t("scoreQsos", { qsos: fmtInteger(qsos), points: fmtInteger(points), multiplier }),
+          bonus > 0 ? t("scoreBonus", { bonus: fmtInteger(bonus) }) : "",
+          t("scoreSections", { sections: fmtInteger(sections) }),
+          scoresheet.pleaseCopy > 0 ? t("scorePleaseCopy", { copies: fmtInteger(scoresheet.pleaseCopy) }) : "",
         ]
           .filter((line) => line)
-          .join('\n'),
+          .join("\n"),
       }),
     }
   },

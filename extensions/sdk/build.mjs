@@ -8,21 +8,21 @@
 // compiles the TypeScript on the way past. This exists only so that someone
 // with none of this repo can install the same thing from npm.
 
-import { build } from 'esbuild'
-import { execFile } from 'node:child_process'
-import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
-import { basename, dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { promisify } from 'node:util'
+import { build } from "esbuild"
+import { execFile } from "node:child_process"
+import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises"
+import { basename, dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+import { promisify } from "node:util"
 
-import { sharedPackages } from '../build-config.mjs'
-import { EXAMPLE_BUILD_SCRIPT } from '../tools/h2kext-build.mjs'
+import { sharedPackages } from "../build-config.mjs"
+import { EXAMPLE_BUILD_SCRIPT } from "../tools/h2kext-build.mjs"
 
 const run = promisify(execFile)
 const here = dirname(fileURLToPath(import.meta.url))
-const src = join(here, 'src')
-const dist = join(here, 'dist')
-const entry = join(src, 'index.ts')
+const src = join(here, "src")
+const dist = join(here, "dist")
+const entry = join(src, "index.ts")
 
 await rm(dist, { recursive: true, force: true })
 await mkdir(dist, { recursive: true })
@@ -38,13 +38,11 @@ await mkdir(dist, { recursive: true })
 /// the barrel. Nothing in the barrel imports either, so a bundled build would
 /// drop them silently; naming the entry points explicitly is what keeps that
 /// true when someone adds an import.
-const notShipped = new Set(['kernel.ts', 'testing.ts'])
+const notShipped = new Set(["kernel.ts", "testing.ts"])
 
 async function shippedModules() {
   const names = await readdir(src)
-  return names
-    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts') && !notShipped.has(name))
-    .map((name) => join(src, name))
+  return names.filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts") && !notShipped.has(name)).map((name) => join(src, name))
 }
 
 // Transpiled module BY MODULE, not bundled into one file, and this is the
@@ -63,10 +61,10 @@ await build({
   entryPoints: await shippedModules(),
   outdir: dist,
   bundle: false,
-  format: 'esm',
-  platform: 'neutral',
-  target: 'es2020',
-  logLevel: 'warning',
+  format: "esm",
+  platform: "neutral",
+  target: "es2020",
+  logLevel: "warning",
 })
 
 // esbuild leaves import specifiers alone when it is not bundling, and these
@@ -74,23 +72,22 @@ await build({
 // tsconfig carries `allowImportingTsExtensions`. Left as they are, every
 // import in the published package would point at a file that isn't there.
 for (const name of await readdir(dist)) {
-  if (!name.endsWith('.js')) continue
+  if (!name.endsWith(".js")) continue
   const file = join(dist, name)
-  const code = await readFile(file, 'utf8')
-  await writeFile(file, code.replace(/(from\s*["']\.[^"']*)\.ts(["'])/g, '$1.js$2'))
+  const code = await readFile(file, "utf8")
+  await writeFile(file, code.replace(/(from\s*["']\.[^"']*)\.ts(["'])/g, "$1.js$2"))
 }
 
 // Imported with `with { type: "json" }` and left as imports by the transpile
 // above, so the files themselves have to travel.
-await cp(join(src, 'i18n'), join(dist, 'i18n'), { recursive: true })
+await cp(join(src, "i18n"), join(dist, "i18n"), { recursive: true })
 
 // The two properties that make this package worth installing, asserted rather
 // than trusted, because breaking either produces a package that WORKS and is
 // silently wrong — no error anywhere, just every extension built against it
 // paying for it.
-const emitted = (await readdir(dist)).filter((name) => name.endsWith('.js'))
-const modules = Object.fromEntries(
-  await Promise.all(emitted.map(async (name) => [name, await readFile(join(dist, name), 'utf8')])))
+const emitted = (await readdir(dist)).filter((name) => name.endsWith(".js"))
+const modules = Object.fromEntries(await Promise.all(emitted.map(async (name) => [name, await readFile(join(dist, name), "utf8")])))
 
 // Bundling this into one file would cost the author roughly five times the
 // bundle size: their tree-shaking can no longer tell which parts their
@@ -100,15 +97,13 @@ const modules = Object.fromEntries(
 // resolve them away from `sharedModulesPlugin`, and every bundling shape
 // either collapses to one file — caught here — or esbuild refuses outright.
 if (emitted.length < 2) {
-  throw new Error(
-    `dist/ holds ${emitted.length} module(s) — the SDK was bundled into one file, ` +
-    "which defeats the author's tree-shaking")
+  throw new Error(`dist/ holds ${emitted.length} module(s) — the SDK was bundled into one file, ` + "which defeats the author's tree-shaking")
 }
 
 // The kernel IS the host. Published, it would hand every extension author the
 // code that defines `globalThis.__polo` and holds the single instance of every
 // shared library.
-const kernelMarkers = Object.entries(modules).filter(([, code]) => code.includes('__polo ='))
+const kernelMarkers = Object.entries(modules).filter(([, code]) => code.includes("__polo ="))
 if (kernelMarkers.length) {
   throw new Error(`dist/${kernelMarkers[0][0]} defines the kernel — that belongs to the host, not the SDK`)
 }
@@ -121,33 +116,40 @@ if (kernelMarkers.length) {
 // `@ham2k/lib-qson-tools` and friends inlined, so installing the SDK installs
 // everything needed to typecheck against it. Those packages are optional peers
 // precisely so that nothing has to fetch ten of them to get `CallInfo`.
-const dts = join(dist, 'index.d.ts')
-await run('npx', [
-  'dts-bundle-generator',
-  '--out-file', dts,
-  '--no-banner',
-  // Every shared library is a candidate for inlining rather than importing.
-  // Only the ones the SDK's surface actually names reach the output, so listing
-  // all twelve costs nothing and means a new type reference cannot quietly
-  // start leaking an import the guard below would then reject.
-  '--external-inlines', ...sharedPackages,
-  '--project', join(here, '../tsconfig.json'),
-  '--',
-  entry,
-], { cwd: here })
+const dts = join(dist, "index.d.ts")
+await run(
+  "npx",
+  [
+    "dts-bundle-generator",
+    "--out-file",
+    dts,
+    "--no-banner",
+    // Every shared library is a candidate for inlining rather than importing.
+    // Only the ones the SDK's surface actually names reach the output, so listing
+    // all twelve costs nothing and means a new type reference cannot quietly
+    // start leaking an import the guard below would then reject.
+    "--external-inlines",
+    ...sharedPackages,
+    "--project",
+    join(here, "../tsconfig.json"),
+    "--",
+    entry,
+  ],
+  { cwd: here },
+)
 
-const declared = await readFile(dts, 'utf8')
+const declared = await readFile(dts, "utf8")
 // A declaration still pointing at a package the author was told they need not
 // install types out to `any` in their editor, silently — the one outcome
 // bundling the types exists to prevent.
 const leaked = sharedPackages.filter((pkg) => declared.includes(`from '${pkg}'`) || declared.includes(`from "${pkg}"`))
 if (leaked.length) {
   throw new Error(
-    `dist/index.d.ts still imports from ${leaked.join(', ')} — those types did not get inlined, ` +
-    'so an author who installs only the SDK loses them')
+    `dist/index.d.ts still imports from ${leaked.join(", ")} — those types did not get inlined, ` + "so an author who installs only the SDK loses them",
+  )
 }
 
-const { version } = JSON.parse(await readFile(join(here, 'package.json'), 'utf8'))
+const { version } = JSON.parse(await readFile(join(here, "package.json"), "utf8"))
 await writeFile(dts, `// @ham2k/extension-sdk ${version}\n${declared}`)
 
 /// The reference an author — or the agent writing the extension for them —
@@ -161,11 +163,11 @@ await writeFile(dts, `// @ham2k/extension-sdk ${version}\n${declared}`)
 /// Curated, because this repo's own inner loop is not an author's. The dev
 /// server and `halo-ext` need a checkout, `mise` and the app's built bundles —
 /// documented, they would send a reader after tooling they cannot run.
-const shippedDocs = ['hooks.md', 'forms.md', 'templates.md', 'settings.md', 'distribution.md']
+const shippedDocs = ["hooks.md", "forms.md", "templates.md", "settings.md", "distribution.md"]
 
-const docsSrc = join(here, '../../docs/extensions')
-const docsOut = join(here, 'docs')
-const PUBLIC_BLOB = 'https://github.com/ham2k/halo/blob/main'
+const docsSrc = join(here, "../../docs/extensions")
+const docsOut = join(here, "docs")
+const PUBLIC_BLOB = "https://github.com/ham2k/halo/blob/main"
 
 /// `](target)`, ignoring absolute URLs, anchors and mail links.
 const RELATIVE_LINK = /\]\((?!https?:|#|mailto:)([^)\s]+)\)/g
@@ -174,19 +176,22 @@ await rm(docsOut, { recursive: true, force: true })
 await mkdir(docsOut, { recursive: true })
 
 for (const name of shippedDocs) {
-  const text = await readFile(join(docsSrc, name), 'utf8')
+  const text = await readFile(join(docsSrc, name), "utf8")
 
   const rewritten = text.replace(RELATIVE_LINK, (whole, target) => {
-    const [path, anchor] = target.split('#')
-    if (shippedDocs.includes(path.replace(/^\.\//, ''))) return whole
+    const [path, anchor] = target.split("#")
+    if (shippedDocs.includes(path.replace(/^\.\//, ""))) return whole
     // Resolved against the docs directory it came from, so `../design/x.md`
     // and `../../extensions/sdk/src/types.ts` both land on a repo path.
-    const repoPath = `docs/extensions/${path}`.split('/').reduce((parts, part) => {
-      if (part === '..') parts.pop()
-      else if (part !== '.' && part !== '') parts.push(part)
-      return parts
-    }, []).join('/')
-    return `](${PUBLIC_BLOB}/${repoPath}${anchor ? `#${anchor}` : ''})`
+    const repoPath = `docs/extensions/${path}`
+      .split("/")
+      .reduce((parts, part) => {
+        if (part === "..") parts.pop()
+        else if (part !== "." && part !== "") parts.push(part)
+        return parts
+      }, [])
+      .join("/")
+    return `](${PUBLIC_BLOB}/${repoPath}${anchor ? `#${anchor}` : ""})`
   })
 
   // The link forms RELATIVE_LINK does NOT match, scanned in the SOURCE. Those
@@ -207,8 +212,7 @@ for (const name of shippedDocs) {
   for (const pattern of UNHANDLED_LINKS) {
     const [found] = text.match(pattern) ?? []
     if (found) {
-      throw new Error(
-        `docs/${name} has a link the shipping rewrite cannot follow: ${found.trim()}`)
+      throw new Error(`docs/${name} has a link the shipping rewrite cannot follow: ${found.trim()}`)
     }
   }
 
@@ -265,31 +269,29 @@ See \`../AGENTS.md\` for the map, and \`../docs/\` for the references.
 /// SDK and the tools through workspace paths; an author's copy reaches them
 /// through npm, and shipping the workspace form would hand every reader a
 /// build script that cannot resolve its own imports.
-const shippedSamples = ['k2hrc-hamqth', 'k2hrc-llota', 'k2hrc-cqww', 'k2hrc-radio', 'k2hrc-svg-scenes']
+const shippedSamples = ["k2hrc-hamqth", "k2hrc-llota", "k2hrc-cqww", "k2hrc-radio", "k2hrc-svg-scenes"]
 
-const samplesOut = join(here, 'samples')
+const samplesOut = join(here, "samples")
 await rm(samplesOut, { recursive: true, force: true })
 
 for (const name of shippedSamples) {
-  const from = join(here, '../samples', name)
+  const from = join(here, "../samples", name)
   const to = join(samplesOut, name)
-  await cp(from, to, { recursive: true, filter: (path) => basename(path) !== 'build' && !path.endsWith('.test.ts') })
-  await writeFile(join(to, 'build.mjs'), EXAMPLE_BUILD_SCRIPT)
+  await cp(from, to, { recursive: true, filter: (path) => basename(path) !== "build" && !path.endsWith(".test.ts") })
+  await writeFile(join(to, "build.mjs"), EXAMPLE_BUILD_SCRIPT)
 
   // A sample that names a shared library its manifest does not declare fails
   // an author's first build, on code they did not write and cannot fix from
   // the error. The repo's test builds these, so reaching here with one is not
   // expected — this is the check that the thing being COPIED is the thing that
   // was tested.
-  const manifest = JSON.parse(await readFile(join(to, 'manifest.json'), 'utf8'))
-  if (!manifest.sharedDependencies || !manifest.key?.startsWith('k2hrc-')) {
+  const manifest = JSON.parse(await readFile(join(to, "manifest.json"), "utf8"))
+  if (!manifest.sharedDependencies || !manifest.key?.startsWith("k2hrc-")) {
     throw new Error(`samples/${name} does not look like a packaged sample (key, sharedDependencies)`)
   }
 }
 
-await writeFile(join(samplesOut, 'README.md'), SAMPLES_README)
+await writeFile(join(samplesOut, "README.md"), SAMPLES_README)
 
-const shipped = (await readdir(dist)).filter((n) => n.endsWith('.js')).length
-console.log(
-  `built @ham2k/extension-sdk ${version} — ${shipped} modules + rolled-up types + ` +
-  `${shippedDocs.length} docs + ${shippedSamples.length} samples`)
+const shipped = (await readdir(dist)).filter((n) => n.endsWith(".js")).length
+console.log(`built @ham2k/extension-sdk ${version} — ${shipped} modules + rolled-up types + ` + `${shippedDocs.length} docs + ${shippedSamples.length} samples`)

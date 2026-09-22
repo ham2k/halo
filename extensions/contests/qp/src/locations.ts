@@ -89,11 +89,11 @@ export const CANADIAN_PROVINCES: Record<string, string> = {
 
 /// The name Washington DC is shown under when a party counts it as its own
 /// multiplier.
-export const DISTRICT_OF_COLUMBIA = 'District of Columbia'
+export const DISTRICT_OF_COLUMBIA = "District of Columbia"
 
 /// The label a party that folds DC into Maryland uses for both codes, so the
 /// operator sees the same thing whichever one the other station sent.
-export const MARYLAND_AND_DC = 'Maryland & DC'
+export const MARYLAND_AND_DC = "Maryland & DC"
 
 export function isUsState(code: string): boolean {
   return US_STATES[code.toUpperCase()] !== undefined

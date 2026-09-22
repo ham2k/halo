@@ -8,7 +8,7 @@
 
 const SELF_SPOT_MATCH = /^(SPOT|SPOTME|SPME|SELFSPOT|QRV|QRT|QSY|QRX)(|[ /][\s\w\d!,.\-_]*)$/i
 const LAST_SPOT_MATCH = /^(SPOTLAST|SPOTEM|SPOTTHEM|SPTHEM)$/i
-const Q_CODES = new Set(['QRV', 'QRT', 'QSY', 'QRX'])
+const Q_CODES = new Set(["QRV", "QRT", "QSY", "QRX"])
 
 /// Returns the comment to spot with (possibly empty string), or `null` if
 /// `input` doesn't match a self-spot command at all. A Q-code trigger
@@ -20,8 +20,8 @@ export function parseSelfSpotCommand(input: string): { comment: string } | null 
   if (!match) return null
   const [, trigger, rest] = match
   const upperTrigger = trigger.toUpperCase()
-  const freeText = rest ? rest.slice(1) : '' // drop the leading space/slash separator
-  const comment = Q_CODES.has(upperTrigger) ? [upperTrigger, freeText].filter((x) => x).join(' ') : freeText
+  const freeText = rest ? rest.slice(1) : "" // drop the leading space/slash separator
+  const comment = Q_CODES.has(upperTrigger) ? [upperTrigger, freeText].filter((x) => x).join(" ") : freeText
   return { comment }
 }
 

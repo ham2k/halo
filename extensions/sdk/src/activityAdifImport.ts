@@ -40,14 +40,14 @@ export interface ActivityAdifImportRules {
 /// tags routinely, and for every purpose here an empty field means the same
 /// thing as a missing one.
 function present(...values: (string | undefined)[]): string | undefined {
-  return values.find((v) => v !== undefined && v !== '')
+  return values.find((v) => v !== undefined && v !== "")
 }
 
 /// Splits a `*_REF` field. Programs comma-separate; spaces appear around the
 /// commas often enough to be worth tolerating.
 function splitRefs(value: string): string[] {
   return value
-    .split(',')
+    .split(",")
     .map((r) => r.trim())
     .filter((r) => r.length > 0)
 }
@@ -105,8 +105,8 @@ export function activityAdifImport(rules: ActivityAdifImportRules): AdifImportHo
     // contact. ADIF flattens both onto every record and this hook only ever
     // sees one record, so it tags where each goes and the importer places it.
     for (const [type, sigField, sigInfoField, field, scope] of [
-      [rules.huntingType, 'sig', 'sig_info', listField, undefined],
-      [rules.activationType, 'my_sig', 'my_sig_info', myListField, 'operation'],
+      [rules.huntingType, "sig", "sig_info", listField, undefined],
+      [rules.activationType, "my_sig", "my_sig_info", myListField, "operation"],
     ] as const) {
       if (!type) continue
       // Deduped AFTER normalizing, not before: the same summit reaches here as
@@ -127,10 +127,7 @@ export function activityAdifImport(rules: ActivityAdifImportRules): AdifImportHo
   }
 
   return {
-    async refsForRecords(
-      { records }: { records: { fields: Record<string, string> }[] },
-      _ctx: HookContext,
-    ): Promise<(AdifImportResult | null)[]> {
+    async refsForRecords({ records }: { records: { fields: Record<string, string> }[] }, _ctx: HookContext): Promise<(AdifImportResult | null)[]> {
       return records.map((record) => refsForOneRecord(record.fields ?? {}))
     },
   }

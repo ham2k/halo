@@ -25,8 +25,7 @@ export type CallNotesIndex = Record<string, CallNoteEntry[]>
 /// combiners, so multi-codepoint sequences like 🧑‍💻 or 🏕️ match whole) —
 /// deliberately NOT "any non-ASCII", which would eat a leading accented
 /// letter in a note like "Ángel - friend".
-const LEADING_EMOJI =
-  /^[\u{1F000}-\u{1FFFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]+/u
+const LEADING_EMOJI = /^[\u{1F000}-\u{1FFFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]+/u
 
 /// Expansion eligibility: once any leading decoration is stripped (see
 /// expansionValueFor), the note must read as a plain list of callsign-like
@@ -47,12 +46,12 @@ export function parseCallNotes(body: string): CallNotesIndex {
   const entries: CallNotesIndex = {}
   for (let line of body.split(/[\r\n]+/)) {
     line = line.trim()
-    if (!line || line.startsWith('#')) continue
+    if (!line || line.startsWith("#")) continue
     const [key, ...noteWords] = line.split(/\s+/)
     if (key.length > 2 && noteWords.length > 0) {
       const call = key.toUpperCase()
       entries[call] = entries[call] || []
-      entries[call].push({ call, note: noteWords.join(' ') })
+      entries[call].push({ call, note: noteWords.join(" ") })
     }
   }
   return entries
@@ -73,10 +72,10 @@ export function combineNotes(entries: CallNoteEntry[] | undefined): { note: stri
     if (match && !emojis.includes(match[0])) emojis.push(match[0])
   }
 
-  const text = entries[0].note.replace(LEADING_EMOJI, '').trim()
-  const shown = emojis.slice(0, MAX_MARKER_EMOJIS).join('')
-  const overflow = emojis.length > MAX_MARKER_EMOJIS ? `+${emojis.length - MAX_MARKER_EMOJIS}` : ''
-  const note = [shown + overflow, text].filter(Boolean).join(' ')
+  const text = entries[0].note.replace(LEADING_EMOJI, "").trim()
+  const shown = emojis.slice(0, MAX_MARKER_EMOJIS).join("")
+  const overflow = emojis.length > MAX_MARKER_EMOJIS ? `+${emojis.length - MAX_MARKER_EMOJIS}` : ""
+  const note = [shown + overflow, text].filter(Boolean).join(" ")
   return { note, emoji: emojis[0] }
 }
 
@@ -99,9 +98,7 @@ export function combineNotes(entries: CallNoteEntry[] | undefined): { note: stri
 export function expansionValueFor(entries: CallNoteEntry[] | undefined): string | null {
   for (const entry of entries ?? []) {
     const trimmed = entry.note.trim()
-    const stripped = LEADING_HEADING.test(trimmed)
-      ? trimmed.replace(LEADING_HEADING, '')
-      : trimmed.replace(LEADING_EMOJI, '')
+    const stripped = LEADING_HEADING.test(trimmed) ? trimmed.replace(LEADING_HEADING, "") : trimmed.replace(LEADING_EMOJI, "")
     const note = stripped.trim()
     if (EXPANDABLE.test(note)) return note.toUpperCase()
   }
@@ -136,8 +133,8 @@ function shortHash(input: string): string {
 export function customIdentifier(location: string): string {
   const slug = location
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .slice(0, 60)
   return `custom-${slug}-${shortHash(location)}`
 }

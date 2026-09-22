@@ -116,21 +116,9 @@
     "WYAN": "Wyandot"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "ROVER",
-      "EOC"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE"],
+    "station": ["FIXED", "MOBILE", "ROVER", "EOC"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

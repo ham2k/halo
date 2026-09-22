@@ -50,18 +50,12 @@ test("TRANSFORMS leaves an already comma-separated multi-summit list untouched",
 })
 
 test("suggestOperationTitleForSota suggests the summit reference as 'at' and the summit's decorated name as subtitle (ham2k/halo-dist#174)", () => {
-  const suggestion = suggestOperationTitleForSota(
-    { type: "sotaActivation", ref: "W6/SD-123", name: "Mount Example" },
-    "sotaActivation",
-  )
+  const suggestion = suggestOperationTitleForSota({ type: "sotaActivation", ref: "W6/SD-123", name: "Mount Example" }, "sotaActivation")
   assert.deepEqual(suggestion, { at: "W6/SD-123", subtitle: "Mount Example" })
 })
 
 test("suggestOperationTitleForSota returns null for a hunting ref — that's a station worked, not where this operation is", () => {
-  const suggestion = suggestOperationTitleForSota(
-    { type: "sota", ref: "W6/SD-123", name: "Mount Example" },
-    "sotaActivation",
-  )
+  const suggestion = suggestOperationTitleForSota({ type: "sota", ref: "W6/SD-123", name: "Mount Example" }, "sotaActivation")
   assert.equal(suggestion, null)
 })
 
@@ -76,8 +70,8 @@ test("suggestOperationTitleForSota returns null for an activation ref with no re
 // Ham2K's CORS proxy, so the status alone cannot say who refused — a hop that
 // is merely misconfigured must not read as a revoked token.
 test("oauthErrorCode names a provider's own rejection", () => {
-  assert.equal(oauthErrorCode('{"error":"invalid_grant","error_description":"Token is not active"}'), 'invalid_grant')
-  assert.equal(oauthErrorCode('{"error":"invalid_client"}'), 'invalid_client')
+  assert.equal(oauthErrorCode('{"error":"invalid_grant","error_description":"Token is not active"}'), "invalid_grant")
+  assert.equal(oauthErrorCode('{"error":"invalid_client"}'), "invalid_client")
 })
 
 test("oauthErrorCode refuses anything that did not come from the provider", () => {
@@ -85,14 +79,14 @@ test("oauthErrorCode refuses anything that did not come from the provider", () =
   // hop exists. Treating any of them as a rejection wipes an account whose
   // tokens are fine, and the operator is told to reconnect for no reason.
   for (const body of [
-    '<!DOCTYPE html><html><body>Not found</body></html>', // the Worker's own 404 page
-    'error code: 1015', // a Cloudflare edge rate limit
-    'Not found', // the Worker's plain-text miss
-    '', // no body at all
-    '{}', // JSON, but not an OAuth error
+    "<!DOCTYPE html><html><body>Not found</body></html>", // the Worker's own 404 page
+    "error code: 1015", // a Cloudflare edge rate limit
+    "Not found", // the Worker's plain-text miss
+    "", // no body at all
+    "{}", // JSON, but not an OAuth error
     '{"error":""}', // present but empty — nothing to act on
     '{"error":123}', // wrong type
-    'null',
+    "null",
   ]) {
     assert.equal(oauthErrorCode(body), null, `should not read as a rejection: ${body}`)
   }

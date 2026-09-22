@@ -11,12 +11,12 @@
 /// left unparsed, or a magnitude outside the axis. Undefined is what `field()`
 /// skips, so an unusable coordinate writes no ADIF field at all rather than a
 /// malformed one.
-export function formatAdifCoordinate(value: unknown, axis: 'lat' | 'lon'): string | undefined {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
-  const limit = axis === 'lat' ? 90 : 180
+export function formatAdifCoordinate(value: unknown, axis: "lat" | "lon"): string | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined
+  const limit = axis === "lat" ? 90 : 180
   if (value < -limit || value > limit) return undefined
 
-  const hemisphere = axis === 'lat' ? (value < 0 ? 'S' : 'N') : (value < 0 ? 'W' : 'E')
+  const hemisphere = axis === "lat" ? (value < 0 ? "S" : "N") : value < 0 ? "W" : "E"
   const magnitude = Math.abs(value)
   let degrees = Math.floor(magnitude)
   let minutes = (magnitude - degrees) * 60
@@ -29,5 +29,5 @@ export function formatAdifCoordinate(value: unknown, axis: 'lat' | 'lon'): strin
     minutes = 0
   }
 
-  return `${hemisphere}${String(degrees).padStart(3, '0')} ${minutes.toFixed(3).padStart(6, '0')}`
+  return `${hemisphere}${String(degrees).padStart(3, "0")} ${minutes.toFixed(3).padStart(6, "0")}`
 }

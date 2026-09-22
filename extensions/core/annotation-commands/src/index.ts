@@ -46,10 +46,10 @@ type Operation = Record<string, JSONValue>
 /// "now" itself.
 function eventQso(kind: string, event: Record<string, JSONValue>): Record<string, JSONValue> {
   return {
-    band: 'event',
+    band: "event",
     freq: 0,
     mode: kind,
-    our: { call: 'EVENT' },
+    our: { call: "EVENT" },
     their: { call: kind.toUpperCase() },
     event: { event: kind, ...event },
   }
@@ -57,7 +57,16 @@ function eventQso(kind: string, event: Record<string, JSONValue>): Record<string
 
 /// NOTE/TODO share everything but their words and icons: free-prose
 /// parameter (mixedCase), operation-scoped, and an event row via addQso.
-function noteLikeCommand({ pattern, kind, name, icon, describe, confirm, catalogKey, extra }: {
+function noteLikeCommand({
+  pattern,
+  kind,
+  name,
+  icon,
+  describe,
+  confirm,
+  catalogKey,
+  extra,
+}: {
   pattern: RegExp
   kind: string
   name: string
@@ -68,15 +77,12 @@ function noteLikeCommand({ pattern, kind, name, icon, describe, confirm, catalog
   extra?: Record<string, JSONValue>
 }) {
   return {
-    async interpret(
-      { input, operation }: { input: string; operation?: Operation },
-      ctx: HookContext,
-    ): Promise<CommandInterpretation | null> {
+    async interpret({ input, operation }: { input: string; operation?: Operation }, ctx: HookContext): Promise<CommandInterpretation | null> {
       const match = pattern.exec(input.trim())
       if (!match) return null
 
       const t = tFor(ctx)
-      if (!operation) return { error: t('needsOperation', { name }) }
+      if (!operation) return { error: t("needsOperation", { name }) }
 
       // `mixedCase` on both results: the text is free prose, so the call
       // field must not force it to uppercase — and it stays typed-as-is
@@ -88,9 +94,11 @@ function noteLikeCommand({ pattern, kind, name, icon, describe, confirm, catalog
         mixedCase: true,
         describe: describe(t, text),
         confirm: confirm(t),
-        commands: [{
-          addQso: eventQso(kind, { command: `${name} ${text}`, icon, note: text, ...extra }),
-        }],
+        commands: [
+          {
+            addQso: eventQso(kind, { command: `${name} ${text}`, icon, note: text, ...extra }),
+          },
+        ],
       }
     },
 
@@ -99,37 +107,39 @@ function noteLikeCommand({ pattern, kind, name, icon, describe, confirm, catalog
     // field open for typing when one is chosen.
     async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
       const t = tFor(ctx)
-      return [{
-        command: name,
-        params: t('catalogNoteParams'),
-        describe: t(catalogKey),
-        category: t('catalogCategory'),
-        needsOperation: true,
-        expectsParams: true,
-        suggest: true,
-      }]
+      return [
+        {
+          command: name,
+          params: t("catalogNoteParams"),
+          describe: t(catalogKey),
+          category: t("catalogCategory"),
+          needsOperation: true,
+          expectsParams: true,
+          suggest: true,
+        },
+      ]
     },
   }
 }
 
 const NoteCommand = noteLikeCommand({
   pattern: /^NOTES?(?:\s+(.*))?$/i,
-  kind: 'note',
-  name: 'NOTE',
-  icon: 'sticker-text-outline',
-  describe: (t, text) => t('addNote', { text }),
-  confirm: (t) => t('noteAdded'),
-  catalogKey: 'catalogNote',
+  kind: "note",
+  name: "NOTE",
+  icon: "sticker-text-outline",
+  describe: (t, text) => t("addNote", { text }),
+  confirm: (t) => t("noteAdded"),
+  catalogKey: "catalogNote",
 })
 
 const TodoCommand = noteLikeCommand({
   pattern: /^TODO(?:\s+(.*))?$/i,
-  kind: 'todo',
-  name: 'TODO',
-  icon: 'sticker-outline',
-  describe: (t, text) => t('addTodo', { text }),
-  confirm: (t) => t('todoAdded'),
-  catalogKey: 'catalogTodo',
+  kind: "todo",
+  name: "TODO",
+  icon: "sticker-outline",
+  describe: (t, text) => t("addTodo", { text }),
+  confirm: (t) => t("todoAdded"),
+  catalogKey: "catalogTodo",
   extra: { data: { done: false } },
 })
 
@@ -137,14 +147,14 @@ type SolarResult = { solarData: Record<string, string>; message: string } | null
 
 async function fetchSolarData(): Promise<SolarResult> {
   try {
-    const response = await host.fetch('https://www.hamqsl.com/solarxml.php')
+    const response = await host.fetch("https://www.hamqsl.com/solarxml.php")
     if (response.status !== 200) throw new Error(`status ${response.status}`)
     const solarData = parseSolarXml(response.body)
     // All four readings the message renders must be present — a partial or
     // reshaped response would otherwise store "undefined" text (and
     // NaN-driven alarm emoji) permanently in the log.
     if (!solarData.solarflux || !solarData.aindex || !solarData.kindex || !solarData.sunspots) {
-      throw new Error('incomplete solar data in response')
+      throw new Error("incomplete solar data in response")
     }
     return { solarData, message: solarMessage(solarData) }
   } catch {
@@ -162,7 +172,7 @@ const SolarCommand = {
     { input, operation, execute }: { input: string; operation?: Operation; execute?: boolean },
     ctx: HookContext,
   ): Promise<CommandInterpretation | null> {
-    if (input.trim().toUpperCase() !== 'SOLAR') return null
+    if (input.trim().toUpperCase() !== "SOLAR") return null
 
     const t = tFor(ctx)
 
@@ -173,31 +183,32 @@ const SolarCommand = {
     if (!solarFetch) {
       solarFetch = fetchSolarData()
       solarFetch.then((result) => {
-        host.updateInterpretation(
-          input,
-          result ? { describe: result.message } : { describe: t('solarError') },
-        )
+        host.updateInterpretation(input, result ? { describe: result.message } : { describe: t("solarError") })
       })
     }
 
-    if (!execute) return { describe: t('fetchingSolar') }
+    if (!execute) return { describe: t("fetchingSolar") }
 
     const promise = solarFetch
     solarFetch = null // next SOLAR (a later QSO) starts its own fresh fetch
     const result = await promise
-    if (!result) return { error: t('solarError') }
+    if (!result) return { error: t("solarError") }
 
     return {
       describe: result.message,
       confirm: result.message,
-      commands: operation ? [{
-        addQso: eventQso('solar', {
-          command: 'SOLAR',
-          icon: 'sun-wireless',
-          description: result.message,
-          data: result.solarData,
-        }),
-      }] : undefined,
+      commands: operation
+        ? [
+            {
+              addQso: eventQso("solar", {
+                command: "SOLAR",
+                icon: "sun-wireless",
+                description: result.message,
+                data: result.solarData,
+              }),
+            },
+          ]
+        : undefined,
     }
   },
 
@@ -205,34 +216,31 @@ const SolarCommand = {
   // palette shouldn't grey it out.
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     const t = tFor(ctx)
-    return [{
-      command: 'SOLAR',
-      describe: t('catalogSolar'),
-      category: t('catalogCategory'),
-      suggest: true,
-    }]
+    return [
+      {
+        command: "SOLAR",
+        describe: t("catalogSolar"),
+        category: t("catalogCategory"),
+        suggest: true,
+      },
+    ]
   },
 }
 
-type WeatherOutcome =
-  | { ok: true; weatherData: Record<string, JSONValue>; message: string }
-  | { ok: false; reason: 'no-location' | 'fetch-error' }
+type WeatherOutcome = { ok: true; weatherData: Record<string, JSONValue>; message: string } | { ok: false; reason: "no-location" | "fetch-error" }
 
-async function fetchWeatherData(
-  operation: Operation | undefined,
-  distanceUnits: string | undefined,
-): Promise<WeatherOutcome> {
+async function fetchWeatherData(operation: Operation | undefined, distanceUnits: string | undefined): Promise<WeatherOutcome> {
   // The operation's own grid if it has one; otherwise the device's GPS fix
   // (same fallback app-polo's WEATHER uses) — so the command still works
   // with no operation open, or one whose grid isn't set yet.
   let latitude: number
   let longitude: number
   const grid = operation?.grid
-  if (typeof grid === 'string' && grid) {
+  if (typeof grid === "string" && grid) {
     ;[latitude, longitude] = gridToLocation(grid)
   } else {
     const deviceLocation = await host.getLocation()
-    if (!deviceLocation) return { ok: false, reason: 'no-location' }
+    if (!deviceLocation) return { ok: false, reason: "no-location" }
     ;({ latitude, longitude } = deviceLocation)
   }
 
@@ -244,20 +252,20 @@ async function fetchWeatherData(
     const params: Record<string, string> = {
       latitude: String(latitude),
       longitude: String(longitude),
-      temperature_unit: distanceUnits === 'miles' ? 'fahrenheit' : 'celsius',
-      current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,wind_direction_10m,wind_gusts_10m,is_day',
-      daily: 'sunrise,sunset',
+      temperature_unit: distanceUnits === "miles" ? "fahrenheit" : "celsius",
+      current: "temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,wind_direction_10m,wind_gusts_10m,is_day",
+      daily: "sunrise,sunset",
     }
     const query = Object.entries(params)
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-      .join('&')
+      .join("&")
     const response = await host.fetch(`https://api.open-meteo.com/v1/forecast?${query}`)
     if (response.status !== 200) throw new Error(`status ${response.status}`)
     const weatherData = JSON.parse(response.body) as Record<string, JSONValue>
-    if (!weatherData?.current) throw new Error('no weather data in response')
+    if (!weatherData?.current) throw new Error("no weather data in response")
     return { ok: true, weatherData, message: weatherMessage(weatherData as unknown as WeatherData) }
   } catch {
-    return { ok: false, reason: 'fetch-error' }
+    return { ok: false, reason: "fetch-error" }
   }
 }
 
@@ -270,7 +278,7 @@ let weatherFetch: { key: string; promise: Promise<WeatherOutcome> } | null = nul
 
 function weatherLocationKey(operation: Operation | undefined): string {
   const grid = operation?.grid
-  return typeof grid === 'string' && grid ? `grid:${grid}` : 'device'
+  return typeof grid === "string" && grid ? `grid:${grid}` : "device"
 }
 
 const WeatherCommand = {
@@ -278,7 +286,7 @@ const WeatherCommand = {
     { input, operation, execute }: { input: string; operation?: Operation; execute?: boolean },
     ctx: HookContext,
   ): Promise<CommandInterpretation | null> {
-    if (input.trim().toUpperCase() !== 'WEATHER') return null
+    if (input.trim().toUpperCase() !== "WEATHER") return null
 
     const t = tFor(ctx)
 
@@ -288,29 +296,33 @@ const WeatherCommand = {
       weatherFetch = { key, promise }
       promise.then((result) => {
         host.updateInterpretation(input, {
-          describe: result.ok ? result.message : t(result.reason === 'no-location' ? 'weatherNeedsLocation' : 'weatherError'),
+          describe: result.ok ? result.message : t(result.reason === "no-location" ? "weatherNeedsLocation" : "weatherError"),
         })
       })
     }
 
-    if (!execute) return { describe: t('fetchingWeather') }
+    if (!execute) return { describe: t("fetchingWeather") }
 
     const promise = weatherFetch.promise
     weatherFetch = null // next WEATHER (a later QSO) starts its own fresh fetch
     const result = await promise
-    if (!result.ok) return { error: t(result.reason === 'no-location' ? 'weatherNeedsLocation' : 'weatherError') }
+    if (!result.ok) return { error: t(result.reason === "no-location" ? "weatherNeedsLocation" : "weatherError") }
 
     return {
       describe: result.message,
       confirm: result.message,
-      commands: operation ? [{
-        addQso: eventQso('weather', {
-          command: 'WEATHER',
-          icon: 'weather-sunny',
-          description: result.message,
-          data: result.weatherData,
-        }),
-      }] : undefined,
+      commands: operation
+        ? [
+            {
+              addQso: eventQso("weather", {
+                command: "WEATHER",
+                icon: "weather-sunny",
+                description: result.message,
+                data: result.weatherData,
+              }),
+            },
+          ]
+        : undefined,
     }
   },
 
@@ -318,21 +330,23 @@ const WeatherCommand = {
   // to device location) — the palette shouldn't grey it out.
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     const t = tFor(ctx)
-    return [{
-      command: 'WEATHER',
-      describe: t('catalogWeather'),
-      category: t('catalogCategory'),
-      suggest: true,
-    }]
+    return [
+      {
+        command: "WEATHER",
+        describe: t("catalogWeather"),
+        category: t("catalogCategory"),
+        suggest: true,
+      },
+    ]
   },
 }
 
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('command', { key: 'annotation-commands-note', hook: NoteCommand, priority: 100 })
-    registerHook('command', { key: 'annotation-commands-todo', hook: TodoCommand, priority: 100 })
-    registerHook('command', { key: 'annotation-commands-solar', hook: SolarCommand, priority: 100 })
-    registerHook('command', { key: 'annotation-commands-weather', hook: WeatherCommand, priority: 100 })
+    registerHook("command", { key: "annotation-commands-note", hook: NoteCommand, priority: 100 })
+    registerHook("command", { key: "annotation-commands-todo", hook: TodoCommand, priority: 100 })
+    registerHook("command", { key: "annotation-commands-solar", hook: SolarCommand, priority: 100 })
+    registerHook("command", { key: "annotation-commands-weather", hook: WeatherCommand, priority: 100 })
   },
 })

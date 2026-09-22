@@ -28,7 +28,10 @@ const sdkEntry = join(samplesDir, "../sdk/src/index.ts")
 
 async function sampleDirs(): Promise<string[]> {
   const entries = await readdir(samplesDir, { withFileTypes: true })
-  return entries.filter((e) => e.isDirectory()).map((e) => e.name).sort()
+  return entries
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort()
 }
 
 test("every sample builds and passes the packer's manifest checks", async (t) => {

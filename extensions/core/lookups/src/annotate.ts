@@ -20,7 +20,7 @@ import type { CallInfo, CallInfoLookup } from "@ham2k/extension-sdk"
 // exact vocabulary confirmed from lib-callsigns' `KNOWN_INDICATORS` list
 // (parseCallsign.ts): 'P' (portable), 'M' (mobile), 'AM' (maritime mobile
 // alternate), 'MM' (maritime mobile).
-const PORTABLE_INDICATORS = new Set(['P', 'M', 'AM', 'MM'])
+const PORTABLE_INDICATORS = new Set(["P", "M", "AM", "MM"])
 
 // `flag`/`ituRegion`/`countryCode` ride along as extra fields CallInfo/
 // CallInfoLookup's fixed shape (from lib-qson-tools, matching app-polo's
@@ -39,17 +39,17 @@ type CallInfoLookupWithFlag = CallInfoLookup & { flag?: string; ituRegion?: numb
 export function annotateCallsign(call: string): CallInfoLookupWithFlag {
   const annotated = annotateCallAgainstCountryFile(call) as CallInfo
 
-  let locationScope: CallInfo['locationScope'] = 'qth'
+  let locationScope: CallInfo["locationScope"] = "qth"
   if (annotated.indicators?.some((i) => PORTABLE_INDICATORS.has(i))) {
-    locationScope = 'portable'
+    locationScope = "portable"
   } else if (annotated.preindicator || annotated.prefixOverride) {
-    locationScope = 'prefixed'
+    locationScope = "prefixed"
   }
 
   return {
     ...annotated,
-    source: 'callsign-annotation',
-    scope: 'general',
+    source: "callsign-annotation",
+    scope: "general",
     call,
     locationScope,
     flag: flagForDxccCode(annotated.dxccCode),

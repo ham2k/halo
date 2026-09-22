@@ -11,11 +11,11 @@
 // Everything the packer then checks is documented in
 // docs/extensions/distribution.md.
 
-import { build } from 'esbuild'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { build } from "esbuild"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
-import { buildExtension } from '../../tools/h2kext-build.mjs'
+import { buildExtension } from "../../tools/h2kext-build.mjs"
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -25,8 +25,8 @@ await buildExtension(build, {
     // The SDK is a workspace path here. Outside this repo it is an npm
     // dependency and this alias goes away — as does the relative import
     // above, which becomes '@ham2k/extension-tools'.
-    '@ham2k/extension-sdk': join(here, '../../sdk/src/index.ts'),
+    "@ham2k/extension-sdk": join(here, "../../sdk/src/index.ts"),
   },
 })
 
-console.log('built', join(here, 'build/index.js'))
+console.log("built", join(here, "build/index.js"))

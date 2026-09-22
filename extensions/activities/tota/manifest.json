@@ -8,35 +8,13 @@
   "enabledByDefault": false,
   "icon": "tower-fire",
   "accentColor": "#8C5A3C",
-  "keywords": [
-    "towers",
-    "lookouts",
-    "activation",
-    "hunting"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "ref:tota",
-    "ref:totaActivation",
-    "scoring",
-    "spots"
-  ],
-  "domains": [
-    "rozhledny.eu",
-    "www.rozhledny.eu"
-  ],
+  "keywords": ["towers", "lookouts", "activation", "hunting"],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:tota", "ref:totaActivation", "scoring", "spots"],
+  "domains": ["rozhledny.eu", "www.rozhledny.eu"],
   "translations": {
     "es": {
       "description": "Referencias de torres miradoras, activación y caza, y spots",
-      "keywords": [
-        "torres",
-        "miradores",
-        "activación"
-      ]
+      "keywords": ["torres", "miradores", "activación"]
     }
   }
 }

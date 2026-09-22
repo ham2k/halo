@@ -12,19 +12,16 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import {
-  daysUntilWinterFieldDay,
-  endOfWinterFieldDay,
-  isWinterFieldDayOn,
-  nextRunningYear,
-  relevanceFor,
-  startOfWinterFieldDay,
-} from "./schedule.ts"
+import { daysUntilWinterFieldDay, endOfWinterFieldDay, isWinterFieldDayOn, nextRunningYear, relevanceFor, startOfWinterFieldDay } from "./schedule.ts"
 
 /// The runnings as published, so the rule is checked against reality
 /// rather than against itself.
 const PUBLISHED: [number, number, number][] = [
-  [2024, 1, 27], [2025, 1, 25], [2026, 1, 24], [2027, 1, 30], [2028, 1, 29],
+  [2024, 1, 27],
+  [2025, 1, 25],
+  [2026, 1, 24],
+  [2027, 1, 30],
+  [2028, 1, 29],
 ]
 
 test("lands on the published weekend for each year", () => {
@@ -53,7 +50,8 @@ test("nextRunningYear rolls a fortnight after the event, not before", () => {
   assert.equal(nextRunningYear(during), year, "on the air")
   assert.equal(nextRunningYear(endOfWinterFieldDay(year) + 13 * 86400000), year, "13 days after")
   assert.equal(nextRunningYear(endOfWinterFieldDay(year) + 15 * 86400000), year + 1, "15 days after")
-  void month; void day
+  void month
+  void day
 })
 
 test("the label and the ranking never disagree about which running it is", () => {
@@ -65,8 +63,7 @@ test("the label and the ranking never disagree about which running it is", () =>
       const at = endOfWinterFieldDay(year) + 14 * 86400000 + hour * 60 * 60 * 1000
       const labelled = nextRunningYear(at)
       const ranked = at + daysUntilWinterFieldDay(at) * 86400000
-      assert.equal(new Date(ranked).getUTCFullYear(), labelled,
-        `${year} @ ${hour}h: label says ${labelled}`)
+      assert.equal(new Date(ranked).getUTCFullYear(), labelled, `${year} @ ${hour}h: label says ${labelled}`)
     }
   }
 })

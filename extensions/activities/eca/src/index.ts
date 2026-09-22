@@ -8,13 +8,7 @@
 // cached JSON — whose rows sit inside a positional envelope, `[meta, meta,
 // {data: [...]}]`, hence the `2.data` root path.
 
-import {
-  activityExportHook,
-  activityScorer,
-  contestScorer,
-  defineExtension,
-  referenceActivity,
-} from "@ham2k/extension-sdk"
+import { activityExportHook, activityScorer, contestScorer, defineExtension, referenceActivity } from "@ham2k/extension-sdk"
 import type { DataFileDefinition, HookContext, PostResult, PostSelfSpotRequest, Ref, SpotEligibility } from "@ham2k/extension-sdk"
 import { locationToGrid6 } from "@ham2k/lib-geo-tools"
 
@@ -23,17 +17,17 @@ import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const ACTIVATION_TYPE = 'ecaActivation'
+const ACTIVATION_TYPE = "ecaActivation"
 const REFERENCE_REGEX = /^G-[0-9]{5}$/i
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
-  key: 'eca',
-  label: 'ECA',
+  key: "eca",
+  label: "ECA",
   activationType: ACTIVATION_TYPE,
   referenceRegex: REFERENCE_REGEX,
   icon: manifest.icon,
   color: manifest.accentColor,
-  placeholder: 'G-00001',
+  placeholder: "G-00001",
   tFor,
   // The GMA site carries the reference lists for the castle, lighthouse and
   // mill programs as well as its own summits — one page per reference,
@@ -48,35 +42,33 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
 /// no day axis — a repeat contact on the same band and mode is a duplicate
 /// however many days later.
 const ECA_SCORING = {
-  label: 'ECA',
+  label: "ECA",
   icon: manifest.icon,
   activationType: ACTIVATION_TYPE,
   qsosToActivate: 50,
-  uniquePer: ['band', 'mode'] as const,
-  activates: 'once' as const,
-  refNoun: (ctx: HookContext) => tFor(ctx)('castle'),
-  refNounPlural: (ctx: HookContext) => tFor(ctx)('castlesPlural'),
+  uniquePer: ["band", "mode"] as const,
+  activates: "once" as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)("castle"),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)("castlesPlural"),
   // Set for consistency even though ECA has no huntingType, so the tally
   // that would use it (summarizeActivation's P2P line) never runs today.
-  p2pLabel: (ctx: HookContext) => tFor(ctx)('c2c'),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)("c2c"),
 }
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
-  return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
+  return ((container.refs as Ref[] | undefined) ?? []).filter((r) => r.type === type && r.ref)
 }
 
 const SpotsHook = {
-  sourceName: 'GMA',
+  sourceName: "GMA",
 
   async isSelfSpotEnabled({ operation }: { operation: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(operation, ACTIVATION_TYPE).length > 0
-      ? { enabled: true, icon: manifest.icon }
-      : { enabled: false }
+    return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: manifest.icon } : { enabled: false }
   },
 
   async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, _ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(operation, ACTIVATION_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No ECA activation on this operation' }
+    if (refs.length === 0) return { ok: false, message: "No ECA activation on this operation" }
     return postSelfSpotToGMA({ operation, refs, freq, mode, comment })
   },
 }
@@ -84,28 +76,30 @@ const SpotsHook = {
 /// The reference lives under `WCA`, not `ECA` — English castles are catalogued
 /// by their WCA code.
 const ecaDataFile: DataFileDefinition = {
-  key: 'eca-all-castles',
-  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
-  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
-  url: 'https://ham2k.com/data/cached/eca/ECA_References.json',
+  key: "eca-all-castles",
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileName"),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileDescription"),
+  url: "https://ham2k.com/data/cached/eca/ECA_References.json",
   maxAgeInDays: 100,
-  fetchType: 'json',
-  category: 'eca',
-  jsonOptions: { rootPath: '2.data' },
+  fetchType: "json",
+  category: "eca",
+  jsonOptions: { rootPath: "2.data" },
   jsonToLookupEntry: (entry: Record<string, any>) => {
     // TRIM before anything else: three of the published references carry a
     // trailing space ('G-01516 '), and testing them unturned drops real
     // castles. Nothing else here filters by the reference pattern — app-polo
     // doesn't either, and a reference the list publishes is a reference
     // somebody can activate, whatever we think of its shape.
-    const ref = String(entry?.WCA ?? '').trim().toUpperCase()
+    const ref = String(entry?.WCA ?? "")
+      .trim()
+      .toUpperCase()
     if (!ref) return null
 
     const parsedLat = Number.parseFloat(entry?.LATITUDE)
     const parsedLon = Number.parseFloat(entry?.LONGITUDE)
     const lat = Number.isNaN(parsedLat) ? undefined : parsedLat
     const lon = Number.isNaN(parsedLon) ? undefined : parsedLon
-    const name = String(entry?.NAME_OF_CASTLE ?? '').trim()
+    const name = String(entry?.NAME_OF_CASTLE ?? "").trim()
     const location = entry?.LOCATION
 
     return {
@@ -130,19 +124,19 @@ const ecaDataFile: DataFileDefinition = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'eca' })
-    registerHook('activity', { hook: activityHook, key: 'eca' })
-    registerHook('adifFields', { hook: adifFieldsHook, key: 'eca' })
-    registerHook('adifImport', { hook: adifImportHook, key: 'eca' })
-    registerHook('spots', { hook: SpotsHook, key: 'eca' })
-    registerHook('dataFile', { hook: ecaDataFile, key: 'eca-all-castles' })
-    registerHook('scoring', {
+    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: "eca" })
+    registerHook("activity", { hook: activityHook, key: "eca" })
+    registerHook("adifFields", { hook: adifFieldsHook, key: "eca" })
+    registerHook("adifImport", { hook: adifImportHook, key: "eca" })
+    registerHook("spots", { hook: SpotsHook, key: "eca" })
+    registerHook("dataFile", { hook: ecaDataFile, key: "eca-all-castles" })
+    registerHook("scoring", {
       hook: contestScorer(activityScorer(ECA_SCORING), { scope: { refTypes: [ACTIVATION_TYPE] } }),
-      key: 'eca',
+      key: "eca",
     })
-    registerHook('export', {
-      hook: activityExportHook({ key: 'eca', label: 'ECA', activationType: ACTIVATION_TYPE, icon: manifest.icon }),
-      key: 'eca',
+    registerHook("export", {
+      hook: activityExportHook({ key: "eca", label: "ECA", activationType: ACTIVATION_TYPE, icon: manifest.icon }),
+      key: "eca",
     })
   },
 })

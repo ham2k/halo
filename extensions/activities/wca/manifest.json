@@ -8,32 +8,13 @@
   "enabledByDefault": false,
   "icon": "castle",
   "accentColor": "#7B5E3B",
-  "keywords": [
-    "castles",
-    "fortresses",
-    "activation"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "ref:wcaActivation",
-    "scoring",
-    "spots"
-  ],
-  "domains": [
-    "polo.ham2k.com",
-    "www.cqgma.org"
-  ],
+  "keywords": ["castles", "fortresses", "activation"],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:wcaActivation", "scoring", "spots"],
+  "domains": ["polo.ham2k.com", "www.cqgma.org"],
   "translations": {
     "es": {
       "description": "Referencias de castillos, registro de activaciones y auto-spotting",
-      "keywords": [
-        "castillos",
-        "activación"
-      ]
+      "keywords": ["castillos", "activación"]
     }
   }
 }

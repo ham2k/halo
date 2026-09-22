@@ -25,19 +25,11 @@
 // served, because every extension bundle inlines it — editing sdk/src rebuilds
 // all of them, and each rebuild whose bytes actually changed reloads.
 
-import { context } from 'esbuild'
-import { createServer } from 'node:http'
-import { networkInterfaces } from 'node:os'
+import { context } from "esbuild"
+import { createServer } from "node:http"
+import { networkInterfaces } from "node:os"
 
-import {
-  bundles,
-  buildOptionsFor,
-  indexEntryFor,
-  loadHostSharedVersions,
-  loadKnownExperiments,
-  loadManifests,
-  readManifest,
-} from './build-config.mjs'
+import { bundles, buildOptionsFor, indexEntryFor, loadHostSharedVersions, loadKnownExperiments, loadManifests, readManifest } from "./build-config.mjs"
 
 /// Bumped when the protocol below changes shape, so an app built against an
 /// older one says so instead of failing obscurely.
@@ -49,26 +41,29 @@ function argValue(name, fallback) {
   return i === -1 || i === args.length - 1 ? fallback : args[i + 1]
 }
 
-const port = Number(argValue('--port', '8787'))
+const port = Number(argValue("--port", "8787"))
 // Checked rather than trusted: `server.listen(NaN)` does not throw, it binds an
 // arbitrary ephemeral port — and the first thing anyone does with this tool is
 // read a URL off the screen that would then name a port nothing is listening on.
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
-  console.error(`--port must be a number between 1 and 65535, not "${argValue('--port', '')}"`)
+  console.error(`--port must be a number between 1 and 65535, not "${argValue("--port", "")}"`)
   process.exit(1)
 }
 // 0.0.0.0 by default: a dev server only this machine can reach cannot serve the
 // device the app is running on, which is the whole point.
-const bindHost = argValue('--host', '0.0.0.0')
-const only = argValue('--only', null)?.split(',').map((s) => s.trim()).filter(Boolean)
+const bindHost = argValue("--host", "0.0.0.0")
+const only = argValue("--only", null)
+  ?.split(",")
+  .map((s) => s.trim())
+  .filter(Boolean)
 
 const hostSharedVersions = await loadHostSharedVersions()
 
-const served = bundles.filter((b) => b.kind === 'extension' && (!only || only.includes(b.key)))
+const served = bundles.filter((b) => b.kind === "extension" && (!only || only.includes(b.key)))
 if (only) {
   const unknown = only.filter((k) => !bundles.some((b) => b.key === k))
   if (unknown.length) {
-    console.error(`unknown extension key(s): ${unknown.join(', ')}`)
+    console.error(`unknown extension key(s): ${unknown.join(", ")}`)
     process.exit(1)
   }
 }
@@ -87,11 +82,15 @@ const clients = new Set()
 /// so startup can report a settled picture rather than a race. Until then
 /// nothing is logged per-extension and nothing is broadcast: the initial build
 /// is not a "reload", and there is nobody connected to hear about it.
-const firstBuilds = new Map(served.map((b) => {
-  let resolve
-  const promise = new Promise((r) => { resolve = r })
-  return [b.key, { promise, resolve }]
-}))
+const firstBuilds = new Map(
+  served.map((b) => {
+    let resolve
+    const promise = new Promise((r) => {
+      resolve = r
+    })
+    return [b.key, { promise, resolve }]
+  }),
+)
 let watching = false
 
 function broadcast(event) {
@@ -126,17 +125,15 @@ async function refreshManifest(bundle) {
 
 function watchPlugin(bundle) {
   return {
-    name: 'halo-dev-serve',
+    name: "halo-dev-serve",
     setup(build) {
       build.onEnd(async (result) => {
         const done = () => firstBuilds.get(bundle.key)?.resolve()
         if (result.errors.length) {
-          const message = result.errors
-              .map((e) => `${e.location ? `${e.location.file}:${e.location.line}: ` : ''}${e.text}`)
-              .join('\n')
+          const message = result.errors.map((e) => `${e.location ? `${e.location.file}:${e.location.line}: ` : ""}${e.text}`).join("\n")
           buildErrors.set(bundle.key, message)
           if (watching) console.error(`${stamp()}  ✗ ${bundle.key}\n${message}`)
-          if (watching) broadcast({ type: 'buildError', key: bundle.key, message })
+          if (watching) broadcast({ type: "buildError", key: bundle.key, message })
           done()
           return
         }
@@ -149,7 +146,7 @@ function watchPlugin(bundle) {
           const message = `manifest.json: ${e.message}`
           buildErrors.set(bundle.key, message)
           if (watching) console.error(`${stamp()}  ✗ ${bundle.key}\n${message}`)
-          if (watching) broadcast({ type: 'buildError', key: bundle.key, message })
+          if (watching) broadcast({ type: "buildError", key: bundle.key, message })
           done()
           return
         }
@@ -172,7 +169,7 @@ function watchPlugin(bundle) {
         if (unchanged) return
         const size = (result.outputFiles[0].contents.byteLength / 1024).toFixed(1)
         console.log(`${stamp()}  ✓ ${bundle.key} — ${size} KB`)
-        broadcast({ type: 'reload', key: bundle.key, ...indexEntryFor(bundle) })
+        broadcast({ type: "reload", key: bundle.key, ...indexEntryFor(bundle) })
       })
     },
   }
@@ -183,24 +180,24 @@ function watchPlugin(bundle) {
 /// that the runtime they are running no longer matches its source, since
 /// nothing else in this loop would say so.
 async function watchKernel() {
-  const kernel = bundles.find((b) => b.kind === 'kernel')
+  const kernel = bundles.find((b) => b.kind === "kernel")
   if (!kernel) return
   const options = buildOptionsFor(kernel, { hostSharedVersions })
-  options.logLevel = 'silent'
+  options.logLevel = "silent"
   // Its own first build is not a change — this watcher starts after the
   // extensions', when `watching` is already true, so it cannot use that.
   let built = false
   options.plugins = [
     ...(options.plugins ?? []),
     {
-      name: 'halo-dev-kernel-watch',
+      name: "halo-dev-kernel-watch",
       setup(build) {
         build.onEnd((result) => {
           const first = !built
           built = true
           if (first) return
           if (result.errors.length) {
-            console.error(`${stamp()}  ✗ kernel\n${result.errors.map((e) => e.text).join('\n')}`)
+            console.error(`${stamp()}  ✗ kernel\n${result.errors.map((e) => e.text).join("\n")}`)
             return
           }
           console.log(`${stamp()}  ⟳ kernel changed — run \`npm run build\` and restart the app to pick it up`)
@@ -219,7 +216,7 @@ for (const bundle of served) {
   options.plugins = [...(options.plugins ?? []), watchPlugin(bundle)]
   // Errors must not abort the server — an author saves broken code constantly,
   // and the loop's job is to report it and stay up.
-  options.logLevel = 'silent'
+  options.logLevel = "silent"
   const ctx = await context(options)
   contexts.push(ctx)
   await ctx.watch()
@@ -232,63 +229,65 @@ const kernelContext = await watchKernel()
 if (kernelContext) contexts.push(kernelContext)
 
 const server = createServer(async (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`)
+  const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`)
   // Any origin: the app is not a browser page, and this server is a
   // development tool bound to a LAN by choice.
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  if (req.method === 'OPTIONS') {
+  res.setHeader("Access-Control-Allow-Origin", "*")
+  if (req.method === "OPTIONS") {
     // `content-type: application/json` is not CORS-safelisted, so a web build
     // preflights POST /logs. Without this the preflight fell through to the
     // 404 below and log forwarding died silently — `_flushLogs` swallows it.
     res.writeHead(204, {
-      'access-control-allow-methods': 'GET, POST, OPTIONS',
-      'access-control-allow-headers': 'content-type',
-      'access-control-max-age': '86400',
+      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-headers": "content-type",
+      "access-control-max-age": "86400",
     })
     res.end()
     return
   }
 
-  if (url.pathname === '/ping') {
+  if (url.pathname === "/ping") {
     return json(res, {
-      server: 'halo-ext-dev',
+      server: "halo-ext-dev",
       protocol: PROTOCOL,
       extensions: served.map((b) => b.key),
     })
   }
 
-  if (url.pathname === '/index.json') {
+  if (url.pathname === "/index.json") {
     // Deliberately no `kernel` key: this server serves extensions only, and an
     // app that took a kernel from here would be swapping the runtime out from
     // under itself.
     return json(res, { extensions: served.filter((b) => sources.has(b.key)).map(indexEntryFor) })
   }
 
-  if (url.pathname === '/events') {
+  if (url.pathname === "/events") {
     res.writeHead(200, {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-cache',
-      connection: 'keep-alive',
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache",
+      connection: "keep-alive",
     })
     // The backlog matters: an extension that failed its FIRST build is absent
     // from /index.json, so the app quietly runs the version it shipped with
     // while the author edits a file whose code is not loaded. Without this the
     // pane would report every extension healthy and say nothing about it.
-    res.write(`data: ${JSON.stringify({
-      type: 'hello',
-      protocol: PROTOCOL,
-      buildErrors: Object.fromEntries(buildErrors),
-    })}\n\n`)
+    res.write(
+      `data: ${JSON.stringify({
+        type: "hello",
+        protocol: PROTOCOL,
+        buildErrors: Object.fromEntries(buildErrors),
+      })}\n\n`,
+    )
     clients.add(res)
     console.log(`${stamp()}  ▸ app connected (${clients.size} connected)`)
-    req.on('close', () => {
+    req.on("close", () => {
       clients.delete(res)
       console.log(`${stamp()}  ▪ app disconnected (${clients.size} connected)`)
     })
     return
   }
 
-  if (url.pathname === '/logs' && req.method === 'POST') {
+  if (url.pathname === "/logs" && req.method === "POST") {
     // The remote console: the app forwards what its extensions logged, so an
     // author working against a phone can read their own log lines here rather
     // than going hunting for a device console.
@@ -306,21 +305,21 @@ const server = createServer(async (req, res) => {
   if (match) {
     const source = sources.get(match[1])
     if (source === undefined) {
-      res.writeHead(404, { 'content-type': 'text/plain' })
+      res.writeHead(404, { "content-type": "text/plain" })
       res.end(buildErrors.get(match[1]) ?? `no such extension: ${match[1]}`)
       return
     }
-    res.writeHead(200, { 'content-type': 'application/javascript; charset=utf-8' })
+    res.writeHead(200, { "content-type": "application/javascript; charset=utf-8" })
     res.end(source)
     return
   }
 
-  res.writeHead(404, { 'content-type': 'text/plain' })
-  res.end('not found')
+  res.writeHead(404, { "content-type": "text/plain" })
+  res.end("not found")
 })
 
 function json(res, body) {
-  res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+  res.writeHead(200, { "content-type": "application/json; charset=utf-8" })
   res.end(JSON.stringify(body))
 }
 
@@ -329,8 +328,8 @@ function json(res, body) {
 /// handler with it.
 function readBody(req, limit = 1 << 20) {
   return new Promise((resolve) => {
-    let data = ''
-    req.on('data', (chunk) => {
+    let data = ""
+    req.on("data", (chunk) => {
       data += chunk
       if (data.length > limit) {
         data = data.slice(0, limit)
@@ -338,36 +337,36 @@ function readBody(req, limit = 1 << 20) {
         resolve(data)
       }
     })
-    req.on('end', () => resolve(data))
-    req.on('error', () => resolve(''))
-    req.on('aborted', () => resolve(''))
+    req.on("end", () => resolve(data))
+    req.on("error", () => resolve(""))
+    req.on("aborted", () => resolve(""))
   })
 }
 
 server.listen(port, bindHost, () => {
   const failed = served.filter((b) => !sources.has(b.key))
-  console.log(`\nHaLo extension dev server — ${sources.size} extension${sources.size === 1 ? '' : 's'} ready`)
-  if (failed.length) console.log(`  ${failed.length} failed to build: ${failed.map((b) => b.key).join(', ')}`)
-  console.log('\nPoint the app at (Settings → Developer → Extension Dev Server):')
+  console.log(`\nHaLo extension dev server — ${sources.size} extension${sources.size === 1 ? "" : "s"} ready`)
+  if (failed.length) console.log(`  ${failed.length} failed to build: ${failed.map((b) => b.key).join(", ")}`)
+  console.log("\nPoint the app at (Settings → Developer → Extension Dev Server):")
   for (const address of lanAddresses()) console.log(`  http://${address}:${port}`)
-  console.log('\nWatching for changes. A kernel change is reported but not served —')
-  console.log('it needs `npm run build` and an app restart.\n')
+  console.log("\nWatching for changes. A kernel change is reported but not served —")
+  console.log("it needs `npm run build` and an app restart.\n")
 })
 
 function lanAddresses() {
   const found = []
   for (const addresses of Object.values(networkInterfaces())) {
     for (const address of addresses ?? []) {
-      if (address.family === 'IPv4' && !address.internal) found.push(address.address)
+      if (address.family === "IPv4" && !address.internal) found.push(address.address)
     }
   }
   // localhost last: correct for a desktop build on this machine, useless for
   // the phone case this server exists for, so it should not be the first thing
   // read off the screen.
-  return [...found, 'localhost']
+  return [...found, "localhost"]
 }
 
-for (const signal of ['SIGINT', 'SIGTERM']) {
+for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, async () => {
     for (const ctx of contexts) await ctx.dispose()
     server.close()

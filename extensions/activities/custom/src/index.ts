@@ -21,27 +21,19 @@
 // carries one reference in either app. Hunting is unaffected — a QSO still
 // records as many custom references as the other station gives.
 
-import {
-  activityExportHook,
-  defineExtension,
-} from "@ham2k/extension-sdk"
-import type {
-  HookContext,
-  JSONValue,
-  Ref,
-  TitleSuggestion,
-} from "@ham2k/extension-sdk"
+import { activityExportHook, defineExtension } from "@ham2k/extension-sdk"
+import type { HookContext, JSONValue, Ref, TitleSuggestion } from "@ham2k/extension-sdk"
 
 import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const ACTIVATION_TYPE = 'customActivation'
-const HUNTING_TYPE = 'custom'
+const ACTIVATION_TYPE = "customActivation"
+const HUNTING_TYPE = "custom"
 
 /// The label a bare reference gets when the operator named no program. "Custom
 /// XY-1234" reads as a reference in an unnamed scheme, which is what it is.
-const FALLBACK_PROGRAM = 'Custom'
+const FALLBACK_PROGRAM = "Custom"
 
 function refsOfType(source: Record<string, unknown> | undefined, type: string): Ref[] {
   const refs = (source?.refs ?? []) as Ref[]
@@ -49,14 +41,14 @@ function refsOfType(source: Record<string, unknown> | undefined, type: string): 
 }
 
 function textOf(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : ''
+  return typeof value === "string" ? value.trim() : ""
 }
 
 /// The operator fills in a program and a reference separately, but the rest of
 /// the app addresses a reference by its `ref` string — so that is the pair,
 /// joined. "COTA XY-1234" with a program, "XY-1234" without.
 function refStringFor(program: string, reference: string): string {
-  return [program, reference].filter((part) => part).join(' ')
+  return [program, reference].filter((part) => part).join(" ")
 }
 
 /// Where the bare reference lives, which differs by ref type and MUST NOT fall
@@ -73,9 +65,7 @@ function refStringFor(program: string, reference: string): string {
 /// XY-1234" — and compounds on every subsequent save, into MY_SIG_INFO and the
 /// submitted log with it.
 function referenceOf(ref: Ref): string {
-  return ref.type === ACTIVATION_TYPE
-    ? textOf((ref as Record<string, unknown>).mySigInfo)
-    : textOf(ref.ref)
+  return ref.type === ACTIVATION_TYPE ? textOf((ref as Record<string, unknown>).mySigInfo) : textOf(ref.ref)
 }
 
 const refHandler = {
@@ -114,49 +104,46 @@ const refHandler = {
 }
 
 const activityHook = {
-  async operationControls(
-    _args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
-    ctx: HookContext,
-  ) {
+  async operationControls(_args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> }, ctx: HookContext) {
     const t = tFor(ctx)
     return [
       {
-        key: 'custom/activation',
-        label: t('activationControl'),
+        key: "custom/activation",
+        label: t("activationControl"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
-        optionType: 'optional',
+        optionType: "optional",
         input: {
-          kind: 'form',
+          kind: "form",
           refType: ACTIVATION_TYPE,
           form: {
-            title: t('setupLabel'),
+            title: t("setupLabel"),
             elements: [
               // Labelled with their ADIF field names on purpose: the operator
               // choosing this activity is by definition working outside the
               // programs HaLo knows, and what they usually need to get right is
               // what the award's log checker will read.
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'mySig',
-                label: t('programLabel'),
-                placeholder: t('programPlaceholder'),
+                type: "field",
+                fieldType: "text",
+                key: "mySig",
+                label: t("programLabel"),
+                placeholder: t("programPlaceholder"),
               },
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'mySigInfo',
-                label: t('referenceLabel'),
-                placeholder: t('referencePlaceholder'),
+                type: "field",
+                fieldType: "text",
+                key: "mySigInfo",
+                label: t("referenceLabel"),
+                placeholder: t("referencePlaceholder"),
               },
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'name',
-                label: t('nameLabel'),
-                placeholder: t('namePlaceholder'),
+                type: "field",
+                fieldType: "text",
+                key: "name",
+                label: t("nameLabel"),
+                placeholder: t("namePlaceholder"),
               },
             ],
           },
@@ -168,25 +155,22 @@ const activityHook = {
   /// The hunting side, offered only while actually activating — a custom
   /// reference for the other station means nothing without one of your own to
   /// name the program, since SIG is taken from the activation (see below).
-  async loggingControls(
-    { operation }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
-    ctx: HookContext,
-  ) {
+  async loggingControls({ operation }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> }, ctx: HookContext) {
     if (refsOfType(operation, ACTIVATION_TYPE).length === 0) return []
     const t = tFor(ctx)
     return [
       {
-        key: 'custom/hunting',
-        label: t('huntingControl'),
+        key: "custom/hunting",
+        label: t("huntingControl"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
-        optionType: 'optional',
+        optionType: "optional",
         allowsMultiple: true,
         input: {
-          kind: 'refList',
+          kind: "refList",
           refType: HUNTING_TYPE,
-          placeholder: t('huntingPlaceholder'),
+          placeholder: t("huntingPlaceholder"),
         },
       },
     ]
@@ -224,8 +208,8 @@ const adifFieldsHook = {
     const mine: { name: string; value: string }[] =
       program && reference
         ? [
-            { name: 'MY_SIG', value: program },
-            { name: 'MY_SIG_INFO', value: reference },
+            { name: "MY_SIG", value: program },
+            { name: "MY_SIG_INFO", value: reference },
           ]
         : []
 
@@ -235,7 +219,7 @@ const adifFieldsHook = {
     return huntedRefs.map((huntedRef) => {
       const huntedReference = textOf(huntedRef.ref)
       if (!program || !huntedReference) return [...mine]
-      return [...mine, { name: 'SIG', value: program }, { name: 'SIG_INFO', value: huntedReference }]
+      return [...mine, { name: "SIG", value: program }, { name: "SIG_INFO", value: huntedReference }]
     })
   },
 }
@@ -243,10 +227,10 @@ const adifFieldsHook = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'custom' })
-    registerHook(`ref:${HUNTING_TYPE}`, { hook: refHandler, key: 'custom-hunting' })
-    registerHook('activity', { hook: activityHook, key: 'custom' })
-    registerHook('adifFields', { hook: adifFieldsHook, key: 'custom' })
+    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: "custom" })
+    registerHook(`ref:${HUNTING_TYPE}`, { hook: refHandler, key: "custom-hunting" })
+    registerHook("activity", { hook: activityHook, key: "custom" })
+    registerHook("adifFields", { hook: adifFieldsHook, key: "custom" })
     // No `adifImport`, deliberately. Every other activity keys its import on a
     // constant SIG value; here SIG is whatever program name the operator typed,
     // so there is nothing to match — and a hook that claimed every SIG would
@@ -261,14 +245,14 @@ defineExtension({
     //
     // No `scoring` and no `spots`: app-polo's custom activity has neither, and
     // there is no program to spot to.
-    registerHook('export', {
+    registerHook("export", {
       hook: activityExportHook({
-        key: 'custom',
+        key: "custom",
         label: FALLBACK_PROGRAM,
         activationType: ACTIVATION_TYPE,
         icon: manifest.icon,
       }),
-      key: 'custom',
+      key: "custom",
     })
   },
 })

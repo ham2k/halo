@@ -30,9 +30,9 @@ test("parseSelfSpotCommand: a Q-code trigger becomes the first word of the comme
 })
 
 test("parseSelfSpotCommand: matching is case-insensitive, trigger normalizes to uppercase in the comment", () => {
-  assert.deepEqual(parseSelfSpotCommand("qrt adios"), { comment: "QRT adios" });
-  assert.deepEqual(parseSelfSpotCommand("spot"), { comment: "" });
-});
+  assert.deepEqual(parseSelfSpotCommand("qrt adios"), { comment: "QRT adios" })
+  assert.deepEqual(parseSelfSpotCommand("spot"), { comment: "" })
+})
 
 test("parseSelfSpotCommand: a slash separator works the same as a space", () => {
   assert.deepEqual(parseSelfSpotCommand("SPOT/good signal"), { comment: "good signal" })

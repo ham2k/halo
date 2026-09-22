@@ -99,25 +99,10 @@
     "WINN": "Winn"
   },
   "entryClasses": {
-    "station": [
-      "FIXED",
-      "ROVER"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "DIGITAL",
-      "MIXED"
-    ],
-    "overlay": [
-      "TB-WIRES",
-      "POTA"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "station": ["FIXED", "ROVER"],
+    "mode": ["CW", "PHONE", "DIGITAL", "MIXED"],
+    "overlay": ["TB-WIRES", "POTA"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

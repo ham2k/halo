@@ -148,26 +148,10 @@
     "YAN": "Yancey"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "PORTABLE",
-      "EXPEDITION"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "MIXED"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE"],
+    "station": ["FIXED", "MOBILE", "PORTABLE", "EXPEDITION"],
+    "mode": ["CW", "PHONE", "MIXED"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts CW or 10 watts phone",
       "LOW": "150 watts",

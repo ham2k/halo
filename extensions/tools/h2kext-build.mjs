@@ -19,12 +19,12 @@
 // The repo's own build uses it too, on the same terms, which is what keeps the
 // path a third party takes from being the untested one.
 
-import { readFileSync } from 'node:fs'
-import { copyFile, mkdir, readFile } from 'node:fs/promises'
-import { createRequire } from 'node:module'
-import { dirname, join, resolve } from 'node:path'
+import { readFileSync } from "node:fs"
+import { copyFile, mkdir, readFile } from "node:fs/promises"
+import { createRequire } from "node:module"
+import { dirname, join, resolve } from "node:path"
 
-import { H2KEXT_API_VERSION, MANIFEST_ENTRY, sharedModulesFor } from './h2kext.mjs'
+import { H2KEXT_API_VERSION, MANIFEST_ENTRY, sharedModulesFor } from "./h2kext.mjs"
 
 /// What an extension's own `build.mjs` says, for everything that has to write
 /// one: `h2kext-init`'s scaffold, and the samples the SDK ships.
@@ -75,7 +75,7 @@ export class BuildError extends Error {}
 /// failed build.
 function installedVersionOf(pkg, fromDir) {
   try {
-    const require = createRequire(resolve(fromDir, 'noop.js'))
+    const require = createRequire(resolve(fromDir, "noop.js"))
     // Walked up from the entry point rather than resolved directly: a package
     // with an `exports` map that does not list `./package.json` — which is
     // most of them, `@ham2k/lib-qson-cabrillo` included — refuses that path
@@ -84,7 +84,7 @@ function installedVersionOf(pkg, fromDir) {
     let dir = dirname(require.resolve(pkg))
     for (let up = 0; up < 6; up += 1) {
       try {
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
+        const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"))
         if (manifest.name === pkg) return manifest.version ?? null
       } catch {
         // Not this directory's package.json, or not readable — keep climbing.
@@ -109,8 +109,9 @@ export function sharedModulesPlugin({ sharedDependencies = {}, api = H2KEXT_API_
   const notOffered = declared.filter((pkg) => !offered.includes(pkg))
   if (notOffered.length) {
     throw new BuildError(
-      `${MANIFEST_ENTRY} declares sharedDependencies the host does not carry (${notOffered.join(', ')}). ` +
-      'Bundle those into your build instead — only what the host offers can be shared.')
+      `${MANIFEST_ENTRY} declares sharedDependencies the host does not carry (${notOffered.join(", ")}). ` +
+        "Bundle those into your build instead — only what the host offers can be shared.",
+    )
   }
 
   // The two say opposite things about the same package, so neither can be
@@ -118,19 +119,19 @@ export function sharedModulesPlugin({ sharedDependencies = {}, api = H2KEXT_API_
   const both = declared.filter((pkg) => inline.includes(pkg))
   if (both.length) {
     throw new BuildError(
-      `${both.join(', ')} appears in both sharedDependencies and inline. ` +
-      "Declare it to use the host's copy, or inline it to ship your own — not both.")
+      `${both.join(", ")} appears in both sharedDependencies and inline. ` + "Declare it to use the host's copy, or inline it to ship your own — not both.",
+    )
   }
 
   const undeclared = offered.filter((pkg) => !declared.includes(pkg) && !inline.includes(pkg))
 
   return {
-    name: 'ham2k-shared-modules',
+    name: "ham2k-shared-modules",
     setup(build) {
       if (declared.length) {
         build.onResolve({ filter: matcherFor(declared) }, (args) => ({
           path: args.path,
-          namespace: 'ham2k-shared-module',
+          namespace: "ham2k-shared-module",
         }))
       }
 
@@ -144,19 +145,22 @@ export function sharedModulesPlugin({ sharedDependencies = {}, api = H2KEXT_API_
           // esbuild's pretty printer and nothing else, so a build script that
           // catches the error — or runs at logLevel 'silent' — shows the
           // author the complaint with the answer stripped off.
-          errors: [{
-            text: `'${args.path}' is carried by the Ham2K extension host, but this bundle does not declare it. ` +
-              `Add it to "sharedDependencies" in ${MANIFEST_ENTRY} with the version range you work with ` +
-              `(e.g. {${JSON.stringify(args.path)}: "^${installedVersionOf(args.path, args.resolveDir) ?? '1.0.0'}"}), ` +
-              `or pass inline: [${JSON.stringify(args.path)}] ` +
-              'to ship your own copy — which is how you use a version the host does not carry.',
-          }],
+          errors: [
+            {
+              text:
+                `'${args.path}' is carried by the Ham2K extension host, but this bundle does not declare it. ` +
+                `Add it to "sharedDependencies" in ${MANIFEST_ENTRY} with the version range you work with ` +
+                `(e.g. {${JSON.stringify(args.path)}: "^${installedVersionOf(args.path, args.resolveDir) ?? "1.0.0"}"}), ` +
+                `or pass inline: [${JSON.stringify(args.path)}] ` +
+                "to ship your own copy — which is how you use a version the host does not carry.",
+            },
+          ],
         }))
       }
 
-      build.onLoad({ filter: /.*/, namespace: 'ham2k-shared-module' }, (args) => ({
+      build.onLoad({ filter: /.*/, namespace: "ham2k-shared-module" }, (args) => ({
         contents: `module.exports = globalThis.__polo.sharedModules[${JSON.stringify(args.path)}];`,
-        loader: 'js',
+        loader: "js",
       }))
     },
   }
@@ -166,7 +170,7 @@ export function sharedModulesPlugin({ sharedDependencies = {}, api = H2KEXT_API_
 /// names carry regex metacharacters (`@ham2k/lib-qson-adif` has a slash, and a
 /// dot would be a wildcard), so every one is escaped.
 function matcherFor(packages) {
-  const alternatives = packages.map((pkg) => pkg.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')).join('|')
+  const alternatives = packages.map((pkg) => pkg.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")).join("|")
   return new RegExp(`^(${alternatives})$`)
 }
 
@@ -186,14 +190,14 @@ function liquidBrowserBuild(fromDir) {
     // `dir` is the caller's to pass — a relative one lands in the catch below
     // and loses the alias, which is precisely the failure this function exists
     // to prevent, arriving with nothing to point at the cause.
-    const require = createRequire(resolve(fromDir, 'noop.js'))
-    return join(dirname(require.resolve('liquidjs/package.json')), 'dist/liquid.browser.mjs')
+    const require = createRequire(resolve(fromDir, "noop.js"))
+    return join(dirname(require.resolve("liquidjs/package.json")), "dist/liquid.browser.mjs")
   } catch (e) {
     // Not installed is the normal case for an extension that neither inlines
     // liquidjs nor uses it, and there is nothing to alias. Anything else is a
     // real fault, and swallowing it would hand the author five unresolvable
     // node built-ins instead.
-    if (e.code === 'MODULE_NOT_FOUND') return null
+    if (e.code === "MODULE_NOT_FOUND") return null
     throw e
   }
 }
@@ -210,20 +214,17 @@ export function buildOptionsFor({ entry, outfile, manifest = {}, dir = process.c
     entryPoints: [entry],
     ...(outfile ? { outfile } : { write: false }),
     bundle: true,
-    format: 'iife',
-    platform: 'neutral',
-    mainFields: ['module', 'main'],
-    target: 'es2020',
-    logLevel: 'warning',
+    format: "iife",
+    platform: "neutral",
+    mainFields: ["module", "main"],
+    target: "es2020",
+    logLevel: "warning",
     ...rest,
     alias: {
       ...(liquid ? { liquidjs: liquid } : {}),
       ...alias,
     },
-    plugins: [
-      sharedModulesPlugin({ sharedDependencies: manifest.sharedDependencies, api: manifest.api, inline }),
-      ...(rest.plugins ?? []),
-    ],
+    plugins: [sharedModulesPlugin({ sharedDependencies: manifest.sharedDependencies, api: manifest.api, inline }), ...(rest.plugins ?? [])],
   }
 }
 
@@ -236,12 +237,12 @@ export function buildOptionsFor({ entry, outfile, manifest = {}, dir = process.c
 ///
 /// [esbuild] is the caller's `build` function, passed in rather than imported
 /// so this module needs no copy of its own.
-export async function buildExtension(esbuild, { dir, entry = 'src/index.ts', outDir = 'build', ...rest } = {}) {
-  if (!dir) throw new BuildError('buildExtension needs `dir`: the extension directory holding manifest.json')
+export async function buildExtension(esbuild, { dir, entry = "src/index.ts", outDir = "build", ...rest } = {}) {
+  if (!dir) throw new BuildError("buildExtension needs `dir`: the extension directory holding manifest.json")
 
   let manifest
   try {
-    manifest = JSON.parse(await readFile(join(dir, MANIFEST_ENTRY), 'utf8'))
+    manifest = JSON.parse(await readFile(join(dir, MANIFEST_ENTRY), "utf8"))
   } catch (e) {
     throw new BuildError(`could not read ${join(dir, MANIFEST_ENTRY)}: ${e.message}`)
   }
@@ -249,13 +250,15 @@ export async function buildExtension(esbuild, { dir, entry = 'src/index.ts', out
   const out = join(dir, outDir)
   await mkdir(out, { recursive: true })
 
-  await esbuild(buildOptionsFor({
-    entry: join(dir, entry),
-    outfile: join(out, 'index.js'),
-    manifest,
-    dir,
-    ...rest,
-  }))
+  await esbuild(
+    buildOptionsFor({
+      entry: join(dir, entry),
+      outfile: join(out, "index.js"),
+      manifest,
+      dir,
+      ...rest,
+    }),
+  )
 
   // The packer reads both from one directory, so the manifest the bundle was
   // built against is the manifest that ships with it. Copied rather than left

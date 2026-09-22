@@ -75,9 +75,7 @@ test("AGENTS.md points at the reference in the installed SDK", async () => {
   // The line an agent follows. Without it the docs sit unread in node_modules
   // and the manifest gets guessed, which is the whole failure this scaffold
   // exists to prevent.
-  assert.match(
-    await readFile(join(dir, "AGENTS.md"), "utf8"),
-    /@node_modules\/@ham2k\/extension-sdk\/AGENTS\.md/)
+  assert.match(await readFile(join(dir, "AGENTS.md"), "utf8"), /@node_modules\/@ham2k\/extension-sdk\/AGENTS\.md/)
 })
 
 test("refuses a key that is not '<callsign>-<name>', writing nothing", async () => {
@@ -108,10 +106,13 @@ test("adds to an existing package.json without replacing what is declared", asyn
   const dir = await emptyDir()
   // `npm i -D @ham2k/extension-tools && npx h2kext-init …` is the documented
   // route here, and it has already written a package.json by this point.
-  await writeFile(join(dir, "package.json"), JSON.stringify({
-    name: "my-own-name",
-    devDependencies: { esbuild: "^0.24.0" },
-  }))
+  await writeFile(
+    join(dir, "package.json"),
+    JSON.stringify({
+      name: "my-own-name",
+      devDependencies: { esbuild: "^0.24.0" },
+    }),
+  )
 
   await init_(["w7abc-notes"], dir)
 
@@ -183,8 +184,7 @@ test("pins the SDK by the SDK's own version, never the tools' one", async () => 
   // cannot read the real thing.
   await mkdir(join(dir, "node_modules/@ham2k/extension-sdk"), { recursive: true })
   const real = JSON.parse(await readFile(join(sdkDir, "package.json"), "utf8"))
-  await writeFile(join(dir, "node_modules/@ham2k/extension-sdk/package.json"),
-    JSON.stringify({ ...real, version: "0.4.2" }))
+  await writeFile(join(dir, "node_modules/@ham2k/extension-sdk/package.json"), JSON.stringify({ ...real, version: "0.4.2" }))
 
   await init_(["w7abc-notes"], dir)
   assert.equal((await readJson(dir, "package.json")).dependencies["@ham2k/extension-sdk"], "^0.4.2")
@@ -200,11 +200,14 @@ test("reads the version out of an SDK whose exports map does not offer it", asyn
   // than reads answers `latest` for all of them, silently.
   await mkdir(join(dir, "node_modules/@ham2k/extension-sdk"), { recursive: true })
   const real = JSON.parse(await readFile(join(sdkDir, "package.json"), "utf8"))
-  await writeFile(join(dir, "node_modules/@ham2k/extension-sdk/package.json"), JSON.stringify({
-    ...real,
-    version: "0.1.0",
-    exports: { ".": { types: "./dist/index.d.ts", default: "./dist/index.js" } },
-  }))
+  await writeFile(
+    join(dir, "node_modules/@ham2k/extension-sdk/package.json"),
+    JSON.stringify({
+      ...real,
+      version: "0.1.0",
+      exports: { ".": { types: "./dist/index.d.ts", default: "./dist/index.js" } },
+    }),
+  )
 
   await init_(["w7abc-notes"], dir)
   assert.equal((await readJson(dir, "package.json")).dependencies["@ham2k/extension-sdk"], "^0.1.0")
@@ -216,8 +219,7 @@ test("finds the SDK installed above the project, as a workspace puts it", async 
   const root = await emptyDir()
   await mkdir(join(root, "node_modules/@ham2k/extension-sdk"), { recursive: true })
   const real = JSON.parse(await readFile(join(sdkDir, "package.json"), "utf8"))
-  await writeFile(join(root, "node_modules/@ham2k/extension-sdk/package.json"),
-    JSON.stringify({ ...real, version: "0.3.1" }))
+  await writeFile(join(root, "node_modules/@ham2k/extension-sdk/package.json"), JSON.stringify({ ...real, version: "0.3.1" }))
 
   const dir = join(root, "packages", "my-extension")
   await mkdir(dir, { recursive: true })

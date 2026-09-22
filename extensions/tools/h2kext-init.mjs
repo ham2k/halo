@@ -16,17 +16,17 @@
 // `n0call-my-extension` VALIDATES — N0CALL is a well-formed callsign — so it
 // would ship, which is the one outcome the naming convention exists to stop.
 
-import { readFileSync } from 'node:fs'
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { readFileSync } from "node:fs"
+import { access, mkdir, readFile, writeFile } from "node:fs/promises"
+import { dirname, join, relative, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
-import { EXAMPLE_BUILD_SCRIPT } from './h2kext-build.mjs'
-import { H2KEXT_API_VERSION, SCAFFOLD_SHARED_DEPENDENCIES, keyProblem } from './h2kext.mjs'
+import { EXAMPLE_BUILD_SCRIPT } from "./h2kext-build.mjs"
+import { H2KEXT_API_VERSION, SCAFFOLD_SHARED_DEPENDENCIES, keyProblem } from "./h2kext.mjs"
 
 const args = process.argv.slice(2)
 
-if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
+if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
   console.log(`Scaffold a Ham2K Logger extension.
 
   h2kext-init <key> [--dir <path>] [--name "<display name>"]
@@ -48,9 +48,9 @@ let displayName
 for (let i = 0; i < args.length; i++) {
   // `resolve('')` is the working directory, so a bare `--dir` would scaffold
   // wherever the author happened to be standing.
-  if (args[i] === '--dir') dir = args[++i] ? resolve(args[i]) : undefined
-  else if (args[i] === '--name') displayName = args[++i]
-  else if (!args[i].startsWith('-') && key === undefined) key = args[i]
+  if (args[i] === "--dir") dir = args[++i] ? resolve(args[i]) : undefined
+  else if (args[i] === "--name") displayName = args[++i]
+  else if (!args[i].startsWith("-") && key === undefined) key = args[i]
 }
 
 const problem = keyProblem(key)
@@ -60,16 +60,21 @@ if (problem) {
 }
 
 if (dir === undefined) {
-  console.error('h2kext-init: --dir needs the directory to scaffold into')
+  console.error("h2kext-init: --dir needs the directory to scaffold into")
   process.exit(1)
 }
 
-const shortKey = key.slice(key.indexOf('-') + 1)
-const name = displayName ??
-  shortKey.split('-').filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ')
+const shortKey = key.slice(key.indexOf("-") + 1)
+const name =
+  displayName ??
+  shortKey
+    .split("-")
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(" ")
 
 const here = dirname(fileURLToPath(import.meta.url))
-const { version: toolsVersion } = JSON.parse(await readFile(join(here, 'package.json'), 'utf8'))
+const { version: toolsVersion } = JSON.parse(await readFile(join(here, "package.json"), "utf8"))
 
 /// The SDK is a SEPARATE package on its own version line, so this cannot be
 /// answered with the version of the tools that happen to be running: a
@@ -93,8 +98,8 @@ function sdkRange(projectDir) {
   for (const start of [projectDir, here]) {
     for (let dir = start; ; dir = dirname(dir)) {
       try {
-        const path = join(dir, 'node_modules/@ham2k/extension-sdk/package.json')
-        const { version } = JSON.parse(readFileSync(path, 'utf8'))
+        const path = join(dir, "node_modules/@ham2k/extension-sdk/package.json")
+        const { version } = JSON.parse(readFileSync(path, "utf8"))
         if (version) return `^${version}`
       } catch {
         // Not here; walk up to the next node_modules.
@@ -102,50 +107,54 @@ function sdkRange(projectDir) {
       if (dirname(dir) === dir) break
     }
   }
-  return 'latest'
+  return "latest"
 }
 
 /// What the project's package.json has to say for the build, the packer and
 /// the typecheck to run.
 const projectPackage = {
   name: key,
-  version: '0.1.0',
+  version: "0.1.0",
   private: true,
-  type: 'module',
+  type: "module",
   scripts: {
-    build: 'node build.mjs',
-    pack: 'h2kext-pack build',
-    typecheck: 'tsc --noEmit',
+    build: "node build.mjs",
+    pack: "h2kext-pack build",
+    typecheck: "tsc --noEmit",
   },
   dependencies: {
-    '@ham2k/extension-sdk': sdkRange(dir),
+    "@ham2k/extension-sdk": sdkRange(dir),
   },
   devDependencies: {
-    '@ham2k/extension-tools': `^${toolsVersion}`,
-    esbuild: '^0.25.0',
-    typescript: '^5.6.0',
+    "@ham2k/extension-tools": `^${toolsVersion}`,
+    esbuild: "^0.25.0",
+    typescript: "^5.6.0",
   },
 }
 
 const files = {
-  'manifest.json': `${JSON.stringify({
-    key,
-    name,
-    version: '0.1.0',
-    description: `${name}, an extension for the Ham2K Logger`,
-    category: 'dashboard',
-    api: H2KEXT_API_VERSION,
-    icon: 'hand-wave-outline',
-    // The Extensions list reads this without evaluating any bundle, and the
-    // Add-Panel route shows only what declares `panel`. Undeclared, a panel
-    // extension installs and then cannot be found or switched on.
-    hooks: ['panel'],
-    sharedDependencies: SCAFFOLD_SHARED_DEPENDENCIES,
-  }, null, 2)}\n`,
+  "manifest.json": `${JSON.stringify(
+    {
+      key,
+      name,
+      version: "0.1.0",
+      description: `${name}, an extension for the Ham2K Logger`,
+      category: "dashboard",
+      api: H2KEXT_API_VERSION,
+      icon: "hand-wave-outline",
+      // The Extensions list reads this without evaluating any bundle, and the
+      // Add-Panel route shows only what declares `panel`. Undeclared, a panel
+      // extension installs and then cannot be found or switched on.
+      hooks: ["panel"],
+      sharedDependencies: SCAFFOLD_SHARED_DEPENDENCIES,
+    },
+    null,
+    2,
+  )}\n`,
 
-  'build.mjs': EXAMPLE_BUILD_SCRIPT,
+  "build.mjs": EXAMPLE_BUILD_SCRIPT,
 
-  'src/index.ts': `// ${name} — a panel that says hello.
+  "src/index.ts": `// ${name} — a panel that says hello.
 //
 // Everything here is the minimum: one hook, one descriptor, one render. See
 // node_modules/@ham2k/extension-sdk/AGENTS.md for what to read next.
@@ -180,25 +189,29 @@ defineExtension({
 })
 `,
 
-  'tsconfig.json': `${JSON.stringify({
-    compilerOptions: {
-      target: 'ES2020',
-      module: 'ESNext',
-      moduleResolution: 'bundler',
-      lib: ['ES2020'],
-      strict: true,
-      noEmit: true,
-      skipLibCheck: true,
-      resolveJsonModule: true,
+  "tsconfig.json": `${JSON.stringify(
+    {
+      compilerOptions: {
+        target: "ES2020",
+        module: "ESNext",
+        moduleResolution: "bundler",
+        lib: ["ES2020"],
+        strict: true,
+        noEmit: true,
+        skipLibCheck: true,
+        resolveJsonModule: true,
+      },
+      include: ["src/**/*.ts"],
     },
-    include: ['src/**/*.ts'],
-  }, null, 2)}\n`,
+    null,
+    2,
+  )}\n`,
 
   // The whole point of the file. Claude Code and its siblings read a project's
   // AGENTS.md before they touch anything, so this is what carries the hook
   // reference, the sandbox's limits and the manifest's shape into the session
   // — none of which anyone would think to go looking for in node_modules.
-  'AGENTS.md': `# ${name}
+  "AGENTS.md": `# ${name}
 
 An extension for the Ham2K Logger. How to write one, what the hooks are, and
 what the sandbox will and will not let you do:
@@ -206,14 +219,14 @@ what the sandbox will and will not let you do:
 @node_modules/@ham2k/extension-sdk/AGENTS.md
 `,
 
-  '.gitignore': 'node_modules/\nbuild/\n*.h2kext\n',
+  ".gitignore": "node_modules/\nbuild/\n*.h2kext\n",
 }
 
 // Reported together rather than one per run: a scaffold that stops at the
 // first collision has already written half a project, and the second attempt
 // then collides with its own output.
-const packagePath = join(dir, 'package.json')
-const currentPackage = await readFile(packagePath, 'utf8').then(
+const packagePath = join(dir, "package.json")
+const currentPackage = await readFile(packagePath, "utf8").then(
   (text) => {
     try {
       return JSON.parse(text)
@@ -225,11 +238,12 @@ const currentPackage = await readFile(packagePath, 'utf8').then(
       process.exit(1)
     }
   },
-  () => ({}))
+  () => ({}),
+)
 
 // `null`, `[]` and `"text"` all parse, and none of them is something to merge
 // into — reached at the end, each is a raw TypeError over six written files.
-if (currentPackage === null || typeof currentPackage !== 'object' || Array.isArray(currentPackage)) {
+if (currentPackage === null || typeof currentPackage !== "object" || Array.isArray(currentPackage)) {
   console.error(`h2kext-init: ${packagePath} is not a package description — nothing written`)
   process.exit(1)
 }
@@ -239,13 +253,20 @@ if (currentPackage === null || typeof currentPackage !== 'object' || Array.isArr
 // a write loop that fails half-way through.
 const existing = []
 for (const path of Object.keys(files)) {
-  if (await access(join(dir, path)).then(() => true, () => false)) existing.push(path)
+  if (
+    await access(join(dir, path)).then(
+      () => true,
+      () => false,
+    )
+  )
+    existing.push(path)
 }
 if (existing.length) {
   const where = relative(process.cwd(), dir)
   console.error(
-    `h2kext-init: ${where.startsWith('..') ? dir : where || '.'} already holds ${existing.join(', ')} — ` +
-    'nothing written. Scaffold into an empty directory with --dir.')
+    `h2kext-init: ${where.startsWith("..") ? dir : where || "."} already holds ${existing.join(", ")} — ` +
+      "nothing written. Scaffold into an empty directory with --dir.",
+  )
   process.exit(1)
 }
 
@@ -262,14 +283,14 @@ for (const [path, content] of Object.entries(files)) {
 // Filled in key by key, never overwritten: what the author already declared —
 // their own name for the project, a version of esbuild they chose — is theirs.
 for (const [field, value] of Object.entries(projectPackage)) {
-  if (typeof value !== 'object') currentPackage[field] ??= value
+  if (typeof value !== "object") currentPackage[field] ??= value
   else for (const [name, entry] of Object.entries(value)) (currentPackage[field] ??= {})[name] ??= entry
 }
 await writeFile(packagePath, `${JSON.stringify(currentPackage, null, 2)}\n`)
 
 console.log(`${key} — ${name}
 
-  ${[...Object.keys(files), 'package.json'].join('\n  ')}
+  ${[...Object.keys(files), "package.json"].join("\n  ")}
 
 Next:
   npm install

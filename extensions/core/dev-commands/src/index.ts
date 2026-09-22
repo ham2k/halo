@@ -23,23 +23,9 @@
 // see docs/extensions/hooks.md.
 
 import { defineExtension, hooks } from "@ham2k/extension-sdk"
-import type {
-  CommandAction,
-  CommandCatalogEntry,
-  CommandInterpretation,
-  HookContext,
-  JSONValue,
-} from "@ham2k/extension-sdk"
+import type { CommandAction, CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/extension-sdk"
 
-import {
-  FALLBACK_CALLS,
-  existingStatsFromQsos,
-  mutateCall,
-  parseSeedCommand,
-  randomRST,
-  seedPlan,
-  seedableCallsFrom,
-} from "./seed.ts"
+import { FALLBACK_CALLS, existingStatsFromQsos, mutateCall, parseSeedCommand, randomRST, seedPlan, seedableCallsFrom } from "./seed.ts"
 import type { ExistingQsoStats } from "./seed.ts"
 
 import { describeTimeTravel, parseTimeTravelCommand } from "./timetravel.ts"
@@ -66,33 +52,35 @@ function devCatalog(
 ) {
   return async (ctx: HookContext): Promise<CommandCatalogEntry[]> => {
     if (!opts.always && !ctx.developerMode) return []
-    return [{
-      command,
-      describe,
-      category: opts.always ? 'Data files' : 'Developer',
-      ...(opts.params ? { params: opts.params } : {}),
-      ...(opts.needsOperation ? { needsOperation: true } : {}),
-      ...(opts.expectsParams ? { expectsParams: true } : {}),
-      ...(opts.always && opts.suggest ? { suggest: true } : {}),
-    }]
+    return [
+      {
+        command,
+        describe,
+        category: opts.always ? "Data files" : "Developer",
+        ...(opts.params ? { params: opts.params } : {}),
+        ...(opts.needsOperation ? { needsOperation: true } : {}),
+        ...(opts.expectsParams ? { expectsParams: true } : {}),
+        ...(opts.always && opts.suggest ? { suggest: true } : {}),
+      },
+    ]
   }
 }
 
 const DevModeCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
     const trimmed = input.trim().toUpperCase()
-    if (trimmed !== 'DEVMODE' && trimmed !== 'KONAMI') return null
+    if (trimmed !== "DEVMODE" && trimmed !== "KONAMI") return null
 
     const devMode = !!ctx.developerMode
     const nextDevMode = !devMode
     return {
-      describe: nextDevMode ? 'Activate developer mode?' : 'Deactivate developer mode?',
-      confirm: nextDevMode ? 'Developer mode activated' : 'Developer mode deactivated',
+      describe: nextDevMode ? "Activate developer mode?" : "Deactivate developer mode?",
+      confirm: nextDevMode ? "Developer mode activated" : "Developer mode deactivated",
       commands: [{ updateSettings: { developerMode: nextDevMode } }],
     }
   },
 
-  catalog: devCatalog('DEVMODE', 'Toggle developer mode'),
+  catalog: devCatalog("DEVMODE", "Toggle developer mode"),
 }
 
 // Excludes whatever index was picked last time (tracked per-list, at module
@@ -108,50 +96,50 @@ function pickNext<T>(list: T[], lastIndex: { value: number }): T {
 }
 
 const DEV_NOTICES = [
-  { icon: 'party-popper', title: 'Random notice', text: 'This is a **random** dev notice, generated to test the status bar.' },
-  { icon: 'bug', title: 'Heads up', text: "Here's another sample notice with *different* text, to check variety." },
-  { icon: 'flask', title: 'Experiment running', text: 'A third possible dev notice — multi-line bodies work too.\n\nLike this second line.' },
+  { icon: "party-popper", title: "Random notice", text: "This is a **random** dev notice, generated to test the status bar." },
+  { icon: "bug", title: "Heads up", text: "Here's another sample notice with *different* text, to check variety." },
+  { icon: "flask", title: "Experiment running", text: "A third possible dev notice — multi-line bodies work too.\n\nLike this second line." },
 ]
 const lastNoticeIndex = { value: -1 }
 
 const DevNoticeCommand = {
   async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (input.trim().toUpperCase() !== 'DEVNOTICE') return null
+    if (input.trim().toUpperCase() !== "DEVNOTICE") return null
     const notice = pickNext(DEV_NOTICES, lastNoticeIndex)
     const key = `devNotice-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
     return {
-      describe: 'Show a random dev notice?',
-      confirm: 'Added a random notice',
+      describe: "Show a random dev notice?",
+      confirm: "Added a random notice",
       commands: [{ devNotice: { key, ...notice } }],
     }
   },
 
-  catalog: devCatalog('DEVNOTICE', 'Post a sample notice to the status bar'),
+  catalog: devCatalog("DEVNOTICE", "Post a sample notice to the status bar"),
 }
 
 const DEV_STATUSES = [
-  { icon: 'radio-tower', text: 'Scanning band…' },
-  { icon: 'satellite-uplink', text: 'Waiting for spots…' },
-  { icon: 'weather-lightning', text: 'Checking propagation…' },
+  { icon: "radio-tower", text: "Scanning band…" },
+  { icon: "satellite-uplink", text: "Waiting for spots…" },
+  { icon: "weather-lightning", text: "Checking propagation…" },
 ]
 const lastStatusIndex = { value: -1 }
 
 const DevStatusCommand = {
   async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (input.trim().toUpperCase() !== 'DEVSTATUS') return null
+    if (input.trim().toUpperCase() !== "DEVSTATUS") return null
     const status = pickNext(DEV_STATUSES, lastStatusIndex)
     // A fresh key per call — rather than always overwriting one fixed
     // "devStatus" slot — so repeated DEVSTATUS calls actually stack up as
     // separate items, demonstrating the footer's multi-item/"+N" behavior.
     const key = `devStatus-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
     return {
-      describe: 'Show a random dev status message?',
-      confirm: 'Added a random status message',
+      describe: "Show a random dev status message?",
+      confirm: "Added a random status message",
       commands: [{ devStatus: { key, ...status } }],
     }
   },
 
-  catalog: devCatalog('DEVSTATUS', 'Post a sample status message'),
+  catalog: devCatalog("DEVSTATUS", "Post a sample status message"),
 }
 
 // "DEVPROGRESS" alone -> indeterminate; "DEVPROGRESS 10" -> 10%.
@@ -163,13 +151,13 @@ const DevProgressCommand = {
     if (!match) return null
     const percent = match[1] ? Math.min(100, Math.max(0, parseFloat(match[1]))) : undefined
     return {
-      describe: percent === undefined ? 'Show an indeterminate dev progress bar?' : `Show a dev progress bar at ${percent}%?`,
-      confirm: percent === undefined ? 'Added an indeterminate progress bar' : `Added a progress bar at ${percent}%`,
-      commands: [{ devProgress: { icon: 'progress-clock', title: 'Dev progress', percent } }],
+      describe: percent === undefined ? "Show an indeterminate dev progress bar?" : `Show a dev progress bar at ${percent}%?`,
+      confirm: percent === undefined ? "Added an indeterminate progress bar" : `Added a progress bar at ${percent}%`,
+      commands: [{ devProgress: { icon: "progress-clock", title: "Dev progress", percent } }],
     }
   },
 
-  catalog: devCatalog('DEVPROGRESS', 'Post a sample progress bar', { params: '[percent]' }),
+  catalog: devCatalog("DEVPROGRESS", "Post a sample progress bar", { params: "[percent]" }),
 }
 
 // "DEVHAMMER" alone -> the default run; "DEVHAMMER 20" -> 20 seconds of it.
@@ -180,7 +168,7 @@ const DevHammerCommand = {
     const match = DEV_HAMMER_MATCH.exec(input.trim())
     if (!match) return null
     const seconds = match[1] ? Math.min(120, Math.max(1, parseInt(match[1], 10))) : undefined
-    const howLong = seconds === undefined ? '' : ` for ${seconds}s`
+    const howLong = seconds === undefined ? "" : ` for ${seconds}s`
     return {
       describe: `Churn the status bar${howLong}, like a data-file sync does?`,
       confirm: `Hammering the status bar${howLong} — focus a field and type`,
@@ -188,20 +176,20 @@ const DevHammerCommand = {
     }
   },
 
-  catalog: devCatalog('DEVHAMMER', 'Churn the status bar like a data-file sync', { params: '[seconds]' }),
+  catalog: devCatalog("DEVHAMMER", "Churn the status bar like a data-file sync", { params: "[seconds]" }),
 }
 
 const DevSplashCommand = {
   async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (input.trim().toUpperCase() !== 'DEVSPLASH') return null
+    if (input.trim().toUpperCase() !== "DEVSPLASH") return null
     return {
-      describe: 'Show the startup release-notes overlay?',
-      confirm: 'Showing the release-notes overlay',
+      describe: "Show the startup release-notes overlay?",
+      confirm: "Showing the release-notes overlay",
       commands: [{ devSplash: {} }],
     }
   },
 
-  catalog: devCatalog('DEVSPLASH', 'Re-show the release-notes overlay'),
+  catalog: devCatalog("DEVSPLASH", "Re-show the release-notes overlay"),
 }
 
 // DEVSPLASH's sibling for the first-run onboarding overlay:
@@ -210,15 +198,15 @@ const DevSplashCommand = {
 // (Done) applies its choices; Skip leaves existing settings untouched.
 const DevOnboardCommand = {
   async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (input.trim().toUpperCase() !== 'DEVONBOARD') return null
+    if (input.trim().toUpperCase() !== "DEVONBOARD") return null
     return {
-      describe: 'Show the onboarding overlay?',
-      confirm: 'Showing the onboarding overlay — completing it applies its choices',
+      describe: "Show the onboarding overlay?",
+      confirm: "Showing the onboarding overlay — completing it applies its choices",
       commands: [{ devOnboard: {} }],
     }
   },
 
-  catalog: devCatalog('DEVONBOARD', 'Re-show the onboarding overlay'),
+  catalog: devCatalog("DEVONBOARD", "Re-show the onboarding overlay"),
 }
 
 // DEVSPLASH's sibling for the tester overlay (the per-build "what's new for
@@ -226,15 +214,15 @@ const DevOnboardCommand = {
 // edition and last-seen-build gates.
 const DevTesterCommand = {
   async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (input.trim().toUpperCase() !== 'DEVTESTER') return null
+    if (input.trim().toUpperCase() !== "DEVTESTER") return null
     return {
-      describe: 'Show the tester-notes overlay?',
-      confirm: 'Showing the tester-notes overlay',
+      describe: "Show the tester-notes overlay?",
+      confirm: "Showing the tester-notes overlay",
       commands: [{ devTester: {} }],
     }
   },
 
-  catalog: devCatalog('DEVTESTER', 'Re-show the tester-notes overlay'),
+  catalog: devCatalog("DEVTESTER", "Re-show the tester-notes overlay"),
 }
 
 // Reopens the app in a standalone, chrome-less popup window sized like a
@@ -242,14 +230,14 @@ const DevTesterCommand = {
 // the app reports the "not on web" outcome itself, the EXP/DEVTT pattern.
 const DevPopupCommand = {
   async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (input.trim().toUpperCase() !== 'DEVPOPUP') return null
+    if (input.trim().toUpperCase() !== "DEVPOPUP") return null
     return {
-      describe: 'Open the app in a standalone popup window?',
+      describe: "Open the app in a standalone popup window?",
       commands: [{ devPopup: {} }],
     }
   },
 
-  catalog: devCatalog('DEVPOPUP', 'Open the app in a standalone, phone-sized popup window'),
+  catalog: devCatalog("DEVPOPUP", "Open the app in a standalone, phone-sized popup window"),
 }
 
 // "DEVSENTRY" / "DEVSENTRY custom message" -> push a synthetic error through
@@ -267,12 +255,12 @@ const DevSentryCommand = {
     const message = match[1]?.trim()
     return {
       mixedCase: true,
-      describe: message ? `Send a test error report ("${message}")?` : 'Send a test error report?',
+      describe: message ? `Send a test error report ("${message}")?` : "Send a test error report?",
       commands: [{ devSentry: message ? { message } : {} }],
     }
   },
 
-  catalog: devCatalog('DEVSENTRY', 'Send a test error report', { params: '[message]' }),
+  catalog: devCatalog("DEVSENTRY", "Send a test error report", { params: "[message]" }),
 }
 
 // DEVBENCH [n]: log a synthetic CQ WW contest into a throwaway Test Operation
@@ -295,12 +283,12 @@ const DevBenchCommand = {
     const match = DEVBENCH_MATCH.exec(input.trim())
     if (!match) return null
     const count = match[1] ? Number(match[1]) : null
-    if (count !== null && count < 1) return { mixedCase: true, error: 'DEVBENCH needs a positive number of QSOs' }
+    if (count !== null && count < 1) return { mixedCase: true, error: "DEVBENCH needs a positive number of QSOs" }
     // Refused here rather than clamped silently by the app: the confirmation
     // below quotes the number back, and quoting one the run will not use tells
     // the operator something untrue at the one moment they can still say no.
     if (count !== null && count > 20000) {
-      return { mixedCase: true, error: 'DEVBENCH tops out at 20000 QSOs' }
+      return { mixedCase: true, error: "DEVBENCH tops out at 20000 QSOs" }
     }
     return {
       mixedCase: true,
@@ -309,12 +297,12 @@ const DevBenchCommand = {
       // operator's other devices before the purge tombstones it back out.
       describe: count
         ? `Benchmark logging ${count} QSOs? They are written and synced, then removed.`
-        : 'Benchmark logging? Contacts are written and synced, then removed.',
+        : "Benchmark logging? Contacts are written and synced, then removed.",
       commands: [{ devBench: count === null ? {} : { qsoCount: count } }],
     }
   },
 
-  catalog: devCatalog('DEVBENCH', 'Benchmark logging a contest', { params: '[qsos]' }),
+  catalog: devCatalog("DEVBENCH", "Benchmark logging a contest", { params: "[qsos]" }),
 }
 
 // "RELOAD POTA" / "RELOAD SOTA" -> reload data files whose category matches
@@ -332,16 +320,16 @@ const ReloadCommand = {
     if (allShorthand && targetWord) return null // "RELOADALL POTA" / "RELOAD! POTA" is ambiguous — don't guess
     if (!allShorthand && !targetWord) return { expectsParams: true } // bare "RELOAD" — recognized, not complete yet
 
-    const target = allShorthand || targetWord?.toUpperCase() === 'ALL' ? 'ALL' : targetWord?.toUpperCase()
+    const target = allShorthand || targetWord?.toUpperCase() === "ALL" ? "ALL" : targetWord?.toUpperCase()
 
     return {
-      describe: target === 'ALL' ? 'Reload all data files?' : `Reload ${target} data files?`,
-      confirm: target === 'ALL' ? 'Reloading all data files…' : `Reloading ${target} data files…`,
+      describe: target === "ALL" ? "Reload all data files?" : `Reload ${target} data files?`,
+      confirm: target === "ALL" ? "Reloading all data files…" : `Reloading ${target} data files…`,
       commands: [{ reloadDataFiles: { target } }],
     }
   },
 
-  catalog: devCatalog('RELOAD', 'Re-sync data files', { always: true, params: '<POTA|SOTA|ALL>', expectsParams: true, suggest: true }),
+  catalog: devCatalog("RELOAD", "Re-sync data files", { always: true, params: "<POTA|SOTA|ALL>", expectsParams: true, suggest: true }),
 }
 
 // "SEED" -> 10 QSOs; "SEED 20" -> 20; "SEED 15 3H" -> 15 spread over 3
@@ -356,7 +344,12 @@ const ReloadCommand = {
 // "SEED 15 3H"; `expectsParams` alone can't express that).
 const SeedCommand = {
   async interpret(
-    { input, operation, qso, execute }: {
+    {
+      input,
+      operation,
+      qso,
+      execute,
+    }: {
       input: string
       operation?: Record<string, JSONValue>
       qso?: Record<string, JSONValue>
@@ -368,11 +361,11 @@ const SeedCommand = {
     if (!parsed) return null
     // Recognized, but there's no log to seed here (e.g. the home screen's
     // quick search) — an error the UI presents, not a silent non-match.
-    if (!operation) return { error: 'SEED needs an open operation' }
+    if (!operation) return { error: "SEED needs an open operation" }
     if (!parsed.complete) return { expectsParams: true, mixedCase: true }
 
     const { count, spreadMillis, spreadLabel } = parsed
-    const roughWhere = spreadLabel ? ` over ${spreadLabel}` : ''
+    const roughWhere = spreadLabel ? ` over ${spreadLabel}` : ""
 
     // This same `interpret()` also runs on the call field's 150ms typing
     // debounce, for the live describe preview — re-triggered on every
@@ -391,7 +384,7 @@ const SeedCommand = {
     // folds `uuid` into the operation map it passes to interpret). Absent
     // uuid or host support, seed as if the log were empty.
     let existing: ExistingQsoStats = {}
-    if (typeof operation.uuid === 'string' && ctx.getQsos) {
+    if (typeof operation.uuid === "string" && ctx.getQsos) {
       try {
         // Null (unknown operation / host without log access) seeds as if
         // the log were empty, anchored to now.
@@ -405,10 +398,10 @@ const SeedCommand = {
     let pool = seedableCallsFrom(await allNotedCalls())
     if (pool.length === 0) pool = [...FALLBACK_CALLS]
 
-    const mode = typeof qso?.mode === 'string' ? qso.mode : 'SSB'
-    const band = typeof qso?.band === 'string' ? qso.band : '20m'
-    const freq = typeof qso?.freq === 'number' ? qso.freq : undefined
-    const stationCall = typeof operation.stationCall === 'string' && operation.stationCall ? operation.stationCall : 'N0CALL'
+    const mode = typeof qso?.mode === "string" ? qso.mode : "SSB"
+    const band = typeof qso?.band === "string" ? qso.band : "20m"
+    const freq = typeof qso?.freq === "number" ? qso.freq : undefined
+    const stationCall = typeof operation.stationCall === "string" && operation.stationCall ? operation.stationCall : "N0CALL"
 
     const commands: CommandAction[] = []
     let bag: string[] = []
@@ -432,11 +425,7 @@ const SeedCommand = {
       commands.push({ addQso: qsoData })
     }
 
-    const where = spreadLabel
-      ? plan.beforeExisting
-        ? ` over ${spreadLabel}, before your earliest QSO`
-        : ` over the last ${spreadLabel}`
-      : ''
+    const where = spreadLabel ? (plan.beforeExisting ? ` over ${spreadLabel}, before your earliest QSO` : ` over the last ${spreadLabel}`) : ""
     return {
       mixedCase: true,
       describe: `Seed the log with ${count} random QSOs${where}?`,
@@ -450,7 +439,7 @@ const SeedCommand = {
     }
   },
 
-  catalog: devCatalog('SEED', 'Fill the log with generated QSOs', { params: '[count] [hours]', needsOperation: true }),
+  catalog: devCatalog("SEED", "Fill the log with generated QSOs", { params: "[count] [hours]", needsOperation: true }),
 }
 
 /// Every key in the Callsign Notes index, via call-notes' `callNotes` hook —
@@ -459,7 +448,7 @@ const SeedCommand = {
 async function allNotedCalls(): Promise<string[]> {
   const calls: string[] = []
   try {
-    for (const entry of await hooks.invokeAll('callNotes', 'allCalls', {})) {
+    for (const entry of await hooks.invokeAll("callNotes", "allCalls", {})) {
       if (entry.ok && Array.isArray(entry.value)) calls.push(...(entry.value as string[]))
     }
   } catch (e) {
@@ -479,8 +468,8 @@ async function lookupGuessFor(
 ): Promise<{ guess?: JSONValue; lookups?: JSONValue } | null> {
   try {
     const entries = await hooks.invokeAll(
-      'lookupService',
-      'lookupCallInfo',
+      "lookupService",
+      "lookupCallInfo",
       { callInfo: { call }, qso: qsoData, operation },
       false, // offline: seeding must stay fast (it re-runs while typing) and never hit QRZ/HamDB
     )
@@ -508,24 +497,22 @@ const ExpCommand = {
     // Still a recognized command with extra words — error out rather than
     // silently demoting "EXP LAYOUTS ON" back to callsign text (the field
     // invited free text via expectsParams, so Enter must not log it).
-    if (/\s/.test(token)) return { error: 'EXP takes a single experiment name' }
+    if (/\s/.test(token)) return { error: "EXP takes a single experiment name" }
 
     // Case-insensitive like the app's own resolution: the call field
     // uppercases everything typed into it.
     const lower = token.toLowerCase()
-    const experiment = ctx.experiments?.find(
-      (e) => e.key.toLowerCase() === lower || e.aliases.some((a) => a.toLowerCase() === lower),
-    )
+    const experiment = ctx.experiments?.find((e) => e.key.toLowerCase() === lower || e.aliases.some((a) => a.toLowerCase() === lower))
     const commands = [{ toggleExperiment: { token } }]
     if (!experiment) return { describe: `Toggle experiment ${token.toUpperCase()}?`, commands }
     const enabled = ctx.enabledExperiments?.includes(experiment.key) ?? false
     return {
-      describe: `${enabled ? 'Disable' : 'Enable'} experiment ${experiment.name.toUpperCase()}?`,
+      describe: `${enabled ? "Disable" : "Enable"} experiment ${experiment.name.toUpperCase()}?`,
       commands,
     }
   },
 
-  catalog: devCatalog('EXP', 'Toggle an experimental feature', { params: '<name>', expectsParams: true }),
+  catalog: devCatalog("EXP", "Toggle an experimental feature", { params: "<name>", expectsParams: true }),
 }
 
 // DEVTT / DEVTIMETRAVEL move the app clock (docs/design/time.md): "DEVTT +3h",
@@ -552,16 +539,17 @@ const DevTimeTravelCommand = {
 
     // mixedCase for the SEED reason: it keeps Space a literal character, so a
     // complete "DEVTT" can still be extended to "DEVTT +3h".
-    if (request.kind === 'error') return { mixedCase: true, error: request.error }
+    if (request.kind === "error") return { mixedCase: true, error: request.error }
 
     return {
       mixedCase: true,
       describe: describeTimeTravel(request),
-      commands: [{
-        devTimeTravel: request.kind === 'reset'
-          ? { reset: true }
-          : { deltaMillis: request.deltaMillis, ...(request.speed === null ? {} : { speed: request.speed }) },
-      }],
+      commands: [
+        {
+          devTimeTravel:
+            request.kind === "reset" ? { reset: true } : { deltaMillis: request.deltaMillis, ...(request.speed === null ? {} : { speed: request.speed }) },
+        },
+      ],
     }
   },
 }
@@ -578,20 +566,20 @@ function shuffled(list: string[]): string[] {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('command', { key: 'dev-commands-devmode', hook: DevModeCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-devnotice', hook: DevNoticeCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-devstatus', hook: DevStatusCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-devprogress', hook: DevProgressCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-devhammer', hook: DevHammerCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-devsplash', hook: DevSplashCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-devonboard', hook: DevOnboardCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-devtester', hook: DevTesterCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-devpopup', hook: DevPopupCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-devsentry', hook: DevSentryCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-reload', hook: ReloadCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-seed', hook: SeedCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-exp', hook: ExpCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-devtimetravel', hook: DevTimeTravelCommand, priority: 100 })
-    registerHook('command', { key: 'dev-commands-devbench', hook: DevBenchCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devmode", hook: DevModeCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devnotice", hook: DevNoticeCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devstatus", hook: DevStatusCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devprogress", hook: DevProgressCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devhammer", hook: DevHammerCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devsplash", hook: DevSplashCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devonboard", hook: DevOnboardCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devtester", hook: DevTesterCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devpopup", hook: DevPopupCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devsentry", hook: DevSentryCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-reload", hook: ReloadCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-seed", hook: SeedCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-exp", hook: ExpCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devtimetravel", hook: DevTimeTravelCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devbench", hook: DevBenchCommand, priority: 100 })
   },
 })

@@ -68,10 +68,7 @@ export function dateValues(millis: number): Record<string, JSONValue> {
 /// tempting fallback is `Date.now()`, and it is the worst of the options: an
 /// operator cleaning up yesterday's log would read today's date off the pane
 /// with nothing to say it was invented.
-export function opValues(
-  operation: Record<string, JSONValue>,
-  extra: { qsoCount?: number; atMillis?: number } = {},
-): Record<string, JSONValue> {
+export function opValues(operation: Record<string, JSONValue>, extra: { qsoCount?: number; atMillis?: number } = {}): Record<string, JSONValue> {
   const station = String(operation.stationCall ?? "")
   const startMillis = Number(operation.startAtMillisMin ?? operation.startAtMillis ?? 0)
   // The LAST CONTACT'S START, which is as close to an end as the log gets —
@@ -248,9 +245,7 @@ export function templateContext(args: TemplateContextArgs): Record<string, unkno
   return {
     app: { name: args.appName ?? "" },
     now: utcIso(nowMillis),
-    ...(args.operation
-      ? { op: opValues(args.operation, { qsoCount: args.qsoCount, atMillis: args.atMillis }) }
-      : {}),
+    ...(args.operation ? { op: opValues(args.operation, { qsoCount: args.qsoCount, atMillis: args.atMillis }) } : {}),
     ...(args.qso ? { qso: qsoValues(args.qso) } : {}),
     ...(args.log ? { log: logValues(args.log) } : {}),
     ...(args.config ? { config: args.config } : {}),

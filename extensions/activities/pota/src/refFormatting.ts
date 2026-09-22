@@ -45,16 +45,11 @@ export const potaCountryPrefixForCall = countryPrefixForCall
 // Hunter (secondary control) prefers the entity the OTHER station is in —
 // same rule app-polo's POTALoggingControl uses — falling back to our own
 // station's entity; the activation control always uses our own.
-export function hunterDefaultPrefix(
-  operation: { stationCall?: unknown },
-  qso: { their?: { call?: unknown } } | undefined,
-): string {
+export function hunterDefaultPrefix(operation: { stationCall?: unknown }, qso: { their?: { call?: unknown } } | undefined): string {
   const theirCall = qso?.their?.call as string | undefined
-  return (
-    potaCountryPrefixForCall(theirCall) ?? potaCountryPrefixForCall(operation.stationCall as string | undefined) ?? 'US'
-  )
+  return potaCountryPrefixForCall(theirCall) ?? potaCountryPrefixForCall(operation.stationCall as string | undefined) ?? "US"
 }
 
 export function activationDefaultPrefix(operation: { stationCall?: unknown }): string {
-  return potaCountryPrefixForCall(operation.stationCall as string | undefined) ?? 'US'
+  return potaCountryPrefixForCall(operation.stationCall as string | undefined) ?? "US"
 }

@@ -84,19 +84,9 @@
     "WYO": "Wyoming County"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts CW, 10 watts phone",
       "LOW": "100 watts",

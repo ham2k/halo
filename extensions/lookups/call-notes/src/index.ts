@@ -40,7 +40,8 @@ import { defineExtension, host } from "@ham2k/extension-sdk"
 import type {
   AnnotatedCallInfo,
   CallInfoLookup,
-  CommandCatalogEntry, CommandInterpretation,
+  CommandCatalogEntry,
+  CommandInterpretation,
   DataFileDefinition,
   DynamicSettingsPanel,
   FormDefinition,
@@ -69,9 +70,7 @@ interface BuiltinNote {
 // Exactly one today — the settings panel below still lists/disables it
 // generically (map over this array, not a hardcoded single row), so adding
 // a second builtin source later is a one-line change here, not a UI change.
-const BUILT_IN_NOTES: BuiltinNote[] = [
-  { identifier: 'hams-of-note', name: "Ham2K's Hams of Note", url: 'https://ham2k.com/data/hams-of-note.txt' },
-]
+const BUILT_IN_NOTES: BuiltinNote[] = [{ identifier: "hams-of-note", name: "Ham2K's Hams of Note", url: "https://ham2k.com/data/hams-of-note.txt" }]
 
 interface CustomFile {
   name: string
@@ -89,7 +88,7 @@ interface CallNotesSettings {
 async function loadSettings(): Promise<CallNotesSettings> {
   const all = await host.getSettings()
   const extensions = all.extensions as Record<string, JSONValue> | undefined
-  const mine = extensions?.['extension_call-notes'] as Record<string, JSONValue> | undefined
+  const mine = extensions?.["extension_call-notes"] as Record<string, JSONValue> | undefined
   return {
     enabledNotes: (mine?.enabledNotes as Record<string, boolean> | undefined) ?? {},
     customFiles: (mine?.customFiles as CustomFile[] | undefined) ?? [],
@@ -133,11 +132,11 @@ function makeDataFileDef(identifier: string, name: string, url: string): DataFil
   return {
     key: identifier,
     name,
-    description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
+    description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileDescription"),
     url,
     maxAgeInDays: 1,
-    fetchType: 'raw',
-    category: 'call-notes',
+    fetchType: "raw",
+    category: "call-notes",
     rawToJSONData: async ({ body }) => parseCallNotes(body),
     onLoadRawData: (data) => {
       notesByFile[identifier] = (data as CallNotesIndex | null) ?? {}
@@ -152,15 +151,15 @@ async function lookupCall(
   { callInfo }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
   _ctx: HookContext,
 ): Promise<LookupResult> {
-  const call = (callInfo.call || '').trim().toUpperCase()
+  const call = (callInfo.call || "").trim().toUpperCase()
   const entries = entriesFor(call, callInfo.baseCall)
   const combined = combineNotes(entries)
   if (!combined) return []
 
   const result: CallInfoLookupWithNote = {
     call,
-    source: 'call-notes',
-    scope: 'general',
+    source: "call-notes",
+    scope: "general",
     note: combined.note, // combined single-line note for the compact call-info line
     emoji: combined.emoji,
     notes: (entries ?? []).map((entry) => entry.note), // every note, for the call-info detail
@@ -199,7 +198,7 @@ const ExpandCommand = {
     if (!value) return null
 
     return {
-      describe: tFor(ctx)('expandTo', { value }),
+      describe: tFor(ctx)("expandTo", { value }),
       commands: [{ setCallField: { text: value } }],
     }
   },
@@ -208,25 +207,27 @@ const ExpandCommand = {
     const t = tFor(ctx)
     // The "//" prefix itself, not every key the user has defined — those are
     // their own data, and listing them all would swamp the palette.
-    return [{
-      command: '//',
-      params: t('catalogExpandParams'),
-      describe: t('catalogExpand'),
-      category: t('catalogCategory'),
-      expectsParams: true,
-    }]
+    return [
+      {
+        command: "//",
+        params: t("catalogExpandParams"),
+        describe: t("catalogExpand"),
+        category: t("catalogCategory"),
+        expectsParams: true,
+      },
+    ]
   },
 }
 
 const SettingsPanel: DynamicSettingsPanel = {
-  kind: 'dynamic',
+  kind: "dynamic",
 
   // Declares the title upfront (and keeps this panel out of the app's
   // top-level settings nav — it's reached from the Data Files screen
   // instead) without waiting on getDefinition, which the host would
   // otherwise have to fetch just to know what to call the panel/row.
   async getPanels(_args: Record<string, never>, ctx: HookContext): Promise<SettingsPanelDescriptor[]> {
-    return [{ key: 'call-notes', title: tFor(ctx)('settingsTitle'), sidebar: false, dataFilesSection: true }]
+    return [{ key: "call-notes", title: tFor(ctx)("settingsTitle"), sidebar: false, dataFilesSection: true }]
   },
 
   async getDefinition(_args: { panelKey: string }, ctx: HookContext): Promise<FormDefinition> {
@@ -237,57 +238,57 @@ const SettingsPanel: DynamicSettingsPanel = {
       // labels the modal/dialog that hosts this form; repeating it in the
       // body would double it.
       elements: [
-        { type: 'header' as const, title: t('builtinNotesTitle'), style: 'section' as const },
+        { type: "header" as const, title: t("builtinNotesTitle"), style: "section" as const },
         ...BUILT_IN_NOTES.map((note) => ({
-          type: 'field' as const,
-          fieldType: 'checkbox' as const,
+          type: "field" as const,
+          fieldType: "checkbox" as const,
           key: `enabled.${note.identifier}`,
           label: note.name,
           value: settings.enabledNotes[note.identifier] !== false,
         })),
-        { type: 'header' as const, title: t('customFilesLabel'), style: 'section' as const },
+        { type: "header" as const, title: t("customFilesLabel"), style: "section" as const },
         {
-          type: 'field' as const,
-          fieldType: 'list' as const,
-          key: 'customFiles',
-          label: t('customFilesLabel'),
-          itemLabel: t('customFileItemLabel'),
+          type: "field" as const,
+          fieldType: "list" as const,
+          key: "customFiles",
+          label: t("customFilesLabel"),
+          itemLabel: t("customFileItemLabel"),
           // Reorder handle, delete button, and Add row shown directly here
           // (under the header above) instead of behind a summary row that
           // opens a separate list-editor dialog.
           inline: true,
-          itemTitle: '${name}',
+          itemTitle: "${name}",
           orderable: true,
           // See docs/extensions/settings.md's "Restarting the runtime after
           // a Tier 2 field commits" — onActivation is the only place a new
           // custom file becomes a registered dataFile hook.
           restartOnChange: true,
           itemFields: [
-            { type: 'field' as const, fieldType: 'text' as const, key: 'name', label: t('customFileName') },
-            { type: 'field' as const, fieldType: 'text' as const, key: 'location', label: t('customFileLocation') },
+            { type: "field" as const, fieldType: "text" as const, key: "name", label: t("customFileName") },
+            { type: "field" as const, fieldType: "text" as const, key: "location", label: t("customFileLocation") },
           ],
           value: settings.customFiles,
         },
         {
-          type: 'markdown' as const,
+          type: "markdown" as const,
           collapsible: true,
-          title: t('helpTitle'),
-          text: t('helpText'),
+          title: t("helpTitle"),
+          text: t("helpText"),
         },
       ],
     }
   },
 
   async onChangeField({ fieldKey, value }, _ctx: HookContext) {
-    if (fieldKey.startsWith('enabled.')) {
-      const identifier = fieldKey.slice('enabled.'.length)
+    if (fieldKey.startsWith("enabled.")) {
+      const identifier = fieldKey.slice("enabled.".length)
       const enabled = value as boolean
       const settings = await loadSettings()
       enabledByIdentifier[identifier] = enabled
       await host.setSettings({ enabledNotes: { ...settings.enabledNotes, [identifier]: enabled } })
       return
     }
-    if (fieldKey === 'customFiles') {
+    if (fieldKey === "customFiles") {
       await host.setSettings({ customFiles: value as JSONValue })
     }
   },
@@ -327,25 +328,22 @@ defineExtension({
     // needs settings first (its identifier/URL comes from there).
     fileOrder = [...BUILT_IN_NOTES.map((note) => note.identifier)]
     for (const note of BUILT_IN_NOTES) {
-      registerHook('dataFile', { hook: makeDataFileDef(note.identifier, note.name, note.url), key: note.identifier })
+      registerHook("dataFile", { hook: makeDataFileDef(note.identifier, note.name, note.url), key: note.identifier })
     }
-    registerHook('lookup', { hook: { lookupCall }, key: 'call-notes', priority: 100 })
-    registerHook('command', { hook: ExpandCommand, key: 'call-notes', priority: 100 })
-    registerHook('callNotes', { hook: DirectoryHook, key: 'call-notes' })
-    registerHook('settingsPanel', { hook: SettingsPanel, key: 'call-notes' })
+    registerHook("lookup", { hook: { lookupCall }, key: "call-notes", priority: 100 })
+    registerHook("command", { hook: ExpandCommand, key: "call-notes", priority: 100 })
+    registerHook("callNotes", { hook: DirectoryHook, key: "call-notes" })
+    registerHook("settingsPanel", { hook: SettingsPanel, key: "call-notes" })
 
     const settings = await loadSettings()
     enabledByIdentifier = { ...settings.enabledNotes }
     // Extended now that custom files are known — see `fileOrder`'s own
     // comment on why this has to be a fixed list, not object insertion
     // order.
-    fileOrder = [
-      ...BUILT_IN_NOTES.map((note) => note.identifier),
-      ...settings.customFiles.map((file) => customIdentifier(file.location)),
-    ]
+    fileOrder = [...BUILT_IN_NOTES.map((note) => note.identifier), ...settings.customFiles.map((file) => customIdentifier(file.location))]
     for (const file of settings.customFiles) {
       const identifier = customIdentifier(file.location)
-      registerHook('dataFile', { hook: makeDataFileDef(identifier, file.name, file.location), key: identifier })
+      registerHook("dataFile", { hook: makeDataFileDef(identifier, file.name, file.location), key: identifier })
     }
   },
 })

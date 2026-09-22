@@ -159,24 +159,12 @@
     "wvqp",
     "west virginia qso party"
   ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "export",
-    "ref:qp",
-    "scoring"
-  ],
+  "hooks": ["activity", "adifFields", "export", "ref:qp", "scoring"],
   "translations": {
     "es": {
       "name": "Concursos Estatales (Beta)",
       "description": "Concursos estatales, provinciales y regionales — condados, líneas de condado, estaciones de bonificación y Cabrillo",
-      "keywords": [
-        "concurso",
-        "condado",
-        "condados",
-        "estado",
-        "provincia"
-      ]
+      "keywords": ["concurso", "condado", "condados", "estado", "provincia"]
     }
   }
 }

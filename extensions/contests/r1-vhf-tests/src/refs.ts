@@ -8,11 +8,11 @@
 import type { JSONValue } from "@ham2k/extension-sdk"
 
 export function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 export function refOfType(container: Record<string, JSONValue>, type: string): Record<string, JSONValue> | undefined {
-  return (((container.refs as Record<string, JSONValue>[] | undefined) ?? [])).find((r) => r?.type === type)
+  return ((container.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === type)
 }
 
 /// Reads a serial off a QSO's own ref — same coercion cqwpx uses, since a
@@ -20,7 +20,7 @@ export function refOfType(container: Record<string, JSONValue>, type: string): R
 /// already be a number.
 export function serial(qso: Record<string, JSONValue>, type: string, field: string): string {
   const value = refOfType(qso, type)?.[field]
-  if (typeof value === 'number') return String(value)
+  if (typeof value === "number") return String(value)
   const digits = str(value).trim()
-  return /^\d+$/.test(digits) ? String(parseInt(digits, 10)) : ''
+  return /^\d+$/.test(digits) ? String(parseInt(digits, 10)) : ""
 }

@@ -33,14 +33,14 @@ import { EXCHANGE_PATTERN, IARUHFScorer, normalizeZone, ourExchange } from "./sc
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const TYPE = 'iaru-hf'
+const TYPE = "iaru-hf"
 
 function refOfType(container: Record<string, JSONValue>, type: string): Record<string, JSONValue> | undefined {
-  return (((container.refs as Record<string, JSONValue>[] | undefined) ?? [])).find((r) => r?.type === type)
+  return ((container.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === type)
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// The ITU zone the country file resolves for a callsign, as a string. Used
@@ -48,99 +48,92 @@ function str(value: JSONValue | undefined): string {
 function guessedZoneFor(their: Record<string, JSONValue>): string {
   const guess = (their.guess as Record<string, JSONValue>) ?? {}
   const call = str(their.call)
-  return (
-    normalizeZone(their.ituZone) ||
-    normalizeZone(guess.ituZone) ||
-    (call ? normalizeZone(annotateCallAgainstCountryFile(call).ituZone) : '')
-  )
+  return normalizeZone(their.ituZone) || normalizeZone(guess.ituZone) || (call ? normalizeZone(annotateCallAgainstCountryFile(call).ituZone) : "")
 }
 
 const ActivityHook = {
-  async operationControls(
-    _args: { operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls(_args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx)
     return [
       {
-        key: 'iaru-hf/setup',
-        label: t('activityLabel'),
+        key: "iaru-hf/setup",
+        label: t("activityLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'form',
+          kind: "form",
           refType: TYPE,
           form: {
-            title: t('setupLabel'),
+            title: t("setupLabel"),
             elements: [
               {
-                type: 'field',
-                fieldType: 'radio',
-                key: 'modeRestriction',
-                label: t('modeLabel'),
+                type: "field",
+                fieldType: "radio",
+                key: "modeRestriction",
+                label: t("modeLabel"),
                 // IARU is one weekend with three entry categories, unlike CQ WW's
                 // three separate contests — so this restricts what counts rather
                 // than naming which contest you're in.
-                value: 'Mixed',
+                value: "Mixed",
                 options: [
-                  { value: 'Mixed', label: t('modeMixed') },
-                  { value: 'CW', label: t('modeCW') },
-                  { value: 'Phone', label: t('modePhone') },
+                  { value: "Mixed", label: t("modeMixed") },
+                  { value: "CW", label: t("modeCW") },
+                  { value: "Phone", label: t("modePhone") },
                 ],
               },
               {
-                type: 'field',
-                fieldType: 'radio',
-                key: 'stationType',
-                label: t('stationTypeLabel'),
+                type: "field",
+                fieldType: "radio",
+                key: "stationType",
+                label: t("stationTypeLabel"),
                 // Defaulted, and not merely for convenience: the three fields
                 // below key their visibility off this, so leaving it unset would
                 // show none of them.
-                value: 'normal',
+                value: "normal",
                 options: [
-                  { value: 'normal', label: t('stationNormal') },
-                  { value: 'hq', label: t('stationHQ') },
-                  { value: 'official', label: t('stationOfficial') },
+                  { value: "normal", label: t("stationNormal") },
+                  { value: "hq", label: t("stationHQ") },
+                  { value: "official", label: t("stationOfficial") },
                 ],
               },
               // Exactly one of the next three shows at a time (§5.4.1). All three
               // keep their values when hidden, so trying HQ and going back to
               // Normal doesn't cost the operator the zone they typed.
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'zone',
-                label: t('ourZoneLabel'),
-                placeholder: t('ourZonePlaceholder'),
-                visibleWhen: { field: 'stationType', equals: 'normal' },
+                type: "field",
+                fieldType: "text",
+                key: "zone",
+                label: t("ourZoneLabel"),
+                placeholder: t("ourZonePlaceholder"),
+                visibleWhen: { field: "stationType", equals: "normal" },
               },
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'society',
-                label: t('societyLabel'),
-                placeholder: t('societyPlaceholder'),
+                type: "field",
+                fieldType: "text",
+                key: "society",
+                label: t("societyLabel"),
+                placeholder: t("societyPlaceholder"),
                 uppercase: true,
-                visibleWhen: { field: 'stationType', equals: 'hq' },
+                visibleWhen: { field: "stationType", equals: "hq" },
               },
               {
-                type: 'field',
-                fieldType: 'radio',
-                key: 'official',
-                label: t('officialLabel'),
-                value: 'AC',
+                type: "field",
+                fieldType: "radio",
+                key: "official",
+                label: t("officialLabel"),
+                value: "AC",
                 options: [
-                  { value: 'AC', label: 'AC' },
-                  { value: 'R1', label: 'R1' },
-                  { value: 'R2', label: 'R2' },
-                  { value: 'R3', label: 'R3' },
+                  { value: "AC", label: "AC" },
+                  { value: "R1", label: "R1" },
+                  { value: "R2", label: "R2" },
+                  { value: "R3", label: "R3" },
                 ],
-                visibleWhen: { field: 'stationType', equals: 'official' },
+                visibleWhen: { field: "stationType", equals: "official" },
               },
               // Markdown rather than a `link` element: a link renders dead from a
               // setup form, which has no link handler wired to it.
-              { type: 'markdown', text: t('rulesLink') },
+              { type: "markdown", text: t("rulesLink") },
             ],
           },
         },
@@ -161,20 +154,20 @@ const ActivityHook = {
     // running; what this saves is a country-file annotation per refresh.
     if (!refOfType(args.operation, TYPE)) return []
 
-    const their = ((args.qso?.their as Record<string, JSONValue>) ?? {})
+    const their = (args.qso?.their as Record<string, JSONValue>) ?? {}
     const suggested = guessedZoneFor(their)
 
     return [
       {
-        key: 'iaru-hf/exchange',
-        label: tFor(ctx)('exchangeLabel'),
+        key: "iaru-hf/exchange",
+        label: tFor(ctx)("exchangeLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'text',
+          kind: "text",
           refType: TYPE,
-          field: 'theirExchange',
+          field: "theirExchange",
           maxLength: 10,
           pattern: EXCHANGE_PATTERN,
           // Societies are sent as letters and offices as AC/R1/R2/R3, so this
@@ -213,16 +206,14 @@ const ActivityHook = {
     // drops the key entirely when it was never filled in — so a present key,
     // blank or not, is a decision, and guessing over it would put back what
     // they just removed.
-    const decided = qsoRef !== undefined && 'theirExchange' in qsoRef
+    const decided = qsoRef !== undefined && "theirExchange" in qsoRef
     // Only a ZONE can be guessed — nothing can infer a society or an office, so
     // those are always the operator's own typing.
-    const exchange = decided
-      ? str(qsoRef.theirExchange).trim().toUpperCase()
-      : guessedZoneFor((args.qso.their as Record<string, JSONValue>) ?? {})
+    const exchange = decided ? str(qsoRef.theirExchange).trim().toUpperCase() : guessedZoneFor((args.qso.their as Record<string, JSONValue>) ?? {})
 
     // A deliberate blank still projects, so clearing an exchange on an edit
     // clears the QSO row's column too instead of leaving the old value there.
-    if (!exchange) return decided ? { their: { exchange: '' } } : null
+    if (!exchange) return decided ? { their: { exchange: "" } } : null
 
     return {
       // Field-wise into our own ref; the core allows this extension no other.
@@ -234,45 +225,40 @@ const ActivityHook = {
 
 const RefHandler = {
   async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
-    return { valid: true, normalized: (ref.ref ?? '').trim() }
+    return { valid: true, normalized: (ref.ref ?? "").trim() }
   },
 
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const restriction = str((ref as Record<string, JSONValue>).modeRestriction)
     // "Mixed" is the default and adding it to every label is noise; a
     // restriction is what's worth seeing at a glance.
-    const label = ['IARU HF', restriction && restriction !== 'Mixed' ? restriction : undefined]
-      .filter(Boolean)
-      .join(' ')
+    const label = ["IARU HF", restriction && restriction !== "Mixed" ? restriction : undefined].filter(Boolean).join(" ")
     const sent = ourExchange({}, ref as Record<string, JSONValue>)
     return {
       ...ref,
-      program: 'Contest',
-      label: label || tFor(ctx)('unconfigured'),
-      shortLabel: label || tFor(ctx)('unconfigured'),
-      name: sent || tFor(ctx)('notConfigured'),
+      program: "Contest",
+      label: label || tFor(ctx)("unconfigured"),
+      shortLabel: label || tFor(ctx)("unconfigured"),
+      name: sent || tFor(ctx)("notConfigured"),
     }
   },
 
   /// "KI2D for IARU HF" with "Sending 8" beneath it: the sent exchange is the
   /// one thing an operator re-reads constantly, so it goes in the subtitle
   /// rather than being buried in setup.
-  async suggestOperationTitle(
-    { ref, operation }: { ref: Ref; operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ) {
+  async suggestOperationTitle({ ref, operation }: { ref: Ref; operation: Record<string, JSONValue> }, ctx: HookContext) {
     const restriction = str((ref as Record<string, JSONValue>).modeRestriction)
     const sent = ourExchange(operation, ref as Record<string, JSONValue>)
     return {
-      for: ['IARU HF', restriction && restriction !== 'Mixed' ? restriction : undefined].filter(Boolean).join(' '),
-      subtitle: sent ? tFor(ctx)('ourExchangeSubtitle', { exchange: sent }) : undefined,
+      for: ["IARU HF", restriction && restriction !== "Mixed" ? restriction : undefined].filter(Boolean).join(" "),
+      subtitle: sent ? tFor(ctx)("ourExchangeSubtitle", { exchange: sent }) : undefined,
     }
   },
 
   /// The contest's published rules — a reference here names an event, not a
   /// place, so what there is to read about it is the rules it is run under.
   async linkForRef(_args: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
-    return { url: 'https://www.arrl.org/iaru-hf-world-championship', label: 'IARU HF World Championship' }
+    return { url: "https://www.arrl.org/iaru-hf-world-championship", label: "IARU HF World Championship" }
   },
 }
 
@@ -286,35 +272,30 @@ const AdifFieldsHook = {
 
     // One contest, one identifier — the mode restriction is an entry category,
     // not a different contest, so it never appears here.
-    const fields: { name: string; value: string }[] = [{ name: 'CONTEST_ID', value: 'IARU-HF' }]
+    const fields: { name: string; value: string }[] = [{ name: "CONTEST_ID", value: "IARU-HF" }]
     const sent = ourExchange(operation, opRef)
     const received = str(refOfType(qso, TYPE)?.theirExchange)
-    if (sent) fields.push({ name: 'STX_STRING', value: sent })
-    if (received) fields.push({ name: 'SRX_STRING', value: received })
+    if (sent) fields.push({ name: "STX_STRING", value: sent })
+    if (received) fields.push({ name: "SRX_STRING", value: received })
     return fields
   },
 }
 
-function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): string {
+function reportFor(qso: Record<string, JSONValue>, side: "our" | "their"): string {
   const sideData = (qso[side] as Record<string, JSONValue>) ?? {}
   const sent = str(sideData.sent)
   if (sent) return sent
-  return str(qso.mode) === 'CW' || str(qso.mode) === 'RTTY' ? '599' : '59'
+  return str(qso.mode) === "CW" || str(qso.mode) === "RTTY" ? "599" : "59"
 }
 
 /// The contest's own name for this operation's file. Unlike CQ WW, nothing on
 /// the operation changes it: the mode restriction is an entry category, not a
 /// different contest, so every IARU HF log files under the one name.
 function contestTag(_operation: Record<string, JSONValue>): string {
-  return 'IARU-HF'
+  return "IARU-HF"
 }
 
-function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  extension: string,
-  compact?: boolean,
-): string {
+function filenameFor(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], extension: string, compact?: boolean): string {
   return exportFilename({
     stationCall: operation.stationCall,
     activity: contestTag(operation),
@@ -326,29 +307,28 @@ function filenameFor(
 
 const ExportHook = {
   async getExportTypes() {
-    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+    return [exportTypeDefinition(TYPE, "adif", manifest.shortName), exportTypeDefinition(TYPE, "cabrillo", manifest.shortName)]
   },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
-    const named = (extension: string) =>
-      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
+    const named = (extension: string) => filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
       {
         exportType: `${TYPE}-adif`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'adif',
-        label: t('adifExport', { contest: manifest.shortName }),
-        filename: named('adi'),
+        format: "adif",
+        label: t("adifExport", { contest: manifest.shortName }),
+        filename: named("adi"),
         selectedByDefault: true,
         refType: TYPE,
       },
       {
         exportType: `${TYPE}-cabrillo`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'cabrillo',
-        label: t('cabrilloExport', { contest: manifest.shortName }),
-        filename: named('log'),
+        format: "cabrillo",
+        label: t("cabrilloExport", { contest: manifest.shortName }),
+        filename: named("log"),
         selectedByDefault: true,
         refType: TYPE,
       },
@@ -360,7 +340,7 @@ const ExportHook = {
     // keyed delegation in `adifForExport`: a hook answering for an exportType it never
     // offered makes the ADIF delegation recurse into itself.
     if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
-      return { filename: '', mimeType: '', content: '' }
+      return { filename: "", mimeType: "", content: "" }
     }
 
     const operation = args.operation
@@ -371,23 +351,23 @@ const ExportHook = {
     if (args.exportType === `${TYPE}-cabrillo`) {
       const content = qsonToCabrillo(args.qsos, {
         headers: [
-          ['CONTEST', 'IARU-HF'],
-          ['CALLSIGN', ourCall],
-          ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
-          ['GRID-LOCATOR', str(operation.grid)],
+          ["CONTEST", "IARU-HF"],
+          ["CALLSIGN", ourCall],
+          ["OPERATORS", str((operation.local as Record<string, JSONValue>)?.operatorCall)],
+          ["GRID-LOCATOR", str(operation.grid)],
         ],
         qsoParts: (qso) => [
-          ourCall || '-',
-          reportFor(qso, 'our'),
-          sent || '-',
-          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || '-',
-          reportFor(qso, 'their'),
-          str(refOfType(qso, TYPE)?.theirExchange) || '-',
+          ourCall || "-",
+          reportFor(qso, "our"),
+          sent || "-",
+          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || "-",
+          reportFor(qso, "their"),
+          str(refOfType(qso, TYPE)?.theirExchange) || "-",
         ],
       })
       return {
-        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
-        mimeType: 'text/plain',
+        filename: filenameFor(operation, args.qsos, "log", args.compactFilenames),
+        mimeType: "text/plain",
         content,
       }
     }
@@ -407,8 +387,8 @@ const ExportHook = {
       mainHandler: TYPE,
     })
     return {
-      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
-      mimeType: 'text/plain',
+      filename: filenameFor(operation, args.qsos, "adi", args.compactFilenames),
+      mimeType: "text/plain",
       content,
     }
   },
@@ -417,11 +397,11 @@ const ExportHook = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('activity', { hook: ActivityHook, key: TYPE })
+    registerHook("activity", { hook: ActivityHook, key: TYPE })
     registerHook(`ref:${TYPE}`, { hook: RefHandler, key: TYPE })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: TYPE })
-    registerHook('export', { hook: ExportHook, key: TYPE })
-    registerHook('scoring', {
+    registerHook("adifFields", { hook: AdifFieldsHook, key: TYPE })
+    registerHook("export", { hook: ExportHook, key: TYPE })
+    registerHook("scoring", {
       hook: contestScorer(IARUHFScorer, { scope: { refTypes: [TYPE] } }),
       key: TYPE,
     })

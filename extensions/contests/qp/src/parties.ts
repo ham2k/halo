@@ -109,9 +109,56 @@ import wi from "./parties/wi.json" with { type: "json" }
 import wv from "./parties/wv.json" with { type: "json" }
 
 const RAW_PARTIES: RawParty[] = [
-  sevenqp, acqp, al, ar, az, bc, ca, co, cpqp, de, fl, ga, hi, ia, id, il, indiana, ks, ky, la,
-  md, me, mi, mn, mo, ms, nc, nd, ne, neqp, nh, nj, nm, ns, nv, ny, oh, ok, on, pa, qc, sc, sd, tn,
-  tx, va, vt, wa, wi, wv
+  sevenqp,
+  acqp,
+  al,
+  ar,
+  az,
+  bc,
+  ca,
+  co,
+  cpqp,
+  de,
+  fl,
+  ga,
+  hi,
+  ia,
+  id,
+  il,
+  indiana,
+  ks,
+  ky,
+  la,
+  md,
+  me,
+  mi,
+  mn,
+  mo,
+  ms,
+  nc,
+  nd,
+  ne,
+  neqp,
+  nh,
+  nj,
+  nm,
+  ns,
+  nv,
+  ny,
+  oh,
+  ok,
+  on,
+  pa,
+  qc,
+  sc,
+  sd,
+  tn,
+  tx,
+  va,
+  vt,
+  wa,
+  wi,
+  wv,
 ]
 
 /// One party's file, as it sits on disk. Everything is optional because the
@@ -123,7 +170,7 @@ type RawParty = Record<string, unknown>
 /// parties, `VE` for the Canadian ones. Decides which of the two tables an
 /// out-of-area location is looked up in, and which one an in-state station
 /// sweeps.
-export type PartyEntity = 'K' | 'VE'
+export type PartyEntity = "K" | "VE"
 
 /// The rule switches, all resolved to a value: reading `options.multsPerBand`
 /// off the raw file means every call site repeats the same `?? false`, and the
@@ -272,9 +319,9 @@ export interface QsoParty {
   exchange: { number: boolean; name: boolean }
 }
 
-export type PowerClass = 'QRP' | 'LOW' | 'HIGH'
+export type PowerClass = "QRP" | "LOW" | "HIGH"
 
-export const POWER_CLASSES: PowerClass[] = ['QRP', 'LOW', 'HIGH']
+export const POWER_CLASSES: PowerClass[] = ["QRP", "LOW", "HIGH"]
 
 /// The entry classes a party publishes, as Cabrillo's own vocabulary.
 ///
@@ -293,47 +340,23 @@ export const POWER_CLASSES: PowerClass[] = ['QRP', 'LOW', 'HIGH']
 /// "Multi-Single" is `CATEGORY-OPERATOR: MULTI-OP` with
 /// `CATEGORY-TRANSMITTER: ONE`. They are joined because that is how sponsors
 /// publish them, and split again on the way out (`cabrilloCategories`).
-export type OperatorClass =
-  | 'SINGLE-OP'
-  | 'SINGLE-OP-ASSISTED'
-  | 'MULTI-ONE'
-  | 'MULTI-TWO'
-  | 'MULTI-UNLIMITED'
+export type OperatorClass = "SINGLE-OP" | "SINGLE-OP-ASSISTED" | "MULTI-ONE" | "MULTI-TWO" | "MULTI-UNLIMITED"
 
-export type StationClass =
-  | 'FIXED'
-  | 'MOBILE'
-  | 'PORTABLE'
-  | 'ROVER'
-  | 'EXPEDITION'
-  | 'COUNTY-LINE'
-  | 'SCHOOL'
-  | 'CLUB'
-  | 'EOC'
+export type StationClass = "FIXED" | "MOBILE" | "PORTABLE" | "ROVER" | "EXPEDITION" | "COUNTY-LINE" | "SCHOOL" | "CLUB" | "EOC"
 
-export type ModeClass = 'CW' | 'PHONE' | 'DIGITAL' | 'MIXED'
+export type ModeClass = "CW" | "PHONE" | "DIGITAL" | "MIXED"
 
-export type OverlayClass =
-  | 'ROOKIE'
-  | 'YOUTH'
-  | 'YL'
-  | 'NOVICE-TECH'
-  | 'NEW-CONTESTER'
-  | 'TB-WIRES'
-  | 'POTA'
+export type OverlayClass = "ROOKIE" | "YOUTH" | "YL" | "NOVICE-TECH" | "NEW-CONTESTER" | "TB-WIRES" | "POTA"
 
-export const OPERATOR_CLASSES: OperatorClass[] =
-  ['SINGLE-OP', 'SINGLE-OP-ASSISTED', 'MULTI-ONE', 'MULTI-TWO', 'MULTI-UNLIMITED']
-export const STATION_CLASSES: StationClass[] =
-  ['FIXED', 'MOBILE', 'PORTABLE', 'ROVER', 'EXPEDITION', 'COUNTY-LINE', 'SCHOOL', 'CLUB', 'EOC']
-export const MODE_CLASSES: ModeClass[] = ['CW', 'PHONE', 'DIGITAL', 'MIXED']
-export const OVERLAY_CLASSES: OverlayClass[] =
-  ['ROOKIE', 'YOUTH', 'YL', 'NOVICE-TECH', 'NEW-CONTESTER', 'TB-WIRES', 'POTA']
+export const OPERATOR_CLASSES: OperatorClass[] = ["SINGLE-OP", "SINGLE-OP-ASSISTED", "MULTI-ONE", "MULTI-TWO", "MULTI-UNLIMITED"]
+export const STATION_CLASSES: StationClass[] = ["FIXED", "MOBILE", "PORTABLE", "ROVER", "EXPEDITION", "COUNTY-LINE", "SCHOOL", "CLUB", "EOC"]
+export const MODE_CLASSES: ModeClass[] = ["CW", "PHONE", "DIGITAL", "MIXED"]
+export const OVERLAY_CLASSES: OverlayClass[] = ["ROOKIE", "YOUTH", "YL", "NOVICE-TECH", "NEW-CONTESTER", "TB-WIRES", "POTA"]
 
 /// The station classes that are ON THE MOVE — what a party means by "mobile or
 /// rover" where it pays a bonus for the counties an entrant activates, and what
 /// the old `mobile` flag on a ref stood for.
-export const ROVING_STATION_CLASSES: StationClass[] = ['MOBILE', 'ROVER']
+export const ROVING_STATION_CLASSES: StationClass[] = ["MOBILE", "ROVER"]
 
 export interface EntryClasses {
   operator: OperatorClass[]
@@ -350,10 +373,10 @@ export interface EntryClasses {
 
 /// Bands closed to contests by IARU convention — the same list every other
 /// contest in this tree excludes, and polo's for this one.
-export const WARC_BANDS = ['60m', '30m', '17m', '12m']
+export const WARC_BANDS = ["60m", "30m", "17m", "12m"]
 
 function str(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim() ? value.trim() : undefined
+  return typeof value === "string" && value.trim() ? value.trim() : undefined
 }
 
 function bool(value: unknown): boolean {
@@ -361,21 +384,21 @@ function bool(value: unknown): boolean {
 }
 
 function num(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
 }
 
 function mapOf(value: unknown): Record<string, string> {
-  if (!value || typeof value !== 'object') return {}
+  if (!value || typeof value !== "object") return {}
   const out: Record<string, string> = {}
   for (const [code, name] of Object.entries(value as Record<string, unknown>)) {
     const key = normalizeCode(code)
-    out[key] = typeof name === 'string' && name ? name : key
+    out[key] = typeof name === "string" && name ? name : key
   }
   return out
 }
 
 function numbersOf(value: unknown): Record<string, number> {
-  if (!value || typeof value !== 'object') return {}
+  if (!value || typeof value !== "object") return {}
   const out: Record<string, number> = {}
   for (const [code, points] of Object.entries(value as Record<string, unknown>)) {
     const n = num(points)
@@ -392,7 +415,7 @@ function numbersOf(value: unknown): Record<string, number> {
 /// claimed at all. Normalized here rather than in the file, which stays
 /// byte-identical to polo's for the yearly re-sync.
 export function normalizeCode(code: string): string {
-  return code.toUpperCase().replace(/[ØÖ]/g, '0')
+  return code.toUpperCase().replace(/[ØÖ]/g, "0")
 }
 
 /// `2026-5-2 13:00Z` → millis. The files are hand-written and inconsistent:
@@ -424,13 +447,13 @@ export function parsePartyTime(value: unknown): number {
 function sanitizeUrl(value: unknown): string | undefined {
   const text = str(value)
   if (!text) return undefined
-  const cleaned = text.replace(/\s+/g, '')
-  return cleaned.startsWith('http') ? cleaned : undefined
+  const cleaned = text.replace(/\s+/g, "")
+  return cleaned.startsWith("http") ? cleaned : undefined
 }
 
 /// `NYQP` from `NY`, `7QP` and `NEQP` from themselves.
 function shortFor(raw: RawParty, key: string): string {
-  return str(raw.short) ?? (key.endsWith('QP') ? key : `${key}QP`)
+  return str(raw.short) ?? (key.endsWith("QP") ? key : `${key}QP`)
 }
 
 /// The power table, from whichever of the three keys a file happens to use, on
@@ -453,9 +476,9 @@ function powerMultipliersOf(raw: RawParty): Record<PowerClass, number> {
 }
 
 function optionsOf(raw: RawParty): PartyOptions {
-  const o = (raw.options && typeof raw.options === 'object' ? raw.options : {}) as Record<string, unknown>
+  const o = (raw.options && typeof raw.options === "object" ? raw.options : {}) as Record<string, unknown>
   return {
-    entity: str(o.entity)?.toUpperCase() === 'VE' ? 'VE' : 'K',
+    entity: str(o.entity)?.toUpperCase() === "VE" ? "VE" : "K",
     countyLine: bool(o.countyLine),
     dcCountsAsMaryland: bool(o.dcCountsAsMaryland),
     stateCountsForInState: bool(o.stateCountsForInState),
@@ -484,12 +507,12 @@ function optionsOf(raw: RawParty): PartyOptions {
     dataAndCWCountAsSameMode: bool(o.dataAndCWCountAsSameMode),
     pointsWhenTheyAreOutOfParty: num(o.pointsWhenTheyAreOutOfParty),
     removeCountySuffixes: bool(o.removeCountySuffixes),
-    labelForCounties: str(o.labelForCounties) ?? 'Counties',
+    labelForCounties: str(o.labelForCounties) ?? "Counties",
   }
 }
 
 function bonusOf(raw: RawParty): PartyBonus {
-  const b = (raw.bonus && typeof raw.bonus === 'object' ? raw.bonus : {}) as Record<string, unknown>
+  const b = (raw.bonus && typeof raw.bonus === "object" ? raw.bonus : {}) as Record<string, unknown>
   return {
     perActivatedCounty: num(b.perActivatedCounty) ?? 0,
     perActivatedCountyMinimumCount: num(b.perActivatedCountyMinimumCount) ?? 1,
@@ -508,10 +531,10 @@ function bonusOf(raw: RawParty): PartyBonus {
 /// `TheirNumber`/`OurNumber`, a one-way serial that neither polo nor this
 /// implements, and that party is disabled in the data anyway.
 function exchangeOf(raw: RawParty): { number: boolean; name: boolean } {
-  const fields = Array.isArray(raw.exchange) ? raw.exchange.filter((f): f is string => typeof f === 'string') : []
+  const fields = Array.isArray(raw.exchange) ? raw.exchange.filter((f): f is string => typeof f === "string") : []
   return {
-    number: fields.includes('Number'),
-    name: fields.some((field) => field.startsWith('Name')),
+    number: fields.includes("Number"),
+    name: fields.some((field) => field.startsWith("Name")),
   }
 }
 
@@ -522,22 +545,18 @@ function exchangeOf(raw: RawParty): { number: boolean; name: boolean } {
 /// `CATEGORY-` lines — is keyed on these, and an unknown one would reach a
 /// submitted log as a category no checker recognizes.
 function entryClassesOf(raw: RawParty): EntryClasses {
-  const block = (raw.entryClasses && typeof raw.entryClasses === 'object'
-    ? raw.entryClasses
-    : {}) as Record<string, unknown>
+  const block = (raw.entryClasses && typeof raw.entryClasses === "object" ? raw.entryClasses : {}) as Record<string, unknown>
 
   const listOf = <T extends string>(value: unknown, known: readonly T[]): T[] => {
     if (!Array.isArray(value)) return []
-    const wanted = new Set(value.filter((v): v is string => typeof v === 'string').map((v) => v.toUpperCase()))
+    const wanted = new Set(value.filter((v): v is string => typeof v === "string").map((v) => v.toUpperCase()))
     // In the shared vocabulary's own order, not the file's, so every party's
     // form reads the same way down the list.
     return known.filter((code) => wanted.has(code))
   }
 
   const limits: Partial<Record<PowerClass, string>> = {}
-  const rawLimits = (block.powerLimits && typeof block.powerLimits === 'object'
-    ? block.powerLimits
-    : {}) as Record<string, unknown>
+  const rawLimits = (block.powerLimits && typeof block.powerLimits === "object" ? block.powerLimits : {}) as Record<string, unknown>
   for (const power of POWER_CLASSES) {
     const limit = str(rawLimits[power])
     if (limit) limits[power] = limit
@@ -554,7 +573,7 @@ function entryClassesOf(raw: RawParty): EntryClasses {
 }
 
 function normalizeParty(raw: RawParty): QsoParty {
-  const key = (str(raw.key) ?? '').toUpperCase()
+  const key = (str(raw.key) ?? "").toUpperCase()
   const counties = mapOf(raw.counties)
   const rareCountyMultipliers = numbersOf(raw.rareCountyQSOMultiplier)
 
@@ -604,7 +623,7 @@ export const SUPPORTED_PARTIES: QsoParty[] = PARTIES.filter((party) => party.sup
 /// The party [key] names, whatever its case, or undefined for one this build
 /// doesn't have.
 export function partyFor(key: unknown): QsoParty | undefined {
-  const wanted = typeof key === 'string' ? key.trim().toUpperCase() : ''
+  const wanted = typeof key === "string" ? key.trim().toUpperCase() : ""
   return wanted ? PARTIES_BY_KEY[wanted] : undefined
 }
 
@@ -620,7 +639,7 @@ export function partyFor(key: unknown): QsoParty | undefined {
 /// no source for.
 export function pointsForMode(party: QsoParty, superMode: string): number {
   const mode = superMode.toUpperCase()
-  if (mode === 'DATA') return party.points.DATA ?? party.points.DIGI ?? 1
+  if (mode === "DATA") return party.points.DATA ?? party.points.DIGI ?? 1
   return party.points[mode] ?? 1
 }
 
@@ -630,7 +649,7 @@ export function pointsForMode(party: QsoParty, superMode: string): number {
 /// of those three sites.
 export function scoringModeFor(party: QsoParty, superMode: string): string {
   const mode = superMode.toUpperCase()
-  if (party.options.dataAndCWCountAsSameMode && mode === 'DATA') return 'CW'
+  if (party.options.dataAndCWCountAsSameMode && mode === "DATA") return "CW"
   return mode
 }
 

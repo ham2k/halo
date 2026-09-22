@@ -139,8 +139,7 @@ test("settingsPanelEntriesFor: a getPanels() descriptor's dataFilesSection: true
   ]
   const entries = settingsPanelEntriesFor(record, descriptors)
   assert.equal(entries[0].dataFilesSection, true)
-  assert.equal(entries[1].dataFilesSection, false,
-    "opting out of the sidebar alone must not also opt into the Data Files section")
+  assert.equal(entries[1].dataFilesSection, false, "opting out of the sidebar alone must not also opt into the Data Files section")
 })
 
 test("settingsPanelEntriesFor: an empty getPanels() result yields no panels at all", () => {

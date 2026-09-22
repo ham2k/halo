@@ -90,7 +90,7 @@ export function installAppClock(global: Record<string, unknown> = globalThis as 
     get(target, prop, receiver) {
       // One function, not a fresh closure per access: `Date.now === Date.now`
       // is false otherwise, which breaks anything caching or comparing it.
-      if (prop === 'now') return appNowStatic
+      if (prop === "now") return appNowStatic
       return Reflect.get(target, prop, receiver)
     },
   })
@@ -102,7 +102,7 @@ export function installAppClock(global: Record<string, unknown> = globalThis as 
   // a module that captured `Date` at its own import time) leaves some dates
   // travelling and some not, which is the version nobody diagnoses.
   if (global.Date !== AppDate) {
-    throw new Error('appClock: the sandbox Date could not be replaced; extensions would read real time')
+    throw new Error("appClock: the sandbox Date could not be replaced; extensions would read real time")
   }
 
   return {

@@ -8,26 +8,12 @@
   "enabledByDefault": false,
   "icon": "radio-handheld",
   "accentColor": "#546E7A",
-  "keywords": [
-    "custom",
-    "activation",
-    "sig"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "export",
-    "ref:custom",
-    "ref:customActivation"
-  ],
+  "keywords": ["custom", "activation", "sig"],
+  "hooks": ["activity", "adifFields", "export", "ref:custom", "ref:customActivation"],
   "translations": {
     "es": {
       "description": "Registra y exporta un programa que HaLo no conoce",
-      "keywords": [
-        "personalizado",
-        "activación",
-        "sig"
-      ]
+      "keywords": ["personalizado", "activación", "sig"]
     }
   }
 }

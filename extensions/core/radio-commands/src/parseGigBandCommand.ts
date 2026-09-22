@@ -13,24 +13,24 @@
 /// 119G and 142G are not: they name allocations that no longer exist, and fall
 /// outside every band we have.
 const BANDS_FOR_GIG_DESIGNATIONS: Record<string, string> = {
-  '1.2G': '23cm',
-  '1.3G': '23cm',
-  '2.3G': '13cm',
-  '2.4G': '13cm',
-  '3.3G': '9cm',
-  '3.4G': '9cm',
-  '5.7G': '6cm',
-  '5.8G': '6cm',
-  '10G': '3cm',
-  '24G': '1.25cm',
-  '47G': '6mm',
-  '75G': '4mm', // The Cabrillo label; 76G and 78G are where the band is actually worked
-  '76G': '4mm',
-  '78G': '4mm',
-  '122G': '2.5mm', // The Cabrillo label, though the band itself starts at 122.25 GHz
-  '123G': '2.5mm',
-  '134G': '2mm',
-  '241G': '1mm',
+  "1.2G": "23cm",
+  "1.3G": "23cm",
+  "2.3G": "13cm",
+  "2.4G": "13cm",
+  "3.3G": "9cm",
+  "3.4G": "9cm",
+  "5.7G": "6cm",
+  "5.8G": "6cm",
+  "10G": "3cm",
+  "24G": "1.25cm",
+  "47G": "6mm",
+  "75G": "4mm", // The Cabrillo label; 76G and 78G are where the band is actually worked
+  "76G": "4mm",
+  "78G": "4mm",
+  "122G": "2.5mm", // The Cabrillo label, though the band itself starts at 122.25 GHz
+  "123G": "2.5mm",
+  "134G": "2mm",
+  "241G": "1mm",
 }
 
 /// Built from the designations we know, so a callsign like '9G5XX' is still read
@@ -38,8 +38,10 @@ const BANDS_FOR_GIG_DESIGNATIONS: Record<string, string> = {
 /// `MobileDotToSlashFormatter` gates on a callsign prefix that '1.' fails, so
 /// '1.2G' reaches a command with its period intact.
 const GIG_DESIGNATIONS_REGEX = new RegExp(
-  `^(${Object.keys(BANDS_FOR_GIG_DESIGNATIONS).map((d) => d.replace(/\./g, '\\.')).join('|')})(HZ)?$`,
-  'i',
+  `^(${Object.keys(BANDS_FOR_GIG_DESIGNATIONS)
+    .map((d) => d.replace(/\./g, "\\."))
+    .join("|")})(HZ)?$`,
+  "i",
 )
 
 export interface GigBandCommand {

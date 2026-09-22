@@ -12,9 +12,12 @@
 // unicode this caller has no input for, at the cost of a dependency in every
 // kernel build. It is a reimplementation, so it can drift: camelcase.test.ts
 // pins the behaviour Cabrillo relies on. Any change here belongs there first.
-export default function camelCase (input: string | string[]): string {
-  const joined = Array.isArray(input) ? input.join('-') : input
-  const words = joined.trim().split(/[-_. ]+/).filter(Boolean)
+export default function camelCase(input: string | string[]): string {
+  const joined = Array.isArray(input) ? input.join("-") : input
+  const words = joined
+    .trim()
+    .split(/[-_. ]+/)
+    .filter(Boolean)
   return words
     .map((word, i) => {
       // Match camelcase@8: all-caps words are lowercased ("FOO" → "foo"),
@@ -23,5 +26,5 @@ export default function camelCase (input: string | string[]): string {
       if (i === 0) return word.charAt(0).toLowerCase() + word.slice(1)
       return word.charAt(0).toUpperCase() + word.slice(1)
     })
-    .join('')
+    .join("")
 }

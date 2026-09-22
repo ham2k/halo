@@ -8,16 +8,8 @@
   "icon": "radio-tower",
   "accentColor": "#4C6EF5",
   "api": 1,
-  "keywords": [
-    "svg",
-    "panel",
-    "sample",
-    "weather",
-    "radio"
-  ],
-  "hooks": [
-    "panel"
-  ],
+  "keywords": ["svg", "panel", "sample", "weather", "radio"],
+  "hooks": ["panel"],
   "sharedDependencies": {
     "@ham2k/lib-callsigns": "^1.0.0",
     "@ham2k/lib-country-files": "^1.0.0",

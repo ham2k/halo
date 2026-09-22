@@ -3,7 +3,5 @@
   "name": "Test Operations Commands",
   "version": "0.0.1",
   "description": "PURGETESTS — bulk-deletes every Test Operation on this device",
-  "hooks": [
-    "command"
-  ]
+  "hooks": ["command"]
 }

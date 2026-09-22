@@ -10,10 +10,7 @@ import { exportFilename, startMillisOf } from "./exportNames.ts"
 const JULY_27 = Date.UTC(2026, 6, 27, 14, 30)
 
 test("the normal form reads as a sentence, date first", () => {
-  assert.equal(
-    exportFilename({ stationCall: "N0CALL", ref: "US-1234", startAtMillis: JULY_27, extension: "adi" }),
-    "2026-07-27 N0CALL at US-1234.adi",
-  )
+  assert.equal(exportFilename({ stationCall: "N0CALL", ref: "US-1234", startAtMillis: JULY_27, extension: "adi" }), "2026-07-27 N0CALL at US-1234.adi")
 })
 
 test("the compact form leads with the callsign, so a station's files sort together", () => {
@@ -46,10 +43,7 @@ test("the modifier survives into the ref forms too", () => {
 // QSOs, because the local day had already rolled over.
 test("the date is UTC, not the reader's local day", () => {
   const lateUtc = Date.UTC(2026, 6, 27, 23, 45)
-  assert.equal(
-    exportFilename({ stationCall: "N0CALL", startAtMillis: lateUtc, extension: "adi" }),
-    "2026-07-27 N0CALL.adi",
-  )
+  assert.equal(exportFilename({ stationCall: "N0CALL", startAtMillis: lateUtc, extension: "adi" }), "2026-07-27 N0CALL.adi")
 })
 
 test("path separators can't escape the filename", () => {
@@ -71,14 +65,8 @@ test("a slashed callsign keeps both halves", () => {
 // beside it has to go too — a `N0CALL--20260727.adi` reads as a bug in the
 // app. `activity` is caller-supplied, so this is reachable.
 test("a part that slugs away takes its separator with it", () => {
-  assert.equal(
-    exportFilename({ stationCall: "N0CALL", activity: "!!!", startAtMillis: JULY_27, extension: "adi", compact: true }),
-    "N0CALL-20260727.adi",
-  )
-  assert.equal(
-    exportFilename({ stationCall: "!!!", ref: "US-1234", startAtMillis: JULY_27, extension: "adi", compact: true }),
-    "US-1234-20260727.adi",
-  )
+  assert.equal(exportFilename({ stationCall: "N0CALL", activity: "!!!", startAtMillis: JULY_27, extension: "adi", compact: true }), "N0CALL-20260727.adi")
+  assert.equal(exportFilename({ stationCall: "!!!", ref: "US-1234", startAtMillis: JULY_27, extension: "adi", compact: true }), "US-1234-20260727.adi")
 })
 
 // An operation with no callsign, no title and no refs still has to produce
@@ -93,38 +81,23 @@ test("an empty operation still gets a usable name", () => {
 // Test Operations (station call ending /T or /TEST) always get "Testing"
 // appended, so an exported file can't be mistaken for a real log.
 test("a /T station call appends Testing to the normal form", () => {
-  assert.equal(
-    exportFilename({ stationCall: "N0CALL/T", startAtMillis: JULY_27, extension: "adi" }),
-    "2026-07-27 N0CALL-T Testing.adi",
-  )
+  assert.equal(exportFilename({ stationCall: "N0CALL/T", startAtMillis: JULY_27, extension: "adi" }), "2026-07-27 N0CALL-T Testing.adi")
 })
 
 test("a /TEST station call appends Testing to the compact form, dashed like the rest of the modifier", () => {
-  assert.equal(
-    exportFilename({ stationCall: "N0CALL/TEST", startAtMillis: JULY_27, extension: "adi", compact: true }),
-    "N0CALL-TEST-20260727-testing.adi",
-  )
+  assert.equal(exportFilename({ stationCall: "N0CALL/TEST", startAtMillis: JULY_27, extension: "adi", compact: true }), "N0CALL-TEST-20260727-testing.adi")
 })
 
 test("Testing joins an existing modifier rather than replacing it", () => {
-  assert.equal(
-    exportFilename({ stationCall: "N0CALL/T", modifier: "Full", startAtMillis: JULY_27, extension: "adi" }),
-    "2026-07-27 N0CALL-T Full Testing.adi",
-  )
+  assert.equal(exportFilename({ stationCall: "N0CALL/T", modifier: "Full", startAtMillis: JULY_27, extension: "adi" }), "2026-07-27 N0CALL-T Full Testing.adi")
 })
 
 test("a non-test station call never gets the suffix", () => {
-  assert.equal(
-    exportFilename({ stationCall: "N0CALL", startAtMillis: JULY_27, extension: "adi" }),
-    "2026-07-27 N0CALL.adi",
-  )
+  assert.equal(exportFilename({ stationCall: "N0CALL", startAtMillis: JULY_27, extension: "adi" }), "2026-07-27 N0CALL.adi")
 })
 
 test("any comma-separated call being a test call is enough to add the suffix", () => {
-  assert.equal(
-    exportFilename({ stationCall: "N0CALL, N0CALL/T", startAtMillis: JULY_27, extension: "adi" }),
-    "2026-07-27 N0CALL, N0CALL-T Testing.adi",
-  )
+  assert.equal(exportFilename({ stationCall: "N0CALL, N0CALL/T", startAtMillis: JULY_27, extension: "adi" }), "2026-07-27 N0CALL, N0CALL-T Testing.adi")
 })
 
 test("startMillisOf prefers the first QSO over the operation's own start", () => {

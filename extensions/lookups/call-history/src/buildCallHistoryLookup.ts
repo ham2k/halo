@@ -13,19 +13,19 @@ import type { CallInfoLookup, JSONValue } from "@ham2k/extension-sdk"
 /// contact's location came from, and carrying it forward would label this
 /// contact's location with a source that never answered for it.
 const LOCATION_FIELDS = [
-  'city',
-  'state',
-  'county',
-  'country',
-  'grid',
-  'lat',
-  'lon',
-  'cqZone',
-  'ituZone',
-  'entityPrefix',
-  'entityName',
-  'dxccCode',
-  'continent',
+  "city",
+  "state",
+  "county",
+  "country",
+  "grid",
+  "lat",
+  "lon",
+  "cqZone",
+  "ituZone",
+  "entityPrefix",
+  "entityName",
+  "dxccCode",
+  "continent",
 ] as const
 
 /// The two results [buildCallHistoryTiers] produces. Both ride the single
@@ -39,7 +39,7 @@ const LOCATION_FIELDS = [
 export type CallHistoryTiers = { manual: CallInfoLookup[]; guessed: CallInfoLookup[] }
 
 function hasValue(value: unknown): boolean {
-  return value !== undefined && value !== null && value !== ''
+  return value !== undefined && value !== null && value !== ""
 }
 
 /// [their]'s own value for [field] if it was actually typed, else the merged
@@ -49,8 +49,8 @@ function pick(
   guess: Record<string, JSONValue>,
   field: string,
 ): { value: JSONValue; tier: keyof CallHistoryTiers } | undefined {
-  if (hasValue(their[field])) return { value: their[field], tier: 'manual' }
-  if (hasValue(guess[field])) return { value: guess[field], tier: 'guessed' }
+  if (hasValue(their[field])) return { value: their[field], tier: "manual" }
+  if (hasValue(guess[field])) return { value: guess[field], tier: "guessed" }
   return undefined
 }
 
@@ -60,10 +60,7 @@ function pick(
 /// both if `theirCall` ever equaled the base call exactly), most recent
 /// first. [buildCallHistoryTiers] relies on that ordering to pick "the"
 /// most recent match.
-export function mergeHistory(
-  a: Record<string, JSONValue>[],
-  b: Record<string, JSONValue>[],
-): Record<string, JSONValue>[] {
+export function mergeHistory(a: Record<string, JSONValue>[], b: Record<string, JSONValue>[]): Record<string, JSONValue>[] {
   if (b.length === 0) return a
   const seen = new Set<JSONValue>()
   const merged = [...a, ...b].filter((qso) => {
@@ -90,11 +87,7 @@ export function mergeHistory(
 /// [currentQsoUuid] excludes that QSO from its own history — the background
 /// queue re-enriches already-saved QSOs, and without this a QSO with no
 /// *other* history would echo its own guess back as "Call History".
-export function buildCallHistoryTiers(
-  call: string,
-  history: Record<string, JSONValue>[],
-  currentQsoUuid?: string,
-): CallHistoryTiers {
+export function buildCallHistoryTiers(call: string, history: Record<string, JSONValue>[], currentQsoUuid?: string): CallHistoryTiers {
   const past = history.filter((qso) => !currentQsoUuid || qso.uuid !== currentQsoUuid)
   if (past.length === 0) return { manual: [], guessed: [] }
 
@@ -104,7 +97,7 @@ export function buildCallHistoryTiers(
   const fields: Record<keyof CallHistoryTiers, Record<string, JSONValue>> = { manual: {}, guessed: {} }
   let locationScope: JSONValue | undefined
 
-  const name = pick(mostRecent, guess, 'name')
+  const name = pick(mostRecent, guess, "name")
   if (name) fields[name.tier].name = name.value
 
   // The station's photo, remembered from the last time they were worked. It
@@ -114,7 +107,7 @@ export function buildCallHistoryTiers(
   // before still shows a face with no network at all. Not tied to
   // the location rules below — a photo describes the operator, not where this
   // variant of their call is operating from today.
-  const image = pick(mostRecent, guess, 'image')
+  const image = pick(mostRecent, guess, "image")
   if (image) fields[image.tier].image = image.value
 
   // A location logged during a POTA/SOTA activation (or any other portable
@@ -124,8 +117,8 @@ export function buildCallHistoryTiers(
   // the same station — its OWN location (portable, DX-prefixed, home,
   // whatever it was) says nothing about where the call being composed now
   // is operating from.
-  const isPortableGuess = guess.locationScope === 'portable' || guess.locationScope === 'prefixed'
-  const isExactCallMatch = typeof mostRecent.call === 'string' && mostRecent.call.toUpperCase() === call
+  const isPortableGuess = guess.locationScope === "portable" || guess.locationScope === "prefixed"
+  const isExactCallMatch = typeof mostRecent.call === "string" && mostRecent.call.toUpperCase() === call
   // A `locSource: 'prefix'` pair is lib-country-files' DXCC centroid, carrying
   // cty.dat's west-positive longitude — never the station. Carrying it forward
   // would re-issue a mirrored coordinate on a NEW contact, and issue it
@@ -133,7 +126,7 @@ export function buildCallHistoryTiers(
   // (halo_core's `locationFromGuess`; `locSource` itself is excluded above).
   // `entityPrefix` still rides along, and the centroid is resolved from it at
   // read time, correctly signed.
-  const isCentroid = (info: Record<string, JSONValue>) => info.locSource === 'prefix'
+  const isCentroid = (info: Record<string, JSONValue>) => info.locSource === "prefix"
   // Every location field this QSO contributes travels in ONE result, and the
   // tier is decided for the group rather than per field. `mergeLookupIntoGuess`
   // reconciles grid against city/state/country by DELETING whichever of them
@@ -147,16 +140,16 @@ export function buildCallHistoryTiers(
   // verified by a human at least in part.
   if (!isPortableGuess && isExactCallMatch) {
     const location: Record<string, JSONValue> = {}
-    let locationTier: keyof CallHistoryTiers = 'guessed'
+    let locationTier: keyof CallHistoryTiers = "guessed"
     for (const field of LOCATION_FIELDS) {
       const picked = pick(mostRecent, guess, field)
       if (!picked) continue
-      if ((field === 'lat' || field === 'lon') && isCentroid(picked.tier === 'manual' ? mostRecent : guess)) continue
+      if ((field === "lat" || field === "lon") && isCentroid(picked.tier === "manual" ? mostRecent : guess)) continue
       location[field] = picked.value
-      if (picked.tier === 'manual') locationTier = 'manual'
+      if (picked.tier === "manual") locationTier = "manual"
     }
     Object.assign(fields[locationTier], location)
-    if (typeof guess.locationScope === 'string') locationScope = guess.locationScope
+    if (typeof guess.locationScope === "string") locationScope = guess.locationScope
   }
 
   // NOT `history: past` — a lookup result's `history` rides through the
@@ -169,7 +162,7 @@ export function buildCallHistoryTiers(
   // trimmed to a handful of scalars (uuid/operation/startAtMillis/band/mode)
   // if a "worked before" surface ever needs it.
   const tiers: CallHistoryTiers = { manual: [], guessed: [] }
-  for (const tier of ['manual', 'guessed'] as const) {
+  for (const tier of ["manual", "guessed"] as const) {
     if (Object.keys(fields[tier]).length === 0) continue
     const lookup: CallInfoLookup & Record<string, JSONValue> = {
       call,
@@ -180,8 +173,8 @@ export function buildCallHistoryTiers(
       // replaceable by a guessed one, since "Call History answered before"
       // and "Call History answered again" would look the same regardless of
       // which tier actually did.
-      source: tier === 'manual' ? 'Call History' : 'Call History (guess)',
-      scope: 'general',
+      source: tier === "manual" ? "Call History" : "Call History (guess)",
+      scope: "general",
       ...fields[tier],
     }
     if (LOCATION_FIELDS.some((f) => f in fields[tier])) {
@@ -190,7 +183,7 @@ export function buildCallHistoryTiers(
       // the annotation pre-step carries no `guess.locationScope`, and 'qth'
       // is what the guard above already established to get here: a
       // non-portable, exact-call match is the station's own QTH.
-      lookup.locationScope = (locationScope ?? 'qth') as CallInfoLookup['locationScope']
+      lookup.locationScope = (locationScope ?? "qth") as CallInfoLookup["locationScope"]
     }
     tiers[tier] = [lookup]
   }

@@ -10,15 +10,7 @@
 // Because the key rides in a URL, nothing here may log one — see
 // halo_core's `redactUrlForLog` for the same rule on the host side.
 
-import {
-  activityExportHook,
-  activityScorer,
-  contestScorer,
-  defineExtension,
-  host,
-  huntingExportHook,
-  referenceActivity,
-} from "@ham2k/extension-sdk"
+import { activityExportHook, activityScorer, contestScorer, defineExtension, host, huntingExportHook, referenceActivity } from "@ham2k/extension-sdk"
 import type {
   DataFileDefinition,
   RefTransform,
@@ -38,45 +30,45 @@ import { spotsFromTOTAApi, type TOTAApiSpot } from "./spotMapping.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const HUNTING_TYPE = 'tota'
-const ACTIVATION_TYPE = 'totaActivation'
+const HUNTING_TYPE = "tota"
+const ACTIVATION_TYPE = "totaActivation"
 const REFERENCE_REGEX = /^[A-Z0-9]+R-[0-9]{4}$/i
 
 /// Live-typing reformatting, app-polo's TOTAInput chain: a run-on reference
 /// gets its dash ("OKR0001" -> "OKR-0001"). No default prefix — app-polo
 /// offers none either, the program spanning too many countries to guess.
 export const TRANSFORMS: RefTransform[] = [
-  { pattern: '(?<![A-Z0-9])([A-Z0-9]+R)(\\d+)', replacement: '${1}-${2}', flags: 'gi' },
-  { pattern: '[^A-Z0-9\\-, ]', replacement: '', flags: 'gi' },
+  { pattern: "(?<![A-Z0-9])([A-Z0-9]+R)(\\d+)", replacement: "${1}-${2}", flags: "gi" },
+  { pattern: "[^A-Z0-9\\-, ]", replacement: "", flags: "gi" },
 ]
 
-const API_BASE = 'https://www.rozhledny.eu/apidata'
+const API_BASE = "https://www.rozhledny.eu/apidata"
 
 /// Thirteen contacts activate a tower, per UTC day, and the only axis that
 /// makes a repeat contact fresh is the tower itself — not band, not mode.
 const TOTA_SCORING = {
-  label: 'TOTA',
+  label: "TOTA",
   icon: manifest.icon,
   activationType: ACTIVATION_TYPE,
   huntingType: HUNTING_TYPE,
   qsosToActivate: 13,
   allowsMultipleReferences: true,
-  uniquePer: ['ref'] as const,
-  activates: 'daily' as const,
-  refNoun: (ctx: HookContext) => tFor(ctx)('tower'),
-  refNounPlural: (ctx: HookContext) => tFor(ctx)('towersPlural'),
-  p2pLabel: (ctx: HookContext) => tFor(ctx)('t2t'),
+  uniquePer: ["ref"] as const,
+  activates: "daily" as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)("tower"),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)("towersPlural"),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)("t2t"),
 }
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
-  key: 'tota',
-  label: 'TOTA',
+  key: "tota",
+  label: "TOTA",
   activationType: ACTIVATION_TYPE,
   huntingType: HUNTING_TYPE,
   referenceRegex: REFERENCE_REGEX,
   icon: manifest.icon,
   color: manifest.accentColor,
-  placeholder: 'OKR-0001',
+  placeholder: "OKR-0001",
   transforms: TRANSFORMS,
   tFor,
   // The tower card, in English: the site also speaks Czech, German, Spanish,
@@ -90,7 +82,7 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
 })
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
-  return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
+  return ((container.refs as Ref[] | undefined) ?? []).filter((r) => r.type === type && r.ref)
 }
 
 /// The key TOTA issued Ham2K, on every call to its own endpoints.
@@ -104,15 +96,15 @@ function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
 ///
 /// TOTA gates the tower list itself behind this, not just the spot feed, so
 /// without it the extension has no data at all rather than merely no spots.
-const TOTA_API_KEY = '0b14cf6451a537a9acbf4de4f01d460545a4de8f773caf6a29ac675d069f3280'
+const TOTA_API_KEY = "0b14cf6451a537a9acbf4de4f01d460545a4de8f773caf6a29ac675d069f3280"
 
 const SpotsHook = {
-  sourceName: 'TOTA',
+  sourceName: "TOTA",
 
   async fetchSpots(_args: Record<string, never>, ctx: HookContext): Promise<Spot[]> {
     if (!ctx.online) return []
     const response = await host.fetch(`${API_BASE}/cluster.php?key=${encodeURIComponent(TOTA_API_KEY)}`, {
-      headers: { Accept: 'application/json' },
+      headers: { Accept: "application/json" },
     })
     // Deliberately NOT reporting the URL: it carries the key.
     if (response.status !== 200) throw new Error(`TOTA API returned HTTP ${response.status}`)
@@ -140,44 +132,34 @@ const SpotsHook = {
   },
 
   async isSelfSpotEnabled({ operation }: { operation: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(operation, ACTIVATION_TYPE).length > 0
-      ? { enabled: true, icon: manifest.icon }
-      : { enabled: false }
+    return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: manifest.icon } : { enabled: false }
   },
 
   async isOtherSpotEnabled({ qso }: { qso: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(qso, HUNTING_TYPE).length > 0
-      ? { enabled: true, icon: manifest.icon }
-      : { enabled: false }
+    return refsOfType(qso, HUNTING_TYPE).length > 0 ? { enabled: true, icon: manifest.icon } : { enabled: false }
   },
 
   async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, _ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(operation, ACTIVATION_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No TOTA activation on this operation' }
+    if (refs.length === 0) return { ok: false, message: "No TOTA activation on this operation" }
     // One spot per tower, like app-polo: the endpoint takes a single
     // `tower_ref`, so an n-fer is several posts rather than a joined field.
-    const call = String(operation.stationCall ?? '').trim()
-    if (!call) return { ok: false, message: 'This operation has no station callsign to spot' }
+    const call = String(operation.stationCall ?? "").trim()
+    if (!call) return { ok: false, message: "This operation has no station callsign to spot" }
     return postSpotsToTOTA(call, refs, freq, mode, comment)
   },
 
   async postOtherSpot({ qso, comment }: PostOtherSpotRequest, _ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(qso, HUNTING_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No TOTA reference on this QSO' }
+    if (refs.length === 0) return { ok: false, message: "No TOTA reference on this QSO" }
     const freq = Number(qso.freq)
-    if (!freq) return { ok: false, message: 'This QSO has no frequency to spot' }
+    if (!freq) return { ok: false, message: "This QSO has no frequency to spot" }
     const their = (qso.their ?? {}) as Record<string, unknown>
     // Guarded like the frequency above: a spot naming no station reaches
     // everybody watching, which is worse than no spot.
-    const call = String(their.call ?? '').trim()
-    if (!call) return { ok: false, message: 'This QSO has no callsign to spot' }
-    return postSpotsToTOTA(
-      call,
-      refs,
-      freq,
-      qso.mode ? String(qso.mode) : undefined,
-      comment,
-    )
+    const call = String(their.call ?? "").trim()
+    if (!call) return { ok: false, message: "This QSO has no callsign to spot" }
+    return postSpotsToTOTA(call, refs, freq, qso.mode ? String(qso.mode) : undefined, comment)
   },
 }
 
@@ -187,13 +169,7 @@ const DUPLICATE_SPOT = /Duplicate self-spot/i
 
 /// A POST with a JSON body; only the KEY rides in the query string, which is
 /// why no error message here may quote the URL.
-async function postSpotsToTOTA(
-  call: string,
-  refs: Ref[],
-  freq: number,
-  mode?: string,
-  comment?: string,
-): Promise<PostResult> {
+async function postSpotsToTOTA(call: string, refs: Ref[], freq: number, mode?: string, comment?: string): Promise<PostResult> {
   // `formEncode`, not URLSearchParams: QuickJS has no such global.
   const query = formEncode({ key: TOTA_API_KEY })
 
@@ -206,23 +182,20 @@ async function postSpotsToTOTA(
   for (const ref of refs) {
     try {
       const response = await host.fetch(`${API_BASE}/cluster_selfspot.php?${query}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           callsign: call,
           frequency: freq,
           // Null, not a guess — see WWBOTA. app-polo passes `vfo.mode` through.
           mode: mode || null,
           tower_ref: ref.ref,
-          comment: comment ?? '',
+          comment: comment ?? "",
         }),
       })
       // A duplicate is not a failure, and app-polo ignores this one by name:
       // re-spotting the same tower is a routine thing to do.
-      if (
-        response.status !== 200 && response.status !== 201 &&
-        !DUPLICATE_SPOT.test(response.body ?? '')
-      ) {
+      if (response.status !== 200 && response.status !== 201 && !DUPLICATE_SPOT.test(response.body ?? "")) {
         failures.push(`${ref.ref} (HTTP ${response.status})`)
       }
     } catch (e) {
@@ -233,7 +206,7 @@ async function postSpotsToTOTA(
   if (failures.length === 0) return { ok: true }
   // Named, because "one of your three towers failed" is not actionable. Refs
   // are safe to quote; the URL is not, since it carries the key.
-  return { ok: false, message: `TOTA spot failed for ${failures.join(', ')}` }
+  return { ok: false, message: `TOTA spot failed for ${failures.join(", ")}` }
 }
 
 /// The ONLY list in the port that needs a key, which is why `url` is a function
@@ -244,15 +217,17 @@ async function postSpotsToTOTA(
 /// The resolved URL carries a secret, which is why the host redacts query
 /// strings before logging a fetch (halo_core's `redactUrlForLog`).
 const totaDataFile: DataFileDefinition = {
-  key: 'tota-all-towers',
-  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
-  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
+  key: "tota-all-towers",
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileName"),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileDescription"),
   url: () => `${API_BASE}/tower.php?key=${encodeURIComponent(TOTA_API_KEY)}`,
   maxAgeInDays: 30,
-  fetchType: 'json',
-  category: 'tota',
+  fetchType: "json",
+  category: "tota",
   jsonToLookupEntry: (entry: Record<string, any>) => {
-    const ref = String(entry?.ref ?? '').trim().toUpperCase()
+    const ref = String(entry?.ref ?? "")
+      .trim()
+      .toUpperCase()
     if (!ref) return null
 
     // rozhledny.eu publishes every numeric field as a string ('50.730000'),
@@ -267,7 +242,7 @@ const totaDataFile: DataFileDefinition = {
 
     return {
       // The country part of the reference (`OKR` of `OKR-0001`).
-      subCategory: ref.split('-')[0],
+      subCategory: ref.split("-")[0],
       key: ref,
       name: entry?.name,
       lat,
@@ -290,29 +265,36 @@ const totaDataFile: DataFileDefinition = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook(`ref:${HUNTING_TYPE}`, { hook: refHandler, key: 'tota' })
-    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'tota' })
-    registerHook('activity', { hook: activityHook, key: 'tota' })
-    registerHook('adifFields', { hook: adifFieldsHook, key: 'tota' })
-    registerHook('adifImport', { hook: adifImportHook, key: 'tota' })
-    registerHook('spots', { hook: SpotsHook, key: 'tota' })
-    registerHook('dataFile', { hook: totaDataFile, key: 'tota-all-towers' })
-    registerHook('scoring', {
+    registerHook(`ref:${HUNTING_TYPE}`, { hook: refHandler, key: "tota" })
+    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: "tota" })
+    registerHook("activity", { hook: activityHook, key: "tota" })
+    registerHook("adifFields", { hook: adifFieldsHook, key: "tota" })
+    registerHook("adifImport", { hook: adifImportHook, key: "tota" })
+    registerHook("spots", { hook: SpotsHook, key: "tota" })
+    registerHook("dataFile", { hook: totaDataFile, key: "tota-all-towers" })
+    registerHook("scoring", {
       hook: contestScorer(activityScorer(TOTA_SCORING), {
         scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
-      key: 'tota',
+      key: "tota",
     })
-    registerHook('export', {
-      hook: activityExportHook({ key: 'tota', label: 'TOTA', activationType: ACTIVATION_TYPE, icon: manifest.icon }),
-      key: 'tota',
+    registerHook("export", {
+      hook: activityExportHook({ key: "tota", label: "TOTA", activationType: ACTIVATION_TYPE, icon: manifest.icon }),
+      key: "tota",
     })
     // The chaser side: every reference hunted, across the whole log — a
     // different key so it doesn't collide with the activator registration
     // above.
-    registerHook('export', {
-      hook: huntingExportHook({ key: 'tota', label: 'TOTA', huntingType: HUNTING_TYPE, activationType: ACTIVATION_TYPE, icon: manifest.icon, color: manifest.accentColor }),
-      key: 'tota-hunter',
+    registerHook("export", {
+      hook: huntingExportHook({
+        key: "tota",
+        label: "TOTA",
+        huntingType: HUNTING_TYPE,
+        activationType: ACTIVATION_TYPE,
+        icon: manifest.icon,
+        color: manifest.accentColor,
+      }),
+      key: "tota-hunter",
     })
   },
 })

@@ -20,10 +20,10 @@ import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
 /// WPX is an HF contest: the WARC bands are excluded by the rules.
-export const VALID_BANDS = ['160m', '80m', '40m', '20m', '15m', '10m']
+export const VALID_BANDS = ["160m", "80m", "40m", "20m", "15m", "10m"]
 
 /// The low bands are worth double, per rule B.1/B.2.
-const DOUBLE_POINT_BANDS = ['160m', '80m', '40m']
+const DOUBLE_POINT_BANDS = ["160m", "80m", "40m"]
 
 export type CQWPXScoresheet = {
   /// call → bands already worked with it (one QSO per band is allowed).
@@ -46,7 +46,7 @@ export type CQWPXScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// The WPX multiplier for a callsign: the letter/numeral combination that forms
@@ -66,15 +66,15 @@ function str(value: JSONValue | undefined): string {
 ///     under-count the multiplier.
 export function wpxPrefix(call: string): string {
   const trimmed = call.trim().toUpperCase()
-  if (!trimmed) return ''
+  if (!trimmed) return ""
 
   // Only for an unmodified call: in `N8BJQ/HG19` the designator is what counts,
   // and `parseCallsign` is what knows which side of the slash that is.
-  if (!trimmed.includes('/') && /^[A-Z]+[0-9]+$/.test(trimmed)) return trimmed
+  if (!trimmed.includes("/") && /^[A-Z]+[0-9]+$/.test(trimmed)) return trimmed
 
   const parsed = parseCallsign(trimmed)
-  const candidate = str(parsed.prefix as JSONValue | undefined) || trimmed.replace(/[^A-Z0-9]/g, '')
-  if (!candidate) return ''
+  const candidate = str(parsed.prefix as JSONValue | undefined) || trimmed.replace(/[^A-Z0-9]/g, "")
+  if (!candidate) return ""
   return /[0-9]/.test(candidate) ? candidate : `${candidate.slice(0, 2)}0`
 }
 
@@ -82,8 +82,8 @@ export function wpxPrefix(call: string): string {
 /// not a contest QSO. SSB covers the sideband modes a radio may report.
 function modeMatches(contestMode: string, qsoMode: string): boolean {
   if (!contestMode) return true
-  if (contestMode === 'SSB') return qsoMode === 'SSB' || qsoMode === 'USB' || qsoMode === 'LSB'
-  if (contestMode === 'CW') return qsoMode === 'CW'
+  if (contestMode === "SSB") return qsoMode === "SSB" || qsoMode === "USB" || qsoMode === "LSB"
+  if (contestMode === "CW") return qsoMode === "CW"
   return qsoMode === contestMode
 }
 
@@ -91,8 +91,15 @@ export const CQWPXScorer: ContestScorer<CQWPXScoresheet> = {
   startScoresheet({ operation }): CQWPXScoresheet {
     const ours = annotateCallAgainstCountryFile(str(operation.stationCall))
     return {
-      workedByCall: {}, mults: {}, bandMults: {}, bands: {}, bandPoints: {},
-      qsos: 0, points: 0, dayQsos: 0, dayPoints: 0,
+      workedByCall: {},
+      mults: {},
+      bandMults: {},
+      bands: {},
+      bandPoints: {},
+      qsos: 0,
+      points: 0,
+      dayQsos: 0,
+      dayPoints: 0,
       ourContinent: ours.continent,
       ourEntity: ours.entityPrefix,
     }
@@ -114,16 +121,16 @@ export const CQWPXScorer: ContestScorer<CQWPXScoresheet> = {
     const mode = str(qso.mode)
 
     if (!modeMatches(str(ref?.mode), mode)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidMode'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidMode"] } }
     }
     if (!VALID_BANDS.includes(band)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     // One QSO per station per band.
     const worked = base.workedByCall[call] ?? []
     if (worked.includes(band)) {
-      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     const theirInfo = annotateCallAgainstCountryFile(call)
@@ -144,10 +151,9 @@ export const CQWPXScorer: ContestScorer<CQWPXScoresheet> = {
     if (sameCountry) {
       points = 1
     } else {
-      const sameContinent =
-        !!base.ourContinent && !!theirInfo.continent && base.ourContinent === theirInfo.continent
+      const sameContinent = !!base.ourContinent && !!theirInfo.continent && base.ourContinent === theirInfo.continent
       if (!sameContinent) points = 3
-      else points = base.ourContinent === 'NA' ? 2 : 1
+      else points = base.ourContinent === "NA" ? 2 : 1
       if (DOUBLE_POINT_BANDS.includes(band)) points *= 2
     }
 
@@ -173,8 +179,8 @@ export const CQWPXScorer: ContestScorer<CQWPXScoresheet> = {
 
     const score: QsoScoreVerdict = { value: points, band }
     const notices: string[] = []
-    if (isNewMult) notices.push('newMult')
-    if (worked.length > 0) notices.push('newBand')
+    if (isNewMult) notices.push("newMult")
+    if (worked.length > 0) notices.push("newBand")
     if (notices.length > 0) score.notices = notices
     if (prefix) score.prefix = prefix
 
@@ -182,7 +188,7 @@ export const CQWPXScorer: ContestScorer<CQWPXScoresheet> = {
   },
 
   summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const multCount = Object.keys(scoresheet.mults).length
     const points = isDay ? scoresheet.dayPoints : scoresheet.points
     // Multipliers accumulate across the whole contest, so a day's "score" is
@@ -191,9 +197,9 @@ export const CQWPXScorer: ContestScorer<CQWPXScoresheet> = {
 
     return {
       cqwpx: {
-        key: 'cqwpx',
+        key: "cqwpx",
         for: scope,
-        icon: 'flag-checkered',
+        icon: "flag-checkered",
         total,
         points,
         mults: multCount,
@@ -214,16 +220,14 @@ function breakdown(sheet: CQWPXScoresheet): string {
     const qsos = sheet.bands[band] ?? 0
     const points = sheet.bandPoints[band] ?? 0
     const mults = Object.keys(sheet.bandMults[band] ?? {}).length
-    return qsos === 0
-      ? `**${band}**: —`
-      : `**${band}**: ${fmtInteger(qsos)} QSOs, ${fmtInteger(points)} pts, ${fmtInteger(mults)} prefixes`
+    return qsos === 0 ? `**${band}**: —` : `**${band}**: ${fmtInteger(qsos)} QSOs, ${fmtInteger(points)} pts, ${fmtInteger(mults)} prefixes`
   })
 
   const prefixes = Object.keys(sheet.mults).sort()
   if (prefixes.length > 0) {
-    lines.push('')
+    lines.push("")
     lines.push(`**${fmtInteger(prefixes.length)} prefixes**`)
-    lines.push(prefixes.join(' '))
+    lines.push(prefixes.join(" "))
   }
-  return lines.join('\n')
+  return lines.join("\n")
 }

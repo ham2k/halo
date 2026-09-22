@@ -9,10 +9,10 @@ import type { JSONValue } from "@ham2k/extension-sdk"
 
 /// Every R1 VHF+ event sends a 6-character grid — unlike arrl-vhf-tests,
 /// there is no 4-character shape here, so no per-event `gridChars`.
-export const GRID_PATTERN = '^[A-R]{2}[0-9]{2}[A-X]{2}$'
+export const GRID_PATTERN = "^[A-R]{2}[0-9]{2}[A-X]{2}$"
 
 export function trimmedGrid(grid: string | undefined | null): string {
-  return (grid ?? '').trim().toUpperCase().substring(0, 6)
+  return (grid ?? "").trim().toUpperCase().substring(0, 6)
 }
 
 /// The grid to offer for the station being worked, from whatever the callsign

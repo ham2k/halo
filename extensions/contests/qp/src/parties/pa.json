@@ -13,10 +13,7 @@
   "lastUpdated": "2026-09-17 12:00Z",
   "status": "Verified for 2026 against paqso.org (rules rev 08/25/26)",
   "uniqueness": "perBandAndMode",
-  "exchange": [
-    "Number",
-    "Location"
-  ],
+  "exchange": ["Number", "Location"],
   "bonusStations": {
     "K3ZMC": 200
   },
@@ -110,27 +107,10 @@
     "YOR": "York"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "PORTABLE",
-      "ROVER",
-      "COUNTY-LINE"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "MIXED"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE"],
+    "station": ["FIXED", "MOBILE", "PORTABLE", "ROVER", "COUNTY-LINE"],
+    "mode": ["CW", "PHONE", "MIXED"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

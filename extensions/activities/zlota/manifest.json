@@ -8,39 +8,16 @@
   "enabledByDefault": false,
   "icon": "fa-kiwi-bird",
   "accentColor": "#2E7D6B",
-  "keywords": [
-    "new zealand",
-    "islands",
-    "huts",
-    "lakes",
-    "activation"
-  ],
+  "keywords": ["new zealand", "islands", "huts", "lakes", "activation"],
   "relevance": {
-    "entities": [
-      "ZL"
-    ]
+    "entities": ["ZL"]
   },
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "ref:zlota",
-    "ref:zlotaActivation",
-    "scoring",
-    "spots"
-  ],
-  "domains": [
-    "ontheair.nz"
-  ],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:zlota", "ref:zlotaActivation", "scoring", "spots"],
+  "domains": ["ontheair.nz"],
   "translations": {
     "es": {
       "description": "Referencias de Nueva Zelanda, activación y caza, y spots",
-      "keywords": [
-        "nueva zelanda",
-        "activación"
-      ]
+      "keywords": ["nueva zelanda", "activación"]
     }
   }
 }

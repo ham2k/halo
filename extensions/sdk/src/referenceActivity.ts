@@ -24,17 +24,7 @@
 import { distanceOnEarth } from "@ham2k/lib-geo-tools"
 
 import { activityAdifImport } from "./activityAdifImport.ts"
-import type {
-  ActivitySuggestion,
-  AdifImportHook,
-  HookContext,
-  JSONValue,
-  LookupRow,
-  Ref,
-  RefLink,
-  SuggestArgs,
-  TitleSuggestion,
-} from "./types.ts"
+import type { ActivitySuggestion, AdifImportHook, HookContext, JSONValue, LookupRow, Ref, RefLink, SuggestArgs, TitleSuggestion } from "./types.ts"
 import type { RefTransform } from "./refTransforms.ts"
 
 /// The SDK barrel re-exports this module, so a static import of `host` from it
@@ -123,7 +113,7 @@ export interface ReferenceActivityConfig {
 export interface RefInputArgs {
   operation: Record<string, JSONValue>
   qso?: Record<string, JSONValue>
-  side: 'activation' | 'hunting'
+  side: "activation" | "hunting"
 }
 
 export interface RefInputExtras {
@@ -150,7 +140,7 @@ export async function learnedReferencePrefix(category: string, entityPrefix: str
   const host = await hostApi()
   let rows: LookupRow[] = []
   try {
-    rows = await host.dbLookupSelectAll(category, '', entityPrefix)
+    rows = await host.dbLookupSelectAll(category, "", entityPrefix)
   } catch (e) {
     host.log(`${category}: prefix lookup failed for ${entityPrefix}: ${e}`)
   }
@@ -158,7 +148,7 @@ export async function learnedReferencePrefix(category: string, entityPrefix: str
   // stray reference filed under the wrong entity.
   const counts = new Map<string, number>()
   for (const row of rows) {
-    const prefix = row.key.split('-')[0]
+    const prefix = row.key.split("-")[0]
     if (prefix) counts.set(prefix, (counts.get(prefix) ?? 0) + 1)
   }
   let best: string | undefined
@@ -171,7 +161,7 @@ export async function learnedReferencePrefix(category: string, entityPrefix: str
 }
 
 function normalize(ref: string | undefined): string {
-  return (ref ?? '').toUpperCase().trim()
+  return (ref ?? "").toUpperCase().trim()
 }
 
 /// Whether [text] is worth offering as a reference of a program whose codes
@@ -204,7 +194,7 @@ export function looksLikeReference(text: string, referenceRegex: RegExp): boolea
 }
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
-  return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
+  return ((container.refs as Ref[] | undefined) ?? []).filter((r) => r.type === type && r.ref)
 }
 
 /// How well a row answers the search, so the core can rank across programs.
@@ -213,7 +203,7 @@ function relevanceForMatch(row: LookupRow, searchTerm?: string): number {
   if (!searchTerm) return 1
   const term = searchTerm.toUpperCase()
   const key = row.key.toUpperCase()
-  const name = (row.name ?? '').toUpperCase()
+  const name = (row.name ?? "").toUpperCase()
   if (key === term) return 1
   if (name.startsWith(term)) return 0.9
   if (key.includes(term)) return 0.85
@@ -286,14 +276,10 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
 
   /// The `input` of one control: the static placeholder/transforms, with
   /// whatever `refInput` answers laid over them.
-  async function refListInput(
-    refType: string,
-    args: RefInputArgs,
-    ctx: HookContext,
-  ) {
+  async function refListInput(refType: string, args: RefInputArgs, ctx: HookContext) {
     const extras = config.refInput ? await config.refInput(args, ctx) : {}
     return {
-      kind: 'refList' as const,
+      kind: "refList" as const,
       refType,
       placeholder: extras.placeholder ?? config.placeholder,
       pattern: config.referenceRegex.source,
@@ -311,9 +297,9 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
       const t = config.tFor(ctx)
       const reference = normalize(ref.ref)
       if (!config.referenceRegex.test(reference)) {
-        return undecorated(ref, reference, t('invalidReference'))
+        return undecorated(ref, reference, t("invalidReference"))
       }
-      return decorate(ref, reference, await lookupReference(reference), t('unknownReference'))
+      return decorate(ref, reference, await lookupReference(reference), t("unknownReference"))
     },
 
     /// Titles ANY reference type this handler was registered for, rather than
@@ -350,20 +336,17 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
   }
 
   const activityHook = {
-    async operationControls(
-      { operation }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
-      ctx: HookContext,
-    ) {
+    async operationControls({ operation }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> }, ctx: HookContext) {
       return [
         {
           key: `${config.key}/activation`,
-          label: config.tFor(ctx)('activationControl'),
+          label: config.tFor(ctx)("activationControl"),
           icon: config.icon,
           color: config.color,
           order: 10,
-          optionType: 'optional',
+          optionType: "optional",
           allowsMultiple,
-          input: await refListInput(config.activationType, { operation, side: 'activation' }, ctx),
+          input: await refListInput(config.activationType, { operation, side: "activation" }, ctx),
         },
       ]
     },
@@ -375,20 +358,17 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
     // refs, and POTA's HaLo port already settled on the single control.
     ...(config.huntingType
       ? {
-          async loggingControls(
-            { operation, qso }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
-            ctx: HookContext,
-          ) {
+          async loggingControls({ operation, qso }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> }, ctx: HookContext) {
             return [
               {
                 key: `${config.key}/hunter`,
-                label: config.tFor(ctx)('huntingControl'),
+                label: config.tFor(ctx)("huntingControl"),
                 icon: config.icon,
                 color: config.color,
                 order: 10,
-                optionType: 'optional',
+                optionType: "optional",
                 allowsMultiple: true,
-                input: await refListInput(config.huntingType!, { operation, qso, side: 'hunting' }, ctx),
+                input: await refListInput(config.huntingType!, { operation, qso, side: "hunting" }, ctx),
               },
             ]
           },
@@ -405,10 +385,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
 
       const withDistance = rows.map((row) => ({
         row,
-        distance:
-          location && row.lat != null && row.lon != null
-            ? (distanceOnEarth(location, { lat: row.lat, lon: row.lon }) ?? undefined)
-            : undefined,
+        distance: location && row.lat != null && row.lon != null ? (distanceOnEarth(location, { lat: row.lat, lon: row.lon }) ?? undefined) : undefined,
       }))
       // Nearby results must be ranked by real distance BEFORE truncating: the
       // bounding-box query's row order is not a proxy for it, so slicing first
@@ -428,7 +405,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
           lon: row.lon,
           location: data.location,
           program,
-          label: `${config.label} ${row.key}: ${row.name ?? ''}`,
+          label: `${config.label} ${row.key}: ${row.name ?? ""}`,
           shortLabel: `${config.label} ${row.key}`,
           distance,
           relevance: relevanceForMatch(row, searchTerm),
@@ -451,13 +428,13 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
       // whitespace test would not catch it. A code the pattern already accepts
       // skips the heuristic entirely, which is what lets BLHA through: its
       // references are `BEL 123`, space and all.
-      const typed = scoped ? normalize(searchTerm) : ''
+      const typed = scoped ? normalize(searchTerm) : ""
       if (typed && looksLikeReference(typed, config.referenceRegex) && !suggestions.some((s) => s.ref === typed)) {
         const t = config.tFor(ctx)
         const valid = config.referenceRegex.test(typed)
         const row = valid ? await lookupReference(typed) : null
         const data = (row?.data ?? {}) as Record<string, any>
-        const name = row?.name || (valid ? t('unknownReference') : t('invalidReference'))
+        const name = row?.name || (valid ? t("unknownReference") : t("invalidReference"))
         if (suggestions.length >= MAX_SUGGESTIONS) suggestions.pop()
         suggestions.unshift({
           type: config.activationType,
@@ -488,11 +465,9 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
     const refs = refsOfType(operation, config.activationType)
     if (refs.length === 0) return []
     return [
-      { name: 'MY_SIG', value: program },
-      { name: 'MY_SIG_INFO', value: refs[0].ref! },
-      ...(config.adifRefField
-        ? [{ name: `MY_${config.adifRefField}_REF`, value: refs.map((r) => r.ref).join(',') }]
-        : []),
+      { name: "MY_SIG", value: program },
+      { name: "MY_SIG_INFO", value: refs[0].ref! },
+      ...(config.adifRefField ? [{ name: `MY_${config.adifRefField}_REF`, value: refs.map((r) => r.ref).join(",") }] : []),
     ]
   }
 
@@ -501,17 +476,14 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
   }
 
   const adifFieldsHook: Record<string, unknown> = {
-    async fieldsForOneQSO(
-      { qso, operation }: { qso: Record<string, unknown>; operation: Record<string, unknown> },
-      _ctx: HookContext,
-    ): Promise<AdifField[]> {
+    async fieldsForOneQSO({ qso, operation }: { qso: Record<string, unknown>; operation: Record<string, unknown> }, _ctx: HookContext): Promise<AdifField[]> {
       const hunted = huntedRefsOn(qso)
-      const huntedJoined = hunted.map((r) => r.ref).join(',')
+      const huntedJoined = hunted.map((r) => r.ref).join(",")
       return [
         ...(hunted.length > 0
           ? [
-              { name: 'SIG', value: program },
-              { name: 'SIG_INFO', value: huntedJoined },
+              { name: "SIG", value: program },
+              { name: "SIG_INFO", value: huntedJoined },
               ...(config.adifRefField ? [{ name: `${config.adifRefField}_REF`, value: huntedJoined }] : []),
             ]
           : []),
@@ -536,8 +508,8 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
       if (hunted.length === 0) return [activation]
       return hunted.map((ref) => [
         ...activation,
-        { name: 'SIG', value: program },
-        { name: 'SIG_INFO', value: ref.ref! },
+        { name: "SIG", value: program },
+        { name: "SIG_INFO", value: ref.ref! },
         // One record names ONE reference, so the program field names it too.
         ...(config.adifRefField ? [{ name: `${config.adifRefField}_REF`, value: ref.ref! }] : []),
       ])

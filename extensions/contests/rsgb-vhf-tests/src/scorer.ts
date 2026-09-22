@@ -43,15 +43,26 @@ export type RSGBVHFScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 export const RSGBVHFScorer: ContestScorer<RSGBVHFScoresheet> = {
   startScoresheet(): RSGBVHFScoresheet {
     return {
-      worked: {}, bands: {}, qsos: 0, points: 0, bonus: 0, distanceTotal: 0,
-      maxDistance: 0, maxDistancePerBand: {}, dupeCount: 0, dayQsos: 0, dayPoints: 0,
-      gridsSeen: {}, districtsSeen: {}, entitiesSeen: {},
+      worked: {},
+      bands: {},
+      qsos: 0,
+      points: 0,
+      bonus: 0,
+      distanceTotal: 0,
+      maxDistance: 0,
+      maxDistancePerBand: {},
+      dupeCount: 0,
+      dayQsos: 0,
+      dayPoints: 0,
+      gridsSeen: {},
+      districtsSeen: {},
+      entitiesSeen: {},
     }
   },
 
@@ -71,34 +82,32 @@ export const RSGBVHFScorer: ContestScorer<RSGBVHFScoresheet> = {
 
     const band = str(qso.band)
     if (!event.bands.includes(band)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     const ourGrid = trimmedGrid(str(operation.grid))
-    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find(
-      (r) => r?.type === 'rsgb-vhf-tests',
-    )
+    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === "rsgb-vhf-tests")
     const theirGrid = trimmedGrid(str(contestRef?.grid))
 
     if (!ourGrid) {
-      return { scoresheet: base, score: { value: 0, alerts: ['ourGrid'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["ourGrid"] } }
     }
     if (!theirGrid) {
-      return { scoresheet: base, score: { value: 0, alerts: ['missingExchange'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["missingExchange"] } }
     }
 
     const key = `${call}|${band}|${ourGrid}`
     const priorGrids = base.worked[key] ?? []
     if (priorGrids.includes(theirGrid)) {
       base.dupeCount += 1
-      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     // The same square as ours is a real, short-range contact the plain
     // great-circle formula would round down toward nothing — RSGB gives it a
     // flat floor instead.
     const distance = theirGrid === ourGrid ? 50 : distanceForRegion1VHFContests(ourGrid, theirGrid)
-    if (distance === null) return { scoresheet: base, score: { value: 0, alerts: ['invalidExchange'] } }
+    if (distance === null) return { scoresheet: base, score: { value: 0, alerts: ["invalidExchange"] } }
     const value = distance * (BAND_MULTIPLIERS[band] ?? 0)
 
     base.worked[key] = [...priorGrids, theirGrid]
@@ -148,7 +157,7 @@ export const RSGBVHFScorer: ContestScorer<RSGBVHFScoresheet> = {
   },
 
   summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const points = isDay ? scoresheet.dayPoints : scoresheet.points
     const qsos = isDay ? scoresheet.dayQsos : scoresheet.qsos
     // Bonuses accumulate for the whole operation only — RSGB's rules award
@@ -159,24 +168,27 @@ export const RSGBVHFScorer: ContestScorer<RSGBVHFScoresheet> = {
       ? `${fmtInteger(points)} pts + ${fmtInteger(scoresheet.bonus)} bonus = ${fmtInteger(total)} pts`
       : `${fmtInteger(points)} pts`
 
-    const bandLines = Object.keys(scoresheet.bands).sort().map((band) => {
-      const count = scoresheet.bands[band] ?? 0
-      if (!count) return null
-      return `**${band}**: ${fmtInteger(count)} QSOs • Longest: ${fmtInteger(scoresheet.maxDistancePerBand[band] ?? 0)} km`
-    }).filter((line): line is string => line !== null)
+    const bandLines = Object.keys(scoresheet.bands)
+      .sort()
+      .map((band) => {
+        const count = scoresheet.bands[band] ?? 0
+        if (!count) return null
+        return `**${band}**: ${fmtInteger(count)} QSOs • Longest: ${fmtInteger(scoresheet.maxDistancePerBand[band] ?? 0)} km`
+      })
+      .filter((line): line is string => line !== null)
 
     return {
-      'rsgb-vhf-tests': {
-        key: 'rsgb-vhf-tests',
+      "rsgb-vhf-tests": {
+        key: "rsgb-vhf-tests",
         for: scope,
-        icon: 'flag-checkered',
+        icon: "flag-checkered",
         total,
         qsos,
         summary,
         longSummary: [
-          summary + (scoresheet.dupeCount > 0 ? ` (${fmtInteger(scoresheet.dupeCount)} dupe${scoresheet.dupeCount > 1 ? 's' : ''})` : ''),
+          summary + (scoresheet.dupeCount > 0 ? ` (${fmtInteger(scoresheet.dupeCount)} dupe${scoresheet.dupeCount > 1 ? "s" : ""})` : ""),
           ...bandLines,
-        ].join('\n'),
+        ].join("\n"),
       },
     }
   },

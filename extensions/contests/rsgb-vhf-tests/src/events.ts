@@ -16,7 +16,7 @@
 // read "Jan 144 FMAC" in app-polo (a copy-paste leftover from the January
 // entry) — fixed here to "Mar 144 FMAC".
 
-export type RsgbBonusKind = 'newGrid' | 'newDistrict' | 'newDXCC'
+export type RsgbBonusKind = "newGrid" | "newDistrict" | "newDXCC"
 
 export interface RsgbVhfEvent {
   key: string
@@ -24,7 +24,7 @@ export interface RsgbVhfEvent {
   short: string
   bands: string[]
   /// Absent means the default: `['number', 'grid6']`.
-  exchange?: ('number' | 'grid6' | 'district')[]
+  exchange?: ("number" | "grid6" | "district")[]
   /// Points awarded per distinct band×{grid4|district|DXCC-entity} the
   /// operation works during the event — accumulated once per novel
   /// combination, not per QSO (see scorer.ts's `accumulateScore`).
@@ -32,18 +32,63 @@ export interface RsgbVhfEvent {
 }
 
 const EVENTS: RsgbVhfEvent[] = [
-  { key: "RSGB-BACKPACKERS-1", name: "1st 144MHz Backpackers", short: "1st Backpackers", bands: ["2m"], exchange: ["number", "grid6", "district"], bonus: { newGrid: 200, newDistrict: 200, newDXCC: 200 } },
-  { key: "RSGB-BACKPACKERS-2", name: "2nd 144MHz Backpackers", short: "2nd Backpackers", bands: ["2m"], exchange: ["number", "grid6"], bonus: { newGrid: 200, newDXCC: 200 } },
-  { key: "RSGB-BACKPACKERS-3", name: "3rd 144MHz Backpackers", short: "3rd Backpackers", bands: ["2m"], exchange: ["number", "grid6"], bonus: { newGrid: 500 } },
-  { key: "RSGB-BACKPACKERS-4", name: "4th 144MHz Backpackers", short: "4th Backpackers", bands: ["2m"], exchange: ["number", "grid6", "district"], bonus: { newGrid: 200, newDistrict: 200, newDXCC: 200 } },
-  { key: "RSGB-BACKPACKERS-5", name: "5th 144MHz Backpackers", short: "5th Backpackers", bands: ["2m"], exchange: ["number", "grid6"], bonus: { newGrid: 500 } },
+  {
+    key: "RSGB-BACKPACKERS-1",
+    name: "1st 144MHz Backpackers",
+    short: "1st Backpackers",
+    bands: ["2m"],
+    exchange: ["number", "grid6", "district"],
+    bonus: { newGrid: 200, newDistrict: 200, newDXCC: 200 },
+  },
+  {
+    key: "RSGB-BACKPACKERS-2",
+    name: "2nd 144MHz Backpackers",
+    short: "2nd Backpackers",
+    bands: ["2m"],
+    exchange: ["number", "grid6"],
+    bonus: { newGrid: 200, newDXCC: 200 },
+  },
+  {
+    key: "RSGB-BACKPACKERS-3",
+    name: "3rd 144MHz Backpackers",
+    short: "3rd Backpackers",
+    bands: ["2m"],
+    exchange: ["number", "grid6"],
+    bonus: { newGrid: 500 },
+  },
+  {
+    key: "RSGB-BACKPACKERS-4",
+    name: "4th 144MHz Backpackers",
+    short: "4th Backpackers",
+    bands: ["2m"],
+    exchange: ["number", "grid6", "district"],
+    bonus: { newGrid: 200, newDistrict: 200, newDXCC: 200 },
+  },
+  {
+    key: "RSGB-BACKPACKERS-5",
+    name: "5th 144MHz Backpackers",
+    short: "5th Backpackers",
+    bands: ["2m"],
+    exchange: ["number", "grid6"],
+    bonus: { newGrid: 500 },
+  },
   { key: "RSGB-70-AFS", name: "70MHz AFS Contest", short: "70MHz AFS", bands: ["4m"] },
   { key: "RSGB-50-AFS", name: "50MHz AFS Contest", short: "50MHz AFS", bands: ["6m"] },
   { key: "RSGB-144-AFS", name: "144MHz AFS", short: "144MHz AFS", bands: ["2m"] },
   { key: "RSGB-432-AFS", name: "432MHz AFS", short: "432MHz AFS", bands: ["70cm"] },
   { key: "RSGB-144-432-MARCH", name: "March 144 432MHz", short: "March 144-432", bands: ["2m", "70cm"] },
-  { key: "RSGB-432-245-MAY", name: "May 432MHz-245GHz", short: "May 432MHz-245GHz", bands: ["70cm", "33cm", "23cm", "13cm", "9cm", "6cm", "3cm", "1.25cm", "6mm", "4mm", "2mm", "2.5mm", "1mm", "submm"] },
-  { key: "RSGB-432-245-OCT", name: "October 432MHz-245GHz", short: "Oct 432MHz-245GHz", bands: ["70cm", "33cm", "23cm", "13cm", "9cm", "6cm", "3cm", "1.25cm", "6mm", "4mm", "2mm", "2.5mm", "1mm", "submm"] },
+  {
+    key: "RSGB-432-245-MAY",
+    name: "May 432MHz-245GHz",
+    short: "May 432MHz-245GHz",
+    bands: ["70cm", "33cm", "23cm", "13cm", "9cm", "6cm", "3cm", "1.25cm", "6mm", "4mm", "2mm", "2.5mm", "1mm", "submm"],
+  },
+  {
+    key: "RSGB-432-245-OCT",
+    name: "October 432MHz-245GHz",
+    short: "Oct 432MHz-245GHz",
+    bands: ["70cm", "33cm", "23cm", "13cm", "9cm", "6cm", "3cm", "1.25cm", "6mm", "4mm", "2mm", "2.5mm", "1mm", "submm"],
+  },
   { key: "RSGB-144-MAY", name: "May 144MHz Contest", short: "May 144MHz", bands: ["2m"] },
   { key: "RSGB-70-TROPHY", name: "70MHz Trophy Contest", short: "70MHz Trophy", bands: ["4m"] },
   { key: "RSGB-50-TROPHY", name: "50MHz Trophy Contest", short: "50MHz Trophy", bands: ["6m"] },
@@ -164,12 +209,12 @@ export function eventFor(key: string | undefined | null): RsgbVhfEvent | undefin
   return key ? EVENTS_BY_KEY[key] : undefined
 }
 
-export function exchangeShape(event: RsgbVhfEvent): ('number' | 'grid6' | 'district')[] {
-  return event.exchange ?? ['number', 'grid6']
+export function exchangeShape(event: RsgbVhfEvent): ("number" | "grid6" | "district")[] {
+  return event.exchange ?? ["number", "grid6"]
 }
 
 export function hasDistrictExchange(event: RsgbVhfEvent): boolean {
-  return exchangeShape(event).includes('district')
+  return exchangeShape(event).includes("district")
 }
 
 export { EVENTS }

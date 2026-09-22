@@ -8,35 +8,16 @@
   "enabledByDefault": false,
   "icon": "map-outline",
   "accentColor": "#B03A48",
-  "keywords": [
-    "gmina",
-    "poland",
-    "activation"
-  ],
+  "keywords": ["gmina", "poland", "activation"],
   "relevance": {
-    "entities": [
-      "SP"
-    ]
+    "entities": ["SP"]
   },
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "ref:pgaActivation"
-  ],
-  "domains": [
-    "www.sq7acp.pl"
-  ],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:pgaActivation"],
+  "domains": ["www.sq7acp.pl"],
   "translations": {
     "es": {
       "description": "Referencias de gminas polacas y registro de activaciones",
-      "keywords": [
-        "gmina",
-        "polonia",
-        "activación"
-      ]
+      "keywords": ["gmina", "polonia", "activación"]
     }
   }
 }

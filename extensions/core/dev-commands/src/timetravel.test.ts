@@ -125,32 +125,14 @@ describe("parseTimeTravelCommand", () => {
 describe("describeTimeTravel", () => {
   it("describes each shape", () => {
     assert.equal(describeTimeTravel({ kind: "reset" }), "Return to real time?")
-    assert.equal(
-      describeTimeTravel({ kind: "travel", deltaMillis: 3 * HOUR, speed: null }),
-      "Jump 3h forward?",
-    )
-    assert.equal(
-      describeTimeTravel({ kind: "travel", deltaMillis: -DAY, speed: null }),
-      "Jump 1d back?",
-    )
-    assert.equal(
-      describeTimeTravel({ kind: "travel", deltaMillis: 0, speed: 2 }),
-      "Run at 2x?",
-    )
-    assert.equal(
-      describeTimeTravel({ kind: "travel", deltaMillis: DAY + 2 * HOUR, speed: 2 }),
-      "Jump 1d 2h forward and run at 2x?",
-    )
+    assert.equal(describeTimeTravel({ kind: "travel", deltaMillis: 3 * HOUR, speed: null }), "Jump 3h forward?")
+    assert.equal(describeTimeTravel({ kind: "travel", deltaMillis: -DAY, speed: null }), "Jump 1d back?")
+    assert.equal(describeTimeTravel({ kind: "travel", deltaMillis: 0, speed: 2 }), "Run at 2x?")
+    assert.equal(describeTimeTravel({ kind: "travel", deltaMillis: DAY + 2 * HOUR, speed: 2 }), "Jump 1d 2h forward and run at 2x?")
   })
 
   it("renders a sub-unit duration in the units it has", () => {
-    assert.equal(
-      describeTimeTravel({ kind: "travel", deltaMillis: 90 * 60000, speed: null }),
-      "Jump 1h 30m forward?",
-    )
-    assert.equal(
-      describeTimeTravel({ kind: "travel", deltaMillis: 30000, speed: null }),
-      "Jump 30s forward?",
-    )
+    assert.equal(describeTimeTravel({ kind: "travel", deltaMillis: 90 * 60000, speed: null }), "Jump 1h 30m forward?")
+    assert.equal(describeTimeTravel({ kind: "travel", deltaMillis: 30000, speed: null }), "Jump 30s forward?")
   })
 })

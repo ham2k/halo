@@ -16,11 +16,11 @@
 // one way it can be built WRONG is invisible until the extension is running
 // inside somebody's app.
 
-import { createWriteStream } from 'node:fs'
-import { readFile, readdir, stat } from 'node:fs/promises'
-import { join, posix, relative, sep } from 'node:path'
-import { parseCallsign } from '@ham2k/lib-callsigns'
-import yazl from 'yazl'
+import { createWriteStream } from "node:fs"
+import { readFile, readdir, stat } from "node:fs/promises"
+import { join, posix, relative, sep } from "node:path"
+import { parseCallsign } from "@ham2k/lib-callsigns"
+import yazl from "yazl"
 
 /// The extension API this format describes. A bundle declares the version it
 /// was built against and the host refuses one it does not speak, so an old app
@@ -36,7 +36,7 @@ export const KEY_PATTERN = /^[a-z0-9]+-[a-z0-9-]*[a-z0-9]$/
 /// bundle unless it is one of ours: there is no signing yet, so anyone could
 /// claim it, and a key is what the app shows when it says where a hook came
 /// from.
-export const RESERVED_PREFIX = 'ham2k'
+export const RESERVED_PREFIX = "ham2k"
 
 /// Whether [prefix] is a real amateur callsign — the namespace every author of
 /// this software already has, globally unique, and free.
@@ -66,14 +66,14 @@ export const SAFE_KEY_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 /// app is where the rule bites, refusing a reserved or colliding key at
 /// install.
 export function keyProblem(key, { forceName = false } = {}) {
-  if (typeof key !== 'string' || !SAFE_KEY_PATTERN.test(key)) {
+  if (typeof key !== "string" || !SAFE_KEY_PATTERN.test(key)) {
     return `key '${key}' must be lowercase, and contain only letters, digits and hyphens`
   }
   if (forceName) return null
   if (!KEY_PATTERN.test(key)) {
     return `key '${key}' must be '<callsign>-<name>' (e.g. ki2d-my-clock)`
   }
-  const prefix = key.slice(0, key.indexOf('-'))
+  const prefix = key.slice(0, key.indexOf("-"))
   if (prefix === RESERVED_PREFIX) {
     return `key '${key}' uses the '${RESERVED_PREFIX}-' prefix, which is reserved for Ham2K's own extensions`
   }
@@ -84,9 +84,9 @@ export function keyProblem(key, { forceName = false } = {}) {
 }
 
 /// The only entries a bundle may contain, beyond `assets/`.
-export const MANIFEST_ENTRY = 'manifest.json'
-export const BUNDLE_ENTRY = 'index.js'
-export const ASSETS_PREFIX = 'assets/'
+export const MANIFEST_ENTRY = "manifest.json"
+export const BUNDLE_ENTRY = "index.js"
+export const ASSETS_PREFIX = "assets/"
 
 /// The libraries the extension host carries, per API version, so a bundle does
 /// not have to ship its own copy of each. The kernel holds one instance and
@@ -103,18 +103,18 @@ export const ASSETS_PREFIX = 'assets/'
 /// live once this file is published on its own.
 export const SHARED_MODULES_BY_API = {
   1: [
-    '@ham2k/lib-callsigns',
-    '@ham2k/lib-country-files',
-    '@ham2k/lib-cqmag-data',
-    '@ham2k/lib-dxcc-data',
-    '@ham2k/lib-format-tools',
-    '@ham2k/lib-geo-tools',
-    '@ham2k/lib-operation-data',
-    '@ham2k/lib-qson-adif',
-    '@ham2k/lib-qson-cabrillo',
-    '@ham2k/lib-qson-tools',
-    'i18next',
-    'liquidjs',
+    "@ham2k/lib-callsigns",
+    "@ham2k/lib-country-files",
+    "@ham2k/lib-cqmag-data",
+    "@ham2k/lib-dxcc-data",
+    "@ham2k/lib-format-tools",
+    "@ham2k/lib-geo-tools",
+    "@ham2k/lib-operation-data",
+    "@ham2k/lib-qson-adif",
+    "@ham2k/lib-qson-cabrillo",
+    "@ham2k/lib-qson-tools",
+    "i18next",
+    "liquidjs",
   ],
 }
 
@@ -136,14 +136,14 @@ export const SHARED_MODULES_BY_API = {
 /// actually holds, so a major bump there fails a build rather than shipping a
 /// scaffold that cannot install.
 export const SCAFFOLD_SHARED_DEPENDENCIES = {
-  '@ham2k/lib-callsigns': '^1.0.0',
-  '@ham2k/lib-country-files': '^1.0.0',
-  '@ham2k/lib-dxcc-data': '^1.0.0',
-  '@ham2k/lib-format-tools': '^1.0.0',
-  '@ham2k/lib-geo-tools': '^1.0.0',
-  '@ham2k/lib-operation-data': '^1.0.0',
-  'i18next': '^23.0.0',
-  'liquidjs': '^10.0.0',
+  "@ham2k/lib-callsigns": "^1.0.0",
+  "@ham2k/lib-country-files": "^1.0.0",
+  "@ham2k/lib-dxcc-data": "^1.0.0",
+  "@ham2k/lib-format-tools": "^1.0.0",
+  "@ham2k/lib-geo-tools": "^1.0.0",
+  "@ham2k/lib-operation-data": "^1.0.0",
+  i18next: "^23.0.0",
+  liquidjs: "^10.0.0",
 }
 
 /// What the host offers a bundle declaring [api].
@@ -157,7 +157,7 @@ export class PackError extends Error {}
 /// the operator's own values against, so a value outside it can never match
 /// anyone. Continents are cty.dat's column-4 codes; the regions are the three
 /// the ITU Radio Regulations define.
-export const GEO_CONTINENTS = ['AF', 'AS', 'EU', 'NA', 'OC', 'SA', 'AN']
+export const GEO_CONTINENTS = ["AF", "AS", "EU", "NA", "OC", "SA", "AN"]
 export const GEO_ITU_REGIONS = [1, 2, 3]
 
 /// What `relevance.interests` may name: a mode, a band group, or a style of
@@ -167,13 +167,9 @@ export const GEO_ITU_REGIONS = [1, 2, 3]
 /// asks for.
 ///
 /// Growing the list is how a new interest arrives. Guessing is not.
-export const RELEVANCE_INTERESTS = [
-  'cw', 'phone', 'digital',
-  'hf', 'vhf', 'uhf', 'microwave',
-  'satellite', 'portable', 'qrp',
-]
+export const RELEVANCE_INTERESTS = ["cw", "phone", "digital", "hf", "vhf", "uhf", "microwave", "satellite", "portable", "qrp"]
 
-const RELEVANCE_KEYS = ['entities', 'countries', 'continents', 'ituRegions', 'dates', 'interests']
+const RELEVANCE_KEYS = ["entities", "countries", "continents", "ituRegions", "dates", "interests"]
 
 /// Everything wrong with a manifest's `relevance`, as a list — empty for a
 /// valid one, and for an absent one, which means worldwide and undated.
@@ -188,13 +184,13 @@ const RELEVANCE_KEYS = ['entities', 'countries', 'continents', 'ituRegions', 'da
 /// rules are the format's, not the repo's, and this module is the format.
 export function validateRelevance(relevance) {
   if (relevance === undefined) return []
-  if (typeof relevance !== 'object' || relevance === null || Array.isArray(relevance)) {
-    return [`'relevance' must be an object of ${RELEVANCE_KEYS.join(' / ')}`]
+  if (typeof relevance !== "object" || relevance === null || Array.isArray(relevance)) {
+    return [`'relevance' must be an object of ${RELEVANCE_KEYS.join(" / ")}`]
   }
   const problems = []
   for (const key of Object.keys(relevance)) {
     if (!RELEVANCE_KEYS.includes(key)) {
-      problems.push(`'relevance' has an unknown key '${key}' — only ${RELEVANCE_KEYS.join(', ')} are read`)
+      problems.push(`'relevance' has an unknown key '${key}' — only ${RELEVANCE_KEYS.join(", ")} are read`)
     }
   }
   for (const key of RELEVANCE_KEYS) {
@@ -213,25 +209,21 @@ export function validateRelevance(relevance) {
 }
 
 function relevanceValueProblem(key, value) {
-  if (key === 'ituRegions') {
-    return GEO_ITU_REGIONS.includes(value) ? null : `is not an ITU region (${GEO_ITU_REGIONS.join(', ')})`
+  if (key === "ituRegions") {
+    return GEO_ITU_REGIONS.includes(value) ? null : `is not an ITU region (${GEO_ITU_REGIONS.join(", ")})`
   }
-  if (typeof value !== 'string' || value.trim() === '') return 'is not a non-empty string'
-  if (key === 'entities') {
-    return /^\*?[A-Z0-9/]+$/.test(value.toUpperCase())
-      ? null
-      : "is not a DXCC entity prefix (letters, digits and '/', with an optional leading '*')"
+  if (typeof value !== "string" || value.trim() === "") return "is not a non-empty string"
+  if (key === "entities") {
+    return /^\*?[A-Z0-9/]+$/.test(value.toUpperCase()) ? null : "is not a DXCC entity prefix (letters, digits and '/', with an optional leading '*')"
   }
-  if (key === 'countries') {
-    return /^[a-z]{2}$/.test(value.toLowerCase()) ? null : 'is not a two-letter ISO country code'
+  if (key === "countries") {
+    return /^[a-z]{2}$/.test(value.toLowerCase()) ? null : "is not a two-letter ISO country code"
   }
-  if (key === 'dates') return calendarDateProblem(value)
-  if (key === 'interests') {
-    return RELEVANCE_INTERESTS.includes(value)
-      ? null
-      : `is not an interest (${RELEVANCE_INTERESTS.join(' ')})`
+  if (key === "dates") return calendarDateProblem(value)
+  if (key === "interests") {
+    return RELEVANCE_INTERESTS.includes(value) ? null : `is not an interest (${RELEVANCE_INTERESTS.join(" ")})`
   }
-  return GEO_CONTINENTS.includes(value.toUpperCase()) ? null : `is not a continent (${GEO_CONTINENTS.join(' ')})`
+  return GEO_CONTINENTS.includes(value.toUpperCase()) ? null : `is not a continent (${GEO_CONTINENTS.join(" ")})`
 }
 
 /// Why [value] is not a UTC calendar day, or null.
@@ -245,13 +237,11 @@ function relevanceValueProblem(key, value) {
 /// would fail the round trip here and pass in Dart — a disagreement between
 /// the two on an input neither should be accepting anyway.
 function calendarDateProblem(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'is not a YYYY-MM-DD date'
-  const [year, month, day] = value.split('-').map(Number)
-  if (year < 1000) return 'is not a year an event could fall in'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "is not a YYYY-MM-DD date"
+  const [year, month, day] = value.split("-").map(Number)
+  if (year < 1000) return "is not a year an event could fall in"
   const at = new Date(Date.UTC(year, month - 1, day))
-  return at.getUTCFullYear() === year && at.getUTCMonth() === month - 1 && at.getUTCDate() === day
-    ? null
-    : 'is not a day that exists'
+  return at.getUTCFullYear() === year && at.getUTCMonth() === month - 1 && at.getUTCDate() === day ? null : "is not a day that exists"
 }
 
 /// Everything wrong with a candidate bundle, as a list — an author fixing one
@@ -260,12 +250,12 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
   const problems = []
   const say = (m) => problems.push(`${source}: ${m}`)
 
-  if (typeof manifest !== 'object' || manifest === null || Array.isArray(manifest)) {
+  if (typeof manifest !== "object" || manifest === null || Array.isArray(manifest)) {
     return [`${source}: must be a JSON object`]
   }
 
-  for (const field of ['key', 'name', 'version', 'description']) {
-    if (typeof manifest[field] !== 'string' || manifest[field].trim() === '') {
+  for (const field of ["key", "name", "version", "description"]) {
+    if (typeof manifest[field] !== "string" || manifest[field].trim() === "") {
       say(`missing required field '${field}'`)
     }
   }
@@ -287,20 +277,20 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
   // never listed in the Extensions panel. That is a status the app grants its
   // own extensions, not one a distributed bundle may claim for itself — a user
   // could neither see it nor turn it off.
-  if (typeof manifest.category !== 'string' || manifest.category.trim() === '') {
+  if (typeof manifest.category !== "string" || manifest.category.trim() === "") {
     say("missing 'category' — a bundle with none is treated as core: always on, and invisible in the Extensions panel")
   }
 
   if (manifest.sharedDependencies !== undefined) {
     const declared = manifest.sharedDependencies
-    if (typeof declared !== 'object' || declared === null || Array.isArray(declared)) {
+    if (typeof declared !== "object" || declared === null || Array.isArray(declared)) {
       say("'sharedDependencies' must be an object of package name to version range")
     } else {
       const offered = sharedModulesFor(manifest.api)
       for (const [pkg, range] of Object.entries(declared)) {
         if (!offered.includes(pkg)) {
           say(`'sharedDependencies' names '${pkg}', which the host does not carry — bundle it into your build instead`)
-        } else if (typeof range !== 'string' || range.trim() === '') {
+        } else if (typeof range !== "string" || range.trim() === "") {
           say(`'sharedDependencies' entry '${pkg}' needs a version range, e.g. "^1.0.0"`)
         }
       }
@@ -361,7 +351,7 @@ export function findSharedModuleReferences(source) {
 export async function readBundleDirectory(dir, { forceName = false } = {}) {
   let manifestRaw
   try {
-    manifestRaw = await readFile(join(dir, MANIFEST_ENTRY), 'utf8')
+    manifestRaw = await readFile(join(dir, MANIFEST_ENTRY), "utf8")
   } catch {
     throw new PackError(`no ${MANIFEST_ENTRY} in ${dir}`)
   }
@@ -377,11 +367,11 @@ export async function readBundleDirectory(dir, { forceName = false } = {}) {
 
   let bundleSource
   try {
-    bundleSource = await readFile(join(dir, BUNDLE_ENTRY), 'utf8')
+    bundleSource = await readFile(join(dir, BUNDLE_ENTRY), "utf8")
   } catch {
     throw new PackError(`no ${BUNDLE_ENTRY} in ${dir} — build your extension first; this packages, it does not compile`)
   }
-  if (bundleSource.trim() === '') problems.push(`${BUNDLE_ENTRY}: is empty`)
+  if (bundleSource.trim() === "") problems.push(`${BUNDLE_ENTRY}: is empty`)
 
   // Using the host's shared libraries is allowed, and is much the better
   // option — inlining them costs about ten times the bundle size. What is NOT
@@ -393,12 +383,15 @@ export async function readBundleDirectory(dir, { forceName = false } = {}) {
   const undeclared = findSharedModuleReferences(bundleSource).filter((pkg) => !(pkg in declaredShared))
   if (undeclared.length) {
     problems.push(
-      `${BUNDLE_ENTRY}: uses the host's shared modules without declaring them (${undeclared.join(', ')}). ` +
+      `${BUNDLE_ENTRY}: uses the host's shared modules without declaring them (${undeclared.join(", ")}). ` +
         `Add them to 'sharedDependencies' in ${MANIFEST_ENTRY} with the version range you work with, ` +
-        'e.g. {"' + undeclared[0] + '": "^1.0.0"}, so the host can refuse to load this against a version you never tested.')
+        'e.g. {"' +
+        undeclared[0] +
+        '": "^1.0.0"}, so the host can refuse to load this against a version you never tested.',
+    )
   }
 
-  if (problems.length) throw new PackError(problems.join('\n'))
+  if (problems.length) throw new PackError(problems.join("\n"))
 
   const files = [
     { entry: MANIFEST_ENTRY, path: join(dir, MANIFEST_ENTRY) },
@@ -419,7 +412,7 @@ async function collectAssets(dir) {
     // No assets/ is ordinary. Anything else — unreadable, an I/O error, a
     // broken symlink — is not, and swallowing it ships a bundle silently
     // missing files the author believes are in it.
-    if (e.code === 'ENOENT') return []
+    if (e.code === "ENOENT") return []
     throw new PackError(`could not read ${root}: ${e.message}`)
   }
 
@@ -446,9 +439,9 @@ export function writeBundle(files, outPath) {
     for (const file of files) zip.addFile(file.path, file.entry)
     const out = createWriteStream(outPath)
     zip.outputStream.pipe(out)
-    out.on('close', () => resolve(outPath))
-    out.on('error', reject)
-    zip.outputStream.on('error', reject)
+    out.on("close", () => resolve(outPath))
+    out.on("error", reject)
+    zip.outputStream.on("error", reject)
     zip.end()
   })
 }

@@ -8,31 +8,13 @@
   "enabledByDefault": false,
   "icon": "clock-fast",
   "accentColor": "#4527A0",
-  "keywords": [
-    "contest",
-    "cwt",
-    "cwops",
-    "cw",
-    "mini-test",
-    "cabrillo"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "export",
-    "ref:cwt",
-    "scoring"
-  ],
+  "keywords": ["contest", "cwt", "cwops", "cw", "mini-test", "cabrillo"],
+  "hooks": ["activity", "adifFields", "export", "ref:cwt", "scoring"],
   "translations": {
     "es": {
       "name": "CWT de CWops",
       "description": "Las mini-pruebas semanales de CWops: una hora de CW, nombre y número de socio, cuatro sesiones por semana",
-      "keywords": [
-        "concurso",
-        "cwt",
-        "cwops",
-        "telegrafía"
-      ]
+      "keywords": ["concurso", "cwt", "cwops", "telegrafía"]
     }
   }
 }

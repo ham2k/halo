@@ -41,14 +41,14 @@ import { ARRLVHFScorer } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const TYPE = 'arrl-vhf-tests'
+const TYPE = "arrl-vhf-tests"
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 function refOfType(container: Record<string, JSONValue>, type: string): Record<string, JSONValue> | undefined {
-  return (((container.refs as Record<string, JSONValue>[] | undefined) ?? [])).find((r) => r?.type === type)
+  return ((container.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === type)
 }
 
 function eventOn(operation: Record<string, JSONValue> | undefined): VhfEvent | undefined {
@@ -59,29 +59,23 @@ const ActivityHook = {
   /// One suggestion per event, so an operator finds "222 MHz" by name instead
   /// of enabling an extension and hunting through a dropdown (§5.6).
   async suggest({ searchTerm }: SuggestArgs, _ctx: HookContext): Promise<ActivitySuggestion[]> {
-    const term = (searchTerm ?? '').trim().toUpperCase()
-    return EVENTS
-      .filter((event) => !term
-        || event.key.includes(term)
-        || event.name.toUpperCase().includes(term)
-        || event.short.toUpperCase().includes(term))
-      .map((event) => ({
-        type: TYPE,
-        ref: event.key,
-        name: event.name,
-        program: 'Contest',
-        label: event.name,
-        shortLabel: event.short,
-      }))
+    const term = (searchTerm ?? "").trim().toUpperCase()
+    return EVENTS.filter(
+      (event) => !term || event.key.includes(term) || event.name.toUpperCase().includes(term) || event.short.toUpperCase().includes(term),
+    ).map((event) => ({
+      type: TYPE,
+      ref: event.key,
+      name: event.name,
+      program: "Contest",
+      label: event.name,
+      shortLabel: event.short,
+    }))
   },
 
   /// The event picker — a `form`, not the `options` kind, per the same
   /// operation-settings rule `stateparks` documents: `activities_view.dart`
   /// renders only `refList` and `form` for operation controls.
-  async operationControls(
-    { operation }: { operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls({ operation }: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx)
     const currentKey = str(refOfType(operation, TYPE)?.ref)
     const options = EVENTS.map((event) => ({ value: event.key, label: event.name }))
@@ -91,12 +85,12 @@ const ActivityHook = {
 
     const elements: FormElement[] = [
       {
-        type: 'field',
-        fieldType: 'select',
+        type: "field",
+        fieldType: "select",
         // The event key IS the ref's identity, so this writes `ref` — the one
         // core-owned key a setup form legitimately sets.
-        key: 'ref',
-        label: t('eventLabel'),
+        key: "ref",
+        label: t("eventLabel"),
         value: currentKey || options[0]?.value,
         options,
       },
@@ -104,12 +98,12 @@ const ActivityHook = {
 
     return [
       {
-        key: 'arrl-vhf-tests/setup',
-        label: t('activityLabel'),
+        key: "arrl-vhf-tests/setup",
+        label: t("activityLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
-        input: { kind: 'form', refType: TYPE, form: { title: t('setupLabel'), elements } },
+        input: { kind: "form", refType: TYPE, form: { title: t("setupLabel"), elements } },
       },
     ]
   },
@@ -130,15 +124,15 @@ const ActivityHook = {
 
     return [
       {
-        key: 'arrl-vhf-tests/grid',
-        label: t('gridLabel'),
+        key: "arrl-vhf-tests/grid",
+        label: t("gridLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'text',
+          kind: "text",
           refType: TYPE,
-          field: 'grid',
+          field: "grid",
           maxLength: event.gridChars,
           pattern: gridPatternFor(event),
           placeholder: guess || undefined,
@@ -162,15 +156,13 @@ const ActivityHook = {
     // PRESENCE, not truthiness — a present, empty `grid` is the operator
     // deliberately clearing what they'd typed, and has to survive as that
     // decision rather than be re-guessed on the next save (§5.4).
-    const decided = qsoRef !== undefined && 'grid' in qsoRef
-    const grid = decided
-      ? trimmedGrid(str(qsoRef.grid), event)
-      : guessedGrid((qso.their as Record<string, JSONValue>) ?? {}, event)
+    const decided = qsoRef !== undefined && "grid" in qsoRef
+    const grid = decided ? trimmedGrid(str(qsoRef.grid), event) : guessedGrid((qso.their as Record<string, JSONValue>) ?? {}, event)
 
     // Our sent exchange is the operation's grid, the same on every QSO, so
     // it is not projected into `our.exchange` — the QSO row would repeat it
     // on every line; the exports read `operation.grid` directly.
-    if (!grid) return decided ? { their: { exchange: '' } } : null
+    if (!grid) return decided ? { their: { exchange: "" } } : null
 
     return {
       refs: [{ type: TYPE, grid }],
@@ -181,24 +173,21 @@ const ActivityHook = {
 
 const RefHandler = {
   async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
-    const normalized = (ref.ref ?? '').toUpperCase().trim()
+    const normalized = (ref.ref ?? "").toUpperCase().trim()
     return { valid: eventFor(normalized) !== undefined, normalized }
   },
 
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const event = eventFor(ref.ref)
-    if (!event) return { ...ref, program: 'Contest', label: tFor(ctx)('unconfigured') }
-    return { ...ref, ref: event.key, program: 'Contest', label: event.name, shortLabel: event.short, name: event.name }
+    if (!event) return { ...ref, program: "Contest", label: tFor(ctx)("unconfigured") }
+    return { ...ref, ref: event.key, program: "Contest", label: event.name, shortLabel: event.short, name: event.name }
   },
 
-  async suggestOperationTitle(
-    { ref, operation }: { ref: Ref; operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<TitleSuggestion | null> {
+  async suggestOperationTitle({ ref, operation }: { ref: Ref; operation: Record<string, JSONValue> }, ctx: HookContext): Promise<TitleSuggestion | null> {
     const event = eventFor(ref.ref)
     if (!event) return { for: manifest.shortName }
     const grid = trimmedGrid(str(operation.grid), event)
-    return { for: event.short, subtitle: grid ? tFor(ctx)('ourExchangeSubtitle', { grid }) : undefined }
+    return { for: event.short, subtitle: grid ? tFor(ctx)("ourExchangeSubtitle", { grid }) : undefined }
   },
 
   /// The contest's published rules — a reference here names an event, not a
@@ -220,33 +209,25 @@ const AdifFieldsHook = {
     const ourGrid = trimmedGrid(str(operation.grid), event)
     const theirGrid = trimmedGrid(str(refOfType(qso, TYPE)?.grid), event)
 
-    const fields: { name: string; value: string }[] = [
-      { name: 'CONTEST_ID', value: event.cabrilloName ?? event.key },
-    ]
-    if (ourGrid) fields.push({ name: 'STX_STRING', value: ourGrid })
-    if (theirGrid) fields.push({ name: 'SRX_STRING', value: theirGrid })
+    const fields: { name: string; value: string }[] = [{ name: "CONTEST_ID", value: event.cabrilloName ?? event.key }]
+    if (ourGrid) fields.push({ name: "STX_STRING", value: ourGrid })
+    if (theirGrid) fields.push({ name: "SRX_STRING", value: theirGrid })
     return fields
   },
 }
 
-function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): string {
+function reportFor(qso: Record<string, JSONValue>, side: "our" | "their"): string {
   const sideData = (qso[side] as Record<string, JSONValue>) ?? {}
   const sent = str(sideData.sent)
   if (sent) return sent
-  return str(qso.mode) === 'CW' ? '599' : '59'
+  return str(qso.mode) === "CW" ? "599" : "59"
 }
 
 function contestTag(event: VhfEvent): string {
   return event.cabrilloName ?? event.key
 }
 
-function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  event: VhfEvent,
-  extension: string,
-  compact?: boolean,
-): string {
+function filenameFor(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], event: VhfEvent, extension: string, compact?: boolean): string {
   return exportFilename({
     stationCall: operation.stationCall,
     activity: contestTag(event),
@@ -258,7 +239,7 @@ function filenameFor(
 
 const ExportHook = {
   async getExportTypes() {
-    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+    return [exportTypeDefinition(TYPE, "adif", manifest.shortName), exportTypeDefinition(TYPE, "cabrillo", manifest.shortName)]
   },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     const event = eventOn(args.operation)
@@ -269,18 +250,18 @@ const ExportHook = {
       {
         exportType: `${TYPE}-adif`,
         templateData: { activity: contestTag(event) },
-        format: 'adif',
-        label: t('adifExport', { contest: manifest.shortName }),
-        filename: named('adi'),
+        format: "adif",
+        label: t("adifExport", { contest: manifest.shortName }),
+        filename: named("adi"),
         selectedByDefault: true,
         refType: TYPE,
       },
       {
         exportType: `${TYPE}-cabrillo`,
         templateData: { activity: contestTag(event) },
-        format: 'cabrillo',
-        label: t('cabrilloExport', { contest: manifest.shortName }),
-        filename: named('log'),
+        format: "cabrillo",
+        label: t("cabrilloExport", { contest: manifest.shortName }),
+        filename: named("log"),
         selectedByDefault: true,
         refType: TYPE,
       },
@@ -289,36 +270,36 @@ const ExportHook = {
 
   async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
     if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
-      return { filename: '', mimeType: '', content: '' }
+      return { filename: "", mimeType: "", content: "" }
     }
 
     const operation = args.operation
     const event = eventOn(operation)
-    if (!event) return { filename: '', mimeType: '', content: '' }
+    if (!event) return { filename: "", mimeType: "", content: "" }
     const ourCall = str(operation.stationCall)
     const ourGrid = trimmedGrid(str(operation.grid), event)
 
     if (args.exportType === `${TYPE}-cabrillo`) {
       const content = qsonToCabrillo(args.qsos, {
         headers: [
-          ['CONTEST', contestTag(event)],
-          ['CALLSIGN', ourCall],
-          ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
-          ['GRID-LOCATOR', ourGrid],
+          ["CONTEST", contestTag(event)],
+          ["CALLSIGN", ourCall],
+          ["OPERATORS", str((operation.local as Record<string, JSONValue>)?.operatorCall)],
+          ["GRID-LOCATOR", ourGrid],
         ],
         qsoParts: (qso) => {
           const theirGrid = trimmedGrid(str(refOfType(qso, TYPE)?.grid), event)
           return [
-            ourCall || '-',
-            reportFor(qso, 'our'),
-            ourGrid || '-',
-            str(((qso.their as Record<string, JSONValue>) ?? {}).call) || '-',
-            reportFor(qso, 'their'),
-            theirGrid || '-',
+            ourCall || "-",
+            reportFor(qso, "our"),
+            ourGrid || "-",
+            str(((qso.their as Record<string, JSONValue>) ?? {}).call) || "-",
+            reportFor(qso, "their"),
+            theirGrid || "-",
           ]
         },
       })
-      return { filename: filenameFor(operation, args.qsos, event, 'log', args.compactFilenames), mimeType: 'text/plain', content }
+      return { filename: filenameFor(operation, args.qsos, event, "log", args.compactFilenames), mimeType: "text/plain", content }
     }
 
     const content = await adifForExport({
@@ -336,8 +317,8 @@ const ExportHook = {
       mainHandler: TYPE,
     })
     return {
-      filename: filenameFor(operation, args.qsos, event, 'adi', args.compactFilenames),
-      mimeType: 'text/plain',
+      filename: filenameFor(operation, args.qsos, event, "adi", args.compactFilenames),
+      mimeType: "text/plain",
       content,
     }
   },
@@ -346,11 +327,11 @@ const ExportHook = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('activity', { hook: ActivityHook, key: TYPE })
+    registerHook("activity", { hook: ActivityHook, key: TYPE })
     registerHook(`ref:${TYPE}`, { hook: RefHandler, key: TYPE })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: TYPE })
-    registerHook('export', { hook: ExportHook, key: TYPE })
-    registerHook('scoring', {
+    registerHook("adifFields", { hook: AdifFieldsHook, key: TYPE })
+    registerHook("export", { hook: ExportHook, key: TYPE })
+    registerHook("scoring", {
       hook: contestScorer(ARRLVHFScorer, { scope: { refTypes: [TYPE] } }),
       key: TYPE,
     })

@@ -29,7 +29,7 @@ export interface AdifField {
 }
 
 export function field(name: string, value: unknown): string {
-  if (value === undefined || value === null || value === '') return ''
+  if (value === undefined || value === null || value === "") return ""
   // A MAP is never an ADIF value. QSON is a forward-compatible blob and
   // `qson_values.dart` normalizes only the keys a Dart getter reads, so a peer
   // or a lookup writing `{ cqZone: { value: 5 } }` reaches here intact — and
@@ -40,7 +40,7 @@ export function field(name: string, value: unknown): string {
   // A LIST is not that case: `String(['US-0001', 'US-0002'])` is ADIF's own
   // comma-separated multi-value syntax, which is what a field like
   // MY_POTA_REF wants from a hook that answers with several.
-  if (typeof value === 'object' && !Array.isArray(value)) return ''
+  if (typeof value === "object" && !Array.isArray(value)) return ""
   const text = sanitizeAdifText(String(value))
   return `<${name}:${text.length}>${text} `
 }
@@ -62,7 +62,7 @@ export function renderRow(fields: AdifField[]): string {
   // extension answering `my_sig` beside a core hook's `MY_SIG` would otherwise
   // write the field twice — the very record this exists to prevent.
   const written = new Set<string>()
-  let row = ''
+  let row = ""
   for (const { name, value } of fields) {
     if (written.has(name.toUpperCase())) continue
     const text = field(name, value)

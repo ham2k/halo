@@ -11,10 +11,7 @@
   "notes": "Bonus will likely be incorrect!!!",
   "lastUpdated": "2026-02-28 12:00Z",
   "status": "Updated for 2026, but not verified!",
-  "exchange": [
-    "Number",
-    "Location"
-  ],
+  "exchange": ["Number", "Location"],
   "bonusStations": {
     "K4L": 50,
     "K4O": 50,
@@ -183,28 +180,10 @@
     "YOR": "York"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE",
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "ROVER",
-      "EXPEDITION"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "DIGITAL",
-      "MIXED"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE", "MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE", "ROVER", "EXPEDITION"],
+    "mode": ["CW", "PHONE", "DIGITAL", "MIXED"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "150 watts",

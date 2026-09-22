@@ -13,21 +13,8 @@
 // this registers no `scoring` hook. Summits are recorded and exported, not
 // counted.
 
-import {
-  activityExportHook,
-  defineExtension,
-  huntingExportHook,
-  referenceActivity,
-} from "@ham2k/extension-sdk"
-import type {
-  DataFileDefinition,
-  HookContext,
-  PostOtherSpotRequest,
-  PostResult,
-  PostSelfSpotRequest,
-  Ref,
-  SpotEligibility,
-} from "@ham2k/extension-sdk"
+import { activityExportHook, defineExtension, huntingExportHook, referenceActivity } from "@ham2k/extension-sdk"
+import type { DataFileDefinition, HookContext, PostOtherSpotRequest, PostResult, PostSelfSpotRequest, Ref, SpotEligibility } from "@ham2k/extension-sdk"
 import { locationToGrid6 } from "@ham2k/lib-geo-tools"
 
 import { postOtherSpotToGMA, postSelfSpotToGMA } from "../../../shared/gmaSpots.ts"
@@ -35,22 +22,22 @@ import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const HUNTING_TYPE = 'gma'
-const ACTIVATION_TYPE = 'gmaActivation'
+const HUNTING_TYPE = "gma"
+const ACTIVATION_TYPE = "gmaActivation"
 
 /// `XX/YY-123` for the ordinary references, plus the `UNM-nnn` / `UNM-SHnnn`
 /// series, which follow no prefix rule at all.
 const REFERENCE_REGEX = /^(?:[A-Z0-9]+\/[A-Z]{2,}-[0-9]{3,}|UNM-(?:SH)?[0-9]{3})$/i
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
-  key: 'gma',
-  label: 'GMA',
+  key: "gma",
+  label: "GMA",
   activationType: ACTIVATION_TYPE,
   huntingType: HUNTING_TYPE,
   referenceRegex: REFERENCE_REGEX,
   icon: manifest.icon,
   color: manifest.accentColor,
-  placeholder: 'DL/AL-001',
+  placeholder: "DL/AL-001",
   tFor,
   // The GMA site carries the reference lists for the castle, lighthouse and
   // mill programs as well as its own summits — one page per reference,
@@ -62,53 +49,49 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
 })
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
-  return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
+  return ((container.refs as Ref[] | undefined) ?? []).filter((r) => r.type === type && r.ref)
 }
 
 const SpotsHook = {
-  sourceName: 'GMA',
+  sourceName: "GMA",
 
   async isSelfSpotEnabled({ operation }: { operation: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(operation, ACTIVATION_TYPE).length > 0
-      ? { enabled: true, icon: manifest.icon }
-      : { enabled: false }
+    return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: manifest.icon } : { enabled: false }
   },
 
   async isOtherSpotEnabled({ qso }: { qso: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(qso, HUNTING_TYPE).length > 0
-      ? { enabled: true, icon: manifest.icon }
-      : { enabled: false }
+    return refsOfType(qso, HUNTING_TYPE).length > 0 ? { enabled: true, icon: manifest.icon } : { enabled: false }
   },
 
   async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, _ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(operation, ACTIVATION_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No GMA activation on this operation' }
+    if (refs.length === 0) return { ok: false, message: "No GMA activation on this operation" }
     return postSelfSpotToGMA({ operation, refs, freq, mode, comment })
   },
 
   async postOtherSpot({ qso, comment, spotterCall }: PostOtherSpotRequest, _ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(qso, HUNTING_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No GMA reference on this QSO' }
+    if (refs.length === 0) return { ok: false, message: "No GMA reference on this QSO" }
     return postOtherSpotToGMA({ qso, refs, comment, spotterCall })
   },
 }
 
 const gmaDataFile: DataFileDefinition = {
-  key: 'gma-all-summits',
-  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
-  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
-  url: 'https://www.cqgma.org/download/summits.csv',
+  key: "gma-all-summits",
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileName"),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileDescription"),
+  url: "https://www.cqgma.org/download/summits.csv",
   maxAgeInDays: 30,
-  fetchType: 'csv',
-  category: 'gma',
-  csvOptions: { hasHeaders: true, delimiter: ',' },
+  fetchType: "csv",
+  category: "gma",
+  csvOptions: { hasHeaders: true, delimiter: "," },
   csvToLookupEntry: (row: Record<string, string> | string[]) => {
     const r = row as Record<string, string>
     // The list keeps retired summits and marks them; app-polo skips them
     // outright rather than storing them as inactive.
-    if ((r.deleted ?? '').trim() !== '0') return null
+    if ((r.deleted ?? "").trim() !== "0") return null
 
-    const ref = (r.Reference ?? '').trim().toUpperCase()
+    const ref = (r.Reference ?? "").trim().toUpperCase()
     if (!ref) return null
 
     const parsedLat = Number.parseFloat(r.Latitude)
@@ -119,19 +102,15 @@ const gmaDataFile: DataFileDefinition = {
     // The published locator is upper-cased throughout; the last pair is
     // conventionally lower-case, and the rest of HaLo compares grids as
     // strings. Fall back to deriving one when the list has none.
-    const published = (r['Maidenhead Locator'] ?? '').trim()
-    const grid = published
-      ? published.replace(/[A-Z]{2}$/, (x) => x.toLowerCase())
-      : lat != null && lon != null
-        ? locationToGrid6(lat, lon)
-        : undefined
+    const published = (r["Maidenhead Locator"] ?? "").trim()
+    const grid = published ? published.replace(/[A-Z]{2}$/, (x) => x.toLowerCase()) : lat != null && lon != null ? locationToGrid6(lat, lon) : undefined
 
-    const altitude = Number.parseInt(r['Height (m)'], 10)
+    const altitude = Number.parseInt(r["Height (m)"], 10)
 
     return {
       // The association prefix (`DL` of `DL/AL-001`), which is how an operator
       // narrows a search to their own country.
-      subCategory: ref.split('/')[0],
+      subCategory: ref.split("/")[0],
       key: ref,
       name: r.Name,
       lat,
@@ -152,24 +131,31 @@ const gmaDataFile: DataFileDefinition = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook(`ref:${HUNTING_TYPE}`, { hook: refHandler, key: 'gma' })
-    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'gma' })
-    registerHook('activity', { hook: activityHook, key: 'gma' })
-    registerHook('adifFields', { hook: adifFieldsHook, key: 'gma' })
-    registerHook('adifImport', { hook: adifImportHook, key: 'gma' })
-    registerHook('spots', { hook: SpotsHook, key: 'gma' })
-    registerHook('dataFile', { hook: gmaDataFile, key: 'gma-all-summits' })
+    registerHook(`ref:${HUNTING_TYPE}`, { hook: refHandler, key: "gma" })
+    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: "gma" })
+    registerHook("activity", { hook: activityHook, key: "gma" })
+    registerHook("adifFields", { hook: adifFieldsHook, key: "gma" })
+    registerHook("adifImport", { hook: adifImportHook, key: "gma" })
+    registerHook("spots", { hook: SpotsHook, key: "gma" })
+    registerHook("dataFile", { hook: gmaDataFile, key: "gma-all-summits" })
     // No `scoring`: app-polo's GMA counts nothing.
-    registerHook('export', {
-      hook: activityExportHook({ key: 'gma', label: 'GMA', activationType: ACTIVATION_TYPE, icon: manifest.icon }),
-      key: 'gma',
+    registerHook("export", {
+      hook: activityExportHook({ key: "gma", label: "GMA", activationType: ACTIVATION_TYPE, icon: manifest.icon }),
+      key: "gma",
     })
     // The chaser side: every reference hunted, across the whole log — a
     // different key so it doesn't collide with the activator registration
     // above.
-    registerHook('export', {
-      hook: huntingExportHook({ key: 'gma', label: 'GMA', huntingType: HUNTING_TYPE, activationType: ACTIVATION_TYPE, icon: manifest.icon, color: manifest.accentColor }),
-      key: 'gma-hunter',
+    registerHook("export", {
+      hook: huntingExportHook({
+        key: "gma",
+        label: "GMA",
+        huntingType: HUNTING_TYPE,
+        activationType: ACTIVATION_TYPE,
+        icon: manifest.icon,
+        color: manifest.accentColor,
+      }),
+      key: "gma-hunter",
     })
   },
 })

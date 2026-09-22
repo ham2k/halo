@@ -49,7 +49,7 @@ function renderOne(template: string, context: Record<string, unknown>): Template
 const TemplateHook = {
   async exportSettings(args: { definitions: ExportTypeDefinition[]; global?: GlobalExportSettings; overrides?: Record<string, ExportSettings> }) {
     return [
-      { exportType: 'default', format: 'adif', label: '', defaults: GLOBAL_EXPORT_DEFAULTS, settings: resolveGlobalExportSettings(args.global) },
+      { exportType: "default", format: "adif", label: "", defaults: GLOBAL_EXPORT_DEFAULTS, settings: resolveGlobalExportSettings(args.global) },
       ...args.definitions.map((definition) => ({
         ...definition,
         defaults: resolveExportSettings(definition, args.global),
@@ -57,7 +57,12 @@ const TemplateHook = {
       })),
     ]
   },
-  async prepareExports(args: { options: (ExportOption & { exportSettings: ExportSettings })[]; operation: Record<string, JSONValue>; qsos: Record<string, JSONValue>[]; compactFilenames?: boolean }) {
+  async prepareExports(args: {
+    options: (ExportOption & { exportSettings: ExportSettings })[]
+    operation: Record<string, JSONValue>
+    qsos: Record<string, JSONValue>[]
+    compactFilenames?: boolean
+  }) {
     return args.options.map((option) => prepareExportOption(option, args.operation, args.qsos, args.compactFilenames === true))
   },
   async render(args: TemplateRenderArgs, ctx: HookContext): Promise<TemplateRenderResult> {

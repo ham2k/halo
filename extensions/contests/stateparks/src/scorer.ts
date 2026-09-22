@@ -129,7 +129,7 @@ export type StateParksScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// Which parks a QSO is worth comes from `parks.ts`, shared with the hooks that
@@ -140,9 +140,17 @@ function str(value: JSONValue | undefined): string {
 export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
   startScoresheet(): StateParksScoresheet {
     return {
-      worked: {}, activated: {}, hunted: {}, bonusStations: {},
-      bands: {}, modes: {},
-      qsos: 0, points: 0, dupes: 0, dayQsos: 0, dayPoints: 0,
+      worked: {},
+      activated: {},
+      hunted: {},
+      bonusStations: {},
+      bands: {},
+      modes: {},
+      qsos: 0,
+      points: 0,
+      dupes: 0,
+      dayQsos: 0,
+      dayPoints: 0,
     }
   },
 
@@ -158,7 +166,7 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
     // event's park list would be worse than declining to: 0 points and a
     // visible alert is honest, and the QSO itself is untouched.
     const event = eventFor(str(ref?.ref))
-    if (!event) return { scoresheet: sheet, score: { value: 0, alerts: ['unknownEvent'] } }
+    if (!event) return { scoresheet: sheet, score: { value: 0, alerts: ["unknownEvent"] } }
     sheet.eventKey ??= event.key
     // The first DECLARED class wins, not the first QSO's answer: `??=` would
     // treat the 0 that stands for "no class declared" as an answer and latch it,
@@ -178,14 +186,14 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
     // import that lost its BAND column becomes visible instead of scoring.
     const band = str(qso.band)
     if (!bandCounts(event, band)) {
-      return { scoresheet: sheet, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: sheet, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     // A QSO with no mode keeps the per-QSO default rather than being judged:
     // `superModeForMode('')` answers `DATA`, which would quietly price an
     // ADIF import missing MODE as a digital contact.
     const mode = str(qso.mode)
-    const superMode = mode ? superModeForMode(mode) : ''
+    const superMode = mode ? superModeForMode(mode) : ""
     // No event lists points for every mode it allows — Ohio names PHONE and CW
     // only — so an unlisted mode is worth the base point rather than nothing.
     // polo's fallback, kept deliberately: zeroing a digital contact is a rules
@@ -197,7 +205,7 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
 
     // `''` when they were in no park in the event: the slot is still occupied,
     // so a second plain contact on the same band and mode is a duplicate.
-    const claims = theirParks.length > 0 ? theirParks : ['']
+    const claims = theirParks.length > 0 ? theirParks : [""]
     const slot = `${band}|${superMode}`
     const bySlot = (sheet.worked[call] ??= {})
     const credited = bySlot[slot]
@@ -212,7 +220,7 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
 
     if (credited && fresh.length === 0) {
       sheet.dupes += 1
-      return { scoresheet: sheet, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: sheet, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     const slots = Object.keys(bySlot)
@@ -232,9 +240,9 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
     value += newParks.length * event.pointsPerDistinctPark
 
     const notices: string[] = []
-    if (workedBefore && !sameBand) notices.push('newBand')
-    if (workedBefore && !sameMode) notices.push('newMode')
-    if (newParks.length > 0) notices.push('newPark')
+    if (workedBefore && !sameBand) notices.push("newBand")
+    if (workedBefore && !sameMode) notices.push("newMode")
+    if (newParks.length > 0) notices.push("newPark")
 
     // Bonus stations pay once, and only the first contact says so — the rest
     // are ordinary QSOs with that station.
@@ -242,7 +250,7 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
     const bonus = event.bonusStations[baseCall]
     if (bonus !== undefined && sheet.bonusStations[baseCall] === undefined) {
       sheet.bonusStations[baseCall] = bonus
-      notices.push('bonusStation')
+      notices.push("bonusStation")
     }
 
     bySlot[slot] = credited ? [...credited, ...fresh] : [...fresh]
@@ -261,7 +269,7 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
     // a park going unclaimed — a multiplier for two of the four events, and a
     // typo the operator can still fix while the QSO is in front of them.
     if (event.usesParkAbbreviations && theirParks.length === 0) {
-      score.alerts = [theirParkAbbreviation(event, qso) ? 'invalidExchange' : 'missingExchange']
+      score.alerts = [theirParkAbbreviation(event, qso) ? "invalidExchange" : "missingExchange"]
     }
 
     return { scoresheet: sheet, score }
@@ -271,23 +279,18 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
     // The scoresheet's own record first: it was written from the ref each QSO
     // was actually scored against, while `ref` here is the base operation's.
     const event = eventFor(sheet.eventKey) ?? eventFor(str(ref?.ref))
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
 
     const activated = Object.values(sheet.activated).filter((qsos) => qsos >= QSOS_TO_ACTIVATE).length
     const hunted = Object.keys(sheet.hunted).length
-    const parkMult = event?.multipliers === 'stateParksActivatedAndHunted'
-      ? activated + hunted
-      : event?.multipliers === 'stateParksActivated'
-        ? activated
-        : 0
+    const parkMult = event?.multipliers === "stateParksActivatedAndHunted" ? activated + hunted : event?.multipliers === "stateParksActivated" ? activated : 0
     // The power class ADDS to the park multipliers rather than scaling them
     // (events.ts), and is 0 for the three events that publish no such term and
     // for a class the operator never declared. `|| 1` is the floor either way:
     // a log with no parks yet is still worth its points.
-    const mult = (parkMult + (sheet.powerMult ?? 0)) || 1
+    const mult = parkMult + (sheet.powerMult ?? 0) || 1
 
-    const bonusPoints = Object.values(sheet.bonusStations).reduce((sum, points) => sum + points, 0)
-      + activated * (event?.bonusPointsPerParkActivated ?? 0)
+    const bonusPoints = Object.values(sheet.bonusStations).reduce((sum, points) => sum + points, 0) + activated * (event?.bonusPointsPerParkActivated ?? 0)
 
     const points = isDay ? sheet.dayPoints : sheet.points
     // Multipliers and bonuses are won across the whole event, so a day's figure
@@ -298,18 +301,19 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
 
     return {
       stateparks: {
-        key: 'stateparks',
+        key: "stateparks",
         for: scope,
-        icon: 'flag-checkered',
+        icon: "flag-checkered",
         total,
         points,
         mults: mult,
         qsos: isDay ? sheet.dayQsos : sheet.qsos,
-        label: bonusPoints > 0 && !isDay
-          ? `${fmtInteger(points)} × ${fmtInteger(mult)} + ${fmtInteger(bonusPoints)}`
-          : `${fmtInteger(points)} × ${fmtInteger(mult)}`,
+        label:
+          bonusPoints > 0 && !isDay
+            ? `${fmtInteger(points)} × ${fmtInteger(mult)} + ${fmtInteger(bonusPoints)}`
+            : `${fmtInteger(points)} × ${fmtInteger(mult)}`,
         summary: `${fmtInteger(total)}`,
-        longSummary: event ? longSummaryFor(event, sheet, { activated, hunted, bonusPoints }) : '',
+        longSummary: event ? longSummaryFor(event, sheet, { activated, hunted, bonusPoints }) : "",
       },
     }
   },
@@ -318,24 +322,20 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
 /// The tables a state-park operator actually reads while operating: which of
 /// the event's parks are in the log, which bonus stations are still out there,
 /// and the per-band split.
-function longSummaryFor(
-  event: StateParkEvent,
-  sheet: StateParksScoresheet,
-  totals: { activated: number; hunted: number; bonusPoints: number },
-): string {
+function longSummaryFor(event: StateParkEvent, sheet: StateParksScoresheet, totals: { activated: number; hunted: number; bonusPoints: number }): string {
   const parts: string[] = []
 
   if (totals.activated > 0 || Object.keys(sheet.activated).length > 0) {
     const ours = Object.entries(sheet.activated)
       .map(([park, qsos]) => `${labelFor(event, park)} (${fmtInteger(qsos)})`)
-      .join(' • ')
+      .join(" • ")
     parts.push(`**Activating:** ${ours}`)
   }
 
   if (Object.keys(event.bonusStations).length > 0) {
     const stations = Object.keys(event.bonusStations)
       .map((call) => (sheet.bonusStations[call] !== undefined ? `**~~${call}~~**` : call))
-      .join(' ')
+      .join(" ")
     parts.push(`### Bonus stations\n${stations}`)
   }
 
@@ -344,15 +344,15 @@ function longSummaryFor(
       const label = park.abbreviation ?? park.ref
       return sheet.hunted[park.ref] !== undefined ? `**~~${label}~~**` : label
     })
-    .join(' ')
+    .join(" ")
   parts.push(`### ${fmtInteger(totals.hunted)} of ${fmtInteger(event.parks.length)} parks worked\n${parkList}`)
 
   const bands = Object.keys(sheet.bands).sort()
   if (bands.length > 0) {
-    parts.push(bands.map((band) => `**${band}**: ${fmtInteger(sheet.bands[band])} QSOs`).join('\n'))
+    parts.push(bands.map((band) => `**${band}**: ${fmtInteger(sheet.bands[band])} QSOs`).join("\n"))
   }
 
-  return parts.join('\n\n')
+  return parts.join("\n\n")
 }
 
 /// A park's abbreviation where the event has them, else its POTA reference.

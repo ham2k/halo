@@ -23,13 +23,13 @@ export const REFERENCE_REGEX = /^[A-Z0-9]{1,4}\/[A-Z]{2}-[0-9]{3,}$/i
 // digit misparses as a higher-numbered capture group.
 export const TRANSFORMS: { pattern: string; replacement: string; flags?: string }[] = [
   // a run of spaces between two refs -> ", " (normalize to one separator style)
-  { pattern: '([A-Z0-9]-\\d{3,}) +(?=[A-Z0-9])', replacement: '${1}, ', flags: 'gi' },
+  { pattern: "([A-Z0-9]-\\d{3,}) +(?=[A-Z0-9])", replacement: "${1}, ", flags: "gi" },
   // "W6SD026" / "W6/SD026" / "W6SD-026" -> "W6/SD-026"
-  { pattern: '([A-Z0-9]{1,4})\\/?([A-Z]{2})-?(\\d{3,})', replacement: '${1}/${2}-${3}', flags: 'gi' },
+  { pattern: "([A-Z0-9]{1,4})\\/?([A-Z]{2})-?(\\d{3,})", replacement: "${1}/${2}-${3}", flags: "gi" },
   // trailing space/comma right after a complete ref -> start the next entry
-  { pattern: '([A-Z0-9]{1,4}\\/[A-Z]{2}-\\d{3,})[\\s,]$', replacement: '${1},', flags: 'gi' },
+  { pattern: "([A-Z0-9]{1,4}\\/[A-Z]{2}-\\d{3,})[\\s,]$", replacement: "${1},", flags: "gi" },
   // strip anything that can't appear in a reference list
-  { pattern: '[^A-Z0-9\\/\\-, ]', replacement: '', flags: 'gi' },
+  { pattern: "[^A-Z0-9\\/\\-, ]", replacement: "", flags: "gi" },
 ]
 
 // SOTLAS publishes each summit's activation-zone outline as GeoJSON under a
@@ -40,10 +40,10 @@ export const TRANSFORMS: { pattern: string; replacement: string; flags?: string 
 // A summit with no surveyed zone answers 403, not 404 — object storage
 // declining to confirm a key exists. So an error status can't be read as
 // "the request was wrong"; both mean the same thing here, no zone.
-export const ACTIVATION_ZONE_HOST = 'https://az.sotl.as'
+export const ACTIVATION_ZONE_HOST = "https://az.sotl.as"
 
 export function activationZoneUrl(reference: string): string | null {
   const normalized = reference.toUpperCase().trim()
   if (!REFERENCE_REGEX.test(normalized)) return null
-  return `${ACTIVATION_ZONE_HOST}/${normalized.replace('-', '/')}.geojson`
+  return `${ACTIVATION_ZONE_HOST}/${normalized.replace("-", "/")}.geojson`
 }

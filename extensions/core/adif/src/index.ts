@@ -35,8 +35,8 @@ import { field, renderRow } from "./fields.ts"
 import type { AdifField } from "./fields.ts"
 import { filenameFor } from "./filename.ts"
 
-const ADIF_VERSION = '3.1.5'
-const DEFAULT_PROGRAM_ID = 'Ham2K Logger'
+const ADIF_VERSION = "3.1.5"
+const DEFAULT_PROGRAM_ID = "Ham2K Logger"
 
 /// The other station's coordinate, in the same precedence the app's own model
 /// uses (`Qso.theirExactLocation`): an entered pair wins; an ENTERED grid
@@ -56,20 +56,12 @@ const DEFAULT_PROGRAM_ID = 'Ham2K Logger'
 /// square is already going out as `GRIDSQUARE` — writing its middle as
 /// `LAT`/`LON` too would publish a point they never claimed, and would take
 /// precedence over the square for every reader.
-function theirCoordinate(
-  their: Record<string, unknown>,
-  theirGuess: Record<string, unknown>,
-): { lat: unknown; lon: unknown } | undefined {
-  if (
-    their.locSource !== 'prefix' &&
-    their.lat != null &&
-    their.lon != null &&
-    !isGridCenter(their.lat, their.lon, their.grid)
-  ) {
+function theirCoordinate(their: Record<string, unknown>, theirGuess: Record<string, unknown>): { lat: unknown; lon: unknown } | undefined {
+  if (their.locSource !== "prefix" && their.lat != null && their.lon != null && !isGridCenter(their.lat, their.lon, their.grid)) {
     return { lat: their.lat, lon: their.lon }
   }
   if (their.grid != null) return undefined
-  if (theirGuess.locSource === 'prefix') return undefined
+  if (theirGuess.locSource === "prefix") return undefined
   return { lat: theirGuess.lat, lon: theirGuess.lon }
 }
 
@@ -78,7 +70,7 @@ function theirCoordinate(
 /// coarser one. Shorter locators are already coarse and pass through
 /// unchanged.
 function coarseGrid(grid: string | undefined, digits = 6): string | undefined {
-  return typeof grid === 'string' ? grid.slice(0, digits) : undefined
+  return typeof grid === "string" ? grid.slice(0, digits) : undefined
 }
 
 /// The locator a file states for one end of a contact: derived from the
@@ -101,8 +93,8 @@ function coarseGrid(grid: string | undefined, digits = 6): string | undefined {
 /// private data must withhold the precision that rides with it — it applies
 /// one to the result.
 function gridForExport(grid: unknown, lat: unknown, lon: unknown, digits: number): string | undefined {
-  const stored = typeof grid === 'string' ? grid : undefined
-  if (typeof lat === 'number' && typeof lon === 'number' && !isGridCenter(lat, lon, stored)) {
+  const stored = typeof grid === "string" ? grid : undefined
+  if (typeof lat === "number" && typeof lon === "number" && !isGridCenter(lat, lon, stored)) {
     return digits >= 8 ? locationToGrid8(lat, lon) : locationToGrid6(lat, lon)
   }
   return stored
@@ -116,7 +108,7 @@ function gridForExport(grid: unknown, lat: unknown, lon: unknown, digits: number
 /// the record contradict itself — so it is dropped instead.
 function countyFor(source: Record<string, unknown>, claimedState: unknown): string | undefined {
   const own = source.state
-  if (typeof own === 'string' && typeof claimedState === 'string' && own.trim() !== '') {
+  if (typeof own === "string" && typeof claimedState === "string" && own.trim() !== "") {
     if (own.trim().toUpperCase() !== claimedState.trim().toUpperCase()) return undefined
   }
   return adifCounty(source.county, claimedState)
@@ -125,7 +117,7 @@ function countyFor(source: Record<string, unknown>, claimedState: unknown): stri
 /// ADIF frequencies are MHz to six decimals (Hz), with the trailing zeroes
 /// trimmed; QSON keeps kHz.
 function formatAdifFreq(freqKHz: number): string {
-  return (freqKHz / 1000).toFixed(6).replace(/0+$/, '').replace(/\.$/, '')
+  return (freqKHz / 1000).toFixed(6).replace(/0+$/, "").replace(/\.$/, "")
 }
 
 /// ADIF's three free-text fields, as templates over the standard vocabulary
@@ -190,18 +182,18 @@ const TEXT_FIELD_TEMPLATES: {
   /// is a different shape than a QSL message.
   usesQso: boolean
 }[] = [
-  { name: 'NOTES', template: '{{ qso.notes }}', private: true, wholeLogOnly: false, multiline: true, usesQso: true },
+  { name: "NOTES", template: "{{ qso.notes }}", private: true, wholeLogOnly: false, multiline: true, usesQso: true },
   {
-    name: 'COMMENT',
-    template: '{{ qso.notes }}',
+    name: "COMMENT",
+    template: "{{ qso.notes }}",
     private: true,
     wholeLogOnly: false,
     multiline: false,
     usesQso: true,
   },
   {
-    name: 'QSLMSG',
-    template: '{{ op.refs | refLabels | sentence }}',
+    name: "QSLMSG",
+    template: "{{ op.refs | refLabels | sentence }}",
     private: false,
     wholeLogOnly: true,
     multiline: false,
@@ -216,10 +208,7 @@ const TEXT_FIELD_TEMPLATES: {
 /// them and belongs in front of whoever changed it. An operator's own template
 /// reaching this table is a later feature, and the settings screen that
 /// accepts it is where a typo has to be reported.
-function renderTextField(
-  textField: (typeof TEXT_FIELD_TEMPLATES)[number],
-  context: Record<string, unknown>,
-): AdifField {
+function renderTextField(textField: (typeof TEXT_FIELD_TEMPLATES)[number], context: Record<string, unknown>): AdifField {
   const rendered = renderTemplate(textField.template, context, `ADIF ${textField.name}`)
   return { name: textField.name, value: textField.multiline ? rendered : oneLine(rendered) }
 }
@@ -271,31 +260,31 @@ function baseFieldsFor(
   const theirGuess = (their.guess ?? {}) as Record<string, unknown>
   const startAtMillis = Number(qso.startAtMillis ?? 0)
   const endAtMillis = Number(qso.endAtMillis ?? 0)
-  const [mode, submode] = adifModeAndSubmodeForMode(String(qso.mode ?? 'SSB'))
+  const [mode, submode] = adifModeAndSubmodeForMode(String(qso.mode ?? "SSB"))
   const freqKHz = Number(qso.freq ?? 0)
   // Read once: `STATE` writes it, and the county below is qualified by it.
   const theirState = their.state ?? theirGuess.state
 
   const fields: AdifField[] = []
   const add = (name: string, value: unknown) => fields.push({ name, value })
-  add('CALL', their.call)
+  add("CALL", their.call)
   if (startAtMillis > 0) {
-    add('QSO_DATE', fmtADIFDate(startAtMillis + timeOffsetMillis))
-    add('TIME_ON', fmtADIFTime(startAtMillis + timeOffsetMillis))
+    add("QSO_DATE", fmtADIFDate(startAtMillis + timeOffsetMillis))
+    add("TIME_ON", fmtADIFTime(startAtMillis + timeOffsetMillis))
     // Only a contact that recorded an end, and only one that ends after it
     // began: QSON defaults `endAtMillis` to the start where nothing measured a
     // duration, and TIME_OFF equal to TIME_ON tells a reader the contact took
     // no time rather than that nobody timed it. QSO_DATE_OFF rides along only
     // when the contact crossed midnight, which is the case it exists for.
     if (endAtMillis > startAtMillis) {
-      add('TIME_OFF', fmtADIFTime(endAtMillis + timeOffsetMillis))
+      add("TIME_OFF", fmtADIFTime(endAtMillis + timeOffsetMillis))
       const dateOff = fmtADIFDate(endAtMillis + timeOffsetMillis)
-      if (dateOff !== fmtADIFDate(startAtMillis + timeOffsetMillis)) add('QSO_DATE_OFF', dateOff)
+      if (dateOff !== fmtADIFDate(startAtMillis + timeOffsetMillis)) add("QSO_DATE_OFF", dateOff)
     }
   }
-  add('BAND', qso.band)
-  if (freqKHz > 0) add('FREQ', formatAdifFreq(freqKHz))
-  add('MODE', mode)
+  add("BAND", qso.band)
+  if (freqKHz > 0) add("FREQ", formatAdifFreq(freqKHz))
+  add("MODE", mode)
   // ADIF spells voice SSB as MODE=SSB with SUBMODE=USB/LSB, and which sideband
   // you run belongs to where you are — a file that states it on every phone
   // contact is stating the obvious, and readers that show the submode then
@@ -307,15 +296,15 @@ function baseFieldsFor(
   // nothing can re-derive what was dropped, so the sideband would leave the
   // log for good. Every other submode (FT4 under MFSK) is unconditional:
   // those name the emission, and dropping one loses which mode was worked.
-  const sidebandSubmode = submode === 'USB' || submode === 'LSB'
+  const sidebandSubmode = submode === "USB" || submode === "LSB"
   const bandsSideband = expectedSideband({
     freqKHz: freqKHz > 0 ? freqKHz : undefined,
     band: qso.band == null ? undefined : String(qso.band),
   })
-  add('SUBMODE', sidebandSubmode && submode === bandsSideband ? undefined : submode)
-  add('RST_SENT', our.sent)
-  add('RST_RCVD', their.sent)
-  add('STATION_CALLSIGN', stationCall)
+  add("SUBMODE", sidebandSubmode && submode === bandsSideband ? undefined : submode)
+  add("RST_SENT", our.sent)
+  add("RST_RCVD", their.sent)
+  add("STATION_CALLSIGN", stationCall)
   // Only when it says something STATION_CALLSIGN doesn't: a single operator
   // running their own call would otherwise write their call twice into every
   // record. A deliberate divergence from app-polo, which writes OPERATOR on
@@ -324,12 +313,12 @@ function baseFieldsFor(
   // Case-insensitive and trimmed: the dialog and the OPER command uppercase
   // what they store, but a WSJT-X or N1MM capture keeps whatever the datagram
   // spelled, and `ki2d` against a station running `KI2D` is the same operator.
-  const operatorCall = String(our.operatorCall ?? '').trim()
+  const operatorCall = String(our.operatorCall ?? "").trim()
   if (operatorCall && operatorCall.toUpperCase() !== stationCall.trim().toUpperCase()) {
-    add('OPERATOR', operatorCall)
+    add("OPERATOR", operatorCall)
   }
-  add('TX_PWR', qso.power)
-  add('RX_PWR', their.power ?? theirGuess.power)
+  add("TX_PWR", qso.power)
+  add("RX_PWR", their.power ?? theirGuess.power)
   // A split contact's receive side, which QSON records on `their` — the
   // frequency we LISTENED on. Only when it differs from the transmit
   // frequency, which is how `adif_to_qson.dart` decides it is a split in the
@@ -346,20 +335,20 @@ function baseFieldsFor(
   // whose FREQ_RX is wrong now says so twice.
   const theirFreqKHz = Number(their.freq ?? 0)
   if (theirFreqKHz > 0 && theirFreqKHz !== freqKHz) {
-    add('FREQ_RX', formatAdifFreq(theirFreqKHz))
-    add('BAND_RX', their.band)
+    add("FREQ_RX", formatAdifFreq(theirFreqKHz))
+    add("BAND_RX", their.band)
   }
   if (includePrivateData) {
-    add('NAME', their.name ?? theirGuess.name)
-    add('QTH', their.city ?? theirGuess.city)
-    add('EMAIL', their.email ?? theirGuess.email)
+    add("NAME", their.name ?? theirGuess.name)
+    add("QTH", their.city ?? theirGuess.city)
+    add("EMAIL", their.email ?? theirGuess.email)
   }
   // STATE and COUNTRY stay: awards are claimed on them, and both are
   // implied by the callsign anyway. app-polo draws the line in the same
   // place — and the entity fields below say no more than COUNTRY already
   // does, in the numeric and zone forms the award programs actually read.
-  add('STATE', theirState)
-  add('COUNTRY', their.country ?? theirGuess.country)
+  add("STATE", theirState)
+  add("COUNTRY", their.country ?? theirGuess.country)
   // The county is on this side of the line rather than with the town above,
   // a deliberate divergence from app-polo, which gates it. In a QSO party the
   // county IS the exchange — the other station said it on the air, and a file
@@ -372,16 +361,16 @@ function baseFieldsFor(
   // name two different primary subdivisions. Neither is a true statement about
   // the contact, so a county whose own state has been overruled is not
   // exported at all.
-  add('CNTY', countyFor(their.county != null ? their : theirGuess, theirState))
-  add('DXCC', their.dxccCode ?? theirGuess.dxccCode)
+  add("CNTY", countyFor(their.county != null ? their : theirGuess, theirState))
+  add("DXCC", their.dxccCode ?? theirGuess.dxccCode)
   // Whatever the log HOLDS, never a zone worked out here: an export states
   // what the app knows about a contact, and resolving a callsign is the lookup
   // layer's job, done once when the contact is logged. A guess made at export
   // time would also be a different answer from the one the operator saw.
-  add('CQZ', their.cqZone ?? theirGuess.cqZone)
-  add('ITUZ', their.ituZone ?? theirGuess.ituZone)
-  add('CONT', their.continent ?? theirGuess.continent)
-  add('REGION', their.regionCode ?? theirGuess.regionCode)
+  add("CQZ", their.cqZone ?? theirGuess.cqZone)
+  add("ITUZ", their.ituZone ?? theirGuess.ituZone)
+  add("CONT", their.continent ?? theirGuess.continent)
+  add("REGION", their.regionCode ?? theirGuess.regionCode)
   // No PFX. ADIF's is the contacted station's WPX PREFIX — `W1` for W1AW —
   // and QSON's `entityPrefix` is its DXCC entity's, `K`. Writing one as the
   // other reads back correctly through our own importer and hands a contest
@@ -419,7 +408,7 @@ function baseFieldsFor(
   // locator finer than the ceiling (an operation set from a fix before the
   // setting was turned down, or read back out of an ADIF file) would
   // otherwise ship the position the switch is withholding the coordinate for.
-  add('MY_GRIDSQUARE', coarseGrid(gridForExport(ourGrid, ourLocation.lat, ourLocation.lon, ourDigits), ourDigits))
+  add("MY_GRIDSQUARE", coarseGrid(gridForExport(ourGrid, ourLocation.lat, ourLocation.lon, ourDigits), ourDigits))
 
   // Our own side of what the `their` fields say about theirs. [ourEntity] is
   // the FALLBACK: an operation stores no entity data, so these three are
@@ -430,36 +419,36 @@ function baseFieldsFor(
   // 291. Re-deriving would answer the wrong entity through the very round trip
   // these fields exist to keep whole.
   const ourState = our.state ?? operation.state
-  add('MY_STATE', ourState)
-  add('MY_COUNTRY', our.entityName ?? our.country ?? ourEntity.entityName)
-  add('MY_DXCC', our.dxccCode ?? ourEntity.dxccCode)
-  add('MY_CONT', our.continent ?? ourEntity.continent)
-  add('MY_REGION', our.regionCode)
+  add("MY_STATE", ourState)
+  add("MY_COUNTRY", our.entityName ?? our.country ?? ourEntity.entityName)
+  add("MY_DXCC", our.dxccCode ?? ourEntity.dxccCode)
+  add("MY_CONT", our.continent ?? ourEntity.continent)
+  add("MY_REGION", our.regionCode)
   // The zones are NOT derived: a callsign says which entity a station is in,
   // never which zone of one. Only the contact answers — an ADIF import writes
   // `our.cqZone`/`ituZone`, and nothing else does yet — and a contact that
   // does not leaves them for an extension's `adifFields` hook, which can take
   // them because a name this record never writes is a name still free to claim
   // ([renderRow]).
-  add('MY_CQ_ZONE', our.cqZone)
-  add('MY_ITU_ZONE', our.ituZone)
+  add("MY_CQ_ZONE", our.cqZone)
+  add("MY_ITU_ZONE", our.ituZone)
   // The station's own equipment, which QSON records per contact because an
   // operator swaps antennas mid-operation. Not private: what was on the air
   // is what the contact was made with.
-  add('MY_RIG', our.rig)
-  add('MY_ANTENNA', our.antenna)
+  add("MY_RIG", our.rig)
+  add("MY_ANTENNA", our.antenna)
   // Public for the same reason theirs is, and on the same terms: one source
   // for the pair, since `segmentOverrideKeys` carries `state` and `county`
   // separately and a segment that moved to a new county must not be read
   // beside an operation that never left its state.
-  add('MY_CNTY', countyFor(our.county != null ? our : operation, ourState))
+  add("MY_CNTY", countyFor(our.county != null ? our : operation, ourState))
 
   if (includePrivateData) {
     // ADIF names no field for a multi-station operating position, so this is
     // ours (`adif_to_qson.dart` reads it back). Private: which of a station's
     // positions made the contact is its internal layout, not something the
     // contact itself says, and no program asks for it.
-    add('APP_HAM2K_POSITION', our.multiIdentifier)
+    add("APP_HAM2K_POSITION", our.multiIdentifier)
     // Coordinates ride with the gridsquare, and for the same reason: where the
     // other operator is, to a few hundred metres, is not something the contact
     // itself says. Ours goes out under the same switch — a log uploaded to a
@@ -474,15 +463,15 @@ function baseFieldsFor(
     // rides `includePrivateData`, which is the gate that ceiling stands in
     // for, and a grid the other station SENT is their exchange, not ours to
     // coarsen to our own display preference.
-    add('GRIDSQUARE', gridForExport(their.grid ?? theirGuess.grid, theirs?.lat, theirs?.lon, gridDigits))
-    add('LAT', formatAdifCoordinate(theirs?.lat, 'lat'))
-    add('LON', formatAdifCoordinate(theirs?.lon, 'lon'))
+    add("GRIDSQUARE", gridForExport(their.grid ?? theirGuess.grid, theirs?.lat, theirs?.lon, gridDigits))
+    add("LAT", formatAdifCoordinate(theirs?.lat, "lat"))
+    add("LON", formatAdifCoordinate(theirs?.lon, "lon"))
     // Our own side, under the same rule as [theirCoordinate]: a pair that is
     // only the stated grid's center says nothing `MY_GRIDSQUARE` did not, and
     // a reader would take it as the finer of the two.
     const ourStatedSquare = isGridCenter(ourLocation.lat, ourLocation.lon, ourGrid)
-    add('MY_LAT', ourStatedSquare ? undefined : formatAdifCoordinate(ourLocation.lat, 'lat'))
-    add('MY_LON', ourStatedSquare ? undefined : formatAdifCoordinate(ourLocation.lon, 'lon'))
+    add("MY_LAT", ourStatedSquare ? undefined : formatAdifCoordinate(ourLocation.lat, "lat"))
+    add("MY_LON", ourStatedSquare ? undefined : formatAdifCoordinate(ourLocation.lon, "lon"))
   }
 
   // Built once per record, on the first field that will actually render —
@@ -515,7 +504,7 @@ function baseFieldsFor(
 function stationSectionFieldsFor(qso: Record<string, unknown>): AdifField[] {
   const their = (qso.their ?? {}) as Record<string, unknown>
   const theirGuess = (their.guess ?? {}) as Record<string, unknown>
-  return [{ name: 'ARRL_SECT', value: their.arrlSection ?? theirGuess.arrlSection }]
+  return [{ name: "ARRL_SECT", value: their.arrlSection ?? theirGuess.arrlSection }]
 }
 
 /// Each `adifFields` hook's contribution, as a list of field sets — one per
@@ -561,17 +550,17 @@ async function fieldSetsPerHook(
   const keys = mainHandler ? [...new Set([mainHandler, ...(includeFieldsFrom ?? [])])] : undefined
   const invoke = async (method: string) =>
     keys
-      ? (await Promise.all(keys.map((key) => hooks.invokeOne('adifFields', key, method, { qso, operation })))).flat()
-      : hooks.invokeAll('adifFields', method, { qso, operation })
+      ? (await Promise.all(keys.map((key) => hooks.invokeOne("adifFields", key, method, { qso, operation })))).flat()
+      : hooks.invokeAll("adifFields", method, { qso, operation })
 
-  const combined = await invoke('fieldCombinationsForOneQSO')
+  const combined = await invoke("fieldCombinationsForOneQSO")
   for (const entry of combined) {
     if (!entry.ok || !Array.isArray(entry.value)) continue
     const sets = (entry.value as AdifField[][]).filter((set) => Array.isArray(set))
     if (sets.length > 0) byHook.set(entry.key, sets)
   }
 
-  const single = await invoke('fieldsForOneQSO')
+  const single = await invoke("fieldsForOneQSO")
   for (const entry of single) {
     if (byHook.has(entry.key)) continue
     if (!entry.ok || !Array.isArray(entry.value)) continue
@@ -609,7 +598,7 @@ async function fieldSetsPerHook(
     // answers not at all.
     const broken = asked.find((entry) => !entry.ok || !Array.isArray(entry.value))
     if (broken) {
-      const why = broken.ok ? 'returned no field list' : `failed: ${broken.error ?? 'unknown error'}`
+      const why = broken.ok ? "returned no field list" : `failed: ${broken.error ?? "unknown error"}`
       throw new Error(`adif: the '${broken.key}' adifFields hook ${why}`)
     }
   }
@@ -619,30 +608,34 @@ async function fieldSetsPerHook(
 
 const ExportHandler = {
   async getExportTypes() {
-    return [{ exportType: 'adif', format: 'adif', label: 'Full ADIF Export', defaults: {
-      includePrivateData: true,
-      adifQslMessageTemplate: '{{ op.refs | refLabels | sentence }}',
-    } }]
-  },
-  async suggestExportOptions(
-    { operation, qsos, compactFilenames }: ExportOptionsRequest,
-    _ctx: HookContext,
-  ): Promise<ExportOption[]> {
     return [
       {
-        exportType: 'adif',
-        templateData: { modifier: [String(operation.title ?? ''), 'Full'].filter(Boolean).join(' ') },
-        format: 'adif',
+        exportType: "adif",
+        format: "adif",
+        label: "Full ADIF Export",
+        defaults: {
+          includePrivateData: true,
+          adifQslMessageTemplate: "{{ op.refs | refLabels | sentence }}",
+        },
+      },
+    ]
+  },
+  async suggestExportOptions({ operation, qsos, compactFilenames }: ExportOptionsRequest, _ctx: HookContext): Promise<ExportOption[]> {
+    return [
+      {
+        exportType: "adif",
+        templateData: { modifier: [String(operation.title ?? ""), "Full"].filter(Boolean).join(" ") },
+        format: "adif",
         // "Full", because this is the whole log — the one export that claims
         // no activity and slices nothing. The activity and contest exports
         // above it in the list each cover one reference.
-        label: 'Full ADIF Export',
+        label: "Full ADIF Export",
         filename: filenameFor(operation, qsos, compactFilenames),
-        icon: 'file-export',
+        icon: "file-export",
         // Neutral grey, because this export belongs to no activity — the
         // coloured rows above it each claim one, and the whole log claims
         // none.
-        color: '#9E9E9E',
+        color: "#9E9E9E",
         // Legacy hosts include private data in whole-log backups. Hosts with
         // registered export settings use the operator’s per-type preference.
         alwaysIncludePrivateData: true,
@@ -657,12 +650,24 @@ const ExportHandler = {
   },
 
   async generateExport(
-    { operation, qsos, segments, compactFilenames, includePrivateData, includeLookupData, exportSettings, exportData, exportTitle, mainHandler, includeFieldsFrom }: ExportRequest,
+    {
+      operation,
+      qsos,
+      segments,
+      compactFilenames,
+      includePrivateData,
+      includeLookupData,
+      exportSettings,
+      exportData,
+      exportTitle,
+      mainHandler,
+      includeFieldsFrom,
+    }: ExportRequest,
     ctx: HookContext,
   ): Promise<ExportResult> {
     if (includeLookupData === false) qsos = qsos.map((qso) => exportQso(qso, { includeLookupData: false }))
-    const stationCall = String(operation.stationCall ?? 'UNKNOWN')
-    const title = String(operation.title ?? '')
+    const stationCall = String(operation.stationCall ?? "UNKNOWN")
+    const title = String(operation.title ?? "")
     // Once for the file: an ADIF export is one station's log, and a segmented
     // operation that changed call produces one file per call (the caller has
     // already picked which).
@@ -670,17 +675,14 @@ const ExportHandler = {
     // Decided once, for the file: what a template is withheld for is a
     // property of the export, not of the contact it would have been written on.
     const configured = TEXT_FIELD_TEMPLATES.map((field) => {
-      const key = ({ NOTES: 'adifNotesTemplate', COMMENT: 'adifCommentTemplate', QSLMSG: 'adifQslMessageTemplate' } as const)[field.name as 'NOTES' | 'COMMENT' | 'QSLMSG']
+      const key = ({ NOTES: "adifNotesTemplate", COMMENT: "adifCommentTemplate", QSLMSG: "adifQslMessageTemplate" } as const)[
+        field.name as "NOTES" | "COMMENT" | "QSLMSG"
+      ]
       const custom = exportSettings?.[key]
-      return typeof custom === 'string'
-        ? { ...field, template: custom, wholeLogOnly: false, usesQso: true }
-        : field
+      return typeof custom === "string" ? { ...field, template: custom, wholeLogOnly: false, usesQso: true } : field
     })
     const writable = configured.filter(
-      (textField) =>
-        textField.template !== '' &&
-        (includePrivateData === true || !textField.private) &&
-        (mainHandler == null || !textField.wholeLogOnly),
+      (textField) => textField.template !== "" && (includePrivateData === true || !textField.private) && (mainHandler == null || !textField.wholeLogOnly),
     )
     const textFields = writable.filter((textField) => textField.usesQso)
 
@@ -692,15 +694,16 @@ const ExportHandler = {
     // this the switch would strip every field a program might read while
     // still shipping the one line the operator wrote themselves.
     const preamble = exportTitle != null ? [exportTitle] : includePrivateData === true ? [stationCall, title] : [stationCall]
-    lines.push(`ADIF export for ${preamble.filter((x) => x).join(' — ')}`)
-    lines.push(field('ADIF_VER', ADIF_VERSION))
-    lines.push(field('PROGRAMID', ctx.appName ?? DEFAULT_PROGRAM_ID))
-    lines.push(field('CREATED_TIMESTAMP', `${fmtADIFDate(Date.now())} ${fmtADIFTime(Date.now())}`))
-    lines.push('<EOH>')
-    lines.push('')
+    lines.push(`ADIF export for ${preamble.filter((x) => x).join(" — ")}`)
+    lines.push(field("ADIF_VER", ADIF_VERSION))
+    lines.push(field("PROGRAMID", ctx.appName ?? DEFAULT_PROGRAM_ID))
+    lines.push(field("CREATED_TIMESTAMP", `${fmtADIFDate(Date.now())} ${fmtADIFTime(Date.now())}`))
+    lines.push("<EOH>")
+    lines.push("")
 
     const exportContext = templateContext({
-      operation: includePrivateData === true ? operation : { ...operation, title: '', userTitle: '', userNotes: '', grid: String(operation.grid ?? '').slice(0, 6) },
+      operation:
+        includePrivateData === true ? operation : { ...operation, title: "", userTitle: "", userNotes: "", grid: String(operation.grid ?? "").slice(0, 6) },
       qsoCount: qsos.length,
       appName: ctx.appName,
       // The operation's row columns don't cross the bridge, so the log's own
@@ -708,14 +711,12 @@ const ExportHandler = {
       // uses, so a file and the fields inside it cannot disagree about when
       // the operation was.
       atMillis: startMillisOf(operation, qsos),
-      log: { station: stationCall, format: 'adif', exportType: 'adif', extension: 'adi', compact: compactFilenames, ...exportData },
+      log: { station: stationCall, format: "adif", exportType: "adif", extension: "adi", compact: compactFilenames, ...exportData },
     })
 
     // The contact-independent half, rendered once now that `exportContext`
     // exists rather than once per record.
-    const constantTextFields = writable
-      .filter((textField) => !textField.usesQso)
-      .map((textField) => renderTextField(textField, exportContext))
+    const constantTextFields = writable.filter((textField) => !textField.usesQso).map((textField) => renderTextField(textField, exportContext))
 
     for (const qso of qsos) {
       // The program fields (SIG, POTA_REF…) come from an `adifFields` hook via
@@ -760,14 +761,14 @@ const ExportHandler = {
         // Assembled and then rendered, rather than appended field by field, so
         // that two hooks naming the same field — an operation activating a park
         // and a summit both answer MY_SIG — write it once ([renderRow]).
-        lines.push(renderRow(fields) + '<EOR>')
+        lines.push(renderRow(fields) + "<EOR>")
       }
     }
 
     return {
       filename: filenameFor(operation, qsos, compactFilenames),
-      mimeType: 'application/octet-stream',
-      content: lines.join('\n') + '\n',
+      mimeType: "application/octet-stream",
+      content: lines.join("\n") + "\n",
     }
   },
 }
@@ -775,6 +776,6 @@ const ExportHandler = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('export', { hook: ExportHandler, key: 'adif' })
+    registerHook("export", { hook: ExportHandler, key: "adif" })
   },
 })

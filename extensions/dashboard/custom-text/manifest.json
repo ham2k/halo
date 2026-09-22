@@ -7,26 +7,13 @@
   "category": "dashboard",
   "enabledByDefault": false,
   "icon": "note-text-outline",
-  "keywords": [
-    "notes",
-    "text",
-    "markdown",
-    "dashboard",
-    "panel"
-  ],
-  "hooks": [
-    "panel"
-  ],
+  "keywords": ["notes", "text", "markdown", "dashboard", "panel"],
+  "hooks": ["panel"],
   "translations": {
     "es": {
       "name": "Panel de Texto",
       "description": "Un panel con lo que escribas en él — notas, una lista de skeds, un plan de bandas — en markdown",
-      "keywords": [
-        "notas",
-        "texto",
-        "markdown",
-        "panel"
-      ]
+      "keywords": ["notas", "texto", "markdown", "panel"]
     }
   }
 }

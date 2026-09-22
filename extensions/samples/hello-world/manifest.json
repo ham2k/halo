@@ -7,14 +7,8 @@
   "category": "dashboard",
   "icon": "hand-wave-outline",
   "api": 1,
-  "keywords": [
-    "sample",
-    "example",
-    "hello"
-  ],
-  "hooks": [
-    "panel"
-  ],
+  "keywords": ["sample", "example", "hello"],
+  "hooks": ["panel"],
   "sharedDependencies": {
     "@ham2k/lib-callsigns": "^1.0.2",
     "@ham2k/lib-country-files": "^1.0.202605301",

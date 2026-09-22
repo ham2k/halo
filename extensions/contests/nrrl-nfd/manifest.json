@@ -8,21 +8,9 @@
   "enabledByDefault": false,
   "icon": "pine-tree",
   "accentColor": "#BA0C2F",
-  "keywords": [
-    "field day",
-    "fieldday",
-    "nasjonal",
-    "norway",
-    "norge",
-    "nrrl",
-    "nfd",
-    "contest",
-    "cabrillo"
-  ],
+  "keywords": ["field day", "fieldday", "nasjonal", "norway", "norge", "nrrl", "nfd", "contest", "cabrillo"],
   "relevance": {
-    "entities": [
-      "LA"
-    ]
+    "entities": ["LA"]
   },
   "hooks": ["activity", "adifFields", "export", "ref:nrrl-nfd", "scoring"],
   "translations": {

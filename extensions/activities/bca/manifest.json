@@ -8,39 +8,16 @@
   "enabledByDefault": false,
   "icon": "castle",
   "accentColor": "#7B5E3B",
-  "keywords": [
-    "castles",
-    "fortresses",
-    "belgium",
-    "activation"
-  ],
+  "keywords": ["castles", "fortresses", "belgium", "activation"],
   "relevance": {
-    "entities": [
-      "ON"
-    ]
+    "entities": ["ON"]
   },
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "ref:bcaActivation",
-    "scoring",
-    "spots"
-  ],
-  "domains": [
-    "drive.google.com",
-    "www.cqgma.org"
-  ],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:bcaActivation", "scoring", "spots"],
+  "domains": ["drive.google.com", "www.cqgma.org"],
   "translations": {
     "es": {
       "description": "Referencias de castillos belgas, registro de activaciones y auto-spotting",
-      "keywords": [
-        "castillos",
-        "bélgica",
-        "activación"
-      ]
+      "keywords": ["castillos", "bélgica", "activación"]
     }
   }
 }

@@ -8,32 +8,13 @@
   "enabledByDefault": false,
   "icon": "satellite-variant",
   "accentColor": "#3F51B5",
-  "keywords": [
-    "satellite",
-    "sat",
-    "amsat",
-    "transponder"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "command",
-    "dataFile",
-    "ref:satellite"
-  ],
-  "domains": [
-    "polo.ham2k.com"
-  ],
+  "keywords": ["satellite", "sat", "amsat", "transponder"],
+  "hooks": ["activity", "adifFields", "adifImport", "command", "dataFile", "ref:satellite"],
+  "domains": ["polo.ham2k.com"],
   "translations": {
     "es": {
       "description": "Registra contactos vía satélites de radioaficionados, con el satélite y su transpondedor",
-      "keywords": [
-        "satélite",
-        "sat",
-        "amsat",
-        "transpondedor"
-      ]
+      "keywords": ["satélite", "sat", "amsat", "transpondedor"]
     }
   }
 }

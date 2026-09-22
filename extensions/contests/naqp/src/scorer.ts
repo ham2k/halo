@@ -34,13 +34,13 @@ import { normalizeLocation } from "./exchange.ts"
 import { isMultiplier } from "./locations.ts"
 
 /// NAQP is an HF contest: the WARC bands are excluded by the rules.
-export const VALID_BANDS = ['160m', '80m', '40m', '20m', '15m', '10m']
+export const VALID_BANDS = ["160m", "80m", "40m", "20m", "15m", "10m"]
 
 /// The bands a given running actually allows. RTTY is 80-10 — the rules exclude
 /// 160m for that one contest only, so a flat list over-claims a band multiplier
 /// the log checker will strike.
 export function validBandsFor(contestMode: string): string[] {
-  return contestMode.toUpperCase() === 'RTTY' ? VALID_BANDS.filter((b) => b !== '160m') : VALID_BANDS
+  return contestMode.toUpperCase() === "RTTY" ? VALID_BANDS.filter((b) => b !== "160m") : VALID_BANDS
 }
 
 export type NAQPScoresheet = {
@@ -57,7 +57,7 @@ export type NAQPScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// Whether a QSO's mode counts for a contest run in [contestMode].
@@ -75,7 +75,7 @@ function modeMatches(contestMode: string, qsoMode: string): boolean {
   if (!contestMode) return true
   if (!qsoMode) return false
   const contestFamily = superModeForMode(contestMode)
-  if (contestFamily !== 'DATA') return superModeForMode(qsoMode) === contestFamily
+  if (contestFamily !== "DATA") return superModeForMode(qsoMode) === contestFamily
 
   const mode = qsoMode.toUpperCase()
   const wanted = contestMode.toUpperCase()
@@ -84,18 +84,24 @@ function modeMatches(contestMode: string, qsoMode: string): boolean {
   // operator said "digital" without saying which, which in an RTTY running
   // means RTTY. Rejecting it would zero a contact made by anyone whose rig sits
   // in DATA-U.
-  if (mode === 'DATA') return true
+  if (mode === "DATA") return true
   // ADIF stores a SUBMODE as the mode when there is one, so a perfectly ordinary
   // RTTY contact can arrive logged as `ASCI`. Resolve it to its parent mode
   // rather than string-matching.
-  return (ADIF_MODE_FOR_SUBMODE[mode] ?? '').toUpperCase() === wanted
+  return (ADIF_MODE_FOR_SUBMODE[mode] ?? "").toUpperCase() === wanted
 }
 
 export const NAQPScorer: ContestScorer<NAQPScoresheet> = {
   startScoresheet(): NAQPScoresheet {
     return {
-      workedByCall: {}, mults: {}, bandMults: {}, bands: {},
-      qsos: 0, points: 0, dayQsos: 0, dayPoints: 0,
+      workedByCall: {},
+      mults: {},
+      bandMults: {},
+      bands: {},
+      qsos: 0,
+      points: 0,
+      dayQsos: 0,
+      dayPoints: 0,
     }
   },
 
@@ -114,18 +120,18 @@ export const NAQPScorer: ContestScorer<NAQPScoresheet> = {
     const band = str(qso.band)
 
     if (!modeMatches(str(ref?.mode), str(qso.mode))) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidMode'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidMode"] } }
     }
     if (!validBandsFor(str(ref?.mode)).includes(band)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     const worked = base.workedByCall[call] ?? []
     if (worked.includes(band)) {
-      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
-    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === 'naqp')
+    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === "naqp")
     const location = normalizeLocation(contestRef?.location)
 
     // Every valid QSO is a point, whatever they sent — an unrecognized or
@@ -151,22 +157,22 @@ export const NAQPScorer: ContestScorer<NAQPScoresheet> = {
 
     const score: QsoScoreVerdict = { value: points, band }
     const notices: string[] = []
-    if (newMult) notices.push('newMult')
+    if (newMult) notices.push("newMult")
     // Decided from `worked` as it stood before this band was recorded.
-    if (heardBefore) notices.push('newBand')
+    if (heardBefore) notices.push("newBand")
     if (notices.length > 0) score.notices = notices
     // A location that earns nothing has to SAY so. Every US state, province and
     // NA entity is a multiplier, so an exchange this contest doesn't recognize
     // is a multiplier going unclaimed — and a typo the operator can still fix,
     // if they're told. polo tinted the field red for the same reason.
-    if (!location) score.alerts = ['missingExchange']
-    else if (!isMultiplier(location) && location !== 'DX') score.alerts = ['invalidExchange']
+    if (!location) score.alerts = ["missingExchange"]
+    else if (!isMultiplier(location) && location !== "DX") score.alerts = ["invalidExchange"]
 
     return { scoresheet: base, score }
   },
 
   summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const multCount = Object.keys(scoresheet.mults).length
     const points = isDay ? scoresheet.dayPoints : scoresheet.points
     // Multipliers accumulate across the whole contest, so a day's "score" is
@@ -175,9 +181,9 @@ export const NAQPScorer: ContestScorer<NAQPScoresheet> = {
 
     return {
       naqp: {
-        key: 'naqp',
+        key: "naqp",
         for: scope,
-        icon: 'flag-checkered',
+        icon: "flag-checkered",
         total,
         points,
         mults: multCount,
@@ -195,8 +201,6 @@ function bandBreakdown(sheet: NAQPScoresheet): string {
   return VALID_BANDS.map((band) => {
     const qsos = sheet.bands[band] ?? 0
     const mults = Object.keys(sheet.bandMults[band] ?? {}).length
-    return qsos === 0 && mults === 0
-      ? `**${band}**: —`
-      : `**${band}**: ${fmtInteger(qsos)} QSOs, ${fmtInteger(mults)} mults`
-  }).join('\n')
+    return qsos === 0 && mults === 0 ? `**${band}**: —` : `**${band}**: ${fmtInteger(qsos)} QSOs, ${fmtInteger(mults)} mults`
+  }).join("\n")
 }

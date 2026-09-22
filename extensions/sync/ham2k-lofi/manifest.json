@@ -3,16 +3,7 @@
   "name": "Ham2K Log Filer Sync",
   "version": "0.1.0",
   "description": "Cloud backup and sync for Ham2K apps",
-  "keywords": [
-    "sync",
-    "backup",
-    "lofi"
-  ],
-  "hooks": [
-    "command",
-    "syncTransport"
-  ],
-  "domains": [
-    "*"
-  ]
+  "keywords": ["sync", "backup", "lofi"],
+  "hooks": ["command", "syncTransport"],
+  "domains": ["*"]
 }

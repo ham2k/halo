@@ -12,19 +12,19 @@
 // must never invent. One module, imported by both, is what makes that
 // structural rather than a promise.
 
-import { readFile } from 'node:fs/promises'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { readFile } from "node:fs/promises"
+import { dirname, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
-import { buildOptionsFor as extensionBuildOptions } from './tools/h2kext-build.mjs'
-import { validateRelevance } from './tools/h2kext.mjs'
+import { buildOptionsFor as extensionBuildOptions } from "./tools/h2kext-build.mjs"
+import { validateRelevance } from "./tools/h2kext.mjs"
 
 export const root = dirname(fileURLToPath(import.meta.url))
-export const outDir = resolve(root, '../app/assets/extensions')
+export const outDir = resolve(root, "../app/assets/extensions")
 // Where `kind: 'fixture'` bundles go. NOT under [outDir]: the app's pubspec
 // ships that directory wholesale, so anything written there is in every
 // release build whether or not index.json names it.
-export const fixturesDir = resolve(root, 'build/fixtures')
+export const fixturesDir = resolve(root, "build/fixtures")
 
 export const sharedPackages = [
   "@ham2k/lib-callsigns",
@@ -47,7 +47,7 @@ export const sharedPackages = [
 export async function loadHostSharedVersions() {
   const versions = {}
   for (const pkg of sharedPackages) {
-    const pkgJson = JSON.parse(await readFile(join(root, 'node_modules', pkg, 'package.json'), 'utf-8'))
+    const pkgJson = JSON.parse(await readFile(join(root, "node_modules", pkg, "package.json"), "utf-8"))
     versions[pkg] = pkgJson.version
   }
   return versions
@@ -72,7 +72,7 @@ export async function loadHostSharedVersions() {
 ///
 /// The range is `*` and means it: a built-in ships inside the app, so whatever
 /// version the host holds is by construction the version it was built against.
-export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((pkg) => [pkg, '*']))
+export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((pkg) => [pkg, "*"]))
 
 // `domains` is each extension's declared network capability (DESIGN.md §3's
 // manifest allowlist, in embryo): the Dart host refuses host.fetch calls to
@@ -105,62 +105,62 @@ export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((
 // the panel and the catalog can rank a disabled entry. Manifests without a `category` are
 // core: always enabled, never listed in the panel.
 export const bundles = [
-  { key: 'kernel', entry: 'sdk/src/kernel.ts', kind: 'kernel' },
-  { key: 'adif', entry: 'core/adif/src/index.ts', kind: 'extension' },
-  { key: 'scoring', entry: 'core/scoring/src/index.ts', kind: 'extension' },
-  { key: 'lookups', entry: 'core/lookups/src/index.ts', kind: 'extension' },
-  { key: 'radio-commands', entry: 'core/radio-commands/src/index.ts', kind: 'extension' },
-  { key: 'dev-commands', entry: 'core/dev-commands/src/index.ts', kind: 'extension' },
-  { key: 'annotation-commands', entry: 'core/annotation-commands/src/index.ts', kind: 'extension' },
-  { key: 'spot-commands', entry: 'core/spot-commands/src/index.ts', kind: 'extension' },
-  { key: 'settings-commands', entry: 'core/settings-commands/src/index.ts', kind: 'extension' },
-  { key: 'test-ops-commands', entry: 'core/test-ops-commands/src/index.ts', kind: 'extension' },
-  { key: 'operation-commands', entry: 'core/operation-commands/src/index.ts', kind: 'extension' },
-  { key: 'templates', entry: 'core/templates/src/index.ts', kind: 'extension' },
-  { key: 'qrz', entry: 'lookups/qrz/src/index.ts', kind: 'extension' },
-  { key: 'ham2k-lookup', entry: 'lookups/ham2k-lookup/src/index.ts', kind: 'extension' },
-  { key: 'call-notes', entry: 'lookups/call-notes/src/index.ts', kind: 'extension' },
-  { key: 'spot-history', entry: 'lookups/spot-history/src/index.ts', kind: 'extension' },
-  { key: 'call-history', entry: 'lookups/call-history/src/index.ts', kind: 'extension' },
-  { key: 'pota', entry: 'activities/pota/src/index.ts', kind: 'extension' },
-  { key: 'sota', entry: 'activities/sota/src/index.ts', kind: 'extension' },
-  { key: 'wca', entry: 'activities/wca/src/index.ts', kind: 'extension' },
-  { key: 'gma', entry: 'activities/gma/src/index.ts', kind: 'extension' },
-  { key: 'mota', entry: 'activities/mota/src/index.ts', kind: 'extension' },
-  { key: 'siota', entry: 'activities/siota/src/index.ts', kind: 'extension' },
-  { key: 'wwbota', entry: 'activities/wwbota/src/index.ts', kind: 'extension' },
-  { key: 'zlota', entry: 'activities/zlota/src/index.ts', kind: 'extension' },
-  { key: 'wwff', entry: 'activities/wwff/src/index.ts', kind: 'extension' },
-  { key: 'llota', entry: 'activities/llota/src/index.ts', kind: 'extension' },
-  { key: 'tota', entry: 'activities/tota/src/index.ts', kind: 'extension' },
-  { key: 'bca', entry: 'activities/bca/src/index.ts', kind: 'extension' },
-  { key: 'blha', entry: 'activities/blha/src/index.ts', kind: 'extension' },
-  { key: 'eca', entry: 'activities/eca/src/index.ts', kind: 'extension' },
-  { key: 'ela', entry: 'activities/ela/src/index.ts', kind: 'extension' },
-  { key: 'pga', entry: 'activities/pga/src/index.ts', kind: 'extension' },
-  { key: 'custom', entry: 'activities/custom/src/index.ts', kind: 'extension' },
-  { key: 'satellites', entry: 'activities/satellites/src/index.ts', kind: 'extension' },
-  { key: 'simple-contest', entry: 'contests/simple-contest/src/index.ts', kind: 'extension' },
-  { key: 'cqww', entry: 'contests/cqww/src/index.ts', kind: 'extension' },
-  { key: 'arrl-dx', entry: 'contests/arrl-dx/src/index.ts', kind: 'extension' },
-  { key: 'cqwpx', entry: 'contests/cqwpx/src/index.ts', kind: 'extension' },
-  { key: 'iaru-hf', entry: 'contests/iaru-hf/src/index.ts', kind: 'extension' },
-  { key: 'naqp', entry: 'contests/naqp/src/index.ts', kind: 'extension' },
-  { key: 'stateparks', entry: 'contests/stateparks/src/index.ts', kind: 'extension' },
-  { key: 'fd', entry: 'contests/fd/src/index.ts', kind: 'extension' },
-  { key: 'wfd', entry: 'contests/wfd/src/index.ts', kind: 'extension' },
-  { key: 'arrl-vhf-tests', entry: 'contests/arrl-vhf-tests/src/index.ts', kind: 'extension' },
-  { key: 'r1-vhf-tests', entry: 'contests/r1-vhf-tests/src/index.ts', kind: 'extension' },
-  { key: 'rsgb-vhf-tests', entry: 'contests/rsgb-vhf-tests/src/index.ts', kind: 'extension' },
-  { key: 'r1-fd', entry: 'contests/r1-fd/src/index.ts', kind: 'extension' },
-  { key: 'nrrl-nfd', entry: 'contests/nrrl-nfd/src/index.ts', kind: 'extension' },
-  { key: 'cwt', entry: 'contests/cwt/src/index.ts', kind: 'extension' },
-  { key: 'qp', entry: 'contests/qp/src/index.ts', kind: 'extension' },
-  { key: 'parksnpeaks', entry: 'spots/parksnpeaks/src/index.ts', kind: 'extension' },
+  { key: "kernel", entry: "sdk/src/kernel.ts", kind: "kernel" },
+  { key: "adif", entry: "core/adif/src/index.ts", kind: "extension" },
+  { key: "scoring", entry: "core/scoring/src/index.ts", kind: "extension" },
+  { key: "lookups", entry: "core/lookups/src/index.ts", kind: "extension" },
+  { key: "radio-commands", entry: "core/radio-commands/src/index.ts", kind: "extension" },
+  { key: "dev-commands", entry: "core/dev-commands/src/index.ts", kind: "extension" },
+  { key: "annotation-commands", entry: "core/annotation-commands/src/index.ts", kind: "extension" },
+  { key: "spot-commands", entry: "core/spot-commands/src/index.ts", kind: "extension" },
+  { key: "settings-commands", entry: "core/settings-commands/src/index.ts", kind: "extension" },
+  { key: "test-ops-commands", entry: "core/test-ops-commands/src/index.ts", kind: "extension" },
+  { key: "operation-commands", entry: "core/operation-commands/src/index.ts", kind: "extension" },
+  { key: "templates", entry: "core/templates/src/index.ts", kind: "extension" },
+  { key: "qrz", entry: "lookups/qrz/src/index.ts", kind: "extension" },
+  { key: "ham2k-lookup", entry: "lookups/ham2k-lookup/src/index.ts", kind: "extension" },
+  { key: "call-notes", entry: "lookups/call-notes/src/index.ts", kind: "extension" },
+  { key: "spot-history", entry: "lookups/spot-history/src/index.ts", kind: "extension" },
+  { key: "call-history", entry: "lookups/call-history/src/index.ts", kind: "extension" },
+  { key: "pota", entry: "activities/pota/src/index.ts", kind: "extension" },
+  { key: "sota", entry: "activities/sota/src/index.ts", kind: "extension" },
+  { key: "wca", entry: "activities/wca/src/index.ts", kind: "extension" },
+  { key: "gma", entry: "activities/gma/src/index.ts", kind: "extension" },
+  { key: "mota", entry: "activities/mota/src/index.ts", kind: "extension" },
+  { key: "siota", entry: "activities/siota/src/index.ts", kind: "extension" },
+  { key: "wwbota", entry: "activities/wwbota/src/index.ts", kind: "extension" },
+  { key: "zlota", entry: "activities/zlota/src/index.ts", kind: "extension" },
+  { key: "wwff", entry: "activities/wwff/src/index.ts", kind: "extension" },
+  { key: "llota", entry: "activities/llota/src/index.ts", kind: "extension" },
+  { key: "tota", entry: "activities/tota/src/index.ts", kind: "extension" },
+  { key: "bca", entry: "activities/bca/src/index.ts", kind: "extension" },
+  { key: "blha", entry: "activities/blha/src/index.ts", kind: "extension" },
+  { key: "eca", entry: "activities/eca/src/index.ts", kind: "extension" },
+  { key: "ela", entry: "activities/ela/src/index.ts", kind: "extension" },
+  { key: "pga", entry: "activities/pga/src/index.ts", kind: "extension" },
+  { key: "custom", entry: "activities/custom/src/index.ts", kind: "extension" },
+  { key: "satellites", entry: "activities/satellites/src/index.ts", kind: "extension" },
+  { key: "simple-contest", entry: "contests/simple-contest/src/index.ts", kind: "extension" },
+  { key: "cqww", entry: "contests/cqww/src/index.ts", kind: "extension" },
+  { key: "arrl-dx", entry: "contests/arrl-dx/src/index.ts", kind: "extension" },
+  { key: "cqwpx", entry: "contests/cqwpx/src/index.ts", kind: "extension" },
+  { key: "iaru-hf", entry: "contests/iaru-hf/src/index.ts", kind: "extension" },
+  { key: "naqp", entry: "contests/naqp/src/index.ts", kind: "extension" },
+  { key: "stateparks", entry: "contests/stateparks/src/index.ts", kind: "extension" },
+  { key: "fd", entry: "contests/fd/src/index.ts", kind: "extension" },
+  { key: "wfd", entry: "contests/wfd/src/index.ts", kind: "extension" },
+  { key: "arrl-vhf-tests", entry: "contests/arrl-vhf-tests/src/index.ts", kind: "extension" },
+  { key: "r1-vhf-tests", entry: "contests/r1-vhf-tests/src/index.ts", kind: "extension" },
+  { key: "rsgb-vhf-tests", entry: "contests/rsgb-vhf-tests/src/index.ts", kind: "extension" },
+  { key: "r1-fd", entry: "contests/r1-fd/src/index.ts", kind: "extension" },
+  { key: "nrrl-nfd", entry: "contests/nrrl-nfd/src/index.ts", kind: "extension" },
+  { key: "cwt", entry: "contests/cwt/src/index.ts", kind: "extension" },
+  { key: "qp", entry: "contests/qp/src/index.ts", kind: "extension" },
+  { key: "parksnpeaks", entry: "spots/parksnpeaks/src/index.ts", kind: "extension" },
   // Built for the host's bridge tests, into [fixturesDir]; never shipped.
-  { key: 'k2hrc-svg-scenes', entry: 'samples/k2hrc-svg-scenes/src/index.ts', kind: 'fixture' },
-  { key: 'custom-text', entry: 'dashboard/custom-text/src/index.ts', kind: 'extension' },
-  { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
+  { key: "k2hrc-svg-scenes", entry: "samples/k2hrc-svg-scenes/src/index.ts", kind: "fixture" },
+  { key: "custom-text", entry: "dashboard/custom-text/src/index.ts", kind: "extension" },
+  { key: "ham2k-lofi", entry: "sync/ham2k-lofi/src/index.ts", kind: "extension" },
 ]
 
 /// The experiment KEYS the app's catalog defines (aliases don't count: the
@@ -168,7 +168,7 @@ export const bundles = [
 /// by regex rather than a yaml dependency — the catalog is a flat hand-edited
 /// list.
 export async function loadKnownExperiments() {
-  const experimentsCatalog = await readFile(resolve(root, '../app/experiments.yaml'), 'utf-8')
+  const experimentsCatalog = await readFile(resolve(root, "../app/experiments.yaml"), "utf-8")
   const knownExperiments = new Set([...experimentsCatalog.matchAll(/^\s*-\s*key:\s*(\S+)/gm)].map((m) => m[1]))
   // The extraction has to prove itself: no shipped manifest declares
   // `experiments` today, so the validation below iterates zero times and a
@@ -179,10 +179,11 @@ export async function loadKnownExperiments() {
   // `gato` is the one key the catalog cannot lose: it gates the Station
   // Configuration section (docs/design/cat.md) and its entry says why the
   // key itself must not be renamed.
-  if (!knownExperiments.has('gato')) {
+  if (!knownExperiments.has("gato")) {
     throw new Error(
       `app/experiments.yaml parsed to ${knownExperiments.size} key(s), none of them 'gato' — ` +
-        "either the extraction regex no longer matches the catalog, or the 'gato' entry was renamed or removed")
+        "either the extraction regex no longer matches the catalog, or the 'gato' entry was renamed or removed",
+    )
   }
   return knownExperiments
 }
@@ -195,8 +196,8 @@ export async function loadKnownExperiments() {
 /// accepted what `npm run build` would reject is the exact drift this module
 /// exists to prevent.
 export async function readManifest(bundle, knownExperiments) {
-  const manifestPath = join(root, dirname(bundle.entry), '../manifest.json')
-  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  const manifestPath = join(root, dirname(bundle.entry), "../manifest.json")
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"))
   validateManifest(manifest, bundle.key, knownExperiments, manifestPath)
   return manifest
 }
@@ -205,29 +206,26 @@ export function validateManifest(manifest, bundleKey, knownExperiments, manifest
   if (manifest.key !== bundleKey) {
     throw new Error(`manifest key '${manifest.key}' does not match bundle key '${bundleKey}' (${manifestPath})`)
   }
-  for (const field of ['name', 'version', 'description']) {
-    if (typeof manifest[field] !== 'string' || manifest[field].trim() === '') {
+  for (const field of ["name", "version", "description"]) {
+    if (typeof manifest[field] !== "string" || manifest[field].trim() === "") {
       throw new Error(`manifest for '${bundleKey}' is missing required field '${field}' (${manifestPath})`)
     }
   }
   // `experiments` gates availability in the host: a malformed list — or a key
   // the catalog doesn't define (a typo, an alias, a retired entry) — would
   // silently hide the extension for everyone, so it fails the build instead.
-  if ('experiments' in manifest &&
-      (!Array.isArray(manifest.experiments) ||
-        manifest.experiments.some((e) => typeof e !== 'string' || e.trim() === ''))) {
+  if ("experiments" in manifest && (!Array.isArray(manifest.experiments) || manifest.experiments.some((e) => typeof e !== "string" || e.trim() === ""))) {
     throw new Error(`manifest for '${bundleKey}' has an invalid 'experiments' list (${manifestPath})`)
   }
   for (const experiment of manifest.experiments ?? []) {
     if (!knownExperiments.has(experiment)) {
-      throw new Error(
-        `manifest for '${bundleKey}' gates on experiment '${experiment}', which is not a key in app/experiments.yaml (${manifestPath})`)
+      throw new Error(`manifest for '${bundleKey}' gates on experiment '${experiment}', which is not a key in app/experiments.yaml (${manifestPath})`)
     }
   }
   // The name `relevance` replaced. `indexEntryFor` copies `relevance` and
   // nothing else, so a manifest left on the old name builds green and ships
   // worldwide, with the author's audience dropped on the floor.
-  if ('geo' in manifest) {
+  if ("geo" in manifest) {
     throw new Error(`manifest for '${bundleKey}' carries 'geo', which is now 'relevance' (${manifestPath})`)
   }
   // `relevance` is copied into index.json as-is and read there by the host's
@@ -236,8 +234,7 @@ export function validateManifest(manifest, bundleKey, knownExperiments, manifest
   // (tools/h2kext.mjs), imported rather than restated.
   const relevanceProblems = validateRelevance(manifest.relevance)
   if (relevanceProblems.length) {
-    throw new Error(
-      `manifest for '${bundleKey}' has an invalid 'relevance': ${relevanceProblems.join('; ')} (${manifestPath})`)
+    throw new Error(`manifest for '${bundleKey}' has an invalid 'relevance': ${relevanceProblems.join("; ")} (${manifestPath})`)
   }
 }
 
@@ -247,7 +244,7 @@ export function validateManifest(manifest, bundleKey, knownExperiments, manifest
 export async function loadManifests(forBundles = bundles) {
   const knownExperiments = await loadKnownExperiments()
   for (const bundle of forBundles) {
-    if (bundle.kind !== 'extension') continue
+    if (bundle.kind !== "extension") continue
     bundle.manifest = await readManifest(bundle, knownExperiments)
   }
   return forBundles
@@ -261,7 +258,7 @@ export function buildOptionsFor(bundle, { hostSharedVersions, outfile }) {
   // The kernel is the one bundle that must NOT reach for `sharedModules`: it
   // IS what holds them, so it inlines every shared library and publishes the
   // instances the others then look up.
-  const isKernel = bundle.kind === 'kernel'
+  const isKernel = bundle.kind === "kernel"
 
   return extensionBuildOptions({
     entry: join(root, bundle.entry),
@@ -270,13 +267,13 @@ export function buildOptionsFor(bundle, { hostSharedVersions, outfile }) {
     manifest: isKernel ? {} : { sharedDependencies: builtInSharedDependencies },
     inline: isKernel ? sharedPackages : [],
     alias: {
-      '@ham2k/extension-sdk': join(root, 'sdk/src/index.ts'),
+      "@ham2k/extension-sdk": join(root, "sdk/src/index.ts"),
       // camelcase@8 (pulled in by @ham2k/lib-qson-cabrillo) is a unicode-aware
       // package doing an ASCII job: Cabrillo tags are ASCII by specification.
       // shims/camelcase.ts covers that job without the dependency.
-      'camelcase': join(root, 'shims/camelcase.ts'),
+      camelcase: join(root, "shims/camelcase.ts"),
     },
-    ...(isKernel ? { define: { '__SHARED_VERSIONS__': JSON.stringify(hostSharedVersions) } } : {}),
+    ...(isKernel ? { define: { __SHARED_VERSIONS__: JSON.stringify(hostSharedVersions) } } : {}),
     metafile: true,
   })
 }

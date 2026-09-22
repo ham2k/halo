@@ -9,9 +9,7 @@
   "internalNotes": "",
   "lastUpdated": "2026-08-07 12:00Z",
   "status": "Updated for 2026. Mixed mode scoring will not be accurate.",
-  "exchange": [
-    "Location"
-  ],
+  "exchange": ["Location"],
   "options": {
     "dcCountsAsMaryland": true,
     "stateCountsForInState": true,
@@ -98,25 +96,10 @@
     "YUM": "Yuma"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "PORTABLE"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "MIXED"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE"],
+    "station": ["FIXED", "MOBILE", "PORTABLE"],
+    "mode": ["CW", "PHONE", "MIXED"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

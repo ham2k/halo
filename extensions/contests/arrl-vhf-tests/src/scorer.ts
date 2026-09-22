@@ -62,7 +62,7 @@ export type ARRLVHFScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 function distanceKm(ourGrid: string, theirGrid: string): number | null {
@@ -80,14 +80,25 @@ function distanceKm(ourGrid: string, theirGrid: string): number | null {
   } catch {
     return null
   }
-  return distanceOnEarth({ lat: our[0], lon: our[1] }, { lat: their[0], lon: their[1] }, { units: 'km' })
+  return distanceOnEarth({ lat: our[0], lon: our[1] }, { lat: their[0], lon: their[1] }, { units: "km" })
 }
 
 export const ARRLVHFScorer: ContestScorer<ARRLVHFScoresheet> = {
   startScoresheet(): ARRLVHFScoresheet {
     return {
-      worked: {}, qsoPointsTaken: {}, bands: {}, qsos: 0, points: 0, distancePoints: 0, qsoPoints: 0,
-      distanceTotal: 0, maxDistance: 0, maxDistancePerBand: {}, dupeCount: 0, dayQsos: 0, dayPoints: 0,
+      worked: {},
+      qsoPointsTaken: {},
+      bands: {},
+      qsos: 0,
+      points: 0,
+      distancePoints: 0,
+      qsoPoints: 0,
+      distanceTotal: 0,
+      maxDistance: 0,
+      maxDistancePerBand: {},
+      dupeCount: 0,
+      dayQsos: 0,
+      dayPoints: 0,
     }
   },
 
@@ -115,20 +126,18 @@ export const ARRLVHFScorer: ContestScorer<ARRLVHFScoresheet> = {
 
     const band = str(qso.band)
     if (!event.bands.includes(band)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     const ourGrid = trimmedGrid(str(operation.grid), event)
-    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find(
-      (r) => r?.type === 'arrl-vhf-tests',
-    )
+    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === "arrl-vhf-tests")
     const theirGrid = trimmedGrid(str(contestRef?.grid), event)
 
     if (!ourGrid) {
-      return { scoresheet: base, score: { value: 0, alerts: ['ourGrid'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["ourGrid"] } }
     }
     if (!theirGrid) {
-      return { scoresheet: base, score: { value: 0, alerts: ['missingExchange'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["missingExchange"] } }
     }
 
     const key = `${call}|${band}|${ourGrid}`
@@ -136,35 +145,35 @@ export const ARRLVHFScorer: ContestScorer<ARRLVHFScoresheet> = {
     const isDupe = priorGrids.includes(theirGrid)
     if (isDupe) {
       base.dupeCount += 1
-      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     const alerts: string[] = []
     const fullGrid = theirGrid.length >= event.gridChars
-    if (event.score !== 'points' && !fullGrid) alerts.push('shortGrid')
+    if (event.score !== "points" && !fullGrid) alerts.push("shortGrid")
 
     let value: number
     let distance: number | null = null
     let distancePoints = 0
     let qsoPoints = 0
-    if (event.score === 'points') {
+    if (event.score === "points") {
       value = event.points?.[band] ?? 0
     } else {
       // Both grids are present here (the earlier `!ourGrid`/`!theirGrid`
       // checks already handled the missing-exchange case) — a null result
       // means one of them is present but malformed, not absent.
       distance = distanceKm(ourGrid, theirGrid)
-      if (distance === null) return { scoresheet: base, score: { value: 0, alerts: ['invalidExchange'] } }
+      if (distance === null) return { scoresheet: base, score: { value: 0, alerts: ["invalidExchange"] } }
       distance = Math.round(distance)
       // A band this event lists but doesn't multiplier is a gap in the event
       // data (polo's own 10 GHz tables omit `submm`) — score it visibly
       // wrong rather than silently zero, so it reads as a data bug to fix
       // instead of a legitimate zero-point contact.
       const multiplier = event.multipliers?.[band]
-      if (multiplier === undefined) return { scoresheet: base, score: { value: 0, alerts: ['invalidBand'] } }
+      if (multiplier === undefined) return { scoresheet: base, score: { value: 0, alerts: ["invalidBand"] } }
       distancePoints = distance * multiplier
       value = distancePoints
-      if (event.score === 'distanceAndPoints') {
+      if (event.score === "distanceAndPoints") {
         const pointsKey = `${call}|${band}`
         if (fullGrid && !base.qsoPointsTaken[pointsKey]) {
           qsoPoints = event.points?.qso ?? 0
@@ -196,40 +205,42 @@ export const ARRLVHFScorer: ContestScorer<ARRLVHFScoresheet> = {
 
   summarizeScore({ scoresheet, ref, scope }): Record<string, ScoreTally> {
     const event = eventFor(str(ref?.ref))
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const points = isDay ? scoresheet.dayPoints : scoresheet.points
     const qsos = isDay ? scoresheet.dayQsos : scoresheet.qsos
 
-    const usesDistance = event?.score !== 'points'
-    const summary = usesDistance
-      ? `${fmtInteger(points)} pts (${fmtInteger(scoresheet.distanceTotal)} km total)`
-      : `${fmtInteger(points)} pts`
+    const usesDistance = event?.score !== "points"
+    const summary = usesDistance ? `${fmtInteger(points)} pts (${fmtInteger(scoresheet.distanceTotal)} km total)` : `${fmtInteger(points)} pts`
     // The whole-log split; the day scope has no per-day halves to show.
-    const split = event?.score === 'distanceAndPoints' && !isDay
-      ? `${fmtInteger(scoresheet.distancePoints)} distance points + ${fmtInteger(scoresheet.qsoPoints)} QSO points`
-      : null
+    const split =
+      event?.score === "distanceAndPoints" && !isDay
+        ? `${fmtInteger(scoresheet.distancePoints)} distance points + ${fmtInteger(scoresheet.qsoPoints)} QSO points`
+        : null
 
-    const bandLines = Object.keys(scoresheet.bands).sort().map((band) => {
-      const count = scoresheet.bands[band] ?? 0
-      if (!count) return null
-      return usesDistance
-        ? `**${band}**: ${fmtInteger(count)} QSOs • Longest: ${fmtInteger(scoresheet.maxDistancePerBand[band] ?? 0)} km`
-        : `**${band}**: ${fmtInteger(count)} QSOs`
-    }).filter((line): line is string => line !== null)
+    const bandLines = Object.keys(scoresheet.bands)
+      .sort()
+      .map((band) => {
+        const count = scoresheet.bands[band] ?? 0
+        if (!count) return null
+        return usesDistance
+          ? `**${band}**: ${fmtInteger(count)} QSOs • Longest: ${fmtInteger(scoresheet.maxDistancePerBand[band] ?? 0)} km`
+          : `**${band}**: ${fmtInteger(count)} QSOs`
+      })
+      .filter((line): line is string => line !== null)
 
     return {
-      'arrl-vhf-tests': {
-        key: 'arrl-vhf-tests',
+      "arrl-vhf-tests": {
+        key: "arrl-vhf-tests",
         for: scope,
-        icon: 'radio-tower',
+        icon: "radio-tower",
         total: points,
         qsos,
         summary,
         longSummary: [
-          summary + (scoresheet.dupeCount > 0 ? ` (${fmtInteger(scoresheet.dupeCount)} dupe${scoresheet.dupeCount > 1 ? 's' : ''})` : ''),
+          summary + (scoresheet.dupeCount > 0 ? ` (${fmtInteger(scoresheet.dupeCount)} dupe${scoresheet.dupeCount > 1 ? "s" : ""})` : ""),
           ...(split ? [split] : []),
           ...bandLines,
-        ].join('\n'),
+        ].join("\n"),
       },
     }
   },

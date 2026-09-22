@@ -4,13 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import {
-  annotateCallAgainstCountryFile,
-  entityForCall,
-  entityPrefixForCall,
-  flagForDxccCode,
-  regionAndCountryForDxccCode,
-} from "./dxcc.ts"
+import { annotateCallAgainstCountryFile, entityForCall, entityPrefixForCall, flagForDxccCode, regionAndCountryForDxccCode } from "./dxcc.ts"
 
 test("entityPrefixForCall resolves a plain callsign's DXCC entity prefix", () => {
   assert.equal(entityPrefixForCall("W1AW"), "K")

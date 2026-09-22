@@ -14,7 +14,19 @@
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, isTestOperation, looksLikeReference, LOCATION_ACCURACY } from "@ham2k/extension-sdk"
+import {
+  activityAdifImport,
+  activityExportHook,
+  activityScorer,
+  applyLatLonFromApiFields,
+  contestScorer,
+  defineExtension,
+  host,
+  huntingExportHook,
+  isTestOperation,
+  looksLikeReference,
+  LOCATION_ACCURACY,
+} from "@ham2k/extension-sdk"
 import type {
   AnnotatedCallInfo,
   HookContext,
@@ -42,14 +54,14 @@ import manifest from "../manifest.json" with { type: "json" }
 
 export { REFERENCE_REGEX, transformsForPrefix, hunterDefaultPrefix, activationDefaultPrefix } from "./refFormatting.ts"
 
-const HUNTING_TYPE = 'pota'
-const ACTIVATION_TYPE = 'potaActivation'
+const HUNTING_TYPE = "pota"
+const ACTIVATION_TYPE = "potaActivation"
 
 // POTA references are `{country}-{number}` and a park's `locationDesc` is a
 // comma-separated list of `{country}-{state}` areas. In these countries a
 // single-area park sits in one meaningful state/province worth surfacing on
 // the guess; elsewhere the area code isn't a useful "state", so we skip it.
-const COUNTRIES_WHERE_STATES_MATTER = new Set(['US', 'CA', 'AU'])
+const COUNTRIES_WHERE_STATES_MATTER = new Set(["US", "CA", "AU"])
 
 // Nearby suggestions use a ~150km bounding box (dbLookupSelectByLocation is a
 // rectangular query, not a true radius); results are then given a real
@@ -62,7 +74,7 @@ function relevanceForMatch(row: LookupRow, searchTerm?: string): number {
   if (!searchTerm) return row.flags ? 1 : 0.6
   const term = searchTerm.toUpperCase()
   const key = row.key.toUpperCase()
-  const name = (row.name ?? '').toUpperCase()
+  const name = (row.name ?? "").toUpperCase()
   if (key === term) return 1
   if (name.startsWith(term)) return 0.9
   if (key.includes(term)) return 0.85
@@ -91,13 +103,13 @@ async function fetchPark(ref: string): Promise<POTAParkInfo | null> {
 
   // 1. Try querying the offline local lookups database first
   try {
-    const row = await host.dbLookupSelectOne('pota', ref)
+    const row = await host.dbLookupSelectOne("pota", ref)
     if (row && row.data) {
       const info: POTAParkInfo = {
         reference: row.key,
-        name: row.name ?? '',
-        grid6: row.data.grid6 ?? '',
-        locationDesc: row.data.locationDesc ?? '',
+        name: row.name ?? "",
+        grid6: row.data.grid6 ?? "",
+        locationDesc: row.data.locationDesc ?? "",
         active: row.flags ?? 1,
         lat: row.lat,
         lon: row.lon,
@@ -113,7 +125,7 @@ async function fetchPark(ref: string): Promise<POTAParkInfo | null> {
   let park: POTAParkInfo | null = null
   try {
     const response = await host.fetch(`https://api.pota.app/park/${encodeURIComponent(ref)}`)
-    if (response.status === 200 && response.body && response.body !== 'null') {
+    if (response.status === 200 && response.body && response.body !== "null") {
       park = JSON.parse(response.body) as POTAParkInfo
       // The live API names these `latitude`/`longitude` (matching the CSV
       // export's own columns), not this interface's `lat`/`lon` — bridged
@@ -131,13 +143,13 @@ async function fetchPark(ref: string): Promise<POTAParkInfo | null> {
 
 const RefHandler = {
   async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
-    const normalized = (ref.ref ?? '').toUpperCase().trim()
+    const normalized = (ref.ref ?? "").toUpperCase().trim()
     return { valid: REFERENCE_REGEX.test(normalized), normalized }
   },
 
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const t = tFor(ctx)
-    const reference = (ref.ref ?? '').toUpperCase().trim()
+    const reference = (ref.ref ?? "").toUpperCase().trim()
     // A reference that resolved to nothing keeps NONE of the old one's
     // decoration, whether it failed the pattern or merely isn't in the list.
     // `label`/`shortLabel` are what the activity row renders in preference to
@@ -158,10 +170,10 @@ const RefHandler = {
       retired: undefined,
     })
 
-    if (!REFERENCE_REGEX.test(reference)) return undecorated(t('invalidReference'))
+    if (!REFERENCE_REGEX.test(reference)) return undecorated(t("invalidReference"))
 
     const park = await fetchPark(reference)
-    if (!park?.name) return undecorated(t('unknownPark'))
+    if (!park?.name) return undecorated(t("unknownPark"))
 
     return {
       ...ref,
@@ -171,7 +183,7 @@ const RefHandler = {
       lat: park.lat,
       lon: park.lon,
       location: park.locationDesc,
-      program: 'POTA',
+      program: "POTA",
       label: `POTA ${reference}: ${park.name}`,
       shortLabel: `POTA ${reference}`,
       // Set here as well as in `suggest`, and always to a boolean, so this is
@@ -190,7 +202,7 @@ const RefHandler = {
   },
 
   async linkForRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
-    const reference = (ref.ref ?? '').toUpperCase().trim()
+    const reference = (ref.ref ?? "").toUpperCase().trim()
     if (!REFERENCE_REGEX.test(reference)) return null
     return { url: `https://pota.app/#/park/${encodeURIComponent(reference)}` }
   },
@@ -204,17 +216,17 @@ const ActivityHook = {
     const prefix = hunterDefaultPrefix(operation, qso)
     return [
       {
-        key: 'pota/hunter',
-        label: 'POTA',
-        icon: 'pine-tree',
+        key: "pota/hunter",
+        label: "POTA",
+        icon: "pine-tree",
         color: manifest.accentColor,
         order: 10,
-        optionType: 'optional',
+        optionType: "optional",
         // POTA n-fers: one operation can activate several parks at once,
         // and a QSO can hunt several.
         allowsMultiple: true,
         input: {
-          kind: 'refList',
+          kind: "refList",
           refType: HUNTING_TYPE,
           placeholder: `${prefix}-...`,
           pattern: REFERENCE_REGEX.source,
@@ -231,17 +243,17 @@ const ActivityHook = {
     const prefix = activationDefaultPrefix(operation)
     return [
       {
-        key: 'pota/activation',
-        label: tFor(ctx)('activationControl'),
-        icon: 'pine-tree',
+        key: "pota/activation",
+        label: tFor(ctx)("activationControl"),
+        icon: "pine-tree",
         color: manifest.accentColor,
         order: 10,
-        optionType: 'optional',
+        optionType: "optional",
         // POTA n-fers: one operation can activate several parks at once,
         // and a QSO can hunt several.
         allowsMultiple: true,
         input: {
-          kind: 'refList',
+          kind: "refList",
           refType: ACTIVATION_TYPE,
           placeholder: `${prefix}-...`,
           pattern: REFERENCE_REGEX.source,
@@ -272,17 +284,14 @@ const ActivityHook = {
     // fallback below.
     const callerEntity = searchTerm ? entityPrefixForCall(callsign) : undefined
     const rows: LookupRow[] = searchTerm
-      ? await host.dbLookupSelectAll('pota', searchTerm, callerEntity, true)
+      ? await host.dbLookupSelectAll("pota", searchTerm, callerEntity, true)
       : location
-        ? await host.dbLookupSelectByLocation('pota', location.lat, location.lon, NEARBY_DELTA, true)
+        ? await host.dbLookupSelectByLocation("pota", location.lat, location.lon, NEARBY_DELTA, true)
         : []
 
     const withDistance = rows.map((row) => ({
       row,
-      distance:
-        location && row.lat != null && row.lon != null
-          ? (distanceOnEarth(location, { lat: row.lat, lon: row.lon }) ?? undefined)
-          : undefined,
+      distance: location && row.lat != null && row.lon != null ? (distanceOnEarth(location, { lat: row.lat, lon: row.lon }) ?? undefined) : undefined,
     }))
     // Nearby (no search term) results must be ranked by real distance before
     // truncating to MAX_SUGGESTIONS — the DB query's row order isn't a
@@ -302,8 +311,8 @@ const ActivityHook = {
         lat: row.lat,
         lon: row.lon,
         location: data.locationDesc,
-        program: 'POTA',
-        label: `POTA ${row.key}: ${row.name ?? ''}`,
+        program: "POTA",
+        label: `POTA ${row.key}: ${row.name ?? ""}`,
         shortLabel: `POTA ${row.key}`,
         distance,
         relevance: relevanceForMatch(row, searchTerm),
@@ -329,14 +338,11 @@ const ActivityHook = {
     // `looksLikeReference` is what keeps a NAME search out of it: `pota: bear`
     // is someone looking for a park called Bear, and must not also be offered
     // an invented BEAR park at the head of the list.
-    const typedMalformed =
-      scoped && searchTerm && looksLikeReference(searchTerm.toUpperCase().trim(), REFERENCE_REGEX)
-        ? searchTerm.toUpperCase().trim()
-        : ''
+    const typedMalformed = scoped && searchTerm && looksLikeReference(searchTerm.toUpperCase().trim(), REFERENCE_REGEX) ? searchTerm.toUpperCase().trim() : ""
     const typedSearch = normalizedSearch ?? (typedMalformed || null)
     if (typedSearch && !suggestions.some((s) => s.ref === typedSearch)) {
       const isValidRef = normalizedSearch !== null
-      const isTestRef = typedSearch.endsWith('-TEST')
+      const isTestRef = typedSearch.endsWith("-TEST")
       const t = tFor(ctx)
       // The row query above searched for the RAW text ("us1234"), which a
       // dashless/lowercase reference never matches — the local table's keys
@@ -346,8 +352,7 @@ const ActivityHook = {
       // the normalized key) and then the network, same as a real ref lookup
       // gets everywhere else.
       const resolved = isTestRef || !isValidRef ? null : await fetchPark(typedSearch)
-      const name =
-        resolved?.name || (!isValidRef ? t('invalidReference') : isTestRef ? t('testParkName') : t('unknownParkName'))
+      const name = resolved?.name || (!isValidRef ? t("invalidReference") : isTestRef ? t("testParkName") : t("unknownParkName"))
       // Naming a retired park exactly still offers it — marked, so the
       // operator learns WHY it was missing from the list rather than reading
       // its absence as a bad code. Carried as a flag for the picker to render,
@@ -365,7 +370,7 @@ const ActivityHook = {
         lat: resolved?.lat,
         lon: resolved?.lon,
         location: resolved?.locationDesc,
-        program: 'POTA',
+        program: "POTA",
         label: `POTA ${typedSearch}: ${name}`,
         shortLabel: `POTA ${typedSearch}`,
         relevance: 1,
@@ -379,14 +384,14 @@ const ActivityHook = {
 }
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
-  return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
+  return ((container.refs as Ref[] | undefined) ?? []).filter((r) => r.type === type && r.ref)
 }
 
 /// The synthetic park a Test Operation always spots under, replacing
 /// whatever real activation refs the operation has — so a test spot never
 /// reads as a real activation to a hunter, and testing the spotting flow
 /// never needs a real park configured.
-const TEST_OPERATION_REF: Ref = { type: ACTIVATION_TYPE, ref: 'K-TEST' }
+const TEST_OPERATION_REF: Ref = { type: ACTIVATION_TYPE, ref: "K-TEST" }
 
 /// A QSO-scoped grid lookup: any POTA park hunted on THIS qso is a more
 /// specific ("portable") location than a callsign's registered home QTH —
@@ -411,22 +416,25 @@ async function lookupCall(
   // In state-relevant countries, a park whose locationDesc names exactly one
   // area sits in a single state — surface it (the area's second, post-`-`
   // part) both on the guess and in the location text.
-  const country = park.reference.split('-')[0]
-  const areas = park.locationDesc.split(',').map((a) => a.trim()).filter((a) => a)
+  const country = park.reference.split("-")[0]
+  const areas = park.locationDesc
+    .split(",")
+    .map((a) => a.trim())
+    .filter((a) => a)
   let state: string | undefined
   if (COUNTRIES_WHERE_STATES_MATTER.has(country) && areas.length === 1) {
-    const s = areas[0].split('-')[1]
+    const s = areas[0].split("-")[1]
     if (s) state = s
   }
 
-  const namePart = park.name ? `: ${park.name}` : ''
+  const namePart = park.name ? `: ${park.name}` : ""
   const location = state ? `${park.reference}, ${state}${namePart}` : `${park.reference}${namePart}`
 
   const result: LookupResult[number] = {
     call: callInfo.call,
-    source: 'pota',
-    scope: 'qso',
-    locationScope: 'portable',
+    source: "pota",
+    scope: "qso",
+    locationScope: "portable",
     grid: park.grid6,
     location,
     locAccuracy: LOCATION_ACCURACY.REASONABLE,
@@ -448,14 +456,14 @@ const AdifFieldsHook = {
     // same type — SIG_INFO/MY_SIG_INFO take only the primary (first) one,
     // POTA_REF/MY_POTA_REF list them all.
     if (huntingRefs.length > 0) {
-      fields.push({ name: 'SIG', value: 'POTA' })
-      fields.push({ name: 'SIG_INFO', value: huntingRefs[0].ref! })
-      fields.push({ name: 'POTA_REF', value: huntingRefs.map((r) => r.ref).join(',') })
+      fields.push({ name: "SIG", value: "POTA" })
+      fields.push({ name: "SIG_INFO", value: huntingRefs[0].ref! })
+      fields.push({ name: "POTA_REF", value: huntingRefs.map((r) => r.ref).join(",") })
     }
     if (activationRefs.length > 0) {
-      fields.push({ name: 'MY_SIG', value: 'POTA' })
-      fields.push({ name: 'MY_SIG_INFO', value: activationRefs[0].ref! })
-      fields.push({ name: 'MY_POTA_REF', value: activationRefs.map((r) => r.ref).join(',') })
+      fields.push({ name: "MY_SIG", value: "POTA" })
+      fields.push({ name: "MY_SIG_INFO", value: activationRefs[0].ref! })
+      fields.push({ name: "MY_POTA_REF", value: activationRefs.map((r) => r.ref).join(",") })
     }
     return fields
   },
@@ -479,18 +487,18 @@ const AdifFieldsHook = {
 
     const activationFields: { name: string; value: string }[] = []
     if (activationRefs.length > 0) {
-      activationFields.push({ name: 'MY_SIG', value: 'POTA' })
-      activationFields.push({ name: 'MY_SIG_INFO', value: activationRefs[0].ref! })
-      activationFields.push({ name: 'MY_POTA_REF', value: activationRefs.map((r) => r.ref).join(',') })
+      activationFields.push({ name: "MY_SIG", value: "POTA" })
+      activationFields.push({ name: "MY_SIG_INFO", value: activationRefs[0].ref! })
+      activationFields.push({ name: "MY_POTA_REF", value: activationRefs.map((r) => r.ref).join(",") })
     }
 
     if (huntingRefs.length === 0) return [activationFields]
 
     return huntingRefs.map((ref) => [
       ...activationFields,
-      { name: 'SIG', value: 'POTA' },
-      { name: 'SIG_INFO', value: ref.ref! },
-      { name: 'POTA_REF', value: ref.ref! },
+      { name: "SIG", value: "POTA" },
+      { name: "SIG_INFO", value: ref.ref! },
+      { name: "POTA_REF", value: ref.ref! },
     ])
   },
 }
@@ -511,12 +519,12 @@ interface POTAApiSpot {
 }
 
 const SpotsHook = {
-  sourceName: 'POTA.app',
+  sourceName: "POTA.app",
 
   async fetchSpots(_args: Record<string, never>, ctx: HookContext): Promise<Spot[]> {
     if (!ctx.online) return []
 
-    const response = await host.fetch('https://api.pota.app/spot/activator')
+    const response = await host.fetch("https://api.pota.app/spot/activator")
     if (response.status !== 200) throw new Error(`POTA API returned HTTP ${response.status}`)
     const apiSpots = JSON.parse(response.body) as POTAApiSpot[]
 
@@ -531,9 +539,9 @@ const SpotsHook = {
           mode: spot.mode,
           refs: [{ ref: spot.reference, type: HUNTING_TYPE }],
           spot: {
-            timeInMillis: Date.parse(spot.spotTime + 'Z'),
-            source: 'pota',
-            label: `${spot.reference}: ${[simplifyStates(spot.locationDesc), spot.name].filter((x) => x).join(' • ')}`,
+            timeInMillis: Date.parse(spot.spotTime + "Z"),
+            source: "pota",
+            label: `${spot.reference}: ${[simplifyStates(spot.locationDesc), spot.name].filter((x) => x).join(" • ")}`,
             sourceInfo: {
               source: spot.source,
               id: spot.spotId,
@@ -549,33 +557,33 @@ const SpotsHook = {
   async isSelfSpotEnabled({ operation }: { operation: Record<string, JSONValue> }, _ctx: HookContext): Promise<SpotEligibility> {
     // A Test Operation always spots under K-TEST (see postSelfSpot), so the
     // option is offered even when the operation has no real POTA ref at all.
-    if (isTestOperation(operation.stationCall)) return { enabled: true, icon: 'pine-tree' }
-    return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: 'pine-tree' } : { enabled: false }
+    if (isTestOperation(operation.stationCall)) return { enabled: true, icon: "pine-tree" }
+    return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: "pine-tree" } : { enabled: false }
   },
 
   async isOtherSpotEnabled({ qso }: { qso: Record<string, JSONValue> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(qso, HUNTING_TYPE).length > 0 ? { enabled: true, icon: 'pine-tree' } : { enabled: false }
+    return refsOfType(qso, HUNTING_TYPE).length > 0 ? { enabled: true, icon: "pine-tree" } : { enabled: false }
   },
 
   async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, ctx: HookContext): Promise<PostResult> {
-    const call = String(operation.stationCall ?? '')
+    const call = String(operation.stationCall ?? "")
     // K-TEST regardless of the operation's actual refs — see
     // TEST_OPERATION_REF's doc.
     const refs = isTestOperation(call) ? [TEST_OPERATION_REF] : refsOfType(operation, ACTIVATION_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No POTA activation on this operation' }
+    if (refs.length === 0) return { ok: false, message: "No POTA activation on this operation" }
     return postSpotToPOTA({ call, spotter: call, freq, mode, refs, comment, appName: ctx.appName })
   },
 
   async postOtherSpot({ qso, comment, spotterCall }: PostOtherSpotRequest, ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(qso, HUNTING_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No POTA reference on this QSO' }
+    if (refs.length === 0) return { ok: false, message: "No POTA reference on this QSO" }
     const freq = Number(qso.freq)
-    if (!freq) return { ok: false, message: 'This QSO has no frequency to spot' }
+    if (!freq) return { ok: false, message: "This QSO has no frequency to spot" }
     const their = (qso.their ?? {}) as Record<string, JSONValue>
     const our = (qso.our ?? {}) as Record<string, JSONValue>
     return postSpotToPOTA({
-      call: String(their.call ?? ''),
-      spotter: String(our.call ?? spotterCall ?? ''),
+      call: String(their.call ?? ""),
+      spotter: String(our.call ?? spotterCall ?? ""),
       freq,
       mode: qso.mode ? String(qso.mode) : undefined,
       refs,
@@ -588,22 +596,36 @@ const SpotsHook = {
 /// Posts directly to the POTA API — no authentication required (unlike
 /// SOTA's spot API, which needs a logged-in account). Ported from
 /// app-polo's POTAPostSpotAPI.js.
-async function postSpotToPOTA(
-  { call, spotter, freq, mode, refs, comment, appName }: { call: string; spotter: string; freq: number; mode?: string; refs: Ref[]; comment?: string; appName?: string },
-): Promise<PostResult> {
-  const refComment = refs.length > 1 ? `${refs.length}-fer: ${refs.map((r) => r.ref).join(' ')}` : ''
+async function postSpotToPOTA({
+  call,
+  spotter,
+  freq,
+  mode,
+  refs,
+  comment,
+  appName,
+}: {
+  call: string
+  spotter: string
+  freq: number
+  mode?: string
+  refs: Ref[]
+  comment?: string
+  appName?: string
+}): Promise<PostResult> {
+  const refComment = refs.length > 1 ? `${refs.length}-fer: ${refs.map((r) => r.ref).join(" ")}` : ""
   try {
-    const response = await host.fetch('https://api.pota.app/spot', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await host.fetch("https://api.pota.app/spot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         activator: call,
         spotter,
         frequency: freq,
         reference: refs[0].ref,
-        mode: mode ?? 'SSB',
-        source: appName ?? 'Ham2K Logger',
-        comments: [comment, refComment].filter((x) => x).join(' '),
+        mode: mode ?? "SSB",
+        source: appName ?? "Ham2K Logger",
+        comments: [comment, refComment].filter((x) => x).join(" "),
       }),
     })
     if (response.status !== 200) {
@@ -616,23 +638,23 @@ async function postSpotToPOTA(
 }
 
 function simplifyStates(locationDesc: string): string {
-  if (!locationDesc) return ''
-  const states = locationDesc.split(',')
-  const oneState = states[0].split('-', 2)[1]?.trim()
-  return states.length > 1 ? `${oneState}+${states.length - 1}` : (oneState ?? '')
+  if (!locationDesc) return ""
+  const states = locationDesc.split(",")
+  const oneState = states[0].split("-", 2)[1]?.trim()
+  return states.length > 1 ? `${oneState}+${states.length - 1}` : (oneState ?? "")
 }
 
 const potaDataFile: DataFileDefinition = {
-  key: 'pota-all-parks',
-  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
-  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
-  url: 'https://pota.app/all_parks_ext.csv',
+  key: "pota-all-parks",
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileName"),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileDescription"),
+  url: "https://pota.app/all_parks_ext.csv",
   maxAgeInDays: 30,
-  fetchType: 'csv',
-  category: 'pota',
+  fetchType: "csv",
+  category: "pota",
   csvOptions: {
     hasHeaders: true,
-    delimiter: ',',
+    delimiter: ",",
   },
   csvToLookupEntry: (row: Record<string, string> | string[]) => {
     const r = row as Record<string, string>
@@ -646,7 +668,7 @@ const potaDataFile: DataFileDefinition = {
     // a quoted or padded value, a switch to 'true'/'Y' — mark the WHOLE file
     // retired on the next refresh, and `activeOnly` would then empty every
     // search and every nearby result with nothing to say why.
-    const active = r.active !== '0'
+    const active = r.active !== "0"
     const ref = r.reference.toUpperCase()
     const name = r.name
     const dxccCode = parseInt(r.entityId, 10) || 0
@@ -671,7 +693,7 @@ const potaDataFile: DataFileDefinition = {
         grid6: r.grid || locationToGrid6(lat, lon),
         latitude: lat,
         longitude: lon,
-        locationDesc: r.locationDesc || '',
+        locationDesc: r.locationDesc || "",
       },
     }
   },
@@ -682,41 +704,41 @@ const potaDataFile: DataFileDefinition = {
 /// and one contact can hunt several. A repeat contact counts again on a new
 /// day, band, mode, or park.
 const POTA_SCORING = {
-  label: 'POTA',
-  icon: 'pine-tree',
+  label: "POTA",
+  icon: "pine-tree",
   activationType: ACTIVATION_TYPE,
   huntingType: HUNTING_TYPE,
   qsosToActivate: 10,
   allowsMultipleReferences: true,
-  uniquePer: ['band', 'mode', 'day', 'ref'] as const,
-  activates: 'daily' as const,
+  uniquePer: ["band", "mode", "day", "ref"] as const,
+  activates: "daily" as const,
   // Functions, not literals: "park"/"parks"/"P2P" are POTA's own vocabulary,
   // resolved through POTA's own translator at summarize time — a raw string
   // here would be untranslatable, since activityScoring.ts's catalog has no
   // way to know what a given activity calls its reference.
-  refNoun: (ctx: HookContext) => tFor(ctx)('park'),
-  refNounPlural: (ctx: HookContext) => tFor(ctx)('parksPlural'),
-  p2pLabel: (ctx: HookContext) => tFor(ctx)('p2p'),
+  refNoun: (ctx: HookContext) => tFor(ctx)("park"),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)("parksPlural"),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)("p2p"),
 }
 
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook(`ref:${HUNTING_TYPE}`, { hook: RefHandler, key: 'pota' })
-    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: RefHandler, key: 'pota' })
-    registerHook('activity', { hook: ActivityHook, key: 'pota' })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: 'pota' })
+    registerHook(`ref:${HUNTING_TYPE}`, { hook: RefHandler, key: "pota" })
+    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: RefHandler, key: "pota" })
+    registerHook("activity", { hook: ActivityHook, key: "pota" })
+    registerHook("adifFields", { hook: AdifFieldsHook, key: "pota" })
     // The inverse of the hook above: POTA_REF/MY_POTA_REF and the SIG pair
     // back into hunted and activated refs. `normalizeReference` REPAIRS a
     // dashless reference as well as rejecting a malformed one, so under
     // `SIG: POTA` a bare `12345` imports as `1-2345`; the SIG check is what
     // keeps that narrow.
-    registerHook('adifImport', {
+    registerHook("adifImport", {
       hook: activityAdifImport({
-        sig: 'POTA',
+        sig: "POTA",
         huntingType: HUNTING_TYPE,
         activationType: ACTIVATION_TYPE,
-        refField: 'pota_ref',
+        refField: "pota_ref",
         // `normalizeReference` repairs what it can — it inserts the dash a
         // dashless `us1234` is missing — and answers null for what it cannot.
         // Null falls back to the raw text rather than dropping the reference:
@@ -725,59 +747,59 @@ defineExtension({
         // invalid where the operator can correct it.
         normalize: (ref) => normalizeReference(ref) ?? ref.toUpperCase().trim(),
       }),
-      key: 'pota',
+      key: "pota",
     })
-    registerHook('spots', { hook: SpotsHook, key: 'pota' })
+    registerHook("spots", { hook: SpotsHook, key: "pota" })
     // Priority 100 — higher than every lookup source (QRZ 99, ...), so the
     // POTA park's grid is resolved BEFORE a home-QTH lookup can set
     // callInfo.grid; the `if (callInfo.grid) return []` guard below would
     // otherwise skip this hook once a lower-priority qth-scope grid was
     // already merged in.
-    registerHook('lookup', { hook: { lookupCall }, key: 'pota', priority: 100 })
-    registerHook('dataFile', { hook: potaDataFile, key: 'pota-all-parks' })
+    registerHook("lookup", { hook: { lookupCall }, key: "pota", priority: 100 })
+    registerHook("dataFile", { hook: potaDataFile, key: "pota-all-parks" })
     // Scoped to the ref types rather than 'always': paying a full-log bridge
     // crossing per activity on every operation is what `scope` exists to avoid.
     // An operation that only HUNTS parks carries neither type on its own refs,
     // and still selects this scorer — the host matches the types found in the
     // log and in the work being scored as well (docs/design/activities.md §4).
-    registerHook('scoring', {
+    registerHook("scoring", {
       hook: contestScorer(activityScorer(POTA_SCORING), {
         scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
-      key: 'pota',
+      key: "pota",
     })
     // One submittable ADIF per activated park — an n-fer owes the program a log
     // for each (docs/design/activities.md §3.2).
-    registerHook('export', {
+    registerHook("export", {
       hook: activityExportHook({
-        key: 'pota',
-        label: 'POTA',
+        key: "pota",
+        label: "POTA",
         activationType: ACTIVATION_TYPE,
         templateSample: {
-          log: { ref: 'US-1234', refName: 'Example Park' },
-          operation: { refs: [{ type: ACTIVATION_TYPE, ref: 'US-1234' }] },
+          log: { ref: "US-1234", refName: "Example Park" },
+          operation: { refs: [{ type: ACTIVATION_TYPE, ref: "US-1234" }] },
         },
-        icon: 'pine-tree',
+        icon: "pine-tree",
         // A park worked through a bird is still a park activation, and POTA's
         // uploader reads PROP_MODE/SAT_NAME — so the satellite's fields ride
         // along in this file even though it is POTA's log.
-        includeFieldsFrom: ['satellites'],
+        includeFieldsFrom: ["satellites"],
       }),
-      key: 'pota',
+      key: "pota",
     })
     // The chaser side: every park hunted, across the whole log — a different
     // key so it doesn't collide with the activator registration above.
-    registerHook('export', {
+    registerHook("export", {
       hook: huntingExportHook({
-        key: 'pota',
-        label: 'POTA',
+        key: "pota",
+        label: "POTA",
         huntingType: HUNTING_TYPE,
         activationType: ACTIVATION_TYPE,
-        icon: 'pine-tree',
+        icon: "pine-tree",
         color: manifest.accentColor,
-        includeFieldsFrom: ['satellites'],
+        includeFieldsFrom: ["satellites"],
       }),
-      key: 'pota-hunter',
+      key: "pota-hunter",
     })
   },
 })

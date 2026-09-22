@@ -22,11 +22,11 @@ import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
 /// CQ WW is an HF contest: the WARC bands are excluded by the rules, not an
 /// oversight.
-export const VALID_BANDS = ['160m', '80m', '40m', '20m', '15m', '10m']
+export const VALID_BANDS = ["160m", "80m", "40m", "20m", "15m", "10m"]
 
 /// A CQ zone as typed: 1-40, with or without a leading zero. Anchored and
 /// matched case-insensitively by the core, so this is just the body.
-export const ZONE_PATTERN = '0?(?:[1-9]|[1-3][0-9]|40)'
+export const ZONE_PATTERN = "0?(?:[1-9]|[1-3][0-9]|40)"
 
 export type CQWWScoresheet = {
   /// call → bands already worked with it (one QSO per band is allowed).
@@ -48,21 +48,23 @@ export type CQWWScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// The zone as the operator typed it, reduced to its canonical form: "05" and
 /// "5" are the same multiplier, and must not count twice.
 export function normalizeZone(value: JSONValue | undefined): string {
-  const digits = String(value ?? '').trim().replace(/^0+(?=\d)/, '')
-  return /^([1-9]|[1-3][0-9]|40)$/.test(digits) ? digits : ''
+  const digits = String(value ?? "")
+    .trim()
+    .replace(/^0+(?=\d)/, "")
+  return /^([1-9]|[1-3][0-9]|40)$/.test(digits) ? digits : ""
 }
 
 /// CQ WW runs separate CW, SSB and RTTY weekends; a QSO in the wrong mode is
 /// not a contest QSO. SSB covers the sideband modes a radio may report.
 function modeMatches(contestMode: string, qsoMode: string): boolean {
   if (!contestMode) return true
-  if (contestMode === 'SSB') return qsoMode === 'SSB' || qsoMode === 'USB' || qsoMode === 'LSB'
+  if (contestMode === "SSB") return qsoMode === "SSB" || qsoMode === "USB" || qsoMode === "LSB"
   return qsoMode === contestMode
 }
 
@@ -70,8 +72,15 @@ export const CQWWScorer: ContestScorer<CQWWScoresheet> = {
   startScoresheet({ operation }): CQWWScoresheet {
     const ours = annotateCallAgainstCountryFile(str(operation.stationCall))
     return {
-      workedByCall: {}, mults: {}, bandMults: {}, bands: {}, bandPoints: {},
-      qsos: 0, points: 0, dayQsos: 0, dayPoints: 0,
+      workedByCall: {},
+      mults: {},
+      bandMults: {},
+      bands: {},
+      bandPoints: {},
+      qsos: 0,
+      points: 0,
+      dayQsos: 0,
+      dayPoints: 0,
       ourContinent: ours.continent,
       ourEntity: ours.entityPrefix,
     }
@@ -93,16 +102,16 @@ export const CQWWScorer: ContestScorer<CQWWScoresheet> = {
     const mode = str(qso.mode)
 
     if (!modeMatches(str(ref?.mode), mode)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidMode'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidMode"] } }
     }
     if (!VALID_BANDS.includes(band)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     // One QSO per station per band.
     const worked = base.workedByCall[call] ?? []
     if (worked.includes(band)) {
-      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     // The exchange the operator typed wins; the country file's zone for that
@@ -115,10 +124,8 @@ export const CQWWScorer: ContestScorer<CQWWScoresheet> = {
     // exact log-disagrees-with-its-own-score problem §8 exists to prevent, just
     // arrived at from the other side.
     const theirInfo = annotateCallAgainstCountryFile(call)
-    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === 'cqww')
-    const zone = contestRef && 'theirZone' in contestRef
-      ? normalizeZone(contestRef.theirZone)
-      : normalizeZone(theirInfo.cqZone)
+    const contestRef = ((qso.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === "cqww")
+    const zone = contestRef && "theirZone" in contestRef ? normalizeZone(contestRef.theirZone) : normalizeZone(theirInfo.cqZone)
     const entity = theirInfo.entityPrefix
 
     // Points are relative to us: our own entity is worth nothing, our own
@@ -128,12 +135,12 @@ export const CQWWScorer: ContestScorer<CQWWScoresheet> = {
     if (base.ourEntity && entity && base.ourEntity === entity) {
       points = 0
     } else if (base.ourContinent && theirInfo.continent && base.ourContinent === theirInfo.continent) {
-      points = base.ourContinent === 'NA' ? 2 : 1
+      points = base.ourContinent === "NA" ? 2 : 1
     }
 
     // Zone and country each multiply, once per band.
     const newMults: string[] = []
-    for (const mult of [zone ? `${band}|Z${zone}` : '', entity ? `${band}|C${entity}` : '']) {
+    for (const mult of [zone ? `${band}|Z${zone}` : "", entity ? `${band}|C${entity}` : ""]) {
       if (!mult) continue
       if (base.mults[mult] === undefined) newMults.push(mult)
       base.mults[mult] = (base.mults[mult] ?? 0) + 1
@@ -152,8 +159,8 @@ export const CQWWScorer: ContestScorer<CQWWScoresheet> = {
 
     const score: QsoScoreVerdict = { value: points, band }
     const notices: string[] = []
-    if (newMults.length > 0) notices.push('newMult')
-    if (worked.length > 0) notices.push('newBand')
+    if (newMults.length > 0) notices.push("newMult")
+    if (worked.length > 0) notices.push("newBand")
     if (notices.length > 0) score.notices = notices
     if (zone) score.zone = zone
 
@@ -161,7 +168,7 @@ export const CQWWScorer: ContestScorer<CQWWScoresheet> = {
   },
 
   summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const multCount = Object.keys(scoresheet.mults).length
     const points = isDay ? scoresheet.dayPoints : scoresheet.points
     // Multipliers accumulate across the whole contest, so a day's "score" is
@@ -170,9 +177,9 @@ export const CQWWScorer: ContestScorer<CQWWScoresheet> = {
 
     return {
       cqww: {
-        key: 'cqww',
+        key: "cqww",
         for: scope,
-        icon: 'earth',
+        icon: "earth",
         total,
         points,
         mults: multCount,
@@ -192,9 +199,7 @@ function bandBreakdown(sheet: CQWWScoresheet): string {
     const qsos = sheet.bands[band] ?? 0
     const points = sheet.bandPoints[band] ?? 0
     const mults = Object.keys(sheet.bandMults[band] ?? {}).length
-    return qsos === 0 && mults === 0
-      ? `**${band}**: —`
-      : `**${band}**: ${fmtInteger(qsos)} QSOs, ${fmtInteger(points)} pts, ${fmtInteger(mults)} mults`
+    return qsos === 0 && mults === 0 ? `**${band}**: —` : `**${band}**: ${fmtInteger(qsos)} QSOs, ${fmtInteger(points)} pts, ${fmtInteger(mults)} mults`
   })
-  return lines.join('\n')
+  return lines.join("\n")
 }

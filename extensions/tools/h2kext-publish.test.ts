@@ -70,15 +70,29 @@ async function run(argv: string[], { fetch, env = authed }: { fetch: any; env?: 
   const code = await main(argv, {
     env,
     fetch,
-    stdout: { write(s: string) { stdout += s; return true } },
-    stderr: { write(s: string) { stderr += s; return true } },
+    stdout: {
+      write(s: string) {
+        stdout += s
+        return true
+      },
+    },
+    stderr: {
+      write(s: string) {
+        stderr += s
+        return true
+      },
+    },
   })
   return { code, stdout, stderr }
 }
 
 const accepted = {
-  key: "w7abc-notes", version: "1.2.3", channel: "stable", status: "pending",
-  submissionId: "sub_42", url: `${DEFAULT_CATALOG}/w7abc-notes`,
+  key: "w7abc-notes",
+  version: "1.2.3",
+  channel: "stable",
+  status: "pending",
+  submissionId: "sub_42",
+  url: `${DEFAULT_CATALOG}/w7abc-notes`,
 }
 
 test("the upload is one bearer-authorised POST of the raw bytes, the channel in the query", async () => {
@@ -174,7 +188,8 @@ test("a refused notes request warns, exits 1, and leaves the publish alone", asy
   // would send the author to upload again into a 409.
   const file = await bundleFile()
   const catalog = catalogAnswering(201, accepted, (url) =>
-    url.includes("/notes") ? { status: 403, body: { error: "notes are not yours to set", code: "forbidden" } } : { status: 201, body: accepted })
+    url.includes("/notes") ? { status: 403, body: { error: "notes are not yours to set", code: "forbidden" } } : { status: 201, body: accepted },
+  )
 
   const { code, stdout, stderr } = await run([file, "--channel", "stable", "--notes", "First release"], catalog)
 
@@ -205,8 +220,7 @@ test("a 201 prints the result line the spec promises, with the status in words",
   assert.match(pending.stdout, /^published w7abc-notes 1\.2\.3 → stable \(pending review\)$/m)
   assert.match(pending.stdout, new RegExp(`^${DEFAULT_CATALOG}/w7abc-notes$`, "m"))
 
-  const approved = await run([file, "--channel", "unstable"],
-    catalogAnswering(201, { ...accepted, channel: "unstable", status: "approved" }))
+  const approved = await run([file, "--channel", "unstable"], catalogAnswering(201, { ...accepted, channel: "unstable", status: "approved" }))
   assert.match(approved.stdout, /\(approved\)$/m)
 })
 
@@ -215,8 +229,7 @@ test("a refusal prints the server's error and code, and exits 1", async () => {
   // an exit code alone would send the author to the site to find out which of
   // eight rules refused them.
   const file = await bundleFile()
-  const { code, stderr } = await run([file, "--channel", "stable"],
-    catalogAnswering(409, { error: "version 1.2.3 is frozen", code: "version-frozen" }))
+  const { code, stderr } = await run([file, "--channel", "stable"], catalogAnswering(409, { error: "version 1.2.3 is frozen", code: "version-frozen" }))
   assert.equal(code, EXIT_REFUSED)
   assert.match(stderr, /HTTP 409/)
   assert.match(stderr, /version 1\.2\.3 is frozen/)
@@ -227,8 +240,7 @@ test("a non-JSON refusal shows the raw body", async () => {
   // A proxy or a Cloudflare error page answers in HTML. Hiding it behind
   // "unexpected response" would hide the only clue.
   const file = await bundleFile()
-  const { code, stderr } = await run([file, "--channel", "stable"],
-    catalogAnswering(502, "<html>bad gateway</html>"))
+  const { code, stderr } = await run([file, "--channel", "stable"], catalogAnswering(502, "<html>bad gateway</html>"))
   assert.equal(code, EXIT_REFUSED)
   assert.match(stderr, /HTTP 502.*bad gateway/)
 })
@@ -386,12 +398,18 @@ test("a truncated bundle is refused as a bundle, not as a crash in the zip reade
   // The end-of-central-directory record still has to point at the copied
   // central directory for the reader to get as far as the entry.
   cut.writeUInt32LE(40, cut.length - 22 + 16)
-  assert.throws(() => readManifestFromBundle(cut), (e: any) => e instanceof PublishError && /truncated or damaged/.test(e.message))
+  assert.throws(
+    () => readManifestFromBundle(cut),
+    (e: any) => e instanceof PublishError && /truncated or damaged/.test(e.message),
+  )
 
   // Deflated bytes that are not deflate at all.
   const garbled = Buffer.from(whole)
   garbled.fill(0xff, 30 + 13, 30 + 13 + 8)
-  assert.throws(() => readManifestFromBundle(garbled), (e: any) => e instanceof PublishError)
+  assert.throws(
+    () => readManifestFromBundle(garbled),
+    (e: any) => e instanceof PublishError,
+  )
 })
 
 test("a file that is not a zip is refused before any request", async () => {
@@ -419,17 +437,19 @@ test("the token never reaches stdout or stderr, whatever quotes it", async () =>
   assert.ok(!network.stdout.includes(TOKEN), `token leaked: ${network.stdout}`)
   assert.match(network.stderr, /<token>/)
 
-  const reflecting = await run([file, "--channel", "stable"],
-    catalogAnswering(401, { error: `token ${TOKEN} is not valid`, code: "bad_token" }))
+  const reflecting = await run([file, "--channel", "stable"], catalogAnswering(401, { error: `token ${TOKEN} is not valid`, code: "bad_token" }))
   assert.equal(reflecting.code, EXIT_REFUSED)
   assert.ok(!reflecting.stderr.includes(TOKEN), `token leaked: ${reflecting.stderr}`)
   assert.match(reflecting.stderr, /token <token> is not valid \(bad_token\)/)
 
   // The notes warning is a second line out, after the publish succeeded; it
   // goes through the same redactor.
-  const reflectingNotes = await run([file, "--channel", "stable", "--notes", "x"],
+  const reflectingNotes = await run(
+    [file, "--channel", "stable", "--notes", "x"],
     catalogAnswering(201, accepted, (url) =>
-      url.includes("/notes") ? { status: 401, body: { error: `token ${TOKEN} is not valid` } } : { status: 201, body: accepted }))
+      url.includes("/notes") ? { status: 401, body: { error: `token ${TOKEN} is not valid` } } : { status: 201, body: accepted },
+    ),
+  )
   assert.equal(reflectingNotes.code, EXIT_REFUSED)
   assert.ok(!reflectingNotes.stderr.includes(TOKEN), `token leaked: ${reflectingNotes.stderr}`)
   assert.match(reflectingNotes.stderr, /warning: .*token <token> is not valid/)

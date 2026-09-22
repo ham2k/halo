@@ -104,31 +104,11 @@
     "WAG": "Washington County"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "SINGLE-OP-ASSISTED",
-      "MULTI-ONE",
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "EXPEDITION",
-      "SCHOOL"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "MIXED"
-    ],
-    "overlay": [
-      "NOVICE-TECH"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "SINGLE-OP-ASSISTED", "MULTI-ONE", "MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE", "EXPEDITION", "SCHOOL"],
+    "mode": ["CW", "PHONE", "MIXED"],
+    "overlay": ["NOVICE-TECH"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

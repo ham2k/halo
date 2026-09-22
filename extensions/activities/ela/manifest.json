@@ -8,38 +8,16 @@
   "enabledByDefault": false,
   "icon": "lighthouse",
   "accentColor": "#2E6F9E",
-  "keywords": [
-    "lighthouses",
-    "england",
-    "activation"
-  ],
+  "keywords": ["lighthouses", "england", "activation"],
   "relevance": {
-    "entities": [
-      "G"
-    ]
+    "entities": ["G"]
   },
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "ref:elaActivation",
-    "scoring",
-    "spots"
-  ],
-  "domains": [
-    "ham2k.com",
-    "www.cqgma.org"
-  ],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:elaActivation", "scoring", "spots"],
+  "domains": ["ham2k.com", "www.cqgma.org"],
   "translations": {
     "es": {
       "description": "Referencias de faros ingleses, registro de activaciones y auto-spotting",
-      "keywords": [
-        "faros",
-        "inglaterra",
-        "activación"
-      ]
+      "keywords": ["faros", "inglaterra", "activación"]
     }
   }
 }

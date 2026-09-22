@@ -10,10 +10,7 @@
   "internalNotes": "Not supported: CA stations are capped at 58 scored multipliers out of 63 possible.",
   "lastUpdated": "2026-09-17 12:00Z",
   "status": "Verified for 2026 against cqp.org",
-  "exchange": [
-    "Number",
-    "Location"
-  ],
+  "exchange": ["Number", "Location"],
   "options": {
     "countyLine": true,
     "stateCountsForInState": true,
@@ -88,29 +85,10 @@
     "YUBA": "Yuba"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "SINGLE-OP-ASSISTED",
-      "MULTI-ONE",
-      "MULTI-TWO",
-      "MULTI-UNLIMITED"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "EXPEDITION",
-      "COUNTY-LINE"
-    ],
-    "overlay": [
-      "YOUTH",
-      "YL",
-      "NEW-CONTESTER"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "SINGLE-OP-ASSISTED", "MULTI-ONE", "MULTI-TWO", "MULTI-UNLIMITED"],
+    "station": ["FIXED", "MOBILE", "EXPEDITION", "COUNTY-LINE"],
+    "overlay": ["YOUTH", "YL", "NEW-CONTESTER"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5 watts",
       "LOW": "100 watts",

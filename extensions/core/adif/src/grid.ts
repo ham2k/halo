@@ -23,7 +23,7 @@ export interface GridCell {
 /// A locator as the cell it names — center and dimensions — or undefined for
 /// anything that does not decode. Never throws.
 export function gridCell(grid: unknown): GridCell | undefined {
-  if (typeof grid !== 'string') return undefined
+  if (typeof grid !== "string") return undefined
   const g = grid.trim().toUpperCase()
   if (g.length < 4) return undefined
 
@@ -75,7 +75,7 @@ export function gridCell(grid: unknown): GridCell | undefined {
 }
 
 function digit(char: string | undefined): number | undefined {
-  if (char === undefined || char < '0' || char > '9') return undefined
+  if (char === undefined || char < "0" || char > "9") return undefined
   return char.charCodeAt(0) - 48
 }
 
@@ -93,11 +93,8 @@ const CENTER_TOLERANCE = 0.01
 /// ADIF readers take `LAT`/`LON` over `GRIDSQUARE`, and the station would be
 /// published standing at a point inside a square it was only placed in.
 export function isGridCenter(lat: unknown, lon: unknown, grid: unknown): boolean {
-  if (typeof lat !== 'number' || typeof lon !== 'number') return false
+  if (typeof lat !== "number" || typeof lon !== "number") return false
   const cell = gridCell(grid)
   if (!cell) return false
-  return (
-    Math.abs(lat - cell.lat) <= cell.latSize * CENTER_TOLERANCE &&
-    Math.abs(lon - cell.lon) <= cell.lonSize * CENTER_TOLERANCE
-  )
+  return Math.abs(lat - cell.lat) <= cell.latSize * CENTER_TOLERANCE && Math.abs(lon - cell.lon) <= cell.lonSize * CENTER_TOLERANCE
 }

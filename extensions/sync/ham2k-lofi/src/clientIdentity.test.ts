@@ -7,25 +7,25 @@
 // non-string over either would put a wrong value on a path whose failure is
 // silent (a channel nobody publishes to; a relay login the receiver refuses).
 
-import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import assert from "node:assert/strict"
+import { describe, it } from "node:test"
 
-import { clientIdentityFrom, requireWebhookIdentity } from './clientIdentity.ts'
+import { clientIdentityFrom, requireWebhookIdentity } from "./clientIdentity.ts"
 
-describe('clientIdentityFrom', () => {
-  it('reads both fields off a real client payload', () => {
+describe("clientIdentityFrom", () => {
+  it("reads both fields off a real client payload", () => {
     assert.deepEqual(
       clientIdentityFrom({
-        uuid: 'abc',
-        name: 'a device',
-        push_channel: 'client-abcdef12-0123456789abcdef',
-        webhook_client_token: 'signed--token',
+        uuid: "abc",
+        name: "a device",
+        push_channel: "client-abcdef12-0123456789abcdef",
+        webhook_client_token: "signed--token",
       }),
-      { pushChannelName: 'client-abcdef12-0123456789abcdef', webhookClientToken: 'signed--token' },
+      { pushChannelName: "client-abcdef12-0123456789abcdef", webhookClientToken: "signed--token" },
     )
   })
 
-  it('leaves a field undefined rather than coercing a non-string', () => {
+  it("leaves a field undefined rather than coercing a non-string", () => {
     // undefined means "keep what you had". A coerced value would overwrite a
     // working cached identity with something like "null" or "[object Object]".
     for (const bad of [null, 42, true, {}, [], undefined]) {
@@ -35,48 +35,48 @@ describe('clientIdentityFrom', () => {
     }
   })
 
-  it('takes each field on its own merits', () => {
+  it("takes each field on its own merits", () => {
     // A server that sends one and omits the other must not cost us the one it
     // did send.
-    assert.deepEqual(clientIdentityFrom({ push_channel: 'chan' }), {
-      pushChannelName: 'chan',
+    assert.deepEqual(clientIdentityFrom({ push_channel: "chan" }), {
+      pushChannelName: "chan",
       webhookClientToken: undefined,
     })
-    assert.deepEqual(clientIdentityFrom({ webhook_client_token: 'tok' }), {
+    assert.deepEqual(clientIdentityFrom({ webhook_client_token: "tok" }), {
       pushChannelName: undefined,
-      webhookClientToken: 'tok',
+      webhookClientToken: "tok",
     })
   })
 
-  it('answers empty for anything that is not a payload at all', () => {
-    for (const notAPayload of [undefined, null, 'a string', 7, true]) {
+  it("answers empty for anything that is not a payload at all", () => {
+    for (const notAPayload of [undefined, null, "a string", 7, true]) {
       assert.deepEqual(clientIdentityFrom(notAPayload), {})
     }
   })
 })
 
-describe('requireWebhookIdentity', () => {
-  const ok = { client: { push_channel: 'chan', webhook_client_token: 'signed--token' } }
+describe("requireWebhookIdentity", () => {
+  const ok = { client: { push_channel: "chan", webhook_client_token: "signed--token" } }
 
-  it('returns the token when the refresh really carried one', () => {
-    assert.equal(requireWebhookIdentity(ok).webhookClientToken, 'signed--token')
-    assert.equal(requireWebhookIdentity(ok).pushChannelName, 'chan')
+  it("returns the token when the refresh really carried one", () => {
+    assert.equal(requireWebhookIdentity(ok).webhookClientToken, "signed--token")
+    assert.equal(requireWebhookIdentity(ok).pushChannelName, "chan")
   })
 
-  it('throws rather than letting the caller keep its stale token', () => {
+  it("throws rather than letting the caller keep its stale token", () => {
     // Every one of these is a 2xx that refreshed NOTHING. Returning here
     // instead of throwing means the caller falls back to its hour-old token,
     // sends it in an OAuth `state`, and the relay refuses the login with a
     // message the operator cannot act on — the exact bug a refresh exists to
     // prevent, now wearing a successful response.
     for (const body of [
-      {},                                   // no `client` key
+      {}, // no `client` key
       { client: null },
-      { client: {} },                       // client, no token
-      { client: { push_channel: 'chan' } }, // the other field only
-      { status: 'ok' },                     // a maintenance page that parses
-      [],                                   // valid JSON, wrong shape
-      'a string',
+      { client: {} }, // client, no token
+      { client: { push_channel: "chan" } }, // the other field only
+      { status: "ok" }, // a maintenance page that parses
+      [], // valid JSON, wrong shape
+      "a string",
       null,
       undefined,
     ]) {
@@ -84,10 +84,10 @@ describe('requireWebhookIdentity', () => {
     }
   })
 
-  it('treats an empty-string token as no token at all', () => {
+  it("treats an empty-string token as no token at all", () => {
     // The one value that is a `string` and still useless: it passes a
     // `typeof` check and survives `??`, so nothing downstream would catch it,
     // and it reaches the relay identifying no client.
-    assert.throws(() => requireWebhookIdentity({ client: { webhook_client_token: '' } }), /webhook token/)
+    assert.throws(() => requireWebhookIdentity({ client: { webhook_client_token: "" } }), /webhook token/)
   })
 })

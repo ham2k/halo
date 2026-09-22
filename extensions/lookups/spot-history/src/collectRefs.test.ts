@@ -27,18 +27,12 @@ test("a type already on the QSO is never re-proposed", () => {
 test("the newest spot wins its type — an activator who moved parks contributes the current one", () => {
   // Spots arrive newest-first. Taking the last one instead would log the park
   // the activator has already left.
-  const refs = collectRefsFromSpots([
-    spot([{ type: "potaHunter", ref: "US-9999" }]),
-    spot([{ type: "potaHunter", ref: "US-1234" }]),
-  ])
+  const refs = collectRefsFromSpots([spot([{ type: "potaHunter", ref: "US-9999" }]), spot([{ type: "potaHunter", ref: "US-1234" }])])
   assert.deepEqual(refs, [{ type: "potaHunter", ref: "US-9999" }])
 })
 
 test("distinct types from different spots all come through — a park-and-summit twofer", () => {
-  const refs = collectRefsFromSpots([
-    spot([{ type: "potaHunter", ref: "US-1234" }]),
-    spot([{ type: "sotaHunter", ref: "W2/GC-001" }]),
-  ])
+  const refs = collectRefsFromSpots([spot([{ type: "potaHunter", ref: "US-1234" }]), spot([{ type: "sotaHunter", ref: "W2/GC-001" }])])
   assert.deepEqual(refs, [
     { type: "potaHunter", ref: "US-1234" },
     { type: "sotaHunter", ref: "W2/GC-001" },

@@ -6,17 +6,17 @@
 // four-line version instead (`EXAMPLE_BUILD_SCRIPT`), which is what an author
 // outside this repo writes — and what `h2kext-init` scaffolds.
 
-import { build } from 'esbuild'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { build } from "esbuild"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
-import { buildExtension } from '../../tools/h2kext-build.mjs'
+import { buildExtension } from "../../tools/h2kext-build.mjs"
 
 const here = dirname(fileURLToPath(import.meta.url))
 
 await buildExtension(build, {
   dir: here,
-  alias: { '@ham2k/extension-sdk': join(here, '../../sdk/src/index.ts') },
+  alias: { "@ham2k/extension-sdk": join(here, "../../sdk/src/index.ts") },
 })
 
-console.log('built', join(here, 'build/index.js'))
+console.log("built", join(here, "build/index.js"))

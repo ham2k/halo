@@ -237,7 +237,7 @@ void main() {
       List<String> literal(String name) {
         final match = RegExp('$name = \\[([^\\]]*)\\]').firstMatch(source);
         expect(match, isNotNull, reason: '$name not found in h2kext.mjs');
-        return [for (final m in RegExp(r"'([^']*)'|(\d+)").allMatches(match!.group(1)!)) m.group(1) ?? m.group(2)!];
+        return [for (final m in RegExp(r'''['"]([^'"]*)['"]|(\d+)''').allMatches(match!.group(1)!)) m.group(1) ?? m.group(2)!];
       }
 
       expect(literal('RELEVANCE_KEYS'), ExtensionRelevance.relevanceKeys);

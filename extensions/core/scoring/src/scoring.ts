@@ -102,38 +102,84 @@ export type CoreScoresheet = {
 /// its scorer could never fill) — a contact in the District is a place worked,
 /// and the operator is the one who decides what it counts toward.
 const US_STATES = new Set([
-  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA',
-  'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR',
-  'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+  "AL",
+  "AK",
+  "AZ",
+  "AR",
+  "CA",
+  "CO",
+  "CT",
+  "DC",
+  "DE",
+  "FL",
+  "GA",
+  "HI",
+  "ID",
+  "IL",
+  "IN",
+  "IA",
+  "KS",
+  "KY",
+  "LA",
+  "ME",
+  "MD",
+  "MA",
+  "MI",
+  "MN",
+  "MS",
+  "MO",
+  "MT",
+  "NE",
+  "NV",
+  "NH",
+  "NJ",
+  "NM",
+  "NY",
+  "NC",
+  "ND",
+  "OH",
+  "OK",
+  "OR",
+  "PA",
+  "RI",
+  "SC",
+  "SD",
+  "TN",
+  "TX",
+  "UT",
+  "VT",
+  "VA",
+  "WA",
+  "WV",
+  "WI",
+  "WY",
 ])
 
-const CANADIAN_PROVINCES = new Set([
-  'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT',
-])
+const CANADIAN_PROVINCES = new Set(["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"])
 
 /// COUNTRY-FILE entity prefixes whose stations have a state or province, not
 /// what a ham would write: Alaska is `KL`, not `KL7` (the same correction
 /// `extensions/contests/naqp/src/exchange.ts` documents). Hawaii and Alaska are
 /// their own DXCC entities, so a station there carries no `state` of its own —
 /// the entity IS the answer, which is why they get defaults below.
-const US_ENTITIES = new Set(['K', 'KL', 'KH6'])
-const STATE_DEFAULT_BY_ENTITY: Record<string, string> = { KH6: 'HI', KL: 'AK' }
+const US_ENTITIES = new Set(["K", "KL", "KH6"])
+const STATE_DEFAULT_BY_ENTITY: Record<string, string> = { KH6: "HI", KL: "AK" }
 
 /// Whether states and provinces are worth tracking for THIS operator: a rule
 /// about our own station, not the one being worked. Both lists then apply to
 /// either — a US operator working VE3 is told it's a new province.
 function tracksStatesAndProvinces(ourEntity: string | undefined): boolean {
-  return ourEntity === 'VE' || US_ENTITIES.has(ourEntity ?? '')
+  return ourEntity === "VE" || US_ENTITIES.has(ourEntity ?? "")
 }
 
 function str(value: JSONValue | undefined): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined
+  return typeof value === "string" && value.length > 0 ? value : undefined
 }
 
 /// The mode half of a `band|mode` entry in `workedByCall`. Split on the FIRST
 /// separator: a band name carries none, a mode string is not guaranteed to.
 function modeOfCombo(combo: string): string {
-  return combo.slice(combo.indexOf('|') + 1)
+  return combo.slice(combo.indexOf("|") + 1)
 }
 
 /// The state or province of the station being worked, or undefined when it has
@@ -144,25 +190,34 @@ function modeOfCombo(combo: string): string {
 /// the two lists comes back EMPTY rather than as itself: a county, a Mexican
 /// state or a country-file artifact must never open a bucket in a tally the
 /// operator reads as "states worked".
-function stateOrProvinceOf(
-  their: Record<string, JSONValue>,
-  entityPrefix: string | undefined,
-): { kind: 'state' | 'province'; code: string } | undefined {
+function stateOrProvinceOf(their: Record<string, JSONValue>, entityPrefix: string | undefined): { kind: "state" | "province"; code: string } | undefined {
   if (!entityPrefix) return undefined
   const guess = (their.guess as Record<string, JSONValue>) ?? {}
-  const code = (str(their.state) ?? str(guess.state) ?? STATE_DEFAULT_BY_ENTITY[entityPrefix] ?? '').toUpperCase()
+  const code = (str(their.state) ?? str(guess.state) ?? STATE_DEFAULT_BY_ENTITY[entityPrefix] ?? "").toUpperCase()
   if (!code) return undefined
-  if (US_ENTITIES.has(entityPrefix) && US_STATES.has(code)) return { kind: 'state', code }
-  if (entityPrefix === 'VE' && CANADIAN_PROVINCES.has(code)) return { kind: 'province', code }
+  if (US_ENTITIES.has(entityPrefix) && US_STATES.has(code)) return { kind: "state", code }
+  if (entityPrefix === "VE" && CANADIAN_PROVINCES.has(code)) return { kind: "province", code }
   return undefined
 }
 
 export const CoreScorer: ContestScorer<CoreScoresheet> = {
   startScoresheet(): CoreScoresheet {
     return {
-      workedByCall: {}, entities: {}, bands: {}, modes: {}, bandModes: {}, states: {}, provinces: {},
-      qsos: 0, points: 0, duplicates: 0, bandModeQsos: 0, foldedTallyKeys: true,
-      dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
+      workedByCall: {},
+      entities: {},
+      bands: {},
+      modes: {},
+      bandModes: {},
+      states: {},
+      provinces: {},
+      qsos: 0,
+      points: 0,
+      duplicates: 0,
+      bandModeQsos: 0,
+      foldedTallyKeys: true,
+      dayQsos: 0,
+      dayPoints: 0,
+      dayDuplicates: 0,
     }
   },
 
@@ -182,10 +237,10 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     // place maps. Filled in here rather than in `startScoresheet`, which a
     // resumed fold never calls: reading `base.states` unguarded throws, and
     // scoring runs on every keystroke.
-    const stationCall = str(operation?.stationCall) ?? ''
+    const stationCall = str(operation?.stationCall) ?? ""
     if (base.ourEntity === undefined || base.ourCall !== stationCall) {
       base.ourCall = stationCall
-      base.ourEntity = entityPrefixForCall(stationCall) ?? ''
+      base.ourEntity = entityPrefixForCall(stationCall) ?? ""
     }
     base.states ??= {}
     base.provinces ??= {}
@@ -201,8 +256,8 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     const call = str(their.call)
     if (!call) return { scoresheet: base, score: { value: 0 } }
 
-    const band = str(qso.band) ?? ''
-    const mode = str(qso.mode) ?? ''
+    const band = str(qso.band) ?? ""
+    const mode = str(qso.mode) ?? ""
     // What the band/mode TALLIES key on — one spelling per emission, so a log
     // holding both `USB` and `SSB` reports one mode worked rather than two.
     // Not what `workedByCall` stores: that keeps the mode as logged, and the
@@ -222,11 +277,11 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     const notices = new Set<string>()
     const alerts = new Set<string>()
     if (isDupe) {
-      alerts.add('duplicate')
+      alerts.add("duplicate")
     } else if (prior.length > 0) {
       // Worked before, but not on this combination — worth calling out.
-      if (!prior.some(sameMode)) notices.add('newMode')
-      if (!prior.some((combo) => combo.startsWith(`${band}|`))) notices.add('newBand')
+      if (!prior.some(sameMode)) notices.add("newMode")
+      if (!prior.some((combo) => combo.startsWith(`${band}|`))) notices.add("newBand")
     }
 
     // --- Rule 2: DXCC entities worked --------------------------------------
@@ -235,7 +290,7 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     // sitting in is noise on the first local contact of every operation.
     const entityPrefix = entityPrefixForCall(call)
     const isNewEntity = Boolean(entityPrefix) && base.entities[entityPrefix!] === undefined
-    if (isNewEntity && entityPrefix !== base.ourEntity) notices.add('newDXCC')
+    if (isNewEntity && entityPrefix !== base.ourEntity) notices.add("newDXCC")
 
     // --- Rule 3: bands and modes worked ------------------------------------
     // A TALLY ONLY. Operation-level newness deliberately does not notify: the
@@ -260,8 +315,8 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     // state notifies like any other — it is a WAS credit, where our own DXCC
     // entity is never a DX one.
     const stateWorked = tracksStatesAndProvinces(base.ourEntity) ? stateOrProvinceOf(their, entityPrefix) : undefined
-    if (stateWorked?.kind === 'state' && base.states[stateWorked.code] === undefined) notices.add('newState')
-    if (stateWorked?.kind === 'province' && base.provinces[stateWorked.code] === undefined) notices.add('newProvince')
+    if (stateWorked?.kind === "state" && base.states[stateWorked.code] === undefined) notices.add("newState")
+    if (stateWorked?.kind === "province" && base.provinces[stateWorked.code] === undefined) notices.add("newProvince")
 
     // A dupe is by definition neither a new band, a new mode, nor a new
     // entity — it contributes nothing, so it carries only its alert.
@@ -288,8 +343,8 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
       const byMode = (base.bandModes[band] ??= {})
       byMode[tallyMode] = (byMode[tallyMode] ?? 0) + 1
     }
-    if (stateWorked?.kind === 'state') base.states[stateWorked.code] = (base.states[stateWorked.code] ?? 0) + 1
-    if (stateWorked?.kind === 'province') {
+    if (stateWorked?.kind === "state") base.states[stateWorked.code] = (base.states[stateWorked.code] ?? 0) + 1
+    if (stateWorked?.kind === "province") {
       base.provinces[stateWorked.code] = (base.provinces[stateWorked.code] ?? 0) + 1
     }
     base.qsos += 1
@@ -305,10 +360,10 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
 
   summarizeScore({ scoresheet, scope }, ctx): Record<string, ScoreTally> {
     const t = tFor(ctx)
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const places = summarizeStatesAndProvinces(scoresheet, t)
     return {
-      qsoCount: summarizeQsoCount(scoresheet, scope === 'day', t),
+      qsoCount: summarizeQsoCount(scoresheet, scope === "day", t),
       dxcc: summarizeDxcc(scoresheet, t),
       // Omitted entirely rather than shown empty: an operator outside North
       // America never tracks these, and a badge with no label is a puzzle.
@@ -326,13 +381,13 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
 function summarizeQsoCount(sheet: CoreScoresheet, isDay: boolean, t: Translator): ScoreTally {
   const total = isDay ? sheet.dayPoints : sheet.points
   return {
-    key: 'qsoCount',
-    for: isDay ? 'day' : 'operation',
-    icon: 'radio',
+    key: "qsoCount",
+    for: isDay ? "day" : "operation",
+    icon: "radio",
     total,
     count: isDay ? sheet.dayQsos : sheet.qsos,
     duplicates: isDay ? sheet.dayDuplicates : sheet.duplicates,
-    label: total === 1 ? t('oneQso') : t('manyQsos', { formatted: fmtInteger(total) }),
+    label: total === 1 ? t("oneQso") : t("manyQsos", { formatted: fmtInteger(total) }),
     summary: fmtInteger(total),
   }
 }
@@ -340,14 +395,14 @@ function summarizeQsoCount(sheet: CoreScoresheet, isDay: boolean, t: Translator)
 function summarizeDxcc(sheet: CoreScoresheet, t: Translator): ScoreTally {
   const count = Object.keys(sheet.entities).length
   return {
-    key: 'dxcc',
-    for: 'operation',
-    icon: 'earth',
+    key: "dxcc",
+    for: "operation",
+    icon: "earth",
     total: count,
     entities: sheet.entities,
-    label: count === 1 ? t('oneDxccEntity') : t('manyDxccEntities', { formatted: fmtInteger(count) }),
+    label: count === 1 ? t("oneDxccEntity") : t("manyDxccEntities", { formatted: fmtInteger(count) }),
     // Below five entities the number is noise next to the QSO count.
-    summary: count >= 5 ? fmtInteger(count) : '',
+    summary: count >= 5 ? fmtInteger(count) : "",
     ...(count > 0 ? { longSummary: dxccBreakdown(sheet.entities) } : {}),
   }
 }
@@ -368,11 +423,11 @@ export function dxccBreakdown(entities: Record<string, number>): string {
     .map((prefix) => {
       const entity = DXCC_BY_PREFIX[prefix]
       const count = entities[prefix]
-      const countTxt = count > 1 ? `\u00A0(${fmtInteger(count)})` : ''
-      const label = entity ? `${entity.flag}\u00A0${entity.name.split(' ').join('\u00A0')}` : prefix
+      const countTxt = count > 1 ? `\u00A0(${fmtInteger(count)})` : ""
+      const label = entity ? `${entity.flag}\u00A0${entity.name.split(" ").join("\u00A0")}` : prefix
       return `${label}${countTxt}`
     })
-    .join(' ')
+    .join(" ")
 }
 
 /// A mode tally re-keyed through [canonicalMode], merging the counts that
@@ -429,18 +484,18 @@ function summarizeBandsAndModes(sheet: CoreScoresheet, t: Translator, isDay: boo
   const modes = foldedModeTally(sheet.modes)
   const modeCount = Object.keys(modes).length
   const parts: string[] = []
-  if (bandCount > 0) parts.push(bandCount === 1 ? t('oneBand') : t('manyBands', { n: bandCount }))
-  if (modeCount > 0) parts.push(modeCount === 1 ? t('oneMode') : t('manyModes', { n: modeCount }))
+  if (bandCount > 0) parts.push(bandCount === 1 ? t("oneBand") : t("manyBands", { n: bandCount }))
+  if (modeCount > 0) parts.push(modeCount === 1 ? t("oneMode") : t("manyModes", { n: modeCount }))
   return {
-    key: 'bandsAndModes',
-    for: 'operation',
-    icon: 'antenna',
+    key: "bandsAndModes",
+    for: "operation",
+    icon: "antenna",
     // Contacts that brought something new, not `bandCount + modeCount` — a QSO
     // new on both axes credits once.
     total: sheet.bandModeQsos,
     bands: sheet.bands,
     modes,
-    label: parts.join(', '),
+    label: parts.join(", "),
     // Operation scope only. `bands`/`bandModes` carry across the whole
     // operation (`for: 'operation'` says so), so a breakdown attached to a day
     // section would read as that day's while holding operation-to-date numbers.
@@ -465,10 +520,7 @@ function bandBreakdown(sheet: CoreScoresheet): string {
   // The lib types its list as a union of the band names it knows, which a
   // log's free-form band string is not — compared as plain strings here.
   const bandPlanOrder: string[] = [...EXTENDED_BANDS]
-  const ordered = [
-    ...bandPlanOrder.filter((band) => worked.includes(band)),
-    ...worked.filter((band) => !bandPlanOrder.includes(band)).sort(),
-  ]
+  const ordered = [...bandPlanOrder.filter((band) => worked.includes(band)), ...worked.filter((band) => !bandPlanOrder.includes(band)).sort()]
 
   return ordered
     .map((band) => {
@@ -478,9 +530,9 @@ function bandBreakdown(sheet: CoreScoresheet): string {
         // places between renders of the same log.
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .map(([mode, count]) => `${mode} ${fmtInteger(count)}`)
-      return byMode.length > 0 ? `**${band}**: ${total} — ${byMode.join(', ')}` : `**${band}**: ${total}`
+      return byMode.length > 0 ? `**${band}**: ${total} — ${byMode.join(", ")}` : `**${band}**: ${total}`
     })
-    .join('\n')
+    .join("\n")
 }
 
 /// Undefined until something has actually been worked, which for a DX operator
@@ -492,9 +544,9 @@ function summarizeStatesAndProvinces(sheet: CoreScoresheet, t: Translator): Scor
   if (stateCount === 0 && provinceCount === 0) return undefined
 
   const parts: string[] = []
-  if (stateCount > 0) parts.push(stateCount === 1 ? t('oneState') : t('manyStates', { n: stateCount }))
+  if (stateCount > 0) parts.push(stateCount === 1 ? t("oneState") : t("manyStates", { n: stateCount }))
   if (provinceCount > 0) {
-    parts.push(provinceCount === 1 ? t('oneProvince') : t('manyProvinces', { n: provinceCount }))
+    parts.push(provinceCount === 1 ? t("oneProvince") : t("manyProvinces", { n: provinceCount }))
   }
 
   const grids: string[] = []
@@ -502,21 +554,21 @@ function summarizeStatesAndProvinces(sheet: CoreScoresheet, t: Translator): Scor
   if (provinceCount > 0) grids.push(placesGrid(CANADIAN_PROVINCES, sheet.provinces))
 
   return {
-    key: 'statesAndProvinces',
-    for: 'operation',
-    icon: 'star',
+    key: "statesAndProvinces",
+    for: "operation",
+    icon: "star",
     // Places worked, not contacts: unlike `bandsAndModes` there is no
     // "credits once" subtlety, since a QSO has one state at most.
     total: stateCount + provinceCount,
     states: sheet.states,
     provinces: sheet.provinces,
-    label: parts.join(', '),
+    label: parts.join(", "),
     // A day header renders a tally only when it has BOTH an icon and a
     // non-empty summary, so the threshold is what decides whether this shows
     // there at all. Below five places the number is noise next to the QSO
     // count, same judgement `dxcc` makes.
-    summary: stateCount + provinceCount >= 5 ? fmtInteger(stateCount + provinceCount) : '',
-    longSummary: grids.join('\n\n'),
+    summary: stateCount + provinceCount >= 5 ? fmtInteger(stateCount + provinceCount) : "",
+    longSummary: grids.join("\n\n"),
     grid: true,
   }
 }
@@ -525,12 +577,12 @@ function summarizeStatesAndProvinces(sheet: CoreScoresheet, t: Translator): Scor
 /// the whole grid reads at a glance as what is done versus what is still
 /// open, not just a count.
 function placesGrid(all: Set<string>, worked: Record<string, number>): string {
-  return [...all].map((code) => (worked[code] ? `**~~${code}~~**` : code)).join('  ')
+  return [...all].map((code) => (worked[code] ? `**~~${code}~~**` : code)).join("  ")
 }
 
 /// The registrable hook. `scope: 'always'` — core scoring applies to every
 /// operation, contest or not, and keeps running alongside any contest scorer.
-export const coreScoringHook = contestScorer(CoreScorer, { scope: 'always' })
+export const coreScoringHook = contestScorer(CoreScorer, { scope: "always" })
 
 /// Named exports so tests (and any caller) can drive either path directly.
 export const scoreQsos = coreScoringHook.scoreQsos

@@ -3,7 +3,5 @@
   "name": "Developer Commands",
   "version": "0.0.1",
   "description": "Call-field shortcuts for developer tools: DEVMODE, DEVNOTICE, DEVSTATUS, DEVPROGRESS, DEVSPLASH, DEVSENTRY, RELOAD, SEED, EXP",
-  "hooks": [
-    "command"
-  ]
+  "hooks": ["command"]
 }

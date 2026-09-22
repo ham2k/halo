@@ -6,13 +6,7 @@
 //
 // Note the reference format: `ENG 001`, with a SPACE.
 
-import {
-  activityExportHook,
-  activityScorer,
-  contestScorer,
-  defineExtension,
-  referenceActivity,
-} from "@ham2k/extension-sdk"
+import { activityExportHook, activityScorer, contestScorer, defineExtension, referenceActivity } from "@ham2k/extension-sdk"
 import type { DataFileDefinition, HookContext, PostResult, PostSelfSpotRequest, Ref, SpotEligibility } from "@ham2k/extension-sdk"
 import { locationToGrid6 } from "@ham2k/lib-geo-tools"
 
@@ -21,17 +15,17 @@ import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const ACTIVATION_TYPE = 'elaActivation'
+const ACTIVATION_TYPE = "elaActivation"
 const REFERENCE_REGEX = /^ENG [0-9]{3}$/i
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
-  key: 'ela',
-  label: 'ELA',
+  key: "ela",
+  label: "ELA",
   activationType: ACTIVATION_TYPE,
   referenceRegex: REFERENCE_REGEX,
   icon: manifest.icon,
   color: manifest.accentColor,
-  placeholder: 'ENG 001',
+  placeholder: "ENG 001",
   tFor,
   // The GMA site carries the reference lists for the castle, lighthouse and
   // mill programs as well as its own summits — one page per reference,
@@ -44,59 +38,59 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
 /// 50 contacts activate a lighthouse, with band+mode uniqueness and no day
 /// axis — the same hand-written rules app-polo gives ECA.
 const ELA_SCORING = {
-  label: 'ELA',
+  label: "ELA",
   icon: manifest.icon,
   activationType: ACTIVATION_TYPE,
   qsosToActivate: 50,
-  uniquePer: ['band', 'mode'] as const,
-  activates: 'once' as const,
-  refNoun: (ctx: HookContext) => tFor(ctx)('lighthouse'),
-  refNounPlural: (ctx: HookContext) => tFor(ctx)('lighthousesPlural'),
+  uniquePer: ["band", "mode"] as const,
+  activates: "once" as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)("lighthouse"),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)("lighthousesPlural"),
   // "L2L" is also LLOTA's (lake-to-lake) — deliberately shared, and ELA has
   // no huntingType, so the tally that would use it never runs today anyway.
-  p2pLabel: (ctx: HookContext) => tFor(ctx)('l2l'),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)("l2l"),
 }
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
-  return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
+  return ((container.refs as Ref[] | undefined) ?? []).filter((r) => r.type === type && r.ref)
 }
 
 const SpotsHook = {
-  sourceName: 'GMA',
+  sourceName: "GMA",
 
   async isSelfSpotEnabled({ operation }: { operation: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(operation, ACTIVATION_TYPE).length > 0
-      ? { enabled: true, icon: manifest.icon }
-      : { enabled: false }
+    return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: manifest.icon } : { enabled: false }
   },
 
   async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, _ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(operation, ACTIVATION_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No ELA activation on this operation' }
+    if (refs.length === 0) return { ok: false, message: "No ELA activation on this operation" }
     return postSelfSpotToGMA({ operation, refs, freq, mode, comment })
   },
 }
 
 const elaDataFile: DataFileDefinition = {
-  key: 'ela-all-lighthouses',
-  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
-  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
-  url: 'https://ham2k.com/data/cached/ela/ELA_References.json',
+  key: "ela-all-lighthouses",
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileName"),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileDescription"),
+  url: "https://ham2k.com/data/cached/ela/ELA_References.json",
   maxAgeInDays: 100,
-  fetchType: 'json',
-  category: 'ela',
-  jsonOptions: { rootPath: '2.data' },
+  fetchType: "json",
+  category: "ela",
+  jsonOptions: { rootPath: "2.data" },
   jsonToLookupEntry: (entry: Record<string, any>) => {
     // The pattern check is app-polo's own here. Trimmed first — ECA, published
     // by the same site, carries trailing spaces on some references.
-    const ref = String(entry?.ELA ?? '').trim().toUpperCase()
+    const ref = String(entry?.ELA ?? "")
+      .trim()
+      .toUpperCase()
     if (!ref || !REFERENCE_REGEX.test(ref)) return null
 
     const parsedLat = Number.parseFloat(entry?.LATITUDE)
     const parsedLon = Number.parseFloat(entry?.LONGITUDE)
     const lat = Number.isNaN(parsedLat) ? undefined : parsedLat
     const lon = Number.isNaN(parsedLon) ? undefined : parsedLon
-    const name = String(entry?.NAME_OF_LIGHTHOUSE ?? '').trim()
+    const name = String(entry?.NAME_OF_LIGHTHOUSE ?? "").trim()
     const location = entry?.LOCATION
 
     return {
@@ -121,19 +115,19 @@ const elaDataFile: DataFileDefinition = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'ela' })
-    registerHook('activity', { hook: activityHook, key: 'ela' })
-    registerHook('adifFields', { hook: adifFieldsHook, key: 'ela' })
-    registerHook('adifImport', { hook: adifImportHook, key: 'ela' })
-    registerHook('spots', { hook: SpotsHook, key: 'ela' })
-    registerHook('dataFile', { hook: elaDataFile, key: 'ela-all-lighthouses' })
-    registerHook('scoring', {
+    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: "ela" })
+    registerHook("activity", { hook: activityHook, key: "ela" })
+    registerHook("adifFields", { hook: adifFieldsHook, key: "ela" })
+    registerHook("adifImport", { hook: adifImportHook, key: "ela" })
+    registerHook("spots", { hook: SpotsHook, key: "ela" })
+    registerHook("dataFile", { hook: elaDataFile, key: "ela-all-lighthouses" })
+    registerHook("scoring", {
       hook: contestScorer(activityScorer(ELA_SCORING), { scope: { refTypes: [ACTIVATION_TYPE] } }),
-      key: 'ela',
+      key: "ela",
     })
-    registerHook('export', {
-      hook: activityExportHook({ key: 'ela', label: 'ELA', activationType: ACTIVATION_TYPE, icon: manifest.icon }),
-      key: 'ela',
+    registerHook("export", {
+      hook: activityExportHook({ key: "ela", label: "ELA", activationType: ACTIVATION_TYPE, icon: manifest.icon }),
+      key: "ela",
     })
   },
 })

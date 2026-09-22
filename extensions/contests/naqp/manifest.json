@@ -8,33 +8,16 @@
   "enabledByDefault": false,
   "icon": "flag-checkered",
   "accentColor": "#2E7D32",
-  "keywords": [
-    "contest",
-    "naqp",
-    "state",
-    "province",
-    "cabrillo"
-  ],
+  "keywords": ["contest", "naqp", "state", "province", "cabrillo"],
   "relevance": {
-    "continents": [
-      "NA"
-    ]
+    "continents": ["NA"]
   },
-  "hooks": [
-    "activity",
-    "adifFields",
-    "export",
-    "ref:naqp",
-    "scoring"
-  ],
+  "hooks": ["activity", "adifFields", "export", "ref:naqp", "scoring"],
   "translations": {
     "es": {
       "name": "Fiesta de QSO de Norteamérica",
       "description": "Nombres y ubicaciones de Norteamérica: cada estado y provincia cuenta en cada banda",
-      "keywords": [
-        "concurso",
-        "estado"
-      ]
+      "keywords": ["concurso", "estado"]
     }
   }
 }

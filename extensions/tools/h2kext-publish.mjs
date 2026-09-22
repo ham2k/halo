@@ -16,27 +16,27 @@
 // never written anywhere — not to a config file, not to the terminal, not into
 // an error message.
 
-import { realpathSync } from 'node:fs'
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { inflateRawSync } from 'node:zlib'
+import { realpathSync } from "node:fs"
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { pathToFileURL } from "node:url"
+import { inflateRawSync } from "node:zlib"
 
-import { MANIFEST_ENTRY, pack, PackError } from './h2kext.mjs'
+import { MANIFEST_ENTRY, pack, PackError } from "./h2kext.mjs"
 
-export const DEFAULT_CATALOG = 'https://catalog.ham2k.net'
-export const PUBLISH_PATH = '/api/v1/publish'
-export const SUBMISSIONS_PATH = '/api/v1/submissions'
-export const TOKEN_ENV = 'H2K_CATALOG_TOKEN'
+export const DEFAULT_CATALOG = "https://catalog.ham2k.net"
+export const PUBLISH_PATH = "/api/v1/publish"
+export const SUBMISSIONS_PATH = "/api/v1/submissions"
+export const TOKEN_ENV = "H2K_CATALOG_TOKEN"
 /// How finished a release is, steadiest first — NOT an app edition. The
 /// catalog cascades, so a release on `stable` is visible to everyone and one
 /// on `bleeding` only to somebody who asked for it.
-export const CHANNELS = ['stable', 'unstable', 'bleeding']
+export const CHANNELS = ["stable", "unstable", "bleeding"]
 
 /// What `--channel` means when it is not given. Publishing without saying is
 /// publishing something finished; anything rougher is a choice worth typing.
-export const DEFAULT_CHANNEL = 'stable'
+export const DEFAULT_CHANNEL = "stable"
 
 /// The catalog refuses a larger upload before reading it (§5.1 step 2),
 /// because the app never downloads more than this (`kMaxDownloadBytes`).
@@ -51,7 +51,7 @@ export const EXIT_USAGE = 2
 /// How a submission status reads on the result line. `pending` means a
 /// reviewer has not looked yet; saying "review" is what stops an author
 /// waiting for the extension to appear.
-const STATUS_WORDS = { pending: 'pending review' }
+const STATUS_WORDS = { pending: "pending review" }
 
 export class PublishError extends Error {
   constructor(message, exitCode = EXIT_REFUSED) {
@@ -94,7 +94,7 @@ or cannot be reached, 2 for a usage problem.`
 export function readManifestFromBundle(bytes) {
   const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes)
   if (buf.length < 22 || buf.readUInt32LE(0) !== 0x04034b50) {
-    throw new PublishError('not a .h2kext: not a zip')
+    throw new PublishError("not a .h2kext: not a zip")
   }
   // The end-of-central-directory record is the last 22 bytes plus a comment of
   // up to 64 KiB, so the search walks backwards over that much and no more.
@@ -105,13 +105,13 @@ export function readManifestFromBundle(bytes) {
       break
     }
   }
-  if (eocd < 0) throw new PublishError('not a .h2kext: no zip central directory')
+  if (eocd < 0) throw new PublishError("not a .h2kext: no zip central directory")
 
   const count = buf.readUInt16LE(eocd + 10)
   let offset = buf.readUInt32LE(eocd + 16)
   for (let n = 0; n < count; n++) {
     if (offset + 46 > buf.length || buf.readUInt32LE(offset) !== 0x02014b50) {
-      throw new PublishError('not a .h2kext: damaged zip central directory')
+      throw new PublishError("not a .h2kext: damaged zip central directory")
     }
     const method = buf.readUInt16LE(offset + 10)
     const compressedSize = buf.readUInt32LE(offset + 20)
@@ -119,7 +119,7 @@ export function readManifestFromBundle(bytes) {
     const extraLength = buf.readUInt16LE(offset + 30)
     const commentLength = buf.readUInt16LE(offset + 32)
     const localOffset = buf.readUInt32LE(offset + 42)
-    const name = buf.toString('utf8', offset + 46, offset + 46 + nameLength)
+    const name = buf.toString("utf8", offset + 46, offset + 46 + nameLength)
     if (name === MANIFEST_ENTRY) {
       // Every offset here comes from the file itself, so a truncated or
       // doctored bundle can point past its own end: refused as a bundle,
@@ -139,7 +139,7 @@ export function readManifestFromBundle(bytes) {
         }
       } else throw new PublishError(`not a .h2kext: ${MANIFEST_ENTRY} uses zip compression method ${method}`)
       try {
-        return JSON.parse(raw.toString('utf8'))
+        return JSON.parse(raw.toString("utf8"))
       } catch (e) {
         throw new PublishError(`${MANIFEST_ENTRY} inside the bundle is not valid JSON: ${e.message}`)
       }
@@ -157,13 +157,13 @@ async function loadBundle(source, { forceName }) {
   try {
     info = await stat(source)
   } catch (e) {
-    throw new PublishError(`${source}: ${e.code === 'ENOENT' ? 'no such file or directory' : e.message}`)
+    throw new PublishError(`${source}: ${e.code === "ENOENT" ? "no such file or directory" : e.message}`)
   }
   if (!info.isDirectory()) return await readFile(source)
 
-  const tmp = await mkdtemp(join(tmpdir(), 'h2kext-publish-'))
+  const tmp = await mkdtemp(join(tmpdir(), "h2kext-publish-"))
   try {
-    const { outPath } = await pack(source, { outPath: join(tmp, 'bundle.h2kext'), forceName })
+    const { outPath } = await pack(source, { outPath: join(tmp, "bundle.h2kext"), forceName })
     return await readFile(outPath)
   } catch (e) {
     if (e instanceof PackError) throw new PublishError(`${source} is not ready to publish:\n${e.message}`)
@@ -195,9 +195,7 @@ async function call(fetch, catalog, path, init) {
 /// What a refusal says: the server's `error` and `code`, or its raw body when
 /// it sent no JSON — a proxy's HTML is still worth seeing.
 function refusal({ response, text, body }) {
-  return body?.error
-    ? `${body.error}${body.code ? ` (${body.code})` : ''}`
-    : text.trim() || response.statusText || 'no response body'
+  return body?.error ? `${body.error}${body.code ? ` (${body.code})` : ""}` : text.trim() || response.statusText || "no response body"
 }
 
 /// Uploads [bytes] as the raw request body (§5.1: no multipart) and
@@ -208,8 +206,8 @@ function refusal({ response, text, body }) {
 /// failure, not the catalog's.
 export async function publish({ bytes, manifest, channel, catalog, token }, { fetch = globalThis.fetch } = {}) {
   const answer = await call(fetch, catalog, `${PUBLISH_PATH}?channel=${channel}`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/zip' },
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/zip" },
     body: bytes,
   })
   if (answer.response.status === 201 && answer.body) return answer.body
@@ -220,8 +218,8 @@ export async function publish({ bytes, manifest, channel, catalog, token }, { fe
 /// outside 2xx is a [PublishError]; the submission it was for stands.
 export async function setReleaseNotes({ submissionId, notes, catalog, token }, { fetch = globalThis.fetch } = {}) {
   const answer = await call(fetch, catalog, `${SUBMISSIONS_PATH}/${encodeURIComponent(submissionId)}/notes`, {
-    method: 'PUT',
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    method: "PUT",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify({ releaseNotes: notes }),
   })
   if (answer.response.ok) return
@@ -231,7 +229,7 @@ export async function setReleaseNotes({ submissionId, notes, catalog, token }, {
 /// The command. Returns the exit code rather than exiting, so the same code
 /// runs under a test with a fake `fetch` and captured output.
 export async function main(argv, { env = process.env, fetch = globalThis.fetch, stdout = process.stdout, stderr = process.stderr } = {}) {
-  if (argv.length === 0 || argv.includes('--help') || argv.includes('-h')) {
+  if (argv.length === 0 || argv.includes("--help") || argv.includes("-h")) {
     stdout.write(`${USAGE}\n`)
     return argv.length === 0 ? EXIT_USAGE : 0
   }
@@ -240,7 +238,7 @@ export async function main(argv, { env = process.env, fetch = globalThis.fetch, 
 
   // Every line out goes through this, so the token cannot reach a terminal or
   // a CI log by way of an error that happened to quote a header or a URL.
-  const redact = (s) => (token ? String(s).split(token).join('<token>') : String(s))
+  const redact = (s) => (token ? String(s).split(token).join("<token>") : String(s))
   const say = (s) => stdout.write(`${redact(s)}\n`)
   const complain = (s) => stderr.write(`h2kext-publish: ${redact(s)}\n`)
 
@@ -264,40 +262,42 @@ export async function main(argv, { env = process.env, fetch = globalThis.fetch, 
     }
     for (let i = 0; i < argv.length; i++) {
       const arg = argv[i]
-      if (arg === '--channel') channel = valueOf(i++)
-      else if (arg === '--notes') notes = valueOf(i++)
-      else if (arg === '--catalog') catalog = valueOf(i++)
-      else if (arg === '--force-name') forceName = true
-      else if (arg === '--token') throw new PublishError(`there is no --token option; set ${TOKEN_ENV} instead`, EXIT_USAGE)
-      else if (arg.startsWith('-')) throw new PublishError(`unknown option '${arg}'`, EXIT_USAGE)
+      if (arg === "--channel") channel = valueOf(i++)
+      else if (arg === "--notes") notes = valueOf(i++)
+      else if (arg === "--catalog") catalog = valueOf(i++)
+      else if (arg === "--force-name") forceName = true
+      else if (arg === "--token") throw new PublishError(`there is no --token option; set ${TOKEN_ENV} instead`, EXIT_USAGE)
+      else if (arg.startsWith("-")) throw new PublishError(`unknown option '${arg}'`, EXIT_USAGE)
       else if (source === undefined) source = arg
     }
 
-    if (!source) throw new PublishError('name the bundle or directory to publish', EXIT_USAGE)
+    if (!source) throw new PublishError("name the bundle or directory to publish", EXIT_USAGE)
     channel ??= DEFAULT_CHANNEL
     if (!CHANNELS.includes(channel)) {
-      throw new PublishError(`--channel must be one of ${CHANNELS.join(', ')}${channel ? `, not '${channel}'` : ''}`, EXIT_USAGE)
+      throw new PublishError(`--channel must be one of ${CHANNELS.join(", ")}${channel ? `, not '${channel}'` : ""}`, EXIT_USAGE)
     }
     if (!token) {
       throw new PublishError(`no token — set ${TOKEN_ENV} (get one at ${catalog}/publish)`, EXIT_USAGE)
     }
     try {
-      catalog = new URL(catalog).href.replace(/\/$/, '')
+      catalog = new URL(catalog).href.replace(/\/$/, "")
     } catch {
       throw new PublishError(`--catalog must be a URL, not '${catalog}'`, EXIT_USAGE)
     }
 
     const bytes = await loadBundle(source, { forceName })
     if (bytes.length > MAX_BUNDLE_BYTES) {
-      throw new PublishError(`${source} is ${bytes.length} bytes; the catalog takes at most 16 MiB (${MAX_BUNDLE_BYTES} bytes), because the app downloads no more than that`)
+      throw new PublishError(
+        `${source} is ${bytes.length} bytes; the catalog takes at most 16 MiB (${MAX_BUNDLE_BYTES} bytes), because the app downloads no more than that`,
+      )
     }
     const manifest = readManifestFromBundle(bytes)
-    for (const field of ['key', 'version']) {
-      if (typeof manifest[field] !== 'string' || manifest[field].trim() === '') {
+    for (const field of ["key", "version"]) {
+      if (typeof manifest[field] !== "string" || manifest[field].trim() === "") {
         throw new PublishError(`${MANIFEST_ENTRY} inside the bundle has no '${field}'`)
       }
     }
-    say(`publishing ${manifest.key} ${manifest.version}${manifest.name ? ` — ${manifest.name}` : ''} → ${channel} at ${catalog}`)
+    say(`publishing ${manifest.key} ${manifest.version}${manifest.name ? ` — ${manifest.name}` : ""} → ${channel} at ${catalog}`)
 
     const result = await publish({ bytes, manifest, channel, catalog, token }, { fetch })
     say(`published ${result.key} ${result.version} → ${result.channel} (${STATUS_WORDS[result.status] ?? result.status})`)

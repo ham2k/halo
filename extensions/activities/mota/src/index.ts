@@ -11,14 +11,7 @@
 // scorer with no accumulator at all, so mills are never counted toward
 // anything.
 
-import {
-  activityExportHook,
-  activityScorer,
-  contestScorer,
-  defineExtension,
-  huntingExportHook,
-  referenceActivity,
-} from "@ham2k/extension-sdk"
+import { activityExportHook, activityScorer, contestScorer, defineExtension, huntingExportHook, referenceActivity } from "@ham2k/extension-sdk"
 import type {
   DataFileDefinition,
   RefTransform,
@@ -36,16 +29,16 @@ import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const HUNTING_TYPE = 'mota'
-const ACTIVATION_TYPE = 'motaActivation'
+const HUNTING_TYPE = "mota"
+const ACTIVATION_TYPE = "motaActivation"
 const REFERENCE_REGEX = /^X[0-9]{5}$/i
 
 /// Live-typing reformatting, app-polo's MOTAInput chain: a bare number takes
 /// the "X" every mill carries ("00001" -> "X00001"), at the start of the
 /// field or after a separator, which is replayed rather than consumed.
 export const TRANSFORMS: RefTransform[] = [
-  { pattern: '(^|,\\s*)(\\d\\d+)', replacement: '${1}X${2}', flags: 'gi' },
-  { pattern: '[^A-Z0-9, ]', replacement: '', flags: 'gi' },
+  { pattern: "(^|,\\s*)(\\d\\d+)", replacement: "${1}X${2}", flags: "gi" },
+  { pattern: "[^A-Z0-9, ]", replacement: "", flags: "gi" },
 ]
 
 /// Duplicate rules only. A repeat contact on the same band and day is a
@@ -53,31 +46,31 @@ export const TRANSFORMS: RefTransform[] = [
 /// given before is called out — but it does NOT rescue the contact, and nothing
 /// is counted toward a threshold, because app-polo's MOTA has no accumulator.
 const MOTA_SCORING = {
-  label: 'MOTA',
+  label: "MOTA",
   icon: manifest.icon,
   activationType: ACTIVATION_TYPE,
   huntingType: HUNTING_TYPE,
   allowsMultipleReferences: true,
-  uniquePer: ['band', 'day', 'ref'] as const,
-  activates: 'once' as const,
+  uniquePer: ["band", "day", "ref"] as const,
+  activates: "once" as const,
   tracksActivation: false,
   freshRefRescuesActivation: false,
-  refNoun: (ctx: HookContext) => tFor(ctx)('mill'),
-  refNounPlural: (ctx: HookContext) => tFor(ctx)('millsPlural'),
+  refNoun: (ctx: HookContext) => tFor(ctx)("mill"),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)("millsPlural"),
   // Set for consistency even though tracksActivation is false, so
   // summarizeActivation (the only place it would render) never runs today.
-  p2pLabel: (ctx: HookContext) => tFor(ctx)('m2m'),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)("m2m"),
 }
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
-  key: 'mota',
-  label: 'MOTA',
+  key: "mota",
+  label: "MOTA",
   activationType: ACTIVATION_TYPE,
   huntingType: HUNTING_TYPE,
   referenceRegex: REFERENCE_REGEX,
   icon: manifest.icon,
   color: manifest.accentColor,
-  placeholder: 'X00001',
+  placeholder: "X00001",
   transforms: TRANSFORMS,
   tFor,
   // The GMA site carries the reference lists for the castle, lighthouse and
@@ -92,53 +85,49 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
 })
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
-  return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
+  return ((container.refs as Ref[] | undefined) ?? []).filter((r) => r.type === type && r.ref)
 }
 
 const SpotsHook = {
-  sourceName: 'GMA',
+  sourceName: "GMA",
 
   async isSelfSpotEnabled({ operation }: { operation: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(operation, ACTIVATION_TYPE).length > 0
-      ? { enabled: true, icon: manifest.icon }
-      : { enabled: false }
+    return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: manifest.icon } : { enabled: false }
   },
 
   async isOtherSpotEnabled({ qso }: { qso: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(qso, HUNTING_TYPE).length > 0
-      ? { enabled: true, icon: manifest.icon }
-      : { enabled: false }
+    return refsOfType(qso, HUNTING_TYPE).length > 0 ? { enabled: true, icon: manifest.icon } : { enabled: false }
   },
 
   async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, _ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(operation, ACTIVATION_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No MOTA activation on this operation' }
+    if (refs.length === 0) return { ok: false, message: "No MOTA activation on this operation" }
     return postSelfSpotToGMA({ operation, refs, freq, mode, comment })
   },
 
   async postOtherSpot({ qso, comment, spotterCall }: PostOtherSpotRequest, _ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(qso, HUNTING_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No MOTA reference on this QSO' }
+    if (refs.length === 0) return { ok: false, message: "No MOTA reference on this QSO" }
     return postOtherSpotToGMA({ qso, refs, comment, spotterCall })
   },
 }
 
 const motaDataFile: DataFileDefinition = {
-  key: 'mota-all-mills',
-  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
-  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
-  url: 'https://www.cqgma.org/download/mills.csv',
+  key: "mota-all-mills",
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileName"),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileDescription"),
+  url: "https://www.cqgma.org/download/mills.csv",
   maxAgeInDays: 30,
-  fetchType: 'csv',
-  category: 'mota',
-  csvOptions: { hasHeaders: true, delimiter: ',' },
+  fetchType: "csv",
+  category: "mota",
+  csvOptions: { hasHeaders: true, delimiter: "," },
   csvToLookupEntry: (row: Record<string, string> | string[]) => {
     const r = row as Record<string, string>
     // Every entry carries a validity window; `21991231` is the list's way of
     // saying "no end date". Anything else has been retired.
-    if ((r['valid to'] ?? '').trim() !== '21991231') return null
+    if ((r["valid to"] ?? "").trim() !== "21991231") return null
 
-    const ref = (r.Reference ?? '').trim().toUpperCase()
+    const ref = (r.Reference ?? "").trim().toUpperCase()
     if (!ref) return null
 
     const parsedLat = Number.parseFloat(r.Latitude)
@@ -147,12 +136,8 @@ const motaDataFile: DataFileDefinition = {
     const lon = Number.isNaN(parsedLon) ? undefined : parsedLon
 
     // Same locator convention as GMA — published upper-case, tail lower.
-    const published = (r['Maidenhead Locator'] ?? '').trim()
-    const grid = published
-      ? published.replace(/[A-Z]{2}$/, (x) => x.toLowerCase())
-      : lat != null && lon != null
-        ? locationToGrid6(lat, lon)
-        : undefined
+    const published = (r["Maidenhead Locator"] ?? "").trim()
+    const grid = published ? published.replace(/[A-Z]{2}$/, (x) => x.toLowerCase()) : lat != null && lon != null ? locationToGrid6(lat, lon) : undefined
 
     return {
       subCategory: r.District,
@@ -179,29 +164,36 @@ const motaDataFile: DataFileDefinition = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook(`ref:${HUNTING_TYPE}`, { hook: refHandler, key: 'mota' })
-    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'mota' })
-    registerHook('activity', { hook: activityHook, key: 'mota' })
-    registerHook('adifFields', { hook: adifFieldsHook, key: 'mota' })
-    registerHook('adifImport', { hook: adifImportHook, key: 'mota' })
-    registerHook('spots', { hook: SpotsHook, key: 'mota' })
-    registerHook('dataFile', { hook: motaDataFile, key: 'mota-all-mills' })
-    registerHook('scoring', {
+    registerHook(`ref:${HUNTING_TYPE}`, { hook: refHandler, key: "mota" })
+    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: "mota" })
+    registerHook("activity", { hook: activityHook, key: "mota" })
+    registerHook("adifFields", { hook: adifFieldsHook, key: "mota" })
+    registerHook("adifImport", { hook: adifImportHook, key: "mota" })
+    registerHook("spots", { hook: SpotsHook, key: "mota" })
+    registerHook("dataFile", { hook: motaDataFile, key: "mota-all-mills" })
+    registerHook("scoring", {
       hook: contestScorer(activityScorer(MOTA_SCORING), {
         scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE], huntingRefTypes: [HUNTING_TYPE] },
       }),
-      key: 'mota',
+      key: "mota",
     })
-    registerHook('export', {
-      hook: activityExportHook({ key: 'mota', label: 'MOTA', activationType: ACTIVATION_TYPE, icon: manifest.icon }),
-      key: 'mota',
+    registerHook("export", {
+      hook: activityExportHook({ key: "mota", label: "MOTA", activationType: ACTIVATION_TYPE, icon: manifest.icon }),
+      key: "mota",
     })
     // The chaser side: every reference hunted, across the whole log — a
     // different key so it doesn't collide with the activator registration
     // above.
-    registerHook('export', {
-      hook: huntingExportHook({ key: 'mota', label: 'MOTA', huntingType: HUNTING_TYPE, activationType: ACTIVATION_TYPE, icon: manifest.icon, color: manifest.accentColor }),
-      key: 'mota-hunter',
+    registerHook("export", {
+      hook: huntingExportHook({
+        key: "mota",
+        label: "MOTA",
+        huntingType: HUNTING_TYPE,
+        activationType: ACTIVATION_TYPE,
+        icon: manifest.icon,
+        color: manifest.accentColor,
+      }),
+      key: "mota-hunter",
     })
   },
 })

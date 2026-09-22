@@ -14,8 +14,8 @@ const DAY = 24 * 60 * 60 * 1000
 
 /// The two runnings, each its own event: separate weekends, separate logs,
 /// separate submissions.
-export type R1FdMode = 'CW' | 'SSB'
-export const MODES: R1FdMode[] = ['CW', 'SSB']
+export type R1FdMode = "CW" | "SSB"
+export const MODES: R1FdMode[] = ["CW", "SSB"]
 
 /// June for CW, September for SSB (0-based), and the Saturday start hour UTC.
 const MONTH_FOR: Record<R1FdMode, number> = { CW: 5, SSB: 8 }

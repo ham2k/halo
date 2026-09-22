@@ -115,10 +115,7 @@ test("refLabels falls back per ref, and skips refs with nothing to show", () => 
     { type: "custom", ref: 1234, shortLabel: "" },
     null,
   ]
-  assert.equal(
-    renderTemplate("{{ refs | refLabels | join: '|' }}", { refs }),
-    "POTA US-1234|CQ WPX CW|SOTA W7W/KG-001: Peak|KFF-9999|1234",
-  )
+  assert.equal(renderTemplate("{{ refs | refLabels | join: '|' }}", { refs }), "POTA US-1234|CQ WPX CW|SOTA W7W/KG-001: Peak|KFF-9999|1234")
   assert.equal(renderTemplate("[{{ missing | refLabels | sentence }}]", {}), "[]")
 })
 
@@ -141,10 +138,7 @@ test("sentence joins with a different last separator", () => {
 // plausible nonsense with no error. `compact` drops nils from an array, and
 // `op.refs`/`qso.refs` are arrays in the standard vocabulary.
 test("liquid's own compact still works on a list", () => {
-  assert.equal(
-    renderTemplate("{{ refs | compact | join: ',' }}", { refs: ["US-1234", null, "US-5678"] }),
-    "US-1234,US-5678",
-  )
+  assert.equal(renderTemplate("{{ refs | compact | join: ',' }}", { refs: ["US-1234", null, "US-5678"] }), "US-1234,US-5678")
 })
 
 test("oneLine closes up the gaps an absent value leaves behind", () => {

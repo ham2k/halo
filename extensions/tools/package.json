@@ -2,7 +2,14 @@
   "name": "@ham2k/extension-tools",
   "version": "0.3.0",
   "description": "Build and package extensions for the Ham2K Logger",
-  "keywords": ["ham2k", "ham radio", "amateur radio", "extension", "esbuild", "h2kext"],
+  "keywords": [
+    "ham2k",
+    "ham radio",
+    "amateur radio",
+    "extension",
+    "esbuild",
+    "h2kext"
+  ],
   "license": "MIT",
   "author": "Sebastian Delmont <sd@ham2k.com>",
   "homepage": "https://ham2k.com",

@@ -27,23 +27,23 @@ import { EXTENDED_BANDS } from "@ham2k/lib-operation-data"
 /// the phone end of 80m, and '2200m' is the common name for the band the band
 /// table calls '2190m' — typed either way, the operator means the same band.
 const BAND_ALIASES: Record<string, string> = {
-  '75m': '80m',
-  '2200m': '2190m',
+  "75m": "80m",
+  "2200m": "2190m",
 }
 
 /// 'other' is a fallback the band table produces, not a band anyone works.
-const BAND_NAMES = new Set<string>((EXTENDED_BANDS as readonly string[]).filter((band) => band !== 'other'))
+const BAND_NAMES = new Set<string>((EXTENDED_BANDS as readonly string[]).filter((band) => band !== "other"))
 
 const UNIT_SUFFIX = /(mm|cm|m)$/
 
 /// The band `input` names, in the app's own spelling, or null for anything
 /// else.
 export function parseBandCommand(input: string): string | null {
-  const cleaned = input.trim().toLowerCase().replace(/[,\s]/g, '')
+  const cleaned = input.trim().toLowerCase().replace(/[,\s]/g, "")
   if (!cleaned) return null
 
   const suffix = UNIT_SUFFIX.exec(cleaned)?.[1]
-  const units = suffix ? [suffix] : ['m', 'cm']
+  const units = suffix ? [suffix] : ["m", "cm"]
   const stem = suffix ? cleaned.slice(0, -suffix.length) : cleaned
 
   for (const unit of units) {

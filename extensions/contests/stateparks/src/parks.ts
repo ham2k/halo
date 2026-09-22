@@ -22,18 +22,18 @@ import type { JSONValue } from "@ham2k/extension-sdk"
 
 import type { StateParkEvent } from "./events.ts"
 
-export const POTA_HUNTING = 'pota'
-export const POTA_ACTIVATION = 'potaActivation'
+export const POTA_HUNTING = "pota"
+export const POTA_ACTIVATION = "potaActivation"
 
 /// Anything carrying `refs` — an operation or a QSO, in either direction.
 type Container = Record<string, JSONValue> | undefined
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 export function refsOfType(container: Container, type: string): Record<string, JSONValue>[] {
-  return (((container?.refs as Record<string, JSONValue>[] | undefined) ?? [])).filter((r) => r?.type === type)
+  return ((container?.refs as Record<string, JSONValue>[] | undefined) ?? []).filter((r) => r?.type === type)
 }
 
 export function refOfType(container: Container, type: string): Record<string, JSONValue> | undefined {
@@ -52,8 +52,8 @@ export function refOfType(container: Container, type: string): Record<string, JS
 /// on a segmented log is the segment's own, and `decorateRef` is handed a ref
 /// with no operation around it at all.
 export function configuredOurPark(event: StateParkEvent, operation: Container, ownRef?: Record<string, JSONValue>): string {
-  const configured = str((ownRef ?? refOfType(operation, 'stateparks'))?.ourPark).toUpperCase()
-  return event.parkByAbbreviation[configured] ? configured : ''
+  const configured = str((ownRef ?? refOfType(operation, "stateparks"))?.ourPark).toUpperCase()
+  return event.parkByAbbreviation[configured] ? configured : ""
 }
 
 /// The parks in [event] we are working FROM, as POTA references.
@@ -78,7 +78,7 @@ export function ourParkRefs(event: StateParkEvent, operation: Container, ownRef?
 export function ourParkAbbreviation(event: StateParkEvent, operation: Container, ownRef?: Record<string, JSONValue>): string {
   const configured = configuredOurPark(event, operation, ownRef)
   if (configured) return configured
-  return event.parkByRef[ourParkRefs(event, operation, ownRef)[0] ?? '']?.abbreviation ?? ''
+  return event.parkByRef[ourParkRefs(event, operation, ownRef)[0] ?? ""]?.abbreviation ?? ""
 }
 
 /// Whether the operator has DECIDED this QSO's exchange — the field is present
@@ -90,21 +90,21 @@ export function ourParkAbbreviation(event: StateParkEvent, operation: Container,
 /// a park from a POTA reference over the top of it would put back what they just
 /// removed — in the log they submit, if not on the screen (§5.4).
 export function theirParkWasDecided(qso: Container): boolean {
-  const ref = refOfType(qso, 'stateparks')
-  return ref !== undefined && 'park' in ref
+  const ref = refOfType(qso, "stateparks")
+  return ref !== undefined && "park" in ref
 }
 
 /// The abbreviation the station we worked sent, as typed if they typed one, else
 /// the abbreviation of a park they are logged as being in.
 export function theirParkAbbreviation(event: StateParkEvent, qso: Container): string {
-  const ref = refOfType(qso, 'stateparks')
-  if (ref !== undefined && 'park' in ref) return str(ref.park).toUpperCase()
+  const ref = refOfType(qso, "stateparks")
+  if (ref !== undefined && "park" in ref) return str(ref.park).toUpperCase()
 
   for (const hunted of refsOfType(qso, POTA_HUNTING)) {
     const park = event.parkByRef[str(hunted.ref).toUpperCase()]
     if (park?.abbreviation) return park.abbreviation
   }
-  return ''
+  return ""
 }
 
 /// The parks in [event] the station we worked is in, as POTA references.

@@ -12,13 +12,7 @@
 // extensions decorate their own refs from their own lists; registering here too
 // means a WCA reference typed while ECA is disabled still resolves.
 
-import {
-  activityExportHook,
-  activityScorer,
-  contestScorer,
-  defineExtension,
-  referenceActivity,
-} from "@ham2k/extension-sdk"
+import { activityExportHook, activityScorer, contestScorer, defineExtension, referenceActivity } from "@ham2k/extension-sdk"
 import type { DataFileDefinition, HookContext, PostResult, PostSelfSpotRequest, Ref, SpotEligibility } from "@ham2k/extension-sdk"
 import { locationToGrid6 } from "@ham2k/lib-geo-tools"
 
@@ -27,20 +21,20 @@ import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const ACTIVATION_TYPE = 'wcaActivation'
+const ACTIVATION_TYPE = "wcaActivation"
 /// National castle awards whose references ARE WCA references.
-const OTHER_ACTIVATION_TYPES = ['ecaActivation', 'bcaActivation']
+const OTHER_ACTIVATION_TYPES = ["ecaActivation", "bcaActivation"]
 
 const REFERENCE_REGEX = /^[A-Z0-9]+-[0-9]{5}$/i
 
 const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceActivity({
-  key: 'wca',
-  label: 'WCA',
+  key: "wca",
+  label: "WCA",
   activationType: ACTIVATION_TYPE,
   referenceRegex: REFERENCE_REGEX,
   icon: manifest.icon,
   color: manifest.accentColor,
-  placeholder: 'ON-00558',
+  placeholder: "ON-00558",
   tFor,
   // The GMA site carries the reference lists for the castle, lighthouse and
   // mill programs as well as its own summits — one page per reference,
@@ -54,35 +48,33 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
 /// band, mode or day. The count accrues across the whole operation rather than
 /// per day — app-polo says so by registering the OPERATION accumulator.
 const WCA_SCORING = {
-  label: 'WCA',
+  label: "WCA",
   icon: manifest.icon,
   activationType: ACTIVATION_TYPE,
   qsosToActivate: 50,
-  uniquePer: ['band', 'mode', 'day'] as const,
-  activates: 'once' as const,
-  refNoun: (ctx: HookContext) => tFor(ctx)('castle'),
-  refNounPlural: (ctx: HookContext) => tFor(ctx)('castlesPlural'),
+  uniquePer: ["band", "mode", "day"] as const,
+  activates: "once" as const,
+  refNoun: (ctx: HookContext) => tFor(ctx)("castle"),
+  refNounPlural: (ctx: HookContext) => tFor(ctx)("castlesPlural"),
   // Set for consistency even though WCA has no huntingType, so the tally
   // that would use it (summarizeActivation's P2P line) never runs today.
-  p2pLabel: (ctx: HookContext) => tFor(ctx)('c2c'),
+  p2pLabel: (ctx: HookContext) => tFor(ctx)("c2c"),
 }
 
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
-  return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
+  return ((container.refs as Ref[] | undefined) ?? []).filter((r) => r.type === type && r.ref)
 }
 
 const SpotsHook = {
-  sourceName: 'GMA',
+  sourceName: "GMA",
 
   async isSelfSpotEnabled({ operation }: { operation: Record<string, any> }, _ctx: HookContext): Promise<SpotEligibility> {
-    return refsOfType(operation, ACTIVATION_TYPE).length > 0
-      ? { enabled: true, icon: manifest.icon }
-      : { enabled: false }
+    return refsOfType(operation, ACTIVATION_TYPE).length > 0 ? { enabled: true, icon: manifest.icon } : { enabled: false }
   },
 
   async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, _ctx: HookContext): Promise<PostResult> {
     const refs = refsOfType(operation, ACTIVATION_TYPE)
-    if (refs.length === 0) return { ok: false, message: 'No WCA activation on this operation' }
+    if (refs.length === 0) return { ok: false, message: "No WCA activation on this operation" }
     return postSelfSpotToGMA({ operation, refs, freq, mode, comment })
   },
 }
@@ -90,27 +82,27 @@ const SpotsHook = {
 /// Maintained by ON4VT Danny as a spreadsheet and re-published as CSV, which is
 /// why the URL is ham2k's rather than the award's — see app-polo's WCADataFile.
 const wcaDataFile: DataFileDefinition = {
-  key: 'wca-all-castles',
-  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
-  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
-  url: 'https://polo.ham2k.com/data/activities/wca/all-castles.csv',
+  key: "wca-all-castles",
+  name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileName"),
+  description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("dataFileDescription"),
+  url: "https://polo.ham2k.com/data/activities/wca/all-castles.csv",
   maxAgeInDays: 100,
-  fetchType: 'csv',
-  category: 'wca',
-  csvOptions: { hasHeaders: true, delimiter: ',' },
+  fetchType: "csv",
+  category: "wca",
+  csvOptions: { hasHeaders: true, delimiter: "," },
   csvToLookupEntry: (row: Record<string, string> | string[]) => {
     const r = row as Record<string, string>
     // The pattern check is app-polo's own here, and the 183 rows it drops out
     // of 70,000 are genuinely malformed (`LZ=00525`, four-digit `SV-0001`).
     // Trimmed first so a stray space isn't mistaken for one of them.
-    const ref = (r.REF ?? '').trim().toUpperCase()
+    const ref = (r.REF ?? "").trim().toUpperCase()
     if (!ref || !REFERENCE_REGEX.test(ref)) return null
 
     // A single `COORDINATES` column holding "lat,lon" — not two columns.
     let lat: number | undefined
     let lon: number | undefined
-    if (r.COORDINATES?.includes(',')) {
-      const [latStr, lonStr] = r.COORDINATES.split(',')
+    if (r.COORDINATES?.includes(",")) {
+      const [latStr, lonStr] = r.COORDINATES.split(",")
       lat = Number.parseFloat(latStr)
       lon = Number.parseFloat(lonStr)
       if (Number.isNaN(lat) || Number.isNaN(lon)) {
@@ -118,7 +110,7 @@ const wcaDataFile: DataFileDefinition = {
         lon = undefined
       }
     }
-    const name = r['CLEAN NAME']
+    const name = r["CLEAN NAME"]
 
     return {
       subCategory: r.PREFIX,
@@ -131,7 +123,7 @@ const wcaDataFile: DataFileDefinition = {
         ref,
         prefix: r.PREFIX,
         name,
-        location: r['CLEAN LOCATION'],
+        location: r["CLEAN LOCATION"],
         grid: lat != null && lon != null ? locationToGrid6(lat, lon) : undefined,
         lat,
         lon,
@@ -143,27 +135,27 @@ const wcaDataFile: DataFileDefinition = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: 'wca' })
+    registerHook(`ref:${ACTIVATION_TYPE}`, { hook: refHandler, key: "wca" })
     for (const type of OTHER_ACTIVATION_TYPES) {
-      registerHook(`ref:${type}`, { hook: refHandler, key: 'wca' })
+      registerHook(`ref:${type}`, { hook: refHandler, key: "wca" })
     }
-    registerHook('activity', { hook: activityHook, key: 'wca' })
-    registerHook('adifFields', { hook: adifFieldsHook, key: 'wca' })
-    registerHook('adifImport', { hook: adifImportHook, key: 'wca' })
-    registerHook('spots', { hook: SpotsHook, key: 'wca' })
-    registerHook('dataFile', { hook: wcaDataFile, key: 'wca-all-castles' })
-    registerHook('scoring', {
+    registerHook("activity", { hook: activityHook, key: "wca" })
+    registerHook("adifFields", { hook: adifFieldsHook, key: "wca" })
+    registerHook("adifImport", { hook: adifImportHook, key: "wca" })
+    registerHook("spots", { hook: SpotsHook, key: "wca" })
+    registerHook("dataFile", { hook: wcaDataFile, key: "wca-all-castles" })
+    registerHook("scoring", {
       hook: contestScorer(activityScorer(WCA_SCORING), { scope: { refTypes: [ACTIVATION_TYPE] } }),
-      key: 'wca',
+      key: "wca",
     })
-    registerHook('export', {
+    registerHook("export", {
       hook: activityExportHook({
-        key: 'wca',
-        label: 'WCA',
+        key: "wca",
+        label: "WCA",
         activationType: ACTIVATION_TYPE,
         icon: manifest.icon,
       }),
-      key: 'wca',
+      key: "wca",
     })
   },
 })

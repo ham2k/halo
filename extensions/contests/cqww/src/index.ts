@@ -28,14 +28,14 @@ import { CQWWScorer, ZONE_PATTERN, normalizeZone } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const TYPE = 'cqww'
+const TYPE = "cqww"
 
 function refOfType(container: Record<string, JSONValue>, type: string): Record<string, JSONValue> | undefined {
-  return (((container.refs as Record<string, JSONValue>[] | undefined) ?? [])).find((r) => r?.type === type)
+  return ((container.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === type)
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// Our own zone: whatever was set at setup, else the country file's answer for
@@ -48,41 +48,42 @@ function ourZone(operation: Record<string, JSONValue>): string {
 }
 
 const ActivityHook = {
-  async operationControls(
-    _args: { operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls(_args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx)
     return [
       {
-        key: 'cqww/setup',
+        key: "cqww/setup",
         // Named for the contest family — this is what the Activity Types list
         // shows, where "Setup" would read as a settings screen rather than the
         // thing you're adding to the operation.
-        label: t('activityLabel'),
+        label: t("activityLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'form',
+          kind: "form",
           refType: TYPE,
           form: {
-            title: t('setupLabel'),
+            title: t("setupLabel"),
             elements: [
               {
-                type: 'field',
-                fieldType: 'radio',
-                key: 'mode',
-                label: t('modeLabel'),
+                type: "field",
+                fieldType: "radio",
+                key: "mode",
+                label: t("modeLabel"),
                 // CQ WW runs these as separate contests on separate weekends.
-                options: [{ value: 'CW', label: 'CW' }, { value: 'SSB', label: 'SSB' }, { value: 'RTTY', label: 'RTTY' }],
+                options: [
+                  { value: "CW", label: "CW" },
+                  { value: "SSB", label: "SSB" },
+                  { value: "RTTY", label: "RTTY" },
+                ],
               },
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'zone',
-                label: t('ourZoneLabel'),
-                placeholder: t('ourZonePlaceholder'),
+                type: "field",
+                fieldType: "text",
+                key: "zone",
+                label: t("ourZoneLabel"),
+                placeholder: t("ourZonePlaceholder"),
               },
             ],
           },
@@ -106,23 +107,22 @@ const ActivityHook = {
     // multiplied by every contest extension the user happens to have enabled.
     if (!refOfType(args.operation, TYPE)) return []
 
-    const their = ((args.qso?.their as Record<string, JSONValue>) ?? {})
+    const their = (args.qso?.their as Record<string, JSONValue>) ?? {}
     const guess = (their.guess as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
-    const suggested =
-      normalizeZone(guess.cqZone) || (call ? normalizeZone(annotateCallAgainstCountryFile(call).cqZone) : '')
+    const suggested = normalizeZone(guess.cqZone) || (call ? normalizeZone(annotateCallAgainstCountryFile(call).cqZone) : "")
 
     return [
       {
-        key: 'cqww/zone',
-        label: tFor(ctx)('zoneLabel'),
+        key: "cqww/zone",
+        label: tFor(ctx)("zoneLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'text',
+          kind: "text",
           refType: TYPE,
-          field: 'theirZone',
+          field: "theirZone",
           numeric: true,
           maxLength: 3,
           pattern: ZONE_PATTERN,
@@ -155,7 +155,7 @@ const ActivityHook = {
   ): Promise<Record<string, JSONValue> | null> {
     if (!refOfType(args.operation, TYPE)) return null
 
-    const their = ((args.qso.their as Record<string, JSONValue>) ?? {})
+    const their = (args.qso.their as Record<string, JSONValue>) ?? {}
     const guess = (their.guess as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
     const qsoRef = refOfType(args.qso, TYPE)
@@ -165,14 +165,15 @@ const ActivityHook = {
     // entirely when it was simply never filled in — so a present key, blank or
     // not, is a decision, and guessing over it would put back what they just
     // removed.
-    const exchange = qsoRef && 'theirZone' in qsoRef
-      ? normalizeZone(qsoRef.theirZone)
-      : normalizeZone(guess.cqZone) || (call ? normalizeZone(annotateCallAgainstCountryFile(call).cqZone) : '')
+    const exchange =
+      qsoRef && "theirZone" in qsoRef
+        ? normalizeZone(qsoRef.theirZone)
+        : normalizeZone(guess.cqZone) || (call ? normalizeZone(annotateCallAgainstCountryFile(call).cqZone) : "")
 
     // A deliberate blank still projects, so clearing an exchange on an edit
     // clears the QSO row's column too instead of leaving the old value there.
     if (!exchange) {
-      return qsoRef && 'theirZone' in qsoRef ? { their: { exchange: '' } } : null
+      return qsoRef && "theirZone" in qsoRef ? { their: { exchange: "" } } : null
     }
 
     return {
@@ -185,39 +186,36 @@ const ActivityHook = {
 
 const RefHandler = {
   async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
-    return { valid: true, normalized: (ref.ref ?? '').trim() }
+    return { valid: true, normalized: (ref.ref ?? "").trim() }
   },
 
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const mode = str((ref as Record<string, JSONValue>).mode)
-    const label = mode ? `CQ WW ${mode}` : tFor(ctx)('unconfigured')
+    const label = mode ? `CQ WW ${mode}` : tFor(ctx)("unconfigured")
     const zone = normalizeZone((ref as Record<string, JSONValue>).zone)
     const t = tFor(ctx)
     // `ourZoneSubtitle`, not a hardcoded `Zone ${zone}`: the two halves of
     // this line have to speak the same language, and the key already exists
     // for `suggestOperationTitle`.
-    return { ...ref, program: 'Contest', label, shortLabel: label, name: zone ? t('ourZoneSubtitle', { zone }) : t('notConfigured') }
+    return { ...ref, program: "Contest", label, shortLabel: label, name: zone ? t("ourZoneSubtitle", { zone }) : t("notConfigured") }
   },
 
   /// "KI2D for CQWW CW" with "Zone 8" beneath it: the sent exchange is the one
   /// thing an operator re-reads constantly during a contest, so it goes in the
   /// subtitle rather than being buried in setup.
-  async suggestOperationTitle(
-    { ref, operation }: { ref: Ref; operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ) {
+  async suggestOperationTitle({ ref, operation }: { ref: Ref; operation: Record<string, JSONValue> }, ctx: HookContext) {
     const mode = str((ref as Record<string, JSONValue>).mode)
     const zone = ourZone(operation)
     return {
-      for: ['CQWW', mode].filter((x) => x).join(' '),
-      subtitle: zone ? tFor(ctx)('ourZoneSubtitle', { zone }) : undefined,
+      for: ["CQWW", mode].filter((x) => x).join(" "),
+      subtitle: zone ? tFor(ctx)("ourZoneSubtitle", { zone }) : undefined,
     }
   },
 
   /// The contest's published rules — a reference here names an event, not a
   /// place, so what there is to read about it is the rules it is run under.
   async linkForRef(_args: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
-    return { url: 'https://www.cqww.com/rules.htm', label: 'CQ WW' }
+    return { url: "https://www.cqww.com/rules.htm", label: "CQ WW" }
   },
 }
 
@@ -230,22 +228,20 @@ const AdifFieldsHook = {
     if (!opRef) return []
     const mode = str(opRef.mode)
 
-    const fields: { name: string; value: string }[] = [
-      { name: 'CONTEST_ID', value: mode ? `CQ-WW-${mode}` : 'CQ-WW' },
-    ]
+    const fields: { name: string; value: string }[] = [{ name: "CONTEST_ID", value: mode ? `CQ-WW-${mode}` : "CQ-WW" }]
     const sent = ourZone(operation)
     const received = normalizeZone(refOfType(qso, TYPE)?.theirZone)
-    if (sent) fields.push({ name: 'STX_STRING', value: sent })
-    if (received) fields.push({ name: 'SRX_STRING', value: received })
+    if (sent) fields.push({ name: "STX_STRING", value: sent })
+    if (received) fields.push({ name: "SRX_STRING", value: received })
     return fields
   },
 }
 
-function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): string {
+function reportFor(qso: Record<string, JSONValue>, side: "our" | "their"): string {
   const sideData = (qso[side] as Record<string, JSONValue>) ?? {}
   const sent = str(sideData.sent)
   if (sent) return sent
-  return str(qso.mode) === 'CW' || str(qso.mode) === 'RTTY' ? '599' : '59'
+  return str(qso.mode) === "CW" || str(qso.mode) === "RTTY" ? "599" : "59"
 }
 
 /// The contest's own name for this operation's file — the mode is part of
@@ -253,15 +249,10 @@ function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): strin
 /// with separate submissions.
 function contestTag(operation: Record<string, JSONValue>): string {
   const mode = str(refOfType(operation, TYPE)?.mode)
-  return `CQ-WW-${mode || 'DX'}`
+  return `CQ-WW-${mode || "DX"}`
 }
 
-function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  extension: string,
-  compact?: boolean,
-): string {
+function filenameFor(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], extension: string, compact?: boolean): string {
   return exportFilename({
     stationCall: operation.stationCall,
     activity: contestTag(operation),
@@ -273,29 +264,28 @@ function filenameFor(
 
 const ExportHook = {
   async getExportTypes() {
-    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+    return [exportTypeDefinition(TYPE, "adif", manifest.shortName), exportTypeDefinition(TYPE, "cabrillo", manifest.shortName)]
   },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
-    const named = (extension: string) =>
-      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
+    const named = (extension: string) => filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
       {
         exportType: `${TYPE}-adif`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'adif',
-        label: t('adifExport', { contest: manifest.shortName }),
-        filename: named('adi'),
+        format: "adif",
+        label: t("adifExport", { contest: manifest.shortName }),
+        filename: named("adi"),
         selectedByDefault: true,
         refType: TYPE,
       },
       {
         exportType: `${TYPE}-cabrillo`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'cabrillo',
-        label: t('cabrilloExport', { contest: manifest.shortName }),
-        filename: named('log'),
+        format: "cabrillo",
+        label: t("cabrilloExport", { contest: manifest.shortName }),
+        filename: named("log"),
         selectedByDefault: true,
         refType: TYPE,
       },
@@ -308,7 +298,7 @@ const ExportHook = {
     // exportType it never offered makes the ADIF delegation recurse into
     // itself.
     if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
-      return { filename: '', mimeType: '', content: '' }
+      return { filename: "", mimeType: "", content: "" }
     }
 
     const operation = args.operation
@@ -319,23 +309,23 @@ const ExportHook = {
     if (args.exportType === `${TYPE}-cabrillo`) {
       const content = qsonToCabrillo(args.qsos, {
         headers: [
-          ['CONTEST', mode ? `CQ-WW-${mode}` : 'CQ-WW'],
-          ['CALLSIGN', ourCall],
-          ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
-          ['GRID-LOCATOR', str(operation.grid)],
+          ["CONTEST", mode ? `CQ-WW-${mode}` : "CQ-WW"],
+          ["CALLSIGN", ourCall],
+          ["OPERATORS", str((operation.local as Record<string, JSONValue>)?.operatorCall)],
+          ["GRID-LOCATOR", str(operation.grid)],
         ],
         qsoParts: (qso) => [
-          ourCall || '-',
-          reportFor(qso, 'our'),
-          sentZone || '-',
-          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || '-',
-          reportFor(qso, 'their'),
-          normalizeZone(refOfType(qso, TYPE)?.theirZone) || '-',
+          ourCall || "-",
+          reportFor(qso, "our"),
+          sentZone || "-",
+          str(((qso.their as Record<string, JSONValue>) ?? {}).call) || "-",
+          reportFor(qso, "their"),
+          normalizeZone(refOfType(qso, TYPE)?.theirZone) || "-",
         ],
       })
       return {
-        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
-        mimeType: 'text/plain',
+        filename: filenameFor(operation, args.qsos, "log", args.compactFilenames),
+        mimeType: "text/plain",
         content,
       }
     }
@@ -355,8 +345,8 @@ const ExportHook = {
       mainHandler: TYPE,
     })
     return {
-      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
-      mimeType: 'text/plain',
+      filename: filenameFor(operation, args.qsos, "adi", args.compactFilenames),
+      mimeType: "text/plain",
       content,
     }
   },
@@ -365,11 +355,11 @@ const ExportHook = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('activity', { hook: ActivityHook, key: TYPE })
+    registerHook("activity", { hook: ActivityHook, key: TYPE })
     registerHook(`ref:${TYPE}`, { hook: RefHandler, key: TYPE })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: TYPE })
-    registerHook('export', { hook: ExportHook, key: TYPE })
-    registerHook('scoring', {
+    registerHook("adifFields", { hook: AdifFieldsHook, key: TYPE })
+    registerHook("export", { hook: ExportHook, key: TYPE })
+    registerHook("scoring", {
       hook: contestScorer(CQWWScorer, { scope: { refTypes: [TYPE] } }),
       key: TYPE,
     })

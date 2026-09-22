@@ -18,7 +18,7 @@
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 
-export const VALID_BANDS = ['160m', '80m', '40m', '20m', '15m', '10m']
+export const VALID_BANDS = ["160m", "80m", "40m", "20m", "15m", "10m"]
 
 export type CwtScoresheet = {
   /// call → bands already worked with it. Its SIZE is the multiplier, and its
@@ -32,7 +32,7 @@ export type CwtScoresheet = {
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 export const CWTScorer: ContestScorer<CwtScoresheet> = {
@@ -56,16 +56,16 @@ export const CWTScorer: ContestScorer<CwtScoresheet> = {
 
     // CW only: the whole event is a CW test, so anything else is not a contest
     // contact even on a contest band.
-    if (str(qso.mode) !== 'CW') {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidMode'] } }
+    if (str(qso.mode) !== "CW") {
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidMode"] } }
     }
     if (!VALID_BANDS.includes(band)) {
-      return { scoresheet: base, score: { value: 0, alerts: ['invalidBand'] } }
+      return { scoresheet: base, score: { value: 0, alerts: ["invalidBand"] } }
     }
 
     const worked = base.workedByCall[call]
     if (worked?.includes(band)) {
-      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ['duplicate'] } }
+      return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
     // A callsign never worked before is a new multiplier; one worked on
@@ -73,10 +73,10 @@ export const CWTScorer: ContestScorer<CwtScoresheet> = {
     const notices: string[] = []
     if (worked) {
       worked.push(band)
-      notices.push('newBand')
+      notices.push("newBand")
     } else {
       base.workedByCall[call] = [band]
-      notices.push('newMult')
+      notices.push("newMult")
     }
 
     base.bands[band] = (base.bands[band] ?? 0) + 1
@@ -91,7 +91,7 @@ export const CWTScorer: ContestScorer<CwtScoresheet> = {
   },
 
   summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === 'day'
+    const isDay = scope === "day"
     const mults = Object.keys(scoresheet.workedByCall).length
     const points = isDay ? scoresheet.dayPoints : scoresheet.points
     // Multipliers are counted over the whole log, so a day's "score" is its
@@ -100,9 +100,9 @@ export const CWTScorer: ContestScorer<CwtScoresheet> = {
 
     return {
       cwt: {
-        key: 'cwt',
+        key: "cwt",
         for: scope,
-        icon: 'clock-fast',
+        icon: "clock-fast",
         total,
         points,
         mults,
@@ -118,10 +118,8 @@ export const CWTScorer: ContestScorer<CwtScoresheet> = {
 /// QSOs per band — the multiplier is a single whole-log number, so unlike CQ
 /// WW there is nothing per-band to break out of it.
 function bandBreakdown(sheet: CwtScoresheet): string {
-  return VALID_BANDS
-    .map((band) => {
-      const qsos = sheet.bands[band] ?? 0
-      return qsos === 0 ? `**${band}**: —` : `**${band}**: ${fmtInteger(qsos)} QSOs`
-    })
-    .join('\n')
+  return VALID_BANDS.map((band) => {
+    const qsos = sheet.bands[band] ?? 0
+    return qsos === 0 ? `**${band}**: —` : `**${band}**: ${fmtInteger(qsos)} QSOs`
+  }).join("\n")
 }

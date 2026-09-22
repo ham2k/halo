@@ -23,10 +23,7 @@ function qso(call: string, band: string, mode: string, extra: Record<string, JSO
 // The whole point of rule 3 becoming a tally: an operation's first QSO is new
 // on every axis, and saying so about a station nobody has worked yet is noise.
 test("scoreQso: the first QSO of an operation is newDXCC only, never newBand/newMode", async () => {
-  const notices = await scoreQso(
-    { operation: op, qso: qso("W1AW", "20m", "SSB") },
-    ctxWithLog([]),
-  )
+  const notices = await scoreQso({ operation: op, qso: qso("W1AW", "20m", "SSB") }, ctxWithLog([]))
   assert.deepEqual(notices.alerts, [])
   assert.deepEqual(notices.notices, ["newDXCC"])
 })
@@ -41,10 +38,7 @@ test("scoreQso: a band nobody has worked is silent unless we worked THAT station
 })
 
 test("scoreQso: exact call+band+mode already worked is a duplicate", async () => {
-  const notices = await scoreQso(
-    { operation: op, qso: qso("W1AW", "20m", "SSB") },
-    ctxWithLog([qso("W1AW", "20m", "SSB", { uuid: "q1" })]),
-  )
+  const notices = await scoreQso({ operation: op, qso: qso("W1AW", "20m", "SSB") }, ctxWithLog([qso("W1AW", "20m", "SSB", { uuid: "q1" })]))
   assert.deepEqual(notices.alerts, ["duplicate"])
   // A dupe is neither a new band nor a new mode nor a new entity.
   assert.deepEqual(notices.notices, [])
@@ -55,19 +49,13 @@ test("scoreQso: a spot's coarser mode still duplicates the sideband it was worke
   // `SSB` where the radio reported `USB`, and a raw string comparison leaves
   // an already-worked station looking fresh — unstruck on the board, and
   // scoring a point in the log.
-  const notices = await scoreQso(
-    { operation: op, qso: qso("W1AW", "20m", "SSB") },
-    ctxWithLog([qso("W1AW", "20m", "USB", { uuid: "q1" })]),
-  )
+  const notices = await scoreQso({ operation: op, qso: qso("W1AW", "20m", "SSB") }, ctxWithLog([qso("W1AW", "20m", "USB", { uuid: "q1" })]))
   assert.deepEqual(notices.alerts, ["duplicate"])
   assert.deepEqual(notices.notices, [])
 })
 
 test("scoreQso: a coarse DATA mode duplicates whichever digital mode was worked", async () => {
-  const notices = await scoreQso(
-    { operation: op, qso: qso("W1AW", "20m", "DATA") },
-    ctxWithLog([qso("W1AW", "20m", "FT8", { uuid: "q1" })]),
-  )
+  const notices = await scoreQso({ operation: op, qso: qso("W1AW", "20m", "DATA") }, ctxWithLog([qso("W1AW", "20m", "FT8", { uuid: "q1" })]))
   assert.deepEqual(notices.alerts, ["duplicate"])
 })
 
@@ -76,10 +64,7 @@ test("scoreQso: a coarse mode already in the log does not swallow the modes arou
   // one contact. A dupe is never appended to `workedByCall`, so a coarse
   // entry that matched its whole category would strike this station on this
   // band for the rest of the operation.
-  const notices = await scoreQso(
-    { operation: op, qso: qso("W1AW", "20m", "FT8") },
-    ctxWithLog([qso("W1AW", "20m", "DATA", { uuid: "q1" })]),
-  )
+  const notices = await scoreQso({ operation: op, qso: qso("W1AW", "20m", "FT8") }, ctxWithLog([qso("W1AW", "20m", "DATA", { uuid: "q1" })]))
   assert.deepEqual(notices.alerts, [])
   assert.ok(notices.notices.includes("newMode"))
 })
@@ -87,10 +72,7 @@ test("scoreQso: a coarse mode already in the log does not swallow the modes arou
 test("scoreQso: two digital modes are still two contacts", async () => {
   // The widened match may not go as far as the super mode: FT8 and RTTY are
   // separate credit, and folding them would silently drop one.
-  const notices = await scoreQso(
-    { operation: op, qso: qso("W1AW", "20m", "RTTY") },
-    ctxWithLog([qso("W1AW", "20m", "FT8", { uuid: "q1" })]),
-  )
+  const notices = await scoreQso({ operation: op, qso: qso("W1AW", "20m", "RTTY") }, ctxWithLog([qso("W1AW", "20m", "FT8", { uuid: "q1" })]))
   assert.deepEqual(notices.alerts, [])
   assert.ok(notices.notices.includes("newMode"))
 })
@@ -109,47 +91,32 @@ test("scoreQso: same call on a different band is New Band, not a dupe", async ()
 })
 
 test("scoreQso: same call, same band, different mode is New Mode", async () => {
-  const notices = await scoreQso(
-    { operation: op, qso: qso("W1AW", "20m", "CW") },
-    ctxWithLog([qso("W1AW", "20m", "SSB", { uuid: "q1" })]),
-  )
+  const notices = await scoreQso({ operation: op, qso: qso("W1AW", "20m", "CW") }, ctxWithLog([qso("W1AW", "20m", "SSB", { uuid: "q1" })]))
   assert.deepEqual(notices.alerts, [])
   assert.ok(notices.notices.includes("newMode"))
   assert.ok(!notices.notices.includes("duplicate"))
 })
 
 test("scoreQso: a brand-new entity on an already-worked band/mode is only newDXCC", async () => {
-  const notices = await scoreQso(
-    { operation: op, qso: qso("DL1ABC", "20m", "SSB") },
-    ctxWithLog([qso("W1AW", "20m", "SSB", { uuid: "q1" })]),
-  )
+  const notices = await scoreQso({ operation: op, qso: qso("DL1ABC", "20m", "SSB") }, ctxWithLog([qso("W1AW", "20m", "SSB", { uuid: "q1" })]))
   assert.deepEqual(notices.alerts, [])
   assert.deepEqual(notices.notices, ["newDXCC"])
 })
 
 test("scoreQso: excludeUuid keeps an edited QSO from flagging itself as a dupe", async () => {
-  const notices = await scoreQso(
-    { operation: op, qso: qso("W1AW", "20m", "SSB"), excludeUuid: "q1" },
-    ctxWithLog([qso("W1AW", "20m", "SSB", { uuid: "q1" })]),
-  )
+  const notices = await scoreQso({ operation: op, qso: qso("W1AW", "20m", "SSB"), excludeUuid: "q1" }, ctxWithLog([qso("W1AW", "20m", "SSB", { uuid: "q1" })]))
   // With q1 excluded, this candidate looks brand-new, not a dupe.
   assert.deepEqual(notices.alerts, [])
   assert.ok(notices.notices.includes("newDXCC"))
 })
 
 test("scoreQso: event markers in the log are ignored", async () => {
-  const notices = await scoreQso(
-    { operation: op, qso: qso("W1AW", "20m", "SSB") },
-    ctxWithLog([{ their: {}, band: "event", mode: "", uuid: "ev" }]),
-  )
+  const notices = await scoreQso({ operation: op, qso: qso("W1AW", "20m", "SSB") }, ctxWithLog([{ their: {}, band: "event", mode: "", uuid: "ev" }]))
   assert.ok(notices.notices.includes("newDXCC"))
 })
 
 test("scoreQso: no callsign yields no notices", async () => {
-  const notices = await scoreQso(
-    { operation: op, qso: { their: {}, band: "20m", mode: "SSB" } },
-    ctxWithLog([]),
-  )
+  const notices = await scoreQso({ operation: op, qso: { their: {}, band: "20m", mode: "SSB" } }, ctxWithLog([]))
   assert.deepEqual(notices, { notices: [], alerts: [] })
 })
 
@@ -158,28 +125,19 @@ test("scoreQso: no callsign yields no notices", async () => {
 const usOp = { uuid: "op-us", stationCall: "W1XYZ" }
 
 test("scoreQso: our own entity never notifies, however new it is to the log", async () => {
-  const notices = await scoreQso(
-    { operation: usOp, qso: qso("W1AW", "20m", "SSB") },
-    ctxWithLog([]),
-  )
+  const notices = await scoreQso({ operation: usOp, qso: qso("W1AW", "20m", "SSB") }, ctxWithLog([]))
   assert.ok(!notices.notices.includes("newDXCC"))
 })
 
 test("scoreQso: another entity still notifies for the same operator", async () => {
-  const notices = await scoreQso(
-    { operation: usOp, qso: qso("DL1ABC", "20m", "SSB") },
-    ctxWithLog([]),
-  )
+  const notices = await scoreQso({ operation: usOp, qso: qso("DL1ABC", "20m", "SSB") }, ctxWithLog([]))
   assert.ok(notices.notices.includes("newDXCC"))
 })
 
 // Silent, not uncounted: the entity is worked and belongs in the tally, which
 // is what the operation summary and any award export read.
 test("scoreQsos: our own entity is counted even though it never notified", async () => {
-  const result = await scoreQsos(
-    { operation: usOp, qsos: [qso("W1AW", "20m", "SSB", { uuid: "q1" })] },
-    ctxWithLog([]),
-  )
+  const result = await scoreQsos({ operation: usOp, qsos: [qso("W1AW", "20m", "SSB", { uuid: "q1" })] }, ctxWithLog([]))
   const sheet = result.scoresheet as { entities: Record<string, number> }
   assert.equal(sheet.entities.K, 1)
   assert.deepEqual(result.qsoScores.q1.notices ?? [], [])
@@ -191,10 +149,7 @@ const veOp = { uuid: "op-ve", stationCall: "VE3XYZ" }
 const dxOp = { uuid: "op-dx", stationCall: "DL1XYZ" }
 
 test("scoreQso: a US station's state is new the first time and quiet after", async () => {
-  const first = await scoreQso(
-    { operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) },
-    ctxWithLog([]),
-  )
+  const first = await scoreQso({ operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) }, ctxWithLog([]))
   assert.ok(first.notices.includes("newState"))
 
   const second = await scoreQso(
@@ -206,37 +161,25 @@ test("scoreQso: a US station's state is new the first time and quiet after", asy
 
 // Both lists apply to either operator: a US op working Canada is told.
 test("scoreQso: a Canadian province is newProvince, not newState", async () => {
-  const notices = await scoreQso(
-    { operation: usOp, qso: qso("VE3ABC", "20m", "SSB", { their: { call: "VE3ABC", state: "ON" } }) },
-    ctxWithLog([]),
-  )
+  const notices = await scoreQso({ operation: usOp, qso: qso("VE3ABC", "20m", "SSB", { their: { call: "VE3ABC", state: "ON" } }) }, ctxWithLog([]))
   assert.ok(notices.notices.includes("newProvince"))
   assert.ok(!notices.notices.includes("newState"))
 })
 
 test("scoreQso: a Canadian operator is told about US states too", async () => {
-  const notices = await scoreQso(
-    { operation: veOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) },
-    ctxWithLog([]),
-  )
+  const notices = await scoreQso({ operation: veOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) }, ctxWithLog([]))
   assert.ok(notices.notices.includes("newState"))
 })
 
 // The rule is about OUR station, not the one being worked.
 test("scoreQso: a DX operator is never told about states or provinces", async () => {
-  const notices = await scoreQso(
-    { operation: dxOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) },
-    ctxWithLog([]),
-  )
+  const notices = await scoreQso({ operation: dxOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) }, ctxWithLog([]))
   assert.ok(!notices.notices.includes("newState"))
   assert.ok(!notices.notices.includes("newProvince"))
 })
 
 test("scoreQso: the lookup's guessed state counts when the operator typed none", async () => {
-  const notices = await scoreQso(
-    { operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", guess: { state: "ct" } } }) },
-    ctxWithLog([]),
-  )
+  const notices = await scoreQso({ operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", guess: { state: "ct" } } }) }, ctxWithLog([]))
   assert.ok(notices.notices.includes("newState"))
 })
 
@@ -252,19 +195,13 @@ test("scoreQso: KL and KH6 stations resolve to AK and HI without a state field",
 // A county, a Mexican state or a country-file artifact must never open a
 // bucket in a tally the operator reads as "states worked".
 test("scoreQso: a value that is not on either list is no state at all", async () => {
-  const notices = await scoreQso(
-    { operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "Hartford" } }) },
-    ctxWithLog([]),
-  )
+  const notices = await scoreQso({ operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "Hartford" } }) }, ctxWithLog([]))
   assert.ok(!notices.notices.includes("newState"))
 })
 
 test("scoreQso: a duplicate carries no newState, like every other notice", async () => {
   const worked = qso("W1AW", "20m", "SSB", { uuid: "q1", their: { call: "W1AW", state: "CT" } })
-  const notices = await scoreQso(
-    { operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) },
-    ctxWithLog([worked]),
-  )
+  const notices = await scoreQso({ operation: usOp, qso: qso("W1AW", "20m", "SSB", { their: { call: "W1AW", state: "CT" } }) }, ctxWithLog([worked]))
   assert.deepEqual(notices.alerts, ["duplicate"])
   assert.deepEqual(notices.notices, [])
 })
@@ -308,18 +245,11 @@ test("scoreQsos: the DXCC breakdown lists flag, name and count, busiest first", 
   const result = await scoreQsos(
     {
       operation: usOp,
-      qsos: [
-        qso("W1AW", "20m", "SSB", { uuid: "q1" }),
-        qso("DL1ABC", "20m", "SSB", { uuid: "q2" }),
-        qso("DL2XYZ", "20m", "SSB", { uuid: "q3" }),
-      ],
+      qsos: [qso("W1AW", "20m", "SSB", { uuid: "q1" }), qso("DL1ABC", "20m", "SSB", { uuid: "q2" }), qso("DL2XYZ", "20m", "SSB", { uuid: "q3" })],
     },
     ctxWithLog([]),
   )
-  assert.equal(
-    result.operationSummary.dxcc.longSummary,
-    "🇩🇪 Germany (2) 🇺🇸 United States",
-  )
+  assert.equal(result.operationSummary.dxcc.longSummary, "🇩🇪 Germany (2) 🇺🇸 United States")
 })
 
 // entityPrefixForCall resolves against BIGCTY; DXCC_BY_PREFIX is a separate,
@@ -336,9 +266,17 @@ test("dxccBreakdown: a prefix DXCC_BY_PREFIX has never heard of falls back to it
 // checkpoint, so reading those unguarded takes the logging panel down.
 test("scoreQso: a checkpoint from before states existed is filled in, not fatal", async () => {
   const legacy = {
-    workedByCall: {}, entities: {}, bands: {}, modes: {},
-    qsos: 0, points: 0, duplicates: 0, bandModeQsos: 0,
-    dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
+    workedByCall: {},
+    entities: {},
+    bands: {},
+    modes: {},
+    qsos: 0,
+    points: 0,
+    duplicates: 0,
+    bandModeQsos: 0,
+    dayQsos: 0,
+    dayPoints: 0,
+    dayDuplicates: 0,
   }
   const notices = await scoreQso(
     {
@@ -358,10 +296,21 @@ test("scoreQso: a checkpoint from before states existed is filled in, not fatal"
 // pointed at the entity the operation started with.
 test("scoreQso: correcting the station call re-derives our own entity", async () => {
   const fromUsOperation = {
-    workedByCall: {}, entities: {}, bands: {}, modes: {}, states: {}, provinces: {},
-    qsos: 0, points: 0, duplicates: 0, bandModeQsos: 0,
-    dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
-    ourCall: "W1XYZ", ourEntity: "K",
+    workedByCall: {},
+    entities: {},
+    bands: {},
+    modes: {},
+    states: {},
+    provinces: {},
+    qsos: 0,
+    points: 0,
+    duplicates: 0,
+    bandModeQsos: 0,
+    dayQsos: 0,
+    dayPoints: 0,
+    dayDuplicates: 0,
+    ourCall: "W1XYZ",
+    ourEntity: "K",
   }
   const notices = await scoreQso(
     {
@@ -381,10 +330,7 @@ test("scoreQsos: the bands/modes label always shows, singular for one of each", 
   // The information panel uses this label as the section's own heading, so
   // a single-band single-mode operation still needs one, not just an empty
   // string once there are fewer than two of something.
-  const result = await scoreQsos(
-    { operation: usOp, qsos: [qso("W1AW", "20m", "SSB", { uuid: "q1" })] },
-    ctxWithLog([]),
-  )
+  const result = await scoreQsos({ operation: usOp, qsos: [qso("W1AW", "20m", "SSB", { uuid: "q1" })] }, ctxWithLog([]))
   assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 1 Mode")
 })
 
@@ -416,10 +362,7 @@ test("scoreQsos: the band breakdown is one row per band worked, in band-plan ord
   )
   // 40m before 20m: band-plan order, not the order QSOs arrived. Modes within a
   // band are busiest-first, so 20m leads with CW.
-  assert.equal(
-    result.operationSummary.bandsAndModes.longSummary,
-    "**40m**: 1 — SSB 1\n**20m**: 3 — CW 2, SSB 1",
-  )
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**40m**: 1 — SSB 1\n**20m**: 3 — CW 2, SSB 1")
 })
 
 // A band's total counts every contact on it; a QSO logged with no mode has no
@@ -428,10 +371,7 @@ test("scoreQsos: a mode-less QSO still counts toward its band's total", async ()
   const result = await scoreQsos(
     {
       operation: usOp,
-      qsos: [
-        qso("W1AW", "20m", "CW", { uuid: "q1" }),
-        qso("K5XYZ", "20m", "", { uuid: "q2" }),
-      ],
+      qsos: [qso("W1AW", "20m", "CW", { uuid: "q1" }), qso("K5XYZ", "20m", "", { uuid: "q2" })],
     },
     ctxWithLog([]),
   )
@@ -442,10 +382,7 @@ test("scoreQsos: a band the band plan doesn't list still gets a row, after the o
   const result = await scoreQsos(
     {
       operation: usOp,
-      qsos: [
-        qso("W1AW", "20m", "CW", { uuid: "q1" }),
-        qso("K5XYZ", "wormhole", "CW", { uuid: "q2" }),
-      ],
+      qsos: [qso("W1AW", "20m", "CW", { uuid: "q1" }), qso("K5XYZ", "wormhole", "CW", { uuid: "q2" })],
     },
     ctxWithLog([]),
   )
@@ -467,10 +404,7 @@ test("scoreQsos: a day section's tally carries no band breakdown", async () => {
   const result = await scoreQsos(
     {
       operation: usOp,
-      qsos: [
-        qso("W1AW", "20m", "CW", { uuid: "q1", startAtMillis: day1 }),
-        qso("K5XYZ", "40m", "SSB", { uuid: "q2", startAtMillis: day2 }),
-      ],
+      qsos: [qso("W1AW", "20m", "CW", { uuid: "q1", startAtMillis: day1 }), qso("K5XYZ", "40m", "SSB", { uuid: "q2", startAtMillis: day2 })],
     },
     ctxWithLog([]),
   )
@@ -491,11 +425,7 @@ test("scoreQsos: the sideband spellings are one mode worked, in the count and th
   const result = await scoreQsos(
     {
       operation: usOp,
-      qsos: [
-        qso("W1AW", "20m", "USB", { uuid: "q1" }),
-        qso("K2XYZ", "20m", "SSB", { uuid: "q2" }),
-        qso("K3ABC", "20m", "LSB", { uuid: "q3" }),
-      ],
+      qsos: [qso("W1AW", "20m", "USB", { uuid: "q1" }), qso("K2XYZ", "20m", "SSB", { uuid: "q2" }), qso("K3ABC", "20m", "LSB", { uuid: "q3" })],
     },
     ctxWithLog([]),
   )
@@ -529,10 +459,7 @@ test("scoreQsos: nothing but the sidebands and the alias spellings is combined",
     ctxWithLog([]),
   )
   assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 3 Modes")
-  assert.equal(
-    result.operationSummary.bandsAndModes.longSummary,
-    "**20m**: 4 — DIGITALVOICE 2, FT4 1, MFSK 1",
-  )
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 4 — DIGITALVOICE 2, FT4 1, MFSK 1")
 })
 
 test("scoreQsos: a checkpoint that tallied raw modes still renders folded", async () => {
@@ -541,17 +468,24 @@ test("scoreQsos: a checkpoint that tallied raw modes still renders folded", asyn
   // data and is resumed from as-is. Without the fold on the way out it keeps
   // reporting two modes worked until something forces a full rescore.
   const rawTally = {
-    workedByCall: {}, entities: {}, states: {}, provinces: {},
-    bands: { "20m": 15 }, modes: { USB: 12, SSB: 3 },
+    workedByCall: {},
+    entities: {},
+    states: {},
+    provinces: {},
+    bands: { "20m": 15 },
+    modes: { USB: 12, SSB: 3 },
     bandModes: { "20m": { USB: 12, SSB: 3 } },
-    qsos: 15, points: 15, duplicates: 0, bandModeQsos: 2,
-    dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
-    ourCall: "W1XYZ", ourEntity: "K",
+    qsos: 15,
+    points: 15,
+    duplicates: 0,
+    bandModeQsos: 2,
+    dayQsos: 0,
+    dayPoints: 0,
+    dayDuplicates: 0,
+    ourCall: "W1XYZ",
+    ourEntity: "K",
   }
-  const result = await scoreQsos(
-    { operation: usOp, qsos: [], resumeFrom: rawTally },
-    ctxWithLog([]),
-  )
+  const result = await scoreQsos({ operation: usOp, qsos: [], resumeFrom: rawTally }, ctxWithLog([]))
   assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 1 Mode")
   assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 15 — SSB 15")
 })
@@ -566,10 +500,7 @@ test("scoreQsos: a duplicate the tally would call a new mode brings nothing new"
   const result = await scoreQsos(
     {
       operation: usOp,
-      qsos: [
-        qso("W1AW", "20m", "FT4", { uuid: "q1" }),
-        qso("W1AW", "20m", "MFSK", { uuid: "q2" }),
-      ],
+      qsos: [qso("W1AW", "20m", "FT4", { uuid: "q1" }), qso("W1AW", "20m", "MFSK", { uuid: "q2" })],
     },
     ctxWithLog([]),
   )
@@ -585,10 +516,7 @@ test("scoreQsos: a mode of whitespace alone is no mode at all", async () => {
   const result = await scoreQsos(
     {
       operation: usOp,
-      qsos: [
-        qso("W1AW", "20m", "SSB", { uuid: "q1" }),
-        qso("K2ABC", "20m", " ", { uuid: "q2" }),
-      ],
+      qsos: [qso("W1AW", "20m", "SSB", { uuid: "q1" }), qso("K2ABC", "20m", " ", { uuid: "q2" })],
     },
     ctxWithLog([]),
   )
@@ -604,17 +532,24 @@ test("scoreQsos: a checkpoint's lower-case and nameless keys migrate too", async
   // a key cached as `ssb` moves as well, and a nameless key cached before the
   // write guard keyed on the canonical value is dropped rather than carried.
   const rawTally = {
-    workedByCall: {}, entities: {}, states: {}, provinces: {},
-    bands: { "20m": 9 }, modes: { ssb: 5, USB: 3, " ": 1 },
+    workedByCall: {},
+    entities: {},
+    states: {},
+    provinces: {},
+    bands: { "20m": 9 },
+    modes: { ssb: 5, USB: 3, " ": 1 },
     bandModes: { "20m": { ssb: 5, USB: 3, " ": 1 } },
-    qsos: 9, points: 9, duplicates: 0, bandModeQsos: 1,
-    dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
-    ourCall: "W1XYZ", ourEntity: "K",
+    qsos: 9,
+    points: 9,
+    duplicates: 0,
+    bandModeQsos: 1,
+    dayQsos: 0,
+    dayPoints: 0,
+    dayDuplicates: 0,
+    ourCall: "W1XYZ",
+    ourEntity: "K",
   }
-  const result = await scoreQsos(
-    { operation: usOp, qsos: [qso("K9NEW", "20m", "CW", { uuid: "qN" })], resumeFrom: rawTally },
-    ctxWithLog([]),
-  )
+  const result = await scoreQsos({ operation: usOp, qsos: [qso("K9NEW", "20m", "CW", { uuid: "qN" })], resumeFrom: rawTally }, ctxWithLog([]))
   const sheet = result.scoresheet as { modes: Record<string, number> }
   assert.deepEqual(sheet.modes, { SSB: 8, CW: 1 })
 })
@@ -625,11 +560,22 @@ test("scoreQsos: a resumed checkpoint's raw tally keys are folded, not just rend
   // `SSB` key, is credited as bringing a mode the operation had already
   // worked, and writes both keys back into the checkpoint for good.
   const rawTally = {
-    workedByCall: {}, entities: {}, states: {}, provinces: {},
-    bands: { "20m": 12 }, modes: { USB: 12 }, bandModes: { "20m": { USB: 12 } },
-    qsos: 12, points: 12, duplicates: 0, bandModeQsos: 1,
-    dayQsos: 0, dayPoints: 0, dayDuplicates: 0,
-    ourCall: "W1XYZ", ourEntity: "K",
+    workedByCall: {},
+    entities: {},
+    states: {},
+    provinces: {},
+    bands: { "20m": 12 },
+    modes: { USB: 12 },
+    bandModes: { "20m": { USB: 12 } },
+    qsos: 12,
+    points: 12,
+    duplicates: 0,
+    bandModeQsos: 1,
+    dayQsos: 0,
+    dayPoints: 0,
+    dayDuplicates: 0,
+    ourCall: "W1XYZ",
+    ourEntity: "K",
   }
   const result = await scoreQsos(
     {
@@ -642,17 +588,14 @@ test("scoreQsos: a resumed checkpoint's raw tally keys are folded, not just rend
   const sheet = result.scoresheet as { modes: Record<string, number>; bandModes: Record<string, Record<string, number>> }
   assert.deepEqual(sheet.modes, { SSB: 13 })
   assert.deepEqual(sheet.bandModes["20m"], { SSB: 13 })
-  assert.equal(result.operationSummary.bandsAndModes.total, 1, 'the appended contact brought nothing new')
+  assert.equal(result.operationSummary.bandsAndModes.total, 1, "the appended contact brought nothing new")
 })
 
 test("scoreQsos: a duplicate still counts toward its band's row", async () => {
   const result = await scoreQsos(
     {
       operation: usOp,
-      qsos: [
-        qso("W1AW", "20m", "CW", { uuid: "q1" }),
-        qso("W1AW", "20m", "CW", { uuid: "q2" }),
-      ],
+      qsos: [qso("W1AW", "20m", "CW", { uuid: "q1" }), qso("W1AW", "20m", "CW", { uuid: "q2" })],
     },
     ctxWithLog([]),
   )

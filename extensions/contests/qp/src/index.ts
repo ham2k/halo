@@ -31,14 +31,7 @@
 
 import { exportTypeDefinition } from "@ham2k/extension-sdk"
 import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
-import {
-  adifForExport,
-  segmentsWith,
-  contestScorer,
-  defineExtension,
-  exportFilename,
-  startMillisOf,
-} from "@ham2k/extension-sdk"
+import { adifForExport, segmentsWith, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
   ExportOption,
@@ -94,16 +87,7 @@ import {
   splitLocations,
 } from "./location.ts"
 import { CANADIAN_PROVINCES, US_STATES } from "./locations.ts"
-import {
-  daysUntil,
-  hasAlreadyRun,
-  partyFor,
-  partyStates,
-  type QsoParty,
-  ROVING_STATION_CLASSES,
-  setupOrderOf,
-  SUPPORTED_PARTIES,
-} from "./parties.ts"
+import { daysUntil, hasAlreadyRun, partyFor, partyStates, type QsoParty, ROVING_STATION_CLASSES, setupOrderOf, SUPPORTED_PARTIES } from "./parties.ts"
 import { QsoPartyScorer } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -160,11 +144,7 @@ function partyLabel(party: QsoParty): string {
 /// kept apart from `[]`, because "could not ask" must not read as "never
 /// worked them", which would let an earlier running answer over what the
 /// operator copied minutes ago.
-async function callHistory(
-  ctx: HookContext,
-  call: string,
-  options: HistoryForCallOptions,
-): Promise<Record<string, JSONValue>[] | null> {
+async function callHistory(ctx: HookContext, call: string, options: HistoryForCallOptions): Promise<Record<string, JSONValue>[] | null> {
   if (!ctx.getHistoryForCall) return []
   try {
     return await ctx.getHistoryForCall(call, { limit: 10, ...options })
@@ -190,11 +170,11 @@ async function priorExchange(
   options: { code: string }[],
   guessedState: string,
 ): Promise<string> {
-  if (!operationUuid) return ''
+  if (!operationUuid) return ""
   const here = await callHistory(ctx, call, { operation: operationUuid, refType: TYPE })
   // Could not ask about this operation: an earlier running must not answer
   // over what may be in it.
-  if (here === null) return ''
+  if (here === null) return ""
   const found = loggedExchangeFor(here, call)
   if (found) return found
   const before = await callHistory(ctx, call, { refType: TYPE, refPrefix: party.key, excludeOperation: operationUuid })
@@ -210,26 +190,23 @@ const ActivityHook = {
   /// by tapping a suggestion would otherwise reach the activities row with
   /// nothing but a two-letter code.
   async suggest({ searchTerm }: SuggestArgs, _ctx: HookContext): Promise<ActivitySuggestion[]> {
-    const term = (searchTerm ?? '').trim().toUpperCase()
+    const term = (searchTerm ?? "").trim().toUpperCase()
     const now = Date.now()
 
-    return SUPPORTED_PARTIES
-      .filter((party) => !term
-        || party.key.includes(term)
-        || party.short.toUpperCase().includes(term)
-        || party.name.toUpperCase().includes(term))
-      .map((party) => ({
-        type: TYPE,
-        ref: party.key,
-        name: partySubtitle(party),
-        program: 'Contest',
-        label: partyLabel(party),
-        shortLabel: party.short,
-        // Nearer parties rank higher — running now, this weekend, next month.
-        // These recur annually, so a party whose file still holds last year's
-        // dates ranks as though it were a year away rather than negative.
-        relevance: relevanceOf(party, now),
-      }))
+    return SUPPORTED_PARTIES.filter(
+      (party) => !term || party.key.includes(term) || party.short.toUpperCase().includes(term) || party.name.toUpperCase().includes(term),
+    ).map((party) => ({
+      type: TYPE,
+      ref: party.key,
+      name: partySubtitle(party),
+      program: "Contest",
+      label: partyLabel(party),
+      shortLabel: party.short,
+      // Nearer parties rank higher — running now, this weekend, next month.
+      // These recur annually, so a party whose file still holds last year's
+      // dates ranks as though it were a year away rather than negative.
+      relevance: relevanceOf(party, now),
+    }))
   },
 
   /// Which party, where we are operating from, and the claims a submitted log
@@ -241,10 +218,7 @@ const ActivityHook = {
   /// select. The location is therefore a plain text field — which a county
   /// LINE needs anyway, since it is two counties and a separator rather than
   /// one choice from a list.
-  async operationControls(
-    { operation }: { operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls({ operation }: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx) as Translator
     const now = Date.now()
     const party = partyOn(operation)
@@ -266,18 +240,18 @@ const ActivityHook = {
     // cannot silently replace it with the default below.
     const currentKey = str(ref?.ref).toUpperCase()
     if (currentKey && !partyFor(currentKey)) {
-      options.unshift({ value: currentKey, label: `${currentKey} — ${t('unknownPartyOption')}` })
+      options.unshift({ value: currentKey, label: `${currentKey} — ${t("unknownPartyOption")}` })
     }
 
     const elements: FormElement[] = [
       {
-        type: 'field',
-        fieldType: 'select',
+        type: "field",
+        fieldType: "select",
         // The party key IS the ref's identity (§5.6), so this field writes
         // `ref` — the one core-owned key a setup form legitimately sets, and
         // the reason this control is a form rather than a reference list.
-        key: 'ref',
-        label: t('partyLabel'),
+        key: "ref",
+        label: t("partyLabel"),
         // A default, because this form is also how a party is FIRST chosen:
         // without one a straight Save on a fresh setup writes `ref: null`, an
         // activity row naming no party and a scorer with nothing to score.
@@ -288,26 +262,26 @@ const ActivityHook = {
 
     if (party) {
       elements.push({
-        type: 'field',
-        fieldType: 'text',
-        key: 'location',
-        label: t('ourLocationLabel'),
+        type: "field",
+        fieldType: "text",
+        key: "location",
+        label: t("ourLocationLabel"),
         value: ourLocationText(undefined, ref),
         placeholder: Object.keys(party.counties)[0],
       })
       if (party.options.countyLine) {
         const [first, second] = Object.keys(party.counties)
         elements.push({
-          type: 'markdown',
-          text: t('ourLocationLineHelp', { example: `${first}${COUNTY_LINE_SEPARATOR}${second ?? first}` }),
+          type: "markdown",
+          text: t("ourLocationLineHelp", { example: `${first}${COUNTY_LINE_SEPARATOR}${second ?? first}` }),
         })
       }
       if (party.exchange.name) {
         elements.push({
-          type: 'field',
-          fieldType: 'text',
-          key: 'ourName',
-          label: t('ourNameLabel'),
+          type: "field",
+          fieldType: "text",
+          key: "ourName",
+          label: t("ourNameLabel"),
           value: ourName(undefined, ref),
         })
       }
@@ -317,27 +291,27 @@ const ActivityHook = {
       for (const element of entryClassElements(t, party, ref)) elements.push(element)
 
       elements.push({
-        type: 'field',
-        fieldType: 'email',
-        key: 'email',
-        label: t('ourEmailLabel'),
+        type: "field",
+        fieldType: "email",
+        key: "email",
+        label: t("ourEmailLabel"),
         value: ourEmail(undefined, ref),
       })
     }
 
-    elements.push({ type: 'markdown', text: infoMarkdown(t, party) })
+    elements.push({ type: "markdown", text: infoMarkdown(t, party) })
 
     return [
       {
-        key: 'qp/setup',
-        label: t('activityLabel'),
+        key: "qp/setup",
+        label: t("activityLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'form',
+          kind: "form",
           refType: TYPE,
-          form: { title: party ? party.short : t('setupLabel'), elements },
+          form: { title: party ? party.short : t("setupLabel"), elements },
         },
       },
     ]
@@ -357,41 +331,41 @@ const ActivityHook = {
 
     if (party.exchange.number) {
       controls.push({
-        key: 'qp/ourSerial',
-        label: t('ourSerialLabel'),
+        key: "qp/ourSerial",
+        label: t("ourSerialLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
-        input: { kind: 'serial', refType: TYPE, field: 'ourSerial', sequence: { key: 'serial' } },
+        input: { kind: "serial", refType: TYPE, field: "ourSerial", sequence: { key: "serial" } },
       })
       controls.push({
-        key: 'qp/theirSerial',
-        label: t('theirSerialLabel'),
+        key: "qp/theirSerial",
+        label: t("theirSerialLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 20,
-        input: { kind: 'text', refType: TYPE, field: 'theirSerial', numeric: true, maxLength: 5 },
+        input: { kind: "text", refType: TYPE, field: "theirSerial", numeric: true, maxLength: 5 },
       })
     }
 
     if (party.exchange.name) {
       controls.push({
-        key: 'qp/theirName',
-        label: t('theirNameLabel'),
+        key: "qp/theirName",
+        label: t("theirNameLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 30,
-        input: { kind: 'text', refType: TYPE, field: 'theirName', maxLength: 12 },
+        input: { kind: "text", refType: TYPE, field: "theirName", maxLength: 12 },
       })
     }
 
-    const guessedState = qso ? guessedStateOf(qso as Record<string, unknown>) : ''
+    const guessedState = qso ? guessedStateOf(qso as Record<string, unknown>) : ""
     const options = exchangeOptionsFor(party, qso)
     // Only asked for when there is a callsign: this hook is also called with no
     // QSO at all — on every operation change, from the spots panel, from an
     // import — and none of those can use the answer.
     const call = str((qso?.their as Record<string, JSONValue> | undefined)?.call)
-    const logged = call ? await priorExchange(ctx, party, call, str(operation.uuid), options, guessedState) : ''
+    const logged = call ? await priorExchange(ctx, party, call, str(operation.uuid), options, guessedState) : ""
     // Otherwise the value an empty exchange is scored and filed as anyway,
     // so a prefill left alone changes nothing about the log.
     const hint = defaultTheirLocation(party, (qso ?? {}) as Record<string, JSONValue>)
@@ -400,21 +374,20 @@ const ActivityHook = {
     // while the county goes in the field. Ruled out by name rather than by
     // "not in the list": a station with no list (DX, or Alaska and Hawaii
     // where the party counts them as DX) has nothing to check it against.
-    const hintIsExchange = !partyStates(party).has(hint) &&
-      (options.length === 0 || options.some((option) => option.code === hint))
-    const suggested = logged || (hintIsExchange ? hint : '')
-    const placeholder = suggested ? '' : hint
+    const hintIsExchange = !partyStates(party).has(hint) && (options.length === 0 || options.some((option) => option.code === hint))
+    const suggested = logged || (hintIsExchange ? hint : "")
+    const placeholder = suggested ? "" : hint
     controls.push({
-      key: 'qp/location',
-      label: t('theirLocationLabel'),
-      shortLabel: t('theirLocationShortLabel'),
+      key: "qp/location",
+      label: t("theirLocationLabel"),
+      shortLabel: t("theirLocationShortLabel"),
       icon: manifest.icon,
       color: manifest.accentColor,
       order: 40,
       input: {
-        kind: 'options',
+        kind: "options",
         refType: TYPE,
-        field: 'location',
+        field: "location",
         options,
         // Hold the line back until the second character: a county code is three
         // or five, and on one character every callsign lookup would paint a
@@ -432,12 +405,12 @@ const ActivityHook = {
         ...(placeholder ? { placeholder } : {}),
         ...(party.options.countyLine
           ? {
-            multiValue: {
-              separator: COUNTY_LINE_SEPARATOR,
-              ...(exchangeInheritPrefix(party) ? { inheritPrefix: exchangeInheritPrefix(party) } : {}),
-            },
-            transforms: exchangeTransforms(party),
-          }
+              multiValue: {
+                separator: COUNTY_LINE_SEPARATOR,
+                ...(exchangeInheritPrefix(party) ? { inheritPrefix: exchangeInheritPrefix(party) } : {}),
+              },
+              transforms: exchangeTransforms(party),
+            }
           : {}),
         // A station in no known entity may still send something we don't have
         // a list for — a party's own file may be a year behind the county
@@ -469,7 +442,7 @@ const ActivityHook = {
     const name = str(qsoRef?.theirName).trim().toUpperCase()
     const ours = ourLocationText(operation as Record<string, unknown>)
 
-    const exchange = [serial, name, location].filter((part) => part).join(' ')
+    const exchange = [serial, name, location].filter((part) => part).join(" ")
 
     // PRESENCE, not truthiness — the rule `stateparks` and `naqp` both follow.
     // `their.exchange` is one field shared by every activity on the operation,
@@ -481,19 +454,14 @@ const ActivityHook = {
     //
     // A DX contact makes it every time: no party asks a DX station to send
     // anything, so `exchange` is empty for all of them.
-    const decided = qsoRef !== undefined
-      && ['location', 'theirSerial', 'theirName'].some((field) => field in qsoRef)
+    const decided = qsoRef !== undefined && ["location", "theirSerial", "theirName"].some((field) => field in qsoRef)
 
     // Re-projected on every save, edits included: the host hands this hook
     // the operation that was true when the contact was made, so a rover who
     // fixes a callsign typo an hour later gets that contact's own county back,
     // not the one they have driven to. (An `ourLocation` stamp an earlier
     // build left on the ref is not read — the segment is the record.)
-    const ourExchange = [
-      str(qsoRef?.ourSerial),
-      ourName(operation as Record<string, unknown>),
-      ours,
-    ].filter((part) => part).join(' ')
+    const ourExchange = [str(qsoRef?.ourSerial), ourName(operation as Record<string, unknown>), ours].filter((part) => part).join(" ")
 
     const patch: Record<string, JSONValue> = {}
     // A deliberate blank still projects, so clearing an exchange on an edit
@@ -518,58 +486,69 @@ const ActivityHook = {
 /// power class multiplies the score. A guess would either misstate the entry to
 /// a checker or invent a multiplier the sponsor would not award — so an
 /// unanswered question stays unanswered, and both readers treat it as no claim.
-function entryClassElements(
-  t: Translator,
-  party: QsoParty,
-  ref: Record<string, unknown> | undefined,
-): FormElement[] {
+function entryClassElements(t: Translator, party: QsoParty, ref: Record<string, unknown> | undefined): FormElement[] {
   const elements: FormElement[] = []
   const classes = party.entryClasses
 
-  const select = (
-    key: string,
-    label: string,
-    value: string | undefined,
-    options: { value: string; label: string }[],
-  ) => {
+  const select = (key: string, label: string, value: string | undefined, options: { value: string; label: string }[]) => {
     if (options.length === 0) return
     elements.push({
-      type: 'field',
-      fieldType: 'select',
+      type: "field",
+      fieldType: "select",
       key,
       label,
-      value: value ?? '',
+      value: value ?? "",
       // "Not declared" first, and the value a fresh setup keeps.
-      options: [{ value: '', label: t('classNone') }, ...options],
+      options: [{ value: "", label: t("classNone") }, ...options],
     })
   }
 
-  select('operator', t('operatorLabel'), ourOperatorClass(party, undefined, ref),
-    classes.operator.map((code) => ({ value: code, label: t(`operator${code}`) })))
+  select(
+    "operator",
+    t("operatorLabel"),
+    ourOperatorClass(party, undefined, ref),
+    classes.operator.map((code) => ({ value: code, label: t(`operator${code}`) })),
+  )
 
-  select('power', t('ourPowerLabel'), ourPowerClass(undefined, ref, party),
+  select(
+    "power",
+    t("ourPowerLabel"),
+    ourPowerClass(undefined, ref, party),
     classes.power.map((code) => {
       // The watts are the party's own, and the multiplier is shown where there
       // is one, because that is the operator's reason to care.
       const limit = classes.powerLimits[code]
       const mult = party.powerMultipliers[code]
-      const detail = [limit, mult !== undefined && mult !== 1 ? `×${mult}` : ''].filter((x) => x).join(' • ')
+      const detail = [limit, mult !== undefined && mult !== 1 ? `×${mult}` : ""].filter((x) => x).join(" • ")
       return { value: code, label: detail ? `${t(`power${code}`)} — ${detail}` : t(`power${code}`) }
-    }))
+    }),
+  )
 
-  select('station', t('stationLabel'), ourStationClass(party, undefined, ref),
-    classes.station.map((code) => ({ value: code, label: t(`station${code}`) })))
+  select(
+    "station",
+    t("stationLabel"),
+    ourStationClass(party, undefined, ref),
+    classes.station.map((code) => ({ value: code, label: t(`station${code}`) })),
+  )
 
-  select('mode', t('modeLabel'), ourModeClass(party, undefined, ref),
-    classes.mode.map((code) => ({ value: code, label: t(`mode${code}`) })))
+  select(
+    "mode",
+    t("modeLabel"),
+    ourModeClass(party, undefined, ref),
+    classes.mode.map((code) => ({ value: code, label: t(`mode${code}`) })),
+  )
 
-  select('overlay', t('overlayLabel'), ourOverlayClass(party, undefined, ref),
-    classes.overlay.map((code) => ({ value: code, label: t(`overlay${code}`) })))
+  select(
+    "overlay",
+    t("overlayLabel"),
+    ourOverlayClass(party, undefined, ref),
+    classes.overlay.map((code) => ({ value: code, label: t(`overlay${code}`) })),
+  )
 
   // Said once, next to the station class that makes it true, rather than as a
   // standing instruction: a rover's county changes through segments.
   if (classes.station.some((code) => ROVING_STATION_CLASSES.includes(code))) {
-    elements.push({ type: 'markdown', text: t('mobileHelp') })
+    elements.push({ type: "markdown", text: t("mobileHelp") })
   }
 
   return elements
@@ -577,19 +556,19 @@ function entryClassElements(
 
 const RefHandler = {
   async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
-    const normalized = (ref.ref ?? '').toUpperCase().trim()
+    const normalized = (ref.ref ?? "").toUpperCase().trim()
     return { valid: partyFor(normalized)?.supported === true, normalized }
   },
 
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const party = partyFor(ref.ref)
-    if (!party) return { ...ref, program: 'Contest', label: tFor(ctx)('unconfigured') }
+    if (!party) return { ...ref, program: "Contest", label: tFor(ctx)("unconfigured") }
 
     const location = str((ref as Record<string, JSONValue>).location).toUpperCase()
     return {
       ...ref,
       ref: party.key,
-      program: 'Contest',
+      program: "Contest",
       label: partyLabel(party),
       shortLabel: location ? `${party.short}: ${location}` : party.short,
       // `name` is the activity row's subtitle, and BOTH paths that create this
@@ -600,10 +579,7 @@ const RefHandler = {
   },
 
   /// "KI2D for NYQP", with the county beneath it.
-  async suggestOperationTitle(
-    { ref, operation }: { ref: Ref; operation: Record<string, JSONValue> },
-    _ctx: HookContext,
-  ): Promise<TitleSuggestion | null> {
+  async suggestOperationTitle({ ref, operation }: { ref: Ref; operation: Record<string, JSONValue> }, _ctx: HookContext): Promise<TitleSuggestion | null> {
     const party = partyFor(ref.ref)
     if (!party) return { for: manifest.shortName }
 
@@ -611,11 +587,13 @@ const RefHandler = {
     // The county rides in the title — `NJQP: MORR` — because that is what a
     // rover's segment rows have to tell apart, and the title is what they are
     // composed from. The subtitle spells the names out.
-    const codes = location ? splitLocations(location).join(COUNTY_LINE_SEPARATOR) : ''
+    const codes = location ? splitLocations(location).join(COUNTY_LINE_SEPARATOR) : ""
     return {
       for: codes ? `${party.short}: ${codes}` : party.short,
       subtitle: location
-        ? splitLocations(location).map((code) => nameForLocation(party, code)).join(' / ')
+        ? splitLocations(location)
+            .map((code) => nameForLocation(party, code))
+            .join(" / ")
         : undefined,
     }
   },
@@ -650,38 +628,30 @@ const AdifFieldsHook = {
     // `CONTEST_ID` is the sponsor's published contest name — the same
     // vocabulary the Cabrillo's `CONTEST:` line uses, which is what ADIF's own
     // contest list is built from, and what polo writes here.
-    const fields = [{ name: 'CONTEST_ID', value: party.cabrilloName ?? party.short }]
+    const fields = [{ name: "CONTEST_ID", value: party.cabrilloName ?? party.short }]
 
     // The exchange as SENT, in the order it was sent: serial, name, location.
-    const sent = [ourSerial, ourOwnName, ours].filter((part) => part).join(' ')
+    const sent = [ourSerial, ourOwnName, ours].filter((part) => part).join(" ")
     // Through the same resolution the Cabrillo takes, so the two files cannot
     // disagree about the same contact — the thirteen parties that log a DX
     // station by its prefix used to get `DL` here and `DX` there. Our own
     // export also hands over what it resolved for the whole log, which is the
     // only way this hook can know what a station sent on an earlier band.
-    const resolved = refOfType(operation as Record<string, unknown>)?.[RESOLVED_MARKER] as
-      | Record<string, string>
-      | undefined
-    const theirsForFile = resolved?.[str(qso.uuid)]
-      ?? theirLocationForFile(party, qso, { weAreInParty })
-    const received = [theirSerial, theirName, theirsForFile].filter((part) => part).join(' ')
-    if (sent) fields.push({ name: 'STX_STRING', value: sent })
-    if (received) fields.push({ name: 'SRX_STRING', value: received })
-    if (ourSerial) fields.push({ name: 'STX', value: ourSerial })
-    if (theirSerial) fields.push({ name: 'SRX', value: theirSerial })
-    if (ourOwnName) fields.push({ name: 'MY_NAME', value: ourOwnName })
-    if (theirName) fields.push({ name: 'NAME', value: theirName })
+    const resolved = refOfType(operation as Record<string, unknown>)?.[RESOLVED_MARKER] as Record<string, string> | undefined
+    const theirsForFile = resolved?.[str(qso.uuid)] ?? theirLocationForFile(party, qso, { weAreInParty })
+    const received = [theirSerial, theirName, theirsForFile].filter((part) => part).join(" ")
+    if (sent) fields.push({ name: "STX_STRING", value: sent })
+    if (received) fields.push({ name: "SRX_STRING", value: received })
+    if (ourSerial) fields.push({ name: "STX", value: ourSerial })
+    if (theirSerial) fields.push({ name: "SRX", value: theirSerial })
+    if (ourOwnName) fields.push({ name: "MY_NAME", value: ourOwnName })
+    if (theirName) fields.push({ name: "NAME", value: theirName })
 
     return fields
   },
 }
 
-function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  extension: string,
-  compact?: boolean,
-): string {
+function filenameFor(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], extension: string, compact?: boolean): string {
   return exportFilename({
     stationCall: operation.stationCall,
     activity: partyOn(operation)?.short ?? manifest.shortName,
@@ -693,24 +663,25 @@ function filenameFor(
 
 const ExportHook = {
   async getExportTypes() {
-    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+    return [exportTypeDefinition(TYPE, "adif", manifest.shortName), exportTypeDefinition(TYPE, "cabrillo", manifest.shortName)]
   },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     const party = partyOn(args.operation)
     if (!party) return []
     const t = tFor(ctx) as Translator
-    const named = (extension: string) =>
-      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
+    const named = (extension: string) => filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
 
-    const options: ExportOption[] = [{
-      exportType: `${TYPE}-adif`,
+    const options: ExportOption[] = [
+      {
+        exportType: `${TYPE}-adif`,
         templateData: { activity: party.short },
-      format: 'adif',
-      label: t('adifExport', { contest: party.short }),
-      filename: named('adi'),
-      selectedByDefault: true,
-      refType: TYPE,
-    }]
+        format: "adif",
+        label: t("adifExport", { contest: party.short }),
+        filename: named("adi"),
+        selectedByDefault: true,
+        refType: TYPE,
+      },
+    ]
 
     // A party whose file names no contest cannot produce a submittable
     // Cabrillo: the `CONTEST:` line is what tells a checker which contest the
@@ -720,9 +691,9 @@ const ExportHook = {
       options.push({
         exportType: `${TYPE}-cabrillo`,
         templateData: { activity: party.short },
-        format: 'cabrillo',
-        label: t('cabrilloExport', { contest: party.short }),
-        filename: named('log'),
+        format: "cabrillo",
+        label: t("cabrilloExport", { contest: party.short }),
+        filename: named("log"),
         selectedByDefault: true,
         refType: TYPE,
       })
@@ -733,11 +704,11 @@ const ExportHook = {
 
   async generateExport(args: ExportRequest, _ctx: HookContext): Promise<ExportResult> {
     const party = partyOn(args.operation)
-    if (!party) return { filename: '', mimeType: '', content: '' }
+    if (!party) return { filename: "", mimeType: "", content: "" }
     // Only the two exportTypes offered above: a hook answering for an
     // exportType it never offered makes the ADIF delegation recurse.
     if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
-      return { filename: '', mimeType: '', content: '' }
+      return { filename: "", mimeType: "", content: "" }
     }
 
     const operation = args.operation
@@ -748,13 +719,13 @@ const ExportHook = {
     if (args.exportType === `${TYPE}-cabrillo`) {
       const content = qsonToCabrillo(args.qsos, {
         headers: [
-          ['CONTEST', party.cabrilloName],
-          ['CALLSIGN', ourCall],
-          ['LOCATION', splitLocations(ourLocationText(operation as Record<string, unknown>)).join(COUNTY_LINE_SEPARATOR)],
+          ["CONTEST", party.cabrilloName],
+          ["CALLSIGN", ourCall],
+          ["LOCATION", splitLocations(ourLocationText(operation as Record<string, unknown>)).join(COUNTY_LINE_SEPARATOR)],
           ...cabrilloCategories(party, operation),
-          ['EMAIL', ourEmail(operation as Record<string, unknown>)],
-          ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
-          ['GRID-LOCATOR', str(operation.grid)],
+          ["EMAIL", ourEmail(operation as Record<string, unknown>)],
+          ["OPERATORS", str((operation.local as Record<string, JSONValue>)?.operatorCall)],
+          ["GRID-LOCATOR", str(operation.grid)],
         ],
         // The same memory the scorer folds: a station worked again on another
         // band without retyping the exchange is scored under the county they
@@ -762,8 +733,8 @@ const ExportHook = {
         qsoParts: (qso) => cabrilloRowsFor(party, qso, operation, ourCall, { segments, lastLocation }),
       })
       return {
-        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
-        mimeType: 'text/plain',
+        filename: filenameFor(operation, args.qsos, "log", args.compactFilenames),
+        mimeType: "text/plain",
         content,
       }
     }
@@ -775,8 +746,7 @@ const ExportHook = {
     const resolved = resolvedExchanges(party, operation, args.qsos, segments)
     const marked = (op: Record<string, JSONValue>): Record<string, JSONValue> => ({
       ...op,
-      refs: ((op.refs as Record<string, JSONValue>[] | undefined) ?? []).map((r) =>
-        r?.type === TYPE ? { ...r, [RESOLVED_MARKER]: resolved } : r),
+      refs: ((op.refs as Record<string, JSONValue>[] | undefined) ?? []).map((r) => (r?.type === TYPE ? { ...r, [RESOLVED_MARKER]: resolved } : r)),
     })
     const content = await adifForExport({
       operation: marked(operation),
@@ -792,8 +762,8 @@ const ExportHook = {
       mainHandler: TYPE,
     })
     return {
-      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
-      mimeType: 'text/plain',
+      filename: filenameFor(operation, args.qsos, "adi", args.compactFilenames),
+      mimeType: "text/plain",
       content,
     }
   },
@@ -817,63 +787,63 @@ function relevanceOf(party: QsoParty, nowMillis: number): number {
 /// "already happened", "this weekend", "in 12 days" — polo's own vocabulary for
 /// its party dropdown.
 function whenLabel(t: Translator, party: QsoParty, nowMillis: number): string {
-  if (hasAlreadyRun(party, nowMillis)) return t('whenAlreadyHappened')
+  if (hasAlreadyRun(party, nowMillis)) return t("whenAlreadyHappened")
   const days = daysUntil(party, nowMillis)
-  if (days < -1) return t('whenLastWeekend')
-  if (days <= 1) return t('whenThisWeekend')
-  return t('whenInDays', { days })
+  if (days < -1) return t("whenLastWeekend")
+  if (days <= 1) return t("whenThisWeekend")
+  return t("whenInDays", { days })
 }
 
 function infoMarkdown(t: Translator, party: QsoParty | undefined): string {
-  if (!party) return t('pickAParty')
+  if (!party) return t("pickAParty")
 
   const lines: string[] = []
   if (party.url) lines.push(`[${party.url}](${party.url})`)
-  lines.push(t('period', { period: `${fmtUtcDay(party.startMillis)} — ${fmtUtcDay(party.endMillis)}` }))
+  lines.push(t("period", { period: `${fmtUtcDay(party.startMillis)} — ${fmtUtcDay(party.endMillis)}` }))
   // The second session is shown in full rather than folded into the first: a
   // party that runs Saturday afternoon and Sunday morning has a gap in the
   // middle, and one range spanning it would claim hours the sponsor does not
   // score.
   if (party.secondStartMillis && party.secondEndMillis) {
-    lines.push(t('secondPeriod', { period: `${fmtUtcDay(party.secondStartMillis)} — ${fmtUtcDay(party.secondEndMillis)}` }))
+    lines.push(t("secondPeriod", { period: `${fmtUtcDay(party.secondStartMillis)} — ${fmtUtcDay(party.secondEndMillis)}` }))
   }
   // `status` and `lastUpdated` describe the DATA, which is what an operator
   // needs to judge how far to trust the dates and the county list. The files'
   // `notes` are NOT shown: they describe polo's own implementation.
-  if (party.status) lines.push(t('status', { status: party.status }))
-  if (party.lastUpdated) lines.push(t('lastUpdated', { lastUpdated: party.lastUpdated }))
-  return lines.join('\n\n')
+  if (party.status) lines.push(t("status", { status: party.status }))
+  if (party.lastUpdated) lines.push(t("lastUpdated", { lastUpdated: party.lastUpdated }))
+  return lines.join("\n\n")
 }
 
 /// `2026-10-17`. Written out rather than localized: these are the sponsor's UTC
 /// contest dates, and an operator comparing them against a rule book wants them
 /// in the same form the rule book uses.
 function fmtUtcDate(millis: number): string {
-  if (!millis) return '—'
+  if (!millis) return "—"
   const at = new Date(millis)
-  const pad = (value: number) => `${value}`.padStart(2, '0')
+  const pad = (value: number) => `${value}`.padStart(2, "0")
   return `${at.getUTCFullYear()}-${pad(at.getUTCMonth() + 1)}-${pad(at.getUTCDate())}`
 }
 
 /// `2026-10-17 14:00Z` — the same date with the hour the party opens, for the
 /// information panel, where the exact hour is what an operator is checking.
 function fmtUtcDay(millis: number): string {
-  if (!millis) return '—'
+  if (!millis) return "—"
   const at = new Date(millis)
-  const pad = (value: number) => `${value}`.padStart(2, '0')
+  const pad = (value: number) => `${value}`.padStart(2, "0")
   return `${fmtUtcDate(millis)} ${pad(at.getUTCHours())}:${pad(at.getUTCMinutes())}Z`
 }
 
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('activity', { hook: ActivityHook, key: TYPE })
+    registerHook("activity", { hook: ActivityHook, key: TYPE })
     registerHook(`ref:${TYPE}`, { hook: RefHandler, key: TYPE })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: TYPE })
-    registerHook('export', { hook: ExportHook, key: TYPE })
+    registerHook("adifFields", { hook: AdifFieldsHook, key: TYPE })
+    registerHook("export", { hook: ExportHook, key: TYPE })
     // Keyed to the ref TYPE, which is what the information panel matches its
     // per-contest heading against.
-    registerHook('scoring', {
+    registerHook("scoring", {
       hook: contestScorer(QsoPartyScorer, { scope: { refTypes: [TYPE] } }),
       key: TYPE,
     })

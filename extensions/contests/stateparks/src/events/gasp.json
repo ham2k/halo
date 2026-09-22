@@ -17,12 +17,7 @@
     "CW": 1,
     "distinctStatePark": 5
   },
-  "excludedBands": [
-    "60m",
-    "30m",
-    "17m",
-    "12m"
-  ],
+  "excludedBands": ["60m", "30m", "17m", "12m"],
   "parks": {
     "US-0636": 1,
     "US-2165": 1,

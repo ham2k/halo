@@ -3,7 +3,5 @@
   "name": "Lookup Service",
   "version": "0.0.1",
   "description": "Coordinates callsign lookups across all lookup extensions",
-  "hooks": [
-    "lookupService"
-  ]
+  "hooks": ["lookupService"]
 }

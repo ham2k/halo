@@ -58,7 +58,7 @@ function copySheet<S extends Scoresheet>(sheet: S): S {
 /// new day whatever the time, and an activity that resets its per-day worked
 /// maps on that flag then forgets every contact worked today.
 function openCheckpoint<S extends Scoresheet>(resumeFrom: JSONValue, resumeDay: number | undefined): { sheet: S; day: number | undefined } {
-  return { sheet: copySheet(resumeFrom as S), day: typeof resumeDay === 'number' ? resumeDay : undefined }
+  return { sheet: copySheet(resumeFrom as S), day: typeof resumeDay === "number" ? resumeDay : undefined }
 }
 
 /// UTC calendar day a QSO falls in, following app-polo/web-lofi's convention.
@@ -75,7 +75,7 @@ function chronological(qsos: Record<string, JSONValue>[]): Record<string, JSONVa
 /// they never score. Once segments land they'll also carry the operation
 /// overrides the harness applies — see docs/design/contests.md §5.1.
 function isEvent(qso: Record<string, JSONValue>): boolean {
-  return qso.band === 'event'
+  return qso.band === "event"
 }
 
 export interface ContestScorerOptions {
@@ -98,7 +98,7 @@ export interface ContestScorerOptions {
 /// which is the base operation and the safest place for it.
 function startAtMillisOf(qso: Record<string, JSONValue>): number {
   const at = qso.startAtMillis
-  return typeof at === 'number' ? at : 0
+  return typeof at === "number" ? at : 0
 }
 
 /// A not-yet-logged candidate judged as of NOW when it carries no time of its
@@ -109,15 +109,15 @@ function startAtMillisOf(qso: Record<string, JSONValue>): number {
 /// edited, a spot the panel stamped) keeps it. `Date` in the sandbox follows
 /// the app clock, so this travels with `DEVTT`.
 function candidateAsOfNow(qso: Record<string, JSONValue>): Record<string, JSONValue> {
-  return typeof qso.startAtMillis === 'number' ? qso : { ...qso, startAtMillis: Date.now() }
+  return typeof qso.startAtMillis === "number" ? qso : { ...qso, startAtMillis: Date.now() }
 }
 
 export function contestScorer<S extends Scoresheet = Scoresheet>(
   scorer: ContestScorer<S>,
   options: ContestScorerOptions = {},
 ): ScoringHook & { scope: ScoringScope } {
-  const scope: ScoringScope = options.scope ?? 'always'
-  const scopedRefTypes = typeof scope === 'object' && Array.isArray(scope.refTypes) ? scope.refTypes : undefined
+  const scope: ScoringScope = options.scope ?? "always"
+  const scopedRefTypes = typeof scope === "object" && Array.isArray(scope.refTypes) ? scope.refTypes : undefined
 
   /// This scorer's own ref on a segment-effective operation, if it has one. A
   /// contest set up once and left running resolves the same object every time;
@@ -127,7 +127,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
   function refOfScopedType(operation: Record<string, JSONValue>): Record<string, JSONValue> | undefined {
     if (!scopedRefTypes) return undefined
     const refs = (operation.refs as Record<string, JSONValue>[] | undefined) ?? []
-    return refs.find((r) => typeof r?.type === 'string' && scopedRefTypes.includes(r.type as string))
+    return refs.find((r) => typeof r?.type === "string" && scopedRefTypes.includes(r.type as string))
   }
 
   /// Folds `qsos` into `scoresheet`, reporting each QSO's verdict and taking a
@@ -187,7 +187,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
 
       const result = scorer.scoreQso({ scoresheet: sheet, qso, operation, ref, isNewDay }, ctx)
       sheet = result.scoresheet
-      onQso?.(typeof qso.uuid === 'string' ? qso.uuid : undefined, result.score)
+      onQso?.(typeof qso.uuid === "string" ? qso.uuid : undefined, result.score)
     }
     if (currentDay !== undefined) onDayEnd?.(currentDay, dayCount, sheet)
     return { sheet, day: currentDay }
@@ -227,24 +227,14 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
     }
     // Cold cache: rebuild from the log, skipping the record being edited so
     // it can't flag itself as its own duplicate.
-    const uuid = typeof args.operation.uuid === 'string' ? args.operation.uuid : undefined
+    const uuid = typeof args.operation.uuid === "string" ? args.operation.uuid : undefined
     const log = uuid ? ((await ctx.getQsos?.(uuid)) ?? []) : []
-    const rest = chronological(log as Record<string, JSONValue>[]).filter(
-      (q) => !excludeUuid || q.uuid !== excludeUuid,
-    )
+    const rest = chronological(log as Record<string, JSONValue>[]).filter((q) => !excludeUuid || q.uuid !== excludeUuid)
     // Segmented exactly as the batch pass folds it, so the candidate is
     // judged against the same history the score summary counted — without
     // this a contest that started mid-log would call a pre-contest contact
     // a duplicate.
-    return fold(
-      scorer.startScoresheet({ operation: args.operation, ref: args.ref }, ctx),
-      rest,
-      args,
-      ctx,
-      undefined,
-      undefined,
-      args.segments,
-    )
+    return fold(scorer.startScoresheet({ operation: args.operation, ref: args.ref }, ctx), rest, args, ctx, undefined, undefined, args.segments)
   }
 
   return {
@@ -272,7 +262,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
           daySections.push({
             day,
             count,
-            scores: scorer.summarizeScore({ scoresheet: sheet, operation: args.operation, ref: args.ref, scope: 'day' }, ctx),
+            scores: scorer.summarizeScore({ scoresheet: sheet, operation: args.operation, ref: args.ref, scope: "day" }, ctx),
           })
         },
         args.segments,
@@ -282,10 +272,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
       return {
         qsoScores,
         daySections,
-        operationSummary: scorer.summarizeScore(
-          { scoresheet: end, operation: args.operation, ref: args.ref, scope: 'operation' },
-          ctx,
-        ),
+        operationSummary: scorer.summarizeScore({ scoresheet: end, operation: args.operation, ref: args.ref, scope: "operation" }, ctx),
         scoresheet: end as JSONValue,
         ...(endDay !== undefined && { scoresheetDay: endDay }),
       }
@@ -296,10 +283,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
     /// discarded, which is exactly why one `scoreQso` can serve both paths.
     async scoreQso(args: ScoreQsoRequest, ctx: HookContext): Promise<QsoScoreNotices> {
       const { sheet } = await liveScoresheet(args, ctx, args.excludeUuid)
-      const { score } = scorer.scoreQso(
-        { scoresheet: sheet, qso: candidateAsOfNow(args.qso), operation: args.operation, ref: args.ref, isNewDay: false },
-        ctx,
-      )
+      const { score } = scorer.scoreQso({ scoresheet: sheet, qso: candidateAsOfNow(args.qso), operation: args.operation, ref: args.ref, isNewDay: false }, ctx)
       // `dupe` travels with them: it is how a scorer says its duplicate test
       // ran at all, which is what the host's priority merge reads (§5.1).
       // Dropping it here left the live paths judging on notices alone, so a
@@ -345,6 +329,6 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
 
 /// Convenience for scorers building tallies — keeps the required fields
 /// consistent without every contest repeating the literal.
-export function tally(key: string, forScope: 'day' | 'operation', total: number, extra: Partial<ScoreTally> = {}): ScoreTally {
+export function tally(key: string, forScope: "day" | "operation", total: number, extra: Partial<ScoreTally> = {}): ScoreTally {
   return { key, for: forScope, total, ...extra }
 }

@@ -8,28 +8,13 @@
   "enabledByDefault": false,
   "icon": "earth",
   "accentColor": "#1B5E9E",
-  "keywords": [
-    "contest",
-    "iaru",
-    "zone",
-    "hq",
-    "cabrillo"
-  ],
-  "hooks": [
-    "activity",
-    "adifFields",
-    "export",
-    "ref:iaru-hf",
-    "scoring"
-  ],
+  "keywords": ["contest", "iaru", "zone", "hq", "cabrillo"],
+  "hooks": ["activity", "adifFields", "export", "ref:iaru-hf", "scoring"],
   "translations": {
     "es": {
       "name": "Campeonato Mundial de HF de IARU",
       "description": "Trabaja las sociedades del mundo: zonas ITU, estaciones HQ y oficiales de IARU",
-      "keywords": [
-        "concurso",
-        "zona"
-      ]
+      "keywords": ["concurso", "zona"]
     }
   }
 }

@@ -8,35 +8,13 @@
   "enabledByDefault": false,
   "icon": "image-filter-hdr",
   "accentColor": "#6295BF",
-  "keywords": [
-    "summits",
-    "activation",
-    "chasing"
-  ],
-  "hooks": [
-    "account",
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "lookup",
-    "ref:sota",
-    "ref:sotaActivation",
-    "scoring",
-    "spots"
-  ],
-  "domains": [
-    "api-db2.sota.org.uk",
-    "sso.sota.org.uk"
-  ],
+  "keywords": ["summits", "activation", "chasing"],
+  "hooks": ["account", "activity", "adifFields", "adifImport", "dataFile", "export", "lookup", "ref:sota", "ref:sotaActivation", "scoring", "spots"],
+  "domains": ["api-db2.sota.org.uk", "sso.sota.org.uk"],
   "translations": {
     "es": {
       "description": "Referencias de cumbres, spots y registro de activaciones",
-      "keywords": [
-        "cumbres",
-        "activación"
-      ]
+      "keywords": ["cumbres", "activación"]
     }
   }
 }

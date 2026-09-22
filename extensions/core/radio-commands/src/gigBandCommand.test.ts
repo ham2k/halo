@@ -11,27 +11,27 @@ import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { BANDS_FOR_GIG_DESIGNATIONS, parseGigBandCommand } from "./parseGigBandCommand.ts"
 
 test("parseGigBandCommand: a GHz designation names its band", () => {
-  assert.deepEqual(parseGigBandCommand("10G"), { designation: '10G', band: '3cm' })
-  assert.deepEqual(parseGigBandCommand("24G"), { designation: '24G', band: '1.25cm' })
-  assert.deepEqual(parseGigBandCommand("47G"), { designation: '47G', band: '6mm' })
-  assert.deepEqual(parseGigBandCommand("1.2G"), { designation: '1.2G', band: '23cm' })
-  assert.deepEqual(parseGigBandCommand("241G"), { designation: '241G', band: '1mm' })
+  assert.deepEqual(parseGigBandCommand("10G"), { designation: "10G", band: "3cm" })
+  assert.deepEqual(parseGigBandCommand("24G"), { designation: "24G", band: "1.25cm" })
+  assert.deepEqual(parseGigBandCommand("47G"), { designation: "47G", band: "6mm" })
+  assert.deepEqual(parseGigBandCommand("1.2G"), { designation: "1.2G", band: "23cm" })
+  assert.deepEqual(parseGigBandCommand("241G"), { designation: "241G", band: "1mm" })
 })
 
 test("parseGigBandCommand: lowercase and a GHz suffix", () => {
-  assert.deepEqual(parseGigBandCommand("10g"), { designation: '10G', band: '3cm' })
-  assert.deepEqual(parseGigBandCommand("10GHz"), { designation: '10G', band: '3cm' })
-  assert.deepEqual(parseGigBandCommand("  5.7ghz  "), { designation: '5.7G', band: '6cm' })
+  assert.deepEqual(parseGigBandCommand("10g"), { designation: "10G", band: "3cm" })
+  assert.deepEqual(parseGigBandCommand("10GHz"), { designation: "10G", band: "3cm" })
+  assert.deepEqual(parseGigBandCommand("  5.7ghz  "), { designation: "5.7G", band: "6cm" })
 })
 
 test("parseGigBandCommand: bands that go by two designations take either", () => {
-  assert.equal(parseGigBandCommand("1.3G")?.band, '23cm')
-  assert.equal(parseGigBandCommand("2.4G")?.band, '13cm')
-  assert.equal(parseGigBandCommand("3.3G")?.band, '9cm')
-  assert.equal(parseGigBandCommand("5.8G")?.band, '6cm')
-  assert.equal(parseGigBandCommand("76G")?.band, '4mm')
-  assert.equal(parseGigBandCommand("78G")?.band, '4mm')
-  assert.equal(parseGigBandCommand("123G")?.band, '2.5mm')
+  assert.equal(parseGigBandCommand("1.3G")?.band, "23cm")
+  assert.equal(parseGigBandCommand("2.4G")?.band, "13cm")
+  assert.equal(parseGigBandCommand("3.3G")?.band, "9cm")
+  assert.equal(parseGigBandCommand("5.8G")?.band, "6cm")
+  assert.equal(parseGigBandCommand("76G")?.band, "4mm")
+  assert.equal(parseGigBandCommand("78G")?.band, "4mm")
+  assert.equal(parseGigBandCommand("123G")?.band, "2.5mm")
 })
 
 // A designation names a frequency, so it has to land in the band it claims — otherwise the
@@ -39,7 +39,7 @@ test("parseGigBandCommand: bands that go by two designations take either", () =>
 // together to make that an easy typo, so every entry in the table is checked, not a sample.
 test("parseGigBandCommand: every designation names a frequency inside the band it maps to", () => {
   for (const designation of Object.keys(BANDS_FOR_GIG_DESIGNATIONS)) {
-    if (designation === '122G') continue // checked below: the label sits outside its own band
+    if (designation === "122G") continue // checked below: the label sits outside its own band
     const parsed = parseGigBandCommand(designation)
     assert.equal(parsed?.band, bandForFrequency(parseFloat(designation) * 1e6), designation)
   }
@@ -48,8 +48,8 @@ test("parseGigBandCommand: every designation names a frequency inside the band i
 // 122G is the one designation the band table won't place: it is the label the ARRL uses,
 // but the 2.5mm band starts at 122.25 GHz, so the sweep above can't check it.
 test("parseGigBandCommand: 122G maps to the band its label belongs to", () => {
-  assert.equal(parseGigBandCommand("122G")?.band, '2.5mm')
-  assert.equal(bandForFrequency(122 * 1e6), 'other')
+  assert.equal(parseGigBandCommand("122G")?.band, "2.5mm")
+  assert.equal(bandForFrequency(122 * 1e6), "other")
 })
 
 // Commands are typed into the callsign field, so a pattern that matches too eagerly swallows

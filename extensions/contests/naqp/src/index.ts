@@ -34,64 +34,65 @@ import { NAQPScorer } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const TYPE = 'naqp'
+const TYPE = "naqp"
 
 function refOfType(container: Record<string, JSONValue>, type: string): Record<string, JSONValue> | undefined {
-  return (((container.refs as Record<string, JSONValue>[] | undefined) ?? [])).find((r) => r?.type === type)
+  return ((container.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === type)
 }
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 const ActivityHook = {
-  async operationControls(
-    _args: { operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls(_args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx)
     return [
       {
-        key: 'naqp/setup',
-        label: t('activityLabel'),
+        key: "naqp/setup",
+        label: t("activityLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'form',
+          kind: "form",
           refType: TYPE,
           form: {
-            title: t('setupLabel'),
+            title: t("setupLabel"),
             elements: [
               {
-                type: 'field',
-                fieldType: 'radio',
-                key: 'mode',
-                label: t('modeLabel'),
+                type: "field",
+                fieldType: "radio",
+                key: "mode",
+                label: t("modeLabel"),
                 // NAQP runs these as separate contests on separate weekends.
-                options: [{ value: 'CW', label: 'CW' }, { value: 'SSB', label: 'SSB' }, { value: 'RTTY', label: 'RTTY' }],
+                options: [
+                  { value: "CW", label: "CW" },
+                  { value: "SSB", label: "SSB" },
+                  { value: "RTTY", label: "RTTY" },
+                ],
               },
               // `ourName`/`ourLocation`, not `name`/`location`: a form field
               // key IS a key on the ref, and `name` is the slot `decorateRef`
               // writes the activity row's subtitle into. Naming them plainly
               // would have this setup overwrite itself on save.
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'ourName',
-                label: t('ourNameLabel'),
-                placeholder: t('ourNamePlaceholder'),
+                type: "field",
+                fieldType: "text",
+                key: "ourName",
+                label: t("ourNameLabel"),
+                placeholder: t("ourNamePlaceholder"),
                 uppercase: true,
               },
               {
-                type: 'field',
-                fieldType: 'text',
-                key: 'ourLocation',
-                label: t('ourLocationLabel'),
-                placeholder: t('ourLocationPlaceholder'),
+                type: "field",
+                fieldType: "text",
+                key: "ourLocation",
+                label: t("ourLocationLabel"),
+                placeholder: t("ourLocationPlaceholder"),
                 uppercase: true,
               },
-              { type: 'markdown', text: t('rulesLink') },
+              { type: "markdown", text: t("rulesLink") },
             ],
           },
         },
@@ -116,21 +117,21 @@ const ActivityHook = {
     if (!refOfType(args.operation, TYPE)) return []
 
     const t = tFor(ctx)
-    const their = ((args.qso?.their as Record<string, JSONValue>) ?? {})
+    const their = (args.qso?.their as Record<string, JSONValue>) ?? {}
     const name = guessedName(their)
     const location = guessedLocation(their)
 
     return [
       {
-        key: 'naqp/name',
-        label: t('nameLabel'),
+        key: "naqp/name",
+        label: t("nameLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
         input: {
-          kind: 'text',
+          kind: "text",
           refType: TYPE,
-          field: 'name',
+          field: "name",
           maxLength: 12,
           uppercase: true,
           placeholder: name || undefined,
@@ -138,15 +139,15 @@ const ActivityHook = {
         },
       },
       {
-        key: 'naqp/location',
-        label: t('locationLabel'),
+        key: "naqp/location",
+        label: t("locationLabel"),
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 20,
         input: {
-          kind: 'text',
+          kind: "text",
           refType: TYPE,
-          field: 'location',
+          field: "location",
           maxLength: 4,
           uppercase: true,
           pattern: LOCATION_PATTERN,
@@ -170,7 +171,7 @@ const ActivityHook = {
   ): Promise<Record<string, JSONValue> | null> {
     if (!refOfType(args.operation, TYPE)) return null
 
-    const their = ((args.qso.their as Record<string, JSONValue>) ?? {})
+    const their = (args.qso.their as Record<string, JSONValue>) ?? {}
     const qsoRef = refOfType(args.qso, TYPE)
 
     // PRESENCE of each field, not its truthiness. The core writes `field: ''`
@@ -178,15 +179,15 @@ const ActivityHook = {
     // it was never filled in — so a present key, blank or not, is a decision,
     // and guessing over it would put back what they just removed. The two
     // halves decide independently: clearing a name doesn't re-guess a location.
-    const nameDecided = qsoRef !== undefined && 'name' in qsoRef
-    const locationDecided = qsoRef !== undefined && 'location' in qsoRef
+    const nameDecided = qsoRef !== undefined && "name" in qsoRef
+    const locationDecided = qsoRef !== undefined && "location" in qsoRef
     const name = nameDecided ? firstName(qsoRef.name) : guessedName(their)
     const location = locationDecided ? normalizeLocation(qsoRef.location) : guessedLocation(their)
 
     if (!name && !location) {
       // A deliberate blank still projects, so clearing an exchange on an edit
       // clears the QSO row's column too instead of leaving the old value there.
-      return nameDecided || locationDecided ? { their: { exchange: '' } } : null
+      return nameDecided || locationDecided ? { their: { exchange: "" } } : null
     }
 
     // Only the halves that actually carry something, or that the operator
@@ -202,47 +203,44 @@ const ActivityHook = {
     return {
       // Field-wise into our own ref; the core allows this extension no other.
       refs: [refPatch],
-      their: { exchange: [name, location].filter((x) => x).join(' ') },
+      their: { exchange: [name, location].filter((x) => x).join(" ") },
     }
   },
 }
 
 const RefHandler = {
   async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
-    return { valid: true, normalized: (ref.ref ?? '').trim() }
+    return { valid: true, normalized: (ref.ref ?? "").trim() }
   },
 
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const mode = str((ref as Record<string, JSONValue>).mode)
-    const label = mode ? `NAQP ${mode}` : tFor(ctx)('unconfigured')
+    const label = mode ? `NAQP ${mode}` : tFor(ctx)("unconfigured")
     const { name, location } = ourExchange(ref as Record<string, JSONValue>)
     return {
       ...ref,
-      program: 'Contest',
+      program: "Contest",
       label,
       shortLabel: label,
-      name: [name, location].filter((x) => x).join(' ') || tFor(ctx)('notConfigured'),
+      name: [name, location].filter((x) => x).join(" ") || tFor(ctx)("notConfigured"),
     }
   },
 
   /// "KI2D for NAQP CW" with "SEB in NY" beneath it: the sent exchange is the
   /// one thing an operator re-reads constantly during a contest.
-  async suggestOperationTitle(
-    { ref }: { ref: Ref; operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ) {
+  async suggestOperationTitle({ ref }: { ref: Ref; operation: Record<string, JSONValue> }, ctx: HookContext) {
     const mode = str((ref as Record<string, JSONValue>).mode)
     const { name, location } = ourExchange(ref as Record<string, JSONValue>)
     return {
-      for: ['NAQP', mode].filter((x) => x).join(' '),
-      subtitle: name && location ? tFor(ctx)('ourExchangeSubtitle', { name, location }) : undefined,
+      for: ["NAQP", mode].filter((x) => x).join(" "),
+      subtitle: name && location ? tFor(ctx)("ourExchangeSubtitle", { name, location }) : undefined,
     }
   },
 
   /// The contest's published rules — a reference here names an event, not a
   /// place, so what there is to read about it is the rules it is run under.
   async linkForRef(_args: { ref: Ref }, _ctx: HookContext): Promise<RefLink | null> {
-    return { url: 'https://ncjweb.com/naqp/', label: 'NAQP' }
+    return { url: "https://ncjweb.com/naqp/", label: "NAQP" }
   },
 }
 
@@ -255,24 +253,22 @@ const AdifFieldsHook = {
     if (!opRef) return []
     const mode = str(opRef.mode)
 
-    const fields: { name: string; value: string }[] = [
-      { name: 'CONTEST_ID', value: mode ? `NAQP-${mode}` : 'NAQP' },
-    ]
+    const fields: { name: string; value: string }[] = [{ name: "CONTEST_ID", value: mode ? `NAQP-${mode}` : "NAQP" }]
     const ours = ourExchange(opRef)
     const qsoRef = refOfType(qso, TYPE)
-    const sent = [ours.name, ours.location].filter((x) => x).join(' ')
-    const received = [firstName(qsoRef?.name), normalizeLocation(qsoRef?.location)].filter((x) => x).join(' ')
-    if (sent) fields.push({ name: 'STX_STRING', value: sent })
-    if (received) fields.push({ name: 'SRX_STRING', value: received })
+    const sent = [ours.name, ours.location].filter((x) => x).join(" ")
+    const received = [firstName(qsoRef?.name), normalizeLocation(qsoRef?.location)].filter((x) => x).join(" ")
+    if (sent) fields.push({ name: "STX_STRING", value: sent })
+    if (received) fields.push({ name: "SRX_STRING", value: received })
     return fields
   },
 }
 
-function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): string {
+function reportFor(qso: Record<string, JSONValue>, side: "our" | "their"): string {
   const sideData = (qso[side] as Record<string, JSONValue>) ?? {}
   const sent = str(sideData.sent)
   if (sent) return sent
-  return str(qso.mode) === 'CW' || str(qso.mode) === 'RTTY' ? '599' : '59'
+  return str(qso.mode) === "CW" || str(qso.mode) === "RTTY" ? "599" : "59"
 }
 
 /// The contest's own name for this operation's file — the mode is part of the
@@ -280,15 +276,10 @@ function reportFor(qso: Record<string, JSONValue>, side: 'our' | 'their'): strin
 /// separate submissions. Same string the Cabrillo and ADIF headers carry.
 function contestTag(operation: Record<string, JSONValue>): string {
   const mode = str(refOfType(operation, TYPE)?.mode)
-  return mode ? `NAQP-${mode}` : 'NAQP'
+  return mode ? `NAQP-${mode}` : "NAQP"
 }
 
-function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  extension: string,
-  compact?: boolean,
-): string {
+function filenameFor(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], extension: string, compact?: boolean): string {
   return exportFilename({
     stationCall: operation.stationCall,
     activity: contestTag(operation),
@@ -300,29 +291,28 @@ function filenameFor(
 
 const ExportHook = {
   async getExportTypes() {
-    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+    return [exportTypeDefinition(TYPE, "adif", manifest.shortName), exportTypeDefinition(TYPE, "cabrillo", manifest.shortName)]
   },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
-    const named = (extension: string) =>
-      filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
+    const named = (extension: string) => filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
       {
         exportType: `${TYPE}-adif`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'adif',
-        label: t('adifExport', { contest: manifest.shortName }),
-        filename: named('adi'),
+        format: "adif",
+        label: t("adifExport", { contest: manifest.shortName }),
+        filename: named("adi"),
         selectedByDefault: true,
         refType: TYPE,
       },
       {
         exportType: `${TYPE}-cabrillo`,
         templateData: { activity: contestTag(args.operation) },
-        format: 'cabrillo',
-        label: t('cabrilloExport', { contest: manifest.shortName }),
-        filename: named('log'),
+        format: "cabrillo",
+        label: t("cabrilloExport", { contest: manifest.shortName }),
+        filename: named("log"),
         selectedByDefault: true,
         refType: TYPE,
       },
@@ -334,7 +324,7 @@ const ExportHook = {
     // keyed delegation in `adifForExport`: a hook answering for an exportType it never
     // offered makes the ADIF delegation recurse into itself.
     if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
-      return { filename: '', mimeType: '', content: '' }
+      return { filename: "", mimeType: "", content: "" }
     }
 
     const operation = args.operation
@@ -346,28 +336,28 @@ const ExportHook = {
     if (args.exportType === `${TYPE}-cabrillo`) {
       const content = qsonToCabrillo(args.qsos, {
         headers: [
-          ['CONTEST', mode ? `NAQP-${mode}` : 'NAQP'],
-          ['CALLSIGN', ourCall],
-          ['NAME', ours.name],
-          ['LOCATION', ours.location],
-          ['OPERATORS', str((operation.local as Record<string, JSONValue>)?.operatorCall)],
-          ['GRID-LOCATOR', str(operation.grid)],
+          ["CONTEST", mode ? `NAQP-${mode}` : "NAQP"],
+          ["CALLSIGN", ourCall],
+          ["NAME", ours.name],
+          ["LOCATION", ours.location],
+          ["OPERATORS", str((operation.local as Record<string, JSONValue>)?.operatorCall)],
+          ["GRID-LOCATOR", str(operation.grid)],
         ],
         qsoParts: (qso) => {
           const qsoRef = refOfType(qso, TYPE)
           return [
-            ourCall || '-',
-            ours.name || '-',
-            ours.location || '-',
-            str(((qso.their as Record<string, JSONValue>) ?? {}).call) || '-',
-            firstName(qsoRef?.name) || '-',
-            normalizeLocation(qsoRef?.location) || '-',
+            ourCall || "-",
+            ours.name || "-",
+            ours.location || "-",
+            str(((qso.their as Record<string, JSONValue>) ?? {}).call) || "-",
+            firstName(qsoRef?.name) || "-",
+            normalizeLocation(qsoRef?.location) || "-",
           ]
         },
       })
       return {
-        filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
-        mimeType: 'text/plain',
+        filename: filenameFor(operation, args.qsos, "log", args.compactFilenames),
+        mimeType: "text/plain",
         content,
       }
     }
@@ -387,8 +377,8 @@ const ExportHook = {
       mainHandler: TYPE,
     })
     return {
-      filename: filenameFor(operation, args.qsos, 'adi', args.compactFilenames),
-      mimeType: 'text/plain',
+      filename: filenameFor(operation, args.qsos, "adi", args.compactFilenames),
+      mimeType: "text/plain",
       content,
     }
   },
@@ -397,11 +387,11 @@ const ExportHook = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('activity', { hook: ActivityHook, key: TYPE })
+    registerHook("activity", { hook: ActivityHook, key: TYPE })
     registerHook(`ref:${TYPE}`, { hook: RefHandler, key: TYPE })
-    registerHook('adifFields', { hook: AdifFieldsHook, key: TYPE })
-    registerHook('export', { hook: ExportHook, key: TYPE })
-    registerHook('scoring', {
+    registerHook("adifFields", { hook: AdifFieldsHook, key: TYPE })
+    registerHook("export", { hook: ExportHook, key: TYPE })
+    registerHook("scoring", {
       hook: contestScorer(NAQPScorer, { scope: { refTypes: [TYPE] } }),
       key: TYPE,
     })

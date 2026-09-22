@@ -12,17 +12,7 @@
 import { operationForQso } from "@ham2k/extension-sdk"
 import type { JSONValue, OperationSegmentPayload } from "@ham2k/extension-sdk"
 
-import {
-  ourLocationText,
-  ourModeClass,
-  ourName,
-  ourOperatorClass,
-  ourOverlayClass,
-  ourPowerClass,
-  ourStationClass,
-  refOfType,
-  str,
-} from "./entry.ts"
+import { ourLocationText, ourModeClass, ourName, ourOperatorClass, ourOverlayClass, ourPowerClass, ourStationClass, refOfType, str } from "./entry.ts"
 import {
   allInParty,
   COUNTY_LINE_SEPARATOR,
@@ -63,7 +53,7 @@ export function theirLocationForFile(
 /// against any sponsor's rules. The scorer's own test (`scorer.ts`), kept here
 /// so the file and the scoreboard cannot disagree about which contacts exist.
 export function claimableBand(band: string): boolean {
-  return band !== '' && !WARC_BANDS.includes(band)
+  return band !== "" && !WARC_BANDS.includes(band)
 }
 
 /// The key our own ADIF export sets on the operation's ref: each contact's
@@ -78,7 +68,7 @@ export function claimableBand(band: string): boolean {
 /// Carried on a copy of the operation — of EVERY segment's operation, since the
 /// core generator hands the hook the segment-effective one — in-runtime, so
 /// this costs a reference rather than a payload.
-export const RESOLVED_MARKER = 'resolvedExchange'
+export const RESOLVED_MARKER = "resolvedExchange"
 
 /// Every contact's exchange as the file should write it, by uuid — folded in
 /// log order, so a station's later blank exchange resolves to what they sent
@@ -92,7 +82,7 @@ export function resolvedExchanges(
   const lastLocation: Record<string, string> = {}
   const resolved: Record<string, string> = {}
   for (const qso of qsos) {
-    if (qso.band === 'event' || qso.deleted === true) continue
+    if (qso.band === "event" || qso.deleted === true) continue
     const uuid = str(qso.uuid)
     const ours = parseLocations(party, ourLocationForQso(qso, operation, segments))
     const text = theirLocationForFile(party, qso, {
@@ -116,11 +106,7 @@ export function resolvedExchanges(
 /// every contact of that stretch the moment it is corrected, in the score and
 /// in the file alike. Without segments the operation's location is true of the
 /// whole log by definition.
-export function ourLocationForQso(
-  qso: Record<string, JSONValue>,
-  operation: Record<string, JSONValue>,
-  segments?: OperationSegmentPayload[],
-): string {
+export function ourLocationForQso(qso: Record<string, JSONValue>, operation: Record<string, JSONValue>, segments?: OperationSegmentPayload[]): string {
   return ourLocationText(operationForQso(operation, qso, segments) as Record<string, unknown>)
 }
 
@@ -185,8 +171,8 @@ export function cabrilloRowsFor(
     lastLocation[call] = theirLocations.map((location) => location.code).join(COUNTY_LINE_SEPARATOR)
   }
 
-  const isCw = str(qso.mode) === 'CW' || str(qso.mode) === 'RTTY'
-  const report = isCw ? '599' : '59'
+  const isCw = str(qso.mode) === "CW" || str(qso.mode) === "RTTY"
+  const report = isCw ? "599" : "59"
   const ourSerial = str(qsoRef?.ourSerial)
   const theirSerial = str(qsoRef?.theirSerial)
   const ourOwnName = ourName(operation as Record<string, unknown>)
@@ -195,14 +181,14 @@ export function cabrilloRowsFor(
   const rows: string[][] = []
   for (const ourCode of ours) {
     for (const theirCode of theirs) {
-      const row = [(ourCall || '-').padEnd(13, ' '), report.padEnd(3, ' ')]
-      if (party.exchange.number) row.push((ourSerial || '0').padEnd(6, ' '))
-      if (party.exchange.name) row.push((ourOwnName || '-').padEnd(10, ' '))
-      row.push(ourCode.padEnd(6, ' '))
-      row.push((theirCall || '-').padEnd(13, ' '), report.padEnd(3, ' '))
-      if (party.exchange.number) row.push((theirSerial || '-').padEnd(6, ' '))
-      if (party.exchange.name) row.push((theirName || '-').padEnd(10, ' '))
-      row.push(theirCode.padEnd(6, ' '))
+      const row = [(ourCall || "-").padEnd(13, " "), report.padEnd(3, " ")]
+      if (party.exchange.number) row.push((ourSerial || "0").padEnd(6, " "))
+      if (party.exchange.name) row.push((ourOwnName || "-").padEnd(10, " "))
+      row.push(ourCode.padEnd(6, " "))
+      row.push((theirCall || "-").padEnd(13, " "), report.padEnd(3, " "))
+      if (party.exchange.number) row.push((theirSerial || "-").padEnd(6, " "))
+      if (party.exchange.name) row.push((theirName || "-").padEnd(10, " "))
+      row.push(theirCode.padEnd(6, " "))
       rows.push(row)
     }
   }
@@ -216,7 +202,7 @@ export function cabrilloRowsFor(
 export function cabrilloCall(party: QsoParty, call: string): string {
   const upper = call.toUpperCase()
   if (!party.options.removeCountySuffixes) return upper
-  const slash = upper.indexOf('/')
+  const slash = upper.indexOf("/")
   return slash > 0 ? upper.slice(0, slash) : upper
 }
 
@@ -232,13 +218,9 @@ export function cabrilloCall(party: QsoParty, call: string): string {
 /// roughly 15KB, sent once per callsign resolution. That is the measurement
 /// §5.6 wants before building a registered `optionSet`, and the one consumer
 /// that would justify it.
-export function exchangeOptionsFor(
-  party: QsoParty,
-  qso: Record<string, JSONValue> | undefined,
-): { code: string; name?: string }[] {
-  const entity = qso ? entityPrefixOf(qso as Record<string, unknown>) : ''
-  const asOptions = (table: Record<string, string>) =>
-    Object.entries(table).map(([code, name]) => ({ code, name }))
+export function exchangeOptionsFor(party: QsoParty, qso: Record<string, JSONValue> | undefined): { code: string; name?: string }[] {
+  const entity = qso ? entityPrefixOf(qso as Record<string, unknown>) : ""
+  const asOptions = (table: Record<string, string>) => Object.entries(table).map(([code, name]) => ({ code, name }))
 
   const ourCounties = [...asOptions(party.counties), ...asOptions(party.otherCounties)]
   // `US_STATES` holds the fifty states and not DC, because whether DC is its
@@ -254,12 +236,8 @@ export function exchangeOptionsFor(
   // the scorer reads to catch an operator who typed their state where their
   // county belongs; this is the other end of that mistake.)
   const ours = partyStates(party)
-  const notOurs = (options: { code: string; name?: string }[]) =>
-    options.filter((option) => !ours.has(option.code))
-  const states = notOurs([
-    ...asOptions(US_STATES),
-    { code: 'DC', name: nameForLocation(party, 'DC') },
-  ])
+  const notOurs = (options: { code: string; name?: string }[]) => options.filter((option) => !ours.has(option.code))
+  const states = notOurs([...asOptions(US_STATES), { code: "DC", name: nameForLocation(party, "DC") }])
   const provinces = notOurs(asOptions(CANADIAN_PROVINCES))
 
   // Alaska and Hawaii are US states whose stations do not sign `K`. They send
@@ -268,12 +246,12 @@ export function exchangeOptionsFor(
   // Left to the DX path below, exactly they would get no list to pick from
   // and no tint for a typo. Unless the party counts them as DX, which no
   // shipped one does.
-  const usState = entity === 'K' || (stateForEntity(entity) !== '' && !party.options.alaskaAndHawaiiAreDX)
+  const usState = entity === "K" || (stateForEntity(entity) !== "" && !party.options.alaskaAndHawaiiAreDX)
   if (usState) {
-    return party.options.entity === 'VE' ? states : [...ourCounties, ...states]
+    return party.options.entity === "VE" ? states : [...ourCounties, ...states]
   }
-  if (entity === 'VE') {
-    return party.options.entity === 'VE' ? [...ourCounties, ...provinces] : provinces
+  if (entity === "VE") {
+    return party.options.entity === "VE" ? [...ourCounties, ...provinces] : provinces
   }
   // A known entity that is neither: they send `DX` or their prefix, and there
   // is no list to search. An empty set turns the field freeform (above).
@@ -293,37 +271,28 @@ export function exchangeOptionsFor(
 /// `operator` splits back into the two lines Cabrillo keeps apart: the
 /// multi-operator classes are one `CATEGORY-OPERATOR` with the transmitter
 /// count beside it.
-export function cabrilloCategories(
-  party: QsoParty,
-  operation: Record<string, JSONValue>,
-): [string, string | undefined][] {
+export function cabrilloCategories(party: QsoParty, operation: Record<string, JSONValue>): [string, string | undefined][] {
   const op = ourOperatorClass(party, operation as Record<string, unknown>)
   const station = ourStationClass(party, operation as Record<string, unknown>)
   const mode = ourModeClass(party, operation as Record<string, unknown>)
   const overlay = ourOverlayClass(party, operation as Record<string, unknown>)
   const power = ourPowerClass(operation as Record<string, unknown>, undefined, party)
 
-  const transmitter = op === 'MULTI-ONE'
-    ? 'ONE'
-    : op === 'MULTI-TWO'
-      ? 'TWO'
-      : op === 'MULTI-UNLIMITED'
-        ? 'UNLIMITED'
-        : undefined
+  const transmitter = op === "MULTI-ONE" ? "ONE" : op === "MULTI-TWO" ? "TWO" : op === "MULTI-UNLIMITED" ? "UNLIMITED" : undefined
 
   return [
-    ['CATEGORY-OPERATOR', op ? (op.startsWith('SINGLE') ? 'SINGLE-OP' : 'MULTI-OP') : undefined],
-    ['CATEGORY-TRANSMITTER', transmitter],
+    ["CATEGORY-OPERATOR", op ? (op.startsWith("SINGLE") ? "SINGLE-OP" : "MULTI-OP") : undefined],
+    ["CATEGORY-TRANSMITTER", transmitter],
     // Only ever ASSISTED: Cabrillo's other value is NON-ASSISTED, and claiming
     // that for an operator who simply answered "Single Op" would be a claim
     // about their spotting that they did not make.
-    ['CATEGORY-ASSISTED', op === 'SINGLE-OP-ASSISTED' ? 'ASSISTED' : undefined],
-    ['CATEGORY-POWER', power],
+    ["CATEGORY-ASSISTED", op === "SINGLE-OP-ASSISTED" ? "ASSISTED" : undefined],
+    ["CATEGORY-POWER", power],
     // `COUNTY-LINE` is a station class sponsors publish and Cabrillo has no
     // value for; it reaches the file as the closest thing it does have.
-    ['CATEGORY-STATION', station === 'COUNTY-LINE' ? 'FIXED' : station],
-    ['CATEGORY-MODE', mode === 'PHONE' ? 'SSB' : mode === 'DIGITAL' ? 'DIGI' : mode],
-    ['CATEGORY-OVERLAY', overlay],
+    ["CATEGORY-STATION", station === "COUNTY-LINE" ? "FIXED" : station],
+    ["CATEGORY-MODE", mode === "PHONE" ? "SSB" : mode === "DIGITAL" ? "DIGI" : mode],
+    ["CATEGORY-OVERLAY", overlay],
   ]
 }
 
@@ -333,7 +302,7 @@ export function cabrilloCategories(
 /// sponsors' samples use.
 export function exchangeTransforms(party: QsoParty): { pattern: string; replacement: string; flags?: string }[] {
   if (!party.options.countyLine) return []
-  return [{ pattern: ',', replacement: COUNTY_LINE_SEPARATOR, flags: 'g' }]
+  return [{ pattern: ",", replacement: COUNTY_LINE_SEPARATOR, flags: "g" }]
 }
 
 /// How many characters a second county may borrow from the first — the
@@ -368,21 +337,17 @@ export function exchangeInheritPrefix(party: QsoParty): number {
 ///
 /// [accept] narrows it further, for a history the operator did not just copy
 /// (`pastExchangeHolds`).
-export function loggedExchangeFor(
-  history: Record<string, JSONValue>[],
-  call: string,
-  accept: (location: string) => boolean = () => true,
-): string {
+export function loggedExchangeFor(history: Record<string, JSONValue>[], call: string, accept: (location: string) => boolean = () => true): string {
   const wanted = call.trim().toUpperCase()
-  if (!wanted) return ''
+  if (!wanted) return ""
   for (const qso of history) {
-    if (qso.band === 'event') continue
+    if (qso.band === "event") continue
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     if (str(their.call).toUpperCase() !== wanted) continue
     const location = str(refOfType(qso as Record<string, unknown>)?.location).trim()
     if (location && accept(location)) return location
   }
-  return ''
+  return ""
 }
 
 /// Whether an exchange a station gave in an EARLIER running of this party is
@@ -402,18 +367,11 @@ export function loggedExchangeFor(
 ///
 /// An exchange from THIS operation is not checked at all: the operator copied
 /// it minutes ago, and a lookup that disagrees is more likely wrong than it.
-export function pastExchangeHolds(
-  party: QsoParty,
-  options: { code: string }[],
-  guessedState: string,
-  location: string,
-): boolean {
+export function pastExchangeHolds(party: QsoParty, options: { code: string }[], guessedState: string, location: string): boolean {
   const codes = splitLocations(location)
   if (codes.length === 0) return false
   const offered = new Set(options.map((option) => option.code))
-  return codes.every((code) =>
-    (options.length === 0 || offered.has(code)) &&
-    (!guessedState || stateOfCode(party, code) === guessedState))
+  return codes.every((code) => (options.length === 0 || offered.has(code)) && (!guessedState || stateOfCode(party, code) === guessedState))
 }
 
 /// The state (or province) an exchange code places a station in: a county by
@@ -427,12 +385,10 @@ function stateOfCode(party: QsoParty, code: string): string {
 /// state the callsign lookup guessed, and the state itself.
 export function preferredCodesFor(party: QsoParty, guessedState: string): string[] {
   if (!guessedState) return []
-  const counties = Object.keys(party.counties)
-    .filter((code) => stateForCounty(party, code) === guessedState)
+  const counties = Object.keys(party.counties).filter((code) => stateForCounty(party, code) === guessedState)
   // The state itself only where it is a code a station could send: inside the
   // party it is not offered at all (`exchangeOptionsFor`), and floating a
   // value to the top of a list it is not in would offer the operator an
   // exchange the same field then tints as wrong.
   return partyStates(party).has(guessedState) ? counties : [...counties, guessedState]
 }
-

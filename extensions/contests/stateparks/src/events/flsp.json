@@ -14,15 +14,7 @@
   "bonusPoints": {
     "perParkActivated": 100
   },
-  "bands": [
-    "160m",
-    "80m",
-    "40m",
-    "20m",
-    "15m",
-    "10m",
-    "6m"
-  ],
+  "bands": ["160m", "80m", "40m", "20m", "15m", "10m", "6m"],
   "points": {
     "PHONE": 1,
     "DATA": 1,

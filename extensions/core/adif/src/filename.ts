@@ -14,11 +14,7 @@ import type { JSONValue } from "../../../sdk/src/types.ts"
 /// `Full` — or `<title> Full`, when the operation has one — same trailing tag
 /// app-polo's `core-adif` extension uses, with the title kept ahead of it so
 /// two titled operations don't still collide on "Full" alone.
-export function filenameFor(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[],
-  compact?: boolean,
-): string {
+export function filenameFor(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[], compact?: boolean): string {
   const title = String(operation.title ?? "").trim()
   return exportFilename({
     stationCall: operation.stationCall,

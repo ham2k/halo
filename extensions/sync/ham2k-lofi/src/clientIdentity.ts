@@ -17,12 +17,11 @@ export type ClientIdentity = { pushChannelName?: string; webhookClientToken?: st
 /// a server that omits a field but wrong if `undefined` were ever written
 /// over a good cached value.
 export function clientIdentityFrom(client: unknown): ClientIdentity {
-  if (!client || typeof client !== 'object') return {}
+  if (!client || typeof client !== "object") return {}
   const fields = client as Record<string, unknown>
   return {
-    pushChannelName: typeof fields.push_channel === 'string' ? fields.push_channel : undefined,
-    webhookClientToken:
-      typeof fields.webhook_client_token === 'string' ? fields.webhook_client_token : undefined,
+    pushChannelName: typeof fields.push_channel === "string" ? fields.push_channel : undefined,
+    webhookClientToken: typeof fields.webhook_client_token === "string" ? fields.webhook_client_token : undefined,
   }
 }
 
@@ -40,12 +39,10 @@ export function clientIdentityFrom(client: unknown): ClientIdentity {
 /// and still useless: it survives a `typeof` check and a `??`, and reaches
 /// the relay as a token that identifies no client at all.
 export function requireWebhookIdentity(response: unknown): ClientIdentity & { webhookClientToken: string } {
-  const client = (response && typeof response === 'object')
-    ? (response as Record<string, unknown>).client
-    : undefined
+  const client = response && typeof response === "object" ? (response as Record<string, unknown>).client : undefined
   const identity = clientIdentityFrom(client)
   if (!identity.webhookClientToken) {
-    throw new Error('LoFi GET v1/client answered without a webhook token')
+    throw new Error("LoFi GET v1/client answered without a webhook token")
   }
   return { ...identity, webhookClientToken: identity.webhookClientToken }
 }

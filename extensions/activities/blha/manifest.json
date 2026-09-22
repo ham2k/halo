@@ -8,39 +8,16 @@
   "enabledByDefault": false,
   "icon": "lighthouse",
   "accentColor": "#2E6F9E",
-  "keywords": [
-    "lighthouses",
-    "lightships",
-    "belgium",
-    "activation"
-  ],
+  "keywords": ["lighthouses", "lightships", "belgium", "activation"],
   "relevance": {
-    "entities": [
-      "ON"
-    ]
+    "entities": ["ON"]
   },
-  "hooks": [
-    "activity",
-    "adifFields",
-    "adifImport",
-    "dataFile",
-    "export",
-    "ref:blhaActivation",
-    "scoring",
-    "spots"
-  ],
-  "domains": [
-    "drive.google.com",
-    "www.cqgma.org"
-  ],
+  "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:blhaActivation", "scoring", "spots"],
+  "domains": ["drive.google.com", "www.cqgma.org"],
   "translations": {
     "es": {
       "description": "Referencias de faros belgas, registro de activaciones y auto-spotting",
-      "keywords": [
-        "faros",
-        "bélgica",
-        "activación"
-      ]
+      "keywords": ["faros", "bélgica", "activación"]
     }
   }
 }

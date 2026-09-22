@@ -31,24 +31,10 @@
   "lastUpdated": "2026-09-12 12:00Z",
   "cabrilloName": "NJQP",
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE"
-    ],
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "PORTABLE",
-      "ROVER"
-    ],
-    "overlay": [
-      "ROOKIE"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE"],
+    "station": ["FIXED", "MOBILE", "PORTABLE", "ROVER"],
+    "overlay": ["ROOKIE"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5W",
       "LOW": "",

@@ -280,7 +280,7 @@ export interface PostResult {
 ///              next to the always-present Close (e.g. an `account` action
 ///              to open the account dialog after an auth failure)
 export interface ResultMessage {
-  presentation: 'status' | 'dialog'
+  presentation: "status" | "dialog"
   title?: string
   text: string
   /// Status presentation only — same icon convention as status bar items.
@@ -371,7 +371,7 @@ export interface Ref {
   ///
   /// **Mirror any change here into lib-qson's `Ref`** — this is the app's copy
   /// of a shared vocabulary.
-  for?: 'operation' | 'qso'
+  for?: "operation" | "qso"
 
   [key: string]: JSONValue | undefined
 }
@@ -409,10 +409,7 @@ export interface RefHandlerHook {
   /// Enriches a ref with names/locations, possibly via the network.
   decorateRef?(args: { ref: Ref }, ctx: HookContext): Promise<Ref>
   /// Suggests a title/subtitle fragment for the operation this ref is on.
-  suggestOperationTitle?(
-    args: { ref: Ref; operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<TitleSuggestion | null>
+  suggestOperationTitle?(args: { ref: Ref; operation: Record<string, JSONValue> }, ctx: HookContext): Promise<TitleSuggestion | null>
   /// Where to read about this reference on the web. Built from the reference
   /// code alone — never a network call: the core asks for one link per ref on
   /// the operation every time the list changes, and the answer is not stored.
@@ -473,7 +470,7 @@ export interface LoggingControlDescriptor {
   /// `'optional'`, so no behaviour depends on it — but a contest marking its
   /// exchange mandatory would silently get nothing. Implement it or drop it
   /// before a contest relies on it.
-  optionType?: 'optional' | 'mandatory'
+  optionType?: "optional" | "mandatory"
   /// Whether a reference of this type has anything to edit once it's on the
   /// operation. Defaults to FALSE: a plain reference activity (POTA, SOTA)
   /// carries only the code its own `suggest` already resolved, so the core
@@ -492,12 +489,7 @@ export interface LoggingControlDescriptor {
 /// a different *widget*, never by different validation — a pattern-constrained
 /// field types and focuses exactly like a free-form one, so `pattern` is a
 /// modifier on `text` rather than a kind of its own.
-export type InputDescriptor =
-  | RefListInputDescriptor
-  | TextInputDescriptor
-  | OptionsInputDescriptor
-  | SerialInputDescriptor
-  | FormInputDescriptor
+export type InputDescriptor = RefListInputDescriptor | TextInputDescriptor | OptionsInputDescriptor | SerialInputDescriptor | FormInputDescriptor
 
 /// Names a sequence of serial numbers within an operation. Declarative on
 /// purpose: there is no `allocate()` to call, because by the time any hook sees
@@ -516,7 +508,7 @@ export interface SequenceBinding {
   /// lookup resolved, and the operator may still change band before pressing
   /// Enter. Only the core, at commit, knows which band the QSO actually ended
   /// up on.
-  scope?: ('band' | 'mode')[]
+  scope?: ("band" | "mode")[]
   /// First number issued (default 1) — the operator can override it in
   /// operation settings when they logged the first hour on paper.
   start?: number
@@ -532,7 +524,7 @@ export interface SequenceBinding {
 /// cycle — Space and Tab both walk it — since the operator has to be able to
 /// reach the field to make that correction without leaving the keyboard.
 export interface SerialInputDescriptor {
-  kind: 'serial'
+  kind: "serial"
   refType: string
   /// `'ourSerial'`, with the received number beside it as `'theirSerial'`:
   /// templates find a contest's serials by these names (`qso.serialSent`,
@@ -557,7 +549,7 @@ export interface SerialInputDescriptor {
 /// The definition crosses the bridge as JSON, so it must be static: a
 /// `FormDefinition.onChange` closure cannot survive the trip.
 export interface FormInputDescriptor {
-  kind: 'form'
+  kind: "form"
   refType: string
   /// References filed under a type this control does not publish, which it
   /// answers for anyway: `['qp/ny']` on the New York QSO Party, matching the
@@ -581,7 +573,7 @@ export interface FormInputDescriptor {
 /// `refType` under the key `field` — the same core-owned path `refList` writes
 /// refs through, so no new persistence is involved.
 export interface TextInputDescriptor {
-  kind: 'text'
+  kind: "text"
   /// Ref type the value is stored on, e.g. 'simple-contest'.
   refType: string
   /// Key within that ref, e.g. 'exchange' → `{type: 'simple-contest', exchange: '…'}`.
@@ -627,7 +619,7 @@ export interface TextInputDescriptor {
 /// entries — small next to the QSO log the scoring hooks already ship on every
 /// pass.
 export interface OptionsInputDescriptor {
-  kind: 'options'
+  kind: "options"
   /// Ref type the value is stored on, as `text`.
   refType: string
   /// Key within that ref.
@@ -637,7 +629,7 @@ export interface OptionsInputDescriptor {
   /// than an abbreviation.
   options: { code: string; name?: string }[]
   /// Which fields the search looks at. Defaults to both.
-  matchOn?: ('code' | 'name')[]
+  matchOn?: ("code" | "name")[]
   /// Accept a value that isn't in the set. Off by default: for most of these
   /// exchanges an unknown value is a lost multiplier, and the operator can
   /// still fix it while the QSO is in front of them.
@@ -689,7 +681,7 @@ export interface OptionsInputDescriptor {
 }
 
 export interface RefListInputDescriptor {
-  kind: 'refList'
+  kind: "refList"
   refType: string
   placeholder?: string
   /// Regex source string; the core pre-validates input before accepting a chip.
@@ -751,15 +743,9 @@ export interface ActivityHook {
   /// lookup pipeline) — re-supplied whenever that lookup resolves, not on
   /// every keystroke, so extensions can key a dynamic `placeholder`/
   /// `transforms` (e.g. a DXCC-derived reference prefix) off it.
-  loggingControls?(
-    args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]>
+  loggingControls?(args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]>
   /// Controls shown in operation settings (e.g. "which park am I activating").
-  operationControls?(
-    args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]>
+  operationControls?(args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]>
   /// Candidate activities for the "add activity" search/suggestions list —
   /// nearby references when `searchTerm` is empty, name/code matches when set.
   suggest?(args: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]>
@@ -808,10 +794,7 @@ export interface AdifFieldsHook {
   /// ADIF generator resolves it from `ExportRequest.segments` before asking —
   /// so a rover's county or a contest's setup is what was true when the
   /// contact was made.
-  fieldsForOneQSO(
-    args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
-    ctx: HookContext,
-  ): Promise<{ name: string; value: string }[]>
+  fieldsForOneQSO(args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> }, ctx: HookContext): Promise<{ name: string; value: string }[]>
 }
 
 /// One imported ADIF record's contribution from one hook.
@@ -841,10 +824,7 @@ export interface AdifImportResult {
 /// discarded whole, since there is no safe way to guess which records its
 /// entries meant.
 export interface AdifImportHook {
-  refsForRecords(
-    args: { records: { fields: Record<string, string> }[] },
-    ctx: HookContext,
-  ): Promise<(AdifImportResult | null)[]>
+  refsForRecords(args: { records: { fields: Record<string, string> }[] }, ctx: HookContext): Promise<(AdifImportResult | null)[]>
 }
 
 /// Settings shared by every extension offering the same registered export type.
@@ -877,7 +857,7 @@ export interface ExportTypeDefinition {
   label: string
   format: string
   activationType?: string
-  templateCategory?: 'reference' | 'other'
+  templateCategory?: "reference" | "other"
   defaults?: ExportSettings
   /// Illustrative operation/log values used by the template editor.
   templateSample?: Record<string, JSONValue>
@@ -1052,7 +1032,7 @@ export type QsoScoreEntry = Record<string, QsoScoreVerdict>
 /// operation. Shape is rule-specific beyond the common summary fields.
 export interface ScoreTally {
   key: string
-  for: 'day' | 'operation'
+  for: "day" | "operation"
   icon?: string
   label?: string
   summary?: string
@@ -1242,7 +1222,7 @@ export interface ScoringHook {
 /// contest that a `break` has already ended, or one removed from the operation
 /// outright — the opposite of what segments exist for. Only a program that is
 /// genuinely HUNTED contact by contact belongs here.
-export type ScoringScope = 'always' | { refTypes: string[]; huntingRefTypes?: string[] }
+export type ScoringScope = "always" | { refTypes: string[]; huntingRefTypes?: string[] }
 
 /// A scorer's running record while it works through a log: worked calls, mult
 /// sets, running points. Opaque to the core and owned by the scorer, so it must
@@ -1292,7 +1272,7 @@ export interface ContestScorer<S extends Scoresheet = Scoresheet> {
       scoresheet: S
       operation: Record<string, JSONValue>
       ref?: Record<string, JSONValue>
-      scope: 'day' | 'operation'
+      scope: "day" | "operation"
     },
     ctx: HookContext,
   ): Record<string, ScoreTally>
@@ -1329,7 +1309,7 @@ export interface CommandAction {
   /// logged QSO (SPOTLAST family) regardless of what's being edited.
   sendSpots?: {
     comment?: string
-    target?: 'self' | 'last'
+    target?: "self" | "last"
   }
   syncAll?: Record<string, never>
   /// PURGETESTS (`test-ops-commands`): app-side lists Test Operations, asks
@@ -1372,7 +1352,7 @@ export interface CommandAction {
   /// adding a second. `setLocation` (ROVERQTH) then opens the operation's
   /// Location screen, and what it returns becomes the operation's and the
   /// new segment's. The app supplies the operation's `uuid`.
-  markSegment?: { kind: 'start' | 'break' | 'stop'; setLocation?: boolean }
+  markSegment?: { kind: "start" | "break" | "stop"; setLocation?: boolean }
   /// Replaces the call field's entire text, cursor at the end — the
   /// call-notes extension's `//KEY` note expansion. The new text runs
   /// through the same change path as typing, so lookups, dupe checks and
@@ -1499,7 +1479,7 @@ export interface SearchSettingsParams {
   /// name a visibility toggle (`showGridField`, `hideFoo`), take no value at
   /// all (every word is part of the name), and answer with the value the verb
   /// implies, inverted for a `hide…` setting.
-  kind?: 'set' | 'show' | 'hide'
+  kind?: "set" | "show" | "hide"
 }
 
 /// One setting a search could have meant.
@@ -1714,14 +1694,8 @@ export interface SyncTransportHook {
   /// mistyped code is an ordinary outcome of the flow, not a fault.
   /// Optional, so transports predating this contract keep compiling.
   findLinkRequest?(args: { challenge_token: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
-  findLinkRequestByClient?(
-    args: { client: string, challenge_token: string },
-    ctx: HookContext,
-  ): Promise<Record<string, JSONValue>>
-  approveLinkRequest?(
-    args: { client: string, challenge_token?: string },
-    ctx: HookContext,
-  ): Promise<Record<string, JSONValue>>
+  findLinkRequestByClient?(args: { client: string; challenge_token: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
+  approveLinkRequest?(args: { client: string; challenge_token?: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
   /// Ensures this device is registered with the sync server, independent of
   /// whether the operator has QSO sync enabled — registration establishes
   /// device identity and the realtime push channel, it does not push any log
@@ -1729,7 +1703,7 @@ export interface SyncTransportHook {
   /// used to build the `state` param for a webhook-relayed OAuth flow
   /// (HALO-65/66). Optional so transports predating this contract keep
   /// compiling.
-  ensureClientRegistered?(args: { refreshWebhookToken?: boolean }, ctx: HookContext): Promise<{ push_channel_name: string, webhook_client_token: string }>
+  ensureClientRegistered?(args: { refreshWebhookToken?: boolean }, ctx: HookContext): Promise<{ push_channel_name: string; webhook_client_token: string }>
   /// Fetches this device's pending webhook events (HALO-65) — the poll
   /// fallback, and how the app retrieves the actual payload after a Pusher
   /// `webhook_event` ping (which intentionally carries only an id, never the
@@ -1743,16 +1717,13 @@ export interface SyncTransportHook {
   /// Failures arrive as `{ error }` rather than as a throw: the caller is
   /// showing this to an operator who has just written something they want
   /// sent. Optional so transports predating this contract keep compiling.
-  submitReport?(
-    args: { title: string, body: string, kind: 'idea' | 'task' | 'bug' },
-    ctx: HookContext,
-  ): Promise<{ ref?: string | null, error?: string }>
+  submitReport?(args: { title: string; body: string; kind: "idea" | "task" | "bug" }, ctx: HookContext): Promise<{ ref?: string | null; error?: string }>
 }
 
 export interface AccountField {
   key: string
   label: string
-  type: 'text' | 'email' | 'secret'
+  type: "text" | "email" | "secret"
   preface?: string
   postface?: string
 }
@@ -1974,7 +1945,7 @@ export interface ExtensionDefinition extends ExtensionManifest {
 }
 
 export interface FetchOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
   /**
    * Extra request headers. Note: the host stamps HaLo's canonical
    * `User-Agent` on every request and it overrides any you set here, so
@@ -2062,7 +2033,7 @@ export interface JsonOptions {
   rootPath?: string
 }
 
-export type FetchType = 'csv' | 'json' | 'raw'
+export type FetchType = "csv" | "json" | "raw"
 
 export interface DataFileDefinition {
   key: string
@@ -2093,41 +2064,29 @@ export interface DataFileDefinition {
 }
 
 export type FormFieldType =
-  | 'text'
-  | 'multiline'
-  | 'textTemplate'
-  | 'email'
-  | 'callsign'
-  | 'number'
-  | 'select'
-  | 'radio'
-  | 'checkbox'
-  | 'secret'
-  | 'list'
-  | 'multiselect'
-  | 'account'
+  "text" | "multiline" | "textTemplate" | "email" | "callsign" | "number" | "select" | "radio" | "checkbox" | "secret" | "list" | "multiselect" | "account"
 
 export interface FormFieldOption {
-  label: string;
-  value: any;
+  label: string
+  value: any
   /// Only used when fieldType === 'multiselect': disclosure tiers.
   /// `common: true` options show upfront; unflagged ones sit behind the
   /// first disclosure step; `uncommon: true` ones behind the second (the
   /// toggle then cycles Show more → Show all → Show fewer; without any
   /// uncommon options it's just Show all / Show fewer).
-  common?: boolean;
-  uncommon?: boolean;
+  common?: boolean
+  uncommon?: boolean
 }
 
 export interface FormField {
-  type: 'field'
+  type: "field"
   fieldType: FormFieldType
   key: string
   label: string
   value?: any
   placeholder?: string
   /// Text-template editor vocabulary: filenames/titles or per-QSO ADIF fields.
-  templateContext?: 'export' | 'adif' | 'text'
+  templateContext?: "export" | "adif" | "text"
   /// Sample inputs for the preview (operation, qso, log).
   templateSample?: Record<string, JSONValue>
   /// Forces typed input to uppercase (formatter, not just a soft-keyboard
@@ -2262,7 +2221,7 @@ export interface FormField {
 }
 
 export interface FormHeader {
-  type: 'header'
+  type: "header"
   title: string
   subtitle?: string
   devMode?: boolean
@@ -2275,7 +2234,7 @@ export interface FormHeader {
   /// its surface rather than a section inside one (the station equipment
   /// editor's). A settingsPanel is already inside a category, so its own
   /// headings take 'section'.
-  style?: 'default' | 'section' | 'category'
+  style?: "default" | "section" | "category"
   /// Settings-panel-only; see FormField.environment. Not `common` — a
   /// header is chrome for the rows under it, and the Common Preferences
   /// section shows flagged rows with no bands at all, so there is nothing
@@ -2284,7 +2243,7 @@ export interface FormHeader {
 }
 
 export interface FormSectionDivider {
-  type: 'divider'
+  type: "divider"
   title?: string
   devMode?: boolean
   /// Settings-panel-only; see FormField.environment.
@@ -2292,7 +2251,7 @@ export interface FormSectionDivider {
 }
 
 export interface FormMarkdownBlock {
-  type: 'markdown'
+  type: "markdown"
   text: string
   devMode?: boolean
   /// Settings-panel-only; see FormField.environment.
@@ -2313,9 +2272,9 @@ export interface FormMarkdownBlock {
 /// dispatches it, the hook just returns a result.
 export interface FormActionElement {
   /// Row presentation opens a secondary surface; the default is a button.
-  style?: 'row'
+  style?: "row"
   icon?: string
-  type: 'action'
+  type: "action"
   key: string
   label: string
   method: string
@@ -2335,7 +2294,7 @@ export interface FormActionElement {
 /// Only `http:`, `https:` and `mailto:` are opened; any other scheme is
 /// ignored. Ask if you need one that isn't on that list.
 export interface FormLinkElement {
-  type: 'link'
+  type: "link"
   /// Identifies the element (e.g. to search); not a field — links carry no
   /// value and never appear in form state.
   key?: string
@@ -2363,7 +2322,10 @@ export interface FormHook {
   getDefinition(args: { formId?: string }, ctx: HookContext): Promise<FormDefinition>
   validateField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<string | null>
   transformField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<any>
-  onChangeField?(args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> }, ctx: HookContext): Promise<Record<string, any> | null | void>
+  onChangeField?(
+    args: { formId?: string; fieldKey: string; value: any; state: Record<string, any> },
+    ctx: HookContext,
+  ): Promise<Record<string, any> | null | void>
 }
 
 export interface SettingsPanelDescriptor {
@@ -2405,7 +2367,7 @@ export interface SettingsPanelDescriptor {
 /// SettingsField[] (not the inherited FormField[]) so the same restriction
 /// applies recursively to list items — otherwise a 'list' field's items
 /// could smuggle validate/transform closures back in.
-export interface SettingsField extends Omit<FormField, 'validate' | 'transform' | 'itemFields'> {
+export interface SettingsField extends Omit<FormField, "validate" | "transform" | "itemFields"> {
   pattern?: string
   patternError?: string
   itemFields?: SettingsField[]
@@ -2429,7 +2391,7 @@ export interface SettingsField extends Omit<FormField, 'validate' | 'transform' 
 /// Account credentials/testCredentials are not part of this schema at all —
 /// see AccountHook.
 export interface SimpleSettingsPanel {
-  kind: 'simple'
+  kind: "simple"
   /// Defaults to the extension's own key. If overridden (an extension with
   /// more than one panel), must equal the extension key or be prefixed
   /// `<extensionKey>_` — see SettingsPanelDescriptor.key's doc comment.
@@ -2449,7 +2411,7 @@ export interface SimpleSettingsPanel {
 /// panel discovery and a persistence-on-commit hook (onChangeField here is
 /// "go persist this," not FormHook's "patch sibling form state").
 export interface DynamicSettingsPanel {
-  kind: 'dynamic'
+  kind: "dynamic"
   /// Same naming rule as SimpleSettingsPanel.key — only actually used as a
   /// panel key when `getPanels` is omitted (single-panel case); when
   /// `getPanels` is present, each returned SettingsPanelDescriptor.key
@@ -2477,12 +2439,12 @@ export type SettingsPanelHook = SimpleSettingsPanel | DynamicSettingsPanel
 /// A `link` opens only `http:`, `https:` or `mailto:`; any other scheme is
 /// ignored. Ask if you need one that isn't on that list.
 export type NoticeAction =
-  | { label: string; type: 'link'; url: string }
-  | { label: string; type: 'dialog'; title?: string; text: string }
+  | { label: string; type: "link"; url: string }
+  | { label: string; type: "dialog"; title?: string; text: string }
   /// Opens the given account's own standalone dialog (Settings → Accounts).
   /// `key` matches the account's `kvKey` (see AccountHook); `subkey` is the
   /// same extension-defined discriminator as FormField.account's.
-  | { label: string; type: 'account'; key: string; subkey?: string }
+  | { label: string; type: "account"; key: string; subkey?: string }
 
 export interface StatusBarMessageParams {
   key: string
@@ -2524,7 +2486,7 @@ export interface StatusBarNoticeParams {
 /// A panel with no triggers renders once when it appears, and again only
 /// when its own config form changes — right for a panel showing static
 /// reference material.
-export type PanelTrigger = 'operation' | 'qso' | 'qsoLogged' | 'lookup' | 'spots' | `tick:${number}`
+export type PanelTrigger = "operation" | "qso" | "qsoLogged" | "lookup" | "spots" | `tick:${number}`
 
 /// One panel an extension contributes. Several may come from one extension,
 /// each with its own identity and config form; the host addresses them as
@@ -2578,13 +2540,25 @@ export interface PanelEnvironment {
   width: number
   height: number
   safeInsets: { left: number; top: number; right: number; bottom: number }
-  brightness: 'light' | 'dark'
-  colors: Record<'surface' | 'surfaceContainer' | 'onSurface' | 'onSurfaceVariant' |
-    'accent' | 'primary' | 'onPrimary' | 'secondary' | 'outline' | 'outlineVariant' |
-    'error' | 'onError', string>
-  typography: Record<'body' | 'label' | 'title' | 'display' | 'mono', PanelTypography>
+  brightness: "light" | "dark"
+  colors: Record<
+    | "surface"
+    | "surfaceContainer"
+    | "onSurface"
+    | "onSurfaceVariant"
+    | "accent"
+    | "primary"
+    | "onPrimary"
+    | "secondary"
+    | "outline"
+    | "outlineVariant"
+    | "error"
+    | "onError",
+    string
+  >
+  typography: Record<"body" | "label" | "title" | "display" | "mono", PanelTypography>
   locale: string
-  textDirection: 'ltr' | 'rtl'
+  textDirection: "ltr" | "rtl"
   devicePixelRatio: number
   reducedMotion: boolean
   highContrast: boolean
@@ -2594,14 +2568,14 @@ export interface PanelEnvironment {
 export interface PanelRadioState {
   id: string | null
   name: string | null
-  status: 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
+  status: "disconnected" | "connecting" | "connected" | "disconnecting" | "error"
   stale: boolean
   problem: string | null
   frequencyHz: number | null
   mode: string | null
   powerWatts: number | null
   transmitting: boolean | null
-  meters: Partial<Record<'signalDbm' | 'powerOut' | 'swr' | 'alc' | 'supplyVolts', number>>
+  meters: Partial<Record<"signalDbm" | "powerOut" | "swr" | "alc" | "supplyVolts", number>>
   canTune: boolean
 }
 export interface PanelRadioTune {
@@ -2610,12 +2584,12 @@ export interface PanelRadioTune {
   /** Pin a local radio by ID; omitted means follow the designated radio. */
   selection?: string
   frequencyHz?: number
-  mode?: 'LSB' | 'USB' | 'CW' | 'AM' | 'FM'
+  mode?: "LSB" | "USB" | "CW" | "AM" | "FM"
 }
 export interface PanelRadioTuneResult {
   /** Accepted by the host; confirmation still comes from reported state. */
   accepted: boolean
-  reason?: 'changed' | 'disconnected' | 'transmitting' | 'invalid'
+  reason?: "changed" | "disconnected" | "transmitting" | "invalid"
   state: PanelRadioState | null
 }
 
@@ -2676,10 +2650,10 @@ export interface PanelRenderArgs {
 /// render of a panel that asks for `qso` is answered without one; it is woken
 /// by the next change to the draft.
 export type PanelContent =
-  | { kind: 'svgScene'; scene: SvgScene; title?: string; triggers?: string[] }
-  | { kind: 'markdown'; content: string; title?: string; triggers?: string[] }
-  | { kind: 'svg'; content: string; title?: string; triggers?: string[] }
-  | { kind: 'html'; content: string; title?: string; triggers?: string[] }
+  | { kind: "svgScene"; scene: SvgScene; title?: string; triggers?: string[] }
+  | { kind: "markdown"; content: string; title?: string; triggers?: string[] }
+  | { kind: "svg"; content: string; title?: string; triggers?: string[] }
+  | { kind: "html"; content: string; title?: string; triggers?: string[] }
 
 /// Registered under category 'panel'. Same two-call shape as
 /// `settingsPanel`'s dynamic tier: discovery once, then content on demand.

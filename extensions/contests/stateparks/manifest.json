@@ -8,40 +8,16 @@
   "enabledByDefault": false,
   "icon": "flag-checkered",
   "accentColor": "#00695C",
-  "keywords": [
-    "contest",
-    "stateparks",
-    "park",
-    "pota",
-    "txsp",
-    "flsp",
-    "gasp",
-    "ohsp",
-    "ospota",
-    "cabrillo"
-  ],
+  "keywords": ["contest", "stateparks", "park", "pota", "txsp", "flsp", "gasp", "ohsp", "ospota", "cabrillo"],
   "relevance": {
-    "countries": [
-      "us"
-    ]
+    "countries": ["us"]
   },
-  "hooks": [
-    "activity",
-    "adifFields",
-    "export",
-    "ref:stateparks",
-    "scoring"
-  ],
+  "hooks": ["activity", "adifFields", "export", "ref:stateparks", "scoring"],
   "translations": {
     "es": {
       "name": "Eventos de Parques Estatales (Beta)",
       "description": "Eventos de parques estatales — Texas, Florida, Georgia y Ohio — puntuados junto con tu activación POTA",
-      "keywords": [
-        "concurso",
-        "parques",
-        "parque",
-        "estatal"
-      ]
+      "keywords": ["concurso", "parques", "parque", "estatal"]
     }
   }
 }

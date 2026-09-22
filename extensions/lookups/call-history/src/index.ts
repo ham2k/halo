@@ -40,7 +40,7 @@ defineExtension({
     // reconciliation — which deletes the location fields a result did not
     // itself write — has nothing of ours to delete, and the order the two
     // are returned in decides nothing.
-    registerHook('lookup', { hook: { lookupCall }, priority: -1 })
+    registerHook("lookup", { hook: { lookupCall }, priority: -1 })
   },
 })
 
@@ -48,7 +48,7 @@ async function lookupCall(
   { callInfo, qso }: { callInfo: AnnotatedCallInfo; qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
   ctx: HookContext,
 ): Promise<LookupResult> {
-  const call = (callInfo.call || '').trim().toUpperCase()
+  const call = (callInfo.call || "").trim().toUpperCase()
   if (call.length < 3 || !ctx.getHistoryForCall) return []
 
   // A portable/mobile/DX-prefixed call (`KI2D/P`, `F/KI2D`) is worked as
@@ -60,7 +60,7 @@ async function lookupCall(
   //
   // The two fetched in parallel — neither depends on the other's result,
   // and each is its own bridge round-trip.
-  const baseCall = (callInfo.baseCall || '').trim().toUpperCase()
+  const baseCall = (callInfo.baseCall || "").trim().toUpperCase()
   const [history, baseHistory] = await Promise.all([
     ctx.getHistoryForCall(call),
     baseCall && baseCall !== call ? ctx.getHistoryForCall(baseCall) : Promise.resolve([]),

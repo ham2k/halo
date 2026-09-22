@@ -63,10 +63,10 @@ export function existingStatsFromQsos(qsos: Record<string, unknown>[]): Existing
   let min: number | undefined
   let max: number | undefined
   for (const qso of qsos) {
-    if (qso.band === 'event') continue
+    if (qso.band === "event") continue
     count++
     const at = qso.startAtMillis
-    if (typeof at !== 'number') continue
+    if (typeof at !== "number") continue
     if (min === undefined || at < min) min = at
     if (max === undefined || at > max) max = at
   }
@@ -88,13 +88,7 @@ export interface SeedPlan {
 /// denser real log). Without a spread: exponential inter-QSO gaps (mean two
 /// minutes, i.e. a Poisson arrival process, like app-polo's SEED) walking
 /// back from now.
-export function seedPlan(args: {
-  count: number
-  spreadMillis?: number
-  nowMillis: number
-  existing?: ExistingQsoStats
-  random?: () => number
-}): SeedPlan {
+export function seedPlan(args: { count: number; spreadMillis?: number; nowMillis: number; existing?: ExistingQsoStats; random?: () => number }): SeedPlan {
   const { count, spreadMillis, nowMillis, existing } = args
   const random = args.random ?? Math.random
 
@@ -109,9 +103,7 @@ export function seedPlan(args: {
         beforeExisting = true
       }
     }
-    const startTimes = Array.from({ length: count }, () =>
-      Math.round(endMillis - spreadMillis + random() * spreadMillis),
-    ).sort((a, b) => a - b)
+    const startTimes = Array.from({ length: count }, () => Math.round(endMillis - spreadMillis + random() * spreadMillis)).sort((a, b) => a - b)
     return { startTimes, beforeExisting }
   }
 
@@ -149,7 +141,7 @@ export function randomRST(mode: string | undefined, random: () => number = Math.
     if (pick < 0) break
   }
   const readability = strength >= 5 ? 5 : 3 + Math.floor(random() * 2)
-  if (mode === 'CW' || mode === 'RTTY') return `${readability}${strength}9`
+  if (mode === "CW" || mode === "RTTY") return `${readability}${strength}9`
   return `${readability}${strength}`
 }
 
@@ -181,4 +173,4 @@ export function mutateCall(call: string, random: () => number = Math.random): st
 }
 
 /// app-polo's fallback pool, for when no Callsign Notes data is loaded.
-export const FALLBACK_CALLS = ['KI2D', 'M1SDH', 'EI5IYB', 'M0LZN', 'WV3H', 'LB4FH', 'VK1AO']
+export const FALLBACK_CALLS = ["KI2D", "M1SDH", "EI5IYB", "M0LZN", "WV3H", "LB4FH", "VK1AO"]

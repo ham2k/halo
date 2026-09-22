@@ -37,9 +37,9 @@
 // Runs over the built bundles, so it belongs after the build rather than
 // beside the manifest's field validation in build-config.mjs.
 
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
-import vm from 'node:vm'
+import { readFile } from "node:fs/promises"
+import { join } from "node:path"
+import vm from "node:vm"
 
 /// What the runtime gives a bundle, reduced to what evaluating and activating
 /// one touches. Extensions read settings at activation and list rows to build
@@ -50,15 +50,15 @@ import vm from 'node:vm'
 /// A new extension that needs more than this fails the check rather than
 /// skipping it — teach the stub the shape, here.
 function hostCallStub(method) {
-  if (method === 'getSettings') return {}
-  if (method.startsWith('dbLookup')) return []
+  if (method === "getSettings") return {}
+  if (method.startsWith("dbLookup")) return []
   return null
 }
 
 const hostCall = async (method) => hostCallStub(method)
 
 /// Enough HookContext for a control listing: the labels come from `ctx.locale`.
-const hookContext = { locale: 'en', online: false, settings: {}, operation: {} }
+const hookContext = { locale: "en", online: false, settings: {}, operation: {} }
 
 function sandboxFor(kernelStub) {
   const sandbox = {
@@ -79,7 +79,7 @@ function sandboxFor(kernelStub) {
 /// did not carry them could not evaluate a single bundle.
 async function sharedModulesFrom(outDir) {
   const context = sandboxFor(undefined)
-  vm.runInContext(await readFile(join(outDir, 'kernel.js'), 'utf8'), context, { filename: 'kernel.js' })
+  vm.runInContext(await readFile(join(outDir, "kernel.js"), "utf8"), context, { filename: "kernel.js" })
   return context.__polo.sharedModules
 }
 
@@ -101,7 +101,7 @@ async function inspectBundle({ key, outDir, sharedModules }) {
     sharedModules,
     sharedVersions: {},
   })
-  vm.runInContext(await readFile(join(outDir, `${key}.js`), 'utf8'), context, { filename: `${key}.js` })
+  vm.runInContext(await readFile(join(outDir, `${key}.js`), "utf8"), context, { filename: `${key}.js` })
 
   const categories = new Set()
   const activityHooks = []
@@ -110,7 +110,7 @@ async function inspectBundle({ key, outDir, sharedModules }) {
       hostCall,
       registerHook: (category, params) => {
         categories.add(category)
-        if (category === 'activity') activityHooks.push(params.hook)
+        if (category === "activity") activityHooks.push(params.hook)
       },
     })
   }
@@ -125,8 +125,8 @@ async function inspectBundle({ key, outDir, sharedModules }) {
 /// activating (custom/index.ts returns none without an activation ref) — one
 /// type at a time would report a control the extension does publish as absent.
 async function controlledRefTypes(activityHooks, refTypes) {
-  const operation = { uuid: 'check', refs: refTypes.map((type) => ({ type, ref: 'TEST-0001' })) }
-  const args = { operation, qso: { their: { call: 'W1AW' } } }
+  const operation = { uuid: "check", refs: refTypes.map((type) => ({ type, ref: "TEST-0001" })) }
+  const args = { operation, qso: { their: { call: "W1AW" } } }
   // type -> the control kinds publishing it, and the set of `<type>/<prefix>`
   // claims every control declares in `alsoHandles`. Both are what a manifest
   // entry has to be backed by: a claim nothing publishes is an offer that
@@ -136,14 +136,14 @@ async function controlledRefTypes(activityHooks, refTypes) {
   for (const hook of activityHooks) {
     // An activation ref is named by an operation-level control, a hunting ref
     // by a per-QSO one. Either clears the row, so both count.
-    for (const method of ['operationControls', 'loggingControls']) {
-      if (typeof hook[method] !== 'function') continue
+    for (const method of ["operationControls", "loggingControls"]) {
+      if (typeof hook[method] !== "function") continue
       for (const control of (await hook[method](args, hookContext)) ?? []) {
         for (const claim of control?.input?.alsoHandles ?? []) {
-          if (typeof claim === 'string') alsoHandled.add(claim.toLowerCase())
+          if (typeof claim === "string") alsoHandled.add(claim.toLowerCase())
         }
         const type = control?.input?.refType
-        if (typeof type !== 'string') continue
+        if (typeof type !== "string") continue
         if (!controlled.has(type)) controlled.set(type, new Set())
         controlled.get(type).add(control?.input?.kind)
       }
@@ -160,7 +160,7 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
   const problems = []
 
   for (const bundle of bundles) {
-    if (bundle.kind !== 'extension') continue
+    if (bundle.kind !== "extension") continue
     const declared = bundle.manifest.hooks ?? []
     const manifestPath = `${bundle.key}/manifest.json`
 
@@ -176,32 +176,32 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
     }
     const { categories, activityHooks } = inspected
 
-    const declaredPlain = declared.filter((hook) => !hook.startsWith('ref:'))
-    const registeredPlain = [...categories].filter((category) => !category.startsWith('ref:'))
+    const declaredPlain = declared.filter((hook) => !hook.startsWith("ref:"))
+    const registeredPlain = [...categories].filter((category) => !category.startsWith("ref:"))
     const missing = registeredPlain.filter((category) => !declaredPlain.includes(category)).sort()
     const phantom = declaredPlain.filter((category) => !registeredPlain.includes(category)).sort()
     if (missing.length) {
-      problems.push(`${manifestPath}: registers ${missing.join(', ')} but does not list ${missing.length > 1 ? 'them' : 'it'} in "hooks"`)
+      problems.push(`${manifestPath}: registers ${missing.join(", ")} but does not list ${missing.length > 1 ? "them" : "it"} in "hooks"`)
     }
     if (phantom.length) {
-      problems.push(`${manifestPath}: lists ${phantom.join(', ')} in "hooks" but never registers ${phantom.length > 1 ? 'them' : 'it'}`)
+      problems.push(`${manifestPath}: lists ${phantom.join(", ")} in "hooks" but never registers ${phantom.length > 1 ? "them" : "it"}`)
     }
 
-    const declaredRefs = declared.filter((hook) => hook.startsWith('ref:')).map((hook) => hook.slice(4))
+    const declaredRefs = declared.filter((hook) => hook.startsWith("ref:")).map((hook) => hook.slice(4))
     // A qualified claim (`ref:qp/ny`) is about a LEGACY reference the
     // extension answers under another name, so it is not a control claim and
     // is checked by its own rules below.
-    const declaredRefTypes = declaredRefs.filter((entry) => !entry.includes('/'))
-    const qualified = declaredRefs.filter((entry) => entry.includes('/'))
+    const declaredRefTypes = declaredRefs.filter((entry) => !entry.includes("/"))
+    const qualified = declaredRefs.filter((entry) => entry.includes("/"))
     // Shape first: the app reads `ref:<type>/<code>` and nothing else, so a
     // half-written entry (`ref:qp/`, `ref:/ny`) or one with a second slash
     // matches no reference at all — the extension would ship a claim that
     // does nothing and the operator's legacy row would stay red, which is
     // the very failure this file exists to catch.
-    const malformed = qualified.filter((q) => q.split('/').length !== 2 || q.split('/').some((half) => !half)).sort()
+    const malformed = qualified.filter((q) => q.split("/").length !== 2 || q.split("/").some((half) => !half)).sort()
     if (malformed.length) {
       problems.push(
-        `${manifestPath}: lists ${malformed.map((q) => `"ref:${q}"`).join(', ')} in "hooks". A qualified claim is ` +
+        `${manifestPath}: lists ${malformed.map((q) => `"ref:${q}"`).join(", ")} in "hooks". A qualified claim is ` +
           `"ref:<type>/<code>" with both halves present and one slash; nothing else is read as one.`,
       )
     }
@@ -220,8 +220,8 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
       const unbacked = qualified.filter((q) => !alsoHandled.has(q.toLowerCase())).sort()
       if (unbacked.length) {
         problems.push(
-          `${manifestPath}: lists ${unbacked.map((q) => `"ref:${q}"`).join(', ')} in "hooks", but no control declares ` +
-            `${unbacked.length > 1 ? 'them' : 'it'} in "alsoHandles" — the host would offer this extension for such a ` +
+          `${manifestPath}: lists ${unbacked.map((q) => `"ref:${q}"`).join(", ")} in "hooks", but no control declares ` +
+            `${unbacked.length > 1 ? "them" : "it"} in "alsoHandles" — the host would offer this extension for such a ` +
             `reference and the row would stay red. Add the claim to the control's input, or drop the entry.`,
         )
       }
@@ -234,8 +234,8 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
     const undeclared = [...alsoHandled].filter((claim) => !qualified.some((q) => q.toLowerCase() === claim)).sort()
     if (undeclared.length) {
       problems.push(
-        `${manifestPath}: publishes a control handling ${undeclared.map((q) => `"${q}"`).join(', ')} but does not list ` +
-          `${undeclared.map((q) => `"ref:${q}"`).join(', ')} in "hooks" — nothing would offer this extension for such a ` +
+        `${manifestPath}: publishes a control handling ${undeclared.map((q) => `"${q}"`).join(", ")} but does not list ` +
+          `${undeclared.map((q) => `"ref:${q}"`).join(", ")} in "hooks" — nothing would offer this extension for such a ` +
           `reference, so the control that answers it is never reached.`,
       )
     }
@@ -243,9 +243,9 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
       const uncontrolled = declaredRefTypes.filter((type) => !controlled.has(type)).sort()
       if (uncontrolled.length) {
         problems.push(
-          `${manifestPath}: lists ${uncontrolled.map((t) => `ref:${t}`).join(', ')} in "hooks", but publishes no control for ` +
-            `${uncontrolled.length > 1 ? 'those types' : 'that type'} — the host would offer to enable this extension for such a ` +
-            `reference and the row would stay red. Drop the entr${uncontrolled.length > 1 ? 'ies' : 'y'} if the hook only ` +
+          `${manifestPath}: lists ${uncontrolled.map((t) => `ref:${t}`).join(", ")} in "hooks", but publishes no control for ` +
+            `${uncontrolled.length > 1 ? "those types" : "that type"} — the host would offer to enable this extension for such a ` +
+            `reference and the row would stay red. Drop the entr${uncontrolled.length > 1 ? "ies" : "y"} if the hook only ` +
             `resolves or decorates the reference; the registration itself can stay.`,
         )
       }
@@ -254,7 +254,7 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
 
   if (problems.length) {
     throw new Error(
-      `manifest "hooks" does not match what the code registers:\n  - ${problems.join('\n  - ')}\n` +
+      `manifest "hooks" does not match what the code registers:\n  - ${problems.join("\n  - ")}\n` +
         `  (docs/extensions/README.md — "hooks" is what the host reads for a disabled extension.)`,
     )
   }

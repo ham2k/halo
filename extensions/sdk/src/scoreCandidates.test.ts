@@ -20,22 +20,21 @@ const DAY = 1000 * 60 * 60 * 24
 const DAY_1 = Date.UTC(2026, 6, 1)
 
 const POTA = {
-  label: 'POTA',
-  activationType: 'potaActivation',
-  huntingType: 'pota',
+  label: "POTA",
+  activationType: "potaActivation",
+  huntingType: "pota",
   qsosToActivate: 10,
   allowsMultipleReferences: true,
-  uniquePer: ['band', 'mode', 'day', 'ref'] as const,
-  activates: 'daily' as const,
+  uniquePer: ["band", "mode", "day", "ref"] as const,
+  activates: "daily" as const,
 }
 
-const potaRef: Record<string, JSONValue> = { type: 'pota', ref: 'US-0001' }
-const operation: Record<string, JSONValue> = { uuid: 'op-1', refs: [potaRef] }
+const potaRef: Record<string, JSONValue> = { type: "pota", ref: "US-0001" }
+const operation: Record<string, JSONValue> = { uuid: "op-1", refs: [potaRef] }
 
 function qso(
   call: string,
-  { at = DAY_1, band = '20m', mode = 'SSB', ref = 'US-0001' }:
-    { at?: number; band?: string; mode?: string; ref?: string } = {},
+  { at = DAY_1, band = "20m", mode = "SSB", ref = "US-0001" }: { at?: number; band?: string; mode?: string; ref?: string } = {},
 ): Record<string, JSONValue> {
   return {
     uuid: `${call}-${at}-${band}-${mode}`,
@@ -43,7 +42,7 @@ function qso(
     band,
     mode,
     startAtMillis: at,
-    refs: [{ type: 'pota', ref }],
+    refs: [{ type: "pota", ref }],
   }
 }
 
@@ -57,25 +56,19 @@ function candidate(key: string, call: string, opts: Parameters<typeof qso>[1] = 
 /// The host's view: a log it can read back, and the hook it invokes.
 function hookOver(log: Record<string, JSONValue>[]) {
   const ctx: HookContext = { online: false, getQsos: async () => log }
-  const hook = contestScorer(activityScorer(POTA), { scope: { refTypes: ['potaActivation', 'pota'] } })
+  const hook = contestScorer(activityScorer(POTA), { scope: { refTypes: ["potaActivation", "pota"] } })
   return { hook, ctx }
 }
 
 test("a candidate already in the log comes back as a duplicate", async () => {
-  const { hook, ctx } = hookOver([qso('W1AAA')])
-  const result = await hook.scoreCandidates!(
-    { operation, candidates: [candidate('a', 'W1AAA')], ref: potaRef },
-    ctx,
-  )
-  assert.deepEqual(result.a.alerts, ['duplicate'])
+  const { hook, ctx } = hookOver([qso("W1AAA")])
+  const result = await hook.scoreCandidates!({ operation, candidates: [candidate("a", "W1AAA")], ref: potaRef }, ctx)
+  assert.deepEqual(result.a.alerts, ["duplicate"])
 })
 
 test("an unworked candidate reports nothing", async () => {
-  const { hook, ctx } = hookOver([qso('W1AAA')])
-  const result = await hook.scoreCandidates!(
-    { operation, candidates: [candidate('b', 'W2BBB')], ref: potaRef },
-    ctx,
-  )
+  const { hook, ctx } = hookOver([qso("W1AAA")])
+  const result = await hook.scoreCandidates!({ operation, candidates: [candidate("b", "W2BBB")], ref: potaRef }, ctx)
   assert.deepEqual(result.b.alerts, [])
   assert.deepEqual(result.b.notices, [])
 })
@@ -86,28 +79,28 @@ test("an unworked candidate reports nothing", async () => {
 // it, so the second reads as a contact the operator never made and its row is
 // struck through. Anyone "optimizing away" the per-candidate copy fails here.
 test("one candidate never makes another a duplicate", async () => {
-  const { hook, ctx } = hookOver([qso('W1AAA')])
+  const { hook, ctx } = hookOver([qso("W1AAA")])
   const result = await hook.scoreCandidates!(
     {
       operation,
-      candidates: [candidate('first', 'W2BBB'), candidate('second', 'W2BBB')],
+      candidates: [candidate("first", "W2BBB"), candidate("second", "W2BBB")],
       ref: potaRef,
     },
     ctx,
   )
   assert.deepEqual(result.first.alerts, [])
-  assert.deepEqual(result.second.alerts, [], 'the first candidate leaked into the second\'s scoresheet')
+  assert.deepEqual(result.second.alerts, [], "the first candidate leaked into the second's scoresheet")
 })
 
 // Same trap from the other side: a real duplicate must stay a duplicate no
 // matter where it sits in the batch, so the copy has to be per candidate
 // rather than taken once before the loop.
 test("candidate order does not change any verdict", async () => {
-  const { hook, ctx } = hookOver([qso('W1AAA')])
+  const { hook, ctx } = hookOver([qso("W1AAA")])
   const forwards = await hook.scoreCandidates!(
     {
       operation,
-      candidates: [candidate('dupe', 'W1AAA'), candidate('new', 'W2BBB')],
+      candidates: [candidate("dupe", "W1AAA"), candidate("new", "W2BBB")],
       ref: potaRef,
     },
     ctx,
@@ -115,13 +108,13 @@ test("candidate order does not change any verdict", async () => {
   const backwards = await hook.scoreCandidates!(
     {
       operation,
-      candidates: [candidate('new', 'W2BBB'), candidate('dupe', 'W1AAA')],
+      candidates: [candidate("new", "W2BBB"), candidate("dupe", "W1AAA")],
       ref: potaRef,
     },
     ctx,
   )
   assert.deepEqual(forwards, backwards)
-  assert.deepEqual(forwards.dupe.alerts, ['duplicate'])
+  assert.deepEqual(forwards.dupe.alerts, ["duplicate"])
   assert.deepEqual(forwards.new.alerts, [])
 })
 
@@ -132,46 +125,43 @@ test("candidate order does not change any verdict", async () => {
 // does not, and the symptom is not an error but a spot list where no station
 // is ever a duplicate.
 test("an operation with no uuid scores against an empty log", async () => {
-  const { hook, ctx } = hookOver([qso('W1AAA')])
+  const { hook, ctx } = hookOver([qso("W1AAA")])
   const anonymous: Record<string, JSONValue> = { refs: [potaRef] }
-  const result = await hook.scoreCandidates!(
-    { operation: anonymous, candidates: [candidate('a', 'W1AAA')], ref: potaRef },
-    ctx,
-  )
-  assert.deepEqual(result.a.alerts, [], 'a log it cannot read is a log with nothing in it')
+  const result = await hook.scoreCandidates!({ operation: anonymous, candidates: [candidate("a", "W1AAA")], ref: potaRef }, ctx)
+  assert.deepEqual(result.a.alerts, [], "a log it cannot read is a log with nothing in it")
 })
 
 // POTA counts a station again on a new band, so a spot for a station worked
 // only on 20m is a contact worth making — accented, not struck.
 test("a station worked on another band reports newBand, not duplicate", async () => {
-  const { hook, ctx } = hookOver([qso('W1AAA', { band: '20m' })])
+  const { hook, ctx } = hookOver([qso("W1AAA", { band: "20m" })])
   const result = await hook.scoreCandidates!(
     {
       operation,
-      candidates: [candidate('c', 'W1AAA', { band: '40m' })],
+      candidates: [candidate("c", "W1AAA", { band: "40m" })],
       ref: potaRef,
     },
     ctx,
   )
   assert.deepEqual(result.c.alerts, [])
-  assert.deepEqual(result.c.notices, ['newBand'])
+  assert.deepEqual(result.c.notices, ["newBand"])
 })
 
 // POTA's day axis buckets by `floor(startAtMillis / DAY)`, so a candidate
 // timestamped yesterday is a fresh contact rather than a duplicate, and one
 // that states a time keeps it — the harness stamps only the timestamp-less.
 test("the candidate's own timestamp decides the day axis", async () => {
-  const { hook, ctx } = hookOver([qso('W1AAA', { at: DAY_1 })])
+  const { hook, ctx } = hookOver([qso("W1AAA", { at: DAY_1 })])
   const result = await hook.scoreCandidates!(
     {
       operation,
-      candidates: [candidate('today', 'W1AAA', { at: DAY_1 }), candidate('tomorrow', 'W1AAA', { at: DAY_1 + DAY })],
+      candidates: [candidate("today", "W1AAA", { at: DAY_1 }), candidate("tomorrow", "W1AAA", { at: DAY_1 + DAY })],
       ref: potaRef,
     },
     ctx,
   )
-  assert.deepEqual(result.today.alerts, ['duplicate'])
-  assert.deepEqual(result.tomorrow.notices, ['newDay'])
+  assert.deepEqual(result.today.alerts, ["duplicate"])
+  assert.deepEqual(result.tomorrow.notices, ["newDay"])
 })
 
 // The logging panel's draft carries no `startAtMillis` while its time is
@@ -186,15 +176,15 @@ test("a candidate with no timestamp is judged as of now", async () => {
   const realNow = Date.now
   Date.now = () => now
   try {
-    const { hook, ctx } = hookOver([qso('W1AAA', { at: now - 60_000 })])
-    const { startAtMillis: _at, ...draft } = candidate('d', 'W1AAA').qso
+    const { hook, ctx } = hookOver([qso("W1AAA", { at: now - 60_000 })])
+    const { startAtMillis: _at, ...draft } = candidate("d", "W1AAA").qso
 
     const one = await hook.scoreQso!({ operation, qso: draft, ref: potaRef }, ctx)
-    assert.deepEqual(one.alerts, ['duplicate'])
+    assert.deepEqual(one.alerts, ["duplicate"])
     assert.deepEqual(one.notices, [])
 
-    const many = await hook.scoreCandidates!({ operation, candidates: [{ key: 'd', qso: draft }], ref: potaRef }, ctx)
-    assert.deepEqual(many.d.alerts, ['duplicate'])
+    const many = await hook.scoreCandidates!({ operation, candidates: [{ key: "d", qso: draft }], ref: potaRef }, ctx)
+    assert.deepEqual(many.d.alerts, ["duplicate"])
   } finally {
     Date.now = realNow
   }
@@ -205,24 +195,21 @@ test("a candidate with no timestamp is judged as of now", async () => {
 // judges every spot against a log that includes the spots themselves.
 test("a resumeFrom checkpoint survives the batch unchanged", async () => {
   const { hook, ctx } = hookOver([])
-  const pass = await hook.scoreQsos(
-    { operation, qsos: [qso('W1AAA')], ref: potaRef },
-    ctx,
-  )
+  const pass = await hook.scoreQsos({ operation, qsos: [qso("W1AAA")], ref: potaRef }, ctx)
   const checkpoint = pass.scoresheet!
   const before = JSON.stringify(checkpoint)
 
   const result = await hook.scoreCandidates!(
     {
       operation,
-      candidates: [candidate('x', 'W2BBB'), candidate('y', 'W3CCC')],
+      candidates: [candidate("x", "W2BBB"), candidate("y", "W3CCC")],
       ref: potaRef,
       resumeFrom: checkpoint,
     },
     ctx,
   )
   assert.deepEqual(result.x.alerts, [])
-  assert.equal(JSON.stringify(checkpoint), before, 'the cached scoresheet was mutated')
+  assert.equal(JSON.stringify(checkpoint), before, "the cached scoresheet was mutated")
 })
 
 // The operator worked a station at one park, then edited the QSO to name a
@@ -232,11 +219,8 @@ test("a resumeFrom checkpoint survives the batch unchanged", async () => {
 // calls it a duplicate on call+band+mode; reconciling the two is the host's
 // job, not this scorer's.)
 test("a station worked at another reference reports newRef, not duplicate", async () => {
-  const { hook, ctx } = hookOver([qso('WC1N', { ref: 'US-9999' })])
-  const result = await hook.scoreCandidates!(
-    { operation, candidates: [candidate('wc1n', 'WC1N', { ref: 'US-0001' })], ref: potaRef },
-    ctx,
-  )
-  assert.deepEqual(result.wc1n.alerts, [], 'a different park is not a duplicate')
-  assert.deepEqual(result.wc1n.notices, ['newRef'])
+  const { hook, ctx } = hookOver([qso("WC1N", { ref: "US-9999" })])
+  const result = await hook.scoreCandidates!({ operation, candidates: [candidate("wc1n", "WC1N", { ref: "US-0001" })], ref: potaRef }, ctx)
+  assert.deepEqual(result.wc1n.alerts, [], "a different park is not a duplicate")
+  assert.deepEqual(result.wc1n.notices, ["newRef"])
 })

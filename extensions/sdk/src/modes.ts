@@ -20,22 +20,22 @@ import { ADIF_MODES_AND_SUBMODES, ADIF_MODE_FOR_SUBMODE, superModeForMode } from
 /// but that rule leaves the two SIBLINGS distinct, and one contact logged on
 /// `USB` and spotted on `LSB` is still one contact. The same fold qso_merge's
 /// `_matchableMode` applies for the same reason.
-const SIDEBAND_SPELLINGS = new Set(['SSB', 'USB', 'LSB'])
+const SIDEBAND_SPELLINGS = new Set(["SSB", "USB", "LSB"])
 
 /// Spellings that are not ADIF modes at all but arrive from feeds that use
 /// their own vocabulary — SOTAwatch posts `DV` where ADIF says `DIGITALVOICE`.
 /// Resolved before the parent rule, so `DV` matches `DMR` through it.
-const MODE_ALIASES: Record<string, string> = { DV: 'DIGITALVOICE' }
+const MODE_ALIASES: Record<string, string> = { DV: "DIGITALVOICE" }
 
 /// Spellings that name a whole super mode rather than an emission. A spot
 /// that says `DATA` is not claiming the station is on some mode called DATA —
 /// it is saying "one of the digital modes", so it matches whichever one the
 /// contact was actually logged on.
 const COARSE_SUPER_MODES: Record<string, string> = {
-  DATA: 'DATA',
-  DIGI: 'DATA',
-  DIGITAL: 'DATA',
-  PHONE: 'PHONE',
+  DATA: "DATA",
+  DIGI: "DATA",
+  DIGITAL: "DATA",
+  PHONE: "PHONE",
 }
 
 /// Every mode and submode ADIF names. The coarse rule below tests the WORKED
@@ -54,8 +54,8 @@ const KNOWN_MODES = new Set(ADIF_MODES_AND_SUBMODES.map((mode) => mode.toUpperCa
 /// log holding both `USB` and `SSB` is one mode worked, and reporting it as
 /// two contradicts the duplicate rule that already treats them as one.
 export function canonicalMode(mode: string): string {
-  const upper = (mode ?? '').trim().toUpperCase()
-  if (SIDEBAND_SPELLINGS.has(upper)) return 'SSB'
+  const upper = (mode ?? "").trim().toUpperCase()
+  if (SIDEBAND_SPELLINGS.has(upper)) return "SSB"
   return MODE_ALIASES[upper] ?? upper
 }
 
@@ -100,7 +100,7 @@ export function modesMatchForDupe(worked: string, candidate: string): boolean {
 /// same rule: the app decides which sideband to log and this side decides
 /// whether that sideband is worth writing into an exported file, so where the
 /// two disagree the file contradicts the panel the operator worked from.
-const LSB_BANDS = new Set(['2190m', '2200m', '630m', '560m', '160m', '80m', '75m', '40m'])
+const LSB_BANDS = new Set(["2190m", "2200m", "630m", "560m", "160m", "80m", "75m", "40m"])
 
 /// Below this, voice is lower sideband; at or above it, upper. A plain split
 /// through HF, not a band edge — so this needs no band table to agree with,
@@ -118,11 +118,11 @@ const SIXTY_METRE_HI_KHZ = 6000
 /// Mirrors `halo_core`'s `expectedSideband`, undefined for its null.
 export function expectedSideband({ freqKHz, band }: { freqKHz?: number; band?: string }): string | undefined {
   if (freqKHz != null) {
-    if (freqKHz >= UPPER_SIDEBAND_FLOOR_KHZ) return 'USB'
-    return freqKHz >= SIXTY_METRE_LO_KHZ && freqKHz < SIXTY_METRE_HI_KHZ ? 'USB' : 'LSB'
+    if (freqKHz >= UPPER_SIDEBAND_FLOOR_KHZ) return "USB"
+    return freqKHz >= SIXTY_METRE_LO_KHZ && freqKHz < SIXTY_METRE_HI_KHZ ? "USB" : "LSB"
   }
   if (!band) return undefined
-  return LSB_BANDS.has(band) ? 'LSB' : 'USB'
+  return LSB_BANDS.has(band) ? "LSB" : "USB"
 }
 
 /// Whether [mode] names the sideband the band does NOT run — the one thing
@@ -132,15 +132,12 @@ export function expectedSideband({ freqKHz, band }: { freqKHz?: number; band?: s
 /// mode, and a contact stating neither a frequency nor a band.
 ///
 /// Mirrors `halo_core`'s `isUnexpectedSideband`.
-export function isUnexpectedSideband(
-  mode: string | undefined | null,
-  { freqKHz, band }: { freqKHz?: number; band?: string },
-): boolean {
+export function isUnexpectedSideband(mode: string | undefined | null, { freqKHz, band }: { freqKHz?: number; band?: string }): boolean {
   // No trim, because the Dart twin does none: the two are documented to answer
   // identically, and ` LSB` answering differently across them is exactly the
   // app-versus-file contradiction that pairing them is meant to prevent.
-  const upper = (mode ?? '').toUpperCase()
-  if (upper !== 'USB' && upper !== 'LSB') return false
+  const upper = (mode ?? "").toUpperCase()
+  if (upper !== "USB" && upper !== "LSB") return false
   const expected = expectedSideband({ freqKHz, band })
   return expected !== undefined && upper !== expected
 }

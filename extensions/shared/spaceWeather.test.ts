@@ -6,18 +6,11 @@
 // app-polo's exactly (both apps annotate the same synced logs) — so they
 // are pinned here, against a real hamqsl.com response shape.
 
-import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import assert from "node:assert/strict"
+import { describe, it } from "node:test"
 
-import {
-  emojiForAIndex,
-  emojiForKIndex,
-  emojiForSFI,
-  parseSolarXml,
-  solarMessage,
-  weatherMessage,
-} from './spaceWeather.ts'
-import type { WeatherData } from './spaceWeather.ts'
+import { emojiForAIndex, emojiForKIndex, emojiForSFI, parseSolarXml, solarMessage, weatherMessage } from "./spaceWeather.ts"
+import type { WeatherData } from "./spaceWeather.ts"
 
 // Abridged from a real https://www.hamqsl.com/solarxml.php response —
 // scalar readings plus the nested per-band conditions the parser must skip.
@@ -50,62 +43,62 @@ const SOLAR_XML = `<?xml version="1.0"?>
   </solardata>
 </solar>`
 
-describe('parseSolarXml', () => {
-  it('extracts the scalar readings', () => {
+describe("parseSolarXml", () => {
+  it("extracts the scalar readings", () => {
     const data = parseSolarXml(SOLAR_XML)
-    assert.equal(data.solarflux, '117')
-    assert.equal(data.aindex, '14')
-    assert.equal(data.kindex, '1')
-    assert.equal(data.sunspots, '60')
-    assert.equal(data.updated, '16 Jul 2026 1800 GMT')
-    assert.equal(data.geomagfield, 'VR QUIET')
+    assert.equal(data.solarflux, "117")
+    assert.equal(data.aindex, "14")
+    assert.equal(data.kindex, "1")
+    assert.equal(data.sunspots, "60")
+    assert.equal(data.updated, "16 Jul 2026 1800 GMT")
+    assert.equal(data.geomagfield, "VR QUIET")
   })
 
-  it('skips nested elements like the per-band conditions', () => {
+  it("skips nested elements like the per-band conditions", () => {
     const data = parseSolarXml(SOLAR_XML)
     assert.equal(data.calculatedconditions, undefined)
     assert.equal(data.band, undefined)
   })
 
-  it('returns an empty map for a non-XML error body', () => {
-    assert.deepEqual(parseSolarXml('Service temporarily unavailable'), {})
+  it("returns an empty map for a non-XML error body", () => {
+    assert.deepEqual(parseSolarXml("Service temporarily unavailable"), {})
   })
 })
 
-describe('solar emoji thresholds (must match app-polo)', () => {
-  it('SFI: red < 100 ≤ yellow < 150 ≤ blue < 200 ≤ green', () => {
-    assert.equal(emojiForSFI(99), '🔴')
-    assert.equal(emojiForSFI(100), '🟡')
-    assert.equal(emojiForSFI(149), '🟡')
-    assert.equal(emojiForSFI(150), '🔵')
-    assert.equal(emojiForSFI(199), '🔵')
-    assert.equal(emojiForSFI(200), '🟢')
+describe("solar emoji thresholds (must match app-polo)", () => {
+  it("SFI: red < 100 ≤ yellow < 150 ≤ blue < 200 ≤ green", () => {
+    assert.equal(emojiForSFI(99), "🔴")
+    assert.equal(emojiForSFI(100), "🟡")
+    assert.equal(emojiForSFI(149), "🟡")
+    assert.equal(emojiForSFI(150), "🔵")
+    assert.equal(emojiForSFI(199), "🔵")
+    assert.equal(emojiForSFI(200), "🟢")
   })
 
-  it('A index: green < 20 ≤ yellow < 30 ≤ red < 50 ≤ brown < 100 ≤ purple', () => {
-    assert.equal(emojiForAIndex(19), '🟢')
-    assert.equal(emojiForAIndex(20), '🟡')
-    assert.equal(emojiForAIndex(30), '🔴')
-    assert.equal(emojiForAIndex(50), '🟤')
-    assert.equal(emojiForAIndex(100), '🟣')
+  it("A index: green < 20 ≤ yellow < 30 ≤ red < 50 ≤ brown < 100 ≤ purple", () => {
+    assert.equal(emojiForAIndex(19), "🟢")
+    assert.equal(emojiForAIndex(20), "🟡")
+    assert.equal(emojiForAIndex(30), "🔴")
+    assert.equal(emojiForAIndex(50), "🟤")
+    assert.equal(emojiForAIndex(100), "🟣")
   })
 
-  it('K index: green ≤ 3 < yellow < 5 ≤ red < 7 ≤ purple', () => {
-    assert.equal(emojiForKIndex(3), '🟢')
-    assert.equal(emojiForKIndex(4), '🟡')
-    assert.equal(emojiForKIndex(5), '🔴')
-    assert.equal(emojiForKIndex(7), '🟣')
+  it("K index: green ≤ 3 < yellow < 5 ≤ red < 7 ≤ purple", () => {
+    assert.equal(emojiForKIndex(3), "🟢")
+    assert.equal(emojiForKIndex(4), "🟡")
+    assert.equal(emojiForKIndex(5), "🔴")
+    assert.equal(emojiForKIndex(7), "🟣")
   })
 })
 
-describe('solarMessage', () => {
-  it('formats the SFI/A/K/SN line exactly like app-polo', () => {
+describe("solarMessage", () => {
+  it("formats the SFI/A/K/SN line exactly like app-polo", () => {
     const message = solarMessage(parseSolarXml(SOLAR_XML))
-    assert.equal(message, '🟡SFI 117 • 🟢A 14 • 🟢K 1 • 😎SN 60')
+    assert.equal(message, "🟡SFI 117 • 🟢A 14 • 🟢K 1 • 😎SN 60")
   })
 })
 
-function weatherData(overrides: Partial<WeatherData['current']> = {}): WeatherData {
+function weatherData(overrides: Partial<WeatherData["current"]> = {}): WeatherData {
   return {
     current: {
       temperature_2m: 41.8,
@@ -116,25 +109,25 @@ function weatherData(overrides: Partial<WeatherData['current']> = {}): WeatherDa
       ...overrides,
     },
     current_units: {
-      temperature_2m: '°F',
-      wind_speed_10m: 'km/h',
+      temperature_2m: "°F",
+      wind_speed_10m: "km/h",
     },
   }
 }
 
-describe('weatherMessage', () => {
-  it('formats the conditions line exactly like app-polo', () => {
-    assert.equal(weatherMessage(weatherData()), '🌥️ 41.8°F Cloudy 💧 50%, 💨 14.3km/h')
+describe("weatherMessage", () => {
+  it("formats the conditions line exactly like app-polo", () => {
+    assert.equal(weatherMessage(weatherData()), "🌥️ 41.8°F Cloudy 💧 50%, 💨 14.3km/h")
   })
 
-  it('uses the night variant when is_day is 0', () => {
+  it("uses the night variant when is_day is 0", () => {
     const message = weatherMessage(weatherData({ weather_code: 0, is_day: 0 }))
-    assert.equal(message, '🌙 41.8°F Clear 💧 50%, 💨 14.3km/h')
+    assert.equal(message, "🌙 41.8°F Clear 💧 50%, 💨 14.3km/h")
   })
 
-  it('falls back to a generic emoji for an unknown weather code, omitting the description', () => {
+  it("falls back to a generic emoji for an unknown weather code, omitting the description", () => {
     const message = weatherMessage(weatherData({ weather_code: 42 }))
     // Never the literal "undefined" — this string is stored in the log.
-    assert.equal(message, '🌤️ 41.8°F 💧 50%, 💨 14.3km/h')
+    assert.equal(message, "🌤️ 41.8°F 💧 50%, 💨 14.3km/h")
   })
 })

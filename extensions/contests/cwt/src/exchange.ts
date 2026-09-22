@@ -14,10 +14,10 @@ import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
 /// Member number or QTH, as typed: digits for a member, letters otherwise.
 /// Anchored and matched case-insensitively by the core.
-export const NUMBER_PATTERN = '[A-Z0-9]{1,6}'
+export const NUMBER_PATTERN = "[A-Z0-9]{1,6}"
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// A first name, upper-cased — the exchange is one name sent in CW, and the
@@ -27,7 +27,9 @@ export function firstName(value: JSONValue | undefined): string {
 }
 
 export function normalizeNumber(value: JSONValue | undefined): string {
-  return String(value ?? '').trim().toUpperCase()
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
 }
 
 /// The name to offer for this station, from whatever the lookup resolved.

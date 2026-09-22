@@ -13,14 +13,8 @@
   "internalNotes": "Needs support for sequence numbers.\nScoring changes when station contacted is remote.\nIs unique per mode???",
   "lastUpdated": "2025-02-21 12:00Z",
   "status": "Not supported",
-  "inStateExchange": [
-    "Location",
-    "TheirNumber"
-  ],
-  "outOfStateExchange": [
-    "Location",
-    "OurNumber"
-  ],
+  "inStateExchange": ["Location", "TheirNumber"],
+  "outOfStateExchange": ["Location", "OurNumber"],
   "bonusPoints": {
     "qsoWithRover": 10
   },

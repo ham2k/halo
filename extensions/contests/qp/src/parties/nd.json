@@ -79,10 +79,6 @@
     "WLM": "Williams"
   },
   "entryClasses": {
-    "station": [
-      "FIXED",
-      "MOBILE",
-      "PORTABLE"
-    ]
+    "station": ["FIXED", "MOBILE", "PORTABLE"]
   }
 }

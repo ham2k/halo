@@ -19,7 +19,7 @@ import { parseCallsign } from "@ham2k/lib-callsigns"
 import { host } from "@ham2k/extension-sdk"
 import type { PostResult, Ref } from "@ham2k/extension-sdk"
 
-const GMA_SPOT_URL = 'https://www.cqgma.org/spotsmart2.php'
+const GMA_SPOT_URL = "https://www.cqgma.org/spotsmart2.php"
 
 /// `application/x-www-form-urlencoded`, by hand.
 ///
@@ -30,8 +30,8 @@ const GMA_SPOT_URL = 'https://www.cqgma.org/spotsmart2.php'
 /// fed.
 export function formEncode(fields: Record<string, string>): string {
   return Object.entries(fields)
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v).replace(/%20/g, '+')}`)
-    .join('&')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v).replace(/%20/g, "+")}`)
+    .join("&")
 }
 
 /// The first of these that holds something, trimmed.
@@ -43,10 +43,10 @@ export function formEncode(fields: Record<string, string>): string {
 /// sent.
 function firstNonEmpty(...values: unknown[]): string {
   for (const value of values) {
-    const text = value == null ? '' : String(value).trim()
+    const text = value == null ? "" : String(value).trim()
     if (text) return text
   }
-  return ''
+  return ""
 }
 
 export interface GmaSpotRequest {
@@ -66,23 +66,21 @@ export interface GmaSpotRequest {
   url?: string
 }
 
-export async function postSpotToGMA(
-  { call, spotterCall, ref, freq, mode, comments = [], url }: GmaSpotRequest,
-): Promise<PostResult> {
+export async function postSpotToGMA({ call, spotterCall, ref, freq, mode, comments = [], url }: GmaSpotRequest): Promise<PostResult> {
   const body = formEncode({
     yspotter: spotterCall,
     ycall: call,
     yreference: ref,
     yqrg: String(freq),
-    ymode: mode ?? 'SSB',
-    ycomment: comments.filter((c) => c).join(' '),
-    B1: 'Submit',
+    ymode: mode ?? "SSB",
+    ycomment: comments.filter((c) => c).join(" "),
+    B1: "Submit",
   })
 
   try {
     const response = await host.fetch(url ?? GMA_SPOT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
     })
     if (response.status !== 200) {
@@ -96,25 +94,36 @@ export async function postSpotToGMA(
 
 /// Self-spotting for an activation. The FIRST reference is the one spotted;
 /// any others are named in the comment, since the endpoint takes one.
-export async function postSelfSpotToGMA(
-  { operation, refs, freq, mode, comment, url }: {
-    operation: Record<string, unknown>
-    refs: Ref[]
-    freq: number
-    mode?: string
-    comment?: string
-    url?: string
-  },
-): Promise<PostResult> {
-  if (refs.length === 0) return { ok: false, message: 'No reference to spot' }
+export async function postSelfSpotToGMA({
+  operation,
+  refs,
+  freq,
+  mode,
+  comment,
+  url,
+}: {
+  operation: Record<string, unknown>
+  refs: Ref[]
+  freq: number
+  mode?: string
+  comment?: string
+  url?: string
+}): Promise<PostResult> {
+  if (refs.length === 0) return { ok: false, message: "No reference to spot" }
 
   const call = firstNonEmpty(operation.stationCall)
-  if (!call) return { ok: false, message: 'This operation has no station callsign to spot' }
+  if (!call) return { ok: false, message: "This operation has no station callsign to spot" }
   // The spotter is the base call even when spotting a portable — app-polo sends
   // `parseCallsign(call).baseCall`, and the endpoint rejects some suffixed
   // spotters outright.
   const baseCall = firstNonEmpty(parseCallsign(call)?.baseCall, call)
-  const others = refs.length > 1 ? `also ${refs.slice(1).map((r) => r.ref).join(' ')}` : undefined
+  const others =
+    refs.length > 1
+      ? `also ${refs
+          .slice(1)
+          .map((r) => r.ref)
+          .join(" ")}`
+      : undefined
 
   return postSpotToGMA({
     call,
@@ -129,28 +138,38 @@ export async function postSelfSpotToGMA(
 
 /// Spotting somebody else at a reference you hunted. Same one-reference rule as
 /// self-spotting: the first is spotted, the rest are named in the comment.
-export async function postOtherSpotToGMA(
-  { qso, refs, comment, spotterCall, url }: {
-    qso: Record<string, unknown>
-    refs: Ref[]
-    comment?: string
-    spotterCall?: string
-    url?: string
-  },
-): Promise<PostResult> {
-  if (refs.length === 0) return { ok: false, message: 'No reference to spot' }
+export async function postOtherSpotToGMA({
+  qso,
+  refs,
+  comment,
+  spotterCall,
+  url,
+}: {
+  qso: Record<string, unknown>
+  refs: Ref[]
+  comment?: string
+  spotterCall?: string
+  url?: string
+}): Promise<PostResult> {
+  if (refs.length === 0) return { ok: false, message: "No reference to spot" }
 
   const their = (qso.their ?? {}) as Record<string, unknown>
   const our = (qso.our ?? {}) as Record<string, unknown>
   const freq = Number(qso.freq)
-  if (!freq) return { ok: false, message: 'This QSO has no frequency to spot' }
+  if (!freq) return { ok: false, message: "This QSO has no frequency to spot" }
 
   // Guarded like the frequency above, and for the same reason: a spot naming no
   // station is worse than no spot, because it reaches everybody watching.
   const call = firstNonEmpty(their.call)
-  if (!call) return { ok: false, message: 'This QSO has no callsign to spot' }
+  if (!call) return { ok: false, message: "This QSO has no callsign to spot" }
 
-  const others = refs.length > 1 ? `also ${refs.slice(1).map((r) => r.ref).join(' ')}` : undefined
+  const others =
+    refs.length > 1
+      ? `also ${refs
+          .slice(1)
+          .map((r) => r.ref)
+          .join(" ")}`
+      : undefined
 
   return postSpotToGMA({
     call,

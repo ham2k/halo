@@ -46,8 +46,7 @@ async function login(ctx: HookContext): Promise<string> {
   const password = ctx.account?.credentials?.password
   if (!username || !password) throw new Error("No HamQTH account configured")
 
-  const response = await host.fetch(
-    `${API}?u=${encodeURIComponent(username)}&p=${encodeURIComponent(password)}`)
+  const response = await host.fetch(`${API}?u=${encodeURIComponent(username)}&p=${encodeURIComponent(password)}`)
   const sessionId = tag(response.body, "session_id")
   if (!sessionId) throw new Error(tag(response.body, "error") ?? `HTTP ${response.status}`)
 
@@ -62,8 +61,7 @@ async function login(ctx: HookContext): Promise<string> {
 /// Note that it re-logs-in only ONCE — a second failure is a real one, and
 /// looping on it would hammer the API behind the operator's back.
 async function fetchCall(call: string, ctx: HookContext): Promise<string> {
-  const search = (id: string) =>
-    host.fetch(`${API}?id=${id}&callsign=${encodeURIComponent(call)}&prg=${PROGRAM}`)
+  const search = (id: string) => host.fetch(`${API}?id=${id}&callsign=${encodeURIComponent(call)}&prg=${PROGRAM}`)
 
   const sessionId = ctx.account?.session?.sessionId ?? (await login(ctx))
   const response = await search(sessionId)
@@ -167,13 +165,11 @@ const HamQTHAccount = {
     if (!username || !credentials.password) return "Enter your HamQTH username and password"
 
     try {
-      const response = await host.fetch(
-        `${API}?u=${encodeURIComponent(username)}&p=${encodeURIComponent(credentials.password)}`)
+      const response = await host.fetch(`${API}?u=${encodeURIComponent(username)}&p=${encodeURIComponent(credentials.password)}`)
       const sessionId = tag(response.body, "session_id")
       if (!sessionId) return tag(response.body, "error") ?? `HamQTH returned HTTP ${response.status}`
 
-      const check = await host.fetch(
-        `${API}?id=${sessionId}&callsign=${encodeURIComponent(username)}&prg=${PROGRAM}`)
+      const check = await host.fetch(`${API}?id=${sessionId}&callsign=${encodeURIComponent(username)}&prg=${PROGRAM}`)
       const name = tag(check.body, "adr_name")
       return `✅ ${username.toUpperCase()}${name ? `: ${name}` : ""}`
     } catch (e) {

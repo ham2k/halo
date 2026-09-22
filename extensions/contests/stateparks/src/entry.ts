@@ -16,13 +16,13 @@ import type { JSONValue } from "@ham2k/extension-sdk"
 import type { EntryCategory, StateParkEvent } from "./events.ts"
 import { refOfType } from "./parks.ts"
 
-const TYPE = 'stateparks'
+const TYPE = "stateparks"
 
 /// Anything carrying `refs` — an operation, or a ref on its own.
 type Container = Record<string, JSONValue> | undefined
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 /// The power class set up for this operation, if it is one THIS event publishes.
@@ -31,7 +31,7 @@ function str(value: JSONValue | undefined): string {
 /// ref that selected it, and `decorateRef` has no operation around it at all.
 export function configuredOurPower(event: StateParkEvent, operation: Container, ownRef?: Record<string, JSONValue>): string {
   const value = str((ownRef ?? refOfType(operation, TYPE))?.ourPower).toUpperCase()
-  return event.powerClasses.some((power) => power.value === value) ? value : ''
+  return event.powerClasses.some((power) => power.value === value) ? value : ""
 }
 
 /// The entry category set up for this operation, if it is one this event has.
@@ -62,6 +62,6 @@ export function cabrilloPower(event: StateParkEvent, operation: Container, ownRe
   const category = configuredCategory(event, operation, ownRef)
   if (category?.power) return category.power
   const power = configuredOurPower(event, operation, ownRef)
-  if (!power) return ''
-  return power === 'HP' ? 'HIGH' : 'LOW'
+  if (!power) return ""
+  return power === "HP" ? "HIGH" : "LOW"
 }

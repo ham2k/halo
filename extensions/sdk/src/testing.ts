@@ -158,10 +158,7 @@ function installKernel(hostCalls: HostCallStubs) {
 ///
 /// The kernel stand-in is installed BEFORE the import, because
 /// `defineExtension` runs while the module body evaluates.
-export async function loadExtension(
-  importer: () => Promise<unknown>,
-  options: LoadExtensionOptions = {},
-): Promise<LoadedExtension> {
+export async function loadExtension(importer: () => Promise<unknown>, options: LoadExtensionOptions = {}): Promise<LoadedExtension> {
   const answer = installKernel(options.hostCalls ?? {})
 
   const before = captured.length
@@ -170,9 +167,7 @@ export async function loadExtension(
   if (fresh.length) definitionsByModule.set(namespace, fresh)
   const definitions = fresh.length ? fresh : (definitionsByModule.get(namespace) ?? [])
   if (!definitions.length) {
-    throw new Error(
-      "loadExtension: the module defined no extension — it must call defineExtension() when imported",
-    )
+    throw new Error("loadExtension: the module defined no extension — it must call defineExtension() when imported")
   }
 
   const key = definitions[0].key
@@ -210,14 +205,14 @@ export async function loadExtension(
         throw new Error(`runHook: no '${category}' hook${runOptions.key ? ` with key '${runOptions.key}'` : ""} — registered: ${known || "none"}`)
       }
       if (matches.length > 1) {
-        throw new Error(
-          `runHook: ${matches.length} '${category}' hooks registered (${matches.map((h) => h.key).join(", ")}) — pass { key } to choose`,
-        )
+        throw new Error(`runHook: ${matches.length} '${category}' hooks registered (${matches.map((h) => h.key).join(", ")}) — pass { key } to choose`)
       }
       const hook = matches[0].hook
       const member = hook[method]
       if (typeof member !== "function") {
-        const methods = Object.keys(hook).filter((k) => typeof hook[k] === "function").join(", ")
+        const methods = Object.keys(hook)
+          .filter((k) => typeof hook[k] === "function")
+          .join(", ")
         throw new Error(`runHook: '${category}' hook has no '${method}' method — it has: ${methods || "none"}`)
       }
       const ctx = { ...defaultContext, ...options.ctx, ...runOptions.ctx } as HookContext

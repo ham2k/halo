@@ -84,7 +84,7 @@ export function forgetNoPhoto(memory: PhotoMemory, call: string): PhotoMemory {
 
 /// QRZ's source key, as it writes it on every result and as the app persists
 /// it under a QSO's `their.lookups`.
-const QRZ_SOURCE = 'qrz.com'
+const QRZ_SOURCE = "qrz.com"
 
 /// Whether a past QSO with this station already records QRZ answering without
 /// a picture — the durable half of the memory, read straight off the log.
@@ -106,13 +106,13 @@ export function historySaysNoPhoto(history: Record<string, JSONValue>[], nowMill
     // Stamped by when the contact happened, the one time this record carries.
     // A lookup re-run later against an old QSO is stamped older than it really
     // is, which errs toward asking again — the safe direction.
-    const at = typeof qso.startAtMillis === 'number' ? qso.startAtMillis : undefined
+    const at = typeof qso.startAtMillis === "number" ? qso.startAtMillis : undefined
     if (at === undefined) return false
     const age = nowMillis - at
     if (age < 0 || age >= PHOTO_MEMORY_TTL_MS) return false
 
     const image = qrz.image
-    return !(typeof image === 'string' && image.trim() !== '')
+    return !(typeof image === "string" && image.trim() !== "")
   }
   return false
 }

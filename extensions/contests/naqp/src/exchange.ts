@@ -19,14 +19,16 @@ import { VALID_LOCATIONS } from "./locations.ts"
 /// write: Alaska is `KL`, not `KL7`. polo's list says `KL7`, so it never
 /// matched, and every Alaskan station was logged with the raw prefix instead of
 /// their state. Verified against the bundled country file, not assumed.
-const SENDS_A_STATE = ['K', 'KL', 'KH6', 'VE']
+const SENDS_A_STATE = ["K", "KL", "KH6", "VE"]
 
 function str(value: JSONValue | undefined): string {
-  return typeof value === 'string' ? value : ''
+  return typeof value === "string" ? value : ""
 }
 
 export function normalizeLocation(value: JSONValue | undefined): string {
-  return String(value ?? '').trim().toUpperCase()
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
 }
 
 /// A first name, upper-cased — NAQP exchanges are single names, and the lookup
@@ -61,19 +63,19 @@ export function guessedLocation(their: Record<string, JSONValue>): string {
     // A state we don't know is better left blank than guessed wrong — every US
     // and Canadian station is a multiplier, so a wrong one is a wrong claim.
     const state = normalizeLocation(str(their.state) || str(guess.state))
-    return VALID_LOCATIONS.has(state) ? state : ''
+    return VALID_LOCATIONS.has(state) ? state : ""
   }
-  if (continent === 'NA') {
+  if (continent === "NA") {
     const prefix = normalizeLocation(entity)
     if (VALID_LOCATIONS.has(prefix)) return prefix
     // The country file distinguishes sub-entities the DXCC prefix does not:
     // San Andres is `HK0/a` and Clipperton `FO/c`, while NAQP wants the plain
     // `HK0` and `FO` it lists. Reduce to the parent before giving up, or a
     // legitimate multiplier goes unsuggested and probably unlogged.
-    const parent = prefix.split('/')[0]
-    return VALID_LOCATIONS.has(parent) ? parent : ''
+    const parent = prefix.split("/")[0]
+    return VALID_LOCATIONS.has(parent) ? parent : ""
   }
-  return entity ? 'DX' : ''
+  return entity ? "DX" : ""
 }
 
 /// What WE send, as it goes into the exchange fields of an export.

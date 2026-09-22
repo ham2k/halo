@@ -79,7 +79,10 @@ const NAME_TEMPLATES: Record<NameShape, string> = {
 /// Characters no filesystem wants, plus the ones that would silently split a
 /// path. Applied last, so a caller's `modifier` can't escape the filename.
 function sanitize(name: string): string {
-  return name.replace(/[/\\:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim()
+  return name
+    .replace(/[/\\:*?"<>|]+/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
 }
 
 export interface ExportNameParts {
@@ -127,23 +130,24 @@ export function exportFilename(parts: ExportNameParts): string {
   // every export in the app would quietly be called `export.adi`.
   const shape: NameShape = `${parts.compact ? "Compact" : "Normal"}${parts.ref ? "Ref" : parts.activity ? "Activity" : ""}Name`
 
-  const modifier = [
-    (parts.modifier ?? "").trim(),
-    isTestOperation(parts.stationCall) ? "Testing" : "",
-  ].filter((part) => part !== "").join(" ")
+  const modifier = [(parts.modifier ?? "").trim(), isTestOperation(parts.stationCall) ? "Testing" : ""].filter((part) => part !== "").join(" ")
 
   const stem = oneLine(
-    renderTemplate(NAME_TEMPLATES[shape], {
-      op: dateValues(millis),
-      log: logValues({
-        station: String(parts.stationCall ?? "").trim(),
-        ref: parts.ref,
-        activity: parts.activity,
-        modifier,
-        extension,
-        compact: parts.compact,
-      }),
-    }, shape),
+    renderTemplate(
+      NAME_TEMPLATES[shape],
+      {
+        op: dateValues(millis),
+        log: logValues({
+          station: String(parts.stationCall ?? "").trim(),
+          ref: parts.ref,
+          activity: parts.activity,
+          modifier,
+          extension,
+          compact: parts.compact,
+        }),
+      },
+      shape,
+    ),
   )
 
   // Every part can be empty — an operation with no station callsign and no
@@ -156,10 +160,7 @@ export function exportFilename(parts: ExportNameParts): string {
 /// back to the operation's own start, then to nothing (meaning "now") — an
 /// export offered for an operation before its first contact still needs a
 /// name, and the panel shows that name before any file exists.
-export function startMillisOf(
-  operation: Record<string, JSONValue>,
-  qsos: Record<string, JSONValue>[] = [],
-): number | undefined {
+export function startMillisOf(operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[] = []): number | undefined {
   const earliest = qsos
     .map((qso) => Number(qso.startAtMillis ?? 0))
     .filter((millis) => millis > 0)

@@ -13,7 +13,7 @@ const OPERATOR_MATCH = /^(OPER|OPERATOR)(?:[ /](.*))?$/i
 const POSITION_MATCH = /^POSITION(?:[ /](.*))?$/i
 const SEGMENT_MATCH = /^(START|BREAK|STOP|END|ROVERQTH)$/i
 
-export type SegmentKind = 'start' | 'break' | 'stop'
+export type SegmentKind = "start" | "break" | "stop"
 
 /// The segment command the input names, or `null`. The whole word and nothing
 /// else, so a callsign that happens to start with one still logs normally.
@@ -23,8 +23,8 @@ export function parseSegmentCommand(input: string): { kind: SegmentKind; setLoca
   const match = SEGMENT_MATCH.exec(input.trim())
   if (!match) return null
   const word = match[1].toUpperCase()
-  if (word === 'ROVERQTH') return { kind: 'break', setLocation: true }
-  if (word === 'END') return { kind: 'stop', setLocation: false }
+  if (word === "ROVERQTH") return { kind: "break", setLocation: true }
+  if (word === "END") return { kind: "stop", setLocation: false }
   return { kind: word.toLowerCase() as SegmentKind, setLocation: false }
 }
 
@@ -35,7 +35,7 @@ export function parseSegmentCommand(input: string): { kind: SegmentKind; setLoca
 export function parseOperatorCommand(input: string): { call: string } | null {
   const match = OPERATOR_MATCH.exec(input.trim())
   if (!match) return null
-  return { call: (match[2] ?? '').trim().toUpperCase() }
+  return { call: (match[2] ?? "").trim().toUpperCase() }
 }
 
 /// `null` when the input is not a POSITION command. `position` is the digits
@@ -45,16 +45,16 @@ export function parseOperatorCommand(input: string): { call: string } | null {
 export function parsePositionCommand(input: string): { position: string; invalid: boolean } | null {
   const match = POSITION_MATCH.exec(input.trim())
   if (!match) return null
-  const arg = (match[1] ?? '').trim()
+  const arg = (match[1] ?? "").trim()
   // Bounded, not just numeric: `String(Number(...))` would quietly coerce a
   // 20-digit entry into a different number, and that number goes on the air.
   // A station has operators, not thousands of them.
-  return { position: arg, invalid: arg !== '' && !/^\d{1,2}$/.test(arg) }
+  return { position: arg, invalid: arg !== "" && !/^\d{1,2}$/.test(arg) }
 }
 
 /// `POSITION 0` means "no position", the same as an empty field in the
 /// Operation Details dialog — a station numbered from 1, so 0 is free to
 /// mean off and an operator gets a way to undo the setting by typing.
 export function positionValueFor(position: string): string {
-  return Number(position) === 0 ? '' : String(Number(position))
+  return Number(position) === 0 ? "" : String(Number(position))
 }

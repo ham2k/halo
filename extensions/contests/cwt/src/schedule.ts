@@ -51,7 +51,7 @@ export interface CwtSession {
 }
 
 function pad(value: number): string {
-  return String(value).padStart(2, '0')
+  return String(value).padStart(2, "0")
 }
 
 function sessionAt(startMillis: number): CwtSession {
@@ -69,9 +69,7 @@ function sessionsOnDay(dayMillis: number): CwtSession[] {
   const at = new Date(dayMillis)
   const midnight = Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate())
   const weekday = new Date(midnight).getUTCDay()
-  return SLOTS
-    .filter((slot) => slot.day === weekday)
-    .map((slot) => sessionAt(midnight + slot.hour * HOUR))
+  return SLOTS.filter((slot) => slot.day === weekday).map((slot) => sessionAt(midnight + slot.hour * HOUR))
 }
 
 /// The next [count] sessions as of [nowMillis] — a session still counts as
@@ -107,7 +105,7 @@ export function sessionAtHand(nowMillis: number): CwtSession | undefined {
 /// Validates the SLOT, not just the shape: `2026-08-25-1300` is a well-formed
 /// key for a Tuesday, and no CWT runs then.
 export function sessionFor(key: string | undefined): CwtSession | undefined {
-  const match = /^(\d{4})-(\d{2})-(\d{2})-(\d{2})00$/.exec((key ?? '').trim())
+  const match = /^(\d{4})-(\d{2})-(\d{2})-(\d{2})00$/.exec((key ?? "").trim())
   if (!match) return undefined
   const [year, month, day, hour] = match.slice(1).map(Number)
   const startMillis = Date.UTC(year, month - 1, day, hour)

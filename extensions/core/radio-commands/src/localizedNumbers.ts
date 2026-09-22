@@ -29,12 +29,12 @@ type NumberConventions = Pick<HookContext, "decimalSeparator" | "groupingSeparat
  */
 export function canonicalNumber(text: string, ctx: NumberConventions): string {
   const grouping = ctx.groupingSeparator
-  const decimal = ctx.decimalSeparator ?? '.'
+  const decimal = ctx.decimalSeparator ?? "."
   let out = text
   // Grouping first: under comma conventions a period is grouping, and
   // converting the decimal first would leave two periods behind.
-  if (grouping) out = out.split(grouping).join('')
-  if (decimal !== '.') out = out.split(decimal).join('.')
+  if (grouping) out = out.split(grouping).join("")
+  if (decimal !== ".") out = out.split(decimal).join(".")
   return out
 }
 
@@ -46,8 +46,8 @@ export function canonicalNumber(text: string, ctx: NumberConventions): string {
  * then `,` for `.` would undo itself on every character.
  */
 export function localizeFormattedNumber(text: string, ctx: NumberConventions): string {
-  const decimal = ctx.decimalSeparator ?? '.'
-  const grouping = ctx.groupingSeparator ?? ','
-  if (decimal === '.' && grouping === ',') return text
-  return text.replace(/[.,]/g, (mark) => (mark === '.' ? decimal : grouping))
+  const decimal = ctx.decimalSeparator ?? "."
+  const grouping = ctx.groupingSeparator ?? ","
+  if (decimal === "." && grouping === ",") return text
+  return text.replace(/[.,]/g, (mark) => (mark === "." ? decimal : grouping))
 }

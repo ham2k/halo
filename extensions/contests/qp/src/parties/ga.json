@@ -187,26 +187,10 @@
     "WORT": "Worth"
   },
   "entryClasses": {
-    "operator": [
-      "SINGLE-OP",
-      "MULTI-ONE",
-      "MULTI-TWO"
-    ],
-    "station": [
-      "FIXED",
-      "PORTABLE",
-      "ROVER"
-    ],
-    "mode": [
-      "CW",
-      "PHONE",
-      "MIXED"
-    ],
-    "power": [
-      "QRP",
-      "LOW",
-      "HIGH"
-    ],
+    "operator": ["SINGLE-OP", "MULTI-ONE", "MULTI-TWO"],
+    "station": ["FIXED", "PORTABLE", "ROVER"],
+    "mode": ["CW", "PHONE", "MIXED"],
+    "power": ["QRP", "LOW", "HIGH"],
     "powerLimits": {
       "QRP": "5W/10W",
       "LOW": "150W",

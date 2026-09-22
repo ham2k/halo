@@ -13,29 +13,20 @@
 // are the same person.
 
 import { defineExtension, host } from "@ham2k/extension-sdk"
-import type {
-  HookContext,
-  JSONValue,
-  PostOtherSpotRequest,
-  PostResult,
-  PostSelfSpotRequest,
-  Ref,
-  Spot,
-  SpotEligibility,
-} from "@ham2k/extension-sdk"
+import type { HookContext, JSONValue, PostOtherSpotRequest, PostResult, PostSelfSpotRequest, Ref, Spot, SpotEligibility } from "@ham2k/extension-sdk"
 import { bandForFrequency, modeForFrequency } from "@ham2k/lib-operation-data"
 
 import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-const API_BASE = 'https://www.parksnpeaks.org/api'
+const API_BASE = "https://www.parksnpeaks.org/api"
 
 /// The ACTIVATION ref types — what an operation carries — mapped to the
 /// `actClass` this service files a spot under.
 const ACTIVATION_SPOT_CLASSES: Record<string, string> = {
-  siotaActivation: 'SiOTA',
-  wwffActivation: 'WWFF',
+  siotaActivation: "SiOTA",
+  wwffActivation: "WWFF",
 }
 
 /// The HUNTING ref types, which is what a QSO carries. Spotting someone else
@@ -43,15 +34,15 @@ const ACTIVATION_SPOT_CLASSES: Record<string, string> = {
 /// park has `wwff`, and matching `wwffActivation` there silently disables the
 /// whole other-spot path.
 const HUNTING_SPOT_CLASSES: Record<string, string> = {
-  siota: 'SiOTA',
-  wwff: 'WWFF',
+  siota: "SiOTA",
+  wwff: "WWFF",
 }
 
 /// The classes read back off the feed, mapped to the hunting ref type each
 /// becomes. Anything absent here is dropped — see the header.
 const INBOUND_REF_TYPES: Record<string, string> = {
-  SiOTA: 'siota',
-  WWFF: 'wwff',
+  SiOTA: "siota",
+  WWFF: "wwff",
 }
 
 /// The published record. `actSpoter` is the API's own spelling of "spotter";
@@ -77,7 +68,7 @@ interface SpottableRef {
 }
 
 function spottableRefs(container: Record<string, unknown>, classes: Record<string, string>): SpottableRef[] {
-  return (((container.refs as Ref[] | undefined) ?? [])).flatMap((r) => {
+  return ((container.refs as Ref[] | undefined) ?? []).flatMap((r) => {
     const actClass = classes[r.type]
     return actClass && r.ref ? [{ ref: r.ref, actClass }] : []
   })
@@ -91,7 +82,7 @@ async function credentials(ctx: HookContext): Promise<{ userId?: string; apiKey?
 }
 
 const SpotsHook = {
-  sourceName: 'ParksnPeaks',
+  sourceName: "ParksnPeaks",
 
   async fetchSpots(_args: Record<string, never>, ctx: HookContext): Promise<Spot[]> {
     if (!ctx.online) return []
@@ -101,12 +92,12 @@ const SpotsHook = {
     // value here.
     const response = await host.fetch(`${API_BASE}/ALL`, {
       headers: {
-        Accept: 'application/json',
+        Accept: "application/json",
         // The service answers `Content-Type: text/html` for what is JSON, and
         // app-polo asks for no caching on every call; a spot list served from
         // a cache is a spot list that has already expired.
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        Pragma: 'no-cache',
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
       },
     })
     if (response.status !== 200) throw new Error(`ParksnPeaks API returned HTTP ${response.status}`)
@@ -114,11 +105,11 @@ const SpotsHook = {
 
     const spots: Spot[] = []
     for (const spot of apiSpots) {
-      const refType = INBOUND_REF_TYPES[spot.actClass ?? '']
+      const refType = INBOUND_REF_TYPES[spot.actClass ?? ""]
       if (!refType) continue
 
       // Published as MHz in a string ('7.160'); everything downstream is kHz.
-      const parsed = Number.parseFloat(spot.actFreq ?? '')
+      const parsed = Number.parseFloat(spot.actFreq ?? "")
       const freq = Number.isNaN(parsed) ? undefined : parsed * 1000
 
       // No 'Z' and no offset in `actTime` ('2026-08-05 00:07:27'), but the
@@ -130,7 +121,7 @@ const SpotsHook = {
       // so it would make the dedupe below depend on the order the service
       // happened to return rows in — a malformed row arriving first would
       // hold the slot and discard every good row after it.
-      const parsedTime = Date.parse(`${(spot.actTime ?? '').replace(' ', 'T')}Z`)
+      const parsedTime = Date.parse(`${(spot.actTime ?? "").replace(" ", "T")}Z`)
       const timeInMillis = Number.isNaN(parsedTime) ? 0 : parsedTime
 
       const sourceInfo: Record<string, JSONValue> = {}
@@ -138,7 +129,7 @@ const SpotsHook = {
       if (spot.actSpoter) sourceInfo.spotter = spot.actSpoter.toUpperCase().trim()
 
       spots.push({
-        their: { call: (spot.actCallsign ?? '').toUpperCase().trim() },
+        their: { call: (spot.actCallsign ?? "").toUpperCase().trim() },
         freq,
         band: freq ? bandForFrequency(freq) : undefined,
         // A spot with no mode is invisible under the panel's DEFAULT mode
@@ -146,13 +137,12 @@ const SpotsHook = {
         // fallback for, against this same feed — would silently hide it. The
         // band plan is read for VK: this service covers VK and ZL, both ITU
         // region 3.
-        mode: spot.actMode?.toUpperCase() ||
-          (freq ? modeForFrequency(freq, { ituRegion: 3, countryCode: 'AU', entityPrefix: 'VK' }) || undefined : undefined),
+        mode: spot.actMode?.toUpperCase() || (freq ? modeForFrequency(freq, { ituRegion: 3, countryCode: "AU", entityPrefix: "VK" }) || undefined : undefined),
         refs: spot.actSiteID ? [{ ref: spot.actSiteID, type: refType }] : [],
         spot: {
           timeInMillis,
           source: manifest.key,
-          label: [spot.actSiteID, spot.actLocation].filter((x) => x).join(': '),
+          label: [spot.actSiteID, spot.actLocation].filter((x) => x).join(": "),
           sourceInfo,
         },
       })
@@ -169,7 +159,7 @@ const SpotsHook = {
     for (const spot of spots) {
       const call = spot.their.call
       if (!call) continue
-      const key = `${call}|${spot.refs?.[0]?.type ?? ''}`
+      const key = `${call}|${spot.refs?.[0]?.type ?? ""}`
       const held = newest.get(key)
       // `>=` so that among rows of equal time the later one in the feed wins.
       // Total, because an unreadable time was already turned into 0 above.
@@ -185,36 +175,32 @@ const SpotsHook = {
     // offering the source with only one stored invites a post that can only
     // come back rejected.
     const { userId, apiKey } = await credentials(ctx)
-    return userId && apiKey && spottableRefs(operation, ACTIVATION_SPOT_CLASSES).length > 0
-      ? { enabled: true, icon: manifest.icon }
-      : { enabled: false }
+    return userId && apiKey && spottableRefs(operation, ACTIVATION_SPOT_CLASSES).length > 0 ? { enabled: true, icon: manifest.icon } : { enabled: false }
   },
 
   async isOtherSpotEnabled({ qso }: { qso: Record<string, any> }, ctx: HookContext): Promise<SpotEligibility> {
     const { userId, apiKey } = await credentials(ctx)
-    return userId && apiKey && spottableRefs(qso, HUNTING_SPOT_CLASSES).length > 0
-      ? { enabled: true, icon: manifest.icon }
-      : { enabled: false }
+    return userId && apiKey && spottableRefs(qso, HUNTING_SPOT_CLASSES).length > 0 ? { enabled: true, icon: manifest.icon } : { enabled: false }
   },
 
   async postSelfSpot({ operation, freq, mode, comment }: PostSelfSpotRequest, ctx: HookContext): Promise<PostResult> {
     const refs = spottableRefs(operation, ACTIVATION_SPOT_CLASSES)
-    if (refs.length === 0) return { ok: false, message: 'No WWFF or SiOTA activation on this operation' }
-    const call = String(operation.stationCall ?? '').trim()
-    if (!call) return { ok: false, message: 'This operation has no station callsign to spot' }
+    if (refs.length === 0) return { ok: false, message: "No WWFF or SiOTA activation on this operation" }
+    const call = String(operation.stationCall ?? "").trim()
+    if (!call) return { ok: false, message: "This operation has no station callsign to spot" }
     return postSpotsToPnP(call, refs, freq, mode, comment, ctx)
   },
 
   async postOtherSpot({ qso, comment }: PostOtherSpotRequest, ctx: HookContext): Promise<PostResult> {
     const refs = spottableRefs(qso, HUNTING_SPOT_CLASSES)
-    if (refs.length === 0) return { ok: false, message: 'No WWFF or SiOTA reference on this QSO' }
+    if (refs.length === 0) return { ok: false, message: "No WWFF or SiOTA reference on this QSO" }
     const freq = Number(qso.freq)
-    if (!freq) return { ok: false, message: 'This QSO has no frequency to spot' }
+    if (!freq) return { ok: false, message: "This QSO has no frequency to spot" }
     const their = (qso.their ?? {}) as Record<string, unknown>
     // Guarded like the frequency: a spot naming no station reaches everybody
     // watching, which is worse than no spot.
-    const call = String(their.call ?? '').trim()
-    if (!call) return { ok: false, message: 'This QSO has no callsign to spot' }
+    const call = String(their.call ?? "").trim()
+    if (!call) return { ok: false, message: "This QSO has no callsign to spot" }
     return postSpotsToPnP(call, refs, freq, qso.mode ? String(qso.mode) : undefined, comment, ctx)
   },
 }
@@ -244,7 +230,7 @@ async function postSpotsToPnP(
 ): Promise<PostResult> {
   const { userId, apiKey } = await credentials(ctx)
   const t = tFor(ctx)
-  if (!userId || !apiKey) return { ok: false, message: t('missingCredentials') }
+  if (!userId || !apiKey) return { ok: false, message: t("missingCredentials") }
 
   // EVERY reference is attempted, even after one fails: stopping at the first
   // leaves a reference the operator IS activating unspotted, with nothing
@@ -254,20 +240,20 @@ async function postSpotsToPnP(
   for (const ref of refs) {
     try {
       const response = await host.fetch(`${API_BASE}/spot`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           actCallsign: call,
           actClass: ref.actClass,
           actSite: ref.ref,
           freq: mhzForSpot(freq),
           mode: mode ?? null,
-          comments: comment ?? '',
+          comments: comment ?? "",
           userID: userId,
           APIKey: apiKey,
         }),
       })
-      if (response.status !== 200 || FAILURE_BODY.test(response.body ?? '')) {
+      if (response.status !== 200 || FAILURE_BODY.test(response.body ?? "")) {
         failures.push(ref.ref)
       }
     } catch (_error) {
@@ -276,7 +262,7 @@ async function postSpotsToPnP(
   }
 
   if (failures.length > 0) {
-    return { ok: false, message: t('postFailed', { refs: failures.join(', ') }) }
+    return { ok: false, message: t("postFailed", { refs: failures.join(", ") }) }
   }
   return { ok: true }
 }
@@ -284,11 +270,11 @@ async function postSpotsToPnP(
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('spots', { hook: SpotsHook, key: manifest.key })
-    registerHook('account', {
+    registerHook("spots", { hook: SpotsHook, key: manifest.key })
+    registerHook("account", {
       hook: {
-        label: 'ParksnPeaks',
-        description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('accountDescription'),
+        label: "ParksnPeaks",
+        description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)("accountDescription"),
         kvKey: manifest.key,
         // One ParksnPeaks login belongs to the operator, not to a device, so
         // it syncs across their Apple devices the way the QRZ login does.
@@ -297,22 +283,22 @@ defineExtension({
           const t = tFor(ctx)
           return [
             {
-              key: 'userId',
-              label: t('userIdLabel'),
-              type: 'text',
-              postface: t('userIdPostface'),
+              key: "userId",
+              label: t("userIdLabel"),
+              type: "text",
+              postface: t("userIdPostface"),
             },
             {
-              key: 'apiKey',
-              label: t('apiKeyLabel'),
-              type: 'secret',
-              postface: t('apiKeyPostface'),
+              key: "apiKey",
+              label: t("apiKeyLabel"),
+              type: "secret",
+              postface: t("apiKeyPostface"),
             },
           ]
         },
         async testCredentials(creds: Record<string, string>, ctx: HookContext): Promise<string> {
           const t = tFor(ctx)
-          if (!creds.userId?.trim() || !creds.apiKey?.trim()) return t('missingCredentials')
+          if (!creds.userId?.trim() || !creds.apiKey?.trim()) return t("missingCredentials")
           // Presence is all this can honestly check. ParksnPeaks publishes no
           // endpoint that validates a login, and the only authenticated call
           // it has is posting a spot — which would put a real station on a
@@ -320,7 +306,7 @@ defineExtension({
           // returning a bare ✅, which would claim the credentials work.
           // An empty string is not an option: the dialog renders the result
           // verbatim, so it would leave a blank box that reads as a failure.
-          return t('credentialsUnverified', { userId: creds.userId.trim() })
+          return t("credentialsUnverified", { userId: creds.userId.trim() })
         },
       },
     })

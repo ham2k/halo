@@ -21,14 +21,7 @@
 // for the whole thing.
 
 import { annotateCallAgainstCountryFile, contestScorer, defineExtension } from "@ham2k/extension-sdk"
-import type {
-  ContestScorer,
-  HookContext,
-  JSONValue,
-  LoggingControlDescriptor,
-  Ref,
-  ScoreTally,
-} from "@ham2k/extension-sdk"
+import type { ContestScorer, HookContext, JSONValue, LoggingControlDescriptor, Ref, ScoreTally } from "@ham2k/extension-sdk"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -53,7 +46,9 @@ function refOfType(container: Record<string, JSONValue>, type: string): Record<s
 
 /// "05" and "5" are the same multiplier and must not count twice.
 function normalizeZone(value: JSONValue | undefined): string {
-  const digits = String(value ?? "").trim().replace(/^0+(?=\d)/, "")
+  const digits = String(value ?? "")
+    .trim()
+    .replace(/^0+(?=\d)/, "")
   return /^([1-9]|[1-3][0-9]|40)$/.test(digits) ? digits : ""
 }
 
@@ -154,10 +149,7 @@ const CQWWScorer: ContestScorer<Scoresheet> = {
 
 const ActivityHook = {
   /// What the operator fills in when adding this contest to an operation.
-  async operationControls(
-    _args: { operation: Record<string, JSONValue> },
-    _ctx: HookContext,
-  ): Promise<LoggingControlDescriptor[]> {
+  async operationControls(_args: { operation: Record<string, JSONValue> }, _ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     return [
       {
         key: "k2hrc-cqww/setup",
@@ -209,8 +201,7 @@ const ActivityHook = {
     const their = (args.qso?.their as Record<string, JSONValue>) ?? {}
     const guess = (their.guess as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
-    const suggested =
-      normalizeZone(guess.cqZone) || (call ? normalizeZone(annotateCallAgainstCountryFile(call).cqZone) : "")
+    const suggested = normalizeZone(guess.cqZone) || (call ? normalizeZone(annotateCallAgainstCountryFile(call).cqZone) : "")
 
     return [
       {
