@@ -273,6 +273,99 @@ void main() {
       expect(await calls.call('getHistoryForCall', {'call': 'KI2D', 'limit': 50}), hasLength(7));
     });
 
+    test("the --op's refs match its own QSOs, and only those", () async {
+      final calls = host(
+        log: const LogContext(
+          operation: {
+            'uuid': 'op-1',
+            'refs': [
+              {'type': 'potaActivation', 'ref': 'FR-0999'}
+            ],
+          },
+          qsos: [
+            {
+              'their': {'call': 'KI2D'},
+              'startAtMillis': 1,
+            },
+            // A QSO naming another operation is not activating the --op's
+            // park, whatever file it arrived in.
+            {
+              'their': {'call': 'KI2D'},
+              'operation': 'op-2',
+              'startAtMillis': 2,
+            },
+          ],
+        ),
+      );
+      final result =
+          await calls.call('getHistoryForCall', {'call': 'KI2D', 'refType': 'potaActivation', 'refPrefix': 'FR-'}) as List;
+      expect(result.map((qso) => (qso as Map)['startAtMillis']), [1]);
+    });
+
+    test('an --op with no uuid owns every QSO, as it does for getQsos', () async {
+      // A hand-written --op beside an app export: the export's QSOs name
+      // their operation, and dropping the --op's refs for them would answer
+      // "no history" for every activation filter.
+      final calls = host(
+        log: const LogContext(
+          operation: {
+            'refs': [
+              {'type': 'potaActivation', 'ref': 'US-1234'}
+            ],
+          },
+          qsos: [
+            {
+              'their': {'call': 'KI2D'},
+              'operation': 'exported-uuid',
+            },
+          ],
+        ),
+      );
+      expect(await calls.call('getHistoryForCall', {'call': 'KI2D', 'refType': 'potaActivation'}), hasLength(1));
+    });
+
+    test('refsSegmentAware reads the --op as it stood at each QSO', () async {
+      final calls = host(
+        log: const LogContext(
+          operation: {
+            'uuid': 'op-1',
+            'refs': [
+              {'type': 'potaActivation', 'ref': 'US-1111'}
+            ],
+          },
+          qsos: [
+            {
+              'their': {'call': 'KI2D'},
+              'startAtMillis': 10,
+            },
+            {
+              'band': 'event',
+              'startAtMillis': 20,
+              'event': {
+                'event': 'break',
+                'operation': {
+                  'refs': [
+                    {'type': 'potaActivation', 'ref': 'CA-2222'}
+                  ],
+                },
+              },
+            },
+            {
+              'their': {'call': 'KI2D'},
+              'startAtMillis': 30,
+            },
+          ],
+        ),
+      );
+      Future<List<Object?>> starts(Map<String, dynamic> options) async => [
+            for (final qso in await calls.call('getHistoryForCall', {'call': 'KI2D', ...options}) as List)
+              (qso as Map)['startAtMillis'],
+          ];
+      expect(await starts({'refPrefix': 'CA-', 'refsSegmentAware': true}), [30]);
+      expect(await starts({'refPrefix': 'US-', 'refsSegmentAware': true}), [10]);
+      expect(await starts({'refPrefix': 'US-'}), [30, 10]);
+    });
+
     test('a malformed option throws rather than answering unfiltered', () async {
       final calls = host(log: const LogContext(operation: {'uuid': 'op-1'}, qsos: []));
       await expectLater(calls.call('getHistoryForCall', {'call': 'KI2D', 'band': 20}), throwsFormatException);

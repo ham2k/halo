@@ -21,6 +21,7 @@ import 'bundles.dart';
 import 'config.dart';
 import 'lookup_store.dart';
 import 'runtime.dart' show cliVersion;
+import 'scoring.dart' show qsosOf;
 
 /// The log data one invocation was given: the `--op` operation and its
 /// `--qsos`, which back the `getOperation`/`getQsos` context reads. Empty by
@@ -226,6 +227,17 @@ class CliHostCalls {
         final historyCall = (params['call'] as String?)?.trim().toUpperCase();
         if (historyCall == null) return const <Map<String, Object?>>[];
         final operationUuid = log.operation?['uuid'] as String?;
+        // The --op's refs describe only its own QSOs, as an operation's refs
+        // do in the app's join. An --op with no uuid owns every QSO, as it
+        // does for getQsos.
+        bool ours(Map<String, Object?> qso) =>
+            operationUuid == null || qso['operation'] == null || qso['operation'] == operationUuid;
+        final segmented = filter.refsSegmentAware && log.operation != null
+            ? SegmentedOperation.from(
+                operation: log.operation!.cast<String, dynamic>(),
+                qsos: qsosOf(log.operation!, [for (final qso in log.qsos!) if (ours(qso)) qso]),
+              )
+            : null;
         final matches = [
           for (final qso in log.qsos!)
             // `band != 'event'` mirrors `Qso.isEvent`/`historyForCall`'s own
@@ -236,7 +248,11 @@ class CliHostCalls {
             if (qso['band'] != 'event' &&
                 !asQsonBool(qso['deleted']) &&
                 ((qso['their'] as Map?)?['call'] as String?)?.toUpperCase() == historyCall &&
-                filter.matches(qso, operationUuid: operationUuid))
+                filter.matches(qso,
+                    operationUuid: operationUuid,
+                    operation: !ours(qso)
+                        ? null
+                        : segmented?.effectiveAt(_startAtMillisOrNull(qso)) ?? log.operation))
               qso,
         ];
         matches.sort((a, b) => _startAtMillis(b).compareTo(_startAtMillis(a)));
@@ -314,6 +330,11 @@ class CliHostCalls {
   static int _spotMillis(Map<String, Object?> spot) {
     final value = (spot['spot'] as Map?)?['timeInMillis'];
     return value is num ? value.toInt() : 0;
+  }
+
+  static int? _startAtMillisOrNull(Map<String, Object?> qso) {
+    final value = qso['startAtMillis'];
+    return value is num ? value.toInt() : null;
   }
 
   static int _startAtMillis(Map<String, Object?> qso) {

@@ -72,13 +72,19 @@ class HistoryFilter {
 
   static const none = HistoryFilter();
 
-  /// A QSO matches when ONE of its refs is of any of [refTypes] and its
-  /// `ref` starts with any of [refPrefixes], each checked only when given.
-  /// The same ref must pass both: a POTA ref in the US and a SOTA ref in
-  /// France do not make a French POTA contact. Matching the QSO's own refs,
-  /// not the operation's, means the contact carries the activity's data
-  /// whatever the operation is configured for today.
+  /// A QSO matches when ONE ref — its own, or its operation's — is of any
+  /// of [refTypes] and its `ref` starts with any of [refPrefixes], each
+  /// checked only when given. The same ref must pass both: a POTA ref in the
+  /// US and a SOTA ref in France do not make a French POTA contact. Both
+  /// places count because an activity lives in either: a hunted park is on
+  /// the QSO, the park being activated (`potaActivation`) on the operation.
   final Set<String> refTypes;
+
+  /// Whether an operation's refs are read as they stood when each QSO was
+  /// made — a `break`/`start` row can move a log to a second park or end a
+  /// contest — rather than as the operation row's base `refs`. Opt-in: it
+  /// costs a lookup per QSO, and most logs have no segments.
+  final bool refsSegmentAware;
 
   /// Folded by [_asciiUpper]; `ref` is compared ignoring ASCII case only,
   /// because SQLite's `upper()` folds nothing else and the app and the CLI
@@ -103,6 +109,7 @@ class HistoryFilter {
   const HistoryFilter({
     this.refTypes = const {},
     this.refPrefixes = const {},
+    this.refsSegmentAware = false,
     this.operations = const {},
     this.excludeOperations = const {},
     this.bands = const {},
@@ -150,6 +157,7 @@ class HistoryFilter {
     return HistoryFilter(
       refTypes: _strings(params, 'refType', include: true),
       refPrefixes: {for (final prefix in _strings(params, 'refPrefix', include: true)) _asciiUpper(prefix)},
+      refsSegmentAware: _bool(params, 'refsSegmentAware'),
       operations: _strings(params, 'operation', include: true),
       excludeOperations: _strings(params, 'excludeOperation'),
       bands: {for (final band in _strings(params, 'band', include: true)) band.toLowerCase()},
@@ -162,19 +170,21 @@ class HistoryFilter {
     );
   }
 
-  /// [qso] as QSON. [operationUuid] stands in for a QSO that does not name
+  /// [qso] as QSON, and [operation] as the QSON of the operation it belongs
+  /// to, when known — as it stood at the QSO's start when
+  /// [refsSegmentAware], which the caller resolves. [operationUuid] stands in for a QSO that does not name
   /// its own operation — the CLI's `--qsos` belong to the one `--op`.
   ///
   /// Does not cover the call, deletion or event-marker rules: those are the
   /// caller's, as they are for an unfiltered history.
-  bool matches(Map<String, Object?> qso, {String? operationUuid}) {
+  bool matches(Map<String, Object?> qso, {String? operationUuid, Map<String, Object?>? operation}) {
     if (refTypes.isNotEmpty || refPrefixes.isNotEmpty) {
-      final refs = qso['refs'];
-      if (refs is! List || !refs.any((ref) => ref is Map && _refMatches(ref))) return false;
+      bool anyMatches(Object? refs) => refs is List && refs.any((ref) => ref is Map && _refMatches(ref));
+      if (!anyMatches(qso['refs']) && !anyMatches(operation?['refs'])) return false;
     }
-    final operation = (qso['operation'] as String?) ?? operationUuid;
-    if (operations.isNotEmpty && !operations.contains(operation)) return false;
-    if (excludeOperations.contains(operation)) return false;
+    final uuid = (qso['operation'] as String?) ?? operationUuid;
+    if (operations.isNotEmpty && !operations.contains(uuid)) return false;
+    if (excludeOperations.contains(uuid)) return false;
     final band = (qso['band'] as String?)?.toLowerCase();
     if (bands.isNotEmpty && !bands.contains(band)) return false;
     if (excludeBands.contains(band)) return false;
@@ -200,10 +210,12 @@ class HistoryFilter {
   static String _asciiUpper(String value) =>
       String.fromCharCodes(value.codeUnits.map((c) => c >= 0x61 && c <= 0x7a ? c - 0x20 : c));
 
-  /// [matches], in SQL over [q]. Each clause is written never to be NULL — a
-  /// NULL band or mode would otherwise turn an `exclude…` clause's NOT into
-  /// NULL and drop the QSO it should keep.
-  Expression<bool> toSql($QsosTable q) {
+  /// [matches], in SQL over [q] and [o], the operation it belongs to — left
+  /// joined, so a QSO whose operation row has not arrived is matched on its
+  /// own refs alone. Each clause is written never to be NULL — a NULL band
+  /// or mode would otherwise turn an `exclude…` clause's NOT into NULL and
+  /// drop the QSO it should keep.
+  Expression<bool> toSql($QsosTable q, $OperationsTable o) {
     Expression<bool> bandIn(Set<String> bands) => q.band.isNotNull() & q.band.lower().isIn(bands);
     Expression<bool> modeIn(HistoryModeMatch match) {
       final mode = q.mode.upper();
@@ -214,7 +226,15 @@ class HistoryFilter {
     }
 
     Expression<bool> all = const Constant(true);
-    if (refTypes.isNotEmpty || refPrefixes.isNotEmpty) all = all & _hasMatchingRef(q);
+    if (refTypes.isNotEmpty || refPrefixes.isNotEmpty) {
+      final qsoData = '"${q.aliasedName}"."${q.data.name}"';
+      final operationData = '"${o.aliasedName}"."${o.data.name}"';
+      all = all &
+          (_hasMatchingRef(qsoData, r'$.refs') |
+              (refsSegmentAware
+                  ? _hasMatchingRef(_segmentRefsSql(q, operationData), r'$')
+                  : _hasMatchingRef(operationData, r'$.refs')));
+    }
     if (operations.isNotEmpty) all = all & q.operation.isIn(operations);
     if (excludeOperations.isNotEmpty) all = all & q.operation.isNotIn(excludeOperations);
     if (bands.isNotEmpty) all = all & bandIn(bands);
@@ -226,15 +246,36 @@ class HistoryFilter {
     return all;
   }
 
-  /// [_refMatches] over the QSO's own `refs`, in SQL: both tests sit on one
-  /// `json_each` row, so one ref has to pass them together. `json_each`
-  /// throws on malformed JSON and `json_extract` on a non-object element,
-  /// and SQLite does not promise to short-circuit AND — so the guards are
-  /// CASEs, which it does evaluate lazily. Without them one bad row fails
-  /// every filtered history lookup, not just its own. A non-text `ref` never
-  /// matches a prefix, as it does not in [matches].
-  Expression<bool> _hasMatchingRef($QsosTable q) {
-    final data = '"${q.aliasedName}"."${q.data.name}"';
+  /// The operation's refs as they stood at the QSO's start, as JSON text —
+  /// `SegmentedOperation.effectiveAt`'s rule: the latest `break`/`start` row
+  /// at or before the QSO that restates the operation decides; its `refs`
+  /// replaces the base's, an explicit null means none, and an absent key
+  /// falls back to the base. A QSO with no start time gets the base, as it
+  /// does there.
+  String _segmentRefsSql($QsosTable q, String operationData) {
+    final qso = '"${q.aliasedName}"';
+    return "(COALESCE(("
+        "SELECT CASE json_type(e.data, '\$.event.operation.refs') WHEN 'null' THEN '[]' "
+        "ELSE json_extract(e.data, '\$.event.operation.refs') END "
+        "FROM ${q.actualTableName} AS e "
+        "WHERE e.operation = $qso.operation AND e.band = 'event' AND e.deleted = 0 "
+        "AND COALESCE(e.start_at_millis, 0) <= $qso.start_at_millis "
+        "AND CASE WHEN json_valid(e.data) THEN json_extract(e.data, '\$.event.event') IN ('break', 'start') "
+        "AND json_type(e.data, '\$.event.operation') = 'object' ELSE 0 END "
+        "ORDER BY COALESCE(e.start_at_millis, 0) DESC LIMIT 1"
+        "), CASE WHEN json_valid($operationData) THEN json_extract($operationData, '\$.refs') END))";
+  }
+
+  /// [_refMatches] over the array at [path] in the JSON [json] (a column or
+  /// an expression), in SQL: both tests sit on one `json_each` row, so one
+  /// ref has to pass them together. `json_each` throws on malformed JSON and
+  /// `json_extract` on a non-object element, and SQLite does not promise to
+  /// short-circuit AND — so the guards are CASEs, which it does evaluate
+  /// lazily. Without them one bad row fails every filtered history lookup,
+  /// not just its own. NULL (no operation row) is not valid JSON, and `refs`
+  /// that is not an array matches nothing, as in [matches]. A non-text `ref`
+  /// never matches a prefix, as it does not there either.
+  Expression<bool> _hasMatchingRef(String json, String path) {
     String quoted(String value) => "'${value.replaceAll("'", "''")}'";
     final tests = [
       if (refTypes.isNotEmpty) "json_extract(r.value, '\$.type') IN (${refTypes.map(quoted).join(', ')})",
@@ -246,16 +287,16 @@ class HistoryFilter {
         ].join(' OR ')})",
     ];
     return CustomExpression<bool>(
-      'CASE WHEN json_valid($data) THEN EXISTS ('
-      'SELECT 1 FROM json_each($data, \'\$.refs\') AS r '
+      'CASE WHEN json_valid($json) THEN CASE WHEN json_type($json, \'$path\') = \'array\' THEN EXISTS ('
+      'SELECT 1 FROM json_each($json, \'$path\') AS r '
       'WHERE CASE WHEN r.type = \'object\' THEN (${tests.join(' AND ')}) ELSE 0 END'
-      ') ELSE 0 END',
+      ') ELSE 0 END ELSE 0 END',
     );
   }
 
   static const _knownParams = {
     'call',
-    'refType', 'refPrefix', 'operation', 'excludeOperation', 'band', 'excludeBand', 'mode', 'excludeMode',
+    'refType', 'refPrefix', 'refsSegmentAware', 'operation', 'excludeOperation', 'band', 'excludeBand', 'mode', 'excludeMode',
     'fromDate', 'toDate', 'fromDateMillis', 'toDateMillis',
     'fromTime', 'toTime', 'fromTimeMillis', 'toTimeMillis',
     'limit',
@@ -276,6 +317,12 @@ class HistoryFilter {
       throw FormatException('getHistoryForCall: `$key` has no values, so it would match nothing');
     }
     return values;
+  }
+
+  static bool _bool(Map<String, dynamic> params, String key) {
+    final value = params[key];
+    if (value == null || value is bool) return value == true;
+    throw FormatException('getHistoryForCall: `$key` must be true or false, got $value');
   }
 
   static int _limit(Object? value) {

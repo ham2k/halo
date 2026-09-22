@@ -950,7 +950,7 @@ class QsosRepository {
           db.qsos.deleted.equals(false) &
           _isContact &
           (db.operations.deleted.equals(false) | db.operations.uuid.isNull()) &
-          filter.toSql(db.qsos))
+          filter.toSql(db.qsos, db.operations))
       ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis, mode: OrderingMode.desc)]);
     if (limit != null) query.limit(limit);
     final rows = await query.get();

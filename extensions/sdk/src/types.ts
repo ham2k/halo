@@ -106,14 +106,22 @@ export interface HookContext {
 /// contact must pass all of those given. A `string | string[]` option matches
 /// any of the values listed.
 export interface HistoryForCallOptions {
-  /// Contacts carrying a ref of this type (`'cwt'`, `'pota'`) in their own
-  /// `refs` — whatever the operation is configured for, so contacts logged
-  /// by any extension implementing the activity match.
+  /// Contacts with a ref of this type (`'cwt'`, `'pota'`), either in their
+  /// own `refs` or in their operation's — a hunted park is on the QSO, an
+  /// activated one (`potaActivation`) on the operation. Contacts logged by
+  /// any extension implementing the activity match.
   refType?: string | string[]
-  /// Contacts carrying a ref whose `ref` starts with this, ignoring ASCII
-  /// case (`'fr-'` matches `FR-0001`). With `refType`, the same ref must pass both:
-  /// `{ refType: 'potaActivation', refPrefix: 'FR-' }` is a French park.
+  /// Contacts with a ref, their own or their operation's, whose `ref` starts
+  /// with this, ignoring ASCII case (`'fr-'` matches `FR-0001`). With
+  /// `refType`, the same ref must pass both:
+  /// `{ refType: 'potaActivation', refPrefix: 'FR-' }` is every contact made
+  /// activating a French park.
   refPrefix?: string | string[]
+  /// Read an operation's refs as they stood when each contact was made. A
+  /// `break`/`start` segment can move a log to a second park or end a
+  /// contest; without this, every contact is matched against the
+  /// operation's base refs. Costs a lookup per contact.
+  refsSegmentAware?: boolean
   /// Contacts in these operations (by uuid), or outside them.
   operation?: string | string[]
   excludeOperation?: string | string[]
