@@ -64,7 +64,7 @@ void main() {
 
   testWidgets('a file over the limit is refused before it is planned', (tester) async {
     await _import(tester, maxOperationImportRecords + 1);
-    expect(find.text(t.adifImport.tooMany(filename: 'big.adi', count: '1,001', limit: '1,000')), findsOneWidget);
+    expect(find.text(t.adifImport.tooMany(filename: 'big.adi', limit: '1,000')), findsOneWidget);
     expect(find.text(t.adifImport.confirm), findsNothing);
   });
 

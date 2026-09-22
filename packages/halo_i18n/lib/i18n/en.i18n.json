@@ -2091,7 +2091,7 @@
     "shortfall": "Only ${written} of ${planned} could be applied — the log changed while you were deciding.",
     "busy": "An import is already running. Wait for it to finish before starting another.",
     "oneFileOnly": "Drop one ADIF file at a time — the order files are imported in decides which data wins.",
-    "tooMany": "${filename} has ${count} QSOs. An operation can import at most ${limit} at a time."
+    "tooMany": "${filename} has more than ${limit} QSOs, the most an operation can import at a time."
   },
   "offline": {
     "statusOffline": "Internet: OFFLINE",

@@ -186,7 +186,7 @@ Future<void> importAdifFile(
     final int recordCount;
     try {
       bytes = await file.readAsBytes();
-      recordCount = countAdifRecords(bytes);
+      recordCount = countAdifRecords(bytes, upTo: maxOperationImportRecords + 1);
     } catch (e, stack) {
       _reportFailure(services, 'adifImport:read', e, stack, t.failed(filename: filename, error: '$e'));
       if (context.mounted) {
@@ -195,11 +195,7 @@ Future<void> importAdifFile(
       return;
     }
     if (recordCount > maxOperationImportRecords) {
-      final message = t.tooMany(
-        filename: filename,
-        count: formatNumber(recordCount),
-        limit: formatNumber(maxOperationImportRecords),
-      );
+      final message = t.tooMany(filename: filename, limit: formatNumber(maxOperationImportRecords));
       statusBar.clear('adifImport:status');
       // The files this refuses are the slowest to read, so the pane may be
       // gone by now — and then the notice is the only trace the drop left.

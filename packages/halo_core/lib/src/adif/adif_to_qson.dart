@@ -117,10 +117,15 @@ AdifLog parseAdifLog(String text) => parseAdifLogBytes(utf8.encode(text));
 /// Tokenized rather than a scan for `<EOR>`: a field VALUE may contain that
 /// text, and only the declared lengths say where values end. Empty records are
 /// not counted, the same as the conversion skips them.
-int countAdifRecords(List<int> bytes) {
+///
+/// With [upTo], stops as soon as the count reaches it. A limit check only
+/// needs to know the file is past the limit, and tokenizing the rest of a
+/// whole-log file to learn by how much freezes the UI for it.
+int countAdifRecords(List<int> bytes, {int? upTo}) {
   var count = 0;
   for (final segment in parseAdifBytes(bytes)) {
     if (segment.type == AdifSegmentType.record && segment.fields.isNotEmpty) count++;
+    if (upTo != null && count >= upTo) break;
   }
   return count;
 }

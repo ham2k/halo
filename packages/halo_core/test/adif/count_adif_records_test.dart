@@ -27,6 +27,17 @@ void main() {
     expect(countAdifRecords(bytes), 2);
   });
 
+  test('upTo stops at the limit and never undercounts below it', () {
+    List<int> file(int records) =>
+        utf8.encode('<EOH>\n${List.filled(records, '<CALL:5>N0DEV<EOR>\n').join()}');
+    // Stopping early is what keeps a whole-log file from freezing the UI, so
+    // a count that runs on returns 50,000 here; one that stops a record late
+    // or early moves the cap by one either way.
+    expect(countAdifRecords(file(50000), upTo: 1001), 1001);
+    expect(countAdifRecords(file(1001), upTo: 1001), 1001);
+    expect(countAdifRecords(file(1000), upTo: 1001), 1000);
+  });
+
   test('neither the header nor an empty record counts', () {
     final bytes = utf8.encode('<PROGRAMID:4>HaLo<EOH>\n<EOR>\n<CALL:5>N0DEV<EOR>\n');
     expect(countAdifRecords(bytes), 1);

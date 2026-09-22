@@ -2080,7 +2080,7 @@
     "shortfall": "Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.",
     "busy": "Ya hay una importación en curso. Espera a que termine antes de empezar otra.",
     "oneFileOnly": "Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.",
-    "tooMany": "${filename} tiene ${count} QSOs. Una operación puede importar como máximo ${limit} a la vez."
+    "tooMany": "${filename} tiene más de ${limit} QSOs, el máximo que una operación puede importar a la vez."
   },
   "offline": {
     "statusOffline": "Internet: SIN CONEXIÓN",

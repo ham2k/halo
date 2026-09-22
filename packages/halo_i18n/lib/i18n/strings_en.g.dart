@@ -2295,8 +2295,8 @@ class Translations$adifImport$en {
 	/// en: 'Drop one ADIF file at a time — the order files are imported in decides which data wins.'
 	String get oneFileOnly => 'Drop one ADIF file at a time — the order files are imported in decides which data wins.';
 
-	/// en: '${filename} has ${count} QSOs. An operation can import at most ${limit} at a time.'
-	String tooMany({required Object filename, required Object count, required Object limit}) => '${filename} has ${count} QSOs. An operation can import at most ${limit} at a time.';
+	/// en: '${filename} has more than ${limit} QSOs, the most an operation can import at a time.'
+	String tooMany({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs, the most an operation can import at a time.';
 }
 
 // Path: offline
@@ -8476,7 +8476,7 @@ extension on Translations {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
 			'adifImport.oneFileOnly' => 'Drop one ADIF file at a time — the order files are imported in decides which data wins.',
-			'adifImport.tooMany' => ({required Object filename, required Object count, required Object limit}) => '${filename} has ${count} QSOs. An operation can import at most ${limit} at a time.',
+			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs, the most an operation can import at a time.',
 			'offline.statusOffline' => 'Internet: OFFLINE',
 			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',
