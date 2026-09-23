@@ -168,12 +168,12 @@ void main() {
       final pick = tester.widget<DropdownButtonFormField<int>>(find.byType(DropdownButtonFormField<int>));
       expect(pick.onChanged, isNull, reason: 'the speed is the keyer\'s; only a live session can take one');
       expect(
-        tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed,
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Keyer')).onPressed,
         isNotNull,
         reason: 'the messages are settings, editable without a radio',
       );
       expect(
-        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Voice Messages')).onPressed,
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Keyer')).onPressed,
         isNotNull,
         reason: 'the rig holds memories whether or not it is plugged in',
       );
@@ -199,14 +199,10 @@ void main() {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed, isNotNull);
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Voice Messages')).onPressed, isNull);
-      expect(find.bySemanticsLabel('Voice Messages. Not supported by this radio'), findsOneWidget);
-      expect(
-        find.bySemanticsLabel('CW Messages. Not supported by this radio'),
-        findsNothing,
-        reason: 'a button that works must not carry a reason it does not',
-      );
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Keyer')).onPressed, isNotNull);
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Keyer')).onPressed, isNull);
+      expect(find.bySemanticsLabel('Phone Keyer. Not supported by this radio'), findsOneWidget);
+      expect(find.bySemanticsLabel('CW Keyer. Not supported by this radio'), findsNothing, reason: 'a button that works must not carry a reason it does not');
       semantics.dispose();
     });
 

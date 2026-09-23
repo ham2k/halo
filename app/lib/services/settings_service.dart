@@ -1195,7 +1195,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   static const voiceMessageCount = 8;
 
   /// The name shown for the radio's voice memory [n] (1-based) — its
-  /// button in the keyer area and its row in the Voice Messages dialog.
+  /// button in the keyer area and its row in the Phone Keyer dialog.
   /// A label and nothing more: the audio lives in the radio, which is why
   /// there is no `voiceMessage$n` beside it.
   static String voiceMessageLabelKey(int n) => 'voiceMessageLabel$n';

@@ -553,6 +553,10 @@ class LoggingSettingsGroup extends SettingsGroup {
   }
 }
 
+/// The Radio group's rows that open the two keyer dialogs.
+const cwKeyerActionKey = 'cwKeyer';
+const phoneKeyerActionKey = 'phoneKeyer';
+
 /// How the app behaves towards the radio it is driving — the settings the
 /// Station panel's tune icon collects under `target: 'current-radio'`.
 /// About the VFO the app follows, not about any one piece of equipment,
@@ -565,7 +569,13 @@ class RadioSettingsGroup extends SettingsGroup {
   /// Null where there is none to offer — a test's settings alone, or web.
   final CatServerService Function()? catServer;
 
-  RadioSettingsGroup(this.settings, {this.catServer});
+  /// Open the dialogs behind [cwKeyerActionKey] and [phoneKeyerActionKey].
+  /// Callbacks because the dialogs are views, which this layer does not
+  /// import; HaLoServices supplies them where it registers the group.
+  final Future<void> Function(BuildContext context)? openCwKeyer;
+  final Future<void> Function(BuildContext context)? openPhoneKeyer;
+
+  RadioSettingsGroup(this.settings, {this.catServer, this.openCwKeyer, this.openPhoneKeyer});
 
   CatServerService? get _catServer => kIsWeb || !catServerExperimentEnabled(settings) ? null : catServer?.call();
 
@@ -588,12 +598,19 @@ class RadioSettingsGroup extends SettingsGroup {
 
   @override
   Future<void> openAction(BuildContext context, String actionKey) async {
-    final server = _catServer;
-    if (actionKey != _catServerAction || server == null) return;
-    await showHaloDialog<void>(
-      context: context,
-      builder: (_) => CatServerDialog(service: server),
-    );
+    switch (actionKey) {
+      case _catServerAction:
+        final server = _catServer;
+        if (server == null) return;
+        await showHaloDialog<void>(
+          context: context,
+          builder: (_) => CatServerDialog(service: server),
+        );
+      case cwKeyerActionKey:
+        await openCwKeyer?.call(context);
+      case phoneKeyerActionKey:
+        await openPhoneKeyer?.call(context);
+    }
   }
 
   static const _catServerAction = 'catServer';
@@ -687,68 +704,33 @@ class RadioSettingsGroup extends SettingsGroup {
           options: SettingsService.zeroBeatRangeOptions,
           unit: s.units.hz,
         ),
-      // The CW messages, under a target of their own: the Station dialog's
-      // keyer row opens `cw-messages` as its own dialog (station_panel.dart),
-      // and eight text fields among the radio's behaviour toggles would bury
-      // both. Declared here rather than in a widget so SET/SHOW find them
-      // and Settings lists them like any other setting.
+      // Each keyer is a dialog of its own (cw_messages_dialog.dart,
+      // voice_messages_dialog.dart), reached from these two rows as from the
+      // Station dialog's keyer row and the keyer area. The settings those
+      // dialogs edit stay declared below, so SET/SHOW find them, but
+      // `listed: false` keeps them off these rows: two dozen message fields
+      // would bury the radio's own toggles. The rows' aliases are how the
+      // Settings search still reaches them.
       // Behind the keyer experiment as well as CAT — the surfaces that key
       // them are.
       if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) ...[
-        {'type': 'markdown', 'text': s.cwMessages.description, 'target': 'cw-messages'},
-        // Message 1 only, which is what the circled 1 in the label says —
-        // see SettingsService.cwRepeatDelay on why the others never repeat.
-        _select(
-          key: 'cwRepeatDelay',
-          label: s.cwMessages.repeat,
-          icon: 'repeat',
-          value: '${settings.cwRepeatDelay.inSeconds}',
-          options: [
-            for (final option in SettingsService.cwRepeatDelayOptions)
-              (label: option == '0' ? s.cwMessages.repeatOff : s.cwMessages.repeatAfter(n: option), value: option),
-          ],
-          target: 'cw-messages',
-        ),
-        for (var n = 1; n <= SettingsService.cwMessageCount; n++) ...[
-          _text(
-            key: SettingsService.cwMessageKey(n),
-            label: s.cwMessages.key(n: n),
-            icon: 'numeric-$n-circle',
-            value: settings.cwMessage(n),
-            target: 'cw-messages',
-          ),
-          _text(
-            key: SettingsService.cwMessageLabelKey(n),
-            label: s.cwMessages.labelKey(n: n),
-            icon: 'numeric-$n-circle-outline',
-            value: settings.cwMessageLabel(n),
-            target: 'cw-messages',
-          ),
-        ],
-        // The voice memory labels, the same way, under `voice-messages`:
-        // the audio is in the radio, so a label is all there is to edit.
-        {'type': 'markdown', 'text': s.voiceMessages.description, 'target': 'voice-messages'},
-        // The voice counterpart of the CW repeat, and the same rule: memory
-        // 1 only, which is what the circled 1 in the label says.
-        _select(
-          key: 'voiceRepeatDelay',
-          label: s.voiceMessages.repeat,
-          icon: 'repeat',
-          value: '${settings.voiceRepeatDelay.inSeconds}',
-          options: [
-            for (final option in SettingsService.cwRepeatDelayOptions)
-              (label: option == '0' ? s.voiceMessages.repeatOff : s.voiceMessages.repeatAfter(n: option), value: option),
-          ],
-          target: 'voice-messages',
-        ),
-        for (var n = 1; n <= SettingsService.voiceMessageCount; n++)
-          _text(
-            key: SettingsService.voiceMessageLabelKey(n),
-            label: s.voiceMessages.labelKey(n: n),
-            icon: 'numeric-$n-circle-outline',
-            value: settings.voiceMessageLabel(n),
-            target: 'voice-messages',
-          ),
+        {
+          'type': 'action',
+          'style': 'row',
+          'key': cwKeyerActionKey,
+          'label': s.cwMessages.title,
+          'icon': 'message-bulleted',
+          'aliases': const ['cwMessages', 'cwMessageLabel', 'cwRepeatDelay', 'messages', 'macros', 'repeat', 'enterSendsMessages', 'esm'],
+        },
+        {
+          'type': 'action',
+          'style': 'row',
+          'key': phoneKeyerActionKey,
+          'label': s.voiceMessages.title,
+          'icon': 'account-voice',
+          'aliases': const ['voiceMessages', 'voiceMessageLabel', 'voiceRepeatDelay', 'voice memories', 'messages', 'repeat', 'enterSendsMessages', 'esm'],
+        },
+        for (final el in _keyerElements()) {...el, 'listed': false},
       ],
       if (_catServer case final server?)
         {
@@ -763,6 +745,67 @@ class RadioSettingsGroup extends SettingsGroup {
           'target': 'current-radio',
         },
       {'type': 'link', 'key': 'moreStationSettings', 'label': s.moreSettings, 'icon': 'cat', 'panel': 'station'},
+    ];
+  }
+
+  /// What the two keyer dialogs edit, as declared settings: the CW
+  /// messages under `cw-messages`, the voice memory labels under
+  /// `voice-messages`.
+  List<Map<String, dynamic>> _keyerElements() {
+    final s = t.settings.radio;
+    return [
+      // Message 1 only, which is what the circled 1 in the label says —
+      // see SettingsService.cwRepeatDelay on why the others never repeat.
+      _select(
+        key: 'cwRepeatDelay',
+        label: s.cwMessages.repeat,
+        icon: 'repeat',
+        value: '${settings.cwRepeatDelay.inSeconds}',
+        options: [
+          for (final option in SettingsService.cwRepeatDelayOptions)
+            (label: option == '0' ? s.cwMessages.repeatOff : s.cwMessages.repeatAfter(n: option), value: option),
+        ],
+        target: 'cw-messages',
+      ),
+      for (var n = 1; n <= SettingsService.cwMessageCount; n++) ...[
+        _text(
+          key: SettingsService.cwMessageKey(n),
+          label: s.cwMessages.key(n: n),
+          icon: 'numeric-$n-circle',
+          value: settings.cwMessage(n),
+          target: 'cw-messages',
+        ),
+        _text(
+          key: SettingsService.cwMessageLabelKey(n),
+          label: s.cwMessages.labelKey(n: n),
+          icon: 'numeric-$n-circle-outline',
+          value: settings.cwMessageLabel(n),
+          target: 'cw-messages',
+        ),
+      ],
+      // The voice memory labels, the same way, under `voice-messages`:
+      // the audio is in the radio, so a label is all there is to edit.
+      // The voice counterpart of the CW repeat, and the same rule: memory
+      // 1 only, which is what the circled 1 in the label says.
+      _select(
+        key: 'voiceRepeatDelay',
+        label: s.voiceMessages.repeat,
+        icon: 'repeat',
+        value: '${settings.voiceRepeatDelay.inSeconds}',
+        options: [
+          for (final option in SettingsService.cwRepeatDelayOptions)
+            (label: option == '0' ? s.voiceMessages.repeatOff : s.voiceMessages.repeatAfter(n: option), value: option),
+        ],
+        target: 'voice-messages',
+      ),
+      for (var n = 1; n <= SettingsService.voiceMessageCount; n++)
+        _text(
+          key: SettingsService.voiceMessageLabelKey(n),
+          label: s.voiceMessages.labelKey(n: n),
+          icon: 'numeric-$n-circle-outline',
+          value: settings.voiceMessageLabel(n),
+          target: 'voice-messages',
+        ),
     ];
   }
 

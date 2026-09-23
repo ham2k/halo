@@ -493,7 +493,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     // Doubt is real and still stops a refused play; it is not something to
     // ASK the operator about while audio may be going out, since they cannot
-    // answer it from here. The Voice Messages dialog is where it is said.
+    // answer it from here. The Phone Keyer dialog is where it is said.
     expect(find.text('Playing CQ POTA'), findsOneWidget);
     expect(find.text('Playing CQ POTA?'), findsNothing);
     services.cat.voiceActivity.value = null;

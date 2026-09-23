@@ -481,7 +481,7 @@ class CatKeying {
   /// the transceiver itself, so there is nothing to designate — a WinKeyer
   /// has none, and a second radio's memories are that radio's. Every voice
   /// surface (the Phone-mode message buttons, F1-F8 in a Phone mode, the
-  /// Voice Messages dialog's Play and Record) exists only while this is
+  /// Phone Keyer dialog's Play and Record) exists only while this is
   /// non-null.
   VoiceKeyerSession? get _voiceKeyer {
     final uuid = station.localRadio1;

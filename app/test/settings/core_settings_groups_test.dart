@@ -10,6 +10,7 @@
 
 import 'dart:convert';
 
+import 'package:flutter/widgets.dart' show BuildContext;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -130,17 +131,19 @@ void main() {
     const toggles = {'smartVfoSnap', 'avoidZeroBeat'};
 
     /// The CW messages live in this group too, but under their own dialog
-    /// (`cw-messages`) — they are not tuning knobs, and the note above them
-    /// has no key at all. Kept out of the knob tests, and tested on their own.
+    /// (`cw-messages`) — they are not tuning knobs. Kept out of the knob
+    /// tests, and tested on their own.
     /// The repeat delays belong here too: they are keyer settings under the
     /// message dialogs' own targets, not tuning knobs.
-    bool isCwMessageElement(Map<String, dynamic> el) => el['key'] == null || (el['key'] as String).startsWith('cwMessage') || el['key'] == 'cwRepeatDelay';
+    bool isCwMessageElement(Map<String, dynamic> el) => (el['key'] as String).startsWith('cwMessage') || el['key'] == 'cwRepeatDelay';
 
     /// The voice memory labels, the same way, under `voice-messages`.
-    bool isVoiceMessageElement(Map<String, dynamic> el) =>
-        el['key'] == null || (el['key'] as String).startsWith('voiceMessage') || el['key'] == 'voiceRepeatDelay';
+    bool isVoiceMessageElement(Map<String, dynamic> el) => (el['key'] as String).startsWith('voiceMessage') || el['key'] == 'voiceRepeatDelay';
 
-    bool isMessageElement(Map<String, dynamic> el) => isCwMessageElement(el) || isVoiceMessageElement(el);
+    /// The two rows that open the keyer dialogs — part of the keyer, not knobs.
+    bool isKeyerRow(Map<String, dynamic> el) => el['key'] == cwKeyerActionKey || el['key'] == phoneKeyerActionKey;
+
+    bool isMessageElement(Map<String, dynamic> el) => isCwMessageElement(el) || isVoiceMessageElement(el) || isKeyerRow(el);
 
     /// The row leading on to Station Configuration — navigation, not a knob.
     bool isPanelLink(Map<String, dynamic> el) => el['type'] == 'link' && el['panel'] != null;
@@ -229,6 +232,39 @@ void main() {
       expect(settings.smartVfoSnapMinMoveKHz, 0.5);
     });
 
+    // Every keyer setting stays declared for SET/SHOW and the target modals,
+    // but none is a Settings row: the two rows below open the dialogs that
+    // edit them. A row that opened nothing would look like a dead link.
+    test('the keyer settings are off the rows, and the two keyer rows open their dialogs', () async {
+      final opened = <String>[];
+      final group = RadioSettingsGroup(
+        await settingsWith(),
+        openCwKeyer: (context) async => opened.add(cwKeyerActionKey),
+        openPhoneKeyer: (context) async => opened.add(phoneKeyerActionKey),
+      );
+      final all = await group.buildElements();
+      final keyer = [
+        for (final el in all)
+          if (elementMatchesTarget(el, 'cw-messages') || elementMatchesTarget(el, 'voice-messages')) el,
+      ];
+      expect(keyer, isNotEmpty);
+      for (final el in keyer) {
+        expect(el['listed'], isFalse, reason: '${el['key']} belongs to a keyer dialog, not the Settings rows');
+      }
+      final rows = [
+        for (final el in all)
+          if (el['type'] == 'action') el,
+      ];
+      expect(rows.map((el) => el['key']), [cwKeyerActionKey, phoneKeyerActionKey]);
+      expect(rows.every((el) => el['listed'] != false), isTrue);
+
+      final context = _FakeContext();
+      await group.openAction(context, cwKeyerActionKey);
+      await group.openAction(context, phoneKeyerActionKey);
+      await group.openAction(context, 'moreStationSettings');
+      expect(opened, [cwKeyerActionKey, phoneKeyerActionKey]);
+    });
+
     test('the CW messages sit under their own target, never the tune dialog, and commit as text', () async {
       final settings = await settingsWith(developer: false, snap: false, zeroBeat: false);
       final group = RadioSettingsGroup(settings);
@@ -237,17 +273,17 @@ void main() {
         for (final el in all)
           if (isCwMessageElement(el) && !elementMatchesTarget(el, 'voice-messages')) el,
       ];
-      // Eight messages, their eight labels, the repeat delay, and the note
-      // explaining the placeholders.
+      // Eight messages, their eight labels and the repeat delay. No note: the
+      // placeholders are explained by the CW Keyer dialog's own Help.
       expect(messages.where((el) => el['type'] == 'field'), hasLength(SettingsService.cwMessageCount * 2 + 1));
-      expect(messages.where((el) => el['type'] == 'markdown'), hasLength(1));
+      expect(messages.where((el) => el['type'] == 'markdown'), isEmpty);
       for (final el in messages) {
         expect(elementMatchesTarget(el, 'cw-messages'), isTrue, reason: '${el['key']} belongs to the messages dialog');
         // Eight text rows in the tune dialog would bury the toggles it exists for.
         expect(elementMatchesTarget(el, 'current-radio'), isFalse);
         expect(elementMatchesTarget(el, 'current-radio-extended'), isFalse);
       }
-      // The voice memory labels: eight labels and ONE note, and no message
+      // The voice memory labels: eight labels, and no message
       // field beside them — the audio is in the radio, so a `voiceMessage$n`
       // text field would be a setting nothing reads.
       final voice = [
@@ -258,7 +294,6 @@ void main() {
         'voiceRepeatDelay',
         for (var n = 1; n <= SettingsService.voiceMessageCount; n++) 'voiceMessageLabel$n',
       ]);
-      expect(voice.where((el) => el['type'] == 'markdown'), hasLength(1));
       for (final el in voice) {
         expect(elementMatchesTarget(el, 'cw-messages'), isFalse, reason: '${el['key']} is not a CW message');
         expect(elementMatchesTarget(el, 'current-radio-extended'), isFalse);
@@ -385,3 +420,5 @@ void main() {
     expect(elements.last['panel'], 'sync');
   });
 }
+
+class _FakeContext extends Fake implements BuildContext {}

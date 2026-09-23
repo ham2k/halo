@@ -29,6 +29,8 @@ import '../tools/operation_title.dart';
 import '../views/operation_dialogs.dart';
 import '../views/operation/operation_location_screen.dart';
 import '../views/settings_view.dart';
+import '../views/cw_messages_dialog.dart';
+import '../views/voice_messages_dialog.dart';
 import '../views/settings/accounts_panel.dart';
 import '../views/notice_actions.dart';
 import '../config/experiments.dart';
@@ -644,7 +646,14 @@ class HaLoServices {
   late final SettingsRegistry settingsRegistry = SettingsRegistry()
     ..register(GeneralSettingsGroup(settings, extensions))
     ..register(LoggingSettingsGroup(settings))
-    ..register(RadioSettingsGroup(settings, catServer: () => catServer))
+    ..register(
+      RadioSettingsGroup(
+        settings,
+        catServer: () => catServer,
+        openCwKeyer: (context) => showCwMessagesDialog(context, this),
+        openPhoneKeyer: (context) => showVoiceMessagesDialog(context, this),
+      ),
+    )
     ..register(MapSettingsGroup(settings))
     ..register(PrivacySettingsGroup(settings))
     ..register(ExportsSettingsGroup(settings, extensions))

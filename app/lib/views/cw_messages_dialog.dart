@@ -4,18 +4,24 @@
 // The CW message editor: one row per function key — the key, an optional
 // label beside it, the template underneath — each opening its own dialog
 // with the message and, under a Details band, the label. Reached from the
-// Station dialog's Messages button and from the keyer area's dialog.
+// Station dialog's CW Keyer button, the keyer area's dialog, and Settings →
+// Radio's CW Keyer row.
 //
 // An operator keeps SETS of these — a Default, a POTA, whatever else they
 // make — and the header's picker says which one is being edited AND, on
 // Save, which one F1-F8 key (`CwMessageSet`, settings_service.dart). The
 // whole dialog is a draft: the rows hand their edits up rather than storing
 // them, so Cancel abandons every set the operator touched and not merely the
-// one on screen.
+// one on screen. The keyer's behaviour — message 1's repeat and Enter Sends
+// Messages — sits under the picker and is NOT part of the draft: it applies
+// as it changes, as in the Phone Keyer dialog, so a dialog closed by a tap
+// outside cannot silently drop a pick that looked made.
 //
 // The active set's messages are still settings (`cwMessage1..8`,
-// `cwMessageLabel1..8` in the Radio group), so SET and Settings reach them
-// too; this is the editor an operator meets, not the storage.
+// `cwMessageLabel1..8` in the Radio group), so SET and SHOW reach them too;
+// this is the editor an operator meets, not the storage.
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -156,34 +162,68 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
       header: Container(
         color: haloDialogBandColorAt(context),
         padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: set.name,
-                icon: dropdownTrailingIcon,
-                decoration: poloFieldDecoration(context, m.sets).copyWith(filled: true, fillColor: theme.colorScheme.surface),
-                menuMaxHeight: dropdownMenuMaxHeight(context),
-                items: [for (final entry in _sets) DropdownMenuItem<String>(value: entry.name, child: Text(entry.name))],
-                onChanged: (name) => name == null ? null : setState(() => _selected = name),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    initialValue: set.name,
+                    icon: dropdownTrailingIcon,
+                    decoration: poloFieldDecoration(context, m.sets).copyWith(filled: true, fillColor: theme.colorScheme.surface),
+                    menuMaxHeight: dropdownMenuMaxHeight(context),
+                    items: [for (final entry in _sets) DropdownMenuItem<String>(value: entry.name, child: Text(entry.name))],
+                    onChanged: (name) => name == null ? null : setState(() => _selected = name),
+                  ),
+                ),
+                const SizedBox(width: Space.sm),
+                // The three things one does to a set, beside the picker that
+                // says which one. No hover tooltips (docs/design/user-interface.md),
+                // so the accessible name is the only place each is named.
+                IconButton(
+                  icon: Icon(MdiIcons.fileOutline, semanticLabel: m.newSet),
+                  onPressed: _newSet,
+                ),
+                IconButton(
+                  icon: Icon(MdiIcons.pencilOutline, semanticLabel: m.renameSet),
+                  onPressed: _rename,
+                ),
+                IconButton(
+                  icon: Icon(MdiIcons.trashCanOutline, semanticLabel: m.deleteSet, color: _canDelete ? theme.colorScheme.error : null),
+                  onPressed: _canDelete ? _delete : null,
+                ),
+              ],
             ),
-            const SizedBox(width: Space.sm),
-            // The three things one does to a set, beside the picker that
-            // says which one. No hover tooltips (docs/design/user-interface.md),
-            // so the accessible name is the only place each is named.
-            IconButton(
-              icon: Icon(MdiIcons.fileOutline, semanticLabel: m.newSet),
-              onPressed: _newSet,
-            ),
-            IconButton(
-              icon: Icon(MdiIcons.pencilOutline, semanticLabel: m.renameSet),
-              onPressed: _rename,
-            ),
-            IconButton(
-              icon: Icon(MdiIcons.trashCanOutline, semanticLabel: m.deleteSet, color: _canDelete ? theme.colorScheme.error : null),
-              onPressed: _canDelete ? _delete : null,
+            const SizedBox(height: Space.md),
+            // Message 1 only repeats, which is what the circled 1 in the
+            // label says (SettingsService.cwRepeatDelay).
+            Row(
+              children: [
+                Expanded(
+                  child: RepeatDelayField(
+                    value: '${widget.services.settings.cwRepeatDelay.inSeconds}',
+                    label: m.repeat,
+                    offLabel: m.repeatOff,
+                    afterLabel: (n) => m.repeatAfter(n: n),
+                    onChanged: (value) {
+                      // Off ends a chain already counting down.
+                      if (value == '0') widget.services.cat.cancelKeyerRepeat();
+                      unawaited(widget.services.settings.setCwRepeatDelay(int.parse(value)));
+                    },
+                  ),
+                ),
+                if (widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
+                  const SizedBox(width: Space.md),
+                  Expanded(
+                    child: EnterSendsField(
+                      value: widget.services.cat.enterSends.value,
+                      onChanged: (value) => widget.services.cat.setEnterSends(on: value.on, running: value.running),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
@@ -234,6 +274,71 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
       // rows edit a draft (dialog_footer_convention_test.dart).
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
       actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
+    );
+  }
+}
+
+/// Message 1's repeat as a field, in either keyer dialog: Off, or after two
+/// to ten seconds (SettingsService.cwRepeatDelayOptions, shared by both).
+class RepeatDelayField extends StatelessWidget {
+  final String value;
+  final String label;
+  final String offLabel;
+  final String Function(String seconds) afterLabel;
+  final ValueChanged<String> onChanged;
+
+  const RepeatDelayField({super.key, required this.value, required this.label, required this.offLabel, required this.afterLabel, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) => DropdownButtonFormField<String>(
+    isExpanded: true,
+    initialValue: value,
+    icon: dropdownTrailingIcon,
+    decoration: poloFieldDecoration(context, label).copyWith(filled: true, fillColor: Theme.of(context).colorScheme.surface),
+    menuMaxHeight: dropdownMenuMaxHeight(context),
+    items: [
+      for (final option in SettingsService.cwRepeatDelayOptions)
+        DropdownMenuItem<String>(value: option, child: Text(option == '0' ? offLabel : afterLabel(option))),
+    ],
+    onChanged: (choice) => choice == null ? null : onChanged(choice),
+  );
+}
+
+/// Enter Sends Messages as a field — Off, Run or S&P, the three states the
+/// keyer area's pill steps through. In both keyer dialogs, because the one
+/// setting plays CW messages and voice memories alike
+/// (docs/design/logging-fields.md § Enter Sends Messages).
+class EnterSendsField extends StatelessWidget {
+  final ({bool on, bool running}) value;
+  final ValueChanged<({bool on, bool running})> onChanged;
+
+  const EnterSendsField({super.key, required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final m = context.t.settings.radio.enterSends;
+    final current = !value.on
+        ? 'off'
+        : value.running
+        ? 'run'
+        : 'sp';
+    return DropdownButtonFormField<String>(
+      isExpanded: true,
+      initialValue: current,
+      icon: dropdownTrailingIcon,
+      decoration: poloFieldDecoration(context, m.field).copyWith(filled: true, fillColor: Theme.of(context).colorScheme.surface),
+      menuMaxHeight: dropdownMenuMaxHeight(context),
+      items: [
+        DropdownMenuItem<String>(value: 'off', child: Text(m.off)),
+        DropdownMenuItem<String>(value: 'run', child: Text(m.run)),
+        DropdownMenuItem<String>(value: 'sp', child: Text(m.sp)),
+      ],
+      onChanged: (choice) => switch (choice) {
+        'run' => onChanged((on: true, running: true)),
+        'sp' => onChanged((on: true, running: false)),
+        'off' => onChanged((on: false, running: true)),
+        _ => null,
+      },
     );
   }
 }

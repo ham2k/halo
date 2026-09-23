@@ -14,6 +14,8 @@
 // `find.text`: a collapsed category stays MOUNTED (see _settingsCategory),
 // so its rows are findable while being no part of what the operator sees.
 
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride, TargetPlatform;
 import 'package:flutter/material.dart';
@@ -27,6 +29,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/settings/settings_scan.dart';
 import 'package:ham2k_logger/views/accordion_section.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
@@ -213,6 +216,45 @@ void main() {
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
+  });
+
+  // The trap is on both sides of `listed: false`: a message field back on
+  // the Radio rows buries the radio's own toggles, and one taken off the
+  // declarations as well is lost to SET/SHOW. And the search has only the
+  // keyer rows' aliases to reach them by.
+  testWidgets('Radio shows one row per keyer, opening its dialog, and none of the message fields', (tester) async {
+    final services = await makeServices(
+      prefs: {
+        'experiments': jsonEncode({
+          'gato': {'enabled': true},
+          'keyer': {'enabled': true},
+        }),
+      },
+    );
+    await pumpSettings(tester, services);
+    await tester.tap(shown('Radio').last);
+    await tester.pumpAndSettle();
+
+    expect(shown('CW Keyer'), findsOneWidget);
+    expect(shown('Phone Keyer'), findsOneWidget);
+    expect(shown('F1'), findsNothing, reason: 'a CW message field');
+    expect(shown('Repeat Message ❶'), findsNothing);
+    expect(shown('Voice memory 1 label'), findsNothing);
+
+    await tester.enterText(find.byType(TextField).first, 'repeat');
+    await tester.pumpAndSettle();
+    expect(shown('CW Keyer'), findsOneWidget, reason: 'the search reaches the repeat through its row');
+    expect(shown('Phone Keyer'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '');
+    await tester.pumpAndSettle();
+
+    final declared = await scanSettings(services);
+    expect(declared.map((entry) => entry.element['key']), containsAll(['cwMessage1', 'cwRepeatDelay', 'voiceMessageLabel1', 'voiceRepeatDelay']));
+
+    await tester.tap(shown('CW Keyer'));
+    await tester.pumpAndSettle();
+    // F1 is the dialog's first message row; the Settings list had none.
+    expect(find.textContaining('F1').hitTestable(), findsWidgets, reason: 'the CW Keyer dialog opened');
   });
 
   testWidgets('environment shows a field on every platform it does not exclude', (tester) async {

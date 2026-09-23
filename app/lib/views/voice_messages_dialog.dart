@@ -5,11 +5,11 @@
 // label beside it, and how long it plays for underneath — each row opening
 // its own dialog, where the label, the memory's length, PLAYING it and
 // RECORDING it live. The list names the memories; the dialog is where
-// anything happens to one. Reached from the Station dialog's keyer row and
-// from the keyer area's voice pill. Shaped like the CW editor deliberately,
-// minus what has no meaning here: there is no speed, no message text, and no
-// SETS — the audio is in the radio's five memories, so a second set could
-// only rename the same five.
+// anything happens to one. Reached from the Station dialog's keyer row, the
+// keyer area's voice pill and Settings → Radio's Phone Keyer row. Shaped like
+// the CW editor deliberately, minus what has no meaning here: there is no
+// speed, no message text, and no SETS — the audio is in the radio's five
+// memories, so a second set could only rename the same five.
 //
 // The audio lives in the radio, which is what the app stores nothing of: a
 // label (`voiceMessageLabel1..8`) and a measured length
@@ -31,7 +31,7 @@ import '../services/halo_services.dart';
 import '../services/cat/cat_service.dart';
 import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
-import 'cw_messages_dialog.dart' show cwMessageNumberIcons;
+import 'cw_messages_dialog.dart' show EnterSendsField, RepeatDelayField, cwMessageNumberIcons;
 
 Future<void> showVoiceMessagesDialog(BuildContext context, HaLoServices services) => showHaloDialog<void>(
   context: context,
@@ -60,29 +60,36 @@ class _VoiceMessagesDialog extends StatelessWidget {
         return HaloDialog(
           title: Text(m.title),
           // The same band the CW editor's picker sits on, and the same rule
-          // it states: only memory 1 repeats.
+          // it states: only memory 1 repeats. No Save here, so both fields
+          // apply as they change.
           header: Container(
             color: haloDialogBandColorAt(context),
             padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: '${settings.voiceRepeatDelay.inSeconds}',
-              icon: dropdownTrailingIcon,
-              decoration: poloFieldDecoration(context, m.repeat).copyWith(filled: true, fillColor: theme.colorScheme.surface),
-              menuMaxHeight: dropdownMenuMaxHeight(context),
-              items: [
-                for (final option in SettingsService.cwRepeatDelayOptions)
-                  DropdownMenuItem<String>(
-                    value: option,
-                    child: Text(option == '0' ? m.repeatOff : m.repeatAfter(n: option)),
+            child: Row(
+              children: [
+                Expanded(
+                  child: RepeatDelayField(
+                    value: '${settings.voiceRepeatDelay.inSeconds}',
+                    label: m.repeat,
+                    offLabel: m.repeatOff,
+                    afterLabel: (n) => m.repeatAfter(n: n),
+                    onChanged: (value) {
+                      // Off ends a chain already counting down.
+                      if (value == '0') cat.cancelKeyerRepeat();
+                      unawaited(settings.setVoiceRepeatDelay(int.parse(value)));
+                    },
                   ),
+                ),
+                if (settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
+                  const SizedBox(width: Space.md),
+                  Expanded(
+                    child: EnterSendsField(
+                      value: cat.enterSends.value,
+                      onChanged: (value) => cat.setEnterSends(on: value.on, running: value.running),
+                    ),
+                  ),
+                ],
               ],
-              onChanged: (value) {
-                if (value == null) return;
-                // Off ends a chain already counting down.
-                if (value == '0') cat.cancelKeyerRepeat();
-                unawaited(settings.setVoiceRepeatDelay(int.parse(value)));
-              },
             ),
           ),
           list: true,
@@ -120,6 +127,12 @@ class _VoiceMessagesDialog extends StatelessWidget {
                   ),
                   mouseCursor: SystemMouseCursors.click,
                 ),
+              // What a label is, since nothing else here says the audio is
+              // not the app's to edit.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, 0),
+                child: Text(m.description, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
+              ),
               // Why there is nothing to play with. Why RECORDING is missing
               // is said in the memory's own dialog instead — beside the
               // disabled button, which is where an operator goes looking

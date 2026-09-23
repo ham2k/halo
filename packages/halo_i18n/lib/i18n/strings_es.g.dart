@@ -2100,8 +2100,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get currentRadioSettings => 'Ajustes de la radio actual';
 	@override String get notSupportedByThisRadio => 'No compatible con esta radio';
 	@override String get keyerRowLabel => 'Manipulador:';
-	@override String get cwMessagesButton => 'Mensajes de CW';
-	@override String get voiceMessagesButton => 'Mensajes de voz';
+	@override String get cwMessagesButton => 'Manipulador de CW';
+	@override String get voiceMessagesButton => 'Manipulador de fonía';
 	@override String voiceKeyerAvailable({required Object count}) => 'Manipulador de voz: ${count} memorias en la radio';
 	@override String get placeholderConnectDelay => 'Retraso de conexión (ms)';
 	@override String get placeholderConnectDelayDescription => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.';
@@ -2895,6 +2895,10 @@ class _Translations$settings$radio$enterSends$es extends Translations$settings$r
 	@override String get pillOff => 'ESM apagado';
 	@override String get pillRun => 'ESM Run';
 	@override String get pillSp => 'ESM S&P';
+	@override String get field => 'Enter envía mensajes';
+	@override String get off => 'Apagado';
+	@override String get run => 'Run';
+	@override String get sp => 'S&P';
 	@override String semantics({required Object state}) => 'Enter envía mensajes: ${state}. Toca para cambiar.';
 }
 
@@ -2918,8 +2922,7 @@ class _Translations$settings$radio$cwMessages$es extends Translations$settings$r
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Mensajes de CW';
-	@override String get description => 'Un mensaje por tecla de función, F1 a F8, que la radio manipula mientras hay una operación abierta. Los marcadores se rellenan con el contacto que se está registrando: `{{ qso.call }}` su indicativo, `{{ op.call }}` el tuyo, `{{ qso.rst }}` el reporte enviado, `{{ qso.serial }}` el número de serie de un concurso, `{{ qso.their.name }}` su nombre. `| pad: 3` escribe un número de serie como 007, y `| cut` envía números abreviados (5NN, TT7).';
+	@override String get title => 'Manipulador de CW';
 	@override String key({required Object n}) => 'F${n}';
 	@override String messageTitle({required Object n}) => 'Mensaje (${n})';
 	@override String get labelField => 'Etiqueta';
@@ -2964,7 +2967,7 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Mensajes de voz';
+	@override String get title => 'Manipulador de fonía';
 	@override String get description => 'Las memorias de voz de la propia radio, reproducidas con F1 a F8 mientras el contacto que se está registrando está en un modo de fonía. El audio se graba en la radio; aquí solo se define el nombre que muestra cada memoria.';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'Memoria de voz (${n})';
@@ -4089,13 +4092,16 @@ extension on TranslationsEs {
 			'settings.radio.enterSends.pillOff' => 'ESM apagado',
 			'settings.radio.enterSends.pillRun' => 'ESM Run',
 			'settings.radio.enterSends.pillSp' => 'ESM S&P',
+			'settings.radio.enterSends.field' => 'Enter envía mensajes',
+			'settings.radio.enterSends.off' => 'Apagado',
+			'settings.radio.enterSends.run' => 'Run',
+			'settings.radio.enterSends.sp' => 'S&P',
 			'settings.radio.enterSends.semantics' => ({required Object state}) => 'Enter envía mensajes: ${state}. Toca para cambiar.',
 			'settings.radio.keyerSpeed.title' => 'Velocidad del manipulador',
 			'settings.radio.keyerSpeed.unit' => 'PPM',
 			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} ppm',
 			'settings.radio.keyerSpeed.pillUnknown' => '– ppm',
-			'settings.radio.cwMessages.title' => 'Mensajes de CW',
-			'settings.radio.cwMessages.description' => 'Un mensaje por tecla de función, F1 a F8, que la radio manipula mientras hay una operación abierta. Los marcadores se rellenan con el contacto que se está registrando: `{{ qso.call }}` su indicativo, `{{ op.call }}` el tuyo, `{{ qso.rst }}` el reporte enviado, `{{ qso.serial }}` el número de serie de un concurso, `{{ qso.their.name }}` su nombre. `| pad: 3` escribe un número de serie como 007, y `| cut` envía números abreviados (5NN, TT7).',
+			'settings.radio.cwMessages.title' => 'Manipulador de CW',
 			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
 			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Mensaje (${n})',
 			'settings.radio.cwMessages.labelField' => 'Etiqueta',
@@ -4131,7 +4137,7 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.helpCut' => 'Números abreviados, T por 0 y N por 9: 599 se envía como 5NN',
 			'settings.radio.cwMessages.helpCutDigits' => 'Elige qué dígitos abreviar, entre comillas — 0 es T, 1 es A, 5 es E, 9 es N',
 			'settings.radio.cwMessages.helpExample' => 'Envía W1AW 5NN TT7',
-			'settings.radio.voiceMessages.title' => 'Mensajes de voz',
+			'settings.radio.voiceMessages.title' => 'Manipulador de fonía',
 			'settings.radio.voiceMessages.description' => 'Las memorias de voz de la propia radio, reproducidas con F1 a F8 mientras el contacto que se está registrando está en un modo de fonía. El audio se graba en la radio; aquí solo se define el nombre que muestra cada memoria.',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Memoria de voz (${n})',
@@ -4232,11 +4238,11 @@ extension on TranslationsEs {
 			'settings.peers.pairBody' => 'Este dispositivo está en tu red local y quiere conectarse.',
 			'settings.peers.pairBodyBle' => 'Este dispositivo está cerca y quiere conectarse por Bluetooth LE.',
 			'settings.peers.pairIdLabel' => 'ID del dispositivo',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.pairWarning' => 'Vincula solo dispositivos que reconozcas. Cualquier dispositivo de esta red puede enviar una solicitud.',
 			'settings.peers.pairWarningBle' => 'Vincula solo dispositivos que reconozcas. Cualquier dispositivo cercano puede enviar una solicitud.',
 			'settings.peers.problem' => ({required Object error}) => 'No se puede acceder a la red local: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => 'Conectado a ${device}',
 			'settings.peers.statusLost' => ({required Object device}) => 'Se perdió la conexión con ${device}',
@@ -4514,8 +4520,8 @@ extension on TranslationsEs {
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
 			'settings.station.notSupportedByThisRadio' => 'No compatible con esta radio',
 			'settings.station.keyerRowLabel' => 'Manipulador:',
-			'settings.station.cwMessagesButton' => 'Mensajes de CW',
-			'settings.station.voiceMessagesButton' => 'Mensajes de voz',
+			'settings.station.cwMessagesButton' => 'Manipulador de CW',
+			'settings.station.voiceMessagesButton' => 'Manipulador de fonía',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Manipulador de voz: ${count} memorias en la radio',
 			'settings.station.placeholderConnectDelay' => 'Retraso de conexión (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.',
@@ -4746,11 +4752,11 @@ extension on TranslationsEs {
 			'commands.settingExpectsOneOf' => ({required Object choices}) => 'uno de: ${choices}',
 			'commands.settingExpectsNumber' => 'un número',
 			'commands.settingVanished' => ({required Object label}) => '«${label}» ya no está disponible',
+			_ => null,
+		} ?? switch (path) {
 			'commands.noCwKeyer' => 'Ninguna radio conectada puede manipular CW',
 			'commands.noKeyer' => 'Ninguna radio conectada puede manipular CW ni reproducir memorias de voz',
 			'commands.keyerNeedsOperation' => 'Abre una operación para usar el manipulador de CW',
-			_ => null,
-		} ?? switch (path) {
 			'commands.keyerExperimentOff' => 'La manipulación de CW está apagada — enciéndela con EXP KEYER',
 			'commands.esmExperimentOff' => 'Enter envía mensajes está apagado — enciéndelo con EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Enviando CW: ${text}',

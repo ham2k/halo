@@ -38,7 +38,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    expect(find.text('CW Messages'), findsOneWidget);
+    expect(find.text('CW Keyer'), findsOneWidget);
     expect(find.byType(ListTile), findsNWidgets(SettingsService.cwMessageCount));
     expect(find.text('CQ CQ DE {{ op.call }} K'), findsOneWidget);
     expect(find.textContaining('F1'), findsWidgets);
@@ -112,7 +112,7 @@ void main() {
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(find.text('Writing CW Messages'), findsNothing);
-    expect(find.text('CW Messages'), findsOneWidget, reason: 'the editor is still open behind it');
+    expect(find.text('CW Keyer'), findsOneWidget, reason: 'the editor is still open behind it');
     expect(find.text('{{ qso.call }} {{ qso.serial | pad: 3 }}'), findsOneWidget, reason: 'and still holds the draft');
   });
 
@@ -132,6 +132,33 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(services.settings.cwMessage(3), before);
+  });
+
+  // The repeat and Enter Sends Messages are NOT part of the messages' draft:
+  // a dialog closed by Cancel, a tap outside or Escape would otherwise drop a
+  // pick that looked made, while the Phone Keyer beside it keeps its own.
+  testWidgets('the keyer behaviour applies as it changes, and survives a Cancel of the messages', (tester) async {
+    await services.settings.setExperimentEnabled('esm', true);
+    await tester.pumpWidget(host());
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(DropdownButtonFormField<String>, 'Repeat Message ❶'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('After 5 seconds').last);
+    await tester.pumpAndSettle();
+    expect(services.settings.cwRepeatDelay, const Duration(seconds: 5));
+
+    await tester.tap(find.widgetWithText(DropdownButtonFormField<String>, 'Enter sends messages'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('S&P').last);
+    await tester.pumpAndSettle();
+    expect(services.cat.enterSends.value, (on: true, running: false));
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(services.settings.cwRepeatDelay, const Duration(seconds: 5));
+    expect(services.cat.enterSends.value, (on: true, running: false));
   });
 
   testWidgets('an install with nothing stored is seeded: a Default to key, and a POTA beside it', (tester) async {

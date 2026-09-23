@@ -998,7 +998,10 @@ writing it:
 A radio whose CAT protocol can key CW from text keys the app's messages: F1-F8 in the operation
 view send the eight templates under Radio settings (`cwMessage1..8`), the Station dialog's keyer row
 picks the speed and opens the editor, and `20WPM` typed into the call field sets the speed the way
-`5W` sets power. Everything here is behind the `keyer` experiment (`EXP KEYER`, aliases `CW`/`MACROS`)
+`5W` sets power. The editor is the **CW Keyer** dialog — the message sets, saved together on Save, and message 1's
+repeat and Enter Sends Messages, which apply as they change — reached from that row, the keyer area
+and a row of its own in Settings → Radio; the settings it edits stay declared for SET/SHOW but are not Settings rows
+(`listed: false`). Everything here is behind the `keyer` experiment (`EXP KEYER`, aliases `CW`/`MACROS`)
 on top of `gato`, which it needs to reach a radio at all.
 
 It is a **capability, not a transceiver method**: `CwKeyerSession` (driver.dart) sits beside
@@ -1366,8 +1369,9 @@ and a refused tune is worse than a late one.
 
 The same eight keys, in a Phone mode: while the DRAFT contact's mode is Phone (`superModeForMode`
 — SSB, FM, AM and the digital-voice modes), F1-F8 and the keyer area's buttons play the radio's own
-voice memories, Escape stops one, and the Voice Messages dialog names each memory and — on a radio
-whose CAT can — records into it. Under the same `keyer` experiment (renamed "Keying"; `VOICE` is an
+voice memories, Escape stops one, and the **Phone Keyer** dialog names each memory and — on a radio
+whose CAT can — records into it, beside memory 1's repeat and Enter Sends Messages, which apply as
+they change. Under the same `keyer` experiment (renamed "Keying"; `VOICE` is an
 alias). The draft's mode and not the radio's, the same reasoning as the messages being templates
 against the draft: the message is for the contact being logged, and a rig left in USB while the
 operator logs CW keys CW.
@@ -1479,7 +1483,7 @@ hops would put a transmitter on the air for an operator who picked neither end o
 request plays the memory of the radio it names — the per-node path, the voice counterpart of
 `tuneNode`. The COUNT, the labels and the measured lengths all come from the owner: a label written
 here would name somebody else's recording and a length measured here would pace a bar against audio
-this station has never played, so while a peer radio is picked the Voice Messages dialog shows that
+this station has never played, so while a peer radio is picked the Phone Keyer dialog shows that
 device's names and will not edit them (`CatService.voiceMessagesAreLocal`).
 
 **A peer's key is a default, not a designation.** The key in use is stored per radio in use

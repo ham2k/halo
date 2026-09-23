@@ -1085,6 +1085,10 @@
         "pillOff": "ESM apagado",
         "pillRun": "ESM Run",
         "pillSp": "ESM S&P",
+        "field": "Enter envía mensajes",
+        "off": "Apagado",
+        "run": "Run",
+        "sp": "S&P",
         "semantics": "Enter envía mensajes: $state. Toca para cambiar."
       },
       "keyerSpeed": {
@@ -1094,8 +1098,7 @@
         "pillUnknown": "– ppm"
       },
       "cwMessages": {
-        "title": "Mensajes de CW",
-        "description": "Un mensaje por tecla de función, F1 a F8, que la radio manipula mientras hay una operación abierta. Los marcadores se rellenan con el contacto que se está registrando: `{{ qso.call }}` su indicativo, `{{ op.call }}` el tuyo, `{{ qso.rst }}` el reporte enviado, `{{ qso.serial }}` el número de serie de un concurso, `{{ qso.their.name }}` su nombre. `| pad: 3` escribe un número de serie como 007, y `| cut` envía números abreviados (5NN, TT7).",
+        "title": "Manipulador de CW",
         "key": "F$n",
         "messageTitle": "Mensaje ($n)",
         "labelField": "Etiqueta",
@@ -1133,7 +1136,7 @@
         "helpExample": "Envía W1AW 5NN TT7"
       },
       "voiceMessages": {
-        "title": "Mensajes de voz",
+        "title": "Manipulador de fonía",
         "description": "Las memorias de voz de la propia radio, reproducidas con F1 a F8 mientras el contacto que se está registrando está en un modo de fonía. El audio se graba en la radio; aquí solo se define el nombre que muestra cada memoria.",
         "key": "M$n",
         "messageTitle": "Memoria de voz ($n)",
@@ -1558,8 +1561,8 @@
       "currentRadioSettings": "Ajustes de la radio actual",
       "notSupportedByThisRadio": "No compatible con esta radio",
       "keyerRowLabel": "Manipulador:",
-      "cwMessagesButton": "Mensajes de CW",
-      "voiceMessagesButton": "Mensajes de voz",
+      "cwMessagesButton": "Manipulador de CW",
+      "voiceMessagesButton": "Manipulador de fonía",
       "voiceKeyerAvailable": "Manipulador de voz: $count memorias en la radio",
       "placeholderConnectDelay": "Retraso de conexión (ms)",
       "placeholderConnectDelayDescription": "Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.",

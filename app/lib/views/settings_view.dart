@@ -705,7 +705,11 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
         // Platform-excluded elements don't exist on this session at all —
         // baked in here rather than filtered per-view, same as
         // [ExtensionSettingsPanel].
-        final elements = filterElementsForEnvironment(resolved);
+        final elements = [
+          for (final el in filterElementsForEnvironment(resolved))
+            // Declared, but edited by a dialog of their own (settings_registry.dart).
+            if (el['listed'] != false) el,
+        ];
         if (!mounted) continue;
         final identity = settingsRowIdentity(elements);
         setState(() => _elements = elements);

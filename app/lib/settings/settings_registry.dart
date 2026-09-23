@@ -31,6 +31,12 @@
 //    `environment`, absence of `target` isn't "matches everything" — a
 //    field with no `target` simply never appears in a target-scoped modal,
 //    only in Settings.
+//
+// A fourth, core groups only: `listed: false` keeps an element off the
+// Settings panel's rows, and out of its search, while it stays declared —
+// SET/SHOW still find it. For settings a dialog of their own edits (the CW
+// and phone keyers), which as rows would bury the group they sit in; the
+// row that opens that dialog carries the aliases the search needs.
 
 import 'package:flutter/widgets.dart';
 import 'package:halo_widgets/halo_widgets.dart';

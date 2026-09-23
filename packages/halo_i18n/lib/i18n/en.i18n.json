@@ -1085,6 +1085,10 @@
         "pillOff": "ESM Off",
         "pillRun": "ESM Run",
         "pillSp": "ESM S&P",
+        "field": "Enter sends messages",
+        "off": "Off",
+        "run": "Run",
+        "sp": "S&P",
         "semantics": "Enter Sends Messages: $state. Tap to change."
       },
       "keyerSpeed": {
@@ -1094,8 +1098,7 @@
         "pillUnknown": "– wpm"
       },
       "cwMessages": {
-        "title": "CW Messages",
-        "description": "One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rst }}` for the report you sent, `{{ qso.serial }}` for a contest serial number, `{{ qso.their.name }}` for their name. `| pad: 3` writes a serial as 007, and `| cut` sends cut numbers (5NN, TT7).",
+        "title": "CW Keyer",
         "key": "F$n",
         "messageTitle": "Message ($n)",
         "labelField": "Label",
@@ -1133,7 +1136,7 @@
         "helpExample": "Sends W1AW 5NN TT7"
       },
       "voiceMessages": {
-        "title": "Voice Messages",
+        "title": "Phone Keyer",
         "description": "The radio's own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.",
         "key": "M$n",
         "messageTitle": "Voice memory ($n)",
@@ -1563,8 +1566,8 @@
       "currentRadioSettings": "Current radio settings",
       "notSupportedByThisRadio": "Not supported by this radio",
       "keyerRowLabel": "Keyer:",
-      "cwMessagesButton": "CW Messages",
-      "voiceMessagesButton": "Voice Messages",
+      "cwMessagesButton": "CW Keyer",
+      "voiceMessagesButton": "Phone Keyer",
       "voiceKeyerAvailable": "Voice keyer: $count memories in the radio",
       "antennaBands": "Bands",
       "antennaType": "Antenna type",

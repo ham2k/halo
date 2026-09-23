@@ -530,8 +530,9 @@ asked once.
 **With ESM on, Enter keys the exchange as well as logging it** — N1MM's
 Enter Sends Messages, so a contest can be run from the call field without
 reaching for a function key. It is an operator's switch (the keyer area's
-`ESM` pill, the `ESM`/`ESM OFF` commands) and a side of the pileup (the same
-pill, `RUN` and `SP`), device-wide like the keyer area, and exists only
+`ESM` pill, the `ESM`/`ESM OFF` commands, the Enter Sends Messages field in
+the CW Keyer and Phone Keyer dialogs) and a side of the pileup (the same
+pill, `RUN` and `SP`, the same field), device-wide like the keyer area, and exists only
 behind its own `esm` experiment (`EXP ESM`), on top of `keyer` — gated
 apart from keying because it changes what Enter does. The panel asks for it at every Enter
 (`LoggingSession.enterSends`) and gets nothing back while no key could send

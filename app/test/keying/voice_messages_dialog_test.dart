@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Voice Messages dialog, with and without a radio that can play. What
+// The Phone Keyer dialog, with and without a radio that can play. What
 // is defended: the rows are the RADIO's memories when one is on (its count,
 // not the label count), the buttons act on CatService and follow what it
 // reports, and with no radio the labels stay editable while the buttons
@@ -62,7 +62,7 @@ void main() {
   testWidgets('with no radio: every label, no buttons, and a line saying why', (tester) async {
     await services.settings.setVoiceMessageLabel(2, 'CQ POTA');
     await open(tester);
-    expect(find.text('Voice Messages'), findsOneWidget);
+    expect(find.text('Phone Keyer'), findsOneWidget);
     expect(find.byType(ListTile), findsNWidgets(SettingsService.voiceMessageCount));
     expect(find.textContaining('CQ POTA'), findsOneWidget);
     expect(find.byIcon(MdiIcons.play), findsNothing);

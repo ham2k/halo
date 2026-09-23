@@ -4576,11 +4576,11 @@ class Translations$settings$station$en {
 	/// en: 'Keyer:'
 	String get keyerRowLabel => 'Keyer:';
 
-	/// en: 'CW Messages'
-	String get cwMessagesButton => 'CW Messages';
+	/// en: 'CW Keyer'
+	String get cwMessagesButton => 'CW Keyer';
 
-	/// en: 'Voice Messages'
-	String get voiceMessagesButton => 'Voice Messages';
+	/// en: 'Phone Keyer'
+	String get voiceMessagesButton => 'Phone Keyer';
 
 	/// en: 'Voice keyer: $count memories in the radio'
 	String voiceKeyerAvailable({required Object count}) => 'Voice keyer: ${count} memories in the radio';
@@ -6181,6 +6181,18 @@ class Translations$settings$radio$enterSends$en {
 	/// en: 'ESM S&P'
 	String get pillSp => 'ESM S&P';
 
+	/// en: 'Enter sends messages'
+	String get field => 'Enter sends messages';
+
+	/// en: 'Off'
+	String get off => 'Off';
+
+	/// en: 'Run'
+	String get run => 'Run';
+
+	/// en: 'S&P'
+	String get sp => 'S&P';
+
 	/// en: 'Enter Sends Messages: $state. Tap to change.'
 	String semantics({required Object state}) => 'Enter Sends Messages: ${state}. Tap to change.';
 }
@@ -6214,11 +6226,8 @@ class Translations$settings$radio$cwMessages$en {
 
 	// Translations
 
-	/// en: 'CW Messages'
-	String get title => 'CW Messages';
-
-	/// en: 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rst }}` for the report you sent, `{{ qso.serial }}` for a contest serial number, `{{ qso.their.name }}` for their name. `| pad: 3` writes a serial as 007, and `| cut` sends cut numbers (5NN, TT7).'
-	String get description => 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rst }}` for the report you sent, `{{ qso.serial }}` for a contest serial number, `{{ qso.their.name }}` for their name. `| pad: 3` writes a serial as 007, and `| cut` sends cut numbers (5NN, TT7).';
+	/// en: 'CW Keyer'
+	String get title => 'CW Keyer';
 
 	/// en: 'F$n'
 	String key({required Object n}) => 'F${n}';
@@ -6334,8 +6343,8 @@ class Translations$settings$radio$voiceMessages$en {
 
 	// Translations
 
-	/// en: 'Voice Messages'
-	String get title => 'Voice Messages';
+	/// en: 'Phone Keyer'
+	String get title => 'Phone Keyer';
 
 	/// en: 'The radio's own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.'
 	String get description => 'The radio\'s own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.';
@@ -7733,13 +7742,16 @@ extension on Translations {
 			'settings.radio.enterSends.pillOff' => 'ESM Off',
 			'settings.radio.enterSends.pillRun' => 'ESM Run',
 			'settings.radio.enterSends.pillSp' => 'ESM S&P',
+			'settings.radio.enterSends.field' => 'Enter sends messages',
+			'settings.radio.enterSends.off' => 'Off',
+			'settings.radio.enterSends.run' => 'Run',
+			'settings.radio.enterSends.sp' => 'S&P',
 			'settings.radio.enterSends.semantics' => ({required Object state}) => 'Enter Sends Messages: ${state}. Tap to change.',
 			'settings.radio.keyerSpeed.title' => 'Keyer speed',
 			'settings.radio.keyerSpeed.unit' => 'WPM',
 			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} wpm',
 			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
-			'settings.radio.cwMessages.title' => 'CW Messages',
-			'settings.radio.cwMessages.description' => 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rst }}` for the report you sent, `{{ qso.serial }}` for a contest serial number, `{{ qso.their.name }}` for their name. `| pad: 3` writes a serial as 007, and `| cut` sends cut numbers (5NN, TT7).',
+			'settings.radio.cwMessages.title' => 'CW Keyer',
 			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
 			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Message (${n})',
 			'settings.radio.cwMessages.labelField' => 'Label',
@@ -7775,7 +7787,7 @@ extension on Translations {
 			'settings.radio.cwMessages.helpCut' => 'Cut numbers, T for 0 and N for 9: 599 is sent as 5NN',
 			'settings.radio.cwMessages.helpCutDigits' => 'Chooses the digits to cut, in quotes — 0 is T, 1 is A, 5 is E, 9 is N',
 			'settings.radio.cwMessages.helpExample' => 'Sends W1AW 5NN TT7',
-			'settings.radio.voiceMessages.title' => 'Voice Messages',
+			'settings.radio.voiceMessages.title' => 'Phone Keyer',
 			'settings.radio.voiceMessages.description' => 'The radio\'s own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Voice memory (${n})',
@@ -7876,11 +7888,11 @@ extension on Translations {
 			'settings.peers.pairBody' => 'This device is on your local network and wants to connect.',
 			'settings.peers.pairBodyBle' => 'This device is nearby and wants to connect over Bluetooth LE.',
 			'settings.peers.pairIdLabel' => 'Device ID',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.pairWarning' => 'Only link with devices you recognise. Any device on this network can send a request.',
 			'settings.peers.pairWarningBle' => 'Only link with devices you recognise. Any nearby device can send a request.',
 			'settings.peers.problem' => ({required Object error}) => 'Can\'t reach the local network: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => 'Connected to ${device}',
 			'settings.peers.statusLost' => ({required Object device}) => 'Lost connection to ${device}',
@@ -8163,8 +8175,8 @@ extension on Translations {
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.station.notSupportedByThisRadio' => 'Not supported by this radio',
 			'settings.station.keyerRowLabel' => 'Keyer:',
-			'settings.station.cwMessagesButton' => 'CW Messages',
-			'settings.station.voiceMessagesButton' => 'Voice Messages',
+			'settings.station.cwMessagesButton' => 'CW Keyer',
+			'settings.station.voiceMessagesButton' => 'Phone Keyer',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Voice keyer: ${count} memories in the radio',
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
@@ -8390,11 +8402,11 @@ extension on Translations {
 			'commands.couldNotOpenLocation' => 'Added the break, but could not open the location screen',
 			'commands.noTestOperations' => 'No Test Operations to purge',
 			'commands.purgeTestsUnavailable' => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here',
+			_ => null,
+		} ?? switch (path) {
 			'commands.syncAllUnavailable' => 'SYNCALL needs to show a confirmation dialog, which isn\'t available here',
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} Test Operation', other: 'Purged ${count} Test Operations', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again',
-			_ => null,
-		} ?? switch (path) {
 			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} test contact with no operation', other: 'Purged ${count} test contacts with no operation', ), 
 			'commands.purgeTestsContactsFailed' => 'Purged the Test Operations, but the test contacts with no operation failed; try PURGETESTS again',
 			'commands.purgeTestsNothingToDo' => 'Nothing was purged',

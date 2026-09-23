@@ -657,7 +657,7 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
     // Doubt is not shown here. It is a real state — the radio answered
     // "idle" before ever answering "going" — but a question mark on the
     // strip asks the operator something they cannot answer while the memory
-    // is going out; the Voice Messages dialog is where it is explained.
+    // is going out; the Phone Keyer dialog is where it is explained.
     final text = activity.recording ? m.recordingMemory(label: label) : m.playingMemory(label: label);
     final color = style.color ?? theme.colorScheme.onSurface;
     final controller = _controller;
@@ -726,7 +726,7 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
 }
 
 /// The speed pill's place in a Phone mode: says the strip is the voice
-/// keyer's, and opens the Voice Messages dialog — where a memory is named,
+/// keyer's, and opens the Phone Keyer dialog — where a memory is named,
 /// played to check, or recorded — the way the speed pill opens the keyer's.
 /// Faded the same way when nothing can play.
 class _VoicePill extends StatelessWidget {
@@ -987,7 +987,10 @@ class _KeyerSpeedDialogState extends State<_KeyerSpeedDialog> {
             leading: const Icon(MdiIcons.messageBulleted),
             title: Text(m.edit, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
             trailing: Icon(MdiIcons.chevronRight, color: theme.colorScheme.onSurfaceVariant),
-            onTap: () => showCwMessagesDialog(context, widget.services),
+            onTap: () async {
+              await showCwMessagesDialog(context, widget.services);
+              if (mounted) setState(() {});
+            },
             mouseCursor: SystemMouseCursors.click,
           ),
           Padding(
@@ -1014,6 +1017,10 @@ class _KeyerSpeedDialogState extends State<_KeyerSpeedDialog> {
                 Expanded(
                   flex: 3,
                   child: DropdownButtonFormField<String>(
+                    // Keyed by the stored value: the CW Keyer dialog, opened
+                    // from the row above, sets the same repeat, and a field
+                    // built once would go on showing the old one.
+                    key: ValueKey(widget.services.settings.cwRepeatDelay),
                     isExpanded: true,
                     initialValue: '${widget.services.settings.cwRepeatDelay.inSeconds}',
                     icon: dropdownTrailingIcon,
