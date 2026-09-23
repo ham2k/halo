@@ -59,6 +59,100 @@ void main() {
     expect(((result['operationSummary'] as Map)['cqww'] as Map)['qsos'], 2);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  test('the OPERATION each QSO is scored against is the segment-effective one, not the base', () async {
+    // Everything else here proves the segment-effective REF reaches the
+    // scorer. This proves the rest of the operation does. The harness hands
+    // `scoreQso` a whole operation, and six scorers read a field of it that is
+    // not the ref — `arrl-vhf-tests` reads `operation.grid`, which is exactly
+    // what a VHF rover changes at each stint.
+    //
+    // Two contacts with the same station on different bands, from two grids.
+    // The distance from FN32 to FN42 is not the distance from EM12 to FN42, so
+    // a harness handing the BASE operation to every QSO scores the second from
+    // FN32aa — no crash, no log, a plausible number that is simply not the one
+    // the operator earned.
+    final host = await sharedHost(['arrl-vhf-tests']);
+    final vhf = {'type': 'arrl-vhf-tests', 'ref': 'ARRL-222'};
+    final contacts = [
+      {
+        ...qso(0, 'W1AW', band: '1.25m'),
+        'refs': [
+          {'type': 'arrl-vhf-tests', 'grid': 'FN42aa'},
+        ],
+      },
+      {
+        ...qso(10, 'W1AW', band: '70cm'),
+        'refs': [
+          {'type': 'arrl-vhf-tests', 'grid': 'FN42aa'},
+        ],
+      },
+    ];
+    final movedAt = contacts[1]['startAtMillis'] as int;
+
+    Future<Map<String, dynamic>?> run(List<Map<String, dynamic>> segments) async {
+      final result =
+          await host.invokeHook(
+                'scoring',
+                key: 'arrl-vhf-tests',
+                method: 'scoreQsos',
+                args: {
+                  'operation': {
+                    'uuid': 'op',
+                    'stationCall': 'N0DEV',
+                    'grid': 'FN32aa',
+                    'refs': [vhf],
+                  },
+                  'qsos': contacts,
+                  'ref': vhf,
+                  'segments': segments,
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map?;
+      return result?.cast<String, dynamic>();
+    }
+
+    final moved = await run([
+      {
+        'fromMillis': dawnOfTime,
+        'operation': {
+          'uuid': 'op',
+          'stationCall': 'N0DEV',
+          'grid': 'FN32aa',
+          'refs': [vhf],
+        },
+      },
+      {
+        'fromMillis': movedAt,
+        'operation': {
+          'uuid': 'op',
+          'stationCall': 'N0DEV',
+          'grid': 'EM12aa',
+          'refs': [vhf],
+        },
+      },
+    ]);
+    final stayed = await run([
+      {
+        'fromMillis': dawnOfTime,
+        'operation': {
+          'uuid': 'op',
+          'stationCall': 'N0DEV',
+          'grid': 'FN32aa',
+          'refs': [vhf],
+        },
+      },
+    ]);
+
+    final movedScores = (moved!['qsoScores'] as Map).cast<String, dynamic>();
+    final stayedScores = (stayed!['qsoScores'] as Map).cast<String, dynamic>();
+    // The first contact predates the break, so both runs must agree about it.
+    expect((movedScores['q0'] as Map)['value'], (stayedScores['q0'] as Map)['value']);
+    // The second is after it, and the grid it is scored from is the only thing
+    // that differs between the two runs.
+    expect((movedScores['q10'] as Map)['value'], isNot((stayedScores['q10'] as Map)['value']), reason: 'scored from EM12aa, not the base operation\'s FN32aa');
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   test('a segment that changes the contest mode changes what scores', () async {
     // Two QSOs, both CW. The operation starts as a CW contest and a break
     // switches it to SSB — so the second QSO is now in the wrong mode and must

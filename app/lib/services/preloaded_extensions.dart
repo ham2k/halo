@@ -57,8 +57,14 @@ const kPreloadReplaces = <String, String>{
 /// not published it yet, and only the first may end the upgrade. A key
 /// retired from the catalog on purpose is added here in the same change.
 ///
-/// `qp` is served as one extension per party (docs/design/contests.md §5.6).
-const kBuiltInsWithoutTwin = {'qp'};
+/// `qp` is served as one extension per party, and `stateparks` as one per
+/// event — `ham2k-flspota`, `ham2k-gaspota`, `ham2k-ohspota`, `ham2k-txspota`
+/// and `ham2k-wispota` (docs/design/contests.md §5.6). Each carries the legacy
+/// `{type: 'qp' | 'stateparks', ref: …}` an existing operation already holds,
+/// so the events survive the upgrade; the built-in they were split out of is
+/// what has no twin, and the operator keeps it until they install the ones
+/// they want.
+const kBuiltInsWithoutTwin = {'qp', 'stateparks'};
 
 /// The built-in whose stored state [key] inherits, or null.
 ///

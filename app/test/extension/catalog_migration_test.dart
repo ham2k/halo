@@ -506,12 +506,13 @@ void main() {
     );
 
     test('a built-in with no twin is answered without asking, and finishes the upgrade', () async {
-      // `qp` is served one extension per party. Asking the listing for
-      // `ham2k-qp` can only fail, so an operator with it switched on would
-      // fail the upgrade on every launch, forever.
+      // `qp` is served one extension per party and `stateparks` one per event.
+      // Asking the listing for `ham2k-qp` or `ham2k-stateparks` can only fail,
+      // so an operator with either switched on would fail the upgrade on every
+      // launch, forever.
       final settings = await _settings(experiment: true, migrated: true);
 
-      final result = await adopt(settings, _Catalog(null), enabled: const ['qp']);
+      final result = await adopt(settings, _Catalog(null), enabled: const ['qp', 'stateparks']);
 
       expect(result.complete, isTrue);
       // And NOT recorded as answered: a record would be read as "already

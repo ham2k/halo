@@ -11,9 +11,10 @@
 // exercise the seam a contest bundle actually goes through at runtime —
 // `__polo.sharedModules['@ham2k/lib-qson-cabrillo']` off the kernel — so a
 // kernel that carried the package without the writer would pass here and
-// fail in the field. `packages/halo_extension_host/test/contest_export_test.dart`
-// is what covers that path: it boots the real kernel over the built bundles
-// and asserts a Cabrillo log out of `stateparks`.
+// fail in the field. `packages/halo_extension_host/test/cabrillo_export_test.dart`
+// is what covers that path: it boots the real kernel over the built bundles,
+// asserts a real Cabrillo log out of one contest, and checks every other
+// contest that writes one reaches the same shared module.
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
