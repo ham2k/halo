@@ -61,6 +61,17 @@ String? buildKenwoodSetModeCommand(String? mode) {
 
 String buildKenwoodReadModeCommand() => 'MD;';
 
+String buildKenwoodSetDataModeCommand({required bool on}) => on ? 'DA1;' : 'DA0;';
+
+String buildKenwoodReadDataModeCommand() => 'DA;';
+
+/// `DA0` / `DA1` → off / on. Null for anything else.
+bool? parseKenwoodDataModeParams(String params) => switch (params) {
+  '0' => false,
+  '1' => true,
+  _ => null,
+};
+
 String buildKenwoodReadInfoCommand() => 'IF;';
 
 /// `PC` is a 3-digit level, 000-100 — on the TS-480/590/2000-family CAT

@@ -815,6 +815,50 @@ void main() {
       expect(session().commands, isEmpty);
     });
 
+    // No radio has an FT8 mode. Handed `FT8`, a driver sends nothing, and a
+    // cross-band tune leaves the rig in whatever its band recall brought back.
+    test('a digital mode reaches the driver as the radio names it', () async {
+      await connectedRadio();
+      session().radioReports(freqKHz: 7074, mode: 'LSB');
+      await pumpEventQueue();
+      session().commands.clear();
+
+      radio.setVfo('vfoA', freq: 14074, mode: 'FT8');
+      await pumpEventQueue();
+      expect(session().commands, ['freq:14074.0', 'mode:DATA-USB', 'freq:14074.0']);
+    });
+
+    // The radio's report of the mode the app put it in is not the operator
+    // changing mode: taking DATA-USB in its place loses FT8 from the log.
+    test('the radio confirming DATA-USB leaves FT8 in the VFO', () async {
+      await connectedRadio();
+      radio.setVfo('vfoA', freq: 14074, mode: 'FT8');
+      await pumpEventQueue();
+
+      session().radioReports(freqKHz: 14074, mode: 'DATA-USB');
+      await pumpEventQueue();
+      expect(radio.vfoA.mode, 'FT8');
+
+      // Nor does it go back out as a new command.
+      session().commands.clear();
+      session().radioReports(freqKHz: 14074.5, mode: 'DATA-USB');
+      await pumpEventQueue();
+      expect(radio.vfoA.mode, 'FT8');
+      expect(session().commands, isEmpty);
+    });
+
+    // Anything else is the operator changing the rig, and the app follows —
+    // including plain USB on a rig that has a DATA submode.
+    test('the radio reporting another mode still replaces FT8', () async {
+      await connectedRadio();
+      radio.setVfo('vfoA', freq: 14074, mode: 'FT8');
+      await pumpEventQueue();
+
+      session().radioReports(freqKHz: 14074, mode: 'USB');
+      await pumpEventQueue();
+      expect(radio.vfoA.mode, 'USB');
+    });
+
     test('a mode-only change does not re-send the frequency', () async {
       await connectedRadio();
       radio.setVfo('vfoA', freq: 14074, mode: 'USB');

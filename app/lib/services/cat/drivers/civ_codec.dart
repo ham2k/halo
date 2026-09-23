@@ -70,6 +70,10 @@ class CivCommand {
   /// finished — 0x28 says nothing about its own progress.
   static const transmitStatus = 0x1C;
 
+  /// "Various settings" — a sub-command byte selects which. Only
+  /// [civSettingDataMode] is used here.
+  static const settings = 0x1A;
+
   /// Sub-command 0x00 with one data byte: 0x01-0x08 transmits voice memory
   /// T1-T8, 0x00 stops the one playing. Documented on the IC-7300MK2 and
   /// IC-7610; the same command is reported working on the IC-7300 and
@@ -224,6 +228,22 @@ List<int> buildCivFrame({required int to, int from = civDefaultControllerAddress
   ...data,
   civTerminator,
 ];
+
+/// [CivCommand.settings] sub-command: the DATA submode (USB-D and the like).
+/// A read answers `06 <data> <filter>`, data 0x00 off and 0x01-0x03 D1-D3; a
+/// set carries the same two bytes, the filter 0x00 when data is off.
+const civSettingDataMode = 0x06;
+
+List<int> buildReadDataModeFrame({required int to, int from = civDefaultControllerAddress}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: const [civSettingDataMode]);
+
+/// D1 when [on], with [filter] (FIL1-FIL3); off sends the filter byte as 0x00.
+List<int> buildSetDataModeFrame({required int to, int from = civDefaultControllerAddress, required bool on, int filter = 0x01}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: [civSettingDataMode, on ? 0x01 : 0x00, on ? filter : 0x00]);
+
+/// `frame.data` of a 0x1A reply: whether the DATA submode is on, or null for
+/// a reply to another sub-command.
+bool? parseDataModeData(List<int> data) => data.length < 2 || data[0] != civSettingDataMode ? null : data[1] != 0x00;
 
 List<int> buildReadFrequencyFrame({required int to, int from = civDefaultControllerAddress}) =>
     buildCivFrame(to: to, from: from, command: CivCommand.readFrequency);

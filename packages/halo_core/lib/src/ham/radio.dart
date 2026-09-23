@@ -127,6 +127,54 @@ String? resolveSideband(String? mode, double? freqKHz, {String? band}) {
   return expectedSideband(freqKHz: freqKHz, band: band) ?? 'USB';
 }
 
+/// The app modes that name a digital mode rather than a way of setting the
+/// radio. A rig running any of them sits in its data sideband.
+const _digitalModes = {'FT8', 'FT4', 'FT2', 'JS8', 'DATA', 'PSK', 'PSK31', 'OLIVIA', 'MFSK', 'JT65', 'JT9', 'WSPR', 'Q65', 'MSK144', 'FST4', 'VARA'};
+
+/// [mode] as a radio would state it: a digital mode becomes `DATA-USB`, a
+/// generic `SSB` the sideband its frequency (or [band]) implies, anything else
+/// itself.
+///
+/// No radio has an FT8 mode. Handing a driver `FT8` sends nothing, and the rig
+/// keeps — or, crossing a band, recalls — whatever mode it was in; the rig's
+/// report of THAT then replaces the operator's mode in the log. This is the
+/// one translation between the app's names and a rig's, for the CAT drivers
+/// and the CAT server alike.
+String? radioModeForAppMode(String? mode, double? freqKHz, {String? band}) {
+  if (mode == null) return null;
+  final upper = mode.toUpperCase();
+  if (_digitalModes.contains(upper)) return 'DATA-USB';
+  return resolveSideband(upper, freqKHz, band: band);
+}
+
+/// What a VFO holding [current] should hold once a radio reports [reported]:
+/// [current] when the report is exactly what [radioModeForAppMode] would have
+/// put the radio in for it, [reported] otherwise.
+///
+/// A rig in DATA-USB is running the FT8 the operator chose, and the log must
+/// still say FT8; any other report — CW, LSB, plain USB — is the operator
+/// changing the rig. Every writer of a VFO from a radio's report goes through
+/// this, a peer's radio included.
+String? appModeForRadioReport({required String? current, required String? reported, double? freqKHz}) {
+  if (current == null || reported == null) return reported;
+  return radioModeForAppMode(current, freqKHz) == reported ? current : reported;
+}
+
+/// The app's data modes and the base mode each one rides on, for a protocol
+/// whose DATA is a submode switched on beside the base mode (CI-V's
+/// `0x1A 0x06`, a Kenwood's `DA`) rather than a mode code of its own.
+const dataModeBases = <String, String>{'DATA-USB': 'USB', 'DATA-LSB': 'LSB', 'DATA-FM': 'FM'};
+
+/// The app's name for [baseMode] with the DATA submode on, or [baseMode]
+/// itself when off or when that mode has no data submode.
+String modeNameWithData(String baseMode, {required bool data}) {
+  if (!data) return baseMode;
+  for (final entry in dataModeBases.entries) {
+    if (entry.value == baseMode) return entry.key;
+  }
+  return baseMode;
+}
+
 /// Whether [mode] names the sideband the band does NOT run — the one thing
 /// about a sideband worth an operator's attention, and the only reason a
 /// display ever spells one out.

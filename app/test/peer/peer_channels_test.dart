@@ -415,6 +415,23 @@ void main() {
       await waitFor('the live change to follow', () => phone.radio.vfoA.freq == 7074.0);
     });
 
+    // The owner's rig states the mode the way a radio does. Taking its
+    // DATA-USB in place of the controller's FT8 logs a mode nobody chose.
+    test("the picked radio's DATA-USB leaves the controller's FT8 standing", () async {
+      phone.control(laptop);
+      laptop.radio.setVfo('vfoA', freq: 14074.0, mode: 'USB');
+      await paired();
+      await waitFor('the snapshot to land', () => phone.radio.vfoA.mode == 'USB');
+      phone.radio.setVfo('vfoA', freq: 14074.0, mode: 'FT8', origin: VfoOrigin.radio);
+
+      laptop.radio.setVfo('vfoA', freq: 14075.0, mode: 'DATA-USB');
+      await waitFor('the report to land', () => phone.radio.vfoA.freq == 14075.0);
+      expect(phone.radio.vfoA.mode, 'FT8');
+
+      laptop.radio.setVfo('vfoA', freq: 14076.0, mode: 'CW');
+      await waitFor('another mode to replace it', () => phone.radio.vfoA.mode == 'CW');
+    });
+
     test('a report nobody picked moves nothing', () async {
       // THE POINT OF THE EXPLICIT PICK. The phone has no radio of its own
       // and is trusted by the laptop — under the derived roles this bridge

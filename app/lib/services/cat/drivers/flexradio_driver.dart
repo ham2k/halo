@@ -28,6 +28,13 @@ import 'line_framer.dart';
 import 'flex_meter_codec.dart';
 import '../transports/flex_meter_socket.dart';
 
+/// App mode names → SmartSDR's, where the spellings differ. SmartSDR calls
+/// its data sidebands `DIGU`/`DIGL`; the app names them the way every other
+/// driver reports them.
+const flexModesByAppMode = <String, String>{'DATA-USB': 'DIGU', 'DATA-LSB': 'DIGL', 'DATA-FM': 'DFM'};
+
+final appModesByFlexMode = {for (final entry in flexModesByAppMode.entries) entry.value: entry.key};
+
 /// Belt-and-suspenders against a subscription silently going stale — a
 /// dropped WiFi/NAT mapping or a radio-side hiccup produces no error to
 /// react to. While updates are wanted, re-send the subscription: it's
@@ -559,7 +566,8 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
       final mhz = double.tryParse(rawFrequency);
       if (mhz != null) freqKHz = double.parse((mhz * 1000).toStringAsFixed(3));
     }
-    final mode = fields['mode']?.toUpperCase();
+    final rawMode = fields['mode']?.toUpperCase();
+    final mode = rawMode == null ? null : appModesByFlexMode[rawMode] ?? rawMode;
 
     // A status push carries only what CHANGED, so each field falls back to
     // what this slice last said rather than to null — treating an absent
@@ -703,7 +711,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
 
   @override
   void setMode(String mode) {
-    _sendCommand('slice set $slice mode=${mode.toUpperCase()}');
+    _sendCommand('slice set $slice mode=${flexModesByAppMode[mode.toUpperCase()] ?? mode.toUpperCase()}');
     _refreshAfterTune();
   }
 

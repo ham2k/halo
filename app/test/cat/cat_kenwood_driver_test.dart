@@ -387,6 +387,65 @@ void main() {
       expect(sink.sent, ['FA00014250000;', 'MD3;']);
     });
 
+    group('the DATA submode', () {
+      late KenwoodSession ts590;
+      setUp(() => ts590 = KenwoodSession(sink, dataMode: true));
+      void receive590(String text) => ts590.handleData(Uint8List.fromList(ascii.encode(text)));
+
+      // `MD` has no FT8 or DATA-USB code: without `DA1;` the rig stays in
+      // whatever mode a band recall brought back, and the log takes that.
+      test('a data mode is its base mode with DA1', () {
+        ts590.setMode('DATA-USB');
+        expect(sink.sent, ['MD2;', 'DA1;']);
+      });
+
+      test('plain USB switches it off, so a rig left in USB-DATA does not stay there', () {
+        ts590.setMode('USB');
+        expect(sink.sent, ['MD2;', 'DA0;']);
+      });
+
+      test('CW has no DATA submode to state', () {
+        ts590.setMode('CW');
+        expect(sink.sent, ['MD3;']);
+      });
+
+      // `MD2;` never says DATA; reported alone, a rig running FT8 in USB-DATA
+      // would log USB.
+      test('USB with DA1 reports as DATA-USB, and back to USB with DA0', () {
+        receive590('MD2;DA1;');
+        expect(sink.readings.last, const VfoReading(mode: 'DATA-USB'));
+        receive590('DA0;');
+        expect(sink.readings.last, const VfoReading(mode: 'USB'));
+      });
+
+      // The poll's `MD` answer arrives before its `DA`. Reported against the
+      // flag from before the set, it says USB, and the log loses the FT8 it
+      // was just told.
+      test('a data mode just set is reported as set, before the radio confirms it', () {
+        ts590.setMode('DATA-USB');
+        receive590('MD2;');
+        expect(sink.readings.last, const VfoReading(mode: 'DATA-USB'));
+      });
+
+      test('is polled with everything else', () {
+        fakeAsync((async) {
+          ts590.startUpdates();
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 30));
+          expect(sink.sent, contains('DA;'));
+          expect(sink.sent.indexOf('DA;'), lessThan(sink.sent.indexOf('MD;')), reason: 'MD is reported against the flag DA reads');
+          ts590.stopUpdates();
+        });
+      });
+
+      // A radio without it gets the base mode and nothing else: DA on a K4
+      // is its digital-audio command, and elsewhere a refused question.
+      test('a radio without it is still put in the base mode', () {
+        session.setMode('DATA-USB');
+        expect(sink.sent, ['MD2;']);
+      });
+    });
+
     test('a session polls, so it reports a poll cadence rather than claiming to push', () {
       // Smart VFO Snap uses this to tell a settled VFO from an unasked one.
       expect(session.expectedUpdateInterval, isNotNull);

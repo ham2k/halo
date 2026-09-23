@@ -24,6 +24,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:halo_core/halo_core.dart';
+
 import '../cat/drivers/line_framer.dart';
 import '../cat/drivers/rigctld_driver.dart';
 import 'cat_server_protocol.dart';

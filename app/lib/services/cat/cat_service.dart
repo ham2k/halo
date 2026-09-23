@@ -2202,7 +2202,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     // about to receive as its own, instead of re-tuning the radio to the
     // value the radio just gave it.
     if (uuid != _localRadio1) return;
-    _radio?.setVfo('vfoA', freq: merged.freqKHz, mode: merged.mode, origin: VfoOrigin.radio);
+    final mode = appModeForRadioReport(current: _radio?.vfoA.mode, reported: merged.mode, freqKHz: merged.freqKHz);
+    _radio?.setVfo('vfoA', freq: merged.freqKHz, mode: mode, origin: VfoOrigin.radio);
     _noteSnapReading(merged);
   }
 
@@ -2385,10 +2386,13 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// one this device OFFERS to a peer (HALO-416) is driven from the far
   /// side's operator and never passes through [_onVfoChanged], which reads
   /// `vfoA` — a VFO that rig is not attached to.
-  void tuneNode(String uuid, VfoReading wanted) {
+  void tuneNode(String uuid, VfoReading requested) {
     final runtime = _runtimes[uuid];
     final session = runtime?.session;
     if (session == null) return;
+    // Drivers speak the radio's modes, and `lastSent` records them: an FT8
+    // VFO goes out as DATA-USB, and the rig's DATA-USB echo then matches it.
+    final wanted = VfoReading(freqKHz: requested.freqKHz, mode: radioModeForAppMode(requested.mode, requested.freqKHz));
     // Nothing the radio doesn't already have. A band pick with no
     // frequency, or a mode restatement, must not re-send a tune command.
     final previous = runtime!.lastSent;

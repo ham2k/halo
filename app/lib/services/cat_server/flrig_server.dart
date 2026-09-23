@@ -27,6 +27,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:halo_core/halo_core.dart';
+
 import '../cat/drivers/flrig_driver.dart';
 import 'cat_server_protocol.dart';
 import 'cat_server_rig.dart';

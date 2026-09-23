@@ -6,7 +6,6 @@
 // (docs/design/cat.md § CAT server).
 
 import 'package:flutter/foundation.dart';
-import 'package:halo_core/halo_core.dart';
 
 import '../cat/cat_service.dart';
 import '../cat/equipment.dart';
@@ -108,18 +107,4 @@ String? tunableAppMode(String mode) {
   final upper = mode.toUpperCase();
   if (upper == 'CW-R') return 'CW';
   return _tunableModes.contains(upper) ? upper : null;
-}
-
-/// The app modes that name a digital mode rather than a way of setting the
-/// radio. A rig running any of them sits in its data sideband, which is what
-/// a client asking "what mode is the radio in?" needs to hear.
-const _dataModes = {'FT8', 'FT4', 'FT2', 'JS8', 'DATA', 'PSK', 'PSK31', 'OLIVIA', 'MFSK', 'JT65', 'JT9', 'WSPR', 'Q65', 'MSK144', 'FST4', 'VARA'};
-
-/// [mode] as a radio would state it: a digital mode becomes `DATA-USB`, a
-/// generic `SSB` the sideband its frequency implies, anything else itself.
-String? radioModeForAppMode(String? mode, double? freqKHz) {
-  if (mode == null) return null;
-  final upper = mode.toUpperCase();
-  if (_dataModes.contains(upper)) return 'DATA-USB';
-  return resolveSideband(upper, freqKHz);
 }

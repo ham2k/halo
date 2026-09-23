@@ -264,7 +264,7 @@ void main() {
     // The driver waits for the H line before subscribing, then Flex answers
     // with a full status refresh — which is what the panel shows.
     await _settleUntil(() => cat.stateFor(node.uuid).vfo.freqKHz != null);
-    expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 14074, mode: 'DIGU'));
+    expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 14074, mode: 'DATA-USB'));
     expect(flex.commands.any((c) => c.contains('sub slice all')), isTrue);
 
     // The operator turns the knob.

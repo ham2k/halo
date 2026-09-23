@@ -218,6 +218,24 @@ what the user configured; everything about a connection is rebuilt at runtime.
   through it. No CAT protocol has an "SSB" mode. The convention: 160/80/40 m are LSB, everything else
   USB (including 60 m, which is channelized USB by international agreement despite being below
   10 MHz).
+- **A digital mode reaches a driver as `DATA-USB`.** No radio has an FT8 mode. A driver handed
+  one sends nothing, and a cross-band tune leaves the rig in whatever its band recall brought back.
+  `CatService.tuneNode` translates the mode through `halo_core`'s `radioModeForAppMode`, the same
+  translation the CAT server uses to answer "what mode is the radio in?". The reverse direction keeps
+  the operator's word: when the Main VFO's radio reports exactly the radio form of VFO A's mode
+  (DATA-USB for FT8), VFO A keeps FT8. That holds for a local radio1 and for a peer's radio alike,
+  through one rule, `appModeForRadioReport`. Any other report, plain USB included, is the operator
+  changing the rig, and the app follows. Each driver puts DATA-USB on its own name for it: `MD0C;` on a Yaesu, `PKTUSB` for
+  rigctld, `USB-D` for flrig, `DIGU` on a Flex, DATA A (`MD6;DT0;`) on a K4. Where the protocol has
+  only a DATA *submode* beside the base mode (Icom `0x1A 0x06`, the TS-590's `DA`), the driver sets
+  the base mode, then switches the submode on. For plain USB/LSB/FM it switches the submode off.
+  It takes the flag as set at once: the poll's mode answer arrives before the radio confirms the
+  flag, and reported against the old one it would put USB in the log. The poll also asks for the
+  submode before the mode, and the driver reads it back, so a rig in USB-D reports DATA-USB rather
+  than USB. An Icom that never answers the read (a rig without the submode on the generic entry)
+  stops being asked after two polls, and a diagnostic says so. An
+  entry whose radio has no submode (`civDataMode: false` on the IC-706MKIIG and G90; any Kenwood
+  without `dataMode`) is put in the base mode. It then reports USB, so the log says USB.
 - **A CI-V mode set carries no filter byte**, so the operator's filter survives a mode change (polo
   sent `01` and forced FIL1 every time). The exception is an entry pinning `civModeWithFilter` —
   the Xiegu G90, which ignores a set without one: it sends the filter the radio last reported for

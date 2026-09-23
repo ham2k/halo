@@ -301,7 +301,12 @@ class PeerChannels {
     if (selection == null) return;
     final vfo = _peerVfos['${selection.deviceId}/${selection.radioId}'];
     if (vfo == null) return;
-    radio?.setVfo('vfoA', freq: vfo.freqKHz, mode: vfo.mode, origin: VfoOrigin.radio);
+    radio?.setVfo(
+      'vfoA',
+      freq: vfo.freqKHz,
+      mode: appModeForRadioReport(current: radio?.vfoA.mode, reported: vfo.mode, freqKHz: vfo.freqKHz),
+      origin: VfoOrigin.radio,
+    );
   }
 
   void _announceOffers({PeerSession? to}) {
@@ -538,7 +543,12 @@ class PeerChannels {
       _peerVfos['$peerDeviceId/${vfo.radioId}'] = VfoReading(freqKHz: vfo.freqKHz, mode: vfo.mode);
       if (station?.followedPeerRadio?.matches(peerDeviceId, vfo.radioId) ?? false) {
         _appliedSelection = station?.followedPeerRadio;
-        radio?.setVfo('vfoA', freq: vfo.freqKHz, mode: vfo.mode, origin: VfoOrigin.radio);
+        radio?.setVfo(
+          'vfoA',
+          freq: vfo.freqKHz,
+          mode: appModeForRadioReport(current: radio?.vfoA.mode, reported: vfo.mode, freqKHz: vfo.freqKHz),
+          origin: VfoOrigin.radio,
+        );
       }
       return;
     }

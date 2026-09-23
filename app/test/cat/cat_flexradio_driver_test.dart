@@ -174,7 +174,7 @@ void main() {
   group('status parsing', () {
     test('reports slice 0 frequency and mode from a real status line, in kHz', () {
       session.feed('$_radioStatusLine\n$_sliceStatusLine\n');
-      expect(sink.readings, [const VfoReading(freqKHz: 14074, mode: 'DIGU')]);
+      expect(sink.readings, [const VfoReading(freqKHz: 14074, mode: 'DATA-USB')]);
     });
 
     test('keeps decimals rather than rounding to whole kHz', () {
@@ -203,7 +203,7 @@ void main() {
       expect(sink.readings, isEmpty, reason: 'a half-received line is not yet a line');
 
       session.feed(wholeLine.substring(splitAt));
-      expect(sink.readings, [const VfoReading(freqKHz: 14074, mode: 'DIGU')]);
+      expect(sink.readings, [const VfoReading(freqKHz: 14074, mode: 'DATA-USB')]);
     });
 
     test('reassembles a handshake split across chunks', () {
@@ -222,7 +222,7 @@ void main() {
 
     test('handles CRLF line endings and several frames in one chunk', () {
       session.feed('$_otherSliceStatusLine\r\n$_sliceStatusLine\r\n');
-      expect(sink.readings, [const VfoReading(freqKHz: 14074, mode: 'DIGU')]);
+      expect(sink.readings, [const VfoReading(freqKHz: 14074, mode: 'DATA-USB')]);
     });
 
     test('reports rfpower from a transmit status line', () {
@@ -418,6 +418,13 @@ void main() {
     test('sets the mode on the tracked slice', () {
       session.setMode('usb');
       expect(sentAny('slice set 0 mode=USB'), isTrue);
+    });
+
+    // SmartSDR has no DATA-USB: a raw pass-through is refused, and the slice
+    // stays in whatever mode a band change left it in.
+    test("puts a data mode on SmartSDR's own name for it", () {
+      session.setMode('DATA-USB');
+      expect(sentAny('slice set 0 mode=DIGU'), isTrue);
     });
 
     test('sets power on the transmit object, in watts', () {
@@ -705,7 +712,7 @@ void main() {
       expect(sink.channel('0').label, 'A');
       expect(sink.channel('0').inUse, isTrue);
       expect(sink.channel('0').freqKHz, 14074);
-      expect(sink.channel('0').mode, 'DIGU');
+      expect(sink.channel('0').mode, 'DATA-USB');
       expect(sink.channel('1').label, 'B');
       expect(sink.channel('1').freqKHz, 7123);
       // A slice the radio has never mentioned is offered, and empty.

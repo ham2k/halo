@@ -16,6 +16,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../driver.dart';
@@ -90,6 +91,13 @@ const _civExchangeBytes = 16;
 /// at all gets FIL1: a forced filter is better than a mode control that
 /// does nothing.
 const civModeWithFilterConfigKey = 'civModeWithFilter';
+
+/// Pinned `false` by an entry whose radio has no DATA submode (`0x1A 0x06`),
+/// which would refuse the read on every poll. Every other entry reads and
+/// sets it: without it an FT8 request puts the rig in plain USB, and a rig
+/// in USB-D reports itself as USB. Never a field: it is a fact about the
+/// model.
+const civDataModeConfigKey = 'civDataMode';
 
 /// The TX watch is one exchange; the meter cycle is one per meter read.
 const civTxWatchBytes = _civExchangeBytes;
@@ -191,6 +199,7 @@ class IcomCivDriver extends EquipmentDriver {
     'maxWatts',
     'batteryMaxWatts',
     civModeWithFilterConfigKey,
+    civDataModeConfigKey,
     cwKeyerConfigKey,
     voiceMemoriesConfigKey,
     voiceCeilingConfigKey,
@@ -356,6 +365,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     this._meterInfoKey,
   }) : _config = config,
        _modeWithFilter = config[civModeWithFilterConfigKey] == true,
+       _dataModeSupported = config[civDataModeConfigKey] != false,
        _baudRate = serialBaudRateOrNull(config);
 
   /// See [civModeWithFilterConfigKey].
@@ -371,10 +381,44 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   bool _warnedNoFilter = false;
   String? _pendingMode;
 
+  /// See [civDataModeConfigKey]. Cleared for the rest of the session by a
+  /// radio that never answers the read — see [_dataReadMisses].
+  bool _dataModeSupported;
+
+  /// Whether a DATA read is out with no answer yet, and how many mode
+  /// answers have arrived since without one. The poll asks for DATA before
+  /// the mode and replies come in order, so a mode answer behind an
+  /// unanswered DATA read means the radio refused it — as one without the
+  /// submode does, on an entry (the generic Icom one) that could not pin it.
+  /// Counting against mode answers rather than time keeps a radio that is
+  /// switched off from being judged.
+  bool _dataReadPending = false;
+  int _dataReadMisses = 0;
+  static const _dataReadMissLimit = 2;
+
+  void _readDataMode() {
+    _dataReadPending = true;
+    _send(buildReadDataModeFrame(to: radioAddress, from: controllerAddress));
+  }
+
+  /// The base mode the radio last reported, and whether its DATA submode was
+  /// on — two answers to two questions, reported as one app mode by
+  /// [_reportMode].
+  String? _baseMode;
+  bool _dataOn = false;
+
+  void _reportMode() {
+    final base = _baseMode;
+    if (base != null) _sink.report(VfoReading(mode: modeNameWithData(base, data: _dataOn)));
+  }
+
   void _send(List<int> frame) => _sink.send(frame);
 
   void _requestFrequencyAndMode() {
     _send(buildReadFrequencyFrame(to: radioAddress, from: controllerAddress));
+    // DATA first: the mode answer is reported against the flag as it stands,
+    // and a flag read after it would report the base mode alone in between.
+    if (_dataModeSupported) _readDataMode();
     _send(buildReadModeFrame(to: radioAddress, from: controllerAddress));
     _send(buildReadPowerLevelFrame(to: radioAddress, from: controllerAddress));
     _send(buildReadMeterFrame(to: radioAddress, from: controllerAddress, meterId: civMeterDcInputVoltage));
@@ -497,14 +541,16 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
       case CivCommand.transceiveMode:
       case CivCommand.readMode:
         if (frame.data.isEmpty) return;
-        // data[0] is the mode; data[1], when present, is the filter, which
-        // only an entry that must send one back keeps.
+        // data[0] is the mode; data[1], when present, is the filter — sent
+        // back by an entry that must send one with a mode, and by every
+        // DATA submode set.
+        if (frame.data.length > 1) {
+          _lastFilter = frame.data[1];
+          _filterByMode[frame.data[0]] = frame.data[1];
+        }
         if (_modeWithFilter) {
           _modeAnswered = true;
-          if (frame.data.length > 1) {
-            _lastFilter = frame.data[1];
-            _filterByMode[frame.data[0]] = frame.data[1];
-          } else if (!_warnedNoFilter) {
+          if (frame.data.length <= 1 && !_warnedNoFilter) {
             _warnedNoFilter = true;
             debugPrint('[cat] CI-V: mode answers carry no filter byte; mode sets send FIL1');
           }
@@ -516,8 +562,30 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
             return;
           }
         }
+        if (frame.command == CivCommand.readMode && _dataReadPending && ++_dataReadMisses >= _dataReadMissLimit) {
+          // Without this, a DATA flag taken as set on a radio that refused
+          // it would report DATA-USB for a rig in plain USB for good.
+          _dataModeSupported = false;
+          _dataReadPending = false;
+          _dataOn = false;
+          _sink.reportDiagnostic('radio does not answer the DATA submode read (0x1A 0x06); data modes set plain USB');
+        }
         final mode = civModeNameForCode(frame.data[0]);
-        if (mode != null) _sink.report(VfoReading(mode: mode));
+        if (mode == null) return;
+        _baseMode = mode;
+        _reportMode();
+        // A mode announced on its own may have brought its DATA submode with
+        // it — a band recall does — and the announcement does not say.
+        if (frame.command == CivCommand.transceiveMode && _dataModeSupported) _readDataMode();
+
+      case CivCommand.settings:
+        final data = parseDataModeData(frame.data);
+        if (data == null) return;
+        _dataReadPending = false;
+        _dataReadMisses = 0;
+        if (data == _dataOn) return;
+        _dataOn = data;
+        _reportMode();
 
       case CivCommand.readSetLevel:
         // 0x14 covers several levels (AF, RF gain, squelch…) sharing one
@@ -591,16 +659,31 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // filter selection, which polo did on every mode change. An entry that
     // must send one sends the radio's own back.
     int? filter;
-    if (_modeWithFilter) {
-      if (!_modeAnswered) {
-        _pendingMode = mode;
-        return;
-      }
-      final code = civCodeForModeName(mode);
-      filter = (code == null ? null : _filterByMode[code]) ?? _lastFilter ?? 0x01;
+    if (_modeWithFilter && !_modeAnswered) {
+      _pendingMode = mode;
+      return;
     }
-    final frame = buildSetModeFrame(to: radioAddress, from: controllerAddress, mode: mode, filter: filter);
-    if (frame != null) _send(frame);
+    // A data mode is its base mode with the DATA submode on; a radio without
+    // one is at least put in the base mode, rather than left in whatever a
+    // band recall brought back.
+    final dataBase = dataModeBases[mode.toUpperCase()];
+    final base = dataBase ?? mode;
+    final code = civCodeForModeName(base);
+    final radioFilter = (code == null ? null : _filterByMode[code]) ?? _lastFilter ?? 0x01;
+    if (_modeWithFilter) filter = radioFilter;
+    final frame = buildSetModeFrame(to: radioAddress, from: controllerAddress, mode: base, filter: filter);
+    if (frame == null) return;
+    _send(frame);
+    // Stated either way wherever the base mode has a submode: setting the
+    // mode leaves DATA as it was on some radios, so plain USB after FT8
+    // would otherwise stay USB-D.
+    if (_dataModeSupported && dataModeBases.containsValue(base.toUpperCase())) {
+      _send(buildSetDataModeFrame(to: radioAddress, from: controllerAddress, on: dataBase != null, filter: radioFilter));
+      // Taken as set: the next mode answer would otherwise be reported
+      // against the flag from before, putting the old mode in the log until
+      // the DATA read lands. A refused set is corrected by that read.
+      _dataOn = dataBase != null;
+    }
   }
 
   @override

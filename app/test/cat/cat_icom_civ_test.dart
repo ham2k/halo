@@ -124,6 +124,24 @@ void main() {
       expect(sink.readings, [const VfoReading(mode: 'CW')]);
     });
 
+    // The mode answer never says DATA. Reported as plain USB, a rig running
+    // FT8 in USB-D would put USB in the log.
+    test('USB with the DATA submode on reports as DATA-USB', () {
+      feed([0xFE, 0xFE, us, ic705, 0x04, 0x01, 0x01, 0xFD]);
+      feed([0xFE, 0xFE, us, ic705, 0x1A, 0x06, 0x01, 0x01, 0xFD]);
+      expect(sink.readings.last, const VfoReading(mode: 'DATA-USB'));
+      feed([0xFE, 0xFE, us, ic705, 0x1A, 0x06, 0x00, 0x00, 0xFD]);
+      expect(sink.readings.last, const VfoReading(mode: 'USB'));
+    });
+
+    // A band recall can bring DATA with it, and the announcement is only the
+    // base mode: without the follow-up read the flag stays stale until the
+    // next poll.
+    test('a mode the radio announces on its own asks after the DATA submode', () {
+      feed([0xFE, 0xFE, 0x00, ic705, 0x01, 0x01, 0x01, 0xFD]);
+      expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x1A, 0x06, 0xFD]);
+    });
+
     test('keeps sub-kHz precision the way CI-V reports it', () {
       // CI-V carries down to 1 Hz; 14074123 Hz.
       feed([0xFE, 0xFE, us, ic705, 0x03, 0x23, 0x41, 0x07, 0x14, 0x00, 0xFD]);
@@ -278,7 +296,71 @@ void main() {
     test('set mode leaves the operator filter alone', () {
       session.setMode('USB');
       // No trailing filter byte: polo sent 01 every time, forcing FIL1.
-      expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x06, 0x01, 0xFD]);
+      expect(sink.sent.first, [0xFE, 0xFE, ic705, us, 0x06, 0x01, 0xFD]);
+    });
+
+    // CI-V has no FT8 or DATA-USB mode code. Without the submode, a data mode
+    // sends nothing and the rig keeps whatever a band recall brought back.
+    test('a data mode is its base mode with the DATA submode switched on', () {
+      feed([0xFE, 0xFE, us, ic705, 0x04, 0x01, 0x02, 0xFD]);
+      sink.sent.clear();
+      session.setMode('DATA-USB');
+      expect(sink.sent, [
+        [0xFE, 0xFE, ic705, us, 0x06, 0x01, 0xFD],
+        [0xFE, 0xFE, ic705, us, 0x1A, 0x06, 0x01, 0x02, 0xFD],
+      ], reason: "D1 with USB's own filter, not a forced FIL1");
+    });
+
+    // Some radios keep DATA across a 0x06 mode set: plain USB after FT8 would
+    // stay USB-D, and the log would say USB for a rig still in data.
+    test('plain USB switches the DATA submode off', () {
+      session.setMode('USB');
+      expect(sink.sent.last, [0xFE, 0xFE, ic705, us, 0x1A, 0x06, 0x00, 0x00, 0xFD]);
+    });
+
+    // The poll's mode answer arrives before its DATA answer. Reported
+    // against the flag from before the set, it says USB, and the log loses
+    // the FT8 it was just told.
+    test('a data mode just set is reported as set, before the radio confirms it', () {
+      session.setMode('DATA-USB');
+      feed([0xFE, 0xFE, us, ic705, 0x04, 0x01, 0x01, 0xFD]);
+      expect(sink.readings.last, const VfoReading(mode: 'DATA-USB'));
+    });
+
+    test('the poll asks for DATA before the mode it is reported against', () {
+      session.startUpdates();
+      final commands = sink.sent.map((f) => f[4]).toList();
+      expect(commands.indexOf(CivCommand.settings), lessThan(commands.indexOf(CivCommand.readMode)));
+      session.teardown();
+    });
+
+    // The generic entry cannot pin the submode off for a radio that lacks it.
+    // Left on, a flag taken as set reports DATA-USB for a rig in plain USB
+    // for as long as the session lasts.
+    test('a radio that never answers the DATA read stops being asked, and says so', () {
+      session.setMode('DATA-USB');
+      session.startUpdates();
+      for (var i = 0; i < 2; i++) {
+        feed([0xFE, 0xFE, us, ic705, 0xFA, 0xFD]);
+        feed([0xFE, 0xFE, us, ic705, 0x04, 0x01, 0x01, 0xFD]);
+      }
+      expect(sink.readings.last, const VfoReading(mode: 'USB'));
+      expect(sink.diagnostics.whereType<String>(), contains(contains('0x1A 0x06')));
+      sink.sent.clear();
+      session.setMode('DATA-USB');
+      expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x06, 0x01, 0xFD], reason: 'the base mode alone');
+      session.teardown();
+    });
+
+    test('CW leaves the DATA submode alone, since it has none', () {
+      session.setMode('CW');
+      expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x06, 0x03, 0xFD]);
+    });
+
+    test('a radio without the DATA submode is still put in the base mode', () {
+      final ic706 = IcomCivSession(sink, radioAddress: 0x58, controllerAddress: us, config: const {civDataModeConfigKey: false});
+      ic706.setMode('DATA-USB');
+      expect(sink.sent.single, [0xFE, 0xFE, 0x58, us, 0x06, 0x01, 0xFD]);
     });
 
     test('a mode CI-V has no code for sends nothing', () {
@@ -291,7 +373,14 @@ void main() {
     // the operator's selection, as polo did; the radio's own is sent back.
     group('on an entry that must send a filter', () {
       late IcomCivSession g90;
-      setUp(() => g90 = IcomCivSession(sink, radioAddress: 0x88, controllerAddress: us, config: const {civModeWithFilterConfigKey: true}));
+      setUp(
+        () => g90 = IcomCivSession(
+          sink,
+          radioAddress: 0x88,
+          controllerAddress: us,
+          config: const {civModeWithFilterConfigKey: true, civDataModeConfigKey: false},
+        ),
+      );
       void feedG90(List<int> bytes) => g90.handleData(Uint8List.fromList(bytes));
 
       test('a mode not yet seen gets the filter currently in use', () {
@@ -411,7 +500,7 @@ void main() {
     test('polls for frequency and mode, and stops when told', () {
       fakeAsync((async) {
         session.startUpdates();
-        expect(sink.sent, hasLength(5), reason: 'asks once immediately, the keyer speed included');
+        expect(sink.sent, hasLength(6), reason: 'asks once immediately, the keyer speed included');
         sink.sent.clear();
 
         // Counted apart from the TX watch, which runs on its own much
@@ -419,7 +508,7 @@ void main() {
         // any count of the state poll.
         async.elapse(const Duration(seconds: 5));
         final state = sink.sent.where((f) => !_isTxWatch(f)).toList();
-        expect(state, hasLength(4), reason: 'the keyer speed is not polled');
+        expect(state, hasLength(5), reason: 'the keyer speed is not polled');
 
         sink.sent.clear();
         session.stopUpdates();

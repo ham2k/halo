@@ -25,6 +25,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../adaptive_poller.dart';
 import '../telemetry_poller.dart';
@@ -79,6 +80,12 @@ class KenwoodDriver extends EquipmentDriver {
   /// same way. Absent — or a name no dialect answers to — keys nothing.
   static const cwDialectKey = 'cwDialect';
 
+  /// Whether the radio has the `DA` DATA submode (the TS-590 generation),
+  /// pinned per entry like the dialects above. Absent means none: on the K4
+  /// `DA` is the digital-audio command, and on a radio without it every poll
+  /// would ask a question it refuses.
+  static const dataModeKey = 'dataMode';
+
   static KenwoodCwDialect? cwDialectFrom(Map<String, dynamic> config) => KenwoodCwDialect.values.where((d) => d.name == config[cwDialectKey]).firstOrNull;
 
   static KenwoodVoiceDialect? voiceDialectFrom(Map<String, dynamic> config) =>
@@ -115,6 +122,7 @@ class KenwoodDriver extends EquipmentDriver {
     voiceDialectKey,
     voiceMemoriesKey,
     voiceCeilingConfigKey,
+    dataModeKey,
   };
 
   @override
@@ -132,6 +140,7 @@ class KenwoodDriver extends EquipmentDriver {
     voiceDialect: voiceDialectFrom(config),
     voiceMemories: voiceMemoriesFrom(config),
     voiceMemoryCeiling: voiceCeilingFromConfig(config),
+    dataMode: !isK4 && config[dataModeKey] == true,
     config: config,
   );
 
@@ -322,6 +331,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     this.voiceDialect,
     this._voiceMemories = 0,
     this.voiceMemoryCeiling = voiceActivityCeiling,
+    this.dataMode = false,
     Map<String, dynamic> config = const {},
   }) : _modeOffset = declaredModeOffset,
        // ignore: prefer_initializing_formals
@@ -329,6 +339,21 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   /// The node's merged config, kept for [_telemetry]'s cadence.
   final Map<String, dynamic> _config;
+
+  /// See [KenwoodDriver.dataModeKey].
+  final bool dataMode;
+
+  /// Whether the DATA submode was last reported on, and the base mode it was
+  /// last reported against — `MD` and `IF` never say DATA, so [_withData]
+  /// combines them.
+  bool _dataOn = false;
+  String? _baseMode;
+
+  String? _withData(String? mode) {
+    if (mode == null || !dataMode) return mode;
+    _baseMode = mode;
+    return modeNameWithData(mode, data: _dataOn);
+  }
 
   /// Where the mode is being read from, whether that was declared by the
   /// radio's own definition or worked out here — [declaredModeOffset] is what
@@ -364,6 +389,9 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
       _send('IF;PCX;');
       return;
     }
+    // DATA first: `MD` and `IF` are reported against the flag as it stands,
+    // and a flag read after them would report the base mode alone in between.
+    if (dataMode) _send(buildKenwoodReadDataModeCommand());
     _send(buildKenwoodReadFrequencyCommand());
     _send(buildKenwoodReadModeCommand());
     _send(buildKenwoodReadInfoCommand());
@@ -418,7 +446,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         // radio sent, and round-tripping it through the name map would go
         // wrong the day two names share a code.
         _pendingModeCode = command.params;
-        _report(VfoReading(mode: mode));
+        _report(VfoReading(mode: _withData(mode)));
 
       case 'IF':
         _handleInfo(command.params);
@@ -474,6 +502,14 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         if (channel == null) return;
         _voicePollSays(going: channel != 0);
       case 'DA':
+        if (dataMode) {
+          final on = parseKenwoodDataModeParams(command.params);
+          if (on == null || on == _dataOn) return;
+          _dataOn = on;
+          final base = _baseMode;
+          if (base != null) _report(VfoReading(mode: modeNameWithData(base, data: on)));
+          return;
+        }
         // Only the K4's: on a Kenwood `DA` is the DATA-mode command, whose
         // `DA0;` would otherwise read as "idle" and end a memory on the air.
         if (voiceDialect != KenwoodVoiceDialect.k4) return;
@@ -509,7 +545,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // generation of the line.
     final freqHz = parseKenwoodInfoFrequency(params);
     final learned = _modeOffset;
-    final mode = learned == null ? null : parseKenwoodInfoModeAt(params, learned);
+    final mode = learned == null ? null : _withData(parseKenwoodInfoModeAt(params, learned));
 
     if (freqHz != null || mode != null) {
       _report(VfoReading(freqKHz: freqHz == null ? null : freqHz / 1000, mode: mode));
@@ -567,7 +603,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         // from where the radio says the mode actually is, so the wrong one
         // just reported upward does not stand until the next poll.
         _modeOffset = null;
-        _report(VfoReading(mode: parseKenwoodInfoModeAt(params, offset)));
+        _report(VfoReading(mode: _withData(parseKenwoodInfoModeAt(params, offset))));
         // Said once and done: the layout does not change mid-session, so
         // re-deciding it on every packet forever would add nothing.
         _settled = true;
@@ -607,12 +643,31 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   @override
   void setMode(String mode) {
-    final command = isK4 ? buildK4SetModeCommand(mode) : buildKenwoodSetModeCommand(mode);
+    if (isK4) {
+      final command = buildK4SetModeCommand(mode);
+      if (command != null) {
+        _send(command);
+        _send('IF;');
+      }
+      return;
+    }
+    // A data mode is its base mode with the DATA submode on; a radio without
+    // one is at least put in the base mode, rather than left in whatever a
+    // band recall brought back.
+    final dataBase = dataModeBases[mode.toUpperCase()];
+    final base = dataBase ?? mode;
     // A mode the radio has no code for sends nothing, rather than a
     // malformed command it would silently reject.
-    if (command != null) {
-      _send(command);
-      if (isK4) _send('IF;');
+    final command = buildKenwoodSetModeCommand(base);
+    if (command == null) return;
+    _send(command);
+    // Stated either way wherever the base mode has a submode, so plain USB
+    // after FT8 does not stay in USB-DATA.
+    if (dataMode && dataModeBases.containsValue(base.toUpperCase())) {
+      _send(buildKenwoodSetDataModeCommand(on: dataBase != null));
+      // Taken as set: the next `MD`/`IF` would otherwise be reported against
+      // the flag from before. A refused set is corrected by the next `DA;`.
+      _dataOn = dataBase != null;
     }
   }
 

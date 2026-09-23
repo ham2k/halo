@@ -42,7 +42,7 @@ const ts590sgModel = EquipmentModel(
       driver: KenwoodDriver(),
       transport: SerialTransport(),
       defaultConfig: {'baudRate': 115200},
-      overrides: {KenwoodDriver.cwDialectKey: 'kenwood', KenwoodDriver.voiceDialectKey: '', KenwoodDriver.voiceMemoriesKey: 0},
+      overrides: {KenwoodDriver.cwDialectKey: 'kenwood', KenwoodDriver.voiceDialectKey: '', KenwoodDriver.voiceMemoriesKey: 0, KenwoodDriver.dataModeKey: true},
       notes: _kenwoodSerialNotes,
     ),
   ],

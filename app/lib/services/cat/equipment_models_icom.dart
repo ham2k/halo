@@ -205,7 +205,9 @@ const ic706mkiigModel = EquipmentModel(
       // power, SWR and ALC slots on a panel where they can never fill. This
       // radio's CI-V table gives command 0x15 exactly two sub-commands, 01
       // squelch and 02 S-meter; the TX meters arrived a generation later.
-      overrides: {cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0, meterInfoConfigKey: ''},
+      //
+      // Nor does its CI-V table have the DATA submode read (0x1A 0x06).
+      overrides: {cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0, meterInfoConfigKey: '', civDataModeConfigKey: false},
       notes: _ic706mkiigSerialNotes,
     ),
   ],
@@ -350,7 +352,7 @@ const g90Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': '88', 'baudRate': 19200},
-      overrides: {civModeWithFilterConfigKey: true, 'maxWatts': 20, cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0},
+      overrides: {civModeWithFilterConfigKey: true, civDataModeConfigKey: false, 'maxWatts': 20, cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0},
       notes: _civSerialNotes,
     ),
   ],
