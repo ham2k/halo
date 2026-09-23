@@ -37,6 +37,7 @@ import '../../services/extension_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import 'activities_catalog_tier.dart';
+import 'activities_enable_tier.dart';
 import 'operation_location_screen.dart';
 import '../accordion_section.dart';
 import '../operation_dialogs.dart';
@@ -367,28 +368,6 @@ class ActivitySearchQuery {
   static String scopePrefixFor(String scopeWord) => '$scopeWord: ';
 }
 
-/// How [input] should be matched against an extension the operator has NOT
-/// switched on: [search] is the whole box, matched loosely against names,
-/// descriptions and keywords; [key] is its first word, which must equal an
-/// extension's key exactly. A lone trailing colon is dropped from both.
-///
-/// The first word is the part that matters here. An extension that is off
-/// contributes no controls, so [ActivitySearchQuery.parse] can't recognize its
-/// key and hands the whole string on as plain search text — and `sota
-/// w7a/mn-001` matches no extension as a whole, leaving the operator with an
-/// empty list and no hint that SOTA is a switch away.
-///
-/// Exactly, though, and not through the loose match: keys turn up inside
-/// unrelated extensions' keywords, so `pota bear mtn` would otherwise offer to
-/// enable State Parks Events above the parks the operator was looking for.
-///
-/// Both are empty for an empty box: "show everything" is not a match.
-({String search, String key}) extensionSearchCandidates(String input) {
-  final trimmed = input.trim().replaceFirst(RegExp(r':$'), '').trim();
-  final firstWord = input.trim().split(RegExp(r'\s')).first;
-  return (search: trimmed, key: firstWord.replaceFirst(RegExp(r':$'), '').toLowerCase());
-}
-
 /// What's in [typed] past a leading [key], or empty when it doesn't lead with
 /// that key at all — an extension matched by its name or a keyword leaves
 /// nothing worth carrying into its scope.
@@ -474,10 +453,10 @@ class OperationSheetState extends State<OperationSheet> {
   // id still matches the latest request gets applied.
   int _searchRequestId = 0;
 
-  /// Extensions that match what was typed but aren't turned on — offered as
-  /// "enable this?" rows above the results, since an activity the user
-  /// searched for looking like it simply doesn't exist is worse than one
-  /// extra row. Empty unless the box has text in it.
+  /// Extensions that match what was typed but aren't running — offered as
+  /// rows of the Activity Types section (see activities_enable_tier.dart),
+  /// since an activity searched for looking like it simply doesn't exist is
+  /// worse than one extra row. Empty unless the box has text in it.
   List<ExtensionInfo> _disabledMatches = const [];
 
   /// The catalog tier's own state — the listing, the one fetch that gets it,
@@ -486,9 +465,9 @@ class OperationSheetState extends State<OperationSheet> {
   /// searched for looking like it does not exist.
   final CatalogTier _catalogTier = CatalogTier();
 
-  /// Switched-off extensions that declare a ref type the operation carries
-  /// but no loaded control handles — the switch behind a red "unknown" row
-  /// in Current Activities, offered as the same "enable this?" rows. An
+  /// Extensions that aren't running and declare a ref type the operation
+  /// carries but no loaded control handles — the remedy for a red "unknown"
+  /// row in Current Activities, offered as the same rows. An
   /// extension the search already offers is left to [_disabledMatches], so
   /// it never shows twice.
   ///
@@ -517,7 +496,7 @@ class OperationSheetState extends State<OperationSheet> {
     // reaches the catalog no more than an empty search box does.
     if (unhandledRefs.isNotEmpty) _ensureCatalogFetched();
     _catalogTier.refMatches = _catalogTier.matchingRefs(widget.services, unhandledRefs, alreadyOffered: {for (final entry in _catalogTier.matches) entry.key});
-    final unhandled = _extensionsForUnhandledRefs(unhandledRefs);
+    final unhandled = notRunningExtensionsForRefs(widget.services.extensions, unhandledRefs);
     // Recorded BEFORE the search's matches are subtracted: an extension the
     // box happens to name right now is still one the operator has seen
     // offered, and forgetting it would reopen the section as soon as the box
@@ -536,16 +515,6 @@ class OperationSheetState extends State<OperationSheet> {
   /// descriptors are unreliable — an absent control then means "not loaded
   /// yet", not "no extension has it".
   List<({String type, String? code})> _unhandledRefs() => _controlsUnreliable ? const [] : unhandledRefsIn(_operation.refs, _controls);
-
-  /// Every switched-off extension claiming one of [unhandled].
-  List<ExtensionInfo> _extensionsForUnhandledRefs(List<({String type, String? code})> unhandled) {
-    if (unhandled.isEmpty) return const [];
-    final extensions = widget.services.extensions;
-    return [
-      for (final info in extensionsDeclaringRefs(extensions.availableExtensions, unhandled))
-        if (!info.core && extensions.isExtensionAvailable(info) && !extensions.isExtensionEnabled(info)) info,
-    ];
-  }
 
   /// Guards against a second tap while an enable-and-restart is in flight.
   bool _enablingExtension = false;
@@ -1067,7 +1036,7 @@ class OperationSheetState extends State<OperationSheet> {
         _suggestionsAreSearchResults = trimmed.isNotEmpty;
         // A recognized scope (`query.activityKeys` set) already names KNOWN,
         // enabled extensions — the box's fuzzy search text still reaches
-        // `_disabledExtensionsMatching` otherwise, and an unrelated disabled
+        // `notRunningExtensionsMatching` otherwise, and an unrelated disabled
         // extension whose keywords happen to mention this one's name (`pota:`
         // matching State Parks' "similar to POTA" blurb, say) would offer to
         // enable it above the very extension the operator just scoped to.
@@ -1075,11 +1044,11 @@ class OperationSheetState extends State<OperationSheet> {
         // every extension serving the type, so `pota` parses as a scope while
         // stock POTA is off and a user-published one serves parks — and
         // typing its key is how stock POTA gets switched back on from here.
-        _disabledMatches = _disabledExtensionsMatching(term, keyOnly: query.activityKeys != null);
+        _disabledMatches = notRunningExtensionsMatching(widget.services.extensions, term, keyOnly: query.activityKeys != null);
         _refreshCatalogMatches();
-        // The enable row lives in the Activity Types section, which the
-        // operator may have collapsed — so a search that finds only a
-        // switched-off extension would otherwise answer with nothing at all.
+        // These rows live in the Activity Types section, which the operator
+        // may have collapsed — so a search that finds only an extension that
+        // is not running would otherwise answer with nothing at all.
         //
         // Deliberately NOT written to `activitiesAllOptionsHidden`: the
         // preference is the operator's, and a search must not rewrite it. The
@@ -1186,26 +1155,6 @@ class OperationSheetState extends State<OperationSheet> {
     final index = refs.indexWhere((r) => r['type'] == ref['type'] && r['ref'] == ref['ref']);
     if (index < 0) return;
     _saveRefs([...refs]..[index] = decorated);
-  }
-
-  /// Non-core extensions that match [input] but are switched off — by their
-  /// exact key alone when [keyOnly], else by the loose search as well.
-  /// Experiment-gated extensions are excluded: enabling one from here
-  /// couldn't load it anyway (the gate still holds), leaving a dead
-  /// "enable" row and a scope prefix that matches nothing.
-  List<ExtensionInfo> _disabledExtensionsMatching(String input, {bool keyOnly = false}) {
-    final candidates = extensionSearchCandidates(input);
-    if (candidates.search.isEmpty) return const [];
-    final locale = LocaleSettings.currentLocale.languageCode;
-    final extensions = widget.services.extensions;
-    return [
-      for (final info in extensions.availableExtensions)
-        if (!info.core &&
-            extensions.isExtensionAvailable(info) &&
-            !extensions.isExtensionEnabled(info) &&
-            (info.key.toLowerCase() == candidates.key || (!keyOnly && info.matchesSearch(candidates.search, locale: locale))))
-          info,
-    ];
   }
 
   /// Both catalog tiers re-matched against the box as it is NOW: a listing
@@ -1328,20 +1277,37 @@ class OperationSheetState extends State<OperationSheet> {
     return null;
   }
 
-  /// An "Enable X" row of the Activity Types section, for an extension the
-  /// search matched or one an unhandled ref needs — the same row, told apart
-  /// by [hint] and by whether enabling then scopes the search to it.
-  Widget _enableExtensionRow(ThemeData theme, ExtensionInfo info, {required String hint, required bool scopeSearch}) => ListTile(
-    tileColor: theme.colorScheme.secondaryContainer,
+  /// A row of the Activity Types section for an extension the search matched
+  /// or one an unhandled ref needs — the same row, told apart by [hint] and
+  /// by whether enabling then scopes the search to it.
+  Widget _notRunningRow(ExtensionInfo info, {required String hint, required bool scopeSearch}) => NotRunningExtensionRow(
+    extensions: widget.services.extensions,
+    info: info,
     leading: _accentIcon(info.icon, resolveExtensionColor(info.accentColor)),
-    title: Text(
-      context.t.activitiesView.enableExtension(name: info.nameFor(LocaleSettings.currentLocale.languageCode)),
-      style: const TextStyle(fontWeight: FontWeight.bold),
-    ),
-    subtitle: Text(hint),
-    trailing: const Icon(MdiIcons.plus),
-    onTap: () => _enableExtension(info, scopeSearch: scopeSearch),
+    enableHint: hint,
+    onEnable: () => _enableExtension(info, scopeSearch: scopeSearch),
+    onOpenExtensions: () => unawaited(_openExtensionsPanel()),
   );
+
+  /// The Extensions panel, then the descriptors and search again — whatever
+  /// the operator changed there may have added or removed activity types.
+  Future<void> _openExtensionsPanel() async {
+    await showModalPane<void>(
+      context,
+      title: context.t.activitiesView.manageExtensions,
+      closeLabel: context.t.common.close,
+      // The list scrolls; the footer stays pinned under it and its Done is
+      // the way out — so no X in the header (see haloDialogFooterBand).
+      scrollable: false,
+      closeButton: false,
+      builder: (_) => ExtensionsPanel(services: widget.services, footer: true),
+    );
+    if (mounted) {
+      _debounce?.cancel();
+      await _loadControls();
+      unawaited(_search(_searchController.text));
+    }
+  }
 
   /// Tapping an activity type scopes the search to it (`pota: `) rather than
   /// prompting for a reference: the extension's own suggestions and search
@@ -1605,9 +1571,16 @@ class OperationSheetState extends State<OperationSheet> {
     // metadata rather than from the hooks — it is a real answer even when
     // every hook is broken.
     if (_disabledMatches.isNotEmpty || _catalogTier.matches.isNotEmpty) {
-      // Two sentences, because the remedies differ: a switch for what is
-      // installed, a download and a consent screen for what is not.
-      final only = _disabledMatches.isNotEmpty ? t.onlyDisabledMatches : t.onlyCatalogMatches;
+      // Three sentences, because the remedies differ: a switch for what is
+      // installed and off, the Extensions panel for what is on and still not
+      // running (there is no switch to flip), and a download and a consent
+      // screen for what is not installed.
+      final extensions = widget.services.extensions;
+      final only = _disabledMatches.isEmpty
+          ? t.onlyCatalogMatches
+          : _disabledMatches.every(extensions.isExtensionSwitchedOn)
+          ? t.onlyNotRunningMatches
+          : t.onlyDisabledMatches;
       return _emptyStatePadding(child: _emptyStateFromMessage(theme, only));
     }
     // Nobody could answer, which is not the same as nobody having anything —
@@ -2685,24 +2658,7 @@ class OperationSheetState extends State<OperationSheet> {
                       headerColor: accordionColor,
                       onHeaderColor: onAccordionColor,
                       trailing: TextButton.icon(
-                        onPressed: () async {
-                          await showModalPane<void>(
-                            context,
-                            title: t.manageExtensions,
-                            closeLabel: context.t.common.close,
-                            // The list scrolls; the footer stays pinned under it and its
-                            // Done is the way out — so no X in the header (see
-                            // haloDialogFooterBand).
-                            scrollable: false,
-                            closeButton: false,
-                            builder: (_) => ExtensionsPanel(services: widget.services, footer: true),
-                          );
-                          if (mounted) {
-                            _debounce?.cancel();
-                            await _loadControls();
-                            unawaited(_search(_searchController.text));
-                          }
-                        },
+                        onPressed: _openExtensionsPanel,
                         icon: Icon(MdiIcons.toyBrick, size: 18, color: onAccordionColor),
                         label: Text(t.manage, style: TextStyle(color: onAccordionColor)),
                         style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: Space.lg)),
@@ -2717,10 +2673,10 @@ class OperationSheetState extends State<OperationSheet> {
                             // bounded by the results list's own claim, so on a short
                             // window they are the rows that have to fit; below the
                             // loaded types they would be the rows that get cut.
-                            for (final info in _disabledMatches) _enableExtensionRow(theme, info, hint: t.enableExtensionHint, scopeSearch: true),
+                            for (final info in _disabledMatches) _notRunningRow(info, hint: t.enableExtensionHint, scopeSearch: true),
                             // Next, and for the same reason: the remedy for a red
                             // "unknown" row in Current Activities.
-                            for (final info in _unhandledRefMatches) _enableExtensionRow(theme, info, hint: t.enableExtensionForRefHint, scopeSearch: false),
+                            for (final info in _unhandledRefMatches) _notRunningRow(info, hint: t.enableExtensionForRefHint, scopeSearch: false),
                             // Last of the three tiers, and last for a reason: what the
                             // app already has is always the cheaper answer, so an
                             // install is offered only under the rows that need no

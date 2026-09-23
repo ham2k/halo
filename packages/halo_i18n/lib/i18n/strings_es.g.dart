@@ -429,6 +429,8 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String enableExtension({required Object name}) => 'Activar ${name}';
 	@override String get enableExtensionHint => 'Esta extensión coincide con tu búsqueda, pero no está activada';
 	@override String get enableExtensionForRefHint => 'Esta extensión maneja una de las referencias de esta operación, pero no está activada';
+	@override String extensionNotRunning({required Object name}) => '${name} no está funcionando';
+	@override String get extensionNotRunningHint => 'Esta extensión se ha desactivado, abre la configuración de extensiones para más información';
 	@override String installExtension({required Object name}) => 'Instalar ${name}';
 	@override String get installExtensionHint => 'Esta extensión coincide con tu búsqueda, pero no está instalada';
 	@override String get onlyCatalogMatches => 'Sin coincidencias\nAlgunas extensiones del catálogo podrían tener resultados.\nInstálalas en Tipos de actividad, más abajo.';
@@ -437,6 +439,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get controlsUnavailableReason => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.';
 	@override String get controlsUnavailableRetry => 'Reintentar';
 	@override String get onlyDisabledMatches => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.';
+	@override String get onlyNotRunningMatches => 'Sin coincidencias\nAlgunas extensiones que podrían tener resultados no están funcionando.\nMira en Tipos de actividad, más abajo.';
 	@override String get showResultsMap => 'Ver resultados en un mapa';
 	@override String get showResultsList => 'Ver resultados como lista';
 	@override String get addToOperation => 'Agregar a la operación';
@@ -3822,6 +3825,8 @@ extension on TranslationsEs {
 			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
 			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
 			'activitiesView.enableExtensionForRefHint' => 'Esta extensión maneja una de las referencias de esta operación, pero no está activada',
+			'activitiesView.extensionNotRunning' => ({required Object name}) => '${name} no está funcionando',
+			'activitiesView.extensionNotRunningHint' => 'Esta extensión se ha desactivado, abre la configuración de extensiones para más información',
 			'activitiesView.installExtension' => ({required Object name}) => 'Instalar ${name}',
 			'activitiesView.installExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está instalada',
 			'activitiesView.onlyCatalogMatches' => 'Sin coincidencias\nAlgunas extensiones del catálogo podrían tener resultados.\nInstálalas en Tipos de actividad, más abajo.',
@@ -3830,6 +3835,7 @@ extension on TranslationsEs {
 			'activitiesView.controlsUnavailableReason' => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.',
 			'activitiesView.controlsUnavailableRetry' => 'Reintentar',
 			'activitiesView.onlyDisabledMatches' => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.',
+			'activitiesView.onlyNotRunningMatches' => 'Sin coincidencias\nAlgunas extensiones que podrían tener resultados no están funcionando.\nMira en Tipos de actividad, más abajo.',
 			'activitiesView.showResultsMap' => 'Ver resultados en un mapa',
 			'activitiesView.showResultsList' => 'Ver resultados como lista',
 			'activitiesView.addToOperation' => 'Agregar a la operación',
@@ -4242,11 +4248,11 @@ extension on TranslationsEs {
 			'settings.peers.reject' => 'Rechazar',
 			'settings.peers.forget' => 'Olvidar',
 			'settings.peers.forgetTitle' => ({required Object name}) => '¿Olvidar ${name}?',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.forgetBody' => 'Dejará de sincronizarse con este dispositivo. Puedes autorizarlo de nuevo más tarde, y no se elimina nada de lo ya registrado.',
 			'settings.peers.pairTitle' => ({required Object name}) => 'Vincular con ${name}',
 			'settings.peers.pairBody' => 'Este dispositivo está en tu red local y quiere conectarse.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.pairBodyBle' => 'Este dispositivo está cerca y quiere conectarse por Bluetooth LE.',
 			'settings.peers.pairIdLabel' => 'ID del dispositivo',
 			'settings.peers.pairWarning' => 'Vincula solo dispositivos que reconozcas. Cualquier dispositivo de esta red puede enviar una solicitud.',
@@ -4756,11 +4762,11 @@ extension on TranslationsEs {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} deshabilitado',
 			'commands.sentryTestSent' => 'Reporte de error de prueba enviado a Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente',
+			_ => null,
+		} ?? switch (path) {
 			'commands.settingOn' => 'Sí',
 			'commands.settingOff' => 'No',
 			'commands.settingEmpty' => '(vacío)',
-			_ => null,
-		} ?? switch (path) {
 			'commands.settingSecretSet' => '(definido)',
 			'commands.settingSecretUnset' => '(sin definir)',
 			'commands.settingSelectedCount' => ({required Object count}) => '${count} seleccionados',

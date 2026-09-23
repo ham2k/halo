@@ -910,6 +910,12 @@ class Translations$activitiesView$en {
 	/// en: 'This extension handles one of this operation's references, but it is not currently enabled'
 	String get enableExtensionForRefHint => 'This extension handles one of this operation\'s references, but it is not currently enabled';
 
+	/// en: '${name} is not running'
+	String extensionNotRunning({required Object name}) => '${name} is not running';
+
+	/// en: 'This extension has been disabled, open Extension Settings for more info'
+	String get extensionNotRunningHint => 'This extension has been disabled, open Extension Settings for more info';
+
 	/// en: 'Install ${name}'
 	String installExtension({required Object name}) => 'Install ${name}';
 
@@ -933,6 +939,9 @@ class Translations$activitiesView$en {
 
 	/// en: 'No matches Some available extensions might have results. Enable them in Activity Types below.'
 	String get onlyDisabledMatches => 'No matches\nSome available extensions might have results.\nEnable them in Activity Types below.';
+
+	/// en: 'No matches Some extensions that might have results are not running. See Activity Types below.'
+	String get onlyNotRunningMatches => 'No matches\nSome extensions that might have results are not running.\nSee Activity Types below.';
 
 	/// en: 'Show results on a map'
 	String get showResultsMap => 'Show results on a map';
@@ -7485,6 +7494,8 @@ extension on Translations {
 			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
 			'activitiesView.enableExtensionHint' => 'This extension matches your search, but it is not currently enabled',
 			'activitiesView.enableExtensionForRefHint' => 'This extension handles one of this operation\'s references, but it is not currently enabled',
+			'activitiesView.extensionNotRunning' => ({required Object name}) => '${name} is not running',
+			'activitiesView.extensionNotRunningHint' => 'This extension has been disabled, open Extension Settings for more info',
 			'activitiesView.installExtension' => ({required Object name}) => 'Install ${name}',
 			'activitiesView.installExtensionHint' => 'This extension matches your search, but it is not installed',
 			'activitiesView.onlyCatalogMatches' => 'No matches\nSome extensions in the catalog might have results.\nInstall them in Activity Types below.',
@@ -7493,6 +7504,7 @@ extension on Translations {
 			'activitiesView.controlsUnavailableReason' => 'Your references are safe, but editing them is unavailable right now.',
 			'activitiesView.controlsUnavailableRetry' => 'Retry',
 			'activitiesView.onlyDisabledMatches' => 'No matches\nSome available extensions might have results.\nEnable them in Activity Types below.',
+			'activitiesView.onlyNotRunningMatches' => 'No matches\nSome extensions that might have results are not running.\nSee Activity Types below.',
 			'activitiesView.showResultsMap' => 'Show results on a map',
 			'activitiesView.showResultsList' => 'Show results as a list',
 			'activitiesView.addToOperation' => 'Add to Operation',
@@ -7906,11 +7918,11 @@ extension on Translations {
 			'settings.peers.reject' => 'Reject',
 			'settings.peers.forget' => 'Forget',
 			'settings.peers.forgetTitle' => ({required Object name}) => 'Forget ${name}?',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.forgetBody' => 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.',
 			'settings.peers.pairTitle' => ({required Object name}) => 'Link with ${name}',
 			'settings.peers.pairBody' => 'This device is on your local network and wants to connect.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.pairBodyBle' => 'This device is nearby and wants to connect over Bluetooth LE.',
 			'settings.peers.pairIdLabel' => 'Device ID',
 			'settings.peers.pairWarning' => 'Only link with devices you recognise. Any device on this network can send a request.',
@@ -8420,11 +8432,11 @@ extension on Translations {
 			'commands.reloadingAll' => 'Reloading all data files…',
 			'commands.reloadingTarget' => ({required Object target}) => 'Reloading ${target} data files…',
 			'commands.unknownExperiment' => ({required Object token}) => 'Unknown experiment "${token}"',
+			_ => null,
+		} ?? switch (path) {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
-			_ => null,
-		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'That command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'',

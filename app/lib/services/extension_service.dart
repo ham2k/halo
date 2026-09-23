@@ -2005,8 +2005,13 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// [settings] (tests, benches) resolves to defaults. Enabled is the user's
   /// intent only — whether the extension actually loads also requires
   /// [isExtensionAvailable].
-  bool isExtensionEnabled(ExtensionInfo info) =>
-      info.core || (!isExtensionRevoked(info) && !isExtensionRefused(info) && (settings?.extensionOverrides[info.key] ?? info.enabledByDefault));
+  bool isExtensionEnabled(ExtensionInfo info) => info.core || (!isExtensionRevoked(info) && !isExtensionRefused(info) && isExtensionSwitchedOn(info));
+
+  /// The operator's own choice for [info] — its override, else the build
+  /// index's default — whatever the app then does with it. Differs from
+  /// [isExtensionEnabled] exactly for a revoked or refused release, where
+  /// offering the switch again cannot help: it is already on.
+  bool isExtensionSwitchedOn(ExtensionInfo info) => settings?.extensionOverrides[info.key] ?? info.enabledByDefault;
 
   /// Whether the INSTALLED version of [info] is one the engine would not
   /// evaluate (`SettingsService.extensionRefused`).

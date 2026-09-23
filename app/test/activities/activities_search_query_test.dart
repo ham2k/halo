@@ -11,6 +11,7 @@
 // ref type's word, not the extension's key.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/views/operation/activities_enable_tier.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
 /// The scope words the loaded activity controls would supply, each mapped to

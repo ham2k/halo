@@ -292,10 +292,8 @@ List<String> unservedBuiltInNames(ExtensionService service) =>
 /// built-in it replaced — its panel row is gone, there is nothing to update,
 /// and the extension the operator knows by that name is running. Naming it
 /// as one that "would not run" tells them something false twice over.
-List<String> refusedExtensionNames(ExtensionService service) => _names(
-  service,
-  (info) => service.isExtensionRefused(info) && service.isExtensionAvailable(info) && (service.settings?.extensionOverrides[info.key] ?? info.enabledByDefault),
-);
+List<String> refusedExtensionNames(ExtensionService service) =>
+    _names(service, (info) => service.isExtensionRefused(info) && service.isExtensionAvailable(info) && service.isExtensionSwitchedOn(info));
 
 /// A set, because a key can appear twice — `ham2k-lookup` ships as an asset
 /// and is pre-loaded — and naming it twice reads as two extensions lost.

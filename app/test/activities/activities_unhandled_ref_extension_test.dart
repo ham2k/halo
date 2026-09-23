@@ -55,6 +55,30 @@ const _lookalikeInfo = ExtensionInfo(
   hooks: ['activity', 'ref:peaks'],
 );
 
+/// Switched on by default, at a version the catalog then revokes — the
+/// switch is on and the app still will not load it.
+const _revokedSotaInfo = ExtensionInfo(
+  key: 'sota',
+  file: 'sota.js',
+  core: false,
+  name: 'Summits on the Air',
+  enabledByDefault: true,
+  version: '1.0.0',
+  hooks: ['activity', 'ref:sotaActivation'],
+);
+
+/// A downloaded copy, switched on, at a version the engine refused.
+const _refusedSotaInfo = ExtensionInfo(
+  key: 'sota',
+  file: 'sota.js',
+  core: false,
+  name: 'Summits on the Air',
+  enabledByDefault: true,
+  version: '1.0.0',
+  source: ExtensionSource.installed,
+  hooks: ['activity', 'ref:sotaActivation'],
+);
+
 const _sotaActivationRef = {'type': 'sotaActivation', 'ref': 'W7A/MN-001', 'name': 'Mount Example'};
 const _secondSotaActivationRef = {'type': 'sotaActivation', 'ref': 'W7A/MN-002', 'name': 'Other Summit'};
 
@@ -221,5 +245,60 @@ void main() {
     expect(find.text('Enable Summits on the Air'), findsOneWidget);
     expect(find.text('This extension matches your search, but it is not currently enabled'), findsOneWidget);
     expect(find.textContaining("one of this operation's references"), findsNothing);
+  });
+
+  // The switch is already on, so an Enable row would write an override that
+  // is already true, restart nothing, and stay put: a row that cannot help.
+  group('an extension switched on that the app will not load', () {
+    testWidgets('a revoked release says it is not running, and never offers Enable', (tester) async {
+      final (services, operation) = await _harness(available: const [_revokedSotaInfo]);
+      await services.settings.setExtensionRevoked({
+        'sota': {'version': '1.0.0'},
+      });
+      await _pump(tester, services, operation);
+
+      expect(find.textContaining('Enable '), findsNothing);
+      expect(find.text('Summits on the Air is not running').hitTestable(), findsOneWidget);
+      expect(find.textContaining('This extension has been disabled'), findsOneWidget);
+    });
+
+    testWidgets('a refused bundle says it is not running, and never offers Enable', (tester) async {
+      final (services, operation) = await _harness(available: const [_refusedSotaInfo]);
+      await services.settings.setExtensionRefused({'sota': '1.0.0'});
+      await _pump(tester, services, operation);
+
+      expect(find.textContaining('Enable '), findsNothing);
+      expect(find.text('Summits on the Air is not running').hitTestable(), findsOneWidget);
+      expect(find.textContaining('This extension has been disabled'), findsOneWidget);
+    });
+
+    testWidgets('tapping the row opens the Extensions panel instead of flipping the switch', (tester) async {
+      final (services, operation) = await _harness(available: const [_revokedSotaInfo]);
+      await services.settings.setExtensionRevoked({
+        'sota': {'version': '1.0.0'},
+      });
+      await _pump(tester, services, operation);
+
+      await tester.tap(find.text('Summits on the Air is not running').hitTestable());
+      await tester.pumpAndSettle();
+
+      expect((services.extensions as _NoActivityExtensions).enabled, isEmpty);
+      expect(find.text('Manage Extensions'), findsOneWidget);
+    });
+
+    testWidgets('a search matching only it says so, rather than "enable them"', (tester) async {
+      final (services, operation) = await _harness(available: const [_revokedSotaInfo], refs: const []);
+      await services.settings.setExtensionRevoked({
+        'sota': {'version': '1.0.0'},
+      });
+      await _pump(tester, services, operation);
+
+      await tester.enterText(find.byType(TextField).first, 'summits');
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('are not running'), findsOneWidget);
+      expect(find.textContaining('Enable them in Activity Types'), findsNothing);
+    });
   });
 }
