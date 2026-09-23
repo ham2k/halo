@@ -365,6 +365,59 @@ void main() {
       });
     });
 
+    test('the state poll\'s own answer defers its next round', () {
+      // The other half of the rule the starvation tests pin: the answers that
+      // DO defer. Without it the poll re-asks on a schedule set before the
+      // answer arrived, which is a question asked twice for nothing.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        async.elapse(kPollSlow - const Duration(milliseconds: 100));
+        sink.sent.clear();
+        session.feed('get_freq:\nFrequency: 14074000\nRPRT 0\n');
+        async.elapse(const Duration(milliseconds: 200));
+        expect(sink.sent.where((c) => c == '+f\n'), isEmpty, reason: 'the poll was due, but the frequency had just arrived');
+        async.elapse(kPollSlow);
+        expect(sink.sent.where((c) => c == '+f\n'), isNotEmpty);
+        session.teardown();
+      });
+    });
+
+    test('an idle rig\'s PTT watch does not starve the frequency poll', () {
+      // A real rigctld answers each `+t` with a header and a status around the
+      // value — `get_ptt:`, `PTT: 0`, `RPRT 0` — several times a second. Any
+      // of those lines counted as news re-arms the state timer before it can
+      // fire, and a radio tuned by hand is then read only on the 9-second
+      // staleness ceiling instead of the 3-second slow poll.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        var answered = 0;
+        // Answers every question the way rigctld does, the radio sitting
+        // still, for [duration].
+        void run(Duration duration) {
+          for (var t = Duration.zero; t < duration; t += const Duration(milliseconds: 200)) {
+            async.elapse(const Duration(milliseconds: 200));
+            for (final command in sink.sent.skip(answered)) {
+              if (command == '+t\n') session.feed('get_ptt:\nPTT: 0\nRPRT 0\n');
+              if (command == '+f\n') session.feed('get_freq:\nFrequency: 14074000\nRPRT 0\n');
+              if (command == '+m\n') session.feed('get_mode:\nMode: USB\nPassband: 3000\nRPRT 0\n');
+            }
+            answered = sink.sent.length;
+          }
+        }
+
+        run(const Duration(seconds: 12)); // past the first staleness ceiling, so the window below holds at most one
+        final before = sink.sent.where((c) => c == '+f\n').length;
+        run(const Duration(seconds: 6));
+        final polls = sink.sent.where((c) => c == '+f\n').length - before;
+        expect(polls, greaterThanOrEqualTo(2), reason: 'a still radio is re-read on the slow poll, not the staleness ceiling');
+        session.teardown();
+      });
+    });
+
     test('a transmitting rig does not starve the frequency poll', () {
       // The half of the starvation that only bites during a transmission:
       // the meter cycle re-asks RFPOWER_METER_WATTS several times a second,
@@ -379,7 +432,11 @@ void main() {
         sink.sent.clear();
         for (var i = 0; i < 20; i++) {
           async.elapse(const Duration(milliseconds: 200));
-          session.feed('RFPOWER_METER_WATTS: 48.5\n');
+          // Each meter answered as a real rigctld answers it: header, value,
+          // status.
+          session.feed('get_ptt:\nPTT: 1\nRPRT 0\n');
+          session.feed('get_level: RFPOWER_METER_WATTS\nRFPOWER_METER_WATTS: 48.5\nRPRT 0\n');
+          session.feed('get_level: SWR\nSWR: 1.4\nRPRT 0\n');
         }
         expect(sink.sent.where((c) => c == '+f\n'), isNotEmpty, reason: 'the frequency poll was starved while transmitting');
         session.teardown();

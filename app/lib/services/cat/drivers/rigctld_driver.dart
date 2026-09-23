@@ -217,26 +217,21 @@ class RigctldSession implements TransceiverSession {
     }
   }
 
-  /// The lines that are the daemon ANSWERING OUR TELEMETRY, rather than
-  /// telling us where the radio is. They must not defer the state poll: the
-  /// TX watch asks several times a second, and treating its answers as "the
-  /// daemon just told us something" re-arms the poll timer before it can
-  /// ever fire — leaving the frequency to arrive only on AdaptivePoller's
-  /// 9-second staleness ceiling.
-  ///
-  /// `RFPOWER_METER_WATTS` belongs here even though the STATE poll asks for
-  /// it too: the telemetry cycle asks again several times a second while the
-  /// radio is keyed, so leaving it out re-armed the poll timer through every
-  /// transmission — the same starvation the other three labels are here to
-  /// prevent, just harder to see, because it only bit while transmitting.
-  /// The state poll's own frequency and mode answers are what defer it, and
-  /// they arrive in the same round.
-  static const _telemetryLabels = ['PTT: ', 'SWR: ', 'ALC: ', 'VD_METER: ', 'RFPOWER_METER_WATTS: '];
+  /// The lines that answer the STATE poll — and so the only ones that defer
+  /// it. Everything else on the stream answers something else: the PTT watch
+  /// asks several times a second, and each of its answers comes as a header,
+  /// a value and a status (`get_ptt:`, `PTT: 0`, `RPRT 0`), with the meter
+  /// reads the same while the radio is keyed. Counting any of those as "the
+  /// daemon just told us where the radio is" re-arms the poll timer before it
+  /// can fire, and a radio tuned by hand is then read only on
+  /// AdaptivePoller's 9-second staleness ceiling. An allow-list, because a
+  /// deny-list is starved again by the next line a new question brings.
+  static const _stateLabels = ['Frequency: ', 'Mode: '];
 
   void _handleLine(String line) {
-    // Anything else defers the next poll — the daemon just answered, so
-    // asking again now would repeat a question we hold the answer to.
-    if (!_telemetryLabels.any(line.startsWith)) _poller.noteData();
+    // The state poll's own answer defers its next round — asking again now
+    // would repeat a question we hold the answer to.
+    if (_stateLabels.any(line.startsWith)) _poller.noteData();
 
     // Extended responses label every value; anything else on the stream —
     // `get_freq:` headers, `Passband:`, `RPRT n` acknowledgements — asks

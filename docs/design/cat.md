@@ -1262,13 +1262,20 @@ cannot overrule. A link that states no speed (TCP, flrig, rigctld) is *unmeasure
 fast, and gets a flat floor rather than an arithmetic answer computed from a baud rate that does not
 exist.
 
-Two consequences that bit during the build, both worth keeping:
+Three consequences that bit during the build, all worth keeping:
 
 - **A fast watch starves a guarded state poll.** flrig serializes one request at a time, and its
   state poll originally waited for an idle socket. With a watch running many times faster there is
   almost always a request in flight, so the frequency stopped updating altogether — visible as a
   driver that had gone quiet, with nothing pointing at the cause. The guard is the QUEUE alone: one
   request in flight and an empty queue is a healthy session, not a backlog.
+- **A fast watch's answers starve a deferred state poll.** A poll that waits whenever the radio has
+  just said something (`AdaptivePoller.noteData`) must count only the answers to the state poll
+  itself. rigctld answers every `+t` with a header, a value and a status (`get_ptt:`, `PTT: 0`,
+  `RPRT 0`) several times a second. Counting any of those lines as news re-arms the poll before it
+  fires, so the frequency is read only on the 9-second staleness ceiling. The driver therefore keeps
+  an allow-list of the state answers (`Frequency:`, `Mode:`). A deny-list of telemetry lines is
+  starved again by the next line a new question brings.
 - **The transition burst fires from inside a response.** The meter read that matters most is the one
   triggered by the PTT answer saying the rig has just been keyed — and at that moment the request
   being answered is still the outstanding one. A driver that guarded the burst on "nothing
