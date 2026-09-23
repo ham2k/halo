@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // EventFieldRow on its own: which kinds get an editable field, which get a
-// read-only value, and what the panel hears back.
+// read-only value, and what the panel hears back — and the read/write pair
+// behind its NOTE/TODO text, where a record carrying BOTH keys shows the
+// precedence that no panel test builds a record for.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -90,5 +92,21 @@ void main() {
     expect(find.text('BREAK'), findsOneWidget);
     expect(find.byType(TextFormField), findsOneWidget, reason: 'same height as an editable row');
     expect(tester.widget<TextFormField>(find.byType(TextFormField)).initialValue, isEmpty);
+  });
+
+  group('a record carrying both description and note', () {
+    final both = _event('note', extra: {'description': 'shown', 'note': 'hidden'});
+
+    test('reads the one AnnotationRow displays', () {
+      // Reading `note` first would put text in the editor that the log does
+      // not show for this row, and a save would then write it over what it does.
+      expect(eventFieldsFromData(both.data).text, 'shown');
+    });
+
+    test('writes back to that same key, leaving the other alone', () {
+      final saved = eventDataForSave(both, text: 'edited', done: false, startAtMillis: null);
+      expect(saved['event'], containsPair('description', 'edited'));
+      expect(saved['event'], containsPair('note', 'hidden'));
+    });
   });
 }

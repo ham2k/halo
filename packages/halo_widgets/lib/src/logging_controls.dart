@@ -1343,67 +1343,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _command.reset();
   }
 
-  /// Populates the NOTE/TODO inline editor from an event row's `event` map
-  /// — the only kinds with editable free text. Reads `note` with the same
-  /// `description` fallback [AnnotationRow] displays with, and a TODO's
-  /// `data.done` with the same bare-`done` fallback for older synced logs.
   void _applyEventFieldsFromData(Map<String, dynamic> data) {
-    final event = data['event'] as Map<String, dynamic>?;
-    // Same `description` before `note` precedence [AnnotationRow] displays
-    // with — `_eventDataForSave` writes back to whichever one this reads,
-    // so a NOTE/TODO synced from elsewhere under `description` keeps
-    // agreeing with what the log shows for it. Deliberately NOT trimmed:
-    // `_eventDataForSave` isn't either (see its own note), so a row loaded
-    // and saved untouched round-trips exactly — trimming just this side
-    // would make selecting a row with incidental whitespace read as
-    // "changed" on its own, with no edit made.
-    _eventTextController.text = (event?['description'] as String?) ?? (event?['note'] as String?) ?? '';
-    final eventData = event?['data'];
-    _eventTodoDone = (eventData is Map && eventData['done'] == true) || event?['done'] == true;
+    final fields = eventFieldsFromData(data);
+    _eventTextController.text = fields.text;
+    _eventTodoDone = fields.done;
   }
 
-  /// The `data` to save for an edited event row: the original payload with
-  /// only the Time control's timestamp and, for a NOTE/TODO, the inline
-  /// editor's text/done state overlaid on top. BREAK/START/END/SOLAR/WEATHER
-  /// carry no other editable field yet, so only the timestamp moves for them.
-  Map<String, dynamic> _eventDataForSave(Qso editingQso) {
-    final data = Map<String, dynamic>.from(editingQso.data);
-    final startAtMillis = _time.effectiveStartAtMillis;
-    if (startAtMillis != null) data['startAtMillis'] = startAtMillis;
-    final kind = editingQso.eventKind;
-    if (kind == 'note' || kind == 'todo') {
-      final event = Map<String, dynamic>.from(editingQso.event ?? const {});
-      // Not trimmed — see `_applyEventFieldsFromData`'s matching note; the
-      // two must read and write the exact same string or an untouched
-      // field falsely reads as edited.
-      final text = _eventTextController.text;
-      // Write back to whichever key `_applyEventFieldsFromData` actually
-      // read this from — a row synced in under `description` must keep
-      // agreeing with what AnnotationRow displays for it, not silently
-      // gain a `note` nothing reads while the old `description` lingers.
-      if (event.containsKey('description')) {
-        event['description'] = text;
-      } else {
-        event['note'] = text;
-      }
-      if (kind == 'todo') {
-        // `is Map`, not a cast — same guard as the sibling reads of this
-        // field (`_applyEventFieldsFromData` above, `AnnotationRow._iconName`
-        // in qso_list.dart): a malformed/cross-client value here must not
-        // crash the panel just because this row got selected.
-        final rawEventData = event['data'];
-        final eventData = Map<String, dynamic>.from(rawEventData is Map ? rawEventData.cast<String, dynamic>() : const {});
-        eventData['done'] = _eventTodoDone;
-        event['data'] = eventData;
-        // Older synced logs may also carry a bare `event.done` (the fallback
-        // `_applyEventFieldsFromData` reads) — clear it, or a saved
-        // `false` here would keep losing to a stale `true` there forever.
-        event.remove('done');
-      }
-      data['event'] = event;
-    }
-    return data;
-  }
+  Map<String, dynamic> _eventDataForSave(Qso editingQso) =>
+      eventDataForSave(editingQso, text: _eventTextController.text, done: _eventTodoDone, startAtMillis: _time.effectiveStartAtMillis);
 
   /// One of the panel's models changed something it paints — a typed
   /// frequency, a resolved lookup, a command's describe preview. None of

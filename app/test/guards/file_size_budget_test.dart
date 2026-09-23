@@ -41,9 +41,7 @@ const _slack = 100;
 /// the file shrinks. Raising one is the maintainer's call and carries a
 /// comment saying so, per the note at the top of this file.
 const _ceilings = <String, int>{
-  // Above the budget by the maintainer's answer, not by drift. HALO-673 is
-  // the extraction; this number comes down with it.
-  '../packages/halo_widgets/lib/src/logging_controls.dart': 3890,
+  '../packages/halo_widgets/lib/src/logging_controls.dart': 3841,
   'lib/services/extension_service.dart': 3596,
   'lib/views/operation/spots_panel.dart': 3498,
   'lib/views/operation_view.dart': 3117,

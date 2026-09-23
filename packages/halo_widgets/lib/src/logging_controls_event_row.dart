@@ -6,7 +6,8 @@
 // being edited rather than a contact: a kind label and, for NOTE/TODO, the
 // text (and done state) the annotation commands wrote. Built from the same
 // field primitives as the contact fields so the row's shape doesn't change
-// between the two.
+// between the two. Beside it, the pair that reads that text and done state
+// out of the record and writes them back on save.
 
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -138,4 +139,66 @@ class EventFieldRow extends StatelessWidget {
       horizontalPadding: materialFilledInputGap,
     ).copyWith(filled: false, border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none),
   );
+}
+
+/// The NOTE/TODO inline editor's text and done state for an event row's
+/// `event` map — the only kinds with editable free text. Reads `description`
+/// before `note`, the precedence [AnnotationRow] displays with, and a TODO's
+/// `data.done` with the same bare-`done` fallback for older synced logs.
+({String text, bool done}) eventFieldsFromData(Map<String, dynamic> data) {
+  final event = data['event'] as Map<String, dynamic>?;
+  // Same `description` before `note` precedence [AnnotationRow] displays
+  // with — [eventDataForSave] writes back to whichever one this reads, so a
+  // NOTE/TODO synced from elsewhere under `description` keeps agreeing with
+  // what the log shows for it. Deliberately NOT trimmed: [eventDataForSave]
+  // isn't either (see its own note), so a row loaded and saved untouched
+  // round-trips exactly — trimming just this side would make selecting a row
+  // with incidental whitespace read as "changed" on its own, with no edit
+  // made.
+  final text = (event?['description'] as String?) ?? (event?['note'] as String?) ?? '';
+  final eventData = event?['data'];
+  final done = (eventData is Map && eventData['done'] == true) || event?['done'] == true;
+  return (text: text, done: done);
+}
+
+/// The `data` to save for an edited event row: the original payload with
+/// only the Time control's timestamp and, for a NOTE/TODO, the inline
+/// editor's [text]/[done] state overlaid on top. BREAK/START/END/SOLAR/WEATHER
+/// carry no other editable field yet, so only the timestamp moves for them.
+Map<String, dynamic> eventDataForSave(Qso editingQso, {required String text, required bool done, required int? startAtMillis}) {
+  final data = Map<String, dynamic>.from(editingQso.data);
+  if (startAtMillis != null) data['startAtMillis'] = startAtMillis;
+  final kind = editingQso.eventKind;
+  if (kind == 'note' || kind == 'todo') {
+    final event = Map<String, dynamic>.from(editingQso.event ?? const {});
+    // [text] is written untrimmed — see [eventFieldsFromData]'s matching
+    // note; the two must read and write the exact same string or an
+    // untouched field falsely reads as edited.
+    //
+    // Write back to whichever key [eventFieldsFromData] actually read this
+    // from — a row synced in under `description` must keep agreeing with
+    // what AnnotationRow displays for it, not silently gain a `note` nothing
+    // reads while the old `description` lingers.
+    if (event.containsKey('description')) {
+      event['description'] = text;
+    } else {
+      event['note'] = text;
+    }
+    if (kind == 'todo') {
+      // `is Map`, not a cast — same guard as the sibling reads of this field
+      // ([eventFieldsFromData] above, `AnnotationRow._iconName` in
+      // qso_list.dart): a malformed/cross-client value here must not crash
+      // the panel just because this row got selected.
+      final rawEventData = event['data'];
+      final eventData = Map<String, dynamic>.from(rawEventData is Map ? rawEventData.cast<String, dynamic>() : const {});
+      eventData['done'] = done;
+      event['data'] = eventData;
+      // Older synced logs may also carry a bare `event.done` (the fallback
+      // [eventFieldsFromData] reads) — clear it, or a saved `false` here
+      // would keep losing to a stale `true` there forever.
+      event.remove('done');
+    }
+    data['event'] = event;
+  }
+  return data;
 }
