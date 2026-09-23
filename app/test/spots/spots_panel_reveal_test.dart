@@ -391,6 +391,40 @@ void main() {
       expect(offsetOf(tester), 0);
     });
 
+    // Picking a spot from its band row puts its call in the fields, and "Calls
+    // of Note" pins a second copy of that row at the top. The first copy is
+    // the pinned one, so a reveal that takes the first match jumps the list
+    // away from the row the operator just picked.
+    testWidgets('stays beside an on-screen copy of a call pinned in Calls of Note', (tester) async {
+      final services = await servicesWith(_board(60), notedCalls: {'K0040'}, groupCallsWithNotes: true);
+      final setCall = await pumpPanel(tester, services: services, visible: ValueNotifier(true));
+
+      tester.widget<CustomScrollView>(spotsList).controller!.jumpTo(1900);
+      await tester.pump();
+      expect(find.text('K0040').hitTestable(), findsOneWidget, reason: 'the band copy is on screen and the pinned copy is not');
+      final before = offsetOf(tester);
+
+      await setCall(_entering('K0040'));
+
+      expect(offsetOf(tester), before);
+    });
+
+    // Neither copy on screen: the reveal goes to the nearer one rather than
+    // always climbing back to the pinned copy at the top of the board.
+    testWidgets('reveals the nearer copy of a pinned call when neither is on screen', (tester) async {
+      final services = await servicesWith(_board(60), notedCalls: {'K0040'}, groupCallsWithNotes: true);
+      final setCall = await pumpPanel(tester, services: services, visible: ValueNotifier(true));
+
+      tester.widget<CustomScrollView>(spotsList).controller!.jumpTo(1400);
+      await tester.pump();
+      expect(find.text('K0040').hitTestable(), findsNothing, reason: 'neither copy is on screen to begin with');
+
+      await setCall(_entering('K0040'));
+
+      expect(offsetOf(tester), greaterThan(1400), reason: 'down to the band copy, not up to the pinned one');
+      expect(find.text('K0040').hitTestable(), findsOneWidget);
+    });
+
     // The arithmetic alone cannot land this: rows carrying a reference label
     // are taller than the declared row height, so fifty of them put the target
     // several rows below where the estimate says it is. What closes the gap is

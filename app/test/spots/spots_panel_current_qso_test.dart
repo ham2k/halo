@@ -92,6 +92,72 @@ void main() {
       expect(found.top, closeTo(30, 0.001), reason: 'directly under the first header');
     });
 
+    // Without a cost the first copy wins, which is the pinned one — and the
+    // wrong one whenever the operator is looking at the band copy.
+    test('a pinned duplicate loses to the copy that needs less scrolling', () {
+      final shared = _spot('K1ABC');
+      final sections = [
+        [shared], // Calls of Note
+        [_spot('W2DEF'), _spot('W3GHI'), shared], // 20m
+      ];
+      // Band copy spans 30+40+30+80 = 180..220; viewport 150..350.
+      double cost(double top, double bottom) => top < 150 ? 150 - top : (bottom > 350 ? bottom - 350 : 0);
+
+      final found = locateCurrentSpotRow(sections, currentCall: 'K1ABC', headerHeight: 30, heightOf: (_) => 40, scrollCostOf: cost);
+
+      expect((found!.section, found.index), (1, 2));
+      expect(found.top, closeTo(180, 0.001));
+    });
+
+    test('equal costs keep the first copy', () {
+      final shared = _spot('K1ABC');
+      final found = locateCurrentSpotRow(
+        [
+          [shared],
+          [shared],
+        ],
+        currentCall: 'K1ABC',
+        headerHeight: 30,
+        heightOf: (_) => 40,
+        scrollCostOf: (_, _) => 0,
+      );
+
+      expect((found!.section, found.index), (0, 0));
+    });
+
+    // Each build re-prices the copies against where the list is right then. A
+    // build landing mid-scroll can price the other copy cheaper, and following
+    // it would send the measured correction to a row the reveal never aimed at.
+    test('a copy chosen earlier stays chosen while it still matches', () {
+      final shared = _spot('K1ABC');
+      final sections = [
+        [shared],
+        [_spot('W2DEF'), shared],
+      ];
+      double favoursPinned(double top, double bottom) => top;
+
+      final kept = locateCurrentSpotRow(
+        sections,
+        currentCall: 'K1ABC',
+        headerHeight: 30,
+        heightOf: (_) => 40,
+        scrollCostOf: favoursPinned,
+        keep: (section: 1, index: 1),
+      );
+      expect((kept!.section, kept.index), (1, 1));
+
+      // A kept position the list no longer has a match at is ignored.
+      final stale = locateCurrentSpotRow(
+        sections,
+        currentCall: 'K1ABC',
+        headerHeight: 30,
+        heightOf: (_) => 40,
+        scrollCostOf: favoursPinned,
+        keep: (section: 1, index: 0),
+      );
+      expect((stale!.section, stale.index), (0, 0));
+    });
+
     test('no match anywhere is null, not a zeroed position', () {
       final args = (headerHeight: 30.0, heightOf: (Map<String, dynamic> _) => 40.0);
       expect(

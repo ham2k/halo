@@ -514,9 +514,14 @@ double spotRowScaleFor(double scale, {required LayoutMetrics from, required Layo
 /// Where the row for [currentCall] sits in a sectioned spots list: the scroll
 /// offset it begins at, and the height it paints. Null when no spot matches.
 ///
-/// The first match wins, and the pinned duplicate in "Calls of Note" is a row
-/// like any other: whichever copy comes first is the one nearest the top,
-/// which is where the operator looks.
+/// A call can match more than one row — "Calls of Note" pins a duplicate of a
+/// spot that stays in its band section too. [scrollCostOf] prices bringing a
+/// row's span into view, and the cheapest copy wins, ties going to the first:
+/// picking a spot from its band row puts that call in the fields, and jumping
+/// to its pinned copy at the top would pull the list out from under the row
+/// the operator just tapped. Without [scrollCostOf] the first match wins.
+/// [keep] names a copy chosen earlier; while it still matches, it wins
+/// outright, whatever the costs say now.
 ///
 /// The offset is summed from what each row above ACTUALLY paints — [heightOf]
 /// answers per spot — rather than multiplying a count by one representative
@@ -540,7 +545,11 @@ double spotRowScaleFor(double scale, {required LayoutMetrics from, required Layo
   String? currentCall,
   required double headerHeight,
   required double Function(Map<String, dynamic> spot) heightOf,
+  double Function(double top, double bottom)? scrollCostOf,
+  ({int section, int index})? keep,
 }) {
+  ({int section, int index, double top, double height})? best;
+  double? bestCost;
   var top = 0.0;
   for (final (sectionIndex, section) in sections.indexed) {
     // Its own section's header sits above it, so this one counts too.
@@ -548,12 +557,15 @@ double spotRowScaleFor(double scale, {required LayoutMetrics from, required Layo
     for (final (index, spot) in section.indexed) {
       final height = heightOf(spot);
       if (spotIsCurrentQso(spot, currentCall: currentCall)) {
-        return (section: sectionIndex, index: index, top: top, height: height);
+        final found = (section: sectionIndex, index: index, top: top, height: height);
+        if (scrollCostOf == null || keep == (section: sectionIndex, index: index)) return found;
+        final cost = scrollCostOf(top, top + height);
+        if (bestCost == null || cost < bestCost) (best, bestCost) = (found, cost);
       }
       top += height;
     }
   }
-  return null;
+  return best;
 }
 
 /// The offset to scroll to so the span [top]..[bottom] is fully on screen,
@@ -778,7 +790,15 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// pending when the tab comes back.
   String? _revealedCall;
 
-  /// Where the current QSO's first row sits, as counts of the rows and section
+  /// The copy [_revealedCall]'s reveal chose, held while that call stays
+  /// revealed. Each build re-prices the copies against where the list is at
+  /// that moment, and a build landing mid-scroll or mid-drag can price the
+  /// other copy cheaper — moving [_currentRowKey] there and sending
+  /// [_correctRevealFor] to a row the reveal never aimed at.
+  ({int section, int index})? _revealedRowAt;
+
+  /// Where the current QSO's row sits — the copy [locateCurrentSpotRow] chose
+  /// when the call has more than one — as counts of the rows and section
   /// headers above it plus the totals for the whole list — the raw material
   /// for [_revealCurrent]'s arithmetic. Null when no spot matches. Written by
   /// `_buildSpotsList`, the only place the sectioned list exists.
@@ -1806,6 +1826,12 @@ class _SpotsPanelState extends State<SpotsPanel> {
       currentCall: currentCall,
       headerHeight: _sectionHeaderExtent,
       heightOf: (spot) => _spotRowHeightOf(spot) * _rowHeightScale,
+      // No geometry before the list's first layout, and nothing on screen to
+      // stay beside either — the first match is as good as any there.
+      scrollCostOf: _scrollController.hasClients && _scrollController.position.hasContentDimensions && _scrollController.position.hasViewportDimension
+          ? _scrollCostOf
+          : null,
+      keep: currentCall != null && currentCall == _revealedCall ? _revealedRowAt : null,
     );
     _currentRowAt = found == null ? null : (section: found.section, index: found.index);
     _currentRowPosition = found == null ? null : (top: found.top, height: found.height);
@@ -1852,6 +1878,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     // when the spot for that call arrives on the next fetch.
     if (currentCall != null && _currentRowPosition == null) return;
     _revealedCall = currentCall;
+    _revealedRowAt = _currentRowAt;
     _correctedRevealFor = null;
     if (currentCall == null) return;
     // A slide put this call in the fields — the operator is looking straight
@@ -1962,11 +1989,19 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// Scaled like the rows for the reasons [_rowHeightScale] gives.
   double get _sectionHeaderExtent => _metrics.sectionHeaderHeight * _rowHeightScale;
 
-  /// Scrolls to [spotScrollTarget]'s answer, or not at all when there is none.
-  /// Returns the scroll's future, or null when nothing moved.
-  Future<void>? _scrollTo(double top, double bottom) {
+  /// How far [_scrollTo] would move the list to bring [top]..[bottom] into
+  /// view — zero for a span already fully visible. Read at build time, a frame
+  /// before the reveal runs, which is what lets the row the reveal scrolls to
+  /// and the row [_currentRowKey] marks for [_correctRevealFor] be the same one.
+  double _scrollCostOf(double top, double bottom) {
+    final target = _scrollTargetFor(top, bottom);
+    return target == null ? 0 : (target - _scrollController.position.pixels).abs();
+  }
+
+  /// [spotScrollTarget] against the list as it stands now.
+  double? _scrollTargetFor(double top, double bottom) {
     final position = _scrollController.position;
-    final target = spotScrollTarget(
+    return spotScrollTarget(
       top: top,
       bottom: bottom,
       headerHeight: _sectionHeaderExtent,
@@ -1975,6 +2010,12 @@ class _SpotsPanelState extends State<SpotsPanel> {
       minExtent: position.minScrollExtent,
       maxExtent: position.maxScrollExtent,
     );
+  }
+
+  /// Scrolls to [spotScrollTarget]'s answer, or not at all when there is none.
+  /// Returns the scroll's future, or null when nothing moved.
+  Future<void>? _scrollTo(double top, double bottom) {
+    final target = _scrollTargetFor(top, bottom);
     if (target == null) return null;
     return _scrollController.animateTo(target, duration: const Duration(milliseconds: 120), curve: Curves.easeOut);
   }
