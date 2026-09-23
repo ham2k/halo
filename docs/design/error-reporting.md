@@ -27,6 +27,9 @@ matching rule can quieten one.
 The notice is the once-per-session *"Something went wrong"* StatusBar entry,
 with a **Copy details** action. One per session, however many errors follow —
 a session with a repeating error must not bury the operator's real notices.
+In Next and Regular builds its text is a reassurance; in a Dev build it is the
+error itself (cut to a few lines) and the innermost stack frame in our own
+code, since whoever runs Dev is whoever will fix it.
 
 ### Current rules
 

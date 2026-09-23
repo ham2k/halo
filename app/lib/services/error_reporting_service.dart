@@ -36,6 +36,7 @@ import 'package:flutter/widgets.dart';
 
 import 'package:halo_core/halo_core.dart';
 
+import '../config/version.dart' show Edition, kEdition;
 import 'error_policy.dart';
 import 'error_reporting_backend.dart';
 import '../views/error_tile.dart';
@@ -325,7 +326,10 @@ class ErrorReportingService {
     final statusBar = _statusBar;
     if (statusBar == null || _noticeShown) return;
     _noticeShown = true;
+    // Both strings are built now rather than in the microtask: a lazily
+    // described FlutterError can name elements that are unmounted by then.
     final details = '$error\n\n${stackTrace ?? ''}';
+    final text = noticeText(error, stackTrace);
     scheduleMicrotask(() {
       statusBar.showNotice(
         key: 'error-reporting:first-error',
@@ -335,9 +339,7 @@ class ErrorReportingService {
         // neither and silently falls back to the puzzle-piece placeholder.
         icon: 'alert-circle',
         title: 'Something went wrong',
-        text: reportingEnabled
-            ? 'An unexpected error occurred and was reported. The app should keep working; restart if anything looks off.'
-            : 'An unexpected error occurred. The app should keep working; restart if anything looks off.',
+        text: text,
         actions: [
           StatusBarAction(
             label: 'Copy details',
@@ -352,6 +354,44 @@ class ErrorReportingService {
         persist: false,
       );
     });
+  }
+
+  /// The body of the [notify] notice. An operator gets reassurance; a Dev
+  /// build gets the error itself and where it was raised, because the person
+  /// running one is the person who will fix it, and "Copy details" plus a
+  /// paste is a round trip for a line that fits on the card.
+  @visibleForTesting
+  static String noticeText(Object error, StackTrace? stackTrace, {Edition edition = kEdition}) {
+    if (edition != Edition.dev) {
+      return reportingEnabled
+          ? 'An unexpected error occurred and was reported. The app should keep working; restart if anything looks off.'
+          : 'An unexpected error occurred. The app should keep working; restart if anything looks off.';
+    }
+    var message = '$error'.trim();
+    // Framework errors can run to dozens of lines; the full text is one tap
+    // away on "Copy details".
+    final lines = message.split('\n');
+    if (lines.length > 3) message = '${lines.take(3).join('\n')}\n…';
+    if (message.length > 400) message = '${message.substring(0, 400)}…';
+    final frame = _firstOwnFrame(stackTrace);
+    return frame == null ? message : '$message\n\nat $frame';
+  }
+
+  // `package:` on the VM, `packages/` in a web debug build's trace.
+  static final _ownFrame = RegExp(r'packages?[:/](ham2k_logger|halo_\w+)/');
+
+  /// The innermost stack frame in our own code — the app or one of its
+  /// `halo_*` packages — the frame's line as the trace prints it, minus its
+  /// `#N` index.
+  /// Framework and SDK frames above it name where the throw landed, not the
+  /// call of ours that caused it.
+  static String? _firstOwnFrame(StackTrace? stackTrace) {
+    if (stackTrace == null) return null;
+    for (final line in '$stackTrace'.split('\n')) {
+      if (!_ownFrame.hasMatch(line)) continue;
+      return line.replaceFirst(RegExp(r'^#\d+\s+'), '').trim();
+    }
+    return null;
   }
 
   /// Test seam: forget the attached status bar, notice throttle, and backend

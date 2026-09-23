@@ -24,6 +24,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/config/version.dart' show Edition;
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -359,6 +360,55 @@ void main() {
             'its "Copy details" action cannot survive a restart anyway — a dead, '
             'button-less copy left sitting in the footer forever would be worse than gone',
       );
+    });
+  });
+
+  group('the notice text', () {
+    final stack = StackTrace.fromString(
+      '#0      Iterable.first (dart:core/iterable.dart:12:5)\n'
+      '#1      _SomeFrameworkThing.build (package:flutter/src/widgets/framework.dart:99:3)\n'
+      '#2      QsoList.render (package:ham2k_logger/views/qso_list.dart:42:7)\n'
+      '#3      main (package:ham2k_logger/main.dart:1:1)\n',
+    );
+
+    test('a Dev build names the error and the first frame of ours', () {
+      final text = ErrorReportingService.noticeText(StateError('No element'), stack, edition: Edition.dev);
+      expect(text, contains('Bad state: No element'));
+      // The innermost frame is the SDK's and the next the framework's; both
+      // say where the throw landed, not which call of ours made it.
+      expect(text, contains('at QsoList.render (package:ham2k_logger/views/qso_list.dart:42:7)'));
+      expect(text, isNot(contains('framework.dart')));
+    });
+
+    test("a web debug build's frames are found too", () {
+      final webStack = StackTrace.fromString(
+        'dart-sdk/lib/core/iterable.dart 12:5  get first\n'
+        'packages/halo_core/src/db/repo.dart 7:3  load\n',
+      );
+      final text = ErrorReportingService.noticeText(StateError('x'), webStack, edition: Edition.dev);
+      expect(text, contains('at packages/halo_core/src/db/repo.dart 7:3  load'));
+    });
+
+    test('a long framework message is cut to what fits a card', () {
+      final long = List.generate(40, (i) => 'line $i').join('\n');
+      final text = ErrorReportingService.noticeText(Exception(long), null, edition: Edition.dev);
+      expect(text.split('\n').length, lessThanOrEqualTo(4), reason: 'the rest is on "Copy details"');
+      expect(text, isNot(contains('line 39')));
+    });
+
+    test('so is a long single-line one', () {
+      // A FormatException quoting a whole payload is one line, so the line cut
+      // alone never shortens it.
+      final text = ErrorReportingService.noticeText(FormatException('x' * 5000), null, edition: Edition.dev);
+      expect(text.length, lessThan(500));
+    });
+
+    test('Next and Regular keep the reassurance, never the error itself', () {
+      for (final edition in [Edition.next, Edition.prod]) {
+        final text = ErrorReportingService.noticeText(StateError('No element'), stack, edition: edition);
+        expect(text, startsWith('An unexpected error occurred'));
+        expect(text, isNot(contains('No element')), reason: 'an operator cannot act on a stack frame');
+      }
     });
   });
 }
