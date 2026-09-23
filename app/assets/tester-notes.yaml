@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"171":
   changes:
     - "Add a Panel: tap anywhere on a row; search offers panel extensions to enable"
     - "QSO Party exchanges are labelled QP Location, and fill in what a station sent before, even last year"
