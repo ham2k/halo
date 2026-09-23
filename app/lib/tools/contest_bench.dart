@@ -376,9 +376,10 @@ class BenchResult {
 /// cost the app pays per callsign typed while offline.
 ///
 /// The contacts are REAL while the run lasts: a Test Operation syncs like any
-/// other, so a sync-enabled device uploads them and may show them briefly on
-/// the operator's other devices before the purge tombstones them back out. That
-/// traffic also competes with the timings being measured. A run killed
+/// other, so a sync-enabled device uploads them, and the operator's other
+/// devices that pull them keep them until PURGETESTS runs there too: the purge
+/// removes them from the server without telling any other device. That traffic
+/// also competes with the timings being measured. A run killed
 /// mid-flight (a force quit, or a watchdog on a phone the workload has blocked)
 /// leaves the operation behind entirely; PURGETESTS is the way back.
 ///

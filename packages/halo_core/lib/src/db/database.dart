@@ -34,10 +34,12 @@ class Operations extends Table {
 
   /// Set alongside `deleted` when a Test Operation is deleted
   /// (`OperationsRepository.purge`, docs: Test Operations): the tombstone
-  /// still pushes through the normal dirty-row sync so other devices learn
-  /// about the deletion, but once that push is acknowledged the row is
-  /// physically removed. `purged` alone doesn't say WHO gets to act on it
-  /// without asking — see [purgedLocally].
+  /// still pushes through the normal dirty-row sync, and once that push is
+  /// acknowledged the row is physically removed. LoFi removes a purged
+  /// record outright rather than keeping the tombstone, so no other device
+  /// hears of it from there; peer sync still carries the flag. `purged`
+  /// alone doesn't say WHO gets to act on it without asking — see
+  /// [purgedLocally].
   BoolColumn get purged => boolean().withDefault(const Constant(false))();
 
   /// True only when THIS device is the one that called
@@ -48,9 +50,9 @@ class Operations extends Table {
   /// this device, so it's safe to remove once synced, but a `purged` flag
   /// that only ever arrived via sync has not been confirmed HERE and must
   /// wait for the operator to say so (`OperationsRepository.
-  /// confirmReceivedPurges`) — the whole point of `purged` round-tripping
-  /// through sync at all is so every device eventually asks, not so every
-  /// device silently agrees.
+  /// confirmReceivedPurges`) — the whole point of `purged` travelling to
+  /// another device at all (in practice from a peer; LoFi relays none) is
+  /// so every device that receives it asks, not so it silently agrees.
   BoolColumn get purgedLocally => boolean().withDefault(const Constant(false))();
 
   /// Mirrors `data.updatedAtMillis` (stamped on every local write, app-polo

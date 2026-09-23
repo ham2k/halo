@@ -1103,7 +1103,9 @@ class HaLoServices {
   StreamSubscription<List<Operation>>? _receivedPurgesSub;
 
   /// Test Operations purged on another device only tombstone here on
-  /// receipt (`OperationsRepository.mergeFromSync`) — this is what turns
+  /// receipt (`OperationsRepository.mergeFromPeer`/`mergeFromSync` — in
+  /// practice from a peer, since LoFi removes a purge rather than relaying
+  /// it) — this is what turns
   /// that into an actual prompt to remove them for real, once the operator
   /// says so. Reactive rather than tied to a specific sync callback: it
   /// fires on the app's own boot (a leftover from before this device was

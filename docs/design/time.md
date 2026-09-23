@@ -284,7 +284,7 @@ logged while travelled carried a fabricated time into a real log and reached the
 server once travel ended, indistinguishable from a genuine one. The write gate
 is what closes it: a travelled session cannot author a real contact at all, so
 the worst it can now produce is an obviously-fake `/TEST` operation that the
-Test Operation purge machinery removes and propagates.
+Test Operation purge removes, from the sync server too.
 
 ---
 
