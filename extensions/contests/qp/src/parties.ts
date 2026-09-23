@@ -57,6 +57,8 @@
 // sponsor permits self-spotting, and QP-Hub and APRS spotting are a non-goal
 // here (docs/design/contests.md §2), so nothing reads it.
 
+import { isCanadianProvince, isUsState } from "./locations.ts"
+
 import sevenqp from "./parties/7qp.json" with { type: "json" }
 import acqp from "./parties/acqp.json" with { type: "json" }
 import al from "./parties/al.json" with { type: "json" }
@@ -661,7 +663,7 @@ export function scoringModeFor(party: QsoParty, superMode: string): string {
 }
 
 /// The states and provinces this party's own counties sit in — one for most,
-/// seven for 7QP, four for ACQP.
+/// eight for 7QP, four for ACQP.
 ///
 /// Read to catch an in-party operator who typed their STATE where their county
 /// belongs: `NY` in the New York QSO Party resolves cleanly to the state, and
@@ -692,9 +694,27 @@ export function isInParty(party: QsoParty, location: string): boolean {
 /// abbreviation longer than four characters carries its state in its first two
 /// (`ORDES` is Oregon's Deschutes), and everything shorter belongs to the party
 /// whose key IS its state.
+///
+/// That prefix rule is for parties that SPAN states, where a code has to say
+/// which one. A party whose key is itself a state or province spans nothing, so
+/// for its OWN counties the key is the answer and a long code is just a long
+/// code: a file keyed by county NAMES would otherwise read `Cape Breton` as
+/// California, and claim four American states as Nova Scotia's ground. The one
+/// file shaped that way ships disabled, so this states the rule rather than
+/// fixing a live symptom.
+///
+/// Own counties only, and the distinction is the whole of it. `otherCounties`
+/// — a neighbouring party's, which `stateOfCode` also asks about — carries ITS
+/// state in its prefix whatever this key says, and Indiana accepts 327 of them
+/// from parties running the same weekend. Answering `IN` for `CTCAP` drops the
+/// prefill of an exchange the operator logged last year, and accepts a stored
+/// `ORDES` for an Indiana station as though it were theirs.
 export function stateForCounty(party: QsoParty, county: string): string {
   const code = county.toUpperCase()
-  return party.countyToState[code] ?? (code.length > 4 ? code.slice(0, 2) : party.key)
+  const mapped = party.countyToState[code]
+  if (mapped) return mapped
+  if (party.counties[code] !== undefined && (isUsState(party.key) || isCanadianProvince(party.key))) return party.key
+  return code.length > 4 ? code.slice(0, 2) : party.key
 }
 
 /// Days until this party next runs, or a negative count once it has started.

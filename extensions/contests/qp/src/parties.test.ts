@@ -6,6 +6,7 @@
 // actually in the 49 files — so a re-sync that introduces a fourth spelling of
 // the power table fails here rather than silently scoring nothing.
 
+import { isCanadianProvince, isUsState } from "./locations.ts"
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
@@ -13,9 +14,10 @@ import manifest from "../manifest.json" with { type: "json" }
 import {
   daysUntil,
   hasAlreadyRun,
-  PARTIES,
   parsePartyTime,
+  PARTIES,
   partyFor,
+  partyStates,
   pointsForMode,
   scoringModeFor,
   setupOrderOf,
@@ -149,6 +151,33 @@ test("a county knows its state, three different ways", () => {
   assert.equal(stateForCounty(party("NY"), "ALB"), "NY")
 })
 
+test("the prefix rule is only for a party that SPANS states", () => {
+  // A party whose key is itself a state or province spans nothing, so its key
+  // is the answer however long the code is. Read as a prefix instead, a file
+  // keyed by county NAMES hands the party someone else's ground: NSARA's
+  // `Cape Breton` is California, and `partyStates` reports CA, CO, IN and RI as
+  // Nova Scotia's own. That file ships disabled, so what this pins is the rule,
+  // not a symptom an operator can reach.
+  assert.equal(stateForCounty(party("NS"), "Cape Breton"), "NS")
+  assert.deepEqual([...partyStates(party("NS"))], ["NS"])
+
+  // The parties that really do span states are untouched — their keys are not
+  // state codes, which is exactly what tells them apart.
+  assert.equal(stateForCounty(party("NEQP"), "CTCAP"), "CT")
+  assert.deepEqual([...partyStates(party("7QP"))].sort(), ["AZ", "ID", "MT", "NV", "OR", "UT", "WA", "WY"])
+
+  // And a single-state party that happens to prefix its codes anyway gets the
+  // same answer it always did.
+  assert.equal(stateForCounty(party("IN"), "INADA"), "IN")
+  assert.equal(stateForCounty(party("NV"), "NVCAR"), "NV")
+
+  // And the key answers only for the party's OWN ground. Indiana accepts 327
+  // counties from other parties, each carrying ITS state's prefix — read as
+  // Indiana's, the lookup's state no longer matches what the operator logged
+  // last year and the prefill is dropped without a word (`pastExchangeHolds`).
+  assert.equal(stateForCounty(party("IN"), "CTCAP"), "CT")
+})
+
 test("the setup list is ordered by when a party runs, at any date", () => {
   // Two clocks, because the second is where the ordering has actually been
   // wrong twice: for a few weeks each year every file is out of date, and the
@@ -255,6 +284,25 @@ test("every party offered keys its counties by CODE, which the state rules read"
   for (const party of SUPPORTED_PARTIES) {
     for (const code of Object.keys(party.counties)) {
       assert.match(code, /^[A-Z0-9]{2,6}$/, `${party.key} keys a county as ${JSON.stringify(code)}`)
+    }
+  }
+})
+
+test("a state-keyed party's own long codes carry its own prefix", () => {
+  // What `stateForCounty`'s key rule assumes: a party whose key is a state does
+  // not span states, so its own long codes are its own — `INADA` is Indiana's.
+  // One that is not means the file DOES span, and owes a `countyToState` the
+  // key rule would otherwise swallow, answering a single plausible state for
+  // codes belonging to another. That failure has no symptom: the second state's
+  // codes go on being offered and scored, under the wrong ground.
+  //
+  // The shape gate above would not catch it — a name-keyed county that happens
+  // to be six letters and unspaced (`KINGS`) passes the regex.
+  for (const party of SUPPORTED_PARTIES) {
+    if (!isUsState(party.key) && !isCanadianProvince(party.key)) continue
+    for (const code of Object.keys(party.counties)) {
+      if (code.length <= 4 || party.countyToState[code]) continue
+      assert.ok(code.startsWith(party.key), `${party.key} owns ${code}, which names another state and has no countyToState`)
     }
   }
 })
