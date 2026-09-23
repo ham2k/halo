@@ -1048,6 +1048,23 @@ final RegExp _callsignRegex = RegExp(
 /// parsing (prefixes, DXCC, modifiers) is plugin territory.
 bool looksLikeCallsign(String text) => _callsignRegex.hasMatch(text.trim().toUpperCase());
 
+/// [call] uppercased with its pre- and postindicators dropped — `KI2D` for
+/// `EA4/KI2D`, `KI2D/P` and `KI2D/1/QRP` — matching `@ham2k/lib-callsigns`'
+/// `baseCall`. Synchronous, for the places that compare calls on every build
+/// and cannot await the extensions' parser. Text that does not parse as a
+/// callsign comes back only trimmed and uppercased.
+///
+/// A postindicator that itself parses as a whole callsign reads as the base
+/// instead — `C6A` for `W1AW/C6A` — as it does in the regex this mirrors.
+String baseCallOf(String call) {
+  final upper = call.trim().toUpperCase();
+  final match = _callsignRegex.firstMatch(upper);
+  if (match == null) return upper;
+  final core = upper.substring(match.group(1)?.length ?? 0);
+  final slash = core.indexOf('/');
+  return slash < 0 ? core : core.substring(0, slash);
+}
+
 /// A radio's tuned state — `freq`/`mode`/`band`/`power` for one of up to 4
 /// VFOs (`vfoA`..`vfoD`, see `RadioService`). Device-global, not tied to any
 /// one operation: a physical radio is tuned to one frequency regardless of

@@ -410,7 +410,7 @@ void main() {
     test('a spot for exactly our station is self-only, case-insensitively', () {
       final spot = _spot(call: 'n0call', band: '20m', timeInMillis: 1000);
 
-      expect(spotIsSelfOnly(spot, ourCall: 'N0CALL'), isTrue);
+      expect(spotIsSelfOnly(spot, ourBaseCalls: {'N0CALL'}), isTrue);
     });
 
     test('a merged multi-op spot that merely includes us is NOT self-only', () {
@@ -419,15 +419,48 @@ void main() {
       // row that still carries another workable station.
       final spot = _spot(call: 'W1XYZ,N0CALL', band: '20m', timeInMillis: 1000);
 
-      expect(spotIsSelfOnly(spot, ourCall: 'N0CALL'), isFalse);
+      expect(spotIsSelfOnly(spot, ourBaseCalls: {'N0CALL'}), isFalse);
+    });
+
+    // Operating KI2D, a spot of KI2D/P is our own signal: pinning it, and
+    // withholding slide-to-log, keeps us from logging ourselves.
+    test('a spot of our base call with an indicator is self-only', () {
+      expect(
+        spotIsSelfOnly(
+          _spot(call: 'N0CALL/P', band: '20m', timeInMillis: 1000),
+          ourBaseCalls: {'N0CALL'},
+        ),
+        isTrue,
+      );
+      expect(
+        spotIsSelfOnly(
+          _spot(call: 'KH6/N0CALL', band: '20m', timeInMillis: 1000),
+          ourBaseCalls: {'N0CALL'},
+        ),
+        isTrue,
+      );
+      expect(
+        spotIsSelfOnly(
+          _spot(call: 'N0CALLS', band: '20m', timeInMillis: 1000),
+          ourBaseCalls: {'N0CALL'},
+        ),
+        isFalse,
+      );
+    });
+
+    // A multi-call operation owns every one of its calls, so a merged row of
+    // two of them is ours alone.
+    test('a merged spot of only our station calls is self-only', () {
+      final spot = _spot(call: 'N0CALL,W1AW/P', band: '20m', timeInMillis: 1000);
+
+      expect(spotIsSelfOnly(spot, ourBaseCalls: {'N0CALL', 'W1AW'}), isTrue);
     });
 
     test('no station call, or a call-less spot, is never self-only', () {
       final spot = _spot(call: 'N0CALL', band: '20m', timeInMillis: 1000);
 
-      expect(spotIsSelfOnly(spot, ourCall: null), isFalse);
-      expect(spotIsSelfOnly(spot, ourCall: ''), isFalse);
-      expect(spotIsSelfOnly({'refs': const <Map<String, dynamic>>[]}, ourCall: 'N0CALL'), isFalse);
+      expect(spotIsSelfOnly(spot), isFalse);
+      expect(spotIsSelfOnly({'refs': const <Map<String, dynamic>>[]}, ourBaseCalls: {'N0CALL'}), isFalse);
     });
   });
 

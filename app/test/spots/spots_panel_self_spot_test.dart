@@ -216,6 +216,25 @@ void main() {
     expect(services.radio.vfoA.freq, isNull, reason: 'no self re-tune on a shared row');
   });
 
+  // The panel must hand EVERY station call to the self check, by base call:
+  // taking only the first call, or matching exactly, leaves W1AW/P on the
+  // board as a contact to log — the operation logging itself.
+  testWidgets('a spot of any station call, under any suffix, is pinned as ours', (tester) async {
+    operation = await OperationsRepository(db).create(stationCall: 'N0CALL, W1AW', userTitle: 'Multi Op');
+    final services = await servicesWith([_spot('K1ABC', freq: 14050.0), _spot('W1AW/P', freq: 14285.0)]);
+    final suggested = <Map<String, dynamic>>[];
+    await pumpPanel(tester, services: services, onSuggestQso: (qso, {reveal = true}) => suggested.add(qso));
+
+    expect(find.text('Your Spots - 1 spot'), findsOneWidget);
+
+    await tester.tap(find.text('W1AW/P').first);
+    await tester.pump();
+    expect(suggested, isEmpty, reason: 'our own station is not a contact to suggest');
+    expect(services.radio.vfoA.freq, 14285.0);
+
+    await services.radio.flushPendingWrites();
+  });
+
   testWidgets('the pinned self spot survives a band filter that hides the rest of the board', (tester) async {
     // The moment the pin matters: the operator QSYed and the 'auto'/explicit
     // band filter followed them away from where they self-spotted.

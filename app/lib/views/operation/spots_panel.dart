@@ -411,9 +411,8 @@ Map<String, dynamic> spotCandidateQso(String call, Map<String, dynamic> spot, {r
 };
 
 /// Whether [spot] is for the callsign being logged right now — [currentCall],
-/// already uppercased, like [spotDisplayFlags]'s `ourCall`. Any operator on a
-/// merged multi-op spot counts, the same reading of `their.call` that flags
-/// `isSelf`.
+/// already uppercased. Any operator on a merged multi-op spot counts, the
+/// same reading of `their.call` that flags `isSelf`.
 ///
 /// Exact: a portable or fixed suffix is a different station to work, so
 /// W1AW/P must not light up while W1AW is being entered. Public for
@@ -423,17 +422,24 @@ bool spotIsCurrentQso(Map<String, dynamic> spot, {String? currentCall}) {
   return _callsIn(_callOf(spot)).any((c) => c.toUpperCase() == currentCall);
 }
 
-/// Whether every operator on [spot] is [ourCall] (already uppercased) — the
-/// spot is ours ALONE. The self affordances key off this — the pinned
+/// Whether an operator [call] is our own station: its base call is one of
+/// [ourBaseCalls] (see [baseCallOf]). Unlike [spotIsCurrentQso], a portable
+/// or fixed suffix is still us — KI2D/P spotted while operating as KI2D is
+/// our own signal, not a station to work. Stations that share a base call
+/// share it here too: operating as W1AW/4, a spot of W1AW/7 counts as ours.
+bool _isOurCall(String call, Set<String> ourBaseCalls) => ourBaseCalls.contains(baseCallOf(call));
+
+/// Whether every operator on [spot] is one of our station's calls
+/// ([ourBaseCalls], by base call) — the spot is ours ALONE. The self affordances key off this — the pinned
 /// section, the tap-to-retune, the withheld slide-to-log — NOT
 /// [spotDisplayFlags]'s any-of `isSelf` tint: a merged multi-op row that
 /// merely includes us still carries another station worth working, and
 /// stealing its tap or its log action would make that station unreachable
 /// from the board. Public for `spots_panel_merge_test.dart`.
-bool spotIsSelfOnly(Map<String, dynamic> spot, {String? ourCall}) {
-  if (ourCall == null || ourCall.isEmpty) return false;
+bool spotIsSelfOnly(Map<String, dynamic> spot, {Set<String> ourBaseCalls = const {}}) {
+  if (ourBaseCalls.isEmpty) return false;
   final calls = _callsIn(_callOf(spot)).toList();
-  return calls.isNotEmpty && calls.every((c) => c.toUpperCase() == ourCall);
+  return calls.isNotEmpty && calls.every((c) => _isOurCall(c, ourBaseCalls));
 }
 
 /// The fill for the row of the QSO being logged: the logging panel's own
@@ -604,8 +610,8 @@ double? spotScrollTarget({
 
 /// How a spot should read: struck through when worked, tinted when it's our
 /// own station, accented per the scoring notices its operators carry.
-/// [scores] is keyed by [spotCandidateKey]; [ourCall] is the operation's
-/// station callsign, uppercased.
+/// [scores] is keyed by [spotCandidateKey]; [ourBaseCalls] are the base calls
+/// of the operation's station callsigns.
 ///
 /// `worked` needs EVERY operator on the spot to be a duplicate. A merged
 /// multi-op spot is one row for several stations, and striking it because one
@@ -625,7 +631,7 @@ double? spotScrollTarget({
 ({bool worked, bool isSelf, Set<String> notices}) spotDisplayFlags(
   Map<String, dynamic> spot, {
   required Map<String, ({List<String> notices, List<String> alerts})> scores,
-  String? ourCall,
+  Set<String> ourBaseCalls = const {},
 }) {
   final calls = _callsIn(_callOf(spot)).toList();
   if (calls.isEmpty) return (worked: false, isSelf: false, notices: const {});
@@ -636,7 +642,7 @@ double? spotScrollTarget({
     if (score == null || !score.alerts.contains('duplicate')) worked = false;
     notices.addAll(score?.notices ?? const []);
   }
-  return (worked: worked && notices.isEmpty, isSelf: ourCall != null && calls.any((c) => c.toUpperCase() == ourCall), notices: notices);
+  return (worked: worked && notices.isEmpty, isSelf: calls.any((c) => _isOurCall(c, ourBaseCalls)), notices: notices);
 }
 
 class SpotsPanel extends StatefulWidget {
@@ -1187,20 +1193,27 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// that activates nothing names no activity on its own refs.
   Set<String> get _huntedRefTypes => ((widget.operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet();
 
-  /// This operation's own station callsign, uppercased — the spot to tint
-  /// rather than offer as a contact.
-  ///
-  /// The FIRST of the operation's callsigns: the raw field holds all of them
-  /// as one comma-separated string, which matches no spot at all, so a
-  /// multi-call operation would tint none of its own spots and would offer
-  /// itself as a contact to work. A spot of one of the OTHER calls still
-  /// goes untinted — `spotDisplayFlags` and `spotIsSelfOnly` take one call.
-  String? get _ourCall {
-    final call = widget.operation.stationCalls.first.trim().toUpperCase();
-    return call.isEmpty ? null : call;
+  /// The base calls of every one of this operation's station callsigns —
+  /// the spots to tint rather than offer as a contact. Every call, split out
+  /// of the raw comma-separated field, which as one string matches no spot.
+  /// Kept per raw field, because every spot row asks on every build.
+  Set<String> get _ourBaseCalls {
+    final raw = widget.operation.stationCall;
+    if (raw != _ourBaseCallsFor) {
+      _ourBaseCallsFor = raw;
+      _ourBaseCallsCache = {
+        for (final call in widget.operation.stationCalls)
+          if (baseCallOf(call) case final base when base.isNotEmpty) base,
+      };
+    }
+    return _ourBaseCallsCache;
   }
 
-  ({bool worked, bool isSelf, Set<String> notices}) _flagsFor(Map<String, dynamic> spot) => spotDisplayFlags(spot, scores: _spotScores, ourCall: _ourCall);
+  String? _ourBaseCallsFor;
+  Set<String> _ourBaseCallsCache = const {};
+
+  ({bool worked, bool isSelf, Set<String> notices}) _flagsFor(Map<String, dynamic> spot) =>
+      spotDisplayFlags(spot, scores: _spotScores, ourBaseCalls: _ourBaseCalls);
 
   /// The filter-row refresh button's handler: drives a fetch while showing a
   /// spinner in place of the button's icon. Pull-to-refresh calls the cache
@@ -1289,7 +1302,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
     final merged = _mergedRawSpots;
     final selfSpots = sortSpots([
       for (final spot in merged)
-        if (spotIsSelfOnly(spot, ourCall: _ourCall)) spot,
+        if (spotIsSelfOnly(spot, ourBaseCalls: _ourBaseCalls)) spot,
     ], 'time');
 
     final singleBand = band != null && band != 'any';
@@ -1582,7 +1595,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
                                 // The SAME predicate the pinned section is built from,
                                 // so a row under "Your Spots" can never fall through to
                                 // the suggest/log affordances — and vice versa.
-                                if (spotIsSelfOnly(spot, ourCall: _ourCall) case final selfOnly)
+                                if (spotIsSelfOnly(spot, ourBaseCalls: _ourBaseCalls) case final selfOnly)
                                   // The slide wraps the tile rather than living inside it,
                                   // and carries a key of its OWN that never changes. The
                                   // tile's key does change — it takes `_currentRowKey` on

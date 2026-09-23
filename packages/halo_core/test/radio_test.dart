@@ -636,6 +636,35 @@ void main() {
     });
   });
 
+  group('baseCallOf', () {
+    test('drops pre- and postindicators', () {
+      expect(baseCallOf('ki2d'), 'KI2D');
+      expect(baseCallOf('KI2D/P'), 'KI2D');
+      expect(baseCallOf('EA4/KI2D'), 'KI2D');
+      expect(baseCallOf('VP2E/KI2D/P'), 'KI2D');
+      expect(baseCallOf('KI2D/1/QRP'), 'KI2D');
+    });
+
+    // A trailing indicator that looks like a prefix is still an indicator:
+    // W1AW operating from Hawaii is W1AW, not a station called KH6.
+    test('reads a prefix-shaped postindicator as an indicator', () {
+      expect(baseCallOf('W1AW/KH6'), 'W1AW');
+    });
+
+    // A known limit shared with lib-callsigns' regex: a country suffix that is
+    // shaped like a whole call wins the preindicator slot. Pinned so a change
+    // here is a decision, not a drift from the parser it mirrors.
+    test('reads a call-shaped postindicator as the base', () {
+      expect(baseCallOf('W1AW/C6A'), 'C6A');
+    });
+
+    test('passes unparseable text through, trimmed and uppercased', () {
+      expect(baseCallOf(' 20m '), '20M');
+      expect(baseCallOf('K1ABC//W1AW'), 'K1ABC//W1AW');
+      expect(baseCallOf(''), '');
+    });
+  });
+
   group('looksLikeCallsign', () {
     test('accepts plausible calls', () {
       expect(looksLikeCallsign('W1AW'), isTrue);

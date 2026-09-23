@@ -212,16 +212,32 @@ void main() {
     });
 
     test('our own station call is flagged as self', () {
-      expect(spotDisplayFlags(worked, scores: const {}, ourCall: 'K1ABC').isSelf, isTrue);
-      expect(spotDisplayFlags(worked, scores: const {}, ourCall: 'W9ZZZ').isSelf, isFalse);
+      expect(spotDisplayFlags(worked, scores: const {}, ourBaseCalls: {'K1ABC'}).isSelf, isTrue);
+      expect(spotDisplayFlags(worked, scores: const {}, ourBaseCalls: {'W9ZZZ'}).isSelf, isFalse);
       expect(spotDisplayFlags(worked, scores: const {}).isSelf, isFalse);
+    });
+
+    // The spot carries whatever suffix the spotter heard; the station call
+    // may carry none — an exact match leaves KI2D/P untinted for KI2D.
+    test('a spot of our base call with an indicator is self', () {
+      final portable = _spot(call: 'K1ABC/P', band: '20m', mode: 'SSB');
+      expect(spotDisplayFlags(portable, scores: const {}, ourBaseCalls: {'K1ABC'}).isSelf, isTrue);
+      expect(spotDisplayFlags(portable, scores: const {}, ourBaseCalls: {'W9ZZZ', 'K1ABC'}).isSelf, isTrue);
+      expect(
+        spotDisplayFlags(
+          _spot(call: 'K1ABCD', band: '20m'),
+          scores: const {},
+          ourBaseCalls: {'K1ABC'},
+        ).isSelf,
+        isFalse,
+      );
     });
 
     // Our own call within a merged multi-op spot still identifies the row as
     // ours; the compound never matches the station call directly.
     test('our station call inside a multi-op spot is still self', () {
       final multi = _spot(call: 'K1ABC,W2XYZ', band: '20m', mode: 'SSB');
-      expect(spotDisplayFlags(multi, scores: const {}, ourCall: 'W2XYZ').isSelf, isTrue);
+      expect(spotDisplayFlags(multi, scores: const {}, ourBaseCalls: {'W2XYZ'}).isSelf, isTrue);
     });
 
     // A call-less spot is a malformed hook result (Spot.their.call is required
@@ -231,7 +247,7 @@ void main() {
       final flags = spotDisplayFlags(
         _spot(call: '', band: '20m'),
         scores: const {},
-        ourCall: 'K1ABC',
+        ourBaseCalls: {'K1ABC'},
       );
       expect(flags.worked, isFalse);
       expect(flags.isSelf, isFalse);
