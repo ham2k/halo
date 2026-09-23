@@ -631,7 +631,7 @@ packages:
     source: path
     version: "0.0.1"
   halo_quickjs:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       path: "../packages/halo_quickjs"
       relative: true

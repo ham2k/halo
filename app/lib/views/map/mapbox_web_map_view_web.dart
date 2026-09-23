@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
 
+import '../../services/connectivity_service.dart';
 import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
 import 'map_marker_data.dart';
@@ -135,9 +136,16 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     MapErrorReporter.report(backend: 'web', kind: kind, message: message);
   }
 
+  /// The app's online and offline edges, for the script's reload — see
+  /// map_gl_script.dart's `reload` and `cancelReload`.
+  StreamSubscription<bool>? _offlineChanges;
+
   @override
   void initState() {
     super.initState();
+    _offlineChanges = ConnectivityService.offlineChanges.listen((offline) {
+      _handle?.callMethod((offline ? 'cancelReload' : 'reload').toJS);
+    });
     widget.zoomController
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
@@ -278,6 +286,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
     if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
     if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
+    _offlineChanges?.cancel();
     _handle?.callMethod('remove'.toJS);
     _handle = null;
     _dataApplied = false;

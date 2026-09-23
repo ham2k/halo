@@ -11,7 +11,8 @@
 // Exposes `window.poloMapGl.create(container, style, styleDark, initialDark,
 // onEvent, notifyClicks)` returning a handle with `setMarkersJson`,
 // `setLinesJson`, `setShapesJson`, `patchMarkersJson`, `patchLinesJson`,
-// `setProjection`, `moveTo`, and `remove`. Data crosses as JSON strings —
+// `setProjection`, `moveTo`, `reload`/`cancelReload` (the host's word that
+// the app is back online, or offline again), and `remove`. Data crosses as JSON strings —
 // both callers already have the payload serialized, and strings keep the
 // interop layer trivial on each side. A patch (`{upsert, removeIds}`, see
 // `mapLinesPatchPayload`) is what a caller sends when a few of thousands of
@@ -229,6 +230,34 @@ window.poloMapGl = window.poloMapGl || {
     // the same grace as the pending-payload one.
     const STYLE_GRACE_MS = 10000;
 
+    // How long a regained connection gets to become a usable one before the
+    // map reloads over it. The OSM backend waits the same (OsmMapView's
+    // backOnlineDelay).
+    const RELOAD_DELAY_MS = 2000;
+
+    // Whether the style on screen has finished parsing. MapLibre's own
+    // isStyleLoaded() also waits for every tile, so a map that lost a single
+    // tile would read as one with no style at all.
+    let styleLoaded = false;
+
+    // What has gone unanswered — asked for with no network to answer — since
+    // the style last loaded. MapLibre retries none of it: a map opened
+    // offline stays blank, and one that lost coverage keeps its holes,
+    // however long the connection has been back. Two kinds, because they
+    // recover differently:
+    //
+    //  * the style's own parts — the stylesheet, a source's TileJSON, the
+    //    sprite. None of them is ever fetched again short of reloading the
+    //    style, and without them the basemap is blank or unfinished anyway.
+    //  * tiles, by source, as the {x, y, z} refreshTiles takes. Refetched in
+    //    place, the style and every tile that did arrive staying up.
+    //
+    // Only an unanswered request counts (status 0): a sprite that 404s or a
+    // layer that fails to evaluate is no better after a reload, and arming on
+    // it would refetch a working map on every later online signal.
+    let styleFailed = false;
+    let failedTiles = {};
+
     // True between setDark's setStyle call and its 'style.load' handler —
     // while true, setMarkers/setLines only update lastMarkersData/lastLinesData
     // and leave applying them to that handler, rather than also queuing
@@ -295,6 +324,11 @@ window.poloMapGl = window.poloMapGl || {
       // strand the markers for as long as the new tile server takes, or
       // forever if it never settles.
       styleSwapInFlight = true;
+      // What the replaced style failed to fetch is no longer on screen to
+      // recover; this swap's own failures re-arm the reload.
+      styleLoaded = false;
+      styleFailed = false;
+      failedTiles = {};
       map.once('style.load', function () {
         // A newer swap (or the map's removal) owns the map now; this one's
         // data is stale, and applying it would paint over theirs. A swap the
@@ -369,6 +403,81 @@ window.poloMapGl = window.poloMapGl || {
       activeStyleDark = newStyleDark;
       setDark(dark);
     }
+
+    map.on('style.load', function () {
+      styleLoaded = true;
+      styleFailed = false;
+      failedTiles = {};
+    });
+    let reloadTimer = null;
+
+    // Coming back online refetches what went unanswered, and nothing else.
+    // Asked for from two places — the page's own 'online' event and the
+    // app's connectivity edge — so a map with nothing unanswered is left
+    // alone, and one whose reload fails again is re-armed by that failure for
+    // whichever signal comes next.
+    //
+    // Delayed, because a route appearing is not yet a working one (DHCP,
+    // DNS): a reload sent into that gap fails and spends the signal. Each
+    // signal restarts the wait, so the later one — the app's edge, which the
+    // sync probe may have verified — is the one the reload waits behind.
+    //
+    // A style that never loaded has nothing on screen to lose and is simply
+    // asked for again. One that loaded but is missing a part goes through
+    // setDark's swap, which puts the markers and lines back on the new copy.
+    // Neither path is taken for tiles alone: a swap tears the style down
+    // before fetching its replacement, and on a network that raises 'online'
+    // but answers nothing — a captive portal, a hotspot with no upstream —
+    // that would blank a map that was only missing tiles.
+    function reload() {
+      clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(function () {
+        reloadTimer = null;
+        // From a timer, outside any caller's stack: an escape reaches no
+        // backend's Dart side (same reasoning as the deferred flush below).
+        try {
+          if (styleFailed) {
+            styleFailed = false;
+            failedTiles = {};
+            if (!styleLoaded) {
+              // A swap waiting on this same URL still lands: its 'style.load'
+              // handler is keyed on the swap, not on the request.
+              const url = lastDark ? activeStyleDark : activeStyle;
+              appliedStyleUrl = url;
+              map.setStyle(url, { diff: false });
+            } else {
+              // Past setDark's "already showing" guard.
+              appliedStyleUrl = null;
+              setDark(lastDark);
+            }
+            return;
+          }
+          const tiles = failedTiles;
+          failedTiles = {};
+          Object.keys(tiles).forEach(function (id) {
+            if (!map.getSource(id)) return;
+            map.refreshTiles(id, Object.keys(tiles[id]).map(function (key) { return tiles[id][key]; }));
+          });
+        } catch (err) {
+          // A setStyle that threw inside setDark leaves the swap flagged in
+          // flight with no watchdog set to clear it, and every payload after
+          // it would be dropped by that guard.
+          styleSwapInFlight = false;
+          report('deferred-update', 'reloading what failed offline failed: ' + ((err && err.message) || err));
+        }
+      }, RELOAD_DELAY_MS);
+    }
+
+    // Going offline again before the wait is up: the reload would be sent to
+    // no network, and for a style missing a part that means tearing it down
+    // and asking for a replacement that cannot come. What went unanswered
+    // stays recorded for the next time the network is back.
+    function cancelReload() {
+      clearTimeout(reloadTimer);
+      reloadTimer = null;
+    }
+    window.addEventListener('online', reload);
+    window.addEventListener('offline', cancelReload);
 
     function showPopup(m) {
       if (popup) popup.remove();
@@ -770,6 +879,15 @@ window.poloMapGl = window.poloMapGl || {
     // no error commonly yields '{}' (its interesting fields are
     // non-enumerable), so name what is knowable.
     map.on('error', function (e) {
+      if (e && e.error instanceof maplibregl.AJAXError && e.error.status === 0) {
+        const tile = e.tile && e.tile.tileID && e.tile.tileID.canonical;
+        if (tile && e.sourceId) {
+          const byKey = failedTiles[e.sourceId] = failedTiles[e.sourceId] || {};
+          byKey[tile.z + '/' + tile.x + '/' + tile.y] = { x: tile.x, y: tile.y, z: tile.z };
+        } else {
+          styleFailed = true;
+        }
+      }
       var message = e && e.error && e.error.message;
       if (!message) {
         message = ((e && e.sourceId) ? 'source ' + e.sourceId + ': ' : '') + JSON.stringify(e);
@@ -806,8 +924,13 @@ window.poloMapGl = window.poloMapGl || {
       zoomOut: function () { map.zoomOut(); },
       setDark: setDark,
       updateStyles: updateStyles,
+      reload: reload,
+      cancelReload: cancelReload,
       remove: function () {
         resizeObserver.disconnect();
+        window.removeEventListener('online', reload);
+        window.removeEventListener('offline', cancelReload);
+        clearTimeout(reloadTimer);
         // Or a watchdog reports a style that never loaded, about a map that
         // was simply taken down while it was still loading — and the swap
         // one would go further and put markers back on a removed map.

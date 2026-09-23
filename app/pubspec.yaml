@@ -160,6 +160,11 @@ dev_dependencies:
   # fake_async: reachable through the override below, but imported directly,
   # so declared directly. `any` because the override decides the version.
   flutter_inappwebview_linux: any
+  # map_back_online_test.dart runs the map's GL script against a fake
+  # MapLibre, which needs a JS engine. Same rule as fake_async: transitive
+  # via halo_extension_host, but imported directly, so declared directly.
+  halo_quickjs:
+    path: ../packages/halo_quickjs
 
 # Three of these entries replace a `flutter_inappwebview` platform
 # implementation we cannot use as published; each vendored package documents

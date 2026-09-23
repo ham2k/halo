@@ -10,12 +10,16 @@
 // great-circle polylines (pre-densified by the facade); tapping a circle
 // opens a callout with the QSO's details, tapping anywhere else closes it.
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../services/connectivity_service.dart';
+import '../../services/error_policy.dart' show ErrorPolicy;
 import '../../services/map_error_reporter.dart';
 import 'map_marker_data.dart';
 import 'map_popup.dart';
@@ -46,17 +50,42 @@ class OsmMapView extends StatefulWidget {
     this.onMarkerTap,
   });
 
+  /// How long the online edge waits before tiles that failed are reset. Like
+  /// the GL backends' reload (map_gl_script.dart): the edge can arrive the
+  /// moment an interface does, before DNS answers, and a reset into that gap
+  /// fails every tile again with no second edge coming.
+  static const backOnlineDelay = Duration(seconds: 2);
+
   @override
   State<OsmMapView> createState() => _OsmMapViewState();
 }
 
 class _OsmMapViewState extends State<OsmMapView> {
   final _mapController = MapController();
+
+  /// Coming back online refetches the tiles, when one went unanswered since
+  /// the last time: flutter_map keeps a failed tile as failed, so a map that lost
+  /// coverage stays grey where it did. A map with nothing failed is left
+  /// alone — a reset drops every tile before reloading, and a healthy map
+  /// would flash grey on every connectivity flap.
+  final _reset = StreamController<void>.broadcast();
+  StreamSubscription<bool>? _offlineChanges;
+  Timer? _resetTimer;
+  bool _tileFailed = false;
   String? _selectedMarkerId;
 
   @override
   void initState() {
     super.initState();
+    _offlineChanges = ConnectivityService.offlineChanges.listen((offline) {
+      _resetTimer?.cancel();
+      if (offline) return;
+      _resetTimer = Timer(OsmMapView.backOnlineDelay, () {
+        if (!_tileFailed) return;
+        _tileFailed = false;
+        _reset.add(null);
+      });
+    });
     widget.zoomController
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
@@ -110,6 +139,9 @@ class _OsmMapViewState extends State<OsmMapView> {
     if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
     if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
     if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
+    _offlineChanges?.cancel();
+    _resetTimer?.cancel();
+    _reset.close();
     _mapController.dispose();
     super.dispose();
   }
@@ -133,17 +165,17 @@ class _OsmMapViewState extends State<OsmMapView> {
           // hence the attribution swap below.
           urlTemplate: widget.isDark ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png' : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.ham2k.poloNext',
+          reset: _reset.stream,
           // Otherwise a failed tile is swallowed by flutter_map and the pane
           // just shows grey squares with no evidence anywhere. The tile URL
           // is stripped from the message (NetworkImageLoadException embeds
           // it): the reporter dedups by message, and one per-URL variant per
           // tile would burn its whole upload budget on one failure class.
-          errorTileCallback: (tile, error, stackTrace) => MapErrorReporter.report(
-            backend: 'osm',
-            kind: 'tile-load',
-            message: '$error'.replaceAll(RegExp(r'https?://\S+'), '<tile url>'),
-            stack: stackTrace,
-          ),
+          errorTileCallback: (tile, error, stackTrace) {
+            // An answer — a 404, OSM's 429 or 403 — is no better after a reset.
+            if (ErrorPolicy.isTransportFailure(error)) _tileFailed = true;
+            MapErrorReporter.report(backend: 'osm', kind: 'tile-load', message: '$error'.replaceAll(RegExp(r'https?://\S+'), '<tile url>'), stack: stackTrace);
+          },
         ),
         // Base lines, then base markers, then the current QSO's highlight line
         // and marker in layers ABOVE them — flutter_map stacks children in

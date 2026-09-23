@@ -27,6 +27,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import '../../services/connectivity_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/windows_webview.dart';
 import '../../services/map_error_reporter.dart';
@@ -172,6 +173,8 @@ class MapboxWebviewMapView extends StatefulWidget {
     window.poloZoomOut = handle.zoomOut;
     window.poloSetDark = handle.setDark;
     window.poloUpdateStyles = handle.updateStyles;
+    window.poloReload = handle.reload;
+    window.poloCancelReload = handle.cancelReload;
     handle.onLoad(function () {
       window.flutter_inappwebview.callHandler('poloMapReady');
     });
@@ -230,10 +233,22 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     MapErrorReporter.report(backend: 'webview', kind: kind, message: message);
   }
 
+  /// The app's online and offline edges, for the page's reload — see
+  /// map_gl_script.dart's `reload` and `cancelReload`. Sent before ready too:
+  /// a map opened offline is exactly the one that never reports in until its
+  /// style is fetched again.
+  StreamSubscription<bool>? _offlineChanges;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _offlineChanges = ConnectivityService.offlineChanges.listen((offline) {
+      // Guarded: the page may not have run its script yet, and the edge is
+      // no reason to throw in it.
+      final call = offline ? 'poloCancelReload' : 'poloReload';
+      _controller?.evaluateJavascript(source: 'window.$call && window.$call();');
+    });
     widget.zoomController
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
@@ -282,6 +297,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
     if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
     WidgetsBinding.instance.removeObserver(this);
+    _offlineChanges?.cancel();
     _readyWatchdog.dispose();
     // The last thing this app's own code knows before the native platform
     // view underneath actually tears down (HALO-290) — a subsequent native
