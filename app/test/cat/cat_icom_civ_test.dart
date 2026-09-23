@@ -286,6 +286,52 @@ void main() {
       expect(sink.sent, isEmpty);
     });
 
+    // A G90 ignores a mode set with no filter byte — frequency control works
+    // and the mode never changes. Sending a fixed filter instead would force
+    // the operator's selection, as polo did; the radio's own is sent back.
+    group('on an entry that must send a filter', () {
+      late IcomCivSession g90;
+      setUp(() => g90 = IcomCivSession(sink, radioAddress: 0x88, controllerAddress: us, config: const {civModeWithFilterConfigKey: true}));
+      void feedG90(List<int> bytes) => g90.handleData(Uint8List.fromList(bytes));
+
+      test('a mode not yet seen gets the filter currently in use', () {
+        feedG90([0xFE, 0xFE, us, 0x88, 0x04, 0x01, 0x02, 0xFD]);
+        sink.sent.clear();
+        g90.setMode('CW');
+        expect(sink.sent.single, [0xFE, 0xFE, 0x88, us, 0x06, 0x03, 0x02, 0xFD]);
+      });
+
+      // The radio keeps a filter per mode: sending USB's back to CW would
+      // change the operator's CW filter on every switch.
+      test('a mode already seen gets back the filter it had', () {
+        feedG90([0xFE, 0xFE, us, 0x88, 0x04, 0x03, 0x03, 0xFD]);
+        feedG90([0xFE, 0xFE, us, 0x88, 0x04, 0x01, 0x01, 0xFD]);
+        sink.sent.clear();
+        g90.setMode('CW');
+        expect(sink.sent.single, [0xFE, 0xFE, 0x88, us, 0x06, 0x03, 0x03, 0xFD]);
+      });
+
+      // CatService never sends the same mode twice, so one dropped for want
+      // of a filter would be lost rather than retried. And the answer that
+      // releases it is the mode being replaced: reporting that would put the
+      // operator's pick back on screen until the next poll.
+      test('holds a mode set until the radio has answered, then sends it without reporting the old mode', () {
+        g90.setMode('USB');
+        expect(sink.sent, isEmpty);
+        feedG90([0xFE, 0xFE, us, 0x88, 0x01, 0x00, 0x03, 0xFD]);
+        expect(sink.sent.single, [0xFE, 0xFE, 0x88, us, 0x06, 0x01, 0x03, 0xFD]);
+        expect(sink.readings, isEmpty);
+      });
+
+      // Waiting for a filter the radio never sends is the dead mode control
+      // this entry exists to fix, reached by another road.
+      test('a radio whose answers carry no filter still gets its mode set, with FIL1', () {
+        g90.setMode('CW');
+        feedG90([0xFE, 0xFE, us, 0x88, 0x04, 0x01, 0xFD]);
+        expect(sink.sent.single, [0xFE, 0xFE, 0x88, us, 0x06, 0x03, 0x01, 0xFD]);
+      });
+    });
+
     test('set power is a 0x14 0x0A frame, watts converted against the assumed 100W ceiling', () {
       session.setPower(100);
       // Level 255 (0x02 0x55 BCD) for 100W against the assumed 100W max.

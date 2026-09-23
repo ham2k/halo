@@ -4387,6 +4387,9 @@ class Translations$settings$station$en {
 	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891). - **Speed must match** the radio's CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Modes follow the FT-891's table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.'
 	String get yaesuTroubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.';
 
+	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **Use the first of the radio's two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart. - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises. - **Speed must match** the radio's CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.'
+	String get yaesuUsbTroubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises.\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.';
+
 	/// en: 'If the radio connects but shows no frequency'
 	String get elecraftTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
@@ -4396,8 +4399,8 @@ class Translations$settings$station$en {
 	/// en: 'If the radio connects but shows no frequency'
 	String get kenwoodTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
-	/// en: 'This driver is proven against a QRP Labs QMX and against Elecraft's KX2 and KX3, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way. If nothing comes back, almost always one of: - **Speed must match** the radio's own CAT menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Some rigs need CAT enabled** in the menu before they answer at all. **Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.'
-	String get kenwoodTroubleshooting => 'This driver is proven against a QRP Labs QMX and against Elecraft\'s KX2 and KX3, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.';
+	/// en: 'This driver is proven against Kenwood's TS-590SG and TS-480, QRP Labs' QMX and QCX-mini, and Elecraft's KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way. If nothing comes back, almost always one of: - **Speed must match** the radio's own CAT menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Some rigs need CAT enabled** in the menu before they answer at all. **Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.'
+	String get kenwoodTroubleshooting => 'This driver is proven against Kenwood\'s TS-590SG and TS-480, QRP Labs\' QMX and QCX-mini, and Elecraft\'s KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.';
 
 	/// en: 'Connected'
 	String get statusConnected => 'Connected';
@@ -6469,6 +6472,9 @@ class Translations$settings$station$models$en {
 	/// en: 'Yaesu FTDX10'
 	String get ftdx10 => 'Yaesu FTDX10';
 
+	/// en: 'Yaesu FTX-1'
+	String get ftx1 => 'Yaesu FTX-1';
+
 	/// en: 'Yaesu FT-817 / FT-818'
 	String get ft817 => 'Yaesu FT-817 / FT-818';
 
@@ -6490,11 +6496,20 @@ class Translations$settings$station$models$en {
 	/// en: 'Kenwood - Generic'
 	String get kenwoodGeneric => 'Kenwood - Generic';
 
+	/// en: 'Kenwood TS-590SG'
+	String get ts590sg => 'Kenwood TS-590SG';
+
+	/// en: 'Kenwood TS-480'
+	String get ts480 => 'Kenwood TS-480';
+
 	/// en: 'QRP Labs QMX'
 	String get qmx => 'QRP Labs QMX';
 
 	/// en: 'BG2FX FX-4CR'
 	String get fx4cr => 'BG2FX FX-4CR';
+
+	/// en: 'QRP Labs QCX'
+	String get qcx => 'QRP Labs QCX';
 
 	/// en: 'Elecraft - Generic'
 	String get elecraftGeneric => 'Elecraft - Generic';
@@ -6528,6 +6543,9 @@ class Translations$settings$station$models$en {
 
 	/// en: 'Xiegu X6100'
 	String get x6100 => 'Xiegu X6100';
+
+	/// en: 'Xiegu G90'
+	String get g90 => 'Xiegu G90';
 
 	/// en: 'Radio controlled via rigctld'
 	String get rigctld => 'Radio controlled via rigctld';
@@ -7952,6 +7970,7 @@ extension on Translations {
 			'settings.station.models.ft891' => 'Yaesu FT-891',
 			'settings.station.models.ft710' => 'Yaesu FT-710',
 			'settings.station.models.ftdx10' => 'Yaesu FTDX10',
+			'settings.station.models.ftx1' => 'Yaesu FTX-1',
 			'settings.station.models.ft817' => 'Yaesu FT-817 / FT-818',
 			'settings.station.models.ft857' => 'Yaesu FT-857',
 			'settings.station.models.ft897' => 'Yaesu FT-897',
@@ -7959,8 +7978,11 @@ extension on Translations {
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Generic',
 			'settings.station.models.icomGeneric' => 'Icom - Generic',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Generic',
+			'settings.station.models.ts590sg' => 'Kenwood TS-590SG',
+			'settings.station.models.ts480' => 'Kenwood TS-480',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
+			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Generic',
 			'settings.station.models.kx2' => 'Elecraft KX2',
 			'settings.station.models.kx3' => 'Elecraft KX3',
@@ -7972,6 +7994,7 @@ extension on Translations {
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
 			'settings.station.models.x6100' => 'Xiegu X6100',
+			'settings.station.models.g90' => 'Xiegu G90',
 			'settings.station.models.rigctld' => 'Radio controlled via rigctld',
 			'settings.station.models.rigctldNodeName' => 'My Radio (via rigctld)',
 			'settings.station.models.flrig' => 'Radio controlled via flrig',
@@ -7995,10 +8018,11 @@ extension on Translations {
 			'settings.station.guohetecTroubleshooting' => 'The Q900 answers CAT two different ways, and this entry uses its own protocol rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation answers fewer commands, and nothing reports which one the radio is using.\n\n- **The USB-C cable is the CAT link**, and it carries the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
+			'settings.station.yaesuUsbTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises.\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.elecraftTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.elecraftTroubleshooting' => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 and K4 have not been reported either way, so please say what happens if you run one.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against a QRP Labs QMX and against Elecraft\'s KX2 and KX3, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
+			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against Kenwood\'s TS-590SG and TS-480, QRP Labs\' QMX and QCX-mini, and Elecraft\'s KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
@@ -8288,14 +8312,14 @@ extension on Translations {
 			'commands.noCwKeyer' => 'No connected radio can key CW',
 			'commands.noKeyer' => 'No connected radio can key CW or play voice memories',
 			'commands.keyerNeedsOperation' => 'Open an operation to use the CW keyer',
+			_ => null,
+		} ?? switch (path) {
 			'commands.keyerExperimentOff' => 'CW keying is off — turn it on with EXP KEYER',
 			'commands.esmExperimentOff' => 'Enter Sends Messages is off — turn it on with EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Sending CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW message F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW message F${n} was not sent: the extensions are not ready',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
 			'commandDialog.sectionCommands' => 'Commands',

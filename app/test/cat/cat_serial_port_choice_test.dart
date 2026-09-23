@@ -560,8 +560,8 @@ void main() {
     // manufacturer would let an entry drop out of the set silently — renamed
     // brand string, re-keyed variant — and a guard that shrinks to nothing
     // still passes.
-    const claimsPortA = {'icom-generic-serial', 'ic705-serial', 'ic7610-serial', 'ic7760-serial'};
-    const noPortOfItsOwn = {'ic7300-serial', 'ic7300mk2-serial', 'ic706mkiig-serial', 'ic7100-serial'};
+    const claimsPortA = {'icom-generic-serial', 'ic705-serial', 'ic7300mk2-serial', 'ic7610-serial', 'ic7760-serial'};
+    const noPortOfItsOwn = {'ic7300-serial', 'ic706mkiig-serial', 'ic7100-serial'};
 
     test('the Icoms with two USB ports of their own claim the first', () {
       for (final key in claimsPortA) {
@@ -576,7 +576,7 @@ void main() {
 
     test('a radio whose ports are the operator\'s cable claims nothing', () {
       // The IC-706MKIIG reaches CI-V through a level converter, and the
-      // two IC-7300s and the IC-7100 present one port each, so the only
+      // original IC-7300 and the IC-7100 present one port each, so the only
       // ports these could ever rank belong to somebody else's bridge — whose second channel is
       // usually PTT, which picks and then answers nothing. Icom's Port A
       // convention is about Icom's own USB and says nothing about that.
@@ -605,7 +605,7 @@ void main() {
     });
 
     test('the CP2105 Yaesus speak CAT on the Enhanced port, the first, and only on a Silicon Labs bridge', () {
-      for (final key in ['ft891-serial', 'ftdx10-serial']) {
+      for (final key in ['ft891-serial', 'ft710-serial', 'ftdx10-serial', 'ftx1-serial']) {
         final port = registry.typeFor(key)!.restrictions['port'] as Map;
         expect(port['index'], 0, reason: key);
         expect(port['vendorId'], 0x10C4, reason: key);

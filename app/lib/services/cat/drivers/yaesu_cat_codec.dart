@@ -84,6 +84,29 @@ String buildReadPowerCommand() => 'PC;';
 /// `PC100;` → 100. Null unless it's exactly three digits.
 int? parsePowerParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
 
+/// The FTX-1's `PC`, which names the unit it drives before the level: `1`
+/// the field head (0.5-10 W, tenths written as `PC11.5;`), `2` the SPA-1
+/// amplifier (5-100 W). From hamlib's FTX-1 backend, not a capture. The
+/// FT-891 form above neither parses these answers nor builds a command the
+/// radio accepts.
+///
+/// `1010` → field head, 10 W; `10.5` → field head, 0.5 W; `2100` → SPA-1,
+/// 100 W. Null for anything else.
+({int head, num watts})? parseHeadPowerParams(String params) {
+  final match = RegExp(r'^([12])(\d{3}|\d\.\d)$').firstMatch(params);
+  if (match == null) return null;
+  return (head: int.parse(match[1]!), watts: num.parse(match[2]!));
+}
+
+/// Clamped to [head]'s range, as [buildSetPowerCommand] is to the FT-891's.
+/// The field head takes whole watts zero-padded and anything finer as a
+/// tenth; the SPA-1 takes whole watts only.
+String buildSetHeadPowerCommand(int head, num watts) {
+  if (head == 2) return 'PC2${watts.round().clamp(5, 100).toString().padLeft(3, '0')};';
+  final tenths = (watts.clamp(0.5, 10) * 10).round();
+  return tenths % 10 == 0 ? 'PC1${(tenths ~/ 10).toString().padLeft(3, '0')};' : 'PC1${(tenths / 10).toStringAsFixed(1)};';
+}
+
 /// Asks whether the radio is transmitting.
 ///
 /// READ ONLY — `TX1;`/`TX2;` would KEY the radio, so the bare `TX;` is the

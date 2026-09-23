@@ -59,7 +59,6 @@ const _ceilings = <String, int>{
   'lib/views/home_view.dart': 1684,
   '../packages/halo_core/lib/src/sync/sync_engine.dart': 1553,
   'lib/services/settings_service.dart': 1690,
-  'lib/services/cat/equipment_registry.dart': 1555,
 };
 
 /// Every non-generated `.dart` file under the first-party `lib/` roots.

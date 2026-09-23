@@ -129,7 +129,14 @@ class Ft891Driver extends EquipmentDriver {
   /// field on any of them — which calibration file describes a radio is a
   /// fact about the model, not a setting anyone should be asked for.
   @override
-  Set<String> get recognizedConfigKeys => {...super.recognizedConfigKeys, cwKeyerConfigKey, voiceMemoriesConfigKey, voiceCeilingConfigKey, meterInfoConfigKey};
+  Set<String> get recognizedConfigKeys => {
+    ...super.recognizedConfigKeys,
+    cwKeyerConfigKey,
+    voiceMemoriesConfigKey,
+    voiceCeilingConfigKey,
+    meterInfoConfigKey,
+    yaesuHeadPowerConfigKey,
+  };
 
   /// Nothing WITHOUT a table: Yaesu answers `RM` with a raw 0-255 and
   /// publishes no scale anywhere, so a radio whose catalogue entry names no
@@ -265,6 +272,11 @@ const _tablesByMeterNumber = <int, MeterTable>{
 /// The config key for the bench capture — see this driver's config field.
 const yaesuMeterCaptureConfigKey = 'yaesuMeterCapture';
 
+/// Pinned by an entry whose `PC` names the unit it drives — the FTX-1's
+/// (see [parseHeadPowerParams]). Never a field: which form a radio speaks is
+/// a fact about the model.
+const yaesuHeadPowerConfigKey = 'yaesuHeadPower';
+
 class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
   final EquipmentSink _sink;
   final _framer = AsciiCatFramer();
@@ -348,7 +360,29 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     Map<String, dynamic> config = const {},
   }) : _config = config,
        _captureMeters = config[yaesuMeterCaptureConfigKey] == true,
+       _headPower = config[yaesuHeadPowerConfigKey] == true,
        _meterInfoKey = config[meterInfoConfigKey] as String?;
+
+  /// See [yaesuHeadPowerConfigKey].
+  final bool _headPower;
+
+  /// The unit the radio's last `PC` answer named, or [_plainPowerForm] for
+  /// a radio that answered in the FT-891's form after all. A set cannot be
+  /// built without it — the same watts mean a different command on each
+  /// unit — so one asked for before the first answer waits in
+  /// [_pendingPower] rather than being dropped: [CatService] records a set
+  /// as delivered and would not send the same value again.
+  int? _powerHead;
+  bool _powerAnswered = false;
+  bool _warnedPowerForm = false;
+  num? _pendingPower;
+  static const _plainPowerForm = 0;
+
+  void _warnPowerForm(String note) {
+    if (_warnedPowerForm) return;
+    _warnedPowerForm = true;
+    debugPrint('[cat] yaesu: $note');
+  }
 
   /// The node's merged config, kept for [_telemetry]'s cadence — a `late
   /// final` field cannot be initialised from another field.
@@ -505,6 +539,27 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
         final mode = parseModeParams(command.params);
         if (mode != null) _report(VfoReading(mode: mode));
 
+      case 'PC' when _headPower:
+        final reading = parseHeadPowerParams(command.params);
+        final plain = reading == null ? parsePowerParams(command.params) : null;
+        _powerAnswered = true;
+        if (reading != null) {
+          _powerHead = reading.head;
+        } else if (plain != null) {
+          _powerHead = _plainPowerForm;
+          _warnPowerForm('PC answered in the FT-891 form ("${command.params}"); using that form');
+        } else {
+          _warnPowerForm('PC answer "${command.params}" is in no known form; power is neither read nor set');
+        }
+        if (_pendingPower case final watts?) {
+          _pendingPower = null;
+          setPower(watts);
+          // This answer is the level being replaced: reporting it would put
+          // the operator's pick back on screen until the next poll.
+          return;
+        }
+        if (reading?.watts ?? plain case final watts?) _sink.reportPower(watts);
+
       case 'PC':
         final watts = parsePowerParams(command.params);
         if (watts != null) _sink.reportPower(watts);
@@ -576,7 +631,21 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   }
 
   @override
-  void setPower(num watts) => _send(buildSetPowerCommand(watts));
+  void setPower(num watts) {
+    if (!_headPower) return _send(buildSetPowerCommand(watts));
+    if (!_powerAnswered) {
+      _pendingPower = watts;
+      return;
+    }
+    final head = _powerHead;
+    if (head == null) {
+      debugPrint('[cat] yaesu: power not sent — the radio\'s PC answers are in no known form');
+    } else if (head == _plainPowerForm) {
+      _send(buildSetPowerCommand(watts));
+    } else {
+      _send(buildSetHeadPowerCommand(head, watts));
+    }
+  }
 
   @override
   void sendCw(String text) => _cwQueue.enqueue(text);

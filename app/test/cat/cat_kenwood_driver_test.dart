@@ -496,13 +496,13 @@ void main() {
       expect(session.declaredModeOffset, isNull);
     });
 
-    test('the QMX and the FX-4CR pin the layout the driver would otherwise spend a connection learning', () {
+    test('the QMX, QCX and FX-4CR pin the layout the driver would otherwise spend a connection learning', () {
       // The override has to travel through driverConfig() to reach the
       // session: a pinned offset that never arrives costs nothing visible —
       // the radio is simply read the slow way — so nothing else here would
       // notice it going missing. The FX-4CR carries the QMX's pin because
-      // that is the entry its operators proved this radio on.
-      for (final key in ['qmx-serial', 'fx4cr-serial']) {
+      // that is the entry its operators proved this radio on, as does the QCX.
+      for (final key in ['qmx-serial', 'qcx-serial', 'fx4cr-serial']) {
         final type = EquipmentRegistry().typeFor(key)!;
         final session = type.driver.createSession(sink, type.driverConfig(const {})) as KenwoodSession;
         expect(session.declaredModeOffset, 27, reason: key);

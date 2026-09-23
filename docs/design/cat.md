@@ -55,7 +55,8 @@ Dart — not executable JS.
 Settings → Station Configuration      app/lib/views/station_panel.dart
    │ reads/writes
 CatService (ChangeNotifier)          app/lib/services/cat/cat_service.dart
-   ├── EquipmentRegistry              equipment_registry.dart   — models, and the variants derived from them
+   ├── EquipmentRegistry              equipment_registry.dart   — the variants derived from the models
+   │     └── models                   equipment_models_<family>.dart, equipment_bridges.dart
    ├── transports                     transports/tcp_transport.dart (conditional export)
    └── per-node _NodeRuntime          connection + session + status, keyed by node uuid
    │ writes vfoA (P3)
@@ -217,6 +218,11 @@ what the user configured; everything about a connection is rebuilt at runtime.
   through it. No CAT protocol has an "SSB" mode. The convention: 160/80/40 m are LSB, everything else
   USB (including 60 m, which is channelized USB by international agreement despite being below
   10 MHz).
+- **A CI-V mode set carries no filter byte**, so the operator's filter survives a mode change (polo
+  sent `01` and forced FIL1 every time). The exception is an entry pinning `civModeWithFilter` —
+  the Xiegu G90, which ignores a set without one: it sends the filter the radio last reported for
+  that mode, or the one in use for a mode not yet seen, or FIL1 if the radio's answers carry none.
+  A set asked for before the radio's first mode answer waits for it rather than being dropped.
 
 ## Testing a radio with no radio
 
@@ -965,9 +971,14 @@ writing it:
   own maximum, on both reads and writes. Each driver documents its own assumption (see
   `icom_civ_driver.dart`'s `_assumedMaxWatts`). The Icom CI-V driver is model-agnostic — the ceiling
   comes from `IcomCivSession.maxWatts`, sourced from the pairing's config rather than hardcoded — so
-  `equipment_registry.dart`'s `ic705Model` overrides it to the IC-705's real 10W SSB/CW ceiling
+  `equipment_models_icom.dart`'s `ic705Model` overrides it to the IC-705's real 10W SSB/CW ceiling
   instead of the assumed 100W; below that ceiling the 0-255 level actually resolves to sub-watt
-  steps, so the driver reports one decimal place there instead of rounding to a whole watt. None of
+  steps, so the driver reports one decimal place there instead of rounding to a whole watt. The
+  FTX-1 is the exception on the Yaesu side: its `PC` names the unit first (`PC1010;` the field head,
+  0.5-10 W; `PC2100;` the SPA-1, 5-100 W), so its entry pins `yaesuHeadPower` and a power change
+  waits until the radio's first answer says which unit to address. That form is hamlib's, not a
+  capture, so an answer in the FT-891's form is taken in that form, and one in neither form stops
+  the wait with a console line rather than holding every change forever. None of
   the six drivers' power path has met real hardware — each driver's header says what it has been
   tried against, and that is always its frequency/mode path rather than every capability it carries.
 - The IC-705's SET level (0x14 0x0A) doesn't drop when it's running off its own battery, even though
@@ -1117,7 +1128,8 @@ FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have
   24 characters, and `KY @;` terminates a message, the `@` the programmer's reference reserves for
   it. `KS` is the speed on both (4-60 and 8-50). `KY;` only ever says whether the buffer is full,
   never when it empties, so the queue paces chunks by arithmetic like the CI-V session's. The KX2
-  and KX3 entries pin the Elecraft dialect; the QMX pins none.
+  and KX3 entries pin the Elecraft dialect, the TS-590SG and TS-480 the Kenwood one; the QMX and
+  QCX pin none.
 - **Yaesu CAT has no "key this text" command at all.** What it has is five text memories the
   operator can also fill from the front panel: `KM<n><text>;` writes one, `KY6;`-`KYA;` play them
   back. Keying from the app is therefore WRITE-THEN-PLAY through memory 5 (`yaesuAppKeyerMemory` —
@@ -1374,8 +1386,9 @@ and a second radio's are that radio's. A driver shared across a line (Kenwood CA
 that implement it for rigs that have no voice keyer at all, which is what a `voiceMemoryCount` of
 zero is for — a QMX on the Kenwood driver is not a voice keyer, and the catalogue entry, not the
 driver, says so (`voiceDialect`/`voiceMemories` overrides, the way `ifModeOffset` is pinned). The
-Icom and Yaesu drivers honour `voiceMemories` the same way (the IC-706, IC-7100 and X6100 pin
-zero), and the generic entries prefill zero and ask under developer mode — see § CW keying on why
+TS-590SG and TS-480 pin zero too: their memories need an optional voice unit the app cannot detect.
+The Icom and Yaesu drivers honour `voiceMemories` the same way (the IC-706, IC-7100, X6100 and G90
+pin zero), and the generic entries prefill zero and ask under developer mode — see § CW keying on why
 a generic asks.
 
 **The radio says when it is done, or the ceiling does.** No protocol here reports a memory's
@@ -1417,8 +1430,8 @@ most of what it says; every other dialect is still from the manuals and hamlib:
   a second later, and NOT on the NAK: CI-V's ACK/NAK names no command and sends are not awaited, so
   a NAK in flight from a meter read would end a memory that is on the air. Nothing in CI-V records
   a memory: `canRecordVoice` is false, and the dialog says to use the front panel. Every named entry
-  pins its `voiceMemories` (eight on the modern line, zero on the IC-706, the IC-7100 and the
-  X6100); an absent key is a generic entry's node and means none.
+  pins its `voiceMemories` (eight on the modern line, zero on the IC-706, the IC-7100, the X6100
+  and the G90); an absent key is a generic entry's node and means none.
 - **Yaesu** (FT-891, FT-710, FT-991A, FTDX10/101 — hamlib lists both commands valid on all of them):
   `PB0n;` plays, `PB00;` stops — but `PB` only starts the DVS, it does NOT key the transmitter, so
   a play is `TX1;` first (an unkeyed radio plays the memory into the monitor and nothing reaches

@@ -62,7 +62,8 @@ device may write any operation it holds.*
 A station is a collection of equipment (radios, antennas, switches, etc) used by one or more operators to make radio contacts.
 
 *Status: built — `app/lib/services/cat/equipment.dart`,
-`equipment_registry.dart` and the Station Configuration dialog. The
+`equipment_registry.dart` with the `equipment_models_*.dart` it lists, and
+the Station Configuration dialog. The
 configuration and its state persist as one settings blob, not a table.*
 
 Each piece of equipment has

@@ -22,6 +22,13 @@ const icomBrand = 'Icom';
 const kenwoodBrand = 'Kenwood';
 const yaesuBrand = 'Yaesu';
 
+/// Not featured, so its radios shelve under "Other Brands" — but spelled
+/// once, because two entries carry it and a hardware report files by it.
+const qrpLabsBrand = 'QRP Labs';
+
+/// Not featured either; spelled once for the same reason.
+const xieguBrand = 'Xiegu';
+
 /// The models that are not a radio but a way to reach one: a program on the
 /// same machine that owns the rig's port and answers for it. Keyed by
 /// [EquipmentModel.key], because these name a protocol or a program rather

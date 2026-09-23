@@ -39,7 +39,7 @@ const _pollInterval = Duration(seconds: 5);
 /// the radio's OWN maximum — CI-V has no command that states what that
 /// maximum is, so [IcomCivSession.maxWatts] comes from config instead:
 /// [ic705Model]'s pairings override it to the IC-705's real 10W SSB/CW
-/// ceiling (equipment_registry.dart); everything else — the generic Icom
+/// ceiling (equipment_models_icom.dart); everything else — the generic Icom
 /// pairing, and any config that leaves it out — falls back to this 100W
 /// guess, the common ceiling across the HF line this driver otherwise
 /// targets (IC-7300, IC-9700, IC-7610). Unverified either way — see
@@ -78,6 +78,18 @@ const _batteryMeterCeiling = 150;
 /// byte pair — 16 bytes on the wire, which is what the cadence floor is
 /// computed from ([telemetryIntervalFor]).
 const _civExchangeBytes = 16;
+
+/// Pinned by an entry whose radio ignores a `0x06` mode set that carries no
+/// filter byte — the Xiegu G90, per hamlib's `mode_with_filter`. Never a
+/// field: it is a fact about the model.
+///
+/// The radio keeps a filter per mode, so the filter sent is the one it last
+/// reported while in the mode being set — leaving the operator's choice
+/// alone, the reason every other entry sends none. A mode not yet seen gets
+/// the filter currently in use, and a radio whose answers carry no filter
+/// at all gets FIL1: a forced filter is better than a mode control that
+/// does nothing.
+const civModeWithFilterConfigKey = 'civModeWithFilter';
 
 /// The TX watch is one exchange; the meter cycle is one per meter read.
 const civTxWatchBytes = _civExchangeBytes;
@@ -178,6 +190,7 @@ class IcomCivDriver extends EquipmentDriver {
     'civControllerAddress',
     'maxWatts',
     'batteryMaxWatts',
+    civModeWithFilterConfigKey,
     cwKeyerConfigKey,
     voiceMemoriesConfigKey,
     voiceCeilingConfigKey,
@@ -342,7 +355,21 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     Map<String, dynamic> config = const {},
     this._meterInfoKey,
   }) : _config = config,
+       _modeWithFilter = config[civModeWithFilterConfigKey] == true,
        _baudRate = serialBaudRateOrNull(config);
+
+  /// See [civModeWithFilterConfigKey].
+  final bool _modeWithFilter;
+
+  /// What the radio's mode answers have said, by mode code and most
+  /// recently — see [civModeWithFilterConfigKey]. A set asked for before the
+  /// first answer waits in [_pendingMode] rather than being dropped:
+  /// [CatService] would not send the same mode again.
+  final _filterByMode = <int, int>{};
+  int? _lastFilter;
+  bool _modeAnswered = false;
+  bool _warnedNoFilter = false;
+  String? _pendingMode;
 
   void _send(List<int> frame) => _sink.send(frame);
 
@@ -471,7 +498,24 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
       case CivCommand.readMode:
         if (frame.data.isEmpty) return;
         // data[0] is the mode; data[1], when present, is the filter, which
-        // we read but do not track.
+        // only an entry that must send one back keeps.
+        if (_modeWithFilter) {
+          _modeAnswered = true;
+          if (frame.data.length > 1) {
+            _lastFilter = frame.data[1];
+            _filterByMode[frame.data[0]] = frame.data[1];
+          } else if (!_warnedNoFilter) {
+            _warnedNoFilter = true;
+            debugPrint('[cat] CI-V: mode answers carry no filter byte; mode sets send FIL1');
+          }
+          if (_pendingMode case final pending?) {
+            _pendingMode = null;
+            setMode(pending);
+            // This answer is the mode being replaced: reporting it would put
+            // the operator's pick back on screen until the next poll.
+            return;
+          }
+        }
         final mode = civModeNameForCode(frame.data[0]);
         if (mode != null) _sink.report(VfoReading(mode: mode));
 
@@ -544,8 +588,18 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   @override
   void setMode(String mode) {
     // Filter omitted deliberately — sending one forces the operator's
-    // filter selection, which polo did on every mode change.
-    final frame = buildSetModeFrame(to: radioAddress, from: controllerAddress, mode: mode);
+    // filter selection, which polo did on every mode change. An entry that
+    // must send one sends the radio's own back.
+    int? filter;
+    if (_modeWithFilter) {
+      if (!_modeAnswered) {
+        _pendingMode = mode;
+        return;
+      }
+      final code = civCodeForModeName(mode);
+      filter = (code == null ? null : _filterByMode[code]) ?? _lastFilter ?? 0x01;
+    }
+    final frame = buildSetModeFrame(to: radioAddress, from: controllerAddress, mode: mode, filter: filter);
     if (frame != null) _send(frame);
   }
 

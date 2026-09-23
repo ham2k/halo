@@ -2034,10 +2034,11 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get guohetecTroubleshooting => 'El Q900 responde a CAT de dos maneras distintas, y esta entrada usa su protocolo propio en lugar de la imitación del FT-817. Elija **Guohetec Q900** aquí, no un FT-817: la imitación responde a menos órdenes, y nada indica cuál de las dos está usando la radio.\n\n- **El cable USB-C es el enlace CAT**, y lleva también la tarjeta de sonido. La velocidad no importa: el puerto ignora la que se le indique.\n- **Nunca deje que nada active RTS o DTR en este puerto.** En un cable serie esas líneas son PTT y manipulación.\n- **Otra aplicación puede tener el puerto ocupado**: WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Una radio de segunda generación se comporta distinto** de una de primera. Mantenga pulsado Menu y elija About: HW 2.0 es la segunda generación.\n\nEste controlador se escribió a partir del protocolo publicado por el fabricante y no se ha probado con una de estas radios. Si funciona a medias, conviene informarlo.';
 	@override String get yaesuTroubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
 	@override String get yaesuTroubleshooting => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.';
+	@override String get yaesuUsbTroubleshooting => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **Usa el primero de los dos puertos USB de la radio.** El CAT suele estar en el primero (el puerto COM **Enhanced** en Windows); el segundo (**Standard**) es para PTT y manipulación. El selector señala el primero siempre que puede distinguirlos.\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito.\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.';
 	@override String get elecraftTroubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
 	@override String get elecraftTroubleshooting => 'Las radios Elecraft hablan CAT de Kenwood, y tanto una KX2 como una KX3 se han usado así — VFO en ambos sentidos, cambio de modo y batido cero en CW, todo funcionando.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con la configurada en **RS232** en el menú de la radio. 38400 es la de fábrica. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n\n**Si la frecuencia es correcta pero el modo no**, cuéntanoslo: las entradas de la KX2 y la KX3 leen el modo en una posición de la respuesta de estado que hemos fijado según las radios que hemos visto, y un firmware que lo ponga en otro sitio solo nos llega si alguien lo informa.\n\nNadie ha informado sobre la K3 ni la K4, así que cuéntanos qué pasa si usas una.';
 	@override String get kenwoodTroubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
-	@override String get kenwoodTroubleshooting => 'Este controlador está probado con una QRP Labs QMX y con las Elecraft KX2 y KX3, pero ninguna radio de marca Kenwood le ha respondido nunca: el protocolo está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos; las radios Elecraft tienen sus propias entradas, bajo Elecraft. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.';
+	@override String get kenwoodTroubleshooting => 'Este controlador está probado con las Kenwood TS-590SG y TS-480, las QRP Labs QMX y QCX-mini, y las Elecraft KX2 y KX3. El resto de la gama está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos; las radios Elecraft tienen sus propias entradas, bajo Elecraft. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.';
 	@override String get statusConnected => 'Conectado';
 	@override String get currentConfiguration => 'Configuración actual';
 	@override String get transceiverForMainVfo => 'Transceptor para el VFO principal';
@@ -3038,6 +3039,7 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get ft891 => 'Yaesu FT-891';
 	@override String get ft710 => 'Yaesu FT-710';
 	@override String get ftdx10 => 'Yaesu FTDX10';
+	@override String get ftx1 => 'Yaesu FTX-1';
 	@override String get ft817 => 'Yaesu FT-817 / FT-818';
 	@override String get ft857 => 'Yaesu FT-857';
 	@override String get ft897 => 'Yaesu FT-897';
@@ -3045,8 +3047,11 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get yaesuGeneric => 'Yaesu - Genérico';
 	@override String get icomGeneric => 'Icom - Genérico';
 	@override String get kenwoodGeneric => 'Kenwood - Genérico';
+	@override String get ts590sg => 'Kenwood TS-590SG';
+	@override String get ts480 => 'Kenwood TS-480';
 	@override String get qmx => 'QRP Labs QMX';
 	@override String get fx4cr => 'BG2FX FX-4CR';
+	@override String get qcx => 'QRP Labs QCX';
 	@override String get elecraftGeneric => 'Elecraft - Genérico';
 	@override String get kx2 => 'Elecraft KX2';
 	@override String get kx3 => 'Elecraft KX3';
@@ -3058,6 +3063,7 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get ic7610 => 'Icom IC-7610';
 	@override String get ic7760 => 'Icom IC-7760';
 	@override String get x6100 => 'Xiegu X6100';
+	@override String get g90 => 'Xiegu G90';
 	@override String get rigctld => 'Radio controlada vía rigctld';
 	@override String get rigctldNodeName => 'Mi radio (vía rigctld)';
 	@override String get flrig => 'Radio controlada vía flrig';
@@ -4361,6 +4367,7 @@ extension on TranslationsEs {
 			'settings.station.models.ft891' => 'Yaesu FT-891',
 			'settings.station.models.ft710' => 'Yaesu FT-710',
 			'settings.station.models.ftdx10' => 'Yaesu FTDX10',
+			'settings.station.models.ftx1' => 'Yaesu FTX-1',
 			'settings.station.models.ft817' => 'Yaesu FT-817 / FT-818',
 			'settings.station.models.ft857' => 'Yaesu FT-857',
 			'settings.station.models.ft897' => 'Yaesu FT-897',
@@ -4368,8 +4375,11 @@ extension on TranslationsEs {
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Genérico',
 			'settings.station.models.icomGeneric' => 'Icom - Genérico',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Genérico',
+			'settings.station.models.ts590sg' => 'Kenwood TS-590SG',
+			'settings.station.models.ts480' => 'Kenwood TS-480',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
+			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Genérico',
 			'settings.station.models.kx2' => 'Elecraft KX2',
 			'settings.station.models.kx3' => 'Elecraft KX3',
@@ -4381,6 +4391,7 @@ extension on TranslationsEs {
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
 			'settings.station.models.x6100' => 'Xiegu X6100',
+			'settings.station.models.g90' => 'Xiegu G90',
 			'settings.station.models.rigctld' => 'Radio controlada vía rigctld',
 			'settings.station.models.rigctldNodeName' => 'Mi radio (vía rigctld)',
 			'settings.station.models.flrig' => 'Radio controlada vía flrig',
@@ -4403,10 +4414,11 @@ extension on TranslationsEs {
 			'settings.station.guohetecTroubleshooting' => 'El Q900 responde a CAT de dos maneras distintas, y esta entrada usa su protocolo propio en lugar de la imitación del FT-817. Elija **Guohetec Q900** aquí, no un FT-817: la imitación responde a menos órdenes, y nada indica cuál de las dos está usando la radio.\n\n- **El cable USB-C es el enlace CAT**, y lleva también la tarjeta de sonido. La velocidad no importa: el puerto ignora la que se le indique.\n- **Nunca deje que nada active RTS o DTR en este puerto.** En un cable serie esas líneas son PTT y manipulación.\n- **Otra aplicación puede tener el puerto ocupado**: WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Una radio de segunda generación se comporta distinto** de una de primera. Mantenga pulsado Menu y elija About: HW 2.0 es la segunda generación.\n\nEste controlador se escribió a partir del protocolo publicado por el fabricante y no se ha probado con una de estas radios. Si funciona a medias, conviene informarlo.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.yaesuTroubleshooting' => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.',
+			'settings.station.yaesuUsbTroubleshooting' => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **Usa el primero de los dos puertos USB de la radio.** El CAT suele estar en el primero (el puerto COM **Enhanced** en Windows); el segundo (**Standard**) es para PTT y manipulación. El selector señala el primero siempre que puede distinguirlos.\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito.\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.elecraftTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.elecraftTroubleshooting' => 'Las radios Elecraft hablan CAT de Kenwood, y tanto una KX2 como una KX3 se han usado así — VFO en ambos sentidos, cambio de modo y batido cero en CW, todo funcionando.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con la configurada en **RS232** en el menú de la radio. 38400 es la de fábrica. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n\n**Si la frecuencia es correcta pero el modo no**, cuéntanoslo: las entradas de la KX2 y la KX3 leen el modo en una posición de la respuesta de estado que hemos fijado según las radios que hemos visto, y un firmware que lo ponga en otro sitio solo nos llega si alguien lo informa.\n\nNadie ha informado sobre la K3 ni la K4, así que cuéntanos qué pasa si usas una.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
-			'settings.station.kenwoodTroubleshooting' => 'Este controlador está probado con una QRP Labs QMX y con las Elecraft KX2 y KX3, pero ninguna radio de marca Kenwood le ha respondido nunca: el protocolo está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos; las radios Elecraft tienen sus propias entradas, bajo Elecraft. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.',
+			'settings.station.kenwoodTroubleshooting' => 'Este controlador está probado con las Kenwood TS-590SG y TS-480, las QRP Labs QMX y QCX-mini, y las Elecraft KX2 y KX3. El resto de la gama está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos; las radios Elecraft tienen sus propias entradas, bajo Elecraft. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.',
 			'settings.station.statusConnected' => 'Conectado',
 			'settings.station.currentConfiguration' => 'Configuración actual',
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
@@ -4697,14 +4709,14 @@ extension on TranslationsEs {
 			'commands.receivedPurgesPending' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación de prueba se eliminó en otro dispositivo', other: '${count} operaciones de prueba se eliminaron en otro dispositivo', ), 
 			'commandDialog.hint' => 'Busca indicativos o escribe un comando',
 			'commandDialog.noResults' => ({required Object text}) => 'Nada coincide con «${text}»',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.sectionCommands' => 'Comandos',
 			'commandDialog.sectionGoTo' => 'Ir a',
 			'commandDialog.sectionOperations' => 'Operaciones',
 			'commandDialog.goHome' => 'Inicio',
 			'commandDialog.goSettings' => 'Ajustes',
 			'commandDialog.goNewOperation' => 'Nueva operación',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.runTyped' => ({required Object text}) => 'Ejecutar «${text}»',
 			'commandDialog.sectionSuggestions' => 'Prueba',
 			'commandDialog.lookingUp' => 'Buscando indicativo…',

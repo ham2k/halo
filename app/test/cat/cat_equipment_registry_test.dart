@@ -14,6 +14,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
+import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/kenwood_cat_codec.dart';
+import 'package:ham2k_logger/services/cat/drivers/kenwood_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart' show yaesuVoiceMemoryCount;
+import 'package:ham2k_logger/services/cat/equipment_brands.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/none_transport.dart';
@@ -200,6 +206,7 @@ void main() {
       'ft891-serial',
       'ft710-serial',
       'ftdx10-serial',
+      'ftx1-serial',
       'yaesu-serial',
       'ft817-serial',
       'ft857-serial',
@@ -209,6 +216,9 @@ void main() {
       'kenwood-serial',
       'qmx-serial',
       'fx4cr-serial',
+      'qcx-serial',
+      'ts590sg-serial',
+      'ts480-serial',
       'kx2-serial',
       'kx3-serial',
       'elecraft-serial',
@@ -219,6 +229,7 @@ void main() {
       'ic7610-serial',
       'ic7760-serial',
       'x6100-serial',
+      'g90-serial',
       'ic705-network',
       'ic705-serial',
       'rigctld-tcp',
@@ -241,9 +252,11 @@ void main() {
     final expected = {
       'ft710-serial': ('ft891', {'baudRate': 38400}),
       'ftdx10-serial': ('ft891', {'baudRate': 38400}),
+      'ftx1-serial': ('ft891', {'baudRate': 38400}),
       'ic7300-serial': ('icom-civ', {'civAddress': '94', 'baudRate': 19200}),
-      // The MK2 exists as its own entry only because this address differs:
-      // prefill it with the 7300's '94' and the model has no reason to be.
+      // The MK2 is its own entry for this address above all: prefill it with
+      // the 7300's '94' and it answers nothing. (It also claims Port A of
+      // the two USB ports the original lacks.)
       'ic7300mk2-serial': ('icom-civ', {'civAddress': 'B6', 'baudRate': 19200}),
       'ic706mkiig-serial': ('icom-civ', {'civAddress': '58', 'baudRate': 19200}),
       'ic7100-serial': ('icom-civ', {'civAddress': '88', 'baudRate': 19200}),
@@ -253,7 +266,16 @@ void main() {
       'ic7760-serial': ('icom-civ', {'civAddress': 'B2', 'baudRate': 19200}),
       // CI-V, not the Kenwood protocol the radio's own documentation implies.
       'x6100-serial': ('icom-civ', {'civAddress': 'A4', 'baudRate': 19200}),
+      // hamlib's stock G90 address, not the X6100's A4.
+      'g90-serial': ('icom-civ', {'civAddress': '88', 'baudRate': 19200}),
       'qmx-serial': ('kenwood', {'baudRate': 9600}),
+      // 38400, not the QMX's 9600: the QCX line ships on it, and the QCX-mini
+      // behind this entry answered the QMX entry only once changed to it.
+      'qcx-serial': ('kenwood', {'baudRate': 38400}),
+      // 115200, the TS-590SG's USB speed menu default, not the family's 9600.
+      'ts590sg-serial': ('kenwood', {'baudRate': 115200}),
+      // The rate the TS-480 was reported working on — also its default.
+      'ts480-serial': ('kenwood', {'baudRate': 9600}),
       // 38400, not the Kenwood family's 9600: the whole Elecraft line ships
       // on it, and a speed mismatch is answered with silence, not an error.
       'kx2-serial': ('kenwood', {'baudRate': 38400}),
@@ -276,7 +298,8 @@ void main() {
   // catalogue by name, so the caveat on them is the difference between
   // "worth trying" and "probably pointless". Each is proven by a specific
   // radio: an IC-7300 and an IC-706MKIIG for Icom, an FT-710 for Yaesu, a
-  // QRP Labs QMX for Kenwood, a KX2 and a KX3 for Elecraft.
+  // QRP Labs QMX, a TS-590SG and a TS-480 for Kenwood, a KX2 and a KX3 for
+  // Elecraft.
 
   // Elecraft answers at 38400 while the Kenwood driver's own default is
   // 9600, and a mismatch is answered with silence rather than an error —
@@ -296,6 +319,47 @@ void main() {
     for (final key in ['elecraft-serial', 'kx2-serial', 'kx3-serial']) {
       expect(registry.typeFor(key)!.manufacturer, 'Elecraft', reason: '$key would otherwise report as Kenwood');
     }
+  });
+
+  // Same fallback: both QRP Labs radios ride the Kenwood driver.
+  test('every QRP Labs entry states its own brand rather than its protocol family', () {
+    for (final key in ['qmx-serial', 'qcx-serial']) {
+      expect(registry.typeFor(key)!.manufacturer, qrpLabsBrand, reason: '$key would otherwise report as Kenwood');
+    }
+  });
+
+  // A named Kenwood exists so the operator never sees the developer-only
+  // dialect questions the generic asks. Left unpinned, the TS-590SG and
+  // TS-480 would key nothing — or, pinned to the Elecraft shape, send a `KY`
+  // the radio ignores while the app shows the message going out.
+  test('the named Kenwoods key through the Kenwood `KY` and offer no voice memories', () {
+    for (final key in ['ts590sg-serial', 'ts480-serial']) {
+      final type = registry.typeFor(key)!;
+      final config = type.driverConfig(const {});
+      expect(KenwoodDriver.cwDialectFrom(config), KenwoodCwDialect.kenwood, reason: key);
+      expect(KenwoodDriver.voiceDialectFrom(config), isNull, reason: key);
+      expect(KenwoodDriver.voiceMemoriesFrom(config), 0, reason: key);
+    }
+  });
+
+  // The one thing the G90 entry is for: on the generic Icom entry the radio
+  // ignores every mode change.
+  test('the G90 sends a filter with its mode, and states its own brand', () {
+    final type = registry.typeFor('g90-serial')!;
+    expect(type.driverConfig(const {})[civModeWithFilterConfigKey], isTrue);
+    expect(type.manufacturer, xieguBrand);
+    expect(registry.typeFor('x6100-serial')!.driverConfig(const {})[civModeWithFilterConfigKey], isNot(isTrue), reason: 'its mode changes work without one');
+  });
+
+  // The FTX-1 answers `PC1010;` where the FT-891 answers `PC010;`: on the
+  // FT-891's form it would show no power and refuse every power change,
+  // silently.
+  test('the FTX-1 speaks its own power form, and keys like the rest of the line', () {
+    final type = registry.typeFor('ftx1-serial')!;
+    final config = type.driverConfig(const {});
+    expect(config[yaesuHeadPowerConfigKey], isTrue);
+    expect(type.driver.canKeyCwWith(config), isTrue);
+    expect(config[voiceMemoriesConfigKey], yaesuVoiceMemoryCount);
   });
 
   // The FX-4CR sits outside the table above because the claim that table's

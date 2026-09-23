@@ -7,10 +7,10 @@
 //
 // The protocol comes from published CAT references rather than from a
 // capture. It has since been run against real hardware — a QRP Labs QMX and
-// Elecraft's KX2 and KX3, both directions — but never against a
-// Kenwood-branded radio, which is where those references still carry the
-// risk, and why the one field no document settles is learned from the radio
-// instead of assumed.
+// QCX-mini, Elecraft's KX2 and KX3, and Kenwood's TS-590SG and TS-480. None
+// of those reports recorded the TS-2000-era layout, which is where the
+// references still carry the risk, and why the one field no document settles
+// is learned from the radio instead of assumed.
 //
 // That field is the mode's position inside the `IF` status packet. The
 // widths ahead of it differ between the TS-2000-era layout and the

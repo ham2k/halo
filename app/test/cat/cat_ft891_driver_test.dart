@@ -127,6 +127,23 @@ void main() {
       expect(buildSetPowerCommand(0), 'PC005;');
     });
 
+    // The FTX-1's answers are four characters where the FT-891's are three:
+    // read with the FT-891's parser they are no reading at all, and its
+    // commands are ones the radio refuses.
+    test('the FTX-1 PC names the unit before the level, and each unit has its own range', () {
+      expect(parseHeadPowerParams('1010'), (head: 1, watts: 10));
+      expect(parseHeadPowerParams('10.5'), (head: 1, watts: 0.5));
+      expect(parseHeadPowerParams('2100'), (head: 2, watts: 100));
+      expect(parseHeadPowerParams('100'), isNull, reason: "the FT-891's form");
+      expect(parseHeadPowerParams('3010'), isNull);
+
+      expect(buildSetHeadPowerCommand(1, 6), 'PC1006;');
+      expect(buildSetHeadPowerCommand(1, 1.5), 'PC11.5;');
+      expect(buildSetHeadPowerCommand(1, 100), 'PC1010;', reason: 'a field head tops out at 10 W');
+      expect(buildSetHeadPowerCommand(2, 50), 'PC2050;');
+      expect(buildSetHeadPowerCommand(2, 1), 'PC2005;');
+    });
+
     test('a command is only a command once terminated', () {
       expect(parseAsciiCatCommand('FA014250000;'), const AsciiCatCommand('FA', '014250000'));
       expect(parseAsciiCatCommand('FA014250000'), isNull, reason: 'no terminator');
@@ -235,6 +252,51 @@ void main() {
     test('builds a power command from watts', () {
       session.setPower(75);
       expect(sink.sent, ['PC075;']);
+    });
+
+    group('with the FTX-1 power form pinned', () {
+      late Ft891Session ftx1;
+      setUp(() => ftx1 = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 600000, yaesuHeadPowerConfigKey: true}));
+
+      test('reads the level after the unit', () {
+        ftx1.feed('PC1010;');
+        expect(sink.powers, [10]);
+      });
+
+      // CatService records a set as delivered once it returns, and never
+      // sends the same value twice — so a set dropped for want of a unit
+      // would be lost, not retried. The answer that releases it is the level
+      // being replaced, so it is not reported.
+      test('holds a set until the radio has said which unit it drives, then sends it for that unit', () {
+        ftx1.setPower(50);
+        expect(sink.sent, isEmpty);
+        ftx1.feed('PC2100;');
+        expect(sink.sent, ['PC2050;']);
+        expect(sink.powers, isEmpty);
+        sink.sent.clear();
+        ftx1.setPower(5);
+        expect(sink.sent, ['PC2005;']);
+      });
+
+      // The head form comes from hamlib, not a capture. A radio that answers
+      // in the FT-891's form after all must not be left with a power control
+      // that holds every change forever.
+      test('a radio answering in the FT-891 form is read and set in that form', () {
+        ftx1.setPower(50);
+        ftx1.feed('PC100;');
+        expect(sink.sent, ['PC050;']);
+        ftx1.feed('PC050;');
+        expect(sink.powers, [50]);
+      });
+
+      test('an answer in no known form stops the wait, and sends nothing it would have to guess', () {
+        ftx1.setPower(50);
+        ftx1.feed('PC9;');
+        expect(sink.sent, isEmpty);
+        expect(sink.powers, isEmpty);
+        ftx1.setPower(40);
+        expect(sink.sent, isEmpty);
+      });
     });
 
     group('CW keying', () {

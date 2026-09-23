@@ -1,0 +1,320 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// The Yaesu radios in the catalogue: the ASCII CAT line on [Ft891Driver],
+// and the FT-817/857/897 on the five-byte binary protocol.
+
+import 'package:halo_i18n/halo_i18n.dart';
+
+import 'driver.dart';
+import 'drivers/ft891_driver.dart';
+import 'drivers/meter_calibration.dart';
+import 'drivers/yaesu_cat_codec.dart' show yaesuVoiceMemoryCount;
+import 'drivers/yaesu_binary_driver.dart';
+import 'equipment.dart';
+import 'equipment_brands.dart';
+import 'equipment_registry.dart';
+import 'transports/serial_transport.dart';
+
+const _ft891SerialKey = 'ft891-serial';
+const _ft710SerialKey = 'ft710-serial';
+const _ftdx10SerialKey = 'ftdx10-serial';
+const _ftx1SerialKey = 'ftx1-serial';
+const _yaesuSerialKey = 'yaesu-serial';
+const _ft817SerialKey = 'ft817-serial';
+const _ft857SerialKey = 'ft857-serial';
+const _ft897SerialKey = 'ft897-serial';
+
+/// Yaesu FT-891 over its built-in USB-to-serial CAT bridge.
+///
+/// Baud is the operator's to set, deliberately. app-polo hardcoded 4800 with
+/// no UI, which its own notes call out as a silent-failure mode: a radio
+/// whose CAT menu says 38400 answers with garbage and no error at all.
+const ft891Model = EquipmentModel(
+  key: 'ft891',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ft891Name,
+  // `LM0n;` arms the DVS, but the audio comes off the microphone with the
+  // operator on PTT — half the procedure is on the front panel, and nothing
+  // in CAT can say so.
+  recordingHelp: _ft891RecordingHelp,
+  variants: [
+    EquipmentVariant(
+      key: _ft891SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
+      // What the entry knows about the radio's keyers — the generic entry
+      // asks a developer instead (keyer_config.dart). Twenty seconds a
+      // memory, per the Advance Manual.
+      // The meter scales, which Yaesu publishes nowhere — see
+      // drivers/info/README.md. Named per ENTRY rather than per driver
+      // because one driver serves the whole line and the scales do not.
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 20, meterInfoConfigKey: 'yaesu/ft-891'},
+      restrictions: {'port': Ft891Driver.cp2105CatPort},
+      // The failure this driver actually produces is silence: the commands
+      // go out, nothing comes back, and nothing anywhere reports an error.
+      // Every cause is a setting the operator has to change on the radio or
+      // elsewhere on the machine, so the editor is where it is worth saying
+      // — by the time the row says "Connected" with no frequency, this form
+      // is exactly where they will come looking.
+      notes: _ft891SerialNotes,
+    ),
+  ],
+);
+
+String _ft891RecordingHelp() => t.settings.radio.voiceMessages.recordHelpFt891;
+String _ft891Name() => t.settings.station.models.ft891;
+
+List<Map<String, dynamic>> _ft891SerialNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.troubleshootingTitle}**\n\n'
+        '${t.settings.station.ft891Troubleshooting}',
+  },
+];
+
+/// Yaesu FT-710 over its built-in USB CAT port.
+///
+/// [Ft891Driver] is the Yaesu CAT driver rather than an FT-891-only one (see
+/// [yaesuGenericModel]), and this radio is what proves it: the 710 has been
+/// run here under the FT-891's own entry. It gets a name of its own so it is
+/// found by what is written on the front of the radio, and so the speed it
+/// actually ships on is the one prefilled.
+const ft710Model = EquipmentModel(
+  key: 'ft710',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ft710Name,
+  recordingHelp: _yaesuDvsRecordingHelp,
+  variants: [
+    EquipmentVariant(
+      key: _ft710SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      // The radio's own CAT RATE default, unlike the FT-891's 4800.
+      defaultConfig: {'baudRate': 38400},
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, meterInfoConfigKey: 'yaesu/ft-710'},
+      // Only a suggestion — an FT-710 has also answered on the Standard
+      // port, so the picker leaves it one tap away.
+      restrictions: {'port': Ft891Driver.cp2105CatPort},
+      notes: _yaesuUsbSerialNotes,
+    ),
+  ],
+);
+
+String _ft710Name() => t.settings.station.models.ft710;
+
+/// Yaesu FTDX10 over its built-in USB CAT port. Same driver and the same
+/// reasoning as [ft710Model].
+const ftdx10Model = EquipmentModel(
+  key: 'ftdx10',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ftdx10Name,
+  recordingHelp: _yaesuDvsRecordingHelp,
+  variants: [
+    EquipmentVariant(
+      key: _ftdx10SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': 38400},
+      // Ninety seconds a memory, on the SD card, per the Operation Manual.
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 90, meterInfoConfigKey: 'yaesu/ftdx10'},
+      restrictions: {'port': Ft891Driver.cp2105CatPort},
+      notes: _yaesuUsbSerialNotes,
+    ),
+  ],
+);
+
+String _ftdx10Name() => t.settings.station.models.ftdx10;
+
+/// Yaesu FTX-1 over its built-in USB CAT port — reported working on the
+/// FTDX10's entry, whose settings it keeps.
+///
+/// Its modes are assumed to follow the FT-891's table, as they did on the
+/// FTDX10's entry. Its `PC` is its own — it names the field head or the
+/// SPA-1 before the level — so the entry pins that form. It keys CW and
+/// plays voice memories through the line's `KM`/`KY` and `PB`, which
+/// hamlib's FTX-1 command list carries; neither has been tried on the radio.
+const ftx1Model = EquipmentModel(
+  key: 'ftx1',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ftx1Name,
+  variants: [
+    EquipmentVariant(
+      key: _ftx1SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': 38400},
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, meterInfoConfigKey: 'yaesu/ftx-1', yaesuHeadPowerConfigKey: true},
+      restrictions: {'port': Ft891Driver.cp2105CatPort},
+      notes: _yaesuUsbSerialNotes,
+    ),
+  ],
+);
+
+String _ftx1Name() => t.settings.station.models.ftx1;
+
+/// The FT-710's, FTDX10's and FTX-1's: a CP2105 bridge built into the radio, with CAT
+/// normally on its first port. Not the generic Yaesu note, whose mode-table
+/// caveat these proven radios do not need, nor the FT-891's, which quotes
+/// that radio's menu numbers.
+List<Map<String, dynamic>> _yaesuUsbSerialNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.troubleshootingTitle}**\n\n'
+        '${t.settings.station.yaesuUsbTroubleshooting}',
+  },
+];
+
+/// Yaesu FT-817, FT-817ND and FT-818 over their CAT jack.
+///
+/// A different protocol from every other Yaesu in this catalogue
+/// ([YaesuBinaryDriver]): five binary bytes per command, no framing, and no
+/// auto-information, so a dial turn is only ever seen by polling. Written
+/// from Yaesu's own CAT chart and run against no radio, which is what
+/// [YaesuBinaryDriver.hardwareVerified] says.
+///
+/// One entry for all three because CAT does not distinguish them — the ND
+/// and the 818 answer the same chart the original does.
+const ft817Model = EquipmentModel(
+  key: 'ft817',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ft817Name,
+  variants: [
+    EquipmentVariant(
+      key: _ft817SerialKey,
+      driver: YaesuBinaryDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': yaesuBinaryDefaultBaudRate},
+      // The failure this driver produces is silence, and every cause is a
+      // setting or a cable outside the app — so the editor, which is where
+      // an operator with a connected row and no frequency will come
+      // looking, is where it is worth saying.
+      notes: _yaesuBinarySerialNotes,
+    ),
+  ],
+);
+
+String _ft817Name() => t.settings.station.models.ft817;
+
+/// Yaesu FT-857 and FT-857D, on the same protocol and driver as
+/// [ft817Model].
+///
+/// Its own entry rather than a line in the 817's notes because of
+/// [yaesuBinaryNarrowFmConfigKey]: this radio takes a narrow-FM set code the
+/// FT-817 has no parameter for, and a radio told to use one it does not have
+/// changes mode to something nobody asked for.
+const ft857Model = EquipmentModel(
+  key: 'ft857',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ft857Name,
+  variants: [
+    EquipmentVariant(
+      key: _ft857SerialKey,
+      driver: YaesuBinaryDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': yaesuBinaryDefaultBaudRate},
+      overrides: {yaesuBinaryNarrowFmConfigKey: true},
+      notes: _yaesuBinarySerialNotes,
+    ),
+  ],
+);
+
+String _ft857Name() => t.settings.station.models.ft857;
+
+/// Yaesu FT-897 and FT-897D. Same protocol, driver and narrow-FM code as
+/// [ft857Model].
+const ft897Model = EquipmentModel(
+  key: 'ft897',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ft897Name,
+  variants: [
+    EquipmentVariant(
+      key: _ft897SerialKey,
+      driver: YaesuBinaryDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': yaesuBinaryDefaultBaudRate},
+      overrides: {yaesuBinaryNarrowFmConfigKey: true},
+      notes: _yaesuBinarySerialNotes,
+    ),
+  ],
+);
+
+String _ft897Name() => t.settings.station.models.ft897;
+
+List<Map<String, dynamic>> _yaesuBinarySerialNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.yaesuBinaryTroubleshootingTitle}**\n\n'
+        '${t.settings.station.yaesuBinaryTroubleshooting}',
+  },
+];
+
+/// Shared by the FTDX10 and the FT-710: the same DVS procedure, and one
+/// string rather than two copies that can drift apart in translation. The
+/// FT-891's is its own — that radio wants its REC indicator counted through
+/// four blinks first, where these two only wait for it to appear.
+String _yaesuDvsRecordingHelp() => t.settings.radio.voiceMessages.recordHelpYaesuDvs;
+
+/// Any Yaesu speaking CAT over a serial port — the entry for a radio with no
+/// definition of its own.
+///
+/// Shares [Ft891Driver], and that is the honest arrangement rather than a
+/// shortcut: Yaesu CAT is one ASCII protocol across the line, the codec was
+/// always generic (`yaesu_cat_codec.dart`), and the class is named after the
+/// single radio it has been proven against, not after what it can talk to.
+///
+/// The one place the line genuinely diverges is the MODE table, which is the
+/// FT-891's — so a radio numbering its modes differently reports and sets the
+/// wrong one for those, while the frequency stays right. The notes say so,
+/// and that caveat outlives the pairing being proven: what a proven radio
+/// proves is the protocol, never another radio's mode table.
+const yaesuGenericModel = EquipmentModel(
+  key: 'yaesu-generic',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _yaesuGenericName,
+  variants: [
+    EquipmentVariant(
+      key: _yaesuSerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      // The FT-891's factory rate. Every Yaesu CAT menu offers it, and it is
+      // the one a radio nobody has configured is most likely already on.
+      // Off until a developer says otherwise: the catalogue does not know
+      // which Yaesu this is, and a rig with no keyer must not be offered
+      // as one (keyer_config.dart).
+      defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate, cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0},
+      notes: _yaesuSerialNotes,
+    ),
+  ],
+);
+
+String _yaesuGenericName() => t.settings.station.models.yaesuGeneric;
+
+List<Map<String, dynamic>> _yaesuSerialNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.yaesuTroubleshootingTitle}**\n\n'
+        '${t.settings.station.yaesuTroubleshooting}',
+  },
+];

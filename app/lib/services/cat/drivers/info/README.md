@@ -21,7 +21,7 @@ the threshold the operator is warned at.
 
 1. Drop a `.json` file in the manufacturer's folder, named for the model.
 2. Point the catalogue entry at it: `meterInfo: 'yaesu/ftdx10'` in the
-   variant's `overrides` (equipment_registry.dart), without the `.json`.
+   variant's `overrides` (`equipment_models_<protocol family>.dart`), without the `.json`.
 
 To say a radio has **no** meters — an IC-706MKIIG, whose CI-V predates the
 TX meter sub-commands — name the empty string: `meterInfo: ''`. That is
