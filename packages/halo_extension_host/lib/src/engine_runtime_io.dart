@@ -176,6 +176,11 @@ class _IoEngineRuntime implements EngineRuntime {
   }
 
   @override
+  void socketEvent(int socketId, String eventJson) {
+    _evaluate('__polo.socketEvent($socketId, ${jsonEncode(eventJson)})', name: 'socketEvent');
+  }
+
+  @override
   void invalidateContext() {
     _evaluate('__polo.invalidateContext()', name: 'invalidateContext');
   }

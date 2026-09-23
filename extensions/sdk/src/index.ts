@@ -27,7 +27,11 @@ import type {
   PanelRadioState,
   PanelRadioTune,
   PanelRadioTuneResult,
+  ExtensionWebSocket,
+  WebSocketOptions,
 } from "./types.ts"
+
+import { base64ToBytes, bytesToBase64 } from "./base64.ts"
 
 export * from "./types.ts"
 export * from "./svgScene.ts"
@@ -66,6 +70,8 @@ interface KernelApi {
     online?: boolean,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]>
   log(message: string): void
+  registerSocket(listener: (event: Record<string, unknown>) => unknown): number
+  socketEvent(socketId: number, eventJson: string): void
   updateInterpretation(input: string, interpretation: Record<string, unknown>): void
   getAccountKvKey(extensionKey: string): string
   registerDynamicForm(formId: string, extensionKey: string, hookObj: Record<string, unknown>): void
@@ -110,6 +116,108 @@ export function defineExtension(def: ExtensionDefinition): void {
       return def.onActivation(api)
     },
   })
+}
+
+/// The host's frame limit (`maxWebSocketFrameSize` in
+/// packages/halo_extension_host/lib/src/extension_sockets.dart), checked here
+/// too so an oversized send throws at the caller instead of failing into a log.
+const MAX_FRAME_SIZE = 1024 * 1024
+
+function utf8Length(text: string): number {
+  let length = 0
+  for (const ch of text) {
+    const cp = ch.codePointAt(0)!
+    length += cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4
+  }
+  return length
+}
+
+/// `host.webSocket`. [call] is captured once, so a socket's sends go out
+/// under the identity that opened it whichever extension is current later.
+function openWebSocket(
+  call: (method: string, params: Record<string, unknown>) => Promise<unknown>,
+  url: string,
+  options?: WebSocketOptions,
+): ExtensionWebSocket {
+  let readyState: 0 | 1 | 2 | 3 = 0
+  let protocol = ""
+  const failed = (what: string) => (e: unknown) => kernel().log(`webSocket ${what} on ${url} failed: ${e instanceof Error ? e.message : String(e)}`)
+  const socket: ExtensionWebSocket = {
+    url,
+    get readyState() {
+      return readyState
+    },
+    get protocol() {
+      return protocol
+    },
+    onopen: null,
+    onmessage: null,
+    onerror: null,
+    onclose: null,
+    send(data: string | ArrayBuffer | ArrayBufferView) {
+      if (readyState !== 1) throw new Error("WebSocket is not open")
+      let frame: Record<string, unknown>
+      if (typeof data === "string") {
+        if (data.length > MAX_FRAME_SIZE) throw new Error("WebSocket message too big")
+        frame = { data }
+      } else {
+        const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+        if (bytes.length > MAX_FRAME_SIZE) throw new Error("WebSocket message too big")
+        frame = { binary: bytesToBase64(bytes) }
+      }
+      call("webSocketSend", { socketId, ...frame }).catch(failed("send"))
+    },
+    close(code?: number, reason?: string) {
+      // Checked here as well as by the host so a bad close throws at the
+      // caller, as a browser's does, instead of leaving the socket "closing".
+      if (code !== undefined && (!Number.isInteger(code) || (code !== 1000 && (code < 3000 || code > 4999)))) {
+        throw new Error("close code must be 1000 or 3000-4999")
+      }
+      if (reason !== undefined && (typeof reason !== "string" || utf8Length(reason) > 123)) {
+        throw new Error("close reason must be a string of at most 123 UTF-8 bytes")
+      }
+      if (readyState >= 2) return
+      const before = readyState
+      readyState = 2
+      call("webSocketClose", { socketId, ...(code !== undefined ? { code } : {}), ...(reason !== undefined ? { reason } : {}) }).catch((e) => {
+        // The host kept the socket, so "closing" would be a state no event
+        // ever ends — and would refuse every send on a connection still up.
+        if (readyState === 2) readyState = before
+        failed("close")(e)
+      })
+    },
+  }
+  // A bundle built with this SDK can land in an app older than sockets, whose
+  // kernel has no registry: say so, rather than a bare TypeError.
+  if (typeof kernel().registerSocket !== "function") throw new Error("host.webSocket needs a newer version of HaLo")
+  // Registered before the host is asked to connect, so no event can arrive
+  // for an id nothing is listening on.
+  const socketId = kernel().registerSocket((event) => {
+    switch (event.type) {
+      case "open":
+        // A close asked for while connecting keeps the socket closing.
+        if (readyState !== 0) return
+        readyState = 1
+        protocol = String(event.protocol ?? "")
+        return socket.onopen?.()
+      case "message": {
+        const data = typeof event.binary === "string" ? base64ToBytes(event.binary).buffer : String(event.data)
+        return socket.onmessage?.({ data: data as string | ArrayBuffer })
+      }
+      case "error":
+        return socket.onerror?.({ message: String(event.message ?? "") })
+      case "close":
+        readyState = 3
+        return socket.onclose?.({ code: Number(event.code), reason: String(event.reason ?? ""), wasClean: event.wasClean === true })
+    }
+  })
+  call("webSocketOpen", { socketId, url, ...(options?.protocols ? { protocols: options.protocols } : {}) }).catch((e) => {
+    // Refused before any connection existed, so the host will send nothing:
+    // the events a browser gives a socket that failed to connect come from here.
+    kernel().socketEvent(socketId, JSON.stringify({ type: "error", message: e instanceof Error ? e.message : String(e) }))
+    kernel().socketEvent(socketId, JSON.stringify({ type: "close", code: 1006, reason: "", wasClean: false }))
+  })
+  return socket
 }
 
 /// Cross-extension composition inside the runtime (no bridge round-trip).
@@ -159,6 +267,12 @@ export const host = {
   },
   async fetch(url: string, options?: FetchOptions): Promise<FetchResponse> {
     return (await hostCallFn()("fetch", { url, ...options })) as FetchResponse
+  },
+
+  /// A WebSocket to a host the manifest's `webSockets` lists — see
+  /// `ExtensionWebSocket`. Returns at once, connecting, as a browser's does.
+  webSocket(url: string, options?: WebSocketOptions): ExtensionWebSocket {
+    return openWebSocket(hostCallFn(), url, options)
   },
 
   async kvGet(key: string): Promise<JSONValue | null> {

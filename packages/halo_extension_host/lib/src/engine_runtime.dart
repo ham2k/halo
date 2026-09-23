@@ -76,6 +76,12 @@ abstract class EngineRuntime {
   void invokeAll(int id, String category, String method, String argsJson, {bool wantsPartials = false});
   void hostResponse(int callId, bool ok, String resultJson);
 
+  /// Delivers one event on an extension's WebSocket (open, message, error,
+  /// close) to the kernel, which hands it to the listener registered under
+  /// [socketId]. Unlike [hostResponse] it answers no call: a socket's frames
+  /// arrive whenever the peer sends them.
+  void socketEvent(int socketId, String eventJson);
+
   /// Drops the kernel's cached hook context (settings, account credentials)
   /// so the next hook call re-fetches — called after the host writes either.
   void invalidateContext();

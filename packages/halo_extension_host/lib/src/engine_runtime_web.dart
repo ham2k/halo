@@ -75,6 +75,9 @@ self.onmessage = function (e) {
     case 'hostResponse':
       self.__polo.hostResponse(msg.callId, msg.ok, msg.resultJson);
       break;
+    case 'socketEvent':
+      self.__polo.socketEvent(msg.socketId, msg.eventJson);
+      break;
     case 'reload':
       // The dev loop's per-extension reload. Mirrors engine_runtime_io's
       // reloadBundle, including closing the bundle window in a finally so a
@@ -195,6 +198,11 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   @override
   void hostResponse(int callId, bool ok, String resultJson) {
     _send({'kind': 'hostResponse', 'callId': callId, 'ok': ok, 'resultJson': resultJson});
+  }
+
+  @override
+  void socketEvent(int socketId, String eventJson) {
+    _send({'kind': 'socketEvent', 'socketId': socketId, 'eventJson': eventJson});
   }
 
   @override

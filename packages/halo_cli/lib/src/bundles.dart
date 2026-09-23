@@ -21,6 +21,7 @@ class BundleEntry {
   final String key;
   final String file;
   final List<String> domains;
+  final List<String> webSockets;
   final bool core;
   final bool enabledByDefault;
   final bool requiresLocation;
@@ -46,6 +47,7 @@ class BundleEntry {
     required this.name,
     this.fromDevServer = false,
     this.domains = const [],
+    this.webSockets = const [],
     this.core = true,
     this.enabledByDefault = true,
     this.requiresLocation = false,
@@ -58,6 +60,7 @@ class BundleEntry {
     key: json['key'] as String,
     file: json['file'] as String? ?? '${json['key']}.js',
     domains: ((json['domains'] as List?) ?? const []).cast<String>(),
+    webSockets: ((json['webSockets'] as List?) ?? const []).cast<String>(),
     // A stale index without metadata degrades to "everything core", the
     // same fail-safe the app takes: nothing gets silently disabled.
     core: json['core'] as bool? ?? true,
@@ -77,6 +80,7 @@ class BundleEntry {
     'core': core,
     'enabledByDefault': enabledByDefault,
     if (domains.isNotEmpty) 'domains': domains,
+    if (webSockets.isNotEmpty) 'webSockets': webSockets,
     if (hooks.isNotEmpty) 'declaredHooks': hooks,
   };
 }

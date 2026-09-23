@@ -309,6 +309,12 @@ class Translations$extensionsPanel$en {
 	/// en: 'This extension can contact'
 	String get canReach => 'This extension can contact';
 
+	/// en: '${host}, over a live connection'
+	String canHoldConnection({required Object host}) => '${host}, over a live connection';
+
+	/// en: 'Devices on your local network, over a live connection'
+	String get canHoldLocalConnection => 'Devices on your local network, over a live connection';
+
 	/// en: 'Your location'
 	String get canUseLocation => 'Your location';
 
@@ -6924,6 +6930,8 @@ extension on Translations {
 			'extensionsPanel.installFromFile' => 'Install from file…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Version ${version}',
 			'extensionsPanel.canReach' => 'This extension can contact',
+			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, over a live connection',
+			'extensionsPanel.canHoldLocalConnection' => 'Devices on your local network, over a live connection',
 			'extensionsPanel.canUseLocation' => 'Your location',
 			'extensionsPanel.canReadRadio' => 'Your radio, to read its frequency and mode',
 			'extensionsPanel.canControlRadio' => 'Your radio, to tune it and to connect or disconnect it',
@@ -7372,10 +7380,10 @@ extension on Translations {
 			'operation.spots.logConflict.clearAndLog' => 'Clear and log spot',
 			'operation.import.title' => 'Import Data into Operation',
 			'operation.import.importAdifAction' => 'Import QSOs from ADIF',
-			'operation.import.settingsButton' => 'Listen settings',
-			'operation.import.settingsTitle' => 'Listen for Other Apps',
 			_ => null,
 		} ?? switch (path) {
+			'operation.import.settingsButton' => 'Listen settings',
+			'operation.import.settingsTitle' => 'Listen for Other Apps',
 			'operation.import.protocolAddressLabel' => 'Address',
 			'operation.import.protocolPortLabel' => 'Port',
 			'operation.import.protocolPortInvalid' => 'Enter a port between 1 and 65535',
@@ -7886,10 +7894,10 @@ extension on Translations {
 			'settings.peers.forgetBody' => 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.',
 			'settings.peers.pairTitle' => ({required Object name}) => 'Link with ${name}',
 			'settings.peers.pairBody' => 'This device is on your local network and wants to connect.',
-			'settings.peers.pairBodyBle' => 'This device is nearby and wants to connect over Bluetooth LE.',
-			'settings.peers.pairIdLabel' => 'Device ID',
 			_ => null,
 		} ?? switch (path) {
+			'settings.peers.pairBodyBle' => 'This device is nearby and wants to connect over Bluetooth LE.',
+			'settings.peers.pairIdLabel' => 'Device ID',
 			'settings.peers.pairWarning' => 'Only link with devices you recognise. Any device on this network can send a request.',
 			'settings.peers.pairWarningBle' => 'Only link with devices you recognise. Any nearby device can send a request.',
 			'settings.peers.problem' => ({required Object error}) => 'Can\'t reach the local network: ${error}',
@@ -8400,10 +8408,10 @@ extension on Translations {
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'',
 			'commands.operationAlreadyStarted' => 'This operation already has a start marker',
 			'commands.couldNotOpenLocation' => 'Added the break, but could not open the location screen',
-			'commands.noTestOperations' => 'No Test Operations to purge',
-			'commands.purgeTestsUnavailable' => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here',
 			_ => null,
 		} ?? switch (path) {
+			'commands.noTestOperations' => 'No Test Operations to purge',
+			'commands.purgeTestsUnavailable' => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here',
 			'commands.syncAllUnavailable' => 'SYNCALL needs to show a confirmation dialog, which isn\'t available here',
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} Test Operation', other: 'Purged ${count} Test Operations', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again',

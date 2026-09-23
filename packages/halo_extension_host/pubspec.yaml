@@ -16,6 +16,9 @@ dependencies:
   http: ^1.2.0
   meta: ^1.16.0
   web: ^1.1.1
+  # host.webSocket — the same package the app's Pusher client stands on, and
+  # for the same reason: one API across every target, browser included.
+  web_socket_channel: ^3.0.3
   # For the SSO proxy an extension's relayed OAuth requests go through
   # (ham2k_sso_proxy.dart), and for `realNowUtc` — real time on purpose, for
   # protocol timing. Never the travelled clock: this package PUSHES clock

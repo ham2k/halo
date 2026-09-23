@@ -103,6 +103,7 @@ evaluating one script. Reach the outside world through `host`:
 import { host } from "@ham2k/extension-sdk"
 
 await host.fetch(url)          // https only, and only domains your manifest lists
+host.webSocket(url)            // wss:// to hosts your manifest's webSockets lists
 await host.kvGet('key')        // storage, namespaced to your extension
 await host.kvSet('key', value)
 await host.showForm(form)      // ask the user something

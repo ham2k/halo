@@ -17,10 +17,12 @@
 //               {type:'hostCall', callId, method, params}
 //               {type:'log', message}
 //               {type:'updateInterpretation', input, interpretation}
+//               {type:'socketsDropped', socketIds}
 //   Dart → JS:  __polo.invokeHook(id, category, key|null, method, argsJson)
 //               __polo.invokeHookAll(id, category, method, argsJson, wantsPartials)
 //               __polo.activateAll()
 //               __polo.hostResponse(callId, ok, resultJson)
+//               __polo.socketEvent(socketId, eventJson)
 
 // FIRST: patches Number.prototype.toLocaleString on engines without Intl
 // (QuickJS-NG). Imported ahead of everything else so the patch is in place
@@ -129,6 +131,17 @@ const definingBundle: Record<string, string | null> = {}
 const pendingHostCalls = new Map<number, PendingHostCall>()
 let nextHostCallId = 1
 
+// Listeners for the sockets `host.webSocket` opened, by the id the host's
+// events arrive under. `owner` is set by the bound host call that opens the
+// socket — kernel-recorded, like every identity here — and is what lets
+// `unloadBundle` drop a reloaded extension's listeners with its hooks.
+interface SocketListener {
+  owner: string | null
+  listener: (event: Record<string, unknown>) => unknown
+}
+const socketListeners = new Map<number, SocketListener>()
+let nextSocketId = 1
+
 // ---- Bundle evaluation windows --------------------------------------------
 // The host brackets every bundle's evaluation with beginBundle(key)/
 // endBundle(), where `key` comes from the host's own manifest (index.json) —
@@ -232,6 +245,9 @@ const IDENTITY_HOST_METHODS = new Set([
   "statusBarClear",
   "statusBarShowNotice",
   "statusBarDismissNotice",
+  "webSocketOpen",
+  "webSocketSend",
+  "webSocketClose",
 ])
 
 /// Internal, trusted dispatch — everything on the wire goes through here.
@@ -267,6 +283,17 @@ function boundHostCallFor(extensionKey: string) {
     const bound: Record<string, unknown> = { ...params, ns: extensionKey, extensionKey }
     if (method === "getAccount" || method === "setAccountSession") {
       bound.kvKey = kernel.getAccountKvKey(extensionKey)
+    }
+    if (method === "webSocketOpen") {
+      // Only an id registerSocket handed out and nobody has opened yet. Ids
+      // are guessable: a second open naming one in use would take over its
+      // listener, and one naming an id not yet handed out would take it from
+      // whoever gets it next — leaving a socket no unload knows to close.
+      const socket = socketListeners.get(params.socketId as number)
+      if (!socket || socket.owner !== null) {
+        return Promise.reject(new Error(`webSocket: socket ${String(params.socketId)} is not reserved, or already in use`))
+      }
+      socket.owner = extensionKey
     }
     return dispatchHostCall(method, bound)
   }
@@ -560,6 +587,16 @@ const kernel = {
       delete definingBundle[key]
       activated.delete(key)
     }
+    // The new code never opened these sockets and must not hear their
+    // events; the host closes exactly the ids named here.
+    const dropped: number[] = []
+    for (const [id, socket] of socketListeners) {
+      if (socket.owner !== null && keys.includes(socket.owner)) {
+        socketListeners.delete(id)
+        dropped.push(id)
+      }
+    }
+    if (dropped.length) post({ type: "socketsDropped", socketIds: dropped })
     if (keys.length) log(`unloaded bundle ${bundleKey} (${keys.join(", ")})`)
   },
 
@@ -863,6 +900,42 @@ const kernel = {
       else pending.reject(new Error(String(result)))
     } catch (e) {
       pending.reject(e as Error)
+    }
+  },
+
+  /// Reserves a socket id for [listener]. The SDK's `host.webSocket` does
+  /// this BEFORE asking the host to connect, so no event can arrive for an id
+  /// nothing is listening on.
+  registerSocket(listener: (event: Record<string, unknown>) => unknown): number {
+    const id = nextSocketId++
+    socketListeners.set(id, { owner: null, listener })
+    return id
+  },
+
+  /// Hands one host-delivered socket event to its listener. `close` is always
+  /// the last event a socket gets, so it retires the id.
+  socketEvent(socketId: number, eventJson: string) {
+    const socket = socketListeners.get(socketId)
+    if (!socket) return
+    let event: Record<string, unknown>
+    try {
+      event = JSON.parse(eventJson)
+    } catch (e) {
+      log(`ERROR malformed socket event: ${describeError(e)}`)
+      return
+    }
+    if (event.type === "close") socketListeners.delete(socketId)
+    // A browser logs a failed socket whatever the page does with it; an
+    // extension without an onerror would otherwise see only a bare 1006.
+    if (event.type === "error") log(`${socket.owner ?? "unknown"} socket ${socketId}: ${String(event.message)}`)
+    // An extension's callback failing is its own bug, and must not stop the
+    // next event from being delivered — or take the kernel with it.
+    const report = (e: unknown) => log(`ERROR ${socket.owner ?? "unknown"} socket ${event.type} handler: ${describeError(e)}`)
+    try {
+      const result = socket.listener(event)
+      if (result instanceof Promise) result.catch(report)
+    } catch (e) {
+      report(e)
     }
   },
 

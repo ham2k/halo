@@ -1910,6 +1910,11 @@ export interface ExtensionManifest {
   hooks?: string[]
   /// host.fetch allowlist for this extension's bundle.
   domains?: string[]
+  /// host.webSocket allowlist — a separate grant from `domains`, same entry
+  /// shape, plus `"local"` for any local-network address (loopback, private
+  /// ranges, `.local` names). `wss://` to any listed host; plain `ws://` only
+  /// to a local-network one.
+  webSockets?: string[]
   allowUserAgentOverride?: boolean
   /// Declares this extension's bundle may call `host.getLocation()` — the
   /// device's raw GPS coordinates. Off by default, same allowlist shape as
@@ -1973,6 +1978,39 @@ export interface FetchOptions {
 export interface FetchResponse {
   status: number
   body: string
+}
+
+export interface WebSocketOptions {
+  /// Subprotocols to offer in the handshake; the server's pick is
+  /// `ExtensionWebSocket.protocol` once open.
+  protocols?: string[]
+}
+
+export interface WebSocketCloseEvent {
+  code: number
+  reason: string
+  wasClean: boolean
+}
+
+/// A browser-shaped WebSocket, carried by the host. Binary frames arrive as
+/// an `ArrayBuffer` (a browser's `binaryType = "arraybuffer"`). Callbacks run
+/// outside any hook call, so there is no `ctx`, and a failure to connect — a
+/// refused host included — arrives as `onerror` then `onclose`, never as a
+/// throw.
+export interface ExtensionWebSocket {
+  readonly url: string
+  /// 0 connecting, 1 open, 2 closing, 3 closed — as the browser's.
+  readonly readyState: 0 | 1 | 2 | 3
+  readonly protocol: string
+  onopen: (() => void) | null
+  onmessage: ((event: { data: string | ArrayBuffer }) => void) | null
+  onerror: ((event: { message: string }) => void) | null
+  onclose: ((event: WebSocketCloseEvent) => void) | null
+  /// Throws unless the socket is open, and for a frame over 1 MiB (UTF-16
+  /// code units of text, or bytes).
+  send(data: string | ArrayBuffer | ArrayBufferView): void
+  /// `code` is 1000 or 3000-4999; `reason` at most 123 UTF-8 bytes.
+  close(code?: number, reason?: string): void
 }
 
 /// The device's current GPS fix, as returned by `host.getLocation()`.

@@ -89,4 +89,55 @@ void main() {
     expect(agent, startsWith('Ham2K halo-ext/'));
     expect(agent, contains(Platform.operatingSystem));
   });
+
+  test('a socket the manifest declares opens under the CLI too', () async {
+    // The CLI builds its own host from index.json, so a capability it never
+    // reads is one every author's extension is silently denied here while
+    // the app grants it.
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final connected = <WebSocket>[];
+    server.transform(WebSocketTransformer()).listen(connected.add);
+    addTearDown(() => server.close(force: true));
+
+    final dir = Directory.systemTemp.createTempSync('halo-cli-socket');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    File('${dir.path}/kernel.js').writeAsStringSync(index.kernelSource);
+    File('${dir.path}/socks.js').writeAsStringSync("""
+__polo.defineExtension({
+  key: 'socks',
+  name: 'Socks',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('bench', { key: 'socks', hook: {
+      open: async function (args) {
+        await api.hostCall('webSocketOpen', { socketId: __polo.registerSocket(function () {}), url: args.url })
+        return 'accepted'
+      },
+    }})
+  },
+})
+""");
+    final socketIndex = BundleIndex(
+      directory: dir,
+      kernelFile: 'kernel.js',
+      extensions: [
+        BundleEntry.fromJson(const {
+          'key': 'socks',
+          'file': 'socks.js',
+          'name': 'Socks',
+          'webSockets': ['127.0.0.1'],
+        }),
+      ],
+    );
+    runtime = await ExtRuntime.start(index: socketIndex, config: CliConfig(), only: const {'socks'});
+
+    final answer = await runtime.host.invokeHook('bench', key: 'socks', method: 'open', args: {'url': 'ws://127.0.0.1:${server.port}/'});
+
+    expect(answer, 'accepted');
+    final waited = Stopwatch()..start();
+    while (connected.isEmpty && waited.elapsed < const Duration(seconds: 5)) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(connected, hasLength(1));
+  });
 }

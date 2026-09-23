@@ -85,6 +85,45 @@ void main() {
     expect(find.text('backup.example.org'), findsOneWidget);
   });
 
+  testWidgets('every host it may hold a connection to is named, on its own', (tester) async {
+    // A socket grant with no fetch grant beside it: an extension claiming only
+    // this must not be presented as asking for nothing.
+    final bundle = await inspect(
+      withManifest(
+        (m) => {
+          ...m,
+          'domains': <String>[],
+          'webSockets': ['stream.example.org'],
+        },
+      ),
+    );
+
+    await show(tester, bundle);
+
+    expect(find.text(t.extensionsPanel.noCapabilities), findsNothing);
+    expect(find.text(t.extensionsPanel.canHoldConnection(host: 'stream.example.org')), findsOneWidget);
+  });
+
+  testWidgets('the local entry reads as the local network, not as a host called "local"', (tester) async {
+    // It admits every private address there is, which a line reading "local"
+    // would hide from the operator agreeing to it.
+    await show(
+      tester,
+      await inspect(
+        withManifest(
+          (m) => {
+            ...m,
+            'domains': <String>[],
+            'webSockets': <String>['local'],
+          },
+        ),
+      ),
+    );
+
+    expect(find.text(t.extensionsPanel.canHoldLocalConnection), findsOneWidget);
+    expect(find.text(t.extensionsPanel.canHoldConnection(host: 'local')), findsNothing);
+  });
+
   testWidgets('location and user-agent claims are named too', (tester) async {
     final bundle = await inspect(withManifest((m) => {...m, 'requiresLocation': true, 'allowUserAgentOverride': true}));
 

@@ -64,6 +64,9 @@ try {
     // person installing it will be asked to approve.
     console.log(`  may reach: ${result.manifest.domains.join(", ")}`)
   }
+  if (result.manifest.webSockets?.length) {
+    console.log(`  may hold connections to: ${result.manifest.webSockets.join(", ")}`)
+  }
 } catch (e) {
   if (e instanceof PackError) {
     console.error(`h2kext-pack: ${dir} is not ready to package:\n${e.message}`)

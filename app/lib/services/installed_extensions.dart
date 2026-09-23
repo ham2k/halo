@@ -28,8 +28,10 @@ import 'extension_service.dart';
 
 /// The extension API this build speaks. A bundle declares the one it was built
 /// against and anything newer is refused, so an old app meeting a new bundle
-/// says so rather than failing somewhere inside a hook.
-const kExtensionApiVersion = 1;
+/// says so rather than failing somewhere inside a hook. Kept equal to the
+/// packer's `H2KEXT_API_VERSION` (extensions/tools/h2kext.mjs), which lists
+/// what each version adds.
+const kExtensionApiVersion = 2;
 
 /// Directory under the app's data directory holding installed extensions, one
 /// subdirectory per key.
@@ -204,6 +206,9 @@ class InspectedBundle {
   /// The hosts this extension may reach through `host.fetch`. Nothing else is
   /// permitted, so this list IS its network access.
   List<String> get domains => ((manifest['domains'] as List?) ?? const []).cast<String>();
+
+  /// The hosts this extension may hold a `host.webSocket` open to.
+  List<String> get webSockets => ((manifest['webSockets'] as List?) ?? const []).cast<String>();
   bool get requiresLocation => manifest['requiresLocation'] == true;
   bool get requiresRadioWrite => manifest['requiresRadioWrite'] == true;
   bool get requiresRadioRead => requiresRadioWrite || manifest['requiresRadioRead'] == true;
@@ -211,7 +216,7 @@ class InspectedBundle {
 
   /// Whether it asks for anything at all beyond running. A bundle claiming
   /// nothing should not be dressed up as though it did.
-  bool get claimsCapabilities => domains.isNotEmpty || requiresLocation || requiresRadioRead || allowUserAgentOverride;
+  bool get claimsCapabilities => domains.isNotEmpty || webSockets.isNotEmpty || requiresLocation || requiresRadioRead || allowUserAgentOverride;
 }
 
 /// Reads, validates, installs and removes `.h2kext` bundles.
@@ -398,9 +403,11 @@ class InstalledExtensions {
     if (manifest['experiments'] != null) {
       throw BundleException(BundleRejection.malformed, "That bundle gates itself on an app experiment, so it could never load.");
     }
-    final domains = manifest['domains'];
-    if (domains != null && (domains is! List || domains.any((d) => d is! String))) {
-      throw BundleException(BundleRejection.malformed, "That bundle's manifest has an unreadable 'domains' list.");
+    for (final field in ['domains', 'webSockets']) {
+      final hosts = manifest[field];
+      if (hosts != null && (hosts is! List || hosts.any((d) => d is! String))) {
+        throw BundleException(BundleRejection.malformed, "That bundle's manifest has an unreadable '$field' list.");
+      }
     }
     // `enabledByDefault` and the retired `geo` are NOT refused here, though
     // the packer and the catalog both refuse them. The difference is who is

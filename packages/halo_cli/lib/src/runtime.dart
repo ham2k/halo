@@ -70,6 +70,7 @@ class ExtRuntime {
       extensions: [for (final entry in selected) ExtensionBundle(key: entry.key, source: index.sourceFor(entry))],
       onHostCall: onHostCall,
       fetchAllowlists: {for (final entry in selected) entry.key: entry.domains},
+      webSocketAllowlists: {for (final entry in selected) entry.key: entry.webSockets},
       secrets: secrets,
       userAgent: cliUserAgent(index),
       userAgentOverrides: {

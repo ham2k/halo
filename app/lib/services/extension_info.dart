@@ -6,7 +6,7 @@
 // Extensions panel searches it by. Pure data — the runtime that loads it is
 // ExtensionService, which re-exports this file so callers import one thing.
 
-import 'package:collection/collection.dart' show mergeSort;
+import 'package:collection/collection.dart' show ListEquality, mergeSort;
 
 import 'extension_relevance.dart';
 
@@ -185,6 +185,10 @@ class ExtensionInfo with ExtensionSearchable {
   final String file;
   final List<String> domains;
 
+  /// The hosts `host.webSocket` may connect to (the manifest's `webSockets`),
+  /// same entry shape as [domains] and a separate grant.
+  final List<String> webSockets;
+
   /// The manifest's `version`, off the index or an installed bundle's
   /// manifest — so an extension that is installed but DISABLED, whose bundle
   /// never runs, still has a version an update check can compare. The
@@ -221,7 +225,8 @@ class ExtensionInfo with ExtensionSearchable {
       requiresLocation == other.requiresLocation &&
       requiresRadioRead == other.requiresRadioRead &&
       requiresRadioWrite == other.requiresRadioWrite &&
-      allowUserAgentOverride == other.allowUserAgentOverride;
+      allowUserAgentOverride == other.allowUserAgentOverride &&
+      const ListEquality<String>().equals(webSockets, other.webSockets);
 
   final bool core;
   @override
@@ -283,6 +288,7 @@ class ExtensionInfo with ExtensionSearchable {
     this.version,
     this.relevance,
     this.domains = const [],
+    this.webSockets = const [],
     this.allowUserAgentOverride = false,
     this.requiresLocation = false,
     this.requiresRadioRead = false,
@@ -313,6 +319,7 @@ class ExtensionInfo with ExtensionSearchable {
     // packer, InstalledExtensions) rather than here.
     relevance: json['relevance'] is Map ? ExtensionRelevance.fromJson((json['relevance'] as Map).cast<String, dynamic>()) : null,
     domains: ((json['domains'] as List?) ?? const []).cast<String>(),
+    webSockets: ((json['webSockets'] as List?) ?? const []).cast<String>(),
     allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
     requiresLocation: json['requiresLocation'] as bool? ?? false,
     requiresRadioRead: json['requiresRadioRead'] as bool? ?? false,

@@ -79,7 +79,12 @@ export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((
 // any host not listed. Entries are exact hostnames; '*.example.com' matches
 // subdomains; a lone '*' means any https host (only ham2k-lofi, whose sync
 // server is user-configurable). No entry (or []) means no network at all.
-// `allowUserAgentOverride: true` is a second network capability: the host
+// `webSockets` is the same shape for host.webSocket, and a separate grant: a
+// live connection is not the request `domains` consents to. `wss://` to a
+// listed host; plain `ws://` only to one that is also a local-network address.
+// The entry "local" admits every local-network address, for gear whose
+// address only the operator knows.
+// `allowUserAgentOverride: true` is another network capability: the host
 // stamps HaLo's canonical User-Agent on every host.fetch and normally
 // overrides any the extension set, but a whitelisted extension keeps its own
 // (see docs/design/network.md). Omit it (the default) unless a third-party
@@ -287,6 +292,7 @@ export function indexEntryFor({ key, manifest: m }) {
     file: `${key}.js`,
     version: m.version,
     domains: m.domains ?? [],
+    ...(m.webSockets?.length ? { webSockets: m.webSockets } : {}),
     ...(m.allowUserAgentOverride ? { allowUserAgentOverride: true } : {}),
     ...(m.requiresLocation ? { requiresLocation: true } : {}),
     ...(m.requiresRadioRead ? { requiresRadioRead: true } : {}),

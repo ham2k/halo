@@ -70,6 +70,8 @@
     "installFromFile": "Install from file…",
     "installVersion": "Version ${version}",
     "canReach": "This extension can contact",
+    "canHoldConnection": "${host}, over a live connection",
+    "canHoldLocalConnection": "Devices on your local network, over a live connection",
     "canUseLocation": "Your location",
     "canReadRadio": "Your radio, to read its frequency and mode",
     "canControlRadio": "Your radio, to tune it and to connect or disconnect it",

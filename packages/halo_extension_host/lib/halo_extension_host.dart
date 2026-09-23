@@ -36,8 +36,10 @@ import 'package:halo_core/halo_core.dart' show ham2kSsoFetchUri, realNowUtc, sot
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart' show visibleForTesting;
 
+import 'src/extension_sockets.dart';
 import 'src/js_engine.dart';
 
+export 'src/extension_sockets.dart' show isLocalNetworkHost, localNetworkEntry, maxWebSocketFrameSize, maxWebSocketsPerExtension;
 export 'src/engine_runtime.dart' show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
 // `show`n rather than exported wholesale: this library is imported unprefixed
 // across the app, and a bare `stringsIn` in its public surface turns any
@@ -269,6 +271,11 @@ class ExtensionHost {
   /// a whitelisted extension that sets its own `User-Agent` keeps it (the
   /// manifest's `allowUserAgentOverride` capability). Everyone else, and any
   /// whitelisted extension that sets none, still gets [userAgent].
+  ///
+  /// [webSocketAllowlists] is the same shape as [fetchAllowlists], for
+  /// `host.webSocket` (the manifest's `webSockets`): a separate grant, because
+  /// a live connection is a different thing to consent to than a request.
+  /// Extensions with no entry may open no socket.
   static Future<ExtensionHost> start({
     required String kernelSource,
     required List<ExtensionBundle> extensions,
@@ -277,6 +284,7 @@ class ExtensionHost {
     Map<String, Map<String, String>> secrets = const {},
     http.Client? httpClient,
     Map<String, List<String>> fetchAllowlists = const {},
+    Map<String, List<String>> webSocketAllowlists = const {},
     String? userAgent,
     Set<String> userAgentOverrides = const {},
 
@@ -294,16 +302,38 @@ class ExtensionHost {
     // silently ignoring it would leave them hitting the real one.
     if (useIsolate && !runningOnWeb && httpClient == null) {
       try {
-        return await _startInIsolate(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, clock);
+        return await _startInIsolate(kernelSource, extensions, onHostCall, fetchAllowlists, webSocketAllowlists, userAgent, userAgentOverrides, secrets, clock);
       } catch (e) {
         // Fall through to in-process mode; the spike wants to know when this
         // happens, so surface it loudly on the first log line.
-        final host = await _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, clock, httpClient);
+        final host = await _startInProcess(
+          kernelSource,
+          extensions,
+          onHostCall,
+          fetchAllowlists,
+          webSocketAllowlists,
+          userAgent,
+          userAgentOverrides,
+          secrets,
+          clock,
+          httpClient,
+        );
         host._log('WARN isolate mode failed ($e), running in-process');
         return host;
       }
     }
-    return _startInProcess(kernelSource, extensions, onHostCall, fetchAllowlists, userAgent, userAgentOverrides, secrets, clock, httpClient);
+    return _startInProcess(
+      kernelSource,
+      extensions,
+      onHostCall,
+      fetchAllowlists,
+      webSocketAllowlists,
+      userAgent,
+      userAgentOverrides,
+      secrets,
+      clock,
+      httpClient,
+    );
   }
 
   static Future<ExtensionHost> _startInIsolate(
@@ -311,6 +341,7 @@ class ExtensionHost {
     List<ExtensionBundle> extensions,
     HostCallHandler? onHostCall,
     Map<String, List<String>> fetchAllowlists,
+    Map<String, List<String>> webSocketAllowlists,
     String? userAgent,
     Set<String> userAgentOverrides,
     Map<String, Map<String, String>> secrets,
@@ -353,6 +384,7 @@ class ExtensionHost {
           for (final p in extensions) [p.key, p.source],
         ],
         fetchAllowlists: fetchAllowlists,
+        webSocketAllowlists: webSocketAllowlists,
         secrets: secrets,
         userAgent: userAgent,
         userAgentOverrides: userAgentOverrides,
@@ -409,6 +441,7 @@ class ExtensionHost {
     List<ExtensionBundle> extensions,
     HostCallHandler? onHostCall,
     Map<String, List<String>> fetchAllowlists,
+    Map<String, List<String>> webSocketAllowlists,
     String? userAgent,
     Set<String> userAgentOverrides,
     Map<String, Map<String, String>> secrets,
@@ -419,6 +452,7 @@ class ExtensionHost {
     ExtensionHost? host;
     final core = _HostCore(
       fetchAllowlists: fetchAllowlists,
+      webSocketAllowlists: webSocketAllowlists,
       secrets: secrets,
       httpClient: httpClient,
       userAgent: userAgent,
@@ -835,6 +869,7 @@ class _HostIsolateInit {
   final String kernelSource;
   final List<List<String>> bundles;
   final Map<String, List<String>> fetchAllowlists;
+  final Map<String, List<String>> webSocketAllowlists;
 
   /// Extension key → its own build-time API key, resolved host-side.
   final Map<String, Map<String, String>> secrets;
@@ -853,6 +888,7 @@ class _HostIsolateInit {
     required this.kernelSource,
     required this.bundles,
     required this.fetchAllowlists,
+    required this.webSocketAllowlists,
     required this.secrets,
     required this.userAgent,
     required this.userAgentOverrides,
@@ -869,6 +905,7 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
   final core = _HostCore(
     emit: init.mainPort.send,
     fetchAllowlists: init.fetchAllowlists,
+    webSocketAllowlists: init.webSocketAllowlists,
     secrets: init.secrets,
     userAgent: init.userAgent,
     userAgentOverrides: init.userAgentOverrides,
@@ -908,6 +945,22 @@ class _HostCore {
   /// two builds takes effect without restarting the runtime, and callers
   /// routinely pass an unmodifiable literal here.
   final Map<String, List<String>> fetchAllowlists;
+
+  /// Per-extension WebSocket capability — see [ExtensionHost.start]. Fixed for
+  /// the runtime's life: a dev reload that changes it restarts the runtime
+  /// (`ExtensionInfo.sameStartTimeCapabilities`).
+  final Map<String, List<String>> webSocketAllowlists;
+
+  late final _sockets = ExtensionSockets(
+    userAgent: userAgent,
+    deliver: (socketId, event) {
+      try {
+        _js.socketEvent(socketId, jsonEncode(event));
+      } catch (e) {
+        emit({'type': 'log', 'message': 'ERROR delivering socket event: $e'});
+      }
+    },
+  );
 
   /// Extension key → its own build-time API key, resolved host-side.
   final Map<String, Map<String, String>> secrets;
@@ -983,6 +1036,7 @@ class _HostCore {
   _HostCore({
     required this.emit,
     Map<String, List<String>> fetchAllowlists = const {},
+    this.webSocketAllowlists = const {},
     this.secrets = const {},
     this.userAgent,
     this.userAgentOverrides = const {},
@@ -1204,6 +1258,11 @@ class _HostCore {
         emit(msg);
       case 'updateInterpretation':
         emit(msg);
+      case 'socketsDropped':
+        // An unloaded extension's listeners are gone, so nothing would ever
+        // hear from these sockets again — and the reloaded code, which never
+        // opened them, holds no id that reaches them.
+        _sockets.abandon(((msg['socketIds'] as List?) ?? const []).whereType<int>());
       case 'hostCall':
         _handleHostCall((msg['callId'] as num).toInt(), msg['method'] as String, ((msg['params'] ?? const <String, dynamic>{}) as Map).cast<String, dynamic>());
     }
@@ -1222,6 +1281,12 @@ class _HostCore {
           // one belonging to somebody else. Absent is null, not an error: a
           // build without the value is a normal build.
           result = secrets[params['extensionKey'] as String?]?[params['name'] as String?];
+        case 'webSocketOpen':
+          _sockets.open(params, allowlist: _allowlistFor(webSocketAllowlists, params['extensionKey'] as String?) ?? const [], matches: _hostAllowed);
+        case 'webSocketSend':
+          _sockets.send(params);
+        case 'webSocketClose':
+          _sockets.close(params);
         case 'kvGet':
           // In-memory per-extension namespaces; credentials move to the
           // platform keychain when settings become persistent.
@@ -1309,19 +1374,36 @@ class _HostCore {
     return uri;
   }
 
-  /// The allowlist for [extensionKey], resolving a sub-extension ('pota-
-  /// all-parks') to its bundle's declaration ('pota') — same prefix rule the
+  /// Whether [extensionKey] is [bundleKey] or one of the sub-extensions its
+  /// bundle defines ('pota-all-parks' for 'pota') — same prefix rule the
   /// kernel applies to defineExtension.
-  List<String>? _fetchAllowlistFor(String? extensionKey) {
+  static bool _belongsTo(String extensionKey, String bundleKey) =>
+      extensionKey == bundleKey || extensionKey.startsWith('$bundleKey-') || extensionKey.startsWith('${bundleKey}_');
+
+  /// [extensionKey]'s entry in [allowlists], resolving a sub-extension to its
+  /// bundle's declaration.
+  static List<String>? _allowlistFor(Map<String, List<String>> allowlists, String? extensionKey) {
     if (extensionKey == null) return null;
-    final exact = fetchAllowlists[extensionKey];
+    final exact = allowlists[extensionKey];
     if (exact != null) return exact;
-    for (final entry in fetchAllowlists.entries) {
-      if (extensionKey.startsWith('${entry.key}-') || extensionKey.startsWith('${entry.key}_')) {
-        return entry.value;
-      }
+    for (final entry in allowlists.entries) {
+      if (_belongsTo(extensionKey, entry.key)) return entry.value;
     }
     return null;
+  }
+
+  /// Whether [host] matches a declared allowlist: exact hosts, `*.example.com`
+  /// for subdomains, a lone `*` for any.
+  static bool _hostAllowed(List<String>? allowlist, String host) {
+    for (final entry in allowlist ?? const <String>[]) {
+      if (entry == '*') return true;
+      if (entry.startsWith('*.')) {
+        if (host.endsWith(entry.substring(1))) return true;
+      } else if (host == entry) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Enforces the manifest's declared network capability (DESIGN.md §3).
@@ -1329,17 +1411,7 @@ class _HostCore {
   /// by extension code, so this really is "who is calling", and the check
   /// runs against the ORIGINAL host — before any web proxy rewrite.
   void _checkFetchAllowed(String? extensionKey, String host) {
-    final allowlist = _fetchAllowlistFor(extensionKey);
-    if (allowlist != null) {
-      for (final entry in allowlist) {
-        if (entry == '*') return;
-        if (entry.startsWith('*.')) {
-          if (host.endsWith(entry.substring(1))) return;
-        } else if (host == entry) {
-          return;
-        }
-      }
-    }
+    if (_hostAllowed(_allowlistFor(fetchAllowlists, extensionKey), host)) return;
     throw ExtensionHostException("fetch blocked: '$host' is not in extension '${extensionKey ?? 'unknown'}'s declared domains");
   }
 
@@ -1410,6 +1482,7 @@ class _HostCore {
 
   void dispose() {
     _pump?.cancel();
+    _sockets.abandonAll();
     if (_ownsHttpClient) _http.close();
     _js.dispose();
   }

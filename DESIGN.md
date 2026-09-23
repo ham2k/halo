@@ -131,6 +131,7 @@ typed functions:
 | API | Purpose |
 |---|---|
 | `host.fetch()` | HTTP, restricted to per-extension domain allowlists from the manifest |
+| `host.webSocket()` | A live connection, restricted to a separate per-extension `webSockets` allowlist |
 | `host.lookups` | Shared reference dataset store (today's `lookups` table + `dataFiles` machinery, unified). The **core** handles download / cache / refresh scheduling of large files; the extension supplies the URL and a streaming transform to records. |
 | `host.kv` | Per-extension namespaced settings and state |
 | `host.qsos` / `host.operations` | Read queries (scoring, dupe checking) served by the core's indexed SQLite — the log never ships wholesale across the bridge |

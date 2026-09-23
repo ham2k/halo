@@ -241,6 +241,16 @@ void main() {
     test('a dead runtime restarts', () {
       expect(canHotSwapDevBundle(runtimeAlive: false, alreadyLoaded: true, alreadyDevServed: true, capabilitiesUnchanged: true), isFalse);
     });
+
+    test('a changed webSockets list counts as a changed start-time capability', () {
+      // Unlike `domains`, the socket allowlist does not travel with a reload:
+      // swapped in place, the host would go on enforcing the list the runtime
+      // started with, refusing a host the author just added.
+      const before = ExtensionInfo(key: 'feed', file: 'feed.js', core: false, name: 'Feed', webSockets: ['a.example.com']);
+      const after = ExtensionInfo(key: 'feed', file: 'feed.js', core: false, name: 'Feed', webSockets: ['a.example.com', 'b.example.com']);
+      expect(before.sameStartTimeCapabilities(after), isFalse);
+      expect(before.sameStartTimeCapabilities(before), isTrue);
+    });
   });
 
   group('visibleSecretsFor — provenance decides, not the key (HALO-425)', () {

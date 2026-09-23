@@ -53,6 +53,8 @@ that imports it and calls `defineExtension`:
   "keywords": ["parks", "activation", "hunting"],
   "hooks": ["activity", "dataFile", "lookup", "ref:pota", "spots"],
   "domains": ["api.pota.app", "pota.app"],  // host.fetch allowlist
+  "webSockets": ["stream.example.com"],     // host.webSocket allowlist, rare;
+                               // see "WebSockets" below
   "relevance": { "entities": ["K", "VE"] }, // where, when and for whom it is
                                // relevant; omit for worldwide (see below)
   "translations": { "es": { "description": "Referencias de parques…" } }
@@ -289,12 +291,66 @@ Available via `import { host } from "@ham2k/extension-sdk"`:
 | Function | Purpose |
 |---|---|
 | `host.fetch(url, options?)` | HTTPS requests, executed by the Dart host. Returns `{status, body}`. Per-extension domain allowlists are planned. The host stamps HaLo's canonical `User-Agent` on every call — don't set your own unless your extension declares `allowUserAgentOverride` ([docs/design/network.md](../design/network.md)). `options.timeout` (ms) bounds the whole request, and is clamped downward only — you may declare a request not worth the host's default wait, not award yourself a longer one. Worth setting on anything optional, per the hanging-hook note above. |
+| `host.webSocket(url, options?)` | A live connection to a host the manifest's `webSockets` lists, shaped like the browser's `WebSocket`. See [WebSockets](#websockets). |
 | `host.kvGet(key)` / `host.kvSet(key, value)` | Key-value storage, automatically namespaced to your extension (currently in-memory; keychain-backed persistence planned for credentials). |
 | `host.statusBar.setMessage(params)` / `.setProgress(params)` | Transient single-line message or progress bar in the app's footer, keyed and namespaced to your extension the same way as `kvGet`/`kvSet`. |
 | `host.statusBar.clear(key)` | Removes a message/progress item you posted. |
 | `host.statusBar.showNotice(params)` / `.dismissNotice(key)` | A richer, dismissible notice (markdown body, optional `link`/`dialog` action buttons) shown as a "post-it" over the footer and kept in the user's Settings → About → Recent Notices history. |
 | `host.getVersionInfo()` | Read-only build identity: platform, edition, version, versionName, buildNumber, gitSha. `buildNumber` is null on Dev, where the compiled-in number is the last release's rather than the running build's. |
 | `host.log(message)` | Log line, prefixed with your extension key, visible in the app console. |
+
+### WebSockets
+
+`host.webSocket(url, { protocols })` returns at once, connecting, and behaves
+like a browser's `WebSocket` with `binaryType = "arraybuffer"`: `readyState`,
+`protocol`, `send(data)`, `close(code?, reason?)`, and `onopen` / `onmessage` /
+`onerror` / `onclose`. The host holds the connection; frames reach your
+callbacks whenever the peer sends them, outside any hook call, so there is no
+`ctx` there.
+
+```ts
+const ws = host.webSocket("wss://stream.example.com/spots")
+ws.onopen = () => ws.send(JSON.stringify({ subscribe: "spots" }))
+ws.onmessage = (e) => { /* e.data: string, or ArrayBuffer for a binary frame */ }
+ws.onclose = (e) => { /* e.code, e.reason, e.wasClean */ }
+```
+
+A distributed bundle that declares `webSockets` must declare `"api": 2`
+([distribution.md](distribution.md)), so an app too old for sockets refuses it
+at install rather than failing at the first connect.
+
+The rules, all enforced by the host:
+
+- **The manifest's `webSockets` is its own grant.** Same entry shape as
+  `domains` (exact hosts, `*.example.com`, a lone `*`), and a host listed only
+  under `domains` gets no socket: consenting to requests is not consenting to a
+  standing connection. The install screen names each entry.
+- **`wss://` to a listed host; plain `ws://` only to a local-network one** —
+  loopback, the private ranges, link-local, IPv6 unique-local, and `localhost`
+  or `.local` names. Gear in the shack rarely has a certificate; anything past
+  the router has no such excuse. A name counts by its spelling, not by what it
+  resolves to.
+- **`"local"` admits every local-network address**, over either scheme, for
+  gear whose address only the operator knows — so you need not declare `*`,
+  which would grant the whole internet too.
+- **At most four sockets per extension, and 1 MiB per frame** either way (UTF-16
+  code units of text, bytes of binary). An oversized `send` throws; an oversized
+  inbound frame closes the socket with 1009 rather than arriving cut short.
+- **A refused socket fails the way a browser's does** — `onerror`, then
+  `onclose` with 1006 — never as a throw from `host.webSocket`. The `onerror`
+  message says why.
+- **Reloading your extension, or the app replacing its runtime (enabling or
+  disabling any extension), closes your sockets without an `onclose`**: the
+  code that would hear it is gone. Open them again from `onActivation` or when
+  a hook next needs one.
+
+There are no timers, so a reconnect cannot wait on its own. Reconnecting
+straight from `onclose` is possible and, against a server that is down, is a
+loop; drive a delayed retry from something periodic, such as a panel's `tick`.
+
+On the web build the browser sets the handshake's `User-Agent` (every native
+build sends HaLo's), and plain `ws://` to a LAN address is blocked outright as
+mixed content, since the page itself is served over https.
 
 ### What the JS runtime does NOT have
 

@@ -25,7 +25,16 @@ import yazl from "yazl"
 /// The extension API this format describes. A bundle declares the version it
 /// was built against and the host refuses one it does not speak, so an old app
 /// meeting a newer bundle says so instead of failing at a call site.
-export const H2KEXT_API_VERSION = 1
+///
+/// Raised when a bundle using something new could not work at all on an app
+/// without it — not for every addition. 2 adds `host.webSocket` and the
+/// manifest's `webSockets` grant.
+export const H2KEXT_API_VERSION = 2
+
+/// The first API with `host.webSocket`. A manifest declaring `webSockets`
+/// under an older one is refused: an older app would install it and fail only
+/// when it tried to connect.
+export const WEB_SOCKETS_API_VERSION = 2
 
 /// `<prefix>-<name>`, all lowercase. The shape is what the kernel's
 /// `bundleMayDefine` prefix rule can reason about; the PREFIX is what keeps two
@@ -117,6 +126,7 @@ export const SHARED_MODULES_BY_API = {
     "liquidjs",
   ],
 }
+SHARED_MODULES_BY_API[2] = SHARED_MODULES_BY_API[1]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still
@@ -271,6 +281,14 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
     say(`'api' must be an integer, not ${JSON.stringify(manifest.api)}`)
   } else if (manifest.api > H2KEXT_API_VERSION) {
     say(`'api' is ${manifest.api}, but this packer only knows ${H2KEXT_API_VERSION}`)
+  }
+
+  if (manifest.webSockets !== undefined) {
+    if (!Array.isArray(manifest.webSockets) || manifest.webSockets.some((host) => typeof host !== "string")) {
+      say("'webSockets' must be a list of hosts")
+    } else if (manifest.webSockets.length && Number.isInteger(manifest.api) && manifest.api < WEB_SOCKETS_API_VERSION) {
+      say(`'webSockets' needs 'api' ${WEB_SOCKETS_API_VERSION} or later — an app older than that would install this and fail only when it connects`)
+    }
   }
 
   // An extension with no category is CORE to the host: always enabled, and

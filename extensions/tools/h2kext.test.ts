@@ -189,6 +189,16 @@ test("a missing or future api version is refused", () => {
   assert.match(validateManifest({ ...validManifest, api: "1" }).join(), /must be an integer/)
 })
 
+test("a bundle declaring webSockets must declare the api that has them", () => {
+  // The api number protects an older app only if a bundle that needs sockets
+  // says so; left to the author, the scaffold's number would be copied forward.
+  const sockets = { ...validManifest, webSockets: ["stream.example.com"] }
+  assert.match(validateManifest({ ...sockets, api: 1 }).join(), /'webSockets' needs 'api' 2/)
+  assert.equal(validateManifest({ ...sockets, api: 2 }).length, 0)
+  assert.equal(validateManifest({ ...validManifest, api: 1 }).length, 0, "an api 1 bundle without sockets stays valid")
+  assert.match(validateManifest({ ...validManifest, webSockets: "stream.example.com" }).join(), /must be a list of hosts/)
+})
+
 test("every problem is reported at once", async () => {
   // An author who fixes one problem per run is an author running this five
   // times to find out what is wrong with one file.

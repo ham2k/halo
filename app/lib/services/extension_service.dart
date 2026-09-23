@@ -1498,6 +1498,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       final available = availableExtensions;
       final bundles = <ExtensionBundle>[];
       final fetchAllowlists = <String, List<String>>{};
+      final webSocketAllowlists = <String, List<String>>{};
       final extensionSecrets = <String, Map<String, String>>{};
       final userAgentOverrides = <String>{};
       final loaded = <String>{};
@@ -1508,9 +1509,11 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         if (!isExtensionActive(info)) continue;
         loaded.add(info.key);
         bundles.add(ExtensionBundle(key: info.key, source: await _sourceFor(info)));
-        // The manifest's declared network capabilities (`domains` and
-        // `allowUserAgentOverride`; see extensions/build-config.mjs).
+        // The manifest's declared network capabilities (`domains`,
+        // `webSockets` and `allowUserAgentOverride`; see
+        // extensions/build-config.mjs).
         fetchAllowlists[info.key] = info.domains;
+        webSocketAllowlists[info.key] = info.webSockets;
         if (info.allowUserAgentOverride) userAgentOverrides.add(info.key);
         // Resolve what this extension is allowed to see, once, at load time —
         // the host then holds only that subset and needs no policy of its own.
@@ -1546,6 +1549,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         extensions: bundles,
         onHostCall: _handleHostCall,
         fetchAllowlists: fetchAllowlists,
+        webSocketAllowlists: webSocketAllowlists,
         secrets: extensionSecrets,
         // Resolve the UA resiliently: a missing native build number (headless
         // test host, or an early-boot platform channel not yet ready) must

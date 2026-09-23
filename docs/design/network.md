@@ -60,7 +60,9 @@ User-Agent.** Concretely:
   `_hostFetch`), which the app seeds via `ExtensionHost.start(userAgent: …)`.
   The host sets it **last**, so it overrides any `User-Agent` an extension puts
   in its `headers` — **do not set your own** in an extension; it will be ignored,
-  and hard-coded version strings only rot.
+  and hard-coded version strings only rot. A `host.webSocket` handshake carries
+  it too, on every native build (`socket_connect_io.dart`); a browser lets no
+  page set it, so the web build's handshakes carry the browser's own.
 
 If a service instead wants an app identifier in the URL path or a query field
 (e.g. HamDB's `/json/{agent}`), that's a separate service-specific requirement —

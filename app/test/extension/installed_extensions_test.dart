@@ -168,6 +168,15 @@ void main() {
       );
     });
 
+    test('the app speaks exactly the api the packer writes', () {
+      // Two constants in two languages. Behind the packer, the app refuses
+      // every freshly packed bundle as built for a newer app; ahead of it, a
+      // bundle the app would reject as too new can never be produced to test.
+      final packer = File('../extensions/tools/h2kext.mjs').readAsStringSync();
+      final declared = RegExp(r'export const H2KEXT_API_VERSION = (\d+)').firstMatch(packer)?.group(1);
+      expect(declared, '$kExtensionApiVersion');
+    });
+
     test('a shared dependency this build cannot satisfy', () async {
       // The alternative is a hook dying at a call into a major the author
       // never tested, with nothing to connect it to the cause.
@@ -380,6 +389,10 @@ void main() {
       {'domains': 'evil.example.org'},
       {
         'domains': [1, 2],
+      },
+      {'webSockets': 'evil.example.org'},
+      {
+        'webSockets': [1, 2],
       },
       {'name': 7},
       {'version': 3},

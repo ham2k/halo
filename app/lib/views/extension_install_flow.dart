@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show localNetworkEntry;
 import '../services/extension_info.dart';
 import '../services/catalog_service.dart' show CatalogRelease;
 import '../services/error_reporting_service.dart';
@@ -277,6 +278,7 @@ class _ConsentDialog extends StatelessWidget {
             Text(t.canReach, style: theme.textTheme.titleSmall),
             const SizedBox(height: Space.sm),
             for (final domain in bundle.domains) _Capability(icon: MdiIcons.web, label: domain),
+            for (final host in bundle.webSockets) _Capability(icon: MdiIcons.accessPointNetwork, label: _socketGrantLabel(host)),
             if (bundle.requiresLocation) _Capability(icon: MdiIcons.crosshairsGps, label: t.canUseLocation),
             // One line, the stronger one: write implies read.
             if (bundle.requiresRadioWrite)
@@ -294,6 +296,11 @@ class _ConsentDialog extends StatelessWidget {
     );
   }
 }
+
+/// How one `webSockets` entry reads to the operator. The `local` entry names
+/// no host, so it says what it admits instead.
+String _socketGrantLabel(String entry) =>
+    entry == localNetworkEntry ? t.extensionsPanel.canHoldLocalConnection : t.extensionsPanel.canHoldConnection(host: entry);
 
 class _Capability extends StatelessWidget {
   final IconData icon;
@@ -490,7 +497,12 @@ class _DetailsDialog extends StatelessWidget {
     // The same things `InspectedBundle.claimsCapabilities` asks of a bundle
     // at install, asked of the extension afterwards.
     final claimsCapabilities =
-        info.domains.isNotEmpty || info.requiresLocation || info.requiresRadioRead || info.requiresRadioWrite || info.allowUserAgentOverride;
+        info.domains.isNotEmpty ||
+        info.webSockets.isNotEmpty ||
+        info.requiresLocation ||
+        info.requiresRadioRead ||
+        info.requiresRadioWrite ||
+        info.allowUserAgentOverride;
     final hookLabels = extensionHookLabels(info.hooks, t);
 
     return HaloDialog(
@@ -516,6 +528,7 @@ class _DetailsDialog extends StatelessWidget {
             Text(t.canReach, style: theme.textTheme.titleSmall),
             const SizedBox(height: Space.sm),
             for (final domain in info.domains) _Capability(icon: MdiIcons.web, label: domain),
+            for (final host in info.webSockets) _Capability(icon: MdiIcons.accessPointNetwork, label: _socketGrantLabel(host)),
             if (info.requiresLocation) _Capability(icon: MdiIcons.crosshairsGps, label: t.canUseLocation),
             if (info.requiresRadioWrite)
               _Capability(icon: MdiIcons.radio, label: t.canControlRadio)

@@ -182,6 +182,8 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get installFromFile => 'Instalar desde archivo…';
 	@override String installVersion({required Object version}) => 'Versión ${version}';
 	@override String get canReach => 'Esta extensión puede contactar';
+	@override String canHoldConnection({required Object host}) => '${host}, mediante una conexión en vivo';
+	@override String get canHoldLocalConnection => 'Dispositivos de tu red local, mediante una conexión en vivo';
 	@override String get canUseLocation => 'Tu ubicación';
 	@override String get canReadRadio => 'Tu radio, para leer su frecuencia y modo';
 	@override String get canControlRadio => 'Tu radio, para sintonizarla y para conectarla o desconectarla';
@@ -3274,6 +3276,8 @@ extension on TranslationsEs {
 			'extensionsPanel.installFromFile' => 'Instalar desde archivo…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Versión ${version}',
 			'extensionsPanel.canReach' => 'Esta extensión puede contactar',
+			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, mediante una conexión en vivo',
+			'extensionsPanel.canHoldLocalConnection' => 'Dispositivos de tu red local, mediante una conexión en vivo',
 			'extensionsPanel.canUseLocation' => 'Tu ubicación',
 			'extensionsPanel.canReadRadio' => 'Tu radio, para leer su frecuencia y modo',
 			'extensionsPanel.canControlRadio' => 'Tu radio, para sintonizarla y para conectarla o desconectarla',
@@ -3722,10 +3726,10 @@ extension on TranslationsEs {
 			'operation.testOperationSuffix' => 'Prueba',
 			'operation.import.title' => 'Importar datos a la operación',
 			'operation.import.importAdifAction' => 'Importar QSOs desde ADIF',
-			'operation.import.settingsButton' => 'Ajustes de escucha',
-			'operation.import.settingsTitle' => 'Escuchar otras aplicaciones',
 			_ => null,
 		} ?? switch (path) {
+			'operation.import.settingsButton' => 'Ajustes de escucha',
+			'operation.import.settingsTitle' => 'Escuchar otras aplicaciones',
 			'operation.import.protocolAddressLabel' => 'Dirección',
 			'operation.import.protocolPortLabel' => 'Puerto',
 			'operation.import.protocolPortInvalid' => 'Introduce un puerto entre 1 y 65535',
@@ -4236,10 +4240,10 @@ extension on TranslationsEs {
 			'settings.peers.forgetBody' => 'Dejará de sincronizarse con este dispositivo. Puedes autorizarlo de nuevo más tarde, y no se elimina nada de lo ya registrado.',
 			'settings.peers.pairTitle' => ({required Object name}) => 'Vincular con ${name}',
 			'settings.peers.pairBody' => 'Este dispositivo está en tu red local y quiere conectarse.',
-			'settings.peers.pairBodyBle' => 'Este dispositivo está cerca y quiere conectarse por Bluetooth LE.',
-			'settings.peers.pairIdLabel' => 'ID del dispositivo',
 			_ => null,
 		} ?? switch (path) {
+			'settings.peers.pairBodyBle' => 'Este dispositivo está cerca y quiere conectarse por Bluetooth LE.',
+			'settings.peers.pairIdLabel' => 'ID del dispositivo',
 			'settings.peers.pairWarning' => 'Vincula solo dispositivos que reconozcas. Cualquier dispositivo de esta red puede enviar una solicitud.',
 			'settings.peers.pairWarningBle' => 'Vincula solo dispositivos que reconozcas. Cualquier dispositivo cercano puede enviar una solicitud.',
 			'settings.peers.problem' => ({required Object error}) => 'No se puede acceder a la red local: ${error}',
@@ -4750,10 +4754,10 @@ extension on TranslationsEs {
 			'commands.settingSelectedCount' => ({required Object count}) => '${count} seleccionados',
 			'commands.settingExpectsOnOff' => 'sí o no',
 			'commands.settingExpectsOneOf' => ({required Object choices}) => 'uno de: ${choices}',
-			'commands.settingExpectsNumber' => 'un número',
-			'commands.settingVanished' => ({required Object label}) => '«${label}» ya no está disponible',
 			_ => null,
 		} ?? switch (path) {
+			'commands.settingExpectsNumber' => 'un número',
+			'commands.settingVanished' => ({required Object label}) => '«${label}» ya no está disponible',
 			'commands.noCwKeyer' => 'Ninguna radio conectada puede manipular CW',
 			'commands.noKeyer' => 'Ninguna radio conectada puede manipular CW ni reproducir memorias de voz',
 			'commands.keyerNeedsOperation' => 'Abre una operación para usar el manipulador de CW',

@@ -37,7 +37,7 @@ The same manifest a built-in extension carries, plus `api`:
   "version": "1.2.3",
   "description": "Notes about the stations I work",
   "category": "dashboard",
-  "api": 1,
+  "api": 2,
   "domains": ["notes.example.org"],
   "icon": "note-text"
 }
@@ -45,7 +45,10 @@ The same manifest a built-in extension carries, plus `api`:
 
 `api` is the extension API the bundle was built against. The host refuses one
 it does not speak, so an older app meeting a newer bundle says so instead of
-failing somewhere deep in a hook.
+failing somewhere deep in a hook — and the catalog does not list it for that
+app at all. Declare the lowest version that has what the bundle uses, so it
+reaches every app that can run it: 2 adds `host.webSocket`, and the packer
+refuses a manifest declaring `webSockets` under anything less.
 
 Three fields are **refused** in a distributed bundle, and it is worth
 understanding why:
@@ -254,7 +257,7 @@ It reports every problem at once rather than one per run:
 h2kext-pack: ./build is not ready to package:
 manifest.json: missing required field 'name'
 manifest.json: key 'my-clock' must start with your callsign — 'my' is not one (e.g. ki2d-my-clock)
-manifest.json: missing 'api' — declare the extension API this was built against (currently 1)
+manifest.json: missing 'api' — declare the extension API this was built against (currently 2)
 ```
 
 `--force-name` waives the naming convention below. It exists for Ham2K's own
@@ -318,8 +321,8 @@ needs one degrades the same way it does in a build without that value
 configured.
 
 The sandbox is otherwise the same one the built-in extensions run in — no
-filesystem, no network beyond the `domains` the manifest declares and the user
-approved, no timers.
+filesystem, no network beyond the `domains` and `webSockets` the manifest
+declares and the user approved, no timers.
 
 ## Installing one
 
