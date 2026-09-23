@@ -85,12 +85,18 @@ void installLoggingHarness() {
     operations = OperationsRepository(db);
     qsos = QsosRepository(db);
     operation = await operations.create(stationCall: 'KI2D');
+    // Each disposal is registered as its object is built, not listed in
+    // `tearDown`: a setUp that fails partway would otherwise dispose the
+    // previous test's objects a second time, and that error buries its own.
     fakeRadio = FakeVfoStore();
+    addTearDown(fakeRadio.dispose);
     keyboardAccessory = KeyboardAccessoryController();
+    addTearDown(keyboardAccessory.dispose);
     // A mode as well as a frequency: a station on the air has both, and an
     // unset mode is one of the things that pops the Radio control open on
     // mount (see `RadioControlModel.vfoIsUnset`), which would steal focus in every test here.
     tunedRadio = FakeVfoStore()..setVfo('vfoA', freq: 14285, mode: 'SSB');
+    addTearDown(tunedRadio.dispose);
   });
 
   tearDown(() async {
@@ -321,15 +327,41 @@ Future<void> pumpUntilSerial(WidgetTester tester, String label) async {
 /// insert and none at all for an update: a test that seeded N records and
 /// edits one of them is already at N, so this returns on the first poll and
 /// proves only that the seeding happened. Where the claim is about what an
-/// edit WROTE, poll the record's content instead — there is an example at
-/// the top of the "composing draft survives a detour" group.
+/// edit WROTE, use [waitForQsosWhere].
 ///
 /// Always watches [operation], so a [repository] passed here has to be one
 /// over that same operation — a repository for another finds nothing, for
 /// the whole budget, every time.
 Future<List<Qso>> waitForQsos(WidgetTester tester, int count, {QsosRepository? repository}) async {
-  final logged = await _pumpForQsos(tester, count, repository: repository);
+  final logged = await _pumpForQsos(tester, (logged) => logged.length >= count, repository: repository);
   if (logged.length < count) fail('waited for $count QSO(s), saw ${logged.length}');
+  return logged;
+}
+
+/// Pumps until the operation's QSOs satisfy [until], and FAILS if they never
+/// do — the wait for an EDIT, which [waitForQsos] cannot be: an edit leaves
+/// the row count where it was, so only the record's content says whether
+/// the write has landed. State [until] as the value the edit writes, not as
+/// "something changed", or a save that wrote the wrong value ends the wait
+/// just the same. [description] names that value in the failure.
+///
+/// An [until] that throws counts as not holding, and the failure carries
+/// what the last check threw: `.single` over a seeded row throws only when
+/// the save added a row instead of updating one, which is a different bug
+/// from a save that never landed.
+Future<List<Qso>> waitForQsosWhere(WidgetTester tester, String description, bool Function(List<Qso> logged) until, {QsosRepository? repository}) async {
+  Object? lastError;
+  bool holds(List<Qso> logged) {
+    try {
+      return until(logged);
+    } on Error catch (e) {
+      lastError = e;
+      return false;
+    }
+  }
+
+  final logged = await _pumpForQsos(tester, holds, repository: repository);
+  if (!holds(logged)) fail('waited for $description, never saw it${lastError == null ? '' : ' (the last check threw: $lastError)'}');
   return logged;
 }
 
@@ -343,16 +375,16 @@ Future<List<Qso>> waitForQsos(WidgetTester tester, int count, {QsosRepository? r
 /// contact arrives — otherwise the wait returns the moment the expected one
 /// does and never gives the unwanted one a chance to show up.
 Future<List<Qso>> qsosAfterWaiting(WidgetTester tester, {int watchFor = 1, QsosRepository? repository}) =>
-    _pumpForQsos(tester, watchFor, repository: repository);
+    _pumpForQsos(tester, (logged) => logged.length >= watchFor, repository: repository);
 
-Future<List<Qso>> _pumpForQsos(WidgetTester tester, int count, {QsosRepository? repository}) async {
+Future<List<Qso>> _pumpForQsos(WidgetTester tester, bool Function(List<Qso> logged) done, {QsosRepository? repository}) async {
   final repo = repository ?? qsos;
   final uuid = operation.uuid;
   var logged = <Qso>[];
   for (var i = 0; i < 20; i++) {
     await tester.pump(const Duration(milliseconds: 10));
     logged = (await tester.runAsync(() => repo.watchForOperation(uuid).first))!;
-    if (logged.length >= count) break;
+    if (done(logged)) break;
   }
   return logged;
 }
