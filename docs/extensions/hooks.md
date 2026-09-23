@@ -1208,7 +1208,7 @@ scorer and every candidate scored against a COPY of the result, so no candidate
 can become another's duplicate. Candidates carry no uuid — a spot is not a
 record — so results come back under caller-chosen keys.
 
-`Qsos.watchForOperation` already filters deleted rows and orders by
+`QsosRepository.forOperation` already filters deleted rows and orders by
 `startAtMillis`, so unlike web-lofi's `analyzeAndSectionQSOs` there's no
 `deleted`/`event` row bookkeeping on this side of the bridge.
 `ScoringService` (`app/lib/services/scoring_service.dart`) writes

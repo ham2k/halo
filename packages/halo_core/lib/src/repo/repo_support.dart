@@ -183,7 +183,19 @@ _DecodedQsos _decodeQsos(List<QsoRow> rows) {
 /// enough to read as a stall rather than a stutter — moving it off-isolate
 /// trades a slightly later result for a UI thread that stays free to
 /// animate the transition while it waits.
-const _qsoRowDecodeIsolateThreshold = 200;
+@internal
+const qsoRowDecodeIsolateThreshold = 200;
+
+/// SQLite's default bound-variable limit is 999. `historyForCalls`'s query
+/// binds a few more params alongside the `IN` clause itself (the `deleted`/
+/// `uuid.isNull()` checks), so this stays under that with room to spare
+/// rather than pushing all the way to 999. As large as it safely can,
+/// though, not just "safe": each chunk is a full query+decode round trip,
+/// and a re-import whose `theirCall`s mostly already exist pays for a much
+/// bigger result set per chunk than a fresh one does, so fewer, larger
+/// chunks matter more here than for a fresh import's near-empty results.
+@internal
+const inClauseChunkSize = 900;
 
 /// Reports on THIS isolate whatever the decode healed, wherever it ran —
 /// see [_DecodedQsos] for why the violations travel as data.
@@ -196,7 +208,7 @@ List<Qso> _reportedQsos(_DecodedQsos decoded) {
 
 @internal
 Future<List<Qso>> qsosFromRows(List<QsoRow> rows) async {
-  if (rows.length < _qsoRowDecodeIsolateThreshold) return _reportedQsos(_decodeQsos(rows));
+  if (rows.length < qsoRowDecodeIsolateThreshold) return _reportedQsos(_decodeQsos(rows));
   try {
     return _reportedQsos(await Isolate.run(() => _decodeQsos(rows)));
   } catch (_) {

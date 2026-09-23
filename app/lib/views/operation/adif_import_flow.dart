@@ -392,7 +392,7 @@ Future<AdifImportPlan> _planFor(HaLoServices services, Operation operation, Uint
     records: outcome.records,
     // Live contacts only. A merge into a soft-deleted row would count as
     // written and stay invisible.
-    existing: await services.qsos.watchForOperation(operation.uuid).first,
+    existing: await services.qsos.forOperation(operation.uuid),
     multiRefTypes: stacking.types,
     stackingTypesUnknown: stacking.unknown,
     unusable: log.errors,

@@ -12,7 +12,6 @@ import 'package:drift/drift.dart';
 
 import '../app_clock.dart';
 import '../db/database.dart';
-import 'history_filter.dart';
 import 'sequences.dart';
 import '../dev_log.dart';
 import '../models/models.dart';
@@ -22,19 +21,12 @@ import '../models/qson_values.dart';
 import 'write_policy.dart';
 
 import 'operations_repository.dart';
+import 'qso_history_queries.dart';
+import 'qso_log_stream.dart';
 import 'repo_support.dart';
 
-/// SQLite's default bound-variable limit is 999. [historyForCalls]'s query
-/// binds a few more params alongside the `IN` clause itself (the `deleted`/
-/// `uuid.isNull()` checks), so this stays under that with room to spare
-/// rather than pushing all the way to 999. As large as it safely can,
-/// though, not just "safe": each chunk is a full query+decode round trip,
-/// and a re-import whose `theirCall`s mostly already exist pays for a much
-/// bigger result set per chunk than a fresh one does, so fewer, larger
-/// chunks matter more here than for a fresh import's near-empty results.
-const _inClauseChunkSize = 900;
-
-class QsosRepository {
+class QsosRepository with QsoHistoryQueries {
+  @override
   final HaLoDatabase db;
 
   /// See `OperationsRepository.onChange`.
@@ -50,6 +42,15 @@ class QsosRepository {
   final SequencesRepository? sequences;
 
   QsosRepository(this.db, {this.onChange, this.sequences});
+
+  /// See [QsoWriteLedger]: what each write touched, for [watchForOperation].
+  final _ledger = QsoWriteLedger();
+
+  /// Inside the write's transaction, as its last step, only when a statement
+  /// reached a row — [QsoWriteLedger] says why; drift lets nothing assert it.
+  void _touch(Iterable<String> operations, Iterable<String> uuids) => _ledger.record({for (final operation in operations) operation: uuids.toSet()});
+  void _touchRows(QsoWriteFootprint rowsByOperation) => _ledger.record(rowsByOperation);
+  void _touchAll() => _ledger.record(null);
 
   /// Throws [WriteRefused] if a NEW contact in [operationUuid] may not be
   /// written right now — see [WritePolicy].
@@ -188,6 +189,7 @@ class QsosRepository {
       }
       await db.into(db.qsos).insert(_companionFor(qso, 'qsos:add'));
       await refreshOperationCounters(operationUuid);
+      _touch([operationUuid], [qso.uuid]);
     });
     onChange?.call();
     // Structured dev event — real contacts only, not timeline markers.
@@ -336,6 +338,10 @@ class QsosRepository {
     }
 
     var written = 0;
+    final touched = [for (final qso in toInsert) qso.uuid];
+    // The operation each updated row is in NOW: one a sync pull moved since
+    // the plan was built moves back here, and its log has to hear it ([update]).
+    final leaving = <String>{};
     await db.transaction(() async {
       // `db.batch()`, not one `.insert()`/`.write()` call per row — a large
       // import (thousands of records) otherwise pays a separate
@@ -375,7 +381,7 @@ class QsosRepository {
         // complete while a record deleted since the plan was built silently
         // didn't land.
         //
-        // Chunked at [_inClauseChunkSize], the same as [historyForCalls] — a
+        // Chunked at [inClauseChunkSize], the same as [historyForCalls] — a
         // caller that hands a large re-import's merges straight through
         // (`adif_import_flow.dart` does not chunk its own `writeBatch` call)
         // would otherwise build one `IN` clause with one bound variable per
@@ -383,8 +389,8 @@ class QsosRepository {
         // record count this method used to have no such ceiling on at all.
         final updateUuids = stampedByUuid.keys.toList();
         final existingUuids = <String>{};
-        for (var i = 0; i < updateUuids.length; i += _inClauseChunkSize) {
-          final chunk = updateUuids.sublist(i, math.min(i + _inClauseChunkSize, updateUuids.length));
+        for (var i = 0; i < updateUuids.length; i += inClauseChunkSize) {
+          final chunk = updateUuids.sublist(i, math.min(i + inClauseChunkSize, updateUuids.length));
           if (updateBases.isEmpty) {
             // No snapshots to reconcile against: the uuid projection is all
             // the check needs. Selecting full rows here would jsonDecode
@@ -394,11 +400,14 @@ class QsosRepository {
             // would have overwritten it anyway.
             final rows =
                 await (db.selectOnly(db.qsos)
-                      ..addColumns([db.qsos.uuid])
+                      ..addColumns([db.qsos.uuid, db.qsos.operation])
                       ..where(db.qsos.uuid.isIn(chunk)))
-                    .map((row) => row.read(db.qsos.uuid)!)
+                    .map((row) => (uuid: row.read(db.qsos.uuid)!, operation: row.read(db.qsos.operation)!))
                     .get();
-            existingUuids.addAll(rows);
+            for (final row in rows) {
+              existingUuids.add(row.uuid);
+              leaving.add(row.operation);
+            }
             continue;
           }
           // Re-merge any target that moved past its plan-time snapshot —
@@ -407,6 +416,7 @@ class QsosRepository {
           final rows = await (db.select(db.qsos)..where((q) => q.uuid.isIn(chunk))).get();
           for (final row in rows) {
             existingUuids.add(row.uuid);
+            leaving.add(row.operation);
             final base = updateBases[row.uuid];
             if (base == null) continue;
             // `edited` is the already-stamped planned update — byte-identical
@@ -437,8 +447,12 @@ class QsosRepository {
           }
         });
         written += existingUuids.length;
+        touched.addAll(existingUuids);
       }
       if (refreshCounters) await refreshOperationCounters(operationUuid);
+      // A batch is only issued for uuids that exist, so updates that all
+      // missed add no statement — and a batch with none notifies nothing.
+      if (touched.isNotEmpty) _touch({operationUuid, ...leaving}, touched);
     });
 
     sequences?.invalidate();
@@ -459,9 +473,13 @@ class QsosRepository {
     await _refuseStoredQso(qso.uuid);
     var stamped = _restamped(qso);
     await db.transaction(() async {
-      if (basedOn != null) {
-        final current = await get(qso.uuid);
-        if (current != null && current.data['updatedAtMillis'] != basedOn.data['updatedAtMillis']) {
+      // Raw, decoded only against a snapshot. The operation is written from
+      // the caller's copy, so an edit saved from a snapshot a sync pull has
+      // since moved MOVES the row back, and the log it leaves has to hear it.
+      final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(qso.uuid))).getSingleOrNull();
+      if (basedOn != null && row != null) {
+        final current = qsoFromRow(row);
+        if (current.data['updatedAtMillis'] != basedOn.data['updatedAtMillis']) {
           stamped = _restamped(
             Qso(
               uuid: qso.uuid,
@@ -471,8 +489,9 @@ class QsosRepository {
           );
         }
       }
-      await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(_companionFor(stamped, 'qsos:update'));
+      final rows = await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(_companionFor(stamped, 'qsos:update'));
       await refreshOperationCounters(stamped.operationUuid);
+      if (rows > 0) _touch({stamped.operationUuid, ?row?.operation}, [stamped.uuid]);
     });
     // An edit can change a serial by hand, and never routes through the
     // allocator — so the memoized high-water mark can no longer be trusted.
@@ -536,10 +555,32 @@ class QsosRepository {
         ),
       );
       await refreshOperationCounters(stamped.operationUuid);
+      _touch([stamped.operationUuid], [stamped.uuid]);
       changed = true;
     });
     if (changed) onChange?.call();
   }
+
+  /// The QSO-side half of `undeleteOperationWithQsos`: restores every
+  /// contact of [operationUuid] tombstoned with [stamp] — the ones that went
+  /// with the operation — under one new stamp, dirty again for the push.
+  Future<void> undeleteStamped(String operationUuid, int stamp) => db.transaction(() async {
+    final rows = await (db.select(db.qsos)..where((q) => q.operation.equals(operationUuid) & q.deleted.equals(true) & q.updatedAtMillis.equals(stamp))).get();
+    final now = realNowMillis();
+    for (final row in rows) {
+      await (db.update(db.qsos)..where((q) => q.uuid.equals(row.uuid))).write(
+        QsosCompanion(
+          deleted: const Value(false),
+          synced: const Value(false),
+          // The column mirrors the data's own stamp — see [_restamped].
+          data: Value(encodeQsoData({...qsoFromRow(row).data, 'updatedAtMillis': now}, 'qsos:undeleteForOperation')),
+          updatedAtMillis: Value(now),
+        ),
+      );
+    }
+    await refreshOperationCounters(operationUuid);
+    if (rows.isNotEmpty) _touch([operationUuid], [for (final row in rows) row.uuid]);
+  });
 
   /// Live test contacts that belong to no operation.
   ///
@@ -578,6 +619,7 @@ class QsosRepository {
     final ids = uuids.toList();
     if (ids.isEmpty) return 0;
     var purged = 0;
+    final touched = <String>[];
     await db.transaction(() async {
       for (final uuid in ids) {
         final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(uuid))).getSingleOrNull();
@@ -600,7 +642,9 @@ class QsosRepository {
           ),
         );
         purged++;
+        touched.add(uuid);
       }
+      if (touched.isNotEmpty) _touch([''], touched);
     });
     if (purged > 0) onChange?.call();
     return purged;
@@ -632,6 +676,7 @@ class QsosRepository {
           ),
         );
       }
+      if (rows.isNotEmpty) _touch([operationUuid], [for (final row in rows) row.uuid]);
     });
     onChange?.call();
   }
@@ -639,9 +684,10 @@ class QsosRepository {
   /// See `OperationsRepository.hardDeletePurged` — the QSO-side half, run
   /// after a purged operation's row has already been hard-deleted so an
   /// orphaned QSO never outlives its operation.
-  Future<void> hardDeletePurgedForOperation(String operationUuid) async {
-    await (db.delete(db.qsos)..where((q) => q.operation.equals(operationUuid) & q.purged.equals(true) & q.synced.equals(true))).go();
-  }
+  Future<void> hardDeletePurgedForOperation(String operationUuid) => db.transaction(() async {
+    final removed = await (db.delete(db.qsos)..where((q) => q.operation.equals(operationUuid) & q.purged.equals(true) & q.synced.equals(true))).go();
+    if (removed > 0) _touchAll();
+  });
 
   /// Removes every QSO of [operationUuid], no flags checked — for a
   /// confirmed RECEIVED purge (`OperationsRepository.confirmReceivedPurges`),
@@ -653,9 +699,10 @@ class QsosRepository {
   /// would keep surfacing in call history and dupe checks forever. Once the
   /// operator has agreed the whole operation goes, every QSO under it goes
   /// too — there is no partial-purge state left to preserve.
-  Future<void> hardDeleteAllForOperation(String operationUuid) async {
-    await (db.delete(db.qsos)..where((q) => q.operation.equals(operationUuid))).go();
-  }
+  Future<void> hardDeleteAllForOperation(String operationUuid) => db.transaction(() async {
+    final removed = await (db.delete(db.qsos)..where((q) => q.operation.equals(operationUuid))).go();
+    if (removed > 0) _touchAll();
+  });
 
   /// Removes every purged QSO whose operation no longer exists on this
   /// device — QSOs whose own purge tombstone arrived after the operation
@@ -680,10 +727,12 @@ class QsosRepository {
   /// whose operation was deleted, is ordinary data and must survive this
   /// however long it sits there. Only an explicit purge marks a contact for
   /// removal, and `synced` is what proves the other devices have been told.
-  Future<int> hardDeletePurgedOrphans() async {
+  Future<int> hardDeletePurgedOrphans() => db.transaction(() async {
     final liveOperations = db.selectOnly(db.operations)..addColumns([db.operations.uuid]);
-    return (db.delete(db.qsos)..where((q) => q.purged.equals(true) & q.synced.equals(true) & q.operation.isNotInQuery(liveOperations))).go();
-  }
+    final removed = await (db.delete(db.qsos)..where((q) => q.purged.equals(true) & q.synced.equals(true) & q.operation.isNotInQuery(liveOperations))).go();
+    if (removed > 0) _touchAll();
+    return removed;
+  });
 
   /// A copy of [qso] with a fresh revision stamp in its data — every local
   /// write goes through this so `data.updatedAtMillis` and the mirrored
@@ -708,8 +757,32 @@ class QsosRepository {
     return null;
   }
 
+  /// The operation's log, oldest first, re-emitted on every change to it.
+  ///
+  /// Not a drift query stream: one of those re-runs its whole query on ANY
+  /// write to the table, so a log of thousands of rows is re-read and decoded
+  /// several times per logged contact (the insert, the lookup enrichment, the
+  /// score cache, the sync mark) and once more for every write to some other
+  /// operation. This reads the log once, then follows the table's update
+  /// stream and consults [_ledger]: rows a write to this operation named are
+  /// re-read by uuid and patched into place, a write naming only other
+  /// operations emits nothing, and an update the ledger cannot account for —
+  /// a writer outside this repository — reads the whole log again. Every
+  /// emission is a new list; a consumer may keep the previous one.
+  ///
+  /// Broadcast, like the drift stream it stands in for; each listener follows
+  /// the table on its own.
   Stream<List<Qso>> watchForOperation(String operationUuid, {bool includeDeleted = false}) {
-    return _forOperationQuery(operationUuid, includeDeleted: includeDeleted).watch().asyncMap(qsosFromRows);
+    return Stream.multi(
+      (listener) => QsoLogFollower(
+        db: db,
+        ledger: _ledger,
+        operationUuid: operationUuid,
+        includeDeleted: includeDeleted,
+        all: () => forOperation(operationUuid, includeDeleted: includeDeleted),
+      ).start(listener),
+      isBroadcast: true,
+    );
   }
 
   /// The same rows as [watchForOperation], read once. For a one-off read
@@ -872,173 +945,6 @@ class QsosRepository {
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]);
   }
 
-  /// Every non-deleted, non-event QSO with [call] across every operation, most
-  /// recent first — for the call-info detail's QSO history. Matches the
-  /// denormalized `theirCall` column (stored uppercase), so no JSON parsing.
-  ///
-  /// Deleting an operation deliberately does NOT tombstone its QSOs — that
-  /// would be unrecoverable, since undeleting could no longer tell which of
-  /// them the user had deleted individually beforehand. So a cross-operation
-  /// query has to join: a QSO counts as gone when its own flag says so OR
-  /// when the operation it belongs to is deleted. The join is a LEFT OUTER
-  /// one because a QSO can outlive its operation row (an inbound sync batch
-  /// can carry QSOs before the operation they belong to arrives) — those
-  /// count as present, same as before.
-  ///
-  /// [limit], when given, bounds the SQL query itself (not a post-fetch
-  /// truncation) — for a caller like `call-history`'s lookup source that
-  /// only ever reads the most recent match or two: without it, a station
-  /// worked hundreds of times ships its entire history across the extension
-  /// bridge for an answer that only ever uses the first row. Applied after
-  /// every exclusion, event markers included, so it is an exact result count.
-  ///
-  /// [filter] narrows the history in the same query, before the ordering and
-  /// the limit — see [HistoryFilter]. Filtering the limited rows afterwards
-  /// would lose an older match behind newer non-matching contacts. Its own
-  /// `limit` is the host call's; this method applies only [limit].
-  Future<List<Qso>> historyForCall(String call, {int? limit, HistoryFilter filter = HistoryFilter.none}) async {
-    final normalized = call.trim().toUpperCase();
-    if (normalized.isEmpty) return const [];
-    final query = db.select(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
-      ..where(
-        db.qsos.theirCall.equals(normalized) &
-            db.qsos.deleted.equals(false) &
-            _isContact &
-            (db.operations.deleted.equals(false) | db.operations.uuid.isNull()) &
-            filter.toSql(db.qsos, db.operations),
-      )
-      ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis, mode: OrderingMode.desc)]);
-    if (limit != null) query.limit(limit);
-    final rows = await query.get();
-    return [for (final row in rows) qsoFromRow(row.readTable(db.qsos))];
-  }
-
-  /// When each contact [historyForCall] would list started, most recent
-  /// first — the call-info's "worked before" pill, which buckets them by
-  /// day. One column rather than the rows, so a callsign worked hundreds of
-  /// times does not ship every QSO's data to answer a handful of counts.
-  ///
-  /// [excludingUuid] leaves one QSO out: the QSO being EDITED is already in
-  /// the log, and counting it would call a station worked once "worked once
-  /// before" while its own QSO is open.
-  ///
-  /// The same rules as [historyForCall], in SQL: soft-deleted QSOs and QSOs
-  /// of deleted operations drop out, and so do event markers — via
-  /// [_isContact], since a bare `band != 'event'` is NULL for a band-less
-  /// QSO and would drop it too. A QSO with no start time still counts, as
-  /// a zero.
-  Future<List<int>> historyStartTimesForCall(String call, {String? excludingUuid}) async {
-    final normalized = call.trim().toUpperCase();
-    if (normalized.isEmpty) return const [];
-    final query = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
-      ..addColumns([db.qsos.startAtMillis])
-      ..where(
-        db.qsos.theirCall.equals(normalized) &
-            db.qsos.deleted.equals(false) &
-            _isContact &
-            (excludingUuid == null ? const Constant(true) : db.qsos.uuid.equals(excludingUuid).not()) &
-            (db.operations.deleted.equals(false) | db.operations.uuid.isNull()),
-      )
-      ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis, mode: OrderingMode.desc)]);
-    final rows = await query.get();
-    return [for (final row in rows) row.read(db.qsos.startAtMillis) ?? 0];
-  }
-
-  /// [historyForCall] for every one of [calls] in a single query — an ADIF
-  /// import matching a large file's counterparties one callsign at a time
-  /// turns into thousands of sequential round trips. Chunked at
-  /// [_inClauseChunkSize] for SQLite's bound-variable limit; [watchForOurCalls]
-  /// does not chunk its own `IN` list, since every caller today passes it a
-  /// single callsign.
-  ///
-  /// [onChunk], when given, is called after every chunk with (calls looked
-  /// up so far, total calls) — real progress for a caller that would
-  /// otherwise have nothing but "still working" for however long the
-  /// chunks take.
-  Future<List<Qso>> historyForCalls(Iterable<String> calls, {void Function(int done, int total)? onChunk}) async {
-    final normalized = calls.map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty).toSet().toList();
-    if (normalized.isEmpty) return const [];
-    final results = <Qso>[];
-    for (var i = 0; i < normalized.length; i += _inClauseChunkSize) {
-      final chunk = normalized.sublist(i, math.min(i + _inClauseChunkSize, normalized.length));
-      final query = db.select(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
-        ..where(db.qsos.theirCall.isIn(chunk) & db.qsos.deleted.equals(false) & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
-      final rows = await query.get();
-      // `qsosFromRows`, not a bare `.map(qsoFromRow)` — a chunk from an
-      // established callsign can itself clear the isolate-offload
-      // threshold, and this runs while the import's progress dialog is
-      // animating.
-      final decoded = await qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);
-      results.addAll(decoded.where((qso) => !qso.isEvent));
-      // A caller's progress UI throwing (a disposed notifier, a formatting
-      // edge case) must not fail the lookup itself, or discard whatever
-      // chunks already decoded cleanly.
-      try {
-        onChunk?.call(math.min(i + _inClauseChunkSize, normalized.length), normalized.length);
-      } catch (e) {
-        DevLog.instance.log('historyForCalls-onChunk-error', {'error': e.toString()});
-      }
-    }
-    return results;
-  }
-
-  /// Every station callsign QSOs have been logged under, across every
-  /// operation, with how many QSOs each has — the Logs experiment's
-  /// callsign picker (docs card HALO-273), which shows the count as a pill
-  /// next to each entry. Matches the denormalized `ourCall` column (stored
-  /// uppercase), same join shape as [historyForCall]: a deleted operation's
-  /// QSOs drop out even though deleting an operation does not tombstone
-  /// them.
-  Stream<Map<String, int>> watchDistinctOurCalls() {
-    final count = db.qsos.uuid.count();
-    final query = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
-      ..addColumns([db.qsos.ourCall, count])
-      ..where(
-        db.qsos.ourCall.isNotNull() &
-            db.qsos.ourCall.equals('').not() &
-            db.qsos.deleted.equals(false) &
-            // Event markers (start/break/end) carry no real callsign —
-            // excluded the same way `historyForCall` excludes them from a
-            // QSO list, or a callsign whose only rows are markers shows up
-            // in this picker with nothing behind it. `_isContact`, not a
-            // bare `band != 'event'`: that reads NULL — not true — for a
-            // QSO logged without a band, silently dropping it too.
-            _isContact &
-            (db.operations.deleted.equals(false) | db.operations.uuid.isNull()),
-      )
-      ..groupBy([db.qsos.ourCall]);
-    return query.watch().map((rows) {
-      final calls = <String, int>{};
-      for (final row in rows) {
-        final call = row.read(db.qsos.ourCall);
-        if (call != null && call.isNotEmpty) calls[call] = row.read(count) ?? 0;
-      }
-      return calls;
-    });
-  }
-
-  /// Every non-deleted QSO logged under any of [calls] (own station
-  /// callsign), across every operation, oldest first — the Logs experiment's
-  /// QSO table, scoped by its "log filter". Same join shape as
-  /// [historyForCall], but on `ourCall` instead of `theirCall`, and live
-  /// (the log filter's callsign selection can change under the caller).
-  /// Unlike [historyForCalls], [calls] is not chunked — stay well under
-  /// SQLite's bound-variable limit (~999) if the log filter ever grows past a
-  /// single callsign.
-  Stream<List<Qso>> watchForOurCalls(Iterable<String> calls) {
-    final normalized = calls.map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty).toSet().toList();
-    if (normalized.isEmpty) return Stream.value(const []);
-    final query = db.select(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
-      ..where(db.qsos.ourCall.isIn(normalized) & db.qsos.deleted.equals(false) & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
-      ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis)]);
-    return query.watch().asyncMap((rows) async {
-      final decoded = await qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);
-      // Same exclusion `historyForCall` applies — an event marker is not a
-      // QSO, and this view has no concept of one to render or edit.
-      return decoded.where((qso) => !qso.isEvent).toList();
-    });
-  }
-
   /// Up to `limit` dirty QSOs, most recent first — mirrors `sync.js`'s
   /// `queryQSOs("WHERE synced IS false ... ORDER BY startAtMillis DESC")`.
   /// [excluding] holds records back WITHOUT marking them clean — the sync
@@ -1070,11 +976,18 @@ class QsosRepository {
     final list = sent.toList();
     if (list.isEmpty) return;
     await db.transaction(() async {
+      var marked = 0;
       for (final q in list) {
         final stamp = q.updatedAtMillis;
-        await (db.update(db.qsos)..where((row) => row.uuid.equals(q.uuid) & (stamp == null ? row.updatedAtMillis.isNull() : row.updatedAtMillis.equals(stamp))))
-            .write(const QsosCompanion(synced: Value(true)));
+        marked +=
+            await (db.update(db.qsos)
+                  ..where((row) => row.uuid.equals(q.uuid) & (stamp == null ? row.updatedAtMillis.isNull() : row.updatedAtMillis.equals(stamp))))
+                .write(const QsosCompanion(synced: Value(true)));
       }
+      // `synced` is a column [Qso] does not carry, so nothing a log stream
+      // shows has changed: an empty footprint pairs with the table update
+      // and no stream re-reads anything for it.
+      if (marked > 0) _touch(const [], const []);
     });
   }
 
@@ -1086,7 +999,8 @@ class QsosRepository {
   /// `band` is nullable, and `NOT (band = 'event')` is NULL — not true — for a
   /// QSO logged without one, so the null case has to be spelled out or those
   /// QSOs silently leave the count.
-  Expression<bool> get _isContact => db.qsos.band.equals('event').not() | db.qsos.band.isNull();
+  @override
+  Expression<bool> get isContact => db.qsos.band.equals('event').not() | db.qsos.band.isNull();
 
   /// See `OperationsRepository.syncCounts`. `total` applies the same rule
   /// `historyForCall` does — a QSO is gone when its own flag says so or when
@@ -1103,7 +1017,7 @@ class QsosRepository {
 
     final totalQuery = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
       ..addColumns([count])
-      ..where(db.qsos.deleted.equals(false) & _isContact & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
+      ..where(db.qsos.deleted.equals(false) & isContact & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
     final totalCount = (await totalQuery.getSingle()).read(count) ?? 0;
 
     final pendingQuery = db.selectOnly(db.qsos)
@@ -1127,7 +1041,7 @@ class QsosRepository {
     final count = db.qsos.uuid.count();
     final query = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
       ..addColumns([count])
-      ..where(db.qsos.synced.equals(false) & db.qsos.deleted.equals(false) & _isContact & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
+      ..where(db.qsos.synced.equals(false) & db.qsos.deleted.equals(false) & isContact & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
     return (await query.getSingle()).read(count) ?? 0;
   }
 
@@ -1148,12 +1062,12 @@ class QsosRepository {
     }
 
     final base = db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false);
-    // Not `_isContact.not()`: a QSO with no band belongs to neither side under
+    // Not `isContact.not()`: a QSO with no band belongs to neither side under
     // a naive negation, and would vanish from the panel entirely.
     final isEvent = db.qsos.band.equals('event');
 
-    final total = await countWhere(base & _isContact);
-    final pending = await countWhere(base & _isContact & db.qsos.synced.equals(false));
+    final total = await countWhere(base & isContact);
+    final pending = await countWhere(base & isContact & db.qsos.synced.equals(false));
     final eventTotal = await countWhere(base & isEvent);
     final eventPending = await countWhere(base & isEvent & db.qsos.synced.equals(false));
 
@@ -1166,6 +1080,9 @@ class QsosRepository {
   Future<SyncWatermark> mergeFromSync(List<Map<String, dynamic>> qsos) async {
     final watermark = SyncWatermark();
     final affectedOperations = <String>{};
+    // Filed under EACH operation a row touches, `''` included: a loose contact
+    // has no counters to refresh, but a stream of the loose log exists.
+    final touched = <String, Set<String>>{};
     final incomingUuids = [for (final m in qsos) m['uuid']].whereType<String>().toList();
     await db.transaction(() async {
       final existingRows = incomingUuids.isEmpty ? const <QsoRow>[] : await (db.select(db.qsos)..where((q) => q.uuid.isIn(incomingUuids))).get();
@@ -1221,6 +1138,7 @@ class QsosRepository {
             incomingUpdatedAtMillis: incomingUpdatedAtMillis,
           )) {
             await (db.update(db.qsos)..where((q) => q.uuid.equals(uuid))).write(const QsosCompanion(deleted: Value(true)));
+            (touched[existing.operation] ??= {}).add(uuid);
             // The contact leaves the operation's cached count, which is a
             // column no query recomputes on its own.
             if (existing.operation.isNotEmpty) affectedOperations.add(existing.operation);
@@ -1235,6 +1153,8 @@ class QsosRepository {
             .insertOnConflictUpdate(
               _companionFor(qso, 'qsos:mergeFromSync').copyWith(synced: const Value(true), deleted: Value(deleted), purged: Value(purged)),
             );
+        (touched[operationUuid] ??= {}).add(uuid);
+        if (existing != null) (touched[existing.operation] ??= {}).add(uuid);
         // `''` names no operation, so there are no counters to refresh.
         if (operationUuid.isNotEmpty) affectedOperations.add(operationUuid);
         // The operation the record LEAVES, when the inbound copy moves it —
@@ -1249,6 +1169,7 @@ class QsosRepository {
       for (final operationUuid in affectedOperations) {
         await refreshOperationCounters(operationUuid);
       }
+      if (touched.isNotEmpty) _touchRows(touched);
     });
     // Another device's numbers arrived without passing through the allocator,
     // so re-derive rather than hand out one already on the air. AFTER the
@@ -1265,6 +1186,7 @@ class QsosRepository {
   /// offers the record to LoFi cloud sync on its own next round.
   Future<void> mergeFromPeer(List<Map<String, dynamic>> qsos) async {
     final affectedOperations = <String>{};
+    final touched = <String, Set<String>>{};
     final incomingUuids = [for (final m in qsos) m['uuid']].whereType<String>().toList();
     await db.transaction(() async {
       final existingRows = incomingUuids.isEmpty ? const <QsoRow>[] : await (db.select(db.qsos)..where((q) => q.uuid.isIn(incomingUuids))).get();
@@ -1301,11 +1223,15 @@ class QsosRepository {
 
         final qso = Qso(uuid: uuid, operationUuid: operationUuid, data: data);
         await db.into(db.qsos).insertOnConflictUpdate(_companionFor(qso, 'qsos:mergeFromPeer').copyWith(deleted: Value(deleted), purged: Value(purged)));
+        (touched[operationUuid] ??= {}).add(uuid);
         affectedOperations.add(operationUuid);
+        // The log the row leaves when a peer moved it has to drop the row.
+        if (existing != null) (touched[existing.operation] ??= {}).add(uuid);
       }
       for (final operationUuid in affectedOperations) {
         await refreshOperationCounters(operationUuid);
       }
+      if (touched.isNotEmpty) _touchRows(touched);
     });
     // A peer's QSO may carry a serial this device's allocator has never seen.
     sequences?.invalidate();
@@ -1313,9 +1239,11 @@ class QsosRepository {
   }
 
   /// See `OperationsRepository.resetSyncedStatus`.
-  Future<void> resetSyncedStatus() async {
-    await db.update(db.qsos).write(const QsosCompanion(synced: Value(false)));
-  }
+  Future<void> resetSyncedStatus() => db.transaction(() async {
+    final rows = await db.update(db.qsos).write(const QsosCompanion(synced: Value(false)));
+    // See [markSynced]: `synced` is invisible to a log stream.
+    if (rows > 0) _touch(const [], const []);
+  });
 
   /// See `OperationsRepository.backupAndClearAll`.
   Future<void> backupAndClearAll(String backupId) async {
@@ -1337,6 +1265,7 @@ class QsosRepository {
             );
       }
       await db.delete(db.qsos).go();
+      if (rows.isNotEmpty) _touchAll();
     });
     sequences?.invalidate();
   }
@@ -1346,13 +1275,18 @@ class QsosRepository {
   /// coarse batched call (DESIGN.md §4). Score cache is locally derived, not
   /// synced content, so this never touches `synced` or fires [onChange];
   /// `watchForOperation` streams pick up the change on their own since it's
-  /// still a write to the `qsos` table.
-  Future<void> updateScoreCache(Map<String, String> scoreCacheByUuid) async {
+  /// still a write to the `qsos` table. [operationUuid] is the operation
+  /// every uuid belongs to — a scoring pass is one operation's — and is what
+  /// lets other operations' streams ignore the write.
+  Future<void> updateScoreCache(String operationUuid, Map<String, String> scoreCacheByUuid) async {
     if (scoreCacheByUuid.isEmpty) return;
-    await db.batch((batch) {
-      for (final entry in scoreCacheByUuid.entries) {
-        batch.update(db.qsos, QsosCompanion(scoreCache: Value(entry.value)), where: (q) => q.uuid.equals(entry.key));
-      }
+    await db.transaction(() async {
+      await db.batch((batch) {
+        for (final entry in scoreCacheByUuid.entries) {
+          batch.update(db.qsos, QsosCompanion(scoreCache: Value(entry.value)), where: (q) => q.uuid.equals(entry.key));
+        }
+      });
+      _touch([operationUuid], scoreCacheByUuid.keys);
     });
   }
 

@@ -230,7 +230,7 @@ class ScoringService {
     final operation = await operations.get(uuid);
     if (operation == null) return;
 
-    final all = await qsos.watchForOperation(operation.uuid).first;
+    final all = await qsos.forOperation(operation.uuid);
     final qsoList = all.where((q) => !q.isEvent).toList();
 
     // The activities this log HUNTS, which the operation's own refs never name
@@ -374,7 +374,7 @@ class ScoringService {
         }
       }
 
-      await qsos.updateScoreCache({for (final entry in scoresByUuid.entries) entry.key: jsonEncode(entry.value)});
+      await qsos.updateScoreCache(operation.uuid, {for (final entry in scoresByUuid.entries) entry.key: jsonEncode(entry.value)});
       await operations.updateLocalData(operation.uuid, {'scoring': scoringByScorer});
       if (!append) _foldedFully.add(uuid);
     } catch (e, st) {

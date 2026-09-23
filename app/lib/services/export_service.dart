@@ -106,7 +106,7 @@ class ExportService {
   /// has to refuse. Thrown for both, the panel greets an operator whose only
   /// mistake was opening it before their first contact with "Export failed".
   Future<({List<Qso> qsos, SegmentedOperation segmented})?> _logOrNothing(Operation operation) async {
-    final all = await qsos.watchForOperation(operation.uuid).first;
+    final all = await qsos.forOperation(operation.uuid);
     final qsoList = all.where((q) => !q.isEvent).toList();
     if (qsoList.isEmpty) return null;
     return (qsos: qsoList, segmented: SegmentedOperation.from(operation: operation.data, qsos: all));

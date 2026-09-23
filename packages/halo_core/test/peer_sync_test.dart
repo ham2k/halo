@@ -20,6 +20,17 @@ import 'package:drift/native.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:test/test.dart';
 
+/// Two edits of one record inside a single millisecond share a revision
+/// stamp, and the outbox reads the second as already recorded (see
+/// `PeerOutbox.scanNow`) — a loop that edits as fast as the reads return
+/// then tests the clock's resolution, not the pruning.
+Future<void> nextMillisecond() async {
+  final from = realNowMillis();
+  while (realNowMillis() == from) {
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+  }
+}
+
 void main() {
   group('PeerOutbox', () {
     late HaLoDatabase db;
@@ -313,6 +324,7 @@ void main() {
 
       for (var i = 0; i < 8; i++) {
         final current = (await qsos.watchForOperation(op.uuid).first).single;
+        await nextMillisecond();
         await qsos.update(Qso(uuid: current.uuid, operationUuid: op.uuid, data: {...current.data, 'notes': 'edit $i'}));
         await outbox.scanNow();
       }
@@ -359,6 +371,7 @@ void main() {
       // Edit it repeatedly so the early rows are pruned away.
       for (var i = 0; i < 3; i++) {
         final current = (await qsos.watchForOperation(op.uuid).first).single;
+        await nextMillisecond();
         await qsos.update(Qso(uuid: current.uuid, operationUuid: op.uuid, data: {...current.data, 'notes': 'edit $i'}));
         await outbox.scanNow();
       }

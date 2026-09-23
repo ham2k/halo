@@ -898,7 +898,7 @@ void main() {
       final beforeQso = qso.updatedAtMillis;
       final beforeOp = (await operations.byUuids([op.uuid])).single.updatedAtMillis;
 
-      await qsos.updateScoreCache({qso.uuid: '{"dupe":false}'});
+      await qsos.updateScoreCache(op.uuid, {qso.uuid: '{"dupe":false}'});
       await operations.updateLocalData(op.uuid, {
         'scoring': {
           'operationSummary': {'dupe': 0},

@@ -2454,10 +2454,8 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
         // from "operation with no QSOs yet" (see HookContext.getQsos).
         if (operations == null || qsos == null) return null;
         if (await operations!.get(operationUuid) == null) return null;
-        // One-shot read via the watch stream's first emission — the same
-        // convention ScoringService/ExportService use. Excludes soft-deleted
-        // records, keeps event markers; oldest first.
-        final list = await qsos!.watchForOperation(operationUuid).first;
+        // Excludes soft-deleted records, keeps event markers; oldest first.
+        final list = await qsos!.forOperation(operationUuid);
         return [for (final qso in list) qso.data];
       case 'getSpotsForCall':
         // Reads the already-fetched cache — never triggers a fetch. This
