@@ -126,8 +126,11 @@ void main() {
     final input = (location['input'] as Map).cast<String, dynamic>();
     expect(input['kind'], 'options');
     expect(input['field'], 'location');
-    // New York is a county-line party, so the field accepts two values.
+    // New York is a county-line party, so the field accepts several values —
+    // and room for more than two, since a line can run through a corner:
+    // three five-character codes and their separators.
     expect((input['multiValue'] as Map)['separator'], '/');
+    expect(input['maxLength'] as int, greaterThanOrEqualTo('ORDES/ORJEF/ORLIN'.length));
     // The set is the party's counties plus the states an out-of-state station
     // sends — narrowed to what a US station could possibly say.
     final codes = (input['options'] as List).map((option) => (option as Map)['code']).toSet();

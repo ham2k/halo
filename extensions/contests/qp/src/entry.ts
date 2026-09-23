@@ -31,6 +31,13 @@ export function str(value: unknown): string {
   return typeof value === "string" ? value : ""
 }
 
+/// A serial off a QSO ref, as text. The core allocates `ourSerial` as a
+/// NUMBER while `theirSerial` is typed text, so [str] alone reads every sent
+/// serial as blank.
+export function serial(value: unknown): string {
+  return typeof value === "number" ? String(value) : str(value).trim()
+}
+
 /// This extension's ref on an operation (or on a QSO), if it has one.
 export function refOfType(record: Record<string, unknown> | undefined, type: string = TYPE): Record<string, unknown> | undefined {
   const refs = (record?.refs as Record<string, unknown>[] | undefined) ?? []

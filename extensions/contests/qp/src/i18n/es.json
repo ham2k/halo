@@ -3,7 +3,7 @@
   "setupLabel": "Configuración del Concurso",
   "partyLabel": "¿Cuál concurso?",
   "ourLocationLabel": "Nuestra ubicación QP",
-  "ourLocationLineHelp": "En una línea de condados, envía ambos: {{example}}",
+  "ourLocationLineHelp": "En una línea de condados, envía todos los condados: {{example}}",
   "ourNameLabel": "Nuestro nombre",
   "ourPowerLabel": "Potencia",
   "ourEmailLabel": "Correo para enviar el log",

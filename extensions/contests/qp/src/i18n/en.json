@@ -3,7 +3,7 @@
   "setupLabel": "QSO Party Setup",
   "partyLabel": "Which QSO Party?",
   "ourLocationLabel": "Our QP Location",
-  "ourLocationLineHelp": "On a county line, send both: {{example}}",
+  "ourLocationLineHelp": "On a county line, send every county: {{example}}",
   "ourNameLabel": "Our Name",
   "ourPowerLabel": "Power",
   "ourEmailLabel": "E-mail for the log submission",

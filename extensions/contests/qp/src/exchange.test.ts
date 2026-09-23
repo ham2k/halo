@@ -128,18 +128,23 @@ test("a serial and a name are columns only for the parties that exchange them", 
   // serials must not get an empty one.
   const plain = cabrilloRowsFor(party("NY"), qso({ location: "ERI" }), operation("ALB"), "N0DEV")
   assert.equal(plain[0].length, 6)
-  // California exchanges a serial: our call, RST, serial, county, then theirs.
+  // California exchanges a serial INSTEAD of a report: our call, serial,
+  // county, then theirs — no RST column, or a checker reads 599 as the serial.
+  // `ourSerial` is a number because that is how the core allocates it; typed
+  // text, `theirSerial` is a string. A reader that only takes strings writes
+  // every sent serial as 0.
   const ca = { uuid: "op", stationCall: "N0DEV", refs: [{ type: "qp", ref: "CA", location: "ALAM" }] }
   const caQso = {
     their: { call: "K1ABC", entityPrefix: "K" },
     band: "20m",
     mode: "CW",
-    refs: [{ type: "qp", location: "BUTT", ourSerial: "12", theirSerial: "34" }],
+    refs: [{ type: "qp", location: "BUTT", ourSerial: 12, theirSerial: "34" }],
   }
   const rows = cabrilloRowsFor(party("CA"), caQso, ca, "N0DEV")
-  assert.equal(rows[0].length, 8)
-  assert.equal(rows[0][2].trim(), "12")
-  assert.equal(rows[0][6].trim(), "34")
+  assert.deepEqual(
+    rows[0].map((cell) => cell.trim()),
+    ["N0DEV", "12", "ALAM", "K1ABC", "34", "BUTT"],
+  )
 })
 
 test("a contact with nobody in the party is left out of the file", () => {

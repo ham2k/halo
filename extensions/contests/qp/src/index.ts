@@ -72,6 +72,7 @@ import {
   ourPowerClass,
   ourStationClass,
   refOfType,
+  serial as serialOf,
   str,
   TYPE,
 } from "./entry.ts"
@@ -394,9 +395,10 @@ const ActivityHook = {
         // or five, and on one character every callsign lookup would paint a
         // slice of the whole county list.
         minCharsForSuggestions: 2,
-        // A county line is two codes and a separator, so the field is longer
-        // than any one of them — and DX entity prefixes can be four.
-        maxLength: party.options.countyLine ? 13 : 6,
+        // A county line is up to four codes and their separators, so the
+        // field is longer than any one of them — and DX entity prefixes can be
+        // four.
+        maxLength: party.options.countyLine ? 23 : 6,
         // The guessed state's counties float up for the caller who sends one
         // of those — a county is never guessed, only ranked.
         preferredCodes: preferredCodesFor(party, guessedState),
@@ -439,7 +441,7 @@ const ActivityHook = {
 
     const qsoRef = refOfType(qso as Record<string, unknown>)
     const location = str(qsoRef?.location).trim().toUpperCase()
-    const serial = str(qsoRef?.theirSerial).trim()
+    const serial = serialOf(qsoRef?.theirSerial)
     const name = str(qsoRef?.theirName).trim().toUpperCase()
     const ours = ourLocationText(operation as Record<string, unknown>)
 
@@ -462,7 +464,7 @@ const ActivityHook = {
     // fixes a callsign typo an hour later gets that contact's own county back,
     // not the one they have driven to. (An `ourLocation` stamp an earlier
     // build left on the ref is not read — the segment is the record.)
-    const ourExchange = [str(qsoRef?.ourSerial), ourName(operation as Record<string, unknown>), ours].filter((part) => part).join(" ")
+    const ourExchange = [serialOf(qsoRef?.ourSerial), ourName(operation as Record<string, unknown>), ours].filter((part) => part).join(" ")
 
     const patch: Record<string, JSONValue> = {}
     // A deliberate blank still projects, so clearing an exchange on an edit
@@ -621,8 +623,8 @@ const AdifFieldsHook = {
     const ours = ourLocationText(operation as Record<string, unknown>)
     const weAreInParty = allInParty(parseLocations(party, ours))
     const theirs = str(qsoRef?.location).toUpperCase()
-    const ourSerial = str(qsoRef?.ourSerial)
-    const theirSerial = str(qsoRef?.theirSerial)
+    const ourSerial = serialOf(qsoRef?.ourSerial)
+    const theirSerial = serialOf(qsoRef?.theirSerial)
     const theirName = str(qsoRef?.theirName)
     const ourOwnName = ourName(operation as Record<string, unknown>)
 

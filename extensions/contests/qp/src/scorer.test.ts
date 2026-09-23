@@ -22,6 +22,7 @@ import type { JSONValue } from "@ham2k/extension-sdk"
 import { ourPowerClass } from "./entry.ts"
 import { multiplierPrefix, QsoPartyScorer, type QpScoresheet } from "./scorer.ts"
 import { partyFor } from "./parties.ts"
+import { CANADIAN_PROVINCES, US_STATES } from "./locations.ts"
 
 const ctx = { online: false } as never
 
@@ -627,6 +628,42 @@ test("SD and CA score as their sponsors publish for 2026", () => {
   assert.equal(sd.summary().total, 4 * 1 + 100)
   // California: phone is worth 3 points from 2026, the same as CW.
   assert.equal(run([qso({ location: "ALAM", mode: "SSB" })], { party: "CA", ourLocation: "NY" }).scores[0].value, 3)
+})
+
+test("CA: an in-state contact multiplies as California, never as its county", () => {
+  // CQP's in-state entrants chase states and provinces; a California county
+  // is worth the CA multiplier and nothing more. Out of state, the counties
+  // ARE the multipliers.
+  const inside = run([qso({ location: "LASS" }), qso({ call: "K6XYZ", location: "SCRU" })], { party: "CA", ourLocation: "ALAM" })
+  assert.deepEqual(Object.keys(inside.sheet.mults), ["CA"])
+  const outside = run([qso({ location: "LASS" })], { party: "CA", ourLocation: "NY" })
+  assert.deepEqual(Object.keys(outside.sheet.mults), ["LASS"])
+})
+
+test("CA: an in-state entrant's score counts 58 multipliers, and every one worked is still struck", () => {
+  // 63 are workable from inside California — the 50 states and 13 provinces
+  // and territories — and the sponsor counts 58. Capping what is RECORDED
+  // instead would leave the chase list showing worked ones as still needed.
+  const codes = [...Object.keys(US_STATES), ...Object.keys(CANADIAN_PROVINCES)].filter((code) => code !== "DC")
+  assert.equal(codes.length, 63)
+  // California itself is worked by working any county in it.
+  const sent = (code: string) => (code === "CA" ? "LASS" : code)
+  const qsos = codes.map((code, index) => qso({ call: `K${index}ABC`, location: sent(code), entityPrefix: CANADIAN_PROVINCES[code] ? "VE" : "K" }))
+  const { sheet, summary } = run(qsos, { party: "CA", ourLocation: "ALAM" })
+  assert.equal(Object.keys(sheet.mults).length, 63)
+  assert.equal(summary().mults, 58)
+  assert.equal(summary().total, 63 * 3 * 58)
+  for (const code of codes) assert.ok(summary().longSummary?.includes(`~~${code}~~`), `${code} is struck`)
+  // Out of state the cap does not apply: it is the in-state rule alone.
+  assert.equal(run([qso({ location: "LASS" })], { party: "CA", ourLocation: "NY" }).summary().mults, 1)
+})
+
+test("a county line may run through more than two counties", () => {
+  // Three-way county corners exist and CQP says to send them all. Each of our
+  // counties pairs with each of theirs: 3×2 contacts.
+  const { scores, sheet } = run([qso({ location: "ERI/CHA" })], { ourLocation: "ALB/REN/SAR" })
+  assert.equal(scores[0].value, 3 * 2 * 2)
+  assert.deepEqual(Object.keys(sheet.mults).sort(), ["CHA", "ERI", "NY"])
 })
 
 test("PA: a station outside Pennsylvania is worth its SECTION, and a state is not one", () => {

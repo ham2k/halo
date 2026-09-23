@@ -219,6 +219,9 @@ export interface PartyOptions {
   dxEntityIsMultiplier: boolean
   /// Caps how many DX entities may be claimed (7QP, NH, WA: 10; IL: 5).
   dxEntityMultiplierMax?: number
+  /// Caps the multipliers an in-state entrant's score counts (CA: 58 of the
+  /// 63 it can work). Every one worked is still recorded and struck off.
+  inStateMultiplierMax?: number
   /// A DX station's logged location is its entity prefix rather than the plain
   /// string `DX`.
   dxLocationIsPrefix: boolean
@@ -501,6 +504,7 @@ function optionsOf(raw: RawParty): PartyOptions {
     dxIsMultiplier: bool(o.dxIsMultiplier),
     dxEntityIsMultiplier: bool(o.dxEntityIsMultiplier),
     dxEntityMultiplierMax: num(o.dxEntityMultiplierMax),
+    inStateMultiplierMax: num(o.inStateMultiplierMax),
     dxLocationIsPrefix: bool(o.dxLocationIsPrefix),
     multsPerBandMode: bool(o.multsPerBandMode),
     multsPerBand: bool(o.multsPerBand),
