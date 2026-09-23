@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Speaks Kenwood CAT (see kenwood_cat_codec.dart) over an already-open
-// connection — in practice a serial port. Like every driver here it deals
+// connection — serial, or TCP for the K4. Like every driver here it deals
 // only in already-framed bytes handed to it by a transport.
 //
 // The protocol comes from published CAT references rather than from a
@@ -18,7 +18,10 @@
 // a plausible wrong mode, forever, silently. So `IF` is read for its
 // frequency (whose offset is stable across the line) and for nothing else
 // until an explicit `MD;` answer has confirmed where the mode lives.
+// The named K4 uses its documented K31 status layout instead, including
+// the DATA submode; its power ranges also require a separate codec.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -31,12 +34,17 @@ import '../equipment.dart';
 import 'cat_ascii_codec.dart';
 import 'cw_send_queue.dart';
 import 'kenwood_cat_codec.dart';
+import 'k4_codec.dart';
 import 'keyer_config.dart';
 import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 
 class KenwoodDriver extends EquipmentDriver {
-  const KenwoodDriver();
+  const KenwoodDriver() : isK4 = false;
+  const KenwoodDriver.k4() : isK4 = true;
+
+  /// Pinned by the model, never inferred from the optional voice dialect.
+  final bool isK4;
 
   /// What most of the Kenwood line ships set to, and what its CAT menu calls
   /// 9600. Only a default — a mismatch answers with garbage and no error, so
@@ -44,10 +52,10 @@ class KenwoodDriver extends EquipmentDriver {
   static const defaultBaudRate = 9600;
 
   @override
-  String get key => 'kenwood';
+  String get key => isK4 ? 'elecraft-k4' : 'kenwood';
 
   @override
-  String get name => 'Kenwood (CAT)';
+  String get name => isK4 ? 'Elecraft K4 (CAT)' : 'Kenwood (CAT)';
 
   /// A radio whose `IF` layout we DO know — a specific model built on this
   /// driver — pins the mode's offset here rather than letting the session
@@ -115,6 +123,7 @@ class KenwoodDriver extends EquipmentDriver {
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => KenwoodSession(
     sink,
+    isK4: isK4,
     declaredModeOffset: switch (config[ifModeOffsetKey]) {
       final int offset when offset >= kenwoodFrequencyDigits => offset,
       _ => null,
@@ -181,6 +190,19 @@ const kenwoodTxWatchBytes = 41;
 
 class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
   final EquipmentSink _sink;
+  final bool isK4;
+  num? _pendingK4Power;
+  Timer? _k4PowerTimeout;
+
+  /// Set while the `PCX;` that follows a refused or expired power write is
+  /// outstanding: that reply restores the app's value but must not also clear
+  /// the refusal it was sent with — the next one does.
+  bool _k4PowerResync = false;
+  int? _k4Band;
+
+  /// One diagnostic per connection: a status reply outside the K31 layout
+  /// leaves mode and transmit state unreported, and nothing else says so.
+  bool _k4InfoRejected = false;
   final _framer = KenwoodFramer();
 
   /// Auto-Information is the primary path; this covers what it can't — the
@@ -294,6 +316,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   KenwoodSession(
     this._sink, {
+    this.isK4 = false,
     this.declaredModeOffset,
     this.cwDialect,
     this.voiceDialect,
@@ -337,6 +360,10 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   /// the pair reliably occurs — otherwise the single `IF` from startUpdates
   /// is the only one that ever arrives on a radio with AI switched off.
   void _requestState() {
+    if (isK4) {
+      _send('IF;PCX;');
+      return;
+    }
     _send(buildKenwoodReadFrequencyCommand());
     _send(buildKenwoodReadModeCommand());
     _send(buildKenwoodReadInfoCommand());
@@ -345,6 +372,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   /// Reports upward, and tells the poller whether the radio is moving.
   void _report(VfoReading reading) {
+    if (isK4 && reading.freqKHz != null) _k4Band = k4BandNumber(reading.freqKHz!);
     final merged = VfoReading(freqKHz: reading.freqKHz ?? _lastReported?.freqKHz, mode: reading.mode ?? _lastReported?.mode);
     // The FIRST reading is the answer to the question startUpdates just
     // asked, not the radio moving — counting it as movement would drop every
@@ -378,6 +406,12 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         if (freqHz != null) _report(VfoReading(freqKHz: freqHz / 1000));
 
       case 'MD':
+        if (isK4) {
+          // MD has no DATA submode. Ask for the complete snapshot instead
+          // of publishing a mode guessed from an old DT answer.
+          if (RegExp(r'^[1-79]$').hasMatch(command.params)) _send('IF;');
+          return;
+        }
         final mode = parseKenwoodModeParams(command.params);
         if (mode == null) return;
         // The raw code, not one rebuilt from the name: `params` IS what the
@@ -389,13 +423,44 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
       case 'IF':
         _handleInfo(command.params);
 
+      case 'DT':
+        if (isK4 && RegExp(r'^[0-3]$').hasMatch(command.params)) _send('IF;');
+
       case 'PC':
+        if (isK4) {
+          final power = parseK4Power(command.params);
+          if (power == null) return;
+          _sink.reportPower(power.watts);
+          final pending = _pendingK4Power;
+          _pendingK4Power = null;
+          _k4PowerTimeout?.cancel();
+          if (pending == null) {
+            // Any later answer proves the radio is taking power commands, so a
+            // refusal or timeout does not outlive it.
+            if (_k4PowerResync) {
+              _k4PowerResync = false;
+            } else {
+              _sink.reportProblem(null);
+            }
+          } else {
+            final write = buildK4SetPowerCommand(pending, transverter: power.transverter);
+            if (write == null) {
+              _sink.reportProblem(t.settings.station.k4PowerRange);
+            } else {
+              _sink.reportProblem(null);
+              _send(write);
+              _send('PCX;');
+            }
+          }
+          return;
+        }
         final watts = parseKenwoodPowerParams(command.params);
         if (watts != null) _sink.reportPower(watts);
 
       case 'KS':
         if (cwDialect == null) return;
         final wpm = parseKenwoodKeyerSpeedParams(command.params);
+        if (isK4 && wpm != null && (wpm < 8 || wpm > 100)) return;
         if (wpm != null) {
           _keyerSpeed = wpm;
           _sink.reportKeyerSpeed(wpm);
@@ -416,6 +481,8 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         final activity = _voice.activity;
         if (state == null || activity == null) return;
         _voicePollSays(going: activity.recording ? state.recording : state.playing);
+      case 'ER':
+        if (isK4) _sink.reportDiagnostic('K4 refused a command: ER${command.params}');
       case 'TQ':
         if (voiceDialect != KenwoodVoiceDialect.kx) return;
         final transmitting = parseElecraftTransmitQueryParams(command.params);
@@ -427,6 +494,17 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   }
 
   void _handleInfo(String params) {
+    if (isK4) {
+      final info = parseK4Info(params);
+      if (info == null) {
+        if (!_k4InfoRejected) _sink.reportDiagnostic('K4 IF reply not in the K31 layout: "$params"');
+        _k4InfoRejected = true;
+        return;
+      }
+      _report(VfoReading(freqKHz: info.freqHz / 1000, mode: info.mode));
+      if (_telemetry.noteTransmitting(info.transmitting)) _sink.reportTransmitting(info.transmitting);
+      return;
+    }
     // Always safe: the eleven-digit frequency opens the packet on every
     // generation of the line.
     final freqHz = parseKenwoodInfoFrequency(params);
@@ -514,18 +592,60 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   }
 
   @override
-  void setFrequency(double freqKHz) => _send(buildKenwoodSetFrequencyCommand((freqKHz * 1000).round()));
-
-  @override
-  void setMode(String mode) {
-    final command = buildKenwoodSetModeCommand(mode);
-    // A mode the radio has no code for sends nothing, rather than a
-    // malformed command it would silently reject.
-    if (command != null) _send(command);
+  void setFrequency(double freqKHz) {
+    if (isK4) {
+      final band = k4BandNumber(freqKHz);
+      // FA alone can strand VFO B above the TX low-pass filter (ER04).
+      // Select the band as the front-panel BAND control does before tuning.
+      if (band != null && band != _k4Band) _send('BN${band.toString().padLeft(2, '0')};');
+      // CatService sends frequency, mode, frequency on a band change. Do
+      // not recall the band again between the mode and that final frequency.
+      _k4Band = band;
+    }
+    _send(buildKenwoodSetFrequencyCommand((freqKHz * 1000).round()));
   }
 
   @override
-  void setPower(num watts) => _send(buildKenwoodSetPowerCommand(watts));
+  void setMode(String mode) {
+    final command = isK4 ? buildK4SetModeCommand(mode) : buildKenwoodSetModeCommand(mode);
+    // A mode the radio has no code for sends nothing, rather than a
+    // malformed command it would silently reject.
+    if (command != null) {
+      _send(command);
+      if (isK4) _send('IF;');
+    }
+  }
+
+  @override
+  void setPower(num watts) {
+    if (!isK4) {
+      _send(buildKenwoodSetPowerCommand(watts));
+      return;
+    }
+    // Read the range each time: the operator can change to a transverter
+    // band without a power response arriving before this request.
+    _pendingK4Power = null;
+    _k4PowerTimeout?.cancel();
+    if (!watts.isFinite || watts < 0.0001 || watts > 110) {
+      _sink.reportProblem(t.settings.station.k4PowerRange);
+      _resyncK4Power();
+      return;
+    }
+    _pendingK4Power = watts;
+    _k4PowerTimeout = Timer(const Duration(seconds: 2), () {
+      _pendingK4Power = null;
+      _sink.reportProblem(t.settings.station.k4PowerTimeout);
+      _resyncK4Power();
+    });
+    _send('PCX;');
+  }
+
+  /// Without this read the app keeps showing, and logging, the power it asked
+  /// for until the next poll — which AI traffic can defer indefinitely.
+  void _resyncK4Power() {
+    _k4PowerResync = true;
+    _send('PCX;');
+  }
 
   @override
   void sendCw(String text) {
@@ -548,14 +668,14 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   void dropQueuedCw(int id) => _cwQueue.dropPending(id);
 
   @override
-  ({int min, int max}) get keyerSpeedRange => kenwoodKeyerSpeedRange(cwDialect ?? KenwoodCwDialect.elecraft);
+  ({int min, int max}) get keyerSpeedRange => isK4 ? (min: 8, max: 100) : kenwoodKeyerSpeedRange(cwDialect ?? KenwoodCwDialect.elecraft);
 
   /// Sets, then reads back, so the value shown is what the radio took.
   @override
   void setKeyerSpeed(int wpm) {
     final dialect = cwDialect;
     if (dialect == null) return;
-    _send(buildKenwoodSetKeyerSpeedCommand(dialect, wpm));
+    _send(isK4 ? buildK4SetKeyerSpeedCommand(wpm) : buildKenwoodSetKeyerSpeedCommand(dialect, wpm));
     _send(buildKenwoodReadKeyerSpeedCommand());
   }
 
@@ -626,7 +746,15 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   @override
   void startUpdates() {
     _framer.reset();
+    _k4Band = null;
+    _pendingK4Power = null;
+    _k4PowerResync = false;
+    _k4InfoRejected = false;
+    _k4PowerTimeout?.cancel();
     _started = true;
+    // K4n clears K2 meta mode; K31 explicitly includes the DATA submode in
+    // IF. Do this before AI or any reads, on each USB or TCP connection.
+    if (isK4) _send('K40;K31;');
     if (declaredModeOffset != null) {
       _sink.reportDiagnostic('IF mode offset $declaredModeOffset (declared)');
     }
@@ -642,6 +770,10 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   @override
   void stopUpdates() {
+    _k4Band = null;
+    _pendingK4Power = null;
+    _k4PowerResync = false;
+    _k4PowerTimeout?.cancel();
     _poller.stop();
     _telemetry.stop();
     // Leave the radio as we found it: AI persists across a disconnect, so a

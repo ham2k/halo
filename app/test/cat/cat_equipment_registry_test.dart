@@ -221,6 +221,8 @@ void main() {
       'ts480-serial',
       'kx2-serial',
       'kx3-serial',
+      'k4-serial',
+      'k4-tcp',
       'elecraft-serial',
       'ic7300-serial',
       'ic7300mk2-serial',

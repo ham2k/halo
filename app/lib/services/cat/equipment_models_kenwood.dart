@@ -209,8 +209,8 @@ const qcxModel = EquipmentModel(
 
 String _qcxName() => t.settings.station.models.qcx;
 
-/// Any Elecraft transceiver over its serial port — the K3 and K4 as much as
-/// the KX2 and KX3, which have entries of their own below.
+/// Any Elecraft transceiver over its serial port, such as the K3. The KX2,
+/// KX3 and K4 have entries of their own.
 ///
 /// Elecraft speaks Kenwood CAT, so this shares [KenwoodDriver] with
 /// [kenwoodGenericModel]. It exists as its own entry because an operator

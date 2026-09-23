@@ -10,23 +10,24 @@ import '../transport.dart';
 import 'config_field_helpers.dart';
 
 mixin TcpTransportConfig implements EquipmentTransport {
+  /// A radio with both serial and TCP variants must not store its serial
+  /// device path and TCP port number under the same configuration key.
+  String get portConfigKey;
+
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
     if (!overrides.containsKey('host')) hostConfigElement(),
-    if (!overrides.containsKey('port')) {'type': 'field', 'fieldType': 'number', 'key': 'port', 'label': t.settings.station.port},
+    if (!overrides.containsKey(portConfigKey)) {'type': 'field', 'fieldType': 'number', 'key': portConfigKey, 'label': t.settings.station.port},
   ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
-    switch (key) {
-      case 'host':
-        return validateHostField(key, value, config);
-      case 'port':
-        final port = tcpPort({...config, 'port': value});
-        return (port < 1 || port > 65535) ? t.settings.station.portInvalid : null;
-      default:
-        return null;
+    if (key == 'host') return validateHostField(key, value, config);
+    if (key == portConfigKey) {
+      final port = tcpPort({...config, portConfigKey: value});
+      return (port < 1 || port > 65535) ? t.settings.station.portInvalid : null;
     }
+    return null;
   }
 
   @override
@@ -40,5 +41,5 @@ mixin TcpTransportConfig implements EquipmentTransport {
   /// transport is shared by any TCP radio now, not just FlexRadio, so it
   /// has no business assuming one radio's default; `validate()` rejects
   /// anything outside 1-65535 before `connect()` ever sees it.
-  static int tcpPort(Map<String, dynamic> config) => numberFromConfig(config, 'port', 0);
+  int tcpPort(Map<String, dynamic> config) => numberFromConfig(config, portConfigKey, 0);
 }

@@ -4453,11 +4453,23 @@ class Translations$settings$station$en {
 	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **Use the first of the radio's two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart. - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises. - **Speed must match** the radio's CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.'
 	String get yaesuUsbTroubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises.\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.';
 
+	/// en: 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 can carry CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet. This connection controls the radio and its keyers; it does not carry audio into HaLo.'
+	String get k4SerialNotes => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 can carry CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not carry audio into HaLo.';
+
+	/// en: 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. This is CAT control, not the separate remote-audio connection on port 9204. HaLo controls the radio and its keyers without streaming audio or panadapter data.'
+	String get k4TcpNotes => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. This is CAT control, not the separate remote-audio connection on port 9204.\n\nHaLo controls the radio and its keyers without streaming audio or panadapter data.';
+
+	/// en: 'K4 power was not changed because the radio did not confirm its output range. Try again.'
+	String get k4PowerTimeout => 'K4 power was not changed because the radio did not confirm its output range. Try again.';
+
+	/// en: 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.'
+	String get k4PowerRange => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.';
+
 	/// en: 'If the radio connects but shows no frequency'
 	String get elecraftTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
-	/// en: 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working. If nothing comes back, almost always one of: - **Speed must match** the rate set under **RS232** in the radio's menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. **If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio's status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as. The K3 and K4 have not been reported either way, so please say what happens if you run one.'
-	String get elecraftTroubleshooting => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 and K4 have not been reported either way, so please say what happens if you run one.';
+	/// en: 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working. If nothing comes back, almost always one of: - **Speed must match** the rate set under **RS232** in the radio's menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. **If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio's status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as. The K3 has not been reported either way, so please say what happens if you run one. A K4 has its own entry.'
+	String get elecraftTroubleshooting => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 has not been reported either way, so please say what happens if you run one. A K4 has its own entry.';
 
 	/// en: 'If the radio connects but shows no frequency'
 	String get kenwoodTroubleshootingTitle => 'If the radio connects but shows no frequency';
@@ -6616,6 +6628,9 @@ class Translations$settings$station$models$en {
 	/// en: 'Elecraft KX3'
 	String get kx3 => 'Elecraft KX3';
 
+	/// en: 'Elecraft K4'
+	String get k4 => 'Elecraft K4';
+
 	/// en: 'Icom IC-705'
 	String get ic705 => 'Icom IC-705';
 
@@ -8107,6 +8122,7 @@ extension on Translations {
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Generic',
 			'settings.station.models.kx2' => 'Elecraft KX2',
 			'settings.station.models.kx3' => 'Elecraft KX3',
+			'settings.station.models.k4' => 'Elecraft K4',
 			'settings.station.models.ic705' => 'Icom IC-705',
 			'settings.station.models.ic7300' => 'Icom IC-7300',
 			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
@@ -8140,8 +8156,12 @@ extension on Translations {
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
 			'settings.station.yaesuUsbTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises.\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
+			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 can carry CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not carry audio into HaLo.',
+			'settings.station.k4TcpNotes' => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. This is CAT control, not the separate remote-audio connection on port 9204.\n\nHaLo controls the radio and its keyers without streaming audio or panadapter data.',
+			'settings.station.k4PowerTimeout' => 'K4 power was not changed because the radio did not confirm its output range. Try again.',
+			'settings.station.k4PowerRange' => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.',
 			'settings.station.elecraftTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.elecraftTroubleshooting' => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 and K4 have not been reported either way, so please say what happens if you run one.',
+			'settings.station.elecraftTroubleshooting' => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 has not been reported either way, so please say what happens if you run one. A K4 has its own entry.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against Kenwood\'s TS-590SG and TS-480, QRP Labs\' QMX and QCX-mini, and Elecraft\'s KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
@@ -8403,13 +8423,13 @@ extension on Translations {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
+			_ => null,
+		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'That command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'',
 			'commands.operationAlreadyStarted' => 'This operation already has a start marker',
 			'commands.couldNotOpenLocation' => 'Added the break, but could not open the location screen',
-			_ => null,
-		} ?? switch (path) {
 			'commands.noTestOperations' => 'No Test Operations to purge',
 			'commands.purgeTestsUnavailable' => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here',
 			'commands.syncAllUnavailable' => 'SYNCALL needs to show a confirmation dialog, which isn\'t available here',

@@ -11,7 +11,10 @@ import '../transport.dart';
 import 'tcp_transport_config.dart';
 
 class TcpTransport extends EquipmentTransport with TcpTransportConfig {
-  const TcpTransport();
+  const TcpTransport({this.portConfigKey = 'port'});
+
+  @override
+  final String portConfigKey;
 
   static const transportKey = 'tcp';
 

@@ -34,6 +34,7 @@ import 'driver.dart';
 import 'equipment.dart';
 import 'equipment_brands.dart';
 import 'equipment_bridges.dart';
+import 'equipment_k4.dart';
 import 'equipment_models_accessories.dart';
 import 'equipment_models_icom.dart';
 import 'equipment_models_kenwood.dart';
@@ -438,6 +439,7 @@ const _defaultModels = [
   qcxModel,
   kx2Model,
   kx3Model,
+  k4Model,
   elecraftGenericModel,
   ts590sgModel,
   ts480Model,

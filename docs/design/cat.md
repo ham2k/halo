@@ -966,6 +966,8 @@ writing it:
   Hamlib — a `set_level` against it is rejected by every correct backend. Writing goes through
   `RFPOWER` instead, a 0.0-1.0 fraction of the rig's own maximum with no command that states what
   that maximum is, so the write path carries the same assumed-ceiling guess as the four below it.
+- **The K4** is the exception on the Kenwood driver: `PCX` reads real watts in explicit L/H/X ranges
+  ([k4-cat.md](k4-cat.md)).
 - **Kenwood, FT-891, Icom CI-V, FlexRadio** represent power as a relative scale (Kenwood/FT-891's
   `PC` 0-100; CI-V's 0-255 level; SmartSDR's `rfpower` 0-100) with no command that states the radio's
   own maximum, on both reads and writes. Each driver documents its own assumption (see
@@ -1132,7 +1134,7 @@ FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have
   it. `KS` is the speed on both (4-60 and 8-50). `KY;` only ever says whether the buffer is full,
   never when it empties, so the queue paces chunks by arithmetic like the CI-V session's. The KX2
   and KX3 entries pin the Elecraft dialect, the TS-590SG and TS-480 the Kenwood one; the QMX and
-  QCX pin none.
+  QCX pin none. The K4 entry keys Elecraft-style at its own 8-100 WPM; see [k4-cat.md](k4-cat.md).
 - **Yaesu CAT has no "key this text" command at all.** What it has is five text memories the
   operator can also fill from the front panel: `KM<n><text>;` writes one, `KY6;`-`KYA;` play them
   back. Keying from the app is therefore WRITE-THEN-PLAY through memory 5 (`yaesuAppKeyerMemory` —
