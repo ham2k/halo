@@ -66,9 +66,13 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     await settings.setExtensionOverrides({'cqww': true, 'call-history': true, 'call-notes': true});
 
+    // The log AND the operations, or the runtime's `getQsos` answers null and
+    // every cold fold is of an empty log — sub-millisecond, flat, and a lie.
     final extensions = ExtensionService()
       ..lookups = lookups
-      ..settings = settings;
+      ..settings = settings
+      ..operations = operations
+      ..qsos = qsos;
     await extensions.start();
     addTearDown(() async => extensions.host?.dispose());
 

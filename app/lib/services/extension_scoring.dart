@@ -71,6 +71,15 @@ void _reportScorerFailure(String scorerKey, String method, Object error, StackTr
   );
 }
 
+/// How long one scorer gets to answer [ExtensionScoring.scoreQso]. Public so
+/// the contest bench can tell a sample that ran out the clock from an answer.
+const kScoreQsoTimeout = Duration(seconds: 4);
+
+/// The same for [ExtensionScoring.scoreCandidates] — longer, since it folds
+/// the whole log once and then scores every candidate, where the other scores
+/// one.
+const kScoreCandidatesTimeout = Duration(seconds: 20);
+
 mixin ExtensionScoring {
   ExtensionHost? get host;
 
@@ -180,7 +189,7 @@ mixin ExtensionScoring {
               'resumeDay': ?checkpoint?.day,
               if (checkpoint != null && tail != null && tail.isNotEmpty) 'qsos': tail,
             },
-            timeout: const Duration(seconds: 4),
+            timeout: kScoreQsoTimeout,
           );
           if (result is! Map) return;
           any = true;
@@ -297,9 +306,7 @@ mixin ExtensionScoring {
               'resumeDay': ?checkpoint?.day,
               if (checkpoint != null && tail != null && tail.isNotEmpty) 'qsos': tail,
             },
-            // Longer than scoreQso's: this folds the whole log once and then
-            // scores every candidate, where that scores one.
-            timeout: const Duration(seconds: 20),
+            timeout: kScoreCandidatesTimeout,
           );
           if (result is! Map) return;
           any = true;

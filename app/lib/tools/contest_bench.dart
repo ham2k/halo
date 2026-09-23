@@ -24,10 +24,13 @@
 // not a second copy: two copies drift, and the one in the test is the copy
 // nobody would notice drifting.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show judgesWorkedBefore;
 
+import '../services/extension_scoring.dart' show kScoreCandidatesTimeout, kScoreQsoTimeout;
 import '../services/extension_service.dart';
 import '../services/scoring_service.dart';
 
@@ -84,6 +87,51 @@ Map<String, dynamic> benchQsoData(int i, DateTime start) {
       ],
     },
   };
+}
+
+/// How many spot-shaped candidates one spots pass scores. A board's worth:
+/// enough that the per-candidate work is the pass's cost, not the bridge
+/// crossing.
+const kBenchSpotCandidates = 40;
+
+/// The candidates a spots pass scores, keyed as the panel keys them. Half
+/// are contacts this run logs from the start (so the dupe rule has work to
+/// do), half are callsigns it never logs — the same offset trick as
+/// [benchLookupIndex], one run further out so the two samples never meet.
+/// The shape follows `spotCandidateQso`: a spot is judged as a contact made
+/// NOW, with the spot's band and mode and no exchange.
+Map<String, Map<String, dynamic>> benchSpotCandidates(int qsoCount, DateTime start, {required int now}) {
+  Map<String, dynamic> candidate(int i) {
+    final data = benchQsoData(i, start);
+    return {
+      'their': {'call': (data['their'] as Map)['call']},
+      'band': data['band'],
+      'mode': data['mode'],
+      'freq': data['freq'],
+      'refs': const <Map<String, dynamic>>[],
+      'startAtMillis': now,
+    };
+  }
+
+  return {
+    for (var k = 0; k < kBenchSpotCandidates ~/ 2; k++) 'logged:$k': candidate(k),
+    for (var k = 0; k < kBenchSpotCandidates ~/ 2; k++) 'fresh:$k': candidate(3 * qsoCount + k),
+  };
+}
+
+/// Whether a spots pass's [board] judged the candidates as a scorer that saw
+/// the log would: every `logged:k` the run has reached — the first
+/// [loggedSoFar] contacts — worked before, and no `fresh:*` at all.
+bool benchSpotBoardJudged(Map<String, Map<String, dynamic>> board, {required int loggedSoFar}) {
+  for (var k = 0; k < kBenchSpotCandidates ~/ 2 && k < loggedSoFar; k++) {
+    final verdict = board['logged:$k'];
+    if (verdict == null || !judgesWorkedBefore(verdict)) return false;
+  }
+  for (var k = 0; k < kBenchSpotCandidates ~/ 2; k++) {
+    final verdict = board['fresh:$k'];
+    if (verdict != null && judgesWorkedBefore(verdict)) return false;
+  }
+  return true;
 }
 
 /// Which synthetic contact a lookup samples, for a run of [qsoCount].
@@ -411,7 +459,14 @@ Future<BenchResult> runContestBench({
   final insert = BenchPhase('insert');
   final fingerprint = BenchPhase('rescore fingerprint', note: 'on the UI isolate, every stream emission — this one costs frames');
   final rescore = BenchPhase('full scoring pass', growsWithLog: true, per: 'pass');
-  final readBack = BenchPhase('read back + decode', note: 'decoded off the UI isolate above 200 rows, so this costs battery, not frames');
+  // O(N) by nature, and since the log stream patches its list this is paid
+  // once per view open rather than per emission — so its growth is expected,
+  // not a finding. The per-emission cost is the `log stream emission` row.
+  final readBack = BenchPhase(
+    'read back + decode',
+    growsWithLog: true,
+    note: 'the whole log, as the operation view reads it once at open; decoded off the UI isolate above 200 rows',
+  );
   // `online: false` is the app's own offline mode: every lookup hook is asked
   // to stay local — call history, call notes, cached data files — which is what
   // makes this reproducible and free of an 8-second network timeout per call.
@@ -421,7 +476,43 @@ Future<BenchResult> runContestBench({
   // Worth watching as the log grows rather than assumed flat, because the
   // offline sources query the log itself.
   final lookup = BenchPhase('offline lookup', note: 'the pipeline\'s cost with its sources finding nothing — see the doc on runContestBench');
-  final phases = [insert, fingerprint, rescore, readBack, lookup];
+  // The dupe check the logging controls run after each call-field change,
+  // twice: once folding the whole log, as a keystroke does when no rescore
+  // checkpoint fits, and once resumed from the last rescore plus the contacts
+  // since it, as the logging panel wires it. The fold is O(N) by nature and
+  // the row documents it; the resumed row is the one that must stay flat.
+  // Between the once-per-band rescores the tail grows to a band's width, so
+  // every band's mean sits at the same half-band tail — flat is the shape.
+  final dupeCold = BenchPhase(
+    'dupe check, cold',
+    growsWithLog: true,
+    per: 'keystroke',
+    note: 'a keystroke with no rescore checkpoint to resume from folds the whole log',
+  );
+  final dupeResumed = BenchPhase(
+    'dupe check, resumed',
+    per: 'keystroke',
+    note: 'resumed from the last rescore plus the contacts since — the hook alone; the panel also pays the resolve row per keystroke',
+  );
+  // Deciding whether the checkpoint fits digests the whole held log, so the
+  // panel pays this per keystroke and it is linear by nature — timed apart
+  // from the hook, or the resumed row could never be read as flat.
+  final resolveResume = BenchPhase(
+    'resume resolution',
+    growsWithLog: true,
+    per: 'keystroke',
+    note: 'deciding whether the last rescore\'s checkpoint fits the held log — a digest over every contact, on the UI isolate',
+  );
+  final spotsPass = BenchPhase(
+    'spots pass',
+    per: 'pass',
+    note: '$kBenchSpotCandidates spot-shaped candidates, resumed the way the spots panel does after each contact; the scorers\' work, not the panel\'s',
+  );
+  // What the operation view's log stream costs after an insert: from the
+  // insert's start to the list it emits, on the same isolate. Flat is the
+  // point — a stream that re-read the log would grow with it.
+  final emission = BenchPhase('log stream emission', note: 'from an insert to the list the log stream emits, on the UI isolate — this one costs frames');
+  final phases = [insert, emission, fingerprint, rescore, readBack, lookup, dupeCold, resolveResume, dupeResumed, spotsPass];
 
   final operation = await operations.create(stationCall: 'N0DEV/T', userTitle: 'Benchmark');
   Object? benchError;
@@ -434,6 +525,60 @@ Future<BenchResult> runContestBench({
   var rescorePasses = 0;
   var scoredPasses = 0;
   String? lastScoreStamp;
+  var dupeSamples = 0;
+  var dupeColdAnswered = 0;
+  var dupeResumedAnswered = 0;
+  var spotsSamples = 0;
+  var spotsAnswered = 0;
+  var dupeTimedOut = 0;
+  var spotsTimedOut = 0;
+  // Samples taken after the first rescore, when a checkpoint exists to resume
+  // from, and how many of them the resolver handed one — the evidence that
+  // the resumed rows measured a resume and not a second cold fold, which
+  // answers "duplicate" just as well.
+  var resumableSamples = 0;
+  var resumedSamples = 0;
+  var emissionsMissed = 0;
+  Object? streamError;
+  // The log stream, followed the way the operation view follows it. A
+  // completer per awaited emission, so an insert is timed to the emission
+  // that follows it and nothing else: the once-per-band rescore's score-cache
+  // write emits too, and is waited out before the next contact so it cannot
+  // be mistaken for that contact's. Created BEFORE the subscription: the
+  // stream reads and emits at listen time, and a completer registered after
+  // that waits for an emission already gone.
+  Completer<void>? awaited;
+  final primed = awaited = Completer<void>();
+  final follower = qsos
+      .watchForOperation(operation.uuid)
+      .listen(
+        (_) {
+          awaited?.complete();
+          awaited = null;
+        },
+        onError: (Object error) {
+          streamError ??= error;
+          awaited?.completeError(error);
+          awaited = null;
+        },
+      );
+  // Whether the emission came before the wait ran out. A wait that ran out
+  // hands its completer back so a late emission cannot complete the NEXT
+  // wait's in its place and time a contact the stream never answered.
+  Future<bool> awaitEmission(Completer<void> next) async {
+    try {
+      await next.future.timeout(const Duration(seconds: 5));
+      return true;
+    } on TimeoutException {
+      if (identical(awaited, next)) awaited = null;
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> nextEmission() => awaitEmission(awaited = Completer<void>());
+
   try {
     await operations.saveData(
       Operation(
@@ -470,15 +615,27 @@ Future<BenchResult> runContestBench({
     }
 
     final start = DateTime.utc(2026, 11, 28, 0, 0);
+    final spotCandidates = benchSpotCandidates(qsoCount, start, now: start.millisecondsSinceEpoch);
+    // The initial read is the stream's own, not any contact's — and a stream
+    // that never makes it has nothing to measure.
+    if (!await awaitEmission(primed)) {
+      throw StateError('the log stream never emitted its initial read${streamError == null ? '' : ': $streamError'}');
+    }
     for (var i = 0; i < qsoCount; i++) {
       final sw = Stopwatch()..start();
+      final emitted = nextEmission();
       await qsos.add(operation.uuid, benchQsoData(i, start));
       insert.record(sw.elapsedMicroseconds);
+      if (await emitted) {
+        emission.record(sw.elapsedMicroseconds);
+      } else {
+        emissionsMissed++;
+      }
 
-      // Read the whole log back the way the operation view's stream does, then
-      // build the same fingerprint its rescore scheduler builds on every
-      // emission. Both are what ONE emission costs — sampled rather than run
-      // per contact, for the reason `sampleEvery` gives.
+      // Read the whole log back the way the operation view does when it opens,
+      // then build the same fingerprint its rescore scheduler builds on every
+      // emission. Sampled rather than run per contact, for the reason
+      // `sampleEvery` gives.
       if (i % sampleEvery == 0) {
         final sw2 = Stopwatch()..start();
         final all = await qsos.forOperation(operation.uuid);
@@ -503,6 +660,65 @@ Future<BenchResult> runContestBench({
         // lookup of an unworked callsign legitimately returns, and the cost of
         // getting there is exactly what this phase exists to measure.
         if (answer != null) lookupsRan++;
+
+        // A keystroke through the dupe check, cold and then resumed. The
+        // candidate is the contact just logged — a certain duplicate — so an
+        // answer that does not say so is a check that never saw the log,
+        // which a runtime with no log wired answers in microseconds and a flat
+        // row would dress as a pass. The operation is re-read so the resume
+        // sees the last rescore's checkpoints, as the panel's does; the read
+        // itself is outside the stopwatch, as it is a stream emission's in
+        // the app.
+        final current = (await operations.get(operation.uuid)) ?? scored;
+        final hunted = ((current.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet();
+        // With the uuid, as the logging controls send it: it is how the hook
+        // reaches the log, and without it the fold is of an empty log.
+        final scoredOperation = {...current.data, 'uuid': operation.uuid};
+        final worked = benchQsoData(i, start);
+        dupeSamples++;
+        // A scorer that ran out its clock still yields an answer: the others'
+        // — core's dupe rule says "duplicate" on its own — merged over a
+        // timing that is the timeout, not a measurement.
+        final sw6 = Stopwatch()..start();
+        final cold = await extensions.scoreQso(operation: scoredOperation, qso: worked, huntedRefTypes: hunted);
+        dupeCold.record(sw6.elapsedMicroseconds);
+        if (sw6.elapsed >= kScoreQsoTimeout) dupeTimedOut++;
+        if (cold != null && judgesWorkedBefore(cold)) dupeColdAnswered++;
+
+        final sw9 = Stopwatch()..start();
+        final resume = resolveScoringResume(
+          scoring: current.localData['scoring'] as Map<String, dynamic>?,
+          operationUpdatedAtMillis: current.updatedAtMillis,
+          qsos: all,
+        );
+        resolveResume.record(sw9.elapsedMicroseconds);
+        if (rescorePasses > 0) {
+          resumableSamples++;
+          if (resume != null && resume.tail.isNotEmpty) resumedSamples++;
+        }
+        final sw7 = Stopwatch()..start();
+        final resumed = await extensions.scoreQso(operation: scoredOperation, qso: worked, huntedRefTypes: hunted, resume: resume);
+        dupeResumed.record(sw7.elapsedMicroseconds);
+        if (sw7.elapsed >= kScoreQsoTimeout) dupeTimedOut++;
+        if (resumed != null && judgesWorkedBefore(resumed)) dupeResumedAnswered++;
+
+        // A spots board's pass over its candidates, resumed the same way.
+        spotsSamples++;
+        final sw8 = Stopwatch()..start();
+        final board = await extensions.scoreCandidates(
+          operation: current.data,
+          operationUuid: operation.uuid,
+          candidates: spotCandidates,
+          resume: resume,
+          huntedRefTypes: hunted,
+        );
+        spotsPass.record(sw8.elapsedMicroseconds);
+        if (sw8.elapsed >= kScoreCandidatesTimeout) spotsTimedOut++;
+        // Every candidate this run has logged so far — same band and mode —
+        // must come back worked before, and none of the never-logged ones
+        // may: a pass judging one of twenty saw a sliver of the log, and one
+        // striking every call has no dupe rule at all. A null is no pass.
+        if (board != null && benchSpotBoardJudged(board, loggedSoFar: i + 1)) spotsAnswered++;
       }
 
       // A real session debounces the rescore, so it does NOT run per contact.
@@ -516,6 +732,7 @@ Future<BenchResult> runContestBench({
         final fresh = (await operations.get(operation.uuid)) ?? scored;
 
         final sw4 = Stopwatch()..start();
+        final scoreCacheWritten = nextEmission();
         await scoring.rescoreOperation(fresh);
         rescore.record(sw4.elapsedMicroseconds);
         rescorePasses++;
@@ -538,6 +755,13 @@ Future<BenchResult> runContestBench({
         if (stamp != null && stamp != lastScoreStamp) {
           scoredPasses++;
           lastScoreStamp = stamp;
+          // The pass's score-cache write reaches the log stream after the pass
+          // returns; waited out here so the next contact's emission is its
+          // own. Only a pass that wrote a sheet wrote a score cache, and one
+          // whose write never shows is the stream's failure, not the pass's.
+          if (!await scoreCacheWritten) emission.warning ??= 'a scoring pass\'s score-cache write never reached the log stream';
+        } else if (identical(awaited, scoreCacheWritten)) {
+          awaited = null;
         }
         for (final p in phases) {
           p.closeBand();
@@ -560,6 +784,10 @@ Future<BenchResult> runContestBench({
       // here leaves the operator's log as it found it, and this one does not.
       // "Benchmark failed" would tell them the opposite of what is true.
       throw BenchCleanupFailed(operation.uuid, error, benchError: benchError);
+    } finally {
+      // After the purge, never ahead of it: nothing here may stand between
+      // the operator and the cleanup.
+      await follower.cancel();
     }
   }
 
@@ -575,6 +803,46 @@ Future<BenchResult> runContestBench({
     rescore.warning = 'no scoring pass produced a scoresheet';
   } else if (scoredPasses < rescorePasses) {
     rescore.warning = 'only $scoredPasses of $rescorePasses scoring passes produced one';
+  }
+  // A dupe check that never saw the log costs what a no-op costs and reads as
+  // flat — with the resumed row, flat is the very claim, so it has to be
+  // earned by the verdict the candidate was chosen to force.
+  if (dupeTimedOut > 0) {
+    dupeCold.warning = dupeResumed.warning = '$dupeTimedOut dupe checks ran out the scorer\'s clock — those timings are the timeout';
+  } else {
+    if (dupeColdAnswered == 0) {
+      dupeCold.warning = 'no dupe check called a logged contact a duplicate — the scorer saw no log, or never ran';
+    } else if (dupeColdAnswered < dupeSamples) {
+      dupeCold.warning = 'only $dupeColdAnswered of $dupeSamples dupe checks called a logged contact a duplicate';
+    }
+    if (dupeResumedAnswered == 0) {
+      dupeResumed.warning = 'no dupe check called a logged contact a duplicate — the scorer saw no log, or never ran';
+    } else if (dupeResumedAnswered < dupeSamples) {
+      dupeResumed.warning = 'only $dupeResumedAnswered of $dupeSamples dupe checks called a logged contact a duplicate';
+    }
+  }
+  // A resumed row measured on cold folds is the flat claim made of the very
+  // work it claims to skip. The first band has no checkpoint yet and is cold
+  // by design; after the first rescore every sample must resume.
+  if (resumableSamples > 0 && resumedSamples < resumableSamples) {
+    final short = 'only $resumedSamples of $resumableSamples samples after the first rescore had a checkpoint to resume from';
+    dupeResumed.warning ??= short;
+    spotsPass.warning ??= short;
+  }
+  if (spotsTimedOut > 0) {
+    spotsPass.warning ??= '$spotsTimedOut spots passes ran out the scorer\'s clock — those timings are the timeout';
+  } else if (spotsAnswered == 0) {
+    spotsPass.warning ??= 'no spots pass judged the logged half of the board worked before — the scorer saw no log, or never ran';
+  } else if (spotsAnswered < spotsSamples) {
+    spotsPass.warning ??= 'only $spotsAnswered of $spotsSamples spots passes judged the logged half of the board worked before';
+  }
+  // An insert the stream never answered leaves a timing of the wait's timeout,
+  // which is not what the phase measures; and a stream that emits for some
+  // contacts and not others is broken, not slow.
+  if (streamError != null) {
+    emission.warning = 'the log stream failed: $streamError';
+  } else if (emissionsMissed > 0) {
+    emission.warning = 'the log stream did not emit for $emissionsMissed of $qsoCount contacts';
   }
 
   return BenchResult(qsoCount: qsoCount, phases: phases);
