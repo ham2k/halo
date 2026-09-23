@@ -383,6 +383,114 @@ void main() {
     expect(field('Their #').controller!.text.contains(' '), isFalse);
   });
 
+  testWidgets('a skipFocus serial is passed over by Space and Tab, reached by the arrows, and stepped by a period or comma', (tester) async {
+    // The mutation this catches: `skipFocus` read by Space but not by Tab (or
+    // the reverse) — the two walks drifting is what `_primaryFields` exists to
+    // prevent. And the step keys are useless if the digits-only filter runs
+    // first and eats them, which only the real field's formatter order shows.
+    const controls = [
+      {
+        'key': 'cqwpx/ourSerial',
+        'label': 'Our #',
+        'icon': 'flag-checkered',
+        'skipFocus': true,
+        'input': {
+          'kind': 'serial',
+          'refType': 'cqwpx',
+          'field': 'ourSerial',
+          'sequence': {'key': 'serial'},
+        },
+      },
+      {
+        'key': 'cqwpx/theirSerial',
+        'label': 'Their #',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'cqwpx', 'field': 'theirSerial', 'numeric': true},
+      },
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['cqwpx']), qsosRepository: qsos),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+
+    field('Rcvd').focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(field('Their #').focusNode!.hasFocus, isTrue, reason: 'Space passes over Our #');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(field('Their call').focusNode!.hasFocus, isTrue);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    expect(field('Their #').focusNode!.hasFocus, isTrue, reason: 'Shift-Tab from Call wraps to the last field');
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    expect(field('Rcvd').focusNode!.hasFocus, isTrue, reason: 'Shift-Tab passes over Our #');
+
+    field('Rcvd').controller!.selection = TextSelection.collapsed(offset: field('Rcvd').controller!.text.length);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(field('Our #').focusNode!.hasFocus, isTrue, reason: 'the arrows still stop on a skipped field');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Our #'), '41');
+    await tester.enterText(find.widgetWithText(TextField, 'Our #'), '41.');
+    await tester.pump();
+    expect(field('Our #').controller!.text, '42');
+    await tester.enterText(find.widgetWithText(TextField, 'Our #'), '42,');
+    await tester.pump();
+    expect(field('Our #').controller!.text, '41');
+    await tester.enterText(find.widgetWithText(TextField, 'Their #'), '17');
+    await tester.enterText(find.widgetWithText(TextField, 'Their #'), '17.');
+    await tester.pump();
+    expect(field('Their #').controller!.text, '18', reason: 'the received serial steps too');
+  });
+
+  testWidgets('a received serial that is not digits-only never steps', (tester) async {
+    // nrrl-nfd's shape: a digimode QSO logs a locator in Their #, and a step
+    // keeps only digits — a stray comma would turn `JP50` into `49`.
+    const controls = [
+      {
+        'key': 'nrrl-nfd/theirSerial',
+        'label': 'Their #',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'nrrl-nfd', 'field': 'theirSerial', 'maxLength': 6},
+      },
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['nrrl-nfd']), qsosRepository: qsos),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextField, 'Their #'), 'JP50');
+    await tester.enterText(find.widgetWithText(TextField, 'Their #'), 'JP50,');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their #')).controller!.text, 'JP50,');
+  });
+
   testWidgets('tab reaches the contest exchange fields as well', (tester) async {
     const controls = [
       {

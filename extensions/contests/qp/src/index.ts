@@ -338,6 +338,8 @@ const ActivityHook = {
         icon: manifest.icon,
         color: manifest.accentColor,
         order: 10,
+        // Sent, not copied: Space and Tab pass over it, the arrows reach it.
+        skipFocus: true,
         input: { kind: "serial", refType: TYPE, field: "ourSerial", sequence: { key: "serial" } },
       })
       controls.push({

@@ -355,6 +355,14 @@ position of the next field; **left arrow** at the first position moves to
 the last position of the previous field. Both wrap between the first and
 last main fields.
 
+**A field can sit out the Space and Tab cycle** — `skipFocus: true` on its
+control. Space, Tab, Shift-Tab and the RST jump all pass over it; only the
+arrow keys (and a tap) land on it, so it stays reachable from the keyboard.
+It is for a field the operator visits to correct rather than to fill in:
+every shipped contest marks its Our Serial, which the sequence fills and the
+operator only overrides. Tab is therefore always the panel's own move rather
+than Flutter's traversal, which knows nothing of the flag.
+
 **On focus, the cursor goes to the end of the value.** The existing text is
 never selected, not even when focus arrived via Tab — several desktop
 platforms select-all by default, and an operator who tabbed into a field to
@@ -897,10 +905,13 @@ controls ([contests.md](contests.md)).
   ([contests.md](contests.md)), callsign fields are always uppercase
   ([extensions/forms.md](../extensions/forms.md)), and only a command's
   `mixedCase` interpretation lifts the rule for the callsign field.
-- Serial-number exchange fields are *planned* to opt out of the Space cycle
-  via a per-control `focus: 'skip'`, following app-polo's `skipFocus` — see
-  [contests.md](contests.md). **Not built:** every exchange field, serials
-  included, currently takes its turn in the cycle.
+- In a digits-only serial field — ours (`kind: 'serial'`) or theirs
+  (`field: 'theirSerial'` with `numeric: true`) — a period adds one to the
+  number and a comma takes one away, and neither character stays. Only the
+  single keystroke steps; a paste, or a keystroke over a selection, doesn't.
+  An empty field steps from zero; nothing steps below `1`; leading zeros keep
+  their width. A received field that isn't digits-only (nrrl-nfd's, which
+  also takes a locator) never steps.
 - The developer commands typed into the callsign field are listed in
   [DEVELOPMENT.md](../../DEVELOPMENT.md).
 - Command output and reference validation errors go to the status bar, never
@@ -918,8 +929,6 @@ Implemented except for:
   (The other mobile rule — starting with no field focused when no physical
   keyboard is attached — is implemented; see the carve-out in § "Which field
   has focus".)
-- The serial fields' `focus: 'skip'` opt-out noted above, which does not exist
-  yet.
 - The Log button, which the focus ladder doesn't reach: Tab loops within the
   entry row and Arrow Up leaves it for the pills, so pressing Log still takes a
   pointer. Enter from any main field logs, so this is a gap in reaching the

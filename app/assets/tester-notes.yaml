@@ -10,6 +10,7 @@ upcoming:
     - "QSO Party exchanges are labelled QP Location, and fill in what a station sent before, even last year"
     - "Out-of-state stations in the Pennsylvania QSO Party now send ARRL/RAC sections"
     - "Add a radio by name: Yaesu FTX-1, Kenwood TS-590SG and TS-480, QRP Labs QCX, Xiegu G90"
+    - "Contest serials: `.` adds one, `,` subtracts one; Space and Tab skip Our Serial"
 
 "170":
   changes:

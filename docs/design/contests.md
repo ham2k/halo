@@ -1158,9 +1158,10 @@ built speculatively at M4. The table above stands as the plan for when one does.
 
 **Two behaviours to carry over from polo's logging panel:** SPACE advances to the
 next exchange field, and serial fields deliberately **opt out** of that cycle
-(polo passes `skipFocus` on every "Our #"). HaLo's logging controls already own
-the SPACE-cycles-focus contract, so the catalog needs a per-control `focus:
-'skip'` to express the opt-out.
+(polo passes `skipFocus` on every "Our #"). HaLo expresses the opt-out as the
+same per-control `skipFocus: true`, which every shipped contest sets on Our
+Serial ([logging-fields.md](logging-fields.md), "Moving between the main
+fields").
 
 - **Dynamic label/placeholder** (ARRL DX "Their State" vs "Their Power") needs no
   new mechanism: `loggingControls` already receives `{ operation, qso }`

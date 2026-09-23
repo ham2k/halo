@@ -692,7 +692,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _rebuildForNumbersRow();
       });
     }
-    // Tab's edge-wrap, the arrow keys' end-of-value traversal, and Arrow Up out
+    // Tab's walk, the arrow keys' end-of-value traversal, and Arrow Up out
     // to the pills, on the fixed primary fields. The exchange fields get the
     // same handler through the exchange model's own Tab handler, which their
     // nodes are built with; Freq and Time are secondary-control fields and
@@ -1993,7 +1993,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// keyboard: [LoggingFocusLadder.advancePrimaryFocus] walks it, `_handleSpace`
   /// asks it whether Space should advance, and
   /// [LoggingFocusLadder.onPrimaryFieldKeyEvent] reads it for Tab's
-  /// edge-wrap and the arrow keys' end-of-value traversal. Any new kind of
+  /// walk and the arrow keys' end-of-value traversal. Any new kind of
   /// primary field is in all of them the moment it appears here — an exchange
   /// field that cycled on Tab but sat inert on Space (because only Space's
   /// caller had a hardcoded list) is exactly the drift this prevents.
@@ -2004,7 +2004,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Rebuilt on every call: `showRSTFields`/`showStateField`/`showGridField`
   /// change at runtime, and so does the set of contest controls.
   List<PrimaryField> get _primaryFields => [
-    (key: 'call', label: t.loggingControls.theirCall, focus: _callFocus, controller: _callController, hint: null),
+    (key: 'call', label: t.loggingControls.theirCall, focus: _callFocus, controller: _callController, hint: null, skipFocus: false),
     // Display order, not Sent-then-Rcvd: the keyboard walks the row the
     // operator is looking at (see [_rstPair]).
     if (widget.prefs.showRSTFields)
@@ -2015,6 +2015,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           focus: field.focus,
           controller: field.controller,
           hint: _rstPlaceholder,
+          skipFocus: false,
         ),
     // Only nodes already attached to a built field: creating one here for a
     // control whose widget hasn't been built leaves an orphan with no
@@ -2028,9 +2029,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           focus: focus,
           controller: _exchange.controllerFor(control['key'] as String),
           hint: (control['input'] as Map?)?['placeholder'] as String?,
+          skipFocus: control['skipFocus'] == true,
         ),
-    if (widget.prefs.showStateField) (key: 'state', label: t.qsoEditForm.theirState, focus: _stateFocus, controller: _stateController, hint: _guessStateHint),
-    if (widget.prefs.showGridField) (key: 'grid', label: t.qsoEditForm.theirGrid, focus: _gridFocus, controller: _gridController, hint: _guessGridHint),
+    if (widget.prefs.showStateField)
+      (key: 'state', label: t.qsoEditForm.theirState, focus: _stateFocus, controller: _stateController, hint: _guessStateHint, skipFocus: false),
+    if (widget.prefs.showGridField)
+      (key: 'grid', label: t.qsoEditForm.theirGrid, focus: _gridFocus, controller: _gridController, hint: _guessGridHint, skipFocus: false),
   ];
 
   /// Whether the caret sits at the end of a value that already ends in a space

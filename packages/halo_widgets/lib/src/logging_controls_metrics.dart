@@ -105,7 +105,12 @@ typedef MainField = ({double gapBefore, double minWidth, FocusNode focusNode, Wi
 /// empty controller and its suggestion here. A report is the case that needs
 /// it — `_rstOrDefault` folds the placeholder into the DRAFT, where a default
 /// `59` and a typed `59` become the same three characters.
-typedef PrimaryField = ({String key, String label, FocusNode focus, TextEditingController controller, String? hint});
+///
+/// [skipFocus] takes the field out of the Space and Tab cycle while leaving it
+/// on the row and within reach of the arrow keys — for a field the operator
+/// only visits to correct, like the serial number we send
+/// (docs/design/logging-fields.md, "Moving between the main fields").
+typedef PrimaryField = ({String key, String label, FocusNode focus, TextEditingController controller, String? hint, bool skipFocus});
 
 /// What [resolveMainFieldLayout] settles on for the
 /// row: a width for each trailing field, and — once even the floors don't fit

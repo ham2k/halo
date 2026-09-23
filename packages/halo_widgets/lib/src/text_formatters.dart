@@ -23,6 +23,39 @@ class UpperCaseTextFormatter extends TextInputFormatter {
   }
 }
 
+/// A serial number field's step keys: a period adds one to the number in the
+/// field and a comma takes one away, and neither stays in the text. The
+/// operator's hands are already on the digits when a contact needs the next
+/// number (a busted exchange, a skipped serial), so a step is one keystroke
+/// rather than a retype.
+///
+/// Only a single `.` or `,` added to the old value is a step, and it steps the
+/// OLD value: typed over a selection, or pasted with other text (`1,234`),
+/// either is just punctuation, left for the digits-only filter after this one
+/// to drop. Digits-only fields only — the step keeps nothing but digits. An
+/// empty field steps from zero, so a period gives `1`; nothing steps below
+/// `1`, the first number any sequence issues. Leading zeros keep their
+/// width — `007` steps to `008`.
+class SerialStepFormatter extends TextInputFormatter {
+  const SerialStepFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text;
+    final at = text.indexOf(RegExp('[.,]'));
+    if (at < 0 || text.length != oldValue.text.length + 1) return newValue;
+    if (text.substring(0, at) + text.substring(at + 1) != oldValue.text) return newValue;
+    final digits = oldValue.text;
+    final base = int.tryParse(digits);
+    final stepped = (base ?? 0) + (text[at] == '.' ? 1 : -1);
+    final result = stepped >= 1 ? '$stepped'.padLeft(digits.length, '0') : (base == null ? '' : '1'.padLeft(digits.length, '0'));
+    return TextEditingValue(
+      text: result,
+      selection: TextSelection.collapsed(offset: result.length),
+    );
+  }
+}
+
 /// Live-cases a Maidenhead grid locator as it's typed: the field pair and
 /// square digits (positions 0-3) uppercase, the subsquare and everything
 /// after (position 4+) lowercase — the same convention `normalizeGrid`

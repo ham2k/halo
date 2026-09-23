@@ -30,6 +30,7 @@ class _Harness {
   bool locked = false;
   bool editingEvent = false;
   bool withGrid = true;
+  bool skipSent = false;
   bool Function()? navigateToQsoList;
   final selects = <String?>[];
   final shows = <String?>[];
@@ -37,9 +38,9 @@ class _Harness {
   late final LoggingFocusLadder ladder = LoggingFocusLadder(
     config: () => (
       primaryFields: () => [
-        (key: 'call', label: 'Call', focus: callFocus, controller: call, hint: null),
-        (key: 'sent', label: 'Sent', focus: sentFocus, controller: sent, hint: null),
-        if (withGrid) (key: 'grid', label: 'Grid', focus: gridFocus, controller: grid, hint: null),
+        (key: 'call', label: 'Call', focus: callFocus, controller: call, hint: null, skipFocus: false),
+        (key: 'sent', label: 'Sent', focus: sentFocus, controller: sent, hint: null, skipFocus: skipSent),
+        if (withGrid) (key: 'grid', label: 'Grid', focus: gridFocus, controller: grid, hint: null, skipFocus: false),
       ],
       expandedFocusFor: (key) => switch (key) {
         'time' => timeField.$1,
@@ -159,6 +160,37 @@ void main() {
     expect(h.call.selection.baseOffset, h.call.text.length, reason: 'a wrap lands at the end of the value');
     await _press(tester, LogicalKeyboardKey.tab, shift: true);
     expect(h.gridFocus.hasFocus, isTrue);
+    h.dispose();
+  });
+
+  // The trap: a field dropped from the cycle must still be reachable, or an
+  // operator correcting the serial they sent has to reach for the pointer.
+  testWidgets('Space and Tab pass over a skipFocus field both ways; the arrows still stop on it', (tester) async {
+    final h = _Harness()
+      ..skipSent = true
+      ..wireCaretRule();
+    await tester.pumpWidget(h.build());
+    h.callFocus.requestFocus();
+    await tester.pump();
+    h.ladder.advancePrimaryFocus();
+    await tester.pump();
+    expect(h.gridFocus.hasFocus, isTrue, reason: 'Space from Call skips Sent');
+    h.ladder.advancePrimaryFocus();
+    await tester.pump();
+    expect(h.callFocus.hasFocus, isTrue);
+    await _press(tester, LogicalKeyboardKey.tab);
+    expect(h.gridFocus.hasFocus, isTrue, reason: 'Tab from Call skips Sent');
+    await _press(tester, LogicalKeyboardKey.tab, shift: true);
+    expect(h.callFocus.hasFocus, isTrue, reason: 'Shift-Tab from Grid skips Sent too');
+    await _press(tester, LogicalKeyboardKey.tab, shift: true);
+    expect(h.gridFocus.hasFocus, isTrue);
+    await _press(tester, LogicalKeyboardKey.arrowLeft);
+    expect(h.gridFocus.hasFocus, isTrue, reason: 'caret at the end: Left moves within the value');
+    h.grid.selection = const TextSelection.collapsed(offset: 0);
+    await _press(tester, LogicalKeyboardKey.arrowLeft);
+    expect(h.sentFocus.hasFocus, isTrue, reason: 'the arrows are the way onto a skipped field');
+    await _press(tester, LogicalKeyboardKey.tab);
+    expect(h.gridFocus.hasFocus, isTrue, reason: 'Tab leaves a skipped field for the next stop');
     h.dispose();
   });
 

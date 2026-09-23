@@ -499,11 +499,13 @@ interface ActivityHook {
   suggest?(args: SuggestArgs, ctx): Promise<ActivitySuggestion[]>
   processQsoBeforeSave?(args: { qso, operation }, ctx): Promise<Patch | null>
 }
-// LoggingControlDescriptor: {key, label, shortLabel?, icon?, color?, order?,
-//   optionType?, allowsMultiple?, editable?, input}
+// LoggingControlDescriptor: {key, label, shortLabel?, skipFocus?, icon?, color?,
+//   order?, optionType?, allowsMultiple?, editable?, input}
 // `shortLabel` is the same name in fewer characters, for a field the logging
 // row has squeezed below its label's width. The core measures and picks; the
 // extension only says what the short form is.
+// `skipFocus: true` takes a main logging field out of the Space and Tab cycle;
+// the arrow keys still reach it. Every shipped contest sets it on Our Serial.
 // SuggestArgs: {operation, location?: {lat, lon}, callsign?, searchTerm?, scoped?}
 // ActivitySuggestion: Ref & {distance?, relevance?, allowsMultiple?}
 

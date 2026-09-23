@@ -110,7 +110,7 @@ class LoggingFocusLadder {
   ///
   /// Set ONLY for a rightward arrow move — the single path that wants
   /// anything other than the end-of-value default the focus listeners
-  /// already apply. A leftward move and both Tab wraps want the end, so they
+  /// already apply. A leftward move and every Tab move want the end, so they
   /// set nothing: writing `text.length` for them too means Tab onto an
   /// already-focused node (a row with one primary field) leaves an
   /// instruction nobody collects, and the next field to focus — Frequency,
@@ -149,13 +149,26 @@ class LoggingFocusLadder {
     return identical(pending.node, node) ? pending.offset.clamp(0, controller.text.length) : null;
   }
 
-  /// Moves focus to the next primary field, wrapping back to Call after the
-  /// last one.
+  /// Moves focus to the next primary field Space stops at, wrapping back to
+  /// Call after the last one.
   void advancePrimaryFocus() {
-    final order = primaryFocusOrder;
-    final current = order.indexWhere((f) => f.hasFocus);
-    final next = order[(current + 1) % order.length];
-    next.requestFocus();
+    final fields = config().primaryFields();
+    final current = fields.indexWhere((f) => f.focus.hasFocus);
+    // Nothing focused counts as sitting on the last field, so the walk
+    // starts at Call.
+    final next = _nextStop(fields, current < 0 ? fields.length - 1 : current, forward: true);
+    if (next != null) fields[next].focus.requestFocus();
+  }
+
+  /// The index of the field Space and Tab stop at after (or, going back,
+  /// before) [index], wrapping at both ends and passing over every
+  /// `skipFocus` field. Null when no other field takes a stop.
+  static int? _nextStop(List<PrimaryField> fields, int index, {required bool forward}) {
+    for (var step = 1; step < fields.length; step++) {
+      final i = (index + (forward ? step : -step)) % fields.length;
+      if (!fields[i].skipFocus) return i;
+    }
+    return null;
   }
 
   /// Moves focus to [index] among the main fields (wrapping at either end)
@@ -173,15 +186,13 @@ class LoggingFocusLadder {
 
   /// Tab and the arrow keys inside a main logging field.
   ///
-  /// Only the EDGES are intercepted. Tab in the middle of the row, and an
-  /// arrow key anywhere but the end of a value, stay with Flutter's own
-  /// traversal and caret handling — the entry row is laid out left-to-right
-  /// in the fields' order, so the default already agrees with us there and
-  /// reimplementing it would only be a way to disagree later. What the
-  /// default gets wrong is only the two ends: Tab off the last field walks
-  /// on into the chips and the Log button, and Shift-Tab off the callsign
-  /// walks backwards out of the row entirely. The entry row is a loop, not a
-  /// waypoint.
+  /// Tab is always ours: it walks the same stops Space does, passing over the
+  /// `skipFocus` fields, and wraps at both ends — Flutter's own traversal
+  /// would stop on a skipped field, walk on off the last field into the
+  /// chips and the Log button, and Shift-Tab off the callsign out of the row
+  /// entirely. The entry row is a loop, not a waypoint. The arrow keys are
+  /// intercepted only at the edge of a value, and they stop at EVERY field,
+  /// skipped ones included — they are how a skipped field is reached.
   KeyEventResult onPrimaryFieldKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
     final fields = config().primaryFields();
@@ -216,15 +227,9 @@ class LoggingFocusLadder {
     }
 
     if (key == LogicalKeyboardKey.tab) {
-      if (!shift && index == fields.length - 1) {
-        movePrimaryFocus(0, caretAtStart: false);
-        return KeyEventResult.handled;
-      }
-      if (shift && index == 0) {
-        movePrimaryFocus(fields.length - 1, caretAtStart: false);
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
+      final next = _nextStop(fields, index, forward: !shift);
+      if (next != null) movePrimaryFocus(next, caretAtStart: false);
+      return KeyEventResult.handled;
     }
 
     if (key != LogicalKeyboardKey.arrowRight && key != LogicalKeyboardKey.arrowLeft) {

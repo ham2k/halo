@@ -69,7 +69,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// request keys off (the band or mode a per-band serial counts under).
   final Map<String, dynamic> Function() draftQsoData;
 
-  /// The panel's key handler for every main logging field — edge-wrap and
+  /// The panel's key handler for every main logging field — Tab's walk and
   /// arrow traversal. An exchange field is a main logging field too, so each
   /// of its focus nodes hands over what [_onKeyEvent] declines.
   final KeyEventResult Function(FocusNode node, KeyEvent event) onPrimaryFieldKeyEvent;
@@ -247,14 +247,13 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// return to.
   ///
   /// On the node itself rather than as a panel-wide shortcut: binding Tab or
-  /// the arrows in `CallbackShortcuts` would take them away from Flutter's
-  /// traversal and the fields' own caret movement for the whole panel, which
-  /// would then have to be reimplemented here. This only ADDS the accept and,
+  /// the arrows in `CallbackShortcuts` would take them away from every field
+  /// in the panel, secondary controls and caret movement included. This only ADDS the accept and,
   /// while the suggestion menu is showing, the highlight walk — the menu can
   /// only be open while one of these nodes has focus, so this is the one
   /// place its arrows can live — then hands the event to
   /// [onPrimaryFieldKeyEvent]: an exchange is a main logging field, so it
-  /// gets the same edge-wrap and arrow traversal as the rest, and everything
+  /// gets the same Tab walk and arrow traversal as the rest, and everything
   /// those decline stays with the ordinary traversal.
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent || event is KeyRepeatEvent) {
@@ -962,6 +961,11 @@ class ExchangeField extends StatelessWidget {
     // can disallow with `editable: false`.
     final isSerial = input['kind'] == 'serial';
     final numeric = input['numeric'] == true || isSerial;
+    // Both halves of a serial exchange step on a period or comma: the number
+    // we send, and the one received (`theirSerial` is the SDK's name for it).
+    // Only while it is digits-only — nrrl-nfd's received field also takes a
+    // locator, whose letters a step would throw away.
+    final steps = numeric && (isSerial || input['field'] == 'theirSerial');
 
     final regex = compileRefPattern(input['pattern'] as String?);
     var isInvalid = value.isNotEmpty && regex != null && !regex.hasMatch(value);
@@ -1013,6 +1017,8 @@ class ExchangeField extends StatelessWidget {
           inputFormatters: [
             // FIRST — see [virtualSpace].
             virtualSpace,
+            // Ahead of the digits filter, which would drop the keystroke.
+            if (steps) const SerialStepFormatter(),
             if (numeric) FilteringTextInputFormatter.digitsOnly,
             if (uppercase) const UpperCaseTextFormatter(),
             if (transforms.isNotEmpty) RefTransformFormatter(transforms),

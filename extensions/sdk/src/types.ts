@@ -452,6 +452,12 @@ export interface LoggingControlDescriptor {
   /// never wrap") — which names the field no better than nothing does, so any
   /// control whose label runs past about six characters wants one.
   shortLabel?: string
+  /// For a control that renders as a main logging field: Space and Tab pass
+  /// over it, and only the arrow keys (or a tap) land on it — for a field the
+  /// operator visits to correct rather than fill in, like the serial we send.
+  /// Default false (docs/design/logging-fields.md, "Moving between the main
+  /// fields").
+  skipFocus?: boolean
   /// A Material Design Icons name (e.g. 'pine-tree') or, prefixed with
   /// 'fa-', a FontAwesome6 solid-style name (e.g. 'fa-tree') — same
   /// convention as app-polo's own icon rendering. Falls back to a
@@ -520,9 +526,10 @@ export interface SequenceBinding {
 ///
 /// The operator may still type over it (a correction goes out on the air like
 /// anything else), and doing so raises the counter rather than renumbering
-/// anything else. Like every primary field it takes its turn in the keyboard
-/// cycle — Space and Tab both walk it — since the operator has to be able to
-/// reach the field to make that correction without leaving the keyboard.
+/// anything else. A period steps the number up and a comma steps it down.
+/// It takes its turn in the Space and Tab cycle unless its control says
+/// `skipFocus: true`, which every shipped contest does — the arrow keys still
+/// reach it for a correction.
 export interface SerialInputDescriptor {
   kind: "serial"
   refType: string
