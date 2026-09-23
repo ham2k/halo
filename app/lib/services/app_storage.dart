@@ -95,6 +95,27 @@ class PreferencesFileUnreadable implements Exception {
       '(${recovery.name})';
 }
 
+/// A log database still sitting in the legacy Documents location beside the
+/// one the app runs from.
+///
+/// Its own type so the upload names the state rather than reading as a
+/// generic StateError.
+class LegacyDatabaseStranded implements Exception {
+  const LegacyDatabaseStranded(this.legacyPath, {this.cause});
+
+  /// Where the legacy database is.
+  final String legacyPath;
+
+  /// Why a migration that copied it could not delete it, or null when it was
+  /// found beside an existing log.
+  final Object? cause;
+
+  @override
+  String toString() => cause == null
+      ? 'LegacyDatabaseStranded: a legacy database at $legacyPath sits beside the live log'
+      : 'LegacyDatabaseStranded: the legacy database at $legacyPath was migrated but could not be removed ($cause)';
+}
+
 /// Resolves [appDataDirectory], moves the preferences file to match so that
 /// everything the app owns sits together, and makes sure the plugin is handed
 /// a file it can actually parse.
@@ -457,7 +478,9 @@ Future<_Storage> _resolveStorage() async {
 /// present the operator with an empty log. Copies the whole set first and
 /// deletes the originals only once they are all in place: the `-wal` sidecar
 /// holds committed transactions that aren't in the main file yet, so a
-/// half-moved set is a corrupt one.
+/// half-moved set is a corrupt one. An original that will not delete leaves
+/// the app on [target], which holds the complete copies, and keeps its
+/// sidecars beside it.
 @visibleForTesting
 Future<Directory> migrateLegacyAppData({required Directory legacy, required Directory target}) async {
   if (p.equals(legacy.path, target.path)) return target;
@@ -472,21 +495,23 @@ Future<Directory> migrateLegacyAppData({required Directory legacy, required Dire
   return resolved;
 }
 
+/// Holds the fingerprint of the legacy database last reported as stranded,
+/// so each one is reported once rather than on every launch.
+const _kLegacyReportedFileName = '$kDatabaseName.legacy-reported';
+
 Future<Directory> _migrateDatabase({required Directory legacy, required Directory target}) async {
   final legacyDb = File(p.join(legacy.path, '$kDatabaseName.sqlite'));
   final targetDb = File(p.join(target.path, '$kDatabaseName.sqlite'));
   if (!await legacyDb.exists()) return target;
   if (await targetDb.exists()) {
-    // Both exist: a launch that could not see Documents started a fresh log
-    // in the target, and now the old one is back within reach. The target is
-    // the log the operator has been writing to since, so it stays — but the
-    // legacy file holds QSOs nothing will ever move, and without this report
-    // the state is indistinguishable from an ordinary completed migration.
-    ErrorReportingService.report(
-      StateError('legacy database left behind at ${legacyDb.path}'),
-      StackTrace.current,
-      context: 'app-storage:legacy-database-stranded',
-    );
+    // Both exist: a migration copied the log but could not delete the
+    // original (OneDrive holding it), a sync client restored it, or a launch
+    // that could not see Documents started a fresh log in the target. The
+    // target is the log the operator has been writing to since, so it stays.
+    // The legacy file is never touched: every edition shares that one path,
+    // so it may be another edition's live log — or another PC's, through the
+    // same OneDrive.
+    await _reportStrandedOnce(legacyDb, target);
     return target;
   }
 
@@ -515,13 +540,37 @@ Future<Directory> _migrateDatabase({required Directory legacy, required Director
     try {
       if (await source.exists()) await source.delete();
     } catch (e) {
-      // The copies are good, so the app is fine; the operator just still has
-      // the old file sitting in Documents.
+      if (suffix.isEmpty) {
+        // The copies are good, so the app runs from them — but the original
+        // is now a second log beside this one. Its sidecars stay with it: a
+        // main file whose -wal was deleted is missing committed QSOs.
+        await _reportStrandedOnce(legacyDb, target, cause: e, context: 'app-storage:migrate-database-cleanup');
+        break;
+      }
       debugPrint('[storage] could not remove legacy ${p.basename(source.path)}: $e');
     }
   }
 
   return target;
+}
+
+/// Reports [legacyDb] as stranded unless this exact file — same path, size
+/// and modification time — was already reported. A file that changes is
+/// reported again: something is still writing to it.
+///
+/// A fingerprint that cannot be read or recorded is reported too, because
+/// without it the stranded report repeats on every launch.
+Future<void> _reportStrandedOnce(File legacyDb, Directory target, {Object? cause, String context = 'app-storage:legacy-database-stranded'}) async {
+  final marker = File(p.join(target.path, _kLegacyReportedFileName));
+  try {
+    final stat = await legacyDb.stat();
+    final fingerprint = '${legacyDb.path}|${stat.size}|${stat.modified.millisecondsSinceEpoch}';
+    if (await marker.exists() && await marker.readAsString() == fingerprint) return;
+    await marker.writeAsString(fingerprint);
+  } catch (e, st) {
+    ErrorReportingService.report(e, st, context: 'app-storage:legacy-database-fingerprint');
+  }
+  ErrorReportingService.report(LegacyDatabaseStranded(legacyDb.path, cause: cause), StackTrace.current, context: context);
 }
 
 /// Moves the preferences file from the directory the shared_preferences

@@ -67,25 +67,80 @@ void main() {
     expect(await targetFile('$kDatabaseName.sqlite').readAsString(), 'db');
   });
 
-  test('never overwrites a database already in the new location, and says so', () async {
-    await writeLegacyDatabase(contents: 'stale');
-    await targetFile('$kDatabaseName.sqlite').writeAsString('live');
+  group('a legacy database beside the live one', () {
+    Future<List<RecordedException>> launchTwice() async {
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(backend: backend, () async {
+        expect((await migrateLegacyAppData(legacy: legacy, target: target)).path, target.path);
+        expect((await migrateLegacyAppData(legacy: legacy, target: target)).path, target.path);
+      });
+      return backend.exceptions;
+    }
 
-    final backend = FakeErrorReportingBackend();
-    await withErrorHooks(backend: backend, () async {
-      final resolved = await migrateLegacyAppData(legacy: legacy, target: target);
-      expect(resolved.path, target.path);
+    test('is left untouched, and reported once rather than on every launch', () async {
+      await writeLegacyDatabase(contents: 'stale');
+      await targetFile('$kDatabaseName.sqlite').writeAsString('live');
+
+      final reported = await launchTwice();
+
+      expect(await targetFile('$kDatabaseName.sqlite').readAsString(), 'live');
+      // Every edition shares this one Documents path, so it may be another
+      // edition's live log, or another PC's through OneDrive: moving or
+      // deleting it empties that install's log.
+      expect(await legacyFile('$kDatabaseName.sqlite').readAsString(), 'stale');
+      expect(await legacyFile('$kDatabaseName.sqlite-wal').readAsString(), 'wal');
+      // Without the fingerprint, a file nobody can act on is uploaded on
+      // every launch, for good.
+      expect(reported.map((e) => e.context), ['app-storage:legacy-database-stranded']);
+      expect(reported.single.error, isA<LegacyDatabaseStranded>());
     });
 
-    expect(await targetFile('$kDatabaseName.sqlite').readAsString(), 'live');
-    // Left where it is rather than deleted: it is the operator's data, and
-    // this branch means we can't tell which of the two they'd want.
-    expect(await legacyFile('$kDatabaseName.sqlite').readAsString(), 'stale');
-    // Two databases is how a launch that could not see Documents strands the
-    // old log: silently, this state reads as a finished migration, and the
-    // QSOs left behind are found only when someone knows to look.
-    expect(backend.exceptions.map((e) => e.context), ['app-storage:legacy-database-stranded']);
+    test('is reported again once it changes, because something is still writing to it', () async {
+      await writeLegacyDatabase(contents: 'stale');
+      await targetFile('$kDatabaseName.sqlite').writeAsString('live');
+      expect(await launchTwice(), hasLength(1));
+
+      await legacyFile('$kDatabaseName.sqlite').writeAsString('stale, and then some');
+
+      expect((await launchTwice()).map((e) => e.context), ['app-storage:legacy-database-stranded']);
+    });
   });
+
+  test(
+    'a migration that cannot delete the original runs from the copies, keeps the set whole, and says so once',
+    () async {
+      await writeLegacyDatabase();
+      // An immutable main file stands in for OneDrive holding it: every copy
+      // succeeds, and only that one delete fails — its sidecars stay
+      // deletable, which is what makes deleting them the tempting mistake.
+      final main = legacyFile('$kDatabaseName.sqlite').path;
+      expect((await Process.run('chflags', ['uchg', main])).exitCode, 0);
+      final backend = FakeErrorReportingBackend();
+      try {
+        await withErrorHooks(backend: backend, () async {
+          expect((await migrateLegacyAppData(legacy: legacy, target: target)).path, target.path);
+          expect((await migrateLegacyAppData(legacy: legacy, target: target)).path, target.path);
+        });
+      } finally {
+        // Before the suite's tearDown, which cannot delete an immutable file.
+        // Recursive, because a copy on macOS carries the flag with it.
+        await Process.run('chflags', ['-R', 'nouchg', root.path]);
+      }
+
+      // Falling back to Documents here would keep the operator there for as
+      // long as the lock holds, which with OneDrive can be forever.
+      expect(await targetFile('$kDatabaseName.sqlite').readAsString(), 'db');
+      expect(await targetFile('$kDatabaseName.sqlite-wal').readAsString(), 'wal');
+      // The original may be another install's live log: a main file whose
+      // -wal went is one missing committed QSOs.
+      expect(await legacyFile('$kDatabaseName.sqlite-wal').readAsString(), 'wal');
+      // The second launch finds the original beside the live log; without
+      // the fingerprint written here it would report the same file again.
+      expect(backend.exceptions.map((e) => e.context), ['app-storage:migrate-database-cleanup']);
+      expect((backend.exceptions.single.error as LegacyDatabaseStranded).cause, isNotNull);
+    },
+    skip: Platform.isMacOS ? false : 'chflags stands in for a locked file only on macOS',
+  );
 
   test('keeps running from the old location when the move fails', () async {
     await writeLegacyDatabase();
