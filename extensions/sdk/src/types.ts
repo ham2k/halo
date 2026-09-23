@@ -1098,6 +1098,15 @@ export interface ScoreQsosRequest {
   /// a new day whatever its time, and a scorer that resets per-day state on
   /// that flag resets it mid-day.
   resumeDay?: number
+  /// The host's name for the checkpoint this pass resumes from. Beside
+  /// `resumeFrom`, the harness files the sheet under it; alone, the harness
+  /// resumes from the sheet it already holds under that name, and throws
+  /// `resume-missing` when it holds none — the host then sends the sheet.
+  resumeKey?: string
+  /// The host's name for the checkpoint this pass PRODUCES. The harness keeps
+  /// the end sheet under it, so the live paths can name it instead of sending
+  /// it back across the bridge on every keystroke.
+  checkpointKey?: string
 }
 
 export interface ScoreQsosResult {
@@ -1111,6 +1120,10 @@ export interface ScoreQsosResult {
   /// End-of-pass scoresheet, cached by the core and handed back as
   /// `resumeFrom` on the next append and on the live paths.
   scoresheet?: JSONValue
+  /// True when the harness kept the end sheet under `checkpointKey`. The host
+  /// names a checkpoint only to a harness that has said this; one built on an
+  /// SDK without the cache never does, and keeps receiving the sheet.
+  checkpointHeld?: true
   /// The day (UTC midnight, millis) the pass ended on, to hand back as
   /// `resumeDay` beside `scoresheet`. Absent when the pass folded nothing.
   scoresheetDay?: number
@@ -1141,13 +1154,17 @@ export interface ScoreQsoRequest {
   resumeFrom?: JSONValue
   /// As `ScoreQsosRequest.resumeDay`: the day `resumeFrom` ends on.
   resumeDay?: number
-  /// With `resumeFrom`: the contacts logged SINCE that checkpoint, replayed
-  /// onto it before the candidate is scored — the second or two between a
-  /// contact and the rescore that folds it, which is exactly when the next
-  /// call is being typed. Only contacts the checkpoint has not seen belong
-  /// here; a checkpoint cannot un-fold a contact, so an edit or a delete means
-  /// no `resumeFrom` at all. Ignored without one.
+  /// With a checkpoint: the contacts logged SINCE it, replayed onto it before
+  /// the candidate is scored — the second or two between a contact and the
+  /// rescore that folds it, which is exactly when the next call is being
+  /// typed. Only contacts the checkpoint has not seen belong here; a
+  /// checkpoint cannot un-fold a contact, so an edit or a delete means no
+  /// checkpoint at all. Ignored without one.
   qsos?: Record<string, JSONValue>[]
+  /// As `ScoreQsosRequest.resumeKey`: the checkpoint's name. Alone, it stands
+  /// for `resumeFrom`; the harness throws `resume-missing` when it holds no
+  /// such checkpoint.
+  resumeKey?: string
 }
 
 /// Merged, de-duped notice/alert keys for one candidate QSO — e.g.
@@ -1161,6 +1178,9 @@ export interface QsoScoreNotices {
   /// exchange — and the host then leaves the core scorer's own dupe rule
   /// standing, since nobody else has ruled (docs/design/contests.md §5.1).
   dupe?: boolean
+  /// From `scoreQso` only: the checkpoint the request named is held, as
+  /// `ScoreQsosResult.checkpointHeld`.
+  checkpointHeld?: true
 }
 
 /// Scores MANY not-yet-logged candidates in one call — the Spots Panel, which
@@ -1187,6 +1207,8 @@ export interface ScoreCandidatesRequest {
   resumeDay?: number
   /// As `ScoreQsoRequest.qsos`: the tail since the checkpoint.
   qsos?: Record<string, JSONValue>[]
+  /// As `ScoreQsoRequest.resumeKey`.
+  resumeKey?: string
 }
 
 /// Keyed by `ScoreCandidatesRequest.candidates[].key`. Every candidate comes
@@ -1196,7 +1218,10 @@ export interface ScoreCandidatesRequest {
 /// boundary. Whether a caller keeps the empty entries is its own business:
 /// the host merges across scorers and drops them, since a merged empty verdict
 /// carries nothing either way.
-export type ScoreCandidatesResult = Record<string, QsoScoreNotices>
+/// One entry is not a candidate's: `$checkpointHeld: true`, present when the
+/// request named a checkpoint the harness holds — as `checkpointHeld` on the
+/// other answers. A caller's key never starts with `$`.
+export type ScoreCandidatesResult = Record<string, QsoScoreNotices> & { $checkpointHeld?: true }
 
 /// Registered under category `scoring`. One coarse batched call scores an
 /// entire operation's QSOs at once (DESIGN.md §4: "score 500 QSOs in one

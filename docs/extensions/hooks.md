@@ -1163,8 +1163,10 @@ standing beside your credit, on the one row that can show only one.
 A scorer's internal *rules* stay private to its scoresheet: contests don't
 share a rule vocabulary, so only notices, alerts, points and summary tallies
 cross the boundary. `scoreQso` **may mutate** the scoresheet it's given and
-return it; copying accumulated state per QSO is quadratic, and the harness
-copies any checkpoint at its boundary.
+return it; copying accumulated state per QSO is quadratic. The batch pass
+copies the checkpoint it resumes from, once; the live paths hand the scorer a
+copy-on-write view of it instead (`copyOnWrite` in the SDK), so a candidate's
+writes land in the view and the held sheet is never touched.
 
 ```ts
 // The wire shape the harness produces, for reference:
@@ -1173,17 +1175,19 @@ interface ScoringHook {
   scoreQso?(args: ScoreQsoRequest, ctx): Promise<QsoScoreNotices>
   scoreCandidates?(args: ScoreCandidatesRequest, ctx): Promise<ScoreCandidatesResult>
 }
-// ScoreQsosRequest: {operation, qsos, ref?, segments?, resumeFrom?, resumeDay?}
+// ScoreQsosRequest: {operation, qsos, ref?, segments?, resumeFrom?, resumeDay?, resumeKey?, checkpointKey?}
 // ScoreQsosResult:  {
 //   qsoScores: Record<uuid, QsoScoreVerdict>,   // one per QSO claimed; see above
 //   daySections: {day, count, scores: Record<tallyKey, ScoreTally>}[],
 //   operationSummary: Record<tallyKey, ScoreTally>,
 //   scoresheet,                                  // checkpoint to resume from
 //   scoresheetDay?,                              // the day it ends on, handed back as resumeDay
+//   checkpointHeld?,                             // true: the harness kept the end sheet under checkpointKey
 // }
-// ScoreQsoRequest:        {operation, qso, excludeUuid?, ref?, segments?, resumeFrom?, resumeDay?, qsos?}
-// ScoreCandidatesRequest: {operation, candidates: {key, qso}[], ref?, segments?, resumeFrom?, resumeDay?, qsos?}
-// ScoreCandidatesResult:  Record<candidateKey, QsoScoreNotices>
+// ScoreQsoRequest:        {operation, qso, excludeUuid?, ref?, segments?, resumeFrom?, resumeDay?, resumeKey?, qsos?}
+// QsoScoreNotices:        {notices, alerts, dupe?, checkpointHeld?}
+// ScoreCandidatesRequest: {operation, candidates: {key, qso}[], ref?, segments?, resumeFrom?, resumeDay?, resumeKey?, qsos?}
+// ScoreCandidatesResult:  Record<candidateKey, QsoScoreNotices> + {"$checkpointHeld": true} when a checkpoint was named
 ```
 
 All three arrive already implemented by `contestScorer()`; a scorer writes the
@@ -1194,21 +1198,46 @@ both live paths for free.
 A candidate that carries no `startAtMillis` (the draft's time is still
 automatic) reaches the scorer stamped with the current time on both live
 paths, so a day-bucketed rule judges it as of now rather than at the epoch; a
-candidate that states a time keeps it. On both live paths a `resumeFrom`
-checkpoint, with the `qsos` logged since it, stands in for the whole-log read:
-the harness copies the checkpoint, replays that tail onto it (continuing the
-day `resumeDay` names, so no scorer's per-day tally restarts mid-day) and
-scores the candidate against the result. The host sends a checkpoint only when
-it can prove the log is what the checkpoint folded plus appended contacts;
-otherwise the harness reads the log through `ctx.getQsos` and folds it cold.
-The batched `scoreQsos` resumes the same way: after the first pass of a
-session, an append arrives as `resumeFrom` plus the appended contacts, and only
-their verdicts come back.
+candidate that states a time keeps it. On both live paths a checkpoint, with
+the `qsos` logged since it, stands in for the whole-log read: the harness
+views the checkpoint copy-on-write, replays that tail onto the view
+(continuing the day `resumeDay` names, so no scorer's per-day tally restarts
+mid-day) and scores the candidate against the result. The host sends a
+checkpoint only when it can prove the log is what the checkpoint folded plus
+appended contacts; otherwise the harness reads the log through `ctx.getQsos`
+and folds it cold. The batched `scoreQsos` resumes the same way: after the
+first pass of a session, an append arrives as a checkpoint plus the appended
+contacts, and only their verdicts come back.
+
+**A checkpoint is held in the runtime and named, not sent, once it is
+there.** A sheet the size of a long log's worked-call map crossing the bridge
+on every keystroke would be most of the keystroke's cost. So the host names
+each checkpoint (`checkpointKey`, derived from the checkpoint's stamp) when
+the batch pass produces it, and the harness keeps the end sheet under that
+name — one per operation, the last few operations. A live call, or the next
+append, then carries `resumeKey` alone; a `resumeFrom` that arrives beside a
+`resumeKey` is filed under it too. A name the harness does not hold — a
+runtime restarted since, or one operation more than it keeps — is an error
+(`resume-missing`), never a silent cold fold, and the host answers it by
+sending the sheet once more. The host names a checkpoint only to a harness
+that has said `checkpointHeld: true` for it; a scorer built on an SDK without
+the cache never says so and keeps receiving the sheet. A `scoreCandidates`
+answer says it under the reserved key `$checkpointHeld`, since its other
+entries are the caller's candidate keys — a candidate key never starts with
+`$`.
+
+The view a scorer gets on the live paths takes every kind of write —
+assignment, `push`, `delete`, `Object.defineProperty` — and refuses the ones
+that would reach the base sheet by other means: `Object.freeze` (or `seal`,
+`preventExtensions`) on it throws. A sheet is plain JSON; one that is frozen
+or carries accessors is outside the contract and throws at the first touch.
+
 `scoreCandidates` answers the same question for many at once, which is what the
 Spots Panel asks to mark the spots already worked: the log is folded once per
-scorer and every candidate scored against a COPY of the result, so no candidate
-can become another's duplicate. Candidates carry no uuid — a spot is not a
-record — so results come back under caller-chosen keys.
+scorer and every candidate scored against its own copy-on-write VIEW of the
+result, so no candidate can become another's duplicate and no candidate pays
+for a copy of the log. Candidates carry no uuid — a spot is not a record — so
+results come back under caller-chosen keys.
 
 `QsosRepository.forOperation` already filters deleted rows and orders by
 `startAtMillis`, so unlike web-lofi's `analyzeAndSectionQSOs` there's no

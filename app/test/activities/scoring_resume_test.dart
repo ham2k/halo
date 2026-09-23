@@ -97,7 +97,13 @@ void main() {
       final resume = _resolve(_scoring(folded, day: 86400000), folded);
       expect(resume, isNotNull);
       expect(resume!.tail, isEmpty);
-      expect(resume.checkpoints['core'], (sheet: const {'worked': {}}, day: 86400000));
+      expect(resume.checkpoints['core']?.sheet, const {'worked': {}});
+      expect(resume.checkpoints['core']?.day, 86400000);
+      expect(
+        resume.checkpoints['core']?.key,
+        checkpointKeyOf(_scoring(folded)['core']['checkpoint'] as Map<String, dynamic>),
+        reason: 'the name the runtime holds it under',
+      );
     });
 
     test('contacts stamped after the checkpoint are the tail, oldest first', () {
@@ -336,7 +342,7 @@ void main() {
         qso: qso,
         resume: (
           checkpoints: {
-            'core': (sheet: const {'worked': {}}, day: 86400000),
+            'core': (sheet: const {'worked': {}}, day: 86400000, key: 'k'),
           },
           tail: [
             const {
@@ -368,7 +374,7 @@ void main() {
         operation: const {'uuid': 'op-1'},
         qso: qso,
         resume: (
-          checkpoints: {'pota': (sheet: const {}, day: 0)},
+          checkpoints: {'pota': (sheet: const {}, day: 0, key: 'k')},
           tail: [
             const {'uuid': 'c'},
           ],
@@ -389,7 +395,7 @@ void main() {
         qso: qso,
         resume: (
           checkpoints: {
-            'core': (sheet: const {'worked': {}}, day: null),
+            'core': (sheet: const {'worked': {}}, day: null, key: 'k'),
           },
           tail: const [],
         ),

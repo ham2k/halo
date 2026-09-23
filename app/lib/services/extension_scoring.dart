@@ -8,6 +8,7 @@
 
 import 'dart:collection';
 
+import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
 import 'package:halo_extension_host/halo_extension_host.dart';
 // The scorer-selection helpers live beside the host, under one name here so
 // a call reads as what it is.
@@ -19,7 +20,20 @@ import 'error_reporting_service.dart';
 /// its scoresheet and the day the sheet ends on, which the harness needs back
 /// beside it (`resumeDay`) to keep a scorer's per-day state honest across a
 /// resume.
-typedef ScoringCheckpoint = ({Object sheet, int? day});
+/// resumed fold — and the name the runtime may hold it under (`resumeKey`),
+/// derived from the checkpoint's stamp by [checkpointKeyOf], so a live call can
+/// name the sheet instead of sending it across the bridge every keystroke.
+typedef ScoringCheckpoint = ({Object sheet, int? day, String key});
+
+/// What a harness throws when a request names a checkpoint it does not hold —
+/// the SDK's `RESUME_MISSING`. The one error that is answered rather than
+/// reported: with the sheet, once.
+const kResumeMissing = 'resume-missing';
+
+/// The entry a `scoreCandidates` answer carries to say the named checkpoint
+/// is held — the SDK's `CHECKPOINT_HELD_KEY`. Not a candidate's verdict, and
+/// the verdict merge skips it as it skips anything that is not a map.
+const kCheckpointHeldKey = '\$checkpointHeld';
 
 /// What the live single-QSO path hands the scorers instead of the whole log:
 /// each scorer's checkpoint, keyed like `local_data['scoring']`, and the
@@ -87,6 +101,72 @@ mixin ExtensionScoring {
   /// `ExtensionService.scorersFor` selects from.
   Future<Map<String, dynamic>> getScoringScopes();
 
+  /// Ticks whenever the runtime is replaced; see `ExtensionService`.
+  ValueNotifier<int> get runtimeGeneration;
+
+  /// The checkpoint the running runtime has said it holds, per
+  /// `scorer|operation` — ONE, the runtime's own shape, so a caller still
+  /// naming the checkpoint before last is sent with its sheet outright rather
+  /// than refused and resent. A request whose checkpoint is here crosses the
+  /// bridge without its sheet — on a long log, most of the request. Emptied
+  /// with the runtime: a new runtime holds nothing, whatever the old one said.
+  final Map<String, String> _heldCheckpoints = {};
+  int _heldGeneration = -1;
+
+  Map<String, String> get _held {
+    final generation = runtimeGeneration.value;
+    if (generation != _heldGeneration) {
+      _heldCheckpoints.clear();
+      _heldGeneration = generation;
+    }
+    return _heldCheckpoints;
+  }
+
+  static String _heldSlot(String scorerKey, Map<String, dynamic> args) => '$scorerKey|${(args['operation'] as Map?)?['uuid'] ?? ''}';
+
+  /// Invokes a scoring method whose request may resume from a checkpoint.
+  /// [args] carries the checkpoint in full (`resumeKey`, `resumeFrom`,
+  /// `resumeDay`); the sheet is left out when the runtime holds the key, and
+  /// sent once more when the runtime answers that it does not — a restart
+  /// the generation did not see, or one operation more than it keeps. On
+  /// success a held answer records what the runtime now holds: the checkpoint
+  /// a batch pass produced (`checkpointKey`), or the one a live call named. A
+  /// harness without the cache never says so, and keeps receiving the sheet.
+  Future<dynamic> _invokeResumable(ExtensionHost host, String scorerKey, String method, Map<String, dynamic> args, {required Duration timeout}) async {
+    final generation = runtimeGeneration.value;
+    final slot = _heldSlot(scorerKey, args);
+    final resumeKey = args['resumeKey'];
+    final named = resumeKey is String && _held[slot] == resumeKey
+        ? ({...args}
+            ..remove('resumeFrom')
+            ..remove('resumeDay'))
+        : args;
+    dynamic result;
+    try {
+      result = await host.invokeHook('scoring', key: scorerKey, method: method, args: named, timeout: timeout);
+    } on ExtensionHostException catch (e) {
+      if (identical(named, args) || !e.message.startsWith(kResumeMissing)) rethrow;
+      // Visible on purpose: a runtime and a host that keep disagreeing would
+      // pay this double round trip on every keystroke, silently otherwise.
+      debugPrint('[scoring] the runtime no longer holds $resumeKey for $scorerKey — sending the checkpoint again');
+      _held.remove(slot);
+      try {
+        result = await host.invokeHook('scoring', key: scorerKey, method: method, args: args, timeout: timeout);
+      } on ExtensionHostException catch (again) {
+        // A runtime refusing the sheet it was just handed is the harness's
+        // bug, not the scorer's; the report has to say which.
+        throw ExtensionHostException('the resend after $kResumeMissing failed: ${again.message}');
+      }
+    }
+    if (result is Map && (result['checkpointHeld'] == true || result[kCheckpointHeldKey] == true)) {
+      final key = method == 'scoreQsos' ? args['checkpointKey'] : resumeKey;
+      // Not for a runtime that is already gone: the answer would be filed
+      // against its successor.
+      if (key is String && runtimeGeneration.value == generation) _held[slot] = key;
+    }
+    return result;
+  }
+
   /// One scorer's batched pass over an operation's QSOs. [resumeFrom] hands back
   /// that scorer's cached end-of-log scoresheet so only [qsos] — a tail — needs
   /// replaying; omit it for a full pass.
@@ -94,7 +174,7 @@ mixin ExtensionScoring {
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook('scoring', key: scorerKey, method: 'scoreQsos', args: args, timeout: const Duration(seconds: 10));
+      final result = await _invokeResumable(host, scorerKey, 'scoreQsos', args, timeout: const Duration(seconds: 10));
       if (result is! Map) return null;
       ErrorReportingService.recordSuccess(_scorerFailureKey(scorerKey, 'scoreQsos'));
       return result.cast<String, dynamic>();
@@ -173,24 +253,19 @@ mixin ExtensionScoring {
         try {
           final checkpoint = resume?.checkpoints[scorer.key];
           final tail = resume?.tail;
-          final result = await host.invokeHook(
-            'scoring',
-            key: scorer.key,
-            method: 'scoreQso',
-            args: {
-              'operation': operation,
-              'qso': qso,
-              'excludeUuid': ?excludeUuid,
-              'ref': ?scorer.ref,
-              'segments': ?segments,
-              // Absent, not null, without one: the harness branches on the key's
-              // presence, and a null would resume from nothing.
-              'resumeFrom': ?checkpoint?.sheet,
-              'resumeDay': ?checkpoint?.day,
-              if (checkpoint != null && tail != null && tail.isNotEmpty) 'qsos': tail,
-            },
-            timeout: kScoreQsoTimeout,
-          );
+          final result = await _invokeResumable(host, scorer.key, 'scoreQso', {
+            'operation': operation,
+            'qso': qso,
+            'excludeUuid': ?excludeUuid,
+            'ref': ?scorer.ref,
+            'segments': ?segments,
+            // Absent, not null, without one: the harness branches on the key's
+            // presence, and a null would resume from nothing.
+            'resumeKey': ?checkpoint?.key,
+            'resumeFrom': ?checkpoint?.sheet,
+            'resumeDay': ?checkpoint?.day,
+            if (checkpoint != null && tail != null && tail.isNotEmpty) 'qsos': tail,
+          }, timeout: kScoreQsoTimeout);
           if (result is! Map) return;
           any = true;
           ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, 'scoreQso'));
@@ -291,23 +366,18 @@ mixin ExtensionScoring {
         try {
           final checkpoint = resume?.checkpoints[scorer.key];
           final tail = resume?.tail;
-          final result = await host.invokeHook(
-            'scoring',
-            key: scorer.key,
-            method: 'scoreCandidates',
-            args: {
-              'operation': withUuid,
-              'candidates': payload,
-              'ref': ?scorer.ref,
-              'segments': ?segments,
-              // As scoreQso's: absent, not null, without a checkpoint, and the
-              // tail only beside one.
-              'resumeFrom': ?checkpoint?.sheet,
-              'resumeDay': ?checkpoint?.day,
-              if (checkpoint != null && tail != null && tail.isNotEmpty) 'qsos': tail,
-            },
-            timeout: kScoreCandidatesTimeout,
-          );
+          final result = await _invokeResumable(host, scorer.key, 'scoreCandidates', {
+            'operation': withUuid,
+            'candidates': payload,
+            'ref': ?scorer.ref,
+            'segments': ?segments,
+            // As scoreQso's: absent, not null, without a checkpoint, and the
+            // tail only beside one.
+            'resumeKey': ?checkpoint?.key,
+            'resumeFrom': ?checkpoint?.sheet,
+            'resumeDay': ?checkpoint?.day,
+            if (checkpoint != null && tail != null && tail.isNotEmpty) 'qsos': tail,
+          }, timeout: kScoreCandidatesTimeout);
           if (result is! Map) return;
           any = true;
           ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, 'scoreCandidates'));

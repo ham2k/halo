@@ -388,6 +388,14 @@ fast-path, never truth**:
   `scoring_service.dart` is the one rule for all three). A mid-log edit, a
   delete, or a change to the operation folds the whole log again — a
   checkpoint cannot un-fold a contact.
+- The checkpoint stays in the runtime once it is there. The pass that produces
+  it names it (`checkpointKey`, from the checkpoint's stamp) and the harness
+  holds the end sheet under that name, so the live paths and the next append
+  send the name (`resumeKey`) rather than the sheet — on a long log, most of
+  the request. `ExtensionScoring` keeps track of what the running runtime has
+  said it holds, forgets it all when the runtime's generation ticks, and
+  answers a `resume-missing` refusal by sending the sheet once more
+  (docs/extensions/hooks.md, the scoring section, is the wire contract).
 
 `ScoringService` owns that invariant: it resumes from a cached checkpoint only
 for an operation whose whole log THIS runtime has already folded and written,
@@ -455,7 +463,11 @@ prove the cached checkpoint still describes the log (`resolveScoringResume` in
 `scoring_service.dart` — the contacts it folded still digest to the value it
 recorded, so none was edited or deleted, and everything since comes after
 them in log order), the pass resumes from it and replays only the contacts
-logged since; otherwise it rebuilds the scoresheet from the log. Either fold has to be segmented, or a contest's dupe check counts
+logged since; otherwise it rebuilds the scoresheet from the log. On either
+live path the scorer is handed a copy-on-write view of the held checkpoint,
+never the checkpoint itself, so the writes its contract allows land in the
+view — one view per candidate on the spots board, which is what keeps a
+board's pass from costing a copy of the log per spot. Either fold has to be segmented, or a contest's dupe check counts
 contacts made before it started.
 
 **Segments REPLACE, and they do not carry forward.** A `break`/`start` states

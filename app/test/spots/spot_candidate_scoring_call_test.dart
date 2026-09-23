@@ -177,7 +177,7 @@ void main() {
       candidates: {'a': _candidate('K1ABC')},
       resume: (
         checkpoints: {
-          'core': (sheet: const {'workedByCall': {}}, day: 86400000),
+          'core': (sheet: const {'workedByCall': {}}, day: 86400000, key: 'k'),
         },
         tail: [
           const {

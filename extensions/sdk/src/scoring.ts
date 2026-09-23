@@ -39,26 +39,47 @@ import type {
   ScoringHook,
   ScoringScope,
 } from "./types.ts"
+import { copyOnWrite } from "./copyOnWrite.ts"
 
 const DAY_IN_MILLIS = 1000 * 60 * 60 * 24
 
+/// How many operations' checkpoints one scorer keeps. The app has one
+/// operation open, the spots board and the logging panel ask about that one,
+/// and a checkpoint is the size of the log's worked-call map — so a few, not
+/// a history.
+const HELD_CHECKPOINTS = 4
+
+/// The error a live call gets when it names a checkpoint this runtime does not
+/// hold — a restart, or one more operation than it keeps. The host answers by
+/// sending the checkpoint itself; nothing else should ever read it.
+export const RESUME_MISSING = "resume-missing"
+
+/// The entry a `scoreCandidates` answer carries beside its candidates to say
+/// the named checkpoint is held — the result is keyed by the caller's
+/// candidate keys, so the flag rides under a key no caller uses. Its value is
+/// `true`, never a verdict, and a host reading verdicts skips it.
+export const CHECKPOINT_HELD_KEY = "$checkpointHeld"
+
 /// Scorers are allowed to mutate the scoresheet they're handed (see
 /// `ContestScorer.scoreQso`) — copying accumulated state per QSO is quadratic.
-/// So the harness takes exactly one copy of any checkpoint it's given, at the
-/// boundary, and a scorer can never corrupt a cached scoresheet through it.
-/// One O(state) copy per call keeps the fold O(N) overall.
+/// So the batch pass takes exactly one copy of the checkpoint it resumes from,
+/// at the boundary, and a scorer can never corrupt a held checkpoint through
+/// it. One O(state) copy per pass keeps the fold O(N) overall. The live paths
+/// take no copy at all: they score against a copy-on-write view of the held
+/// sheet (`copyOnWrite`), which a scorer may mutate just the same.
 function copySheet<S extends Scoresheet>(sheet: S): S {
   return JSON.parse(JSON.stringify(sheet)) as S
 }
 
-/// A COPY of the checkpoint's sheet, never the cached object itself — a scorer
-/// may mutate what it is handed — with the day it ends on (`resumeDay`). The
-/// day has to come from the caller because the fold cannot recover it from the
-/// sheet: without it, the first contact replayed onto a checkpoint reads as a
-/// new day whatever the time, and an activity that resets its per-day worked
-/// maps on that flag then forgets every contact worked today.
-function openCheckpoint<S extends Scoresheet>(resumeFrom: JSONValue, resumeDay: number | undefined): { sheet: S; day: number | undefined } {
-  return { sheet: copySheet(resumeFrom as S), day: typeof resumeDay === "number" ? resumeDay : undefined }
+/// A checkpoint the harness holds: an end-of-log sheet with the day it ends
+/// on (`resumeDay`). The day has to travel with the sheet because the fold
+/// cannot recover it: without it, the first contact replayed onto a checkpoint
+/// reads as a new day whatever the time, and an activity that resets its
+/// per-day worked maps on that flag then forgets every contact worked today.
+type Checkpoint<S> = { key: string; sheet: S; day: number | undefined }
+
+function operationUuidOf(operation: Record<string, JSONValue>): string {
+  return typeof operation.uuid === "string" ? operation.uuid : ""
 }
 
 /// UTC calendar day a QSO falls in, following app-polo/web-lofi's convention.
@@ -118,6 +139,45 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
 ): ScoringHook & { scope: ScoringScope } {
   const scope: ScoringScope = options.scope ?? "always"
   const scopedRefTypes = typeof scope === "object" && Array.isArray(scope.refTypes) ? scope.refTypes : undefined
+
+  /// The checkpoints this runtime holds, one per operation, most recent last.
+  /// A batch pass files its end sheet under the `checkpointKey` the host gave
+  /// it, and a `resumeFrom` that arrives with a `resumeKey` is filed the same
+  /// way — after which a live call names the checkpoint instead of shipping
+  /// it, which on a long log is most of the call. A held sheet is never
+  /// mutated: the batch pass copies it and the live paths view it.
+  const held = new Map<string, Checkpoint<S>>()
+
+  function hold(operationUuid: string, key: string, sheet: S, day: number | undefined): void {
+    held.delete(operationUuid)
+    held.set(operationUuid, { key, sheet, day })
+    while (held.size > HELD_CHECKPOINTS) held.delete(held.keys().next().value as string)
+  }
+
+  /// The checkpoint a request resumes from, or undefined for a cold fold. A
+  /// sheet that arrives is what it says; one that is only named must be
+  /// here, and a name this runtime does not know is an error the host is
+  /// built to answer — never a silent cold fold, which on every keystroke
+  /// would be exactly the cost the name exists to avoid.
+  function resolveCheckpoint(args: {
+    operation: Record<string, JSONValue>
+    resumeFrom?: JSONValue
+    resumeDay?: number
+    resumeKey?: string
+  }): Checkpoint<S> | undefined {
+    const operationUuid = operationUuidOf(args.operation)
+    const key = typeof args.resumeKey === "string" ? args.resumeKey : undefined
+    if (args.resumeFrom !== undefined) {
+      const day = typeof args.resumeDay === "number" ? args.resumeDay : undefined
+      const sheet = args.resumeFrom as S
+      if (key !== undefined) hold(operationUuid, key, sheet, day)
+      return { key: key ?? "", sheet, day }
+    }
+    if (key === undefined) return undefined
+    const entry = held.get(operationUuid)
+    if (entry === undefined || entry.key !== key) throw new Error(`${RESUME_MISSING}: ${key}`)
+    return entry
+  }
 
   /// This scorer's own ref on a segment-effective operation, if it has one. A
   /// contest set up once and left running resolves the same object every time;
@@ -214,16 +274,18 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
     ctx: HookContext,
     excludeUuid?: string,
   ): Promise<{ sheet: S; day: number | undefined }> {
-    if (args.resumeFrom !== undefined) {
-      // The cached end-of-log checkpoint — no whole-log read, which is the
-      // point: this runs on every debounced keystroke. `qsos` is the tail
-      // logged since it, replayed onto the copy; the host sends only contacts
-      // the checkpoint has not folded (it has no way to un-fold one), so an
-      // edit or a delete arrives as no `resumeFrom` at all.
-      const { sheet, day } = openCheckpoint<S>(args.resumeFrom, args.resumeDay)
+    const resumed = resolveCheckpoint(args)
+    if (resumed !== undefined) {
+      // The held end-of-log checkpoint — no whole-log read and no copy, which
+      // is the point: this runs on every debounced keystroke. The view takes
+      // the scorer's writes; `qsos` is the tail logged since the checkpoint,
+      // replayed onto it. The host sends only contacts the checkpoint has not
+      // folded (it has no way to un-fold one), so an edit or a delete arrives
+      // as no checkpoint at all.
+      const sheet = copyOnWrite(resumed.sheet)
       const tail = chronological(args.qsos ?? []).filter((q) => !excludeUuid || q.uuid !== excludeUuid)
-      if (tail.length === 0) return { sheet, day }
-      return fold(sheet, tail, args, ctx, undefined, undefined, args.segments, day)
+      if (tail.length === 0) return { sheet, day: resumed.day }
+      return fold(sheet, tail, args, ctx, undefined, undefined, args.segments, resumed.day)
     }
     // Cold cache: rebuild from the log, skipping the record being edited so
     // it can't flag itself as its own duplicate.
@@ -242,10 +304,11 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
 
     async scoreQsos(args: ScoreQsosRequest, ctx: HookContext): Promise<ScoreQsosResult> {
       const qsos = chronological(args.qsos)
-      // `resumeFrom` means `qsos` is only the tail to replay from a checkpoint;
-      // without one this is a full pass from a blank scoresheet.
-      const resumed = args.resumeFrom !== undefined ? openCheckpoint<S>(args.resumeFrom, args.resumeDay) : undefined
-      const start = resumed?.sheet ?? scorer.startScoresheet({ operation: args.operation, ref: args.ref }, ctx)
+      // A checkpoint means `qsos` is only the tail to replay onto a COPY of
+      // it — this fold mutates, and the held sheet must survive; without one
+      // this is a full pass from a blank scoresheet.
+      const resumed = resolveCheckpoint(args)
+      const start = resumed !== undefined ? copySheet(resumed.sheet) : scorer.startScoresheet({ operation: args.operation, ref: args.ref }, ctx)
 
       const qsoScores: Record<string, QsoScoreVerdict> = {}
       const daySections: DayScoreSummary[] = []
@@ -269,12 +332,19 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
         resumed?.day,
       )
 
+      // The end sheet, held under the host's name for it: the next live call
+      // can then name it rather than send it back. Held as is — nothing here
+      // touches it again, and the host gets its own serialized copy.
+      const checkpointHeld = typeof args.checkpointKey === "string"
+      if (checkpointHeld) hold(operationUuidOf(args.operation), args.checkpointKey as string, end, endDay)
+
       return {
         qsoScores,
         daySections,
         operationSummary: scorer.summarizeScore({ scoresheet: end, operation: args.operation, ref: args.ref, scope: "operation" }, ctx),
         scoresheet: end as JSONValue,
         ...(endDay !== undefined && { scoresheetDay: endDay }),
+        ...(checkpointHeld && { checkpointHeld: true }),
       }
     },
 
@@ -288,27 +358,39 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
       // ran at all, which is what the host's priority merge reads (§5.1).
       // Dropping it here left the live paths judging on notices alone, so a
       // scorer's silence and its considered "not a duplicate" looked the same.
-      return { notices: score.notices ?? [], alerts: score.alerts ?? [], ...(score.dupe !== undefined && { dupe: score.dupe }) }
+      // `checkpointHeld` tells the host the checkpoint it named (or sent with
+      // a name) is here to be named next time — a harness without this cache
+      // never says so, and the host keeps sending the sheet to it.
+      const checkpointHeld = typeof args.resumeKey === "string"
+      return {
+        notices: score.notices ?? [],
+        alerts: score.alerts ?? [],
+        ...(score.dupe !== undefined && { dupe: score.dupe }),
+        ...(checkpointHeld && { checkpointHeld: true }),
+      }
     },
 
     /// The same live judgement as `scoreQso`, for many candidates at once —
     /// the Spots Panel annotating every spot on screen. The log is folded ONCE
-    /// and each candidate scored against its own copy of the result, so a
+    /// and each candidate scored against its own view of the result, so a
     /// candidate can neither see nor become a duplicate of another (both spots
     /// for the same unworked call read as unworked, which is what an operator
     /// scanning a band expects).
     ///
-    /// The copy is per candidate rather than per call because
+    /// The view is per candidate rather than per call because
     /// `ContestScorer.scoreQso` may mutate the scoresheet it is handed — the
     /// contract that makes the batch fold linear. Without it the first
-    /// candidate's call would count as worked for every candidate after it.
+    /// candidate's call would count as worked for every candidate after it. A
+    /// view, not a copy: copying a long log's worked-call map forty times over
+    /// was the cost of the whole pass.
     async scoreCandidates(args: ScoreCandidatesRequest, ctx: HookContext): Promise<ScoreCandidatesResult> {
       const { sheet: base } = await liveScoresheet(args, ctx)
       const result: ScoreCandidatesResult = {}
+      if (typeof args.resumeKey === "string") result[CHECKPOINT_HELD_KEY as "$checkpointHeld"] = true
       for (const candidate of args.candidates) {
         const { score } = scorer.scoreQso(
           {
-            scoresheet: copySheet(base),
+            scoresheet: copyOnWrite(base),
             qso: candidateAsOfNow(candidate.qso),
             operation: args.operation,
             ref: args.ref,

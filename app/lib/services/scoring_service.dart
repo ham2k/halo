@@ -76,7 +76,7 @@ ScoringResume? resolveScoringResume({
 }) {
   if (scoring == null || scoring.isEmpty || excludeUuid != null) return null;
 
-  final checkpoints = <String, ScoringCheckpoint>{};
+  final sheets = <String, ({Object sheet, int? day})>{};
   Map<String, dynamic>? stamp;
   for (final entry in scoring.entries) {
     final cached = entry.value;
@@ -90,13 +90,16 @@ ScoringResume? resolveScoringResume({
     final asMap = cachedStamp.cast<String, dynamic>();
     if (stamp != null && !mapEquals(stamp, asMap)) return null;
     stamp = asMap;
-    checkpoints[entry.key] = (sheet: sheet, day: day is num ? day.toInt() : null);
+    sheets[entry.key] = (sheet: sheet, day: day is num ? day.toInt() : null);
   }
   final digest = stamp?['digest'];
   final stampedAt = stamp?['updatedAtMillis'];
   final lastStartAt = stamp?['startAtMillis'];
-  if (checkpoints.isEmpty || digest is! int || stampedAt is! int || lastStartAt is! int) return null;
+  if (sheets.isEmpty || digest is! int || stampedAt is! int || lastStartAt is! int) return null;
   if (stamp?['operationUpdatedAtMillis'] != operationUpdatedAtMillis) return null;
+  // One name for every scorer's checkpoint: a pass writes them all at once.
+  final key = checkpointKeyOf(stamp!);
+  final checkpoints = <String, ScoringCheckpoint>{for (final entry in sheets.entries) entry.key: (sheet: entry.value.sheet, day: entry.value.day, key: key)};
 
   final tail = <Map<String, dynamic>>[];
   final folded = <Qso>[];
@@ -118,6 +121,14 @@ ScoringResume? resolveScoringResume({
   if (checkpoints.isEmpty) return null;
   return (checkpoints: checkpoints, tail: tail);
 }
+
+/// The name a checkpoint is held under in the runtime, from its stamp — every
+/// field of it, so two sheets of one operation never share a name, not even
+/// the same log folded under an edited operation. The pass that produces a
+/// checkpoint names it (`checkpointKey`) and every resume names the same
+/// (`resumeKey`), so the two sides agree without exchanging anything.
+String checkpointKeyOf(Map<String, dynamic> stamp) =>
+    '${stamp['digest']}:${stamp['updatedAtMillis']}:${stamp['startAtMillis']}:${stamp['operationUpdatedAtMillis']}';
 
 /// The identity of a folded log for a checkpoint's stamp: every row's uuid
 /// with its stamp, combined so that order does not matter. Not a secure hash —
@@ -295,6 +306,9 @@ class ScoringService {
       final payload = {
         ...qsonPayloadFor(operation: operation, qsos: append ? const [] : qsoList),
         if (append) 'qsos': resume.tail,
+        // The runtime keeps this pass's end sheet under this name, so the live
+        // paths can name it rather than send it back on every keystroke.
+        'checkpointKey': checkpointKeyOf(checkpoint),
         // Only when there is something to resolve — an unsegmented operation
         // sends nothing extra and the harness takes its existing path.
         if (segmented.isSegmented) 'segments': segmented.payload,
@@ -308,7 +322,7 @@ class ScoringService {
           final resumedFrom = append ? resume.checkpoints[scorer.key] : null;
           final result = await extensions.scoreQsos(
             scorerKey: scorer.key,
-            args: {...payload, 'ref': ?scorer.ref, 'resumeFrom': ?resumedFrom?.sheet, 'resumeDay': ?resumedFrom?.day},
+            args: {...payload, 'ref': ?scorer.ref, 'resumeKey': ?resumedFrom?.key, 'resumeFrom': ?resumedFrom?.sheet, 'resumeDay': ?resumedFrom?.day},
           );
           return (key: scorer.key, fallback: scorer.fallback, result: result);
         }),
