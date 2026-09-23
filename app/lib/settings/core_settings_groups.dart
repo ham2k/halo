@@ -11,14 +11,17 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import '../services/cat_server/cat_server_service.dart';
 import '../services/extension_service.dart';
 import '../services/settings_service.dart';
 import '../tools/sync_account_identity.dart';
+import 'cat_server_dialog.dart';
 import 'settings_registry.dart';
 
 export 'export_settings_group.dart';
@@ -557,7 +560,14 @@ class LoggingSettingsGroup extends SettingsGroup {
 class RadioSettingsGroup extends SettingsGroup {
   final SettingsService settings;
 
-  RadioSettingsGroup(this.settings);
+  /// The CAT server, resolved only while the section shows anything: it
+  /// reaches CAT, which an operator without the experiment never pays for.
+  /// Null where there is none to offer — a test's settings alone, or web.
+  final CatServerService Function()? catServer;
+
+  RadioSettingsGroup(this.settings, {this.catServer});
+
+  CatServerService? get _catServer => kIsWeb || !catServerExperimentEnabled(settings) ? null : catServer?.call();
 
   @override
   String get key => 'radio';
@@ -568,8 +578,25 @@ class RadioSettingsGroup extends SettingsGroup {
   @override
   int get order => 15;
 
+  /// The server as well as the settings: its row's status changes when a
+  /// bind lands, a client connects or the radio comes and goes. One object
+  /// for the section's life, whatever the experiment says — a form subscribes
+  /// once and unsubscribes later, and must be handed the same thing both
+  /// times.
   @override
-  Listenable? get listenable => settings;
+  late final Listenable listenable = _RadioSectionChanges(settings, () => _catServer);
+
+  @override
+  Future<void> openAction(BuildContext context, String actionKey) async {
+    final server = _catServer;
+    if (actionKey != _catServerAction || server == null) return;
+    await showHaloDialog<void>(
+      context: context,
+      builder: (_) => CatServerDialog(service: server),
+    );
+  }
+
+  static const _catServerAction = 'catServer';
 
   @override
   Future<List<Map<String, dynamic>>> buildElements() async {
@@ -723,6 +750,18 @@ class RadioSettingsGroup extends SettingsGroup {
             target: 'voice-messages',
           ),
       ],
+      if (_catServer case final server?)
+        {
+          'type': 'action',
+          'style': 'row',
+          'key': _catServerAction,
+          'label': t.settings.catServer.title,
+          'description': catServerStatusText(server),
+          'icon': 'lan-connect',
+          // Also in the current radio's settings dialog, beside the other
+          // things the Main VFO radio does.
+          'target': 'current-radio',
+        },
       {'type': 'link', 'key': 'moreStationSettings', 'label': s.moreSettings, 'icon': 'cat', 'panel': 'station'},
     ];
   }
@@ -786,6 +825,51 @@ class RadioSettingsGroup extends SettingsGroup {
       }
     }
     await settings.setSettingValue(SettingsService.radioGroup, fieldKey, value);
+  }
+}
+
+/// The Radio section's changes: the settings always, and the CAT server's
+/// whenever there is one to offer. Which server that is follows the settings
+/// — the experiment can come on or go off while Settings is open — and it is
+/// followed only while someone is listening, so an idle section keeps no
+/// service alive.
+class _RadioSectionChanges extends ChangeNotifier {
+  final SettingsService settings;
+  final CatServerService? Function() server;
+
+  _RadioSectionChanges(this.settings, this.server);
+
+  var _listeners = 0;
+  CatServerService? _followed;
+
+  @override
+  void addListener(VoidCallback listener) {
+    if (_listeners++ == 0) {
+      settings.addListener(_onSettings);
+      _follow(server());
+    }
+    super.addListener(listener);
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    super.removeListener(listener);
+    if (--_listeners == 0) {
+      settings.removeListener(_onSettings);
+      _follow(null);
+    }
+  }
+
+  void _onSettings() {
+    _follow(server());
+    notifyListeners();
+  }
+
+  void _follow(CatServerService? next) {
+    if (identical(next, _followed)) return;
+    _followed?.removeListener(notifyListeners);
+    _followed = next;
+    next?.addListener(notifyListeners);
   }
 }
 

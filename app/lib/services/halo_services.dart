@@ -61,6 +61,8 @@ import 'peer/peer_remote_radios.dart';
 import 'peer/peer_screens.dart';
 import 'peer/peer_service.dart';
 import 'inbound_qso_listener_service.dart';
+import 'cat_server/cat_server_rig.dart';
+import 'cat_server/cat_server_service.dart';
 import 'location_service.dart';
 import 'lookup_queue_service.dart';
 import 'metrics_service.dart';
@@ -546,6 +548,23 @@ class HaLoServices {
     if (settings.listenForOtherAppsEnabled) inboundQsos;
   }
 
+  /// The emulated CAT server other programs drive the Main VFO radio
+  /// through (docs/design/cat.md § CAT server). Lazy like [inboundQsos]:
+  /// Settings touches it to show the server's status, and
+  /// [maybeStartCatServer] once the settings ask for one.
+  late final CatServerService catServer = CatServerService(
+    settings: settings,
+    rig: StationCatServerRig(cat: cat, radio: radio, peerRadios: peerRemoteRadios),
+  );
+
+  /// Starts the CAT server once the settings ask for one — at boot for one
+  /// left on, or later when the experiment is turned on over a protocol
+  /// already picked. The service follows the settings from then on; before
+  /// it exists nothing would, and a server the operator turned on would not
+  /// answer until Settings happened to be opened. Binds nothing, and builds
+  /// nothing, for an operator who never turns it on.
+  void maybeStartCatServer() => whenCatServerWanted(settings, () => catServer);
+
   /// Resumes peer sync when the switch was left on in a previous session —
   /// the same reason [maybeStartInboundQsoListener] exists: a `late final`
   /// nobody has touched yet would otherwise never start, even though the
@@ -625,7 +644,7 @@ class HaLoServices {
   late final SettingsRegistry settingsRegistry = SettingsRegistry()
     ..register(GeneralSettingsGroup(settings, extensions))
     ..register(LoggingSettingsGroup(settings))
-    ..register(RadioSettingsGroup(settings))
+    ..register(RadioSettingsGroup(settings, catServer: () => catServer))
     ..register(MapSettingsGroup(settings))
     ..register(PrivacySettingsGroup(settings))
     ..register(ExportsSettingsGroup(settings, extensions))

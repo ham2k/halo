@@ -1026,6 +1026,30 @@
       "bands": "Preferred Bands",
       "modes": "Preferred Modes"
     },
+    "catServer": {
+      "title": "CAT Server",
+      "description": "Allow other apps (WSJT-X, loggers, etc) to control the radio through Ham2K Logger.",
+      "protocol": "Protocol",
+      "protocolOpts": {
+        "off": "Disabled",
+        "rigctld": "Hamlib rigctld",
+        "flrig": "flrig",
+        "hrd": "Ham Radio Deluxe®",
+        "n3fjp": "N3FJP"
+      },
+      "port": "Port",
+      "openAccess": "Open access",
+      "openAccessOn": "Any computer on the local network can connect.",
+      "openAccessOff": "Only apps on this computer can connect.",
+      "off": "Off.",
+      "starting": "$protocol, starting…",
+      "listening": "$protocol on port $port. Clients connected: $clients.",
+      "listeningNoRadio": "$protocol on port $port, but no Main VFO radio is connected.",
+      "failed": "$protocol cannot listen on port $port: $error",
+      "portInUse": "$protocol cannot listen on port $port: another program is using it, often $protocol itself. Close that program or choose another port.",
+      "portDenied": "$protocol cannot listen on port $port: this computer does not allow it. Choose a port above 1024.",
+      "stopped": "$protocol stopped listening on port $port. Trying again…"
+    },
     "radio": {
       "title": "Radio",
       "moreSettings": "More station configuration settings",

@@ -630,6 +630,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$distanceUnitsOpts$es distanceUnitsOpts = _Translations$settings$distanceUnitsOpts$es._(_root);
 	@override String get userInterface => 'Interfaz de Usuario';
 	@override late final _Translations$settings$logging$es logging = _Translations$settings$logging$es._(_root);
+	@override late final _Translations$settings$catServer$es catServer = _Translations$settings$catServer$es._(_root);
 	@override late final _Translations$settings$radio$es radio = _Translations$settings$radio$es._(_root);
 	@override late final _Translations$settings$help$es help = _Translations$settings$help$es._(_root);
 	@override late final _Translations$settings$exports$es exports = _Translations$settings$exports$es._(_root);
@@ -1666,6 +1667,31 @@ class _Translations$settings$logging$es extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$numbersRowVibrate$es numbersRowVibrate = _Translations$settings$logging$numbersRowVibrate$es._(_root);
 	@override String get bands => 'Bandas Preferidas';
 	@override String get modes => 'Modos Preferidos';
+}
+
+// Path: settings.catServer
+class _Translations$settings$catServer$es extends Translations$settings$catServer$en {
+	_Translations$settings$catServer$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Servidor CAT';
+	@override String get description => 'Permite que otras aplicaciones (WSJT-X, registros, etc.) controlen la radio a través de Ham2K Logger.';
+	@override String get protocol => 'Protocolo';
+	@override late final _Translations$settings$catServer$protocolOpts$es protocolOpts = _Translations$settings$catServer$protocolOpts$es._(_root);
+	@override String get port => 'Puerto';
+	@override String get openAccess => 'Acceso abierto';
+	@override String get openAccessOn => 'Cualquier computadora de la red local puede conectarse.';
+	@override String get openAccessOff => 'Solo las aplicaciones de esta computadora pueden conectarse.';
+	@override String get off => 'Apagado.';
+	@override String starting({required Object protocol}) => '${protocol}, iniciando…';
+	@override String listening({required Object protocol, required Object port, required Object clients}) => '${protocol} en el puerto ${port}. Clientes conectados: ${clients}.';
+	@override String listeningNoRadio({required Object protocol, required Object port}) => '${protocol} en el puerto ${port}, pero no hay una radio del VFO principal conectada.';
+	@override String failed({required Object protocol, required Object port, required Object error}) => '${protocol} no puede escuchar en el puerto ${port}: ${error}';
+	@override String portInUse({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: otro programa lo está usando, a menudo el propio ${protocol}. Cierra ese programa o elige otro puerto.';
+	@override String portDenied({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: esta computadora no lo permite. Elige un puerto por encima de 1024.';
+	@override String stopped({required Object protocol, required Object port}) => '${protocol} dejó de escuchar en el puerto ${port}. Reintentando…';
 }
 
 // Path: settings.radio
@@ -2774,6 +2800,20 @@ class _Translations$settings$logging$numbersRowVibrate$es extends Translations$s
 	// Translations
 	@override String get title => 'Vibrar al pulsar';
 	@override String get description => 'Respuesta háptica al pulsar una tecla numérica';
+}
+
+// Path: settings.catServer.protocolOpts
+class _Translations$settings$catServer$protocolOpts$es extends Translations$settings$catServer$protocolOpts$en {
+	_Translations$settings$catServer$protocolOpts$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Desactivado';
+	@override String get rigctld => 'Hamlib rigctld';
+	@override String get flrig => 'flrig';
+	@override String get hrd => 'Ham Radio Deluxe®';
+	@override String get n3fjp => 'N3FJP';
 }
 
 // Path: settings.radio.units
@@ -4008,6 +4048,26 @@ extension on TranslationsEs {
 			'settings.logging.numbersRowVibrate.description' => 'Respuesta háptica al pulsar una tecla numérica',
 			'settings.logging.bands' => 'Bandas Preferidas',
 			'settings.logging.modes' => 'Modos Preferidos',
+			'settings.catServer.title' => 'Servidor CAT',
+			'settings.catServer.description' => 'Permite que otras aplicaciones (WSJT-X, registros, etc.) controlen la radio a través de Ham2K Logger.',
+			'settings.catServer.protocol' => 'Protocolo',
+			'settings.catServer.protocolOpts.off' => 'Desactivado',
+			'settings.catServer.protocolOpts.rigctld' => 'Hamlib rigctld',
+			'settings.catServer.protocolOpts.flrig' => 'flrig',
+			'settings.catServer.protocolOpts.hrd' => 'Ham Radio Deluxe®',
+			'settings.catServer.protocolOpts.n3fjp' => 'N3FJP',
+			'settings.catServer.port' => 'Puerto',
+			'settings.catServer.openAccess' => 'Acceso abierto',
+			'settings.catServer.openAccessOn' => 'Cualquier computadora de la red local puede conectarse.',
+			'settings.catServer.openAccessOff' => 'Solo las aplicaciones de esta computadora pueden conectarse.',
+			'settings.catServer.off' => 'Apagado.',
+			'settings.catServer.starting' => ({required Object protocol}) => '${protocol}, iniciando…',
+			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} en el puerto ${port}. Clientes conectados: ${clients}.',
+			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} en el puerto ${port}, pero no hay una radio del VFO principal conectada.',
+			'settings.catServer.failed' => ({required Object protocol, required Object port, required Object error}) => '${protocol} no puede escuchar en el puerto ${port}: ${error}',
+			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: otro programa lo está usando, a menudo el propio ${protocol}. Cierra ese programa o elige otro puerto.',
+			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: esta computadora no lo permite. Elige un puerto por encima de 1024.',
+			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} dejó de escuchar en el puerto ${port}. Reintentando…',
 			'settings.radio.title' => 'Radio',
 			'settings.radio.moreSettings' => 'Más ajustes de configuración de la estación',
 			'settings.radio.units.ms' => 'ms',
@@ -4175,6 +4235,8 @@ extension on TranslationsEs {
 			'settings.peers.pairWarning' => 'Vincula solo dispositivos que reconozcas. Cualquier dispositivo de esta red puede enviar una solicitud.',
 			'settings.peers.pairWarningBle' => 'Vincula solo dispositivos que reconozcas. Cualquier dispositivo cercano puede enviar una solicitud.',
 			'settings.peers.problem' => ({required Object error}) => 'No se puede acceder a la red local: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => 'Conectado a ${device}',
 			'settings.peers.statusLost' => ({required Object device}) => 'Se perdió la conexión con ${device}',
@@ -4195,8 +4257,6 @@ extension on TranslationsEs {
 			'settings.peers.screenTabApps' => 'Apps',
 			'settings.peers.screenTabWindows' => 'Ventanas',
 			'settings.peers.screenTabEmpty' => 'No se encontró nada de este tipo.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.screenSharedSummaryNone' => 'No has elegido nada todavía.',
 			'settings.peers.screenThisDevice' => 'Este dispositivo',
 			'settings.peers.screenSharedTo' => ({required Object devices}) => 'Se muestra en ${devices}',
@@ -4689,6 +4749,8 @@ extension on TranslationsEs {
 			'commands.noCwKeyer' => 'Ninguna radio conectada puede manipular CW',
 			'commands.noKeyer' => 'Ninguna radio conectada puede manipular CW ni reproducir memorias de voz',
 			'commands.keyerNeedsOperation' => 'Abre una operación para usar el manipulador de CW',
+			_ => null,
+		} ?? switch (path) {
 			'commands.keyerExperimentOff' => 'La manipulación de CW está apagada — enciéndela con EXP KEYER',
 			'commands.esmExperimentOff' => 'Enter envía mensajes está apagado — enciéndelo con EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Enviando CW: ${text}',
@@ -4709,8 +4771,6 @@ extension on TranslationsEs {
 			'commands.receivedPurgesPending' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación de prueba se eliminó en otro dispositivo', other: '${count} operaciones de prueba se eliminaron en otro dispositivo', ), 
 			'commandDialog.hint' => 'Busca indicativos o escribe un comando',
 			'commandDialog.noResults' => ({required Object text}) => 'Nada coincide con «${text}»',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.sectionCommands' => 'Comandos',
 			'commandDialog.sectionGoTo' => 'Ir a',
 			'commandDialog.sectionOperations' => 'Operaciones',

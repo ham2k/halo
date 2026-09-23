@@ -1880,6 +1880,84 @@ join, and a transceiver's own antenna ports (a Flex has two, most rigs one),
 are the next step and are what § Where this is going means by "ports,
 port-to-port connections".
 
+## CAT server
+
+The other direction: HaLo as the thing other programs connect to. Ham Radio Deluxe, flrig, rigctld
+and N3FJP's loggers all offer a TCP port through which WSJT-X, fldigi, GridTracker and friends read
+and tune the radio. HaLo can stand in for any of them, so those programs follow the Main VFO radio
+while HaLo holds the connection to it. It lives in `app/lib/services/cat_server/`, and its settings
+are one row in the Radio section (behind `EXP SERVER`, on top of `EXP CAT`), opening a dialog: the protocol (or Disabled), the port, and
+"Open access" (off by default).
+
+| Protocol | Default port | Pinned against |
+|---|---|---|
+| Hamlib `rigctld` | 4532 | a real `rigctld -m 1`, and what Hamlib's NET client (`rigctl -m 2`, the backend WSJT-X uses) sends while opening a radio |
+| flrig XML-RPC | 12345 | what Hamlib's flrig backend (`rigctl -m 4`) sends |
+| Ham Radio Deluxe® IP server | 7809 | published descriptions of the frame and command set; no capture yet |
+| N3FJP API | 1100 | N3FJP's published API document; band, mode and frequency only |
+
+**One server at a time.** The operator picks which program HaLo stands in for. Picking another
+closes the first. Each program keeps its own port, starting at the port that program uses by
+default, which is where its clients look first. A custom port is usually there because the real
+program still holds the usual one, so it survives a switch to another program, or to Disabled, and
+back. Until **Open access** is turned on, only this computer can connect (both `127.0.0.1` and `::1`, because a client told
+`localhost` may resolve either). The port field saves as
+it is typed, so a change waits a moment before the server rebinds. Otherwise every prefix of the port
+being typed would be a socket opened and closed. A rebind waits for the old socket to close, since a
+port still held cannot be bound again. A bind that fails is retried every ten seconds, because the
+usual cause is the program being replaced still holding the port. If something already holds `::1` on
+that port, the bind fails rather than serving `127.0.0.1` alone. Otherwise `localhost` clients would
+reach the other program while the status said "listening".
+
+**What the servers serve is `vfoA`, not a driver session.** Reads come from `RadioService.vfoA` and
+writes go to `setVfo` with the default `user` origin, which is the funnel a keystroke in the logging
+panel takes. That is what moves the panel along with the radio, lets Smart VFO Snap and the echo guard
+see the change, and reaches a peer's radio when that is the Main VFO. A `radio` origin would be taken
+for the radio's own echo and never sent to it.
+
+**No radio, no answers.** Every server refuses to report or tune unless a Main VFO radio is connected
+(`CatServerRig.available`): a local node that is connected and not stale, or a peer radio its device is
+offering. A client that saw a frequency with nothing behind it would believe it was in control. Each
+refuses in its own protocol's words (`RPRT -6`, an XML-RPC fault, `ERROR:`), and N3FJP answers
+`READBMF` the way N3FJP does with no rig attached.
+
+**No PTT.** HaLo's drivers cannot key a transmitter, so every protocol says so: rigctld's `dump_state`
+claims `ptt_type=0` and `T` answers `RPRT -11`, flrig faults `rig.set_ptt`, HRD errors on the `TX`
+button, and N3FJP ignores `RIGTX`. A client falls back to its own keying (VOX, a serial line).
+
+Three things the captures showed, each of which fails a client with nothing on screen but a timeout:
+
+- Hamlib's flrig backend starts every request with `<?clientid="hamlib(…)"?>`, which is not a
+  well-formed processing instruction. flrig tolerates it, and a strict XML parser faults every call,
+  so the request body is read with patterns.
+- Hamlib compares flrig's status line against exactly `HTTP/1.1 200 OK`.
+- rigctld's `\get_lock_mode` answers a value and then an `RPRT` line, and Hamlib's client reads both.
+  With one line, every later reply is read one command late.
+
+N3FJP speaks first: a `READBMFRESPONSE` goes to every client when band, mode or frequency changes,
+and GridTracker relies on that rather than polling. A push that follows a client's own `CHANGEFREQ`
+waits until that command's reply is out.
+
+**What a client sends is checked.** A frequency must be finite and inside the radio spectrum:
+`NaN`, `Infinity` and `1e400` all parse as numbers, and any of them in `vfoA` reaches the logging
+panel, a logged contact and the radio. A mode must be one the app knows, and `CW-R` becomes `CW`,
+as it does for a radio's own report. A client that sends more than a request's worth without
+finishing one, or leaves more than a megabyte of replies unread, is hung up on.
+
+**A failure says what to do.** When another program holds the port, or the system won't let the app
+listen there, the status says so in the app's language and suggests what to try; any other network
+error shows the system's text. A bind that fails for a reason other than the network is a bug. It is
+reported, still shown, and not retried.
+
+**Browsers are turned away.** A web page open in the operator's browser can POST to
+`localhost:<port>` without asking, and a line-based protocol would read each line of the body as a
+command, so any page could retune the radio. flrig refuses a request carrying an `Origin` header;
+browsers always send one on a POST, and no flrig client does. rigctld, N3FJP and HRD's text form hang
+up when a connection's first line is an HTTP request line, which none of their clients ever sends.
+HaLo's peer link refuses browsers for the same reason.
+
+Web cannot listen, so the section is hidden there and the socket stub throws.
+
 ## Where this is going
 
 Shipped: the type registry, the TCP transport, the FlexRadio driver, UDP discovery, a Station

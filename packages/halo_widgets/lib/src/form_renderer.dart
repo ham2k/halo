@@ -2337,6 +2337,7 @@ class FormRendererState extends State<FormRenderer> {
         contentPadding: _rowContentPadding,
         leading: Icon(resolveIconName(el['icon'] as String? ?? 'cog-outline')),
         title: Text(label),
+        subtitle: el['description'] is String ? Text(el['description'] as String) : null,
         trailing: Icon(MdiIcons.chevronRight),
         onTap: widget.onAction == null || isRunning ? null : () => _runAction(actionKey, method),
       );

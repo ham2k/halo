@@ -20,6 +20,11 @@ import 'package:yaml/yaml.dart';
 /// there withdraws nothing and says nothing.
 const kCatalogExperiment = 'catalog';
 
+/// The CAT server experiment's key in experiments.yaml. It only means
+/// anything on top of Station Configuration (`gato`), which every reader
+/// checks as well.
+const kCatServerExperiment = 'server';
+
 class ExperimentDefinition {
   final String key;
   final String name;

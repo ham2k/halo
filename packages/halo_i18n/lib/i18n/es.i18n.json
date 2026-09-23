@@ -1026,6 +1026,30 @@
       "bands": "Bandas Preferidas",
       "modes": "Modos Preferidos"
     },
+    "catServer": {
+      "title": "Servidor CAT",
+      "description": "Permite que otras aplicaciones (WSJT-X, registros, etc.) controlen la radio a través de Ham2K Logger.",
+      "protocol": "Protocolo",
+      "protocolOpts": {
+        "off": "Desactivado",
+        "rigctld": "Hamlib rigctld",
+        "flrig": "flrig",
+        "hrd": "Ham Radio Deluxe®",
+        "n3fjp": "N3FJP"
+      },
+      "port": "Puerto",
+      "openAccess": "Acceso abierto",
+      "openAccessOn": "Cualquier computadora de la red local puede conectarse.",
+      "openAccessOff": "Solo las aplicaciones de esta computadora pueden conectarse.",
+      "off": "Apagado.",
+      "starting": "$protocol, iniciando…",
+      "listening": "$protocol en el puerto $port. Clientes conectados: $clients.",
+      "listeningNoRadio": "$protocol en el puerto $port, pero no hay una radio del VFO principal conectada.",
+      "failed": "$protocol no puede escuchar en el puerto $port: $error",
+      "portInUse": "$protocol no puede escuchar en el puerto $port: otro programa lo está usando, a menudo el propio $protocol. Cierra ese programa o elige otro puerto.",
+      "portDenied": "$protocol no puede escuchar en el puerto $port: esta computadora no lo permite. Elige un puerto por encima de 1024.",
+      "stopped": "$protocol dejó de escuchar en el puerto $port. Reintentando…"
+    },
     "radio": {
       "title": "Radio",
       "moreSettings": "Más ajustes de configuración de la estación",

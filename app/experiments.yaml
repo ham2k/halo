@@ -49,6 +49,13 @@ experiments:
   - key: esm
     name: Enter Sends Messages
     description: Enter keys the exchange's CW messages or voice memories as it moves through a contact.
+  # The CAT server (docs/design/cat.md § CAT server): other apps control the
+  # Main VFO radio through HaLo, which stands in for rigctld, flrig, Ham
+  # Radio Deluxe or N3FJP. On top of Station Configuration, which it needs a
+  # radio from, and gated on its own because it opens a listening socket.
+  - key: server
+    name: CAT Server
+    description: Let other apps (WSJT-X, loggers, etc) control the radio through Ham2K Logger.
   # A home-rail destination listing every station callsign ever logged, with
   # a virtualized table of that callsign's QSOs across all operations —
   # independent of the Operations list, which is per-operation.

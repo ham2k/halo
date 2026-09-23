@@ -221,6 +221,7 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
     debugPrint('[boot] no sync device key (secure storage unavailable) — continuing without sync');
   }
   services.maybeStartInboundQsoListener();
+  services.maybeStartCatServer();
   services.maybeStartPeerSync();
   listenForPeerPairingRequests(services);
   // Reads the flag rather than this branch: a null device key means storage
