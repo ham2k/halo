@@ -397,10 +397,10 @@ const ActivityHook = {
         // or five, and on one character every callsign lookup would paint a
         // slice of the whole county list.
         minCharsForSuggestions: 2,
-        // A county line is up to four codes and their separators, so the
+        // A county line is up to three codes and their separators, so the
         // field is longer than any one of them — and DX entity prefixes can be
         // four.
-        maxLength: party.options.countyLine ? 23 : 6,
+        maxLength: party.options.countyLine ? 18 : 6,
         // The guessed state's counties float up for the caller who sends one
         // of those — a county is never guessed, only ranked.
         preferredCodes: preferredCodesFor(party, guessedState),
