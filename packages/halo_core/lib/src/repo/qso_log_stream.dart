@@ -73,19 +73,34 @@ class QsoWriteLedger {
   List<QsoWriteFootprint?>? since(int cursor) => cursor < _base ? null : _footprints.sublist(cursor - _base);
 }
 
-/// One listener's view of an operation's log — the state behind
-/// `QsosRepository.watchForOperation`. [all] reads the whole log as the
-/// repository orders it.
+/// An operation's log, followed once for every listener that wants it — the
+/// state behind `QsosRepository.watchForOperation`. [all] reads the whole log
+/// as the repository orders it.
+///
+/// Shared, as drift's keyed query streams are: the Operation View subscribes
+/// twice to one log (the list it shows and the rescore that watches it), and
+/// a follower per listener would read and decode the log twice at open and
+/// patch it twice per write. The first listener starts the follower, a later
+/// one is replayed the list held so far, and the last to cancel stops it —
+/// [onIdle] is how the repository learns to drop it.
 @internal
 class QsoLogFollower {
-  QsoLogFollower({required this.db, required this.ledger, required this.operationUuid, required this.includeDeleted, required this.all});
+  QsoLogFollower({required this.db, required this.ledger, required this.operationUuid, required this.includeDeleted, required this.all, required this.onIdle});
 
   final HaLoDatabase db;
   final QsoWriteLedger ledger;
   final String operationUuid;
   final bool includeDeleted;
   final Future<List<Qso>> Function() all;
-  late final MultiStreamController<List<Qso>> out;
+  final void Function() onIdle;
+  final _listeners = <MultiStreamController<List<Qso>>>{};
+
+  /// Listeners that attached while a pass was in flight. The list held then
+  /// may predate the writes the pass is folding in — every update pending
+  /// when they attached — so they are fed once the pass has drained, not by
+  /// whichever iteration finishes first. A pass that failed instead leaves
+  /// them the read: the failure was the earlier listeners' to hear.
+  final _awaiting = <MultiStreamController<List<Qso>>>{};
 
   List<Qso>? _current;
 
@@ -110,19 +125,61 @@ class QsoLogFollower {
   bool _primed = false;
   StreamSubscription<Set<TableUpdate>>? _updates;
 
-  void start(MultiStreamController<List<Qso>> listener) {
-    out = listener;
+  void start() {
     _cursor = ledger.end;
-    _updates = db.tableUpdates(TableUpdateQuery.onTable(db.qsos)).listen((_) {
-      _pending++;
-      _pass();
-    });
-    out.onCancel = () {
-      final updates = _updates;
-      _updates = null;
-      return updates?.cancel();
-    };
+    _updates = db.tableUpdates(TableUpdateQuery.onTable(db.qsos)).listen(
+      (_) {
+        _pending++;
+        _pass();
+      },
+      // Started inside a transaction, the update stream is that transaction's
+      // and closes with it; a follower that could never hear another update
+      // must not stay shared. Stopping it sends the next listener to a fresh one.
+      onDone: _stop,
+    );
     _pass();
+  }
+
+  /// Adds a listener. One arriving while nothing is in flight is handed the
+  /// list held so far; one arriving during a pass waits for the pass to
+  /// drain, so a `.first` after an awaited write sees that write and every
+  /// write queued behind it, as a fresh read would. One arriving after a read
+  /// that failed — or during the pass that fails — gets a read of its own: the
+  /// failure was the earlier listeners' to hear, and a table that never
+  /// changes again would otherwise leave this one silent forever.
+  void attach(MultiStreamController<List<Qso>> listener) {
+    _listeners.add(listener);
+    listener.onCancel = () {
+      _listeners.remove(listener);
+      _awaiting.remove(listener);
+      if (_listeners.isEmpty) return _stop();
+      return null;
+    };
+    final current = _current;
+    if (current == null) {
+      // No list held: the initial read is in flight and this listener is its
+      // audience like the first — or it failed, and the read is this one's.
+      if (!_passing && _primed) {
+        _primed = false;
+        _pass();
+      }
+      return;
+    }
+    if (_passing) {
+      _awaiting.add(listener);
+    } else {
+      listener.add(current);
+    }
+  }
+
+  Future<void> _stop() async {
+    final updates = _updates;
+    if (updates == null) return;
+    // The entry leaves the map BEFORE the first await: a listener arriving
+    // during the cancel must find no follower and start a fresh one.
+    _updates = null;
+    onIdle();
+    await updates.cancel();
   }
 
   /// Folds every pending update in, one pass per batch of them, until none
@@ -132,23 +189,45 @@ class QsoLogFollower {
     if (_passing) return;
     _passing = true;
     try {
-      while (_updates != null && (!_primed || _pending > 0)) {
-        _primed = true;
-        final triggered = _pending;
-        _pending = 0;
-        final footprints = ledger.since(_cursor);
-        _cursor = ledger.end;
-        try {
-          final next = await _next(footprints, triggered);
-          if (next == null || _updates == null) continue;
-          _current = next;
-          out.add(next);
-        } catch (e, st) {
-          // The footprints of this pass are consumed, so the held list can no
-          // longer be patched into the truth: the next update reads in full.
-          _current = null;
-          if (_updates != null) out.addError(e, st);
+      while (true) {
+        while (_updates != null && (!_primed || _pending > 0)) {
+          _primed = true;
+          final triggered = _pending;
+          _pending = 0;
+          final footprints = ledger.since(_cursor);
+          _cursor = ledger.end;
+          try {
+            final next = await _next(footprints, triggered);
+            if (next == null || _updates == null) continue;
+            _current = next;
+            for (final listener in _listeners.toList()) {
+              if (!_awaiting.contains(listener)) listener.add(next);
+            }
+          } catch (e, st) {
+            // The footprints of this pass are consumed, so the held list can no
+            // longer be patched into the truth: the next update reads in full.
+            _current = null;
+            if (_updates == null) continue;
+            for (final listener in _listeners.toList()) {
+              if (!_awaiting.contains(listener)) listener.addError(e, st);
+            }
+          }
         }
+        if (_updates == null || _awaiting.isEmpty) break;
+        final current = _current;
+        if (current != null) {
+          // Drained: what is held now reflects every update pending when they
+          // attached, whether the last iteration emitted or not.
+          for (final listener in _awaiting.toList()) {
+            listener.add(current);
+          }
+          _awaiting.clear();
+          break;
+        }
+        // The pass they waited on failed. The read is theirs now, outcome and
+        // all — once, not until it succeeds.
+        _awaiting.clear();
+        _primed = false;
       }
     } finally {
       _passing = false;

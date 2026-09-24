@@ -32,6 +32,9 @@ class _Reads extends QueryInterceptor {
   bool failNextLogRead = false;
   bool failNextRowRead = false;
 
+  /// The held row read throws once released, instead of running.
+  bool failHeldRead = false;
+
   @override
   TransactionExecutor beginTransaction(QueryExecutor parent) {
     final inner = parent.beginTransaction();
@@ -57,6 +60,10 @@ class _Reads extends QueryInterceptor {
       final hold = holdRowRead!;
       holdRowRead = null;
       await hold.future;
+      if (failHeldRead) {
+        failHeldRead = false;
+        throw StateError('the held row read failed');
+      }
     }
     final result = await executor.runSelect(statement, args);
     if (isLogRead) {
@@ -502,6 +509,150 @@ void main() {
     await qsos.hardDeleteAllForOperation(op.uuid);
     await settled(emissions, 3);
     expect(emissions.last, isEmpty);
+  });
+
+  group('one follower per log', () {
+    // The Operation View listens twice to one log; drift's keyed query streams
+    // shared the query between identical watches, and so must this, or the
+    // view reads and decodes the log twice at open and patches twice per write.
+    test('two listeners share one read and one patch, and both are fed', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, contact('W1AW', 1000));
+      final first = await follow(op.uuid);
+      final second = await follow(op.uuid);
+      expect(reads.log, 1, reason: 'the second listener attached to the running follower');
+
+      await qsos.add(op.uuid, contact('K1ABC', 2000));
+      await settled(first, 2);
+      await settled(second, 2);
+
+      expect(reads.rows, 1, reason: 'one re-read for both');
+      expect(first.last.map((q) => q.theirCall), ['W1AW', 'K1ABC']);
+      expect(second.last.map((q) => q.theirCall), ['W1AW', 'K1ABC']);
+    });
+
+    test('a late listener is handed the list held so far, without a read', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, contact('W1AW', 1000));
+      await follow(op.uuid);
+      final late = await follow(op.uuid);
+      expect(late.single.single.theirCall, 'W1AW');
+      expect(reads.log, 1);
+    });
+
+    test('showing deleted rows is its own follower', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, contact('W1AW', 1000));
+      await follow(op.uuid);
+      await follow(op.uuid, includeDeleted: true);
+      expect(reads.log, 2, reason: 'a different view of the log is a different follower');
+    });
+
+    test('the last cancel stops the follower; the next subscription starts a fresh one', () async {
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, contact('W1AW', 1000));
+      final a = <List<Qso>>[];
+      final b = <List<Qso>>[];
+      final subA = qsos.watchForOperation(op.uuid).listen(a.add);
+      final subB = qsos.watchForOperation(op.uuid).listen(b.add);
+      await settled(a, 1);
+      await settled(b, 1);
+
+      await subA.cancel();
+      await qsos.add(op.uuid, contact('K1ABC', 2000));
+      await settled(b, 2);
+      expect(a, hasLength(1), reason: 'the cancelled listener hears nothing more');
+      expect(reads.rows, 1, reason: 'the remaining listener is still fed by the one follower');
+
+      await subB.cancel();
+      await qsos.add(op.uuid, contact('N1XYZ', 3000));
+      await quiet();
+      expect(reads.rows, 1, reason: 'nobody listens, so nothing is read');
+
+      final again = await follow(op.uuid);
+      expect(again.single, hasLength(3));
+      expect(reads.log, 2, reason: 'a fresh follower reads the log afresh');
+    });
+  });
+
+  test('a listener attaching during the initial read gets that read, once for both', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+    await qsos.add(op.uuid, contact('W1AW', 1000));
+    final first = <List<Qso>>[];
+    final second = <List<Qso>>[];
+    final rowsRead = reads.logReadDone = Completer<void>();
+    final subA = qsos.watchForOperation(op.uuid).listen(first.add);
+    addTearDown(subA.cancel);
+    await rowsRead.future;
+    // The rows are read but not decoded yet: the second listener attaches
+    // while the first read is in flight.
+    final subB = qsos.watchForOperation(op.uuid).listen(second.add);
+    addTearDown(subB.cancel);
+    await settled(first, 1);
+    await settled(second, 1);
+    expect(second.single.single.theirCall, 'W1AW');
+    expect(reads.log, 1);
+  });
+
+  test('a listener attaching while writes are being folded in sees every write it awaited', () async {
+    // The list held at attach predates the writes; handing it over — or the
+    // first iteration's result — would make `.first` after two awaited adds
+    // answer with the log short of the second.
+    final op = await operations.create(stationCall: 'KI2D');
+    await qsos.add(op.uuid, contact('W1AW', 1000));
+    final emissions = await follow(op.uuid);
+    final hold = reads.holdRowRead = Completer<void>();
+    await qsos.add(op.uuid, contact('K1ABC', 2000));
+    await quiet();
+    await qsos.add(op.uuid, contact('N1XYZ', 3000));
+    final late = qsos.watchForOperation(op.uuid).first;
+    hold.complete();
+    expect((await late).map((q) => q.theirCall), ['W1AW', 'K1ABC', 'N1XYZ']);
+    await settled(emissions, 3);
+  });
+
+  test('a listener attaching during a pass that fails gets a read of its own, not the error', () async {
+    // The failure is the earlier listeners' to hear; the newcomer has heard
+    // nothing and would otherwise wait for a table that may never change.
+    final op = await operations.create(stationCall: 'KI2D');
+    await qsos.add(op.uuid, contact('W1AW', 1000));
+    final errors = <Object>[];
+    final first = <List<Qso>>[];
+    final subA = qsos.watchForOperation(op.uuid).listen(first.add, onError: errors.add);
+    addTearDown(subA.cancel);
+    await settled(first, 1);
+    final hold = reads.holdRowRead = Completer<void>();
+    await qsos.add(op.uuid, contact('K1ABC', 2000));
+    await quiet();
+    final lateErrors = <Object>[];
+    final late = <List<Qso>>[];
+    final subB = qsos.watchForOperation(op.uuid).listen(late.add, onError: lateErrors.add);
+    addTearDown(subB.cancel);
+    reads.failHeldRead = true;
+    hold.complete();
+    await settled(late, 1);
+
+    expect(errors, hasLength(1), reason: 'the listener that was there hears the failure');
+    expect(lateErrors, isEmpty, reason: 'the newcomer never had the list the failure spoiled');
+    expect(late.single.map((q) => q.theirCall), ['W1AW', 'K1ABC']);
+    expect(reads.log, 2, reason: 'a read of its own');
+  });
+
+  test('a listener attaching after a failed read gets a read of its own', () async {
+    // The earlier listeners heard the error; a new one has heard nothing and
+    // would wait for a table that may never change again.
+    final op = await operations.create(stationCall: 'KI2D');
+    await qsos.add(op.uuid, contact('W1AW', 1000));
+    final errors = <Object>[];
+    reads.failNextLogRead = true;
+    final subA = qsos.watchForOperation(op.uuid).listen((_) {}, onError: errors.add);
+    addTearDown(subA.cancel);
+    await quiet();
+    expect(errors, hasLength(1));
+
+    final late = await follow(op.uuid);
+    expect(late.single.single.theirCall, 'W1AW');
+    expect(reads.log, 1, reason: 'the failed read counted nothing; this is the new listener\'s own');
   });
 
   test('a listener that cancels mid-way leaves nothing running', () async {

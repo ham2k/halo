@@ -46,6 +46,11 @@ class QsosRepository with QsoHistoryQueries {
   /// See [QsoWriteLedger]: what each write touched, for [watchForOperation].
   final _ledger = QsoWriteLedger();
 
+  /// The running followers, one per operation and view of it — every listener
+  /// of that log shares it (see [QsoLogFollower]). An entry leaves when its
+  /// last listener cancels.
+  final _followers = <(String, bool), QsoLogFollower>{};
+
   /// Inside the write's transaction, as its last step, only when a statement
   /// reached a row — [QsoWriteLedger] says why; drift lets nothing assert it.
   void _touch(Iterable<String> operations, Iterable<String> uuids) => _ledger.record({for (final operation in operations) operation: uuids.toSet()});
@@ -770,25 +775,39 @@ class QsosRepository with QsoHistoryQueries {
   /// a writer outside this repository — reads the whole log again. Every
   /// emission is a new list; a consumer may keep the previous one.
   ///
-  /// Broadcast, like the drift stream it stands in for; each listener follows
-  /// the table on its own.
+  /// Broadcast, like the drift stream it stands in for, and shared like it:
+  /// every listener of one log follows it through one follower, and a late
+  /// listener is handed the list held so far.
   Stream<List<Qso>> watchForOperation(String operationUuid, {bool includeDeleted = false}) {
-    return Stream.multi(
-      (listener) => QsoLogFollower(
-        db: db,
-        ledger: _ledger,
-        operationUuid: operationUuid,
-        includeDeleted: includeDeleted,
-        all: () => forOperation(operationUuid, includeDeleted: includeDeleted),
-      ).start(listener),
-      isBroadcast: true,
-    );
+    final key = (operationUuid, includeDeleted);
+    return Stream.multi((listener) {
+      var follower = _followers[key];
+      if (follower == null) {
+        late final QsoLogFollower started;
+        started = QsoLogFollower(
+          db: db,
+          ledger: _ledger,
+          operationUuid: operationUuid,
+          includeDeleted: includeDeleted,
+          all: () => forOperation(operationUuid, includeDeleted: includeDeleted),
+          onIdle: () => _followers.removeWhere((_, f) => identical(f, started)),
+        );
+        follower = started;
+        // Kept only once it is running: a start that throws must not leave an
+        // entry every later listener attaches to and hears nothing from.
+        follower.start();
+        _followers[key] = follower;
+      }
+      follower.attach(listener);
+    }, isBroadcast: true);
   }
 
   /// The same rows as [watchForOperation], read once. For a one-off read
   /// (a command that needs the log as it stands), not `watchForOperation(...)
-  /// .first`: a drift stream's first value never arrives inside a widget
-  /// test's fake-async zone, so a caller awaiting it there hangs.
+  /// .first`: a stream's first value never arrives inside a widget test's
+  /// fake-async zone, so a caller awaiting it there hangs — and with another
+  /// listener live, the first value is the shared follower's held list, which
+  /// a write in flight may not have reached yet.
   Future<List<Qso>> forOperation(String operationUuid, {bool includeDeleted = false}) async {
     return qsosFromRows(await _forOperationQuery(operationUuid, includeDeleted: includeDeleted).get());
   }
