@@ -9,6 +9,7 @@ import 'package:meta/meta.dart';
 
 import '../db/database.dart';
 import '../models/models.dart';
+import 'qso_log.dart';
 import 'repo_support.dart';
 
 /// Rows a log stream re-reads for one change before reading the whole log is
@@ -102,7 +103,7 @@ class QsoLogFollower {
   /// them the read: the failure was the earlier listeners' to hear.
   final _awaiting = <MultiStreamController<List<Qso>>>{};
 
-  List<Qso>? _current;
+  QsoLog? _current;
 
   /// The ledger position consumed so far.
   int _cursor = 0;
@@ -237,7 +238,7 @@ class QsoLogFollower {
   /// The log after [footprints] — null when nothing this listener shows has
   /// changed. [footprints] null means the ledger no longer reaches back to
   /// this listener's cursor.
-  Future<List<Qso>?> _next(List<QsoWriteFootprint?>? footprints, int triggered) async {
+  Future<QsoLog?> _next(List<QsoWriteFootprint?>? footprints, int triggered) async {
     var unledgered = false;
     if (footprints == null) {
       _debt = 0;
@@ -276,26 +277,45 @@ class QsoLogFollower {
   /// already covers reads as unledgered and costs one more full read, where
   /// a debt carried past a full read would instead pay for a stranger's
   /// update — a write outside the repository — and drop it.
-  Future<List<Qso>> _fresh() {
+  Future<QsoLog> _fresh() async {
     _debt = 0;
-    return all();
+    final rows = await all();
+    return QsoLog(rows, digest: qsoLogDigestOf(rows), unstamped: qsoLogUnstampedOf(rows));
   }
 
   /// [current] with [touched] rows replaced by [fresh] — in place when the
   /// row keeps its start time, re-placed by it otherwise — and the touched
-  /// rows [fresh] no longer holds dropped.
-  static List<Qso> _patched(List<Qso> current, Set<String> touched, List<Qso> fresh) {
+  /// rows [fresh] no longer holds dropped. The digest and the unstamped
+  /// count follow the same moves: a replaced or dropped row leaves them, a
+  /// fresh row joins.
+  static QsoLog _patched(QsoLog current, Set<String> touched, List<Qso> fresh) {
     final placing = {for (final qso in fresh) qso.uuid: qso};
     final next = <Qso>[];
+    var digest = current.digest;
+    var unstamped = current.unstamped;
+    void leaves(Qso qso) {
+      if (qso.deleted) return;
+      digest -= qsoDigestTerm(qso);
+      if (qso.updatedAtMillis == null) unstamped--;
+    }
+
+    void joins(Qso qso) {
+      if (qso.deleted) return;
+      digest += qsoDigestTerm(qso);
+      if (qso.updatedAtMillis == null) unstamped++;
+    }
+
     for (final qso in current) {
       if (!touched.contains(qso.uuid)) {
         next.add(qso);
         continue;
       }
+      leaves(qso);
       final replacement = placing[qso.uuid];
       if (replacement != null && replacement.startAtMillis == qso.startAtMillis) {
         next.add(replacement);
         placing.remove(qso.uuid);
+        joins(replacement);
       }
     }
     // The same order as the query's `ORDER BY startAtMillis`: nulls first,
@@ -307,8 +327,9 @@ class QsoLogFollower {
         at--;
       }
       next.insert(at, qso);
+      joins(qso);
     }
-    return next;
+    return QsoLog(next, digest: digest, unstamped: unstamped);
   }
 
   static bool _startsAfter(Qso a, Qso b) {

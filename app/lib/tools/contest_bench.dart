@@ -41,6 +41,10 @@ import '../services/scoring_service.dart';
 const _benchBands = ['160m', '80m', '40m', '20m', '15m', '10m'];
 const _benchPrefixes = ['K', 'W', 'N', 'VE', 'G', 'DL', 'JA', 'VK', 'PY', 'EA'];
 
+/// Where a timed phase leaves a result it has no use for, so the phase is
+/// not dead code to the compiler.
+Object? benchSink;
+
 /// How many contacts a run needs before its slope means anything.
 ///
 /// Below this the bands are too short for the per-contact costs to rise above
@@ -549,10 +553,16 @@ Future<BenchResult> runContestBench({
   // that waits for an emission already gone.
   Completer<void>? awaited;
   final primed = awaited = Completer<void>();
+  // The log as the stream last emitted it — what the operation view, the
+  // logging panel and the spots board hold, and what they fingerprint and
+  // resolve the resume from. Not a fresh read: that is a different list with
+  // a different cost, and the read-back row measures it on its own.
+  List<Qso> latest = const [];
   final follower = qsos
       .watchForOperation(operation.uuid)
       .listen(
-        (_) {
+        (log) {
+          latest = log;
           awaited?.complete();
           awaited = null;
         },
@@ -633,16 +643,18 @@ Future<BenchResult> runContestBench({
       }
 
       // Read the whole log back the way the operation view does when it opens,
-      // then build the same fingerprint its rescore scheduler builds on every
-      // emission. Sampled rather than run per contact, for the reason
-      // `sampleEvery` gives.
+      // then build the fingerprint its rescore scheduler builds on every
+      // emission — over the emitted list, as it does. Sampled rather than run
+      // per contact, for the reason `sampleEvery` gives.
       if (i % sampleEvery == 0) {
         final sw2 = Stopwatch()..start();
-        final all = await qsos.forOperation(operation.uuid);
+        await qsos.forOperation(operation.uuid);
         readBack.record(sw2.elapsedMicroseconds);
 
+        // The view's own fingerprint over the list the stream handed it,
+        // kept in a sink so an optimizing build cannot drop the work timed.
         final sw3 = Stopwatch()..start();
-        all.map((q) => '${q.uuid}:${q.updatedAtMillis ?? ''}').join(',');
+        benchSink = '${latest.length}:${checkpointDigestOf(latest)}';
         fingerprint.record(sw3.elapsedMicroseconds);
 
         // What typing one callsign costs. Sampled with the rest for the same
@@ -689,7 +701,7 @@ Future<BenchResult> runContestBench({
         final resume = resolveScoringResume(
           scoring: current.localData['scoring'] as Map<String, dynamic>?,
           operationUpdatedAtMillis: current.updatedAtMillis,
-          qsos: all,
+          qsos: latest,
         );
         resolveResume.record(sw9.elapsedMicroseconds);
         if (rescorePasses > 0) {

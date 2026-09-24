@@ -193,9 +193,9 @@ void main() {
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
 
-    final logged = await waitForQsos(tester, 3);
+    // The stream's list is unmodifiable; sort a copy.
+    final logged = [...await waitForQsos(tester, 3)]..sort((a, b) => a.startAtMillis!.compareTo(b.startAtMillis!));
     expect(logged, hasLength(3));
-    logged.sort((a, b) => a.startAtMillis!.compareTo(b.startAtMillis!));
     expect(logged.map((q) => q.theirCall).toList(), ['W1AW', 'K1ABC', 'N2XYZ']);
     expect(logged[1].startAtMillis! - logged[0].startAtMillis!, 5000);
     expect(logged[2].startAtMillis! - logged[1].startAtMillis!, 5000);
@@ -418,9 +418,8 @@ void main() {
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
 
-    final logged = await waitForQsos(tester, 2);
+    final logged = [...await waitForQsos(tester, 2)]..sort((a, b) => a.startAtMillis!.compareTo(b.startAtMillis!));
     expect(logged, hasLength(2));
-    logged.sort((a, b) => a.startAtMillis!.compareTo(b.startAtMillis!));
     // The original QSO is updated in place, keeping its own recorded time.
     expect(logged[0].uuid, existingQso.uuid);
     expect(logged[0].theirCall, 'W1AW');

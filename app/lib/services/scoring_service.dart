@@ -102,21 +102,57 @@ ScoringResume? resolveScoringResume({
   final checkpoints = <String, ScoringCheckpoint>{for (final entry in sheets.entries) entry.key: (sheet: entry.value.sheet, day: entry.value.day, key: key)};
 
   final tail = <Map<String, dynamic>>[];
-  final folded = <Qso>[];
-  for (final qso in qsos) {
-    if (qso.deleted) continue;
-    final updatedAt = qso.updatedAtMillis;
-    if (updatedAt == null) return null;
-    if (updatedAt <= stampedAt) {
-      folded.add(qso);
-    } else if (qso.isEvent) {
-      return null;
-    } else {
+  if (qsos is QsoLog) {
+    // The tail is at the end in log order, so it is found from the end: back
+    // over the rows stamped after the checkpoint, stopping at the first one
+    // stamped at or before it. Behind that row the digest is the only proof:
+    // the log carries its digest, and the folded rows' is what is left once
+    // the tail's terms leave it, so a row edited, added or removed anywhere
+    // earlier moves it and folds cold — with one exception the digest cannot
+    // see, a row with no stamp, whose term stays put when its content moves.
+    // The log counts those, and one anywhere folds cold, as it does below.
+    if (qsos.unstamped > 0) return null;
+    var foldedDigest = qsos.digest;
+    for (var i = qsos.length - 1; i >= 0; i--) {
+      final qso = qsos[i];
+      if (qso.deleted) continue;
+      final updatedAt = qso.updatedAtMillis!;
+      if (updatedAt <= stampedAt) break;
+      if (qso.isEvent) return null;
       if ((qso.startAtMillis ?? 0) <= lastStartAt) return null;
       tail.add(qso.data);
+      foldedDigest -= qsoDigestTerm(qso);
     }
+    if (foldedDigest != digest) return null;
+    // Collected newest first; replayed oldest first.
+    for (var i = 0, j = tail.length - 1; i < j; i++, j--) {
+      final swap = tail[i];
+      tail[i] = tail[j];
+      tail[j] = swap;
+    }
+  } else {
+    // The same verdict as above, walked forward: the tail is the suffix of
+    // rows stamped after the checkpoint, so a folded row past the first tail
+    // row — a marker timed after a contact logged with an earlier manual
+    // time — makes the tail no suffix, and the checkpoint cannot replay it
+    // in the order the batch pass folds.
+    final folded = <Qso>[];
+    for (final qso in qsos) {
+      if (qso.deleted) continue;
+      final updatedAt = qso.updatedAtMillis;
+      if (updatedAt == null) return null;
+      if (updatedAt <= stampedAt) {
+        if (tail.isNotEmpty) return null;
+        folded.add(qso);
+      } else if (qso.isEvent) {
+        return null;
+      } else {
+        if ((qso.startAtMillis ?? 0) <= lastStartAt) return null;
+        tail.add(qso.data);
+      }
+    }
+    if (qsoLogDigestOf(folded) != digest) return null;
   }
-  if (checkpointDigestOf(folded) != digest) return null;
   if (tail.isNotEmpty) checkpoints.removeWhere((_, checkpoint) => checkpoint.day == null);
   if (checkpoints.isEmpty) return null;
   return (checkpoints: checkpoints, tail: tail);
@@ -137,13 +173,12 @@ String checkpointKeyOf(Map<String, dynamic> stamp) =>
 /// the stamp is persisted, and a digest that never matched after a relaunch
 /// would fold every keystroke cold until the first rescore. Each term and the
 /// sum stay under 2^53 so the web build's integers carry them.
-int checkpointDigestOf(Iterable<Qso> rows) {
-  var digest = 0;
-  for (final qso in rows) {
-    digest += ((qso.uuid.hashCode & 0xFFFFFFFF) * 31 + (qso.updatedAtMillis ?? 0)) & 0xFFFFFFFF;
-  }
-  return digest;
-}
+///
+/// A [QsoLog] carries this very digest, maintained by the log stream as it
+/// patches the list, so one is read in a step rather than walked: the
+/// Operation View fingerprints the log by it on every emission and every
+/// build. Anything else is walked, deleted rows left out as a log's are.
+int checkpointDigestOf(Iterable<Qso> rows) => rows is QsoLog ? rows.digest : qsoLogDigestOf(rows);
 
 /// The day sections after a pass resumed from a checkpoint: [cached] is what
 /// the checkpoint's pass left, [fresh] what the tail's pass returned.

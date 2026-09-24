@@ -86,151 +86,201 @@ Map<String, dynamic> _scoring(List<Qso> folded, {bool stamped = true, int? day, 
   },
 };
 
-ScoringResume? _resolve(Map<String, dynamic>? scoring, List<Qso> qsos, {String? excludeUuid, int? operationStamp = _operationStamp}) =>
-    resolveScoringResume(scoring: scoring, operationUpdatedAtMillis: operationStamp, qsos: qsos, excludeUuid: excludeUuid);
+/// Whether [_resolve] hands the resolver the log as the stream emits it — a
+/// `QsoLog` carrying its digest, which the resolver answers from the end —
+/// or a plain list, which it walks in full. Every case below runs both ways:
+/// the two paths must agree on every verdict, or a checkpoint would resume
+/// for one caller and fold cold for another over the same log.
+var _carryDigest = false;
+
+ScoringResume? _resolve(Map<String, dynamic>? scoring, List<Qso> qsos, {String? excludeUuid, int? operationStamp = _operationStamp}) => resolveScoringResume(
+  scoring: scoring,
+  operationUpdatedAtMillis: operationStamp,
+  qsos: _carryDigest ? QsoLog(qsos, digest: qsoLogDigestOf(qsos), unstamped: qsoLogUnstampedOf(qsos)) : qsos,
+  excludeUuid: excludeUuid,
+);
 
 void main() {
-  group('resolveScoringResume', () {
-    final folded = [_contact('a', updatedAt: 1000), _contact('b', updatedAt: 2000)];
+  for (final carried in [false, true]) {
+    group(carried ? 'resolveScoringResume over a log carrying its digest' : 'resolveScoringResume', () {
+      setUp(() => _carryDigest = carried);
+      tearDown(() => _carryDigest = false);
+      final folded = [_contact('a', updatedAt: 1000), _contact('b', updatedAt: 2000)];
 
-    test('a log exactly as the checkpoint folded it resumes with nothing to replay', () {
-      final resume = _resolve(_scoring(folded, day: 86400000), folded);
-      expect(resume, isNotNull);
-      expect(resume!.tail, isEmpty);
-      expect(resume.checkpoints['core']?.sheet, const {'worked': {}});
-      expect(resume.checkpoints['core']?.day, 86400000);
-      expect(
-        resume.checkpoints['core']?.key,
-        checkpointKeyOf(_scoring(folded)['core']['checkpoint'] as Map<String, dynamic>),
-        reason: 'the name the runtime holds it under',
-      );
+      test('a log exactly as the checkpoint folded it resumes with nothing to replay', () {
+        final resume = _resolve(_scoring(folded, day: 86400000), folded);
+        expect(resume, isNotNull);
+        expect(resume!.tail, isEmpty);
+        expect(resume.checkpoints['core']?.sheet, const {'worked': {}});
+        expect(resume.checkpoints['core']?.day, 86400000);
+        expect(
+          resume.checkpoints['core']?.key,
+          checkpointKeyOf(_scoring(folded)['core']['checkpoint'] as Map<String, dynamic>),
+          reason: 'the name the runtime holds it under',
+        );
+      });
+
+      test('contacts stamped after the checkpoint are the tail, oldest first', () {
+        final resume = _resolve(_scoring(folded, day: 86400000), [...folded, _contact('c', updatedAt: 3000), _contact('d', updatedAt: 3500)]);
+        expect(resume?.tail.map((q) => q['uuid']), ['c', 'd']);
+      });
+
+      // An edit moves a folded contact past the stamp without adding one — the
+      // checkpoint already holds its old version and cannot un-fold it.
+      test('an edit of a folded contact folds cold', () {
+        final edited = [_contact('a', updatedAt: 1000), _contact('b', updatedAt: 2500)];
+        expect(_resolve(_scoring(folded), edited), isNull);
+      });
+
+      test('a delete folds cold even when nothing else moved', () {
+        final withoutB = [_contact('a', updatedAt: 1000), _contact('b', updatedAt: 2500, deleted: true)];
+        expect(_resolve(_scoring(folded), withoutB), isNull);
+      });
+
+      // An append AND an edit in the same window: the edited contact leaves the
+      // folded set, which no longer digests to the checkpoint's value.
+      test('an append beside an edit folds cold', () {
+        final mixed = [_contact('a', updatedAt: 2500), _contact('b', updatedAt: 2000), _contact('c', updatedAt: 3000)];
+        expect(_resolve(_scoring(folded), mixed), isNull);
+      });
+
+      // The checkpoint never folded it, so it replays — but only from the end:
+      // restored earlier in the log, it would fold out of order.
+      test('an undeleted contact replays when it is last in log order, else folds cold', () {
+        final restoredLast = [...folded, _contact('z', updatedAt: 2600, startAt: 2500)];
+        expect(_resolve(_scoring(folded, day: 86400000), restoredLast)?.tail.map((q) => q['uuid']), ['z']);
+        final restoredEarly = [_contact('z', updatedAt: 2600, startAt: 500), ...folded];
+        expect(_resolve(_scoring(folded), restoredEarly), isNull);
+      });
+
+      test('the contact being edited is inside the sheet, so it folds cold', () {
+        expect(_resolve(_scoring(folded), folded, excludeUuid: 'b'), isNull);
+      });
+
+      test('deleted rows are neither digested nor replayed', () {
+        final withNoise = [...folded, _contact('gone', updatedAt: 9000, deleted: true), _contact('gone-marker', updatedAt: 9500, event: true, deleted: true)];
+        final resume = _resolve(_scoring(folded), withNoise);
+        expect(resume, isNotNull);
+        expect(resume!.tail, isEmpty);
+      });
+
+      test('a cache written without a stamp cannot be placed and folds cold', () {
+        expect(_resolve(_scoring(folded, stamped: false), folded), isNull);
+        expect(_resolve(null, folded), isNull);
+        expect(_resolve(const {}, folded), isNull);
+      });
+
+      test('a contact with no stamp cannot be placed and folds cold, wherever it is', () {
+        // A stampless row's digest term cannot move when its content does
+        // (a peer's stampless correction is stored as it comes), so no digest
+        // proves it unchanged — and a log walked from the end never reaches
+        // one that sits behind the first folded row.
+        final stampless = Qso(uuid: 'z', operationUuid: 'op-1', data: const {'uuid': 'z', 'band': '20m', 'startAtMillis': 500});
+        expect(_resolve(_scoring(folded), [_contact('a', updatedAt: 1000), stampless]), isNull);
+        // A checkpoint that folded the stampless row, with a contact since:
+        // the digest matches and the tail is clean, and it still folds cold.
+        final scoring = _scoring(folded, day: 86400000);
+        ((scoring['core'] as Map)['checkpoint'] as Map)['digest'] = checkpointDigestOf([stampless, ...folded]);
+        expect(_resolve(scoring, [stampless, ...folded, _contact('c', updatedAt: 3000, startAt: 3000)]), isNull);
+      });
+
+      // A bundle built on an SDK from before the tail existed resumes from the
+      // checkpoint and ignores the tail — and only a tail-aware harness returns
+      // the day beside its sheet. Nothing to replay: an old harness resumes fine.
+      test('a checkpoint without a day is resumed only when there is nothing to replay', () {
+        final scoring = {
+          ..._scoring(folded),
+          'pota': {..._scoring(folded, day: 86400000)['core'] as Map},
+        };
+        final current = _resolve(scoring, folded);
+        expect(current?.checkpoints.keys, containsAll(['core', 'pota']));
+
+        final appended = [...folded, _contact('c', updatedAt: 3000)];
+        final withTail = _resolve(scoring, appended);
+        expect(withTail?.checkpoints.keys, ['pota']);
+        expect(withTail?.tail.map((q) => q['uuid']), ['c']);
+
+        // Every scorer on an old harness: no resume at all, not an empty one.
+        expect(_resolve(_scoring(folded), appended), isNull);
+      });
+
+      // A scorer folds the operation as well as the log: an activation reference
+      // corrected after the pass would leave the next call judged under the old
+      // park. The operation's own stamp moves on every save and rides in the
+      // checkpoint.
+      test('a saved change to the operation folds cold', () {
+        expect(_resolve(_scoring(folded), folded, operationStamp: _operationStamp + 1), isNull);
+      });
+
+      // Segment markers shape the timeline every contact folds under, so they
+      // are part of what the checkpoint folded — in the digest, never the tail.
+      test('a segment marker added or edited since the checkpoint folds cold', () {
+        final marker = _contact('break', updatedAt: 1500, startAt: 1500, event: true);
+        final withMarker = [folded[0], marker, folded[1]];
+        expect(_resolve(_scoring(withMarker), withMarker)?.tail, isEmpty);
+
+        final added = [...folded, _contact('start', updatedAt: 3000, startAt: 3000, event: true)];
+        expect(_resolve(_scoring(folded, day: 86400000), added), isNull);
+
+        final moved = [folded[0], _contact('break', updatedAt: 1800, startAt: 1500, event: true), folded[1]];
+        expect(_resolve(_scoring(withMarker), moved), isNull);
+      });
+
+      test('scorers whose stamps disagree are from passes this code does not know: cold', () {
+        final scoring = {
+          ..._scoring(folded),
+          'pota': {
+            'scoresheet': const {},
+            'checkpoint': {'digest': 1, 'updatedAtMillis': 1000, 'startAtMillis': 1000, 'operationUpdatedAtMillis': _operationStamp},
+          },
+        };
+        expect(_resolve(scoring, folded), isNull);
+      });
+
+      // A peer's correction arrives through sync carrying ITS stamp, which can be
+      // older than the newest one here. Nothing moved past the stamp; only the digest
+      // sees the folded contact change.
+      test('a synced edit landing under the newest stamp folds cold', () {
+        final corrected = [_contact('a', updatedAt: 1000), _contact('b', updatedAt: 1500, startAt: 2000)];
+        expect(_resolve(_scoring(folded), corrected), isNull);
+      });
+
+      // The batch pass folds in log order; a replay appends. A contact entered
+      // with a manual time before the checkpoint's last would fold out of order.
+      test('a tail contact timed before the last folded one folds cold', () {
+        final backdated = [...folded, _contact('c', updatedAt: 3000, startAt: 1500)];
+        expect(_resolve(_scoring(folded), backdated), isNull);
+      });
+
+      test('a folded marker timed after a tail contact folds cold', () {
+        // The checkpoint's last time counts contacts only, so a marker can
+        // sit past it in log order with a contact logged to an earlier manual
+        // time slotted before the marker. Replaying that contact onto the
+        // checkpoint would fold it after the marker, where the batch pass
+        // folds it before; the tail has to be the log's suffix.
+        final marker = _contact('start', updatedAt: 1000, startAt: 5000, event: true);
+        final withMarker = [...folded, marker];
+        final slotted = [...folded, _contact('c', updatedAt: 3000, startAt: 4000), marker];
+        expect(_resolve(_scoring(withMarker, day: 86400000), slotted), isNull);
+      });
+
+      test('a deleted row after the tail is neither replayed nor digested', () {
+        // Walking from the end, a deleted row is stepped over rather than read
+        // as the end of the tail — it is in the list and out of the digest.
+        final deleted = _contact('z', updatedAt: 4000, startAt: 4000, deleted: true);
+        final withDeleted = [...folded, _contact('c', updatedAt: 3000), deleted];
+        expect(_resolve(_scoring(folded, day: 86400000), withDeleted)?.tail.map((q) => q['uuid']), ['c']);
+      });
     });
+  }
 
-    test('contacts stamped after the checkpoint are the tail, oldest first', () {
-      final resume = _resolve(_scoring(folded, day: 86400000), [...folded, _contact('c', updatedAt: 3000), _contact('d', updatedAt: 3500)]);
-      expect(resume?.tail.map((q) => q['uuid']), ['c', 'd']);
-    });
-
-    // An edit moves a folded contact past the stamp without adding one — the
-    // checkpoint already holds its old version and cannot un-fold it.
-    test('an edit of a folded contact folds cold', () {
-      final edited = [_contact('a', updatedAt: 1000), _contact('b', updatedAt: 2500)];
-      expect(_resolve(_scoring(folded), edited), isNull);
-    });
-
-    test('a delete folds cold even when nothing else moved', () {
-      final withoutB = [_contact('a', updatedAt: 1000), _contact('b', updatedAt: 2500, deleted: true)];
-      expect(_resolve(_scoring(folded), withoutB), isNull);
-    });
-
-    // An append AND an edit in the same window: the edited contact leaves the
-    // folded set, which no longer digests to the checkpoint's value.
-    test('an append beside an edit folds cold', () {
-      final mixed = [_contact('a', updatedAt: 2500), _contact('b', updatedAt: 2000), _contact('c', updatedAt: 3000)];
-      expect(_resolve(_scoring(folded), mixed), isNull);
-    });
-
-    // The checkpoint never folded it, so it replays — but only from the end:
-    // restored earlier in the log, it would fold out of order.
-    test('an undeleted contact replays when it is last in log order, else folds cold', () {
-      final restoredLast = [...folded, _contact('z', updatedAt: 2600, startAt: 2500)];
-      expect(_resolve(_scoring(folded, day: 86400000), restoredLast)?.tail.map((q) => q['uuid']), ['z']);
-      final restoredEarly = [_contact('z', updatedAt: 2600, startAt: 500), ...folded];
-      expect(_resolve(_scoring(folded), restoredEarly), isNull);
-    });
-
-    test('the contact being edited is inside the sheet, so it folds cold', () {
-      expect(_resolve(_scoring(folded), folded, excludeUuid: 'b'), isNull);
-    });
-
-    test('deleted rows are neither digested nor replayed', () {
-      final withNoise = [...folded, _contact('gone', updatedAt: 9000, deleted: true), _contact('gone-marker', updatedAt: 9500, event: true, deleted: true)];
-      final resume = _resolve(_scoring(folded), withNoise);
-      expect(resume, isNotNull);
-      expect(resume!.tail, isEmpty);
-    });
-
-    test('a cache written without a stamp cannot be placed and folds cold', () {
-      expect(_resolve(_scoring(folded, stamped: false), folded), isNull);
-      expect(_resolve(null, folded), isNull);
-      expect(_resolve(const {}, folded), isNull);
-    });
-
-    test('a contact with no stamp cannot be placed and folds cold', () {
-      final unstamped = [
-        _contact('a', updatedAt: 1000),
-        Qso(uuid: 'b', operationUuid: 'op-1', data: const {'uuid': 'b', 'band': '20m', 'startAtMillis': 2000}),
-      ];
-      expect(_resolve(_scoring(folded), unstamped), isNull);
-    });
-
-    // A bundle built on an SDK from before the tail existed resumes from the
-    // checkpoint and ignores the tail — and only a tail-aware harness returns
-    // the day beside its sheet. Nothing to replay: an old harness resumes fine.
-    test('a checkpoint without a day is resumed only when there is nothing to replay', () {
-      final scoring = {
-        ..._scoring(folded),
-        'pota': {..._scoring(folded, day: 86400000)['core'] as Map},
-      };
-      final current = _resolve(scoring, folded);
-      expect(current?.checkpoints.keys, containsAll(['core', 'pota']));
-
-      final appended = [...folded, _contact('c', updatedAt: 3000)];
-      final withTail = _resolve(scoring, appended);
-      expect(withTail?.checkpoints.keys, ['pota']);
-      expect(withTail?.tail.map((q) => q['uuid']), ['c']);
-
-      // Every scorer on an old harness: no resume at all, not an empty one.
-      expect(_resolve(_scoring(folded), appended), isNull);
-    });
-
-    // A scorer folds the operation as well as the log: an activation reference
-    // corrected after the pass would leave the next call judged under the old
-    // park. The operation's own stamp moves on every save and rides in the
-    // checkpoint.
-    test('a saved change to the operation folds cold', () {
-      expect(_resolve(_scoring(folded), folded, operationStamp: _operationStamp + 1), isNull);
-    });
-
-    // Segment markers shape the timeline every contact folds under, so they
-    // are part of what the checkpoint folded — in the digest, never the tail.
-    test('a segment marker added or edited since the checkpoint folds cold', () {
-      final marker = _contact('break', updatedAt: 1500, startAt: 1500, event: true);
-      final withMarker = [folded[0], marker, folded[1]];
-      expect(_resolve(_scoring(withMarker), withMarker)?.tail, isEmpty);
-
-      final added = [...folded, _contact('start', updatedAt: 3000, startAt: 3000, event: true)];
-      expect(_resolve(_scoring(folded, day: 86400000), added), isNull);
-
-      final moved = [folded[0], _contact('break', updatedAt: 1800, startAt: 1500, event: true), folded[1]];
-      expect(_resolve(_scoring(withMarker), moved), isNull);
-    });
-
-    test('scorers whose stamps disagree are from passes this code does not know: cold', () {
-      final scoring = {
-        ..._scoring(folded),
-        'pota': {
-          'scoresheet': const {},
-          'checkpoint': {'digest': 1, 'updatedAtMillis': 1000, 'startAtMillis': 1000, 'operationUpdatedAtMillis': _operationStamp},
-        },
-      };
-      expect(_resolve(scoring, folded), isNull);
-    });
-
-    // A peer's correction arrives through sync carrying ITS stamp, which can be
-    // older than the newest one here. Nothing moved past the stamp; only the digest
-    // sees the folded contact change.
-    test('a synced edit landing under the newest stamp folds cold', () {
-      final corrected = [_contact('a', updatedAt: 1000), _contact('b', updatedAt: 1500, startAt: 2000)];
-      expect(_resolve(_scoring(folded), corrected), isNull);
-    });
-
-    // The batch pass folds in log order; a replay appends. A contact entered
-    // with a manual time before the checkpoint's last would fold out of order.
-    test('a tail contact timed before the last folded one folds cold', () {
-      final backdated = [...folded, _contact('c', updatedAt: 3000, startAt: 1500)];
-      expect(_resolve(_scoring(folded), backdated), isNull);
-    });
+  test('the fingerprint reads the digest a log carries rather than walking the rows', () {
+    // Recomputing it would give the same number and cost a walk of the whole
+    // log per emission — the very cost the carried digest exists to avoid.
+    // A carried digest that disagrees with the rows tells the two apart.
+    final rows = [_contact('a', updatedAt: 1000), _contact('b', updatedAt: 2000)];
+    expect(checkpointDigestOf(QsoLog(rows, digest: 7, unstamped: 0)), 7);
+    expect(checkpointDigestOf(rows), qsoLogDigestOf(rows));
   });
 
   group('ScoringService.rescoreOperation', () {

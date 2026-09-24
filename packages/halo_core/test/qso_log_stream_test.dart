@@ -655,6 +655,88 @@ void main() {
     expect(reads.log, 1, reason: 'the failed read counted nothing; this is the new listener\'s own');
   });
 
+  test('every emission carries the digest of its non-deleted rows, however it was produced', () async {
+    // The digest is maintained per patch — a term leaves with a replaced or
+    // dropped row, one joins with a fresh row — and a drift anywhere would
+    // make the checkpoint stamp disagree with a recomputation forever after.
+    // Every way a list can change is driven here, and every emission is
+    // checked against a walk over its own rows.
+    final op = await operations.create(stationCall: 'KI2D');
+    final other = await operations.create(stationCall: 'KI2D');
+    final a = await qsos.add(op.uuid, contact('A1A', 1000));
+    final b = await qsos.add(op.uuid, contact('B1B', 2000));
+    final emissions = await follow(op.uuid, includeDeleted: true);
+    void check(String step) {
+      final log = emissions.last;
+      expect(log, isA<QsoLog>(), reason: step);
+      expect((log as QsoLog).digest, qsoLogDigestOf(log), reason: '$step: the carried digest drifted from the rows');
+      expect(log.unstamped, qsoLogUnstampedOf(log), reason: '$step: the unstamped count drifted from the rows');
+    }
+
+    check('initial read');
+    await qsos.add(op.uuid, contact('C1C', 3000));
+    await settled(emissions, 2);
+    check('add');
+    await qsos.update(Qso(uuid: b.uuid, operationUuid: op.uuid, data: {...b.data, 'notes': 'edited'}));
+    await settled(emissions, 3);
+    check('edit');
+    await qsos.update(Qso(uuid: a.uuid, operationUuid: op.uuid, data: {...a.data, 'startAtMillis': 2500}));
+    await settled(emissions, 4);
+    check('move in time');
+    await qsos.softDelete(b);
+    await settled(emissions, 5);
+    check('delete');
+    expect(
+      (emissions.last as QsoLog).digest,
+      qsoLogDigestOf(emissions.last.where((q) => q.uuid != b.uuid)),
+      reason: 'a deleted row is out of the digest though in the list',
+    );
+    await qsos.undelete(b);
+    await settled(emissions, 6);
+    check('undelete');
+    await qsos.updateScoreCache(op.uuid, {a.uuid: '{}'});
+    await settled(emissions, 7);
+    check('score cache');
+    await qsos.mergeFromSync([
+      {...contact('D1D', 4000), 'uuid': 'd', 'operation': op.uuid, 'updatedAtMillis': 7},
+      {...contact('X1X', 4000), 'uuid': 'x', 'operation': other.uuid, 'updatedAtMillis': 7},
+    ]);
+    await settled(emissions, 8);
+    check('sync merge');
+    // A stampless record is stored as it comes, and a second one replaces
+    // it: the one row a digest cannot vouch for, counted in, then counted
+    // out again once a local edit stamps it.
+    await qsos.mergeFromSync([
+      {...contact('E1E', 5000), 'uuid': 'e', 'operation': op.uuid},
+    ]);
+    await settled(emissions, 9);
+    check('stampless merge');
+    expect((emissions.last as QsoLog).unstamped, 1);
+    await qsos.mergeFromSync([
+      {...contact('E1E', 5000), 'uuid': 'e', 'operation': op.uuid, 'notes': 'corrected, still stampless'},
+    ]);
+    await settled(emissions, 10);
+    check('stampless replacement');
+    expect((emissions.last as QsoLog).unstamped, 1);
+    expect((emissions.last as QsoLog).digest, (emissions[8] as QsoLog).digest, reason: 'the content moved and the digest could not: what the count is for');
+    final e = emissions.last.singleWhere((q) => q.uuid == 'e');
+    await qsos.update(Qso(uuid: 'e', operationUuid: op.uuid, data: {...e.data, 'notes': 'stamped'}));
+    await settled(emissions, 11);
+    check('stamped by a local edit');
+    expect((emissions.last as QsoLog).unstamped, 0);
+    await (db.update(db.qsos)..where((q) => q.uuid.equals(a.uuid))).write(const QsosCompanion(scoreCache: Value('{"x":1}')));
+    await settled(emissions, 12);
+    check('full read after a stranger');
+    expect(emissions.last.map((q) => q.theirCall), ['B1B', 'A1A', 'C1C', 'D1D', 'E1E']);
+  });
+
+  test('an emitted list cannot be written into', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+    await qsos.add(op.uuid, contact('W1AW', 1000));
+    final emissions = await follow(op.uuid);
+    expect(() => emissions.single.clear(), throwsUnsupportedError);
+  });
+
   test('a listener that cancels mid-way leaves nothing running', () async {
     final op = await operations.create(stationCall: 'KI2D');
     await qsos.add(op.uuid, contact('W1AW', 1000));
