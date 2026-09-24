@@ -207,6 +207,7 @@ void main() {
       'ft710-serial',
       'ftdx10-serial',
       'ftx1-serial',
+      'ft450-serial',
       'yaesu-serial',
       'ft817-serial',
       'ft857-serial',
@@ -362,6 +363,32 @@ void main() {
     expect(config[yaesuHeadPowerConfigKey], isTrue);
     expect(type.driver.canKeyCwWith(config), isTrue);
     expect(config[voiceMemoriesConfigKey], yaesuVoiceMemoryCount);
+  });
+
+  // The FT-710's own CAT manual plays a text memory with `KY0n;`; on the
+  // line's `KYA;` every CW message is written and never sent.
+  test('the FT-710 plays its keyer memory by channel', () {
+    final config = registry.typeFor('ft710-serial')!.driverConfig(const {});
+    expect(config[yaesuKeyerPlayByChannelConfigKey], isTrue);
+    expect(registry.typeFor('ft891-serial')!.driverConfig(const {})[yaesuKeyerPlayByChannelConfigKey], isNot(isTrue), reason: 'the FT-891 plays KY6-KYA');
+  });
+
+  // Outside the table of radios operators have run: nobody has run this one
+  // yet. What it pins are the two places the FT-450 leaves the line, and
+  // each fails silently when unpinned — every frequency answer dropped, or
+  // every CW message written to a memory the radio does not have.
+  test('the FT-450 reads eight frequency digits and keys through its third memory', () {
+    final type = registry.typeFor('ft450-serial')!;
+    final config = type.driverConfig(const {});
+    expect(type.driver.key, 'ft891');
+    expect(type.transportKey, SerialTransport.transportKey);
+    expect(type.defaultConfig['baudRate'], 4800);
+    expect(config[yaesuFrequencyDigitsConfigKey], 8);
+    expect(config[yaesuKeyerMemoryConfigKey], 3);
+    expect(config[yaesuKeyerMemoryCharsConfigKey], 40);
+    expect(type.driver.canKeyCwWith(config), isTrue);
+    expect(type.driver.voiceMemoryCountWith(config), 0, reason: 'no DVS its CAT is documented to reach');
+    expect(type.driver.telemetryMetersWith(config), isEmpty, reason: 'no calibration table');
   });
 
   // The FX-4CR sits outside the table above because the claim that table's

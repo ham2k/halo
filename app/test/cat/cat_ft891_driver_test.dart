@@ -299,6 +299,37 @@ void main() {
       });
     });
 
+    // The FT-450's `FA` and `IF` carry eight digits of Hz (hamlib's
+    // newcat.c). On the line's nine every answer is dropped as malformed
+    // and every tune is refused, with nothing anywhere saying why.
+    group('with eight frequency digits pinned', () {
+      late Ft891Session ft450;
+      setUp(() => ft450 = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 600000, yaesuFrequencyDigitsConfigKey: 8}));
+
+      test('reads an eight-digit FA', () {
+        ft450.feed('FA14250000;');
+        expect(sink.readings, [const VfoReading(freqKHz: 14250)]);
+      });
+
+      test('tunes with eight digits', () {
+        ft450.setFrequency(7074.5);
+        expect(sink.sent, ['FA07074500;']);
+      });
+
+      test('reads the IF packet one place shorter, mode included', () {
+        // The FT-891 capture above with P2 one digit narrower: 27 bytes, the
+        // length hamlib reads an eight-digit radio by.
+        ft450.feed('IF00114233700+000000200000;');
+        expect(sink.readings, [const VfoReading(freqKHz: 14233.7, mode: 'USB')]);
+      });
+
+      test('a nine-digit answer is a malformed frame, not a frequency', () {
+        // Cut to its first eight digits it reads as a tenth of the frequency.
+        ft450.feed('FA014250000;');
+        expect(sink.readings, isEmpty);
+      });
+    });
+
     group('CW keying', () {
       test('KS is a 3-digit WPM, clamped to the manual\'s 4-60', () {
         expect(buildSetKeyerSpeedCommand(25), 'KS025;');
@@ -324,6 +355,49 @@ void main() {
         // Memory 5 by choice, `KYA;` because the TEXT memories play from 6-A.
         session.sendCw('cq test de n0dev');
         expect(sink.sent, ['KM5CQ TEST DE N0DEV;', 'KYA;']);
+      });
+
+      test('an entry names the memory it takes over', () {
+        // The FT-450 has three text memories: `KM5` there writes nothing and
+        // `KYA` plays nothing, so every message would vanish unsent.
+        final ft450 = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 600000, yaesuKeyerMemoryConfigKey: 3});
+        ft450.sendCw('cq test');
+        expect(sink.sent, ['KM3CQ TEST;', 'KY8;']);
+        ft450.teardown();
+      });
+
+      test('an entry names how long its memories are', () {
+        // The FT-450's hold forty. A fifty-character write overruns the
+        // memory, and the radio says nothing about what it kept.
+        fakeAsync((async) {
+          final ft450 = Ft891Session(
+            sink,
+            config: const {telemetryIntervalConfigKey: 600000, yaesuKeyerMemoryConfigKey: 3, yaesuKeyerMemoryCharsConfigKey: 40},
+          );
+          ft450.feed('KS020;');
+          sink.sent.clear();
+          const message = 'CQ CQ CQ DE N0DEV N0DEV N0DEV K CQ CQ CQ DE N0DEV';
+          ft450.sendCw(message);
+          async.flushTimers();
+          final writes = [
+            for (final c in sink.sent)
+              if (c.startsWith('KM3')) c.substring(3, c.length - 1),
+          ];
+          expect(writes, everyElement(hasLength(lessThanOrEqualTo(40))));
+          // Split, not cut: every word of the message still goes out.
+          expect(writes.join(' ').split(RegExp(r'\s+')), message.split(' '));
+          expect(sink.sent.where((c) => c.startsWith('KY')), everyElement('KY8;'));
+          ft450.teardown();
+        });
+      });
+
+      test('the FT-710 plays a text memory by channel', () {
+        // Its `KY` names the memory kind first; the line's `KYA;` is no
+        // command there, and the message is written but never sent.
+        final ft710 = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 600000, yaesuKeyerPlayByChannelConfigKey: true});
+        ft710.sendCw('cq test');
+        expect(sink.sent, ['KM5CQ TEST;', 'KY05;']);
+        ft710.teardown();
       });
 
       test('a message longer than the memory goes in paced pieces', () {

@@ -47,17 +47,24 @@ String? modeNameForCode(String code) => _modeNamesByCode[code];
 
 String? codeForModeName(String? name) => name == null ? null : yaesuModeCodes[name.toUpperCase()];
 
-/// The radio wants Hz as 9 digits, zero-padded (P1 range 000030000–056000000,
-/// i.e. 30 kHz–56 MHz).
-String encodeFrequencyHz(int freqHz) {
-  final digits = freqHz.abs().toString().padLeft(9, '0');
-  // Keep the LAST nine: a value too large to express is truncated the same
-  // way the radio would read it, rather than producing an over-long command
-  // the radio silently rejects.
-  return digits.substring(digits.length - 9);
+/// How many digits of Hz the line's `FA` and `IF` carry: nine on the FT-891
+/// and every radio after it (P1 range 000030000–056000000, i.e. 30 kHz–56
+/// MHz), eight on the FT-450 — hamlib's `newcat.c` tells the two apart by
+/// the `IF` answer's length. A width is a fact about the radio, never
+/// guessed from an answer: an eight-digit read on a nine-digit radio is a
+/// frame that lost a byte, not a frequency.
+const yaesuFrequencyDigits = 9;
+
+/// Hz, zero-padded to [digits].
+String encodeFrequencyHz(int freqHz, {int digits = yaesuFrequencyDigits}) {
+  final padded = freqHz.abs().toString().padLeft(digits, '0');
+  // Keep the LAST [digits]: a value too large to express is truncated the
+  // same way the radio would read it, rather than producing an over-long
+  // command the radio silently rejects.
+  return padded.substring(padded.length - digits);
 }
 
-String buildSetFrequencyCommand(int freqHz) => 'FA${encodeFrequencyHz(freqHz)};';
+String buildSetFrequencyCommand(int freqHz, {int digits = yaesuFrequencyDigits}) => 'FA${encodeFrequencyHz(freqHz, digits: digits)};';
 
 String buildReadFrequencyCommand() => 'FA;';
 
@@ -212,19 +219,31 @@ int? parseKeyerSpeedParams(String params) => RegExp(r'^\d{3}$').hasMatch(params)
 /// [yaesuAppKeyerMemory] is the last of the five so the four most people
 /// fill first are left alone.
 ///
-/// Playback has no stop command in the manual, which is why
+/// Not every radio has five, or fifty characters in each: the FT-450D has
+/// three memories of forty (`KM1`–`KM3`, played by `KY6`–`KY8`, per its CAT
+/// Operation Reference Book), and a `KM5` there writes nothing. So the slot
+/// and the length are the catalogue entry's to name — see
+/// `yaesuKeyerMemoryConfigKey` and `yaesuKeyerMemoryCharsConfigKey` — and
+/// these are only the defaults, those of the radios that have five.
+///
+/// Playback has no stop command in the FT-891's manual, which is why
 /// [Ft891Session.stopCw] can only stop QUEUING.
 const yaesuAppKeyerMemory = 5;
 const yaesuKeyerMemoryMaxChars = 50;
 
 /// [text] must already be sanitized (cw_send_queue.dart) and no longer than
-/// [yaesuKeyerMemoryMaxChars].
+/// the radio's memory holds.
 String buildWriteKeyerMemoryCommand(int memory, String text) => 'KM$memory$text;';
 
 /// `KY6;`-`KYA;` play the TEXT memories 1-5 ("Message Keyer" in the manual's
 /// words); `KY1;`-`KY5;` play the recorded-from-paddle ones, which are not
 /// what `KM` writes.
 String buildPlayKeyerMemoryCommand(int memory) => 'KY${(5 + memory).toRadixString(16).toUpperCase()};';
+
+/// The FT-710's `KY`, which names the kind of memory before the channel:
+/// `KY0n;` plays TEXT memory n, `KY1n;` the MESSAGE one (FT-710 CAT
+/// Operation Reference Manual). Sent the line's `KYA;` it plays nothing.
+String buildPlayKeyerMemoryByChannelCommand(int memory) => 'KY0$memory;';
 
 /// The voice memories ("DVS" in the CAT manuals) across the line: five on
 /// the FT-891, FT-710, FT-991A and FTDX10 alike. `PB` plays one and `LM`
@@ -265,10 +284,10 @@ String buildReadVoiceRecordingCommand() => 'LM0;';
 /// `0n` → n, for both `PB` and `LM` answers. Null for anything else.
 int? parseVoiceChannelParams(String params) => RegExp(r'^0\d$').hasMatch(params) ? int.tryParse(params.substring(1)) : null;
 
-/// `FA014250000;` → 14250000 Hz. Null unless it's exactly nine digits —
-/// a truncated or over-long response is not a frequency.
-int? parseFrequencyParams(String params) {
-  if (!RegExp(r'^\d{9}$').hasMatch(params)) return null;
+/// `FA014250000;` → 14250000 Hz. Null unless it's exactly [digits] digits
+/// — a truncated or over-long response is not a frequency.
+int? parseFrequencyParams(String params, {int digits = yaesuFrequencyDigits}) {
+  if (params.length != digits || !RegExp(r'^\d+$').hasMatch(params)) return null;
   return int.tryParse(params);
 }
 
@@ -289,13 +308,17 @@ int? parseFrequencyParams(String params) {
 ///     |   └─ P2 frequency in Hz, 9 digits, indices 3..11
 ///     └─ P1 memory channel
 ///
+/// An eight-digit radio ([yaesuFrequencyDigits]) has the same fields one
+/// place earlier from P2 on, which puts its mode at index 18.
+///
 /// Returns null for anything that doesn't match, so a short or unexpected
 /// packet is skipped rather than reported as a bogus frequency.
-({int? freqHz, String? mode})? parseInformationParams(String params) {
-  if (params.length < 20) return null;
-  final digits = params.substring(3, 12);
-  if (!RegExp(r'^\d{9}$').hasMatch(digits)) return null;
-  return (freqHz: int.tryParse(digits), mode: modeNameForCode(params[19]));
+({int? freqHz, String? mode})? parseInformationParams(String params, {int digits = yaesuFrequencyDigits}) {
+  final modeIndex = digits + 10;
+  if (params.length <= modeIndex) return null;
+  final freq = params.substring(3, 3 + digits);
+  if (!RegExp(r'^\d+$').hasMatch(freq)) return null;
+  return (freqHz: int.tryParse(freq), mode: modeNameForCode(params[modeIndex]));
 }
 
 /// `MD01;` → `LSB`. P1 (the fixed `0` for MAIN) is ignored.

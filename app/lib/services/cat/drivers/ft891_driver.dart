@@ -136,6 +136,10 @@ class Ft891Driver extends EquipmentDriver {
     voiceCeilingConfigKey,
     meterInfoConfigKey,
     yaesuHeadPowerConfigKey,
+    yaesuFrequencyDigitsConfigKey,
+    yaesuKeyerMemoryConfigKey,
+    yaesuKeyerMemoryCharsConfigKey,
+    yaesuKeyerPlayByChannelConfigKey,
   };
 
   /// Nothing WITHOUT a table: Yaesu answers `RM` with a raw 0-255 and
@@ -277,6 +281,26 @@ const yaesuMeterCaptureConfigKey = 'yaesuMeterCapture';
 /// a fact about the model.
 const yaesuHeadPowerConfigKey = 'yaesuHeadPower';
 
+/// Pinned by an entry whose `FA` and `IF` carry eight digits of Hz rather
+/// than the line's nine — the FT-450's (see [yaesuFrequencyDigits]). Never a
+/// field, for the same reason as [yaesuHeadPowerConfigKey].
+const yaesuFrequencyDigitsConfigKey = 'yaesuFrequencyDigits';
+
+/// Pinned by an entry whose radio has fewer than five text memories — the
+/// FT-450's three. Names the memory the app writes and plays CW through
+/// (see [yaesuAppKeyerMemory]). Never a field: how many memories a radio
+/// has is a fact about the model.
+const yaesuKeyerMemoryConfigKey = 'yaesuKeyerMemory';
+
+/// Pinned by an entry whose text memories hold fewer than fifty characters
+/// — the FT-450's forty. What a message is cut into; a longer write is
+/// refused or truncated by the radio, and nothing says which.
+const yaesuKeyerMemoryCharsConfigKey = 'yaesuKeyerMemoryChars';
+
+/// Pinned by an entry whose `KY` names the memory kind before the channel —
+/// the FT-710's (see [buildPlayKeyerMemoryByChannelCommand]).
+const yaesuKeyerPlayByChannelConfigKey = 'yaesuKeyerPlayByChannel';
+
 class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
   final EquipmentSink _sink;
   final _framer = AsciiCatFramer();
@@ -294,13 +318,13 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   /// spaces chunks by.
   int? _keyerSpeed;
 
-  /// Write-then-play through [yaesuAppKeyerMemory] — see yaesu_cat_codec.dart
-  /// on why there is no plainer way.
+  /// Write-then-play through [_keyerMemory] — see yaesu_cat_codec.dart on
+  /// why there is no plainer way.
   late final _cwQueue = CwSendQueue(
-    maxChunkLength: yaesuKeyerMemoryMaxChars,
+    maxChunkLength: _keyerMemoryChars,
     send: (chunk) {
-      _send(buildWriteKeyerMemoryCommand(yaesuAppKeyerMemory, chunk));
-      _send(buildPlayKeyerMemoryCommand(yaesuAppKeyerMemory));
+      _send(buildWriteKeyerMemoryCommand(_keyerMemory, chunk));
+      _send(_keyerPlayByChannel ? buildPlayKeyerMemoryByChannelCommand(_keyerMemory) : buildPlayKeyerMemoryCommand(_keyerMemory));
     },
     speedWpm: () => _keyerSpeed,
     onProgress: _sink.reportCwProgress,
@@ -361,7 +385,23 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   }) : _config = config,
        _captureMeters = config[yaesuMeterCaptureConfigKey] == true,
        _headPower = config[yaesuHeadPowerConfigKey] == true,
+       _frequencyDigits = config[yaesuFrequencyDigitsConfigKey] as int? ?? yaesuFrequencyDigits,
+       _keyerMemory = config[yaesuKeyerMemoryConfigKey] as int? ?? yaesuAppKeyerMemory,
+       _keyerMemoryChars = config[yaesuKeyerMemoryCharsConfigKey] as int? ?? yaesuKeyerMemoryMaxChars,
+       _keyerPlayByChannel = config[yaesuKeyerPlayByChannelConfigKey] == true,
        _meterInfoKey = config[meterInfoConfigKey] as String?;
+
+  /// See [yaesuFrequencyDigitsConfigKey].
+  final int _frequencyDigits;
+
+  /// See [yaesuKeyerMemoryConfigKey].
+  final int _keyerMemory;
+
+  /// See [yaesuKeyerMemoryCharsConfigKey].
+  final int _keyerMemoryChars;
+
+  /// See [yaesuKeyerPlayByChannelConfigKey].
+  final bool _keyerPlayByChannel;
 
   /// See [yaesuHeadPowerConfigKey].
   final bool _headPower;
@@ -532,7 +572,7 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
 
     switch (command.command) {
       case 'FA':
-        final freqHz = parseFrequencyParams(command.params);
+        final freqHz = parseFrequencyParams(command.params, digits: _frequencyDigits);
         // The radio reports exact Hz; everything above here speaks kHz.
         if (freqHz != null) _report(VfoReading(freqKHz: freqHz / 1000));
       case 'MD':
@@ -609,7 +649,7 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
       // frequency and the mode, so a dial turn reaches the app immediately
       // instead of waiting out the poll.
       case 'IF':
-        final info = parseInformationParams(command.params);
+        final info = parseInformationParams(command.params, digits: _frequencyDigits);
         if (info == null) return;
         if (info.freqHz != null || info.mode != null) {
           _report(VfoReading(freqKHz: info.freqHz == null ? null : info.freqHz! / 1000, mode: info.mode));
@@ -620,7 +660,7 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   }
 
   @override
-  void setFrequency(double freqKHz) => _send(buildSetFrequencyCommand((freqKHz * 1000).round()));
+  void setFrequency(double freqKHz) => _send(buildSetFrequencyCommand((freqKHz * 1000).round(), digits: _frequencyDigits));
 
   @override
   void setMode(String mode) {

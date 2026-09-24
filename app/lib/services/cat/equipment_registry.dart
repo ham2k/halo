@@ -419,6 +419,7 @@ const _defaultModels = [
   ft710Model,
   ftdx10Model,
   ftx1Model,
+  ft450Model,
   ft817Model,
   ft857Model,
   ft897Model,

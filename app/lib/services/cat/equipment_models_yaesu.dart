@@ -20,6 +20,7 @@ const _ft891SerialKey = 'ft891-serial';
 const _ft710SerialKey = 'ft710-serial';
 const _ftdx10SerialKey = 'ftdx10-serial';
 const _ftx1SerialKey = 'ftx1-serial';
+const _ft450SerialKey = 'ft450-serial';
 const _yaesuSerialKey = 'yaesu-serial';
 const _ft817SerialKey = 'ft817-serial';
 const _ft857SerialKey = 'ft857-serial';
@@ -98,7 +99,13 @@ const ft710Model = EquipmentModel(
       transport: SerialTransport(),
       // The radio's own CAT RATE default, unlike the FT-891's 4800.
       defaultConfig: {'baudRate': 38400},
-      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, meterInfoConfigKey: 'yaesu/ft-710'},
+      // `KY0n;`, not the line's `KY6;`-`KYA;`, per its own CAT manual.
+      overrides: {
+        cwKeyerConfigKey: true,
+        yaesuKeyerPlayByChannelConfigKey: true,
+        voiceMemoriesConfigKey: yaesuVoiceMemoryCount,
+        meterInfoConfigKey: 'yaesu/ft-710',
+      },
       // Only a suggestion — an FT-710 has also answered on the Standard
       // port, so the picker leaves it one tap away.
       restrictions: {'port': Ft891Driver.cp2105CatPort},
@@ -173,6 +180,59 @@ List<Map<String, dynamic>> _yaesuUsbSerialNotes() => [
     'text':
         '**${t.settings.station.troubleshootingTitle}**\n\n'
         '${t.settings.station.yaesuUsbTroubleshooting}',
+  },
+];
+
+/// Yaesu FT-450 and FT-450D over the RS-232 CAT jack on the back — the
+/// line's ASCII CAT, with two differences the entry pins, both from the
+/// FT-450D CAT Operation Reference Book and neither tried on a radio:
+///
+/// - Eight digits of Hz in `FA` and `IF`, not nine. Without the pin every
+///   answer is dropped as malformed and every tune is rejected, silently.
+/// - Three text memories of forty characters, not five of fifty, so the
+///   keyer writes and plays through memory 3 (`KM3`, `KY8`).
+///
+/// No voice memories are offered: its two play on a one-digit `PB1;` where
+/// the driver sends the line's `PB01;`. No meters either — there is no calibration
+/// table for it.
+///
+/// No port restriction: the radio has no USB bridge of its own, so the
+/// adapter is whatever the operator bought, and a CP2105 suggestion would
+/// point at nothing.
+const ft450Model = EquipmentModel(
+  key: 'ft450',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ft450Name,
+  variants: [
+    EquipmentVariant(
+      key: _ft450SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
+      overrides: {
+        yaesuFrequencyDigitsConfigKey: 8,
+        cwKeyerConfigKey: true,
+        yaesuKeyerMemoryConfigKey: 3,
+        yaesuKeyerMemoryCharsConfigKey: 40,
+        voiceMemoriesConfigKey: 0,
+        meterInfoConfigKey: '',
+      },
+      notes: _ft450SerialNotes,
+    ),
+  ],
+);
+
+String _ft450Name() => t.settings.station.models.ft450;
+
+List<Map<String, dynamic>> _ft450SerialNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.troubleshootingTitle}**\n\n'
+        '${t.settings.station.yaesuRs232Troubleshooting}',
   },
 ];
 

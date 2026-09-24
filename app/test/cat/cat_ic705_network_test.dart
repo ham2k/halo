@@ -715,8 +715,8 @@ void main() {
     // The IC-705 and K4 each contribute two variants — the flat list is
     // derived from the models, so a variant added to one has to appear here
     // without anything else being edited.
-    expect(registry.types, hasLength(40));
-    expect(registry.models, hasLength(38));
+    expect(registry.types, hasLength(41));
+    expect(registry.models, hasLength(39));
     expect(registry.transports.keys, containsAll(['tcp', 'serial', 'icom-network', 'placeholder']));
   });
 

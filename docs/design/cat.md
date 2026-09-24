@@ -280,6 +280,15 @@ nothing else with that: five binary bytes per command, four parameters then an o
 (`yaesu_binary_codec.dart`). One manufacturer, two protocols, one transport, and the split is what
 lets the second cost a codec and a driver rather than a rework.
 
+The ASCII line is one protocol, not one radio. Where a model leaves it, its catalogue entry pins
+the difference as driver config the operator never sees, rather than a new driver: the FTX-1's
+`PC` names the unit it drives (`yaesuHeadPower`, §Power), and the FT-450 carries eight digits of Hz
+in `FA` and `IF` instead of nine (`yaesuFrequencyDigits`) and has three CW text memories of forty
+characters instead of five of fifty (`yaesuKeyerMemory`, the one the app writes and plays through;
+`yaesuKeyerMemoryChars`). The FT-710 plays a text memory with `KY0n;` rather than the line's
+`KY6;`–`KYA;` (`yaesuKeyerPlayByChannel`). A width is never guessed from an answer: an eight-digit
+read on a nine-digit radio is a frame that lost a byte.
+
 ### A protocol with no framing at all
 
 Every other protocol here delimits its messages — `;` for Yaesu ASCII and Kenwood, `FE FE … FD` for
@@ -1157,7 +1166,7 @@ FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have
   operator can also fill from the front panel: `KM<n><text>;` writes one, `KY6;`-`KYA;` play them
   back. Keying from the app is therefore WRITE-THEN-PLAY through memory 5 (`yaesuAppKeyerMemory` —
   the last, so the four most people fill first survive), and whatever the operator had there is
-  gone. There is no stop: `Ft891Session.stopCw` only empties the queue, and the piece already
+  gone. The FT-450 (three memories of forty) and the FT-710 (`KY0n;`) pin their own, see §Serial. There is no stop: `Ft891Session.stopCw` only empties the queue, and the piece already
   playing plays out — reported to its estimated end, so the keyer area does not claim it stopped. `KS;` is the speed, 4-60. The session polls the keyer's status every ten seconds (`0x15`) because a keyer in host mode
   pushes nothing while idle, and the reply restates the speed so the node never reads as stale; a
   port that answers nothing within three seconds of host open is reported as having no keyer on it,
