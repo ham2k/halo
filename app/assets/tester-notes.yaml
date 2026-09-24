@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-"upcoming":
+"172":
   changes:
     - "Added Yaesu FT-450 and FT-450D to the radio list"
 
