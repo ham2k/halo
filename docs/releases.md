@@ -476,12 +476,28 @@ skipped two builds, and why notes may safely accumulate under `upcoming`.
 
 **How an entry is written** — both files, except where a bullet says otherwise:
 
-- **About a dozen words on one line**: what changed and where to find it. Setup
-  steps, caveats and rationale do not fit — those belong in the docs or on the
-  card. Length is set by this rule, not by whatever the surrounding entries
-  happen to look like: don't pattern-match off them.
-- **Tester notes only**: a short ask ("tell us what works") fits inside that
-  dozen words. A release note never solicits — it announces.
+- **About ten words on one line, naming what changed** — a longer one is fine
+  when it earns it, like a list of radios. Where to find it goes in only when
+  the name doesn't already say so, in a trailing parenthetical:
+  "Customizable export data and templates (Settings → Exports)". How it works,
+  setup steps, caveats and rationale do not fit — the feature explains itself,
+  and the rest belongs in the docs or on the card.
+- **Lead with a label, not a sentence.** The voice is PoLo's `RELEASE-NOTES.json`:
+  - *New …* for a setting, command, pane or control: "New Keep Device Awake
+    setting", "New REPORT command files a bug from the app".
+  - *Added … to the radio list* for radios: "Added Icom IC-7100 to the radio
+    list".
+  - *Improved* / *Fixed* / *Updated* … for something that already existed:
+    "Improved spot swiping".
+  - A bare name for a whole new activity or contest: "IARU Region 1 Field Day".
+  - Otherwise a short present-tense statement: "Spots you post say SSB on
+    the band's usual sideband".
+- **Plain text.** No bold, no trailing period; backticks only for something
+  typed (`` `OPER KI2D` ``). Platform-only changes name the platform in the
+  sentence ("…on Windows"), not as a `Windows:` prefix. Credit outside
+  contributors in parentheses: "(thanks to KC6X)".
+- **Tester notes only**: a short ask fits as a parenthetical — "(tell us how it
+  behaves)", "(feedback welcome)". A release note never solicits — it announces.
 - **One entry per change, never one per detail.** A rule the feature happens to
   have, or a special case it handles, is not its own entry.
 - **Neither file is a changelog.** Only a new feature or a new control someone
@@ -503,7 +519,7 @@ skipped two builds, and why notes may safely accumulate under `upcoming`.
 ```yaml
 upcoming:
   changes:
-    - "Something a tester should try, in markdown"
+    - "Something a tester should try"
 ```
 
 `halo-ops release` renames that key to the build it ships in, so nobody types a

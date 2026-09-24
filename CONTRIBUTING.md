@@ -63,8 +63,8 @@ For the inner loop, `./scripts/test.sh --list` shows the groups and
 - **Strings in both languages.** A user-facing string is an edit to `en` and
   `es` in `packages/halo_i18n`, then regenerated there (its README says how);
   the gate fails on a stale output.
-- **A tester note, if a tester has something new to try.** One line of about a
-  dozen words under the `upcoming` key of `app/assets/tester-notes.yaml`, in
+- **A tester note, if a tester has something new to try.** One line of about
+  ten words under the `upcoming` key of `app/assets/tester-notes.yaml`, in
   the same commit; most changes get none. [docs/releases.md §2.7](docs/releases.md)
   is the spec.
 - **A commit message that reads on its own.** The title states the outcome —

@@ -6,255 +6,255 @@
 
 "upcoming":
   changes:
-    - "Add a radio by name: Yaesu FT-450 / FT-450D"
+    - "Added Yaesu FT-450 and FT-450D to the radio list"
 
 "171":
   changes:
-    - "Add a Panel: tap anywhere on a row; search offers panel extensions to enable"
-    - "QSO Party exchanges are labelled QP Location, and fill in what a station sent before, even last year"
-    - "Out-of-state stations in the Pennsylvania QSO Party now send ARRL/RAC sections"
-    - "Add a radio by name: Yaesu FTX-1, Kenwood TS-590SG and TS-480, QRP Labs QCX, Xiegu G90"
-    - "Contest serials: `.` adds one, `,` subtracts one; Space and Tab skip Our Serial"
+    - "Improved Add a Panel: tap anywhere on a row, search finds panel extensions"
+    - "QSO Parties prefill a station's location from earlier contacts, even last year's"
+    - "Pennsylvania QSO Party: ARRL/RAC sections for out-of-state stations"
+    - "Added Yaesu FTX-1, Kenwood TS-590SG and TS-480, QRP Labs QCX and Xiegu G90 to the radio list"
+    - "Contest serials: `.` adds one, `,` subtracts one, Space and Tab skip Our Serial"
 
 "170":
   changes:
-    - "Hover or drag across the Weather chart to inspect each hour’s forecast"
-    - "A full ADIF export's QSL Message now names the programs, as \"POTA US-0001 & WWFF KFF-0002\""
-    - "Spots you post now say SSB, not USB or LSB — unless you're on the band's other sideband"
-    - "Add a radio by name: Icom IC-7100, prefilled with its CI-V address"
+    - "Hover or drag across the Weather chart to see each hour's forecast"
+    - 'Full ADIF exports name the programs in QSL Message, like "POTA US-0001 & WWFF KFF-0002"'
+    - "Spots you post say SSB on the band's usual sideband"
+    - "Added Icom IC-7100 to the radio list, with its CI-V address"
 
 "169":
   changes:
-    - "Customize export data and templates by type in Settings → Exports"
-    - "New Show Deleted Operations preference; a deleted operation's Tools menu offers Undelete"
-    - "The Pennsylvania QSO Party now exchanges serial numbers"
-    - "QSOs with a note show a note icon in their row"
-    - "Esc no longer wipes the QSO being typed — Alt+W wipes, Cmd/Ctrl+Z undoes it"
-    - "CW messages can send contest serials and cut numbers — the Messages dialog's new Help shows how"
+    - "Customizable export data and templates (Settings → Exports)"
+    - "Undelete operations, with the new Show Deleted Operations setting"
+    - "Pennsylvania QSO Party now uses serial numbers"
+    - "Note icon on QSOs that have a note"
+    - "Esc no longer wipes the current QSO: Alt+W wipes, Cmd/Ctrl+Z undoes"
+    - "Contest serials and cut numbers in CW messages (see Help in the Messages dialog)"
 
 "168":
   changes:
-    - "WWFF, LLOTA, WWBOTA, MOTA, SiOTA, TOTA and ZLOTA references now autoformat as you type, like POTA's"
+    - "Autoformatting for WWFF, LLOTA, WWBOTA, MOTA, SiOTA, TOTA and ZLOTA references"
 
 "167":
   changes:
-    - "Extension rows now carry an (i) for details, and Remove has moved in there"
-    - "The QSO list leads a noted station's name with its Callsign Notes emoji"
-    - "On a phone with PoLo installed, onboarding and Settings › Switch Accounts offer to link its account directly"
+    - "Extension details behind an (i) button, with Remove moved inside"
+    - "Callsign Notes emoji before the name in the QSO list"
+    - "On phones, link your PoLo account from onboarding or Settings › Switch Accounts"
 
 "165":
   changes:
-    - "BG2FX FX-4CR in the radio list, on the Kenwood protocol — tell us how it behaves"
-    - "Phone contacts now read as SSB, not USB/LSB — an unexpected sideband shows red"
-    - "A radio that knows which of its ports carries CAT now points at it, without hiding the others"
-    - "Desktop and web builds now say Power Logger; phones keep Portable Logger"
-    - "New Grid Precision setting: grids now show 6 digits by default, 8 if you prefer"
-    - "New Keep Device Awake setting: no sleep while you log or a sync runs, 15 idle minutes lets go"
+    - "Added BG2FX FX-4CR to the radio list (Kenwood protocol, tell us how it behaves)"
+    - "Phone contacts show as SSB, with unexpected sidebands in red"
+    - "Radio setup points at the CAT port when the radio says which one it is"
+    - "Desktop and web builds are now called Power Logger"
+    - "New Grid Precision setting: 6-digit grids by default, 8 optional"
+    - "New Keep Device Awake setting"
 
 "164":
   changes:
-    - "A warning pill in the logging panel when the contact has no band or no mode"
-    - "New optional Notes control in the logging row: turn it on to jot a note per contact"
-    - "The More pane now edits every field a contact holds, in sections: city, county, zones, ARRL section, coordinates and their power"
-    - "ADIF exports now carry DXCC, CQ and ITU zones, county, power, split and TIME_OFF"
-    - "Guohetec Q900 in the radio list, on its own protocol — tell us how it behaves"
-    - "An unrecognized reference is marked, not dropped — it logs and exports as typed"
+    - "Warning when a QSO has no band or mode"
+    - "New Notes control for the logging row"
+    - "More pane edits every QSO field: city, county, zones, section, coordinates, power"
+    - "ADIF exports include DXCC, CQ/ITU zones, county, power, split and TIME_OFF"
+    - "Added Guohetec Q900 to the radio list (tell us how it behaves)"
+    - "Unrecognized references are flagged, not dropped"
 
 "163":
   changes:
-    - "Microwave bands by name in the call field: 10G, 24G, 47G and the rest"
-    - "The band command now takes every band the app has, plus 75m for 80m"
-    - "Operation's callsign is now per-segment"
-    - "Android: a radio or bridge with two serial ports lists both, and the X6100 and Yaesus pick their CAT port for you"
-    - "An operation with a reference from a switched-off extension now offers to enable it"
-    - "The Radio panel shows TX, power out, SWR and supply volts while you transmit, and warns above 1.8 SWR"
-    - "The serial port picker suggests your radio's port, flags one just plugged in, and refreshes while open"
-    - "A WinKeyer now asks which of its two jacks your radio is on, and no longer dead-keys"
-    - "New QSO Parties extension: 49 state and provincial parties, with counties, county lines and Cabrillo"
-    - "Settings is now one panel: Common Settings on top, every category below it, one open at a time"
+    - "Switch to microwave bands by typing 10G, 24G, 47G, etc"
+    - "Band command accepts every band, plus 75m for 80m"
+    - "Per-segment operation callsigns"
+    - "Android lists both ports on two-port radios and bridges; X6100 and Yaesus pick CAT"
+    - "Offers to enable a switched-off extension an operation needs"
+    - "Radio panel shows TX, power, SWR and supply voltage, warns above 1.8 SWR"
+    - "Smarter serial port picker, suggests your radio's port and flags new ones"
+    - "WinKeyer asks which jack your radio is on; fixed dead keying"
+    - "QSO Parties extension, 49 state and provincial parties with counties and Cabrillo"
+    - "Settings redesigned as a single panel"
 
 "162":
   changes:
-    - "Change an operation's callsign and it offers to update the contacts already logged"
+    - "Offers to update logged QSOs when you change an operation's callsign"
 
 "161":
   changes:
-    - "Type a grid with no call and the logging panel shows the distance and bearing to it"
-    - "Show Bearing has a new option to also show the reverse bearing, as 45° / 225°"
-    - "The call info area shows how many times you have worked the station before"
-    - "START, BREAK, STOP and ROVERQTH commands mark the segments of an operation from the call field"
-    - "Country Flags in Logging settings: flags for all contacts, DX only, or none"
-    - "New IARU Region 1 Field Day extension, ready for the September SSB weekend"
-    - "New NRRL Nasjonal Field Day extension, for Norway's national field day"
-    - "Windows: com.ham2k links now open the app, so QR device linking works there"
-    - "The antenna and key in use are remembered per radio, and follow the one you pick"
-    - "Add an Elecraft by name: KX2, KX3 or a generic Elecraft, prefilled to match"
-    - "Companion apps can now set your VFO, suggest a contact, or open an operation"
+    - "Enter a grid before a callsign to see distance and bearing to it"
+    - "New 'Also show reverse bearing' setting"
+    - "Shows how many times you've worked a station before"
+    - "New START, BREAK, STOP and ROVERQTH commands for operation segments"
+    - "New Country Flags setting: all contacts, DX only, or none"
+    - "IARU Region 1 Field Day"
+    - "NRRL Nasjonal Field Day"
+    - "QR device linking on Windows"
+    - "Antenna and key remembered per radio"
+    - "Added Elecraft KX2, KX3 and generic Elecraft to the radio list"
+    - "Companion apps can set your VFO, suggest a contact or open an operation"
 
 "160":
   changes:
-    - "Support for contest serial number"
-    - "The spots mode filter has a combined Phone & CW option"
+    - "Contest serial numbers"
+    - "Combined Phone & CW option in the spots mode filter"
 
 "159":
   changes:
-    - The operator callsign now travels with the operation, stored per operating position
-    - "Edit QSO can now set the operator, and the position at a multi-station"
-    - "New optional Power control in the logging row: turn it on to log the watts of each QSO"
-    - "Add a Generic Placeholder Radio to log with no rig connected"
-    - "Sync settings now names what is still waiting to upload, instead of only two totals"
-    - "The status bar is always there: tap the icons at its right to see what each reports"
+    - "Operator callsign stored per operating position"
+    - "Set operator and position in Edit QSO"
+    - "New Power control for the logging row"
+    - "Added Generic Placeholder Radio, for logging with no rig connected"
+    - "Sync settings list what's still waiting to upload"
+    - "Status bar always visible, tap its icons for details"
 
 "158":
   changes:
-    - "State Parks exports: Ohio's Cabrillo, and Texas/Georgia per-park ADIFs named as their rules require"
-    - Each QSO now records the operator and position that logged it; ADIF exports say so
-    - "Add a radio by name: IC-7300 MK2, IC-7610, IC-7760 and the Xiegu X6100, prefilled to match"
-    - "Exporting now confirms what it wrote and where — tell us if the wording misses anything"
+    - "State Parks exports: Ohio Cabrillo, Texas and Georgia per-park ADIFs"
+    - "QSOs record the operator and position that logged them, in ADIF too"
+    - "Added IC-7300 MK2, IC-7610, IC-7760 and Xiegu X6100 to the radio list"
+    - "Export confirmation shows what was written and where (feedback welcome)"
 
 "156":
   changes:
-    - "New CWops CWT extension: it offers the session three hours before each one starts"
-    - Spanish now covers QSO import, test operations and the activity results map
-    - Phones can now rearrange their layout too, kept separately from the wide one
-    - Drop a tab onto a pane's centre to stack them both under one tab
-    - "Custom Text panel: turn LAYOUTS on, enable it in Extensions, then add it to a pane"
-    - SOTA activation zones are outlined on the Map tab and in Operation Setup, kept offline
+    - "CWops CWT, offered three hours before each session"
+    - "More Spanish: QSO import, test operations, results map"
+    - "Customizable layouts on phones, kept separate from the wide layout"
+    - "Drop a tab on a pane's centre to stack them"
+    - "Custom Text panel (enable in Extensions, then add to a pane)"
+    - "SOTA activation zones on the map, available offline"
 
 "155":
   changes:
-    - FlexRadio equipment now picks which slice to follow, and shows what each one is doing
-    - Home's quick lookup now shows full call info; press Enter for the whole panel
-    - "Add a radio by name: IC-7300, IC-706MKIIG, FT-710, FTDX10 and QRP Labs QMX"
-    - Activity rows in Operation Setup link out to the program's own page, or a contest's rules
+    - "FlexRadio slice selection, with what each slice is doing"
+    - "Full call info in Home's quick lookup, Enter opens the panel"
+    - "Added IC-7300, IC-706MKIIG, FT-710, FTDX10 and QRP Labs QMX to the radio list"
+    - "Operation Setup links to each program's page or contest rules"
 
 "153":
   changes:
-    - Type `OPER KI2D` in the call field to set who is at the key for an operation
-    - "`POSITION 2` marks this device in a multi-station op; its spots go out as /OP2"
-    - "New Solar panel: flux, wind and Kp charts, band conditions, hover for values"
-    - "With Developer Mode on, add a Fake Radio to try radio control with no rig"
-    - "Settings › General › Number Formatting: period or comma decimals, or follow your device"
-    - Radio pill reads OOB, in red, on frequencies your ITU region does not allow
+    - "New OPER command sets the operator, as `OPER KI2D`"
+    - "New POSITION command for multi-station operations: `POSITION 2` spots as /OP2"
+    - "New Solar panel: flux, wind, Kp and band conditions"
+    - "Fake Radio for trying radio control, in Developer Mode"
+    - "New Number Formatting setting: period or comma decimals"
+    - "Out-of-band frequencies show OOB in red"
 
 "150":
   changes:
-    - Radio pill and QSO frequencies turn red when there is no band
-    - Peer sync copies an operation open on one device to your other devices on the same account
-    - QRZ photos show in Call Info again; tap one to see it full size
-    - Signing in to SOTA and other accounts now happens in your own browser
+    - "Missing band shown in red on the radio pill and QSOs"
+    - "Peer sync: an operation open on one device copies to your others"
+    - "QRZ photos are back in Call Info, tap for full size"
+    - "Sign in to SOTA and other accounts in your own browser"
 
 "149":
   changes:
-    - Tap a date header in the QSO list to open the operation info
-    - Status bar shows an offline icon; tap it for detail and a retry
-    - Settings has a new Help & Resources section with community links
-    - "Windows: updating no longer stalls with the old app still running"
+    - "Tap a date header in the QSO list for operation info"
+    - "Offline icon in the status bar, tap for details and retry"
+    - "New Help & Resources section in Settings"
+    - "Fixed Windows updates stalling with the old app still running"
 
 "148":
   changes:
-    - Spots survive a brief network drop, and never show older than 3 hours
+    - "Spots survive brief network drops, and expire after 3 hours"
 
 "147":
   changes:
-    - Locations now keep full coordinates, so grids show finer and distances sharpen
-    - ADIF exports now carry your own grid square, and coordinates with private data on
+    - "Locations keep full coordinates, for finer grids and distances"
+    - "ADIF exports include your own grid, and coordinates if private data is on"
 
 "146":
   changes:
-    - Lookups now tidy up names and towns, and show QRZ nicknames
-    - Swiping spot rows now works even better
+    - "Cleaner names and towns in lookups, plus QRZ nicknames"
+    - "Improved spot swiping"
 
 "145":
   changes:
-    - "iOS/Android: Check for Updates now finds new builds and opens the store"
-    - Swipe a spot row right to log it, left to set it aside
-    - Your own spot pins atop the spots list; tap it to retune there
+    - "Check for Updates works on iOS and Android"
+    - "Swipe spots right to log, left to set aside"
+    - "Your own spot pinned atop the spots list, tap to retune"
 
 "144":
   changes:
-    - Callsign-note keys now expand inside a stack too, e.g. "KI2D//1AB"
-    - Emoji should now work better on Windows, including flags.
+    - "Callsign notes expand inside stacks, like KI2D//1AB"
+    - "Improved emoji on Windows, including flags"
 
 "143":
   changes:
-    - Listen for other apps (WSJT-X, N1MM+) in the "Imports" section of Operation view
-    - "Worked-before contacts now suggest name/location from your own log (Call History lookup)"
-    - Operation Info's Scoring section now breaks down activity/contest progress per day
-    - "Android: plugging in a USB-serial CAT adapter now offers to open HaLo"
+    - "Listen for WSJT-X and N1MM+ (Operation view → Imports)"
+    - "Call History lookup: name and location from your own log"
+    - "Daily activity and contest progress in Operation Info's Scoring"
+    - "Android offers to open HaLo when a USB-serial adapter is plugged in"
 
 "142":
   changes:
-    - "New PURGETESTS command bulk-deletes Test Operations (station call ending /T or /TEST)"
-    - Android USB serial should (well, "might") work now
+    - "New PURGETESTS command deletes test operations (/T or /TEST)"
+    - "Android USB serial (should, well, might work)"
 
 "139":
   changes:
-    - "New **Ham2K Lookup Service** callsign lookup (free, covers US/Canada/Germany), replacing HamDB"
-    - "Operation Setup's Suggestions & Search now has a map toggle next to the search field"
+    - "Added Ham2K Lookup Service (free US, Canada and Germany lookups), replacing HamDB"
+    - "Map toggle in Operation Setup's Suggestions & Search"
 
 "136":
   changes:
-    - "Clock, Weather and Web Site panes can now be added to Home and the Logs view, not just an operation"
-    - "Weather pane's Location setting now offers a 'use the operation's location' checkbox"
-    - "Dialog backdrops in dark mode now lighten instead of darken"
+    - "Clock, Weather and Web Site panes on Home and the Logs view"
+    - "Weather pane can use the operation's location"
+    - "Dialog backdrops lighten in dark mode"
 
 "133":
   changes:
-    - "Android: USB-serial radios now show up as CAT connection options"
-    - "Exports panel offers a separate hunter/chaser log for any hunted references"
-    - "Operation header: Options/Export moved to the top bar, with an OK button for Operation Setup"
-    - "Operation Setup: search fields now have a clear (X) button"
+    - "USB-serial radios as CAT options on Android"
+    - "Separate hunter/chaser log export for hunted references"
+    - "Options and Export moved to the operation's top bar"
+    - "Clear buttons on Operation Setup search fields"
 
 "132":
   changes:
-    - "Home has a navigation sidebar, and its panes rearrange like an operation's — try both"
-    - "Maps: using Maplibre now, with map style selection and other tweaks"
-    - "New **Weather** pane — conditions now, over a curve of the next eight hours"
-    - "Pane layout options: panel settings embed inline, plus a new Theme Mode override"
-    - "Events (NOTE/TODO/BREAK) are now editable"
+    - "Home sidebar, with rearrangeable panes"
+    - "Maps now use MapLibre, with map style selection"
+    - "New Weather pane: current conditions and the next eight hours"
+    - "Inline panel settings and a Theme Mode override in pane options"
+    - "Editable NOTE, TODO and BREAK events"
 
 "131":
   changes:
-    - "Use the `LAYOUT` command to enable layout customization."
-    - "New **Clock** pane — LCD, analog or Swiss railway face, in any time zone"
-    - "New **Web Site** pane — point it at a page, optionally refreshing on a timer"
+    - "New LAYOUT command enables layout customization"
+    - "New Clock pane: LCD, analog or Swiss railway, any time zone"
+    - "New Web Site pane, with optional auto-refresh"
 
 "130":
   changes:
-    - "The Spots panel now shows the current QSO being logged, if present in the spots."
-    - "**Enable Layout Customization** in Settings, then rearrange the logging view's panes"
+    - "Spots panel shows the QSO being logged, when it's spotted"
+    - "Customizable logging layout (Settings → Enable Layout Customization)"
 
 "128":
   changes:
-    - "**Import QSOs from ADIF** in Operation Options, or drop a log file on the operation"
-    - "Chasers get **New Reference** and **New Day** now — POTA/SOTA rules apply without activating"
-    - "New **SET**, **SHOW** and **HIDE** commands — change a setting by name from the command bar"
-    - "Configurable activities get a settings button beside the delete button"
-    - "Activity search: a leading `sota` puts SOTA's hits first, `sota:` shows only those"
-    - "No GPS now says so in red, and tapping it takes a location you type"
-    - "Denied location offers to ask again; a typed grid must be a real locator"
-    - "**Personal Info** in the Callsign settings: name, email, club, ARRL/RAC section"
-    - "Dialog buttons moved: Cancel now sits beside Save, and **Done** replaces Close/Apply"
+    - "Import QSOs from ADIF, or drop a log file on the operation"
+    - "New Reference and New Day for chasers too"
+    - "New SET, SHOW and HIDE commands for settings"
+    - "Settings button for configurable activities"
+    - "Activity search: `sota` ranks SOTA first, `sota:` shows only SOTA"
+    - "Missing GPS shown in red, tap to type a location"
+    - "Re-ask for denied location; typed grids are validated"
+    - "New Personal Info in Callsign settings: name, email, club, section"
+    - "Cancel moved beside Save, Done replaces Close/Apply"
 
 "127":
   changes:
-    - "Spots sorted **By Spot Time** are now truly time-ordered, not band-grouped"
-    - "New **Group by Band** toggle in the Spots panel, independent of sort"
-    - "Eleven more activities (ZLOTA, WWBOTA, WCA…) now accept multiple references, like POTA"
-    - "TOTA towers finally have locations — distance, grid, map; refresh Data Files"
-    - "Two dead Logging settings now work: report-order swap and RST auto-jump"
-    - "**New State** and **New Province** pills for US/Canada, counted in Info"
-    - "New **Avoid Zero-Beating on Spots** — CW spots land 10–25 Hz off"
-    - "Every radio editor gets a **Report** button — tell us what works"
-    - "Type **REPORT** plus what broke to file a real bug in-app"
-    - "Worked spots are struck through and dimmed; your own call goes orange"
-    - "Spots colour what's new: band green, mode, reference, multiplier in orange"
+    - "By Spot Time sorting is now truly time-ordered"
+    - "New Group by Band toggle in the Spots panel"
+    - "Multiple references for eleven more activities (ZLOTA, WWBOTA, WCA…)"
+    - "TOTA tower locations (refresh Data Files)"
+    - "Fixed report-order swap and RST auto-jump settings"
+    - "New State and New Province pills"
+    - "New Avoid Zero-Beating on Spots setting"
+    - "Report button in every radio editor, tell us what works"
+    - "New REPORT command files a bug from the app"
+    - "Worked spots struck through, your own call in orange"
+    - "Spots highlight new bands, modes, references and multipliers"
 
 "126":
   changes:
-    - "The Operation Setup sheet got a cleaner layout. Please test this and give feedback"
-    - 'Windows data files now live in a private per-edition folder, inside AppData\Local. Please let us know if any data is lost during this migration'
-    - "Uninstalling on Windows now asks whether to delete the app's data. Please try this."
-    - "Callsign lookups pull activity references (POTA, SOTA, …) from recent spots"
-    - "This very screen! Per-build notes for testers — type DEVTESTER to see it again"
+    - "Redesigned Operation Setup (feedback welcome)"
+    - 'Windows data moved to a per-edition AppData\Local folder (tell us if anything''s missing)'
+    - "Windows uninstaller asks whether to delete app data (please try it)"
+    - "Lookups pull POTA, SOTA and other references from recent spots"
+    - "Tester notes, this very screen (type DEVTESTER to see it again)"
