@@ -314,6 +314,11 @@ export interface QsoParty {
   points: Record<string, number>
   /// Callsign → the points working it pays, once.
   bonusStations: Record<string, number>
+  /// County → the ARRL section it lies in, where an in-state entrant earns that
+  /// section as a multiplier on top of the county (PA's `EPA`/`WPA`, rule 12.d).
+  /// The file lists it the other way round, section → counties, which is how
+  /// a sponsor's map reads.
+  countySections: Record<string, string>
   /// County → the factor a QSO with it is multiplied by (NC).
   rareCountyMultipliers: Record<string, number>
   /// Power class → score multiplier. Three files spell the same idea three
@@ -404,6 +409,16 @@ function mapOf(value: unknown): Record<string, string> {
   for (const [code, name] of Object.entries(value as Record<string, unknown>)) {
     const key = normalizeCode(code)
     out[key] = typeof name === "string" && name ? name : key
+  }
+  return out
+}
+
+function countySectionsOf(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object") return {}
+  const out: Record<string, string> = {}
+  for (const [section, counties] of Object.entries(value as Record<string, unknown>)) {
+    if (!Array.isArray(counties)) continue
+    for (const county of counties) if (typeof county === "string") out[normalizeCode(county)] = normalizeCode(section)
   }
   return out
 }
@@ -615,6 +630,7 @@ function normalizeParty(raw: RawParty): QsoParty {
     })(),
     points: numbersOf(raw.points),
     bonusStations: numbersOf(raw.bonusStations),
+    countySections: countySectionsOf(raw.countySections),
     rareCountyMultipliers,
     powerMultipliers: powerMultipliersOf(raw),
     bonus: bonusOf(raw),

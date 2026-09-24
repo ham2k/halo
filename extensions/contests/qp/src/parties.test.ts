@@ -11,6 +11,8 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import manifest from "../manifest.json" with { type: "json" }
+import paRaw from "./parties/pa.json" with { type: "json" }
+import { outOfPartyTables } from "./location.ts"
 import {
   daysUntil,
   hasAlreadyRun,
@@ -305,4 +307,27 @@ test("a state-keyed party's own long codes carry its own prefix", () => {
       assert.ok(code.startsWith(party.key), `${party.key} owns ${code}, which names another state and has no countyToState`)
     }
   }
+})
+
+test("a party's county-to-section table places every county, once, in a real section", () => {
+  // Each county earns its section (PA's EPA/WPA) and nothing else says so: a
+  // county left out, or a typo, costs an in-state entrant a multiplier with no
+  // symptom at all, and a section that is no ARRL section is claimed in the
+  // count but never struck in the chase list. The scorer's tests reach six of
+  // PA's 67 counties.
+  for (const party of SUPPORTED_PARTIES) {
+    const sections = party.countySections
+    if (Object.keys(sections).length === 0) continue
+    const us = outOfPartyTables(party).us
+    for (const county of Object.keys(party.counties)) assert.ok(sections[county], `${party.key} places ${county} in no section`)
+    for (const [county, section] of Object.entries(sections)) {
+      assert.ok(party.counties[county], `${party.key} places ${county}, which is not one of its counties`)
+      assert.ok(us[section], `${party.key} places ${county} in ${section}, which is no ARRL section`)
+    }
+  }
+
+  // The parser keeps the last section a county is listed under, so a county
+  // listed twice is only visible in the file itself.
+  const listed = Object.values(paRaw.countySections).flat()
+  assert.equal(new Set(listed).size, listed.length, "PA lists a county under two sections")
 })

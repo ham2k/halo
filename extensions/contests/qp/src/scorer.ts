@@ -227,6 +227,14 @@ function multipliersFor(
         claimedState ??= state
       }
     }
+    // And its section, where the sponsor adds one (PA): in-state only, since an
+    // out-of-state entrant's multipliers are the counties alone (PA 10.b).
+    const section = weAreInParty ? party.countySections[code] : undefined
+    if (section) {
+      const key = `${prefix}${section}`
+      if (!keys.includes(key)) keys.push(key)
+      claimedState ??= section
+    }
     const isProvince = claimedState !== undefined && CANADIAN_PROVINCES[claimedState] !== undefined
     return {
       keys,
@@ -546,12 +554,23 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
 /// in, zeros included — an unworked mode is what an operator scanning the
 /// table is looking for — then the band's contacts.
 function modeBreakdown(byMode: Record<string, number>, total: number): string {
-  const cells = [
-    ["CW", "CW"],
-    ["PHONE", "SSB"],
-    ["DATA", "Digital"],
-  ].map(([superMode, name]) => `${fmtInteger(byMode[superMode] ?? 0)} ${name}`)
+  const cells = Object.entries(MODE_NAMES).map(([superMode, name]) => `${fmtInteger(byMode[superMode] ?? 0)} ${name}`)
   return `${cells.join(", ")}, **${fmtInteger(total)} total**`
+}
+
+const MODE_NAMES: Record<string, string> = { CW: "CW", PHONE: "SSB", DATA: "Digital" }
+
+/// The band/mode slots a bonus station has paid in, where a party pays it per
+/// slot — ` (20m CW, 40m SSB)` — so an operator can see which are still open;
+/// a struck callsign alone says nothing once the first slot is taken. Empty
+/// where the bonus pays once.
+function bonusSlotsFor(sheet: QpScoresheet, call: string): string {
+  const slots = Object.keys(sheet.bonuses)
+    .filter((key) => key.endsWith(`:${call}`))
+    .map((key) => key.slice(0, -call.length - 1).split(":"))
+    .sort(([a], [b]) => byWavelength(a, b))
+    .map((parts) => parts.map((part) => MODE_NAMES[part] ?? part).join(" "))
+  return slots.length > 0 ? ` (${slots.join(", ")})` : ""
 }
 
 /// Longest wavelength first — the order a band table reads in — rather than
@@ -650,21 +669,24 @@ function longSummaryFor(party: QsoParty, sheet: QpScoresheet, bonusPoints: numbe
     const sections = party.options.sectionsForOutOfState
     const tables = outOfPartyTables(party)
     // A code inside the party is one nobody can send us, so it is no part of a
-    // chase list — PAQP's own `EPA` and `WPA`, and the party's own state
-    // everywhere else. Shown anyway once it HAS been counted: the heading reads
-    // `sheet.states` while the list reads the party's table, and a code held by
-    // one and hidden by the other prints a count above nothing struck. An
-    // in-party station's own state reaches the sheet exactly that way, from a
-    // contact whose exchange was never copied (`defaultTheirLocation`).
+    // chase list — the party's own state, or its own sections. Shown anyway
+    // once it HAS been counted: the heading reads `sheet.states` while the
+    // list reads the party's table, and a code held by one and hidden by the
+    // other prints a count above nothing struck. An in-party station's own
+    // state reaches the sheet exactly that way, from a contact whose exchange
+    // was never copied (`defaultTheirLocation`).
     //
     // Unless the party's own ground is a multiplier by another route: NEQP
     // scores an in-party contact by STATE and CO counts its own alongside the
     // county, so there those codes are exactly what the list exists to show as
     // still needed. A chase list answers "what is left", and hiding the six
-    // New England states until they are worked answers "what is done".
+    // New England states until they are worked answers "what is done". PA's
+    // `EPA` and `WPA` are the same case: nobody sends them, but every county
+    // worked earns one (`countySections`).
     const o = party.options
     const ownGroundMultiplies = o.stateCountsForInState || !(o.countiesAreMultForInState && o.countiesCountForInState)
-    const ours = ownGroundMultiplies ? new Set<string>() : ourOwnCodes(party)
+    const earnedBySections = new Set(Object.values(party.countySections))
+    const ours = ownGroundMultiplies ? new Set<string>() : new Set([...ourOwnCodes(party)].filter((code) => !earnedBySections.has(code)))
     const chaseable = (table: Record<string, number>, codes: string[]) => codes.filter((code) => !ours.has(code) || table[code] !== undefined)
 
     parts.push(`### ${fmtInteger(Object.keys(sheet.states).length)} ${sections ? "ARRL Sections" : "US States"}`)
@@ -696,7 +718,7 @@ function longSummaryFor(party: QsoParty, sheet: QpScoresheet, bonusPoints: numbe
     parts.push(
       `### ${fmtInteger(Object.keys(sheet.bonusStations).length)} of ${fmtInteger(bonusCalls.length)} Bonus Stations${bonusPoints > 0 ? ` • ${fmtInteger(bonusPoints)} pts` : ""}`,
     )
-    parts.push(bonusCalls.map((code) => worked(sheet.bonusStations, code)).join(" "))
+    parts.push(bonusCalls.map((code) => `${worked(sheet.bonusStations, code)}${bonusSlotsFor(sheet, code)}`).join(" "))
   }
 
   const bands = Object.keys(sheet.bands).sort(byWavelength)
