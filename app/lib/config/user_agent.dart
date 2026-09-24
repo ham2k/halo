@@ -87,7 +87,23 @@ Future<String> ham2kUserAgentOrFallback() async {
   }
 }
 
-String _format(String? build) {
+/// The app and build as one label, e.g. `halo 26.8.0 (macos next 1)` — the
+/// [ham2kUserAgent] detail under the app's code name, for places that list
+/// HaLo beside PoLo (the LoFi server's client diagnostics). Never throws; the
+/// build number is left out when unavailable.
+Future<String> haloVersionLabel() async {
+  String? build;
+  try {
+    build = (await PackageInfo.fromPlatform()).buildNumber;
+  } catch (e) {
+    debugPrint('[user-agent] build number unavailable for the version label: $e');
+  }
+  return 'halo ${_versionDetail(build)}';
+}
+
+String _format(String? build) => 'Ham2K Logger/${_versionDetail(build)}';
+
+String _versionDetail(String? build) {
   final parts = [platformName(), kAppFlavor, if (build != null && build.isNotEmpty) build];
-  return 'Ham2K Logger/$kPublicVersion (${parts.join(' ')})';
+  return '$kPublicVersion (${parts.join(' ')})';
 }

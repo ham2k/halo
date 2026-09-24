@@ -9,7 +9,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show setEquals;
+import 'package:flutter/foundation.dart' show setEquals, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -46,6 +46,7 @@ import '../config/secrets.dart';
 import '../config/dev_flags.dart';
 import '../config/experiments.dart';
 import '../config/dev_fixture.dart';
+import '../config/device_identity.dart';
 import '../config/user_agent.dart';
 import '../config/version.dart';
 
@@ -1474,15 +1475,30 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   Future<void> setSyncCredentials({required String deviceKey, required String operatorCall}) async {
     _lastSyncCredentials = (deviceKey: deviceKey, operatorCall: operatorCall); // replayed after a runtime restart
     await start();
+    final seed = lofiClientSeed(await deviceIdentity(), appVersion: await haloVersionLabel());
+    // No `await` from here on: a registration racing this seeding (boot starts
+    // sync right after) would otherwise read `key` without `secret` and
+    // register under the default secret.
     _host?.setKV('ham2k-lofi', 'key', deviceKey);
     _host?.setKV('ham2k-lofi', 'call', operatorCall);
-    // What a device already on the account is asked to approve — PoLo's
-    // confirmation dialog names it — so it says which app this is, not a
-    // code name.
-    _host?.setKV('ham2k-lofi', 'clientName', withEdition(ham2kAppName));
+    for (final entry in seed.entries) {
+      _host?.setKV('ham2k-lofi', entry.key, entry.value);
+    }
     if (_lofiSecret.isNotEmpty) _host?.setKV('ham2k-lofi', 'secret', _lofiSecret);
     if (_backupToken.isNotEmpty) _host?.setKV('ham2k-lofi', 'backupToken', _backupToken);
   }
+
+  /// What `ham2k-lofi` is told about this device. `clientName` is what a
+  /// device already on the account is asked to approve — PoLo's confirmation
+  /// dialog names it — so it's the device's own name, as PoLo sends, or which
+  /// app this is when the platform has no name to give. `deviceName` is what
+  /// the server renames an already-registered client from; left out where
+  /// there is no name, so the client keeps the one it has.
+  @visibleForTesting
+  static Map<String, Object> lofiClientSeed(DeviceIdentity device, {required String appVersion}) => {
+    'clientName': device.name.isNotEmpty ? device.name : withEdition(ham2kAppName),
+    'diagnostics': {'device': device.description, if (device.name.isNotEmpty) 'deviceName': device.name, 'appVersion': appVersion},
+  };
 
   Future<void> _start() async {
     // Fresh gate per generation: account access blocks on it until the

@@ -257,9 +257,9 @@ async function doRegisterClient(): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       // The name another Ham2K app shows when asked to approve this device
-      // ("link <name> with this account?"): the app's own product name and
-      // edition, seeded by the app alongside the key — the sandbox knows
-      // neither platform nor edition itself.
+      // ("link <name> with this account?"): the device's own name, or the
+      // app's name and edition where it has none, seeded by the app alongside
+      // the key — the sandbox can read neither itself.
       client: { key, name: (typeof clientName === "string" && clientName) || "Ham2K Logger", secret: secret || DEFAULT_SECRET },
       account: { call: call || undefined },
     }),
@@ -365,7 +365,12 @@ function parseJson(body: string): Record<string, JSONValue> {
 // still reaches onError/crash reporting.
 async function sync(payload: SyncPayload, _ctx: HookContext): Promise<SyncResponse> {
   try {
-    const response = (await request("POST", "v1/sync", payload as unknown as JSONValue)) as SyncResponse
+    // The server records `meta.diagnostics` against this client on any
+    // authenticated request; its device list reads `device` and `appVersion`
+    // off it, same as PoLo sends them. Seeded by the app, like `clientName`.
+    const diagnostics = await host.kvGet("diagnostics")
+    const body = diagnostics && typeof diagnostics === "object" ? { ...payload, meta: { ...payload.meta, diagnostics } } : payload
+    const response = (await request("POST", "v1/sync", body as unknown as JSONValue)) as SyncResponse
     // A 2xx whose body isn't a recognizable sync reply is a FAILURE, not a
     // success — see isRecognizableSyncResponse for the trap (a proxy's
     // 200-with-HTML would otherwise mark the pushed batch synced forever).

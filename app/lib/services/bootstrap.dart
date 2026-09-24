@@ -44,6 +44,7 @@ import 'update_service.dart';
 import 'shorebird_update_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
+import '../config/device_identity.dart';
 import '../config/navigation.dart';
 import 'app_exit.dart';
 import 'halo_services.dart';
@@ -131,6 +132,18 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   // two independent boot steps run concurrently instead of serialized; the
   // core logging loop never waits on the extension runtime either way.
   unawaited(extensions.start());
+  // Started beside settings and awaited before the services exist: the
+  // default peer device name reads it synchronously. Capped like the
+  // code-push number below — a name is cosmetic, and a platform call that
+  // never answers must not hold the log hostage; the default then names the
+  // platform instead.
+  final deviceIdentityResolved = deviceIdentity().timeout(
+    const Duration(seconds: 2),
+    onTimeout: () {
+      debugPrint('[boot] device identity timed out; peers see the platform name');
+      return (name: '', description: '');
+    },
+  );
   final settings = await SettingsService.load();
   // The previous run's database close, if it left a mark: the quit itself has
   // no time to report one, so this boot is the first moment it can be told.
@@ -146,6 +159,7 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   await settings.seedSyncEnabledDefault();
   unawaited(LocaleSettings.setLocaleRaw(settings.locale));
   Intl.defaultLocale = settings.locale;
+  await deviceIdentityResolved;
   final services = HaLoServices(
     db,
     settings,
