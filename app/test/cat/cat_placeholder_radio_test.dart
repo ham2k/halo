@@ -369,6 +369,33 @@ void main() {
       await tester.pump();
       expect(find.text(t.settings.station.models.rigctld), findsOneWidget);
     });
+
+    Future<void> pickPlaceholder(WidgetTester tester) async {
+      await openAddDialog(tester);
+      await tester.enterText(find.byType(TextField).first, 'placeholder');
+      await tester.pump();
+      await tester.tap(find.text(t.settings.station.models.placeholderRadio));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    testWidgets('a placeholder added without developer mode can connect', (tester) async {
+      await pickPlaceholder(tester);
+      await tester.tap(find.text(t.common.save));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final node = services.cat.nodes.single;
+      // The trap: the form returns only the fields it rendered, and every
+      // number the placeholder validates is a developer-mode field — so a
+      // node saved from the form alone fails its own check at connect.
+      expect(registry.typeFor(node.typeKey)!.validate(node.config), isNull);
+    });
+
+    testWidgets('developer mode shows the simulator\'s knobs in the form', (tester) async {
+      await services.settings.setDeveloperMode(true);
+      await pickPlaceholder(tester);
+      expect(find.text(t.settings.station.placeholderPower), findsOneWidget);
+    });
   });
 }
 

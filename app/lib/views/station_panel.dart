@@ -621,6 +621,10 @@ class StationPanel extends StatelessWidget {
       // form now, so putting it in the title too would contradict itself the
       // moment the operator changed it.
       formDefinition: {'title': model.name, 'elements': buildElements()},
+      // The simulator knobs and the generic entries' keyer fields are
+      // `devMode` elements: without this they never render, whatever the
+      // setting says.
+      developerMode: services.settings.developerMode,
       // Seeding every pairing up front is what makes switching transport
       // arrive at sensible defaults with no onChange plumbing — the fields of
       // a transport not currently chosen are inert until it is.
@@ -747,6 +751,11 @@ class StationPanel extends StatelessWidget {
       // which the editor deliberately keeps: those DO render, hidden by
       // `visibleWhen`, so they are in `result` already.
       config: {
+        // Under the stored values and the form's: a `devMode` field is not
+        // rendered without developer mode, so it is absent from `result` —
+        // and a key a validator requires (the placeholder's numbers) would
+        // then be missing from a node added without it, which never connects.
+        ...typeForState(result).defaultConfig,
         ...config,
         for (final entry in result.entries)
           // The routing pickers are the switch's live state, not settings.
