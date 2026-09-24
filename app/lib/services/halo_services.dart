@@ -490,7 +490,15 @@ class HaLoServices {
         statusBar: statusBar,
         offlineChanges: ConnectivityService.offlineChanges,
         isOffline: () => ConnectivityService.isOffline,
+        dataRevision: dataRevision,
       );
+
+  /// [DataFileManager.dataRevision], held here so a view can listen without
+  /// building the manager: reading [dataFiles] before the first runtime start
+  /// has finished makes the manager hear that start as a replacement, and
+  /// run a second raw import and an attended sync beside the boot's own. An
+  /// overriding manager keeps its own notifier, so this one never ticks.
+  final ValueNotifier<int> dataRevision = ValueNotifier<int>(0);
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
 
   /// Holds the device awake while the logging view is in use or a sync is

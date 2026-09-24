@@ -575,6 +575,7 @@ class OperationSheetState extends State<OperationSheet> {
     _watchingLocation = true;
     widget.services.location.start();
     widget.services.location.addListener(_onLocationChanged);
+    widget.services.dataRevision.addListener(_onDataFilesChanged);
     _search('');
   }
 
@@ -583,6 +584,7 @@ class OperationSheetState extends State<OperationSheet> {
     _debounce?.cancel();
     _flashTimer?.cancel();
     _searchController.removeListener(_onSearchControllerChanged);
+    widget.services.dataRevision.removeListener(_onDataFilesChanged);
     _searchIsEmpty.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -602,6 +604,26 @@ class OperationSheetState extends State<OperationSheet> {
   void _onLocationChanged() {
     if (mounted) _onSearchChanged(_searchController.text);
   }
+
+  // Re-runs the current search once new data files land. Enabling an
+  // extension here restarts the runtime and searches straight away, while
+  // its data-file sync runs on after the restart: without this, a freshly
+  // enabled extension answers from data it has not downloaded yet and the
+  // results stay that way until the operator types again. Debounced like
+  // location. Held while an extension is being gained: that flow restarts the
+  // runtime before its controls reload, and a search run in between asks the
+  // old scopes and drops the spinner mid-install — so the tick waits for the
+  // gain to finish rather than being lost.
+  void _onDataFilesChanged() {
+    if (!mounted) return;
+    if (_enablingExtension) {
+      _dataChangedWhileGaining = true;
+      return;
+    }
+    _onSearchChanged(_searchController.text);
+  }
+
+  bool _dataChangedWhileGaining = false;
 
   Future<void> _loadControls() async {
     // Refs change faster than the host answers — adding two activities in a row
@@ -1231,6 +1253,10 @@ class OperationSheetState extends State<OperationSheet> {
       await _continueAfterExtensionAvailable(key, scopeSearch: scopeSearch);
     } finally {
       _enablingExtension = false;
+      if (_dataChangedWhileGaining) {
+        _dataChangedWhileGaining = false;
+        _onDataFilesChanged();
+      }
     }
   }
 

@@ -3,16 +3,19 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:drift/native.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart' as http;
+import 'package:path/path.dart' as p;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/services/app_storage.dart' show kDataFilesDirName;
 import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
@@ -220,6 +223,87 @@ REF-002,Summit Two,45.56,-122.78
     final row2 = await lookups.getLookup('test_category', 'REF-002');
     expect(row2, isNotNull);
     expect(row2!.name, 'Summit Two');
+  });
+
+  // An open Activities sheet re-searches on this tick: a tick for nothing
+  // re-runs every open search, a tick per file runs one per file of a sweep,
+  // and a missed tick leaves a freshly enabled extension's results empty
+  // until the operator types again.
+  group('dataRevision', () {
+    Map<String, dynamic> csvDef(String key) => {
+      'key': key,
+      'fetchType': 'csv',
+      'category': '${key}_category',
+      'csvOptions': {'hasHeaders': true, 'delimiter': ','},
+      'url': 'https://example.com/$key.csv',
+    };
+
+    test('ticks once for a sync pass that ingested files, never for a pass of 304s', () async {
+      final host = FakeExtensionHost({
+        'dataFile:*:getDefinition': [
+          {'ok': true, 'value': csvDef('one')},
+          {'ok': true, 'value': csvDef('two')},
+        ],
+        'dataFile:one:mapCsvBatch': (args) => zipCsvRows(args).map((row) => {'key': row['id'], 'name': row['id']}).toList(),
+        'dataFile:two:mapCsvBatch': (args) => zipCsvRows(args).map((row) => {'key': row['id'], 'name': row['id']}).toList(),
+      });
+      final manager = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs);
+
+      manager.mockDownloadBody = null;
+      await manager.syncAllDataFiles();
+      expect(manager.dataRevision.value, 0);
+
+      manager.mockDownloadBody = 'id\nREF-1\n';
+      await manager.syncAllDataFiles(force: true);
+      expect(manager.dataRevision.value, 1);
+    });
+
+    test('ticks when cached raw files are imported into the runtime, and not when there are none', () async {
+      final dir = await Directory.systemTemp.createTemp('halo-raw-');
+      addTearDown(() => dir.delete(recursive: true));
+      final imported = <Object?>[];
+      final host = FakeExtensionHost({
+        'dataFile:*:getDefinition': [
+          {
+            'ok': true,
+            'value': {'key': 'rawfile', 'fetchType': 'raw'},
+          },
+        ],
+        'dataFile:rawfile:onLoadRawData': (args) {
+          imported.add(args);
+          return null;
+        },
+      });
+      final manager = DataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs, isWeb: false, dataDirectory: () async => dir);
+
+      await manager.loadRawDataFiles();
+      expect(manager.dataRevision.value, 0, reason: 'no cache on disk, nothing imported');
+
+      final cache = File(p.join(dir.path, kDataFilesDirName, 'rawfile.json'));
+      await cache.create(recursive: true);
+      await cache.writeAsString('{"a": 1}');
+      await manager.loadRawDataFiles();
+      expect(imported, hasLength(1));
+      expect(manager.dataRevision.value, 1);
+    });
+
+    test('ticks for an import that fails part way, since the rows it committed are searchable', () async {
+      final host = FakeExtensionHost({
+        'dataFile:half:mapCsvBatch': (args) => {'error': 'mapper blew up'},
+      });
+      final manager = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)..mockDownloadBody = 'id\nREF-1\n';
+      await expectLater(manager.processDataFile('half', csvDef('half'), notifyOnFailure: false), throwsA(anything));
+      expect(manager.dataRevision.value, 1);
+    });
+
+    test('ticks when a data file is removed', () async {
+      final dir = await Directory.systemTemp.createTemp('halo-remove-');
+      addTearDown(() => dir.delete(recursive: true));
+      final host = FakeExtensionHost({'dataFile:gone:onRemoveRawData': (args) => null});
+      final manager = DataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs, isWeb: false, dataDirectory: () async => dir);
+      await manager.removeDataFile('gone');
+      expect(manager.dataRevision.value, 1);
+    });
   });
 
   test('DataFileManager: a mapper that returns a non-list fails the file instead of emptying it', () async {

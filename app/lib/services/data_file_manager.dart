@@ -95,6 +95,10 @@ class DataFileManager {
   /// a test, so web-only behavior branches on this field instead.
   final bool isWeb;
 
+  /// Where the data-file cache lives ([appDataDirectory]); a parameter so a
+  /// test can point it at a temporary directory, which the real one cannot be.
+  final Future<Directory> Function() dataDirectory;
+
   /// Edges of the app's offline state (`ConnectivityService.offlineChanges`),
   /// true meaning we have gone offline. Optional so the many tests that
   /// construct a manager without network concerns don't touch platform
@@ -120,9 +124,11 @@ class DataFileManager {
     this.statusBar,
     this.httpClientFactory = http.Client.new,
     this.isWeb = kIsWeb,
+    this.dataDirectory = appDataDirectory,
     this.offlineChanges,
     this.isOffline,
-  }) {
+    ValueNotifier<int>? dataRevision,
+  }) : _dataRevision = dataRevision ?? ValueNotifier<int>(0) {
     // Every successful runtime start can register dataFile hooks that did
     // not exist before — a custom file added in a settings panel, an
     // extension enabled from the Extensions panel, a crash-recovery start
@@ -146,6 +152,18 @@ class DataFileManager {
       },
     );
   }
+
+  /// Ticks whenever data a search reads has changed underneath it: a sync
+  /// pass or a single refresh that ingested a body (never a 304 alone, which
+  /// changes nothing), an import that failed part way (the batches it had
+  /// committed are searchable), cached raw files imported into a runtime, or
+  /// data removed. Once per pass rather than per file, so a view that
+  /// re-runs its search on a tick pays one search for a whole sweep.
+  ///
+  /// Injectable so a listener can hold it without building this manager (see
+  /// `HaLoServices.dataRevision`).
+  ValueListenable<int> get dataRevision => _dataRevision;
+  final ValueNotifier<int> _dataRevision;
 
   bool _syncRunning = false;
 
@@ -297,7 +315,7 @@ class DataFileManager {
   Future<DateTime?> refreshDataFile(String key) async {
     for (final def in await _fetchDefinitions()) {
       if (def['key'] != key) continue;
-      await processDataFile(key, def, force: true);
+      if (await processDataFile(key, def, force: true)) _dataRevision.value++;
       // Real, exactly as the bulk sweep stamps it (see syncDataFiles) — the same
       // pref, so it has to mean the same thing. A travelled stamp here outlives
       // the travel and makes this file read "updated just now" forever.
@@ -537,6 +555,7 @@ class DataFileManager {
     await _purgeOrphanedKeys(entries);
 
     var matched = 0;
+    var ingested = false;
     await Future.wait(
       entries.map((entry) async {
         if (entry is! Map || entry['ok'] != true || entry['value'] == null) return;
@@ -584,7 +603,8 @@ class DataFileManager {
             // Unattended passes (boot, reconnect — the notifyOnFailure:false
             // callers) refresh quietly; a first download still narrates itself
             // even then, because until it lands its feature simply isn't there.
-            await processDataFile(key, def, force: force, notifyOnFailure: notifyOnFailure, showProgress: notifyOnFailure || lastUpdateTime == 0);
+            final showProgress = notifyOnFailure || lastUpdateTime == 0;
+            if (await processDataFile(key, def, force: force, notifyOnFailure: notifyOnFailure, showProgress: showProgress)) ingested = true;
             // Stamped REAL while the age above is judged on the app clock, which
             // is what makes travel useful here without leaving a mess: travelling
             // forward makes files look stale and refetches them, and the stamp it
@@ -599,6 +619,7 @@ class DataFileManager {
         }
       }),
     );
+    if (ingested) _dataRevision.value++;
     return matched;
   }
 
@@ -625,7 +646,7 @@ class DataFileManager {
   /// progress even unattended ([syncAllDataFiles] decides per file): until it
   /// lands, its feature is missing, which is worth narrating. Failure notices
   /// are [notifyOnFailure]'s to gate, never this.
-  Future<void> processDataFile(String key, Map<String, dynamic> def, {bool force = false, bool notifyOnFailure = true, bool showProgress = true}) async {
+  Future<bool> processDataFile(String key, Map<String, dynamic> def, {bool force = false, bool notifyOnFailure = true, bool showProgress = true}) async {
     final label = _labelFor(key, def);
     final statusKey = 'dataFile:$key';
 
@@ -662,7 +683,7 @@ class DataFileManager {
     if (body == null) {
       // Unchanged 304.
       statusBar?.clear(statusKey);
-      return;
+      return false;
     }
 
     try {
@@ -672,8 +693,14 @@ class DataFileManager {
         await _processJson(key, def, body, showProgress: showProgress);
       } else if (fetchType == 'raw') {
         await _processRaw(key, def, body, showProgress: showProgress);
+      } else {
+        return false;
       }
+      return true;
     } catch (e) {
+      // A failure part way through can leave some lookup batches committed
+      // (see _batchWriteToDatabase), and those rows are searchable now.
+      _dataRevision.value++;
       statusBar?.clear(statusKey);
       debugPrint('[data-file] Failed to process $key: $e');
       // The stored ETag points at a body this device never ingested: without
@@ -786,7 +813,7 @@ class DataFileManager {
 
     // 2. Cache processed JSON to local file
     if (!kIsWeb) {
-      final dir = await appDataDirectory();
+      final dir = await dataDirectory();
       final dataFilesDir = Directory(p.join(dir.path, kDataFilesDirName));
       if (!await dataFilesDir.exists()) {
         await dataFilesDir.create(recursive: true);
@@ -838,10 +865,11 @@ class DataFileManager {
 
     if (superseded()) return;
 
-    final dir = await appDataDirectory();
+    final dir = await dataDirectory();
     final dataFilesDir = Directory(p.join(dir.path, kDataFilesDirName));
     if (!await dataFilesDir.exists()) return;
 
+    var loaded = 0;
     for (final entry in entries) {
       if (superseded()) return;
       if (entry is Map && entry['ok'] == true && entry['value'] != null) {
@@ -856,6 +884,7 @@ class DataFileManager {
               final content = await cacheFile.readAsString();
               final processedJson = jsonDecode(content);
               await host.invokeHook('dataFile', key: key, method: 'onLoadRawData', args: processedJson);
+              loaded++;
             } catch (e, st) {
               debugPrint('[data-file] Error loading raw cache file $key: $e');
               ErrorReportingService.report(e, st, context: 'data-files:load-raw-cache-file');
@@ -864,6 +893,9 @@ class DataFileManager {
         }
       }
     }
+    // Not when superseded above: what was imported went to a dead host, and
+    // the replacement's own pass ticks for what it loads.
+    if (loaded > 0) _dataRevision.value++;
   }
 
   static const _ownershipKey = 'data_file_ownership';
@@ -947,7 +979,10 @@ class DataFileManager {
       all.remove(key);
       purged++;
     }
-    if (purged > 0) await prefs.setString(_ownershipKey, jsonEncode(all));
+    if (purged > 0) {
+      await prefs.setString(_ownershipKey, jsonEncode(all));
+      _dataRevision.value++;
+    }
   }
 
   /// Purges the downloaded data of extensions that have been DISABLED for at
@@ -979,6 +1014,7 @@ class DataFileManager {
     }
     if (purged > 0) {
       await prefs.setString(_ownershipKey, jsonEncode(all));
+      _dataRevision.value++;
       // A completed-progress item auto-dismisses after the usual delay.
       statusBar?.setProgress(
         key: 'dataFile:purge',
@@ -1004,7 +1040,7 @@ class DataFileManager {
       // is minor and self-heals on re-sync, so a filesystem hiccup here
       // mustn't abort the purge.
       try {
-        final dir = await appDataDirectory();
+        final dir = await dataDirectory();
         final cacheFile = File(p.join(dir.path, kDataFilesDirName, '$key.json'));
         if (await cacheFile.exists()) await cacheFile.delete();
       } catch (e) {
@@ -1036,10 +1072,11 @@ class DataFileManager {
 
     // Delete from lookups by category
     await lookups.deleteCategory(key);
+    _dataRevision.value++;
 
     // Delete raw cache files
     if (!kIsWeb) {
-      final dir = await appDataDirectory();
+      final dir = await dataDirectory();
       final cacheFile = File(p.join(dir.path, kDataFilesDirName, '$key.json'));
       if (await cacheFile.exists()) {
         await cacheFile.delete();
