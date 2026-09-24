@@ -25,6 +25,8 @@ import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/map_panel.dart';
 
+import '../support/map_tile_cache.dart';
+
 Qso _contact(String uuid, {int? stamp, String grid = 'JO01aa', String call = 'G0AAA', String? ourGrid, GridLocation? ourLocation}) => Qso(
   uuid: uuid,
   operationUuid: 'op-map',
@@ -43,6 +45,7 @@ Operation _operation({String grid = 'FN20ab'}) => Operation(uuid: 'op-map', data
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  useTempMapTileCache();
 
   late HaLoDatabase db;
   late SettingsService settings;

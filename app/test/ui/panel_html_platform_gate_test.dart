@@ -63,6 +63,7 @@ import 'package:ham2k_logger/views/operation/website/website_panel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_panel_extensions.dart';
+import '../support/map_tile_cache.dart';
 
 /// A Windows probe that answers, and answers no.
 ///
@@ -173,6 +174,8 @@ Future<void> _pumpMapPanel(WidgetTester tester, SettingsService settings, {bool 
 }
 
 void main() {
+  useTempMapTileCache();
+
   /// Runs [body] with the platform overridden.
   ///
   /// `debugDefaultTargetPlatformOverride` must be back to null before the test

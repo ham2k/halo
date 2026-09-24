@@ -19,6 +19,8 @@ import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/activities_results_map.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
+import '../support/map_tile_cache.dart';
+
 const _summitRef = {'type': 'sotaActivation', 'ref': 'W2/GC-099', 'shortLabel': 'SOTA W2/GC-099', 'lat': 41.8867, 'lon': -74.9547};
 
 const _parkSuggestion = {'type': 'pota', 'ref': 'US-0001', 'shortLabel': 'POTA US-0001', 'lat': 40.0, 'lon': -75.0};
@@ -42,6 +44,7 @@ class _RecordingCamera extends MapZoomController {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  useTempMapTileCache();
 
   group('refRowMapTarget', () {
     test('points at the reference while the map is showing', () {

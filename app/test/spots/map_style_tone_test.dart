@@ -16,10 +16,13 @@ import 'package:ham2k_logger/views/map/map_gl_script.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/activities_results_map.dart';
 
+import '../support/map_tile_cache.dart';
+
 const _park = {'type': 'pota', 'ref': 'US-0001', 'shortLabel': 'POTA US-0001', 'lat': 40.0, 'lon': -75.0};
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  useTempMapTileCache();
 
   test('only the automatic style follows the app theme', () {
     expect(mapStyleIsDark(MapStyle.automatic, appIsDark: true), isTrue);

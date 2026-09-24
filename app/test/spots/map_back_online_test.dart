@@ -17,7 +17,6 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_quickjs/halo_quickjs.dart';
@@ -28,6 +27,8 @@ import 'package:ham2k_logger/views/map/map_gl_script.dart' show mapDefaultStyleU
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/map/mapbox_webview_map_view.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
+
+import '../support/map_tile_cache.dart';
 
 /// Just enough of a browser and of MapLibre for `create` to run: timers on a
 /// clock the test advances, `window` events, and a map whose style, errors
@@ -254,18 +255,7 @@ void main() {
   });
 
   group('OSM', () {
-    // A tile load goes through flutter_map's disk cache, which asks
-    // path_provider where to keep it — there is no plugin behind that channel
-    // in a test.
-    late Directory cacheDir;
-    setUpAll(() {
-      cacheDir = Directory.systemTemp.createTempSync('map_back_online_test');
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-        const MethodChannel('plugins.flutter.io/path_provider'),
-        (call) async => cacheDir.path,
-      );
-    });
-    tearDownAll(() => cacheDir.deleteSync(recursive: true));
+    useTempMapTileCache();
     tearDown(ConnectivityService.resetForTesting);
     // Tiles share their URLs across these tests, and a failure left in the
     // image cache is handed to the next map at once — before tilesFailed is

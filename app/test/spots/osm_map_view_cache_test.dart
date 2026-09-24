@@ -14,6 +14,8 @@ import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
 
+import '../support/map_tile_cache.dart';
+
 MapLineData _line(String id, {double lat = 40}) => MapLineData(id: id, points: [GridLocation(lat, -74), GridLocation(41, -73)], color: Colors.black);
 
 MapMarkerData _marker(String id, {String title = 'W1AW'}) => MapMarkerData(
@@ -28,6 +30,8 @@ MapMarkerData _marker(String id, {String title = 'W1AW'}) => MapMarkerData(
 );
 
 void main() {
+  useTempMapTileCache();
+
   Widget host(List<MapLineData> lines, List<MapMarkerData> markers) => MaterialApp(
     home: Scaffold(
       body: OsmMapView(markers: markers, lines: lines, isDark: false),

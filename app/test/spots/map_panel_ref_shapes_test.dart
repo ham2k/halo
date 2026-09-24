@@ -21,6 +21,8 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/map_panel.dart';
 
+import '../support/map_tile_cache.dart';
+
 const _zone = '''
 {"type":"FeatureCollection","features":[
   {"type":"Feature","geometry":{"type":"Polygon","coordinates":
@@ -56,6 +58,7 @@ Operation _operationWith({String? grid, List<Map<String, dynamic>> refs = const 
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  useTempMapTileCache();
 
   late HaLoDatabase db;
   setUp(() => db = HaLoDatabase(NativeDatabase.memory()));

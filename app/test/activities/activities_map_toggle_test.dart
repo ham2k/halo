@@ -48,6 +48,7 @@ class _MapToggleExtensions extends ExtensionServiceWithFakeHost {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  useTempMapTileCache();
 
   testWidgets('map toggle swaps the list for a map; a marker reveals, Add writes the ref', (tester) async {
     final HaLoHarness(:services) = await makeHaLoServices(extensions: _MapToggleExtensions());

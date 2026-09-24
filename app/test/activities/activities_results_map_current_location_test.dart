@@ -19,6 +19,8 @@ import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/activities_results_map.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/map_tile_cache.dart';
+
 const _parkSuggestion = {'type': 'pota', 'ref': 'US-0001', 'shortLabel': 'POTA US-0001', 'grid': 'FN31pr'};
 
 Widget _harness(Widget child) => TranslationProvider(
@@ -27,6 +29,7 @@ Widget _harness(Widget child) => TranslationProvider(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  useTempMapTileCache();
 
   testWidgets('plots a dot for the current location, in the given color', (tester) async {
     SharedPreferences.setMockInitialValues({});
