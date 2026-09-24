@@ -253,6 +253,10 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   // that never guards anything.
   await HangWatchdog.start();
 
+  // Before the reconnect below, so a DEVLOGCAT recording carried across a
+  // restart hears the connect it most likely exists to catch.
+  await services.catTraffic.resume();
+
   // Reconnect the designated radio (docs/design/cat.md). Not awaited: the
   // radio may be off, and boot must not wait on a socket timeout. Gated on
   // the experiment so nothing opens a connection unless CAT is on.

@@ -7,6 +7,11 @@
 // accepts an override.
 
 import 'dart:async';
+import 'dart:typed_data';
+
+/// A file sent along with a diagnostic — DEVLOGCAT's traffic log, which is
+/// far past what a report body carries.
+typedef DiagnosticAttachment = ({String filename, Uint8List bytes});
 
 abstract class ErrorReportingBackend {
   /// Attempts to run [startBody] inside this backend's own error-capturing
@@ -47,13 +52,15 @@ abstract class ErrorReportingBackend {
   /// or routes by kind needs to be able to tell them apart, which is why this
   /// is its own entry point rather than a flag on an existing one.
   ///
-  /// Two callers, and only one of them has an operator waiting: a command the
-  /// operator ran (a benchmark, a device profile), and the first-success
-  /// report a working radio sends on the app's own initiative. The second is
-  /// gated on `consentAppData` at its call site, since it carries the
-  /// radio's configuration — docs/design/telemetry.md § Radios owns that
+  /// Two kinds of caller, and only one of them has an operator waiting: a
+  /// command the operator ran (a benchmark, a device profile, DEVLOGCAT
+  /// stopped by hand), and reports sent on the app's own initiative — the
+  /// first-success report a working radio sends, and a DEVLOGCAT recording
+  /// sent at the launch after its restart. Those are gated on
+  /// `consentAppData` at their call sites, since they carry the radio's
+  /// configuration — docs/design/telemetry.md § Radios owns that
   /// distinction. A backend must not assume anyone is looking at the result.
-  void captureDiagnostic({required String title, required String body});
+  void captureDiagnostic({required String title, required String body, DiagnosticAttachment? attachment});
 }
 
 class NoopErrorReportingBackend implements ErrorReportingBackend {
@@ -75,5 +82,5 @@ class NoopErrorReportingBackend implements ErrorReportingBackend {
   void addBreadcrumb(String message, {String? category}) {}
 
   @override
-  void captureDiagnostic({required String title, required String body}) {}
+  void captureDiagnostic({required String title, required String body, DiagnosticAttachment? attachment}) {}
 }

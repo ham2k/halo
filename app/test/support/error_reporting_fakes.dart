@@ -57,6 +57,9 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   final breadcrumbs = <RecordedBreadcrumb>[];
   final diagnostics = <(String, String)>[];
 
+  /// Parallel to [diagnostics]: what each one carried alongside, if anything.
+  final diagnosticAttachments = <DiagnosticAttachment?>[];
+
   /// Every value the equipment tag has been set to, nulls included — the
   /// nulls are what say a disconnect cleared it, and a test that only kept
   /// the names could not tell a cleared tag from one never set.
@@ -92,9 +95,10 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   }
 
   @override
-  void captureDiagnostic({required String title, required String body}) {
+  void captureDiagnostic({required String title, required String body, DiagnosticAttachment? attachment}) {
     if (diagnosticThrows) throw StateError('diagnostic upload failed');
     diagnostics.add((title, body));
+    diagnosticAttachments.add(attachment);
   }
 
   @override

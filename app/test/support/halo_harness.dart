@@ -12,6 +12,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/catalog_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/cat_traffic_log.dart';
 import 'package:ham2k_logger/services/halo_services.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
@@ -55,6 +56,7 @@ Future<HaLoHarness> makeHaLoServices({
   CatalogService? catalog,
   HaLoDatabase? db,
   CatService Function(SettingsService settings)? cat,
+  CatTrafficLog? catTrafficLog,
 }) async {
   if (prefs != null) SharedPreferences.setMockInitialValues({...prefs});
   final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: secureStorage ?? FakeSecureStorage());
@@ -70,7 +72,7 @@ Future<HaLoHarness> makeHaLoServices({
   }
   final ext = (extensions ?? ExtensionServiceWithFakeHost(FakeExtensionHost(stubs)))..settings = settings;
   return HaLoHarness(
-    services: HaLoServices(database, settings, extensions: ext, catalog: catalog, cat: cat?.call(settings)),
+    services: HaLoServices(database, settings, extensions: ext, catalog: catalog, cat: cat?.call(settings), catTrafficLog: catTrafficLog),
     db: database,
     settings: settings,
     extensions: ext,

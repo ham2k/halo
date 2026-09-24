@@ -201,6 +201,30 @@ what the app last TOLD the radio, so a rig that echoes only its frequency
 still yields a merged reading with both fields — reporting that would file
 "this pairing reads frequency and mode" about the app talking to itself.
 
+#### The traffic recording (DEVLOGCAT)
+
+The one upload that carries the radio's own bytes. `DEVLOGCAT` in the call
+field records every chunk sent to and received from each connection, with
+what the app concluded along the way — connecting, connected (and at what
+baud), connect failed, not responding, closed — into a file under
+`<data folder>/logs/` (`cat_traffic_log.dart`). Running it again stops it and
+sends the file as an attachment on a diagnostic titled `DEVLOGCAT`, whose body
+is the same `equipment_details.dart` setup the first-success report carries,
+redaction included.
+
+- **Nothing records until an operator asks**, and nothing leaves the device
+  without either that request or consent: stopping it by hand is a command
+  the operator ran, like DEVBENCH, and sends at once. A recording carries
+  across ONE restart and is sent at the launch after that, which is the app's
+  own initiative — so that path checks `consentAppData` exactly as
+  `reportWorkingRadio` does, and without it only says where the file is.
+- **The log names no port.** Its lines label a node by variant key and the
+  head of its uuid, and a failed connect is logged by its classified reason
+  and exception type, never its text — a serial open error names the device
+  node, which on macOS is the adapter's serial number.
+- **Bounded**: 8 MB per recording, restarts included; a failed write ends
+  the recording rather than the radio's session.
+
 #### The equipment tag
 
 Every Sentry event carries a `radio` tag naming the designated radio's

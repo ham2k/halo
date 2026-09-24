@@ -50,6 +50,8 @@ import 'opened_files_service.dart';
 import 'geoshape_service.dart';
 import 'cat/equipment.dart' show EquipmentNode, EquipmentStatus, kCategoryTransceiver;
 import 'cat/cat_service.dart';
+import 'cat/cat_traffic_log.dart';
+import 'cat/cat_traffic_recording.dart';
 import 'cat/keyer_commands.dart';
 import 'cat/equipment_details.dart';
 import 'cat/radio_proof.dart';
@@ -404,7 +406,15 @@ class HaLoServices {
   /// built over a fake transport — the real one can only reach `connected`
   /// through hardware.
   final CatService? _catOverride;
-  late final CatService cat = _catOverride ?? (CatService(settings, radio: radio, onTrack: track)..onRadioProven = reportWorkingRadio);
+  late final CatService cat = (_catOverride ?? (CatService(settings, radio: radio, onTrack: track)..onRadioProven = reportWorkingRadio))
+    ..trafficLog = catTrafficLog;
+
+  /// DEVLOGCAT's recorder. Injectable so a test can record into memory
+  /// instead of the data folder.
+  final CatTrafficLog catTrafficLog;
+
+  /// DEVLOGCAT itself — see [CatTrafficRecording].
+  late final CatTrafficRecording catTraffic = CatTrafficRecording(catTrafficLog, settings: settings, cat: () => cat, statusBar: statusBar);
   late final PanelRadioService panelRadio = PanelRadioService(cat, radio);
 
   /// Injectable like [_exportsOverride]: `permissionDenied` and `unavailable`
@@ -977,6 +987,7 @@ class HaLoServices {
     LookupQueueService? lookupQueue,
     ExportService? exports,
     CatService? cat,
+    CatTrafficLog? catTrafficLog,
     PusherService? pusher,
     LocationService? location,
     InboundQsoListenerService? inboundQsos,
@@ -986,6 +997,7 @@ class HaLoServices {
     CatalogService? catalog,
     FlagsService? flags,
   }) : _catOverride = cat,
+       catTrafficLog = catTrafficLog ?? CatTrafficLog(),
        _catalogOverride = catalog,
        _flagsOverride = flags,
        _deepLinksOverride = deepLinks,
@@ -1720,6 +1732,8 @@ class HaLoServices {
         return (text: ErrorReportingService.reportingEnabled ? t.commands.sentryTestSent : t.commands.sentryTestLocalOnly, failed: false);
       case 'devBench':
         return _runContestBench(params);
+      case 'devLogCat':
+        return catTraffic.toggle();
       case 'sendSpots':
         return _sendSpot(params ?? const {});
       case 'toggleExperiment':

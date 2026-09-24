@@ -269,6 +269,12 @@ operator picking the only entry their rig has cannot act on it either way — so
 and helps no one. What a driver has been tried against belongs in the source, where the person who
 could change it is reading.
 
+For a rig nobody here has, the field has to record what it emits: `DEVLOGCAT` logs every chunk
+each way, timestamped in real time, beside what `CatService` decided about the link (connecting,
+connected, not responding, answering again, closed) and what the driver reported as a diagnostic,
+then sends the file — see [telemetry.md](telemetry.md) § The traffic recording. It is fed in
+`CatService` and `_NodeSink.send`, so every transport and driver is covered without either knowing.
+
 ## Serial, and what it costs
 
 The FT-891 is the first driver on a second transport, and it is what proves the split: Yaesu CAT is

@@ -79,6 +79,18 @@ void main() {
     expect(dispatched.single.value, {'qsoCount': 2000});
   });
 
+  test('devLogCat reaches runAction', () async {
+    // Without this branch DEVLOGCAT interprets from ⌘K and nothing records —
+    // an operator would send us a log that was never written.
+    final (commandEngine, dispatched) = await engine();
+
+    await commandEngine.dispatchActions([
+      {'devLogCat': <String, dynamic>{}},
+    ]);
+
+    expect(dispatched.single.key, 'devLogCat');
+  });
+
   test('updateOperation reaches runAction, carrying the open operation\'s uuid', () async {
     // OPER/POSITION are app-scoped: the logging panel contributes only the
     // uuid, which the open operation's context has too. Without a branch here

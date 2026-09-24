@@ -1442,6 +1442,10 @@ export interface CommandAction {
   /// dispatch that silently does nothing — the index signature below would
   /// otherwise accept it. Developer mode is re-checked app-side.
   devBench?: { qsoCount?: number }
+  /// Starts recording every byte to and from the equipment (DEVLOGCAT), or
+  /// stops and sends the recording. The app owns the recording and reports
+  /// where it is.
+  devLogCat?: Record<string, never>
   /// Toggles an experimental feature (EXP command). The app resolves
   /// `token` against `app/experiments.yaml`'s keys and aliases and flips
   /// that experiment's persisted state; an unknown token reports an error

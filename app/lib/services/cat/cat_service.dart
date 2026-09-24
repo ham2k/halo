@@ -26,6 +26,7 @@ import '../radio_service.dart';
 import '../settings_service.dart';
 import 'auto_connect_guard.dart';
 import 'cat_keying.dart';
+import 'cat_traffic_log.dart';
 import 'equipment_tag.dart';
 import 'radio_proof.dart';
 import 'discovery.dart';
@@ -259,6 +260,16 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// reporting backend itself would put an upload behind every driver's
   /// reading path.
   void Function(EquipmentNode node)? onRadioProven;
+
+  /// DEVLOGCAT's recorder (cat_traffic_log.dart), handed every byte each way
+  /// and the moments that explain them. Owned by HaLoServices, which starts
+  /// and stops it; null in a service built without one.
+  CatTrafficLog? trafficLog;
+
+  /// How the log names a node: its pairing, which says what protocol the
+  /// bytes on that line are in, and the head of its uuid, which tells two
+  /// radios of the same model apart.
+  String _logLabel(String uuid) => '${_nodes[uuid]?.typeKey ?? 'node'}#${uuid.length > 4 ? uuid.substring(0, 4) : uuid}';
 
   /// Nodes [onRadioProven] has fired for this session, so a reconnect does
   /// not ask again.
@@ -1668,6 +1679,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     final cancel = CatCancelToken();
     runtime.cancel = cancel;
     _setState(uuid, const EquipmentState(status: EquipmentStatus.connecting));
+    trafficLog?.note(_logLabel(uuid), 'connecting');
 
     final EquipmentConnection connection;
     try {
@@ -1688,6 +1700,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       final reason = _failureReason(e);
       final friendly = _friendlyConnectError(reason, e);
       final raw = '$e';
+      // The classified reason, not the error's text: a serial open failure
+      // names the port, and the port carries the adapter's serial number.
+      trafficLog?.note(_logLabel(uuid), 'connect failed: $reason (${e.runtimeType})');
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: friendly, errorDetail: friendly == raw ? null : raw));
       _trackFailure(node, reason, extra: _baudExtra(config));
       return _ConnectOutcome.failed;
@@ -1703,6 +1718,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
 
     final sink = _NodeSink(
       connection: connection,
+      onSend: (bytes) => trafficLog?.sent(_logLabel(uuid), bytes),
       onReading: (reading) {
         // A session from a superseded connection must not write state.
         if (runtime.connection != connection) return;
@@ -1782,6 +1798,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       onProblem: (message) {
         if (runtime.connection != connection) return;
         if (stateFor(uuid).problem == message) return;
+        if (message != null) trafficLog?.note(_logLabel(uuid), 'problem: $message');
         _setState(uuid, stateFor(uuid).copyWith(problem: message, clearProblem: message == null));
       },
       onChannels: (channels) {
@@ -1815,6 +1832,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
         // the moment a status transition replaced the state underneath it,
         // and every driver would have to remember separately.
         if (stateFor(uuid).diagnostic == note) return;
+        // In the log as well: the screen shows it only in developer mode,
+        // and the operators who run DEVLOGCAT are not in it.
+        if (note != null) trafficLog?.note(_logLabel(uuid), 'driver: $note');
         _setState(uuid, stateFor(uuid).copyWith(diagnostic: note, clearDiagnostic: note == null));
       },
       onAlive: () {
@@ -1831,7 +1851,11 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     runtime.session = session;
     // This connection has heard nothing yet, whatever the last one heard.
     runtime.proof.reset();
+    // The baud rate and nothing else of the config: the log leaves the device,
+    // and a serial port name carries the adapter's serial number on macOS.
+    trafficLog?.note(_logLabel(uuid), config['baudRate'] == null ? 'connected' : 'connected at ${config['baudRate']} baud');
     runtime.subscription = connection.data.listen((chunk) {
+      trafficLog?.received(_logLabel(uuid), chunk);
       try {
         session.handleData(chunk);
       } catch (e, st) {
@@ -1844,6 +1868,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       connection.closed.then((_) {
         // A stale connection's close must not clobber a live one's status.
         if (runtime.connection != connection) return;
+        trafficLog?.note(_logLabel(uuid), 'connection closed by the transport');
         // NOTE on deliberate disconnects: there is no guard for them here, and
         // none is needed. _teardown calls _closeSession FIRST, which sets
         // runtime.connection = null, and only then closes the connection — so a
@@ -2120,7 +2145,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// switch restating its routing is a switch with a live socket.
   void _noteAlive(String uuid, _NodeRuntime runtime) {
     _armStaleWatch(uuid, runtime);
-    if (runtime.state.stale) _setState(uuid, runtime.state.copyWith(stale: false));
+    if (!runtime.state.stale) return;
+    trafficLog?.note(_logLabel(uuid), 'answering again');
+    _setState(uuid, runtime.state.copyWith(stale: false));
   }
 
   /// Restarts the silence watch. Any reading at all counts, including one
@@ -2133,6 +2160,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       final current = _runtimes[uuid];
       if (current == null || current.state.status != EquipmentStatus.connected) return;
       if (current.state.stale) return;
+      trafficLog?.note(_logLabel(uuid), 'nothing heard for ${staleAfter.inSeconds} s: marked not responding');
       _setState(uuid, current.state.copyWith(stale: true));
     });
   }
@@ -2475,6 +2503,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     // gone is playing nothing, which a peer following it has to be told.
     for (final entry in _runtimes.entries) {
       if (!identical(entry.value, runtime)) continue;
+      if (session != null) trafficLog?.note(_logLabel(entry.key), 'session closed');
       _keying.forgetNode(entry.key, wasKeyInUse: entry.key == keyInUse, wasRadio1: entry.key == _localRadio1);
     }
     // A pending snap belongs to the session that reported the movement. It
@@ -2599,9 +2628,11 @@ class _NodeSink implements EquipmentSink {
   final void Function(List<EquipmentChannel>) onChannels;
   final void Function(List<SwitchAntenna>, List<SwitchPort>) onSwitchState;
   final void Function() onAlive;
+  final void Function(List<int> bytes) onSend;
 
   _NodeSink({
     required this.connection,
+    required this.onSend,
     required this.onReading,
     required this.onPower,
     required this.onTransmitting,
@@ -2617,7 +2648,10 @@ class _NodeSink implements EquipmentSink {
   });
 
   @override
-  void send(List<int> bytes) => connection.send(bytes);
+  void send(List<int> bytes) {
+    onSend(bytes);
+    connection.send(bytes);
+  }
 
   @override
   void report(VfoReading reading) => onReading(reading);

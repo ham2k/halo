@@ -10,7 +10,7 @@
 // a focused text field. DEVSPLASH re-shows the startup release-notes overlay on
 // demand, bypassing its normal "once per version" gate. DEVSENTRY pushes a
 // synthetic error through the error-reporting pipeline to verify the
-// Sentry wiring. DEVPOPUP reopens the app in a standalone, phone-sized popup
+// Sentry wiring. DEVLOGCAT records radio traffic for a field report. DEVPOPUP reopens the app in a standalone, phone-sized popup
 // window (web only). RELOAD forces a data-file re-sync (bypassing the normal 30-day
 // staleness check), for both developers iterating on `csvToLookupEntry`
 // mapping logic and anyone troubleshooting stale/missing lookup data.
@@ -305,6 +305,23 @@ const DevBenchCommand = {
   catalog: devCatalog("DEVBENCH", "Benchmark logging a contest", { params: "[qsos]" }),
 }
 
+// DEVLOGCAT: records every byte to and from the equipment, or stops and sends
+// the recording. One command both ways because only the app knows whether a
+// recording is running, so the describe line names both and the app's own
+// outcome message says which happened. Not gated on developer mode — it is
+// run by operators whose rigs misbehave, and it changes nothing that is sent.
+const DevLogCatCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (input.trim().toUpperCase() !== "DEVLOGCAT") return null
+    return {
+      describe: "Record radio traffic, or stop and send the recording?",
+      commands: [{ devLogCat: {} }],
+    }
+  },
+
+  catalog: devCatalog("DEVLOGCAT", "Record radio traffic, or stop and send it"),
+}
+
 // "RELOAD POTA" / "RELOAD SOTA" -> reload data files whose category matches
 // that word; "RELOAD ALL", "RELOADALL", or bare "RELOAD!" -> reload every
 // data file. Bare "RELOAD" (no target, no ALL/!) isn't executable by itself,
@@ -581,5 +598,6 @@ defineExtension({
     registerHook("command", { key: "dev-commands-exp", hook: ExpCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-devtimetravel", hook: DevTimeTravelCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-devbench", hook: DevBenchCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devlogcat", hook: DevLogCatCommand, priority: 100 })
   },
 })

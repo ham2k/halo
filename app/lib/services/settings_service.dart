@@ -54,6 +54,8 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   static const _developerModeKey = 'developerMode';
   static const _extensionDevServerUrlKey = 'extensionDevServerUrl';
   static const _extensionDevServerEnabledKey = 'extensionDevServerEnabled';
+  static const _catTrafficLogPathKey = 'catTrafficLogPath';
+  static const _catTrafficLogResumeKey = 'catTrafficLogResume';
   static const _automaticUpdateChecksKey = 'automaticUpdateChecks';
   static const _localeKey = 'locale';
   static const _fontScaleKey = 'fontScale';
@@ -947,6 +949,25 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// dev session survives a restart of the app, which is most of what an
   /// author does with it.
   bool get extensionDevServerEnabled => _prefs.getBool(_extensionDevServerEnabledKey) ?? false;
+
+  /// A DEVLOGCAT recording as the next launch should find it: its file, and
+  /// whether that launch resumes it or sends it. Null when nothing is
+  /// recording. No listeners are told — nothing on screen shows it.
+  ({String path, bool resume})? get catTrafficLogCarry {
+    final path = _prefs.getString(_catTrafficLogPathKey);
+    if (path == null || path.isEmpty) return null;
+    return (path: path, resume: _prefs.getBool(_catTrafficLogResumeKey) ?? false);
+  }
+
+  Future<void> setCatTrafficLogCarry(String? path, {bool resume = false}) async {
+    if (path == null) {
+      await _prefs.remove(_catTrafficLogPathKey);
+      await _prefs.remove(_catTrafficLogResumeKey);
+      return;
+    }
+    await _prefs.setString(_catTrafficLogPathKey, path);
+    await _prefs.setBool(_catTrafficLogResumeKey, resume);
+  }
 
   Future<void> setExtensionDevServerEnabled(bool enabled) async {
     await _prefs.setBool(_extensionDevServerEnabledKey, enabled);

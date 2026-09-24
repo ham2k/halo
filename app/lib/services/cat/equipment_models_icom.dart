@@ -84,8 +84,9 @@ const icomGenericModel = EquipmentModel(
       defaultConfig: {
         // The IC-705's factory address, and the most likely radio here.
         'civAddress': 'A4',
-        // Icom's CI-V default. The radio can also be set to Auto, which
-        // negotiates nothing and simply follows the host.
+        // Icom's CI-V default. The radio's Auto setting is NOT a safe
+        // alternative: an IC-7300 on Auto can answer for a minute or so and
+        // then go silent, which a fixed rate matching this one avoids.
         'baudRate': 19200,
         // Off until a developer says otherwise — see keyer_config.dart.
         cwKeyerConfigKey: false,

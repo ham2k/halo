@@ -164,10 +164,10 @@ class ErrorReportingService {
   /// [reportingEnabled] alone: that is a configuration flag, and a backend
   /// that threw leaves the only copy on screen behind a notice they are about
   /// to dismiss.
-  static bool diagnostic({required String title, required String body}) {
+  static bool diagnostic({required String title, required String body, DiagnosticAttachment? attachment}) {
     debugPrint('[diagnostic] $title\n$body');
     try {
-      _backend.captureDiagnostic(title: title, body: body);
+      _backend.captureDiagnostic(title: title, body: body, attachment: attachment);
       return true;
     } catch (error, stackTrace) {
       debugPrint('[diagnostic] backend threw, ignoring: $error\n$stackTrace');
