@@ -180,6 +180,29 @@ void main() {
     h.model.dispose();
   });
 
+  testWidgets('a spinning dial holds the chip at its step\'s decimals until the frequency settles', (tester) async {
+    final h = _Harness();
+    String head() => h.model.summary.split(' • ').first;
+    // Follow-the-VFO writes are programmatic, like the rig turning under CAT.
+    void tune(String text) => h.draft.populate(() => h.model.freqController.text = text);
+
+    tune('14074.9');
+    tune('14075');
+    expect(head(), '14,075.0', reason: 'a 100 Hz step must not shed its decimal at the whole kHz, or the chip changes width');
+    tune('14075.01');
+    tune('14075.1');
+    expect(head(), '14,075.10', reason: 'a finer step widens the floor');
+
+    await tester.pump(FreqDecimalsHold.settleDelay - const Duration(seconds: 1));
+    tune('14075.2');
+    await tester.pump(FreqDecimalsHold.settleDelay - const Duration(seconds: 1));
+    expect(head(), '14,075.20', reason: 'every step restarts the wait, so the floor holds while the dial turns');
+
+    await tester.pump(const Duration(seconds: 1));
+    expect(head(), '14,075.2', reason: 'once settled, trailing zeros go');
+    h.model.dispose();
+  });
+
   testWidgets('the summary spells out only the sideband that contradicts the frequency', (tester) async {
     final h = _Harness();
     h.model.freqController.text = '7200';

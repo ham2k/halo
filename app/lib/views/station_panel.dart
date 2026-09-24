@@ -1673,13 +1673,6 @@ class _EquipmentTile extends StatelessWidget {
     // rushed.
     final busy = state.status == EquipmentStatus.connecting || state.status == EquipmentStatus.disconnecting;
     final vfo = state.vfo;
-    final reading = [
-      if (vfo.mode != null) vfo.mode!,
-      // To the Hz, not [fmtFreq]'s 100 Hz: this row is the app's view of
-      // where the rig actually is, and Smart VFO Snap's whole effect lives in
-      // the digits fmtFreq drops.
-      if (vfo.freqKHz != null) fmtFreqToTheHz(vfo.freqKHz!),
-    ].join('  ');
     final connected = state.status == EquipmentStatus.connected;
 
     // A problem is connected-but-misconfigured (a Flex pointed at a slice
@@ -1794,9 +1787,9 @@ class _EquipmentTile extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Flexible(
-                  child: Text(
-                    reading,
-                    overflow: TextOverflow.ellipsis,
+                  child: _VfoReading(
+                    mode: vfo.mode,
+                    freqKHz: vfo.freqKHz,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       // Dimmed once it is no longer being confirmed. The
                       // number is the last thing the radio actually said,
@@ -1843,6 +1836,52 @@ class _EquipmentTile extends StatelessWidget {
 /// because the scheme has no semantic "success" colour, and `primary` is the
 /// app's accent — it says nothing about being connected.
 Color _connectedGreen(ThemeData theme) => theme.brightness == Brightness.dark ? Colors.green.shade600 : Colors.green.shade700;
+
+/// A rig's mode and frequency, as it reports them. The frequency holds its
+/// decimals while the dial turns ([FreqDecimalsHold]): this row is the app's
+/// live view of where the rig is, and must not change width at every step.
+class _VfoReading extends StatefulWidget {
+  final String? mode;
+  final double? freqKHz;
+  final TextStyle? style;
+
+  const _VfoReading({required this.mode, required this.freqKHz, required this.style});
+
+  @override
+  State<_VfoReading> createState() => _VfoReadingState();
+}
+
+class _VfoReadingState extends State<_VfoReading> {
+  late final _hold = FreqDecimalsHold(onSettle: () => setState(() {}));
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.freqKHz case final khz?) _hold.note(khz);
+  }
+
+  @override
+  void didUpdateWidget(_VfoReading oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.freqKHz case final khz?) _hold.note(khz);
+  }
+
+  @override
+  void dispose() {
+    _hold.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final freqKHz = widget.freqKHz;
+    return Text(
+      [?widget.mode, if (freqKHz != null) fmtFreq(freqKHz, minDecimals: _hold.decimals)].join('  '),
+      overflow: TextOverflow.ellipsis,
+      style: widget.style,
+    );
+  }
+}
 
 /// A small rounded label. Same shape as activities_view's `ActivityRowChip` —
 /// nothing pill-like is exported from halo_widgets, and that chip says the

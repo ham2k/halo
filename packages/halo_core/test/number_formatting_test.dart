@@ -39,6 +39,7 @@ void main() {
       expect(fmtFreq(14285.5), '14.285,5');
       expect(fmtFreq(7025), '7.025');
       expect(fmtFreqToTheHz(14285.4), '14.285,400');
+      expect(fmtFreq(14074.25), '14.074,25');
       expect(fmtFreqInput(14074.25), '14074,25');
     });
 

@@ -392,12 +392,24 @@ void main() {
       expect(fmtFreq(1296200), '1,296,200');
     });
 
-    test('carries the rounded fraction into the whole part', () {
-      // A fraction >= 0.95 rounds to 1.0 at one decimal place; the carry
-      // must propagate into the whole part instead of being dropped.
-      expect(fmtFreq(14285.96), '14,286');
-      expect(fmtFreq(14285.95), '14,286');
-      expect(fmtFreq(999.96), '1,000');
+    test('keeps every digit down to the Hz, and no trailing zero', () {
+      // A label names the frequency a QSO logs at: rounding to 100 Hz shows
+      // 14,074.25 as "14,074.3", a frequency nobody tuned.
+      expect(fmtFreq(14074.25), '14,074.25');
+      expect(fmtFreq(14285.432), '14,285.432');
+      expect(fmtFreq(14285.0001), '14,285');
+    });
+
+    test('keeps at least minDecimals, zeros included, and never more than the Hz', () {
+      // A label that follows a moving reading holds its width this way.
+      expect(fmtFreq(14075, minDecimals: 1), '14,075.0');
+      expect(fmtFreq(14075.1, minDecimals: 2), '14,075.10');
+      expect(fmtFreq(14075.123, minDecimals: 1), '14,075.123');
+    });
+
+    test('carries into the whole part instead of formatting a fourth digit', () {
+      expect(fmtFreq(14285.9996), '14,286');
+      expect(fmtFreq(999.9999), '1,000');
     });
   });
 
@@ -421,8 +433,8 @@ void main() {
 
   group('fmtFreqInput', () {
     test('preserves full precision and round-trips through parseFreq', () {
-      // The bug fmtFreq caused on the edit field: 100Hz rounding degraded a
-      // stored sub-100Hz frequency just by selecting the QSO.
+      // A rounded value in the edit field degrades a stored sub-100Hz
+      // frequency just by selecting the QSO.
       for (final khz in [14074.25, 7025.123, 10136.05, 50313.0, 1296200.0]) {
         expect(parseFreq(fmtFreqInput(khz)), khz, reason: 'round-trip $khz');
       }

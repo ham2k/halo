@@ -176,6 +176,9 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   /// [_onFreqChanged] and [pushVfo].
   Timer? _vfoDebounce;
 
+  /// The chip's decimals while the frequency moves — see [FreqDecimalsHold].
+  late final _freqDecimals = FreqDecimalsHold(onSettle: notify);
+
   bool _bound = false;
 
   // ---- What the panel reads ----
@@ -240,7 +243,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     final freq = this.freq;
     final band = this.band;
     final outOfBand = this.outOfBand;
-    final head = freq != null ? fmtFreq(freq) : (band ?? 'Band???');
+    final head = freq != null ? fmtFreq(freq, minDecimals: _freqDecimals.decimals) : (band ?? 'Band???');
     // Out of band takes the mode's place rather than sitting beside it: the
     // pill is the whole warning on a collapsed row, and "not allowed to
     // transmit here" outranks which mode the log will record. `mode` itself
@@ -297,6 +300,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   @override
   void dispose() {
     _vfoDebounce?.cancel();
+    _freqDecimals.dispose();
     freqController.dispose();
     bandController.dispose();
     modeController.dispose();
@@ -312,10 +316,9 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
 
   // ---- Writes the panel makes ----
 
-  /// Puts a frequency in the field, in full precision (not fmtFreq's 100Hz
-  /// display rounding: selecting a QSO logged at 14074.25 must not flag it
-  /// as changed or save "14074.3" back). A frequency names its own band, so
-  /// the manual one goes.
+  /// Puts a frequency in the field, in full precision and ungrouped, so
+  /// [parseFreq] reads it back unchanged: selecting a QSO must not flag it as
+  /// changed. A frequency names its own band, so the manual one goes.
   void setFrequency(double freq) {
     freqController.text = fmtFreqInput(freq);
     manualBand = null;
@@ -577,6 +580,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
       // to no band. Deferential (`??=`) so a band the user set by hand wins.
       manualBand ??= _lastBandFromFreq;
     }
+    if (freq != null) _freqDecimals.note(freq);
     notify();
     final populating = draft.isPopulating;
     // Band (derived from frequency) drives the New Band notice — rescore.

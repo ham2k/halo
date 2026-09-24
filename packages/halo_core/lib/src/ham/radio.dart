@@ -7,6 +7,8 @@
 // runtime per DESIGN.md §2 — only what the core UI needs per keystroke gets
 // a Dart port. Frequencies are in kHz throughout, matching QSON.
 
+import 'dart:async';
+
 import '../number_formatting.dart';
 import 'band_plan_segments.dart';
 
@@ -989,22 +991,59 @@ String? parseBandInput(String input) {
   return null;
 }
 
-/// Formats kHz for display: "14,285.5".
-String fmtFreq(double khz) {
-  // Round to one decimal FIRST, then split into whole/fraction — splitting
-  // the unrounded value and rounding just the fraction drops the carry
-  // whenever the fraction is >= 0.95, e.g.
-  // 14285.96 would format as "14,285.0" instead of "14,286".
-  final rounded = (khz * 10).round() / 10;
-  final wholePart = rounded.truncate();
-  final fractionDigit = ((rounded - wholePart) * 10).round();
-
-  final formats = NumberFormatting.instance;
-  final grouped = groupDigits(wholePart.toString());
-  if (fractionDigit != 0) {
-    return '$grouped${formats.decimalSeparator}$fractionDigit';
+/// Formats kHz for display at up to Hz precision, thousands-grouped, with
+/// trailing zeros trimmed: "14,285.5", "14,074.25", "14,285". [minDecimals]
+/// (0–3) keeps that many decimals even when they are zeros — "14,074.20" —
+/// for a label that must hold its width while a reading moves.
+///
+/// Carried in whole Hz rather than by splitting the double: 14285.9996 taken
+/// apart directly yields a fraction of 1000 and formats as "14,285.1000".
+String fmtFreq(double khz, {int minDecimals = 0}) {
+  final totalHz = (khz * 1000).round();
+  final grouped = groupDigits((totalHz ~/ 1000).toString());
+  final fraction = (totalHz % 1000).toString().padLeft(3, '0');
+  var digits = 3;
+  while (digits > minDecimals && fraction[digits - 1] == '0') {
+    digits--;
   }
-  return grouped;
+  return digits == 0 ? grouped : '$grouped${NumberFormatting.instance.decimalSeparator}${fraction.substring(0, digits)}';
+}
+
+/// The decimals a frequency label that follows a moving reading holds: the
+/// most any value has needed since the reading last sat still for
+/// [settleDelay], passed to [fmtFreq] as `minDecimals`. A dial spun in 100 Hz
+/// steps reads "14,074.9", "14,075.0", "14,075.1" at one width instead of
+/// the label jumping at every whole kHz; once settled, trailing zeros go.
+class FreqDecimalsHold {
+  FreqDecimalsHold({required this.onSettle});
+
+  static const settleDelay = Duration(seconds: 5);
+
+  /// Called when the floor drops back to 0, for the owner to repaint.
+  final void Function() onSettle;
+
+  int _decimals = 0;
+  double? _last;
+  Timer? _settle;
+
+  int get decimals => _decimals;
+
+  /// Takes a new reading. The same value again is not movement, and does
+  /// not restart the wait.
+  void note(double khz) {
+    if (khz == _last) return;
+    _last = khz;
+    final needed = hzDigitsNeeded([khz]);
+    if (needed > _decimals) _decimals = needed;
+    if (_decimals == 0) return;
+    _settle?.cancel();
+    _settle = Timer(settleDelay, () {
+      _decimals = 0;
+      onSettle();
+    });
+  }
+
+  void dispose() => _settle?.cancel();
 }
 
 /// Inserts the operator's thousands separator into a run of ASCII digits.
@@ -1032,26 +1071,15 @@ String groupDigits(String digits) {
 /// three decimals: "14,285.400".
 ///
 /// For the surfaces that show where a radio actually IS, rather than where a
-/// QSO was logged — [fmtFreq]'s 100 Hz rounding hides the last two digits,
-/// and a rig's own reading is exactly where those matter. Trailing zeros are
-/// kept (unlike [fmtFreqInput]) so the reading doesn't change width as the
-/// last digits settle.
-///
-/// Carried in whole Hz rather than by splitting the double: 14285.9996 taken
-/// apart directly yields a fraction of 1000 and formats as "14,285.1000".
-String fmtFreqToTheHz(double khz) {
-  final totalHz = (khz * 1000).round();
-  final decimal = NumberFormatting.instance.decimalSeparator;
-  return '${fmtFreq((totalHz ~/ 1000).toDouble())}$decimal${(totalHz % 1000).toString().padLeft(3, '0')}';
-}
+/// QSO was logged. Trailing zeros are kept, so the reading doesn't change
+/// width as the last digits settle.
+String fmtFreqToTheHz(double khz) => fmtFreq(khz, minDecimals: 3);
 
 /// Formats kHz for an editable frequency field, at full stored precision
 /// (down to 1 Hz — three decimals in kHz) and without thousands grouping,
-/// so a value round-trips through [parseFreq] unchanged. Unlike [fmtFreq]
-/// (a display formatter that rounds to 100 Hz), this never degrades a
-/// QSO's frequency just by selecting it for editing: 14074.25 stays
-/// "14074.25", not "14074.3". Trailing zeros are trimmed, so whole
-/// frequencies show plainly ("7025", not "7025.000").
+/// so a value round-trips through [parseFreq] unchanged and edits as plain
+/// digits. Trailing zeros are trimmed, so whole frequencies show plainly ("7025", not
+/// "7025.000").
 String fmtFreqInput(double khz) {
   var s = khz.toStringAsFixed(3);
   if (s.contains('.')) {
