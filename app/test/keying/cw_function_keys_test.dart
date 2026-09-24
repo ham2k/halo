@@ -20,4 +20,12 @@ void main() {
     expect(cwMessageIndexForKey(LogicalKeyboardKey.digit1), isNull);
     expect(cwMessageIndexForKey(LogicalKeyboardKey.escape), isNull);
   });
+
+  test('⌥1-⌥8\'s digits name messages 1-8, and no other key does', () {
+    expect(cwMessageIndexForDigit(PhysicalKeyboardKey.digit1), 1);
+    expect(cwMessageIndexForDigit(PhysicalKeyboardKey.digit8), 8);
+    expect(cwMessageIndexForDigit(PhysicalKeyboardKey.digit9), isNull);
+    expect(cwMessageIndexForDigit(PhysicalKeyboardKey.digit0), isNull);
+    expect(cwMessageIndexForDigit(PhysicalKeyboardKey.f1), isNull);
+  });
 }

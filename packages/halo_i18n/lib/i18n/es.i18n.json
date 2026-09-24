@@ -1127,6 +1127,8 @@
         "custom": "Mensaje libre",
         "customField": "Mensaje",
         "send": "Enviar",
+        "keyboard": "Escribir para transmitir",
+        "keyboardField": "Escribe para transmitir",
         "closeArea": "Cerrar el área del manipulador",
         "help": "Ayuda",
         "helpTitle": "Cómo escribir mensajes de CW",

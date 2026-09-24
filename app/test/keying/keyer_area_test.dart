@@ -6,9 +6,12 @@
 // what the strip shows is what the queue reports, not a hand-built stand-in.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_widgets/halo_widgets.dart' show MdiIcons;
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/cat/cw_live_typing.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
@@ -607,5 +610,222 @@ void main() {
     expect(find.widgetWithText(InkWell, 'N0CALL CQ'), findsOneWidget);
     expect(extensions.batches, batches, reason: 'no render for a draft that did not move');
     await tester.pump(const Duration(seconds: 62));
+  });
+
+  group('keyboard mode', () {
+    final callFocus = FocusNode();
+    var advanced = 0;
+
+    /// What the logging panel puts around the strip: a call field holding
+    /// the focus, and Space bound panel-wide to advance to the next field.
+    Widget panelHost() => TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: CallbackShortcuts(
+            bindings: {const SingleActivator(LogicalKeyboardKey.space): () => advanced++},
+            child: Column(
+              children: [
+                TextField(focusNode: callFocus, autofocus: true),
+                KeyerArea(cat: services.cat, services: services, onSendMessage: sent.add),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Finder field() => find.descendant(of: find.byType(KeyerArea), matching: find.byType(TextField));
+
+    Future<void> startTyping(WidgetTester tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(panelHost());
+      services.cat.showKeyerArea();
+      await tester.pump(); // the first frame starts the slide; time passes from here
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(find.byIcon(MdiIcons.keyboardOutline));
+      await tester.pump();
+      await tester.pump();
+    }
+
+    testWidgets('takes the keyboard from the call field', (tester) async {
+      await startTyping(tester);
+      // The trap: `autofocus`, which only takes a focus nobody holds — the
+      // operator presses the button and types into the call field.
+      expect(callFocus.hasFocus, isFalse);
+      expect(tester.widget<TextField>(field()).focusNode!.hasFocus, isTrue);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('Space types a space, not the panel\'s next-field', (tester) async {
+      await startTyping(tester);
+      await tester.enterText(field(), 'k');
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(advanced, 0);
+      expect(tester.widget<TextField>(field()).controller!.text, 'K ');
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('a keystroke never resets the keyboard\'s composing word', (tester) async {
+      await startTyping(tester);
+      await tester.pump(); // the field's connection opens; what it sends then is not a keystroke's
+      tester.testTextInput.log.clear();
+      // An on-screen keyboard mid-word: the D is still being composed.
+      tester.testTextInput.updateEditingValue(
+        const TextEditingValue(text: 'cq d', selection: TextSelection.collapsed(offset: 4), composing: TextRange(start: 3, end: 4)),
+      );
+      await tester.pump();
+      // The trap: the field rewriting itself while its formatter runs, which
+      // sends the platform a value with the composing word cleared — an
+      // Android keyboard then repeats the letter.
+      final sent = [
+        for (final call in tester.testTextInput.log)
+          if (call.method == 'TextInput.setEditingState') call.arguments as Map,
+      ];
+      expect(sent.every((state) => state['composingBase'] == 3), isTrue, reason: '$sent');
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('keys what is typed, and Enter lets the rest go out after the mode ends', (tester) async {
+      await startTyping(tester);
+      await tester.enterText(field(), 'cq ');
+      expect(services.cat.cwProgress.value?.text, 'CQ', reason: 'a finished word goes the moment its space is typed');
+      await tester.enterText(field(), 'cq de');
+      expect(services.cat.cwProgress.value?.pending, isEmpty, reason: 'held while CQ keys, so Backspace still reaches it');
+
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await tester.pump();
+      expect(field(), findsNothing);
+      // The trap: ending the mode with the held tail still waiting for a
+      // drain nobody listens for, so the operator's last word never keys.
+      expect(services.cat.cwProgress.value?.pending, ['DE']);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('Escape stops what is keying and ends the mode', (tester) async {
+      await startTyping(tester);
+      await tester.enterText(field(), 'cq cq cq ');
+      expect(services.cat.cwSending, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(field(), findsNothing);
+      expect(services.cat.cwSending, isFalse);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('Escape stopping the key first (the operation view\'s handler) keys nothing held', (tester) async {
+      // The operation view hears Escape through HardwareKeyboard, ahead of
+      // the focus tree, and stops the key before the field does.
+      bool stopFirst(KeyEvent event) => event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape && services.cat.stopKeying();
+      HardwareKeyboard.instance.addHandler(stopFirst);
+      addTearDown(() => HardwareKeyboard.instance.removeHandler(stopFirst));
+      await startTyping(tester);
+      await tester.enterText(field(), 'cq ');
+      await tester.enterText(field(), 'cq de n0dev ');
+      expect(services.cat.cwProgress.value?.text, 'CQ', reason: 'sanity: DE N0DEV is held behind it');
+      // Everything the key is handed from here on. The field's own Escape
+      // stops the key again right after, so the end state cannot tell — only
+      // this can: a word keyed between the two stops is a word on the air.
+      final keyed = <String>[];
+      void record() {
+        final text = services.cat.cwProgress.value?.text;
+        if (text != null) keyed.add(text);
+      }
+
+      services.cat.cwProgress.addListener(record);
+      addTearDown(() => services.cat.cwProgress.removeListener(record));
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(field(), findsNothing);
+      expect(keyed, isEmpty, reason: 'the held words must not go out after the stop');
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('tapping the message stops it, drops what is held, and keeps the mode', (tester) async {
+      await startTyping(tester);
+      await tester.enterText(field(), 'cq ');
+      await tester.enterText(field(), 'cq de n0dev ');
+      await tester.pump();
+      await tester.tap(find.text('CQ').first);
+      await tester.pump();
+      expect(services.cat.cwSending, isFalse, reason: 'DE N0DEV must not go out after the stop');
+      expect(field(), findsOneWidget, reason: 'the mode stays, ready for a fresh message');
+      expect(tester.widget<TextField>(field()).controller!.text, isEmpty);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('the keyboard toggle shows the strip, starts the mode, and ends it', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(panelHost());
+      services.cat.toggleKeyboardMode();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(field(), findsOneWidget);
+      services.cat.toggleKeyboardMode();
+      await tester.pump();
+      expect(field(), findsNothing);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('starting it ends a CQ repeat', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(panelHost());
+      services.cat.showKeyerArea();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      services.cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+      await tester.pump();
+      await tester.tap(find.byIcon(MdiIcons.keyboardOutline));
+      await tester.pump();
+      // Left armed, every typed piece draining restarts the wait, and
+      // message 1 keys into the middle of the contact being typed.
+      expect(services.cat.keyerRepeatActive.value, isFalse);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('the key going away ends it, rather than bolding words that went nowhere', (tester) async {
+      await startTyping(tester);
+      await tester.runAsync(() => services.cat.disconnect(services.cat.nodes.single.uuid));
+      await tester.pump();
+      expect(field(), findsNothing);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('five idle seconds end the mode without stopping what was typed', (tester) async {
+      await startTyping(tester);
+      await tester.enterText(field(), 'cq cq cq de n0dev');
+      await tester.pump(cwLiveTypingIdle);
+      expect(field(), findsNothing);
+      expect(services.cat.cwSending, isTrue, reason: 'a timeout is Enter, not Escape');
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('the message keying carries on where it was when the mode ends', (tester) async {
+      await startTyping(tester);
+      await tester.enterText(field(), 'cq cq cq cq cq ');
+      final id = services.cat.cwProgress.value!.id;
+      await tester.pump(); // the first frame starts the bar; time passes from here
+      await tester.pump(const Duration(seconds: 2));
+      final before = spansOf(tester).$1.length;
+      expect(before, greaterThan(0), reason: 'sanity: part of the message has gone out');
+      await tester.pump(cwLiveTypingIdle);
+      expect(field(), findsNothing);
+      expect(services.cat.cwProgress.value?.id, id, reason: 'nothing was queued again');
+      // The trap: a progress view that moves in the tree as the mode ends
+      // is a new one, whose bar starts over — the message reads as going
+      // out a second time.
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(spansOf(tester).$1.length, greaterThanOrEqualTo(before));
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('is the CW keyer\'s only: no keyboard in the Phone strip', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(phone: true));
+      services.cat.showKeyerArea();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byIcon(MdiIcons.keyboardOutline), findsNothing);
+      await tester.pump(const Duration(seconds: 62));
+    });
   });
 }

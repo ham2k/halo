@@ -37,8 +37,10 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import 'cw_messages_dialog.dart';
+import 'cw_typing_field.dart';
 import 'voice_messages_dialog.dart';
 import '../services/cat/cat_service.dart';
+import '../services/cat/cw_live_typing.dart';
 import '../services/cat/driver.dart' show VoiceActivity;
 import '../services/error_reporting_service.dart';
 import '../services/cat/drivers/cw_send_queue.dart';
@@ -114,6 +116,8 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     widget.cat.voiceActivity.addListener(_onProgress);
     widget.cat.keyerAreaShown.addListener(_onShownChanged);
     widget.cat.keyerShowRequests.addListener(_onShowRequested);
+    widget.cat.addListener(_onCatChanged);
+    widget.cat.keyboardModeRequests.addListener(_onKeyboardModeRequested);
     _onProgress();
     _onShownChanged();
   }
@@ -147,14 +151,21 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
       old.cat.voiceActivity.removeListener(_onProgress);
       old.cat.keyerAreaShown.removeListener(_onShownChanged);
       old.cat.keyerShowRequests.removeListener(_onShowRequested);
+      old.cat.removeListener(_onCatChanged);
+      old.cat.keyboardModeRequests.removeListener(_onKeyboardModeRequested);
       widget.cat.cwProgress.addListener(_onProgress);
       widget.cat.voiceActivity.addListener(_onProgress);
       widget.cat.keyerAreaShown.addListener(_onShownChanged);
       widget.cat.keyerShowRequests.addListener(_onShowRequested);
+      widget.cat.addListener(_onCatChanged);
+      widget.cat.keyboardModeRequests.addListener(_onKeyboardModeRequested);
       _onProgress();
       _onShownChanged();
     }
     if (widget.suppressed && !old.suppressed) _close();
+    // Keyboard mode is the CW keyer's; the draft going to Phone ends it the
+    // way Enter would.
+    if (widget.phone && !old.phone) _typing?.finish();
     if (!widget.suppressed && old.suppressed) {
       _onShownChanged();
       _onProgress();
@@ -167,8 +178,63 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     widget.cat.voiceActivity.removeListener(_onProgress);
     widget.cat.keyerAreaShown.removeListener(_onShownChanged);
     widget.cat.keyerShowRequests.removeListener(_onShowRequested);
+    widget.cat.removeListener(_onCatChanged);
+    widget.cat.keyboardModeRequests.removeListener(_onKeyboardModeRequested);
+    // What was typed still goes out — the strip going away is not an Escape.
+    final typing = _typing;
+    _typing = null;
+    typing?.finish();
+    typing?.dispose();
     _reveal.dispose();
     super.dispose();
+  }
+
+  /// Keyboard mode, while it is on (cw_live_typing.dart).
+  CwLiveTyping? _typing;
+
+  void _startTyping() {
+    final cat = widget.cat;
+    // Typing is the operator moving on, the same as a message key: a CQ
+    // repeat left armed would restart its wait after every typed piece and
+    // key message 1 into the middle of the contact.
+    cat.cancelKeyerRepeat();
+    setState(() {
+      _typing = CwLiveTyping(
+        send: cat.sendCw,
+        stop: cat.stopCw,
+        busy: () => cat.cwSending,
+        progress: cat.cwProgress,
+        stops: cat.cwStops,
+        onDone: _onTypingDone,
+      );
+    });
+  }
+
+  /// ⌥K / Alt+K: the button, from the keyboard — showing the strip first
+  /// when it is away, since the field lives on it.
+  void _onKeyboardModeRequested() {
+    if (widget.phone || widget.suppressed) return;
+    final typing = _typing;
+    if (typing != null) {
+      typing.finish();
+    } else if (widget.cat.canKeyCw) {
+      widget.cat.showKeyerArea();
+      _startTyping();
+    }
+  }
+
+  /// The key going away ends keyboard mode: `sendCw` is a no-op without
+  /// one, and the field would go on bolding words as sent that went nowhere.
+  void _onCatChanged() {
+    if (_typing != null && !widget.cat.canKeyCw) _typing!.cancel();
+  }
+
+  void _onTypingDone() {
+    final typing = _typing;
+    if (typing == null || !mounted) return;
+    setState(() => _typing = null);
+    // After the frame that unmounts the field, which stops listening then.
+    WidgetsBinding.instance.addPostFrameCallback((_) => typing.dispose());
   }
 
   /// The message whose start last showed the area — a Winkeyer re-reports
@@ -205,6 +271,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
   /// report brings the area back.
   void _close() {
     if (!mounted) return;
+    _typing?.finish();
     _reveal.reverse().whenComplete(() {
       if (mounted && !widget.cat.keyerAreaShown.value) setState(() => _visible = false);
     });
@@ -213,6 +280,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     if (!_visible) return const SizedBox.shrink();
+    final typing = widget.phone ? null : _typing;
     // Grows from the top edge down, and the content rides in with it — so
     // the strip reads as sliding down out of the call-info area, and back up
     // into it, rather than fading in place.
@@ -233,57 +301,94 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
               if (widget.enterSends) ...[const SizedBox(width: Space.sm), _EnterSendsPill(cat: widget.cat)],
               const SizedBox(width: Space.md),
               Expanded(
-                child: ListenableBuilder(
-                  listenable: Listenable.merge([widget.cat.cwProgress, widget.cat.voiceActivity, widget.cat.keyerRepeat, widget.cat.keyerRepeatActive]),
-                  builder: (context, _) {
-                    final progress = widget.cat.cwProgress.value;
-                    final voice = widget.cat.voiceActivity.value;
-                    // A chain is the message's own time, not the buttons':
-                    // the strip shows what is about to go out and nothing
-                    // else, the same as while it is going out. The whole
-                    // chain and not just the wait, because the gap between
-                    // the wait ending and the next message reaching the
-                    // radio is a template render long — and the buttons
-                    // flashing back for it reads as the repeats stopping.
-                    final waiting = widget.cat.keyerRepeatActive.value;
-                    return Stack(
-                      alignment: AlignmentDirectional.centerStart,
-                      children: [
-                        // Kept mounted under the message, not rebuilt after each
-                        // one: the buttons hold rendered labels, and a remount
-                        // would show raw templates and cross the bridge again
-                        // for a draft that has not moved. Two siblings rather
-                        // than one slot swapping types: a mode flip must not
-                        // remount them either.
-                        Visibility(
-                          visible: !widget.phone && progress == null && voice == null && !waiting,
-                          maintainState: true,
-                          child: _MessageButtons(services: widget.services, onSendMessage: widget.onSendMessage, templateContext: widget.templateContext),
-                        ),
-                        Visibility(
-                          visible: widget.phone && progress == null && voice == null && !waiting,
-                          child: _VoiceButtons(services: widget.services),
-                        ),
-                        // Keyed on the message's id, so a new one restarts the
-                        // animation from its own beginning — while a re-report of
-                        // the SAME message (the queue behind it changed) keeps the
-                        // animation where it is.
-                        if (progress != null) _CwProgressView(key: ValueKey(progress.id), progress: progress, cat: widget.cat),
-                        if (voice != null && progress == null) _VoiceActivityView(activity: voice, cat: widget.cat, services: widget.services),
-                        // The wait between a repeat and the next send. Only
-                        // while nothing is keying: the moment the message
-                        // goes again its own bar takes the slot back.
-                        if (progress == null && voice == null)
-                          ValueListenableBuilder<KeyerRepeatWait?>(
-                            valueListenable: widget.cat.keyerRepeat,
-                            builder: (context, wait, _) => wait == null
-                                ? const SizedBox.shrink()
-                                : _CwRepeatView(key: ValueKey(wait), wait: wait, cat: widget.cat, services: widget.services),
-                          ),
-                      ],
-                    );
-                  },
+                // Keyboard mode puts its field BESIDE the message rather than
+                // in its place: the operator typing ahead of the keyer needs
+                // to see where it has got to. The message stays the first
+                // child in both modes, so the mode coming or going leaves its
+                // progress view where it is — a view that moved would be a
+                // new one, whose bar starts over and reads as the message
+                // going out again.
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ListenableBuilder(
+                        listenable: Listenable.merge([widget.cat.cwProgress, widget.cat.voiceActivity, widget.cat.keyerRepeat, widget.cat.keyerRepeatActive]),
+                        builder: (context, _) {
+                          final progress = widget.cat.cwProgress.value;
+                          final voice = widget.cat.voiceActivity.value;
+                          // A chain is the message's own time, not the buttons':
+                          // the strip shows what is about to go out and nothing
+                          // else, the same as while it is going out. The whole
+                          // chain and not just the wait, because the gap between
+                          // the wait ending and the next message reaching the
+                          // radio is a template render long — and the buttons
+                          // flashing back for it reads as the repeats stopping.
+                          final waiting = widget.cat.keyerRepeatActive.value;
+                          return Stack(
+                            alignment: AlignmentDirectional.centerStart,
+                            children: [
+                              // Kept mounted under the message, not rebuilt after each
+                              // one: the buttons hold rendered labels, and a remount
+                              // would show raw templates and cross the bridge again
+                              // for a draft that has not moved. Two siblings rather
+                              // than one slot swapping types: a mode flip must not
+                              // remount them either.
+                              Visibility(
+                                visible: !widget.phone && typing == null && progress == null && voice == null && !waiting,
+                                maintainState: true,
+                                child: _MessageButtons(services: widget.services, onSendMessage: widget.onSendMessage, templateContext: widget.templateContext),
+                              ),
+                              Visibility(
+                                visible: widget.phone && progress == null && voice == null && !waiting,
+                                child: _VoiceButtons(services: widget.services),
+                              ),
+                              // Keyed on the message's id, so a new one restarts the
+                              // animation from its own beginning — while a re-report of
+                              // the SAME message (the queue behind it changed) keeps the
+                              // animation where it is.
+                              if (progress != null) _CwProgressView(key: ValueKey(progress.id), progress: progress, cat: widget.cat),
+                              if (voice != null && progress == null) _VoiceActivityView(activity: voice, cat: widget.cat, services: widget.services),
+                              // The wait between a repeat and the next send. Only
+                              // while nothing is keying: the moment the message
+                              // goes again its own bar takes the slot back.
+                              if (progress == null && voice == null)
+                                ValueListenableBuilder<KeyerRepeatWait?>(
+                                  valueListenable: widget.cat.keyerRepeat,
+                                  builder: (context, wait, _) => wait == null
+                                      ? const SizedBox.shrink()
+                                      : _CwRepeatView(key: ValueKey(wait), wait: wait, cat: widget.cat, services: widget.services),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    if (typing != null) ...[
+                      const SizedBox(width: Space.md),
+                      Expanded(
+                        child: CwTypingField(key: ObjectKey(typing), typing: typing),
+                      ),
+                    ],
+                  ],
                 ),
+              ),
+              // Last before the X: keyboard mode is the one control on the
+              // strip that takes the keyboard, and pressing it again is Enter.
+              // In the row for either keyer, empty in Phone: a child that
+              // came and went with the mode would shift the ones before it
+              // and remount the message buttons on every flip.
+              ListenableBuilder(
+                listenable: widget.cat,
+                builder: (context, _) {
+                  if (widget.phone) return const SizedBox.shrink();
+                  final typing = _typing != null;
+                  return IconButton(
+                    icon: Icon(typing ? MdiIcons.keyboard : MdiIcons.keyboardOutline, size: 18, semanticLabel: context.t.settings.radio.cwMessages.keyboard),
+                    isSelected: typing,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: !widget.cat.canKeyCw ? null : (typing ? _typing!.finish : _startTyping),
+                  );
+                },
               ),
               IconButton(
                 // No hover tooltips (docs/design/user-interface.md), so the

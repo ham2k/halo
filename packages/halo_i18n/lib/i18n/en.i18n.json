@@ -1127,6 +1127,8 @@
         "custom": "Custom Message",
         "customField": "Message",
         "send": "Send",
+        "keyboard": "Type to send",
+        "keyboardField": "Type to send",
         "closeArea": "Close the keyer area",
         "help": "Help",
         "helpTitle": "Writing CW Messages",

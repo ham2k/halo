@@ -2956,6 +2956,8 @@ class _Translations$settings$radio$cwMessages$es extends Translations$settings$r
 	@override String get custom => 'Mensaje libre';
 	@override String get customField => 'Mensaje';
 	@override String get send => 'Enviar';
+	@override String get keyboard => 'Escribir para transmitir';
+	@override String get keyboardField => 'Escribe para transmitir';
 	@override String get closeArea => 'Cerrar el área del manipulador';
 	@override String get help => 'Ayuda';
 	@override String get helpTitle => 'Cómo escribir mensajes de CW';
@@ -4157,6 +4159,8 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.custom' => 'Mensaje libre',
 			'settings.radio.cwMessages.customField' => 'Mensaje',
 			'settings.radio.cwMessages.send' => 'Enviar',
+			'settings.radio.cwMessages.keyboard' => 'Escribir para transmitir',
+			'settings.radio.cwMessages.keyboardField' => 'Escribe para transmitir',
 			'settings.radio.cwMessages.closeArea' => 'Cerrar el área del manipulador',
 			'settings.radio.cwMessages.help' => 'Ayuda',
 			'settings.radio.cwMessages.helpTitle' => 'Cómo escribir mensajes de CW',
@@ -4263,10 +4267,10 @@ extension on TranslationsEs {
 			'settings.peers.bleDescription' => 'Usa Bluetooth LE para conectar aunque no haya red local',
 			'settings.peers.thisDevice' => 'Este dispositivo',
 			'settings.peers.deviceName' => 'Nombre',
-			'settings.peers.deviceNameHint' => 'Cómo ven este dispositivo los demás',
-			'settings.peers.pairedDevices' => 'Dispositivos vinculados',
 			_ => null,
 		} ?? switch (path) {
+			'settings.peers.deviceNameHint' => 'Cómo ven este dispositivo los demás',
+			'settings.peers.pairedDevices' => 'Dispositivos vinculados',
 			'settings.peers.noPairedDevices' => 'Todavía no hay dispositivos vinculados. Activa esto en otro dispositivo de esta red para vincularlos.',
 			'settings.peers.deviceListProblem' => ({required Object error}) => 'No se pueden leer tus dispositivos vinculados: ${error}',
 			'settings.peers.nearby' => 'Cerca',
@@ -4777,10 +4781,10 @@ extension on TranslationsEs {
 			'settings.numberFormatSeparators.comma' => 'coma',
 			'settings.numberFormatSeparators.period' => 'punto',
 			'settings.gridPrecision' => 'Precisión del localizador',
-			'settings.gridPrecisionOpts.six' => '6 dígitos (FN31pr)',
-			'settings.gridPrecisionOpts.eight' => '8 dígitos (FN31pr55)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.gridPrecisionOpts.six' => '6 dígitos (FN31pr)',
+			'settings.gridPrecisionOpts.eight' => '8 dígitos (FN31pr55)',
 			'settings.gridPrecisionDescription.six' => '6 dígitos',
 			'settings.gridPrecisionDescription.eight' => '8 dígitos',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',

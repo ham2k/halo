@@ -228,6 +228,14 @@ class CatKeying {
   /// one small widget reads.
   final cwProgress = ValueNotifier<CwSendProgress?>(null);
 
+  /// Bumped by every [stopCw], BEFORE the key hears it. A stop empties the
+  /// queue, and its report is the same null [cwProgress] a message ending
+  /// gives — this is how a listener that feeds the key (keyboard mode,
+  /// cw_live_typing.dart) tells "stopped" from "free for the next piece",
+  /// rather than keying what it holds the moment the operator asked for
+  /// silence.
+  final cwStops = ValueNotifier<int>(0);
+
   /// Whether the keyer area is shown — the logging panel's strip follows
   /// it, the Station dialog's toggle and the KEYER command set it, and the
   /// area's own X and its linger clear it.
@@ -236,6 +244,14 @@ class CatKeying {
   /// Bumped by every [showKeyerArea], shown already or not: the area's
   /// linger has to end on an explicit ask even when the flag does not move.
   final keyerShowRequests = ValueNotifier<int>(0);
+
+  /// Bumped by ⌥K / Alt+K: the keyer area turns keyboard mode on or off
+  /// (cw_live_typing.dart). A request rather than a flag, since the mode is
+  /// the area's own — it ends by itself on Enter, a pause, Escape or the key
+  /// going away.
+  final keyboardModeRequests = ValueNotifier<int>(0);
+
+  void toggleKeyboardMode() => keyboardModeRequests.value++;
 
   void showKeyerArea() {
     // Only when it MOVES: a message starting shows the area, so an
@@ -355,6 +371,7 @@ class CatKeying {
   /// Stops whatever [sendCw] still has to send — see [CwKeyerSession.stopCw]
   /// for how much of what is already on the radio this can reach.
   void stopCw() {
+    cwStops.value++;
     // A stop is a stop: the operator who cut this message short did not ask
     // for it again in five seconds.
     chain.cancel();
@@ -370,6 +387,8 @@ class CatKeying {
   }
 
   void stopCwLocally() {
+    // Again for a far station's stop, which arrives here without [stopCw].
+    cwStops.value++;
     // Whoever asked for silence gets it, chain included — a stop that left an
     // unattended CQ re-keying this station's transmitter in five seconds is
     // the one outcome worse than a message cut short. The voice half says the
@@ -1104,9 +1123,11 @@ class CatKeying {
     cancelVoiceSequence();
     _keyingRevision.dispose();
     cwProgress.dispose();
+    cwStops.dispose();
     voiceActivity.dispose();
     keyerAreaShown.dispose();
     enterSends.dispose();
     keyerShowRequests.dispose();
+    keyboardModeRequests.dispose();
   }
 }

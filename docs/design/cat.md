@@ -1103,8 +1103,12 @@ silently missing the part that looped. A key's label is a template too, and a bl
 the message itself (`{{ keyer.msgN }}`), so a key reads what it sends. The
 handler is a `HardwareKeyboard` handler in `OperationView` (which owns the draft QSO), claimed only
 while that route is front-most — a dialog over it, the message editor included, keeps the keyboard —
-and only for a bare function key with a message behind it; Escape is claimed only while something —
-a message, a chain, a repeat — is running, and stops all of it.
+and only for a bare function key with a message behind it — or its stand-in ⌥1-⌥8 (Alt+1-8), by the
+physical key since Option turns the digits into other characters on a Mac, for a laptop or tablet
+keyboard with no function row, and not while the keyboard is in free text (any text field outside the
+entry row — notes, keyboard mode's own field), where on Spanish, Nordic and German Mac layouts
+⌥-digits type '@', '[' and '|'; Escape is claimed only while
+something — a message, a chain, a repeat — is running, and stops all of it.
 
 **Neither protocol says when its keyer is free**, and both hold less than a CQ. CI-V's `0x17` takes
 30 characters and NAKs a second command while the first is still keying; a Yaesu memory takes 50.
@@ -1112,6 +1116,26 @@ a message, a chain, a repeat — is running, and stops all of it.
 boundaries to what fits, and sends the next piece only after the previous one's Morse duration at the
 current speed (PARIS timing, the default 20 WPM until the radio has said) — a chunk boundary falling
 on a word gap is what makes the wait invisible on the air.
+
+**Keyboard mode** keys what the operator types, as they type it (`CwLiveTyping`,
+cw_live_typing.dart): the keyboard button at the end of the CW strip, or ⌥K / Alt+K (by the physical
+key, since Option makes K a '˚' on a Mac; not ⌘K, the command dialog's), puts a field beside the
+message going out. What is typed is held in the app and handed to the key in use through `sendCw`, a piece at
+a time — only while the key is idle, and only what is ready: every word finished with a space at once,
+the rest after a 500 ms pause. Handed over is "sent": no keyer here can take back what it was given,
+so Backspace reaches exactly what is still held, the line is the same on every keyer (a peer's radio
+included), and nothing below `sendCw` knows the mode exists. Words are the piece because the queue
+ends every piece with a word gap; a piece cut mid-word keys a gap inside the word. Enter or ⌥K again ends the mode
+and hands everything held over behind what is keying; five seconds without a keystroke ends it the way
+Enter does, and so does the strip closing. Escape in the field ends it and stops the key. Any other
+stop — a tap on the message — drops every word typed, handed over or held, and leaves the mode on and
+empty for a fresh message: a stop abandons what was being sent, all of it. Either way the mode listens to `cwStops`, bumped
+ahead of every stop, because the quiet a stop leaves reads exactly like a message ending, and taken as
+"free" it would key what is held right after the operator asked for silence — Escape reaches the
+operation view's handler, and its stop, before the field. The
+key going away ends it too, since `sendCw` would take the rest to nothing. Starting it ends a CQ repeat,
+as a message key does. The field binds Space
+itself, since the logging panel's Space moves to the next field.
 
 The two dialects differ in a way that shapes what the app can promise. FlexRadio's CWX and the
 FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have not.

@@ -10,7 +10,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, LogicalKeyboardKey;
+import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, LogicalKeyboardKey, PhysicalKeyboardKey;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -883,9 +883,29 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     final cat = services.cat;
     final keyboard = HardwareKeyboard.instance;
-    if (keyboard.isMetaPressed || keyboard.isControlPressed || keyboard.isAltPressed) return false;
+    final command = keyboard.isMetaPressed || keyboard.isControlPressed;
+    final alt = keyboard.isAltPressed;
+    final shift = keyboard.isShiftPressed;
 
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
+    // ⌥K / Alt+K turns the keyer area's keyboard mode on or off. By the
+    // PHYSICAL key: on a Mac, Option turns K into '˚', and the logical key
+    // a browser reports is that character. Not ⌘K, which is the command
+    // dialog's (halo_app.dart).
+    if (alt && !command && !shift && event.physicalKey == PhysicalKeyboardKey.keyK) {
+      if (_keyingPhone || !cat.canKeyCw) return false;
+      cat.toggleKeyboardMode();
+      return true;
+    }
+
+    final int? n;
+    if (command || alt) {
+      // ⌥1-⌥8 (Alt+1-8) stand in for F1-F8 on a keyboard without them; any
+      // other chord is not the keyer's. Not in free text: on a Spanish,
+      // Nordic or German Mac layout ⌥2 is how '@' is typed, and ⌥5-⌥8 are
+      // '[' ']' '|' '{' — a note would key a message in their place.
+      n = alt && !command && !shift && !_focusInFreeText() ? cwMessageIndexForDigit(event.physicalKey) : null;
+      if (n == null) return false;
+    } else if (event.logicalKey == LogicalKeyboardKey.escape) {
       // Stops a message from wherever focus is. NOT what keeps the logging
       // fields from also acting on the same keystroke — a handler's answer
       // here never stops the focus tree's dispatch — that is
@@ -895,6 +915,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       // message keyed just before the draft went to SSB is still the one
       // to stop, on a station whose radio plays no voice at all.
       return cat.stopKeying();
+    } else {
+      n = cwMessageIndexForKey(event.logicalKey);
     }
 
     // The DRAFT's mode decides — [_keyingPhone], the same answer the keyer
@@ -903,7 +925,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     final phone = _keyingPhone;
     if (phone ? !cat.canPlayVoice : !cat.canKeyCw) return false;
 
-    final n = cwMessageIndexForKey(event.logicalKey);
     if (n == null) return false;
     if (phone) {
       // A key past the radio's last memory keys nothing, and stays free.
@@ -921,6 +942,16 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     _endChainsForKey();
     unawaited(_sendCwMessage(n, template));
     return true;
+  }
+
+  /// Whether the keyboard is in a text field other than the main logging
+  /// fields — notes, comments, keyboard mode's own field — where an ⌥-digit
+  /// is a character the operator is typing. The call, RST and exchange
+  /// fields (the entry row) never take one, so a chord there is the keyer's.
+  bool _focusInFreeText() {
+    final context = FocusManager.instance.primaryFocus?.context;
+    if (context == null || context.findAncestorWidgetOfExactType<EditableText>() == null) return false;
+    return context.findAncestorWidgetOfExactType<LoggingEntryRow>() == null;
   }
 
   /// A message key ends whatever repeat or sequence is running: another

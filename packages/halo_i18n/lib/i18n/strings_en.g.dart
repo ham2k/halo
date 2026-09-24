@@ -6328,6 +6328,12 @@ class Translations$settings$radio$cwMessages$en {
 	/// en: 'Send'
 	String get send => 'Send';
 
+	/// en: 'Type to send'
+	String get keyboard => 'Type to send';
+
+	/// en: 'Type to send'
+	String get keyboardField => 'Type to send';
+
 	/// en: 'Close the keyer area'
 	String get closeArea => 'Close the keyer area';
 
@@ -7861,6 +7867,8 @@ extension on Translations {
 			'settings.radio.cwMessages.custom' => 'Custom Message',
 			'settings.radio.cwMessages.customField' => 'Message',
 			'settings.radio.cwMessages.send' => 'Send',
+			'settings.radio.cwMessages.keyboard' => 'Type to send',
+			'settings.radio.cwMessages.keyboardField' => 'Type to send',
 			'settings.radio.cwMessages.closeArea' => 'Close the keyer area',
 			'settings.radio.cwMessages.help' => 'Help',
 			'settings.radio.cwMessages.helpTitle' => 'Writing CW Messages',
@@ -7967,10 +7975,10 @@ extension on Translations {
 			'settings.peers.bleDescription' => 'Use Bluetooth LE to connect even if there is no local network',
 			'settings.peers.thisDevice' => 'This Device',
 			'settings.peers.deviceName' => 'Name',
-			'settings.peers.deviceNameHint' => 'How this device is seen by other devices',
-			'settings.peers.pairedDevices' => 'Linked Devices',
 			_ => null,
 		} ?? switch (path) {
+			'settings.peers.deviceNameHint' => 'How this device is seen by other devices',
+			'settings.peers.pairedDevices' => 'Linked Devices',
 			'settings.peers.noPairedDevices' => 'No devices linked yet. Turn this on, on another device on this network, to link them.',
 			'settings.peers.deviceListProblem' => ({required Object error}) => 'Can\'t read your linked devices: ${error}',
 			'settings.peers.nearby' => 'Nearby',
@@ -8481,10 +8489,10 @@ extension on Translations {
 			'settings.showMoreSettings' => 'Show more settings',
 			'settings.numberFormat' => 'Number Formatting',
 			'settings.numberFormatOpts.locale' => 'Follow system settings',
-			'settings.numberFormatOpts.period' => 'Always use period for decimals',
-			'settings.numberFormatOpts.comma' => 'Always use comma for decimals',
 			_ => null,
 		} ?? switch (path) {
+			'settings.numberFormatOpts.period' => 'Always use period for decimals',
+			'settings.numberFormatOpts.comma' => 'Always use comma for decimals',
 			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'System settings (using ${separator} for decimals)',
 			'settings.numberFormatDescription.period' => 'Always using period for decimals',
 			'settings.numberFormatDescription.comma' => 'Always using comma for decimals',

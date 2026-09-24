@@ -896,8 +896,11 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   ({int min, int max})? get keyerSpeedRange => _keying.keyerSpeedRange;
   bool get cwSending => _keying.cwSending;
   ValueNotifier<CwSendProgress?> get cwProgress => _keying.cwProgress;
+  ValueListenable<int> get cwStops => _keying.cwStops;
   ValueNotifier<bool> get keyerAreaShown => _keying.keyerAreaShown;
   ValueNotifier<int> get keyerShowRequests => _keying.keyerShowRequests;
+  ValueListenable<int> get keyboardModeRequests => _keying.keyboardModeRequests;
+  void toggleKeyboardMode() => _keying.toggleKeyboardMode();
   void showKeyerArea() => _keying.showKeyerArea();
   void hideKeyerArea() => _keying.hideKeyerArea();
   ValueNotifier<({bool on, bool running})> get enterSends => _keying.enterSends;
