@@ -19,6 +19,7 @@
 // shifted with the reader's zone would name the wrong day (exportNames.ts).
 
 import type { JSONValue } from "./types.ts"
+import { TemplateError, renderTemplate } from "./templates.ts"
 
 /// `2026-07-27`
 export function utcDate(millis: number): string {
@@ -127,14 +128,29 @@ export function opValues(operation: Record<string, JSONValue>, extra: { qsoCount
 /// carrying `ourSerial` / `theirSerial`. That makes those two names a
 /// convention every serial-exchange contest has to keep (contests.md §5.8) —
 /// one that names its field anything else logs correctly and keys a blank.
+///
+/// A draft's `their.call` is the call field as typed, which may be a whole
+/// `//` stack or comma list; the panel reads the field at its cursor and
+/// hands the answer over as `callField` (halo_widgets'
+/// `CallFieldText.templateCalls`), so `call` names the one call Enter logs.
+/// A logged contact has no `callField`, and no next anything.
 export function qsoValues(qso: Record<string, JSONValue>): Record<string, JSONValue> {
   const their = (qso.their ?? {}) as Record<string, JSONValue>
   const our = (qso.our ?? {}) as Record<string, JSONValue>
+  const callField = (qso.callField ?? {}) as Record<string, JSONValue>
+  const guess = (their.guess ?? {}) as Record<string, JSONValue>
   const startMillis = Number(qso.startAtMillis ?? 0)
   const serialSent = refField(qso.refs, "ourSerial")
 
   return {
-    call: (their.call ?? "") as JSONValue,
+    // `||`, not `??`: a blank reading still means "no call", and the field
+    // as typed is a better answer than keying nothing.
+    call: (callField.call || their.call || "") as JSONValue,
+    // The panel's split of `call` — a logged contact's call is a full one.
+    fullCall: (callField.fullCall ?? their.call ?? "") as JSONValue,
+    partial: (callField.partial ?? "") as JSONValue,
+    nextCall: (callField.nextCall ?? "") as JSONValue,
+    nextPartial: (callField.nextPartial ?? "") as JSONValue,
     their: their as JSONValue,
     our: our as JSONValue,
     band: (qso.band ?? "") as JSONValue,
@@ -152,11 +168,27 @@ export function qsoValues(qso: Record<string, JSONValue>): Record<string, JSONVa
     // that is where these get typed.
     rst: (our.sent ?? "") as JSONValue,
     serial: serialSent,
+    // What was typed, else what the lookup found — the two places a CW
+    // message's "GM BOB" or "NY" would otherwise have to be chained by hand.
+    // `name` is the first word only: a lookup's "Robert J Smith" keyed in
+    // full is not how anyone greets a station.
+    state: firstText(their.state, guess.state),
+    name: firstText(their.name, guess.name).split(/\s+/)[0],
     notes: (qso.notes ?? "") as JSONValue,
     refs: (qso.refs ?? []) as JSONValue,
     ...(startMillis > 0 ? dateValues(startMillis) : { date: "", dateCompact: "", time: "", at: "" }),
     startAtMillis: startMillis,
   }
+}
+
+/// The first of [values] that is non-blank text, trimmed; "" when none is.
+function firstText(...values: (JSONValue | undefined)[]): string {
+  for (const value of values) {
+    if (typeof value !== "string") continue
+    const text = value.trim()
+    if (text !== "") return text
+  }
+  return ""
 }
 
 /// The first non-blank `field` among `refs`, as text — our own serial is
@@ -232,6 +264,10 @@ export interface TemplateContextArgs {
   /// see [opValues]. Without it they fall back to the operation's own
   /// `startAtMillisMin`, and are empty if that isn't in the payload either.
   atMillis?: number
+  /// The keyer's messages, for `keyer.msg1`…`keyer.msgN` — and which of
+  /// them is being rendered, if one is, so it can't include itself. See
+  /// [keyerValues].
+  keyer?: { messages: string[]; current?: number }
   /// Overrides "now", for tests.
   nowMillis?: number
 }
@@ -242,7 +278,7 @@ export interface TemplateContextArgs {
 /// ask "is there a QSO here at all", which a stub object would answer wrong.
 export function templateContext(args: TemplateContextArgs): Record<string, unknown> {
   const nowMillis = args.nowMillis ?? Date.now()
-  return {
+  const context: Record<string, unknown> = {
     app: { name: args.appName ?? "" },
     now: utcIso(nowMillis),
     ...(args.operation ? { op: opValues(args.operation, { qsoCount: args.qsoCount, atMillis: args.atMillis }) } : {}),
@@ -250,4 +286,34 @@ export function templateContext(args: TemplateContextArgs): Record<string, unkno
     ...(args.log ? { log: logValues(args.log) } : {}),
     ...(args.config ? { config: args.config } : {}),
   }
+  if (args.keyer) context.keyer = keyerValues(context, args.keyer.messages ?? [], args.keyer.current ? [args.keyer.current] : [])
+  return context
+}
+
+/// The `keyer` namespace: `msgN` is message N RENDERED against the same
+/// context — `{{ keyer.msg1 }}` keys the CQ, not its braces — and only when
+/// a template names it, so a message that includes nothing renders nothing
+/// else.
+///
+/// [chain] is the messages already being expanded, outermost first. Naming
+/// one of them again is an error spelling out the loop ("F3 → F1 → F3"),
+/// never an empty string: a message that silently dropped part of itself
+/// would go out on the air looking fine to the operator, and a loop is a
+/// typo they can only fix if they are told where it is. The chain is what
+/// bounds the recursion — there are only so many messages to expand before
+/// one repeats.
+function keyerValues(base: Record<string, unknown>, messages: string[], chain: number[]): Record<string, unknown> {
+  const keyer: Record<string, unknown> = {}
+  messages.forEach((template, i) => {
+    const n = i + 1
+    Object.defineProperty(keyer, `msg${n}`, {
+      enumerable: true,
+      get() {
+        const path = [...chain, n]
+        if (chain.includes(n)) throw new TemplateError(`a message includes itself: ${path.map((k) => `F${k}`).join(" → ")}`)
+        return renderTemplate(template ?? "", { ...base, keyer: keyerValues(base, messages, path) })
+      },
+    })
+  })
+  return keyer
 }

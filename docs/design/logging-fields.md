@@ -553,7 +553,7 @@ depends on where the contact stands**, decided by `esmStep`:
 | | Call empty | Call, first Enter | Second Enter |
 |---|---|---|---|
 | **Run**, reports only | CQ (F1) | their call, exchange, thanks (F5 F2 F3) — and logs | — |
-| **Run**, exchange fields | CQ (F1) | their call, exchange (F5 F2); focus to their exchange | anything copied: thanks (F3), logs · nothing: again (F8) |
+| **Run**, exchange fields | CQ (F1) | their call, exchange (F5 F2); focus to their exchange | anything copied: thanks (F3), logs · nothing: again (F8) — or, from the call field, their call and exchange again (F5 F2) |
 | **S&P** | plain Enter | my call (F4); focus to their exchange | anything copied: exchange (F2), logs · nothing: nothing |
 
 - **"Exchange fields" means the contest's own received fields** — the
@@ -570,11 +570,16 @@ depends on where the contact stands**, decided by `esmStep`:
   once the caller has their report — waiting for a second Enter would only
   delay the thanks and the log. **S&P is always two**: before the station
   has been called there is no report of theirs to log.
-- **The first step is remembered against the CALL, not the focus.** A
-  second Enter from the call field — no exchange field to go to, or the
-  operator went back — still completes the contact; a call corrected after
-  the first step is a different station, and starts over. The wipe after a
-  log forgets it, so the same call worked again starts over too.
+- **The first step is remembered against the CALL, not the focus** — the
+  one call Enter would log, so in a `//` stack it is the stacked call the
+  cursor picks, not the field. A second Enter from the call field — no
+  exchange field to go to, or the operator went back — still completes the
+  contact once anything is copied; with nothing copied it answers again
+  (F5 F2) rather than asking again, since going back to the call is
+  correcting it, and AGN? would not say which station is meant. A call
+  corrected after the first step, or the cursor moved to another stacked
+  call, is a different station, and starts over. The wipe after a log
+  forgets it, so the same call worked again starts over too.
 - **It runs last in the ladder** — after commands, note expansion and
   stacking, and after the band-or-frequency refusal — so a thanks is never
   keyed for a contact that then refuses to log. Editing a logged contact is
@@ -582,7 +587,7 @@ depends on where the contact stands**, decided by `esmStep`:
 - **The keyboard's Enter only.** The submit button logs, whatever ESM says:
   it is a deliberate "log this", not the rhythm of an exchange.
 - **The messages are the active set's F-keys by position**
-  (`OperationView.esmMessageKeys`) — N1MM's, which the **ESM Messages** set
+  (`CwMessageSet.esmKeys`) — N1MM's, which the **ESM Messages** set
   added with the experiment follows ([cat.md](cat.md) § CW keying); an
   empty one is skipped, so a set with no thanks still completes the
   contact. In CW the step's messages are
@@ -590,6 +595,25 @@ depends on where the contact stands**, decided by `esmStep`:
   follows wipes it — and keyed as ONE message. In a Phone mode they are the
   radio's voice memories, played one after another, minus their call: no
   memory can hold it, so the operator says it.
+- **The thanks speaks to what comes next.** In CW, on a step that logs, the
+  thanks waits for the log and renders against the entry the log LEFT —
+  wiped, with the rest of a `//` stack back in the field — so
+  `{{ qso.call }}` in it names the station up next, not the one just
+  logged; it is queued behind the step's other messages, so it is still
+  keyed last, and a log that fails thanks nobody. A stack's thanks can then
+  answer the next caller in the same breath
+  (`TU {% if qso.fullCall != blank %}{{ keyer.msg5 }} {{ keyer.msg2 }}{% elsif qso.partial != blank %}{{ qso.partial }}?{% endif %}`,
+  [templates.md](../extensions/templates.md)). Voice keeps one sequence at
+  the Enter: a memory renders nothing, and a second sequence would cut the
+  first off.
+- **An Enter never queues what is already going out.** A step's message
+  whose text is keying or waiting in the queue — whoever sent it — is not
+  queued again, so a double Enter keys one CQ, not two, and a repeating CQ
+  keeps its repeat; a different message still queues behind it. The thanks
+  is the exception: every one reads `TU`, and the one still waiting belongs
+  to the last contact, so each contact gets its own. A thanks never follows
+  a first part that failed to render — a TU to a station that never heard
+  its call or report closes nothing.
 
 ## More than one call in the field
 

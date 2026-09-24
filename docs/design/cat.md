@@ -1090,7 +1090,11 @@ the app saw is not the value the radio is on.
 the core `templates` extension's `template` hook against the operation and the DRAFT contact — the
 same `templateContext` a panel gets, so `{{ qso.call }}` means the same thing in a message as in a
 pane. The renderer lives in the extension runtime and nowhere else, which is why a hook exists for
-it. A template that does not parse is shown as a notice, not keyed with its braces in Morse. The
+it. A template that does not parse is shown as a notice, not keyed with its braces in Morse. One
+message can include another, rendered (`{{ keyer.msg1 }}`); the render carries the chain of messages
+being expanded, and one that reaches itself is an error naming the loop rather than a message
+silently missing the part that looped. A key's label is a template too, and a blank one stands for
+the message itself (`{{ keyer.msgN }}`), so a key reads what it sends. The
 handler is a `HardwareKeyboard` handler in `OperationView` (which owns the draft QSO), claimed only
 while that route is front-most — a dialog over it, the message editor included, keeps the keyboard —
 and only for a bare function key with a message behind it; Escape is claimed only while something —

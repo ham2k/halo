@@ -1479,6 +1479,14 @@ fires when a lookup is ANSWERED, not while a call is being typed, and the
 guess is inside `args.qso` either way — declaring `'lookup'` is enough to be
 sent the draft, so what it saves over `'qso'` is renders, not the QSO.
 
+Beside the QSON, a draft carries one key a logged record never does:
+`callField`, the call field read at the cursor (`call`, `fullCall`,
+`partial`, `nextCall`, `nextPartial`). `their.call` is the field as typed, which may be a whole
+`//` stack or comma list; `callField.call` is the one call Enter logs. It
+is what [templates.md](templates.md)'s `qso.call` renders from, so a panel
+rendering a template needs nothing more, and moving the cursor within a
+stack or a list wakes a `'qso'` panel even when the QSON is unchanged.
+
 `'lookup'` fires when the panel is shown a callsign that HAS an answer —
 which includes opening a QSO whose stored record already carries one, not
 only a fresh lookup resolving. It does not fire when a lookup starts, fails,

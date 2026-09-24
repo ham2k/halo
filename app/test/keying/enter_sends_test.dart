@@ -9,6 +9,8 @@
 // Against a real CatService with the placeholder radio, which runs the real
 // send queue, so what is asserted is what the queue was handed.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -22,10 +24,13 @@ import 'package:ham2k_logger/views/operation_view.dart';
 import '../support/halo_test_support.dart';
 
 /// Stands in for the `template` hook without booting a JS engine: only
-/// `{{qso.call}}` and `{{op.call}}` are filled.
+/// `{{qso.call}}` and `{{op.call}}` are filled, and `{%bad%}` fails to parse.
 class _TemplateExtensions extends ExtensionService {
   @override
   bool get ready => true;
+
+  /// The `keyer` argument of the last render — which message is being sent.
+  Map<String, dynamic>? lastKeyer;
 
   @override
   Future<void> start() async {}
@@ -37,7 +42,10 @@ class _TemplateExtensions extends ExtensionService {
     Map<String, dynamic>? qso,
     int? qsoCount,
     Map<String, dynamic>? log,
-  }) async => template.replaceAll('{{qso.call}}', ((qso?['their'] as Map?)?['call'] as String?) ?? '').replaceAll('{{op.call}}', 'KI2D');
+    Map<String, dynamic>? keyer,
+  }) async => template.contains('{%bad%}')
+      ? throw const TemplateError('bad')
+      : (lastKeyer = keyer, template).$2.replaceAll('{{qso.call}}', ((qso?['their'] as Map?)?['call'] as String?) ?? '').replaceAll('{{op.call}}', 'KI2D');
 }
 
 void main() {
@@ -138,6 +146,21 @@ void main() {
     await unmount(tester);
   });
 
+  // `current` is what stops a message including itself: without it, F3
+  // naming `{{ keyer.msg3 }}` would expand once more before the chain
+  // noticed, and key its own text twice.
+  testWidgets('a message is rendered knowing which one it is, beside the whole set', (tester) async {
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    enterSends(tester)!.send([EsmMessage.hisCall], cwDraft);
+    await tester.pump();
+    await tester.pump();
+    final keyer = (services.extensions as _TemplateExtensions).lastKeyer;
+    expect(keyer?['current'], 5);
+    expect(keyer?['messages'], services.settings.activeCwMessageSet.messages);
+    await unmount(tester);
+  });
+
   testWidgets('an empty slot is skipped, not refused', (tester) async {
     // A set with no TU must still answer the caller — the contact completes
     // either way, and a missing thanks is the operator's choice.
@@ -148,6 +171,157 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(services.cat.cwProgress.value?.text, 'W1AW 5NN');
+    await unmount(tester);
+  });
+
+  // The thanks closes the contact and speaks to the next one: on a stack,
+  // "TU {{qso.call}}" rendered at the keypress would thank the station just
+  // logged instead of calling the one up next. It still has to go out LAST,
+  // though it renders after the log — ahead of the exchange is gibberish.
+  testWidgets('a step that logs keys its thanks against the entry the log left, after the rest', (tester) async {
+    await services.settings.setCwMessage(3, 'TU {{qso.call}}');
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    final logged = Completer<Map<String, dynamic>?>();
+    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], cwDraft, logged: logged.future);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.text, 'W1AW 5NN', reason: 'the thanks waits for the log');
+    expect(services.cat.cwProgress.value?.pending, isEmpty);
+
+    logged.complete(const {
+      'their': {'call': 'K1ABC'},
+      'mode': 'CW',
+    });
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.text, 'W1AW 5NN');
+    expect(services.cat.cwProgress.value?.pending, ['TU K1ABC']);
+    await unmount(tester);
+  });
+
+  // Enter pressed twice before the first CQ is over must not leave a second
+  // CQ waiting behind it — the operator hears one and the rig keys two.
+  // Only the SAME message is held back: AGN? behind the exchange is the next
+  // thing to say, not a repeat.
+  testWidgets('an Enter does not queue a message already keying or waiting', (tester) async {
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    final esm = enterSends(tester)!;
+    esm.send([EsmMessage.hisCall, EsmMessage.exchange], cwDraft);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.text, 'W1AW 5NN');
+
+    esm.send([EsmMessage.hisCall, EsmMessage.exchange], cwDraft);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.pending, isEmpty, reason: 'the same message, still keying');
+
+    esm.send([EsmMessage.again], cwDraft);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.pending, ['AGN?'], reason: 'a different message queues');
+
+    esm.send([EsmMessage.again], cwDraft);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.pending, ['AGN?'], reason: 'and is itself not queued twice');
+    await unmount(tester);
+  });
+
+  // Every thanks is the same `TU`. Typed ahead, the next contact's thanks
+  // finds the last one still waiting — and deduped against it, the second
+  // station would never be thanked.
+  testWidgets('each contact gets its own thanks, even with the last one still queued', (tester) async {
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    final esm = enterSends(tester)!;
+    const next = {
+      'their': {'call': ''},
+      'mode': 'CW',
+    };
+    esm.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], cwDraft, logged: Future.value(next));
+    await tester.pump();
+    await tester.pump();
+    esm.send(
+      [EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks],
+      const {
+        'their': {'call': 'K2XX'},
+        'mode': 'CW',
+      },
+      logged: Future.value(next),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.text, 'W1AW 5NN');
+    expect(services.cat.cwProgress.value?.pending, ['TU', 'K2XX 5NN', 'TU']);
+    await unmount(tester);
+  });
+
+  // "Half an exchange is not an exchange": with F2 failing, the station got
+  // neither its call nor its report, and a TU alone would close a contact
+  // the other side never had.
+  testWidgets('a thanks does not follow a first part that failed to render', (tester) async {
+    await services.settings.setCwMessage(2, '{%bad%}');
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], cwDraft, logged: Future.value(cwDraft));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value, isNull, reason: 'nothing keyed at all');
+    await unmount(tester);
+  });
+
+  // Only a first part that FAILED holds the thanks back. One that renders to
+  // nothing had nothing to say — like an empty slot, which never stopped a
+  // contact completing — and withholding the TU for it would do so silently.
+  testWidgets('a first part that renders to nothing still lets the thanks through', (tester) async {
+    await services.settings.setCwMessage(2, '{{qso.call}}');
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    const blank = {
+      'their': {'call': ''},
+      'mode': 'CW',
+    };
+    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], blank, logged: Future.value(blank));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.text, 'TU');
+    await unmount(tester);
+  });
+
+  // Enter cancels a CQ's repeat before it sends, so a second Enter that
+  // finds the CQ still keying and holds it back must arm the chain again —
+  // or the auto-CQ just stops, with nothing on screen to say so.
+  testWidgets('a CQ held back as already keying keeps its repeat', (tester) async {
+    await services.settings.setCwRepeatDelay(5);
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    final esm = enterSends(tester)!;
+    esm.send([EsmMessage.cq], cwDraft);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.keyerRepeatActive.value, isTrue);
+
+    esm.send([EsmMessage.cq], cwDraft);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.pending, isEmpty);
+    expect(services.cat.keyerRepeatActive.value, isTrue);
+    await unmount(tester);
+  });
+
+  testWidgets('a log that failed gets no thanks', (tester) async {
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], cwDraft, logged: Future.value());
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.text, 'W1AW 5NN');
+    expect(services.cat.cwProgress.value?.pending, isEmpty);
     await unmount(tester);
   });
 

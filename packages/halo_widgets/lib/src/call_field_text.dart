@@ -30,6 +30,9 @@ typedef StackSegments = ({List<String> segments, List<int> starts, int cursorInd
 /// next QSO, and which segment it was.
 typedef StackedPick = ({List<String> calls, String remainder, int index});
 
+/// The calls a template names off the field — see [CallFieldText.templateCalls].
+typedef TemplateCalls = ({String call, String nextCall, String nextPartial});
+
 /// A snapshot of the call field — its text and where the cursor is — and the
 /// rules that read one call out of it. Immutable; the panel takes a fresh one
 /// off the controller whenever it asks.
@@ -195,13 +198,63 @@ class CallFieldText {
     if (!isStack) return null;
     final stack = stackSegments();
     for (var i = stack.cursorIndex; i >= 0; i--) {
-      final calls = stack.segments[i].split(',').map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty).toList();
-      if (calls.isNotEmpty && calls.every(looksLikeCallsign)) {
+      if (_segmentCalls(stack.segments[i]) case final calls?) {
         final remainder = [...stack.segments]..removeAt(i);
         return (calls: calls, remainder: remainder.join('//'), index: i);
       }
     }
     return null;
+  }
+
+  /// The calls in one stacked segment, or null when it doesn't read as a
+  /// callsign or a comma list of them.
+  static List<String>? _segmentCalls(String segment) {
+    final calls = segment.split(',').map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty).toList();
+    return calls.isNotEmpty && calls.every(looksLikeCallsign) ? calls : null;
+  }
+
+  /// The calls a template names (docs/extensions/templates.md): `call` is
+  /// the one Enter logs now; `nextCall` is the one the Enter after it would
+  /// log, read off the remainder the way the panel leaves it (no cursor, so
+  /// scanning left from its last segment); `nextPartial` is that
+  /// remainder's last non-empty segment, whatever it holds — usually the
+  /// call still being copied. Both `next` values are empty outside a stack.
+  ///
+  /// `call` is never blank while the field holds an entry, and never more
+  /// than one entry: a CW message keys it, so a stack with no call to pick
+  /// names the segment under the cursor, or the nearest entry beside it when
+  /// that one is empty (a partial, for `{{ qso.call }}?`)
+  /// rather than every slash in the field, and a cursor after a trailing
+  /// comma names the entry before it.
+  TemplateCalls get templateCalls {
+    if (!isStack) return (call: _entryAt(text, cursor), nextCall: '', nextPartial: '');
+    final stack = stackSegments();
+    final picked = pickStackedCall();
+    if (picked == null) {
+      // The cursor's own segment, or — when it is the empty one a just-typed
+      // "//" opens — the nearest entry to its left, then to its right.
+      final order = [for (var i = stack.cursorIndex; i >= 0; i--) i, for (var i = stack.cursorIndex + 1; i < stack.segments.length; i++) i];
+      final call = order.map((i) => _entryAt(stack.segments[i], -1)).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+      return (call: call, nextCall: '', nextPartial: '');
+    }
+    // The cursor's own entry when it is inside the picked segment, offset as
+    // [callAtCursor] offsets it; the scan-left fallback never entered it.
+    final call = picked.index == stack.cursorIndex
+        ? _entryAt(stack.segments[picked.index], cursor < 0 ? cursor : math.max(0, cursor - stack.starts[picked.index]))
+        : picked.calls.first;
+    final rest = picked.remainder.split('//');
+    final nextCall = rest.reversed.map(_segmentCalls).nonNulls.firstOrNull?.first ?? '';
+    final nextPartial = rest.reversed.map((s) => s.trim().toUpperCase()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+    return (call: call, nextCall: nextCall, nextPartial: nextPartial);
+  }
+
+  /// [commaSegmentAtCursor], except that an empty entry under the cursor
+  /// gives way to the nearest one before it, then to the first.
+  static String _entryAt(String text, int cursor) {
+    final entry = commaSegmentAtCursor(text, cursor);
+    if (entry.isNotEmpty) return entry;
+    final before = cursor < 0 ? text : text.substring(0, math.min(cursor, text.length));
+    return [...before.split(',').reversed, ...text.split(',')].map((s) => s.trim().toUpperCase()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
   }
 
   /// The command input that would expand [stack]'s cursor segment ("//1AB"),

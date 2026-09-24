@@ -37,7 +37,13 @@ class EnterSends {
   /// Keys [messages], in order, rendered against [qso] — the draft as it is at
   /// the keypress, since a log that follows wipes it before any render would
   /// finish.
-  final void Function(List<EsmMessage> messages, Map<String, dynamic> qso) send;
+  ///
+  /// [logged], on a step that logs, completes with the entry as the log left
+  /// it — wiped, with the rest of a `//` stack back in the field — or null
+  /// when the log failed. The thanks renders against that instead: it closes
+  /// this contact and speaks to the next one, so `{{ qso.call }}` in it names
+  /// the station up next, and a failed log thanks nobody.
+  final void Function(List<EsmMessage> messages, Map<String, dynamic> qso, {Future<Map<String, dynamic>?>? logged}) send;
 }
 
 /// The step an Enter takes, or null when ESM has nothing to say and Enter
@@ -55,6 +61,12 @@ class EnterSends {
 /// omits (a DX station's NAQP location, an optional pick) would otherwise ask
 /// again forever and never log. Asking again is for having copied nothing.
 ///
+/// [callFocused] is whether Enter came from the call field. Running, with
+/// nothing copied, that re-sends their call and the exchange rather than
+/// AGN?: the operator went back to the call to correct it, or moved the
+/// cursor to another call in a stack, and either way the station to answer
+/// is the one in the field now — asking again would not name it.
+///
 /// [hasExchange] is whether the contact has fields to copy beyond the reports.
 /// Run with none is one Enter: the caller gets their exchange and a thanks,
 /// and the contact is logged, since nothing is left to receive. S&P is always
@@ -66,6 +78,7 @@ EsmStep? esmStep({
   required bool answered,
   required bool hasExchange,
   required bool exchangeCopied,
+  bool callFocused = false,
 }) {
   if (callEmpty) {
     return running ? (send: const [EsmMessage.cq], then: EsmThen.stay) : null;
@@ -76,7 +89,7 @@ EsmStep? esmStep({
     if (!hasExchange) {
       return (send: const [EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], then: EsmThen.log);
     }
-    if (!answered) return (send: const [EsmMessage.hisCall, EsmMessage.exchange], then: EsmThen.toExchange);
+    if (!answered || (callFocused && !exchangeCopied)) return (send: const [EsmMessage.hisCall, EsmMessage.exchange], then: EsmThen.toExchange);
     if (!exchangeCopied) return (send: const [EsmMessage.again], then: EsmThen.toExchange);
     return (send: const [EsmMessage.thanks], then: EsmThen.log);
   }

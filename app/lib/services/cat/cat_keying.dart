@@ -268,8 +268,9 @@ class CatKeying {
   /// Keys [text] on the key in use — a no-op, not an error, when nothing can key:
   /// the surfaces that call this only exist while [canKeyCw], so reaching
   /// here without a keyer is the radio dropping between the check and the
-  /// keypress.
-  void sendCw(String text, {bool hasMessageOne = false}) {
+  /// keypress. Answers whether the key took it — over a peer, whether the
+  /// request went out, since nothing is keying here until the peer reports.
+  bool sendCw(String text, {bool hasMessageOne = false}) {
     // Marked only on a send that was taken: a lost request leaves nothing on
     // the air to end the mark, and the next message on a shared radio —
     // somebody else's — would inherit it.
@@ -278,11 +279,9 @@ class CatKeying {
     // against the DRAFT contact of whoever pressed the key, so text is the
     // only thing a far station could act on. Sanitizing it is still the
     // receiving queue's job, exactly as it is for a message typed here.
-    if (keysOverPeer) {
-      _lastCwHasMessageOne = requestPeerKey(PeerKeyOp.cw, text: text) && hasMessageOne;
-      return;
-    }
-    _lastCwHasMessageOne = sendCwLocally(text) && hasMessageOne;
+    final taken = keysOverPeer ? requestPeerKey(PeerKeyOp.cw, text: text) : sendCwLocally(text);
+    _lastCwHasMessageOne = taken && hasMessageOne;
+    return taken;
   }
 
   /// Whether the key in use took [text].

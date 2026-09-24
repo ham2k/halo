@@ -76,6 +76,18 @@ void main() {
       expect(requests.single.text, 'CQ TEST');
     });
 
+    // Nothing keys HERE until the peer reports, so `cwSending` reads false
+    // right after a send that went out. A caller judging the send by that
+    // alone — ESM deciding whether its thanks may follow — would drop every
+    // thanks keyed through a peer's radio. What the send answers is the one
+    // honest signal.
+    test('a send the link took says so, though nothing is keying here yet', () async {
+      await followPeerRadio();
+
+      expect(cat.sendCw('CQ TEST'), isTrue);
+      expect(cat.cwSending, isFalse, reason: 'the far side has not reported yet');
+    });
+
     test('what crosses is the RENDERED message, never a template', () async {
       // The far station has no draft contact to render against, so a
       // template reaching it would be keyed with its braces in Morse.
@@ -94,7 +106,7 @@ void main() {
       );
 
       expect(cat.canKeyCw, isFalse);
-      cat.sendCw('CQ');
+      expect(cat.sendCw('CQ'), isFalse);
 
       expect(requests, isEmpty, reason: 'a device that keys nothing must not be asked to');
     });

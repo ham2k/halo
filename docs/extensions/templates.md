@@ -48,6 +48,7 @@ is `{{ op.refs | refLabels | sentence }}`.
 | `qso` | when the placement's triggers ask for it | — | ✓ | the draft contact, as far as it is typed |
 | `config` | ✓ | — | — | — |
 | `log` | — | ✓ | ✓ | — |
+| `keyer` | — | — | — | ✓ (and the keyer area's labels) |
 
 A namespace a surface has nothing for is **absent**, not blank — which is
 what makes `{% if qso %}` an honest question. Registered exports get the operation plus the selected file’s `log` values.
@@ -75,12 +76,45 @@ printing `{{ op.startTime }}–{{ op.endTime }}` understates the session by
 that contact's length.
 
 ### `qso` — one contact
-`call`, `their`, `our` (both whole, so `qso.their.guess.name` reaches the
+`call`, `fullCall`, `partial`, `nextCall`, `nextPartial`, `state`, `name`, `their`, `our` (both whole, so `qso.their.guess.name` reaches the
 lookup's answer), `band`, `mode`, `freq`, `rstSent`, `rstRcvd`, `serialSent`,
 `serialRcvd`, `notes`, `date`, `dateCompact`, `time`, `at`, `startAtMillis`,
 `refs` — and two short forms for the sent side, `rst` (= `rstSent`) and
 `serial` (= `serialSent`), since a CW message is what we send and that is
 where these get typed: `{{ qso.call }} {{ qso.rst | cut }} {{ qso.serial | pad: 3 | cut }}`.
+
+In a draft, `call` is ONE call, read at the cursor as the call-info line
+reads it — not the field as typed, which may hold a `//` stack or a comma
+list ([logging-fields.md](../design/logging-fields.md)). On a stack it is
+the call Enter logs, or — when there is none — the partial under the
+cursor, or the nearest one beside it when the cursor sits in an empty
+segment a just-typed `//` opened; in
+a comma list, where Enter logs every call, it is the one the cursor is on.
+`their.call` stays the field as typed. On a stack, two more name the rest of
+it: `nextCall`, the call the Enter after this one would log, and
+`nextPartial`, the last entry left in the field once this one logs —
+usually the call still being copied. With `KN2//KI2D//NK2Y//FR` and the
+cursor at the end, that is `NK2Y`, `KI2D` and `FR`; with the cursor on
+`KI2D`, it is `KI2D`, `NK2Y` and `FR`. Both are empty outside a stack and on
+a logged contact.
+
+`call` may be a partial still being copied, which is right for asking it
+back (`{{ qso.call }}?`) and wrong for answering it. `fullCall` is `call`
+when it reads as a callsign and blank otherwise; `partial` is the reverse.
+Exactly one of them is `call`, so a message can branch on which:
+`{% if qso.fullCall != blank %}…{% elsif qso.partial != blank %}{{ qso.partial }}?{% endif %}`.
+A logged contact's call is always a `fullCall`.
+
+`state` and `name` are what was typed, else what the lookup found
+(`their.state` or `their.guess.state`, likewise for the name) — and `name`
+is only the first word, since `GM {{ qso.name }}` is a greeting, not a
+directory entry. Reach the whole name through `qso.their.name` /
+`qso.their.guess.name`.
+
+Enter Sends Messages renders its thanks AFTER the contact logs, against the
+entry the log left ([logging-fields.md](../design/logging-fields.md) § Enter
+Sends Messages) — so in a thanks keyed by ESM, `qso.call`, `qso.name` and
+the rest name the NEXT station, or nothing, never the one just logged.
 
 `rstSent` is what WE sent — QSON stores each side's report under its own
 `sent`, and these are named for the operator's view of the contact.
@@ -99,6 +133,22 @@ Whatever that panel's `form` declared, under the keys it used.
 `station`, `ref`, `refName`, `refShortName`, `activity`, `handlerName`,
 `handlerShortName`, `format`, `exportType`, `modifier`, `extension`,
 `compact`.
+
+### `keyer` — the CW messages
+`msg1` … `msg8`: the active set's messages, each RENDERED against the same
+context, so one message can include another —
+`TU {{ keyer.msg1 }}` thanks the station and calls CQ again with whatever F1
+holds. A message is expanded only where a template names it, so a branch
+not taken costs nothing — which is what lets ESM's thanks answer the next
+stacked caller or ask a partial back, and send nothing more when there is
+neither:
+`TU {% if qso.fullCall != blank %}{{ keyer.msg5 }} {{ keyer.msg2 }}{% elsif qso.partial != blank %}{{ qso.partial }}?{% endif %}`.
+
+A message that reaches itself — directly, or through others — is an error
+naming the loop (`a message includes itself: F3 → F1 → F3`), and like any
+template error it keys nothing: a message that quietly dropped the part that
+looped would go on the air looking fine. A label may name its own message;
+only a message being SENT is part of the chain.
 
 ## Timestamps
 
@@ -145,6 +195,23 @@ reference that resolved to nothing, since it carries no labels — an
 operation at an unlisted park would print as though it had none. Liquid's own
 `array_to_sentence_string` is the near miss for `sentence`: it always writes
 the serial comma (`A, B, & C`).
+
+### Fallbacks
+
+`default` chains, taking the first value that isn't blank — and the values
+above are `""` when there is nothing to say, which counts as blank:
+
+```liquid
+{{ qso.their.state | default: qso.their.guess.state | default: qso.their.county | default: "none" }}
+```
+
+The same as a tag, for when each branch wants more than one value. Compare
+against `blank` rather than testing the bare value: in Liquid only `nil` and
+`false` are false, so `{% if "" %}` takes the branch and prints nothing.
+
+```liquid
+{% if qso.their.state != blank %}{{ qso.their.state }}{% elsif qso.their.county != blank %}{{ qso.their.county }}{% else %}none{% endif %}
+```
 
 `alnum` is app-polo's `compact` helper under a different name: Liquid already
 has a `compact` (it drops nils from an **array**, and `op.refs`/`qso.refs` are

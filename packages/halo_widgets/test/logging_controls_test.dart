@@ -565,6 +565,23 @@ void main() {
     expect(drafts.length, settled, reason: 'nothing about the QSO changed');
   });
 
+  testWidgets('moving the cursor within a stack republishes which call the draft names', (tester) async {
+    // The QSON half of the draft is identical wherever the cursor sits, so a
+    // dedupe on it alone would leave `{{ qso.call }}` naming the segment the
+    // cursor just left — and a CW message would key the wrong station.
+    final drafts = <Map<String, dynamic>>[];
+    await tester.pumpWidget(host(session: LoggingSession(onQsoChanged: drafts.add)));
+    const stack = 'KN2//KI2D//NK2Y//FR';
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), stack);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(drafts.last['callField'], {'call': 'NK2Y', 'fullCall': 'NK2Y', 'partial': '', 'nextCall': 'KI2D', 'nextPartial': 'FR'});
+
+    tester.testTextInput.updateEditingValue(const TextEditingValue(text: stack, selection: TextSelection.collapsed(offset: 8)));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(drafts.last['callField'], {'call': 'KI2D', 'fullCall': 'KI2D', 'partial': '', 'nextCall': 'NK2Y', 'nextPartial': 'FR'});
+    expect((drafts.last['their'] as Map)['call'], stack, reason: 'their.call stays the field as typed');
+  });
+
   testWidgets('editing a field other than the call still publishes', (tester) async {
     // The draft is the whole QSO, not the callsign summary the call-info
     // callback carries: a dedupe keyed on the call alone would go quiet for

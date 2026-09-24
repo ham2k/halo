@@ -891,7 +891,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   void hideKeyerArea() => _keying.hideKeyerArea();
   ValueNotifier<({bool on, bool running})> get enterSends => _keying.enterSends;
   void setEnterSends({bool? on, bool? running}) => _keying.setEnterSends(on: on, running: running);
-  void sendCw(String text, {bool hasMessageOne = false}) => _keying.sendCw(text, hasMessageOne: hasMessageOne);
+  bool sendCw(String text, {bool hasMessageOne = false}) => _keying.sendCw(text, hasMessageOne: hasMessageOne);
   void stopCw() => _keying.stopCw();
   void dropQueuedCw(int id) => _keying.dropQueuedCw(id);
   bool setKeyerSpeed(int wpm) => _keying.setKeyerSpeed(wpm);

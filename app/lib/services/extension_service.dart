@@ -1042,12 +1042,16 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// what it means in a pane. Returns the text, or throws a [TemplateError]
   /// carrying the renderer's own words for a template that does not parse.
   /// Null with no runtime, which callers treat as "nothing to send".
+  ///
+  /// [keyer] is `{messages, current?}` — the keyer's messages for
+  /// `keyer.msgN`, and which one this is, so it can't include itself.
   Future<String?> renderTemplate(
     String template, {
     Map<String, dynamic>? operation,
     Map<String, dynamic>? qso,
     int? qsoCount,
     Map<String, dynamic>? log,
+    Map<String, dynamic>? keyer,
   }) async {
     final host = this.host;
     if (host == null) return null;
@@ -1055,7 +1059,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       'template',
       key: 'templates',
       method: 'render',
-      args: {'template': template, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount, 'log': ?log},
+      args: {'template': template, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount, 'log': ?log, 'keyer': ?keyer},
       timeout: const Duration(seconds: 2),
     );
     if (result is! Map) return null;
@@ -1072,6 +1076,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     Map<String, dynamic>? operation,
     Map<String, dynamic>? qso,
     int? qsoCount,
+    Map<String, dynamic>? keyer,
   }) async {
     final host = this.host;
     if (host == null) return null;
@@ -1079,7 +1084,7 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
       'template',
       key: 'templates',
       method: 'renderMany',
-      args: {'templates': templates, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount},
+      args: {'templates': templates, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount, 'keyer': ?keyer},
       timeout: const Duration(seconds: 2),
     );
     if (result is! Map || result['results'] is! List) return null;

@@ -6343,8 +6343,29 @@ class Translations$settings$radio$cwMessages$en {
 	/// en: 'Your callsign'
 	String get helpOpCall => 'Your callsign';
 
-	/// en: 'Their callsign'
-	String get helpQsoCall => 'Their callsign';
+	/// en: 'Their callsign — in a // stack, the one Enter logs'
+	String get helpQsoCall => 'Their callsign — in a // stack, the one Enter logs';
+
+	/// en: 'Their callsign, only once it reads as a full one; blank for a partial'
+	String get helpQsoFullCall => 'Their callsign, only once it reads as a full one; blank for a partial';
+
+	/// en: 'Their call while it is still a partial; blank once it is a full one'
+	String get helpQsoPartial => 'Their call while it is still a partial; blank once it is a full one';
+
+	/// en: 'In a // stack, the call the next Enter logs'
+	String get helpQsoNextCall => 'In a // stack, the call the next Enter logs';
+
+	/// en: 'In a // stack, the last entry left after this contact'
+	String get helpQsoNextPartial => 'In a // stack, the last entry left after this contact';
+
+	/// en: 'Their first name, as typed or else from the lookup'
+	String get helpQsoName => 'Their first name, as typed or else from the lookup';
+
+	/// en: 'Their state, as typed or else from the lookup'
+	String get helpQsoState => 'Their state, as typed or else from the lookup';
+
+	/// en: 'Message 1 as it would be sent, inside another message'
+	String get helpKeyerMsg => 'Message 1 as it would be sent, inside another message';
 
 	/// en: 'The report you are sending'
 	String get helpQsoRst => 'The report you are sending';
@@ -6363,6 +6384,30 @@ class Translations$settings$radio$cwMessages$en {
 
 	/// en: 'Sends W1AW 5NN TT7'
 	String get helpExample => 'Sends W1AW 5NN TT7';
+
+	/// en: 'With Enter Sends Messages on, Enter keys messages by their function key, as N1MM does. The ESM Messages set starts with these:'
+	String get helpEsmIntro => 'With Enter Sends Messages on, Enter keys messages by their function key, as N1MM does. The ESM Messages set starts with these:';
+
+	/// en: 'Running, Enter with the call field empty calls CQ'
+	String get helpEsmCq => 'Running, Enter with the call field empty calls CQ';
+
+	/// en: 'Your exchange: after their call when running, after they answer in S&P'
+	String get helpEsmExchange => 'Your exchange: after their call when running, after they answer in S&P';
+
+	/// en: 'Thanks, once the contact has logged: its placeholders name the next contact, not this one'
+	String get helpEsmThanks => 'Thanks, once the contact has logged: its placeholders name the next contact, not this one';
+
+	/// en: 'In S&P, your call to the station you are answering'
+	String get helpEsmMyCall => 'In S&P, your call to the station you are answering';
+
+	/// en: 'Running, their call ahead of your exchange'
+	String get helpEsmHisCall => 'Running, their call ahead of your exchange';
+
+	/// en: 'Asks again when nothing of their exchange was copied'
+	String get helpEsmAgain => 'Asks again when nothing of their exchange was copied';
+
+	/// en: 'Suggested F3 for // stacks: TU goes out after the contact logs, so it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU'
+	String get helpEsmStackThanks => 'Suggested F3 for // stacks: TU goes out after the contact logs, so it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU';
 }
 
 // Path: settings.radio.voiceMessages
@@ -7821,13 +7866,28 @@ extension on Translations {
 			'settings.radio.cwMessages.helpTitle' => 'Writing CW Messages',
 			'settings.radio.cwMessages.helpIntro' => 'A message is keyed as typed. Placeholders in double braces fill in from the operation and the contact being logged.',
 			'settings.radio.cwMessages.helpOpCall' => 'Your callsign',
-			'settings.radio.cwMessages.helpQsoCall' => 'Their callsign',
+			'settings.radio.cwMessages.helpQsoCall' => 'Their callsign — in a // stack, the one Enter logs',
+			'settings.radio.cwMessages.helpQsoFullCall' => 'Their callsign, only once it reads as a full one; blank for a partial',
+			'settings.radio.cwMessages.helpQsoPartial' => 'Their call while it is still a partial; blank once it is a full one',
+			'settings.radio.cwMessages.helpQsoNextCall' => 'In a // stack, the call the next Enter logs',
+			'settings.radio.cwMessages.helpQsoNextPartial' => 'In a // stack, the last entry left after this contact',
+			'settings.radio.cwMessages.helpQsoName' => 'Their first name, as typed or else from the lookup',
+			'settings.radio.cwMessages.helpQsoState' => 'Their state, as typed or else from the lookup',
+			'settings.radio.cwMessages.helpKeyerMsg' => 'Message 1 as it would be sent, inside another message',
 			'settings.radio.cwMessages.helpQsoRst' => 'The report you are sending',
 			'settings.radio.cwMessages.helpQsoSerial' => 'Your serial number, in a contest that sends one',
 			'settings.radio.cwMessages.helpPad' => 'Pads with zeros to that many digits: 7 is sent as 007',
 			'settings.radio.cwMessages.helpCut' => 'Cut numbers, T for 0 and N for 9: 599 is sent as 5NN',
 			'settings.radio.cwMessages.helpCutDigits' => 'Chooses the digits to cut, in quotes — 0 is T, 1 is A, 5 is E, 9 is N',
 			'settings.radio.cwMessages.helpExample' => 'Sends W1AW 5NN TT7',
+			'settings.radio.cwMessages.helpEsmIntro' => 'With Enter Sends Messages on, Enter keys messages by their function key, as N1MM does. The ESM Messages set starts with these:',
+			'settings.radio.cwMessages.helpEsmCq' => 'Running, Enter with the call field empty calls CQ',
+			'settings.radio.cwMessages.helpEsmExchange' => 'Your exchange: after their call when running, after they answer in S&P',
+			'settings.radio.cwMessages.helpEsmThanks' => 'Thanks, once the contact has logged: its placeholders name the next contact, not this one',
+			'settings.radio.cwMessages.helpEsmMyCall' => 'In S&P, your call to the station you are answering',
+			'settings.radio.cwMessages.helpEsmHisCall' => 'Running, their call ahead of your exchange',
+			'settings.radio.cwMessages.helpEsmAgain' => 'Asks again when nothing of their exchange was copied',
+			'settings.radio.cwMessages.helpEsmStackThanks' => 'Suggested F3 for // stacks: TU goes out after the contact logs, so it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU',
 			'settings.radio.voiceMessages.title' => 'Phone Keyer',
 			'settings.radio.voiceMessages.description' => 'The radio\'s own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
@@ -7909,6 +7969,8 @@ extension on Translations {
 			'settings.peers.deviceName' => 'Name',
 			'settings.peers.deviceNameHint' => 'How this device is seen by other devices',
 			'settings.peers.pairedDevices' => 'Linked Devices',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.noPairedDevices' => 'No devices linked yet. Turn this on, on another device on this network, to link them.',
 			'settings.peers.deviceListProblem' => ({required Object error}) => 'Can\'t read your linked devices: ${error}',
 			'settings.peers.nearby' => 'Nearby',
@@ -7924,8 +7986,6 @@ extension on Translations {
 			'settings.peers.reject' => 'Reject',
 			'settings.peers.forget' => 'Forget',
 			'settings.peers.forgetTitle' => ({required Object name}) => 'Forget ${name}?',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.forgetBody' => 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.',
 			'settings.peers.pairTitle' => ({required Object name}) => 'Link with ${name}',
 			'settings.peers.pairBody' => 'This device is on your local network and wants to connect.',
@@ -8423,6 +8483,8 @@ extension on Translations {
 			'settings.numberFormatOpts.locale' => 'Follow system settings',
 			'settings.numberFormatOpts.period' => 'Always use period for decimals',
 			'settings.numberFormatOpts.comma' => 'Always use comma for decimals',
+			_ => null,
+		} ?? switch (path) {
 			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'System settings (using ${separator} for decimals)',
 			'settings.numberFormatDescription.period' => 'Always using period for decimals',
 			'settings.numberFormatDescription.comma' => 'Always using comma for decimals',
@@ -8438,8 +8500,6 @@ extension on Translations {
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'Reload failed: ${error}',
 			'commands.reloadingAll' => 'Reloading all data files…',
-			_ => null,
-		} ?? switch (path) {
 			'commands.reloadingTarget' => ({required Object target}) => 'Reloading ${target} data files…',
 			'commands.unknownExperiment' => ({required Object token}) => 'Unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',

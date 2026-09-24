@@ -322,13 +322,30 @@ class _MessageButtons extends StatefulWidget {
 }
 
 class _MessageButtonsState extends State<_MessageButtons> {
-  /// Rendered label text by message, with the template it came from — a
-  /// label edited since is shown as written until its own render lands.
-  final _rendered = <int, ({String template, String text})>{};
+  /// Rendered label text by message, with what it was rendered for
+  /// ([_labelKey]) — a label edited since is shown as written until its own
+  /// render lands.
+  final _rendered = <int, ({String key, String text})>{};
   Timer? _debounce;
   int _renderGeneration = 0;
 
   static bool _isTemplate(String label) => label.contains('{{') || label.contains('{%');
+
+  /// The label message [n]'s button renders: the operator's own, or — left
+  /// blank — the message itself, rendered, so a key reads what it sends.
+  static String _labelTemplate(SettingsService settings, int n) {
+    final label = settings.cwMessageLabel(n).trim();
+    return label.isNotEmpty ? label : '{{ keyer.msg$n }}';
+  }
+
+  /// What a rendered label is cached against: its template, and for one that
+  /// names `keyer` — a blank label's `{{ keyer.msgN }}` included — the
+  /// messages too. The template stays the same when a message it includes is
+  /// edited, and the key would go on reading the old one.
+  static String _labelKey(SettingsService settings, int n) {
+    final label = _labelTemplate(settings, n);
+    return label.contains('keyer.') ? [label, ...settings.activeCwMessageSet.messages].join('\u0000') : label;
+  }
 
   /// The 16 message/label values as last rendered against — settings notify
   /// for a theme change too, and that is no reason to cross the bridge.
@@ -391,12 +408,14 @@ class _MessageButtonsState extends State<_MessageButtons> {
     // Every templated label in ONE crossing of the bridge, not one each.
     final numbers = <int>[];
     final labels = <String>[];
+    final keys = <String>[];
     for (var n = 1; n <= SettingsService.cwMessageCount; n++) {
       if (settings.cwMessage(n).trim().isEmpty) continue;
-      final label = settings.cwMessageLabel(n).trim();
+      final label = _labelTemplate(settings, n);
       if (!_isTemplate(label)) continue;
       numbers.add(n);
       labels.add(label);
+      keys.add(_labelKey(settings, n));
     }
     if (labels.isEmpty) return;
     List<({String? text, String? error})>? rendered;
@@ -406,6 +425,7 @@ class _MessageButtonsState extends State<_MessageButtons> {
         operation: ctx.operation == null ? null : operationHookArgs(ctx.operation!),
         qso: ctx.qso,
         qsoCount: ctx.qsoCount,
+        keyer: {'messages': settings.activeCwMessageSet.messages},
       );
     } catch (e, st) {
       // A hook timeout or a dead runtime: the labels keep what they last
@@ -416,12 +436,12 @@ class _MessageButtonsState extends State<_MessageButtons> {
     // A newer render was scheduled while this one was on the bridge; its
     // answers are for a draft that has moved on.
     if (!mounted || generation != _renderGeneration || rendered == null) return;
-    final results = <int, ({String template, String text})>{};
+    final results = <int, ({String key, String text})>{};
     for (var i = 0; i < numbers.length && i < rendered.length; i++) {
       // A label that does not parse (`error`) shows as written — the
       // operator's own typo, visible where they will fix it.
       final text = rendered[i].text;
-      if (text != null) results[numbers[i]] = (template: labels[i], text: text.trim());
+      if (text != null) results[numbers[i]] = (key: keys[i], text: text.trim());
     }
     setState(
       () => _rendered
@@ -431,10 +451,17 @@ class _MessageButtonsState extends State<_MessageButtons> {
   }
 
   String _labelFor(int n, String key) {
-    final label = widget.services.settings.cwMessageLabel(n).trim();
-    if (label.isEmpty) return key;
+    final settings = widget.services.settings;
+    final label = _labelTemplate(settings, n);
     final rendered = _rendered[n];
-    if (rendered != null && rendered.template == label && rendered.text.isNotEmpty) return rendered.text;
+    if (rendered != null && rendered.key == _labelKey(settings, n) && rendered.text.isNotEmpty) return rendered.text;
+    // A blank label waiting on its render, or rendering to nothing, never
+    // shows the `keyer.msgN` it stands for — a message with no template in it
+    // reads as itself meanwhile, and one that has one reads as its key.
+    if (settings.cwMessageLabel(n).trim().isEmpty) {
+      final message = settings.cwMessage(n).trim();
+      return message.isEmpty || _isTemplate(message) ? key : message;
+    }
     return label;
   }
 

@@ -267,7 +267,10 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
         ],
       ),
       help: TextButton(
-        onPressed: () => showHaloDialog<void>(context: context, builder: (context) => const _CwMessagesHelpDialog()),
+        onPressed: () => showHaloDialog<void>(
+          context: context,
+          builder: (context) => _CwMessagesHelpDialog(esm: widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */),
+        ),
         child: Text(m.help),
       ),
       // Cancel, not Done: there are pending changes to abandon now that the
@@ -343,12 +346,17 @@ class EnterSendsField extends StatelessWidget {
   }
 }
 
-/// What an operator needs to write a message, and no more: the four
+/// What an operator needs to write a message, and no more: the
 /// placeholders an exchange is made of and the two filters that shape a
 /// number for CW. The whole vocabulary is docs/extensions/templates.md; a
 /// list of all of it here would bury the handful that get used.
 class _CwMessagesHelpDialog extends StatelessWidget {
-  const _CwMessagesHelpDialog();
+  const _CwMessagesHelpDialog({required this.esm});
+
+  /// Whether Enter Sends Messages can be on, which adds what it keys from
+  /// each function key — read off the ESM set and
+  /// [CwMessageSet.esmKeys], so this can't name a key ESM doesn't use.
+  final bool esm;
 
   @override
   Widget build(BuildContext context) {
@@ -359,6 +367,13 @@ class _CwMessagesHelpDialog extends StatelessWidget {
     final rows = [
       ('{{ op.call }}', m.helpOpCall),
       ('{{ qso.call }}', m.helpQsoCall),
+      ('{{ qso.fullCall }}', m.helpQsoFullCall),
+      ('{{ qso.partial }}', m.helpQsoPartial),
+      ('{{ qso.nextCall }}', m.helpQsoNextCall),
+      ('{{ qso.nextPartial }}', m.helpQsoNextPartial),
+      ('{{ qso.name }}', m.helpQsoName),
+      ('{{ qso.state }}', m.helpQsoState),
+      ('{{ keyer.msg1 }}', m.helpKeyerMsg),
       ('{{ qso.rst }}', m.helpQsoRst),
       ('{{ qso.serial }}', m.helpQsoSerial),
       ('{{ qso.serial | pad: 3 }}', m.helpPad),
@@ -366,6 +381,26 @@ class _CwMessagesHelpDialog extends StatelessWidget {
       ('{{ qso.serial | cut: "0159" }}', m.helpCutDigits),
       ('{{ qso.call }} {{ qso.rst | cut }} {{ qso.serial | pad: 3 | cut }}', m.helpExample),
     ];
+    final esmSet = CwMessageSet.esm();
+    final esmRows = [
+      for (final MapEntry(key: role, value: n) in CwMessageSet.esmKeys.entries)
+        (
+          'F$n  ${esmSet.message(n)}',
+          switch (role) {
+            EsmMessage.cq => m.helpEsmCq,
+            EsmMessage.exchange => m.helpEsmExchange,
+            EsmMessage.thanks => m.helpEsmThanks,
+            EsmMessage.myCall => m.helpEsmMyCall,
+            EsmMessage.hisCall => m.helpEsmHisCall,
+            EsmMessage.again => m.helpEsmAgain,
+          },
+        ),
+    ];
+    Widget row(String template, String meaning) => ListTile(
+      visualDensity: VisualDensity.compact,
+      title: Text(template, style: theme.textTheme.bodyMedium?.copyWith(fontFamily: 'RobotoMono')),
+      subtitle: Text(meaning),
+    );
     return HaloDialog(
       title: Text(m.helpTitle),
       list: true,
@@ -374,12 +409,15 @@ class _CwMessagesHelpDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.md), child: Text(m.helpIntro)),
-          for (final (template, meaning) in rows)
-            ListTile(
-              visualDensity: VisualDensity.compact,
-              title: Text(template, style: theme.textTheme.bodyMedium?.copyWith(fontFamily: 'RobotoMono')),
-              subtitle: Text(meaning),
+          for (final (template, meaning) in rows) row(template, meaning),
+          if (esm) ...[
+            Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.md), child: Text(m.helpEsmIntro)),
+            for (final (template, meaning) in esmRows) row(template, meaning),
+            row(
+              'TU {% if qso.fullCall != blank %}{{ keyer.msg5 }} {{ keyer.msg2 }}{% elsif qso.partial != blank %}{{ qso.partial }}?{% endif %}',
+              m.helpEsmStackThanks,
             ),
+          ],
         ],
       ),
       // Done, not Cancel: nothing here can be changed.
@@ -449,6 +487,15 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
   late final _label = TextEditingController(text: widget.label);
 
   @override
+  void initState() {
+    super.initState();
+    // The label's placeholder is the message, as it is being typed.
+    _message.addListener(_onMessageChanged);
+  }
+
+  void _onMessageChanged() => setState(() {});
+
+  @override
   void dispose() {
     _message.dispose();
     _label.dispose();
@@ -489,7 +536,8 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
             child: TextField(
               controller: _label,
               textCapitalization: TextCapitalization.sentences,
-              decoration: poloFieldDecoration(context, m.labelField),
+              // Left blank, the key is labelled with its message.
+              decoration: poloFieldDecoration(context, m.labelField, hintText: _message.text.trim()),
               onSubmitted: (_) => _save(),
             ),
           ),

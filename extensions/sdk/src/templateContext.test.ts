@@ -83,6 +83,51 @@ test("the reports are named by direction, not by QSON's field name", () => {
   assert.equal(qso.call, "W1AW")
 })
 
+// A draft's `their.call` is the field as typed — "KN2//KI2D//NK2Y//FR" keyed
+// verbatim would send every slash in Morse. The panel's own reading of the
+// field has to win, and a logged contact (no `callField`) still reads its call.
+test("a draft's call is the one Enter logs, with the rest of the stack named apart", () => {
+  const draft = qsoValues({
+    their: { call: "KN2//KI2D//NK2Y//FR" },
+    callField: { call: "NK2Y", fullCall: "NK2Y", partial: "", nextCall: "KI2D", nextPartial: "FR" },
+  })
+  assert.equal(draft.call, "NK2Y")
+  assert.equal(draft.nextCall, "KI2D")
+  assert.equal(draft.nextPartial, "FR")
+  assert.equal((draft.their as Record<string, unknown>).call, "KN2//KI2D//NK2Y//FR", "their stays the draft as typed")
+
+  const blank = qsoValues({ their: { call: "W1AW," }, callField: { call: "", nextCall: "", nextPartial: "" } })
+  assert.equal(blank.call, "W1AW,", "a blank reading keys the field rather than nothing")
+
+  const partial = qsoValues({ their: { call: "KR" }, callField: { call: "KR", fullCall: "", partial: "KR", nextCall: "", nextPartial: "" } })
+  assert.equal(partial.fullCall, "", "a partial is never keyed as a station")
+  assert.equal(partial.partial, "KR")
+
+  const logged = qsoValues({ their: { call: "W1AW" } })
+  assert.equal(logged.call, "W1AW")
+  assert.equal(logged.nextCall, "")
+  assert.equal(logged.nextPartial, "")
+  assert.equal(logged.fullCall, "W1AW")
+  assert.equal(logged.partial, "")
+})
+
+// A CW message greeting a station reads what the operator typed first and
+// the lookup second; a typed-but-blank field must not hide the lookup, and a
+// full name keyed in Morse is not a greeting.
+test("state and name prefer what was typed, fall back to the lookup, and name is one word", () => {
+  const typed = qsoValues({ their: { call: "W1AW", state: "CT", name: "Hiram Percy", guess: { state: "MA", name: "Someone Else" } } })
+  assert.equal(typed.state, "CT")
+  assert.equal(typed.name, "Hiram")
+
+  const looked = qsoValues({ their: { call: "W1AW", state: " ", name: "", guess: { state: "MA", name: "Robert J Smith" } } })
+  assert.equal(looked.state, "MA")
+  assert.equal(looked.name, "Robert")
+
+  const neither = qsoValues({ their: { call: "W1AW" } })
+  assert.equal(neither.state, "")
+  assert.equal(neither.name, "")
+})
+
 // A contest's serials live on its own ref, under a type a CW message has no
 // way to know. They are found by FIELD NAME, which is what lets one message
 // serve every serial contest — and what breaks silently if a contest names
@@ -149,4 +194,25 @@ test("a namespace the surface has nothing for is absent, not blank", () => {
 test("a panel's own config is offered under config", () => {
   const context = templateContext({ config: { title: "Skeds" }, nowMillis: LATE_JULY_27 })
   assert.equal(renderTemplate("{{ config.title }} at {{ now | date: '%H:%M' }}", context), "Skeds at 23:45")
+})
+
+// One message named inside another is the point of `keyer`: a thanks that
+// ends in the CQ. It has to arrive RENDERED — the CQ's own `{{ op.call }}`
+// keyed as braces would be nonsense on the air — and a loop has to be an
+// error the operator can read, not a hang and not a silently shorter message.
+test("keyer.msgN is that message rendered, and a message that reaches itself is an error naming the loop", () => {
+  const messages = ["CQ DE {{ op.call }} K", "{{ keyer.msg3 }}", "TU {% if qso.call != blank %}{{ keyer.msg1 }}{% endif %}", "{{ keyer.msg4 }}"]
+  const context = (current?: number) => templateContext({ operation: { stationCall: "N0DEV" }, qso: { their: { call: "W1AW" } }, keyer: { messages, current } })
+
+  assert.equal(renderTemplate(messages[2], context(3)), "TU CQ DE N0DEV K")
+  assert.equal(renderTemplate(messages[1], context(2)), "TU CQ DE N0DEV K", "an include of an include")
+  assert.equal(
+    renderTemplate(messages[2], templateContext({ operation: { stationCall: "N0DEV" }, keyer: { messages, current: 3 } })),
+    "TU ",
+    "never expanded when the branch isn't taken",
+  )
+
+  assert.throws(() => renderTemplate(messages[3], context(4)), /F4 → F4/)
+  assert.throws(() => renderTemplate("{{ keyer.msg2 }}", context(3)), /F3 → F2 → F3/)
+  assert.equal(renderTemplate("{{ keyer.msg3 }}", context()), "TU CQ DE N0DEV K", "a label renders a message without being one")
 })

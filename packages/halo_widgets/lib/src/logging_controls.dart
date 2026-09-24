@@ -381,11 +381,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     ];
   }
 
+  /// Completed by the log an ESM step handed off to — see [EnterSends.send].
+  Completer<Map<String, dynamic>?>? _esmLogged;
+
   /// Enter Sends Messages: keys what [esmStep] picks and answers whether this
   /// Enter ends here. False means go on and log.
   bool _enterSendsMessages(EnterSends esm) {
     final exchange = _esmExchangeFields;
-    final call = _call;
+    // The call the messages key, not the field: on a stack, answering NK2Y
+    // and then moving to KI2D is a new station to answer, not KI2D's thanks.
+    final calls = _callText.templateCalls;
+    final call = calls.call;
     final step = esmStep(
       running: esm.running,
       callEmpty: _callController.text.trim().isEmpty,
@@ -393,9 +399,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       answered: call.isNotEmpty && _esmAnsweredCall == call,
       hasExchange: exchange.isNotEmpty,
       exchangeCopied: exchange.any((field) => _exchange.valueOf(field.key).trim().isNotEmpty),
+      callFocused: _callFocus.hasFocus,
     );
     if (step == null) return false;
-    if (step.send.isNotEmpty) esm.send(step.send, _draft.toData());
+    // A step that logs hands over what the entry is AFTER the log too, for
+    // the messages that speak to it — the thanks, which may name the next
+    // stacked call.
+    if (step.send.isNotEmpty && step.then == EsmThen.log) {
+      final logged = _esmLogged = Completer<Map<String, dynamic>?>();
+      esm.send(step.send, _withCallField(_draft.toData(), calls), logged: logged.future);
+    } else if (step.send.isNotEmpty) {
+      esm.send(step.send, _withCallField(_draft.toData(), calls));
+    }
     switch (step.then) {
       case EsmThen.stay:
         return true;
@@ -1492,6 +1507,27 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   bool get _isCallStackField => _callText.isStack;
   Iterable<String> get _callsInField => _callText.callsInField;
   String get _callAtCursor => _callText.callAtCursor;
+
+  /// [qso] as a template reads it: plus `callField`, the calls
+  /// [CallFieldText.templateCalls] names, which `qso.call` / `qso.nextCall` /
+  /// `qso.nextPartial` render from — and `call` split by whether it reads as a
+  /// callsign yet, into `fullCall` and `partial`, so a message can answer a
+  /// station and ask a partial back ("KR?") without keying one as the other.
+  /// Only for a draft leaving the panel to be rendered — `callField` is not
+  /// QSON, and a record never carries it.
+  static Map<String, dynamic> _withCallField(Map<String, dynamic> qso, TemplateCalls calls) {
+    final full = calls.call.isNotEmpty && looksLikeCallsign(calls.call);
+    return {
+      ...qso,
+      'callField': {
+        'call': calls.call,
+        'fullCall': full ? calls.call : '',
+        'partial': full ? '' : calls.call,
+        'nextCall': calls.nextCall,
+        'nextPartial': calls.nextPartial,
+      },
+    };
+  }
 
   /// The one call in the field, or empty when there is none or there are
   /// several — which is when an exchange may be prefilled for it.
@@ -3045,8 +3081,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (fromEnter && editingQso == null) {
       if (widget.session.enterSends?.call() case final esm? when _enterSendsMessages(esm)) return;
     }
+    final logged = _esmLogged;
+    _esmLogged = null;
 
     if (!_canLog) {
+      logged?.complete(null);
       // Pointing the operator at the field they have to fix — but only when
       // they are here to see it. A spot that cannot be logged (no usable
       // callsign) must not answer a gesture made on the spots list by raising
@@ -3054,7 +3093,23 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       if (focusCall) _callFocus.requestFocus();
       return;
     }
-    await _saveContact(editingQso, focusCall: focusCall);
+    var saved = false;
+    try {
+      saved = await _saveContact(editingQso, focusCall: focusCall);
+    } finally {
+      // The entry as the save left it: wiped, and the rest of a stack back in
+      // the field — what an ESM thanks renders against. Completed whatever
+      // happens, or the thanks waits on it forever.
+      // A throw building it still goes up from here, after the completion.
+      if (logged != null) {
+        Map<String, dynamic>? after;
+        try {
+          if (saved && mounted) after = _withCallField(_draft.toData(), _callText.templateCalls);
+        } finally {
+          logged.complete(after);
+        }
+      }
+    }
   }
 
   Future<void> _commitStagedDelete(Qso editingQso) async {
@@ -3096,7 +3151,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The contact — one QSO per call of a list or a stack segment, or the
   /// edited record updated in place with any calls added to it logged
   /// fresh. Everything up to here has already refused what cannot log.
-  Future<void> _saveContact(Qso? editingQso, {required bool focusCall}) async {
+  /// Whether every contact was written — false when a write failed and the
+  /// entry was left for the operator to retry.
+  Future<bool> _saveContact(Qso? editingQso, {required bool focusCall}) async {
     _isLogging = true;
     try {
       // A comma-separated call list logs one QSO per call, all sharing the
@@ -3169,7 +3226,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         } catch (e, stack) {
           // Nothing committed — the editor stays open with every typed value.
           _reportWriteFailure(e, stack);
-          return;
+          return false;
         }
         for (var i = 1; i < calls.length; i++) {
           // The base data carries the edited QSO's own uuid (baseData came
@@ -3190,7 +3247,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             // twice.
             _callController.text = [calls.first, ...calls.sublist(i)].join(',');
             _reportWriteFailure(e, stack);
-            return;
+            return false;
           }
           _exchange.releaseCommittedSerials(qso);
           widget.log.onLogged?.call(qso);
@@ -3225,7 +3282,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               );
             }
             _reportWriteFailure(e, stack);
-            return;
+            return false;
           }
           _exchange.releaseCommittedSerials(qso);
           widget.log.onLogged?.call(qso);
@@ -3241,6 +3298,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // call — the on-screen scoring pills already only ever reflect the
       // cursor's own call (see `CallLookupModel.scheduleScore`/`_callAtCursor`).
       if (isList) widget.log.onCallListLogged?.call();
+      return true;
     } finally {
       _isLogging = false;
     }
@@ -3795,11 +3853,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   ///
   /// A published draft is READ-ONLY to everyone downstream. [QsoDraft.toData]
   /// shares nested references with the QSO being edited and with the lookup
-  /// result, and the map handed out below is the same one kept here — so
-  /// mutating a published draft in place moves both sides of the comparison
-  /// together, and the panel watching it silently stops updating.
+  /// result, and every map handed out below shares those nested maps with
+  /// the one kept here (the peer's IS it) — so mutating a published draft in
+  /// place moves both sides of the comparison together, and the panel
+  /// watching it silently stops updating.
   Map<String, dynamic>? _lastPublishedQso;
   List<PeerDraftField>? _lastPublishedFields;
+  TemplateCalls? _lastPublishedCalls;
   void _notifyQsoDraft() {
     final wantsDraft = widget.session.onQsoChanged != null;
     final wantsPeer = widget.session.onPeerDraftChanged != null;
@@ -3818,7 +3878,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         widget.session.onPeerDraftChanged!(qso, fields);
       }
     }
-    if (wantsDraft && !unchanged) widget.session.onQsoChanged!(qso);
+    if (wantsDraft) {
+      // Deduped on the calls too: moving the cursor between stacked segments
+      // changes which call `qso.call` names while the draft stays the same.
+      final calls = _callText.templateCalls;
+      if (!unchanged || calls != _lastPublishedCalls) widget.session.onQsoChanged!(_withCallField(qso, calls));
+      _lastPublishedCalls = calls;
+    }
     _lastPublishedQso = qso;
   }
 

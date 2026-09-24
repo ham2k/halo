@@ -2961,13 +2961,28 @@ class _Translations$settings$radio$cwMessages$es extends Translations$settings$r
 	@override String get helpTitle => 'Cómo escribir mensajes de CW';
 	@override String get helpIntro => 'Un mensaje se manipula tal como se escribe. Los marcadores entre llaves dobles se rellenan con la operación y el contacto que se está registrando.';
 	@override String get helpOpCall => 'Tu indicativo';
-	@override String get helpQsoCall => 'Su indicativo';
+	@override String get helpQsoCall => 'Su indicativo — en una pila //, el que registra Enter';
+	@override String get helpQsoFullCall => 'Su indicativo, solo cuando ya es completo; vacío si es parcial';
+	@override String get helpQsoPartial => 'Su indicativo mientras sigue siendo parcial; vacío cuando ya es completo';
+	@override String get helpQsoNextCall => 'En una pila //, el indicativo que registra el siguiente Enter';
+	@override String get helpQsoNextPartial => 'En una pila //, la última entrada que queda tras este contacto';
+	@override String get helpQsoName => 'Su nombre de pila, el escrito o si no el de la búsqueda';
+	@override String get helpQsoState => 'Su estado, el escrito o si no el de la búsqueda';
+	@override String get helpKeyerMsg => 'El mensaje 1 tal como se enviaría, dentro de otro mensaje';
 	@override String get helpQsoRst => 'El reporte que envías';
 	@override String get helpQsoSerial => 'Tu número de serie, en un concurso que lo envía';
 	@override String get helpPad => 'Rellena con ceros hasta esa cantidad de dígitos: 7 se envía como 007';
 	@override String get helpCut => 'Números abreviados, T por 0 y N por 9: 599 se envía como 5NN';
 	@override String get helpCutDigits => 'Elige qué dígitos abreviar, entre comillas — 0 es T, 1 es A, 5 es E, 9 es N';
 	@override String get helpExample => 'Envía W1AW 5NN TT7';
+	@override String get helpEsmIntro => 'Con Enter envía mensajes encendido, Enter manipula los mensajes por su tecla de función, como hace N1MM. El conjunto Mensajes ESM empieza con estos:';
+	@override String get helpEsmCq => 'En Run, Enter con el indicativo vacío llama CQ';
+	@override String get helpEsmExchange => 'Tu intercambio: tras su indicativo en Run, tras su respuesta en S&P';
+	@override String get helpEsmThanks => 'Las gracias, una vez registrado el contacto: sus marcadores nombran el siguiente contacto, no este';
+	@override String get helpEsmMyCall => 'En S&P, tu indicativo a la estación que contestas';
+	@override String get helpEsmHisCall => 'En Run, su indicativo antes de tu intercambio';
+	@override String get helpEsmAgain => 'Pide repetir cuando no se copió nada de su intercambio';
+	@override String get helpEsmStackThanks => 'F3 sugerido para pilas //: TU sale tras registrar el contacto, así que da las gracias, llama a la siguiente estación de la pila y envía tu intercambio, o pide repetir un parcial (TU KR?); si no queda nada, solo TU';
 }
 
 // Path: settings.radio.voiceMessages
@@ -4147,13 +4162,28 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.helpTitle' => 'Cómo escribir mensajes de CW',
 			'settings.radio.cwMessages.helpIntro' => 'Un mensaje se manipula tal como se escribe. Los marcadores entre llaves dobles se rellenan con la operación y el contacto que se está registrando.',
 			'settings.radio.cwMessages.helpOpCall' => 'Tu indicativo',
-			'settings.radio.cwMessages.helpQsoCall' => 'Su indicativo',
+			'settings.radio.cwMessages.helpQsoCall' => 'Su indicativo — en una pila //, el que registra Enter',
+			'settings.radio.cwMessages.helpQsoFullCall' => 'Su indicativo, solo cuando ya es completo; vacío si es parcial',
+			'settings.radio.cwMessages.helpQsoPartial' => 'Su indicativo mientras sigue siendo parcial; vacío cuando ya es completo',
+			'settings.radio.cwMessages.helpQsoNextCall' => 'En una pila //, el indicativo que registra el siguiente Enter',
+			'settings.radio.cwMessages.helpQsoNextPartial' => 'En una pila //, la última entrada que queda tras este contacto',
+			'settings.radio.cwMessages.helpQsoName' => 'Su nombre de pila, el escrito o si no el de la búsqueda',
+			'settings.radio.cwMessages.helpQsoState' => 'Su estado, el escrito o si no el de la búsqueda',
+			'settings.radio.cwMessages.helpKeyerMsg' => 'El mensaje 1 tal como se enviaría, dentro de otro mensaje',
 			'settings.radio.cwMessages.helpQsoRst' => 'El reporte que envías',
 			'settings.radio.cwMessages.helpQsoSerial' => 'Tu número de serie, en un concurso que lo envía',
 			'settings.radio.cwMessages.helpPad' => 'Rellena con ceros hasta esa cantidad de dígitos: 7 se envía como 007',
 			'settings.radio.cwMessages.helpCut' => 'Números abreviados, T por 0 y N por 9: 599 se envía como 5NN',
 			'settings.radio.cwMessages.helpCutDigits' => 'Elige qué dígitos abreviar, entre comillas — 0 es T, 1 es A, 5 es E, 9 es N',
 			'settings.radio.cwMessages.helpExample' => 'Envía W1AW 5NN TT7',
+			'settings.radio.cwMessages.helpEsmIntro' => 'Con Enter envía mensajes encendido, Enter manipula los mensajes por su tecla de función, como hace N1MM. El conjunto Mensajes ESM empieza con estos:',
+			'settings.radio.cwMessages.helpEsmCq' => 'En Run, Enter con el indicativo vacío llama CQ',
+			'settings.radio.cwMessages.helpEsmExchange' => 'Tu intercambio: tras su indicativo en Run, tras su respuesta en S&P',
+			'settings.radio.cwMessages.helpEsmThanks' => 'Las gracias, una vez registrado el contacto: sus marcadores nombran el siguiente contacto, no este',
+			'settings.radio.cwMessages.helpEsmMyCall' => 'En S&P, tu indicativo a la estación que contestas',
+			'settings.radio.cwMessages.helpEsmHisCall' => 'En Run, su indicativo antes de tu intercambio',
+			'settings.radio.cwMessages.helpEsmAgain' => 'Pide repetir cuando no se copió nada de su intercambio',
+			'settings.radio.cwMessages.helpEsmStackThanks' => 'F3 sugerido para pilas //: TU sale tras registrar el contacto, así que da las gracias, llama a la siguiente estación de la pila y envía tu intercambio, o pide repetir un parcial (TU KR?); si no queda nada, solo TU',
 			'settings.radio.voiceMessages.title' => 'Manipulador de fonía',
 			'settings.radio.voiceMessages.description' => 'Las memorias de voz de la propia radio, reproducidas con F1 a F8 mientras el contacto que se está registrando está en un modo de fonía. El audio se graba en la radio; aquí solo se define el nombre que muestra cada memoria.',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
@@ -4235,6 +4265,8 @@ extension on TranslationsEs {
 			'settings.peers.deviceName' => 'Nombre',
 			'settings.peers.deviceNameHint' => 'Cómo ven este dispositivo los demás',
 			'settings.peers.pairedDevices' => 'Dispositivos vinculados',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.noPairedDevices' => 'Todavía no hay dispositivos vinculados. Activa esto en otro dispositivo de esta red para vincularlos.',
 			'settings.peers.deviceListProblem' => ({required Object error}) => 'No se pueden leer tus dispositivos vinculados: ${error}',
 			'settings.peers.nearby' => 'Cerca',
@@ -4250,8 +4282,6 @@ extension on TranslationsEs {
 			'settings.peers.reject' => 'Rechazar',
 			'settings.peers.forget' => 'Olvidar',
 			'settings.peers.forgetTitle' => ({required Object name}) => '¿Olvidar ${name}?',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.forgetBody' => 'Dejará de sincronizarse con este dispositivo. Puedes autorizarlo de nuevo más tarde, y no se elimina nada de lo ya registrado.',
 			'settings.peers.pairTitle' => ({required Object name}) => 'Vincular con ${name}',
 			'settings.peers.pairBody' => 'Este dispositivo está en tu red local y quiere conectarse.',
@@ -4749,6 +4779,8 @@ extension on TranslationsEs {
 			'settings.gridPrecision' => 'Precisión del localizador',
 			'settings.gridPrecisionOpts.six' => '6 dígitos (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 dígitos (FN31pr55)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.gridPrecisionDescription.six' => '6 dígitos',
 			'settings.gridPrecisionDescription.eight' => '8 dígitos',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
@@ -4764,8 +4796,6 @@ extension on TranslationsEs {
 			'commands.unknownExperiment' => ({required Object token}) => 'Experimento desconocido «${token}»',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} habilitado',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} deshabilitado',
-			_ => null,
-		} ?? switch (path) {
 			'commands.sentryTestSent' => 'Reporte de error de prueba enviado a Sentry',
 			'commands.sentryTestLocalOnly' => 'Sentry está deshabilitado en esta compilación — el error de prueba solo se registró localmente',
 			'commands.settingOn' => 'Sí',

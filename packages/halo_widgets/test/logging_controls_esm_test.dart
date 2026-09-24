@@ -22,6 +22,7 @@ void main() {
       bool answered = false,
       bool hasExchange = false,
       bool exchangeCopied = false,
+      bool callFocused = false,
     }) {
       final step = esmStep(
         running: running,
@@ -30,6 +31,7 @@ void main() {
         answered: answered,
         hasExchange: hasExchange,
         exchangeCopied: exchangeCopied,
+        callFocused: callFocused,
       );
       return step == null ? null : '${step.send.map((m) => m.name).join('+')} -> ${step.then.name}';
     }
@@ -58,6 +60,16 @@ void main() {
       expect(step(hasExchange: true), 'hisCall+exchange -> toExchange');
       expect(step(hasExchange: true, answered: true), 'again -> toExchange');
       expect(step(hasExchange: true, answered: true, exchangeCopied: true), 'thanks -> log');
+    });
+
+    // Back in the call field, the operator is correcting the call or has
+    // moved to another one in a stack: AGN? would not say which station is
+    // meant, their call and the exchange do. Once something is copied, the
+    // next Enter is still the thanks.
+    test('running, Enter from the call field with nothing copied answers again', () {
+      expect(step(hasExchange: true, answered: true, callFocused: true), 'hisCall+exchange -> toExchange');
+      expect(step(hasExchange: true, answered: true, exchangeCopied: true, callFocused: true), 'thanks -> log');
+      expect(step(running: false, hasExchange: true, answered: true, callFocused: true), ' -> toExchange', reason: 'S&P has nothing to re-send');
     });
 
     // Before the station has been called there is no report of theirs to
@@ -96,7 +108,10 @@ void main() {
 
     EnterSends? Function() esm({bool running = true, bool on = true}) =>
         () => on
-        ? EnterSends(running: running, send: (messages, qso) => sent.add('${messages.map((m) => m.name).join('+')} @ ${(qso['their'] as Map?)?['call'] ?? ''}'))
+        ? EnterSends(
+            running: running,
+            send: (messages, qso, {logged}) => sent.add('${messages.map((m) => m.name).join('+')} @ ${(qso['their'] as Map?)?['call'] ?? ''}'),
+          )
         : null;
 
     const name = {
@@ -206,6 +221,21 @@ void main() {
       expect((await logged(tester)).single.theirCall, 'W1AW');
     });
 
+    testWidgets('running, Enter back in the call field answers the call again instead of AGN?', (tester) async {
+      await tester.pumpWidget(host(enterSends: esm(), contest: true));
+      await tester.pump();
+      await tester.enterText(field('Their call'), 'W1AW');
+      await enter(tester);
+      expect(focused(tester, 'Exch'), isTrue);
+
+      await tester.tap(field('Their call'));
+      await tester.pump();
+      await enter(tester);
+      expect(sent.last, 'hisCall+exchange @ W1AW');
+      expect(focused(tester, 'Exch'), isTrue, reason: 'and waits for theirs where it did the first time');
+      expect(await logged(tester), isEmpty);
+    });
+
     testWidgets('running, an exchange copied in part completes the contact', (tester) async {
       // A DX station in NAQP sends a name and no location. Asking again for
       // what will never come would leave the contact unloggable by Enter.
@@ -231,6 +261,87 @@ void main() {
       await enter(tester);
 
       expect(sent.last, 'hisCall+exchange @ W1AX');
+      expect(await logged(tester), isEmpty);
+    });
+
+    testWidgets('on a stack, the messages carry the call being logged, not the field', (tester) async {
+      // `{{ qso.call }}` keyed off the raw field would send the whole stack in
+      // Morse; `callField` is what the template reads instead.
+      final keyed = <Object?>[];
+      await tester.pumpWidget(host(enterSends: () => EnterSends(running: true, send: (_, qso, {logged}) => keyed.add(qso['callField']))));
+      await tester.pump();
+      await tester.enterText(field('Their call'), 'KN2//KI2D//NK2Y//FR');
+      await enter(tester);
+
+      expect(keyed, [
+        {'call': 'NK2Y', 'fullCall': 'NK2Y', 'partial': '', 'nextCall': 'KI2D', 'nextPartial': 'FR'},
+      ]);
+      final saved = (await logged(tester)).single;
+      expect(saved.theirCall, 'NK2Y');
+      expect(saved.data.containsKey('callField'), isFalse, reason: 'a template value, never part of the record');
+    });
+
+    testWidgets('a step that logs hands over the entry as the log left it, for the thanks', (tester) async {
+      // The thanks closes this contact and speaks to the next: rendered
+      // against the keypress's draft, "TU {{ qso.call }}" would thank the
+      // station just logged instead of calling the one stacked behind it.
+      Future<Map<String, dynamic>?>? after;
+      await tester.pumpWidget(host(enterSends: () => EnterSends(running: true, send: (_, qso, {logged}) => after = logged)));
+      await tester.pump();
+      await tester.enterText(field('Their call'), 'KN2//KI2D//NK2Y//FR');
+      await enter(tester);
+
+      expect((await logged(tester)).single.theirCall, 'NK2Y');
+      final draft = await tester.runAsync(() => after!);
+      expect(draft?['callField'], {'call': 'KI2D', 'fullCall': 'KI2D', 'partial': '', 'nextCall': '', 'nextPartial': 'FR'});
+      expect((draft?['their'] as Map?)?['call'], 'KN2//KI2D//FR');
+    });
+
+    testWidgets('a partial left after the log is handed over as one, not as a call', (tester) async {
+      // "KR//KI2D" logs KI2D and leaves KR — a station copied in part. A
+      // thanks that keyed it as `fullCall` would call a station that doesn't
+      // exist; as `partial` it asks it back ("TU KR?").
+      Future<Map<String, dynamic>?>? after;
+      await tester.pumpWidget(host(enterSends: () => EnterSends(running: true, send: (_, qso, {logged}) => after = logged)));
+      await tester.pump();
+      await tester.enterText(field('Their call'), 'KR//KI2D');
+      await enter(tester);
+
+      expect((await logged(tester)).single.theirCall, 'KI2D');
+      final draft = await tester.runAsync(() => after!);
+      expect(draft?['callField'], {'call': 'KR', 'fullCall': '', 'partial': 'KR', 'nextCall': '', 'nextPartial': ''});
+    });
+
+    testWidgets('a log that fails hands over nothing, so no thanks goes out', (tester) async {
+      Future<Map<String, dynamic>?>? after;
+      await tester.pumpWidget(host(enterSends: () => EnterSends(running: true, send: (_, qso, {logged}) => after = logged)));
+      await tester.pump();
+      await tester.enterText(field('Their call'), 'W1AW');
+      await tester.runAsync(db.close);
+      await enter(tester);
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+
+      expect(await tester.runAsync(() => after!), isNull);
+    });
+
+    testWidgets('on a stack, moving to another call starts that exchange over', (tester) async {
+      // The field text is the same wherever the cursor sits. Keyed on it, the
+      // second Enter would thank KI2D and log it with NK2Y's exchange.
+      await tester.pumpWidget(host(enterSends: esm(), contest: true));
+      await tester.pump();
+      await tester.enterText(field('Their call'), 'KI2D//NK2Y');
+      await enter(tester);
+      expect(sent.last, 'hisCall+exchange @ KI2D//NK2Y');
+      await tester.enterText(field('Exch'), 'MA');
+
+      await tester.tap(field('Their call'));
+      tester.testTextInput.updateEditingValue(const TextEditingValue(text: 'KI2D//NK2Y', selection: TextSelection.collapsed(offset: 2)));
+      await tester.pump();
+      await enter(tester);
+
+      expect(sent.last, 'hisCall+exchange @ KI2D//NK2Y', reason: 'KI2D has not been answered yet');
       expect(await logged(tester), isEmpty);
     });
 

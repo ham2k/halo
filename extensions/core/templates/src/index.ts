@@ -22,6 +22,9 @@ export interface TemplateRenderArgs {
   qso?: Record<string, JSONValue>
   qsoCount?: number
   log?: Record<string, JSONValue>
+  /// A CW message's own set, for `keyer.msgN`; `current` is the message
+  /// being rendered, when one is (a label isn't).
+  keyer?: { messages: string[]; current?: number }
 }
 
 /// `text` on success; `error` — the renderer's own message — when the
@@ -35,6 +38,9 @@ export interface TemplateRenderManyArgs {
   qso?: Record<string, JSONValue>
   qsoCount?: number
   log?: Record<string, JSONValue>
+  /// A CW message's own set, for `keyer.msgN`; `current` is the message
+  /// being rendered, when one is (a label isn't).
+  keyer?: { messages: string[]; current?: number }
 }
 
 function renderOne(template: string, context: Record<string, unknown>): TemplateRenderResult {
@@ -71,6 +77,7 @@ const TemplateHook = {
       qso: args.qso,
       qsoCount: args.qsoCount,
       log: args.log,
+      keyer: args.keyer,
       appName: ctx.appName,
     })
     return renderOne(args.template, context)
@@ -86,6 +93,7 @@ const TemplateHook = {
       qso: args.qso,
       qsoCount: args.qsoCount,
       log: args.log,
+      keyer: args.keyer,
       appName: ctx.appName,
     })
     return { results: (args.templates ?? []).map((template) => renderOne(template, context)) }

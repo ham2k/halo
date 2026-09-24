@@ -18,7 +18,9 @@ import 'package:ham2k_logger/views/keyer_area.dart';
 import '../support/halo_test_support.dart';
 
 /// Stands in for the `template` hook without booting a JS engine: only
-/// `{{ qso.call }}` is filled, which is all a label test needs.
+/// `{{ qso.call }}` and `{{ keyer.msgN }}` are filled — the latter as the
+/// hook does, with message N itself rendered — which is all a label test
+/// needs.
 class _TemplateExtensions extends ExtensionService {
   @override
   bool get ready => true;
@@ -33,7 +35,15 @@ class _TemplateExtensions extends ExtensionService {
     Map<String, dynamic>? qso,
     int? qsoCount,
     Map<String, dynamic>? log,
-  }) async => template.replaceAll('{{ qso.call }}', ((qso?['their'] as Map?)?['call'] as String?) ?? '');
+    Map<String, dynamic>? keyer,
+  }) async {
+    final messages = (keyer?['messages'] as List?)?.cast<String>() ?? const <String>[];
+    final expanded = template.replaceAllMapped(RegExp(r'\{\{ keyer\.msg(\d) \}\}'), (m) {
+      final n = int.parse(m[1]!);
+      return n <= messages.length ? messages[n - 1] : '';
+    });
+    return expanded.replaceAll('{{ qso.call }}', ((qso?['their'] as Map?)?['call'] as String?) ?? '');
+  }
 
   /// How many times the labels crossed the bridge — the batching is the point.
   int batches = 0;
@@ -44,9 +54,10 @@ class _TemplateExtensions extends ExtensionService {
     Map<String, dynamic>? operation,
     Map<String, dynamic>? qso,
     int? qsoCount,
+    Map<String, dynamic>? keyer,
   }) async {
     batches++;
-    return [for (final t in templates) (text: await renderTemplate(t, qso: qso), error: null)];
+    return [for (final t in templates) (text: await renderTemplate(t, qso: qso, keyer: keyer), error: null)];
   }
 }
 
@@ -500,11 +511,40 @@ void main() {
     await tester.pump();
   });
 
+  // A blank label is the common case, and the key's number says nothing
+  // about what it sends. The template in a message has to come out RENDERED
+  // — "{{ qso.call }} 5NN" on a button is noise — and until that render
+  // lands the button must not show the `keyer.msgN` standing in for it.
+  testWidgets('a message with no label is labelled with the message itself, rendered', (tester) async {
+    await connectPlaceholder(tester);
+    await services.settings.setCwMessage(1, 'CQ TEST');
+    await services.settings.setCwMessageLabel(1, '');
+    await services.settings.setCwMessage(3, '{{ qso.call }} 5NN');
+    await services.settings.setCwMessageLabel(3, '');
+    await tester.pumpWidget(host(templateContext: contextFor('W1AW')));
+    services.cat.showKeyerArea();
+    await tester.pump();
+    expect(find.widgetWithText(InkWell, 'CQ TEST'), findsOneWidget, reason: 'plain text reads as itself at once');
+    expect(find.widgetWithText(InkWell, 'F3'), findsOneWidget, reason: 'a template reads as its key until rendered');
+
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.widgetWithText(InkWell, 'W1AW 5NN'), findsOneWidget);
+    expect(find.textContaining('keyer'), findsNothing);
+
+    // The label's template is `{{ keyer.msg3 }}` before and after the edit;
+    // cached on that alone, the key would go on reading the old message.
+    await services.settings.setCwMessage(3, '{{ qso.call }} TU');
+    await tester.pump();
+    expect(find.widgetWithText(InkWell, 'W1AW 5NN'), findsNothing, reason: 'the old message is not shown for the new one');
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.widgetWithText(InkWell, 'W1AW TU'), findsOneWidget);
+  });
+
   testWidgets('a CW draft keeps the CW strip, whatever the radio can play', (tester) async {
     await connectPlaceholder(tester);
     await services.settings.setCwMessage(1, 'CQ');
     // The seeded Default set labels its first message; cleared here so the
-    // button shows its KEY, which is what this test is about.
+    // button reads as its message, not as a voice memory's label.
     await services.settings.setCwMessageLabel(1, '');
     await tester.pumpWidget(host(templateContext: contextFor('N0CALL')));
     services.cat.showKeyerArea();
@@ -512,7 +552,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('22 wpm'), findsOneWidget);
     expect(find.text('Voice'), findsNothing);
-    expect(find.widgetWithText(InkWell, 'F1'), findsOneWidget);
+    expect(find.widgetWithText(InkWell, 'CQ'), findsOneWidget);
     expect(find.widgetWithText(InkWell, 'M1'), findsNothing);
   });
 
@@ -524,7 +564,7 @@ void main() {
     services.cat.showKeyerArea();
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    expect(find.widgetWithText(InkWell, 'F1').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(InkWell, 'CQ').hitTestable(), findsOneWidget);
 
     // A chain armed with nothing keying and no wait yet: the GAP between a
     // wait ending and the next message reaching the radio, which is a
@@ -533,11 +573,11 @@ void main() {
     // behind a Visibility to keep its rendered labels.)
     services.cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
     await tester.pump();
-    expect(find.widgetWithText(InkWell, 'F1').hitTestable(), findsNothing);
+    expect(find.widgetWithText(InkWell, 'CQ').hitTestable(), findsNothing);
 
     services.cat.cancelKeyerRepeat();
     await tester.pump();
-    expect(find.widgetWithText(InkWell, 'F1').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(InkWell, 'CQ').hitTestable(), findsOneWidget);
   });
 
   testWidgets('a mode flip keeps the CW buttons mounted, so their rendered labels survive it', (tester) async {

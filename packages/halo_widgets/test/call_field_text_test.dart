@@ -86,4 +86,33 @@ void main() {
     expect(_at('note Called Bob', 0).commandInput, 'note Called Bob');
     expect(_at('note Called Bob', 0).call, 'NOTE CALLED BOB');
   });
+
+  // A CW message keys `{{ qso.call }}` on the air: the raw field would send
+  // every slash and fragment in Morse, and a `nextCall` that disagreed with
+  // what the following Enter logs would tell the wrong station they're next.
+  test('templateCalls names the call Enter logs, the one after it, and the fragment left over', () {
+    const field = 'KN2//KI2D//NK2Y//FR';
+    expect(_at(field, field.length).templateCalls, (call: 'NK2Y', nextCall: 'KI2D', nextPartial: 'FR'));
+    expect(_at(field, 8).templateCalls, (call: 'KI2D', nextCall: 'NK2Y', nextPartial: 'FR'), reason: 'the cursor on KI2D picks it');
+    expect(_at('KI2D//NK2Y', 10).templateCalls, (call: 'NK2Y', nextCall: 'KI2D', nextPartial: 'KI2D'), reason: 'a full call left over is still the fragment');
+    expect(_at('KI2D//', 6).templateCalls, (call: 'KI2D', nextCall: '', nextPartial: ''), reason: 'nothing left after it');
+    expect(_at('KI2D//NK2Y//', 12).templateCalls, (call: 'NK2Y', nextCall: 'KI2D', nextPartial: 'KI2D'), reason: 'a separator just typed is not a fragment');
+  });
+
+  // A CW message keys `call` as it stands: a stack read whole sends every
+  // slash in Morse, and a blank one sends a report with no call in front.
+  test('templateCalls never names more than one entry, nor a blank one', () {
+    const field = 'KN2//KI2D//NK2Y//FR';
+    expect(_at(field, 1).templateCalls.call, 'KN2', reason: 'no call to pick: the partial under the cursor, for "{{ qso.call }}?"');
+    expect(_at('KR//', 4).templateCalls.call, 'KR', reason: 'a "//" just typed opens an empty segment; the partial before it is still the call');
+    expect(_at('W1AW,', 5).templateCalls.call, 'W1AW', reason: 'a trailing comma names the entry before it');
+    expect(_at('KI2D//W1AB,', 11).templateCalls.call, 'W1AB', reason: 'inside a stacked list too');
+    expect(_at('KI2D//W1AB,W1AC', 13).templateCalls.call, 'W1AC', reason: 'the cursor entry of a stacked list');
+  });
+
+  test('templateCalls outside a stack is the call at the cursor, with nothing next', () {
+    expect(_at('w1aw', 2).templateCalls, (call: 'W1AW', nextCall: '', nextPartial: ''));
+    expect(_at('W1AW, K1ABC', 8).templateCalls, (call: 'K1ABC', nextCall: '', nextPartial: ''));
+    expect(_at('KI2D//NK2Y', 3, stacking: false).templateCalls.nextCall, '', reason: 'editing never stacks');
+  });
 }

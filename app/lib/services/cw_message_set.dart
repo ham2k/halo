@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_widgets/halo_widgets.dart' show EsmMessage;
 
 import 'settings_service.dart';
 
@@ -49,10 +50,14 @@ class CwMessageSet {
 
   CwMessageSet renamed(String value) => CwMessageSet(name: value, messages: messages, labels: labels);
 
+  /// The function key each Enter Sends Messages message lives on — N1MM's
+  /// layout, which [esm] follows.
+  static const esmKeys = {EsmMessage.cq: 1, EsmMessage.exchange: 2, EsmMessage.thanks: 3, EsmMessage.myCall: 4, EsmMessage.hisCall: 5, EsmMessage.again: 8};
+
   /// The set Enter Sends Messages is offered with, laid out as N1MM lays out
   /// its keys — F1 CQ, F2 exchange, F3 thanks, F4 my call, F5 their call, F8
   /// again — because ESM reads messages by position
-  /// (`OperationView.esmMessageKeys`), and every contest operator already
+  /// ([esmKeys]), and every contest operator already
   /// has those positions in their fingers. A set of its own rather than the
   /// seeds' layout: the Default's F2 answers a caller in one key, which is
   /// what an operator keying by hand wants and what ESM's split would break.

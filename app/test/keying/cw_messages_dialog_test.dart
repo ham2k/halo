@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_widgets/halo_widgets.dart' show HaloDialog;
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/cw_messages_dialog.dart';
@@ -114,6 +115,34 @@ void main() {
     expect(find.text('Writing CW Messages'), findsNothing);
     expect(find.text('CW Keyer'), findsOneWidget, reason: 'the editor is still open behind it');
     expect(find.text('{{ qso.call }} {{ qso.serial | pad: 3 }}'), findsOneWidget, reason: 'and still holds the draft');
+  });
+
+  // What Enter keys from each F-key is ESM's to explain, and ESM exists only
+  // behind its experiment: shown without it, the help would describe a
+  // feature the operator cannot turn on.
+  testWidgets('Help explains what Enter Sends Messages keys only while its experiment is on', (tester) async {
+    // The editor behind the help lists its own keys too; only the help counts.
+    Finder inHelp(Finder finder) => find.descendant(
+      of: find.ancestor(of: find.text('Writing CW Messages'), matching: find.byType(HaloDialog)),
+      matching: finder,
+    );
+    Future<void> openHelp() async {
+      await tester.pumpWidget(host());
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Help'));
+      await tester.pumpAndSettle();
+    }
+
+    await openHelp();
+    expect(inHelp(find.text('F5  {{qso.call}}')), findsNothing);
+    expect(inHelp(find.textContaining('keyer.msg5')), findsNothing);
+
+    await services.settings.setExperimentEnabled('esm', true);
+    await tester.pumpWidget(const SizedBox());
+    await openHelp();
+    expect(inHelp(find.text('F5  {{qso.call}}')), findsOneWidget, reason: 'read off the ESM set: their call on F5');
+    expect(inHelp(find.textContaining('keyer.msg5')), findsOneWidget, reason: 'and the stacking thanks it suggests');
   });
 
   testWidgets('Cancel abandons every set the operator touched, not just the one on screen', (tester) async {
