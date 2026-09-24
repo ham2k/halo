@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/src/logging_controls_draft.dart' show qsoDataEquivalent;
 import 'package:halo_widgets/src/logging_controls_event_row.dart';
 
 Qso _event(String kind, {Map<String, dynamic> extra = const {}}) => Qso(
@@ -107,6 +108,114 @@ void main() {
       final saved = eventDataForSave(both, text: 'edited', done: false, startAtMillis: null);
       expect(saved['event'], containsPair('description', 'edited'));
       expect(saved['event'], containsPair('note', 'hidden'));
+    });
+  });
+
+  // What the panel does with a row the operator only selected: read it into
+  // the editor, write it straight back, and compare. Any difference reads as
+  // an edit, and an edited row offers Revert where it should offer Delete.
+  bool untouchedRoundTrips(Qso q) {
+    final read = eventFieldsFromData(q.data);
+    return qsoDataEquivalent(eventDataForSave(q, text: read.text, done: read.done, startAtMillis: null), q.data);
+  }
+
+  group('a row saved untouched writes back its own record', () {
+    for (final (label, extra) in [
+      ('a TODO with no event.data', <String, dynamic>{'note': 'x'}),
+      ('a legacy TODO carrying a bare done', <String, dynamic>{'note': 'x', 'done': true}),
+      (
+        'a TODO PoLo unchecked over a bare done',
+        <String, dynamic>{
+          'note': 'x',
+          'done': true,
+          'data': {'done': false},
+        },
+      ),
+      (
+        'a TODO in the current shape',
+        <String, dynamic>{
+          'note': 'x',
+          'data': {'done': true},
+        },
+      ),
+    ]) {
+      test(label, () => expect(untouchedRoundTrips(_event('todo', extra: extra)), isTrue));
+    }
+
+    test('a NOTE whose description is null', () {
+      expect(untouchedRoundTrips(_event('note', extra: {'description': null, 'note': 'check later'})), isTrue);
+    });
+
+    test('a NOTE whose note is not a string, which the editor shows empty', () {
+      // Writing the editor's '' back would replace a value the operator never
+      // saw, and a save with no edit would sync that loss to every peer.
+      expect(untouchedRoundTrips(_event('note', extra: {'note': 42})), isTrue);
+    });
+  });
+
+  group("a TODO's done flag", () {
+    test('reads data.done over a bare done, the way PoLo reads it', () {
+      // PoLo unchecking a legacy TODO writes `data.done: false` and leaves the
+      // bare `done: true` behind; OR-ing the two would show it done here while
+      // PoLo shows it open.
+      final unchecked = _event(
+        'todo',
+        extra: {
+          'note': 'x',
+          'done': true,
+          'data': {'done': false},
+        },
+      );
+      expect(eventFieldsFromData(unchecked.data).done, isFalse);
+    });
+
+    test('falls back to the bare done only when data.done is absent', () {
+      expect(eventFieldsFromData(_event('todo', extra: {'note': 'x', 'done': true}).data).done, isTrue);
+    });
+
+    test('toggled on a legacy TODO, moves into data and drops the bare key', () {
+      final legacy = _event('todo', extra: {'note': 'x', 'done': true});
+      final event = eventDataForSave(legacy, text: 'x', done: false, startAtMillis: null)['event'] as Map;
+      expect(event['data'], {'done': false});
+      expect(event.containsKey('done'), isFalse, reason: 'a bare done left behind is what older readers would still see');
+    });
+  });
+
+  test("a NOTE whose description is null writes its text back to note, the key it was read from", () {
+    final q = _event('note', extra: {'description': null, 'note': 'check later'});
+    final event = eventDataForSave(q, text: 'edited', done: false, startAtMillis: null)['event'] as Map;
+    expect(event['note'], 'edited');
+    expect(event['description'], isNull);
+  });
+
+  group('a malformed synced record still opens', () {
+    test('a description that is not a string falls back to note', () {
+      final q = _event('note', extra: {'description': 42, 'note': 'check later'});
+      expect(eventFieldsFromData(q.data).text, 'check later');
+    });
+
+    test('a note that is not a string reads as empty', () {
+      expect(
+        eventFieldsFromData(
+          _event(
+            'note',
+            extra: {
+              'note': ['a'],
+            },
+          ).data,
+        ).text,
+        '',
+      );
+    });
+
+    test('an event map with dynamic keys is read, not rejected', () {
+      // A map handed over the extension bridge is Map<dynamic, dynamic> even
+      // when every key is a string.
+      final data = <String, dynamic>{
+        'band': 'event',
+        'event': <dynamic, dynamic>{'event': 'note', 'note': 'from a bridge'},
+      };
+      expect(eventFieldsFromData(data).text, 'from a bridge');
     });
   });
 }

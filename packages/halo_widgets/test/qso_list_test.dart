@@ -2768,4 +2768,39 @@ void main() {
       expect(odd.style?.color, ThemeData().colorScheme.error);
     });
   });
+
+  group('an annotation row from another client', () {
+    Future<void> pumpRow(WidgetTester tester, Map<String, dynamic> event) => tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AnnotationRow(
+            qso: Qso(uuid: 'e', operationUuid: 'op', data: {'band': 'event', 'event': event}),
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+
+    testWidgets('with a description that is not a string shows its note', (tester) async {
+      await pumpRow(tester, {'event': 'note', 'description': 42, 'note': 'check later'});
+      expect(tester.takeException(), isNull);
+      expect(find.text('check later'), findsOneWidget);
+    });
+
+    testWidgets('with an icon that is not a string still draws', (tester) async {
+      await pumpRow(tester, {'event': 'break', 'icon': 7});
+      expect(tester.takeException(), isNull);
+      expect(find.text('BREAK'), findsOneWidget);
+    });
+
+    testWidgets("reads a TODO's done flag the way PoLo does", (tester) async {
+      await pumpRow(tester, {
+        'event': 'todo',
+        'note': 'x',
+        'done': true,
+        'data': {'done': false},
+      });
+      expect(find.byIcon(resolveIconName('sticker')), findsOneWidget, reason: 'data.done says open, whatever a bare done left behind says');
+    });
+  });
 }

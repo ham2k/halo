@@ -1759,12 +1759,10 @@ class AnnotationRow extends StatelessWidget {
   String get _iconName {
     final event = qso.event;
     if (qso.eventKind == 'todo') {
-      final data = event?['data'];
-      final done = (data is Map && data['done'] == true) || event?['done'] == true;
       if (qso.deleted) return 'sticker-outline';
-      return done ? 'sticker-check-outline' : 'sticker';
+      return eventTodoDone(event) ? 'sticker-check-outline' : 'sticker';
     }
-    return (event?['icon'] as String?) ?? 'information';
+    return asQsonString(event?['icon']) ?? 'information';
   }
 
   @override
@@ -1773,7 +1771,7 @@ class AnnotationRow extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final event = qso.event;
     final timeLabel = _utcTimeLabel(qso.startAt);
-    final text = (event?['description'] as String?) ?? (event?['note'] as String?) ?? qso.eventKind?.toUpperCase() ?? 'Event';
+    final text = asQsonString(event?['description']) ?? asQsonString(event?['note']) ?? qso.eventKind?.toUpperCase() ?? 'Event';
 
     final background = selected
         ? theme.colorScheme.secondaryContainer

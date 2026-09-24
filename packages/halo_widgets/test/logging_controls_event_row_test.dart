@@ -409,5 +409,28 @@ void main() {
       expect(stored.deleted, isTrue);
       expect(deleted, isTrue);
     });
+
+    // A TODO from an older log, or one with no `data` at all: selecting it
+    // must not read as an edit, or the operator can only Revert it and has
+    // to save a change they never made before they can delete it.
+    for (final (label, event) in [
+      ('a legacy TODO (bare done)', <String, dynamic>{'event': 'todo', 'note': 'check later', 'done': true}),
+      ('a TODO with no event.data', <String, dynamic>{'event': 'todo', 'note': 'check later'}),
+    ]) {
+      testWidgets('$label selected untouched offers Delete, not Revert', (tester) async {
+        final todo = (await tester.runAsync(
+          () => qsos.add(operation.uuid, {
+            'band': 'event',
+            'freq': 0,
+            'mode': 'todo',
+            'our': {'call': 'EVENT'},
+            'their': {'call': 'TODO'},
+            'event': event,
+          }),
+        ))!;
+        await tester.pumpWidget(host(session: LoggingSession(editingQso: todo)));
+        expect(secondButton(tester, MdiIcons.trashCanOutline).onPressed, isNotNull);
+      });
+    }
   });
 }

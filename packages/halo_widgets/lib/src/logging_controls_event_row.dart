@@ -144,21 +144,18 @@ class EventFieldRow extends StatelessWidget {
 /// The NOTE/TODO inline editor's text and done state for an event row's
 /// `event` map — the only kinds with editable free text. Reads `description`
 /// before `note`, the precedence [AnnotationRow] displays with, and a TODO's
-/// `data.done` with the same bare-`done` fallback for older synced logs.
+/// done state by [eventTodoDone]. A value of the wrong type — another
+/// client's record — reads as absent rather than throwing, so selecting the
+/// row still opens it.
 ({String text, bool done}) eventFieldsFromData(Map<String, dynamic> data) {
-  final event = data['event'] as Map<String, dynamic>?;
+  final event = asQsonMap(data['event']);
   // Same `description` before `note` precedence [AnnotationRow] displays
   // with — [eventDataForSave] writes back to whichever one this reads, so a
   // NOTE/TODO synced from elsewhere under `description` keeps agreeing with
-  // what the log shows for it. Deliberately NOT trimmed: [eventDataForSave]
-  // isn't either (see its own note), so a row loaded and saved untouched
-  // round-trips exactly — trimming just this side would make selecting a row
-  // with incidental whitespace read as "changed" on its own, with no edit
-  // made.
-  final text = (event?['description'] as String?) ?? (event?['note'] as String?) ?? '';
-  final eventData = event?['data'];
-  final done = (eventData is Map && eventData['done'] == true) || event?['done'] == true;
-  return (text: text, done: done);
+  // what the log shows for it. Not trimmed: the editor shows the stored
+  // text exactly, so an edit saves exactly what the operator saw and changed.
+  final text = asQsonString(event?['description']) ?? asQsonString(event?['note']) ?? '';
+  return (text: text, done: eventTodoDone(event));
 }
 
 /// The `data` to save for an edited event row: the original payload with
@@ -171,31 +168,30 @@ Map<String, dynamic> eventDataForSave(Qso editingQso, {required String text, req
   final kind = editingQso.eventKind;
   if (kind == 'note' || kind == 'todo') {
     final event = Map<String, dynamic>.from(editingQso.event ?? const {});
-    // [text] is written untrimmed — see [eventFieldsFromData]'s matching
-    // note; the two must read and write the exact same string or an
-    // untouched field falsely reads as edited.
-    //
-    // Write back to whichever key [eventFieldsFromData] actually read this
-    // from — a row synced in under `description` must keep agreeing with
-    // what AnnotationRow displays for it, not silently gain a `note` nothing
-    // reads while the old `description` lingers.
-    if (event.containsKey('description')) {
-      event['description'] = text;
-    } else {
-      event['note'] = text;
+    // Only what the operator changed is written; the record keeps whatever
+    // shape it arrived in otherwise. The panel judges a row edited by
+    // comparing this write-back with the record, so a reshaped but untouched
+    // row would offer Revert where it should offer Delete — and a save would
+    // replace what the editor could not show: a malformed `note` reads as
+    // empty, and writing that empty text back would erase it.
+    final read = eventFieldsFromData(editingQso.data);
+    if (text != read.text) {
+      // Back to whichever key [eventFieldsFromData] read the text from, by
+      // the same `is String` test — a row synced in under `description`
+      // must keep agreeing with what AnnotationRow displays for it, not
+      // gain a `note` nothing reads while the old `description` lingers.
+      if (event['description'] is String) {
+        event['description'] = text;
+      } else {
+        event['note'] = text;
+      }
     }
-    if (kind == 'todo') {
-      // `is Map`, not a cast — same guard as the sibling reads of this field
-      // ([eventFieldsFromData] above, `AnnotationRow._iconName` in
-      // qso_list.dart): a malformed/cross-client value here must not crash
-      // the panel just because this row got selected.
-      final rawEventData = event['data'];
-      final eventData = Map<String, dynamic>.from(rawEventData is Map ? rawEventData.cast<String, dynamic>() : const {});
+    if (kind == 'todo' && done != read.done) {
+      final eventData = Map<String, dynamic>.from(asQsonMap(event['data']) ?? const {});
       eventData['done'] = done;
       event['data'] = eventData;
-      // Older synced logs may also carry a bare `event.done` (the fallback
-      // [eventFieldsFromData] reads) — clear it, or a saved `false` here
-      // would keep losing to a stale `true` there forever.
+      // A bare `done` left beside it still decides the TODO for readers that
+      // OR the two, older HaLo builds among them.
       event.remove('done');
     }
     data['event'] = event;

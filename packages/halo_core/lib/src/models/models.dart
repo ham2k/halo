@@ -367,3 +367,10 @@ class Qso {
   /// rows). Null for real QSOs.
   String? get eventKind => asQsonString(event?['event']);
 }
+
+/// Whether a TODO [event] is checked off: `data.done` when it is set, the
+/// bare `done` older logs carry only when it is not — app-polo's
+/// `event.data?.done ?? event.done`. OR-ing the two instead disagrees with
+/// polo on the record polo writes when it unchecks an older TODO (`done:
+/// true` left beside `data: {done: false}`), which polo shows open.
+bool eventTodoDone(Map<String, dynamic>? event) => (asQsonMap(event?['data'])?['done'] ?? event?['done']) == true;
