@@ -17,6 +17,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show HookCalls;
 
 import 'android_file_save.dart';
 import 'export_preferences.dart';
@@ -393,10 +394,9 @@ class ExportService {
           (args['operation'] as Map<String, dynamic>)['refs'] = refs;
         }
         final result =
-            await host!.invokeHook(
-                  'export',
+            await host!.invoke(
+                  Hooks.exportGenerateExport,
                   key: option['hookKey'] as String?,
-                  method: 'generateExport',
                   args: {
                     ...args,
                     'exportType': option['exportType'],

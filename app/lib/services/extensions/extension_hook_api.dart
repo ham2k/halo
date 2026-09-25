@@ -269,8 +269,7 @@ mixin _ExtensionHookApi {
   /// throwing — which a caller cannot otherwise tell from every hook
   /// answering with nothing.
   Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> _collectHookResults(
-    String category, {
-    required String method,
+    HookRef hook, {
     required Object? args,
     required String debugLabel,
     bool partialOnTimeout = false,
@@ -282,9 +281,7 @@ mixin _ExtensionHookApi {
     }
     var parts = emptyHookPartition;
     try {
-      parts = partitionHookEntries(
-        await host.invokeHookAll(category, method: method, args: args, timeout: const Duration(seconds: 10), partialOnTimeout: partialOnTimeout),
-      );
+      parts = partitionHookEntries(await host.invokeAll(hook, args: args, timeout: const Duration(seconds: 10), partialOnTimeout: partialOnTimeout));
     } catch (e) {
       debugPrint('[extensions] $debugLabel failed: $e');
     }
@@ -339,7 +336,7 @@ mixin _ExtensionHookApi {
   /// Hooks that don't implement
   /// `suggestExportOptions` are silently absent from the list.
   Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async =>
-      (await _collectHookResults('export', method: 'suggestExportOptions', args: args, debugLabel: 'getExportOptions')).items;
+      (await _collectHookResults(Hooks.exportSuggestExportOptions, args: args, debugLabel: 'getExportOptions')).items;
 
   /// A shared type is listed once, using the highest-priority registration.
   Future<List<Map<String, dynamic>>> getExportTypes() async {
@@ -350,10 +347,9 @@ mixin _ExtensionHookApi {
   Future<List<Map<String, dynamic>>> exportTypeSettings(Map<String, dynamic> global, Map<String, dynamic> Function(String type) overrides) async {
     if (host == null) return [];
     final definitions = await getExportTypes();
-    final result = await host!.invokeHook(
-      'template',
+    final result = await host!.invoke(
+      Hooks.templateExportSettings,
       key: 'templates',
-      method: 'exportSettings',
       args: {
         'definitions': definitions,
         'global': global,
@@ -364,7 +360,7 @@ mixin _ExtensionHookApi {
   }
 
   Future<List<Map<String, dynamic>>> prepareExports(Map<String, dynamic> args) async {
-    final result = await host!.invokeHook('template', key: 'templates', method: 'prepareExports', args: args);
+    final result = await host!.invoke(Hooks.templatePrepareExports, key: 'templates', args: args);
     return (result as List).map((value) => Map<String, dynamic>.from(value as Map)).toList();
   }
 
@@ -377,10 +373,10 @@ mixin _ExtensionHookApi {
   Future<List<Map<String, dynamic>>> suggestSpotSources({required Map<String, dynamic> operation, Map<String, dynamic>? qso}) async {
     final host = this.host;
     if (host == null) return const [];
-    final method = qso == null ? 'isSelfSpotEnabled' : 'isOtherSpotEnabled';
+    final hook = qso == null ? Hooks.spotsIsSelfSpotEnabled : Hooks.spotsIsOtherSpotEnabled;
     final args = qso == null ? {'operation': operation} : {'qso': qso};
     try {
-      final entries = await host.invokeHookAll('spots', method: method, args: args, timeout: const Duration(seconds: 5));
+      final entries = await host.invokeAll(hook, args: args, timeout: const Duration(seconds: 5));
       final sources = <Map<String, dynamic>>[];
       for (final entry in entries) {
         if (entry['ok'] != true || entry['value'] is! Map) continue;
@@ -413,8 +409,7 @@ mixin _ExtensionHookApi {
   /// host, or `invokeHookAll` throwing — and says nothing about any feed.
   Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async {
     final parts = await _collectHookResults(
-      'spots',
-      method: 'fetchSpots',
+      Hooks.spotsFetchSpots,
       args: const {},
       debugLabel: 'getSpots',
       partialOnTimeout: true,
@@ -432,7 +427,7 @@ mixin _ExtensionHookApi {
     final host = this.host;
     if (host == null) return const {};
     try {
-      final entries = await host.invokeHookAll('spots', method: 'sourceName', timeout: const Duration(seconds: 5));
+      final entries = await host.invokeAll(Hooks.spotsSourceName, timeout: const Duration(seconds: 5));
       return {
         for (final entry in entries)
           if (entry['ok'] == true && entry['value'] is String) entry['key'] as String: entry['value'] as String,
@@ -468,7 +463,7 @@ mixin _ExtensionHookApi {
   }) async {
     final host = this.host;
     if (host == null) return const {};
-    final method = qso == null ? 'postSelfSpot' : 'postOtherSpot';
+    final hook = qso == null ? Hooks.spotsPostSelfSpot : Hooks.spotsPostOtherSpot;
     var spotOperation = operation;
     var spotQso = qso;
     if (qso == null) {
@@ -497,7 +492,7 @@ mixin _ExtensionHookApi {
       sources.map((source) async {
         final hookKey = source['hookKey'] as String?;
         try {
-          final result = await host.invokeHook('spots', key: hookKey, method: method, args: args, timeout: const Duration(seconds: 15)) as Map;
+          final result = await host.invoke(hook, key: hookKey, args: args, timeout: const Duration(seconds: 15)) as Map;
           return MapEntry(hookKey ?? '', result.cast<String, dynamic>());
         } catch (e) {
           return MapEntry(hookKey ?? '', <String, dynamic>{'ok': false, 'message': e.toString()});
@@ -505,7 +500,7 @@ mixin _ExtensionHookApi {
       }),
     );
     for (final entry in entries) {
-      debugPrint('[spots] $method via ${entry.key}: ${entry.value}');
+      debugPrint('[spots] ${hook.method} via ${entry.key}: ${entry.value}');
       final userMessage = entry.value['userMessage'];
       if (userMessage is Map) {
         presentResultMessage(userMessage.cast<String, dynamic>(), ns: entry.key);
@@ -533,10 +528,9 @@ mixin _ExtensionHookApi {
   }) async {
     final host = this.host;
     if (host == null) return null;
-    final result = await host.invokeHook(
-      'template',
+    final result = await host.invoke(
+      Hooks.templateRender,
       key: 'templates',
-      method: 'render',
       args: {'template': template, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount, 'log': ?log, 'keyer': ?keyer},
       timeout: const Duration(seconds: 2),
     );
@@ -558,10 +552,9 @@ mixin _ExtensionHookApi {
   }) async {
     final host = this.host;
     if (host == null) return null;
-    final result = await host.invokeHook(
-      'template',
+    final result = await host.invoke(
+      Hooks.templateRenderMany,
       key: 'templates',
-      method: 'renderMany',
       args: {'templates': templates, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount, 'keyer': ?keyer},
       timeout: const Duration(seconds: 2),
     );
@@ -618,10 +611,9 @@ mixin _ExtensionHookApi {
     final reachable = online && !ConnectivityService.isOffline;
 
     try {
-      final result = await host.invokeHook(
-        'lookupService',
+      final result = await host.invoke(
+        Hooks.lookupServiceLookupCallInfo,
         key: 'core',
-        method: 'lookupCallInfo',
         args: {
           'callInfo': {'call': call},
           'qso': qso,
@@ -657,7 +649,7 @@ mixin _ExtensionHookApi {
     final host = this.host;
     if (host == null) return const {};
     try {
-      final entries = await host.invokeHookAll('scoring', method: 'scope', timeout: const Duration(seconds: 5));
+      final entries = await host.invokeAll(Hooks.scoringScope, timeout: const Duration(seconds: 5));
       return {
         for (final entry in entries)
           if (entry['ok'] == true && entry['value'] != null) entry['key'] as String: entry['value'],
@@ -679,9 +671,8 @@ mixin _ExtensionHookApi {
     final host = this.host;
     if (host == null || input.isEmpty) return null;
     try {
-      final entries = await host.invokeHookAll(
-        'command',
-        method: 'interpret',
+      final entries = await host.invokeAll(
+        Hooks.commandInterpret,
         args: {'input': input, 'operation': ?operation, 'qso': ?qso, if (execute) 'execute': true},
         // The describe preview must stay snappy (it reruns on every
         // keystroke pause), but the one execute call is where hooks do
@@ -726,7 +717,7 @@ mixin _ExtensionHookApi {
     final host = this.host;
     if (host == null) return const [];
     try {
-      final entries = await host.invokeHookAll('command', method: 'catalog', timeout: const Duration(seconds: 2));
+      final entries = await host.invokeAll(Hooks.commandCatalog, timeout: const Duration(seconds: 2));
       final catalog = <Map<String, dynamic>>[];
       for (final entry in entries) {
         // `catalog` is optional on CommandHook, so a hook that doesn't
@@ -760,11 +751,11 @@ mixin _ExtensionHookApi {
   /// `placeholder`/`transforms` (e.g. a DXCC-derived reference prefix) off
   /// it; omit for a QSO-agnostic refresh (e.g. right after the operation loads).
   Future<ControlsResult> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
-      _collectControls('loggingControls', operationData, qso: qso);
+      _collectControls(Hooks.activityLoggingControls, operationData, qso: qso);
 
   /// Descriptors for controls activities want in operation settings.
   Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
-      _collectControls('operationControls', operationData, qso: qso);
+      _collectControls(Hooks.activityOperationControls, operationData, qso: qso);
 
   /// The activity reference TYPES each installed extension registers, keyed by
   /// extension key: `pota` -> `(activationType: 'potaActivation',
@@ -855,9 +846,8 @@ mixin _ExtensionHookApi {
     if (refs is! List || refs.isEmpty) return qsoData;
 
     try {
-      final entries = await host.invokeHookAll(
-        'activity',
-        method: 'processQsoBeforeSave',
+      final entries = await host.invokeAll(
+        Hooks.activityProcessQsoBeforeSave,
         args: {'qso': qsoData, 'operation': operationData},
         // Saving blocks the operator's next QSO, so a stalled hook loses its
         // contribution rather than the log its pace.
@@ -879,16 +869,15 @@ mixin _ExtensionHookApi {
     }
   }
 
-  Future<ControlsResult> _collectControls(String method, Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async {
+  Future<ControlsResult> _collectControls(HookRef hook, Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async {
     final host = this.host;
     // No host is a failure, not an empty answer: the runtime is dead or
     // still starting (see ErrorPolicy's `extension-runtime-dead`), and the
     // operator's refs are no less real for it.
     if (host == null) return (controls: const <Map<String, dynamic>>[], loadFailed: true);
     try {
-      final entries = await host.invokeHookAll(
-        'activity',
-        method: method,
+      final entries = await host.invokeAll(
+        hook,
         args: {'operation': operationData, 'qso': ?qso},
         // The timeout is ONE budget for the whole fan-out, so without this a
         // single slow extension discards the controls every other hook had
@@ -906,7 +895,7 @@ mixin _ExtensionHookApi {
         // caller can name the source rather than just notice an absence.
         if (entry['ok'] != true) {
           loadFailed = true;
-          debugPrint('[extensions] $method: hook ${entry['key']} failed: ${entry['error']}');
+          debugPrint('[extensions] ${hook.method}: hook ${entry['key']} failed: ${entry['error']}');
           continue;
         }
         // A hook that answered with something other than a list contributed
@@ -922,7 +911,7 @@ mixin _ExtensionHookApi {
         final value = entry['value'];
         if (value is! List) {
           if (value != null) {
-            debugPrint('[extensions] $method: hook ${entry['key']} answered ${value.runtimeType}, wanted a List');
+            debugPrint('[extensions] ${hook.method}: hook ${entry['key']} answered ${value.runtimeType}, wanted a List');
           }
           continue;
         }
@@ -934,7 +923,7 @@ mixin _ExtensionHookApi {
           // `loading` for the life of the screen.
           if (control is! Map) {
             loadFailed = true;
-            debugPrint('[extensions] $method: hook ${entry['key']} returned a ${control.runtimeType} control');
+            debugPrint('[extensions] ${hook.method}: hook ${entry['key']} returned a ${control.runtimeType} control');
             continue;
           }
           controls.add(control.cast<String, dynamic>());
@@ -952,7 +941,7 @@ mixin _ExtensionHookApi {
       // `partialOnTimeout`. What reaches here is the whole fan-out failing —
       // a dead runtime, or a timeout with nothing settled — where there is
       // no partial answer to keep.
-      debugPrint('[extensions] $method failed: $e');
+      debugPrint('[extensions] ${hook.method} failed: $e');
       return (controls: const <Map<String, dynamic>>[], loadFailed: true);
     }
   }
@@ -1047,7 +1036,7 @@ mixin _ExtensionHookApi {
       // quite possibly already answered. Each side therefore degrades on its
       // own, and only a search where both failed comes back empty.
       final everyone = host
-          .invokeHookAll('activity', method: 'suggest', args: argsSearchingFor(searchTerm), timeout: const Duration(seconds: 5))
+          .invokeAll(Hooks.activitySuggest, args: argsSearchingFor(searchTerm), timeout: const Duration(seconds: 5))
           .onError<ExtensionHostException>((e, _) {
             debugPrint('[extensions] activity suggestion fan-out failed: $e');
             fanOutFailed = true;
@@ -1077,7 +1066,7 @@ mixin _ExtensionHookApi {
   /// answer. [label] names the search in the console.
   Future<List<Map<String, dynamic>>> _activityBatch(ExtensionHost host, List<String> keys, Map<String, dynamic> args, String label) async {
     final answers = await host.invokeHookBatch(
-      [for (final key in keys) (category: 'activity', key: key, method: 'suggest', args: args)],
+      [for (final key in keys) Hooks.activitySuggest.withArgs(args, key: key)],
       timeout: const Duration(seconds: 5),
       partialOnTimeout: true,
     );
@@ -1097,7 +1086,7 @@ mixin _ExtensionHookApi {
   /// [decorateRef] for every ref in [refs], in ONE crossing: one answer per
   /// ref, in order, each the ref as it came in when its handler did not answer.
   Future<List<Map<String, dynamic>>> decorateRefs(List<Map<String, dynamic>> refs) async {
-    final answers = await refHookAnswers(refs, 'decorateRef');
+    final answers = await refHookAnswers(refs, RefMethod.decorateRef);
     return [
       for (final (i, answer) in answers.indexed)
         if (answer.ok && answer.value is Map) (answer.value! as Map).cast<String, dynamic>() else refs[i],
@@ -1112,7 +1101,7 @@ mixin _ExtensionHookApi {
   /// onto the operation's ref, so a program that changes its URLs takes effect
   /// with the extension rather than needing every saved operation rewritten.
   Future<List<RefLink?>> linkForRefs(List<Map<String, dynamic>> refs) async {
-    final answers = await refHookAnswers(refs, 'linkForRef');
+    final answers = await refHookAnswers(refs, RefMethod.linkForRef);
     return [for (final (i, answer) in answers.indexed) answer.ok ? refLinkFromHookResult(answer.value, type: '${refs[i]['type']}') : null];
   }
 
@@ -1127,7 +1116,7 @@ mixin _ExtensionHookApi {
   /// is written back onto the ref, so a program that moves its files takes
   /// effect with the extension.
   Future<List<RefGeojsonAnswer>> geojsonUrlsForRefs(List<Map<String, dynamic>> refs) async {
-    final answers = await refHookAnswers(refs, 'geojsonUrlForRef');
+    final answers = await refHookAnswers(refs, RefMethod.geojsonUrlForRef);
     return [
       for (final (i, answer) in answers.indexed)
         (
@@ -1146,7 +1135,7 @@ mixin _ExtensionHookApi {
   /// that has no runtime to answer in — costs its own ref the answer and no
   /// other. A budget per ref would make a caller looping over N refs wait up to
   /// N budgets, one after another.
-  Future<List<RefHookAnswer>> refHookAnswers(List<Map<String, dynamic>> refs, String method, {Map<String, dynamic> extraArgs = const {}}) async {
+  Future<List<RefHookAnswer>> refHookAnswers(List<Map<String, dynamic>> refs, RefMethod method, {Map<String, dynamic> extraArgs = const {}}) async {
     // Checked per ref, not cast: a malformed ref costs its own answer, never
     // the rest of the list's.
     final asked = <int>[];
@@ -1154,7 +1143,7 @@ mixin _ExtensionHookApi {
       if (ref['type'] is String) {
         asked.add(i);
       } else if (ref['type'] != null) {
-        debugPrint('[extensions] $method: ref ${ref['ref']} has a ${ref['type'].runtimeType} type, not a String — not asked');
+        debugPrint('[extensions] ${method.name}: ref ${ref['ref']} has a ${ref['type'].runtimeType} type, not a String — not asked');
       }
     }
     final answers = <RefHookAnswer>[for (final ref in refs) (asked: ref['type'] is String, ok: false, noHandler: false, value: null)];
@@ -1162,7 +1151,7 @@ mixin _ExtensionHookApi {
     if (host == null || asked.isEmpty) return answers;
     try {
       final entries = await host.invokeHookBatch([
-        for (final i in asked) (category: 'ref:${refs[i]['type']}', key: null, method: method, args: {...extraArgs, 'ref': refs[i]}),
+        for (final i in asked) Hooks.ref(refs[i]['type'] as String, method).withArgs({...extraArgs, 'ref': refs[i]}),
       ], partialOnTimeout: true);
       for (final (j, i) in asked.indexed) {
         final entry = entries[j];
@@ -1171,11 +1160,11 @@ mixin _ExtensionHookApi {
         } else if (entry['noHandler'] == true) {
           answers[i] = (asked: true, ok: false, noHandler: true, value: null);
         } else {
-          debugPrint('[extensions] $method(ref:${refs[i]['type']}) failed: ${entry['error']}');
+          debugPrint('[extensions] ${method.name}(ref:${refs[i]['type']}) failed: ${entry['error']}');
         }
       }
     } on ExtensionHostException catch (e) {
-      debugPrint('[extensions] $method failed: $e');
+      debugPrint('[extensions] ${method.name} failed: $e');
     }
     return answers;
   }

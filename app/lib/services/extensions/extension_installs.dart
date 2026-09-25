@@ -495,7 +495,7 @@ mixin _ExtensionInstalls {
     final host = this.host;
     if (host == null) return const [];
     try {
-      final result = await host.invokeHook('runtime', key: 'kernel', method: 'listExtensions', timeout: const Duration(seconds: 2));
+      final result = await host.invoke(Hooks.runtimeListExtensions, key: 'kernel', timeout: const Duration(seconds: 2));
       return result is List ? result.cast<Map<dynamic, dynamic>>().map((e) => e.cast<String, dynamic>()).toList() : const [];
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] listActiveExtensions failed: $e');

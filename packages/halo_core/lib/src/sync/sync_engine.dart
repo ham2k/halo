@@ -22,6 +22,7 @@
 import 'dart:async';
 
 import '../app_clock.dart';
+import '../hook_names.dart';
 import '../repo/operations_repository.dart';
 import '../repo/qsos_repository.dart';
 import 'sync_progress.dart';
@@ -646,7 +647,7 @@ class SyncEngine {
       }
 
       if (state['lastSyncAccountUUID'] == null) {
-        final response = await _callTransport('getAccountData', const {});
+        final response = await _callTransport(Hooks.syncTransportGetAccountData, const {});
         if (generation != _generation) return _abandonRound();
         final accountUuid = (response['current_account'] as Map?)?['uuid'] as String?;
         if (accountUuid != null) {
@@ -702,7 +703,7 @@ class SyncEngine {
           for (final entry in (backfilling ? backfillCursorKeys : forwardCursorKeys).entries) entry.key: settings.state[entry.value] as String?,
       };
       _pullInFlight = pull;
-      final response = await _callTransport('sync', await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit));
+      final response = await _callTransport(Hooks.syncTransportSync, await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit));
       if (_pullInFlight) _pullPageCap = serverMaxPullLimit;
       _pullInFlight = false;
       if (generation != _generation) return _abandonRound();
@@ -1445,9 +1446,9 @@ class SyncEngine {
   /// reachability signal a fact about the network rather than an inference
   /// from how the round ended: the answer is observed at the one place it
   /// arrives, before any of the round's own logic can throw over it.
-  Future<Map<String, dynamic>> _callTransport(String method, Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>> _callTransport(HookRef hook, Map<String, dynamic> args) async {
     try {
-      final response = await transport(method, args);
+      final response = await transport(hook, args);
       _roundReachedService = true;
       onReachability?.call(true);
       return response;

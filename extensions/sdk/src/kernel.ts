@@ -34,6 +34,7 @@ installNumberFormatPolyfill()
 import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField, SettingsPanelDescriptor, Spot, HistoryForCallOptions } from "./types.ts"
 import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels.ts"
 import { installAppClock } from "./appClock.ts"
+import type { HookCategoryName } from "./hookCategories.ts"
 
 import * as libCallsigns from "@ham2k/lib-callsigns"
 import * as libCountryFiles from "@ham2k/lib-country-files"
@@ -108,7 +109,7 @@ if (typeof (globalThis as Record<string, unknown>).sendMessage === "function") {
 const { realNow, setClockTravel } = installAppClock()
 
 interface HookRecord {
-  category: string
+  category: HookCategoryName
   key: string
   priority: number
   extensionKey: string
@@ -218,7 +219,7 @@ function postPartial(id: number, entry: SettledEntry) {
   }
 }
 
-function hooksFor(category: string, key: string | null): HookRecord[] {
+function hooksFor(category: HookCategoryName, key: string | null): HookRecord[] {
   return hooks.filter((h) => h.category === category && (key == null || h.key === key)).sort((a, b) => b.priority - a.priority)
 }
 
@@ -238,7 +239,7 @@ function hooksFor(category: string, key: string | null): HookRecord[] {
 /// The code comes off `args.ref`, which every `ref:` method is called with. A
 /// call carrying no readable code matches the bare type alone — a prefix has
 /// nothing to begin.
-function hooksForRef(category: string, key: string | null, args: unknown): HookRecord[] {
+function hooksForRef(category: HookCategoryName, key: string | null, args: unknown): HookRecord[] {
   if (!category.startsWith("ref:") || category.includes("/")) return hooksFor(category, key)
   const raw = (args as { ref?: { ref?: unknown } } | null)?.ref?.ref
   const code = typeof raw === "string" ? raw.toLowerCase() : null
@@ -453,7 +454,7 @@ class NoHandlerError extends Error {}
 /// One host-requested call on the highest-priority hook for `category` (and
 /// `key`, when given) — what `invokeHook` runs, and what `invokeHookBatch`
 /// runs once per call, so a call routes the same way whichever way it came.
-async function runHook(category: string, key: string | null, method: string, args: unknown): Promise<unknown> {
+async function runHook(category: HookCategoryName, key: string | null, method: string, args: unknown): Promise<unknown> {
   // Chosen from the args, not the category alone: for a `ref:` category the
   // hook depends on the reference being asked about.
   const record = hooksForRef(category, key, args)[0]
@@ -487,7 +488,7 @@ async function activateExtension(def: ExtensionDefinition): Promise<string | nul
       // extension's kernel-recorded key, and the SDK copy inside the bundle
       // captures it in module scope — unreachable from other bundles.
       hostCall: boundHostCallFor(def.key),
-      registerHook(category: string, params: RegisterHookParams) {
+      registerHook(category: HookCategoryName, params: RegisterHookParams) {
         if (!params?.hook) {
           throw new Error(`registerHook(${category}) called with no hook in extension ${def.key}`)
         }
@@ -686,7 +687,7 @@ const kernel = {
     })()
   },
 
-  invokeHook(id: number, category: string, key: string | null, method: string, argsJson: string) {
+  invokeHook(id: number, category: HookCategoryName, key: string | null, method: string, argsJson: string) {
     const startedAt = realNow()
     void (async () => {
       try {
@@ -712,7 +713,7 @@ const kernel = {
     const startedAt = realNow()
     void (async () => {
       try {
-        const calls = JSON.parse(callsJson) as { category: string; key?: string | null; method: string; args?: unknown; error?: string }[]
+        const calls = JSON.parse(callsJson) as { category: HookCategoryName; key?: string | null; method: string; args?: unknown; error?: string }[]
         if (wantsPartials) post({ type: "partial", id, keys: calls.map((_, i) => String(i)) })
         const entries = await Promise.all(
           calls.map(async (call, i) => {
@@ -735,7 +736,7 @@ const kernel = {
     })()
   },
 
-  invokeHookAll(id: number, category: string, method: string, argsJson: string, wantsPartials = false) {
+  invokeHookAll(id: number, category: HookCategoryName, method: string, argsJson: string, wantsPartials = false) {
     const startedAt = realNow()
     void (async () => {
       // Same whole-body containment as invokeHook: anything thrown outside
@@ -918,7 +919,7 @@ const kernel = {
   /// contest's `generateExport` asking for ADIF re-enters itself). Target the
   /// hook you actually want whenever you know its key.
   async invokeLocal(
-    category: string,
+    category: HookCategoryName,
     method: string,
     args: unknown,
     online = true,
@@ -942,7 +943,7 @@ const kernel = {
   /// hooks' contributions (e.g. the lookup service's priority-ordered
   /// merge), unlike `invokeLocal`'s parallel fan-out.
   async invokeLocalSequential(
-    category: string,
+    category: HookCategoryName,
     method: string,
     initialArgs: unknown,
     fold: (args: unknown, hookResult: unknown, hookKey: string) => unknown,

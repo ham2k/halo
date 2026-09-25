@@ -8,6 +8,7 @@
 
 import 'package:collection/collection.dart' show ListEquality, mergeSort;
 
+import 'package:halo_core/halo_core.dart' show Hooks;
 import 'extension_relevance.dart';
 
 /// Where an extension's code came from. Not cosmetic: [maySeeBuildSecrets]
@@ -92,9 +93,8 @@ mixin ExtensionSearchable {
 ///
 /// Null for anything that is not a `ref:` entry.
 ({String type, String? code})? refClaimOf(String hook) {
-  if (!hook.startsWith('ref:')) return null;
-  final body = hook.substring(4);
-  if (body.isEmpty) return null;
+  final body = Hooks.refTypeOf(hook);
+  if (body == null || body.isEmpty) return null;
   final slash = body.indexOf('/');
   if (slash < 0) return (type: body, code: null);
   final type = body.substring(0, slash);

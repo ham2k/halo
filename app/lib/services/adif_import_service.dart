@@ -133,9 +133,8 @@ class AdifImportService {
   Future<void> _applyBatch(ExtensionHost host, List<AdifRecord> batch, Set<String> failed) async {
     final List<Map<String, dynamic>> entries;
     try {
-      entries = await host.invokeHookAll(
-        'adifImport',
-        method: 'refsForRecords',
+      entries = await host.invokeAll(
+        Hooks.adifImportRefsForRecords,
         args: {
           'records': [
             for (final record in batch) {'fields': record.fields},

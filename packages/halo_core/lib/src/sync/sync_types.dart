@@ -6,14 +6,15 @@
 // carries, and the choices the app layer hands back. The engine itself is in
 // sync_engine.dart.
 
+import '../hook_names.dart';
 import '../models/models.dart';
 
-/// Calls the highest-priority `syncTransport` hook's `method` with `args`
+/// Calls the highest-priority `syncTransport` hook's [hook] method with `args`
 /// and returns its JSON result. Implemented by the app layer (wrapping
 /// `ExtensionHost.invokeHook`) so this package stays free of a Flutter/
 /// extension-host dependency — the same reason `halo_core` has no Flutter
 /// import today.
-typedef SyncTransportCall = Future<Map<String, dynamic>> Function(String method, Map<String, dynamic> args);
+typedef SyncTransportCall = Future<Map<String, dynamic>> Function(HookRef hook, Map<String, dynamic> args);
 
 /// Thrown by a [SyncTransportCall] that cannot run YET, as opposed to one that
 /// failed.

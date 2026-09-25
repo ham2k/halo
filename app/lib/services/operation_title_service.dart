@@ -86,7 +86,7 @@ class OperationTitleService {
 
     // Every ref in one crossing, each still answered on its own — a ref whose
     // hook fails or runs out of time costs its own phrase and no other.
-    final answers = await extensions.refHookAnswers(refs, 'suggestOperationTitle', extraArgs: {'operation': operationPayload});
+    final answers = await extensions.refHookAnswers(refs, RefMethod.suggestOperationTitle, extraArgs: {'operation': operationPayload});
 
     var complete = true;
     final suggestions = <OperationTitleSuggestion>[];

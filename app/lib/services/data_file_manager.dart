@@ -258,7 +258,7 @@ class DataFileManager {
     if (host == null) return const [];
     final List<dynamic> entries;
     try {
-      entries = await host.invokeHookAll('dataFile', method: 'getDefinition');
+      entries = await host.invokeAll(Hooks.dataFileGetDefinition);
     } catch (e, st) {
       debugPrint('[data-file] failed to fetch definitions: $e');
       ErrorReportingService.report(e, st, context: 'data-files:fetch-definitions');
@@ -545,7 +545,7 @@ class DataFileManager {
 
     final List<dynamic> entries;
     try {
-      entries = await host.invokeHookAll('dataFile', method: 'getDefinition');
+      entries = await host.invokeAll(Hooks.dataFileGetDefinition);
     } catch (e, st) {
       debugPrint('[data-file] failed to fetch definitions: $e');
       ErrorReportingService.report(e, st, context: 'data-files:sync-all-fetch-definitions');
@@ -763,7 +763,7 @@ class DataFileManager {
       key,
       category,
       _labelFor(key, def),
-      'mapCsvBatch',
+      Hooks.dataFileMapCsvBatch,
       'rows',
       parsedRows,
       extraArgs: headers == null ? null : {'headers': headers},
@@ -790,7 +790,7 @@ class DataFileManager {
       throw FormatException('Resolved target at rootPath is neither Array nor Object');
     }
 
-    await _batchWriteToDatabase(key, category, _labelFor(key, def), 'mapJsonBatch', 'entries', entriesToProcess, showProgress: showProgress);
+    await _batchWriteToDatabase(key, category, _labelFor(key, def), Hooks.dataFileMapJsonBatch, 'entries', entriesToProcess, showProgress: showProgress);
   }
 
   Future<void> _processRaw(String key, Map<String, dynamic> def, String body, {required bool showProgress}) async {
@@ -804,10 +804,9 @@ class DataFileManager {
     if (host == null) throw ExtensionHostException('dataFile $key: no runtime to import into');
 
     // 1. Pass down to JS converter rawToJSONData
-    final dynamic processedJson = await host.invokeHook(
-      'dataFile',
+    final dynamic processedJson = await host.invoke(
+      Hooks.dataFileRawToJsonData,
       key: key,
-      method: 'rawToJSONData',
       args: {'body': body, 'url': def['url'], 'options': const <String, dynamic>{}},
     );
 
@@ -823,7 +822,7 @@ class DataFileManager {
     }
 
     // 3. Load processed data by calling onLoadRawData
-    await host.invokeHook('dataFile', key: key, method: 'onLoadRawData', args: processedJson);
+    await host.invoke(Hooks.dataFileOnLoadRawData, key: key, args: processedJson);
 
     if (!showProgress) return;
     final statusKey = 'dataFile:$key';
@@ -854,7 +853,7 @@ class DataFileManager {
 
     final List<dynamic> entries;
     try {
-      entries = await host.invokeHookAll('dataFile', method: 'getDefinition');
+      entries = await host.invokeAll(Hooks.dataFileGetDefinition);
     } catch (e, st) {
       // Not worth reporting when the runtime was simply replaced under us: the
       // generation listener runs this again against the new one.
@@ -883,7 +882,7 @@ class DataFileManager {
             try {
               final content = await cacheFile.readAsString();
               final processedJson = jsonDecode(content);
-              await host.invokeHook('dataFile', key: key, method: 'onLoadRawData', args: processedJson);
+              await host.invoke(Hooks.dataFileOnLoadRawData, key: key, args: processedJson);
               loaded++;
             } catch (e, st) {
               debugPrint('[data-file] Error loading raw cache file $key: $e');
@@ -1054,7 +1053,7 @@ class DataFileManager {
     final host = extensions.host;
     if (host != null) {
       try {
-        await host.invokeHook('dataFile', key: key, method: 'onRemoveRawData', args: const {});
+        await host.invoke(Hooks.dataFileOnRemoveRawData, key: key, args: const {});
       } catch (e, stack) {
         // Most of these are an extension that simply does not implement the
         // hook, which is not a failure — but the disposition is ErrorPolicy's
@@ -1089,7 +1088,7 @@ class DataFileManager {
     String key,
     String category,
     String label,
-    String mappingMethod,
+    HookRef mapping,
     String mappingArgKey,
     List<dynamic> items, {
     Map<String, dynamic>? extraArgs,
@@ -1132,13 +1131,7 @@ class DataFileManager {
       // TODO: 60s is cover for that contention, not a considered per-chunk
       // budget. If syncAllDataFiles moves to parallel downloads + serial
       // processing (APP-16), this should come back down.
-      final dynamic response = await host.invokeHook(
-        'dataFile',
-        key: key,
-        method: mappingMethod,
-        args: {mappingArgKey: chunk, ...?extraArgs},
-        timeout: const Duration(seconds: 60),
-      );
+      final dynamic response = await host.invoke(mapping, key: key, args: {mappingArgKey: chunk, ...?extraArgs}, timeout: const Duration(seconds: 60));
 
       if (response is! List) {
         // Loud, not silent: losing a whole chunk is a data-integrity problem,
@@ -1153,7 +1146,7 @@ class DataFileManager {
         // `data_file_updated_$key` unstamped, so the next sync redoes the file
         // in full and sweeps then.
         throw ExtensionHostException(
-          'dataFile $key: $mappingMethod returned ${response.runtimeType}, not a list — '
+          'dataFile $key: ${mapping.method} returned ${response.runtimeType}, not a list — '
           'dropping rows $start..$end of ${items.length}',
         );
       }

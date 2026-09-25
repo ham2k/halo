@@ -11,7 +11,7 @@
 // a CLI that selected or merged differently would describe a program that
 // isn't the one running.
 
-import 'package:halo_core/halo_core.dart' show Qso, SegmentedOperation, asQsonBool;
+import 'package:halo_core/halo_core.dart' show Hooks, Qso, SegmentedOperation, asQsonBool;
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'runtime.dart' show CliUsageError;
@@ -58,10 +58,9 @@ Future<Map<String, Object?>> scoreWithOneScorer(
   Map<String, Object?> extraArgs = const {},
   Duration timeout = const Duration(seconds: 30),
 }) async {
-  final result = await host.invokeHook(
-    'scoring',
+  final result = await host.invoke(
+    Hooks.scoringScoreQsos,
     key: key,
-    method: 'scoreQsos',
     args: {'operation': operation, 'qsos': qsos, 'ref': ?ref, 'segments': ?segments, ...extraArgs},
     timeout: timeout,
   );
@@ -87,7 +86,7 @@ Future<Map<String, Map<String, Object?>>> scoreOperation(
   Duration timeout = const Duration(seconds: 30),
 }) async {
   final scopes = {
-    for (final entry in await host.invokeHookAll('scoring', method: 'scope', args: extraArgs, timeout: timeout))
+    for (final entry in await host.invokeAll(Hooks.scoringScope, args: extraArgs, timeout: timeout))
       if (entry['ok'] == true && entry['value'] != null) entry['key'] as String: entry['value'],
   };
 

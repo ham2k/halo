@@ -28,7 +28,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     final host = this.host;
     if (host == null) return const [];
     try {
-      final entries = await host.invokeHookAll('settingsPanel', method: 'getPanels', timeout: const Duration(seconds: 2));
+      final entries = await host.invokeAll(Hooks.settingsPanelGetPanels, timeout: const Duration(seconds: 2));
       final panels = <Map<String, dynamic>>[];
       for (final entry in entries) {
         if (entry['ok'] == true && entry['value'] is Map) {
@@ -65,7 +65,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
       return null;
     }
     try {
-      final entries = await host.invokeHookAll('panel', method: 'getPanels', args: const <String, dynamic>{}, timeout: const Duration(seconds: 10));
+      final entries = await host.invokeAll(Hooks.panelGetPanels, args: const <String, dynamic>{}, timeout: const Duration(seconds: 10));
       final results = <Map<String, dynamic>>[];
       for (final entry in entries) {
         // One hook failing is that hook's panels lost, not the catalog's —
@@ -105,7 +105,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook('panel', key: hookKey, method: 'render', args: {...args, 'panelKey': panelKey}, timeout: const Duration(seconds: 5));
+      final result = await host.invoke(Hooks.panelRender, key: hookKey, args: {...args, 'panelKey': panelKey}, timeout: const Duration(seconds: 5));
       if (result is! Map) return null;
       return result.cast<String, dynamic>();
     } catch (e) {
@@ -118,7 +118,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
   Future<Map<String, dynamic>?> panelEvent({required String hookKey, required String panelKey, required Map<String, dynamic> args}) async {
     final host = this.host;
     if (host == null) throw StateError('Extension runtime unavailable');
-    final result = await host.invokeHook('panel', key: hookKey, method: 'onEvent', args: {...args, 'panelKey': panelKey}, timeout: const Duration(seconds: 5));
+    final result = await host.invoke(Hooks.panelOnEvent, key: hookKey, args: {...args, 'panelKey': panelKey}, timeout: const Duration(seconds: 5));
     return result is Map ? result.cast<String, dynamic>() : null;
   }
 
@@ -152,13 +152,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook(
-        'settingsPanel',
-        key: hookKey,
-        method: 'getDefinition',
-        args: {'panelKey': panelKey},
-        timeout: const Duration(seconds: 5),
-      );
+      final result = await host.invoke(Hooks.settingsPanelGetDefinition, key: hookKey, args: {'panelKey': panelKey}, timeout: const Duration(seconds: 5));
       if (result is! Map) return null;
       final definition = Map<String, dynamic>.from(result);
       final elements = ((definition['elements'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -232,10 +226,9 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     final host = this.host;
     if (host == null) return null;
     try {
-      final res = await host.invokeHook(
-        'settingsPanel',
+      final res = await host.invoke(
+        Hooks.settingsPanelValidateField,
         key: hookKey,
-        method: 'validateField',
         args: {'panelKey': panelKey, 'fieldKey': fieldKey, 'value': value, 'state': state},
       );
       return res as String?;
@@ -287,12 +280,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     // The timer waits for quiescence before restarting.
     _inFlightFieldCommits++;
     try {
-      await host.invokeHook(
-        'settingsPanel',
-        key: hookKey,
-        method: 'onChangeField',
-        args: {'panelKey': panelKey, 'fieldKey': fieldKey, 'value': value, 'state': state},
-      );
+      await host.invoke(Hooks.settingsPanelOnChangeField, key: hookKey, args: {'panelKey': panelKey, 'fieldKey': fieldKey, 'value': value, 'state': state});
     } catch (e) {
       debugPrint('[extensions] settingsPanel onChangeField failed: $e');
       // Not restarted below: onChangeField is the extension's own persistence
@@ -379,10 +367,9 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     final host = this.host;
     if (host == null) return value;
     try {
-      final result = await host.invokeHook(
-        'settingsPanel',
+      final result = await host.invoke(
+        Hooks.settingsPanelTransformField,
         key: hookKey,
-        method: 'transformField',
         args: {'panelKey': panelKey, 'fieldKey': fieldKey, 'value': value, 'state': state},
       );
       return result ?? value;
@@ -401,10 +388,9 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     final host = this.host;
     if (host == null) return t.extensionService.runtimeNotReady;
     try {
-      final res = await host.invokeHook(
-        'settingsPanel',
+      final res = await host.invoke(
+        Hooks.settingsPanelAction(method),
         key: hookKey,
-        method: method,
         args: {'panelKey': panelKey, 'state': state},
         timeout: const Duration(seconds: 10),
       );

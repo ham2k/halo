@@ -12,6 +12,14 @@ host invokes them three ways:
   would reach on its own, so a hook cannot tell a batched call from a single
   one.
 
+The categories are a closed list. `registerHook` takes a `HookCategory`
+([`extensions/sdk/src/hookCategories.ts`](../../extensions/sdk/src/hookCategories.ts))
+or `ref:<type>`, so a misspelled category fails the typecheck rather than
+registering a hook nothing calls, and the build rejects a manifest `hooks`
+entry that is neither. A new category goes into that list — and, when the host
+calls it, into the host's catalog as well
+(`packages/halo_core/lib/src/hook_names.dart`).
+
 In both shapes that answer many hooks at once, one hook failing costs its own
 entry and nothing else — whether it throws, has no handler, or answers
 something JSON cannot carry (a circular object, a `BigInt`). One that runs out

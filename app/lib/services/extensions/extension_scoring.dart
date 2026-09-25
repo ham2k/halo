@@ -9,6 +9,7 @@
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
+import 'package:halo_core/halo_core.dart' show HookRef, Hooks;
 import 'package:halo_extension_host/halo_extension_host.dart';
 // The scorer-selection helpers live beside the host, under one name here so
 // a call reads as what it is.
@@ -132,7 +133,7 @@ mixin ExtensionScoring {
   /// success a held answer records what the runtime now holds: the checkpoint
   /// a batch pass produced (`checkpointKey`), or the one a live call named. A
   /// harness without the cache never says so, and keeps receiving the sheet.
-  Future<dynamic> _invokeResumable(ExtensionHost host, String scorerKey, String method, Map<String, dynamic> args, {required Duration timeout}) async {
+  Future<dynamic> _invokeResumable(ExtensionHost host, String scorerKey, HookRef hook, Map<String, dynamic> args, {required Duration timeout}) async {
     final generation = runtimeGeneration.value;
     final slot = _heldSlot(scorerKey, args);
     final resumeKey = args['resumeKey'];
@@ -143,7 +144,7 @@ mixin ExtensionScoring {
         : args;
     dynamic result;
     try {
-      result = await host.invokeHook('scoring', key: scorerKey, method: method, args: named, timeout: timeout);
+      result = await host.invoke(hook, key: scorerKey, args: named, timeout: timeout);
     } on ExtensionHostException catch (e) {
       if (identical(named, args) || !e.message.startsWith(kResumeMissing)) rethrow;
       // Visible on purpose: a runtime and a host that keep disagreeing would
@@ -151,7 +152,7 @@ mixin ExtensionScoring {
       debugPrint('[scoring] the runtime no longer holds $resumeKey for $scorerKey — sending the checkpoint again');
       _held.remove(slot);
       try {
-        result = await host.invokeHook('scoring', key: scorerKey, method: method, args: args, timeout: timeout);
+        result = await host.invoke(hook, key: scorerKey, args: args, timeout: timeout);
       } on ExtensionHostException catch (again) {
         // A runtime refusing the sheet it was just handed is the harness's
         // bug, not the scorer's; the report has to say which.
@@ -159,7 +160,7 @@ mixin ExtensionScoring {
       }
     }
     if (result is Map && (result['checkpointHeld'] == true || result[kCheckpointHeldKey] == true)) {
-      final key = method == 'scoreQsos' ? args['checkpointKey'] : resumeKey;
+      final key = hook == Hooks.scoringScoreQsos ? args['checkpointKey'] : resumeKey;
       // Not for a runtime that is already gone: the answer would be filed
       // against its successor.
       if (key is String && runtimeGeneration.value == generation) _held[slot] = key;
@@ -174,14 +175,14 @@ mixin ExtensionScoring {
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await _invokeResumable(host, scorerKey, 'scoreQsos', args, timeout: const Duration(seconds: 10));
+      final result = await _invokeResumable(host, scorerKey, Hooks.scoringScoreQsos, args, timeout: const Duration(seconds: 10));
       if (result is! Map) return null;
-      ErrorReportingService.recordSuccess(_scorerFailureKey(scorerKey, 'scoreQsos'));
+      ErrorReportingService.recordSuccess(_scorerFailureKey(scorerKey, Hooks.scoringScoreQsos.method));
       return result.cast<String, dynamic>();
     } catch (e, stackTrace) {
       // One contest's scorer blowing up must not cost the operation its core
       // scoring, so failures are per-scorer.
-      _reportScorerFailure(scorerKey, 'scoreQsos', e, stackTrace);
+      _reportScorerFailure(scorerKey, Hooks.scoringScoreQsos.method, e, stackTrace);
       return null;
     }
   }
@@ -253,7 +254,7 @@ mixin ExtensionScoring {
         try {
           final checkpoint = resume?.checkpoints[scorer.key];
           final tail = resume?.tail;
-          final result = await _invokeResumable(host, scorer.key, 'scoreQso', {
+          final result = await _invokeResumable(host, scorer.key, Hooks.scoringScoreQso, {
             'operation': operation,
             'qso': qso,
             'excludeUuid': ?excludeUuid,
@@ -268,14 +269,14 @@ mixin ExtensionScoring {
           }, timeout: kScoreQsoTimeout);
           if (result is! Map) return;
           any = true;
-          ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, 'scoreQso'));
+          ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, Hooks.scoringScoreQso.method));
           if (!scorer.fallback && judgesWorkedBefore(result)) judgedByOther = true;
           (scorer.fallback ? fallbackNotices : notices).addAll(((result['notices'] as List?) ?? const []).whereType<String>());
           (scorer.fallback ? fallbackAlerts : alerts).addAll(((result['alerts'] as List?) ?? const []).whereType<String>());
         } catch (e, stackTrace) {
           // A scorer that FAILED judged nothing, so the fallback speaks for this
           // QSO after all rather than the row going bare.
-          _reportScorerFailure(scorer.key, 'scoreQso', e, stackTrace);
+          _reportScorerFailure(scorer.key, Hooks.scoringScoreQso.method, e, stackTrace);
         }
       }),
     );
@@ -366,7 +367,7 @@ mixin ExtensionScoring {
         try {
           final checkpoint = resume?.checkpoints[scorer.key];
           final tail = resume?.tail;
-          final result = await _invokeResumable(host, scorer.key, 'scoreCandidates', {
+          final result = await _invokeResumable(host, scorer.key, Hooks.scoringScoreCandidates, {
             'operation': withUuid,
             'candidates': payload,
             'ref': ?scorer.ref,
@@ -380,7 +381,7 @@ mixin ExtensionScoring {
           }, timeout: kScoreCandidatesTimeout);
           if (result is! Map) return;
           any = true;
-          ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, 'scoreCandidates'));
+          ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, Hooks.scoringScoreCandidates.method));
           for (final entry in result.entries) {
             final key = entry.key;
             final value = entry.value;
@@ -395,7 +396,7 @@ mixin ExtensionScoring {
           // Per-scorer, like scoreQso: a contest scorer that throws must not cost
           // the spots their core dupe marking.
           failed = true;
-          _reportScorerFailure(scorer.key, 'scoreCandidates', e, stackTrace);
+          _reportScorerFailure(scorer.key, Hooks.scoringScoreCandidates.method, e, stackTrace);
         }
       }),
     );

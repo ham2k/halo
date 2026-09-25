@@ -36,7 +36,7 @@ List<String> _libraryFiles() {
 
 /// A hook call and the name it is made through. Whitespace before the dot
 /// is allowed, because a formatter breaks a long chain onto the next line.
-final _hookCall = RegExp(r'\b(_?host)[!?]?\s*\.invokeHook(?:All)?\(');
+final _hookCall = RegExp(r'\b(_?host)[!?]?\s*\.(?:invokeHook(?:All|Batch)?|invoke|invokeAll)\(');
 
 /// A local bound to the field: `final host = _host;`, `var h = _host!;`,
 /// `final ExtensionHost? host = _host;` — or reached through another object,
@@ -91,7 +91,7 @@ List<String> offendersIn(String source, {String file = _library}) {
   for (final binding in _fieldBinding.allMatches(source)) {
     final local = binding.group(1)!;
     final (from, to) = _enclosingBlock(source, binding.start);
-    final callsThroughIt = RegExp('\\b${RegExp.escape(local)}[!?]?\\s*\\.invokeHook(?:All)?\\(');
+    final callsThroughIt = RegExp('\\b${RegExp.escape(local)}[!?]?\\s*\\.(?:invokeHook(?:All|Batch)?|invoke|invokeAll)\\(');
     if (callsThroughIt.hasMatch(source.substring(from, to))) {
       offenders.add('$file:${_lineOf(source, binding.start)} — `$local` holds the `_host` field in a block that calls a hook through it');
     }
@@ -129,6 +129,10 @@ void main() {
       'void a() { final host = _host!; host.invokeHook(x); }',
       'void a() { final h = _host; h?.invokeHookAll(x); }',
       'void a() { final h = _service._host; h?.invokeHook(x); }',
+      // The catalog's call forms, which are what lib code writes.
+      'void a() { _host?.invoke(Hooks.spotsFetchSpots); }',
+      'void a() { final host = _host; host.invokeAll(Hooks.spotsFetchSpots); }',
+      'void a() { final host = _host!; host.invokeHookBatch(calls); }',
     ]) {
       expect(offendersIn(shape), hasLength(1), reason: shape);
     }

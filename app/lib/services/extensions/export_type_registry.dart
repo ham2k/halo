@@ -1,13 +1,14 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'package:halo_core/halo_core.dart' show Hooks;
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 /// A partial registry would turn registered exports into legacy exports,
 /// bypassing the operator's per-type privacy preferences. Missing methods
 /// return successful null entries; failed registrations must stop the load.
 Future<List<Map<String, dynamic>>> collectExportTypes(ExtensionHost host) async {
-  final entries = await host.invokeHookAll('export', method: 'getExportTypes', args: const <String, dynamic>{});
+  final entries = await host.invokeAll(Hooks.exportGetExportTypes, args: const <String, dynamic>{});
   final types = <String, Map<String, dynamic>>{};
   for (final entry in entries) {
     final hookKey = entry['key'];

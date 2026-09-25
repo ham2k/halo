@@ -32,8 +32,10 @@ import type {
 } from "./types.ts"
 
 import { base64ToBytes, bytesToBase64 } from "./base64.ts"
+import type { HookCategoryName } from "./hookCategories.ts"
 
 export * from "./types.ts"
+export * from "./hookCategories.ts"
 export * from "./svgScene.ts"
 export * from "./i18n.ts"
 export * from "./dxcc.ts"
@@ -225,7 +227,7 @@ export const hooks = {
   /// EVERY hook in the category — including the CALLER's own. A hook that
   /// delegates within its own category therefore re-enters itself; use
   /// `invokeOne` when you know which extension you want.
-  invokeAll(category: string, method: string, args: unknown, online?: boolean) {
+  invokeAll(category: HookCategoryName, method: string, args: unknown, online?: boolean) {
     return kernel().invokeLocal(category, method, args, online)
   },
 
@@ -234,7 +236,7 @@ export const hooks = {
   /// Prefer this over filtering `invokeAll`'s results for the key you wanted.
   /// A contest's `generateExport` delegating the ADIF build is exactly the
   /// recursive shape described above, and loops forever through `invokeAll`.
-  invokeOne(category: string, key: string, method: string, args: unknown, online?: boolean) {
+  invokeOne(category: HookCategoryName, key: string, method: string, args: unknown, online?: boolean) {
     return kernel().invokeLocal(category, method, args, online, key)
   },
 
@@ -242,7 +244,7 @@ export const hooks = {
   /// threading each result into the next call's args via `fold` — needed
   /// when later hooks must see earlier hooks' contributions.
   invokeAllSequential(
-    category: string,
+    category: HookCategoryName,
     method: string,
     initialArgs: unknown,
     fold: (args: unknown, hookResult: unknown, hookKey: string) => unknown,

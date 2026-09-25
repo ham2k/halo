@@ -71,10 +71,10 @@ class _FakeTransport {
   /// flight so a test can act while the engine is busy.
   Future<void>? gate;
 
-  Future<Map<String, dynamic>> call(String method, Map<String, dynamic> args) async {
-    calls.add((method, args));
+  Future<Map<String, dynamic>> call(HookRef hook, Map<String, dynamic> args) async {
+    calls.add((hook.method, args));
     if (gate != null) await gate;
-    return responder(method, args);
+    return responder(hook.method, args);
   }
 }
 

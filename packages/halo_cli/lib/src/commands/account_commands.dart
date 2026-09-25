@@ -13,6 +13,8 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:halo_core/halo_core.dart' show Hooks;
+import 'package:halo_extension_host/halo_extension_host.dart' show HookCalls;
 
 import '../cli.dart';
 import '../runtime.dart' show CliUsageError, ExtRuntime;
@@ -312,7 +314,7 @@ abstract class AccountCommandBase extends ExtCommand {
   }
 
   Future<List<AccountDefinition>> definitions(ExtRuntime runtime) async {
-    final entries = await invokeAll(runtime, 'account', method: 'getDefinition');
+    final entries = await invokeAll(runtime, Hooks.accountGetDefinition);
     return [
       for (final entry in entries)
         if (entry['ok'] == true && entry['value'] is Map) AccountDefinition.fromJson((entry['value'] as Map).cast<String, Object?>()),
@@ -337,7 +339,7 @@ abstract class AccountCommandBase extends ExtCommand {
     // credential map itself as its args (types.ts: `Record<string,string>`),
     // not a context bag, so folding `online` in would hand the extension a
     // field its own account never declared.
-    final verdict = await runtime.host.invokeHook('account', key: account.key, method: 'testCredentials', args: credentials, timeout: hookTimeout);
+    final verdict = await runtime.host.invoke(Hooks.accountTestCredentials, key: account.key, args: credentials, timeout: hookTimeout);
     return verdict is String ? verdict : '$verdict';
   }
 

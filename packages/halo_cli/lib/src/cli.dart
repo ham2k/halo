@@ -13,6 +13,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:halo_core/halo_core.dart' show HookRef;
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'bundles.dart';
@@ -273,14 +274,14 @@ abstract class ExtCommand extends Command<int> {
   }
 
   /// Calls one hook, folding in the flags every hook call honors.
-  Future<dynamic> invoke(ExtRuntime runtime, String category, {String? key, required String method, Map<String, Object?> args = const {}}) =>
-      runtime.host.invokeHook(category, key: key, method: method, args: _withOnline(args), timeout: hookTimeout);
+  Future<dynamic> invoke(ExtRuntime runtime, HookRef hook, {String? key, Map<String, Object?> args = const {}}) =>
+      runtime.host.invoke(hook, key: key, args: _withOnline(args), timeout: hookTimeout);
 
   /// Calls every hook in a category. The per-source `{key, ok, value|error}`
   /// envelope is passed through rather than flattened: which source answered,
   /// and which one failed, is most of what a caller is asking.
-  Future<List<Map<String, dynamic>>> invokeAll(ExtRuntime runtime, String category, {required String method, Map<String, Object?> args = const {}}) =>
-      runtime.host.invokeHookAll(category, method: method, args: _withOnline(args), timeout: hookTimeout);
+  Future<List<Map<String, dynamic>>> invokeAll(ExtRuntime runtime, HookRef hook, {Map<String, Object?> args = const {}}) =>
+      runtime.host.invokeAll(hook, args: _withOnline(args), timeout: hookTimeout);
 
   /// The flag every hook call carries, on its own — for a caller that builds
   /// its own args rather than going through [invoke] (`scoring.dart`, which is

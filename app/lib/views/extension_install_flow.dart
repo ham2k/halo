@@ -16,6 +16,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform, kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
+import 'package:halo_core/halo_core.dart' show HookCategories, Hooks;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -762,29 +763,28 @@ class _DetailsDialog extends StatelessWidget {
 /// anybody would choose it for, and its plain claim is in the same list
 /// saying what it is. Shown, it reads as `QP/NY`.
 List<String> extensionHookLabels(List<String> hooks, Translations$extensionsPanel$en t) {
-  const refPrefix = 'ref:';
   const activationSuffix = 'Activation';
   final labels = <String>[];
   for (final hook in hooks) {
-    if (!hook.startsWith(refPrefix)) {
+    final code = Hooks.refTypeOf(hook);
+    if (code == null) {
       final label = switch (hook) {
-        'account' => t.hookAccount,
-        'callNotes' => t.hookCallNotes,
-        'dataFile' => t.hookDataFile,
-        'export' => t.hookExport,
-        'lookup' => t.hookLookup,
-        'scoring' => t.hookScoring,
-        'spots' => t.hookSpots,
+        HookCategories.account => t.hookAccount,
+        HookCategories.callNotes => t.hookCallNotes,
+        HookCategories.dataFile => t.hookDataFile,
+        HookCategories.export => t.hookExport,
+        HookCategories.lookup => t.hookLookup,
+        HookCategories.scoring => t.hookScoring,
+        HookCategories.spots => t.hookSpots,
         _ => null,
       };
       if (label != null) labels.add(label);
       continue;
     }
-    final code = hook.substring(refPrefix.length);
     if (refClaimOf(hook)?.code != null) continue;
     if (code.endsWith(activationSuffix)) {
       labels.add(t.hookActivating(program: _programName(code.substring(0, code.length - activationSuffix.length))));
-    } else if (hooks.contains('$hook$activationSuffix')) {
+    } else if (hooks.contains(hook + activationSuffix)) {
       labels.add(t.hookHunting(program: _programName(code)));
     } else {
       labels.add(_programName(code));

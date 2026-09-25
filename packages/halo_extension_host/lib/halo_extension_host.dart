@@ -47,6 +47,7 @@ export 'src/extension_sockets.dart' show isLocalNetworkHost, localNetworkEntry, 
 export 'src/engine_runtime.dart' show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
 export 'src/fetch_policy.dart' show fetchBodyTimeout, fetchHeaderTimeout;
 export 'src/hook_call_stats.dart' show HookCallSample, QueueWaitStat;
+export 'src/hook_calls.dart' show HookCalls;
 // `show`n rather than exported wholesale: this library is imported unprefixed
 // across the app, and a bare `stringsIn` in its public surface turns any
 // same-named helper written later into an ambiguous-import error reported at

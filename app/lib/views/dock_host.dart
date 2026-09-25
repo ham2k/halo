@@ -17,6 +17,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:halo_core/halo_core.dart' show HookCategories;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -1007,7 +1008,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// extension is not in it either.
   bool get _hasPanelExtensions {
     final extensions = dockServices.extensions;
-    return extensions.availableExtensions.any((info) => !info.core && info.hooks.contains('panel') && extensions.isExtensionAvailable(info));
+    return extensions.availableExtensions.any((info) => !info.core && info.hooks.contains(HookCategories.panel) && extensions.isExtensionAvailable(info));
   }
 
   double? get _addPanelButtonRightInset {
@@ -1425,13 +1426,14 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
               // it could not load it) — the same rule [_hasPanelExtensions] uses.
               enableable: [
                 for (final info in extensions.availableExtensions)
-                  if (!info.core && info.hooks.contains('panel') && extensions.isExtensionAvailable(info) && !extensions.isExtensionEnabled(info)) info,
+                  if (!info.core && info.hooks.contains(HookCategories.panel) && extensions.isExtensionAvailable(info) && !extensions.isExtensionEnabled(info))
+                    info,
               ],
               installable: switch (catalogTier.entries) {
                 final entries? => orderedCatalogEntries(
                   [
                     for (final entry in entries)
-                      if (entry.hooks.contains('panel') && !extensions.availableExtensions.any((info) => info.key == entry.key)) entry,
+                      if (entry.hooks.contains(HookCategories.panel) && !extensions.availableExtensions.any((info) => info.key == entry.key)) entry,
                   ],
                   dockServices.flags.operatorGeo,
                   locale,
@@ -1489,7 +1491,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                         // (see haloDialogFooterBand).
                         scrollable: false,
                         closeButton: false,
-                        builder: (_) => ExtensionsPanel(services: dockServices, onlyHook: 'panel', footer: true),
+                        builder: (_) => ExtensionsPanel(services: dockServices, onlyHook: HookCategories.panel, footer: true),
                       );
                       await dockServices.panels.refreshExtensionPanels();
                       bumpSheet();

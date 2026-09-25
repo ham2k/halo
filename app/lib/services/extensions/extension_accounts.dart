@@ -160,7 +160,7 @@ mixin _ExtensionAccounts {
     final host = this.host;
     if (host == null) return null;
     try {
-      final entries = await host.invokeHookAll('account', method: 'getDefinition', timeout: const Duration(seconds: 2));
+      final entries = await host.invokeAll(Hooks.accountGetDefinition, timeout: const Duration(seconds: 2));
       final accounts = <Map<String, dynamic>>[];
       for (final entry in entries) {
         if (entry['ok'] == true && entry['value'] is Map) {
@@ -178,7 +178,7 @@ mixin _ExtensionAccounts {
     final host = this.host;
     if (host == null) return t.extensionService.runtimeNotReady;
     try {
-      final dynamic res = await host.invokeHook('account', key: accountKey, method: 'testCredentials', args: credentials, timeout: const Duration(seconds: 10));
+      final dynamic res = await host.invoke(Hooks.accountTestCredentials, key: accountKey, args: credentials, timeout: const Duration(seconds: 10));
       return res is String ? res : res?.toString() ?? '';
     } catch (e) {
       return t.extensionService.testFailed(error: e);

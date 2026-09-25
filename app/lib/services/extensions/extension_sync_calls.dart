@@ -30,7 +30,7 @@ mixin _ExtensionSyncCalls {
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook('syncTransport', method: 'getAccountData', args: const {});
+      final result = await host.invoke(Hooks.syncTransportGetAccountData, args: const {});
       final data = result is Map ? result.cast<String, dynamic>() : null;
       final currentSettings = settings;
       if (data != null && currentSettings != null) {
@@ -58,7 +58,7 @@ mixin _ExtensionSyncCalls {
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook('syncTransport', method: 'linkClient', args: {'email': ?email});
+      final result = await host.invoke(Hooks.syncTransportLinkClient, args: {'email': ?email});
       return result is Map ? result.cast<String, dynamic>() : null;
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] syncLinkClient failed: $e');
@@ -72,7 +72,7 @@ mixin _ExtensionSyncCalls {
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook('syncTransport', method: 'linkClientWithEmail', args: {'email': email});
+      final result = await host.invoke(Hooks.syncTransportLinkClientWithEmail, args: {'email': email});
       return result is Map ? result.cast<String, dynamic>() : null;
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] syncLinkClientWithEmail failed: $e');
@@ -88,39 +88,40 @@ mixin _ExtensionSyncCalls {
   /// Both return `{'error': ..., 'error_status': ...}` for a rejection the
   /// operator can act on (the address is taken, nothing is pending), and
   /// null when the server couldn't be reached at all.
-  Future<Map<String, dynamic>?> syncSetAccountEmail(String email) => _syncTransportCall('setAccountEmail', {'email': email});
+  Future<Map<String, dynamic>?> syncSetAccountEmail(String email) => _syncTransportCall(Hooks.syncTransportSetAccountEmail, {'email': email});
 
-  Future<Map<String, dynamic>?> syncResendAccountEmail() => _syncTransportCall('resendAccountEmail', const {});
+  Future<Map<String, dynamic>?> syncResendAccountEmail() => _syncTransportCall(Hooks.syncTransportResendAccountEmail, const {});
 
   /// Finds the pending link request a challenge code refers to — the
   /// confirming side of the flow [syncLinkClient] starts on the other
   /// device. Returns the server's `{'permissions': [...]}`; an expired or
   /// mistyped code simply yields an empty list.
-  Future<Map<String, dynamic>?> syncFindLinkRequest(String challengeToken) => _syncTransportCall('findLinkRequest', {'challenge_token': challengeToken});
+  Future<Map<String, dynamic>?> syncFindLinkRequest(String challengeToken) =>
+      _syncTransportCall(Hooks.syncTransportFindLinkRequest, {'challenge_token': challengeToken});
 
   /// The same lookup for a request that arrived as a `link_client` deep
   /// link, which names the requesting device outright. Returns the server's
   /// `{'permission': ...}`, whose value is null when the link has expired.
   Future<Map<String, dynamic>?> syncFindLinkRequestByClient({required String clientUuid, required String challengeToken}) =>
-      _syncTransportCall('findLinkRequestByClient', {'client': clientUuid, 'challenge_token': challengeToken});
+      _syncTransportCall(Hooks.syncTransportFindLinkRequestByClient, {'client': clientUuid, 'challenge_token': challengeToken});
 
   /// Grants a link request: the other device joins this account.
   /// [challengeToken] is what binds an orphaned (QR/deep-link) permission to
   /// this account, so it must be passed back for those; a request raised by
   /// email is already attached and ignores it.
   Future<Map<String, dynamic>?> syncApproveLinkRequest({required String clientUuid, String? challengeToken}) =>
-      _syncTransportCall('approveLinkRequest', {'client': clientUuid, 'challenge_token': ?challengeToken});
+      _syncTransportCall(Hooks.syncTransportApproveLinkRequest, {'client': clientUuid, 'challenge_token': ?challengeToken});
 
   /// Shared shape of the account/linking calls above: null when the runtime
   /// isn't up or the host call failed, the server's map otherwise —
   /// including the `error`/`error_status` maps those endpoints return for
   /// rejections that belong to the UI flow rather than to error reporting.
-  Future<Map<String, dynamic>?> _syncTransportCall(String method, Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>?> _syncTransportCall(HookRef hook, Map<String, dynamic> args) async {
     final host = this.host;
     if (host == null) return null;
-    final streakKey = 'syncTransport:$method';
+    final streakKey = '${hook.category}:${hook.method}';
     try {
-      final result = await host.invokeHook('syncTransport', method: method, args: args);
+      final result = await host.invoke(hook, args: args);
       ErrorReportingService.recordSuccess(streakKey);
       return result is Map ? result.cast<String, dynamic>() : null;
     } on ExtensionHostException catch (e, stackTrace) {
@@ -129,7 +130,7 @@ mixin _ExtensionSyncCalls {
       // time is a defect whose only other trace would be somebody writing
       // in to say nothing happened. Keyed per method so a broken
       // approveLinkRequest isn't hidden by a healthy getAccountData.
-      debugPrint('[extensions] $method failed: $e');
+      debugPrint('[extensions] ${hook.method} failed: $e');
       ErrorReportingService.reportIfRepeated(streakKey, e, stackTrace, context: streakKey);
       return null;
     }
@@ -153,7 +154,7 @@ mixin _ExtensionSyncCalls {
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invokeHook('syncTransport', method: 'ensureClientRegistered', args: {'refreshWebhookToken': refreshWebhookToken});
+      final result = await host.invoke(Hooks.syncTransportEnsureClientRegistered, args: {'refreshWebhookToken': refreshWebhookToken});
       if (result is! Map) return null;
       final map = result.cast<String, dynamic>();
       final pushChannelName = map['push_channel_name'] as String?;
@@ -174,7 +175,7 @@ mixin _ExtensionSyncCalls {
     final host = this.host;
     if (host == null) return const [];
     try {
-      final result = await host.invokeHook('syncTransport', method: 'fetchWebhookEvents', args: const {});
+      final result = await host.invoke(Hooks.syncTransportFetchWebhookEvents, args: const {});
       final events = result is Map ? result['webhook_events'] : null;
       if (events is! List) return const [];
       return events.whereType<Map<dynamic, dynamic>>().map((e) => e.cast<String, dynamic>()).toList();
@@ -204,9 +205,8 @@ mixin _ExtensionSyncCalls {
       return (ref: null, error: t.extensionService.reportUnavailable);
     }
     try {
-      final result = await host.invokeHook(
-        'syncTransport',
-        method: 'submitReport',
+      final result = await host.invoke(
+        Hooks.syncTransportSubmitReport,
         args: {'title': title, 'body': body, 'kind': kind},
         // The same room `interpretCommand` gives an executing command: this is
         // two round trips (device registration, then the report itself)

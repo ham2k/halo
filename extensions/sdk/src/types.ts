@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import type { SvgScene, PanelSceneEvent, PanelSceneEventResult } from "./svgScene.ts"
+import type { HookCategoryName } from "./hookCategories.ts"
 export type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue }
 
 export interface HookContext {
@@ -1854,7 +1855,7 @@ export interface RegisterHookParams {
 }
 
 export interface ActivationApi {
-  registerHook(category: string, params: RegisterHookParams): void
+  registerHook(category: HookCategoryName, params: RegisterHookParams): void
 
   /// Privileged host-call function bound by the kernel to THIS extension's
   /// identity (host-manifest-derived) — identity params (`ns`, `kvKey`,

@@ -366,10 +366,9 @@ class _ExtensionHostCalls {
       initialState: state,
       validator: (fieldKey, value, currentState) async {
         try {
-          final res = await _service.host?.invokeHook(
-            'form',
+          final res = await _service.host?.invoke(
+            Hooks.formValidateField,
             key: formId,
-            method: 'validateField',
             args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
           );
           return res as String?;
@@ -379,10 +378,9 @@ class _ExtensionHostCalls {
       },
       transformer: (fieldKey, value, currentState) async {
         try {
-          final res = await _service.host?.invokeHook(
-            'form',
+          final res = await _service.host?.invoke(
+            Hooks.formTransformField,
             key: formId,
-            method: 'transformField',
             args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
           );
           return res;
@@ -392,10 +390,9 @@ class _ExtensionHostCalls {
       },
       onChange: (fieldKey, value, currentState) async {
         try {
-          final res = await _service.host?.invokeHook(
-            'form',
+          final res = await _service.host?.invoke(
+            Hooks.formOnChangeField,
             key: formId,
-            method: 'onChangeField',
             args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
           );
           if (res is Map) {

@@ -10,6 +10,8 @@
 
 import 'dart:io';
 
+import 'package:halo_core/halo_core.dart' show Hooks, RefMethod;
+
 import '../cli.dart';
 import '../runtime.dart' show CliUsageError;
 
@@ -40,9 +42,8 @@ class LookupCommand extends ExtCommand {
       emit(
         await invoke(
           runtime,
-          'lookupService',
+          Hooks.lookupServiceLookupCallInfo,
           key: 'core',
-          method: 'lookupCallInfo',
           args: {
             'callInfo': {'call': call},
             'qso': _qsoFor(call),
@@ -93,7 +94,7 @@ class InterpretCommand extends ExtCommand {
   Future<int> run() async {
     return withRuntime((runtime) async {
       if (argResults!.flag('catalog')) {
-        emit(await invokeAll(runtime, 'command', method: 'catalog'));
+        emit(await invokeAll(runtime, Hooks.commandCatalog));
         return 0;
       }
       final input = _single(argResults!.rest, 'TEXT');
@@ -103,8 +104,7 @@ class InterpretCommand extends ExtCommand {
       emit(
         await invokeAll(
           runtime,
-          'command',
-          method: 'interpret',
+          Hooks.commandInterpret,
           args: {
             'input': input,
             if (operation != null) 'operation': operation,
@@ -133,7 +133,7 @@ class SpotsCommand extends ExtCommand {
   Future<int> run() async {
     return withRuntime((runtime) async {
       final source = argResults!.option('source');
-      emit(source != null ? await invoke(runtime, 'spots', key: source, method: 'fetchSpots') : await invokeAll(runtime, 'spots', method: 'fetchSpots'));
+      emit(source != null ? await invoke(runtime, Hooks.spotsFetchSpots, key: source) : await invokeAll(runtime, Hooks.spotsFetchSpots));
       return 0;
     });
   }
@@ -171,15 +171,14 @@ class ExportCommand extends ExtCommand {
     return withRuntime((runtime) async {
       final args = <String, Object?>{'operation': op, 'qsos': contacts, if (argResults!.flag('compact-filenames')) 'compactFilenames': true};
       if (argResults!.flag('list')) {
-        emit(await invokeAll(runtime, 'export', method: 'suggestExportOptions', args: args));
+        emit(await invokeAll(runtime, Hooks.exportSuggestExportOptions, args: args));
         return 0;
       }
 
       final result = await invoke(
         runtime,
-        'export',
+        Hooks.exportGenerateExport,
         key: argResults!.option('key'),
-        method: 'generateExport',
         args: {...args, if (argResults!.option('type') != null) 'exportType': argResults!.option('type')},
       );
 
@@ -224,8 +223,7 @@ class SuggestCommand extends ExtCommand {
       emit(
         await invokeAll(
           runtime,
-          'activity',
-          method: 'suggest',
+          Hooks.activitySuggest,
           args: {
             'operation': operation ?? const {},
             if (fix != null) 'location': {'lat': fix.lat, 'lon': fix.lon},
@@ -259,21 +257,23 @@ class RefCommand extends ExtCommand {
     final rest = argResults!.rest;
     if (rest.length != 2) throw CliUsageError('usage: $invocation');
     final [type, ref] = rest;
-    final method = argResults!.flag('validate')
-        ? 'validateRef'
-        : argResults!.flag('title')
-        ? 'suggestOperationTitle'
-        : 'decorateRef';
+    final hook = Hooks.ref(
+      type,
+      argResults!.flag('validate')
+          ? RefMethod.validateRef
+          : argResults!.flag('title')
+          ? RefMethod.suggestOperationTitle
+          : RefMethod.decorateRef,
+    );
 
     return withRuntime((runtime) async {
       emit(
         await invoke(
           runtime,
-          'ref:$type',
-          method: method,
+          hook,
           args: {
             'ref': {'type': type, 'ref': ref},
-            if (method == 'suggestOperationTitle') 'operation': operation ?? const {},
+            if (hook.method == RefMethod.suggestOperationTitle.name) 'operation': operation ?? const {},
           },
         ),
       );
@@ -308,8 +308,7 @@ class AdifFieldsCommand extends ExtCommand {
       emit(
         await invokeAll(
           runtime,
-          'adifFields',
-          method: argResults!.flag('combinations') ? 'fieldCombinationsForOneQSO' : 'fieldsForOneQSO',
+          argResults!.flag('combinations') ? Hooks.adifFieldsFieldCombinationsForOneQso : Hooks.adifFieldsFieldsForOneQso,
           args: {'qso': qso, 'operation': operation ?? const {}},
         ),
       );

@@ -27,6 +27,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show HookCalls;
 import 'package:http/http.dart' as http;
 
 import 'lookup_store.dart';
@@ -84,7 +85,7 @@ class DataFileSync {
 
   /// Every registered data file, in registration order.
   Future<List<DataFileDef>> definitions() async {
-    final entries = await runtime.host.invokeHookAll('dataFile', method: 'getDefinition');
+    final entries = await runtime.host.invokeAll(Hooks.dataFileGetDefinition);
     final defs = <DataFileDef>[];
     for (final entry in entries) {
       if (entry['ok'] != true || entry['value'] is! Map) continue;
@@ -146,7 +147,7 @@ class DataFileSync {
       rows.add(parsed);
     }
 
-    return _mapAndWrite(def, 'mapCsvBatch', 'rows', rows, extraArgs: headers == null ? null : {'headers': headers});
+    return _mapAndWrite(def, Hooks.dataFileMapCsvBatch, 'rows', rows, extraArgs: headers == null ? null : {'headers': headers});
   }
 
   Future<DataFileResult> _importJson(DataFileDef def, String body) async {
@@ -160,7 +161,7 @@ class DataFileSync {
     } else {
       throw const FormatException('resolved rootPath is neither an array nor an object');
     }
-    return _mapAndWrite(def, 'mapJsonBatch', 'entries', entries);
+    return _mapAndWrite(def, Hooks.dataFileMapJsonBatch, 'entries', entries);
   }
 
   /// Where a raw file's parsed JSON is cached. Keyed by data-file key, which
@@ -188,13 +189,7 @@ class DataFileSync {
       if (entry is! File || !entry.path.endsWith('.json')) continue;
       final key = entry.uri.pathSegments.last.replaceAll(RegExp(r'\.json$'), '');
       try {
-        await runtime.host.invokeHook(
-          'dataFile',
-          key: key,
-          method: 'onLoadRawData',
-          args: jsonDecode(entry.readAsStringSync()),
-          timeout: const Duration(seconds: 30),
-        );
+        await runtime.host.invoke(Hooks.dataFileOnLoadRawData, key: key, args: jsonDecode(entry.readAsStringSync()), timeout: const Duration(seconds: 30));
         replayed.add(key);
       } catch (e) {
         // The extension that owns this file may simply not be loaded (a
@@ -210,17 +205,16 @@ class DataFileSync {
   /// extension keeps, cached as JSON, and replayed into the runtime — it
   /// never becomes lookup rows. call-notes is the one doing this.
   Future<DataFileResult> _importRaw(DataFileDef def, String body) async {
-    final processed = await runtime.host.invokeHook(
-      'dataFile',
+    final processed = await runtime.host.invoke(
+      Hooks.dataFileRawToJsonData,
       key: def.key,
-      method: 'rawToJSONData',
       args: {'body': body, 'url': def.url, 'options': const <String, dynamic>{}},
       timeout: const Duration(seconds: 60),
     );
     final cache = File('${rawCacheDir(store)}/${def.key}.json')
       ..parent.createSync(recursive: true)
       ..writeAsStringSync(jsonEncode(processed));
-    await runtime.host.invokeHook('dataFile', key: def.key, method: 'onLoadRawData', args: processed, timeout: const Duration(seconds: 60));
+    await runtime.host.invoke(Hooks.dataFileOnLoadRawData, key: def.key, args: processed, timeout: const Duration(seconds: 60));
     return DataFileResult(
       key: def.key,
       cachedAt: cache.path,
@@ -232,7 +226,7 @@ class DataFileSync {
     );
   }
 
-  Future<DataFileResult> _mapAndWrite(DataFileDef def, String method, String argKey, List<Object?> items, {Map<String, Object?>? extraArgs}) async {
+  Future<DataFileResult> _mapAndWrite(DataFileDef def, HookRef mapping, String argKey, List<Object?> items, {Map<String, Object?>? extraArgs}) async {
     // Stamps every row this run touches, so the sweep below can delete
     // exactly what the source dropped.
     final updatedFlag = nowMillis();
@@ -241,10 +235,9 @@ class DataFileSync {
     for (var start = 0; start < items.length; start += chunkSize) {
       final end = start + chunkSize < items.length ? start + chunkSize : items.length;
       if (verbose) stderr.writeln('[data-file] ${def.key}: mapping $end/${items.length}');
-      final mapped = await runtime.host.invokeHook(
-        'dataFile',
+      final mapped = await runtime.host.invoke(
+        mapping,
         key: def.key,
-        method: method,
         args: {argKey: items.sublist(start, end), ...?extraArgs},
         // A 5000-row chunk against a single-threaded engine; the default 10s
         // is a per-CALL budget, not a per-row one.
@@ -254,7 +247,7 @@ class DataFileSync {
         // Bailing out protects what is already imported: carrying on to the
         // sweep with nothing imported would delete the whole category.
         throw StateError(
-          '$method returned ${mapped.runtimeType}, not a list — '
+          '${mapping.method} returned ${mapped.runtimeType}, not a list — '
           'dropped rows $start..$end of ${items.length}',
         );
       }

@@ -1,6 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'package:halo_core/halo_core.dart' show HookRef;
+
 import '../cli.dart';
 import '../json_args.dart';
 import '../runtime.dart' show CliUsageError;
@@ -42,8 +44,8 @@ class InvokeCommand extends ExtCommand {
 
     return withRuntime((runtime) async {
       final result = argResults!.flag('all')
-          ? await invokeAll(runtime, category, method: method, args: args)
-          : await invoke(runtime, category, key: argResults!.option('key'), method: method, args: args);
+          ? await invokeAll(runtime, HookRef(category, method), args: args)
+          : await invoke(runtime, HookRef(category, method), key: argResults!.option('key'), args: args);
       emit(result);
       return 0;
     });

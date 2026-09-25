@@ -22,6 +22,7 @@ import 'dart:ui' as dart_ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show HookCalls;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../tools/contest_bench.dart';
@@ -2046,7 +2047,7 @@ class HaLoServices {
     return (text: failures.join('; '), failed: true);
   }
 
-  Future<Map<String, dynamic>> _syncTransportCall(String method, Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>> _syncTransportCall(HookRef hook, Map<String, dynamic> args) async {
     final host = extensions.host;
     // Not an error - the extension host is still loading. On a cold start the
     // first periodic round can fire before it is up, and every other consumer
@@ -2054,7 +2055,7 @@ class HaLoServices {
     // Throwing a plain StateError here made each launch count a sync failure
     // and file a crash report for a race that clears in seconds.
     if (host == null) throw const SyncTransportNotReady();
-    final result = await host.invokeHook('syncTransport', method: method, args: args, timeout: const Duration(seconds: 30));
+    final result = await host.invoke(hook, args: args, timeout: const Duration(seconds: 30));
     return (result as Map).cast<String, dynamic>();
   }
 }

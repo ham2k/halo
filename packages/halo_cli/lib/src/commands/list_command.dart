@@ -3,6 +3,8 @@
 
 import 'dart:io';
 
+import 'package:halo_core/halo_core.dart' show Hooks;
+
 import '../bundles.dart';
 import '../cli.dart';
 
@@ -36,8 +38,8 @@ class ListCommand extends ExtCommand {
     }
 
     return withRuntime((runtime) async {
-      final active = await invoke(runtime, 'runtime', key: 'kernel', method: 'listExtensions');
-      final registered = await invoke(runtime, 'runtime', key: 'kernel', method: 'listHooks');
+      final active = await invoke(runtime, Hooks.runtimeListExtensions, key: 'kernel');
+      final registered = await invoke(runtime, Hooks.runtimeListHooks, key: 'kernel');
       final hooksByExtension = <String, List<Object?>>{};
       for (final hook in (registered as List? ?? const [])) {
         if (hook is! Map) continue;
