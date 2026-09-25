@@ -1,0 +1,214 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// Which extensions the FULL ADIF export asks for fields about a contact: the
+// ones claiming a reference its operation or the contact itself carries, and
+// those whose manifest opts into every contact (docs/extensions/hooks.md,
+// `adifFields`).
+//
+// Driven through the real kernel and the real `adif` exporter, beside small
+// extensions written here whose hooks answer EVERY contact with no check of
+// their own — the shape that, asked about every contact, stamps its
+// CONTEST_ID on every log the operator exports. A fake kernel would test the
+// filter against our own idea of it.
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_extension_host/halo_extension_host.dart';
+
+import 'support/bundles.dart';
+
+/// An extension whose `adifFields` answers every contact it is asked about
+/// with `<field>:Y`, handling the references [refCategories] name, and carrying
+/// [manifest] (a line of object literal) on its definition the way a bundle
+/// spreads its manifest into `defineExtension`.
+String _extension(String key, {required String field, List<String> refCategories = const [], String manifest = ''}) =>
+    '''
+__polo.defineExtension({
+  key: '$key',
+  name: '$key',
+  version: '0.0.1',
+  $manifest
+  onActivation: function (api) {
+    ${refCategories.map((category) => "api.registerHook('$category', { key: '$key', hook: { decorateRef: async function (args) { return args.ref } } })").join('\n    ')}
+    api.registerHook('adifFields', { key: '$key', hook: {
+      fieldsForOneQSO: async function () { return [{ name: '$field', value: 'Y' }] },
+    }})
+  },
+})
+''';
+
+void main() {
+  requireBundles();
+
+  late ExtensionHost host;
+
+  setUpAll(() async {
+    host = await ExtensionHost.start(
+      kernelSource: bundleSource('kernel'),
+      extensions: [
+        ExtensionBundle(key: 'adif', source: bundleSource('adif')),
+        ExtensionBundle(key: 'sota', source: bundleSource('sota')),
+        // WCA ahead of ECA, so that WCA's own claim on ECA's references (it
+        // resolves them while ECA is off) is the one registered first.
+        ExtensionBundle(key: 'wca', source: bundleSource('wca')),
+        ExtensionBundle(key: 'eca', source: bundleSource('eca')),
+        ExtensionBundle(
+          key: 'careless',
+          source: _extension('careless', field: 'APP_TEST_CARELESS', refCategories: ['ref:careless']),
+        ),
+        // The bundled QSO-party extension and one party, as they stand on an
+        // operation logged before each party had its own: `qp` claims the
+        // whole family, `qp/ca` one code in it.
+        ExtensionBundle(
+          key: 'family',
+          source: _extension('family', field: 'APP_TEST_FAMILY', refCategories: ['ref:qp']),
+        ),
+        ExtensionBundle(
+          key: 'claimant',
+          source: _extension('claimant', field: 'APP_TEST_CLAIMANT', refCategories: ['ref:qp/ca']),
+        ),
+        ExtensionBundle(
+          key: 'everywhere',
+          source: _extension('everywhere', field: 'APP_TEST_EVERYWHERE', manifest: "adifFieldsScope: 'always',"),
+        ),
+        ExtensionBundle(
+          key: 'orphan',
+          source: _extension('orphan', field: 'APP_TEST_ORPHAN'),
+        ),
+      ],
+    );
+  });
+
+  tearDownAll(() => host.dispose());
+
+  Future<String> export({List<Map<String, dynamic>> operationRefs = const [], List<Map<String, dynamic>> qsoRefs = const [], String? mainHandler}) async {
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': {'uuid': 'op', 'stationCall': 'N0DEV', 'refs': operationRefs},
+                'qsos': [
+                  {
+                    'uuid': 'q0',
+                    'our': {'call': 'N0DEV', 'sent': '59'},
+                    'their': {'call': 'W1AW', 'sent': '59'},
+                    'band': '20m',
+                    'mode': 'SSB',
+                    'startAtMillis': DateTime.utc(2026, 7, 1, 12).millisecondsSinceEpoch,
+                    'refs': qsoRefs,
+                  },
+                ],
+                'exportType': 'adif',
+                'mainHandler': ?mainHandler,
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
+    return result['content'] as String;
+  }
+
+  test('an extension the contact has nothing to do with writes nothing, however careless its hook', () async {
+    final content = await export(
+      operationRefs: [
+        {'type': 'sotaActivation', 'ref': 'W7A/LC-001'},
+      ],
+    );
+
+    expect(content, contains('<MY_SOTA_REF:10>W7A/LC-001'), reason: 'the program the log belongs to still writes');
+    expect(content, isNot(contains('APP_TEST_CARELESS')));
+    expect(content, isNot(contains('APP_TEST_FAMILY')));
+    expect(content, isNot(contains('APP_TEST_CLAIMANT')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a reference on the operation brings its extension in', () async {
+    final content = await export(
+      operationRefs: [
+        {'type': 'careless', 'ref': 'C-1'},
+      ],
+    );
+
+    expect(content, contains('<APP_TEST_CARELESS:1>Y'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // A hunter's log carries its programs on the contacts alone: the operation
+  // activates nothing. Scoping by the operation's refs would strip every
+  // SOTA_REF out of a chaser's backup.
+  test('a reference on the contact alone brings its extension in', () async {
+    final content = await export(
+      qsoRefs: [
+        {'type': 'sota', 'ref': 'W7A/LC-001'},
+        {'type': 'careless', 'ref': 'C-1'},
+      ],
+    );
+
+    expect(content, contains('<SOTA_REF:10>W7A/LC-001'));
+    expect(content, contains('<APP_TEST_CARELESS:1>Y'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // `{type: 'qp', ref: 'CA'}` belongs to the longest claim that begins its
+  // code. Asking every extension that matched at all would put the bundled
+  // extension's CONTEST_ID beside the party's own on every old California log,
+  // and the first to arrive would win.
+  test('an old reference belongs to the extension claiming it most precisely', () async {
+    final california = await export(
+      operationRefs: [
+        {'type': 'qp', 'ref': 'CA'},
+      ],
+    );
+    expect(california, contains('<APP_TEST_CLAIMANT:1>Y'));
+    expect(california, isNot(contains('APP_TEST_FAMILY')));
+
+    final newYork = await export(
+      operationRefs: [
+        {'type': 'qp', 'ref': 'NY'},
+      ],
+    );
+    expect(newYork, contains('<APP_TEST_FAMILY:1>Y'), reason: 'no party claims NY, so the family does');
+    expect(newYork, isNot(contains('APP_TEST_CLAIMANT')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // WCA registers `ref:ecaActivation` too, as precisely as ECA does. Asking
+  // only whichever of the two registered first leaves ECA's own MY_SIG pair
+  // out of an English castle activation whenever WCA wins that race.
+  test('equal claims on a reference are all asked, whatever order they registered in', () async {
+    final content = await export(
+      operationRefs: [
+        {'type': 'ecaActivation', 'ref': 'G-01234'},
+      ],
+    );
+
+    expect(content, contains('<MY_SIG:3>ECA'));
+    expect(content, contains('<MY_SIG_INFO:7>G-01234'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('an extension whose manifest opts in is asked about every contact', () async {
+    final content = await export();
+
+    expect(content, contains('<APP_TEST_EVERYWHERE:1>Y'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // Neither a reference nor the opt-in means the export never asks, and the
+  // file gives no sign of it — so activation has to say so.
+  test('one that handles no reference and does not opt in is never asked, and says so as it activates', () async {
+    final content = await export(
+      operationRefs: [
+        {'type': 'careless', 'ref': 'C-1'},
+      ],
+    );
+
+    expect(content, isNot(contains('APP_TEST_ORPHAN')));
+    expect(host.logLines.join('\n'), contains('extension orphan registers adifFields but answers for no reference'));
+    expect(host.logLines.join('\n'), isNot(contains('extension everywhere registers adifFields but')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // A file that claims one program asks that program by name; which references
+  // a contact carries is the full export's question, not this one's.
+  test('a program named as the main handler is asked whatever the contact carries', () async {
+    final content = await export(mainHandler: 'careless');
+
+    expect(content, contains('<APP_TEST_CARELESS:1>Y'));
+    expect(content, isNot(contains('APP_TEST_EVERYWHERE')), reason: 'a named file asks only its own program');
+  }, timeout: const Timeout(Duration(seconds: 60)));
+}

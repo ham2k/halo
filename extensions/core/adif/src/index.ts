@@ -507,6 +507,12 @@ function stationSectionFieldsFor(qso: Record<string, unknown>): AdifField[] {
   return [{ name: "ARRL_SECT", value: their.arrlSection ?? theirGuess.arrlSection }]
 }
 
+/// The refs [record] carries — none for a row without the key, or with
+/// something other than a list under it.
+function refsOf(record: Record<string, unknown>): unknown[] {
+  return Array.isArray(record.refs) ? record.refs : []
+}
+
 /// Each `adifFields` hook's contribution, as a list of field sets — one per
 /// ADIF record that hook wants written. Almost every hook returns exactly one.
 /// An activity whose programs allow several references at once (a POTA n-fer)
@@ -522,7 +528,12 @@ function stationSectionFieldsFor(qso: Record<string, unknown>): AdifField[] {
 /// only hook asked — plus whatever it listed in [includeFieldsFrom] — because a
 /// file submitted to one program is that program's log
 /// (`ExportRequest.mainHandler`). Unnamed — the full ADIF export, which claims
-/// no program — every hook contributes, which is polo's `includeOtherRefs`.
+/// no program — every program the contact belongs to contributes, which is
+/// polo's `includeOtherRefs`: the hooks of the extensions claiming its
+/// operation's and its own refs, and those whose manifest sets `adifFieldsScope:
+/// "always"` (`hooks.invokeForRefs`). Asking every installed extension instead
+/// lets one that forgets to check its own refs stamp its CONTEST_ID on every
+/// log the operator keeps.
 ///
 /// A NAMED handler's sets come back in the order it asked, itself first — the
 /// order their fields land in a record, and so, since a field name is written
@@ -532,7 +543,7 @@ function stationSectionFieldsFor(qso: Record<string, unknown>): AdifField[] {
 /// returning the combinations first would put the included hook ahead of the
 /// file's own program.
 ///
-/// The FULL export has no such order to restore. `invokeAll` answers in hook
+/// The FULL export has no such order to restore. `invokeForRefs` answers in hook
 /// priority order per method, but the two methods are two calls and a hook
 /// answers only one of them, so the combination-answering hooks come first as a
 /// group and nothing here can interleave them by priority. Which of two
@@ -551,7 +562,7 @@ async function fieldSetsPerHook(
   const invoke = async (method: string) =>
     keys
       ? (await Promise.all(keys.map((key) => hooks.invokeOne("adifFields", key, method, { qso, operation })))).flat()
-      : hooks.invokeAll("adifFields", method, { qso, operation })
+      : hooks.invokeForRefs("adifFields", method, { qso, operation }, [...refsOf(operation), ...refsOf(qso)])
 
   const combined = await invoke("fieldCombinationsForOneQSO")
   for (const entry of combined) {
@@ -567,9 +578,10 @@ async function fieldSetsPerHook(
     byHook.set(entry.key, [entry.value as AdifField[]])
   }
 
-  // Nothing below applies to the full ADIF export, which asks everyone and
-  // takes what it gets — one activity's broken hook must not cost the operator
-  // the whole-log backup. A file that claims ONE program is the strict case.
+  // Nothing below applies to the full ADIF export, which asks every program
+  // the contact belongs to and takes what it gets — one activity's broken hook
+  // must not cost the operator the whole-log backup. A file that claims ONE
+  // program is the strict case.
   if (keys) {
     const asked = [...combined, ...single]
     // A handler with no `adifFields` registration answers NEITHER method — the
@@ -721,8 +733,8 @@ const ExportHandler = {
     for (const qso of qsos) {
       // The program fields (SIG, POTA_REF…) come from an `adifFields` hook via
       // in-runtime hook composition — no bridge crossing. Which hooks, see
-      // [fieldSetsPerHook]: this export's own alone, or every one of them when
-      // the file claims no program.
+      // [fieldSetsPerHook]: this export's own alone, or those of every program
+      // the contact belongs to when the file claims no program.
       //
       // Against the operation as it stood when THIS contact was made: a
       // rover's county or a contest's setup lives on a ref the segments

@@ -666,7 +666,7 @@ deferred**:
 | Question | What answers it |
 |---|---|
 | Whole log, or only the segments carrying my reference? | `ExportOption.refType`. Set it and the core slices the QSOs to the segments carrying that type (§5.1.4); omit it — core ADIF — and the file covers the whole log. Every contest and activity export sets it. Nothing has asked for "my type, but every segment anyway", which is all the flag would have added. |
-| May other extensions add fields to my records? | `ExportRequest.mainHandler` and `includeFieldsFrom`. An export names itself and LISTS the contributors it accepts — POTA takes `satellites`, because a park worked through a bird is still a park activation. Omitted, every `adifFields` hook contributes, which is polo's `includeOtherRefs` and is what the full ADIF does. A named list beats the boolean: POTA wants the satellite fields and not the lighthouse ones, and a yes/no cannot say so. |
+| May other extensions add fields to my records? | `ExportRequest.mainHandler` and `includeFieldsFrom`. An export names itself and LISTS the contributors it accepts — POTA takes `satellites`, because a park worked through a bird is still a park activation. Omitted — the full ADIF — every program the contact carries a reference for contributes, which is polo's `includeOtherRefs` (docs/extensions/hooks.md, `adifFields`). A named list beats the boolean: POTA wants the satellite fields and not the lighthouse ones, and a yes/no cannot say so. |
 | What was true for THIS contact — a rover's county, the grid at the key? | `ExportRequest.segments` and the SDK's `operationForQso` (above). A per-segment *value*, which neither flag expressed. |
 
 Of the four cases this section expected to stress the flags, the VHF rover
@@ -1857,8 +1857,9 @@ Everything the two Field Days need for logging and export:
   (60/30/17/12m score 0 with an alert) is an ordinary verdict.
 - **Cabrillo.** The writer is already shared, out of `@ham2k/lib-qson-cabrillo`.
 - **ADIF.** `CONTEST_ID`/`CLASS`/`ARRL_SECT`. app-polo emits these even when FD is
-  not the main handler; HaLo fans `adifFields` out to every hook anyway, so this
-  is the default rather than a special case.
+  not the main handler; HaLo's full ADIF asks every program the contact belongs
+  to, Field Day included on a Field Day operation, so this is the default rather
+  than a special case.
 
 #### The two real gaps
 

@@ -52,6 +52,10 @@ that imports it and calls `defineExtension`:
   "accentColor": "#068541",    // brand accent, #RRGGBB
   "keywords": ["parks", "activation", "hunting"],
   "hooks": ["activity", "dataFile", "lookup", "ref:pota", "spots"],
+  "adifFieldsScope": "always", // rare. The full ADIF export asks this
+                               // extension's adifFields about EVERY contact,
+                               // not only those carrying a reference it
+                               // handles (hooks.md, `adifFields`).
   "domains": ["api.pota.app", "pota.app"],  // host.fetch allowlist
   "webSockets": ["stream.example.com"],     // host.webSocket allowlist, rare;
                                // see "WebSockets" below
@@ -464,9 +468,18 @@ runtime, without a bridge round-trip):
 
 ```ts
 import { hooks } from "@ham2k/extension-sdk"
-const entries = await hooks.invokeAll('adifFields', 'fieldsForOneQSO', { qso, operation })
+const refs = [...(operation.refs ?? []), ...(qso.refs ?? [])]
+const entries = await hooks.invokeForRefs('adifFields', 'fieldsForOneQSO', { qso, operation }, refs)
 // entries: [{key, ok, value|error}, ...] in priority order
 ```
+
+`invokeForRefs` asks only the extensions claiming one of those references (and,
+for `adifFields`, any that opt into every contact) — what a file combining
+several programs wants, since a program the contact has nothing to do with
+then writes nothing into it ([hooks.md](hooks.md), `adifFields`).
+`invokeAll(category, method, args)` asks every hook in the category, the
+caller's own included; `invokeOne(category, key, method, args)` asks one
+extension by key.
 
 Planned host APIs from the design (not yet implemented): `host.lookups`
 (offline reference datasets), `host.qsos`/`host.operations` (indexed log

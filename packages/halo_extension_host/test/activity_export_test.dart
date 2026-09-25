@@ -365,11 +365,12 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // The mirror of the narrowing test above, on the same fixture: the FULL ADIF
-  // export names no main handler and every hook contributes, which is what
-  // makes it the complete copy the operator keeps. Requiring `mainHandler`,
-  // defaulting it, or dropping the `invokeAll` branch would quietly turn that
-  // file single-program, and nothing else would notice.
-  test('the full ADIF export asks every hook, and a shared field is written once', () async {
+  // export names no main handler and every program the contact belongs to
+  // contributes, which is what makes it the complete copy the operator keeps.
+  // Requiring `mainHandler`, defaulting it, or narrowing that fan-out to one
+  // program would quietly turn that file single-program, and nothing else
+  // would notice.
+  test('the full ADIF export asks every program on the contact, and a shared field is written once', () async {
     final host = await sharedHost(['adif', 'pota', 'llota']);
     final result =
         await host.invokeHook(
@@ -393,7 +394,7 @@ void main() {
     final content = result['content'] as String;
 
     // Both hooks ran: the lighthouse's own field is in the record next to the
-    // park's, which is what "every hook contributes" buys.
+    // park's, which is what asking every program on the contact buys.
     expect(content, contains('<MY_POTA_REF:7>US-0001'));
     expect(content, contains('<MY_LLOTA_REF:9>LLUS-0787'));
     // MY_SIG they BOTH answer, and ADIF gives no meaning to a field written

@@ -260,6 +260,31 @@ function calendarDateProblem(value) {
   return at.getUTCFullYear() === year && at.getUTCMonth() === month - 1 && at.getUTCDate() === day ? null : "is not a day that exists"
 }
 
+/// Everything wrong with how a manifest scopes its `adifFields` hook, as a
+/// list — empty for one with no such hook.
+///
+/// The full ADIF export asks an extension for fields only about a contact
+/// carrying a reference that extension answers for, unless the manifest says
+/// `adifFieldsScope: "always"`. A bundle that adds fields and declares neither
+/// a `ref:` type nor the opt-in writes nothing to that file, and nothing at
+/// export time says so. The opt-in is a manifest field rather than something
+/// on the hook so that this check can see it without running the bundle.
+///
+/// Shared with build-config.mjs's manifest checks, like [validateRelevance].
+export function validateAdifFieldsScope(manifest) {
+  const scope = manifest?.adifFieldsScope
+  if (scope !== undefined && scope !== "always") {
+    return [`'adifFieldsScope' must be "always", or left out to scope 'adifFields' to the references this extension handles`]
+  }
+  const hooks = Array.isArray(manifest?.hooks) ? manifest.hooks : []
+  if (!hooks.includes("adifFields") || scope === "always") return []
+  if (hooks.some((hook) => typeof hook === "string" && hook.startsWith("ref:"))) return []
+  return [
+    `'hooks' lists 'adifFields' but no 'ref:' type — the full ADIF export asks an extension only about contacts carrying a reference it handles, ` +
+      `so these fields would never be written; declare the 'ref:' types, or set "adifFieldsScope": "always" (docs/extensions/hooks.md)`,
+  ]
+}
+
 /// Everything wrong with a candidate bundle, as a list — an author fixing one
 /// problem per run is an author running this five times.
 export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName = false } = {}) {
@@ -349,6 +374,8 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
   // for the operators it was written for. The matcher reads a key it cannot
   // parse as "does not gate", so a malformed one would ship as worldwide.
   for (const problem of validateRelevance(manifest.relevance)) say(problem)
+
+  for (const problem of validateAdifFieldsScope(manifest)) say(problem)
 
   return problems
 }

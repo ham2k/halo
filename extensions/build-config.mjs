@@ -17,7 +17,7 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { buildOptionsFor as extensionBuildOptions } from "./tools/h2kext-build.mjs"
-import { validateRelevance } from "./tools/h2kext.mjs"
+import { validateAdifFieldsScope, validateRelevance } from "./tools/h2kext.mjs"
 
 export const root = dirname(fileURLToPath(import.meta.url))
 export const outDir = resolve(root, "../app/assets/extensions")
@@ -240,6 +240,13 @@ export function validateManifest(manifest, bundleKey, knownExperiments, manifest
   const relevanceProblems = validateRelevance(manifest.relevance)
   if (relevanceProblems.length) {
     throw new Error(`manifest for '${bundleKey}' has an invalid 'relevance': ${relevanceProblems.join("; ")} (${manifestPath})`)
+  }
+  // Same rule the packer applies, imported for the same reason: an extension
+  // whose fields the full ADIF export would never ask for builds green here
+  // otherwise, and ships a hook that does nothing.
+  const adifFieldsProblems = validateAdifFieldsScope(manifest)
+  if (adifFieldsProblems.length) {
+    throw new Error(`manifest for '${bundleKey}': ${adifFieldsProblems.join("; ")} (${manifestPath})`)
   }
 }
 

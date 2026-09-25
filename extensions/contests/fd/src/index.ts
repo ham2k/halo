@@ -415,7 +415,8 @@ const AdifFieldsHook = {
     // Keyed off the OPERATION, not the QSO: every contact made during a Field
     // Day operation is a Field Day contact, whether or not the operator got an
     // exchange down for it. app-polo writes these even when FD is not the main
-    // handler for the QSO, and HaLo fans `adifFields` out to every hook anyway.
+    // handler for the QSO, and HaLo's full ADIF asks every program the
+    // contact's operation carries, this one included.
     if (!refOfType(operation, TYPE)) return []
 
     const qsoRef = refOfType(qso, TYPE)

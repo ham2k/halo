@@ -294,6 +294,14 @@ function hooksFor(category: HookCategoryName, key: string | null): HookRecord[] 
 /// nothing to begin.
 function hooksForRef(category: HookCategoryName, key: string | null, args: unknown): HookRecord[] {
   if (!category.startsWith("ref:") || category.includes("/")) return hooksFor(category, key)
+  return claimsOn(category as `ref:${string}`, key, args).map((entry) => entry.record)
+}
+
+/// Every record claiming the reference in [args] for a `ref:<type>` [category],
+/// with how precisely it claims it — the length of the prefix it named, zero
+/// for the bare type — strongest first, then by priority. [hooksForRef]'s
+/// ranking, with the strength kept.
+function claimsOn(category: `ref:${string}`, key: string | null, args: unknown): { record: HookRecord; strength: number }[] {
   const raw = (args as { ref?: { ref?: unknown } } | null)?.ref?.ref
   const code = typeof raw === "string" ? raw.toLowerCase() : null
   const qualified = `${category}/`
@@ -310,7 +318,38 @@ function hooksForRef(category: HookCategoryName, key: string | null, args: unkno
     ranked.push({ record: h, strength: claimed.length })
   }
   ranked.sort((a, b) => b.strength - a.strength || b.record.priority - a.record.priority)
-  return ranked.map((entry) => entry.record)
+  return ranked
+}
+
+/// The extensions that answer for [refs]: for each, every extension holding the
+/// strongest claim on it ([claimsOn]).
+///
+/// A longer claim excludes a shorter one: on `{type: 'qp', ref: 'CA'}` a
+/// party's `ref:qp/ca` leaves out the bundled QSO-party extension's `ref:qp`,
+/// or both would write a CONTEST_ID into the same record. Equal claims all
+/// count, whatever their priority or the order they registered in, because
+/// neither says which of them writes the fields: WCA registers
+/// `ref:ecaActivation` too, to resolve a castle while ECA is off, and writes
+/// nothing for one — taking only the first would drop ECA's own.
+function extensionsRouting(refs: unknown[]): Set<string> {
+  const keys = new Set<string>()
+  for (const ref of refs) {
+    const type = (ref as { type?: unknown } | null)?.type
+    if (typeof type !== "string" || type === "" || type.includes("/")) continue
+    const claims = claimsOn(`ref:${type}`, null, { ref })
+    for (const claim of claims) {
+      if (claim.strength < claims[0].strength) break
+      keys.add(claim.record.extensionKey)
+    }
+  }
+  return keys
+}
+
+/// Whether [record] is asked whatever references a contact carries: an
+/// `adifFields` hook whose manifest says `adifFieldsScope: "always"`, the one
+/// category with such an opt-in.
+function askedForEveryRef(category: HookCategoryName, record: HookRecord): boolean {
+  return category === "adifFields" && extensions[record.extensionKey]?.adifFieldsScope === "always"
 }
 
 // Host calls that carry (or act on) a caller identity: their `ns`/`kvKey`/
@@ -614,6 +653,16 @@ async function activateExtension(def: ExtensionDefinition): Promise<string | nul
         })
       },
     })
+    // An `adifFields` hook the full ADIF export will never ask writes nothing,
+    // and the export says nothing about it. The packer refuses a manifest like
+    // that; this is for a bundle it never saw, and for a definition that did
+    // not spread the manifest and so lost its opt-in.
+    const own = hooks.filter((h) => h.extensionKey === def.key)
+    if (own.some((h) => h.category === "adifFields") && def.adifFieldsScope !== "always" && !own.some((h) => h.category.startsWith("ref:"))) {
+      log(
+        `ERROR extension ${def.key} registers adifFields but answers for no reference and does not set adifFieldsScope: "always" — the full ADIF export will never ask it`,
+      )
+    }
     log(`activated extension ${def.key}@${def.version}`)
     // Not if a dev reload unloaded it while it was still activating.
     if (extensions[def.key] === def) {
@@ -987,14 +1036,23 @@ const kernel = {
   /// recursion trap for any hook that delegates within its own category (a
   /// contest's `generateExport` asking for ADIF re-enters itself). Target the
   /// hook you actually want whenever you know its key.
+  /// [forRefs] narrows it to the extensions that answer for one of those
+  /// references ([extensionsRouting]), plus any [askedForEveryRef] — for a
+  /// fan-out that must not reach an extension the contact has nothing to do
+  /// with. The full ADIF export is one: a program answering every contact
+  /// stamps its fields on every log the operator keeps.
   async invokeLocal(
     category: HookCategoryName,
     method: string,
     args: unknown,
     online = true,
     key: string | null = null,
+    forRefs: unknown[] | null = null,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]> {
-    const records = hooksFor(category, key).filter((r) => typeof r.hook[method] === "function")
+    const routing = forRefs ? extensionsRouting(forRefs) : null
+    const records = hooksFor(category, key).filter(
+      (r) => typeof r.hook[method] === "function" && (routing === null || routing.has(r.extensionKey) || askedForEveryRef(category, r)),
+    )
     return await Promise.all(
       records.map(async (record) => {
         try {

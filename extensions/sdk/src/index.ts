@@ -64,6 +64,7 @@ interface KernelApi {
     args: unknown,
     online?: boolean,
     key?: string | null,
+    forRefs?: unknown[] | null,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]>
   invokeLocalSequential(
     category: string,
@@ -245,6 +246,16 @@ export const hooks = {
   /// recursive shape described above, and loops forever through `invokeAll`.
   invokeOne(category: HookCategoryName, key: string, method: string, args: unknown, online?: boolean) {
     return kernel().invokeLocal(category, method, args, online, key)
+  },
+
+  /// Like `invokeAll`, but only the hooks of the extensions that answer for one
+  /// of [refs] — for each, those holding the strongest `ref:<type>` claim on it
+  /// (a `ref:<type>/<code>` prefix beats the bare type) — plus, for
+  /// `adifFields`, any whose manifest sets `adifFieldsScope: "always"`.
+  /// For a fan-out over programs that must leave out the ones a contact has
+  /// nothing to do with, as the full ADIF export does.
+  invokeForRefs(category: HookCategoryName, method: string, args: unknown, refs: unknown[], online?: boolean) {
+    return kernel().invokeLocal(category, method, args, online, null, refs)
   },
 
   /// Like `invokeAll`, but calls hooks one at a time in priority order,

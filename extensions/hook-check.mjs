@@ -117,7 +117,7 @@ async function inspectBundle({ key, outDir, sharedModules }) {
       },
     })
   }
-  return { categories, activityHooks }
+  return { categories, activityHooks, definitions }
 }
 
 /// The ref types [activityHooks] offer a control for, given an operation
@@ -177,7 +177,19 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
       )
       continue
     }
-    const { categories, activityHooks } = inspected
+    const { categories, activityHooks, definitions } = inspected
+
+    // The kernel reads `adifFieldsScope` off the DEFINITION, which carries the
+    // manifest's value only when the extension spreads the manifest into
+    // `defineExtension`. One that doesn't has an opt-in the packer approved and
+    // the kernel never sees, so its fields never reach the full ADIF export.
+    const definition = definitions.find((d) => d.key === bundle.key)
+    if (definition && definition.adifFieldsScope !== bundle.manifest.adifFieldsScope) {
+      problems.push(
+        `${manifestPath}: "adifFieldsScope" is ${JSON.stringify(bundle.manifest.adifFieldsScope)}, but the definition ` +
+          `carries ${JSON.stringify(definition.adifFieldsScope)} — spread the manifest into defineExtension; the kernel reads it from there.`,
+      )
+    }
 
     const declaredPlain = declared.filter((hook) => !hook.startsWith("ref:"))
     const registeredPlain = [...categories].filter((category) => !category.startsWith("ref:"))

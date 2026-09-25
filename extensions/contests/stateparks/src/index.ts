@@ -328,8 +328,9 @@ const AdifFieldsHook = {
     // POTA's fields (SIG/POTA_REF) and are contributed by that extension.
     // These reach only the FULL ADIF export now — this extension writes
     // Ohio's Cabrillo and nothing else (`ExportHook`), and a program file
-    // carries one handler's fields — and that export asks every hook, so the
-    // parks are alongside these in the one file they both reach.
+    // carries one handler's fields — and that export asks every program the
+    // contact belongs to, POTA among them on an operation activating a park,
+    // so the parks are alongside these in the one file they both reach.
     if (event.usesParkAbbreviations) {
       const ours = ourParkAbbreviation(event, operation)
       const theirs = theirParkAbbreviation(event, qso)

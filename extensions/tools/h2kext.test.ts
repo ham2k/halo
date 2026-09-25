@@ -403,6 +403,36 @@ test("relevance: the built-in build applies the same rules, by importing them", 
   assert.doesNotThrow(() => validateBuiltInManifest({ ...manifest, relevance: { continents: ["EU"] } }, "x", new Set(), "x/manifest.json"))
 })
 
+test("adifFields: a bundle that handles no reference and does not opt in is refused", () => {
+  // The full ADIF export asks an extension only about contacts carrying a
+  // reference it answers for. One that declares neither a `ref:` type nor
+  // `adifFieldsScope: "always"` ships a hook the export never calls, and the
+  // export gives no sign of it.
+  const problems = validateManifest({ ...validManifest, hooks: ["adifFields", "lookup"] })
+  assert.equal(problems.length, 1, problems.join(" | "))
+  assert.match(problems[0], /'adifFields' but no 'ref:' type/)
+
+  assert.deepEqual(validateManifest({ ...validManifest, hooks: ["adifFields", "ref:w7abcPark"] }), [])
+  assert.deepEqual(validateManifest({ ...validManifest, hooks: ["adifFields", "lookup"], adifFieldsScope: "always" }), [])
+})
+
+test("adifFields: the opt-in says always or nothing", () => {
+  // Any other value would read as an opt-in to an author and as none to the
+  // kernel, which compares against "always" alone.
+  const problems = validateManifest({ ...validManifest, hooks: ["adifFields", "ref:w7abcPark"], adifFieldsScope: "all" })
+  assert.equal(problems.length, 1, problems.join(" | "))
+  assert.match(problems[0], /'adifFieldsScope' must be "always"/)
+})
+
+test("adifFields: the built-in build applies the same rule, by importing it", () => {
+  // As with relevance: one rule, so what matters is that build-config still
+  // calls it. A built-in extension that forgot its `ref:` types would
+  // otherwise build green with fields no export ever writes.
+  const manifest = { key: "x", name: "X", version: "1.0.0", description: "d", hooks: ["adifFields"] }
+  assert.throws(() => validateBuiltInManifest(manifest, "x", new Set(), "x/manifest.json"), /'adifFields' but no 'ref:' type/)
+  assert.doesNotThrow(() => validateBuiltInManifest({ ...manifest, hooks: ["adifFields", "ref:x"] }, "x", new Set(), "x/manifest.json"))
+})
+
 test("index.json carries version for every extension, and relevance when declared", () => {
   // `version` is what an update check compares, and it has to be readable
   // for an extension that is installed but DISABLED — whose bundle never

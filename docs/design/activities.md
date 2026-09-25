@@ -124,8 +124,10 @@ two `MY_SIG`/`MY_SIG_INFO` pairs into every record and leaves the receiving
 program to pick. Nobody else's fields reach the file either — the other
 program's hunted `SIG` pair, a contest's exchange, the satellite's `SAT_NAME` —
 because a submitted file is one program's log. The full ADIF export, which
-claims nothing, names no main handler and still gets every hook (polo's
-`includeOtherRefs`). Contest exports name themselves the same way.
+claims nothing, names no main handler and gets the hooks of every program the
+contact carries a reference for (polo's `includeOtherRefs`;
+docs/extensions/hooks.md, `adifFields`). Contest exports name themselves the
+same way.
 
 What a program says it ALSO reads is a list on the rules, `includeFieldsFrom`:
 POTA names `satellites`, since a park worked through a bird is still a park

@@ -797,6 +797,13 @@ export interface ActivityHook {
 /// A field NAME is written once per record: where two hooks answer the same
 /// one, the first to carry a value wins and the rest are dropped, the contact's
 /// own fields ahead of any hook's. Same rule app-polo applies.
+///
+/// The full ADIF export asks this hook only about a contact whose operation or
+/// own refs carry a reference this extension claims, through a `ref:<type>` or
+/// `ref:<type>/<code>` hook, as precisely as any other extension does — unless
+/// the manifest sets
+/// `adifFieldsScope: "always"` (docs/extensions/hooks.md). A program's own
+/// export asks it by name, whatever the contact carries.
 export interface AdifFieldsHook {
   /// `operation` is the SEGMENT-EFFECTIVE one for this contact — the core
   /// ADIF generator resolves it from `ExportRequest.segments` before asking —
@@ -1954,6 +1961,13 @@ export interface ExtensionManifest {
   /// handlers). Declarative/informational — the kernel still learns the
   /// actual hooks from registerHook at activation.
   hooks?: string[]
+  /// `"always"`: the full ADIF export asks this extension's `adifFields` about
+  /// EVERY contact. Left out, it is asked only about contacts carrying a
+  /// reference this extension answers for — which is what keeps one program's
+  /// fields out of every other log. A manifest that lists `adifFields` needs a
+  /// `ref:` type or this; the packer refuses one with neither. Read by the
+  /// kernel from the definition, so the manifest has to be spread into it.
+  adifFieldsScope?: "always"
   /// host.fetch allowlist for this extension's bundle.
   domains?: string[]
   /// host.webSocket allowlist — a separate grant from `domains`, same entry

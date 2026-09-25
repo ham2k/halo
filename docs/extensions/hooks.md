@@ -750,9 +750,38 @@ file claims its own reference; ask every hook and both programs'
 program to guess which is its. The delegate cannot work out who called it, so
 naming yourself is not optional.
 
-The full ADIF export names no `mainHandler` and every hook contributes —
-polo's `includeOtherRefs`, which only its full export sets. That is the export
-claiming no program: the complete copy the operator keeps.
+The full ADIF export names no `mainHandler`, and every program the contact
+belongs to contributes — polo's `includeOtherRefs`, which only its full export
+sets. That is the export claiming no program: the complete copy the operator
+keeps.
+
+**The full export asks only the extensions a contact belongs to.** For each
+reference on the contact's operation (the segment-effective one) and on the
+contact itself, the kernel takes every extension holding the strongest claim
+on it — the longest `ref:<type>/<code>` prefix that begins the reference's
+code, or else the bare `ref:<type>` — and asks those extensions' hooks, and no
+other's. A hunted reference on the contact counts as much as an activation on
+the operation, so a chaser's log keeps its `SOTA_REF`s. A longer claim excludes
+a shorter one: an old `{type: 'qp', ref: 'CA'}` reference belongs to the party
+that claims `qp/ca`, not also to the extension claiming all of `qp`. Equal
+claims are all asked, whatever their priority: WCA also registers
+`ref:ecaActivation` to resolve a castle while ECA is off, and ECA's fields
+must not depend on which of the two registered first. An installed extension the
+contact has nothing to do with is never asked, so a hook that forgets to check
+its own references costs nothing here; checking them is still how a hook
+behaves correctly when named by a program's own export.
+
+An extension that genuinely has something to say about every contact opts in
+from its **manifest**, `"adifFieldsScope": "always"`, and is asked whatever the
+contact carries. The field lives in the manifest, not on the hook, so the
+packer can check it without running the bundle: a manifest listing
+`adifFields` with neither a `ref:` type nor the opt-in is refused at packing
+and at publishing, and the app's own build refuses it too. The kernel reads the
+opt-in from the extension's definition, so spread the manifest into
+`defineExtension`, and it logs an error at activation for an extension that
+registers `adifFields` but answers for no reference and does not opt in.
+`mainHandler` and `includeFieldsFrom` are unaffected: a named hook is asked
+whatever the contact carries.
 
 An export can also name a **list** of other hooks it accepts,
 `includeFieldsFrom` — polo's all-or-nothing flag narrowed to what the program
@@ -765,13 +794,13 @@ would claim no reference at all.
 
 **A field name is written once per record, and the first to carry a value
 wins.** ADIF gives no meaning to a repeated field, so where two hooks answer
-the same name — the full export asks everyone, and a park and a summit both
-answer `MY_SIG` — the later one is dropped, and the contact's own fields
+the same name — the full export asks every program on the contact, and a park
+and a summit both answer `MY_SIG` — the later one is dropped, and the contact's own fields
 outrank all of them. Hooks are asked main handler first, then each
 `includeFieldsFrom` key in the order given, so that order decides — whichever
 of the two methods each hook answered. app-polo resolves a collision the same
-way ("keep the first one defined"). The **full export**, which asks everyone,
-has no such order: hooks answering `fieldCombinationsForOneQSO` are asked as one
+way ("keep the first one defined"). The **full export**, which asks every
+program on the contact, has no such order: hooks answering `fieldCombinationsForOneQSO` are asked as one
 group and hooks answering `fieldsForOneQSO` as another, so which of two programs
 keeps a shared `MY_SIG` there is not something either of them chose.
 
