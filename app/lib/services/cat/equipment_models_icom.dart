@@ -279,7 +279,8 @@ List<Map<String, dynamic>> _ic7760SerialNotes() => _civSerialNotes(extra: t.sett
 ///
 /// Two serial ports appear for the one radio and only Port A carries CI-V,
 /// which the OS gives no way to tell apart — so the note says which, since
-/// the wrong one connects and then says nothing.
+/// the wrong one connects and then says nothing. A 200 W radio: on the
+/// driver's assumed 100 W ceiling every power reading shows half.
 const ic7760Model = EquipmentModel(
   key: 'ic7760',
   manufacturer: icomBrand,
@@ -291,7 +292,7 @@ const ic7760Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': 'B2', 'baudRate': 19200},
-      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
+      overrides: {'maxWatts': 200, cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
       restrictions: {'port': _icomCatPort},
       notes: _ic7760SerialNotes,
     ),
@@ -321,7 +322,13 @@ const x6100Model = EquipmentModel(
       defaultConfig: {'civAddress': 'A4', 'baudRate': 19200},
       // Keys through 0x17 like the Icoms it imitates; whether it has voice
       // memories reachable over CI-V is undocumented, so none are offered.
-      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
+      //
+      // 10 W is its rating on external DC. No batteryMaxWatts for its 5 W on
+      // the internal pack: the battery check is a raw threshold measured on
+      // the IC-705's 7.4 V pack, and a 12 V pack would not be expected to
+      // read below it. So on its own pack it reports up to 10 W while
+      // putting out 5.
+      overrides: {'maxWatts': 10, cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
       // CI-V is on the second of the radio's two serial ports; the picker
       // points at that one where it can, and never hides the other.
       restrictions: {

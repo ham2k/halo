@@ -354,6 +354,32 @@ void main() {
     expect(registry.typeFor('x6100-serial')!.driverConfig(const {})[civModeWithFilterConfigKey], isNot(isTrue), reason: 'its mode changes work without one');
   });
 
+  // CI-V states power only as a share of the radio's own maximum, so a named
+  // radio that does not declare its rating is read against the driver's
+  // 100 W guess — a 200 W IC-7760 at full power shows 100 W, a 10 W X6100
+  // shows 100 W. Every named CI-V entry is listed, so a new one cannot fall
+  // back to the guess without someone writing 100 here.
+  test('every named CI-V radio reads power against its own rating', () {
+    const rated = {
+      'ic7300-serial': 100,
+      'ic7300mk2-serial': 100,
+      'ic706mkiig-serial': 100,
+      'ic7100-serial': 100,
+      'ic7610-serial': 100,
+      'ic7760-serial': 200,
+      'x6100-serial': 10,
+      'g90-serial': 20,
+      'ic705-network': 10,
+      'ic705-serial': 10,
+    };
+    final named = registry.types.where((type) => type.driver.key == 'icom-civ' && type.key != 'icom-generic-serial');
+    expect(named.map((type) => type.key), unorderedEquals(rated.keys));
+    for (final type in named) {
+      final session = type.driver.createSession(_SilentSink(), type.driverConfig(const {})) as IcomCivSession;
+      expect(session.maxWatts, rated[type.key], reason: type.key);
+    }
+  });
+
   // The FTX-1 answers `PC1010;` where the FT-891 answers `PC010;`: on the
   // FT-891's form it would show no power and refuse every power change,
   // silently.

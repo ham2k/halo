@@ -38,12 +38,13 @@ const _pollInterval = Duration(seconds: 5);
 
 /// The RF power level (0x14 0x0A) is a 0-255 value standing for 0-100% of
 /// the radio's OWN maximum — CI-V has no command that states what that
-/// maximum is, so [IcomCivSession.maxWatts] comes from config instead:
-/// [ic705Model]'s pairings override it to the IC-705's real 10W SSB/CW
-/// ceiling (equipment_models_icom.dart); everything else — the generic Icom
-/// pairing, and any config that leaves it out — falls back to this 100W
-/// guess, the common ceiling across the HF line this driver otherwise
-/// targets (IC-7300, IC-9700, IC-7610). Unverified either way — see
+/// maximum is, so [IcomCivSession.maxWatts] comes from config instead: a
+/// named radio rated anything other than 100W overrides it with its own
+/// SSB/CW ceiling (equipment_models_icom.dart — the IC-705's 10W, the
+/// IC-7760's 200W); everything else — the generic Icom pairing, and any
+/// config that leaves it out — falls back to this 100W guess, the common
+/// ceiling across the HF line this driver otherwise targets (IC-7300,
+/// IC-9700, IC-7610). Unverified either way — see
 /// [IcomCivDriver.hardwareVerified].
 const _assumedMaxWatts = 100;
 
@@ -282,10 +283,10 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   /// A lower ceiling that applies instead of [maxWatts] while
   /// [dcInputMeterLevel] says the radio is running off its own battery — null
-  /// for a radio with no separate battery rating (everything but the IC-705
-  /// today). The SET level itself doesn't drop on battery — see
-  /// [civMeterDcInputVoltage] — so without this a QRP radio quietly reports
-  /// power it cannot actually put out.
+  /// wherever the entry declares none, including a radio whose battery this
+  /// check cannot detect (the X6100). The SET level itself doesn't drop on
+  /// battery — see [civMeterDcInputVoltage] — so without this a QRP radio
+  /// quietly reports power it cannot actually put out.
   final num? batteryMaxWatts;
 
   final _framer = CivFramer();

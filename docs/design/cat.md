@@ -1006,8 +1006,11 @@ writing it:
   own maximum, on both reads and writes. Each driver documents its own assumption (see
   `icom_civ_driver.dart`'s `_assumedMaxWatts`). The Icom CI-V driver is model-agnostic — the ceiling
   comes from `IcomCivSession.maxWatts`, sourced from the pairing's config rather than hardcoded — so
-  `equipment_models_icom.dart`'s `ic705Model` overrides it to the IC-705's real 10W SSB/CW ceiling
-  instead of the assumed 100W; below that ceiling the 0-255 level actually resolves to sub-watt
+  every named radio in `equipment_models_icom.dart` rated anything but 100W overrides it with its
+  real SSB/CW ceiling (the IC-705 and X6100 10W, the G90 20W, the IC-7760 200W), and a registry test
+  lists every named CI-V entry's rating so a new one cannot fall back to the guess unnoticed. It is
+  one ceiling per model: a lower AM or VHF/UHF ceiling (the IC-7760's 50W AM carrier) is not
+  modeled. At 20W and below the 0-255 level actually resolves to sub-watt
   steps, so the driver reports one decimal place there instead of rounding to a whole watt. The
   FTX-1 is the exception on the Yaesu side: its `PC` names the unit first (`PC1010;` the field head,
   0.5-10 W; `PC2100;` the SPA-1, 5-100 W), so its entry pins `yaesuHeadPower` and a power change
