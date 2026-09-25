@@ -285,6 +285,11 @@ implements directly.
   `app-polo/src/store/sync/README.md`: dirty flags, small-batch on change,
   large-batch on loop, server-tunable parameters. Only the transport call goes
   through an extension.
+- A **shared operation** — one owner's log that other accounts watch, log
+  into or help run — syncs through the owner's account and over peer links,
+  never into a member's own account.
+  [docs/design/shared-operations.md](docs/design/shared-operations.md) is the
+  contract between LoFi and HaLo for it.
 
 ---
 
