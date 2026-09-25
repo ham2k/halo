@@ -28,13 +28,18 @@ import yazl from "yazl"
 ///
 /// Raised when a bundle using something new could not work at all on an app
 /// without it — not for every addition. 2 adds `host.webSocket` and the
-/// manifest's `webSockets` grant.
-export const H2KEXT_API_VERSION = 2
+/// manifest's `webSockets` grant; 3 adds timers and `onShow`/`onHide`.
+export const H2KEXT_API_VERSION = 3
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
 /// when it tried to connect.
 export const WEB_SOCKETS_API_VERSION = 2
+
+/// The first API with timers. The build points a bundle's bare `setTimeout`
+/// and friends at the SDK's only from here on: an older app's kernel hands an
+/// extension no timers, and a bundle declaring less says it runs there.
+export const TIMERS_API_VERSION = 3
 
 /// `<prefix>-<name>`, all lowercase. The shape is what the kernel's
 /// `bundleMayDefine` prefix rule can reason about; the PREFIX is what keeps two
@@ -127,6 +132,7 @@ export const SHARED_MODULES_BY_API = {
   ],
 }
 SHARED_MODULES_BY_API[2] = SHARED_MODULES_BY_API[1]
+SHARED_MODULES_BY_API[3] = SHARED_MODULES_BY_API[2]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

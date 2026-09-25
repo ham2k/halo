@@ -356,6 +356,15 @@ It sends the **anchor pair**, not an offset, so both sides compute the same
 virtual time from the same formula. An offset would already be stale by the
 time the message arrived, and under a factor the error would keep growing.
 
+**Extension timers do not travel.** The kernel's timer queue
+(`extensions/sdk/src/timerQueue.ts`) runs on a monotonic clock
+(`performance.now()`), because a timer is a duration the host sleeps for — a
+Dart `Timer` underneath — and its budget measures real work. Monotonic rather
+than `realNow`: a wall clock set back an hour would hold every timer an hour. So under a speed factor an extension's
+`setTimeout(fn, 60_000)` still fires after a real minute while `Date` has moved
+further; an extension that wants "every virtual minute" computes the next
+delay from `Date` itself.
+
 ---
 
 ## 7. Time in tests

@@ -12,19 +12,18 @@ The obvious design is "equipment is another extension type" — extensions alrea
 activities, contests, spots, lookups and exports. That does not work here, and it is worth being
 precise about why, because the reason is structural and not going to change on its own.
 
-`packages/halo_quickjs/src/halo_qjs.h` exports exactly ten `halo_qjs_*` functions. There is no
-`setTimeout`, no `setInterval`, and no socket. The JS job queue is pumped from Dart by
-`ExtensionHost._ensurePumping` — a 5 ms `Timer.periodic` that **cancels itself the moment no hook
-call is outstanding**. JS runs only while Dart is waiting on it.
+`packages/halo_quickjs/src/halo_qjs.h` exports exactly ten `halo_qjs_*` functions, and none of
+them opens a serial port or a raw TCP socket. What the sandbox does have — timers, and WebSockets
+to hosts a manifest names — the host lends it, and neither is a serial port or a raw TCP stream.
+JS runs only when Dart calls into it: a hook, a socket frame, a timer's wake.
 
 So a JS hook cannot:
 
-- poll a radio on a timer,
-- hold a socket or serial handle,
-- buffer a partial frame across time,
+- hold a serial or raw TCP handle to a radio,
+- buffer a partial frame from one across time,
 - push an unsolicited frequency change up to the app.
 
-All three app-polo drivers do all four of those things (`FlexRadioDriver` runs a 60 s resync
+All three app-polo drivers do all of those things (`FlexRadioDriver` runs a 60 s resync
 `setInterval`; the FT-891 and IC-705 drivers run 5 s poll loops; all three keep mutable session
 closures). That code does not port. On top of that, the JS runtime restarts on any extension
 enable/disable and on a crash-backoff — driver state in JS would evaporate mid-QSO while the

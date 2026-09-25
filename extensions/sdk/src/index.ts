@@ -33,6 +33,7 @@ import type {
 
 import { base64ToBytes, bytesToBase64 } from "./base64.ts"
 import type { HookCategoryName } from "./hookCategories.ts"
+import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTimeout } from "./timers.ts"
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"
@@ -113,8 +114,14 @@ export function defineExtension(def: ExtensionDefinition): void {
   currentExtensionKey = def.key
   kernel().defineExtension({
     ...def,
+    // Called on the author's own object, as onActivation is below, so `this`
+    // is the same object in all three: state kept on it at activation is there
+    // to stop on hide.
+    onShow: def.onShow && (() => def.onShow!()),
+    onHide: def.onHide && (() => def.onHide!()),
     onActivation(api) {
       if (typeof api.hostCall === "function") privilegedHostCalls[def.key] = api.hostCall
+      adoptExtensionTimers(def.key, currentExtensionKey, api.timers)
       return def.onActivation(api)
     },
   })
@@ -455,6 +462,15 @@ export const host = {
   log(message: string): void {
     kernel().log(`[${currentExtensionKey}] ${message}`)
   },
+
+  /// Browser-shaped timers, on real time, bound to this extension and held to
+  /// its budget (docs/extensions/README.md, "Timers"). A bundle built for
+  /// extension API 3 reaches these from a plain `setTimeout` too, npm
+  /// dependencies included (sdk/src/timers.ts).
+  setTimeout,
+  setInterval,
+  clearTimeout,
+  clearInterval,
 
   /// Pushes a later CommandInterpretation for the same `input` a `command`
   /// hook's `interpret()` was called with — see CommandHook's doc. One-way,

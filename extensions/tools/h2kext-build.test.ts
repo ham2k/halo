@@ -14,6 +14,7 @@ import assert from "node:assert/strict"
 import { build } from "esbuild"
 import { mkdtemp, writeFile, readFile, mkdir, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
+import vm from "node:vm"
 import { join, isAbsolute, relative as relativePath } from "node:path"
 
 // @ts-ignore — deliberately plain JS, like the packer it sits beside: both are
@@ -193,4 +194,57 @@ test("a liquidjs that cannot be resolved fails loudly instead of losing the alia
   await writeFile(join(dir, "manifest.json"), JSON.stringify({ key: "w7abc-t", api: H2KEXT_API_VERSION }))
 
   await assert.rejects(() => buildExtension(build, { dir, inline: ["liquidjs"] }), /ERR_PACKAGE_PATH_NOT_EXPORTED|is not defined by "exports"/)
+})
+
+/// Builds an extension whose code calls a bare `setTimeout`, declaring [api],
+/// against the repo's SDK installed as the author's own package — which is
+/// how an author's build finds the file it injects — and evaluates it.
+async function scheduleBuiltFor(api: number) {
+  const dir = await mkdtemp(join(tmpdir(), "h2kext-build-timers-"))
+  await mkdir(join(dir, "src"), { recursive: true })
+  await writeFile(join(dir, "src/index.ts"), "globalThis.schedule = () => setTimeout(() => {}, 5)")
+  await writeFile(join(dir, "manifest.json"), JSON.stringify({ key: "w7abc-t", api }))
+  await mkdir(join(dir, "node_modules/@ham2k"), { recursive: true })
+  await symlink(join(import.meta.dirname, "../sdk"), join(dir, "node_modules/@ham2k/extension-sdk"))
+
+  const { outDir } = await buildExtension(build, { dir })
+  const logs: string[] = []
+  const sandbox: Record<string, any> = { __polo: { log: (message: string) => logs.push(message) } }
+  sandbox.globalThis = sandbox
+  vm.runInNewContext(await readFile(join(outDir, "index.js"), "utf8"), sandbox)
+  return { schedule: () => sandbox.schedule(), logs }
+}
+
+test("from API 3, a bare setTimeout is the SDK's — the extension's own timers, not a global", async () => {
+  // Evaluated with no extension activated, the SDK's answer is its own: an
+  // ignored timer and a log line. A global that slipped through would instead
+  // be missing, which is what every native build has, and in a browser worker
+  // it would run outside any budget.
+  const { schedule, logs } = await scheduleBuiltFor(3)
+  assert.equal(schedule(), 0)
+  assert.deepEqual(logs, ["ERROR a timer was ignored: set before the extension activated"])
+})
+
+test("under API 3, a bare setTimeout is left alone, for an app whose kernel has no timers to give", async () => {
+  const { schedule } = await scheduleBuiltFor(2)
+  assert.throws(schedule, /setTimeout is not defined/)
+})
+
+test("an SDK too old for timers builds, but says so, rather than leaving setTimeout undefined in silence", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "h2kext-build-old-sdk-"))
+  await mkdir(join(dir, "src"), { recursive: true })
+  await writeFile(join(dir, "src/index.ts"), "globalThis.x = 1")
+  await writeFile(join(dir, "manifest.json"), JSON.stringify({ key: "w7abc-t", api: 3 }))
+  // The shape of 0.6.0 on npm: a package whose `exports` has no `./timers`.
+  await mkdir(join(dir, "node_modules/@ham2k/extension-sdk"), { recursive: true })
+  await writeFile(
+    join(dir, "node_modules/@ham2k/extension-sdk/package.json"),
+    JSON.stringify({ name: "@ham2k/extension-sdk", version: "0.6.0", exports: { ".": "./index.js" } }),
+  )
+  const warn = t.mock.method(console, "warn", () => {})
+
+  await buildExtension(build, { dir })
+
+  assert.equal(warn.mock.callCount(), 1)
+  assert.match(String(warn.mock.calls[0].arguments[0]), /with timers — this one has none/)
 })

@@ -16,6 +16,7 @@
 //               __polo.hostResponse(callId, ok, resultJson)
 //               __polo.unloadBundle(key) + beginBundle/eval/endBundle +
 //               __polo.activateReloaded(token)  — the dev loop's reload
+//               __polo.runTimers(), __polo.setAppVisible(visible)
 //   JS → Dart   'polo' channel messages:
 //               {type:'result', id, ok, value|error, jsMillis}
 //                 — the core adds `queueMicros` on the way through: how long
@@ -28,6 +29,7 @@
 //               {type:'hostCall', callId, method, params}
 //               {type:'log', message}
 //               {type:'reloadComplete', token, ok, error?}
+//               {type:'timerWake', delayMillis|null}, {type:'timersSuspended', extensionKey, reason}
 
 import 'dart:async';
 import 'dart:convert';
@@ -39,11 +41,13 @@ import 'package:halo_core/halo_core.dart' show ham2kSsoFetchUri, realNowUtc, sot
 import 'package:http/http.dart' as http;
 
 import 'src/extension_sockets.dart';
+import 'src/extension_timers.dart';
 import 'src/fetch_policy.dart';
 import 'src/hook_call_stats.dart';
 import 'src/js_engine.dart';
 
 export 'src/extension_sockets.dart' show isLocalNetworkHost, localNetworkEntry, maxWebSocketFrameSize, maxWebSocketsPerExtension;
+export 'src/extension_timers.dart' show TimerSuspension;
 export 'src/engine_runtime.dart' show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
 export 'src/fetch_policy.dart' show fetchBodyTimeout, fetchHeaderTimeout;
 export 'src/hook_call_stats.dart' show HookCallSample, QueueWaitStat;
@@ -83,6 +87,7 @@ class ExtensionHost {
   final _logs = StreamController<String>.broadcast();
   final _fatalErrors = StreamController<String>.broadcast();
   final _interpretationUpdates = StreamController<Map<String, dynamic>>.broadcast();
+  final _timerSuspensions = StreamController<TimerSuspension>.broadcast();
 
   /// Every log line received so far (the stream only carries new ones).
   final List<String> logLines = [];
@@ -136,6 +141,9 @@ class ExtensionHost {
   /// event. Unlike hook calls, there's no request/response pairing here:
   /// the caller decides for itself whether `input` is still current.
   Stream<Map<String, dynamic>> get interpretationUpdates => _interpretationUpdates.stream;
+
+  /// An extension whose timers broke their budget (extensions/sdk/src/timerQueue.ts); its hooks keep working.
+  Stream<TimerSuspension> get timerSuspensions => _timerSuspensions.stream;
 
   /// Fires when the runtime dies outside any single call (isolate/worker
   /// crash or unexpected exit). By then every pending hook call has been
@@ -627,6 +635,9 @@ class ExtensionHost {
     _dispatch({'type': 'setClockTravel', 'anchorRealMillis': anchorRealMillis, 'anchorVirtualMillis': anchorVirtualMillis, 'speed': speed});
   }
 
+  /// Tells extensions the app was shown or hidden (`onShow`/`onHide`); send it after every boot too.
+  void setAppVisible(bool visible) => _dispatch({'type': 'setAppVisible', 'visible': visible});
+
   void _onCoreMessage(Map<String, dynamic> msg) {
     switch (msg['type']) {
       case 'result':
@@ -680,6 +691,8 @@ class ExtensionHost {
         } else {
           completer.complete();
         }
+      case 'timersSuspended':
+        if (msg case {'extensionKey': String key, 'reason': String reason}) _timerSuspensions.add((extensionKey: key, reason: reason));
       case 'updateInterpretation':
         final input = msg['input'] as String?;
         if (input == null) return;
@@ -790,6 +803,7 @@ class ExtensionHost {
     await _logs.close();
     await _fatalErrors.close();
     await _interpretationUpdates.close();
+    await _timerSuspensions.close();
   }
 }
 
@@ -951,6 +965,12 @@ class _HostCore {
   final Map<String, Map<String, Object?>> _kv = {};
   final Map<int, Completer<dynamic>> _pendingHostCalls = {};
   Timer? _pump;
+  late final _timers = ExtensionTimerWake(runTimers: _runTimers, log: (message) => emit({'type': 'log', 'message': message}));
+
+  void _runTimers() {
+    _lastEvalLabel = 'timers';
+    _js.runTimers();
+  }
 
   /// Ids (not a bare counter) so a duplicate/forged 'result' can't drive
   /// the count negative and stall the pump while genuine calls wait, and so
@@ -1018,6 +1038,7 @@ class _HostCore {
     try {
       await _js.load(kernelSource, bundles, clock: clock);
     } catch (e) {
+      _timers.dispose(); // a timer set while activating may already be armed
       _js.dispose();
       rethrow;
     }
@@ -1106,6 +1127,12 @@ class _HostCore {
           _js.invalidateContext();
         } catch (e) {
           emit({'type': 'log', 'message': 'ERROR invalidating hook context: $e'});
+        }
+      case 'setAppVisible':
+        try {
+          _js.setAppVisible(msg['visible'] as bool);
+        } catch (e) {
+          emit({'type': 'log', 'message': 'ERROR setting app visibility: $e'});
         }
       case 'setClockTravel':
         try {
@@ -1237,8 +1264,10 @@ class _HostCore {
       case 'reloadComplete':
         _reloadsInFlight.remove(msg['token']);
         emit(msg);
-      case 'updateInterpretation':
+      case 'updateInterpretation' || 'timersSuspended':
         emit(msg);
+      case 'timerWake':
+        _timers.arm((msg['delayMillis'] as num?)?.ceil());
       case 'socketsDropped':
         // An unloaded extension's listeners are gone, so nothing would ever
         // hear from these sockets again — and the reloaded code, which never
@@ -1463,6 +1492,7 @@ class _HostCore {
 
   void dispose() {
     _pump?.cancel();
+    _timers.dispose();
     _sockets.abandonAll();
     if (_ownsHttpClient) _http.close();
     _js.dispose();

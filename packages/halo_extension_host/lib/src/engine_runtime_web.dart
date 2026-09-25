@@ -104,6 +104,12 @@ self.onmessage = function (e) {
         }));
       }
       break;
+    case 'runTimers':
+      self.__polo.runTimers();
+      break;
+    case 'setAppVisible':
+      self.__polo.setAppVisible(msg.visible);
+      break;
     case 'invalidateContext':
       self.__polo.invalidateContext();
       break;
@@ -211,6 +217,16 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   @override
   void socketEvent(int socketId, String eventJson) {
     _send({'kind': 'socketEvent', 'socketId': socketId, 'eventJson': eventJson});
+  }
+
+  @override
+  void runTimers() {
+    _send({'kind': 'runTimers'});
+  }
+
+  @override
+  void setAppVisible(bool visible) {
+    _send({'kind': 'setAppVisible', 'visible': visible});
   }
 
   @override

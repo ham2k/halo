@@ -48,7 +48,9 @@ it does not speak, so an older app meeting a newer bundle says so instead of
 failing somewhere deep in a hook — and the catalog does not list it for that
 app at all. Declare the lowest version that has what the bundle uses, so it
 reaches every app that can run it: 2 adds `host.webSocket`, and the packer
-refuses a manifest declaring `webSockets` under anything less.
+refuses a manifest declaring `webSockets` under anything less; 3 adds timers
+and `onShow`/`onHide`, and from 3 the build rewrites a bare `setTimeout` into
+the SDK's (README's "Timers").
 
 Three fields are **refused** in a distributed bundle, and it is worth
 understanding why:
@@ -257,7 +259,7 @@ It reports every problem at once rather than one per run:
 h2kext-pack: ./build is not ready to package:
 manifest.json: missing required field 'name'
 manifest.json: key 'my-clock' must start with your callsign — 'my' is not one (e.g. ki2d-my-clock)
-manifest.json: missing 'api' — declare the extension API this was built against (currently 2)
+manifest.json: missing 'api' — declare the extension API this was built against (currently 3)
 ```
 
 `--force-name` waives the naming convention below. It exists for Ham2K's own
@@ -322,7 +324,8 @@ configured.
 
 The sandbox is otherwise the same one the built-in extensions run in — no
 filesystem, no network beyond the `domains` and `webSockets` the manifest
-declares and the user approved, no timers.
+declares and the user approved, and timers only within their budget
+(README's "Timers").
 
 ## Installing one
 

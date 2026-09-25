@@ -866,6 +866,9 @@ class _Translations$extensionService$es extends Translations$extensionService$en
 	@override String actionFailed({required Object error}) => 'Acción fallida: ${error}';
 	@override String get commandFailed => 'El comando no se pudo ejecutar';
 	@override String get reportUnavailable => 'Ahora mismo no se pueden enviar informes';
+	@override String timersSuspendedBudget({required Object name}) => '${name} pasó demasiado tiempo en sus temporizadores. Quedan detenidos hasta que se reinicien las extensiones.';
+	@override String timersSuspendedFailures({required Object name}) => 'Los temporizadores de ${name} fallaban una y otra vez. Quedan detenidos hasta que se reinicien las extensiones.';
+	@override String timersSuspendedInterrupted({required Object name}) => '${name} se trabó en un temporizador. Sus temporizadores quedan detenidos hasta que se reinicien las extensiones.';
 }
 
 // Path: operationLocationScreen
@@ -4972,6 +4975,9 @@ extension on TranslationsEs {
 			'extensionService.actionFailed' => ({required Object error}) => 'Acción fallida: ${error}',
 			'extensionService.commandFailed' => 'El comando no se pudo ejecutar',
 			'extensionService.reportUnavailable' => 'Ahora mismo no se pueden enviar informes',
+			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} pasó demasiado tiempo en sus temporizadores. Quedan detenidos hasta que se reinicien las extensiones.',
+			'extensionService.timersSuspendedFailures' => ({required Object name}) => 'Los temporizadores de ${name} fallaban una y otra vez. Quedan detenidos hasta que se reinicien las extensiones.',
+			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} se trabó en un temporizador. Sus temporizadores quedan detenidos hasta que se reinicien las extensiones.',
 			'operationLocationScreen.title' => 'Ubicación de la operación',
 			'operationLocationScreen.selectedLocation' => 'Ubicación seleccionada',
 			'operationLocationScreen.gridSquare' => 'Locator de cuadrícula Maidenhead',

@@ -2023,7 +2023,10 @@
     "validationError": "Validation error: ${error}",
     "actionFailed": "Action failed: ${error}",
     "commandFailed": "The command failed to run",
-    "reportUnavailable": "Reports can't be sent right now"
+    "reportUnavailable": "Reports can't be sent right now",
+    "timersSuspendedBudget": "${name} spent too much time in its timers. They're stopped until the extensions restart.",
+    "timersSuspendedFailures": "${name}'s timers kept failing. They're stopped until the extensions restart.",
+    "timersSuspendedInterrupted": "${name} got stuck in a timer. Its timers are stopped until the extensions restart."
   },
   "operationLocationScreen": {
     "title": "Operation Location",

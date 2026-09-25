@@ -31,7 +31,7 @@ import 'extension_service.dart';
 /// says so rather than failing somewhere inside a hook. Kept equal to the
 /// packer's `H2KEXT_API_VERSION` (extensions/tools/h2kext.mjs), which lists
 /// what each version adds.
-const kExtensionApiVersion = 2;
+const kExtensionApiVersion = 3;
 
 /// Directory under the app's data directory holding installed extensions, one
 /// subdirectory per key.

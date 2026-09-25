@@ -87,6 +87,14 @@ abstract class EngineRuntime {
   /// arrive whenever the peer sends them.
   void socketEvent(int socketId, String eventJson);
 
+  /// Fires the extension timers now due — the host's answer to the kernel's
+  /// `timerWake`, which says when to call this next.
+  void runTimers();
+
+  /// Tells the kernel the app was shown or hidden, which it passes on to each
+  /// extension's `onShow`/`onHide`.
+  void setAppVisible(bool visible);
+
   /// Drops the kernel's cached hook context (settings, account credentials)
   /// so the next hook call re-fetches — called after the host writes either.
   void invalidateContext();

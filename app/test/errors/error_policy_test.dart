@@ -32,7 +32,7 @@ import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:halo_core/halo_core.dart' show LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation;
 import 'package:ham2k_logger/services/extensions/extension_scoring.dart' show ScoringHookFailure;
-import 'package:ham2k_logger/services/extensions/extension_service.dart' show MalformedSpotDataException;
+import 'package:ham2k_logger/services/extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedSpotDataException;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
 import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed;
@@ -567,6 +567,15 @@ void main() {
     // the rule being loosened to `notify` by accident.
     test('reported, not noticed — the operator cannot fix another extension\'s bug', () {
       expect(dispositionFor(MalformedSpotDataException('wwff', 'freq', '14285.0')), ErrorDisposition.report);
+    });
+  });
+
+  group('extension timers suspended', () {
+    // Reported, never noticed by the policy: developer mode has its own notice
+    // naming the extension, and the operator cannot act on either. Loosened to
+    // `notify`, every suspension would spend the session's one error notice.
+    test('reported, not noticed', () {
+      expect(dispositionFor(const ExtensionTimersSuspended('pota', 'budget')), ErrorDisposition.report);
     });
   });
 

@@ -18,12 +18,16 @@
 //               {type:'log', message}
 //               {type:'updateInterpretation', input, interpretation}
 //               {type:'socketsDropped', socketIds}
+//               {type:'timerWake', delayMillis|null}
+//               {type:'timersSuspended', extensionKey, reason}
 //   Dart → JS:  __polo.invokeHook(id, category, key|null, method, argsJson)
 //               __polo.invokeHookAll(id, category, method, argsJson, wantsPartials)
 //               __polo.invokeHookBatch(id, callsJson, wantsPartials)
 //               __polo.activateAll()
 //               __polo.hostResponse(callId, ok, resultJson)
 //               __polo.socketEvent(socketId, eventJson)
+//               __polo.runTimers()
+//               __polo.setAppVisible(visible)
 
 // FIRST: patches Number.prototype.toLocaleString on engines without Intl
 // (QuickJS-NG). Imported ahead of everything else so the patch is in place
@@ -35,6 +39,7 @@ import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField
 import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels.ts"
 import { installAppClock } from "./appClock.ts"
 import type { HookCategoryName } from "./hookCategories.ts"
+import { createTimerQueue, removeAmbientTimers } from "./timerQueue.ts"
 
 import * as libCallsigns from "@ham2k/lib-callsigns"
 import * as libCountryFiles from "@ham2k/lib-country-files"
@@ -108,6 +113,46 @@ if (typeof (globalThis as Record<string, unknown>).sendMessage === "function") {
 // and a speed factor would silently scale them.
 const { realNow, setClockTravel } = installAppClock()
 
+// ---- Timers ---------------------------------------------------------------
+// The only timers in the sandbox are the ones in `timerQueue.ts`, handed to
+// each extension at activation under its own identity. Removed before any
+// bundle evaluates, the same way the raw message channel is.
+if (!removeAmbientTimers()) log("ERROR the engine's own timers could not be removed; extensions can reach them outside any budget")
+
+const timerQueue = createTimerQueue({
+  realNow: () => performance.now(),
+  wake: (delayMillis) => post({ type: "timerWake", delayMillis }),
+  log,
+  describeError,
+  suspended: (extensionKey, reason) => post({ type: "timersSuspended", extensionKey, reason }),
+})
+
+// What the host last said about the app's visibility. Starts visible, so an
+// engine that boots while the app is hidden hears `onHide` from the host's
+// first push rather than never.
+let appVisible = true
+
+// Extensions whose onActivation completed — the only ones told about
+// visibility. One still activating has nothing ready to hide, and hears the
+// state it was left in once it finishes; one whose activation failed hears
+// nothing at all.
+const live = new Set<string>()
+
+function tellVisibility(key: string, visible: boolean) {
+  const def = extensions[key]
+  const method = visible ? "onShow" : "onHide"
+  const handler = def?.[method]
+  if (typeof handler !== "function") return
+  // One extension's handler failing must not keep the others from hearing.
+  const report = (e: unknown) => log(`ERROR ${key} ${method}: ${describeError(e)}`)
+  try {
+    const result = handler.call(def)
+    if (result instanceof Promise) result.catch(report)
+  } catch (e) {
+    report(e)
+  }
+}
+
 interface HookRecord {
   category: HookCategoryName
   key: string
@@ -180,8 +225,16 @@ function updateInterpretation(input: string, interpretation: Record<string, unkn
 
 function describeError(e: unknown): string {
   // JavaScriptCore stacks don't include the message; report both.
-  const err = e as Error
-  return err?.message ? `${err.message}\n${err.stack ?? ""}`.trim() : String(e)
+  //
+  // Never throws: extensions throw whatever they like — `Object.create(null)`,
+  // a revoked Proxy — and this runs inside the kernel's own error handling,
+  // where a throw abandons whatever it was handling.
+  try {
+    const err = e as Error
+    return err?.message ? `${err.message}\n${err.stack ?? ""}`.trim() : String(e)
+  } catch {
+    return "(an error that cannot be printed)"
+  }
 }
 
 type SettledEntry = { key: string; ok: boolean; value?: unknown; error?: string; noHandler?: boolean }
@@ -482,12 +535,17 @@ async function runHook(category: HookCategoryName, key: string | null, method: s
 async function activateExtension(def: ExtensionDefinition): Promise<string | null> {
   if (activated.has(def.key)) return null
   activated.add(def.key)
+  const timerOwner = timerQueue.owner(def.key)
   try {
     await def.onActivation({
       // Activation is the identity hand-off: this function closes over the
       // extension's kernel-recorded key, and the SDK copy inside the bundle
       // captures it in module scope — unreachable from other bundles.
       hostCall: boundHostCallFor(def.key),
+      timers: {
+        set: (callback: unknown, delay: unknown, repeat: boolean, args: unknown[]) => timerQueue.set(timerOwner, callback, delay, repeat, args),
+        clear: (id: unknown) => timerQueue.clear(timerOwner, id),
+      },
       registerHook(category: HookCategoryName, params: RegisterHookParams) {
         if (!params?.hook) {
           throw new Error(`registerHook(${category}) called with no hook in extension ${def.key}`)
@@ -557,10 +615,18 @@ async function activateExtension(def: ExtensionDefinition): Promise<string | nul
       },
     })
     log(`activated extension ${def.key}@${def.version}`)
+    // Not if a dev reload unloaded it while it was still activating.
+    if (extensions[def.key] === def) {
+      live.add(def.key)
+      if (!appVisible) tellVisibility(def.key, false)
+    }
     return null
   } catch (e) {
     const message = describeError(e)
     log(`ERROR activating extension ${def.key}: ${message}`)
+    // Whatever timers it set before throwing belong to an extension that
+    // never came up.
+    timerQueue.cancel(timerOwner)
     // Returned as well as logged: boot tolerates a failed activation (one
     // extension must not take the runtime down), but a dev-loop reload has to
     // be able to SAY the save failed rather than reporting a reload that
@@ -634,9 +700,10 @@ const kernel = {
   /// app never unloads one at runtime. Two properties of this runtime are what
   /// make it safe to drop an extension mid-session: every bundle is its own
   /// IIFE closure, so re-evaluating gives genuinely fresh module state, and
-  /// there are no timers, so an unloaded extension has no pending work left to
-  /// fire. A hook call already in flight is the one loose end — its promise
-  /// may still resolve, and the host settles it by call id as usual.
+  /// its timers are dropped here with everything else, so an unloaded
+  /// extension has no pending work left to fire. A hook call already in flight
+  /// is the one loose end — its promise may still resolve, and the host
+  /// settles it by call id as usual.
   ///
   /// A bundle that defined nothing (never loaded, or failed to evaluate) is
   /// not an error: reload calls this before every evaluation, including the
@@ -650,6 +717,7 @@ const kernel = {
       delete extensions[key]
       delete definingBundle[key]
       activated.delete(key)
+      live.delete(key)
     }
     // The new code never opened these sockets and must not hear their
     // events; the host closes exactly the ids named here.
@@ -661,6 +729,7 @@ const kernel = {
       }
     }
     if (dropped.length) post({ type: "socketsDropped", socketIds: dropped })
+    timerQueue.drop(keys)
     if (keys.length) log(`unloaded bundle ${bundleKey} (${keys.join(", ")})`)
   },
 
@@ -976,6 +1045,21 @@ const kernel = {
   /// engine boots; `anchorRealMillis: 0` means real time.
   setClockTravel,
 
+  /// The host's answer to a `timerWake`: fires every timer now due.
+  runTimers() {
+    timerQueue.run()
+  },
+
+  /// Called by the host whenever the app is shown or hidden, and once after
+  /// every boot. Tells each live extension through its definition's
+  /// `onShow`/`onHide` — on a change only, so the boot push is silent for an
+  /// app that is visible.
+  setAppVisible(visible: boolean) {
+    if (visible === appVisible) return
+    appVisible = visible
+    for (const key of live) tellVisibility(key, visible)
+  },
+
   hostResponse(callId: number, ok: boolean, resultJson: string) {
     const pending = pendingHostCalls.get(callId)
     if (!pending) return
@@ -1026,7 +1110,9 @@ const kernel = {
   },
 
   hostCall,
-  log,
+  // Inside a bundle's evaluation, a line is attributed to that bundle: a
+  // library logging as its module loads has no extension key of its own yet.
+  log: (message: string) => log(currentBundleKey !== null ? `[${currentBundleKey}] ${message}` : message),
   updateInterpretation,
 
   registeredHooks(): string[] {

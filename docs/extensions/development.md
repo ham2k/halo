@@ -101,6 +101,27 @@ gives `{}`, a lookup gives `[]`, everything else null — what an extension
 already has to tolerate); pass `hostCalls` to answer a particular one, and
 `ctx` to set the locale or anything else the hook reads.
 
+Timers run on a clock only the test moves. The extension's `host.setTimeout`
+and friends go to the runtime's own timer queue — the same budget and rules —
+and `ext.timers.advance(ms)` moves the clock, firing whatever comes due in
+order and letting each callback's awaited work settle before the next:
+
+```ts
+await ext.runHook("panel", "start")
+await ext.timers.advance(3_500)      // a 1000ms interval fires three times
+assert.equal(ext.timers.pending, true)
+```
+
+From the first `advance`, `Date` follows the same clock, so a callback reads
+the moment it fired; a fake timer read against a real clock tests nothing
+(docs/design/time.md §7). It stays pinned for every test sharing that loaded
+extension, and the next `loadExtension` goes back to real time. `advance`
+rejects if a callback threw, a timer was ignored (one past the cap, say), or
+the extension broke its budget; `loadExtension` rejects if a timer was set
+while the extension was still loading, which in the app never fires. A bare `setTimeout` in the source is Node's here —
+the build only rewrites it into the SDK's in a bundle — so code a test should
+drive calls `host.setTimeout`.
+
 One extension per test file, and `loadExtension` refuses a second. In the app
 each bundle carries its own copy of the SDK, so `host.*` belongs to the
 extension it was compiled into; in a test process they share one instance,

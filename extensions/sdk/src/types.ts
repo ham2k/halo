@@ -1863,6 +1863,15 @@ export interface ActivationApi {
   /// SDK captures it at activation; extension code normally never touches
   /// it directly and just uses the `host` API.
   hostCall(method: string, params: Record<string, unknown>): Promise<unknown>
+
+  /// This extension's timers, bound by the kernel like [hostCall]. The SDK
+  /// captures them at activation; extension code uses `host.setTimeout` and
+  /// friends, or plain `setTimeout`, which the build points at those.
+  /// Absent on an app older than extension API 3.
+  timers?: {
+    set(callback: unknown, delay: unknown, repeat: boolean, args: unknown[]): number
+    clear(id: unknown): void
+  }
 }
 
 /// Where, when and for whom an extension is relevant
@@ -1984,6 +1993,16 @@ export interface ExtensionManifest {
 
 export interface ExtensionDefinition extends ExtensionManifest {
   onActivation(api: ActivationApi): void
+  /// The app came back into view — a desktop window restored, a browser tab
+  /// selected again, a phone app back in the foreground. The app does not
+  /// pause timers while hidden (though iOS and a hidden browser tab may), so
+  /// this is for work worth doing only while someone can see it. Called only
+  /// on a change, after activation.
+  onShow?(): void | Promise<void>
+  /// The app went out of view. Also called as activation completes if the
+  /// app is hidden by then, so an extension always learns the state it
+  /// starts in; never called for one whose activation failed.
+  onHide?(): void | Promise<void>
 }
 
 export interface FetchOptions {

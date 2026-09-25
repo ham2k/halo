@@ -2015,7 +2015,10 @@
     "validationError": "Error de validación: ${error}",
     "actionFailed": "Acción fallida: ${error}",
     "commandFailed": "El comando no se pudo ejecutar",
-    "reportUnavailable": "Ahora mismo no se pueden enviar informes"
+    "reportUnavailable": "Ahora mismo no se pueden enviar informes",
+    "timersSuspendedBudget": "${name} pasó demasiado tiempo en sus temporizadores. Quedan detenidos hasta que se reinicien las extensiones.",
+    "timersSuspendedFailures": "Los temporizadores de ${name} fallaban una y otra vez. Quedan detenidos hasta que se reinicien las extensiones.",
+    "timersSuspendedInterrupted": "${name} se trabó en un temporizador. Sus temporizadores quedan detenidos hasta que se reinicien las extensiones."
   },
   "operationLocationScreen": {
     "title": "Ubicación de la operación",

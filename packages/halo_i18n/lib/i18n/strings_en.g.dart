@@ -1872,6 +1872,15 @@ class Translations$extensionService$en {
 
 	/// en: 'Reports can't be sent right now'
 	String get reportUnavailable => 'Reports can\'t be sent right now';
+
+	/// en: '${name} spent too much time in its timers. They're stopped until the extensions restart.'
+	String timersSuspendedBudget({required Object name}) => '${name} spent too much time in its timers. They\'re stopped until the extensions restart.';
+
+	/// en: '${name}'s timers kept failing. They're stopped until the extensions restart.'
+	String timersSuspendedFailures({required Object name}) => '${name}\'s timers kept failing. They\'re stopped until the extensions restart.';
+
+	/// en: '${name} got stuck in a timer. Its timers are stopped until the extensions restart.'
+	String timersSuspendedInterrupted({required Object name}) => '${name} got stuck in a timer. Its timers are stopped until the extensions restart.';
 }
 
 // Path: operationLocationScreen
@@ -8753,6 +8762,9 @@ extension on Translations {
 			'extensionService.actionFailed' => ({required Object error}) => 'Action failed: ${error}',
 			'extensionService.commandFailed' => 'The command failed to run',
 			'extensionService.reportUnavailable' => 'Reports can\'t be sent right now',
+			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} spent too much time in its timers. They\'re stopped until the extensions restart.',
+			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'s timers kept failing. They\'re stopped until the extensions restart.',
+			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} got stuck in a timer. Its timers are stopped until the extensions restart.',
 			'operationLocationScreen.title' => 'Operation Location',
 			'operationLocationScreen.selectedLocation' => 'Selected Location',
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',

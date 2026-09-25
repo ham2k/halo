@@ -72,7 +72,22 @@ part 'extension_accounts.dart';
 part 'extension_installs.dart';
 part 'extension_host_calls.dart';
 
-class ExtensionService with ExtensionScoring, _ExtensionHookApi, _ExtensionSyncCalls, _ExtensionPanels, _ExtensionAccounts, _ExtensionInstalls {
+/// An extension's timers, suspended for breaking their budget
+/// (extensions/sdk/src/timerQueue.ts). Its own type so the crash backend can
+/// say which extensions trip it in the field, and how often: the operator
+/// sees only a feature stop, and outside developer mode nothing else says why.
+class ExtensionTimersSuspended implements Exception {
+  const ExtensionTimersSuspended(this.extensionKey, this.reason);
+
+  final String extensionKey;
+  final String reason;
+
+  @override
+  String toString() => 'timers of $extensionKey suspended ($reason)';
+}
+
+class ExtensionService
+    with ExtensionScoring, _ExtensionHookApi, _ExtensionSyncCalls, _ExtensionPanels, _ExtensionAccounts, _ExtensionInstalls, WidgetsBindingObserver {
   @override
   ExtensionHost? _host;
   @override
@@ -182,6 +197,55 @@ class ExtensionService with ExtensionScoring, _ExtensionHookApi, _ExtensionSyncC
       return;
     }
     host.setClockTravel(anchorRealMillis: clock.anchorRealMillis, anchorVirtualMillis: clock.anchorVirtualMillis, speed: clock.speed);
+  }
+
+  /// Whether the app is in view, as extensions were last told (their
+  /// `onShow`/`onHide`). Kept here because the runtime is replaced whole:
+  /// each new one starts out assuming the app is visible and is told the
+  /// truth once it boots.
+  bool _appVisible = true;
+
+  /// Tells extensions the app was shown or hidden. Driven by
+  /// [observeAppLifecycle].
+  void setAppVisible(bool visible) {
+    // Every focus change on desktop reports inactive then resumed — both
+    // visible — and each would otherwise be a message and an evaluation in
+    // the one engine every hook call queues on.
+    if (visible == _appVisible) return;
+    _appVisible = visible;
+    _host?.setAppVisible(visible);
+  }
+
+  /// Follows the app's lifecycle into [setAppVisible] for the rest of the
+  /// session. Called once, from main, where a binding exists.
+  void observeAppLifecycle() {
+    WidgetsBinding.instance.addObserver(this);
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (state != null) didChangeAppLifecycleState(state);
+  }
+
+  /// Visible means what it means to the panes: resumed, or merely inactive —
+  /// a dialog over the window, or the app switcher opening.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setAppVisible(state == AppLifecycleState.resumed || state == AppLifecycleState.inactive);
+  }
+
+  /// Reports an extension whose timers the runtime suspended, and names it in
+  /// a notice in developer mode only: the operator can do nothing about it and
+  /// the extension's hooks still answer, but its author needs to know which
+  /// extension and why, and on a phone the console is out of reach.
+  void _noticeTimerSuspension(TimerSuspension suspension) {
+    ErrorReportingService.report(ExtensionTimersSuspended(suspension.extensionKey, suspension.reason), StackTrace.current, context: 'extensions:timers');
+    if (settings?.developerMode != true) return;
+    final info = availableExtensions.where((info) => info.key == suspension.extensionKey).firstOrNull;
+    final name = info?.nameFor(settings?.locale ?? 'en') ?? suspension.extensionKey;
+    final text = switch (suspension.reason) {
+      'failures' => t.extensionService.timersSuspendedFailures(name: name),
+      'interrupted' => t.extensionService.timersSuspendedInterrupted(name: name),
+      _ => t.extensionService.timersSuspendedBudget(name: name),
+    };
+    statusBar?.showNotice(key: 'extension-timers:${suspension.extensionKey}', icon: 'timer-alert-outline', text: text, persist: false);
   }
 
   /// Drops the kernel's cached HookContext so the next hook call sees fresh
@@ -360,6 +424,7 @@ class ExtensionService with ExtensionScoring, _ExtensionHookApi, _ExtensionSyncC
       _loadedExtensionKeys = loaded;
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
       _host!.interpretationUpdates.listen(_interpretationUpdates.add);
+      _host!.timerSuspensions.listen(_noticeTimerSuspension);
       for (final line in _host!.logLines) {
         debugPrint('[extensions] $line');
       }
@@ -419,6 +484,9 @@ class ExtensionService with ExtensionScoring, _ExtensionHookApi, _ExtensionSyncC
       // into) and this runtime would stay on the pre-boot clock for good.
       // Idempotent and cheap.
       _pushClockTravel();
+      // After activation has settled, so an extension that activated while
+      // the app was hidden hears its onHide.
+      _host?.setAppVisible(_appVisible);
       runtimeGeneration.value++;
       // Resolve each account's synchronizable flag; account access blocks on
       // _accountSyncReady (completed below) until this is done, so every

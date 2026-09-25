@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:halo_quickjs/halo_quickjs.dart';
+import 'package:meta/meta.dart' show visibleForTesting;
 
 import 'engine_runtime.dart';
 
@@ -88,7 +89,7 @@ class _IoEngineRuntime implements EngineRuntime {
     // purpose — the host still reports first, and this only exists to make the
     // isolate usable again afterwards. The budget covers one outermost call
     // including anything nested, so a hook cannot extend it by calling out.
-    js.evalBudgetMs = 15000;
+    js.evalBudgetMs = extensionEvalBudget.inMilliseconds;
 
     return js;
   }
@@ -186,6 +187,16 @@ class _IoEngineRuntime implements EngineRuntime {
   }
 
   @override
+  void runTimers() {
+    _evaluate('__polo.runTimers()', name: 'runTimers');
+  }
+
+  @override
+  void setAppVisible(bool visible) {
+    _evaluate('__polo.setAppVisible($visible)', name: 'setAppVisible');
+  }
+
+  @override
   void invalidateContext() {
     _evaluate('__polo.invalidateContext()', name: 'invalidateContext');
   }
@@ -247,5 +258,11 @@ class _IoEngineRuntime implements EngineRuntime {
     _js?.dispose();
   }
 }
+
+/// The engine's per-evaluation time limit (see `_createRuntime`). Lowered only
+/// by a test that has to see a runaway interrupted without waiting out the
+/// real one, and only for an in-process host: an isolate starts with its own.
+@visibleForTesting
+Duration extensionEvalBudget = const Duration(seconds: 15);
 
 EngineRuntime createEngineRuntime() => _IoEngineRuntime();

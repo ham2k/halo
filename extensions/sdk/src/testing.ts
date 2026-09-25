@@ -24,6 +24,9 @@
 // teaching to the other.
 
 import type { ExtensionDefinition, HookContext, JSONValue } from "./types.ts"
+import { installAppClock } from "./appClock.ts"
+import type { AppClockHandle } from "./appClock.ts"
+import { createTimerQueue } from "./timerQueue.ts"
 
 /// A host call's stand-in answer, by method name (`getSettings`,
 /// `dbLookupSelectAll`, `fetch`…). Anything unlisted answers null, which
@@ -59,6 +62,35 @@ export interface LoadedExtension {
   /// Throws when the category, the key or the method is absent — a test that
   /// silently exercised nothing would be worse than one that failed.
   runHook(category: string, method: string, args?: unknown, options?: RunHookOptions): Promise<unknown>
+  /// The extension's timers, on a clock only the test moves.
+  readonly timers: TestTimers
+}
+
+/// The runtime's own timer queue — the same budget, cap and suspension rules
+/// (timerQueue.ts) — on a clock that stands still until [advance] moves it.
+///
+/// Only what goes through the SDK is here: `host.setTimeout` and friends. A
+/// bare `setTimeout` reaches the SDK's only in a BUILT bundle, where the build
+/// rewrites it; a test imports the source, so there it is Node's own timer.
+export interface TestTimers {
+  /// Moves the clock forward by [ms], firing whatever comes due on the way, in
+  /// order — a 1000ms interval advanced by 3500ms fires three times — and
+  /// letting each callback's awaited work settle before the next fires.
+  ///
+  /// From the first call on, `Date` follows the same clock, so a callback that
+  /// reads the time sees the moment it fired rather than the test's wall
+  /// clock: a fake timer read against a real clock tests nothing
+  /// (docs/design/time.md §7). It stays pinned for every test that shares
+  /// this loaded extension, and the next [loadExtension] goes back to real
+  /// time.
+  ///
+  /// Rejects if a callback threw or rejected, or if the extension broke its
+  /// budget and lost its timers — in the app either one is a bug the operator
+  /// would only ever see as a feature quietly stopping.
+  advance(ms: number): Promise<void>
+  /// Whether any timer is still set — for asserting a close or a stop left
+  /// nothing behind.
+  readonly pending: boolean
 }
 
 const defaultContext: HookContext = {
@@ -127,7 +159,70 @@ const definitionsByModule = new WeakMap<object, ExtensionDefinition[]>()
 /// which costs nothing: `node:test` already gives each file its own.
 let loadedKey: string | undefined
 
-function installKernel(hostCalls: HostCallStubs) {
+/// Installed on the first [TestTimers.advance] in the process, and kept: the
+/// replaced `Date` is what extension code already holds by then.
+let appClock: AppClockHandle | undefined
+
+/// Timers for one loaded extension, on a clock starting at the real time.
+function testTimers() {
+  let now = Date.now()
+  let nextDeadline: number | null = null
+  const failures: unknown[] = []
+  const suspensions: string[] = []
+  const queue = createTimerQueue({
+    realNow: () => now,
+    wake: (delay) => (nextDeadline = delay === null ? null : now + delay),
+    // A timer the queue would not keep is a feature that quietly stops in the
+    // app: here it fails the test.
+    log: (message) => {
+      if (message.includes(" set a timer ")) failures.push(new Error(message))
+    },
+    describeError: (e) => {
+      failures.push(e)
+      return e instanceof Error ? e.message : String(e)
+    },
+    suspended: (_, reason) => suspensions.push(reason),
+  })
+  const pinDate = () => {
+    appClock ??= installAppClock()
+    appClock.setClockTravel(appClock.realNow(), now, 0)
+  }
+  const settle = () => new Promise((resolve) => setImmediate(resolve))
+  // Each reported once: a test that expects one failure and then a recovery
+  // must be able to advance past it.
+  const failIfBroken = () => {
+    if (suspensions.length) {
+      const reasons = suspensions.splice(0).join(", ")
+      const behind = failures.splice(0).map((e) => (e instanceof Error ? e.message : String(e)))
+      throw new Error(
+        `the extension's timers were suspended (${reasons})${behind.length ? `, after: ${behind.join("; ")}` : ""} — see timerQueue.ts for its budget`,
+      )
+    }
+    if (failures.length) throw failures.splice(0)[0]
+  }
+
+  const timers: TestTimers = {
+    async advance(ms) {
+      const target = now + ms
+      while (nextDeadline !== null && nextDeadline <= target) {
+        now = Math.max(now, nextDeadline)
+        nextDeadline = null
+        pinDate()
+        queue.run()
+        await settle()
+        failIfBroken()
+      }
+      now = target
+      pinDate()
+    },
+    get pending() {
+      return nextDeadline !== null
+    },
+  }
+  return { queue, timers }
+}
+
+function installKernel(hostCalls: HostCallStubs, timerRefusals: string[]) {
   const answer = async (method: string, params: Record<string, unknown>) => {
     const stub = hostCalls[method]
     if (stub) return stub(params ?? {})
@@ -138,7 +233,9 @@ function installKernel(hostCalls: HostCallStubs) {
   ;(globalThis as Record<string, unknown>).__polo = {
     defineExtension: (definition: ExtensionDefinition) => captured.push(definition),
     hostCall: answer,
-    log: () => {},
+    log: (message: string) => {
+      if (message.includes("a timer was ignored")) timerRefusals.push(message)
+    },
     invokeLocal: async () => [],
     invokeLocalSequential: async () => [],
     updateInterpretation: () => {},
@@ -159,7 +256,11 @@ function installKernel(hostCalls: HostCallStubs) {
 /// The kernel stand-in is installed BEFORE the import, because
 /// `defineExtension` runs while the module body evaluates.
 export async function loadExtension(importer: () => Promise<unknown>, options: LoadExtensionOptions = {}): Promise<LoadedExtension> {
-  const answer = installKernel(options.hostCalls ?? {})
+  const timerRefusals: string[] = []
+  const answer = installKernel(options.hostCalls ?? {}, timerRefusals)
+  // Back to real time: a clock pinned by an earlier load's `advance` belongs
+  // to that load's tests, not this one's.
+  appClock?.setClockTravel(0, 0, 1)
 
   const before = captured.length
   const namespace = (await importer()) as object
@@ -181,9 +282,15 @@ export async function loadExtension(importer: () => Promise<unknown>, options: L
   loadedKey = key
 
   const hooks: { category: string; key: string; hook: Record<string, unknown> }[] = []
+  const { queue, timers } = testTimers()
   for (const definition of definitions) {
+    const owner = queue.owner(definition.key)
     await definition.onActivation({
       hostCall: answer,
+      timers: {
+        set: (callback, delay, repeat, args) => queue.set(owner, callback, delay, repeat, args),
+        clear: (id) => queue.clear(owner, id),
+      },
       registerHook: (category: string, params: { hook: unknown; key?: string; priority?: number }) => {
         hooks.push({
           category,
@@ -193,10 +300,14 @@ export async function loadExtension(importer: () => Promise<unknown>, options: L
       },
     })
   }
+  // A library that sets a timer as its module loads gets an id that never
+  // fires, in the app as here — the work it scheduled silently never happens.
+  if (timerRefusals.length) throw new Error(`loadExtension: ${timerRefusals.join("; ")}`)
 
   return {
     definitions,
     hooks,
+    timers,
     categories: () => [...new Set(hooks.map((h) => h.category))].sort(),
     async runHook(category, method, args = {}, runOptions = {}) {
       const matches = hooks.filter((h) => h.category === category && (!runOptions.key || h.key === runOptions.key))

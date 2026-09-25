@@ -24,7 +24,7 @@ import { copyFile, mkdir, readFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 
-import { H2KEXT_API_VERSION, MANIFEST_ENTRY, sharedModulesFor } from "./h2kext.mjs"
+import { H2KEXT_API_VERSION, MANIFEST_ENTRY, TIMERS_API_VERSION, sharedModulesFor } from "./h2kext.mjs"
 
 /// What an extension's own `build.mjs` says, for everything that has to write
 /// one: `h2kext-init`'s scaffold, and the samples the SDK ships.
@@ -202,14 +202,51 @@ function liquidBrowserBuild(fromDir) {
   }
 }
 
+/// Where the author's SDK keeps the file that stands in for the timer globals
+/// (sdk/src/timers.ts), or null if it has none. Resolved from the CALLER's
+/// directory for the same reason as [liquidBrowserBuild]: it must be the very
+/// SDK copy the extension imports, or the bundle carries a second one whose
+/// timers were never handed an identity.
+///
+/// Missing is not an error: a bundle that never schedules anything builds as
+/// it always did, and one that does fails where it calls `setTimeout`. But an
+/// SDK that is installed and simply too old gets a warning, since the manifest
+/// has just claimed an API it cannot fully build.
+function sdkTimersFile(fromDir) {
+  // Resolved under this process's conditions, while esbuild resolves the
+  // extension's own SDK import under its defaults. The two agree for an
+  // author's build, which passes no custom condition; this repo's own
+  // extensions pass [timers] explicitly rather than rely on it.
+  try {
+    return createRequire(resolve(fromDir, "noop.js")).resolve("@ham2k/extension-sdk/timers")
+  } catch (e) {
+    if (e.code === "ERR_PACKAGE_PATH_NOT_EXPORTED") {
+      console.warn(
+        "warning: extension API 3 wants an @ham2k/extension-sdk with timers — this one has none, so a bare setTimeout in the bundle is left undefined",
+      )
+      return null
+    }
+    if (e.code === "MODULE_NOT_FOUND") return null
+    throw e
+  }
+}
+
 /// The esbuild options a Ham2K extension bundle is built with.
 ///
 /// Everything here is a requirement of the runtime rather than a preference:
 /// one IIFE because the sandbox evaluates a script and has no module loader;
 /// `platform: 'neutral'` because there is no node and no DOM; es2020 because
 /// that is what QuickJS-NG speaks.
-export function buildOptionsFor({ entry, outfile, manifest = {}, dir = process.cwd(), alias = {}, inline = [], ...rest } = {}) {
+///
+/// The sandbox has no timer globals of its own, so from extension API 3 the
+/// bundle's `setTimeout` and friends are INJECTED: every bare use, the npm
+/// dependencies' included, becomes the SDK's, which runs on the extension's
+/// own timers. [timers] names the file to inject when the SDK is not the
+/// package the caller's directory resolves, and `false` injects nothing — the
+/// kernel, which IS the implementation.
+export function buildOptionsFor({ entry, outfile, manifest = {}, dir = process.cwd(), alias = {}, inline = [], timers, ...rest } = {}) {
   const liquid = liquidBrowserBuild(dir)
+  const timersFile = timers !== false && (manifest.api ?? H2KEXT_API_VERSION) >= TIMERS_API_VERSION ? (timers ?? sdkTimersFile(dir)) : null
   return {
     entryPoints: [entry],
     ...(outfile ? { outfile } : { write: false }),
@@ -225,6 +262,7 @@ export function buildOptionsFor({ entry, outfile, manifest = {}, dir = process.c
       ...alias,
     },
     plugins: [sharedModulesPlugin({ sharedDependencies: manifest.sharedDependencies, api: manifest.api, inline }), ...(rest.plugins ?? [])],
+    inject: [...(timersFile ? [timersFile] : []), ...(rest.inject ?? [])],
   }
 }
 

@@ -292,6 +292,7 @@ Available via `import { host } from "@ham2k/extension-sdk"`:
 |---|---|
 | `host.fetch(url, options?)` | HTTPS requests, executed by the Dart host. Returns `{status, body}`. Per-extension domain allowlists are planned. The host stamps HaLo's canonical `User-Agent` on every call — don't set your own unless your extension declares `allowUserAgentOverride` ([docs/design/network.md](../design/network.md)). `options.timeout` (ms) bounds the whole request, and is clamped downward only — you may declare a request not worth the host's default wait, not award yourself a longer one. Worth setting on anything optional, per the hanging-hook note above. |
 | `host.webSocket(url, options?)` | A live connection to a host the manifest's `webSockets` lists, shaped like the browser's `WebSocket`. See [WebSockets](#websockets). |
+| `host.setTimeout(fn, ms, ...args)` / `host.setInterval(…)` / `host.clearTimeout(id)` / `host.clearInterval(id)` | Timers, shaped like the browser's, on real time and held to a budget. A bundle built for extension API 3 gets them as plain `setTimeout` and friends too. See [Timers](#timers). |
 | `host.kvGet(key)` / `host.kvSet(key, value)` | Key-value storage, automatically namespaced to your extension (currently in-memory; keychain-backed persistence planned for credentials). |
 | `host.statusBar.setMessage(params)` / `.setProgress(params)` | Transient single-line message or progress bar in the app's footer, keyed and namespaced to your extension the same way as `kvGet`/`kvSet`. |
 | `host.statusBar.clear(key)` | Removes a message/progress item you posted. |
@@ -344,13 +345,86 @@ The rules, all enforced by the host:
   code that would hear it is gone. Open them again from `onActivation` or when
   a hook next needs one.
 
-There are no timers, so a reconnect cannot wait on its own. Reconnecting
-straight from `onclose` is possible and, against a server that is down, is a
-loop; drive a delayed retry from something periodic, such as a panel's `tick`.
+Reconnect after a delay, and a growing one: `onclose` → `setTimeout(connect,
+backoff)`. Reconnecting straight from `onclose`, against a server that is
+down, is a loop, and the [timer budget](#timers) will not save you from it —
+there is no timer in it to charge.
 
 On the web build the browser sets the handshake's `User-Agent` (every native
 build sends HaLo's), and plain `ws://` to a LAN address is blocked outright as
 mixed content, since the page itself is served over https.
+
+### Timers
+
+`host.setTimeout(fn, ms, ...args)`, `host.setInterval(fn, ms, ...args)`,
+`host.clearTimeout(id)` and `host.clearInterval(id)` behave like a browser's:
+extra arguments reach the callback, an id is a number, and either clear
+reaches either kind. They run outside any hook call, like a socket's
+callbacks, so there is no `ctx` there.
+
+A bundle built for **extension API 3** gets them as plain `setTimeout` and
+friends as well: the build (`buildOptionsFor` in `tools/h2kext-build.mjs`)
+points every bare use in the bundle at the SDK's, npm dependencies included,
+so a library that schedules work runs on your extension's timers. Only what
+the bundle carries, though: the host's shared libraries (`sharedDependencies`)
+run inside the kernel and have no timers at all. A
+distributed bundle that uses timers declares `"api": 3`
+([distribution.md](distribution.md)); an older app has none to give it. In a
+test the source is not built, so a bare `setTimeout` there is Node's — code
+you want the test harness to drive calls `host.setTimeout`
+([development.md](development.md)).
+
+The rules, all enforced by the kernel (`extensions/sdk/src/timerQueue.ts`):
+
+- **Real, monotonic time.** Timers do not follow developer time travel,
+  though `Date` does, nor a system clock someone sets back: a timer is a
+  duration the host sleeps for (docs/design/time.md §6).
+- **`setTimeout` never throws** for a function callback. A timer it will not
+  keep — past the cap below, set while your timers are suspended, or set
+  before your extension has activated (a library doing so as its module loads)
+  — gets an id that never fires, and the console says so once. A hook that
+  sets a timer, or a library that does, keeps working.
+- **At most 16 live timers per extension.**
+- **No minimum delay, and a budget instead.** Every timer that fires is charged
+  to your extension: what its callback took, plus 1 ms for each wake that
+  fires anything of yours, which is what a zero-delay chain costs even when
+  its callbacks cost nothing. Your callbacks may average **10% of real time**,
+  with **five seconds** of burst on top, so one heavy callback every few
+  minutes is fine and a loop is not. That wake charge alone puts a floor
+  under intervals: at 10 ms or less, none stays within budget whatever its
+  callback does. Anything that has to move faster than a few times a second
+  belongs in a native pane.
+- **Five callbacks in a row that throw** count as breaking the budget too.
+  A promise a callback returns that rejects later is logged but not counted:
+  that is usually a network failure, and a poller that is offline must not
+  lose its timers for the session over it.
+- **So does a callback the engine has to interrupt** for running past its time
+  limit — on native builds. The web build's Worker has no such limit: a
+  callback that never returns hangs it, as a hook that never returns does.
+- **Breaking the budget suspends your timers**: every one is cancelled, and a
+  new one is ignored, until the runtime is replaced or the extension reloaded.
+  Your hooks keep working. The console says which rule you broke, and in
+  developer mode a notice names your extension.
+- **Only a callback's synchronous part is measured.** What it does after an
+  `await` runs later, where nothing can tell whose work it is — the same as a
+  hook's. Keep heavy work in the part that is measured, or in small pieces.
+- **The app does not pause timers while it is hidden**, though the platform
+  may: iOS suspends a backgrounded app, and a browser slows a hidden tab's
+  timers to about once a minute. For work worth doing only while someone can
+  see it, stop and restart it from `onHide` and `onShow`.
+- **Reloading your extension, or the app replacing its runtime, cancels its
+  timers**, as it closes its sockets. Set them again from `onActivation`.
+
+### Visibility: `onShow` and `onHide`
+
+An extension definition may carry `onShow()` and `onHide()` beside
+`onActivation`. They are called when the app comes into view and goes out of
+it — a desktop window restored, a browser tab selected again, a phone app back
+in the foreground — and only on a change. `onHide` is also called as
+activation completes if the app is hidden by then, so an extension always
+learns the state it starts in; one whose activation failed hears neither,
+and whatever timers it set while activating are cancelled. Both are called on
+your own definition object, the same `this` `onActivation` sees.
 
 ### What the JS runtime does NOT have
 
@@ -371,12 +445,11 @@ code that reaches for it works in a web build and is quietly wrong in every
 native one — the worst possible split, and the reason to treat `Intl` as
 absent everywhere.
 
-There are also **no timers**: `setTimeout` and `setInterval` are simply not
-defined. Promises work — the host pumps the job queue — but nothing that
-needs the clock to fire does. A timeout raced in JS therefore doesn't merely
-fail to fire, it throws `ReferenceError` out of your hook. Bound a request
-with `host.fetch`'s own `timeout` option, which the host enforces, and let
-the host's periodic triggers (a panel's `tick`) be your clock.
+The engine's own timers are gone too, on both platforms: the only timers are
+the kernel's (see [Timers](#timers)). Bound a request with `host.fetch`'s own
+`timeout` option rather than racing it against one: a timeout raced in JS
+settles your promise and leaves the request running, while the host's
+actually stops it.
 
 Work in UTC and do the arithmetic yourself (`extensions/sdk/src/
 templateContext.ts` slices `toISOString()` for its date and time values — a

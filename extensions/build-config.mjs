@@ -271,6 +271,7 @@ export function buildOptionsFor(bundle, { hostSharedVersions, outfile }) {
     dir: root,
     manifest: isKernel ? {} : { sharedDependencies: builtInSharedDependencies },
     inline: isKernel ? sharedPackages : [],
+    timers: isKernel ? false : join(root, "sdk/src/timers.ts"),
     alias: {
       "@ham2k/extension-sdk": join(root, "sdk/src/index.ts"),
       // camelcase@8 (pulled in by @ham2k/lib-qson-cabrillo) is a unicode-aware

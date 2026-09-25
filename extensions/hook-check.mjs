@@ -108,6 +108,9 @@ async function inspectBundle({ key, outDir, sharedModules }) {
   for (const definition of definitions) {
     await definition.onActivation({
       hostCall,
+      // Accepted and never fired: this check reads what an extension
+      // registers, and a timer it sets while activating is not a failure.
+      timers: { set: () => 0, clear: () => {} },
       registerHook: (category, params) => {
         categories.add(category)
         if (category === "activity") activityHooks.push(params.hook)

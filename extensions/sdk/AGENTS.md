@@ -104,6 +104,7 @@ import { host } from "@ham2k/extension-sdk"
 
 await host.fetch(url)          // https only, and only domains your manifest lists
 host.webSocket(url)            // wss:// to hosts your manifest's webSockets lists
+host.setTimeout(fn, ms)        // timers — plain setTimeout reaches these too
 await host.kvGet('key')        // storage, namespaced to your extension
 await host.kvSet('key', value)
 await host.showForm(form)      // ask the user something
@@ -132,6 +133,10 @@ host.log('…')                  // the app's console
   reserved.
 - **`host.secret()` returns null** for anything not built into the app. Degrade;
   don't throw. A hook that throws takes its whole feature down.
+- **Timers are budgeted, not free.** An extension's callbacks may average 10%
+  of real time; past that, or after five throwing in a row, its timers are
+  suspended until the extensions restart. At most 16 at once. Reconnect with a
+  growing delay, never straight from `onclose`.
 - **Hook method names are routed by string.** The host finds your hook by its
   registered key and then calls the method by name, so `renderPanel` where
   `render` was meant is an extension that installs, activates, and does nothing.

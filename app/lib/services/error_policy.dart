@@ -35,7 +35,7 @@ import 'extensions/catalog_service.dart' show CatalogUnreachable;
 import 'data_file_manager.dart' show DataFileRemoveHookFailed;
 import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
 import 'extensions/extension_scoring.dart' show ScoringHookFailure;
-import 'extensions/extension_service.dart' show MalformedSpotDataException;
+import 'extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
 import 'app_storage.dart' show PreferencesFileUnreadable;
@@ -412,6 +412,17 @@ class ErrorPolicy {
           'off-grid activation, not a defect',
       disposition: ErrorDisposition.logOnly,
       matches: _isMapErrorWhileOffline,
+    ),
+    ErrorRule(
+      id: 'extension-timers-suspended',
+      reason:
+          "an extension's timers broke their budget and were stopped (extensions/sdk/src/timerQueue.ts): "
+          'a defect in that one extension, whose hooks keep answering. Developer mode names it in a '
+          'notice of its own, so this adds none; uploaded because in the field it is otherwise '
+          'invisible — the operator sees a feature stop, and only the rate says whether a built-in '
+          'extension is tripping its budget on real hardware',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is ExtensionTimersSuspended,
     ),
     ErrorRule(
       id: 'malformed-spot-data',

@@ -227,6 +227,7 @@ void _mainBody({
         ErrorReportingService.attachStatusBar(services.statusBar);
         ErrorReportingService.attachSettings(services.settings);
         BuildFreshnessService(statusBar: services.statusBar).start();
+        services.extensions.observeAppLifecycle();
 
         // Names a spot source that stops answering. Cached after the first
         // successful fetch — a hook's `sourceName` is static per build — but
