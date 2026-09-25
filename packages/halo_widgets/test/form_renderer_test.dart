@@ -48,6 +48,83 @@ void main() {
   };
 
   group('FormRenderer', () {
+    testWidgets('disposing a settings-list form does not finish another field\'s autofill context', (tester) async {
+      final showSettings = ValueNotifier(true);
+      addTearDown(showSettings.dispose);
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: showSettings,
+                  builder: (context, show, _) => show
+                      ? FormRenderer(
+                          formDefinition: const {
+                            'elements': [
+                              {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': 'Station name'},
+                            ],
+                          },
+                          initialState: const {},
+                          settingsList: true,
+                          showActions: false,
+                          onSubmit: (_) {},
+                          onCancel: () {},
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                AutofillGroup(
+                  child: TextField(focusNode: focusNode, autofillHints: const [AutofillHints.name]),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      tester.testTextInput.log.clear();
+
+      // A text field is the strong case: it has a controller, yet a settings
+      // list edits it in a dialog, so the form's group would hold nothing and
+      // its disposal would only close the iOS keyboard of the field above.
+      // TestTextInput never drops Dart focus, so only the channel log shows it.
+      showSettings.value = false;
+      await tester.pump();
+      expect(tester.testTextInput.log.where((call) => call.method == 'TextInput.finishAutofillContext'), isEmpty);
+    });
+
+    testWidgets('disposing an inline text form still commits its autofill context', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {'type': 'field', 'fieldType': 'email', 'key': 'email', 'label': 'Email'},
+                ],
+              },
+              initialState: const {},
+              showActions: false,
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField), 'operator@example.com');
+      tester.testTextInput.log.clear();
+      await tester.pumpWidget(const SizedBox.shrink());
+
+      // The commit is what offers to save what was typed; skipping the group
+      // must stay limited to forms with no inline field.
+      final finishCalls = tester.testTextInput.log.where((call) => call.method == 'TextInput.finishAutofillContext');
+      expect(finishCalls, hasLength(1));
+      expect(finishCalls.single.arguments, isTrue);
+    });
+
     testWidgets('renders all element types', (tester) async {
       await tester.pumpWidget(
         MaterialApp(

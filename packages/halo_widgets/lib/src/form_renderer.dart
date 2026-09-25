@@ -682,8 +682,16 @@ class FormRendererState extends State<FormRenderer> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final elements = _visibleElements;
+    final child = widget.sliver ? _buildSliver(context, theme, elements) : _buildBox(context, theme, elements);
+    // A settings list edits every text-like field in a dialog of its own, so
+    // its group would hold no inline field — and disposing a TOPMOST
+    // AutofillGroup finishes the platform-wide autofill context, which on iOS
+    // closes whatever keyboard is up. A lazy list dropping an offscreen
+    // settings form (as a keyboard's inset shrinks the page behind a dialog)
+    // would dismiss that dialog's keyboard.
+    if (widget.settingsList) return child;
     // An InheritedWidget, so it wraps a sliver as happily as a box.
-    return AutofillGroup(child: widget.sliver ? _buildSliver(context, theme, elements) : _buildBox(context, theme, elements));
+    return AutofillGroup(child: child);
   }
 
   Widget _buildBox(BuildContext context, ThemeData theme, List<Map<String, dynamic>> elements) => Column(

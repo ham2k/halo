@@ -16,6 +16,7 @@ import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/accordion_section.dart';
+import 'package:ham2k_logger/views/add_equipment_dialog.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
 import '../support/halo_test_support.dart';
@@ -721,6 +722,93 @@ void main() {
       reason: 'the shack already has one, and two identical rows cannot be told apart',
     );
   });
+
+  testWidgets('opening the iOS keyboard keeps the equipment editor active with an antenna configured', (tester) async {
+    tester.view.devicePixelRatio = 3;
+    tester.view.physicalSize = const Size(440, 956) * 3;
+    tester.view.padding = const FakeViewPadding(top: 59 * 3, bottom: 34 * 3);
+    tester.view.viewPadding = const FakeViewPadding(top: 59 * 3, bottom: 34 * 3);
+    addTearDown(tester.view.reset);
+
+    final HaLoHarness(:services) = await makeHaLoServices(
+      prefs: {
+        'experiments': jsonEncode({
+          'gato': {'enabled': true},
+        }),
+        'stationEquipment': jsonEncode({
+          'version': 1,
+          'nodes': {
+            'antenna-1': {'typeKey': 'antenna-none', 'name': 'Dipole', 'config': {}},
+          },
+        }),
+      },
+    );
+    await services.settings.setTrackStationInfo(true);
+    await services.settings.setStationInfoTrackedFields({'rig', 'power', 'antenna', 'key'});
+    addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          builder: (context, child) => TapToDismissEmptyField(
+            child: StatusBarOverlay(services: services, child: child!),
+          ),
+          home: SettingsView(services: services),
+        ),
+      ),
+    );
+
+    Future<void> settle() async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Future<void> tapVisible(Finder finder) async {
+      if (finder.evaluate().isEmpty) {
+        final scrollable = find.descendant(of: find.byType(AddEquipmentDialog), matching: find.byType(Scrollable)).last;
+        await tester.scrollUntilVisible(finder, 250, scrollable: scrollable);
+      }
+      await tester.ensureVisible(finder);
+      await settle();
+      await tester.tap(finder);
+      await settle();
+    }
+
+    await settle();
+    await tapVisible(find.text('Station Configuration'));
+    await tapVisible(find.text('Add equipment').last);
+    await tapVisible(find.text('Other Brands'));
+    await tapVisible(find.text('Generic Radio (Placeholder)').last);
+
+    final field = find.widgetWithText(TextField, 'Name').last;
+    final focus = tester.widget<TextField>(field).focusNode!;
+    tester.testTextInput.log.clear();
+    await tester.tap(field);
+    await tester.pump();
+    expect(focus.hasFocus, isTrue);
+    expect(tester.testTextInput.log.where((call) => call.method == 'TextInput.finishAutofillContext'), isEmpty);
+
+    // StatusBarOverlay shrinks the whole Navigator, including the station
+    // list behind the editor. With an antenna, its lazy list drops the offscreen
+    // "What to track?" form. Disposing that non-text form must not finish
+    // the active editor's platform-wide autofill context: native iOS closes
+    // its keyboard even though TestTextInput leaves Dart focus unchanged.
+    final trackingForm = find.ancestor(of: find.text('What to track?', skipOffstage: false), matching: find.byType(FormRenderer));
+    expect(trackingForm, findsOneWidget, reason: 'the form must be mounted before the inset, or nothing is disposed');
+    tester.view.viewInsets = const FakeViewPadding(bottom: 346 * 3);
+    await settle();
+    expect(trackingForm, findsNothing, reason: 'the inset must drop the form, or the test exercises no disposal');
+
+    expect(
+      tester.testTextInput.log.where((call) => call.method == 'TextInput.finishAutofillContext'),
+      isEmpty,
+      reason: 'background station controls must not dismiss the equipment editor keyboard',
+    );
+    expect(tester.widget<TextField>(field).focusNode, same(focus));
+    expect(focus.hasFocus, isTrue);
+    tester.testTextInput.enterText('My Radio');
+    await tester.pump();
+    expect(tester.widget<TextField>(field).controller!.text, 'My Radio');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets('a radio with two ways in asks which, and only that one has to validate', (tester) async {
     // The trap this exists to catch: FormRenderer registers EVERY declared
