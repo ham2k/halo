@@ -281,7 +281,10 @@ class PeerVfoTile extends StatelessWidget {
 
   final Widget? trailing;
 
-  const PeerVfoTile({super.key, required this.selection, required this.available, this.trailing});
+  /// What a tap on the row does — it has nothing here to edit.
+  final VoidCallback? onTap;
+
+  const PeerVfoTile({super.key, required this.selection, required this.available, this.trailing, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -330,6 +333,8 @@ class PeerVfoTile extends StatelessWidget {
         ],
       ),
       trailing: trailing,
+      onTap: onTap,
+      mouseCursor: onTap == null ? null : SystemMouseCursors.click,
       subtitle: available ? null : Text(st.peerRadioNotAvailable, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
     );
   }

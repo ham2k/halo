@@ -875,10 +875,28 @@ class StationPanel extends StatelessWidget {
             onPressed: toggle,
           ),
         );
-        if (selection != null) return PeerVfoTile(selection: selection, available: absentSelection == null, trailing: picker);
+        if (selection != null) {
+          return PeerVfoTile(
+            selection: selection,
+            available: absentSelection == null,
+            trailing: picker,
+            onTap: () => showPeerRadioElsewhere(
+              context,
+              radio: selection.radioName.isEmpty ? selection.radioId : selection.radioName,
+              device: selection.deviceName.isEmpty ? selection.deviceId : selection.deviceName,
+            ),
+          );
+        }
         final node = localRadio1 == null ? null : _cat.nodeFor(localRadio1);
         if (node == null) {
-          return ListTile(leading: Icon(iconForCategory(kCategoryTransceiver)), title: Text(st.noTransceiverSelected), trailing: picker);
+          // Nothing to edit, so the whole row is the way to pick one.
+          return ListTile(
+            leading: Icon(iconForCategory(kCategoryTransceiver)),
+            title: Text(st.noTransceiverSelected),
+            trailing: picker,
+            onTap: toggle,
+            mouseCursor: SystemMouseCursors.click,
+          );
         }
         return CurrentTransceiverTile(
           displayName: _displayName(node),

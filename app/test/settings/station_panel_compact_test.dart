@@ -68,6 +68,19 @@ void main() {
     expect(find.text('No equipment configured'), findsNothing, reason: 'compact mode never shows this message');
   });
 
+  testWidgets('with no radio picked, tapping anywhere on the row opens the picker', (tester) async {
+    // A row reading "No transceiver selected" has nothing to edit, so a tap
+    // on it that only the small arrow answered would read as a dead row.
+    await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
+    await services.cat.setRadio1(null);
+    await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('No transceiver selected'));
+    await tester.pumpAndSettle();
+    expect(find.text('Main Radio'), findsOneWidget, reason: 'the picker lists the station\'s radios');
+  });
+
   group("a peer's radio driving the main VFO", () {
     const pick = PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-1', deviceName: "VE1SK's iPad", radioName: 'FTDX10');
 
@@ -87,6 +100,16 @@ void main() {
       // No peer is offering it in this test, and the row says so rather than
       // disappearing — the pick survives the peer walking away.
       expect(find.text('Not available'), findsOneWidget);
+    });
+
+    testWidgets('a tap on its row says where it is configured', (tester) async {
+      await services.cat.setRadio1(const PeerRadio(pick));
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('FTDX10'));
+      await tester.pumpAndSettle();
+      expect(find.text('FTDX10 is on another device'), findsOneWidget);
     });
 
     testWidgets('has nothing to connect, edit or unplug', (tester) async {
