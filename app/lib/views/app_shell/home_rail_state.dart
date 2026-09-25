@@ -86,6 +86,30 @@ class HomeRailState extends ChangeNotifier {
     if (page) _coveringPages = math.max(0, _coveringPages + delta);
   }, false);
 
+  /// Per destination, what is asked before the rail moves off it — a view
+  /// holding work that leaving would lose registers one (see [leaveTo]).
+  final _leaveGuards = <HomeDestination, Future<bool> Function()>{};
+
+  void setLeaveGuard(HomeDestination destination, Future<bool> Function() guard) => _leaveGuards[destination] = guard;
+
+  /// Removes [guard] only if it is still the one registered: a view torn down
+  /// after its replacement mounted must not take the new one's guard with it.
+  void clearLeaveGuard(HomeDestination destination, Future<bool> Function() guard) {
+    if (_leaveGuards[destination] == guard) _leaveGuards.remove(destination);
+  }
+
+  /// Moves to [value] once the destination on screen agrees to be left —
+  /// how the operator navigates, by the rail or the back key. Only the one
+  /// being LEFT is asked: a view still sliding out after being left has
+  /// already had its say. Setting [destination] directly skips the guard,
+  /// which is right only for moves the operator didn't make.
+  Future<void> leaveTo(HomeDestination value) async {
+    if (value == _destination) return;
+    final guard = _leaveGuards[_destination];
+    if (guard != null && !await guard()) return;
+    destination = value;
+  }
+
   set expanded(bool value) => _set(() => _expanded = value, _expanded == value);
   set destination(HomeDestination value) => _set(() {
     if (_destination != HomeDestination.settings) _lastNonSettingsDestination = _destination;

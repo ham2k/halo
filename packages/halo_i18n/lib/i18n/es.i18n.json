@@ -195,11 +195,17 @@
       "titleFor": "Registros de",
       "emptyCallsigns": "Aún no hay QSOs registrados",
       "emptyQsos": "No hay QSOs para ${call}",
-      "openOperation": "Abrir operación",
       "mapNoSelection": "Selecciona un QSO para verlo en el mapa",
-      "changeCallsign": "Cambiar indicativo",
       "searchHint": "Buscar indicativo o nombre",
       "noSearchMatches": "Ningún QSO coincide con tu búsqueda",
+      "titleAll": "Todos los registros",
+      "allCallsigns": "Todos los indicativos",
+      "noOperation": "No forma parte de ninguna operación",
+      "unsavedTitle": "Cambios sin guardar",
+      "unsavedBody": "Este QSO tiene cambios que no has guardado.",
+      "pendingDeleteBody": "Este QSO está marcado para borrarse.",
+      "editGone": "No se guardó: ese QSO ya no está en este registro.",
+      "discard": "Descartar",
       "panels": {
         "qsos": "Registro de QSOs",
         "qsosDescription": "Los QSOs del indicativo seleccionado, en todas las operaciones.",
@@ -225,7 +231,15 @@
         "freq": "Frecuencia",
         "mode": "Modo",
         "call": "Indicativo",
-        "name": "Nombre"
+        "name": "Nombre",
+        "station": "Estación",
+        "band": "Banda",
+        "sent": "Env.",
+        "rcvd": "Rec.",
+        "grid": "Cuadrícula",
+        "state": "Estado",
+        "country": "País",
+        "refs": "Refs"
       }
     }
   },

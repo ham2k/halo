@@ -46,7 +46,6 @@ const _ceilings = <String, int>{
   'lib/views/operation_view.dart': 3117,
   'lib/views/operation/activities_view.dart': 2911,
   '../packages/halo_widgets/lib/src/form_renderer.dart': 2737,
-  'lib/views/logs_view.dart': 2701,
   'lib/services/cat/cat_service.dart': 2628,
   'lib/views/dock_host.dart': 2094,
   '../packages/halo_widgets/lib/src/qso_list.dart': 1822,

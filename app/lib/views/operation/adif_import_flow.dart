@@ -41,7 +41,7 @@ bool looksLikeAdif(String filename) {
 }
 
 /// One import at a time, across every entry point — this file's own two AND
-/// `logs_view.dart`'s, which shares this same flag rather than keeping its
+/// the Logs view's (`logs/logs_adif_drop.dart`), which shares this same flag rather than keeping its
 /// own.
 ///
 /// The plan is computed from a snapshot of the log taken before the operator
@@ -372,7 +372,8 @@ Future<void> _showNotice(BuildContext context, String message) => showHaloDialog
 /// across batches and `invokeHookAll` guarantees none. (Dart's default `Set`
 /// is insertion-ordered, so the instability is the replies, not the container.)
 ///
-/// Shared with `logs_view.dart`'s own import summary, not just this file's —
+/// Shared with the Logs view's own import summary (`logs/logs_adif_drop.dart`),
+/// not just this file's —
 /// both surface the same `AdifImportOutcome.failedHooks` set.
 List<String> failedProgramNames(Iterable<ExtensionInfo> available, Set<String> failedHooks) {
   final byKey = {for (final info in available) info.key: info.effectiveShortName};

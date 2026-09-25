@@ -688,7 +688,12 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     return Stack(
       fit: StackFit.expand,
       children: [
-        besideRail(_homeScaffold(context, theme, isTwoPane)),
+        // Out of the semantics tree while a pane covers it. Painted over, Home
+        // still answers to its semantics: on web those are DOM nodes that take
+        // clicks, so a click on an empty stretch of Logs or Settings would
+        // open the operation card beneath it, and a screen reader would read
+        // a list nobody can see.
+        ExcludeSemantics(excluding: _showingSettings || _showingLogs, child: besideRail(_homeScaffold(context, theme, isTwoPane))),
         // Listening to the controller, not just to `setState`: the slide OUT
         // ends without any rebuild of its own, and a Settings left mounted
         // off-screen keeps laying itself out against a pane it no longer has —
@@ -739,7 +744,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
               : PopScope(
                   canPop: !_showingLogs,
                   onPopInvokedWithResult: (didPop, _) {
-                    if (!didPop && _showingLogs) homeRail.destination = HomeDestination.operations;
+                    if (!didPop && _showingLogs) unawaited(homeRail.leaveTo(HomeDestination.operations));
                   },
                   child: SlideTransition(position: _logsOffset, child: child!),
                 ),

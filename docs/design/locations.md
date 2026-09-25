@@ -45,6 +45,12 @@ fields on the same edit. Those fields hold a coordinate the operator STATED,
 and after a typed grid there is none: what gets stored is the square's own
 center, which is the grid restated rather than a second claim.
 
+The Logs view's editor (`views/logs/logs_edit_panel.dart`) is the fourth
+writer. Its Grid field writes only when it was edited, since untouched it may
+be showing a lookup's guess, and only a well-formed locator or an emptied
+field: anything else changes nothing, rather than storing a square that names
+no place and erasing the pair beside it.
+
 What replaces it, where the writer has nothing better, is the square's own
 center — `locationForStatedGrid`. It is a true statement (the station is
 inside the square) and it says nothing the grid did not, so every reader that

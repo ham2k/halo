@@ -1706,4 +1706,12 @@ abstract final class LayoutKeys {
   /// [SettingsService.layoutData] only stores maps, hence the wrapper key
   /// rather than the list directly.
   static const logsQsoColumnOrder = 'logs.qsoColumnOrder';
+
+  /// The Logs QSO table's sort: `column`, one of its column ids, and
+  /// `ascending`. Absent, the table runs newest first.
+  static const logsQsoSort = 'logs.qsoSort';
+
+  /// The Logs destination's last pick in its callsign picker, for the next
+  /// visit to open on: `call`, a station callsign, or null for All.
+  static const logsFilter = 'logs.filter';
 }

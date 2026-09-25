@@ -2596,20 +2596,38 @@ class Translations$home$logs$en {
 	/// en: 'No QSOs for ${call}'
 	String emptyQsos({required Object call}) => 'No QSOs for ${call}';
 
-	/// en: 'Open operation'
-	String get openOperation => 'Open operation';
-
 	/// en: 'Select a QSO to see it on the map'
 	String get mapNoSelection => 'Select a QSO to see it on the map';
-
-	/// en: 'Change callsign'
-	String get changeCallsign => 'Change callsign';
 
 	/// en: 'Search callsign or name'
 	String get searchHint => 'Search callsign or name';
 
 	/// en: 'No QSOs match your search'
 	String get noSearchMatches => 'No QSOs match your search';
+
+	/// en: 'All Logs'
+	String get titleAll => 'All Logs';
+
+	/// en: 'All callsigns'
+	String get allCallsigns => 'All callsigns';
+
+	/// en: 'Not part of an operation'
+	String get noOperation => 'Not part of an operation';
+
+	/// en: 'Unsaved changes'
+	String get unsavedTitle => 'Unsaved changes';
+
+	/// en: 'This QSO has changes you haven’t saved.'
+	String get unsavedBody => 'This QSO has changes you haven’t saved.';
+
+	/// en: 'This QSO is marked for deletion.'
+	String get pendingDeleteBody => 'This QSO is marked for deletion.';
+
+	/// en: 'Not saved: that QSO is no longer in this log.'
+	String get editGone => 'Not saved: that QSO is no longer in this log.';
+
+	/// en: 'Discard'
+	String get discard => 'Discard';
 
 	late final Translations$home$logs$columns$en columns = Translations$home$logs$columns$en.internal(_root);
 	late final Translations$home$logs$panels$en panels = Translations$home$logs$panels$en.internal(_root);
@@ -5389,6 +5407,30 @@ class Translations$home$logs$columns$en {
 
 	/// en: 'Name'
 	String get name => 'Name';
+
+	/// en: 'Station'
+	String get station => 'Station';
+
+	/// en: 'Band'
+	String get band => 'Band';
+
+	/// en: 'Sent'
+	String get sent => 'Sent';
+
+	/// en: 'Rcvd'
+	String get rcvd => 'Rcvd';
+
+	/// en: 'Grid'
+	String get grid => 'Grid';
+
+	/// en: 'State'
+	String get state => 'State';
+
+	/// en: 'Country'
+	String get country => 'Country';
+
+	/// en: 'Refs'
+	String get refs => 'Refs';
 }
 
 // Path: home.logs.panels
@@ -7186,17 +7228,31 @@ extension on Translations {
 			'home.logs.titleFor' => 'Logs for',
 			'home.logs.emptyCallsigns' => 'No QSOs logged yet',
 			'home.logs.emptyQsos' => ({required Object call}) => 'No QSOs for ${call}',
-			'home.logs.openOperation' => 'Open operation',
 			'home.logs.mapNoSelection' => 'Select a QSO to see it on the map',
-			'home.logs.changeCallsign' => 'Change callsign',
 			'home.logs.searchHint' => 'Search callsign or name',
 			'home.logs.noSearchMatches' => 'No QSOs match your search',
+			'home.logs.titleAll' => 'All Logs',
+			'home.logs.allCallsigns' => 'All callsigns',
+			'home.logs.noOperation' => 'Not part of an operation',
+			'home.logs.unsavedTitle' => 'Unsaved changes',
+			'home.logs.unsavedBody' => 'This QSO has changes you haven’t saved.',
+			'home.logs.pendingDeleteBody' => 'This QSO is marked for deletion.',
+			'home.logs.editGone' => 'Not saved: that QSO is no longer in this log.',
+			'home.logs.discard' => 'Discard',
 			'home.logs.columns.date' => 'Date',
 			'home.logs.columns.time' => 'Time',
 			'home.logs.columns.freq' => 'Frequency',
 			'home.logs.columns.mode' => 'Mode',
 			'home.logs.columns.call' => 'Call',
 			'home.logs.columns.name' => 'Name',
+			'home.logs.columns.station' => 'Station',
+			'home.logs.columns.band' => 'Band',
+			'home.logs.columns.sent' => 'Sent',
+			'home.logs.columns.rcvd' => 'Rcvd',
+			'home.logs.columns.grid' => 'Grid',
+			'home.logs.columns.state' => 'State',
+			'home.logs.columns.country' => 'Country',
+			'home.logs.columns.refs' => 'Refs',
 			'home.logs.panels.qsos' => 'QSO Log',
 			'home.logs.panels.qsosDescription' => 'The selected callsign\'s QSOs, across every operation.',
 			'home.logs.panels.info' => 'Info',
@@ -7513,6 +7569,8 @@ extension on Translations {
 			'operation.spots.filters.band' => 'Band',
 			'operation.spots.filters.mode' => 'Mode',
 			'operation.spots.filters.age' => 'Age',
+			_ => null,
+		} ?? switch (path) {
 			'operation.spots.filters.sources' => 'Sources',
 			'operation.spots.filters.continent' => 'Continent',
 			'operation.spots.filters.sorting' => 'Sorting',
@@ -7527,8 +7585,6 @@ extension on Translations {
 			'operation.spots.failedTitle' => 'Spot source error',
 			'operation.spots.failedText' => ({required Object sources}) => '${sources} returned an error.',
 			'operation.spots.slideLogIt' => 'Log it',
-			_ => null,
-		} ?? switch (path) {
 			'operation.spots.slideIgnore' => 'Ignore',
 			'operation.spots.slideRestore' => 'Restore',
 			'operation.spots.logConflict.title' => 'Logging panel is busy',
@@ -8027,6 +8083,8 @@ extension on Translations {
 			'settings.map.style.title' => 'Map Style',
 			'settings.map.styleOpts.automatic' => 'Automatic',
 			'settings.map.styleOpts.liberty' => 'Liberty',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
@@ -8041,8 +8099,6 @@ extension on Translations {
 			'settings.privacy.privacyPolicy' => 'Privacy Policy',
 			'settings.privacy.termsOfService' => 'Terms of Service',
 			'settings.operatorCall' => 'Operator Callsign',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.title' => 'Cloud Sync',
 			'settings.sync.moreSettings' => 'More sync settings',
 			'settings.sync.enable' => 'Enable Sync',
@@ -8541,6 +8597,8 @@ extension on Translations {
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Serving ${count} extension: ${keys}', other: 'Serving ${count} extensions: ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => 'Not connected',
 			'settings.developer.extDevServerReconnect' => 'Reconnect at launch',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
 			'settings.developer.extDevServerNoSecrets' => 'Dev extensions never receive build secrets, so features that need one are inactive.',
@@ -8555,8 +8613,6 @@ extension on Translations {
 			'settings.panels.settings' => 'Application Preferences',
 			'settings.panels.settingsDescription' => 'Make the app work how you want it',
 			'settings.panels.commonSettings' => 'Common Preferences',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.syncDescription' => 'Back up and sync your logs across devices',
 			'settings.panels.accountsDescription' => 'Service credentials, offline data, and more',
 			'settings.panels.extensions' => 'Features & Extensions',

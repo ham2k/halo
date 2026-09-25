@@ -173,14 +173,25 @@ mixin QsoHistoryQueries {
   /// QSO table, scoped by its "log filter". Same join shape as
   /// [historyForCall], but on `ourCall` instead of `theirCall`, and live
   /// (the log filter's callsign selection can change under the caller).
-  /// Unlike [historyForCalls], [calls] is not chunked — stay well under
-  /// SQLite's bound-variable limit (~999) if the log filter ever grows past a
-  /// single callsign.
+  /// Unlike [historyForCalls], [calls] is not chunked, since the one caller
+  /// passes a single callsign — stay well under SQLite's bound-variable limit
+  /// (~999) if that changes. Every callsign at once is [watchForAnyOurCall].
   Stream<List<Qso>> watchForOurCalls(Iterable<String> calls) {
     final normalized = calls.map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty).toSet().toList();
     if (normalized.isEmpty) return Stream.value(const []);
+    return _watchOurContacts(db.qsos.ourCall.isIn(normalized));
+  }
+
+  /// [watchForOurCalls] for every station callsign in the log — the Logs
+  /// view's All filter — without a list of them: one would have to be kept
+  /// current as callsigns come and go, and would run into the bound-variable
+  /// limit on a large enough log. A callsign logged for the first time is
+  /// simply in the next emission.
+  Stream<List<Qso>> watchForAnyOurCall() => _watchOurContacts(db.qsos.ourCall.isNotNull() & db.qsos.ourCall.equals('').not());
+
+  Stream<List<Qso>> _watchOurContacts(Expression<bool> ourCall) {
     final query = db.select(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
-      ..where(db.qsos.ourCall.isIn(normalized) & db.qsos.deleted.equals(false) & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
+      ..where(ourCall & db.qsos.deleted.equals(false) & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
       ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis)]);
     return query.watch().asyncMap((rows) async {
       final decoded = await qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);

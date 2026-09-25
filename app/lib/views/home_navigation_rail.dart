@@ -846,7 +846,7 @@ class _HomeRailShellState extends State<HomeRailShell> {
                     expanded: showingLabels,
                     destination: homeRail.destination,
                     showLogs: showLogs,
-                    onDestination: (destination) => homeRail.destination = destination,
+                    onDestination: (destination) => unawaited(homeRail.leaveTo(destination)),
                     onToggle: toggleRail,
                   ),
                 ),

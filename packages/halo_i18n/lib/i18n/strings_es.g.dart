@@ -1214,11 +1214,17 @@ class _Translations$home$logs$es extends Translations$home$logs$en {
 	@override String get titleFor => 'Registros de';
 	@override String get emptyCallsigns => 'Aún no hay QSOs registrados';
 	@override String emptyQsos({required Object call}) => 'No hay QSOs para ${call}';
-	@override String get openOperation => 'Abrir operación';
 	@override String get mapNoSelection => 'Selecciona un QSO para verlo en el mapa';
-	@override String get changeCallsign => 'Cambiar indicativo';
 	@override String get searchHint => 'Buscar indicativo o nombre';
 	@override String get noSearchMatches => 'Ningún QSO coincide con tu búsqueda';
+	@override String get titleAll => 'Todos los registros';
+	@override String get allCallsigns => 'Todos los indicativos';
+	@override String get noOperation => 'No forma parte de ninguna operación';
+	@override String get unsavedTitle => 'Cambios sin guardar';
+	@override String get unsavedBody => 'Este QSO tiene cambios que no has guardado.';
+	@override String get pendingDeleteBody => 'Este QSO está marcado para borrarse.';
+	@override String get editGone => 'No se guardó: ese QSO ya no está en este registro.';
+	@override String get discard => 'Descartar';
 	@override late final _Translations$home$logs$panels$es panels = _Translations$home$logs$panels$es._(_root);
 	@override late final _Translations$home$logs$import$es import = _Translations$home$logs$import$es._(_root);
 	@override late final _Translations$home$logs$columns$es columns = _Translations$home$logs$columns$es._(_root);
@@ -2487,6 +2493,14 @@ class _Translations$home$logs$columns$es extends Translations$home$logs$columns$
 	@override String get mode => 'Modo';
 	@override String get call => 'Indicativo';
 	@override String get name => 'Nombre';
+	@override String get station => 'Estación';
+	@override String get band => 'Banda';
+	@override String get sent => 'Env.';
+	@override String get rcvd => 'Rec.';
+	@override String get grid => 'Cuadrícula';
+	@override String get state => 'Estado';
+	@override String get country => 'País';
+	@override String get refs => 'Refs';
 }
 
 // Path: operation.layout.panels
@@ -3441,11 +3455,17 @@ extension on TranslationsEs {
 			'home.logs.titleFor' => 'Registros de',
 			'home.logs.emptyCallsigns' => 'Aún no hay QSOs registrados',
 			'home.logs.emptyQsos' => ({required Object call}) => 'No hay QSOs para ${call}',
-			'home.logs.openOperation' => 'Abrir operación',
 			'home.logs.mapNoSelection' => 'Selecciona un QSO para verlo en el mapa',
-			'home.logs.changeCallsign' => 'Cambiar indicativo',
 			'home.logs.searchHint' => 'Buscar indicativo o nombre',
 			'home.logs.noSearchMatches' => 'Ningún QSO coincide con tu búsqueda',
+			'home.logs.titleAll' => 'Todos los registros',
+			'home.logs.allCallsigns' => 'Todos los indicativos',
+			'home.logs.noOperation' => 'No forma parte de ninguna operación',
+			'home.logs.unsavedTitle' => 'Cambios sin guardar',
+			'home.logs.unsavedBody' => 'Este QSO tiene cambios que no has guardado.',
+			'home.logs.pendingDeleteBody' => 'Este QSO está marcado para borrarse.',
+			'home.logs.editGone' => 'No se guardó: ese QSO ya no está en este registro.',
+			'home.logs.discard' => 'Descartar',
 			'home.logs.panels.qsos' => 'Registro de QSOs',
 			'home.logs.panels.qsosDescription' => 'Los QSOs del indicativo seleccionado, en todas las operaciones.',
 			'home.logs.panels.info' => 'Información',
@@ -3467,6 +3487,14 @@ extension on TranslationsEs {
 			'home.logs.columns.mode' => 'Modo',
 			'home.logs.columns.call' => 'Indicativo',
 			'home.logs.columns.name' => 'Nombre',
+			'home.logs.columns.station' => 'Estación',
+			'home.logs.columns.band' => 'Banda',
+			'home.logs.columns.sent' => 'Env.',
+			'home.logs.columns.rcvd' => 'Rec.',
+			'home.logs.columns.grid' => 'Cuadrícula',
+			'home.logs.columns.state' => 'Estado',
+			'home.logs.columns.country' => 'País',
+			'home.logs.columns.refs' => 'Refs',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
@@ -3768,6 +3796,8 @@ extension on TranslationsEs {
 			'operation.spots.filters.mode' => 'Modo',
 			'operation.spots.filters.age' => 'Antigüedad',
 			'operation.spots.filters.sources' => 'Fuentes',
+			_ => null,
+		} ?? switch (path) {
 			'operation.spots.filters.continent' => 'Continente',
 			'operation.spots.filters.sorting' => 'Orden',
 			'operation.spots.filters.sortByTime' => 'Por hora del spot',
@@ -3782,8 +3812,6 @@ extension on TranslationsEs {
 			'operation.spots.failedText' => ({required Object sources}) => '${sources} devolvieron un error.',
 			'operation.spots.slideLogIt' => 'Registrar',
 			'operation.spots.slideIgnore' => 'Ignorar',
-			_ => null,
-		} ?? switch (path) {
 			'operation.spots.slideRestore' => 'Restaurar',
 			'operation.spots.logConflict.title' => 'El panel de registro está ocupado',
 			'operation.spots.logConflict.editingBody' => 'Estás editando un contacto registrado. ¿Registrar este spot, o volver y terminar la edición?',
@@ -4282,6 +4310,8 @@ extension on TranslationsEs {
 			'settings.map.style.title' => 'Estilo del Mapa',
 			'settings.map.styleOpts.automatic' => 'Automático',
 			'settings.map.styleOpts.liberty' => 'Liberty',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
@@ -4296,8 +4326,6 @@ extension on TranslationsEs {
 			'settings.privacy.privacyPolicy' => 'Política de Privacidad',
 			'settings.privacy.termsOfService' => 'Términos de Servicio',
 			'settings.operatorCall' => 'Indicativo del Operador',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.title' => 'Sincronización en la Nube',
 			'settings.sync.moreSettings' => 'Más ajustes de sincronización',
 			'settings.sync.enable' => 'Habilitar Sincronización',
@@ -4796,6 +4824,8 @@ extension on TranslationsEs {
 			'settings.developer.catalogAddress' => 'Dirección del catálogo',
 			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.about.notices' => 'Avisos y mensajes',
+			_ => null,
+		} ?? switch (path) {
 			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
 			'settings.about.releaseNotes' => 'Notas de la versión',
 			'settings.about.copiedVersion' => 'Detalles de versión copiados al portapapeles',
@@ -4810,8 +4840,6 @@ extension on TranslationsEs {
 			'settings.panels.stationProfiles' => 'Perfiles de estación',
 			'settings.panels.developerSettings' => 'Ajustes de desarrollador',
 			'settings.panels.developerSettingsDescription' => 'Herramientas de depuración y desarrollo',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.about' => 'Acerca de',
 			'settings.panels.aboutDescription' => 'Versión, créditos e información legal',
 			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',

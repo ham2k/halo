@@ -1343,7 +1343,7 @@ class QsosRepository with QsoHistoryQueries {
     // to be atomic with respect to a concurrent write to the same
     // operation's QSOs, or the UPDATE can overwrite fresher counters with
     // the stale ones this SELECT computed. `refreshTouchedCounters` in
-    // `logs_view.dart` is the one caller that has never had an outer
+    // `logs/logs_adif_drop.dart` is the one caller that has never had an outer
     // transaction of its own to rely on for that.
     await db.transaction(() async {
       final count = db.qsos.uuid.count();

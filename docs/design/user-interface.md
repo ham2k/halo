@@ -298,6 +298,24 @@ where the caller knows something the widget cannot (`closeLabel` on a pane
 that is shown from several places), never as a way to keep a widget free of
 the strings package. Nothing named `…Tooltip` survives; don't add one back.
 
+**A tappable node's name has to fit inside it.** With semantics on — a screen
+reader, or any non-release web build, where `main()` forces them on for agent
+tooling — Flutter web gives each tappable node a DOM element that takes the
+clicks itself, and lays the node's name out inside it as DOM text with its
+overflow showing. A name longer than the box wraps out of it, and every line
+that lands on a neighbour takes that neighbour's clicks. So a button with a
+visible label is named by that label alone: don't run it together with an
+icon's `semanticLabel`, and don't add a hint. The Logs view's callsign picker
+and its editor's operation button are both built this way; with the arrow's
+label run in, the picker's name wraps onto the table header below it and opens
+on every click there.
+
+**A covered pane leaves the semantics tree.** Painted over, a widget still
+answers to its semantics, and on web its tappable nodes go on taking clicks
+through whatever covers them. Home is excluded while Logs or Settings rides
+over it (`HomeView`); left in, a click on any empty stretch of those panes
+opens the operation card underneath.
+
 ### Links leave the app
 
 A link the app hands off — the QRZ button, a markdown link in a call note, an
