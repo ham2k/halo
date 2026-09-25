@@ -943,7 +943,7 @@ class _SlideInFromRightRoute<T> extends PageRouteBuilder<T> {
     : super(
         transitionDuration: _duration,
         reverseTransitionDuration: _duration,
-        pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+        pageBuilder: (context, animation, secondaryAnimation) => HoldSizeWhileCovered(child: Builder(builder: builder)),
         transitionsBuilder: (context, animation, secondaryAnimation, child) => SlideTransition(
           position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: layoutAnimationCurve)),
           child: child,

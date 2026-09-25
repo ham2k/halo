@@ -29,6 +29,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import 'covered_route_hold.dart';
 import 'density.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
@@ -809,6 +810,9 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
     textTheme: textTheme,
     scaffoldBackgroundColor: colorScheme.surface,
     extensions: [haloColors],
+    // Flutter's own transitions, each inside a HoldSizeWhileCovered — see it
+    // for why a page behind a dialog's keyboard must not relayout.
+    pageTransitionsTheme: haloPageTransitionsTheme,
     // The app's icon language is MDI; framework widgets default to built-in
     // Icons.* glyphs in a different visual style. These builders re-point
     // the framework's own buttons (including the BackButton an AppBar

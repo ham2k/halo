@@ -494,7 +494,7 @@ Future<void> showPhotoWordmarkModal(BuildContext context, {required ReleaseNotes
     barrierDismissible: true,
     barrierLabel: 'Dismiss',
     barrierColor: Colors.transparent,
-    pageBuilder: (context, animation, secondaryAnimation) => _PhotoWordmarkOverlay(release: release),
+    pageBuilder: (context, animation, secondaryAnimation) => HoldSizeWhileCovered(child: _PhotoWordmarkOverlay(release: release)),
   );
 }
 

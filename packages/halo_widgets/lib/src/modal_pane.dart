@@ -16,6 +16,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'covered_route_hold.dart';
 import 'halo_dialog.dart';
 import 'density.dart';
 import 'layout.dart';
@@ -35,8 +36,10 @@ Future<T?> showHaloDialog<T>({required BuildContext context, required WidgetBuil
   // Center first: showDialog hands its builder TIGHT full-screen constraints,
   // and a ConstrainedBox can't shrink below a tight incoming width — the cap
   // would silently do nothing. Center loosens them so the cap actually bites.
-  builder: (context) => Center(
-    child: ConstrainedBox(constraints: haloDialogConstraints(context), child: builder(context)),
+  builder: (context) => HoldSizeWhileCovered(
+    child: Center(
+      child: ConstrainedBox(constraints: haloDialogConstraints(context), child: builder(context)),
+    ),
   ),
 );
 
@@ -203,7 +206,8 @@ class ModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute {
   Duration get transitionDuration => const Duration(milliseconds: 250);
 
   @override
-  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) => _ModalPaneScaffold(route: this);
+  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) =>
+      HoldSizeWhileCovered(child: _ModalPaneScaffold(route: this));
 
   @override
   Widget buildTransitions(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
@@ -598,7 +602,8 @@ class TopModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute 
   Duration get transitionDuration => const Duration(milliseconds: 600);
 
   @override
-  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) => _TopModalPaneScaffold(route: this);
+  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) =>
+      HoldSizeWhileCovered(child: _TopModalPaneScaffold(route: this));
 
   @override
   Widget buildTransitions(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {

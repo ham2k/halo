@@ -351,12 +351,14 @@ Future<bool> _isInstalled(InstalledExtensions store, InspectedBundle bundle) asy
 /// as much as for one it decides itself.
 Future<void> showInstallRefusal(BuildContext context, String message) => showDialog<void>(
   context: context,
-  builder: (context) => HaloDialog(
-    title: Text(context.t.extensionsPanel.installFailed),
-    content: Text(message),
-    // The way out goes in `cancel:`, not `actions:` — see HaloDialog and
-    // dialog_footer_convention_test.
-    cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
+  builder: (context) => HoldSizeWhileCovered(
+    child: HaloDialog(
+      title: Text(context.t.extensionsPanel.installFailed),
+      content: Text(message),
+      // The way out goes in `cancel:`, not `actions:` — see HaloDialog and
+      // dialog_footer_convention_test.
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
+    ),
   ),
 );
 
@@ -365,7 +367,9 @@ Future<void> showInstallRefusal(BuildContext context, String message) => showDia
 Future<bool> showConsentDialog(BuildContext context, {required InspectedBundle bundle, required bool replacing, String? from}) async =>
     await showDialog<bool>(
       context: context,
-      builder: (context) => _ConsentDialog(bundle: bundle, replacing: replacing, from: from),
+      builder: (context) => HoldSizeWhileCovered(
+        child: _ConsentDialog(bundle: bundle, replacing: replacing, from: from),
+      ),
     ) ??
     false;
 
@@ -468,22 +472,24 @@ class _Capability extends StatelessWidget {
 Future<bool> confirmUninstall(BuildContext context, {required String name}) async {
   return await showDialog<bool>(
         context: context,
-        builder: (context) => HaloDialog(
-          title: Text(context.t.extensionsPanel.uninstallTitle(name: name)),
-          content: Text(context.t.extensionsPanel.uninstallBody),
-          cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-          // Removing is this dialog's whole purpose, so here — unlike the
-          // details dialog it was opened from — the destructive verb IS the
-          // primary action and takes the trailing edge, with the way out to
-          // its left. In the error colour, because it is the press that
-          // cannot be undone.
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
-              child: Text(context.t.extensionsPanel.uninstallAction),
-            ),
-          ],
+        builder: (context) => HoldSizeWhileCovered(
+          child: HaloDialog(
+            title: Text(context.t.extensionsPanel.uninstallTitle(name: name)),
+            content: Text(context.t.extensionsPanel.uninstallBody),
+            cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+            // Removing is this dialog's whole purpose, so here — unlike the
+            // details dialog it was opened from — the destructive verb IS the
+            // primary action and takes the trailing edge, with the way out to
+            // its left. In the error colour, because it is the press that
+            // cannot be undone.
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+                child: Text(context.t.extensionsPanel.uninstallAction),
+              ),
+            ],
+          ),
         ),
       ) ??
       false;
@@ -502,39 +508,41 @@ Future<bool> _confirmUpdateAll(BuildContext context, {required List<({String nam
   final theme = Theme.of(context);
   return await showDialog<bool>(
         context: context,
-        builder: (context) => HaloDialog(
-          title: Text(t.updateAllTitle(count: updates.length)),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final update in updates)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: Space.xs),
-                  child: Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: update.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        TextSpan(
-                          text: '  ${update.from ?? ''} → ${update.to}',
-                          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ],
+        builder: (context) => HoldSizeWhileCovered(
+          child: HaloDialog(
+            title: Text(t.updateAllTitle(count: updates.length)),
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final update in updates)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: Space.xs),
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: update.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          TextSpan(
+                            text: '  ${update.from ?? ''} → ${update.to}',
+                            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              const SizedBox(height: Space.lg),
-              Text(t.updateAllBody),
-            ],
+                const SizedBox(height: Space.lg),
+                Text(t.updateAllBody),
+              ],
+            ),
+            cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+            // Confirming is this dialog's whole purpose, so the verb takes the
+            // trailing edge and the way out sits to its left — the same shape as
+            // the remove confirmation.
+            actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.updateAllAction))],
           ),
-          cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-          // Confirming is this dialog's whole purpose, so the verb takes the
-          // trailing edge and the way out sits to its left — the same shape as
-          // the remove confirmation.
-          actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.updateAllAction))],
         ),
       ) ??
       false;
@@ -634,8 +642,9 @@ Future<ExtensionDetailsAction?> showExtensionDetails(
   String? updateVersion,
 }) => showDialog<ExtensionDetailsAction>(
   context: context,
-  builder: (context) =>
-      _DetailsDialog(info: info, locale: locale, installedFrom: installedFrom, installedFromIcon: installedFromIcon, updateVersion: updateVersion),
+  builder: (context) => HoldSizeWhileCovered(
+    child: _DetailsDialog(info: info, locale: locale, installedFrom: installedFrom, installedFromIcon: installedFromIcon, updateVersion: updateVersion),
+  ),
 );
 
 class _DetailsDialog extends StatelessWidget {

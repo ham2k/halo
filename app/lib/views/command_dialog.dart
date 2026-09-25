@@ -44,7 +44,7 @@ Future<void> showCommandDialog(BuildContext context, HaLoServices services) {
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: haloBarrierColor(context, lightColor: Colors.black.withValues(alpha: 0.45)),
     transitionDuration: const Duration(milliseconds: 140),
-    pageBuilder: (context, _, _) => CommandDialog(services: services),
+    pageBuilder: (context, _, _) => HoldSizeWhileCovered(child: CommandDialog(services: services)),
     transitionBuilder: (context, animation, _, child) {
       final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
       return FadeTransition(

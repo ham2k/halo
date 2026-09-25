@@ -375,6 +375,8 @@ An expanded message list is modal: it puts a barrier over the rest of the window
 
 **It rides directly above the on-screen keyboard** rather than behind it — a sync's progress or a command's output is most relevant exactly while the operator is typing, and being hidden outright at that moment is what this replaced. (What it shows there is transient; see the band's own rule above.) This is why `_StatusBarOverlay` reserves the keyboard's height for the whole app: the routes below it run full height behind the keyboard (both mobile Scaffolds set `resizeToAvoidBottomInset: false`), and the overlay holds that strip back for all of them. Reserving the keyboard inside a pane as well would hold the same strip back twice and leave its fields floating in the gap.
 
+**A route that does not have the keyboard keeps its size.** Shrinking the Navigator shrinks every route in it, and a route behind a dialog would be laid out again the moment the dialog's field took focus — its lazy lists dropping rows, and anything with a side effect on disposal running it under the dialog (a topmost `AutofillGroup` closes the dialog's own iOS keyboard). So each route's content sits in a `HoldSizeWhileCovered` (`halo_widgets`), which while the keyboard is up lays it out at the height it had, clipped, unless the focus is inside that route on something other than a bare focus scope (its own, or one nested in it). The route with the keyboard shrinks above it; every other one — behind a dialog, a Modal Pane, or onboarding's layer over the Navigator — holds until the keyboard is down.
+
 **The bottom safe area goes the same way.** A drawn footer spans the window below every route and paints over the home indicator, holding it with a `SafeArea` of its own — so nothing above the band may reserve that strip a second time, or a band of the view's own background opens up between its last row and the footer. The shell takes the inset out of the MediaQuery the routes and the rail see whenever the footer is drawn (`HomeRailShell.bottomInsetHeldByChrome`), which is what Quick Lookup, the rail's Settings cap, Home's action button, the logging panel and every `PaneSafeArea` consumer read it from. A pane holds the indicator itself only where no footer is drawn below it.
 
 The app follows a selective user feedback policy:
@@ -417,6 +419,8 @@ even though both now render in the same group: **only that slot gets the gap**,
 so a Cancel passed through `actions` lands flush against Save.
 `app/test/guards/dialog_footer_convention_test.dart` fails the build when one does,
 and when a dialog reaches for a raw `AlertDialog` instead of `HaloDialog`.
+
+A dialog shown through `showHaloDialog`, `showFormDialog` or a Modal Pane gets its route's `HoldSizeWhileCovered` from there, and a page route from the theme. One built by hand — a direct `showDialog` or `showGeneralDialog`, a `PageRouteBuilder`, a route subclass — wraps its own content in one; `app/test/guards/covered_route_hold_test.dart` fails the build when it does not (see the status bar's keyboard rule above for why).
 
 ### What it says
 

@@ -133,11 +133,13 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
         await showDialog<bool>(
           context: navigator,
           barrierDismissible: false,
-          builder: (context) => HaloDialog(
-            title: Text(t.upgradeTitle),
-            content: Text(t.upgradeBody),
-            cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(t.upgradeLater)),
-            actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.upgradeAction))],
+          builder: (context) => HoldSizeWhileCovered(
+            child: HaloDialog(
+              title: Text(t.upgradeTitle),
+              content: Text(t.upgradeBody),
+              cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(t.upgradeLater)),
+              actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.upgradeAction))],
+            ),
           ),
         ) ??
         false;
@@ -228,10 +230,12 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     }
     await showDialog<void>(
       context: navigator,
-      builder: (context) => HaloDialog(
-        title: Text(title),
-        content: Text.rich(shown),
-        cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
+      builder: (context) => HoldSizeWhileCovered(
+        child: HaloDialog(
+          title: Text(title),
+          content: Text.rich(shown),
+          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
+        ),
       ),
     );
   }
