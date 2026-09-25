@@ -1285,41 +1285,76 @@ class RadioControlFields extends StatelessWidget {
         ),
         if (config.radio.onOpenStationConfig case final onOpenStationConfig?) ...[
           const SizedBox(width: Space.sm),
-          Semantics(
-            identifier: 'action.stationConfig',
-            // The button is icon-only and the app shows no hover tooltips,
-            // so this label is the ONLY accessible name it has.
-            label: t.settings.station.title,
-            button: true,
-            enabled: !editing,
-            child: InkWell(
-              key: const ValueKey('stationConfigButton'),
-              // Not one of Radio's fields (docs/design/logging-fields.md
-              // names exactly Band, Frequency, Mode) — the ancestor Focus
-              // that intercepts Tab for this control only knows about those
-              // three, so a mouse click's default focus grab here would make
-              // Tab compute currentIndex == -1 and jump backward to Band
-              // instead of exhausting the control and crossing to the next
-              // pill.
-              canRequestFocus: false,
-              onTap: editing ? null : onOpenStationConfig,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                // Left-aligned so the icon and the (usually wider) name both
-                // start flush against the Mode dropdown beside them.
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ExcludeSemantics(
-                    child: Icon(
-                      MdiIcons.cat,
-                      size: stationConfigIconSize,
-                      color: _stationConfigIconColor(editing: editing),
+          // Flexible, so the radio's name under the icons takes whatever the
+          // row has left rather than a fixed few icons' width. The panel
+          // hands this row a bounded width (it is Aligned inside the panel).
+          Flexible(
+            child: Semantics(
+              identifier: 'action.stationConfig',
+              // The button is icon-only and the app shows no hover tooltips,
+              // so this label is the ONLY accessible name it has.
+              label: t.settings.station.title,
+              button: true,
+              enabled: !editing,
+              child: InkWell(
+                key: const ValueKey('stationConfigButton'),
+                // Not one of Radio's fields (docs/design/logging-fields.md
+                // names exactly Band, Frequency, Mode) — the ancestor Focus
+                // that intercepts Tab for this control only knows about those
+                // three, so a mouse click's default focus grab here would make
+                // Tab compute currentIndex == -1 and jump backward to Band
+                // instead of exhausting the control and crossing to the next
+                // pill.
+                canRequestFocus: false,
+                onTap: editing ? null : onOpenStationConfig,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  // Left-aligned so the icon and the (usually wider) name both
+                  // start flush against the Mode dropdown beside them.
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ExcludeSemantics(
+                          child: Icon(
+                            MdiIcons.cat,
+                            size: stationConfigIconSize,
+                            color: _stationConfigIconColor(editing: editing),
+                          ),
+                        ),
+                        // The way to connect a radio that is down, beside the
+                        // cat whose red says so. A control of its own inside
+                        // this one: its tap connects rather than opening the
+                        // dialog, and its own node carries its name.
+                        if (config.radio.onConnectRadio case final onConnectRadio?) ...[
+                          const SizedBox(width: Space.md),
+                          Semantics(
+                            container: true,
+                            identifier: 'action.connectRadio',
+                            label: t.settings.station.connect,
+                            button: true,
+                            enabled: !editing,
+                            child: InkWell(
+                              key: const ValueKey('connectRadioButton'),
+                              // Not one of Radio's fields, same as the button
+                              // around it.
+                              canRequestFocus: false,
+                              onTap: editing ? null : onConnectRadio,
+                              child: ExcludeSemantics(
+                                child: Icon(
+                                  MdiIcons.powerPlugOff,
+                                  size: stationConfigIconSize,
+                                  color: _stationConfigIconColor(editing: editing),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
-                  if (config.radio.radioName case final radioName?)
-                    ExcludeSemantics(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: stationConfigIconSize * 3),
+                    if (config.radio.radioName case final radioName?)
+                      ExcludeSemantics(
                         child: Text(
                           radioName,
                           overflow: TextOverflow.ellipsis,
@@ -1327,8 +1362,8 @@ class RadioControlFields extends StatelessWidget {
                           style: TextStyle(fontSize: 11, color: theme.colorScheme.onTertiary.withValues(alpha: editing ? 0.38 : 1)),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

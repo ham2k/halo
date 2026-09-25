@@ -40,7 +40,13 @@ class CategoryBand extends StatelessWidget {
   /// A disclosure indicator or icon before the title.
   final Widget? leading;
 
-  const CategoryBand(this.title, {super.key, this.color, this.subtitle, this.trailing, this.leading});
+  /// A full-width row under the title, on the band's own ground and pinned
+  /// with it — for a category whose first row IS what it is about (the
+  /// Station panel's current transceiver). Not inset: a row takes the inset
+  /// itself, the way the rows under the band do.
+  final Widget? below;
+
+  const CategoryBand(this.title, {super.key, this.color, this.subtitle, this.trailing, this.leading, this.below});
 
   @override
   Widget build(BuildContext context) {
@@ -48,26 +54,27 @@ class CategoryBand extends StatelessWidget {
     // idea of no-inset differs from theirs lands its title off the rows it
     // heads, which is the trap halo_dialog.dart's contentPadding note names.
     final inset = (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero).resolve(Directionality.of(context));
-    return Material(
-      color: haloDialogBandColorAt(context),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(inset.left, Space.md, inset.right, Space.md),
-        child: Row(
-          children: [
-            if (leading != null) ...[leading!, const SizedBox(width: Space.md)],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: SectionHeader.titleStyle(context, color: color)),
-                  if (subtitle != null) ...[const SizedBox(height: Space.xs), subtitle!],
-                ],
-              ),
+    final heading = Padding(
+      padding: EdgeInsets.fromLTRB(inset.left, Space.md, inset.right, below == null ? Space.md : Space.xs),
+      child: Row(
+        children: [
+          if (leading != null) ...[leading!, const SizedBox(width: Space.md)],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: SectionHeader.titleStyle(context, color: color)),
+                if (subtitle != null) ...[const SizedBox(height: Space.xs), subtitle!],
+              ],
             ),
-            if (trailing != null) ...[const SizedBox(width: Space.md), trailing!],
-          ],
-        ),
+          ),
+          if (trailing != null) ...[const SizedBox(width: Space.md), trailing!],
+        ],
       ),
+    );
+    return Material(
+      color: haloCategoryBandColor(context),
+      child: below == null ? heading : Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [heading, below!]),
     );
   }
 

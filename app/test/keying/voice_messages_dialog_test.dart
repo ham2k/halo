@@ -59,14 +59,19 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('with no radio: every label, no buttons, and a line saying why', (tester) async {
+  testWidgets('with no radio: every label, no buttons, and first of all a line saying why', (tester) async {
     await services.settings.setVoiceMessageLabel(2, 'CQ POTA');
     await open(tester);
-    expect(find.text('Phone Keyer'), findsOneWidget);
+    expect(find.text('Phone Keyer Messages'), findsOneWidget);
     expect(find.byType(ListTile), findsNWidgets(SettingsService.voiceMessageCount));
     expect(find.textContaining('CQ POTA'), findsOneWidget);
     expect(find.byIcon(MdiIcons.play), findsNothing);
-    expect(find.text('Connect a radio with a voice keyer to play or record from here.'), findsOneWidget);
+    // Above the controls, not under the list: every control below does
+    // nothing until it changes.
+    final notice = find.text('Current radio does not support Phone messages');
+    expect(notice, findsOneWidget);
+    expect(tester.getTopLeft(notice).dy, lessThan(tester.getTopLeft(find.byType(ListTile).first).dy));
+    expect(find.text("This uses the radio's own voice memories"), findsOneWidget);
   });
 
   testWidgets('a row edits its label, and nothing else — the audio is in the radio', (tester) async {

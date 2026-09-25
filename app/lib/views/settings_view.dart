@@ -656,6 +656,14 @@ class _SettingsGroupForm extends StatefulWidget {
   /// Where a `panel` link row goes. Null leaves such a row inert.
   final FormOpenPanel? openPanel;
 
+  /// Element keys left out — for a group embedded where one of its rows
+  /// would point back at the surface it is embedded in.
+  final Set<String> excludeKeys;
+
+  /// The rows alone, with no category heading or section band of their own:
+  /// for a host that heads them itself.
+  final bool bare;
+
   const _SettingsGroupForm({
     super.key,
     required this.services,
@@ -667,6 +675,8 @@ class _SettingsGroupForm extends StatefulWidget {
     this.onRowsChanged,
     this.sliver = false,
     this.openPanel,
+    this.excludeKeys = const {},
+    this.bare = false,
   });
 
   @override
@@ -708,7 +718,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
         final elements = [
           for (final el in filterElementsForEnvironment(resolved))
             // Declared, but edited by a dialog of their own (settings_registry.dart).
-            if (el['listed'] != false) el,
+            if (el['listed'] != false && !widget.excludeKeys.contains(el['key'])) el,
         ];
         if (!mounted) continue;
         final identity = settingsRowIdentity(elements);
@@ -800,10 +810,25 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       onSubmit: (_) {},
       onCancel: () {},
     );
+    if (widget.bare) return form;
     return widget.sliver
         ? settingsCategorySliver(context, title: widget.group.title, expanded: widget.expanded, onToggle: widget.onToggle, hidden: hidden, sliver: form)
         : settingsCategory(context, title: widget.group.title, expanded: widget.expanded, onToggle: widget.onToggle, hidden: hidden, child: form);
   }
+}
+
+/// The rows of the registered settings group [groupKey], outside the Settings
+/// panel, with the same commits, actions and live reloads it gets there —
+/// headed by the host rather than by a category of their own. Nothing when
+/// no group has that key, or when the group contributes nothing right now.
+Widget settingsGroupRows({required HaLoServices services, required String groupKey, Set<String> excludeKeys = const {}}) {
+  final group = services.settingsRegistry[groupKey];
+  if (group == null) return const SizedBox.shrink();
+  // Slivers, so a section the group declares pins in the host's list like
+  // its own sections do — as a box its band would be buried in a row.
+  return SectionedSlivers(
+    slivers: [_SettingsGroupForm(services: services, group: group, excludeKeys: excludeKeys, bare: true, sliver: true)],
+  );
 }
 
 /// Every declared setting in one panel: the `common: true` subset of all

@@ -247,6 +247,7 @@ class _RadioPanelState extends State<RadioPanel> {
             node: node,
             state: state,
             live: live,
+            unconfigured: node != null && (_cat.typeFor(node)?.isUnconfigured(node.config) ?? false),
             style: _style,
             palette: live ? palette : palette.dimmed(_dimmedAlpha),
             // Only what the radio itself reported, and only while that
@@ -331,11 +332,15 @@ class RadioReadout extends StatelessWidget {
   final VoidCallback? onTune;
   final Widget? powerButton;
 
+  /// The radio has no port or address yet, so there is nothing to switch on.
+  final bool unconfigured;
+
   const RadioReadout({
     super.key,
     required this.node,
     required this.state,
     required this.live,
+    this.unconfigured = false,
     required this.style,
     required this.palette,
     required this.power,
@@ -347,12 +352,12 @@ class RadioReadout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = t.operation.layout.panels;
-    if (node == null) {
+    if (node == null || unconfigured) {
       // Not dimmed prose over a dark glass: there is no radio to be off, so
       // this is a configuration message and reads as one.
       return Center(
         child: Text(
-          p.radioNoRadio,
+          node == null ? p.radioNoRadio : p.radioNotConfigured,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: palette.label),
         ),

@@ -526,6 +526,13 @@ abstract class EquipmentDriver {
   /// ignored — it belongs to the transport instead.
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => const [];
 
+  /// The modes this driver can put the radio in, named as its session
+  /// reports them — what the Station dialog's radio-mode picker offers, in
+  /// [radioModeOrder]. Drawn from the same table its `setMode` sends from,
+  /// so the list and the commands cannot drift apart. Empty for equipment
+  /// with no mode.
+  List<String> settableModes(Map<String, dynamic> config) => const [];
+
   /// Per-field version, for the editor. Null for a key this driver doesn't
   /// own.
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => null;
@@ -612,4 +619,32 @@ abstract class EquipmentDriver {
   /// driver whose suffix IS its channel builds one from the other rather
   /// than spelling the label twice.
   String? describeChannel(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) => null;
+}
+
+/// [modes] in the order a radio's own mode button walks them: voice, then
+/// CW, then AM/FM, then the data and digital modes. Anything unlisted
+/// trails, alphabetically.
+List<String> radioModeOrder(Iterable<String> modes) {
+  const order = [
+    'LSB',
+    'USB',
+    'CW',
+    'CW-R',
+    'AM',
+    'AM-N',
+    'FM',
+    'FM-N',
+    'WFM',
+    'RTTY',
+    'RTTY-R',
+    'RTTY-LSB',
+    'RTTY-USB',
+    'DATA-LSB',
+    'DATA-USB',
+    'DATA-FM',
+    'PSK',
+    'DV',
+  ];
+  int rank(String mode) => order.contains(mode) ? order.indexOf(mode) : order.length;
+  return modes.toSet().toList()..sort((a, b) => rank(a) != rank(b) ? rank(a).compareTo(rank(b)) : a.compareTo(b));
 }

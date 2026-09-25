@@ -40,7 +40,10 @@ void main() {
     expect(opened, isTrue);
   });
 
-  testWidgets('a long radio name is capped at 3x the icon width and ellipsized, not wrapped', (tester) async {
+  testWidgets('a long radio name takes the room the row has, on one line, ellipsized past it', (tester) async {
+    // The trap: a name held to a few icons' width reads "A Radio W…" in a
+    // panel with room for all of it. It may grow — but only into the row
+    // it is given, never wrapping and never pushing past the panel.
     await tester.pumpWidget(
       host(
         radio: baseRadio().copyWith(hasConfiguredRadio: true, radioName: 'A Radio With A Genuinely Absurd Amount Of Name', onOpenStationConfig: () {}),
@@ -48,15 +51,43 @@ void main() {
     );
     await openControl(tester, MdiIcons.cat);
 
-    final icon = tester.widget<Icon>(find.descendant(of: find.byKey(const ValueKey('stationConfigButton')), matching: find.byIcon(MdiIcons.cat)));
-    final constrained = tester.widget<ConstrainedBox>(
-      find.descendant(of: find.byKey(const ValueKey('stationConfigButton')), matching: find.byType(ConstrainedBox)),
-    );
-    expect(constrained.constraints.maxWidth, icon.size! * 3);
+    final button = find.byKey(const ValueKey('stationConfigButton'));
+    final icon = tester.widget<Icon>(find.descendant(of: button, matching: find.byIcon(MdiIcons.cat)));
+    final name = find.descendant(of: button, matching: find.byType(Text));
+    expect(tester.getSize(name).width, greaterThan(icon.size! * 3), reason: 'the name is not held to three icons when the row has room');
 
-    final text = tester.widget<Text>(find.descendant(of: find.byKey(const ValueKey('stationConfigButton')), matching: find.byType(Text)));
+    final text = tester.widget<Text>(name);
     expect(text.overflow, TextOverflow.ellipsis);
     expect(text.maxLines, 1);
+    expect(tester.takeException(), isNull, reason: 'growing must stay inside the row, never overflow it');
+  });
+
+  testWidgets('the plug beside the cat connects the radio, and only when there is one to connect', (tester) async {
+    var connects = 0;
+    var opens = 0;
+    await tester.pumpWidget(
+      host(
+        radio: baseRadio().copyWith(hasConfiguredRadio: true, onOpenStationConfig: () => opens++, onConnectRadio: () => connects++),
+      ),
+    );
+    await openControl(tester, MdiIcons.cat);
+
+    final plug = find.byKey(const ValueKey('connectRadioButton'));
+    expect(plug, findsOneWidget);
+    // Inside the Station Configuration button, so its own tap must win:
+    // a plug that opened the dialog would do the one thing the cat does.
+    await tester.tap(plug);
+    await tester.pump();
+    expect(connects, 1);
+    expect(opens, 0);
+    // Not one of Radio's fields, same as the cat around it.
+    expect(tester.widget<InkWell>(plug).canRequestFocus, isFalse);
+  });
+
+  testWidgets('no plug without a way to connect — connected, or a radio this device cannot reach', (tester) async {
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(hasConfiguredRadio: true, onOpenStationConfig: () {})));
+    await openControl(tester, MdiIcons.cat);
+    expect(find.byKey(const ValueKey('connectRadioButton')), findsNothing);
   });
 
   testWidgets('the Station Configuration button can never become a Tab stop', (tester) async {

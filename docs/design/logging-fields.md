@@ -718,6 +718,11 @@ neighbouring pill's own canonical field (Radio's Frequency, not Band or
 Mode), skipping any other fields the control might have. Both wrap at the
 ends of the strip.
 
+Radio's Station Configuration button (the cat) and, while the Main VFO's own
+radio is down, the plug beside it that connects it, are not fields: neither
+takes focus, on a click or on Tab, so a mouse click on one never leaves Tab
+computing from outside Band, Frequency and Mode.
+
 The main field that had focus before is remembered, and gets it back when
 the control is collapsed via Down or Enter (not the pill — see the ladder
 below) — falling back to the callsign field if there was none, or if that

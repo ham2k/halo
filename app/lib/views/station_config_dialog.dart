@@ -11,10 +11,10 @@
 // `closeButton` below are not defaults, they are what this panel needs, and a
 // copy that forgets one wraps a ListView in a scroll view.
 //
-// Not in station_panel.dart either: that file deliberately does not import
-// settings_view.dart — the two already cross-import for the reverse embedding
-// — which is why `onMoreSettings` is a callback in the first place. This is
-// where that callback is supplied, so the push lives here.
+// Not in station_panel.dart either: the panel takes `onMoreSettings` as a
+// callback rather than pushing the Settings page itself, so the page it opens
+// is decided by whoever presents it. This is where that callback is supplied,
+// so the push lives here.
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -38,18 +38,23 @@ Future<void> showStationConfigDialog(BuildContext context, HaLoServices services
     scrollable: false,
     // The compact panel ends in a footer band whose Done is the way out.
     closeButton: false,
-    builder: (context) => StationPanel(
-      services: services,
-      compact: true,
-      onMoreSettings: () {
-        final navigator = Navigator.of(context);
-        navigator.pop();
-        navigator.push(
-          MaterialPageRoute<void>(
-            builder: (_) => SettingsView(services: services, initialPanel: 'station'),
-          ),
-        );
-      },
+    // The settings row inset, as on the full page: a pane publishes none of
+    // its own, and without it the category bands (which fall back to no
+    // inset) and the rows (which fall back to ListTile's) land apart.
+    builder: (context) => SettingsList(
+      child: StationPanel(
+        services: services,
+        compact: true,
+        onMoreSettings: () {
+          final navigator = Navigator.of(context);
+          navigator.pop();
+          navigator.push(
+            MaterialPageRoute<void>(
+              builder: (_) => SettingsView(services: services, initialPanel: 'station'),
+            ),
+          );
+        },
+      ),
     ),
   );
 }

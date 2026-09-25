@@ -22,11 +22,13 @@
 // this is the editor an operator meets, not the storage.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import '../services/cat/cat_service.dart';
 import '../services/halo_services.dart';
 import '../services/settings_service.dart';
 
@@ -165,6 +167,46 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Nothing to key CW with at all, connected or not: said first,
+            // because every control below does nothing until it changes.
+            ListenableBuilder(
+              listenable: widget.services.cat,
+              builder: (context, _) => widget.services.cat.designatedKeyIsKeyer ? const SizedBox.shrink() : KeyerUnsupportedNotice(text: m.notSupported),
+            ),
+            // How the messages go out first — speed, repeat, ESM — then which
+            // set of them is being edited. Message 1 only repeats
+            // (SettingsService.cwRepeatDelay).
+            Row(
+              children: [
+                // The speed messages go out at, first: it is what an
+                // operator adjusts most between contacts.
+                _KeyerSpeedField(cat: widget.services.cat),
+                const SizedBox(width: Space.md),
+                Expanded(
+                  child: RepeatDelayField(
+                    value: '${widget.services.settings.cwRepeatDelay.inSeconds}',
+                    label: m.repeat,
+                    offLabel: m.repeatOff,
+                    afterLabel: (n) => m.repeatAfter(n: n),
+                    onChanged: (value) {
+                      // Off ends a chain already counting down.
+                      if (value == '0') widget.services.cat.cancelKeyerRepeat();
+                      unawaited(widget.services.settings.setCwRepeatDelay(int.parse(value)));
+                    },
+                  ),
+                ),
+                if (widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
+                  const SizedBox(width: Space.md),
+                  Expanded(
+                    child: EnterSendsField(
+                      value: widget.services.cat.enterSends.value,
+                      onChanged: (value) => widget.services.cat.setEnterSends(on: value.on, running: value.running),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: Space.md),
             Row(
               children: [
                 Expanded(
@@ -194,35 +236,6 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
                   icon: Icon(MdiIcons.trashCanOutline, semanticLabel: m.deleteSet, color: _canDelete ? theme.colorScheme.error : null),
                   onPressed: _canDelete ? _delete : null,
                 ),
-              ],
-            ),
-            const SizedBox(height: Space.md),
-            // Message 1 only repeats, which is what the circled 1 in the
-            // label says (SettingsService.cwRepeatDelay).
-            Row(
-              children: [
-                Expanded(
-                  child: RepeatDelayField(
-                    value: '${widget.services.settings.cwRepeatDelay.inSeconds}',
-                    label: m.repeat,
-                    offLabel: m.repeatOff,
-                    afterLabel: (n) => m.repeatAfter(n: n),
-                    onChanged: (value) {
-                      // Off ends a chain already counting down.
-                      if (value == '0') widget.services.cat.cancelKeyerRepeat();
-                      unawaited(widget.services.settings.setCwRepeatDelay(int.parse(value)));
-                    },
-                  ),
-                ),
-                if (widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
-                  const SizedBox(width: Space.md),
-                  Expanded(
-                    child: EnterSendsField(
-                      value: widget.services.cat.enterSends.value,
-                      onChanged: (value) => widget.services.cat.setEnterSends(on: value.on, running: value.running),
-                    ),
-                  ),
-                ],
               ],
             ),
           ],
@@ -379,7 +392,6 @@ class _CwMessagesHelpDialog extends StatelessWidget {
       ('{{ qso.serial | pad: 3 }}', m.helpPad),
       ('{{ qso.rst | cut }}', m.helpCut),
       ('{{ qso.serial | cut: "0159" }}', m.helpCutDigits),
-      ('{{ qso.call }} {{ qso.rst | cut }} {{ qso.serial | pad: 3 | cut }}', m.helpExample),
     ];
     final esmSet = CwMessageSet.esm();
     final esmRows = [
@@ -410,6 +422,10 @@ class _CwMessagesHelpDialog extends StatelessWidget {
         children: [
           Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.md), child: Text(m.helpIntro)),
           for (final (template, meaning) in rows) row(template, meaning),
+          // The placeholders put together, headed apart from the list: it
+          // is one message, not one more value.
+          Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, 0), child: Text(m.helpFullExample)),
+          row('{{ qso.call }} {{ qso.rst | cut }} {{ qso.serial | pad: 3 | cut }}', m.helpExample),
           if (esm) ...[
             Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.md), child: Text(m.helpEsmIntro)),
             for (final (template, meaning) in esmRows) row(template, meaning),
@@ -545,6 +561,74 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
       ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
       actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
+    );
+  }
+}
+
+/// The keyer's speed, sized to its value ("30 WPM") rather than stretched —
+/// what the radio reports, and what it is told on a pick. Follows the radio
+/// while the dialog is open, and is disabled while nothing can key.
+class _KeyerSpeedField extends StatelessWidget {
+  final CatService cat;
+
+  const _KeyerSpeedField({required this.cat});
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: cat,
+    builder: (context, _) {
+      final ks = context.t.settings.radio.keyerSpeed;
+      final range = cat.keyerSpeedRange;
+      final speed = cat.keyerSpeed;
+      final canKey = cat.canKeyCw;
+      final inRange = speed != null && range != null && speed >= range.min && speed <= range.max;
+      final theme = Theme.of(context);
+      final valueStyle = theme.textTheme.titleMedium ?? const TextStyle();
+      final labelStyle = theme.textTheme.bodySmall ?? const TextStyle();
+      // The wider of the value and the floating label, plus the field's
+      // content padding and the dropdown's trailing icon.
+      final width = math.max(textWidth(context, '30 ${ks.unit}', valueStyle), textWidth(context, ks.title, labelStyle)) + 16 + 32;
+      return SizedBox(
+        width: width,
+        child: DropdownButtonFormField<int>(
+          // Keyed on the value: FormFieldState reads initialValue once, and
+          // the radio's answer arrives after the first build.
+          key: ValueKey('keyerSpeed:${inRange ? speed : null}:$canKey'),
+          isExpanded: true,
+          initialValue: inRange ? speed : null,
+          icon: dropdownTrailingIcon,
+          decoration: poloFieldDecoration(context, ks.title).copyWith(filled: true, fillColor: theme.colorScheme.surface),
+          menuMaxHeight: dropdownMenuMaxHeight(context),
+          items: [
+            if (range != null)
+              for (var wpm = range.min; wpm <= range.max; wpm++) DropdownMenuItem<int>(value: wpm, child: Text('$wpm ${ks.unit}')),
+          ],
+          onChanged: canKey ? (wpm) => wpm == null ? null : cat.setKeyerSpeed(wpm) : null,
+        ),
+      );
+    },
+  );
+}
+
+/// The first row of a keyer dialog whose equipment cannot send what it
+/// edits — the CW key, or the radio's voice memories.
+class KeyerUnsupportedNotice extends StatelessWidget {
+  final String text;
+
+  const KeyerUnsupportedNotice({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Space.md),
+      child: Row(
+        children: [
+          Icon(MdiIcons.alertCircleOutline, size: 18, color: theme.colorScheme.error),
+          const SizedBox(width: Space.sm),
+          Expanded(child: Text(text, style: theme.textTheme.bodyMedium)),
+        ],
+      ),
     );
   }
 }

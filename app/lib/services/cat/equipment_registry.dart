@@ -41,6 +41,7 @@ import 'equipment_models_kenwood.dart';
 import 'equipment_models_other_radios.dart';
 import 'equipment_models_yaesu.dart';
 import 'transport.dart';
+import 'transports/bluetooth_serial_transport.dart';
 import 'transports/placeholder_transport.dart';
 import 'transports/icom_network_transport.dart';
 import 'transports/serial_transport.dart';
@@ -141,8 +142,16 @@ class EquipmentModel {
   /// General characteristics, per data-model.md — `transceiver` today.
   final String category;
 
-  /// At least one. Order is what the transport picker offers.
-  final List<EquipmentVariant> variants;
+  /// At least one. Order is what the transport picker offers, with the
+  /// derived placeholder variant last for a model that [offersPlaceholder].
+  final List<EquipmentVariant> _variants;
+
+  List<EquipmentVariant> get variants => offersPlaceholder ? [..._variants, placeholderVariantFor(key)] : _variants;
+
+  /// Every real transceiver can be run as the placeholder radio. Not the
+  /// placeholder itself, and not a bridge: neither has a maker, and a program
+  /// standing in front of a radio has no cable to be waiting for.
+  bool get offersPlaceholder => category == kCategoryTransceiver && manufacturer != null;
 
   /// The radio's own name, with nothing about how it is connected —
   /// "Icom IC-705", not "Icom IC-705 — WiFi". [EquipmentType.name] adds the
@@ -201,7 +210,7 @@ class EquipmentModel {
     required this.key,
     required this.category,
     required String Function() name,
-    required this.variants,
+    required this._variants,
     String Function()? suggestedName,
     String Function()? recordingHelp,
     this.manufacturer,
@@ -292,6 +301,16 @@ class EquipmentType {
 
   Map<String, dynamic> _merged(Map<String, dynamic> config) => {...config, ...overrides};
 
+  /// See [EquipmentTransport.isUnconfigured]. Overrides count: a pairing
+  /// that pins its own port is never missing one.
+  bool isUnconfigured(Map<String, dynamic> config) => transport.isUnconfigured(_merged(config));
+
+  /// What the editor asks of a field. An unconfigured pairing skips the
+  /// transport's checks — they all describe the connection the operator has
+  /// chosen not to fill in yet — and keeps the driver's.
+  String? validateEditorField(String key, dynamic value, Map<String, dynamic> config) =>
+      isUnconfigured(config) ? driver.validateField(key, value, config) : validateField(key, value, config);
+
   /// Turns the user's configuration into what the transport connects with.
   Map<String, dynamic> targetFor(Map<String, dynamic> config) => transport.targetFor(_merged(config));
 
@@ -380,8 +399,9 @@ String? transportLabelFor(String transportKey) {
   return switch (transportKey) {
     TcpTransport.transportKey => labels.network,
     SerialTransport.transportKey => labels.usbSerial,
+    BluetoothSerialTransport.transportKey => labels.bluetoothSerial,
     IcomNetworkTransport.transportKey => labels.wifi,
-    PlaceholderTransport.transportKey => labels.simulated,
+    PlaceholderTransport.transportKey => labels.placeholder,
     _ => null,
   };
 }
@@ -393,14 +413,14 @@ String? transportLabelFor(String transportKey) {
 /// One concept per kind of connection rather than one per transport: two
 /// transports reaching the same radio over the same wire should look alike,
 /// because what the operator is choosing between is how it is *plugged in*,
-/// not which protocol is spoken over it. A Bluetooth transport would add a
-/// third here; there is no case for one until there is a transport.
+/// not which protocol is spoken over it.
 ///
 /// The names must exist in halo_widgets' generated codepoint table:
 /// `resolveIconName` answers an unknown name with a puzzle-piece glyph and
 /// no error at all, so a typo here ships silently.
 String? transportIconNameFor(String transportKey) => switch (transportKey) {
   SerialTransport.transportKey => 'usb-port',
+  BluetoothSerialTransport.transportKey => 'bluetooth',
   TcpTransport.transportKey || IcomNetworkTransport.transportKey => 'wifi',
   // Not a way of plugging anything in — the exception the rule above
   // allows for, because what this transport connects to is nothing.
@@ -475,6 +495,7 @@ class EquipmentRegistry {
           {
             TcpTransport.transportKey: const TcpTransport(),
             SerialTransport.transportKey: const SerialTransport(),
+            BluetoothSerialTransport.transportKey: const BluetoothSerialTransport(),
             IcomNetworkTransport.transportKey: const IcomNetworkTransport(),
             PlaceholderTransport.transportKey: const PlaceholderTransport(),
           };

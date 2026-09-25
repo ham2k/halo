@@ -68,6 +68,9 @@ class FlrigDriver extends EquipmentDriver {
   @override
   String get name => 'flrig';
 
+  @override
+  List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(['LSB', 'USB', 'CW', 'CW-R', 'AM', 'FM', ...flrigModesByAppMode.keys]);
+
   /// Everything flrig publishes a meter method for. Its power meter answers
   /// watts outright and its SWR a ratio, so this is the one driver here
   /// converting nothing on the way up.

@@ -688,6 +688,11 @@ class HaLoServices {
         catServer: () => catServer,
         openCwKeyer: (context) => showCwMessagesDialog(context, this),
         openPhoneKeyer: (context) => showVoiceMessagesDialog(context, this),
+        // A peer's radio counts: it is listed with the station's own, and a
+        // phone driving one uses every CAT and keyer setting there is.
+        hasTransceivers: () =>
+            cat.nodes.any((node) => cat.typeFor(node)?.category == kCategoryTransceiver) || cat.radio1 is PeerRadio || peerRemoteRadios.all.isNotEmpty,
+        inventory: () => Listenable.merge([cat, peerRemoteRadios]),
       ),
     )
     ..register(MapSettingsGroup(settings))

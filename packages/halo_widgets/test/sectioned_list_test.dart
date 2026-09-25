@@ -64,6 +64,33 @@ void main() {
     expect(find.text('First'), findsNothing, reason: 'the section above has been pushed off by this one');
     expect(find.text('own 0'), findsNothing, reason: 'and its own rows scroll under its own band');
   });
+
+  testWidgets('a folding section heading is one control: the title opens it, and the chevron leads the title', (tester) async {
+    // The trap: a heading whose only tap target is the chevron makes the
+    // operator hunt for a small glyph when the title beside it is the
+    // obvious thing to press.
+    var taps = 0;
+    await tester.pumpWidget(host([SectionHeader('Transceivers', leading: const Icon(Icons.chevron_right), onTap: () => taps++), ...rows('row', 2)]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Transceivers'));
+    expect(taps, 1);
+    expect(tester.getTopLeft(find.byIcon(Icons.chevron_right)).dx, lessThan(tester.getTopLeft(find.text('Transceivers')).dx));
+  });
+
+  testWidgets('a category band carries its row below the title and pins it with the band', (tester) async {
+    // The Station panel's current transceiver rides in its band so it stays
+    // in view while the rest scrolls; a row that scrolled away under its own
+    // band would defeat the point of putting it there.
+    await tester.pumpWidget(host([const CategoryBand('Current', below: SizedBox(height: 40, child: Text('the rig'))), ...rows('row', 8)]));
+    await tester.pumpAndSettle();
+    final before = tester.getTopLeft(find.text('the rig')).dy;
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -200));
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(find.text('the rig')).dy, before, reason: 'pinned with its band');
+    expect(find.text('row 0'), findsNothing, reason: 'while the rows under it scrolled away');
+  });
 }
 
 /// A row-building widget that cuts its own sections — what the peers panel's

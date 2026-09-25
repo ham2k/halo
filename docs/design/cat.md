@@ -113,6 +113,22 @@ Two consequences worth stating, because both are load-bearing:
   the form together (that is what makes switching transport land on sensible values with no
   re-seeding logic), so a key they prefill differently has one box and one of the two answers is
   unreachable. A registry self-check forbids it, because there is no run-time symptom.
+- **Every real transceiver also runs as the placeholder.** The registry derives one more variant
+  per model with a maker (key `<model>-placeholder`, `placeholderVariantFor`): the model's name on
+  the placeholder radio's driver and transport, offered last in the editor's connection choice. It is
+  how an operator puts their own rig on the log before there is a cable or an address for it.
+  Bridges and the stand-alone placeholder get none. The keys are derived but still persisted, so
+  the shipped-key test lists them one by one.
+- **A node with no port or address is *unconfigured*, not invalid.** `EquipmentTransport.isUnconfigured`
+  says so (a blank serial port, a blank host); the editor then skips that transport's own checks,
+  the row says "Not configured" and its plug is disabled, and `_connect` answers
+  `_ConnectOutcome.unconfigured` without trying — which the retry ladders treat as done, not as a
+  failure to retry.
+- **Bluetooth serial is the serial transport under another name.** A paired radio's SPP profile is
+  one more serial port to the OS, so `BluetoothSerialTransport` subclasses `SerialTransport` and
+  changes only its key and which ports it ranks first (those with no USB identity). A model offers
+  it only where the radio has one — the IC-705 and the Q900 — with the same defaults as its USB
+  variant, which the registry's self-checks require.
 - **Re-typing a node drops its connection.** Switching transport replaces both the transport and
   the driver, and a live runtime holds a session the old driver built over a connection the old
   transport opened. `CatService.updateNode` disconnects on a typeKey change *only* — an edited host
@@ -229,6 +245,13 @@ what the user configured; everything about a connection is rebuilt at runtime.
   rigctld, `USB-D` for flrig, `DIGU` on a Flex, DATA A (`MD6;DT0;`) on a K4. Where the protocol has
   only a DATA *submode* beside the base mode (Icom `0x1A 0x06`, the TS-590's `DA`), the driver sets
   the base mode, then switches the submode on. For plain USB/LSB/FM it switches the submode off.
+  The Station dialog's **Radio Mode** picker speaks the radio's modes directly. Each driver's
+  `settableModes` lists what its own `setMode` table can send, in its own names (the ones its session
+  reports), and `CatService.setRadio1Mode` sends one without touching VFO A: the report comes back
+  the usual way and `appModeForRadioReport` decides whether the logged mode follows. One driver
+  can serve radios with different modes — CI-V covers an IC-705 with DV and WFM and an IC-7300
+  with neither — so a named model pins its own list in `overrides` (`civRadioModesConfigKey`);
+  the family's generic entry offers everything the driver can send.
   It takes the flag as set at once: the poll's mode answer arrives before the radio confirms the
   flag, and reported against the old one it would put USB in the log. The poll also asks for the
   submode before the mode, and the driver reads it back, so a rig in USB-D reports DATA-USB rather
@@ -786,12 +809,12 @@ exchange record, the store's no-op dropping, Smart VFO Snap — where a
 registry node would need a live session injected into a const-constructed
 transport map and the radio1 reconnect loops taught about session lifetimes.
 The accepted cost: a remote radio has no equipment record and no settings of
-its own — it is named in the compact dialog's Equipment in Use section, as
+its own — it is named in the Station panel's Current Transceiver band, as
 the thing driving the VFO, but there is nothing there to connect or edit.
 
 **A remote radio is picked, never inferred.** A device offers every
 transceiver it has *connected* as a `catOffer`, and the peers list those
-beside their own rigs in the Station panel's one Main VFO dropdown —
+beside their own rigs in the Station panel's one Main VFO picker —
 `CatService.radio1` is the pick — ONE slot holding a `MainVfo`, a sum of
 `LocalRadio` and `PeerRadio`, because `vfoA` is one VFO. Exclusivity is a
 property of that type rather than a pair of clears each writer remembers, and

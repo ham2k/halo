@@ -74,6 +74,9 @@ class GuohetecDriver extends EquipmentDriver {
   @override
   String get name => 'Guohetec (Q900, PMR-171)';
 
+  @override
+  List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(guohetecModeCodes.keys);
+
   /// This protocol has a keyer speed and a sidetone, but no command that
   /// keys TEXT — nothing that takes a message and sends it as CW. Nothing
   /// to declare.

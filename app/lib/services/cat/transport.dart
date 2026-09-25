@@ -198,6 +198,12 @@ abstract class EquipmentTransport {
   /// as-is.
   Map<String, dynamic> targetFor(Map<String, dynamic> config) => config;
 
+  /// True when the field that says where the device is — a serial port, a
+  /// host — is blank. An operator may add a radio before they have the cable
+  /// or the address, so the editor saves it without one and the connection
+  /// layer leaves it alone rather than failing at it on every retry.
+  bool isUnconfigured(Map<String, dynamic> config) => false;
+
   /// A one-line "where is it" fragment for the equipment list — e.g.
   /// `192.168.1.5:4992` or `/dev/cu.usbserial @ 4800`. Empty by default.
   String describeTarget(Map<String, dynamic> config) => '';

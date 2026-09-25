@@ -26,6 +26,7 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/auto_connect_guard.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/radio_modes.dart';
 import 'package:ham2k_logger/services/cat/discovery.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/cat/transports/none_transport.dart';
@@ -2627,6 +2628,93 @@ void main() {
       expect(prefs.getStringList(autoConnectInFlightKey), isNull, reason: 'the hold outlived the Connect that lifted it, and comes back on the next launch');
     });
   });
+
+  group('a radio with no address yet', () {
+    // A transport that reads a blank host as unconfigured, as the real ones
+    // read a blank port or host — the shared fake keeps the old blank-host
+    // error, which one test above still pins.
+    late _BlankableTransport usb;
+    late _BlankableTransport wifi;
+    late CatService bare;
+
+    setUp(() async {
+      usb = _BlankableTransport('usb');
+      wifi = _BlankableTransport('wifi');
+      bare = CatService(
+        settings,
+        radio: radio,
+        registry: EquipmentRegistry(
+          models: [
+            EquipmentModel(
+              key: 'bare',
+              category: kCategoryTransceiver,
+              name: () => 'Bare Radio',
+              variants: [
+                EquipmentVariant(key: 'bare-usb', driver: _ModesDriver(log), transport: usb, defaultConfig: const {'host': ''}),
+                EquipmentVariant(key: 'bare-wifi', driver: _ModesDriver(log), transport: wifi, defaultConfig: const {'host': ''}),
+              ],
+            ),
+          ],
+          transports: {'usb': usb, 'wifi': wifi},
+        ),
+        reconnectDelay: Duration.zero,
+        idleRetryFirst: idleRetryQuiet,
+      );
+      addTearDown(bare.dispose);
+    });
+
+    test('clearing the address of a connected radio takes its session down, not just its label', () async {
+      // Without the teardown the row says disconnected while the session
+      // underneath is still up, and an attempt in flight lands afterwards.
+      final node = await bare.addNode(typeKey: 'bare-usb', name: 'Rig', config: {'host': 'rig.local'});
+      await bare.setRadio1(LocalRadio(node.uuid));
+      final connecting = bare.connect(node.uuid);
+      await pumpEventQueue();
+      final connection = _FakeConnection('c1', log);
+      usb.attempts.last.completer.complete(connection);
+      await connecting;
+      expect(bare.stateFor(node.uuid).status, EquipmentStatus.connected);
+
+      await bare.updateNode(node.copyWith(config: {'host': ''}));
+      await bare.connect(node.uuid);
+      expect(bare.stateFor(node.uuid).status, EquipmentStatus.disconnected);
+      await connection.closed.timeout(const Duration(seconds: 1));
+    });
+
+    test('given an address on another connection, the main radio is tried at once', () async {
+      // Re-typing disconnects on purpose; for a radio that never connected
+      // that mark must not stop the first real attempt.
+      final node = await bare.addNode(typeKey: 'bare-usb', name: 'Rig', config: {'host': ''});
+      await bare.setRadio1(LocalRadio(node.uuid));
+      await bare.connect(node.uuid);
+      expect(usb.attempts, isEmpty, reason: 'nothing to open');
+
+      await bare.updateNode(node.copyWith(typeKey: 'bare-wifi', config: {'host': 'rig.local'}));
+      await pumpEventQueue();
+      expect(wifi.attempts, hasLength(1));
+    });
+
+    test('a radio the app does not keep connected is left alone when it gets an address', () async {
+      final main = await bare.addNode(typeKey: 'bare-usb', name: 'Main', config: {'host': ''});
+      final other = await bare.addNode(typeKey: 'bare-usb', name: 'Other', config: {'host': ''});
+      await bare.setRadio1(LocalRadio(main.uuid));
+      await bare.setDesignated(kCategoryKey, null);
+
+      await bare.updateNode(other.copyWith(config: {'host': 'other.local'}));
+      await pumpEventQueue();
+      expect(usb.attempts, isEmpty, reason: 'only the main radio and the keyer are the app\'s to connect');
+    });
+
+    test('the Radio Mode picker leaves out CW-R, which the app reads back as CW', () async {
+      final node = await bare.addNode(typeKey: 'bare-usb', name: 'Rig', config: {'host': 'rig.local'});
+      await bare.setRadio1(LocalRadio(node.uuid));
+      final connecting = bare.connect(node.uuid);
+      await pumpEventQueue();
+      usb.attempts.last.completer.complete(_FakeConnection('c1', log));
+      await connecting;
+      expect(bare.radio1SettableModes, ['CW'], reason: 'the driver offers CW and CW-R');
+    });
+  });
 }
 
 /// Stands in for either transport's `SerialPortUnavailable`: the classifier
@@ -2640,4 +2728,18 @@ class _FakeSerialProblem implements SerialPortProblem {
 
   @override
   String toString() => 'Could not open /dev/cu.usbserial-FTB6SPL3: No such file or directory';
+}
+
+class _BlankableTransport extends _FakeTransport {
+  _BlankableTransport(String key) : super(transportKey: key);
+
+  @override
+  bool isUnconfigured(Map<String, dynamic> config) => (config['host'] as String? ?? '').trim().isEmpty;
+}
+
+class _ModesDriver extends _FakeDriver {
+  _ModesDriver(super.log);
+
+  @override
+  List<String> settableModes(Map<String, dynamic> config) => const ['CW', 'CW-R'];
 }

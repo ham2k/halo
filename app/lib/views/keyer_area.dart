@@ -31,7 +31,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -300,7 +299,12 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
               if (widget.phone) _VoicePill(cat: widget.cat, services: widget.services) else _KeyerSpeedPill(cat: widget.cat, services: widget.services),
               if (widget.enterSends) ...[const SizedBox(width: Space.sm), _EnterSendsPill(cat: widget.cat)],
               const SizedBox(width: Space.md),
-              Expanded(
+              // Sized to its content unless the typing field is out, so the
+              // close button follows the last control rather than standing
+              // at the far edge, where it reads as closing something bigger
+              // than this strip. The field takes the row when it is there.
+              Flexible(
+                fit: typing == null ? FlexFit.loose : FlexFit.tight,
                 // Keyboard mode puts its field BESIDE the message rather than
                 // in its place: the operator typing ahead of the keyer needs
                 // to see where it has got to. The message stays the first
@@ -309,8 +313,9 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                 // new one, whose bar starts over and reads as the message
                 // going out again.
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
+                    Flexible(
                       child: ListenableBuilder(
                         listenable: Listenable.merge([widget.cat.cwProgress, widget.cat.voiceActivity, widget.cat.keyerRepeat, widget.cat.keyerRepeatActive]),
                         builder: (context, _) {
@@ -390,6 +395,8 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                   );
                 },
               ),
+              // Two spaces between the last control and the close button.
+              const SizedBox(width: Space.sm),
               IconButton(
                 // No hover tooltips (docs/design/user-interface.md), so the
                 // accessible name is the only place this button is named.
@@ -578,12 +585,21 @@ class _MessageButtonsState extends State<_MessageButtons> {
     return ListenableBuilder(
       listenable: Listenable.merge([settings, services.cat]),
       builder: (context, _) {
-        final enabled = services.cat.canKeyCw && widget.onSendMessage != null;
         final theme = Theme.of(context);
+        // Nothing to key CW with at all, connected or not — say so where the
+        // buttons would be, rather than drawing buttons that can never work.
+        if (!services.cat.designatedKeyIsKeyer) return _NotSupported(text: context.t.settings.station.keyerNotSupported);
+        final enabled = services.cat.canKeyCw && widget.onSendMessage != null;
         // The pill's geometry and type, outlined in the chips' accent
         // rather than filled: these ACT, the pill only shows.
         var color = theme.colorScheme.tertiary;
-        if (!enabled) color = color.withValues(alpha: 0.5);
+        // The label and its icons in the text colour other buttons use; the
+        // accent is the outline's.
+        var textColor = theme.colorScheme.onSurface;
+        if (!enabled) {
+          color = color.withValues(alpha: 0.5);
+          textColor = textColor.withValues(alpha: 0.5);
+        }
         final borderRadius = BorderRadius.circular(8);
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -609,18 +625,18 @@ class _MessageButtonsState extends State<_MessageButtons> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(cwMessageNumberIcons[n - 1], size: 14, color: color),
+                              Icon(cwMessageNumberIcons[n - 1], size: 14, color: textColor),
                               // Only on 1, because only 1 repeats — the icon
                               // beside its number is where an operator sees
                               // that a CQ they press will keep going.
                               if (n == 1 && settings.cwRepeatDelay > Duration.zero) ...[
                                 const SizedBox(width: Space.xxs),
-                                Icon(MdiIcons.repeat, size: 14, color: color),
+                                Icon(MdiIcons.repeat, size: 14, color: textColor),
                               ],
                               const SizedBox(width: Space.xs),
                               Text(
                                 _labelFor(n, m.key(n: n)),
-                                style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: color),
+                                style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: textColor),
                               ),
                             ],
                           ),
@@ -634,6 +650,21 @@ class _MessageButtonsState extends State<_MessageButtons> {
       },
     );
   }
+}
+
+/// Where the message buttons would be, when the radio in use cannot send
+/// them: in the buttons' own dimmed accent, so it reads as their absence.
+class _NotSupported extends StatelessWidget {
+  final String text;
+
+  const _NotSupported({required this.text});
+
+  @override
+  Widget build(BuildContext context) => Text(
+    text,
+    overflow: TextOverflow.ellipsis,
+    style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.5)),
+  );
 }
 
 /// While nothing is playing, in a Phone mode: one outlined button per voice
@@ -654,11 +685,19 @@ class _VoiceButtons extends StatelessWidget {
     return ListenableBuilder(
       listenable: Listenable.merge([settings, cat]),
       builder: (context, _) {
+        // A radio with no voice memories to play — see the CW buttons.
+        if (!cat.radio1HasVoiceMemories) return _NotSupported(text: context.t.settings.station.keyerNotSupported);
         final enabled = cat.canPlayVoice;
         final count = enabled ? cat.voiceMemoryCount : SettingsService.voiceMessageCount;
         final theme = Theme.of(context);
         var color = theme.colorScheme.tertiary;
-        if (!enabled) color = color.withValues(alpha: 0.5);
+        // The label and its icons in the text colour other buttons use; the
+        // accent is the outline's.
+        var textColor = theme.colorScheme.onSurface;
+        if (!enabled) {
+          color = color.withValues(alpha: 0.5);
+          textColor = textColor.withValues(alpha: 0.5);
+        }
         final borderRadius = BorderRadius.circular(8);
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -684,17 +723,17 @@ class _VoiceButtons extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(cwMessageNumberIcons[n - 1], size: 14, color: color),
+                              Icon(cwMessageNumberIcons[n - 1], size: 14, color: textColor),
                               // Only on 1, because only 1 repeats — see the
                               // CW buttons.
                               if (n == 1 && settings.voiceRepeatDelay > Duration.zero) ...[
                                 const SizedBox(width: Space.xxs),
-                                Icon(MdiIcons.repeat, size: 14, color: color),
+                                Icon(MdiIcons.repeat, size: 14, color: textColor),
                               ],
                               const SizedBox(width: Space.xs),
                               Text(
                                 voiceMessageLabelFor(cat, n, m.key(n: n)),
-                                style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: color),
+                                style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: textColor),
                               ),
                             ],
                           ),
@@ -910,7 +949,8 @@ class _VoicePill extends StatelessWidget {
   }
 }
 
-/// The keyer speed as the radio reports it; tapping opens [showKeyerSpeedDialog].
+/// The keyer speed as the radio reports it; tapping opens the CW Keyer
+/// Messages editor, as the voice pill opens its own.
 ///
 /// Dressed like an unselected secondary-control chip (secondary_control_row.dart's
 /// `_ControlChip`: tertiaryLight fill, onTertiaryContainer text, the boxy
@@ -946,8 +986,10 @@ class _KeyerSpeedPill extends StatelessWidget {
           borderRadius: borderRadius,
           child: InkWell(
             borderRadius: borderRadius,
-            onTap: enabled ? () => showKeyerSpeedDialog(context, cat, services: services) : null,
-            mouseCursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+            // Whether or not anything can key: the messages are the
+            // operator's to write before the radio is on.
+            onTap: () => showCwMessagesDialog(context, services),
+            mouseCursor: SystemMouseCursors.click,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
               child: Row(
@@ -1033,176 +1075,6 @@ class _EnterSendsPill extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-/// The keyer, mid-QSO: the speed (Enter or Save applies it and closes),
-/// a way to the message editor, and a free-text message that goes straight
-/// to the queue — as typed, no template — with Enter or Send, which closes
-/// the dialog too: the keyer area is where the message is then watched. The speed is clamped to what radio1's
-/// keyer accepts, and what shows afterwards is what the radio reports back,
-/// never the typed value assumed.
-Future<void> showKeyerSpeedDialog(BuildContext context, CatService cat, {required HaLoServices services}) => showHaloDialog<void>(
-  context: context,
-  builder: (context) => _KeyerSpeedDialog(cat: cat, services: services),
-);
-
-class _KeyerSpeedDialog extends StatefulWidget {
-  final CatService cat;
-  final HaLoServices services;
-
-  const _KeyerSpeedDialog({required this.cat, required this.services});
-
-  @override
-  State<_KeyerSpeedDialog> createState() => _KeyerSpeedDialogState();
-}
-
-class _KeyerSpeedDialogState extends State<_KeyerSpeedDialog> {
-  late final _speed = TextEditingController(text: widget.cat.keyerSpeed?.toString() ?? '');
-  final _message = TextEditingController();
-
-  @override
-  void dispose() {
-    _speed.dispose();
-    _message.dispose();
-    super.dispose();
-  }
-
-  void _applySpeed() {
-    final wpm = int.tryParse(_speed.text.trim());
-    final range = widget.cat.keyerSpeedRange;
-    if (wpm != null && range != null) widget.cat.setKeyerSpeed(wpm.clamp(range.min, range.max));
-  }
-
-  void _save() {
-    _applySpeed();
-    Navigator.of(context).pop();
-  }
-
-  /// Queues the text and closes: the message is on its way, and the keyer
-  /// area shows it going out.
-  void _send() {
-    final text = _message.text.trim();
-    if (text.isEmpty) return;
-    widget.cat.sendCw(text);
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s = context.t.settings.radio.keyerSpeed;
-    final m = context.t.settings.radio.cwMessages;
-    final theme = Theme.of(context);
-    // The dialog's own content inset is dropped so the section band runs
-    // edge to edge, the way it does on the settings screens; the rows take
-    // the inset the dialog would have given them (halo_dialog.dart's
-    // default) themselves.
-    const rowInset = EdgeInsets.symmetric(horizontal: Space.xxl);
-    return HaloDialog(
-      title: Text(context.t.settings.radio.cwKeying),
-      contentPadding: EdgeInsets.zero,
-      // The body scrolls itself, because its band pins — which needs a
-      // sliver viewport, and the shell's plain scroll view is not one.
-      scrollable: false,
-      content: SectionedListView(
-        shrinkWrap: true,
-        children: [
-          // First, and a row of its own: the editor is where the messages
-          // the function keys send are written, which is what an operator
-          // opens this dialog for more often than a speed change. Shaped as
-          // a settings row — leading icon, chevron, the whole row tapping —
-          // since that is what a row leading somewhere else looks like
-          // everywhere in the app (form_renderer.dart's select rows).
-          ListTile(
-            contentPadding: rowInset,
-            leading: const Icon(MdiIcons.messageBulleted),
-            title: Text(m.edit, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
-            trailing: Icon(MdiIcons.chevronRight, color: theme.colorScheme.onSurfaceVariant),
-            onTap: () async {
-              await showCwMessagesDialog(context, widget.services);
-              if (mounted) setState(() {});
-            },
-            mouseCursor: SystemMouseCursors.click,
-          ),
-          Padding(
-            padding: rowInset.copyWith(top: Space.md, bottom: Space.xl),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: TextField(
-                    controller: _speed,
-                    autofocus: true,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: poloFieldDecoration(context, s.unit),
-                    onSubmitted: (_) => _save(),
-                  ),
-                ),
-                const SizedBox(width: Space.md),
-                // Only message 1 repeats (SettingsService.cwRepeatDelay),
-                // which is what the label's circled 1 says without a
-                // sentence. Wider than the speed beside it: its longest
-                // option is a phrase, the speed's is two digits.
-                Expanded(
-                  flex: 3,
-                  child: DropdownButtonFormField<String>(
-                    // Keyed by the stored value: the CW Keyer dialog, opened
-                    // from the row above, sets the same repeat, and a field
-                    // built once would go on showing the old one.
-                    key: ValueKey(widget.services.settings.cwRepeatDelay),
-                    isExpanded: true,
-                    initialValue: '${widget.services.settings.cwRepeatDelay.inSeconds}',
-                    icon: dropdownTrailingIcon,
-                    decoration: poloFieldDecoration(context, m.repeat),
-                    menuMaxHeight: dropdownMenuMaxHeight(context),
-                    items: [
-                      for (final option in SettingsService.cwRepeatDelayOptions)
-                        DropdownMenuItem<String>(
-                          value: option,
-                          child: Text(option == '0' ? m.repeatOff : m.repeatAfter(n: option)),
-                        ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      // Off ends a chain already running: the operator turned
-                      // it off while a CQ was waiting to go again.
-                      if (value == '0') widget.cat.cancelKeyerRepeat();
-                      setState(() {});
-                      unawaited(widget.services.settings.setCwRepeatDelay(int.parse(value)));
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SectionHeader(m.custom),
-          Padding(
-            padding: rowInset.copyWith(top: Space.lg, bottom: Space.xl),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _message,
-                    // Uppercase as typed — Morse has no case, and the queue
-                    // would uppercase anyway; seeing it while typing says so.
-                    textCapitalization: TextCapitalization.characters,
-                    inputFormatters: [UpperCaseTextFormatter()],
-                    decoration: poloFieldDecoration(context, m.customField),
-                    onSubmitted: (_) => _send(),
-                  ),
-                ),
-                const SizedBox(width: Space.md),
-                FilledButton.tonal(onPressed: _send, child: Text(m.send)),
-              ],
-            ),
-          ),
-        ],
-      ),
-      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-      actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
     );
   }
 }

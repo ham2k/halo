@@ -70,6 +70,21 @@ class AccordionHeader extends StatelessWidget {
       onPressed: onToggle,
     );
 
+    // The chevron hangs in the left margin when the margin has room for it, so
+    // the TITLE starts where the rows' own text does — the same line a
+    // [CategoryBand] or [SectionHeader] title keeps. Where the margin is too
+    // narrow the chevron sits at the edge and the title follows it.
+    //
+    // The rows' inset is read from the ambient ListTileTheme, which already
+    // carries any centring a wide pane adds (settings_view.dart) — so
+    // [headerInset] is NOT added on this side, or the title lands a whole
+    // centring past the rows.
+    final direction = Directionality.of(context);
+    final inset = headerInset.resolve(direction);
+    final rowStart = (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xxl)).resolve(direction).left;
+    final hanging = rowStart - kMinInteractiveDimension;
+    final left = hanging > Space.xs ? hanging : Space.xs;
+
     return Material(
       color: headerColor,
       child: InkWell(
@@ -78,10 +93,12 @@ class AccordionHeader extends StatelessWidget {
           // Extra room on the right so the trailing control doesn't sit flush
           // against the pane's edge — the rows below match it, see
           // `contentPadding`.
-          padding: const EdgeInsets.fromLTRB(Space.xs, Space.sm, Space.lg, Space.sm).add(headerInset),
+          padding: EdgeInsets.fromLTRB(left, Space.sm, Space.lg + inset.right, Space.sm),
           child: Row(
             children: [
-              arrow,
+              // A fixed width, whatever the platform's visual density makes
+              // of an IconButton, so the title lands where `left` put it.
+              SizedBox.square(dimension: kMinInteractiveDimension, child: arrow),
               Expanded(child: title),
               if (trailing != null)
                 GestureDetector(

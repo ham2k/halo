@@ -465,6 +465,12 @@ Color haloDialogBandColorAt(BuildContext context) {
   );
 }
 
+/// The ground of a CATEGORY heading — [CategoryBand] and the Settings
+/// panel's collapsible categories. Half way from the surface to the dialog
+/// band, so a category reads as a shelf without the weight of a pane's own
+/// header and footer, which keep [haloDialogBandColorAt].
+Color haloCategoryBandColor(BuildContext context) => Color.lerp(Theme.of(context).colorScheme.surface, haloDialogBandColorAt(context), 0.5)!;
+
 /// The two tones a sheet that presents a LIST inside a Modal Pane paints
 /// with: [haloSheetListBackground] behind everything, [haloSheetRowColor] on
 /// each row. Rows have to be opaque — the background shows straight through

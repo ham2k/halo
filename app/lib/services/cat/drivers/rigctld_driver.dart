@@ -103,6 +103,9 @@ class RigctldDriver extends EquipmentDriver {
   @override
   String get name => 'Hamlib rigctld';
 
+  @override
+  List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(['LSB', 'USB', 'CW', 'AM', 'FM', ...hamlibModesByAppMode.keys]);
+
   /// The levels Hamlib defines for these, all of them read-only meters. No
   /// ALC-free or SWR-free backend is excluded by declaring them: a level a
   /// backend does not implement answers `RPRT -11`, which this driver

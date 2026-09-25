@@ -407,6 +407,7 @@ class RadioHookup {
     this.hasConfiguredRadio = false,
     this.radioConnected = false,
     this.onOpenStationConfig,
+    this.onConnectRadio,
     this.radioName,
     this.ourItuRegion,
     this.ourCountryCode,
@@ -451,9 +452,15 @@ class RadioHookup {
   /// [hasConfiguredRadio].
   final VoidCallback? onOpenStationConfig;
 
+  /// Connects the main VFO's radio — offered beside the Station Configuration
+  /// icon while [radioConnected] is false and the app can do something about
+  /// it from here. Null hides it: connected already, no radio, or one this
+  /// device cannot reach for (a peer's, or one with no port or address).
+  final VoidCallback? onConnectRadio;
+
   /// [hasConfiguredRadio]'s display name — shown in small type below the
-  /// Station Configuration icon, past the Mode dropdown, ellipsized past 3x
-  /// the icon's own width. Null when there's no radio (nothing to name) or
+  /// Station Configuration icon, past the Mode dropdown, taking what the row
+  /// has left and ellipsized past it. Null when there's no radio (nothing to name) or
   /// [onOpenStationConfig] is null (nothing for tapping it to do).
   final String? radioName;
 
@@ -501,6 +508,7 @@ class RadioHookup {
     bool? hasConfiguredRadio,
     bool? radioConnected,
     VoidCallback? onOpenStationConfig,
+    VoidCallback? onConnectRadio,
     String? radioName,
     int? ourItuRegion,
     String? ourCountryCode,
@@ -513,6 +521,7 @@ class RadioHookup {
     hasConfiguredRadio: hasConfiguredRadio ?? this.hasConfiguredRadio,
     radioConnected: radioConnected ?? this.radioConnected,
     onOpenStationConfig: onOpenStationConfig ?? this.onOpenStationConfig,
+    onConnectRadio: onConnectRadio ?? this.onConnectRadio,
     radioName: radioName ?? this.radioName,
     ourItuRegion: ourItuRegion ?? this.ourItuRegion,
     ourCountryCode: ourCountryCode ?? this.ourCountryCode,

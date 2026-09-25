@@ -23,6 +23,14 @@ Map<String, dynamic> hostConfigElement() => {
 
 String trimmedHost(Map<String, dynamic> config) => stringFromConfig(config, 'host').trim();
 
+/// Whether [key] is missing or a blank String — what makes a pairing
+/// unconfigured. A value of the wrong shape is NOT blank: it is a broken
+/// record, and `validate()` has to get the chance to say so.
+bool blankInConfig(Map<String, dynamic> config, String key) {
+  final value = config[key];
+  return value == null || (value is String && value.trim().isEmpty);
+}
+
 String? validateHostField(String key, dynamic value, Map<String, dynamic> config) {
   if (key != 'host') return null;
   return trimmedHost({...config, 'host': value}).isEmpty ? t.settings.station.hostRequired : null;

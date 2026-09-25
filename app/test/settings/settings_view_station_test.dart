@@ -89,17 +89,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No equipment configured'), findsOneWidget);
-    expect(find.text('Add equipment'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Add'), findsOneWidget);
   });
 
-  testWidgets('the Current Configuration fields start where the list rows do', (tester) async {
+  testWidgets('the Configuration fields start where the list rows do', (tester) async {
     // On a wide pane the rows are centred to the ideal reading width by an
     // inset that rides the ambient ListTileTheme. A hand-built row that names
     // a spacing rung instead spans the whole pane, and the fields sit a
     // couple of hundred pixels left of every row around them.
-    // A configured radio, because the reference below has to be a plain row
-    // of the list: Add Equipment is a button in the Inventory heading now,
-    // and a heading stands proud of the rows rather than lining up with them.
     await pumpSettings(
       tester,
       catEnabled: true,
@@ -113,18 +110,19 @@ void main() {
             'name': 'Left Radio',
             'config': {'host': 'flex.local', 'port': 4992},
           },
+          'ant-1': {'typeKey': 'antenna-none', 'name': 'Dipole', 'config': <String, dynamic>{}},
         },
       },
     );
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
-    final field = tester.getRect(find.widgetWithText(DropdownButtonFormField<String?>, 'Transceiver for Main VFO'));
-    // The leading glyph of a plain row in the same list — where a row's
-    // contents actually start, inset and centring included.
+    final field = tester.getRect(find.widgetWithText(DropdownButtonFormField<String?>, 'Antenna in Use'));
+    // The leading control of a ListTile in the same list — the current
+    // transceiver's plug button — is where a row's contents actually start.
     final rowFinder = find.widgetWithText(ListTile, 'Left Radio');
     final row = tester.getRect(rowFinder.first);
-    final rowContentLeft = tester.getRect(find.descendant(of: rowFinder.first, matching: find.byType(Icon)).first).left;
+    final rowContentLeft = tester.getRect(find.ancestor(of: find.byIcon(MdiIcons.powerPlugOff), matching: find.byType(IconButton))).left;
 
     expect(field.left, rowContentLeft);
     // And that both of them are where a WIDE pane puts them. Comparing the
@@ -133,17 +131,15 @@ void main() {
     expect(field.left - row.left, greaterThan(settingsRowInset + settingsRowCentering(row.width) / 2));
   });
 
-  testWidgets('configured equipment lists with its address and status', (tester) async {
+  testWidgets('the current transceiver heads the panel with its address and state, and the inventory lists it again', (tester) async {
     await pumpSettings(
       tester,
       catEnabled: true,
       equipment: {
         'version': 1,
-        // radio1 is spelled out because it is now plain stored state — the panel
-        // shows exactly what was saved and nothing designates a radio on load
-        // (HALO-50). A real blob always carries this key once a transceiver
-        // exists, since adding one writes it; a fixture without it describes a
-        // configuration the app never produces.
+        // radio1 is spelled out because it is plain stored state — the panel
+        // shows exactly what was saved and nothing designates a radio on load.
+        // A real blob always carries this key once a transceiver exists.
         'radio1': 'radio-1',
         'nodes': {
           'radio-1': {
@@ -158,33 +154,30 @@ void main() {
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
-    // Twice, and both are meant: once as the chosen Main VFO in Current
-    // Configuration, once as its own row in Equipment Inventory.
-    expect(find.text('Left Radio'), findsNWidgets(2));
-    // Where it is, and that nothing is pretending to be connected on load.
-    // Read off the SEMANTICS rather than the painted string: the row clips an
-    // address that does not fit, and clips it from the FRONT (AddressText),
-    // so what paints here is a tail. The whole address stays in the semantics
-    // tree — a screen reader has no width to run out of — and a RegExp
-    // because the label carries the channel suffix after it.
-    final semantics = tester.ensureSemantics();
-    expect(find.bySemanticsLabel(RegExp(r'flex\.local:4992')), findsOneWidget);
-    semantics.dispose();
-    // No status word at all now — state and control are one icon: an unplugged plug, which connects when
-    // pressed. No localized word, so nothing here can grow and squeeze the
-    // live frequency out of the row.
+    // Once, in the Current Transceiver band: the inventory's sections start
+    // closed, so a panel opened to check the rig is not a list to scroll.
+    expect(find.text('Left Radio'), findsOneWidget);
+    expect(find.text('flex.local:4992'), findsOneWidget);
+    // State and control are one icon: an unplugged plug, which connects when
+    // pressed — and no status word to squeeze the reading out of the row.
     expect(find.byIcon(MdiIcons.powerPlugOff), findsOneWidget);
     expect(find.byIcon(MdiIcons.powerPlug), findsNothing);
-    // The sole transceiver is auto-designated radio1, so it wears the pill —
-    // a one-radio shack never has to choose.
-    expect(find.text('Main VFO'), findsOneWidget);
+    expect(find.text('Not connected'), findsOneWidget, reason: 'where the reading goes while there is none');
+
+    // Opened, the inventory names it again, as the radio the main VFO follows.
+    await tester.tap(find.text('1 transceiver'));
+    await tester.pumpAndSettle();
+    expect(find.text('Left Radio'), findsNWidgets(2));
+    final semantics = tester.ensureSemantics();
+    expect(find.bySemanticsLabel('Main VFO'), findsOneWidget, reason: 'its icon says it is the one in use');
+    semantics.dispose();
   });
 
   testWidgets('the panel is categories over sections, and both pin', (tester) async {
     // Two heading levels, and the difference between them is what says which
-    // is which: a category runs edge to edge on the dialog band's ground, a
-    // section is accent-on-surface over a rule inside one. Both hold the top
-    // of the pane while their rows scroll under them.
+    // is which: a category runs edge to edge on its band, a section is
+    // accent-on-surface over a rule inside one. Both hold the top of the pane
+    // while their rows scroll under them.
     await pumpSettings(
       tester,
       catEnabled: true,
@@ -205,18 +198,19 @@ void main() {
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
-    for (final title in ['Current Configuration', 'Equipment Inventory', 'Other Options']) {
+    for (final title in ['Current Transceiver', 'Equipment Inventory', 'CAT Control Preferences']) {
       expect(find.widgetWithText(CategoryBand, title), findsOneWidget, reason: '"$title" is a category');
     }
-    // The inventory's own kinds, as sections under it.
-    expect(find.widgetWithText(SectionHeader, 'Transceivers'), findsOneWidget);
-    expect(find.widgetWithText(SectionHeader, 'Antennas'), findsOneWidget);
-    // A kind with nothing in it gets no heading at all.
-    expect(find.widgetWithText(SectionHeader, 'Other Equipment'), findsNothing);
+    expect(find.widgetWithText(SectionHeader, 'Configuration'), findsOneWidget);
+    // The inventory's own kinds, as sections under it, counted.
+    expect(find.widgetWithText(SectionHeader, '1 transceiver'), findsOneWidget);
+    expect(find.widgetWithText(SectionHeader, '1 antenna'), findsOneWidget);
+    // A kind with nothing in it gets no heading at all — transceivers aside.
+    expect(find.textContaining('other device'), findsNothing);
 
     // Pinned, both levels — SectionedListView cuts on either.
     expect(find.ancestor(of: find.byType(CategoryBand), matching: find.byType(PinnedHeaderSliver)), findsWidgets);
-    expect(find.ancestor(of: find.widgetWithText(SectionHeader, 'Transceivers'), matching: find.byType(PinnedHeaderSliver)), findsOneWidget);
+    expect(find.ancestor(of: find.widgetWithText(SectionHeader, '1 transceiver'), matching: find.byType(PinnedHeaderSliver)), findsOneWidget);
   });
 
   testWidgets('Add Equipment is a button in the Inventory heading', (tester) async {
@@ -226,9 +220,9 @@ void main() {
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
-    final button = find.widgetWithText(FilledButton, 'Add equipment');
+    final button = find.widgetWithText(FilledButton, 'Add');
     expect(button, findsOneWidget);
-    expect(find.widgetWithText(ListTile, 'Add equipment'), findsNothing, reason: 'and no longer a row');
+    expect(find.widgetWithText(ListTile, 'Add'), findsNothing, reason: 'and no longer a row');
     expect(
       find.ancestor(of: button, matching: find.widgetWithText(CategoryBand, 'Equipment Inventory')),
       findsOneWidget,
@@ -241,7 +235,7 @@ void main() {
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add equipment'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
     // Not pumpAndSettle: while nothing has announced itself the dialog shows
     // a CircularProgressIndicator, which never settles.
     await tester.pump();
@@ -329,7 +323,7 @@ void main() {
       await tester.tap(find.text('Station Configuration'));
       await tester.pumpAndSettle();
     }
-    await tester.tap(find.text('Add equipment').last);
+    await tester.tap(find.widgetWithText(FilledButton, 'Add').last);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
   }
@@ -775,7 +769,7 @@ void main() {
 
     await settle();
     await tapVisible(find.text('Station Configuration'));
-    await tapVisible(find.text('Add equipment').last);
+    await tapVisible(find.widgetWithText(FilledButton, 'Add').last);
     await tapVisible(find.text('Other Brands'));
     await tapVisible(find.text('Generic Radio (Placeholder)').last);
 
@@ -825,7 +819,7 @@ void main() {
 
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Add equipment'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await openBrand(tester, 'Icom');
@@ -836,7 +830,7 @@ void main() {
     // Opened on the verified pairing, and the choice is a field in the form
     // rather than a fork before it.
     expect(find.text('Connection'), findsWidgets);
-    expect(find.text('WiFi'), findsWidgets);
+    expect(find.widgetWithText(SegmentedButton<dynamic>, 'Network/WiFi'), findsOneWidget);
     // The network pairing's own fields are showing...
     expect(find.text("Radio username"), findsWidgets);
     // ...and the serial pairing's are not, though they are registered.
@@ -855,6 +849,46 @@ void main() {
     // The discriminator chose a typeKey; it is not itself a setting any
     // transport or driver reads, so it must not be stored as one.
     expect(node.config.containsKey('transport'), isFalse);
+  });
+
+  testWidgets('switched to WiFi, only WiFi\'s own rules apply: a missing username refuses the save', (tester) async {
+    // The trap: FormRenderer validates every declared field, hidden ones
+    // included, so the editor must ask the pairing the connection choice
+    // NAMES. Asked of the serial pairing it opened on instead — whose port
+    // is set — this save would go through with a WiFi radio that cannot log
+    // in. (A blank field of the other pairing proves nothing: a pairing with
+    // no port or address is unconfigured and skips its checks.)
+    final services = await pumpSettings(
+      tester,
+      catEnabled: true,
+      secureStorage: FakeSecureStorage(),
+      equipment: {
+        'version': 1,
+        'nodes': {
+          'radio-1': {
+            'typeKey': 'ic705-serial',
+            'name': 'The 705',
+            'config': {'port': '/dev/cu.usbmodem1', 'civAddress': 'A4', 'baudRate': 19200},
+          },
+        },
+      },
+    );
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1 transceiver'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('The 705').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.descendant(of: find.byType(SegmentedButton<dynamic>), matching: find.text('Network/WiFi')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Address').first, '10.0.0.9');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save').last);
+    await tester.pumpAndSettle();
+
+    expect(services.cat.nodes.single.typeKey, 'ic705-serial', reason: 'not saved as WiFi without a username');
+    expect(find.text('Save'), findsWidgets, reason: 'the editor is still open, with the error on its field');
   });
 
   testWidgets('switching transport swaps which pairing the form is describing', (tester) async {
@@ -881,15 +915,13 @@ void main() {
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
     // The row, not the Main VFO dropdown above it — the name appears in both.
+    // The inventory's sections start closed; the row is in Transceivers.
+    await tester.tap(find.text('1 transceiver'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('The 705').last);
     await tester.pumpAndSettle();
 
-    // The transport dropdown is found by its CURRENT value, not by position:
-    // choosing serial adds a baud-rate dropdown of its own, so an index would
-    // start aiming at that instead.
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<dynamic>, 'WiFi'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('USB serial').last);
+    await tester.tap(find.descendant(of: find.byType(SegmentedButton<dynamic>), matching: find.text('USB Serial')));
     await tester.pumpAndSettle();
 
     // The other pairing's fields took over, and its prefill came with it —
@@ -906,9 +938,7 @@ void main() {
     // Switching back finds what was already there. FormRenderer keeps a
     // hidden field's value, which is exactly why nothing here has to thread
     // the old transport's settings anywhere.
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<dynamic>, 'USB serial'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('WiFi').last);
+    await tester.tap(find.descendant(of: find.byType(SegmentedButton<dynamic>), matching: find.text('Network/WiFi')));
     await tester.pumpAndSettle();
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Address').first).controller?.text, '10.0.0.9');
@@ -944,6 +974,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // The row, not the Main VFO dropdown above it — the name appears in both.
+    // The inventory's sections start closed; the row is in Transceivers.
+    await tester.tap(find.text('1 transceiver'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('The 705').last);
     await tester.pumpAndSettle();
 
@@ -958,9 +991,9 @@ void main() {
     expect(field.controller?.text, isNot(contains('hunter2')));
   });
 
-  testWidgets('the Main VFO transceiver is chosen from a dropdown of every known radio', (tester) async {
-    // Configuration, not link state: the dropdown offers every transceiver
-    // the station knows about, whether or not it happens to be connected.
+  testWidgets('the Main VFO radio is picked from every known radio, by the menu or by a row\'s icon', (tester) async {
+    // Configuration, not link state: both ways offer every transceiver the
+    // station knows about, whether or not it happens to be connected.
     final services = await pumpSettings(
       tester,
       catEnabled: true,
@@ -984,19 +1017,24 @@ void main() {
 
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
+    expect(find.text('Current Transceiver'), findsOneWidget);
 
-    expect(find.text('Current Configuration'), findsOneWidget);
-    expect(find.text('Equipment Inventory'), findsOneWidget);
-    expect(find.text('Transceiver for Main VFO'), findsOneWidget);
-
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<String?>, 'Transceiver for Main VFO'));
+    // The menu under the current transceiver's row.
+    await tester.tap(find.byIcon(MdiIcons.menuDown));
     await tester.pumpAndSettle();
-    // Neither radio is connected, and both are offered anyway.
-    expect(find.text('Right Radio'), findsWidgets);
-
-    await tester.tap(find.text('Right Radio').last);
+    expect(find.text('Right Radio'), findsOneWidget, reason: 'neither is connected, and both are offered');
+    await tester.tap(find.text('Right Radio'));
     await tester.pumpAndSettle();
     expect(services.cat.radio1, LocalRadio('radio-2'));
+
+    // And the inventory's own row: its dim icon makes it the one.
+    await tester.tap(find.text('2 transceivers'));
+    await tester.pumpAndSettle();
+    final semantics = tester.ensureSemantics();
+    await tester.tap(find.bySemanticsLabel('Use Left Radio for the Main VFO'));
+    await tester.pumpAndSettle();
+    semantics.dispose();
+    expect(services.cat.radio1, LocalRadio('radio-1'));
   });
 
   testWidgets("a multi-channel radio wears its channel beside the name, not in the address", (tester) async {
@@ -1021,6 +1059,8 @@ void main() {
     );
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('1 transceiver'));
+    await tester.pumpAndSettle();
 
     expect(find.text('Slice B'), findsOneWidget);
 
@@ -1031,15 +1071,9 @@ void main() {
     final name = tester.getRect(find.text('Shack Flex').last);
     expect(pill.left, greaterThan(name.left), reason: 'after the name');
 
-    // And gone from the ADDRESS, which now says only where the radio is. Read
-    // off that row's semantics rather than its painted string, which is a
-    // clipped tail (AddressText) — and off that row alone, since the pill's
-    // own text is in the semantics tree too.
-    final address = tester
-        .widgetList<Text>(find.byType(Text))
-        .map((text) => text.semanticsLabel)
-        .firstWhere((label) => label != null && label.contains('flex.local'));
-    expect(address, 'flex.local:4992', reason: 'the slice is no longer tacked onto it');
+    // And gone from the ADDRESS, which says only where the radio is — on the
+    // inventory row and on the current transceiver's alike.
+    expect(find.text('flex.local:4992'), findsNWidgets(2), reason: 'the slice is not tacked onto it');
   });
 
   testWidgets('a node whose type no longer exists says so instead of vanishing', (tester) async {
@@ -1055,6 +1089,10 @@ void main() {
     );
 
     await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+    // With no category to file it under it is other equipment — counted
+    // there, and listed once that section is open.
+    await tester.tap(find.text('1 other device'));
     await tester.pumpAndSettle();
 
     expect(find.text('Old Rig'), findsOneWidget);

@@ -723,12 +723,10 @@ and these rules are what keep it one:
   declaration.
 - **A section is headed by `SectionHeader`**: the accent title in the slab
   face, a step above the row face, over a hairline rule in that same accent,
-  on no ground of its own. Title and rule both stand `SectionHeader.overhang`
-  OUTSIDE the row inset — the heading is proud of the rows it heads rather
-  than lined up with them, where it would read as one more row, and the rule
-  still measures the content rather than running full-bleed the way a filled
-  band does. (A pane that insets its rows by less than the overhang gets a
-  band at its own edge, never one pushed off it.) `FormRenderer`'s
+  on no ground of its own. Title and rule both keep the row inset, lining up
+  with the rows they head — the slab face and the rule are what set the
+  heading apart — and the rule measures the content rather than running
+  full-bleed the way a filled band does. `FormRenderer`'s
   `style: 'section'` header IS that widget, and it is the only section header
   in the app. It abuts its rows on both sides — the gap belongs above a
   section, not between a heading and what it names. Pinned it paints the
@@ -746,8 +744,8 @@ and these rules are what keep it one:
   and the `SectionHeader`s after it are gathered into it, so their bands pin
   UNDER the category's rather than pushing it off — the two-deep stack the
   Settings panel gets from its accordion, for a surface whose categories do
-  not fold (the Station panel's Current Configuration, Equipment Inventory
-  and Other Options). The band is
+  not fold (the Station panel's Current Transceiver, Equipment Inventory
+  and CAT Control Preferences). The band is
   a `PinnedHeaderSliver`, so it is as tall as it lays out to — a title that
   wraps at a large font scale takes the room it needs rather than a stated
   extent's guess — and nested bands STACK: a section band pins under whatever

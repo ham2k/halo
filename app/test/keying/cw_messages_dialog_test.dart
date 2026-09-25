@@ -32,6 +32,22 @@ void main() {
     ),
   );
 
+  testWidgets('with nothing to key CW: says so first, then speed and repeat, then which set', (tester) async {
+    // The order is the point: how messages go out is adjusted between
+    // contacts, which set is being edited far less often, and a key that
+    // cannot send makes every control below moot — so that comes first.
+    await tester.pumpWidget(host());
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    double top(Finder finder) => tester.getTopLeft(finder.first).dy;
+    final notice = find.text('Current radio does not support CW keying');
+    expect(notice, findsOneWidget);
+    expect(top(notice), lessThan(top(find.text('Keyer speed'))));
+    expect(top(find.text('Keyer speed')), lessThan(top(find.text('Message Set'))));
+    expect(top(find.text('Repeat Message #1')), lessThan(top(find.text('Message Set'))));
+  });
+
   testWidgets('one row per key, labelled where a label exists, the message underneath', (tester) async {
     await services.settings.setCwMessage(1, 'CQ CQ DE {{ op.call }} K');
     await services.settings.setCwMessageLabel(1, 'CQ');
@@ -39,7 +55,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    expect(find.text('CW Keyer'), findsOneWidget);
+    expect(find.text('CW Keyer Messages'), findsOneWidget);
     expect(find.byType(ListTile), findsNWidgets(SettingsService.cwMessageCount));
     expect(find.text('CQ CQ DE {{ op.call }} K'), findsOneWidget);
     expect(find.textContaining('F1'), findsWidgets);
@@ -59,6 +75,10 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
+    // The header above the rows is tall enough to push a row under the
+    // footer at the test's window size; an operator scrolls it into view.
+    await tester.ensureVisible(find.byType(ListTile).at(2));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(ListTile).at(2));
     await tester.pumpAndSettle();
     expect(find.text('Message (3)'), findsOneWidget);
@@ -94,6 +114,10 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
+    // The header above the rows is tall enough to push a row under the
+    // footer at the test's window size; an operator scrolls it into view.
+    await tester.ensureVisible(find.byType(ListTile).at(2));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(ListTile).at(2));
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, 'F3'), '{{ qso.call }} {{ qso.serial | pad: 3 }}');
@@ -113,7 +137,7 @@ void main() {
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(find.text('Writing CW Messages'), findsNothing);
-    expect(find.text('CW Keyer'), findsOneWidget, reason: 'the editor is still open behind it');
+    expect(find.text('CW Keyer Messages'), findsOneWidget, reason: 'the editor is still open behind it');
     expect(find.text('{{ qso.call }} {{ qso.serial | pad: 3 }}'), findsOneWidget, reason: 'and still holds the draft');
   });
 
@@ -151,6 +175,10 @@ void main() {
     await tester.pumpAndSettle();
 
     final before = services.settings.cwMessage(3);
+    // The header above the rows is tall enough to push a row under the
+    // footer at the test's window size; an operator scrolls it into view.
+    await tester.ensureVisible(find.byType(ListTile).at(2));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(ListTile).at(2));
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, 'F3'), 'NEVER STORED');
@@ -172,7 +200,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<String>, 'Repeat Message ❶'));
+    await tester.tap(find.widgetWithText(DropdownButtonFormField<String>, 'Repeat Message #1'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('After 5 seconds').last);
     await tester.pumpAndSettle();

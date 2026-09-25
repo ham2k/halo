@@ -213,6 +213,7 @@ void main() {
       'ft857-serial',
       'ft897-serial',
       'q900-serial',
+      'q900-bluetooth',
       'icom-generic-serial',
       'kenwood-serial',
       'qmx-serial',
@@ -235,6 +236,7 @@ void main() {
       'g90-serial',
       'ic705-network',
       'ic705-serial',
+      'ic705-bluetooth',
       'rigctld-tcp',
       'flrig-tcp',
       'placeholder-radio',
@@ -243,6 +245,39 @@ void main() {
       'sierra-coax-serial',
       'antenna-none',
       'key-none',
+      // Derived from the model's key, one per real transceiver — stored like
+      // any other, so renaming a model's key orphans its placeholder nodes.
+      'flexradio-placeholder',
+      'ft891-placeholder',
+      'ft710-placeholder',
+      'ftdx10-placeholder',
+      'ftx1-placeholder',
+      'ft450-placeholder',
+      'ft817-placeholder',
+      'ft857-placeholder',
+      'ft897-placeholder',
+      'q900-placeholder',
+      'yaesu-generic-placeholder',
+      'ic705-placeholder',
+      'ic7300-placeholder',
+      'ic7300mk2-placeholder',
+      'ic706mkiig-placeholder',
+      'ic7100-placeholder',
+      'ic7610-placeholder',
+      'ic7760-placeholder',
+      'x6100-placeholder',
+      'g90-placeholder',
+      'icom-generic-placeholder',
+      'qmx-placeholder',
+      'fx4cr-placeholder',
+      'qcx-placeholder',
+      'kx2-placeholder',
+      'kx3-placeholder',
+      'k4-placeholder',
+      'elecraft-generic-placeholder',
+      'ts590sg-placeholder',
+      'ts480-placeholder',
+      'kenwood-generic-placeholder',
     });
   });
 
@@ -371,6 +406,7 @@ void main() {
       'g90-serial': 20,
       'ic705-network': 10,
       'ic705-serial': 10,
+      'ic705-bluetooth': 10,
     };
     final named = registry.types.where((type) => type.driver.key == 'icom-civ' && type.key != 'icom-generic-serial');
     expect(named.map((type) => type.key), unorderedEquals(rated.keys));

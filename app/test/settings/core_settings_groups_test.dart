@@ -135,10 +135,10 @@ void main() {
     /// tests, and tested on their own.
     /// The repeat delays belong here too: they are keyer settings under the
     /// message dialogs' own targets, not tuning knobs.
-    bool isCwMessageElement(Map<String, dynamic> el) => (el['key'] as String).startsWith('cwMessage') || el['key'] == 'cwRepeatDelay';
+    bool isCwMessageElement(Map<String, dynamic> el) => (el['key'] as String? ?? '').startsWith('cwMessage') || el['key'] == 'cwRepeatDelay';
 
     /// The voice memory labels, the same way, under `voice-messages`.
-    bool isVoiceMessageElement(Map<String, dynamic> el) => (el['key'] as String).startsWith('voiceMessage') || el['key'] == 'voiceRepeatDelay';
+    bool isVoiceMessageElement(Map<String, dynamic> el) => (el['key'] as String? ?? '').startsWith('voiceMessage') || el['key'] == 'voiceRepeatDelay';
 
     /// The two rows that open the keyer dialogs — part of the keyer, not knobs.
     bool isKeyerRow(Map<String, dynamic> el) => el['key'] == cwKeyerActionKey || el['key'] == phoneKeyerActionKey;
@@ -146,11 +146,14 @@ void main() {
     bool isMessageElement(Map<String, dynamic> el) => isCwMessageElement(el) || isVoiceMessageElement(el) || isKeyerRow(el);
 
     /// The row leading on to Station Configuration — navigation, not a knob.
-    bool isPanelLink(Map<String, dynamic> el) => el['type'] == 'link' && el['panel'] != null;
+    /// The section headings are no settings at all, and the station-info
+    /// pair is logging, not tuning.
+    bool isNotAKnob(Map<String, dynamic> el) =>
+        (el['type'] == 'link' && el['panel'] != null) || el['type'] == 'header' || el['key'] == 'trackStationInfo' || el['key'] == 'stationInfoTrackedFields';
 
     Future<Set<String>> keysFor(SettingsService settings) async => {
       for (final el in await RadioSettingsGroup(settings).buildElements())
-        if (!isMessageElement(el) && !isPanelLink(el)) el['key'] as String,
+        if (!isMessageElement(el) && !isNotAKnob(el)) el['key'] as String,
     };
 
     test('contributes nothing at all until the CAT experiment is on', () async {
@@ -207,12 +210,28 @@ void main() {
       expect(fresh.zeroBeatRangeHz, 25);
     });
 
+    test('without a radio the CAT rows are unlisted, not gone, and station info still shows', () async {
+      // Two traps. Dropping the rows outright hides them from SET/SHOW too,
+      // which scan the same elements. Leaving them listed shows a screen of
+      // knobs with nothing to act on.
+      final settings = await settingsWith();
+      Map<String, dynamic> byKey(List<Map<String, dynamic>> els, String key) => els.firstWhere((el) => el['key'] == key);
+
+      final without = await RadioSettingsGroup(settings, hasTransceivers: () => false).buildElements();
+      expect(byKey(without, 'smartVfoSnap')['listed'], isFalse);
+      expect(byKey(without, 'avoidZeroBeat')['listed'], isFalse);
+      expect(byKey(without, 'trackStationInfo')['listed'], isNot(false), reason: 'what a QSO records is not a CAT feature');
+
+      final withRadio = await RadioSettingsGroup(settings, hasTransceivers: () => true).buildElements();
+      expect(byKey(withRadio, 'smartVfoSnap')['listed'], isNot(false));
+    });
+
     test('every knob is extended-targeted, dev-flagged where it should be, and commits', () async {
       final settings = await settingsWith();
       final group = RadioSettingsGroup(settings);
       final knobs = [
         for (final el in await group.buildElements())
-          if (!toggles.contains(el['key']) && !isMessageElement(el) && !isPanelLink(el)) el,
+          if (!toggles.contains(el['key']) && !isMessageElement(el) && !isNotAKnob(el)) el,
       ];
       expect(knobs, hasLength(5));
       for (final el in knobs) {

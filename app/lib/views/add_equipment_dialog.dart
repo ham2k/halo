@@ -601,8 +601,18 @@ class _AddRow {
   _AddRow({required this.title, required this.icon, required this.choice, this.variants = const [], this.subtitle, this.searching = false, String brand = ''})
     : _haystack = [title, brand, for (final type in variants) type.transportLabel].join(' ').toLowerCase();
 
-  factory _AddRow.forModel(EquipmentModel model, List<EquipmentType> variants) =>
-      _AddRow(title: model.name, icon: iconForCategory(model.category), choice: AddChoice.model(model), variants: variants, brand: model.manufacturer ?? '');
+  factory _AddRow.forModel(EquipmentModel model, List<EquipmentType> variants) => _AddRow(
+    title: model.name,
+    icon: iconForCategory(model.category),
+    choice: AddChoice.model(model),
+    // Without the derived placeholder: every radio offers it, so on a row
+    // it would say nothing about how THIS radio plugs in.
+    variants: [
+      for (final variant in variants)
+        if (!model.offersPlaceholder || variant.key != placeholderVariantFor(model.key).key) variant,
+    ],
+    brand: model.manufacturer ?? '',
+  );
 
   /// Matches the radio's name, its brand and the ways it can be reached, so
   /// "usb" finds every rig with a cable and "705" finds the one radio — an

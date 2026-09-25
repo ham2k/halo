@@ -179,6 +179,10 @@ mixin SerialTransportConfig implements EquipmentTransport {
   /// or vanish between one look and the next, so this must never be cached.
   List<SerialPortOption> get availablePorts;
 
+  /// Ports this transport ranks first on its own account, before any
+  /// catalogue restriction has its say — see BluetoothSerialTransport.
+  bool prefersPort(SerialPortOption port) => false;
+
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
     if (!overrides.containsKey('port'))
@@ -322,7 +326,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
           label: port.label,
           hardware: port.hardware(withPort: true),
           device: port.shortName,
-          suggested: portSuggests(restriction, port),
+          suggested: portSuggests(restriction, port) || prefersPort(port),
           justNow: markRecent && recent.contains(port.name),
         ),
     ];
@@ -495,6 +499,9 @@ mixin SerialTransportConfig implements EquipmentTransport {
     'baudRate': serialBaudRate(config),
     'stopBits': serialStopBits(config),
   };
+
+  @override
+  bool isUnconfigured(Map<String, dynamic> config) => blankInConfig(config, 'port');
 
   @override
   String describeTarget(Map<String, dynamic> config) => '${serialPort(config)} @ ${serialBaudRate(config)}';

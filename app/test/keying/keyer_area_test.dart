@@ -242,7 +242,11 @@ void main() {
     await tester.pump(const Duration(seconds: 62));
   });
 
-  testWidgets('tapping the pill opens the speed dialog, and Enter sets the radio', (tester) async {
+  testWidgets('tapping the pill opens the CW messages, whose speed field sets the radio within its range', (tester) async {
+    // The pill is where the messages are reached from the logging panel, as
+    // the voice pill reaches its memories; the speed rides in that dialog,
+    // offered only as far as the keyer goes, so nothing out of range can be
+    // asked for at all.
     await connectPlaceholder(tester);
     await tester.pumpWidget(host());
     services.cat.sendCw('E');
@@ -251,49 +255,18 @@ void main() {
 
     await tester.tap(find.text('22 wpm'));
     await tester.pumpAndSettle();
-    expect(find.text('CW Keying'), findsOneWidget);
-    await tester.enterText(find.widgetWithText(TextField, 'WPM'), '25');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
+    expect(find.text('CW Keyer Messages'), findsOneWidget);
+
+    final range = services.cat.keyerSpeedRange!;
+    final offered = [for (final item in tester.widget<DropdownButton<int>>(find.byType(DropdownButton<int>)).items!) item.value];
+    expect(offered.first, range.min);
+    expect(offered.last, range.max, reason: 'nothing past what the keyer takes');
+    await tester.tap(find.byType(DropdownButton<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('25 WPM').last);
     await tester.pumpAndSettle();
 
     expect(services.cat.keyerSpeed, 25, reason: 'the placeholder reported the set back, like a real rig');
-    expect(find.text('25 wpm'), findsOneWidget);
-    expect(find.text('CW Keying'), findsNothing, reason: 'the dialog closed on Enter');
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('the dialog\'s custom message goes to the queue on Enter or Send, and the dialog closes', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    services.cat.sendCw('E');
-    await tester.pump(); // the first frame starts the tickers; time passes from here
-    await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('22 wpm'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Edit Messages'), findsOneWidget, reason: 'the way to the message editor heads the dialog');
-    expect(find.text('Custom Message'), findsOneWidget, reason: 'its own section');
-    await tester.enterText(find.widgetWithText(TextField, 'Message'), 'hello there');
-    expect(
-      tester.widget<TextField>(find.widgetWithText(TextField, 'Message')).controller!.text,
-      'HELLO THERE',
-      reason: 'uppercased as typed, on a hardware keyboard too',
-    );
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-    expect(services.cat.cwProgress.value?.text, 'HELLO THERE', reason: 'as typed, sanitized by the queue — no template');
-    expect(find.text('CW Keying'), findsNothing, reason: 'closes: the keyer area is where the message is watched');
-
-    // The Send button reads the field without it having to lose focus.
-    await tester.tap(find.text('22 wpm'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Message'), 'tu');
-    await tester.tap(find.text('Send'));
-    await tester.pump();
-    final progress = services.cat.cwProgress.value!;
-    expect([progress.text, ...progress.pending], contains('TU'), reason: 'queued behind, or already going out');
-    await tester.pumpAndSettle();
-    expect(find.text('CW Keying'), findsNothing);
     await tester.pump(const Duration(seconds: 62));
   });
 
@@ -434,18 +407,32 @@ void main() {
     await tester.pump(const Duration(seconds: 62));
   });
 
-  testWidgets('a speed outside the keyer\'s range is clamped, not sent as typed', (tester) async {
+  testWidgets('the close button follows the last control, not the far edge', (tester) async {
+    // At the far edge it reads as closing something bigger than the strip.
     await connectPlaceholder(tester);
+    await services.settings.setCwMessage(1, 'CQ');
     await tester.pumpWidget(host());
-    services.cat.sendCw('E');
-    await tester.pump(); // the first frame starts the tickers; time passes from here
+    services.cat.showKeyerArea();
+    await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('22 wpm'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'WPM'), '99');
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-    expect(services.cat.keyerSpeed, 50, reason: 'the placeholder keyer tops out at 50');
+
+    final close = find.byIcon(MdiIcons.close);
+    final stripRight = tester.getTopRight(find.byType(KeyerArea)).dx;
+    expect(tester.getTopRight(close).dx, lessThan(stripRight - 100), reason: 'right after the buttons, well short of the edge');
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('with nothing that can key CW, the strip says so where the buttons would be', (tester) async {
+    // A capability, not a connection: buttons that can never work are
+    // replaced by the reason, while a capable rig that is off keeps them.
+    await services.settings.setCwMessage(1, 'CQ');
+    await tester.pumpWidget(host());
+    services.cat.showKeyerArea();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Not supported by current radio'), findsOneWidget);
+    expect(find.widgetWithText(InkWell, 'F1'), findsNothing);
     await tester.pump(const Duration(seconds: 62));
   });
 

@@ -13,6 +13,7 @@ import 'drivers/civ_codec.dart' show civVoiceMemoryCount;
 import 'equipment.dart';
 import 'equipment_brands.dart';
 import 'equipment_registry.dart';
+import 'transports/bluetooth_serial_transport.dart';
 import 'transports/icom_network_protocol.dart';
 import 'transports/icom_network_transport.dart';
 import 'transports/serial_transport.dart';
@@ -27,7 +28,19 @@ const _ic7760SerialKey = 'ic7760-serial';
 const _x6100SerialKey = 'x6100-serial';
 const _g90SerialKey = 'g90-serial';
 const _ic705NetworkKey = 'ic705-network';
+
+// The modes each named radio has — see [civRadioModesConfigKey].
+const _civHfModes = ['LSB', 'USB', 'AM', 'CW', 'CW-R', 'RTTY', 'RTTY-R', 'FM'];
+const _civDataModes = ['DATA-LSB', 'DATA-USB', 'DATA-FM'];
+const _ic705Modes = [..._civHfModes, 'WFM', 'DV', ..._civDataModes];
+const _ic7100Modes = [..._civHfModes, 'WFM', 'DV', ..._civDataModes];
+const _civHfDataModes = [..._civHfModes, ..._civDataModes];
+const _ic706Modes = [..._civHfModes, 'WFM'];
+const _x6100Modes = ['LSB', 'USB', 'CW', 'CW-R', 'AM', 'FM', 'DATA-LSB', 'DATA-USB'];
+const _g90Modes = ['LSB', 'USB', 'CW', 'CW-R', 'AM', 'FM'];
+
 const _ic705SerialKey = 'ic705-serial';
+const _ic705BluetoothKey = 'ic705-bluetooth';
 
 /// How long an Icom voice memory holds — "up to 1.5 minutes" per the
 /// IC-7300's manual, and the line's figure.
@@ -128,7 +141,12 @@ const ic7300Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': '94', 'baudRate': 19200},
-      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
+      overrides: {
+        civRadioModesConfigKey: _civHfDataModes,
+        cwKeyerConfigKey: true,
+        voiceMemoriesConfigKey: civVoiceMemoryCount,
+        voiceCeilingConfigKey: _icomVoiceSeconds,
+      },
       notes: _ic7300SerialNotes,
     ),
   ],
@@ -170,7 +188,12 @@ const ic7300mk2Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': 'B6', 'baudRate': 19200},
-      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
+      overrides: {
+        civRadioModesConfigKey: _civHfDataModes,
+        cwKeyerConfigKey: true,
+        voiceMemoriesConfigKey: civVoiceMemoryCount,
+        voiceCeilingConfigKey: _icomVoiceSeconds,
+      },
       // Unlike the original IC-7300's single bridge, the MK2 presents two
       // USB serial ports of Icom's own (0c26:0052).
       restrictions: {'port': _icomCatPort},
@@ -208,7 +231,7 @@ const ic706mkiigModel = EquipmentModel(
       // squelch and 02 S-meter; the TX meters arrived a generation later.
       //
       // Nor does its CI-V table have the DATA submode read (0x1A 0x06).
-      overrides: {cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0, meterInfoConfigKey: '', civDataModeConfigKey: false},
+      overrides: {civRadioModesConfigKey: _ic706Modes, cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0, meterInfoConfigKey: '', civDataModeConfigKey: false},
       notes: _ic706mkiigSerialNotes,
     ),
   ],
@@ -234,7 +257,7 @@ const ic7100Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': '88', 'baudRate': 19200},
-      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
+      overrides: {civRadioModesConfigKey: _ic7100Modes, cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
       notes: _ic7100SerialNotes,
     ),
   ],
@@ -264,7 +287,12 @@ const ic7610Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': '98', 'baudRate': 9600},
-      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
+      overrides: {
+        civRadioModesConfigKey: _civHfDataModes,
+        cwKeyerConfigKey: true,
+        voiceMemoriesConfigKey: civVoiceMemoryCount,
+        voiceCeilingConfigKey: _icomVoiceSeconds,
+      },
       restrictions: {'port': _icomCatPort},
       notes: _ic7610SerialNotes,
     ),
@@ -292,7 +320,13 @@ const ic7760Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': 'B2', 'baudRate': 19200},
-      overrides: {'maxWatts': 200, cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
+      overrides: {
+        civRadioModesConfigKey: _civHfDataModes,
+        'maxWatts': 200,
+        cwKeyerConfigKey: true,
+        voiceMemoriesConfigKey: civVoiceMemoryCount,
+        voiceCeilingConfigKey: _icomVoiceSeconds,
+      },
       restrictions: {'port': _icomCatPort},
       notes: _ic7760SerialNotes,
     ),
@@ -328,7 +362,7 @@ const x6100Model = EquipmentModel(
       // the IC-705's 7.4 V pack, and a 12 V pack would not be expected to
       // read below it. So on its own pack it reports up to 10 W while
       // putting out 5.
-      overrides: {'maxWatts': 10, cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
+      overrides: {civRadioModesConfigKey: _x6100Modes, 'maxWatts': 10, cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
       // CI-V is on the second of the radio's two serial ports; the picker
       // points at that one where it can, and never hides the other.
       restrictions: {
@@ -360,7 +394,14 @@ const g90Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': '88', 'baudRate': 19200},
-      overrides: {civModeWithFilterConfigKey: true, civDataModeConfigKey: false, 'maxWatts': 20, cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0},
+      overrides: {
+        civRadioModesConfigKey: _g90Modes,
+        civModeWithFilterConfigKey: true,
+        civDataModeConfigKey: false,
+        'maxWatts': 20,
+        cwKeyerConfigKey: false,
+        voiceMemoriesConfigKey: 0,
+      },
       notes: _civSerialNotes,
     ),
   ],
@@ -393,6 +434,7 @@ const ic705Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
       overrides: {
+        civRadioModesConfigKey: _ic705Modes,
         'civAddress': 'A4',
         'civControllerAddress': icomNetworkControllerAddress,
         // The IC-705's real ceiling (10W SSB/CW) — see _assumedMaxWatts in
@@ -426,6 +468,7 @@ const ic705Model = EquipmentModel(
       // sharing a bus — a fixed fact about this model, same as the network
       // variant's override above.
       overrides: {
+        civRadioModesConfigKey: _ic705Modes,
         'maxWatts': 10,
         'batteryMaxWatts': 5,
         cwKeyerConfigKey: true,
@@ -436,6 +479,24 @@ const ic705Model = EquipmentModel(
       // one name, nothing but their order to tell them apart.
       restrictions: {'port': _icomCatPort},
       notes: _ic705SerialNotes,
+    ),
+    // The radio's Bluetooth "data device" carries CI-V once it is paired with
+    // this machine. The same serial settings as the USB variant, which the
+    // registry's self-checks require — the editor shows one box per key.
+    EquipmentVariant(
+      key: _ic705BluetoothKey,
+      driver: IcomCivDriver(),
+      transport: BluetoothSerialTransport(),
+      defaultConfig: {'civAddress': 'A4', 'baudRate': 19200},
+      overrides: {
+        civRadioModesConfigKey: _ic705Modes,
+        'maxWatts': 10,
+        'batteryMaxWatts': 5,
+        cwKeyerConfigKey: true,
+        voiceMemoriesConfigKey: civVoiceMemoryCount,
+        voiceCeilingConfigKey: _icomVoiceSeconds,
+      },
+      notes: _icomGenericSerialNotes,
     ),
   ],
 );

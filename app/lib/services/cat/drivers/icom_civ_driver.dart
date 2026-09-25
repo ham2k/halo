@@ -100,6 +100,12 @@ const civModeWithFilterConfigKey = 'civModeWithFilter';
 /// model.
 const civDataModeConfigKey = 'civDataMode';
 
+/// The modes a model has, as a list of the app's names for them — pinned in
+/// a named radio's `overrides`, since one CI-V driver serves radios with and
+/// without DV, WFM or a DATA submode. Unpinned, the driver offers every mode
+/// it can send, less the DATA ones where [civDataModeConfigKey] is off.
+const civRadioModesConfigKey = 'radioModes';
+
 /// The TX watch is one exchange; the meter cycle is one per meter read.
 const civTxWatchBytes = _civExchangeBytes;
 const civMeterCycleBytes = _civExchangeBytes * 4;
@@ -129,6 +135,12 @@ class IcomCivDriver extends EquipmentDriver {
 
   @override
   String get name => 'Icom (CI-V)';
+
+  @override
+  List<String> settableModes(Map<String, dynamic> config) => switch (config[civRadioModesConfigKey]) {
+    final List<dynamic> pinned => radioModeOrder(pinned.whereType<String>()),
+    _ => radioModeOrder([...civModeCodes.keys, if (config[civDataModeConfigKey] != false) ...dataModeBases.keys]),
+  };
 
   /// Icom publishes ONE set of meter breakpoints for the current CI-V line,
   /// so the scale is the driver's rather than each entry's — unlike Yaesu,
@@ -201,6 +213,7 @@ class IcomCivDriver extends EquipmentDriver {
     'batteryMaxWatts',
     civModeWithFilterConfigKey,
     civDataModeConfigKey,
+    civRadioModesConfigKey,
     cwKeyerConfigKey,
     voiceMemoriesConfigKey,
     voiceCeilingConfigKey,

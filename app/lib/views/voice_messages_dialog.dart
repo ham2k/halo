@@ -31,7 +31,7 @@ import '../services/halo_services.dart';
 import '../services/cat/cat_service.dart';
 import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
-import 'cw_messages_dialog.dart' show EnterSendsField, RepeatDelayField, cwMessageNumberIcons;
+import 'cw_messages_dialog.dart' show EnterSendsField, KeyerUnsupportedNotice, RepeatDelayField, cwMessageNumberIcons;
 
 Future<void> showVoiceMessagesDialog(BuildContext context, HaLoServices services) => showHaloDialog<void>(
   context: context,
@@ -65,30 +65,37 @@ class _VoiceMessagesDialog extends StatelessWidget {
           header: Container(
             color: haloDialogBandColorAt(context),
             padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: RepeatDelayField(
-                    value: '${settings.voiceRepeatDelay.inSeconds}',
-                    label: m.repeat,
-                    offLabel: m.repeatOff,
-                    afterLabel: (n) => m.repeatAfter(n: n),
-                    onChanged: (value) {
-                      // Off ends a chain already counting down.
-                      if (value == '0') cat.cancelKeyerRepeat();
-                      unawaited(settings.setVoiceRepeatDelay(int.parse(value)));
-                    },
-                  ),
-                ),
-                if (settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
-                  const SizedBox(width: Space.md),
-                  Expanded(
-                    child: EnterSendsField(
-                      value: cat.enterSends.value,
-                      onChanged: (value) => cat.setEnterSends(on: value.on, running: value.running),
+                // A radio with no voice memories at all, connected or not.
+                if (!cat.radio1HasVoiceMemories) KeyerUnsupportedNotice(text: m.notSupported),
+                Row(
+                  children: [
+                    Expanded(
+                      child: RepeatDelayField(
+                        value: '${settings.voiceRepeatDelay.inSeconds}',
+                        label: m.repeat,
+                        offLabel: m.repeatOff,
+                        afterLabel: (n) => m.repeatAfter(n: n),
+                        onChanged: (value) {
+                          // Off ends a chain already counting down.
+                          if (value == '0') cat.cancelKeyerRepeat();
+                          unawaited(settings.setVoiceRepeatDelay(int.parse(value)));
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                    if (settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
+                      const SizedBox(width: Space.md),
+                      Expanded(
+                        child: EnterSendsField(
+                          value: cat.enterSends.value,
+                          onChanged: (value) => cat.setEnterSends(on: value.on, running: value.running),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -127,21 +134,12 @@ class _VoiceMessagesDialog extends StatelessWidget {
                   ),
                   mouseCursor: SystemMouseCursors.click,
                 ),
-              // What a label is, since nothing else here says the audio is
-              // not the app's to edit.
+              // Whose the audio is, since nothing else here says it is not
+              // the app's to edit.
               Padding(
-                padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, 0),
+                padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.md),
                 child: Text(m.description, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
               ),
-              // Why there is nothing to play with. Why RECORDING is missing
-              // is said in the memory's own dialog instead — beside the
-              // disabled button, which is where an operator goes looking
-              // for it.
-              if (!canPlay)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.md),
-                  child: Text(m.notAvailable, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
-                ),
             ],
           ),
           // Done, not Close: the footer convention for a dialog with nothing

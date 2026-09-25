@@ -112,6 +112,9 @@ class Ft891Driver extends EquipmentDriver {
   @override
   String get name => 'Yaesu FT-891';
 
+  @override
+  List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(yaesuModeCodes.keys);
+
   /// The same claim [cp2105CatPort]'s `suggest` clause makes, for a caller
   /// holding the ids rather than a port.
   static bool matchesUsbIds({int? vendorId, int? productId}) => vendorId == cp2105VendorId && productId == cp2105ProductId;

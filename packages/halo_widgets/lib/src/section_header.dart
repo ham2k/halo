@@ -17,12 +17,11 @@ import 'theme.dart';
 /// ground here too would leave the two headings saying the same thing at
 /// different sizes.
 ///
-/// Title and rule alike sit [overhang] OUTSIDE the row inset, so the heading
-/// stands a little proud of the rows it heads instead of lining up with them
-/// and reading as one more row. The inset comes from the ambient
-/// `ListTileTheme` — the same one every settings row takes its content inset
-/// from — so a heading and the rows under it stay related wherever the pane
-/// puts them.
+/// Title and rule alike keep the row inset, lining up with the rows they
+/// head; the slab face and the rule are what set the heading apart from
+/// them. The inset comes from the ambient `ListTileTheme` — the same one
+/// every settings row takes its content inset from — so a heading and the
+/// rows under it stay related wherever the pane puts them.
 class SectionHeader extends StatelessWidget {
   final String title;
 
@@ -43,8 +42,18 @@ class SectionHeader extends StatelessWidget {
   /// toolbar.
   final Widget? trailing;
 
+  /// Before the title, inside the same inset — a disclosure chevron, for a
+  /// section that folds. Unlike a category band's chevron it never hangs in
+  /// the margin: a section sits inside a category, and its heading keeps the
+  /// rows' measure.
+  final Widget? leading;
+
+  /// Makes the whole heading a control — for a section that folds, so the
+  /// title opens it as well as the chevron beside it.
+  final VoidCallback? onTap;
+
   /// A ground for the band, painted EDGE TO EDGE — past the inset the title
-  /// and rule sit within, and past [overhang] with them.
+  /// and rule sit within.
   ///
   /// For a section that is a standing notice rather than one more group of
   /// rows: the ground runs behind its rows too, and a band inset from the
@@ -53,7 +62,7 @@ class SectionHeader extends StatelessWidget {
   /// its own.
   final Color? background;
 
-  const SectionHeader(this.title, {super.key, this.subtitle, this.color, this.trailing, this.background});
+  const SectionHeader(this.title, {super.key, this.subtitle, this.color, this.trailing, this.leading, this.onTap, this.background});
 
   /// The band title's face, public so a hand-built HEADING that cannot be a
   /// [SectionHeader] — one carrying its own controls and geometry — still
@@ -76,11 +85,6 @@ class SectionHeader extends StatelessWidget {
         const TextStyle();
   }
 
-  /// How far past the row inset the band reaches, each side. Bounded by the
-  /// inset itself: a pane that insets its rows by less than this gets a band
-  /// at its own edge, never one pushed off it.
-  static const overhang = Space.md;
-
   /// The rule under the title. A hairline, in the title's own accent: it
   /// closes the heading rather than dividing rows, so it is thinner than a
   /// [Divider] and coloured with what it belongs to.
@@ -88,12 +92,9 @@ class SectionHeader extends StatelessWidget {
 
   static EdgeInsets _padding(BuildContext context) {
     final inset = (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xxl)).resolve(Directionality.of(context));
-    return EdgeInsets.fromLTRB(
-      (inset.left - overhang).clamp(0.0, double.infinity),
-      inset.top + Space.sm,
-      (inset.right - overhang).clamp(0.0, double.infinity),
-      inset.bottom + Space.sm,
-    );
+    // More above than below: the gap belongs between sections, and the
+    // heading abuts the rows it names.
+    return EdgeInsets.fromLTRB(inset.left, inset.top + Space.sm + Space.md, inset.right, inset.bottom + Space.sm);
   }
 
   /// This band as a header pinned to the top of its own section: it stays
@@ -147,10 +148,10 @@ class SectionHeader extends StatelessWidget {
       'or come from a widget that returns SectionedSlivers.',
     );
     final padding = _padding(context);
-    // What is left of the inset is spent OUTSIDE the ruled box, not inside
-    // it: the rule measures the content it heads, standing [overhang] proud
-    // of the rows either side, rather than running out to the pane's edges
-    // the way a filled band (the Settings panel's categories) does.
+    // The inset is spent OUTSIDE the ruled box, not inside it: the rule
+    // measures the content it heads, the same width as the rows under it,
+    // rather than running out to the pane's edges the way a filled band (the
+    // Settings panel's categories) does.
     final band = Padding(
       padding: EdgeInsets.only(left: padding.left, right: padding.right),
       child: Container(
@@ -164,11 +165,12 @@ class SectionHeader extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (trailing == null)
+            if (trailing == null && leading == null)
               Text(title, style: titleStyle(context, color: color))
             else
               Row(
                 children: [
+                  if (leading != null) ...[leading!, const SizedBox(width: Space.sm)],
                   // Expanded, not Flexible: the control belongs on the band's
                   // trailing edge, and a Flexible title shrink-wraps and drags
                   // it back against the last word. Expanded also gives the
@@ -177,8 +179,7 @@ class SectionHeader extends StatelessWidget {
                   Expanded(
                     child: Text(title, style: titleStyle(context, color: color)),
                   ),
-                  const SizedBox(width: Space.md),
-                  trailing!,
+                  if (trailing != null) ...[const SizedBox(width: Space.md), trailing!],
                 ],
               ),
             if (subtitle != null) ...[const SizedBox(height: Space.xs), subtitle!],
@@ -188,6 +189,14 @@ class SectionHeader extends StatelessWidget {
     );
     // Outside the inset, so the ground reaches the pane's edges while the
     // title and its rule keep the measure of the rows they head.
-    return background == null ? band : ColoredBox(color: background!, child: band);
+    final grounded = background == null ? band : ColoredBox(color: background!, child: band);
+    if (onTap == null) return grounded;
+    return Semantics(
+      button: true,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: grounded),
+      ),
+    );
   }
 }

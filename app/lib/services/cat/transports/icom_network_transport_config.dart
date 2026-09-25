@@ -55,5 +55,8 @@ mixin IcomNetworkTransportConfig implements EquipmentTransport {
   };
 
   @override
+  bool isUnconfigured(Map<String, dynamic> config) => blankInConfig(config, 'host');
+
+  @override
   String describeTarget(Map<String, dynamic> config) => trimmedHost(config);
 }

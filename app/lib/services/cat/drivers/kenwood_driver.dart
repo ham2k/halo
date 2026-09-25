@@ -58,6 +58,12 @@ class KenwoodDriver extends EquipmentDriver {
   @override
   String get name => isK4 ? 'Elecraft K4 (CAT)' : 'Kenwood (CAT)';
 
+  @override
+  List<String> settableModes(Map<String, dynamic> config) => radioModeOrder([
+    ...kenwoodModeCodes.keys,
+    if (isK4) ...['DATA-USB', 'DATA-LSB', 'PSK'] else ...dataModeBases.keys,
+  ]);
+
   /// A radio whose `IF` layout we DO know — a specific model built on this
   /// driver — pins the mode's offset here rather than letting the session
   /// work it out. Read straight from the config and never rendered as a

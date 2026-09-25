@@ -1714,7 +1714,12 @@ class _Translations$settings$radio$es extends Translations$settings$radio$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Radio';
+	@override String get title => 'Control CAT';
+	@override String get loggingAndCat => 'Registro y CAT';
+	@override String get tuningSection => 'Sintonía';
+	@override String get keyerSection => 'Manipulador';
+	@override String get servicesSection => 'Servicios';
+	@override String get stationConfigurationSection => 'Configuración de estación';
 	@override String get moreSettings => 'Más ajustes de configuración de la estación';
 	@override late final _Translations$settings$radio$units$es units = _Translations$settings$radio$units$es._(_root);
 	@override late final _Translations$settings$radio$smartVfoSnap$es smartVfoSnap = _Translations$settings$radio$smartVfoSnap$es._(_root);
@@ -1722,7 +1727,6 @@ class _Translations$settings$radio$es extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$snapLongMove$es snapLongMove = _Translations$settings$radio$snapLongMove$es._(_root);
 	@override late final _Translations$settings$radio$snapMinMove$es snapMinMove = _Translations$settings$radio$snapMinMove$es._(_root);
 	@override late final _Translations$settings$radio$snapMinSpeed$es snapMinSpeed = _Translations$settings$radio$snapMinSpeed$es._(_root);
-	@override String get cwKeying => 'Manipulación de CW';
 	@override late final _Translations$settings$radio$enterSends$es enterSends = _Translations$settings$radio$enterSends$es._(_root);
 	@override late final _Translations$settings$radio$keyerSpeed$es keyerSpeed = _Translations$settings$radio$keyerSpeed$es._(_root);
 	@override late final _Translations$settings$radio$cwMessages$es cwMessages = _Translations$settings$radio$cwMessages$es._(_root);
@@ -1978,7 +1982,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	// Translations
 	@override String get title => 'Configuración de Estación y Control CAT';
 	@override String get none => 'No hay equipo configurado';
-	@override String get add => 'Agregar equipo';
+	@override String get add => 'Agregar';
 	@override String get addTitle => 'Agregar equipo';
 	@override String get searchHint => 'Buscar equipos';
 	@override String get noMatches => 'Ningún equipo coincide';
@@ -1988,7 +1992,6 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get name => 'Nombre';
 	@override String get nameDescription => 'Cómo lo llamas — «Radio Izquierda». Opcional.';
 	@override String get transport => 'Conexión';
-	@override String get transportDescription => 'Cómo llega la aplicación a esta radio. Cada una tiene sus propios ajustes.';
 	@override String get host => 'Dirección';
 	@override String get hostDescription => 'El nombre de host o la dirección IP de la radio en tu red.';
 	@override String get port => 'Puerto';
@@ -2084,18 +2087,37 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get kenwoodTroubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
 	@override String get kenwoodTroubleshooting => 'Este controlador está probado con las Kenwood TS-590SG y TS-480, las QRP Labs QMX y QCX-mini, y las Elecraft KX2 y KX3. El resto de la gama está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos; las radios Elecraft tienen sus propias entradas, bajo Elecraft. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.';
 	@override String get statusConnected => 'Conectado';
+	@override String get statusLost => 'Desconectada';
+	@override String get notConfigured => 'Sin configurar';
 	@override String get currentConfiguration => 'Configuración actual';
-	@override String get transceiverForMainVfo => 'Transceptor para el VFO principal';
-	@override String get sectionTransceivers => 'Transceptores';
-	@override String get sectionAntennas => 'Antenas';
-	@override String get sectionOtherEquipment => 'Otros equipos';
+	@override String get currentTransceiver => 'Radio actual';
+	@override String get radioMode => 'Modo de la radio';
+	@override String get keyerNotSupported => 'No compatible con la radio actual';
+	@override String get catControlPreferences => 'Preferencias de control CAT';
+	@override String get chooseTransceiver => 'Elegir radio';
+	@override String get configurationSection => 'Configuración';
+	@override String get noTransceiverSelected => 'Ninguna radio seleccionada';
+	@override String makeMainVfo({required Object name}) => 'Usar ${name} para el VFO principal';
+	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		zero: 'Ninguna radio',
+		one: '1 radio',
+		other: '${count} radios',
+	);
+	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '1 antena',
+		other: '${count} antenas',
+	);
+	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '1 otro equipo',
+		other: '${count} otros equipos',
+	);
 	@override String get equipmentInventory => 'Inventario de equipos';
-	@override String get equipmentInUse => 'Equipos en uso';
+	@override String get equipmentInUse => 'Controles de la radio';
 	@override String get noTransceiver => 'Ninguno';
-	@override String peerTransceiver({required Object radio, required Object device}) => '${radio} en ${device}';
-	@override String peerTransceiverUnavailable({required Object radio, required Object device}) => '${radio} en ${device} (no disponible)';
 	@override String get peerRadioNotAvailable => 'No disponible';
 	@override String peerRadioOnDevice({required Object device}) => 'En ${device}';
+	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} está en otro dispositivo';
+	@override String peerRadioElsewhereMessage({required Object device}) => 'Esta radio está conectada a ${device}. Su conexión y ajustes se configuran en ese dispositivo.';
 	@override String get icomCivTroubleshootingTitle => 'Si aparecen dos puertos serie para la misma radio';
 	@override String get icomCivTroubleshooting => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador, y cuando esta app puede distinguir los dos puertos marca ese como sugerido. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.';
 	@override String get civAddressTroubleshootingTitle => 'Si la radio nunca responde';
@@ -2117,9 +2139,9 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get statusError => 'Fallo de conexión';
 	@override String get currentRadioSettings => 'Ajustes de la radio actual';
 	@override String get notSupportedByThisRadio => 'No compatible con esta radio';
-	@override String get keyerRowLabel => 'Manipulador:';
-	@override String get cwMessagesButton => 'Manipulador de CW';
-	@override String get voiceMessagesButton => 'Manipulador de fonía';
+	@override String get keyerRowLabel => 'Manipulador';
+	@override String get cwMessagesButton => 'CW';
+	@override String get voiceMessagesButton => 'Fonía';
 	@override String voiceKeyerAvailable({required Object count}) => 'Manipulador de voz: ${count} memorias en la radio';
 	@override String get placeholderConnectDelay => 'Retraso de conexión (ms)';
 	@override String get placeholderConnectDelayDescription => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.';
@@ -2175,7 +2197,6 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get softwareIntermediaries => 'Intermediarios de software';
 	@override String get otherBrands => 'Otras marcas';
 	@override String get otherEquipment => 'Otros equipos (antenas, manipuladores, etc.)';
-	@override String get otherOptions => 'Otras opciones';
 	@override String get newAntenna => 'Nueva antena';
 	@override String get newKey => 'Nuevo manipulador';
 	@override String get newKeyer => 'WinKeyer (K1EL o compatible)';
@@ -2567,6 +2588,7 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String radioAutoNamed({required Object name}) => 'VFO A — ${name}';
 	@override String get radioAutoNone => 'VFO A — ninguna radio designada';
 	@override String get radioNoRadio => 'No hay radio que mostrar. Elige una en la configuración de este panel, o agrega una en Configuración de Estación.';
+	@override String get radioNotConfigured => 'Esta radio aún no está configurada. Elige su puerto o dirección en Configuración de Estación.';
 	@override String get radioNoFrequency => '—';
 	@override String get radioOff => 'Radio no conectada';
 	@override String get radioWatts => 'W';
@@ -2940,14 +2962,14 @@ class _Translations$settings$radio$cwMessages$es extends Translations$settings$r
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Manipulador de CW';
+	@override String get title => 'Mensajes del manipulador de CW';
+	@override String get notSupported => 'La radio actual no admite manipulación de CW';
 	@override String key({required Object n}) => 'F${n}';
 	@override String messageTitle({required Object n}) => 'Mensaje (${n})';
 	@override String get labelField => 'Etiqueta';
 	@override String labelKey({required Object n}) => 'Etiqueta de F${n}';
 	@override String get details => 'Detalles';
 	@override String get empty => '(vacío)';
-	@override String get edit => 'Editar mensajes';
 	@override String get sets => 'Juego de mensajes';
 	@override String get newSet => 'Nuevo juego';
 	@override String get renameSet => 'Renombrar juego';
@@ -2957,33 +2979,31 @@ class _Translations$settings$radio$cwMessages$es extends Translations$settings$r
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'Mensajes ESM';
 	@override String get setSaved => 'Mis mensajes';
-	@override String get repeat => 'Repetir mensaje ❶';
+	@override String get repeat => 'Repetir mensaje #1';
 	@override String get repeatOff => 'No';
 	@override String repeatAfter({required Object n}) => 'Tras ${n} segundos';
 	@override String get repeatWait => 'Repitiendo';
-	@override String get custom => 'Mensaje libre';
-	@override String get customField => 'Mensaje';
-	@override String get send => 'Enviar';
 	@override String get keyboard => 'Escribir para transmitir';
 	@override String get keyboardField => 'Escribe para transmitir';
 	@override String get closeArea => 'Cerrar el área del manipulador';
 	@override String get help => 'Ayuda';
 	@override String get helpTitle => 'Cómo escribir mensajes de CW';
-	@override String get helpIntro => 'Un mensaje se manipula tal como se escribe. Los marcadores entre llaves dobles se rellenan con la operación y el contacto que se está registrando.';
+	@override String get helpIntro => 'Los mensajes pueden usar plantillas con los siguientes valores:';
 	@override String get helpOpCall => 'Tu indicativo';
-	@override String get helpQsoCall => 'Su indicativo — en una pila //, el que registra Enter';
-	@override String get helpQsoFullCall => 'Su indicativo, solo cuando ya es completo; vacío si es parcial';
-	@override String get helpQsoPartial => 'Su indicativo mientras sigue siendo parcial; vacío cuando ya es completo';
-	@override String get helpQsoNextCall => 'En una pila //, el indicativo que registra el siguiente Enter';
-	@override String get helpQsoNextPartial => 'En una pila //, la última entrada que queda tras este contacto';
+	@override String get helpQsoCall => 'Su indicativo — en una pila //, el indicativo que se registrará';
+	@override String get helpQsoFullCall => 'Su indicativo, si hay un indicativo válido; vacío si es parcial';
+	@override String get helpQsoPartial => 'Un indicativo parcial; vacío si hay un indicativo completo válido';
+	@override String get helpQsoNextCall => 'En una pila //, el indicativo que se seleccionará para registrar a continuación, si hay un indicativo completo válido';
+	@override String get helpQsoNextPartial => 'En una pila //, el siguiente parcial después de registrar el contacto actual';
 	@override String get helpQsoName => 'Su nombre de pila, el escrito o si no el de la búsqueda';
 	@override String get helpQsoState => 'Su estado, el escrito o si no el de la búsqueda';
-	@override String get helpKeyerMsg => 'El mensaje 1 tal como se enviaría, dentro de otro mensaje';
+	@override String get helpKeyerMsg => 'El mensaje 1 tal como se enviaría, dentro de otro mensaje. Válido para los mensajes 1 a 8';
 	@override String get helpQsoRst => 'El reporte que envías';
 	@override String get helpQsoSerial => 'Tu número de serie, en un concurso que lo envía';
 	@override String get helpPad => 'Rellena con ceros hasta esa cantidad de dígitos: 7 se envía como 007';
 	@override String get helpCut => 'Números abreviados, T por 0 y N por 9: 599 se envía como 5NN';
 	@override String get helpCutDigits => 'Elige qué dígitos abreviar, entre comillas — 0 es T, 1 es A, 5 es E, 9 es N';
+	@override String get helpFullExample => 'Ejemplo completo:';
 	@override String get helpExample => 'Envía W1AW 5NN TT7';
 	@override String get helpEsmIntro => 'Con Enter envía mensajes encendido, Enter manipula los mensajes por su tecla de función, como hace N1MM. El conjunto Mensajes ESM empieza con estos:';
 	@override String get helpEsmCq => 'En Run, Enter con el indicativo vacío llama CQ';
@@ -3002,8 +3022,9 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Manipulador de fonía';
-	@override String get description => 'Las memorias de voz de la propia radio, reproducidas con F1 a F8 mientras el contacto que se está registrando está en un modo de fonía. El audio se graba en la radio; aquí solo se define el nombre que muestra cada memoria.';
+	@override String get title => 'Mensajes del manipulador de fonía';
+	@override String get notSupported => 'La radio actual no admite mensajes de Fonía';
+	@override String get description => 'Esto usa las memorias de voz de la propia radio';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'Memoria de voz (${n})';
 	@override String get labelField => 'Etiqueta';
@@ -3013,7 +3034,7 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	@override String get playButton => 'Reproducir';
 	@override String get recordButton => 'Grabar';
 	@override String get stopButton => 'Detener';
-	@override String get repeat => 'Repetir mensaje ❶';
+	@override String get repeat => 'Repetir mensaje #1';
 	@override String get repeatOff => 'No';
 	@override String repeatAfter({required Object n}) => 'Tras ${n} segundos';
 	@override String recordHelpTitle({required Object model}) => 'Notas del ${model}:';
@@ -3030,7 +3051,6 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	@override String playingMemory({required Object label}) => 'Reproduciendo ${label}';
 	@override String recordingMemory({required Object label}) => 'Grabando ${label}';
 	@override String get doubtful => '¿La radio lo reprodujo? Dijo estar en reposo de inmediato.';
-	@override String get notAvailable => 'Conecta una radio con manipulador de voz para reproducir o grabar desde aquí.';
 	@override String get recordOnRadio => 'Tienes que grabar las memorias en la propia radio.';
 }
 
@@ -3163,10 +3183,11 @@ class _Translations$settings$station$transports$es extends Translations$settings
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get network => 'Red';
-	@override String get usbSerial => 'USB serie';
-	@override String get wifi => 'WiFi';
-	@override String get simulated => 'Simulada';
+	@override String get network => 'Red/WiFi';
+	@override String get usbSerial => 'Serie USB';
+	@override String get wifi => 'Red/WiFi';
+	@override String get bluetoothSerial => 'Serie Bluetooth';
+	@override String get placeholder => 'Provisional';
 }
 
 // Path: settings.station.antennaTypes
@@ -3664,6 +3685,7 @@ extension on TranslationsEs {
 			'operation.layout.panels.radioAutoNamed' => ({required Object name}) => 'VFO A — ${name}',
 			'operation.layout.panels.radioAutoNone' => 'VFO A — ninguna radio designada',
 			'operation.layout.panels.radioNoRadio' => 'No hay radio que mostrar. Elige una en la configuración de este panel, o agrega una en Configuración de Estación.',
+			'operation.layout.panels.radioNotConfigured' => 'Esta radio aún no está configurada. Elige su puerto o dirección en Configuración de Estación.',
 			'operation.layout.panels.radioNoFrequency' => '—',
 			'operation.layout.panels.radioOff' => 'Radio no conectada',
 			'operation.layout.panels.radioWatts' => 'W',
@@ -3760,9 +3782,9 @@ extension on TranslationsEs {
 			'operation.spots.failedText' => ({required Object sources}) => '${sources} devolvieron un error.',
 			'operation.spots.slideLogIt' => 'Registrar',
 			'operation.spots.slideIgnore' => 'Ignorar',
-			'operation.spots.slideRestore' => 'Restaurar',
 			_ => null,
 		} ?? switch (path) {
+			'operation.spots.slideRestore' => 'Restaurar',
 			'operation.spots.logConflict.title' => 'El panel de registro está ocupado',
 			'operation.spots.logConflict.editingBody' => 'Estás editando un contacto registrado. ¿Registrar este spot, o volver y terminar la edición?',
 			'operation.spots.logConflict.composingBody' => 'Empezaste a ingresar un contacto. ¿Registrar este spot, o volver y terminar lo que escribías?',
@@ -4121,7 +4143,12 @@ extension on TranslationsEs {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: otro programa lo está usando, a menudo el propio ${protocol}. Cierra ese programa o elige otro puerto.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: esta computadora no lo permite. Elige un puerto por encima de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} dejó de escuchar en el puerto ${port}. Reintentando…',
-			'settings.radio.title' => 'Radio',
+			'settings.radio.title' => 'Control CAT',
+			'settings.radio.loggingAndCat' => 'Registro y CAT',
+			'settings.radio.tuningSection' => 'Sintonía',
+			'settings.radio.keyerSection' => 'Manipulador',
+			'settings.radio.servicesSection' => 'Servicios',
+			'settings.radio.stationConfigurationSection' => 'Configuración de estación',
 			'settings.radio.moreSettings' => 'Más ajustes de configuración de la estación',
 			'settings.radio.units.ms' => 'ms',
 			'settings.radio.units.kHz' => 'kHz',
@@ -4138,7 +4165,6 @@ extension on TranslationsEs {
 			'settings.radio.snapMinMove.description' => 'Si te mueves menos que esto no se redondea nada — el ajuste fino se respeta.',
 			'settings.radio.snapMinSpeed.title' => 'Ajuste inteligente: velocidad mínima',
 			'settings.radio.snapMinSpeed.description' => 'Si giras el dial más despacio que esto no se redondea nada, salvo que haya sido un giro largo.',
-			'settings.radio.cwKeying' => 'Manipulación de CW',
 			'settings.radio.enterSends.pillOff' => 'ESM apagado',
 			'settings.radio.enterSends.pillRun' => 'ESM Run',
 			'settings.radio.enterSends.pillSp' => 'ESM S&P',
@@ -4151,14 +4177,14 @@ extension on TranslationsEs {
 			'settings.radio.keyerSpeed.unit' => 'PPM',
 			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} ppm',
 			'settings.radio.keyerSpeed.pillUnknown' => '– ppm',
-			'settings.radio.cwMessages.title' => 'Manipulador de CW',
+			'settings.radio.cwMessages.title' => 'Mensajes del manipulador de CW',
+			'settings.radio.cwMessages.notSupported' => 'La radio actual no admite manipulación de CW',
 			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
 			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Mensaje (${n})',
 			'settings.radio.cwMessages.labelField' => 'Etiqueta',
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'Etiqueta de F${n}',
 			'settings.radio.cwMessages.details' => 'Detalles',
 			'settings.radio.cwMessages.empty' => '(vacío)',
-			'settings.radio.cwMessages.edit' => 'Editar mensajes',
 			'settings.radio.cwMessages.sets' => 'Juego de mensajes',
 			'settings.radio.cwMessages.newSet' => 'Nuevo juego',
 			'settings.radio.cwMessages.renameSet' => 'Renombrar juego',
@@ -4168,33 +4194,31 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'Mensajes ESM',
 			'settings.radio.cwMessages.setSaved' => 'Mis mensajes',
-			'settings.radio.cwMessages.repeat' => 'Repetir mensaje ❶',
+			'settings.radio.cwMessages.repeat' => 'Repetir mensaje #1',
 			'settings.radio.cwMessages.repeatOff' => 'No',
 			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
 			'settings.radio.cwMessages.repeatWait' => 'Repitiendo',
-			'settings.radio.cwMessages.custom' => 'Mensaje libre',
-			'settings.radio.cwMessages.customField' => 'Mensaje',
-			'settings.radio.cwMessages.send' => 'Enviar',
 			'settings.radio.cwMessages.keyboard' => 'Escribir para transmitir',
 			'settings.radio.cwMessages.keyboardField' => 'Escribe para transmitir',
 			'settings.radio.cwMessages.closeArea' => 'Cerrar el área del manipulador',
 			'settings.radio.cwMessages.help' => 'Ayuda',
 			'settings.radio.cwMessages.helpTitle' => 'Cómo escribir mensajes de CW',
-			'settings.radio.cwMessages.helpIntro' => 'Un mensaje se manipula tal como se escribe. Los marcadores entre llaves dobles se rellenan con la operación y el contacto que se está registrando.',
+			'settings.radio.cwMessages.helpIntro' => 'Los mensajes pueden usar plantillas con los siguientes valores:',
 			'settings.radio.cwMessages.helpOpCall' => 'Tu indicativo',
-			'settings.radio.cwMessages.helpQsoCall' => 'Su indicativo — en una pila //, el que registra Enter',
-			'settings.radio.cwMessages.helpQsoFullCall' => 'Su indicativo, solo cuando ya es completo; vacío si es parcial',
-			'settings.radio.cwMessages.helpQsoPartial' => 'Su indicativo mientras sigue siendo parcial; vacío cuando ya es completo',
-			'settings.radio.cwMessages.helpQsoNextCall' => 'En una pila //, el indicativo que registra el siguiente Enter',
-			'settings.radio.cwMessages.helpQsoNextPartial' => 'En una pila //, la última entrada que queda tras este contacto',
+			'settings.radio.cwMessages.helpQsoCall' => 'Su indicativo — en una pila //, el indicativo que se registrará',
+			'settings.radio.cwMessages.helpQsoFullCall' => 'Su indicativo, si hay un indicativo válido; vacío si es parcial',
+			'settings.radio.cwMessages.helpQsoPartial' => 'Un indicativo parcial; vacío si hay un indicativo completo válido',
+			'settings.radio.cwMessages.helpQsoNextCall' => 'En una pila //, el indicativo que se seleccionará para registrar a continuación, si hay un indicativo completo válido',
+			'settings.radio.cwMessages.helpQsoNextPartial' => 'En una pila //, el siguiente parcial después de registrar el contacto actual',
 			'settings.radio.cwMessages.helpQsoName' => 'Su nombre de pila, el escrito o si no el de la búsqueda',
 			'settings.radio.cwMessages.helpQsoState' => 'Su estado, el escrito o si no el de la búsqueda',
-			'settings.radio.cwMessages.helpKeyerMsg' => 'El mensaje 1 tal como se enviaría, dentro de otro mensaje',
+			'settings.radio.cwMessages.helpKeyerMsg' => 'El mensaje 1 tal como se enviaría, dentro de otro mensaje. Válido para los mensajes 1 a 8',
 			'settings.radio.cwMessages.helpQsoRst' => 'El reporte que envías',
 			'settings.radio.cwMessages.helpQsoSerial' => 'Tu número de serie, en un concurso que lo envía',
 			'settings.radio.cwMessages.helpPad' => 'Rellena con ceros hasta esa cantidad de dígitos: 7 se envía como 007',
 			'settings.radio.cwMessages.helpCut' => 'Números abreviados, T por 0 y N por 9: 599 se envía como 5NN',
 			'settings.radio.cwMessages.helpCutDigits' => 'Elige qué dígitos abreviar, entre comillas — 0 es T, 1 es A, 5 es E, 9 es N',
+			'settings.radio.cwMessages.helpFullExample' => 'Ejemplo completo:',
 			'settings.radio.cwMessages.helpExample' => 'Envía W1AW 5NN TT7',
 			'settings.radio.cwMessages.helpEsmIntro' => 'Con Enter envía mensajes encendido, Enter manipula los mensajes por su tecla de función, como hace N1MM. El conjunto Mensajes ESM empieza con estos:',
 			'settings.radio.cwMessages.helpEsmCq' => 'En Run, Enter con el indicativo vacío llama CQ',
@@ -4204,8 +4228,9 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.helpEsmHisCall' => 'En Run, su indicativo antes de tu intercambio',
 			'settings.radio.cwMessages.helpEsmAgain' => 'Pide repetir cuando no se copió nada de su intercambio',
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'F3 sugerido para pilas //: TU sale tras registrar el contacto, así que da las gracias, llama a la siguiente estación de la pila y envía tu intercambio, o pide repetir un parcial (TU KR?); si no queda nada, solo TU',
-			'settings.radio.voiceMessages.title' => 'Manipulador de fonía',
-			'settings.radio.voiceMessages.description' => 'Las memorias de voz de la propia radio, reproducidas con F1 a F8 mientras el contacto que se está registrando está en un modo de fonía. El audio se graba en la radio; aquí solo se define el nombre que muestra cada memoria.',
+			'settings.radio.voiceMessages.title' => 'Mensajes del manipulador de fonía',
+			'settings.radio.voiceMessages.notSupported' => 'La radio actual no admite mensajes de Fonía',
+			'settings.radio.voiceMessages.description' => 'Esto usa las memorias de voz de la propia radio',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Memoria de voz (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Etiqueta',
@@ -4215,7 +4240,7 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.playButton' => 'Reproducir',
 			'settings.radio.voiceMessages.recordButton' => 'Grabar',
 			'settings.radio.voiceMessages.stopButton' => 'Detener',
-			'settings.radio.voiceMessages.repeat' => 'Repetir mensaje ❶',
+			'settings.radio.voiceMessages.repeat' => 'Repetir mensaje #1',
 			'settings.radio.voiceMessages.repeatOff' => 'No',
 			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Notas del ${model}:',
@@ -4232,7 +4257,6 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Reproduciendo ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Grabando ${label}',
 			'settings.radio.voiceMessages.doubtful' => '¿La radio lo reprodujo? Dijo estar en reposo de inmediato.',
-			'settings.radio.voiceMessages.notAvailable' => 'Conecta una radio con manipulador de voz para reproducir o grabar desde aquí.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Tienes que grabar las memorias en la propia radio.',
 			'settings.radio.avoidZeroBeat.title' => 'Evitar batido cero en los spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'Con una radio conectada, sintonizando unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.',
@@ -4272,11 +4296,11 @@ extension on TranslationsEs {
 			'settings.privacy.privacyPolicy' => 'Política de Privacidad',
 			'settings.privacy.termsOfService' => 'Términos de Servicio',
 			'settings.operatorCall' => 'Indicativo del Operador',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.title' => 'Sincronización en la Nube',
 			'settings.sync.moreSettings' => 'Más ajustes de sincronización',
 			'settings.sync.enable' => 'Habilitar Sincronización',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.deviceKey' => 'Clave del Dispositivo',
 			'settings.peers.title' => 'Dispositivos',
 			'settings.peers.enable' => 'Conectar con otros dispositivos',
@@ -4411,7 +4435,7 @@ extension on TranslationsEs {
 			'settings.accounts.noSecureStorageInline' => 'Las cuentas no se pueden guardar: no se puede acceder al almacenamiento seguro de esta computadora.',
 			'settings.station.title' => 'Configuración de Estación y Control CAT',
 			'settings.station.none' => 'No hay equipo configurado',
-			'settings.station.add' => 'Agregar equipo',
+			'settings.station.add' => 'Agregar',
 			'settings.station.addTitle' => 'Agregar equipo',
 			'settings.station.searchHint' => 'Buscar equipos',
 			'settings.station.noMatches' => 'Ningún equipo coincide',
@@ -4421,7 +4445,6 @@ extension on TranslationsEs {
 			'settings.station.name' => 'Nombre',
 			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
 			'settings.station.transport' => 'Conexión',
-			'settings.station.transportDescription' => 'Cómo llega la aplicación a esta radio. Cada una tiene sus propios ajustes.',
 			'settings.station.host' => 'Dirección',
 			'settings.station.hostDescription' => 'El nombre de host o la dirección IP de la radio en tu red.',
 			'settings.station.port' => 'Puerto',
@@ -4537,10 +4560,11 @@ extension on TranslationsEs {
 			'settings.station.models.key' => 'Manipulador',
 			'settings.station.models.winkeyer' => 'WinKeyer',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
-			'settings.station.transports.network' => 'Red',
-			'settings.station.transports.usbSerial' => 'USB serie',
-			'settings.station.transports.wifi' => 'WiFi',
-			'settings.station.transports.simulated' => 'Simulada',
+			'settings.station.transports.network' => 'Red/WiFi',
+			'settings.station.transports.usbSerial' => 'Serie USB',
+			'settings.station.transports.wifi' => 'Red/WiFi',
+			'settings.station.transports.bluetoothSerial' => 'Serie Bluetooth',
+			'settings.station.transports.placeholder' => 'Provisional',
 			'settings.station.troubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.ft891Troubleshooting' => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
@@ -4560,18 +4584,27 @@ extension on TranslationsEs {
 			'settings.station.kenwoodTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.kenwoodTroubleshooting' => 'Este controlador está probado con las Kenwood TS-590SG y TS-480, las QRP Labs QMX y QCX-mini, y las Elecraft KX2 y KX3. El resto de la gama está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos; las radios Elecraft tienen sus propias entradas, bajo Elecraft. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.',
 			'settings.station.statusConnected' => 'Conectado',
+			'settings.station.statusLost' => 'Desconectada',
+			'settings.station.notConfigured' => 'Sin configurar',
 			'settings.station.currentConfiguration' => 'Configuración actual',
-			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
-			'settings.station.sectionTransceivers' => 'Transceptores',
-			'settings.station.sectionAntennas' => 'Antenas',
-			'settings.station.sectionOtherEquipment' => 'Otros equipos',
+			'settings.station.currentTransceiver' => 'Radio actual',
+			'settings.station.radioMode' => 'Modo de la radio',
+			'settings.station.keyerNotSupported' => 'No compatible con la radio actual',
+			'settings.station.catControlPreferences' => 'Preferencias de control CAT',
+			'settings.station.chooseTransceiver' => 'Elegir radio',
+			'settings.station.configurationSection' => 'Configuración',
+			'settings.station.noTransceiverSelected' => 'Ninguna radio seleccionada',
+			'settings.station.makeMainVfo' => ({required Object name}) => 'Usar ${name} para el VFO principal',
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, zero: 'Ninguna radio', one: '1 radio', other: '${count} radios', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '1 antena', other: '${count} antenas', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '1 otro equipo', other: '${count} otros equipos', ), 
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
-			'settings.station.equipmentInUse' => 'Equipos en uso',
+			'settings.station.equipmentInUse' => 'Controles de la radio',
 			'settings.station.noTransceiver' => 'Ninguno',
-			'settings.station.peerTransceiver' => ({required Object radio, required Object device}) => '${radio} en ${device}',
-			'settings.station.peerTransceiverUnavailable' => ({required Object radio, required Object device}) => '${radio} en ${device} (no disponible)',
 			'settings.station.peerRadioNotAvailable' => 'No disponible',
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'En ${device}',
+			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} está en otro dispositivo',
+			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'Esta radio está conectada a ${device}. Su conexión y ajustes se configuran en ese dispositivo.',
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador, y cuando esta app puede distinguir los dos puertos marca ese como sugerido. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
@@ -4593,9 +4626,9 @@ extension on TranslationsEs {
 			'settings.station.statusError' => 'Fallo de conexión',
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
 			'settings.station.notSupportedByThisRadio' => 'No compatible con esta radio',
-			'settings.station.keyerRowLabel' => 'Manipulador:',
-			'settings.station.cwMessagesButton' => 'Manipulador de CW',
-			'settings.station.voiceMessagesButton' => 'Manipulador de fonía',
+			'settings.station.keyerRowLabel' => 'Manipulador',
+			'settings.station.cwMessagesButton' => 'CW',
+			'settings.station.voiceMessagesButton' => 'Fonía',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Manipulador de voz: ${count} memorias en la radio',
 			'settings.station.placeholderConnectDelay' => 'Retraso de conexión (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.',
@@ -4651,7 +4684,6 @@ extension on TranslationsEs {
 			'settings.station.softwareIntermediaries' => 'Intermediarios de software',
 			'settings.station.otherBrands' => 'Otras marcas',
 			'settings.station.otherEquipment' => 'Otros equipos (antenas, manipuladores, etc.)',
-			'settings.station.otherOptions' => 'Otras opciones',
 			'settings.station.newAntenna' => 'Nueva antena',
 			'settings.station.newKey' => 'Nuevo manipulador',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatible)',
@@ -4778,6 +4810,8 @@ extension on TranslationsEs {
 			'settings.panels.stationProfiles' => 'Perfiles de estación',
 			'settings.panels.developerSettings' => 'Ajustes de desarrollador',
 			'settings.panels.developerSettingsDescription' => 'Herramientas de depuración y desarrollo',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.about' => 'Acerca de',
 			'settings.panels.aboutDescription' => 'Versión, créditos e información legal',
 			'settings.panels.unavailableTitle' => 'Algunos ajustes no están disponibles',
@@ -4789,8 +4823,6 @@ extension on TranslationsEs {
 			'settings.showMoreSettings' => 'Mostrar más ajustes',
 			'settings.numberFormat' => 'Formato de números',
 			'settings.numberFormatOpts.locale' => 'Seguir la configuración del sistema',
-			_ => null,
-		} ?? switch (path) {
 			'settings.numberFormatOpts.period' => 'Usar siempre punto para decimales',
 			'settings.numberFormatOpts.comma' => 'Usar siempre coma para decimales',
 			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Configuración del sistema (usando ${separator} para decimales)',

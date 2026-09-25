@@ -92,6 +92,9 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   String get name => 'Placeholder Radio';
 
   @override
+  List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(const ['LSB', 'USB', 'CW', 'AM', 'FM', 'DATA-USB']);
+
+  @override
   bool get canKeyCw => true;
 
   /// The three a placeholder can answer honestly: the power it was set to,

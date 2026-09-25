@@ -13,6 +13,7 @@ import '../../services/hook_payloads.dart';
 import '../../services/halo_services.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/cat/equipment.dart';
+import '../../services/cat/cat_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/scoring_service.dart';
@@ -857,6 +858,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
               // configured — the button itself is a Station Configuration
               // affordance that shouldn't exist for operators without it on.
               onOpenStationConfig: _gatoEnabled ? () => _openStationConfigDialog(context) : null,
+              onConnectRadio: _hasConfiguredRadio ? radio1ConnectAction(widget.services.cat, connected: _radioConnected) : null,
               radioName: _radioName,
               ourItuRegion: widget.ourItuRegion,
               ourCountryCode: widget.ourCountryCode,
@@ -1090,4 +1092,18 @@ class _LazyQsoListState extends State<_LazyQsoList> {
 
   @override
   Widget build(BuildContext context) => (!widget.largeEnough || _ready) ? widget.child : const Center(child: CircularProgressIndicator());
+}
+
+/// What the Radio control's plug does while the main radio is down: connect
+/// it. Only for this station's own radio with somewhere to connect to — a
+/// peer's session is the other device's, and a radio with no port or
+/// address has nothing to open. Null hides the plug.
+VoidCallback? radio1ConnectAction(CatService cat, {required bool connected}) {
+  if (connected) return null;
+  if (cat.radio1 case LocalRadio(:final uuid)) {
+    final node = cat.nodeFor(uuid);
+    if (node == null || (cat.typeFor(node)?.isUnconfigured(node.config) ?? true)) return null;
+    return () => unawaited(cat.connect(uuid));
+  }
+  return null;
 }

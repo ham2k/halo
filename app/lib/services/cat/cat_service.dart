@@ -125,6 +125,9 @@ enum _ConnectOutcome {
   /// for the same reason not ours to retry: retrying is precisely what turns
   /// one wedged port into an app that will not start.
   held,
+
+  /// No port or address yet: nothing to try until the operator gives one.
+  unconfigured,
 }
 
 /// [base], or the first `base N` nobody is using yet.
@@ -975,6 +978,20 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   @override
   String? get localRadio1 => _localRadio1;
 
+  /// Puts radio1 in [mode] without touching VFO A: its report comes back the
+  /// usual way. Recorded as sent only once it went, as `tuneNode` does.
+  void setRadio1Mode(String mode) {
+    final runtime = _runtimes[_localRadio1];
+    final session = runtime?.session;
+    if (session is! TransceiverSession) return;
+    try {
+      session.setMode(mode);
+    } catch (e, st) {
+      return ErrorReportingService.report(e, st, context: 'cat:set-radio-mode');
+    }
+    runtime!.lastSent = VfoReading(freqKHz: runtime.lastSent?.freqKHz, mode: mode);
+  }
+
   /// Routes an antenna switch's device port to one of its antenna ports.
   ///
   /// Addressed by node uuid rather than through a designation, unlike
@@ -1241,6 +1258,13 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     _nodes[node.uuid] = await _stashSecrets(node);
     await _save();
     notifyListeners();
+    // Given a port or address at last: nothing retried it, and a re-type above
+    // marked it disconnected on purpose although it never connected.
+    final wasUnconfigured = typeFor(previous)?.isUnconfigured(previous.config) ?? false;
+    if (wasUnconfigured && !(typeFor(node)?.isUnconfigured(node.config) ?? true) && _autoConnectTargets.contains(node.uuid)) {
+      _runtimes[node.uuid]?.userDisconnected = false;
+      unawaited(_reconnectWithRetries(node.uuid));
+    }
   }
 
   /// Moves secret fields out of the config and into the platform keychain.
@@ -1650,6 +1674,15 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
 
     final config = await _configWithSecrets(node);
 
+    if (type.isUnconfigured(config)) {
+      // A port just cleared may have a session up, or an attempt that (as in disconnect()) must learn it lost.
+      final runtime = _runtimeFor(uuid)..cancel?.cancel();
+      runtime.attemptSeq += 1;
+      await _teardown(runtime);
+      _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnected));
+      return _ConnectOutcome.unconfigured;
+    }
+
     // Guarded, unlike the transport's own connect below, because validate()
     // reads the stored config directly: a value of the wrong shape that gets
     // past every reader in config_field_helpers would otherwise escape as an
@@ -1987,7 +2020,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       _idleRetryDelay = _idleRetryDelay * 2 > _idleRetryMax ? _idleRetryMax : _idleRetryDelay * 2;
       unawaited(
         Future.wait(open.map(_autoConnect)).then((outcomes) {
-          if (outcomes.every((outcome) => outcome == _ConnectOutcome.connected)) {
+          if (outcomes.every((outcome) => outcome == _ConnectOutcome.connected || outcome == _ConnectOutcome.unconfigured)) {
             _idleRetryDelay = idleRetryFirst;
             // CANCEL, not just forget. There is an async gap above while the
             // connect runs, and _scheduleIdleRetry may have been called during

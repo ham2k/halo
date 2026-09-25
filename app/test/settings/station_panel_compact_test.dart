@@ -47,9 +47,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Main Radio'), findsNothing, reason: 'radio1 is Second Radio, the newest added');
-    // Once in the VFO dropdown's selected value, once in the equipment row.
-    expect(find.text('Second Radio'), findsNWidgets(2));
-    expect(find.text('Add equipment'), findsNothing);
+    // Once, in the Current Transceiver band: the compact dialog lists no
+    // inventory, and the band is where the rig in use is named.
+    expect(find.text('Second Radio'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Add'), findsNothing);
   });
 
   testWidgets('hides Other Options entirely', (tester) async {
@@ -70,16 +71,15 @@ void main() {
   group("a peer's radio driving the main VFO", () {
     const pick = PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-1', deviceName: "VE1SK's iPad", radioName: 'FTDX10');
 
-    testWidgets('gets a row of its own in Equipment in Use', (tester) async {
+    testWidgets('heads the dialog as the Current Transceiver', (tester) async {
       await services.cat.setRadio1(const PeerRadio(pick));
 
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
-      // The trap the section header names: with the peer listed nowhere, a
-      // section titled "Equipment in Use" sat empty while the dropdown
-      // directly above it named the peer as the rig in use.
-      expect(find.text('Equipment in Use'), findsOneWidget);
+      // The trap: a peer's rig listed nowhere, while the logging panel
+      // follows it, reads as no rig at all.
+      expect(find.text('Current Transceiver'), findsOneWidget);
       expect(find.text('FTDX10'), findsOneWidget);
       expect(find.text("On VE1SK's iPad"), findsOneWidget);
       // It drives vfoA, so it wears the pill a local rig in that role wears.
@@ -168,12 +168,12 @@ void main() {
       final pick = tester.widget<DropdownButtonFormField<int>>(find.byType(DropdownButtonFormField<int>));
       expect(pick.onChanged, isNull, reason: 'the speed is the keyer\'s; only a live session can take one');
       expect(
-        tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Keyer')).onPressed,
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW')).onPressed,
         isNotNull,
         reason: 'the messages are settings, editable without a radio',
       );
       expect(
-        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Keyer')).onPressed,
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone')).onPressed,
         isNotNull,
         reason: 'the rig holds memories whether or not it is plugged in',
       );
@@ -199,10 +199,10 @@ void main() {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Keyer')).onPressed, isNotNull);
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Keyer')).onPressed, isNull);
-      expect(find.bySemanticsLabel('Phone Keyer. Not supported by this radio'), findsOneWidget);
-      expect(find.bySemanticsLabel('CW Keyer. Not supported by this radio'), findsNothing, reason: 'a button that works must not carry a reason it does not');
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW')).onPressed, isNotNull);
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone')).onPressed, isNull);
+      expect(find.bySemanticsLabel('Phone. Not supported by this radio'), findsOneWidget);
+      expect(find.bySemanticsLabel('CW. Not supported by this radio'), findsNothing, reason: 'a button that works must not carry a reason it does not');
       semantics.dispose();
     });
 
@@ -217,9 +217,9 @@ void main() {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
-      // Once as the Main VFO dropdown's value, once as its equipment row —
-      // the key pick names it as 'CAT Keyer in Bench Rig', not a bare match.
-      expect(find.text('Bench Rig'), findsNWidgets(2));
+      // Once, in the Current Transceiver band — the key pick names it as
+      // 'CAT Keyer in Bench Rig', not a bare match.
+      expect(find.text('Bench Rig'), findsOneWidget);
     });
 
     testWidgets('a keyer that is NOT the current rig keeps its own row', (tester) async {

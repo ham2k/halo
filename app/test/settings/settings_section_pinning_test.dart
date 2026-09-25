@@ -70,7 +70,7 @@ void main() {
     expect(find.text('Section 1'), findsOneWidget);
   });
 
-  testWidgets('the rule spans the content, standing proud of the rows\' own inset', (tester) async {
+  testWidgets('the rule spans the content, keeping the rows\' own inset', (tester) async {
     await tester.pumpWidget(host(width: 600, sections: 1, rowsPerSection: 2));
     await tester.pumpAndSettle();
 
@@ -78,13 +78,12 @@ void main() {
     // measures what it heads, stopping short of the pane's edges rather than
     // running to them the way a filled band does.
     final ruled = find.ancestor(of: find.text('Section 0'), matching: find.byType(Container)).first;
-    expect(tester.getSize(ruled).width, 600 - (24 - SectionHeader.overhang) * 2);
+    expect(tester.getSize(ruled).width, 600 - 24 * 2);
 
-    // Title and rule alike stand one overhang OUTSIDE the inset the rows
-    // keep — both insets are read from the ambient ListTileTheme, so the
-    // heading tracks the rows wherever the pane puts them without lining up
-    // with them and reading as one more row.
-    expect(tester.getTopLeft(find.text('Row 0-0')).dx - tester.getTopLeft(find.text('Section 0')).dx, SectionHeader.overhang);
+    // Title and rule alike keep the inset the rows keep — both read from the
+    // ambient ListTileTheme, so the heading lines up with the rows wherever
+    // the pane puts them.
+    expect(tester.getTopLeft(find.text('Row 0-0')).dx, tester.getTopLeft(find.text('Section 0')).dx);
   });
 
   testWidgets('a pinned band takes the height it lays out to, so a large text scale still fits', (tester) async {

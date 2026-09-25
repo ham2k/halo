@@ -3617,8 +3617,23 @@ class Translations$settings$radio$en {
 
 	// Translations
 
-	/// en: 'Radio'
-	String get title => 'Radio';
+	/// en: 'CAT Control'
+	String get title => 'CAT Control';
+
+	/// en: 'Logging & CAT'
+	String get loggingAndCat => 'Logging & CAT';
+
+	/// en: 'Tuning'
+	String get tuningSection => 'Tuning';
+
+	/// en: 'Keyer'
+	String get keyerSection => 'Keyer';
+
+	/// en: 'Services'
+	String get servicesSection => 'Services';
+
+	/// en: 'Station Configuration'
+	String get stationConfigurationSection => 'Station Configuration';
 
 	/// en: 'More station configuration settings'
 	String get moreSettings => 'More station configuration settings';
@@ -3629,10 +3644,6 @@ class Translations$settings$radio$en {
 	late final Translations$settings$radio$snapLongMove$en snapLongMove = Translations$settings$radio$snapLongMove$en.internal(_root);
 	late final Translations$settings$radio$snapMinMove$en snapMinMove = Translations$settings$radio$snapMinMove$en.internal(_root);
 	late final Translations$settings$radio$snapMinSpeed$en snapMinSpeed = Translations$settings$radio$snapMinSpeed$en.internal(_root);
-
-	/// en: 'CW Keying'
-	String get cwKeying => 'CW Keying';
-
 	late final Translations$settings$radio$enterSends$en enterSends = Translations$settings$radio$enterSends$en.internal(_root);
 	late final Translations$settings$radio$keyerSpeed$en keyerSpeed = Translations$settings$radio$keyerSpeed$en.internal(_root);
 	late final Translations$settings$radio$cwMessages$en cwMessages = Translations$settings$radio$cwMessages$en.internal(_root);
@@ -4201,8 +4212,8 @@ class Translations$settings$station$en {
 	/// en: 'No equipment configured'
 	String get none => 'No equipment configured';
 
-	/// en: 'Add equipment'
-	String get add => 'Add equipment';
+	/// en: 'Add'
+	String get add => 'Add';
 
 	/// en: 'Add equipment'
 	String get addTitle => 'Add equipment';
@@ -4230,9 +4241,6 @@ class Translations$settings$station$en {
 
 	/// en: 'Connection'
 	String get transport => 'Connection';
-
-	/// en: 'How the app reaches this radio. Each one has its own settings.'
-	String get transportDescription => 'How the app reaches this radio. Each one has its own settings.';
 
 	/// en: 'Address'
 	String get host => 'Address';
@@ -4516,41 +4524,78 @@ class Translations$settings$station$en {
 	/// en: 'Connected'
 	String get statusConnected => 'Connected';
 
+	/// en: 'Disconnected'
+	String get statusLost => 'Disconnected';
+
+	/// en: 'Not configured'
+	String get notConfigured => 'Not configured';
+
 	/// en: 'Current Configuration'
 	String get currentConfiguration => 'Current Configuration';
 
-	/// en: 'Transceiver for Main VFO'
-	String get transceiverForMainVfo => 'Transceiver for Main VFO';
+	/// en: 'Current Transceiver'
+	String get currentTransceiver => 'Current Transceiver';
 
-	/// en: 'Transceivers'
-	String get sectionTransceivers => 'Transceivers';
+	/// en: 'Radio Mode'
+	String get radioMode => 'Radio Mode';
 
-	/// en: 'Antennas'
-	String get sectionAntennas => 'Antennas';
+	/// en: 'Not supported by current radio'
+	String get keyerNotSupported => 'Not supported by current radio';
 
-	/// en: 'Other Equipment'
-	String get sectionOtherEquipment => 'Other Equipment';
+	/// en: 'CAT Control Preferences'
+	String get catControlPreferences => 'CAT Control Preferences';
+
+	/// en: 'Choose transceiver'
+	String get chooseTransceiver => 'Choose transceiver';
+
+	/// en: 'Configuration'
+	String get configurationSection => 'Configuration';
+
+	/// en: 'No transceiver selected'
+	String get noTransceiverSelected => 'No transceiver selected';
+
+	/// en: 'Use ${name} for the Main VFO'
+	String makeMainVfo({required Object name}) => 'Use ${name} for the Main VFO';
+
+	/// en: '(zero) {No transceivers} (one) {1 transceiver} (other) {${count} transceivers}'
+	String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		zero: 'No transceivers',
+		one: '1 transceiver',
+		other: '${count} transceivers',
+	);
+
+	/// en: '(one) {1 antenna} (other) {${count} antennas}'
+	String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '1 antenna',
+		other: '${count} antennas',
+	);
+
+	/// en: '(one) {1 other device} (other) {${count} other devices}'
+	String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '1 other device',
+		other: '${count} other devices',
+	);
 
 	/// en: 'Equipment Inventory'
 	String get equipmentInventory => 'Equipment Inventory';
 
-	/// en: 'Equipment in Use'
-	String get equipmentInUse => 'Equipment in Use';
+	/// en: 'Transceiver Controls'
+	String get equipmentInUse => 'Transceiver Controls';
 
 	/// en: 'None'
 	String get noTransceiver => 'None';
-
-	/// en: '${radio} on ${device}'
-	String peerTransceiver({required Object radio, required Object device}) => '${radio} on ${device}';
-
-	/// en: '${radio} on ${device} (not available)'
-	String peerTransceiverUnavailable({required Object radio, required Object device}) => '${radio} on ${device} (not available)';
 
 	/// en: 'Not available'
 	String get peerRadioNotAvailable => 'Not available';
 
 	/// en: 'On ${device}'
 	String peerRadioOnDevice({required Object device}) => 'On ${device}';
+
+	/// en: '${radio} is on another device'
+	String peerRadioElsewhereTitle({required Object radio}) => '${radio} is on another device';
+
+	/// en: 'This radio is connected to ${device}. Its connection and settings are configured on that device.'
+	String peerRadioElsewhereMessage({required Object device}) => 'This radio is connected to ${device}. Its connection and settings are configured on that device.';
 
 	/// en: 'Antenna in Use'
 	String get antennaInUse => 'Antenna in Use';
@@ -4627,14 +4672,14 @@ class Translations$settings$station$en {
 	/// en: 'Not supported by this radio'
 	String get notSupportedByThisRadio => 'Not supported by this radio';
 
-	/// en: 'Keyer:'
-	String get keyerRowLabel => 'Keyer:';
+	/// en: 'Keyer'
+	String get keyerRowLabel => 'Keyer';
 
-	/// en: 'CW Keyer'
-	String get cwMessagesButton => 'CW Keyer';
+	/// en: 'CW'
+	String get cwMessagesButton => 'CW';
 
-	/// en: 'Phone Keyer'
-	String get voiceMessagesButton => 'Phone Keyer';
+	/// en: 'Phone'
+	String get voiceMessagesButton => 'Phone';
 
 	/// en: 'Voice keyer: $count memories in the radio'
 	String voiceKeyerAvailable({required Object count}) => 'Voice keyer: ${count} memories in the radio';
@@ -4666,9 +4711,6 @@ class Translations$settings$station$en {
 
 	/// en: 'Other Equipment (Antennas, Keys, etc)'
 	String get otherEquipment => 'Other Equipment (Antennas, Keys, etc)';
-
-	/// en: 'Other Options'
-	String get otherOptions => 'Other Options';
 
 	/// en: 'New Antenna'
 	String get newAntenna => 'New Antenna';
@@ -5683,6 +5725,9 @@ class Translations$operation$layout$panels$en {
 	/// en: 'No radio to show. Pick one in this panel's settings, or add one under Station Configuration.'
 	String get radioNoRadio => 'No radio to show. Pick one in this panel\'s settings, or add one under Station Configuration.';
 
+	/// en: 'This radio is not configured yet. Choose its port or address under Station Configuration.'
+	String get radioNotConfigured => 'This radio is not configured yet. Choose its port or address under Station Configuration.';
+
 	/// en: '—'
 	String get radioNoFrequency => '—';
 
@@ -6280,8 +6325,11 @@ class Translations$settings$radio$cwMessages$en {
 
 	// Translations
 
-	/// en: 'CW Keyer'
-	String get title => 'CW Keyer';
+	/// en: 'CW Keyer Messages'
+	String get title => 'CW Keyer Messages';
+
+	/// en: 'Current radio does not support CW keying'
+	String get notSupported => 'Current radio does not support CW keying';
 
 	/// en: 'F$n'
 	String key({required Object n}) => 'F${n}';
@@ -6300,9 +6348,6 @@ class Translations$settings$radio$cwMessages$en {
 
 	/// en: '(empty)'
 	String get empty => '(empty)';
-
-	/// en: 'Edit Messages'
-	String get edit => 'Edit Messages';
 
 	/// en: 'Message Set'
 	String get sets => 'Message Set';
@@ -6331,8 +6376,8 @@ class Translations$settings$radio$cwMessages$en {
 	/// en: 'My Messages'
 	String get setSaved => 'My Messages';
 
-	/// en: 'Repeat Message ❶'
-	String get repeat => 'Repeat Message ❶';
+	/// en: 'Repeat Message #1'
+	String get repeat => 'Repeat Message #1';
 
 	/// en: 'No'
 	String get repeatOff => 'No';
@@ -6342,15 +6387,6 @@ class Translations$settings$radio$cwMessages$en {
 
 	/// en: 'Repeating'
 	String get repeatWait => 'Repeating';
-
-	/// en: 'Custom Message'
-	String get custom => 'Custom Message';
-
-	/// en: 'Message'
-	String get customField => 'Message';
-
-	/// en: 'Send'
-	String get send => 'Send';
 
 	/// en: 'Type to send'
 	String get keyboard => 'Type to send';
@@ -6367,26 +6403,26 @@ class Translations$settings$radio$cwMessages$en {
 	/// en: 'Writing CW Messages'
 	String get helpTitle => 'Writing CW Messages';
 
-	/// en: 'A message is keyed as typed. Placeholders in double braces fill in from the operation and the contact being logged.'
-	String get helpIntro => 'A message is keyed as typed. Placeholders in double braces fill in from the operation and the contact being logged.';
+	/// en: 'Messages can use templates with the following values:'
+	String get helpIntro => 'Messages can use templates with the following values:';
 
 	/// en: 'Your callsign'
 	String get helpOpCall => 'Your callsign';
 
-	/// en: 'Their callsign — in a // stack, the one Enter logs'
-	String get helpQsoCall => 'Their callsign — in a // stack, the one Enter logs';
+	/// en: 'Their callsign — in a // stack, the call that will be logged'
+	String get helpQsoCall => 'Their callsign — in a // stack, the call that will be logged';
 
-	/// en: 'Their callsign, only once it reads as a full one; blank for a partial'
-	String get helpQsoFullCall => 'Their callsign, only once it reads as a full one; blank for a partial';
+	/// en: 'Their callsign, if there is a valid call; blank for a partial'
+	String get helpQsoFullCall => 'Their callsign, if there is a valid call; blank for a partial';
 
-	/// en: 'Their call while it is still a partial; blank once it is a full one'
-	String get helpQsoPartial => 'Their call while it is still a partial; blank once it is a full one';
+	/// en: 'A partial call; blank if there is a full valid call'
+	String get helpQsoPartial => 'A partial call; blank if there is a full valid call';
 
-	/// en: 'In a // stack, the call the next Enter logs'
-	String get helpQsoNextCall => 'In a // stack, the call the next Enter logs';
+	/// en: 'In a // stack, the call that will be selected for logging next, if there is a valid full call'
+	String get helpQsoNextCall => 'In a // stack, the call that will be selected for logging next, if there is a valid full call';
 
-	/// en: 'In a // stack, the last entry left after this contact'
-	String get helpQsoNextPartial => 'In a // stack, the last entry left after this contact';
+	/// en: 'In a // stack, the next partial after logging the current contact'
+	String get helpQsoNextPartial => 'In a // stack, the next partial after logging the current contact';
 
 	/// en: 'Their first name, as typed or else from the lookup'
 	String get helpQsoName => 'Their first name, as typed or else from the lookup';
@@ -6394,8 +6430,8 @@ class Translations$settings$radio$cwMessages$en {
 	/// en: 'Their state, as typed or else from the lookup'
 	String get helpQsoState => 'Their state, as typed or else from the lookup';
 
-	/// en: 'Message 1 as it would be sent, inside another message'
-	String get helpKeyerMsg => 'Message 1 as it would be sent, inside another message';
+	/// en: 'Message 1 as it would be sent, inside another message. Valid for messages 1 through 8'
+	String get helpKeyerMsg => 'Message 1 as it would be sent, inside another message. Valid for messages 1 through 8';
 
 	/// en: 'The report you are sending'
 	String get helpQsoRst => 'The report you are sending';
@@ -6411,6 +6447,9 @@ class Translations$settings$radio$cwMessages$en {
 
 	/// en: 'Chooses the digits to cut, in quotes — 0 is T, 1 is A, 5 is E, 9 is N'
 	String get helpCutDigits => 'Chooses the digits to cut, in quotes — 0 is T, 1 is A, 5 is E, 9 is N';
+
+	/// en: 'Full example:'
+	String get helpFullExample => 'Full example:';
 
 	/// en: 'Sends W1AW 5NN TT7'
 	String get helpExample => 'Sends W1AW 5NN TT7';
@@ -6448,11 +6487,14 @@ class Translations$settings$radio$voiceMessages$en {
 
 	// Translations
 
-	/// en: 'Phone Keyer'
-	String get title => 'Phone Keyer';
+	/// en: 'Phone Keyer Messages'
+	String get title => 'Phone Keyer Messages';
 
-	/// en: 'The radio's own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.'
-	String get description => 'The radio\'s own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.';
+	/// en: 'Current radio does not support Phone messages'
+	String get notSupported => 'Current radio does not support Phone messages';
+
+	/// en: 'This uses the radio's own voice memories'
+	String get description => 'This uses the radio\'s own voice memories';
 
 	/// en: 'M$n'
 	String key({required Object n}) => 'M${n}';
@@ -6481,8 +6523,8 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: 'Stop'
 	String get stopButton => 'Stop';
 
-	/// en: 'Repeat Message ❶'
-	String get repeat => 'Repeat Message ❶';
+	/// en: 'Repeat Message #1'
+	String get repeat => 'Repeat Message #1';
 
 	/// en: 'No'
 	String get repeatOff => 'No';
@@ -6531,9 +6573,6 @@ class Translations$settings$radio$voiceMessages$en {
 
 	/// en: 'Did the radio play it? It said it was idle right away.'
 	String get doubtful => 'Did the radio play it? It said it was idle right away.';
-
-	/// en: 'Connect a radio with a voice keyer to play or record from here.'
-	String get notAvailable => 'Connect a radio with a voice keyer to play or record from here.';
 
 	/// en: 'You have to record the memories on the radio itself.'
 	String get recordOnRadio => 'You have to record the memories on the radio itself.';
@@ -6790,17 +6829,20 @@ class Translations$settings$station$transports$en {
 
 	// Translations
 
-	/// en: 'Network'
-	String get network => 'Network';
+	/// en: 'Network/WiFi'
+	String get network => 'Network/WiFi';
 
-	/// en: 'USB serial'
-	String get usbSerial => 'USB serial';
+	/// en: 'USB Serial'
+	String get usbSerial => 'USB Serial';
 
-	/// en: 'WiFi'
-	String get wifi => 'WiFi';
+	/// en: 'Network/WiFi'
+	String get wifi => 'Network/WiFi';
 
-	/// en: 'Simulated'
-	String get simulated => 'Simulated';
+	/// en: 'Bluetooth Serial'
+	String get bluetoothSerial => 'Bluetooth Serial';
+
+	/// en: 'Placeholder'
+	String get placeholder => 'Placeholder';
 }
 
 // Path: settings.station.antennaTypes
@@ -7389,6 +7431,7 @@ extension on Translations {
 			'operation.layout.panels.radioAutoNamed' => ({required Object name}) => 'VFO A — ${name}',
 			'operation.layout.panels.radioAutoNone' => 'VFO A — no radio designated',
 			'operation.layout.panels.radioNoRadio' => 'No radio to show. Pick one in this panel\'s settings, or add one under Station Configuration.',
+			'operation.layout.panels.radioNotConfigured' => 'This radio is not configured yet. Choose its port or address under Station Configuration.',
 			'operation.layout.panels.radioNoFrequency' => '—',
 			'operation.layout.panels.radioOff' => 'Radio not connected',
 			'operation.layout.panels.radioWatts' => 'W',
@@ -7484,9 +7527,9 @@ extension on Translations {
 			'operation.spots.failedTitle' => 'Spot source error',
 			'operation.spots.failedText' => ({required Object sources}) => '${sources} returned an error.',
 			'operation.spots.slideLogIt' => 'Log it',
-			'operation.spots.slideIgnore' => 'Ignore',
 			_ => null,
 		} ?? switch (path) {
+			'operation.spots.slideIgnore' => 'Ignore',
 			'operation.spots.slideRestore' => 'Restore',
 			'operation.spots.logConflict.title' => 'Logging panel is busy',
 			'operation.spots.logConflict.editingBody' => 'You\'re editing a logged contact. Log this spot instead, or go back and finish the edit?',
@@ -7845,7 +7888,12 @@ extension on Translations {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: another program is using it, often ${protocol} itself. Close that program or choose another port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: this computer does not allow it. Choose a port above 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} stopped listening on port ${port}. Trying again…',
-			'settings.radio.title' => 'Radio',
+			'settings.radio.title' => 'CAT Control',
+			'settings.radio.loggingAndCat' => 'Logging & CAT',
+			'settings.radio.tuningSection' => 'Tuning',
+			'settings.radio.keyerSection' => 'Keyer',
+			'settings.radio.servicesSection' => 'Services',
+			'settings.radio.stationConfigurationSection' => 'Station Configuration',
 			'settings.radio.moreSettings' => 'More station configuration settings',
 			'settings.radio.units.ms' => 'ms',
 			'settings.radio.units.kHz' => 'kHz',
@@ -7862,7 +7910,6 @@ extension on Translations {
 			'settings.radio.snapMinMove.description' => 'Move less than this and nothing is rounded — fine tuning is left alone.',
 			'settings.radio.snapMinSpeed.title' => 'Smart Snap: Slowest move',
 			'settings.radio.snapMinSpeed.description' => 'Turn the dial slower than this and nothing is rounded, unless it was a long move.',
-			'settings.radio.cwKeying' => 'CW Keying',
 			'settings.radio.enterSends.pillOff' => 'ESM Off',
 			'settings.radio.enterSends.pillRun' => 'ESM Run',
 			'settings.radio.enterSends.pillSp' => 'ESM S&P',
@@ -7875,14 +7922,14 @@ extension on Translations {
 			'settings.radio.keyerSpeed.unit' => 'WPM',
 			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} wpm',
 			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
-			'settings.radio.cwMessages.title' => 'CW Keyer',
+			'settings.radio.cwMessages.title' => 'CW Keyer Messages',
+			'settings.radio.cwMessages.notSupported' => 'Current radio does not support CW keying',
 			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
 			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Message (${n})',
 			'settings.radio.cwMessages.labelField' => 'Label',
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'F${n} label',
 			'settings.radio.cwMessages.details' => 'Details',
 			'settings.radio.cwMessages.empty' => '(empty)',
-			'settings.radio.cwMessages.edit' => 'Edit Messages',
 			'settings.radio.cwMessages.sets' => 'Message Set',
 			'settings.radio.cwMessages.newSet' => 'New Set',
 			'settings.radio.cwMessages.renameSet' => 'Rename Set',
@@ -7892,33 +7939,31 @@ extension on Translations {
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM Messages',
 			'settings.radio.cwMessages.setSaved' => 'My Messages',
-			'settings.radio.cwMessages.repeat' => 'Repeat Message ❶',
+			'settings.radio.cwMessages.repeat' => 'Repeat Message #1',
 			'settings.radio.cwMessages.repeatOff' => 'No',
 			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
 			'settings.radio.cwMessages.repeatWait' => 'Repeating',
-			'settings.radio.cwMessages.custom' => 'Custom Message',
-			'settings.radio.cwMessages.customField' => 'Message',
-			'settings.radio.cwMessages.send' => 'Send',
 			'settings.radio.cwMessages.keyboard' => 'Type to send',
 			'settings.radio.cwMessages.keyboardField' => 'Type to send',
 			'settings.radio.cwMessages.closeArea' => 'Close the keyer area',
 			'settings.radio.cwMessages.help' => 'Help',
 			'settings.radio.cwMessages.helpTitle' => 'Writing CW Messages',
-			'settings.radio.cwMessages.helpIntro' => 'A message is keyed as typed. Placeholders in double braces fill in from the operation and the contact being logged.',
+			'settings.radio.cwMessages.helpIntro' => 'Messages can use templates with the following values:',
 			'settings.radio.cwMessages.helpOpCall' => 'Your callsign',
-			'settings.radio.cwMessages.helpQsoCall' => 'Their callsign — in a // stack, the one Enter logs',
-			'settings.radio.cwMessages.helpQsoFullCall' => 'Their callsign, only once it reads as a full one; blank for a partial',
-			'settings.radio.cwMessages.helpQsoPartial' => 'Their call while it is still a partial; blank once it is a full one',
-			'settings.radio.cwMessages.helpQsoNextCall' => 'In a // stack, the call the next Enter logs',
-			'settings.radio.cwMessages.helpQsoNextPartial' => 'In a // stack, the last entry left after this contact',
+			'settings.radio.cwMessages.helpQsoCall' => 'Their callsign — in a // stack, the call that will be logged',
+			'settings.radio.cwMessages.helpQsoFullCall' => 'Their callsign, if there is a valid call; blank for a partial',
+			'settings.radio.cwMessages.helpQsoPartial' => 'A partial call; blank if there is a full valid call',
+			'settings.radio.cwMessages.helpQsoNextCall' => 'In a // stack, the call that will be selected for logging next, if there is a valid full call',
+			'settings.radio.cwMessages.helpQsoNextPartial' => 'In a // stack, the next partial after logging the current contact',
 			'settings.radio.cwMessages.helpQsoName' => 'Their first name, as typed or else from the lookup',
 			'settings.radio.cwMessages.helpQsoState' => 'Their state, as typed or else from the lookup',
-			'settings.radio.cwMessages.helpKeyerMsg' => 'Message 1 as it would be sent, inside another message',
+			'settings.radio.cwMessages.helpKeyerMsg' => 'Message 1 as it would be sent, inside another message. Valid for messages 1 through 8',
 			'settings.radio.cwMessages.helpQsoRst' => 'The report you are sending',
 			'settings.radio.cwMessages.helpQsoSerial' => 'Your serial number, in a contest that sends one',
 			'settings.radio.cwMessages.helpPad' => 'Pads with zeros to that many digits: 7 is sent as 007',
 			'settings.radio.cwMessages.helpCut' => 'Cut numbers, T for 0 and N for 9: 599 is sent as 5NN',
 			'settings.radio.cwMessages.helpCutDigits' => 'Chooses the digits to cut, in quotes — 0 is T, 1 is A, 5 is E, 9 is N',
+			'settings.radio.cwMessages.helpFullExample' => 'Full example:',
 			'settings.radio.cwMessages.helpExample' => 'Sends W1AW 5NN TT7',
 			'settings.radio.cwMessages.helpEsmIntro' => 'With Enter Sends Messages on, Enter keys messages by their function key, as N1MM does. The ESM Messages set starts with these:',
 			'settings.radio.cwMessages.helpEsmCq' => 'Running, Enter with the call field empty calls CQ',
@@ -7928,8 +7973,9 @@ extension on Translations {
 			'settings.radio.cwMessages.helpEsmHisCall' => 'Running, their call ahead of your exchange',
 			'settings.radio.cwMessages.helpEsmAgain' => 'Asks again when nothing of their exchange was copied',
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'Suggested F3 for // stacks: TU goes out after the contact logs, so it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU',
-			'settings.radio.voiceMessages.title' => 'Phone Keyer',
-			'settings.radio.voiceMessages.description' => 'The radio\'s own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.',
+			'settings.radio.voiceMessages.title' => 'Phone Keyer Messages',
+			'settings.radio.voiceMessages.notSupported' => 'Current radio does not support Phone messages',
+			'settings.radio.voiceMessages.description' => 'This uses the radio\'s own voice memories',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Voice memory (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Label',
@@ -7939,7 +7985,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.playButton' => 'Play',
 			'settings.radio.voiceMessages.recordButton' => 'Record',
 			'settings.radio.voiceMessages.stopButton' => 'Stop',
-			'settings.radio.voiceMessages.repeat' => 'Repeat Message ❶',
+			'settings.radio.voiceMessages.repeat' => 'Repeat Message #1',
 			'settings.radio.voiceMessages.repeatOff' => 'No',
 			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} Notes:',
@@ -7956,7 +8002,6 @@ extension on Translations {
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Playing ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Recording ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'Did the radio play it? It said it was idle right away.',
-			'settings.radio.voiceMessages.notAvailable' => 'Connect a radio with a voice keyer to play or record from here.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'You have to record the memories on the radio itself.',
 			'settings.radio.avoidZeroBeat.title' => 'Avoid Zero-Beating on Spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
@@ -7996,11 +8041,11 @@ extension on Translations {
 			'settings.privacy.privacyPolicy' => 'Privacy Policy',
 			'settings.privacy.termsOfService' => 'Terms of Service',
 			'settings.operatorCall' => 'Operator Callsign',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.title' => 'Cloud Sync',
 			'settings.sync.moreSettings' => 'More sync settings',
 			'settings.sync.enable' => 'Enable Sync',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.deviceKey' => 'Device Key',
 			'settings.peers.title' => 'Peer Devices',
 			'settings.peers.enable' => 'Connect to other devices',
@@ -8135,7 +8180,7 @@ extension on Translations {
 			'settings.accounts.noSecureStorageInline' => 'Logins can’t be saved: this computer’s secure storage can’t be reached.',
 			'settings.station.title' => 'Station Configuration & CAT Control',
 			'settings.station.none' => 'No equipment configured',
-			'settings.station.add' => 'Add equipment',
+			'settings.station.add' => 'Add',
 			'settings.station.addTitle' => 'Add equipment',
 			'settings.station.searchHint' => 'Search equipment',
 			'settings.station.noMatches' => 'No equipment matches',
@@ -8145,7 +8190,6 @@ extension on Translations {
 			'settings.station.name' => 'Name',
 			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
 			'settings.station.transport' => 'Connection',
-			'settings.station.transportDescription' => 'How the app reaches this radio. Each one has its own settings.',
 			'settings.station.host' => 'Address',
 			'settings.station.hostDescription' => 'The radio\'s hostname or IP address on your network.',
 			'settings.station.port' => 'Port',
@@ -8262,10 +8306,11 @@ extension on Translations {
 			'settings.station.models.placeholderRadioNodeName' => 'My Radio',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
-			'settings.station.transports.network' => 'Network',
-			'settings.station.transports.usbSerial' => 'USB serial',
-			'settings.station.transports.wifi' => 'WiFi',
-			'settings.station.transports.simulated' => 'Simulated',
+			'settings.station.transports.network' => 'Network/WiFi',
+			'settings.station.transports.usbSerial' => 'USB Serial',
+			'settings.station.transports.wifi' => 'Network/WiFi',
+			'settings.station.transports.bluetoothSerial' => 'Bluetooth Serial',
+			'settings.station.transports.placeholder' => 'Placeholder',
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'If the radio connects but shows no frequency',
@@ -8285,18 +8330,27 @@ extension on Translations {
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against Kenwood\'s TS-590SG and TS-480, QRP Labs\' QMX and QCX-mini, and Elecraft\'s KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
+			'settings.station.statusLost' => 'Disconnected',
+			'settings.station.notConfigured' => 'Not configured',
 			'settings.station.currentConfiguration' => 'Current Configuration',
-			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
-			'settings.station.sectionTransceivers' => 'Transceivers',
-			'settings.station.sectionAntennas' => 'Antennas',
-			'settings.station.sectionOtherEquipment' => 'Other Equipment',
+			'settings.station.currentTransceiver' => 'Current Transceiver',
+			'settings.station.radioMode' => 'Radio Mode',
+			'settings.station.keyerNotSupported' => 'Not supported by current radio',
+			'settings.station.catControlPreferences' => 'CAT Control Preferences',
+			'settings.station.chooseTransceiver' => 'Choose transceiver',
+			'settings.station.configurationSection' => 'Configuration',
+			'settings.station.noTransceiverSelected' => 'No transceiver selected',
+			'settings.station.makeMainVfo' => ({required Object name}) => 'Use ${name} for the Main VFO',
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, zero: 'No transceivers', one: '1 transceiver', other: '${count} transceivers', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '1 antenna', other: '${count} antennas', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '1 other device', other: '${count} other devices', ), 
 			'settings.station.equipmentInventory' => 'Equipment Inventory',
-			'settings.station.equipmentInUse' => 'Equipment in Use',
+			'settings.station.equipmentInUse' => 'Transceiver Controls',
 			'settings.station.noTransceiver' => 'None',
-			'settings.station.peerTransceiver' => ({required Object radio, required Object device}) => '${radio} on ${device}',
-			'settings.station.peerTransceiverUnavailable' => ({required Object radio, required Object device}) => '${radio} on ${device} (not available)',
 			'settings.station.peerRadioNotAvailable' => 'Not available',
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'On ${device}',
+			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
+			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'This radio is connected to ${device}. Its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'Antenna in Use',
 			'settings.station.keyInUse' => 'Key in Use',
 			'settings.station.noneSelected' => 'None',
@@ -8322,9 +8376,9 @@ extension on Translations {
 			'settings.station.statusError' => 'Connection failed',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.station.notSupportedByThisRadio' => 'Not supported by this radio',
-			'settings.station.keyerRowLabel' => 'Keyer:',
-			'settings.station.cwMessagesButton' => 'CW Keyer',
-			'settings.station.voiceMessagesButton' => 'Phone Keyer',
+			'settings.station.keyerRowLabel' => 'Keyer',
+			'settings.station.cwMessagesButton' => 'CW',
+			'settings.station.voiceMessagesButton' => 'Phone',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Voice keyer: ${count} memories in the radio',
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
@@ -8348,7 +8402,6 @@ extension on Translations {
 			'settings.station.softwareIntermediaries' => 'Software Intermediaries',
 			'settings.station.otherBrands' => 'Other Brands',
 			'settings.station.otherEquipment' => 'Other Equipment (Antennas, Keys, etc)',
-			'settings.station.otherOptions' => 'Other Options',
 			'settings.station.newAntenna' => 'New Antenna',
 			'settings.station.newKey' => 'New Key',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
@@ -8502,6 +8555,8 @@ extension on Translations {
 			'settings.panels.settings' => 'Application Preferences',
 			'settings.panels.settingsDescription' => 'Make the app work how you want it',
 			'settings.panels.commonSettings' => 'Common Preferences',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.syncDescription' => 'Back up and sync your logs across devices',
 			'settings.panels.accountsDescription' => 'Service credentials, offline data, and more',
 			'settings.panels.extensions' => 'Features & Extensions',
@@ -8513,8 +8568,6 @@ extension on Translations {
 			'settings.panels.about' => 'About',
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
 			'settings.panels.stationDescription' => 'CAT control and more options',

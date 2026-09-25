@@ -121,6 +121,9 @@ class YaesuBinaryDriver extends EquipmentDriver {
   @override
   String get name => 'Yaesu FT-817/857/897 CAT';
 
+  @override
+  List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(yaesuBinaryModeCodes.keys);
+
   /// This protocol has no keyer command and no voice memory command: the
   /// chart's seventeen opcodes are frequency, mode, PTT, repeater and tone
   /// settings, and the two status reads. Nothing to declare.

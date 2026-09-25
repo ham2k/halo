@@ -34,6 +34,9 @@ mixin TcpTransportConfig implements EquipmentTransport {
   Map<String, dynamic> targetFor(Map<String, dynamic> config) => {'host': trimmedHost(config), 'port': tcpPort(config)};
 
   @override
+  bool isUnconfigured(Map<String, dynamic> config) => blankInConfig(config, 'host');
+
+  @override
   String describeTarget(Map<String, dynamic> config) => '${trimmedHost(config)}:${tcpPort(config)}';
 
   /// `0` is deliberately not a plausible-looking port like 4992 — a stored

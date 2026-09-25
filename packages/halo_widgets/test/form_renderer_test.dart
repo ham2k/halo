@@ -48,6 +48,54 @@ void main() {
   };
 
   group('FormRenderer', () {
+    testWidgets('a segmented field shows every option at once and a tap picks one', (tester) async {
+      // The equipment editor's connection choice: the options are few and
+      // decide what the rest of the form asks, so they are all on screen
+      // rather than behind a menu.
+      final changes = <Object?>[];
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: FormRenderer(
+                formDefinition: const {
+                  'elements': [
+                    {
+                      'type': 'field',
+                      'fieldType': 'segmented',
+                      'key': 'transport',
+                      'label': 'Connection',
+                      'options': [
+                        {'label': 'Network/WiFi', 'value': 'wifi'},
+                        {'label': 'USB Serial', 'value': 'serial'},
+                      ],
+                    },
+                  ],
+                },
+                initialState: const {'transport': 'wifi'},
+                showActions: false,
+                showTitle: false,
+                onChange: (key, value, values) async {
+                  changes.add(value);
+                  return null;
+                },
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SegmentedButton<dynamic>), findsOneWidget);
+      expect(find.text('Network/WiFi'), findsOneWidget);
+      expect(find.text('USB Serial'), findsOneWidget);
+      await tester.tap(find.text('USB Serial'));
+      await tester.pumpAndSettle();
+      expect(changes, ['serial']);
+    });
+
     testWidgets('disposing a settings-list form does not finish another field\'s autofill context', (tester) async {
       final showSettings = ValueNotifier(true);
       addTearDown(showSettings.dispose);
@@ -2678,7 +2726,7 @@ void main() {
       // The rule measures the CONTENT it heads: it starts where the title
       // does and ends the same distance from the other edge, rather than
       // running out to the pane's edges the way a filled band does. Both
-      // stand SectionHeader.overhang outside the rows' own inset.
+      // keep the rows' own inset.
       final heading = find.ancestor(of: title, matching: find.byType(Container)).first;
       final form = find.byType(FormRenderer);
       expect(tester.getTopLeft(heading).dx, tester.getTopLeft(title).dx);
@@ -2689,9 +2737,9 @@ void main() {
       );
       expect(tester.getSize(heading).width, lessThan(tester.getSize(form).width));
       expect(
-        tester.getTopLeft(find.text('Plain Title')).dx - tester.getTopLeft(heading).dx,
-        SectionHeader.overhang,
-        reason: 'the band stands proud of the inset an ordinary row keeps',
+        tester.getTopLeft(heading).dx,
+        tester.getTopLeft(find.text('Plain Title')).dx,
+        reason: 'the band keeps the inset an ordinary row keeps, lining up with it',
       );
 
       // On no ground of its own, closed by a hairline in the title's accent:

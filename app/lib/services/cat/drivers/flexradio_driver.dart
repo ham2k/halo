@@ -79,6 +79,9 @@ class FlexRadioDriver extends EquipmentDriver {
   @override
   String get name => 'FlexRadio (SmartSDR)';
 
+  @override
+  List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(['LSB', 'USB', 'CW', 'AM', 'FM', 'RTTY', ...flexModesByAppMode.keys]);
+
   /// A FLEX-6600 runs up to eight slices; smaller models run fewer, and the
   /// radio says how many in its `radio slices=` status. Offering all eight
   /// regardless is deliberate — the list is built before any connection

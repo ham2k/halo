@@ -29,7 +29,7 @@ final _allowed = <String, Set<double>>{
   // Reserves the QR code's footprint while the code is still resolving.
   'views/switch_accounts_dialog.dart': {48.0},
   // Sizes a progress spinner inside a fixed 48x48 box: 48 - 14*2 = 20pt.
-  'views/station_panel.dart': {14.0},
+  'views/station_rows.dart': {14.0},
   // Mirrors the HTML loading page's box model so the handoff from
   // web/index.html to the Flutter splash is a visual no-op.
   'views/splash_view.dart': {64.0, 32.0},

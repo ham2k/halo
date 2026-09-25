@@ -1157,6 +1157,50 @@ class FormRendererState extends State<FormRenderer> {
             ],
           ),
         );
+      case 'segmented':
+        // A `radio` group laid out as one control: for a short, exclusive
+        // choice (two or three words) that decides what the rest of the form
+        // asks for, so the whole choice reads at a glance.
+        final description = el['description'] as String?;
+        return Focus(
+          focusNode: _focusNodes[key],
+          child: inset(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(label, style: theme.textTheme.labelMedium?.copyWith(color: devModeColor ?? theme.colorScheme.onSurfaceVariant)),
+                const SizedBox(height: Space.sm),
+                SegmentedButton<dynamic>(
+                  segments: [for (final opt in options) ButtonSegment<dynamic>(value: opt['value'], label: Text(opt['label'] as String))],
+                  selected: {if (_values[key] != null) _values[key]},
+                  emptySelectionAllowed: _values[key] == null,
+                  showSelectedIcon: false,
+                  onSelectionChanged: _isSubmitting
+                      ? null
+                      : (selection) {
+                          if (selection.isEmpty) return;
+                          final val = selection.first;
+                          setState(() {
+                            _values[key] = val;
+                            _errors.remove(key);
+                          });
+                          _handleFieldBlurOrInteraction(key, val);
+                        },
+                ),
+                if (description != null && description.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Space.xs),
+                    child: Text(description, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  ),
+                if (errorText != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Space.xs),
+                    child: Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)),
+                  ),
+              ],
+            ),
+          ),
+        );
       case 'checkbox':
         // `disabled` shows the row greyed rather than hiding it (which is
         // what `environment` does): a toggle that vanishes in some states
@@ -2341,12 +2385,17 @@ class FormRendererState extends State<FormRenderer> {
     final isRunning = _runningActions.contains(actionKey);
     final devModeColor = _devModeColor(el);
     if (el['style'] == 'row') {
+      // The same bold title as the rows that open a picker or a panel: a row
+      // that opens a dialog is one more field of the form, not a caption.
       return ListTile(
         contentPadding: _rowContentPadding,
-        leading: Icon(resolveIconName(el['icon'] as String? ?? 'cog-outline')),
-        title: Text(label),
+        leading: Icon(resolveIconName(el['icon'] as String? ?? 'cog-outline'), color: devModeColor),
+        title: Text(
+          label,
+          style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
+        ),
         subtitle: el['description'] is String ? Text(el['description'] as String) : null,
-        trailing: Icon(MdiIcons.chevronRight),
+        trailing: Icon(MdiIcons.chevronRight, color: devModeColor),
         onTap: widget.onAction == null || isRunning ? null : () => _runAction(actionKey, method),
       );
     }

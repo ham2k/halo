@@ -13,12 +13,14 @@ import 'drivers/guohetec_driver.dart';
 import 'equipment.dart';
 import 'equipment_brands.dart';
 import 'equipment_registry.dart';
+import 'transports/bluetooth_serial_transport.dart';
 import 'transports/placeholder_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
 
 const _flexRadioTcpKey = 'flexradio-tcp';
 const _q900SerialKey = 'q900-serial';
+const _q900BluetoothKey = 'q900-bluetooth';
 const _placeholderRadioKey = 'placeholder-radio';
 
 /// FlexRadio radios reachable over the SmartSDR TCP API.
@@ -76,6 +78,13 @@ const q900Model = EquipmentModel(
       defaultConfig: {'baudRate': guohetecDefaultBaudRate},
       notes: _guohetecSerialNotes,
     ),
+    EquipmentVariant(
+      key: _q900BluetoothKey,
+      driver: GuohetecDriver(),
+      transport: BluetoothSerialTransport(),
+      defaultConfig: {'baudRate': guohetecDefaultBaudRate},
+      notes: _guohetecSerialNotes,
+    ),
   ],
 );
 
@@ -105,27 +114,40 @@ const placeholderRadioModel = EquipmentModel(
   name: _placeholderRadioName,
   suggestedName: _placeholderRadioNodeName,
   variants: [
-    EquipmentVariant(
-      key: _placeholderRadioKey,
-      driver: PlaceholderRadioDriver(),
-      transport: PlaceholderTransport(),
-      // Every numeric knob is prefilled, not just the three that describe
-      // the rig: their validators reject a blank box (placeholder_transport.dart
-      // says why), so a form that opened with one empty would refuse to
-      // submit until the operator typed a zero nobody asked them for.
-      defaultConfig: {
-        'placeholderFreq': placeholderRadioDefaultFreqKHz,
-        'placeholderMode': placeholderRadioDefaultMode,
-        'placeholderPower': placeholderRadioDefaultWatts,
-        'placeholderSwr': placeholderRadioDefaultSwr,
-        'placeholderConnectDelay': 0,
-        'placeholderDropAfter': 0,
-        'placeholderReplyDelay': 0,
-      },
-    ),
+    EquipmentVariant(key: _placeholderRadioKey, driver: PlaceholderRadioDriver(), transport: PlaceholderTransport(), defaultConfig: _placeholderRadioDefaults),
   ],
 );
 
 String _placeholderRadioName() => t.settings.station.models.placeholderRadio;
+
+/// Every numeric knob is prefilled, not just the three that describe the rig:
+/// their validators reject a blank box (placeholder_transport.dart says why),
+/// so a form that opened with one empty would refuse to submit until the
+/// operator typed a zero nobody asked them for.
+const _placeholderRadioDefaults = <String, dynamic>{
+  'placeholderFreq': placeholderRadioDefaultFreqKHz,
+  'placeholderMode': placeholderRadioDefaultMode,
+  'placeholderPower': placeholderRadioDefaultWatts,
+  'placeholderSwr': placeholderRadioDefaultSwr,
+  'placeholderConnectDelay': 0,
+  'placeholderDropAfter': 0,
+  'placeholderReplyDelay': 0,
+};
+
+/// A real radio run as the placeholder: the operator's IC-705 keeps its name
+/// and model while there is no cable or address for it yet, and behaves as
+/// [placeholderRadioModel] does until one is chosen. Derived per model, so
+/// its key is `<model>-placeholder` — stable, since a node stores it.
+EquipmentVariant placeholderVariantFor(String modelKey) => _placeholderVariants.putIfAbsent(
+  modelKey,
+  () => EquipmentVariant(
+    key: '$modelKey-placeholder',
+    driver: const PlaceholderRadioDriver(),
+    transport: const PlaceholderTransport(),
+    defaultConfig: _placeholderRadioDefaults,
+  ),
+);
+
+final _placeholderVariants = <String, EquipmentVariant>{};
 
 String _placeholderRadioNodeName() => t.settings.station.models.placeholderRadioNodeName;

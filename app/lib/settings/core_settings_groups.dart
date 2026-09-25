@@ -553,6 +553,11 @@ class LoggingSettingsGroup extends SettingsGroup {
   }
 }
 
+/// The Radio group's link to the Station panel, and the section heading over
+/// it — both left out where the group is embedded IN that panel.
+const moreStationSettingsKey = 'moreStationSettings';
+const stationConfigurationSectionKey = 'stationConfigurationSection';
+
 /// The Radio group's rows that open the two keyer dialogs.
 const cwKeyerActionKey = 'cwKeyer';
 const phoneKeyerActionKey = 'phoneKeyer';
@@ -575,7 +580,14 @@ class RadioSettingsGroup extends SettingsGroup {
   final Future<void> Function(BuildContext context)? openCwKeyer;
   final Future<void> Function(BuildContext context)? openPhoneKeyer;
 
-  RadioSettingsGroup(this.settings, {this.catServer, this.openCwKeyer, this.openPhoneKeyer});
+  /// Whether the station has a transceiver of its own. The CAT features are
+  /// left out without one — they have nothing to act on — and [inventory]
+  /// says when the answer may have changed. Null answers yes: a test's
+  /// settings alone.
+  final bool Function()? hasTransceivers;
+  final Listenable Function()? inventory;
+
+  RadioSettingsGroup(this.settings, {this.catServer, this.openCwKeyer, this.openPhoneKeyer, this.hasTransceivers, this.inventory});
 
   CatServerService? get _catServer => kIsWeb || !catServerExperimentEnabled(settings) ? null : catServer?.call();
 
@@ -594,7 +606,7 @@ class RadioSettingsGroup extends SettingsGroup {
   /// once and unsubscribes later, and must be handed the same thing both
   /// times.
   @override
-  late final Listenable listenable = _RadioSectionChanges(settings, () => _catServer);
+  late final Listenable listenable = _RadioSectionChanges(settings, () => _catServer, inventory);
 
   @override
   Future<void> openAction(BuildContext context, String actionKey) async {
@@ -623,128 +635,171 @@ class RadioSettingsGroup extends SettingsGroup {
     // section header over nothing.
     if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) return [];
     final s = t.settings.radio;
+    final radios = hasTransceivers?.call() ?? true;
     return [
-      _toggle(
-        key: 'smartVfoSnap',
-        label: s.smartVfoSnap.title,
-        icon: 'magnet',
-        description: settings.smartVfoSnap ? s.smartVfoSnap.descriptionOn : s.smartVfoSnap.descriptionOff,
-        value: settings.smartVfoSnap,
-        target: 'current-radio',
-      ),
-      // The feel, in the `-extended` bucket behind the dialog's "show more
-      // settings" — four numbers nobody should have to meet to use the
-      // feature, and which only mean anything once it's on.
-      //
-      // Emitted only in developer mode rather than merely flagged
-      // `devMode: true`: the flag hides an element inside FormRenderer, but
-      // the target dialog decides whether to offer "show more settings" from
-      // whether the bucket is EMPTY, so flagging alone would leave everyone
-      // else a disclosure that expands to nothing. The flag is set as well,
-      // for the dev-mode accent and for Settings.
-      if (settings.smartVfoSnap && settings.developerMode) ...[
-        _tuningSelect(
-          key: 'smartVfoSnapDebounceMs',
-          label: s.snapDebounce.title,
-          description: s.snapDebounce.description,
-          icon: 'timer-outline',
-          value: settings.smartVfoSnapDebounce.inMilliseconds.toString(),
-          options: SettingsService.smartVfoSnapDebounceOptions,
-          unit: s.units.ms,
+      // Declared either way, so SET and SHOW still reach them; unlisted with
+      // no radio, so the settings screens leave out rows with nothing to act
+      // on (the same `listed: false` the keyer's message fields use).
+      for (final el in <Map<String, dynamic>>[
+        {'type': 'header', 'style': 'section', 'title': s.tuningSection},
+        _toggle(
+          key: 'smartVfoSnap',
+          label: s.smartVfoSnap.title,
+          icon: 'magnet',
+          description: settings.smartVfoSnap ? s.smartVfoSnap.descriptionOn : s.smartVfoSnap.descriptionOff,
+          value: settings.smartVfoSnap,
+          target: 'current-radio',
         ),
-        _tuningSelect(
-          key: 'smartVfoSnapLongMoveKHz',
-          label: s.snapLongMove.title,
-          description: s.snapLongMove.description,
-          icon: 'arrow-expand-horizontal',
-          value: _numText(settings.smartVfoSnapLongMoveKHz),
-          options: SettingsService.smartVfoSnapLongMoveOptions,
-          unit: s.units.kHz,
+        // The feel, in the `-extended` bucket behind the dialog's "show more
+        // settings" — four numbers nobody should have to meet to use the
+        // feature, and which only mean anything once it's on.
+        //
+        // Emitted only in developer mode rather than merely flagged
+        // `devMode: true`: the flag hides an element inside FormRenderer, but
+        // the target dialog decides whether to offer "show more settings" from
+        // whether the bucket is EMPTY, so flagging alone would leave everyone
+        // else a disclosure that expands to nothing. The flag is set as well,
+        // for the dev-mode accent and for Settings.
+        if (settings.smartVfoSnap && settings.developerMode) ...[
+          _tuningSelect(
+            key: 'smartVfoSnapDebounceMs',
+            label: s.snapDebounce.title,
+            description: s.snapDebounce.description,
+            icon: 'timer-outline',
+            value: settings.smartVfoSnapDebounce.inMilliseconds.toString(),
+            options: SettingsService.smartVfoSnapDebounceOptions,
+            unit: s.units.ms,
+          ),
+          _tuningSelect(
+            key: 'smartVfoSnapLongMoveKHz',
+            label: s.snapLongMove.title,
+            description: s.snapLongMove.description,
+            icon: 'arrow-expand-horizontal',
+            value: _numText(settings.smartVfoSnapLongMoveKHz),
+            options: SettingsService.smartVfoSnapLongMoveOptions,
+            unit: s.units.kHz,
+          ),
+          _tuningSelect(
+            key: 'smartVfoSnapMinMoveKHz',
+            label: s.snapMinMove.title,
+            description: s.snapMinMove.description,
+            icon: 'arrow-collapse-horizontal',
+            value: _numText(settings.smartVfoSnapMinMoveKHz),
+            options: SettingsService.smartVfoSnapMinMoveOptions,
+            unit: s.units.kHz,
+          ),
+          _tuningSelect(
+            key: 'smartVfoSnapMinSpeed',
+            label: s.snapMinSpeed.title,
+            description: s.snapMinSpeed.description,
+            icon: 'speedometer-slow',
+            value: _numText(settings.smartVfoSnapMinSpeed),
+            options: SettingsService.smartVfoSnapMinSpeedOptions,
+            unit: s.units.kHzPerSecond,
+          ),
+        ],
+        _toggle(
+          key: 'avoidZeroBeat',
+          aliases: const ['zeroBeat'],
+          label: s.avoidZeroBeat.title,
+          icon: 'tune-vertical',
+          description: settings.avoidZeroBeat ? s.avoidZeroBeat.descriptionOn : s.avoidZeroBeat.descriptionOff,
+          value: settings.avoidZeroBeat,
+          target: 'current-radio',
         ),
-        _tuningSelect(
-          key: 'smartVfoSnapMinMoveKHz',
-          label: s.snapMinMove.title,
-          description: s.snapMinMove.description,
-          icon: 'arrow-collapse-horizontal',
-          value: _numText(settings.smartVfoSnapMinMoveKHz),
-          options: SettingsService.smartVfoSnapMinMoveOptions,
-          unit: s.units.kHz,
-        ),
-        _tuningSelect(
-          key: 'smartVfoSnapMinSpeed',
-          label: s.snapMinSpeed.title,
-          description: s.snapMinSpeed.description,
-          icon: 'speedometer-slow',
-          value: _numText(settings.smartVfoSnapMinSpeed),
-          options: SettingsService.smartVfoSnapMinSpeedOptions,
-          unit: s.units.kHzPerSecond,
-        ),
-      ],
-      _toggle(
-        key: 'avoidZeroBeat',
-        aliases: const ['zeroBeat'],
-        label: s.avoidZeroBeat.title,
-        icon: 'tune-vertical',
-        description: settings.avoidZeroBeat ? s.avoidZeroBeat.descriptionOn : s.avoidZeroBeat.descriptionOff,
-        value: settings.avoidZeroBeat,
-        target: 'current-radio',
-      ),
-      // Emitted with the feature, not with developer mode: whoever switched
-      // it on is who would want to tune the spread. Still gated rather than
-      // merely flagged, so it doesn't offer "show more settings" to someone
-      // who has the feature off and would find nothing there.
-      if (settings.avoidZeroBeat)
-        _tuningSelect(
-          key: 'zeroBeatRangeHz',
-          devMode: false,
-          label: s.zeroBeatRange.title,
-          description: s.zeroBeatRange.description,
-          icon: 'arrow-left-right',
-          value: _numText(settings.zeroBeatRangeHz),
-          options: SettingsService.zeroBeatRangeOptions,
-          unit: s.units.hz,
-        ),
-      // Each keyer is a dialog of its own (cw_messages_dialog.dart,
-      // voice_messages_dialog.dart), reached from these two rows as from the
-      // Station dialog's keyer row and the keyer area. The settings those
-      // dialogs edit stay declared below, so SET/SHOW find them, but
-      // `listed: false` keeps them off these rows: two dozen message fields
-      // would bury the radio's own toggles. The rows' aliases are how the
-      // Settings search still reaches them.
-      // Behind the keyer experiment as well as CAT — the surfaces that key
-      // them are.
-      if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) ...[
+        // Emitted with the feature, not with developer mode: whoever switched
+        // it on is who would want to tune the spread. Still gated rather than
+        // merely flagged, so it doesn't offer "show more settings" to someone
+        // who has the feature off and would find nothing there.
+        if (settings.avoidZeroBeat)
+          _tuningSelect(
+            key: 'zeroBeatRangeHz',
+            devMode: false,
+            label: s.zeroBeatRange.title,
+            description: s.zeroBeatRange.description,
+            icon: 'arrow-left-right',
+            value: _numText(settings.zeroBeatRangeHz),
+            options: SettingsService.zeroBeatRangeOptions,
+            unit: s.units.hz,
+          ),
+        // Each keyer is a dialog of its own (cw_messages_dialog.dart,
+        // voice_messages_dialog.dart), reached from these two rows as from the
+        // Station dialog's keyer row and the keyer area. The settings those
+        // dialogs edit stay declared below, so SET/SHOW find them, but
+        // `listed: false` keeps them off these rows: two dozen message fields
+        // would bury the radio's own toggles. The rows' aliases are how the
+        // Settings search still reaches them.
+        // Behind the keyer experiment as well as CAT — the surfaces that key
+        // them are.
+        if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) ...[
+          {'type': 'header', 'style': 'section', 'title': s.keyerSection},
+          {
+            'type': 'action',
+            'style': 'row',
+            'key': cwKeyerActionKey,
+            'label': s.cwMessages.title,
+            'icon': 'message-bulleted',
+            'aliases': const ['cwMessages', 'cwMessageLabel', 'cwRepeatDelay', 'messages', 'macros', 'repeat', 'enterSendsMessages', 'esm'],
+          },
+          {
+            'type': 'action',
+            'style': 'row',
+            'key': phoneKeyerActionKey,
+            'label': s.voiceMessages.title,
+            'icon': 'account-voice',
+            'aliases': const ['voiceMessages', 'voiceMessageLabel', 'voiceRepeatDelay', 'voice memories', 'messages', 'repeat', 'enterSendsMessages', 'esm'],
+          },
+          for (final el in _keyerElements()) {...el, 'listed': false},
+        ],
+        if (_catServer case final server?) ...[
+          {'type': 'header', 'style': 'section', 'title': s.servicesSection},
+          {
+            'type': 'action',
+            'style': 'row',
+            'key': _catServerAction,
+            'label': t.settings.catServer.title,
+            'description': catServerStatusText(server),
+            'icon': 'lan-connect',
+            // Also in the current radio's settings dialog, beside the other
+            // things the Main VFO radio does.
+            'target': 'current-radio',
+          },
+        ],
+      ])
+        radios ? el : {...el, 'listed': false},
+      {'type': 'header', 'style': 'section', 'title': s.loggingAndCat},
+      // What each QSO remembers about the station — shown with or without a
+      // radio, since antenna and key are worth recording either way.
+      _toggle(key: 'trackStationInfo', label: t.settings.station.trackStationInfo, icon: 'clipboard-text-outline', value: settings.trackStationInfo),
+      if (settings.trackStationInfo)
         {
-          'type': 'action',
-          'style': 'row',
-          'key': cwKeyerActionKey,
-          'label': s.cwMessages.title,
-          'icon': 'message-bulleted',
-          'aliases': const ['cwMessages', 'cwMessageLabel', 'cwRepeatDelay', 'messages', 'macros', 'repeat', 'enterSendsMessages', 'esm'],
+          'type': 'field',
+          'fieldType': 'multiselect',
+          'key': 'stationInfoTrackedFields',
+          'label': t.settings.station.whatToTrack,
+          'icon': 'format-list-checks',
+          'value': [
+            for (final opt in _stationInfoFieldOptions())
+              if (settings.stationInfoTrackedFields.contains(opt['value'])) opt['value'],
+          ],
+          'defaultValue': SettingsService.defaultStationInfoTrackedFields,
+          'options': _stationInfoFieldOptions(),
+          'compact': true,
         },
-        {
-          'type': 'action',
-          'style': 'row',
-          'key': phoneKeyerActionKey,
-          'label': s.voiceMessages.title,
-          'icon': 'account-voice',
-          'aliases': const ['voiceMessages', 'voiceMessageLabel', 'voiceRepeatDelay', 'voice memories', 'messages', 'repeat', 'enterSendsMessages', 'esm'],
-        },
-        for (final el in _keyerElements()) {...el, 'listed': false},
-      ],
-      if (_catServer case final server?)
-        {
-          'type': 'action',
-          'style': 'row',
-          'key': _catServerAction,
-          'label': t.settings.catServer.title,
-          'description': catServerStatusText(server),
-          'icon': 'lan-connect',
-          // Also in the current radio's settings dialog, beside the other
-          // things the Main VFO radio does.
-          'target': 'current-radio',
-        },
-      {'type': 'link', 'key': 'moreStationSettings', 'label': s.moreSettings, 'icon': 'cat', 'panel': 'station'},
+      // Keyed, unlike the other headers, so a host that leaves the link out
+      // (the Station panel, which IS where it goes) can leave its heading too.
+      {'type': 'header', 'style': 'section', 'key': stationConfigurationSectionKey, 'title': s.stationConfigurationSection},
+      {'type': 'link', 'key': moreStationSettingsKey, 'label': s.moreSettings, 'icon': 'cat', 'panel': 'station'},
+    ];
+  }
+
+  static List<Map<String, String>> _stationInfoFieldOptions() {
+    final st = t.settings.station;
+    return [
+      {'value': 'rig', 'label': st.trackFieldRig},
+      {'value': 'power', 'label': st.trackFieldPower},
+      {'value': 'antenna', 'label': st.trackFieldAntenna},
+      {'value': 'key', 'label': st.trackFieldKey},
     ];
   }
 
@@ -854,6 +909,9 @@ class RadioSettingsGroup extends SettingsGroup {
 
   @override
   Future<void> commit(String fieldKey, dynamic value) async {
+    // The station-info pair lives in its own settings group, not this one.
+    if (fieldKey == 'trackStationInfo' && value is bool) return settings.setTrackStationInfo(value);
+    if (fieldKey == 'stationInfoTrackedFields' && value is List) return settings.setStationInfoTrackedFields(value.whereType<String>().toSet());
     // The toggle is a bool; every tuning knob is one of its own option
     // strings. Anything else is a build mismatch and is dropped rather than
     // stored for a later parse to fall back from.
@@ -879,8 +937,11 @@ class RadioSettingsGroup extends SettingsGroup {
 class _RadioSectionChanges extends ChangeNotifier {
   final SettingsService settings;
   final CatServerService? Function() server;
+  final Listenable Function()? inventory;
 
-  _RadioSectionChanges(this.settings, this.server);
+  _RadioSectionChanges(this.settings, this.server, this.inventory);
+
+  Listenable? _inventory;
 
   var _listeners = 0;
   CatServerService? _followed;
@@ -890,6 +951,7 @@ class _RadioSectionChanges extends ChangeNotifier {
     if (_listeners++ == 0) {
       settings.addListener(_onSettings);
       _follow(server());
+      _inventory = inventory?.call()?..addListener(notifyListeners);
     }
     super.addListener(listener);
   }
@@ -900,6 +962,8 @@ class _RadioSectionChanges extends ChangeNotifier {
     if (--_listeners == 0) {
       settings.removeListener(_onSettings);
       _follow(null);
+      _inventory?.removeListener(notifyListeners);
+      _inventory = null;
     }
   }
 
