@@ -3152,6 +3152,7 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	// Translations
 	@override String get flexRadio => 'FlexRadio (SmartSDR)';
 	@override String get ft891 => 'Yaesu FT-891';
+	@override String get ft991a => 'Yaesu FT-991/A';
 	@override String get ft710 => 'Yaesu FT-710';
 	@override String get ftdx10 => 'Yaesu FTDX10';
 	@override String get ftx1 => 'Yaesu FTX-1';
@@ -4552,6 +4553,7 @@ extension on TranslationsEs {
 			'settings.station.connectFailedTimeout' => 'La radio no respondió a tiempo. Comprueba que esté encendida y accesible.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
+			'settings.station.models.ft991a' => 'Yaesu FT-991/A',
 			'settings.station.models.ft710' => 'Yaesu FT-710',
 			'settings.station.models.ftdx10' => 'Yaesu FTDX10',
 			'settings.station.models.ftx1' => 'Yaesu FTX-1',
@@ -4826,9 +4828,9 @@ extension on TranslationsEs {
 			'settings.developer.catalogDescription' => 'Leer el catálogo desde otro servidor — uno local mientras se trabaja en el catálogo mismo. Vacío significa catalog.ham2k.net.',
 			'settings.developer.catalogAddress' => 'Dirección del catálogo',
 			'settings.developer.catalogHint' => 'http://localhost:8787',
-			'settings.about.notices' => 'Avisos y mensajes',
 			_ => null,
 		} ?? switch (path) {
+			'settings.about.notices' => 'Avisos y mensajes',
 			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
 			'settings.about.releaseNotes' => 'Notas de la versión',
 			'settings.about.copiedVersion' => 'Detalles de versión copiados al portapapeles',

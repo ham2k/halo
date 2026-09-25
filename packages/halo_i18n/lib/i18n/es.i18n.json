@@ -1515,6 +1515,7 @@
       "models": {
         "flexRadio": "FlexRadio (SmartSDR)",
         "ft891": "Yaesu FT-891",
+        "ft991a": "Yaesu FT-991/A",
         "ft710": "Yaesu FT-710",
         "ftdx10": "Yaesu FTDX10",
         "ftx1": "Yaesu FTX-1",

@@ -204,6 +204,7 @@ void main() {
     expect(registry.types.map((t) => t.key).toSet(), {
       'flexradio-tcp',
       'ft891-serial',
+      'ft991a-serial',
       'ft710-serial',
       'ftdx10-serial',
       'ftx1-serial',
@@ -249,6 +250,7 @@ void main() {
       // any other, so renaming a model's key orphans its placeholder nodes.
       'flexradio-placeholder',
       'ft891-placeholder',
+      'ft991a-placeholder',
       'ft710-placeholder',
       'ftdx10-placeholder',
       'ftx1-placeholder',

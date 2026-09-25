@@ -605,7 +605,7 @@ void main() {
     });
 
     test('the CP2105 Yaesus speak CAT on the Enhanced port, the first, and only on a Silicon Labs bridge', () {
-      for (final key in ['ft891-serial', 'ft710-serial', 'ftdx10-serial', 'ftx1-serial']) {
+      for (final key in ['ft891-serial', 'ft991a-serial', 'ft710-serial', 'ftdx10-serial', 'ftx1-serial']) {
         final port = registry.typeFor(key)!.restrictions['port'] as Map;
         expect(port['index'], 0, reason: key);
         expect(port['vendorId'], 0x10C4, reason: key);

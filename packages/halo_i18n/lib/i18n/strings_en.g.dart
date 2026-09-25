@@ -6751,6 +6751,9 @@ class Translations$settings$station$models$en {
 	/// en: 'Yaesu FT-891'
 	String get ft891 => 'Yaesu FT-891';
 
+	/// en: 'Yaesu FT-991/A'
+	String get ft991a => 'Yaesu FT-991/A';
+
 	/// en: 'Yaesu FT-710'
 	String get ft710 => 'Yaesu FT-710';
 
@@ -8331,6 +8334,7 @@ extension on Translations {
 			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
+			'settings.station.models.ft991a' => 'Yaesu FT-991/A',
 			'settings.station.models.ft710' => 'Yaesu FT-710',
 			'settings.station.models.ftdx10' => 'Yaesu FTDX10',
 			'settings.station.models.ftx1' => 'Yaesu FTX-1',
@@ -8605,9 +8609,9 @@ extension on Translations {
 			'settings.developer.extDevServerConnecting' => 'Connecting…',
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Serving ${count} extension: ${keys}', other: 'Serving ${count} extensions: ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => 'Not connected',
-			'settings.developer.extDevServerReconnect' => 'Reconnect at launch',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.extDevServerReconnect' => 'Reconnect at launch',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
 			'settings.developer.extDevServerNoSecrets' => 'Dev extensions never receive build secrets, so features that need one are inactive.',

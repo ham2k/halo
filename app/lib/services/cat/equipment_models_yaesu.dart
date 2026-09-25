@@ -17,6 +17,7 @@ import 'equipment_registry.dart';
 import 'transports/serial_transport.dart';
 
 const _ft891SerialKey = 'ft891-serial';
+const _ft991aSerialKey = 'ft991a-serial';
 const _ft710SerialKey = 'ft710-serial';
 const _ftdx10SerialKey = 'ftdx10-serial';
 const _ftx1SerialKey = 'ftx1-serial';
@@ -78,6 +79,36 @@ List<Map<String, dynamic>> _ft891SerialNotes() => [
         '${t.settings.station.ft891Troubleshooting}',
   },
 ];
+
+/// Yaesu FT-991 and FT-991A over their built-in USB CAT port, one entry
+/// because CAT does not tell them apart. The FT-991A is reported working on
+/// the FT-891's entry, whose settings this keeps: the factory 4800 baud, the
+/// twenty-second voice memories and their recording procedure, and CAT on
+/// the first port of the same CP2105 bridge.
+///
+/// Two things are its own. The meter table, which carries the Vdd meter the
+/// FT-891 lacks. And the troubleshooting notes, which are the line's rather
+/// than the FT-891's, whose menu numbers are not this radio's.
+const ft991aModel = EquipmentModel(
+  key: 'ft991a',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ft991aName,
+  recordingHelp: _ft891RecordingHelp,
+  variants: [
+    EquipmentVariant(
+      key: _ft991aSerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 20, meterInfoConfigKey: 'yaesu/ft-991a'},
+      restrictions: {'port': Ft891Driver.cp2105CatPort},
+      notes: _yaesuUsbSerialNotes,
+    ),
+  ],
+);
+
+String _ft991aName() => t.settings.station.models.ft991a;
 
 /// Yaesu FT-710 over its built-in USB CAT port.
 ///
@@ -168,7 +199,7 @@ const ftx1Model = EquipmentModel(
 
 String _ftx1Name() => t.settings.station.models.ftx1;
 
-/// The FT-710's, FTDX10's and FTX-1's: a CP2105 bridge built into the radio, with CAT
+/// The FT-991's, FT-710's, FTDX10's and FTX-1's: a CP2105 bridge built into the radio, with CAT
 /// normally on its first port. Not the generic Yaesu note, whose mode-table
 /// caveat these proven radios do not need, nor the FT-891's, which quotes
 /// that radio's menu numbers.

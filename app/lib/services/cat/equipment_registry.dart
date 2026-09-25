@@ -436,6 +436,7 @@ String? transportIconNameFor(String transportKey) => switch (transportKey) {
 const _defaultModels = [
   flexRadioModel,
   ft891Model,
+  ft991aModel,
   ft710Model,
   ftdx10Model,
   ftx1Model,
