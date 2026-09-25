@@ -86,6 +86,12 @@
     "uninstallTitle": "Remove ${name}?",
     "uninstallBody": "This extension and its settings will be removed. Your logs will remain untouched.",
     "installedMessage": "Installed ${name}",
+    "installDownloading": "Downloading…",
+    "installWaiting": "Waiting to install…",
+    "installInstalling": "Installing…",
+    "installAwaitingApproval": "Waiting for your approval…",
+    "installAlreadyRunning": "${name} is already being installed.",
+    "updatedTo": "Updated to ${version}",
     "installIncomplete": "Installing ${name} did not finish. It may need installing again.",
     "uninstallFailed": "Could not remove ${name}",
     "installedFrom": "Downloaded from ${source}",
@@ -105,7 +111,9 @@
     "updatesAvailableFor": "${names} need updating.",
     "pendingUpdatesSection": "Pending Updates",
     "updateAllAction": "Update all",
-    "updatesNoticeAction": "More details",
+    "updatesUnderWay": "Those updates are already under way.",
+    "updatesNothingLeft": "Your extensions are up to date.",
+    "updatesNoticeAction": "More info",
     "updateAllTitle": {
       "one": "Update ${count} extension?",
       "other": "Update ${count} extensions?"

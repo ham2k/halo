@@ -198,6 +198,12 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String uninstallTitle({required Object name}) => '¿Quitar ${name}?';
 	@override String get uninstallBody => 'Esta extensión y su configuración se eliminarán. Tus registros permanecerán intactos.';
 	@override String installedMessage({required Object name}) => 'Se instaló ${name}';
+	@override String get installDownloading => 'Descargando…';
+	@override String get installWaiting => 'Esperando para instalar…';
+	@override String get installInstalling => 'Instalando…';
+	@override String get installAwaitingApproval => 'Esperando tu aprobación…';
+	@override String installAlreadyRunning({required Object name}) => 'Ya se está instalando ${name}.';
+	@override String updatedTo({required Object version}) => 'Actualizada a ${version}';
 	@override String installIncomplete({required Object name}) => 'La instalación de ${name} no se completó. Puede que haya que instalarla de nuevo.';
 	@override String uninstallFailed({required Object name}) => 'No se pudo quitar ${name}';
 	@override String installedFrom({required Object source}) => 'Descargada desde ${source}';
@@ -217,7 +223,9 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String updatesAvailableFor({required Object names}) => '${names} necesitan actualizarse.';
 	@override String get pendingUpdatesSection => 'Actualizaciones pendientes';
 	@override String get updateAllAction => 'Actualizar todas';
-	@override String get updatesNoticeAction => 'Más detalles';
+	@override String get updatesUnderWay => 'Esas actualizaciones ya están en curso.';
+	@override String get updatesNothingLeft => 'Tus extensiones están al día.';
+	@override String get updatesNoticeAction => 'Más información';
 	@override String updateAllTitle({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '¿Actualizar ${count} extensión?',
 		other: '¿Actualizar ${count} extensiones?',
@@ -3319,6 +3327,12 @@ extension on TranslationsEs {
 			'extensionsPanel.uninstallTitle' => ({required Object name}) => '¿Quitar ${name}?',
 			'extensionsPanel.uninstallBody' => 'Esta extensión y su configuración se eliminarán. Tus registros permanecerán intactos.',
 			'extensionsPanel.installedMessage' => ({required Object name}) => 'Se instaló ${name}',
+			'extensionsPanel.installDownloading' => 'Descargando…',
+			'extensionsPanel.installWaiting' => 'Esperando para instalar…',
+			'extensionsPanel.installInstalling' => 'Instalando…',
+			'extensionsPanel.installAwaitingApproval' => 'Esperando tu aprobación…',
+			'extensionsPanel.installAlreadyRunning' => ({required Object name}) => 'Ya se está instalando ${name}.',
+			'extensionsPanel.updatedTo' => ({required Object version}) => 'Actualizada a ${version}',
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'La instalación de ${name} no se completó. Puede que haya que instalarla de nuevo.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'No se pudo quitar ${name}',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'Descargada desde ${source}',
@@ -3338,7 +3352,9 @@ extension on TranslationsEs {
 			'extensionsPanel.updatesAvailableFor' => ({required Object names}) => '${names} necesitan actualizarse.',
 			'extensionsPanel.pendingUpdatesSection' => 'Actualizaciones pendientes',
 			'extensionsPanel.updateAllAction' => 'Actualizar todas',
-			'extensionsPanel.updatesNoticeAction' => 'Más detalles',
+			'extensionsPanel.updatesUnderWay' => 'Esas actualizaciones ya están en curso.',
+			'extensionsPanel.updatesNothingLeft' => 'Tus extensiones están al día.',
+			'extensionsPanel.updatesNoticeAction' => 'Más información',
 			'extensionsPanel.updateAllTitle' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '¿Actualizar ${count} extensión?', other: '¿Actualizar ${count} extensiones?', ), 
 			'extensionsPanel.updateAllBody' => 'Cada una se reemplaza por la versión que ofrece ahora el catálogo. Tu configuración se conserva.',
 			'extensionsPanel.upgradeTitle' => 'Necesitamos actualizar tus extensiones',
@@ -3745,6 +3761,8 @@ extension on TranslationsEs {
 			'operation.spots.slideLogIt' => 'Registrar',
 			'operation.spots.slideIgnore' => 'Ignorar',
 			'operation.spots.slideRestore' => 'Restaurar',
+			_ => null,
+		} ?? switch (path) {
 			'operation.spots.logConflict.title' => 'El panel de registro está ocupado',
 			'operation.spots.logConflict.editingBody' => 'Estás editando un contacto registrado. ¿Registrar este spot, o volver y terminar la edición?',
 			'operation.spots.logConflict.composingBody' => 'Empezaste a ingresar un contacto. ¿Registrar este spot, o volver y terminar lo que escribías?',
@@ -3753,8 +3771,6 @@ extension on TranslationsEs {
 			'operation.testOperationSuffix' => 'Prueba',
 			'operation.import.title' => 'Importar datos a la operación',
 			'operation.import.importAdifAction' => 'Importar QSOs desde ADIF',
-			_ => null,
-		} ?? switch (path) {
 			'operation.import.settingsButton' => 'Ajustes de escucha',
 			'operation.import.settingsTitle' => 'Escuchar otras aplicaciones',
 			'operation.import.protocolAddressLabel' => 'Dirección',
@@ -4259,6 +4275,8 @@ extension on TranslationsEs {
 			'settings.sync.title' => 'Sincronización en la Nube',
 			'settings.sync.moreSettings' => 'Más ajustes de sincronización',
 			'settings.sync.enable' => 'Habilitar Sincronización',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.deviceKey' => 'Clave del Dispositivo',
 			'settings.peers.title' => 'Dispositivos',
 			'settings.peers.enable' => 'Conectar con otros dispositivos',
@@ -4267,8 +4285,6 @@ extension on TranslationsEs {
 			'settings.peers.bleDescription' => 'Usa Bluetooth LE para conectar aunque no haya red local',
 			'settings.peers.thisDevice' => 'Este dispositivo',
 			'settings.peers.deviceName' => 'Nombre',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.deviceNameHint' => 'Cómo ven este dispositivo los demás',
 			'settings.peers.pairedDevices' => 'Dispositivos vinculados',
 			'settings.peers.noPairedDevices' => 'Todavía no hay dispositivos vinculados. Activa esto en otro dispositivo de esta red para vincularlos.',
@@ -4773,6 +4789,8 @@ extension on TranslationsEs {
 			'settings.showMoreSettings' => 'Mostrar más ajustes',
 			'settings.numberFormat' => 'Formato de números',
 			'settings.numberFormatOpts.locale' => 'Seguir la configuración del sistema',
+			_ => null,
+		} ?? switch (path) {
 			'settings.numberFormatOpts.period' => 'Usar siempre punto para decimales',
 			'settings.numberFormatOpts.comma' => 'Usar siempre coma para decimales',
 			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Configuración del sistema (usando ${separator} para decimales)',
@@ -4781,8 +4799,6 @@ extension on TranslationsEs {
 			'settings.numberFormatSeparators.comma' => 'coma',
 			'settings.numberFormatSeparators.period' => 'punto',
 			'settings.gridPrecision' => 'Precisión del localizador',
-			_ => null,
-		} ?? switch (path) {
 			'settings.gridPrecisionOpts.six' => '6 dígitos (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 dígitos (FN31pr55)',
 			'settings.gridPrecisionDescription.six' => '6 dígitos',

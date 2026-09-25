@@ -406,7 +406,8 @@ void openInstallExtension(HaLoServices services, Uri source, {int attemptsLeft =
       store: store,
       read: local ? () => File(source.toFilePath()).readAsBytes() : () => services.catalog.downloadBundle(source),
       from: local ? null : source.host,
-      commit: services.extensions.installBundle,
+      commit: commitThroughInstaller(services),
+      isBusy: services.extensionInstaller.isActive,
     ).then((name) => _installedFromLink(services, name)),
   );
 }
@@ -434,21 +435,13 @@ Future<void> _installFromCatalogLink(HaLoServices services, BuildContext context
     );
     return;
   }
-  await installFromCatalog(
-    context,
-    services: services,
-    release: (key: ref.key, version: version.version, sha256: version.sha256, bundleUrl: source),
-    commit: services.extensions.installBundle,
-  );
+  await installFromCatalog(context, services: services, release: (key: ref.key, version: version.version, sha256: version.sha256, bundleUrl: source));
 }
 
+/// The footer already says it landed — the installer's completion item.
 void _installedFromLink(HaLoServices services, String? name) {
   if (name == null) return;
   services.track('extension_installed', {});
-  services.statusBar.setMessage(
-    key: 'extensions:installed',
-    text: t.extensionsPanel.installedMessage(name: name),
-  );
 }
 
 /// Opens the pane once there is a navigator to open it onto.

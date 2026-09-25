@@ -345,6 +345,14 @@ that key is compared — a bundle can change completely and still ask for the
 same things. That may be worth revisiting once a bundle can be shown to come
 from whoever it claims; it is not worth it while a key is all there is.
 
+**Update all is the one exception.** It takes every pending catalog update on
+a single confirmation that names each extension and the version it moves to,
+and skips the per-extension screen for each of them: asking once per entry for
+the one thing the operator asked for once is how a screen gets pressed through
+unread. It is a confirmation of a job the operator started, never a way to
+start one — `install_consent_scope_test` holds it to the one function that
+shows that confirmation first.
+
 Removing an extension removes what it stored with it.
 
 ### Installing from a link
@@ -480,7 +488,14 @@ takes the plain one above.
 At most once every six hours — on launch and on resume — the app asks the
 catalog whether anything installed has a newer release, and says so in the
 status bar and on the row; the notice comes down with the last update taken.
-It never installs unasked. A release the catalog has revoked is put on record
+It never installs unasked: the notice's **Update all** is the panel's own,
+behind the same confirmation, and **More info** opens the panel.
+
+An install or update narrates itself as one status-bar progress item, from the
+first downloaded byte to "Installed", and the Extensions panel mirrors that
+item on the row being installed. Installs share one queue
+(`ExtensionInstaller`): downloads run side by side, while the writes go one at
+a time, since each restarts the runtime. A release the catalog has revoked is put on record
 (`extensionRevoked`: version and note) and stops loading on the spot,
 whatever the operator's own switch says — the row shows "Revoked" with the
 note and no switch, and the record dies with an install of another version

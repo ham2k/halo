@@ -98,7 +98,11 @@ class StatusBarActionData {
   final String label;
   final VoidCallback onTap;
 
-  const StatusBarActionData({required this.label, required this.onTap});
+  /// Drawn outlined at the trailing edge, apart from the rest: the thing the
+  /// notice is asking to be done, where the others are ways to read more.
+  final bool primary;
+
+  const StatusBarActionData({required this.label, required this.onTap, this.primary = false});
 }
 
 class StatusBarNoticeData {
@@ -1287,21 +1291,42 @@ class NoticeCard extends StatelessWidget {
             MarkdownBody(data: notice.text, styleSheet: _noticeMarkdownStyle(theme, onNotice)),
             if (notice.actions.isNotEmpty) ...[
               const SizedBox(height: Space.md),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final action in notice.actions)
-                      Padding(
-                        padding: const EdgeInsets.only(right: Space.md),
-                        child: TextButton(
-                          onPressed: action.onTap,
-                          style: TextButton.styleFrom(foregroundColor: onNotice),
-                          child: Text(action.label),
-                        ),
+              Row(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          for (final action in notice.actions.where((a) => !a.primary))
+                            Padding(
+                              padding: const EdgeInsets.only(right: Space.md),
+                              child: TextButton(
+                                onPressed: action.onTap,
+                                style: TextButton.styleFrom(foregroundColor: onNotice),
+                                child: Text(action.label),
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
+                    ),
+                  ),
+                  // Outlined, as the Extensions panel draws the same verb on the
+                  // same yellow: a bare label on the notice ground reads as one
+                  // more piece of the sentence above it.
+                  for (final action in notice.actions.where((a) => a.primary))
+                    Padding(
+                      padding: const EdgeInsets.only(left: Space.md),
+                      child: OutlinedButton(
+                        onPressed: action.onTap,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: onNotice,
+                          side: BorderSide(color: onNotice),
+                        ),
+                        child: Text(action.label),
+                      ),
+                    ),
+                ],
               ),
             ],
           ],

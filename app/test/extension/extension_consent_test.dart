@@ -244,4 +244,36 @@ void main() {
     expect(find.text(t.extensionsPanel.updateAction), findsOneWidget);
     expect(find.text(t.extensionsPanel.installAction), findsNothing);
   });
+
+  testWidgets('an install of a key already under way is refused before anything is written', (tester) async {
+    // Two installs of one key overlapping land whichever finishes last: a
+    // file dropped over a catalog update still downloading is overwritten by
+    // the older catalog bytes, with no consent screen under Update all.
+    final store = InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {'i18next': '23.11.5'}, rootOverride: Directory.systemTemp);
+    var commits = 0;
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          locale: const Locale('en'),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: ElevatedButton(
+                onPressed: () =>
+                    installExtensionFromBytes(context, store: store, read: () async => fixture, commit: (_) async => commits++, isBusy: (_) => true),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('is already being installed'), findsOneWidget);
+    // Refused ahead of the consent screen: agreeing to something that cannot
+    // then happen is a question the operator should never be asked.
+    expect(find.widgetWithText(FilledButton, t.extensionsPanel.installAction), findsNothing);
+    expect(commits, 0);
+  });
 }

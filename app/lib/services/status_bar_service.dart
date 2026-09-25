@@ -60,7 +60,11 @@ class StatusBarAction {
   final String label;
   final VoidCallback onTap;
 
-  const StatusBarAction({required this.label, required this.onTap});
+  /// The notice's own job, drawn as its button on the trailing edge — see
+  /// `StatusBarActionData.primary`.
+  final bool primary;
+
+  const StatusBarAction({required this.label, required this.onTap, this.primary = false});
 }
 
 /// A richer, dismissible notice — markdown body, optional action buttons.

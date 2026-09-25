@@ -3,8 +3,9 @@
 //
 // The consent screen is the whole of what stands between a bundle from anyone
 // and code the app will run, and `askConsent: false` is the one way past it.
-// It exists for Update all — one press on a list naming every extension it
-// will take — and for nothing else.
+// It exists for Update all — one press, confirmed on a screen naming every
+// extension it will take and what each becomes, whether it came from the
+// Extensions panel or the update notice — and for nothing else.
 //
 // A guard rather than a widget test because what matters is not that one
 // caller behaves, but that no OTHER caller appears: a second opt-out added in
@@ -16,15 +17,27 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Where the exception is allowed to be, and the method that may hold it.
-const _allowedFile = 'lib/views/extensions_panel.dart';
-const _allowedMethod = '_updateAll';
+const _allowedFile = 'lib/views/extension_install_flow.dart';
+const _allowedMethod = 'updateAllFromCatalog';
+
+/// The screen that stands in for the skipped consents, which the allowed
+/// method must show before it skips them.
+const _confirmation = '_confirmUpdateAll';
 
 /// The half-open range of [method]'s body, by brace matching from its
 /// declaration — null when the file does not declare it.
 (int, int)? _bodyOf(String source, String method) {
   final declared = RegExp('Future<[^>]*>\\s+$method\\s*\\(').firstMatch(source);
   if (declared == null) return null;
-  final open = source.indexOf('{', declared.end);
+  // Past the parameter list first: its named parameters open a brace of
+  // their own, which is not the body.
+  var parens = 1;
+  var close = declared.end;
+  for (; close < source.length && parens > 0; close++) {
+    if (source[close] == '(') parens++;
+    if (source[close] == ')') parens--;
+  }
+  final open = source.indexOf('{', close);
   if (open < 0) return null;
   var depth = 0;
   for (var i = open; i < source.length; i++) {
@@ -52,12 +65,18 @@ void main() {
       }
       // Inside the allowed METHOD, established by matching its braces rather
       // than by where its name last appears. A position heuristic is satisfied
-      // by the call site — `unawaited(_updateAll(pending))` sits above every
-      // row in the build, so anything below it looked like it was inside.
+      // by a call site above it, so anything below that looked like it was
+      // inside.
       final body = _bodyOf(source, _allowedMethod);
+      // And confirmed inside it, ahead of the skip. With the confirmation left
+      // to its callers, the method itself installs unseen code for whoever
+      // calls it next — and a literal-position check stays green over that.
+      final confirmedAt = body == null ? -1 : source.indexOf('$_confirmation(', body.$1);
       for (var at = source.indexOf('askConsent: false'); at >= 0; at = source.indexOf('askConsent: false', at + 1)) {
         if (body == null || at < body.$1 || at > body.$2) {
           offenders.add('${file.path}:${_lineOf(source, at)} — skips consent outside $_allowedMethod');
+        } else if (confirmedAt < 0 || confirmedAt > at) {
+          offenders.add('${file.path}:${_lineOf(source, at)} — skips consent before $_allowedMethod asks $_confirmation');
         }
       }
     }

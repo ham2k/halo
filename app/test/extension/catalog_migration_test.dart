@@ -169,7 +169,7 @@ class _Catalog extends CatalogService {
   final List<String>? keys;
 
   @override
-  Future<List<int>> download(CatalogRelease release) async => throw StateError('offline');
+  Future<List<int>> download(CatalogRelease release, {void Function(double? fraction)? onProgress}) async => throw StateError('offline');
 
   @override
   Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false}) async {

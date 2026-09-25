@@ -374,7 +374,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
               icon: notice.icon,
               title: notice.title,
               text: notice.text,
-              actions: [for (final action in notice.actions) StatusBarActionData(label: action.label, onTap: action.onTap)],
+              actions: [for (final action in notice.actions) StatusBarActionData(label: action.label, onTap: action.onTap, primary: action.primary)],
               createdAt: notice.createdAt,
             ),
         ];

@@ -480,6 +480,7 @@ void main() {
     late SettingsService settings;
     late int applied;
     late int opened;
+    late List<List<String>> updatedAll;
 
     /// The check is behind the `catalog` experiment; on by default here so
     /// every test below is about the check itself.
@@ -496,6 +497,7 @@ void main() {
       statusBar = StatusBarService(settings.prefs);
       applied = 0;
       opened = 0;
+      updatedAll = [];
       return CatalogUpdateCheck(
         catalog: service(handler),
         settings: settings,
@@ -504,6 +506,7 @@ void main() {
         inUse: inUse,
         applyAvailability: () async => applied++,
         openExtensions: () => opened++,
+        updateAll: (entries) async => updatedAll.add([for (final entry in entries) entry.key]),
         realNow: realNow,
       );
     }
@@ -566,14 +569,35 @@ void main() {
       // Settings.
       final one = await checker((_) async => answer(updates: [_entry(version: '1.1.0')]));
       await one.check();
-      final action = notices(CatalogUpdateCheck.noticeKey).single.actions.single;
-      expect(action.label, 'More details');
+      final action = notices(CatalogUpdateCheck.noticeKey).single.actions.first;
+      expect(action.label, 'More info');
+      expect(action.primary, isFalse);
       action.onTap();
       expect(opened, 1);
       // And it takes itself down on the way: the panel it opened IS the
       // detail, and a notice still in the footer behind it asks twice for
       // something already being answered.
       expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
+    });
+
+    test('the notice can take the updates where it stands', () async {
+      // The job the notice reports is one press from done, and sending the
+      // operator several taps into Settings to press the same button there is
+      // the app making work. It is the primary, so it sits on the trailing
+      // edge apart from More info.
+      final check = await checker((_) async => answer(updates: [_entry(version: '1.1.0')]));
+      await check.check();
+      final action = notices(CatalogUpdateCheck.noticeKey).single.actions.last;
+      expect(action.label, 'Update all');
+      expect(action.primary, isTrue);
+      action.onTap();
+      await pumpEventQueue();
+      // What was pending, handed over whole — the confirmation and the
+      // installs are the caller's; nothing here opens the panel.
+      expect(updatedAll, [
+        ['k2hrc-llota'],
+      ]);
+      expect(opened, 0);
     });
 
     test('the check the panel runs on opening does not put the notice back', () async {
@@ -583,7 +607,7 @@ void main() {
       // read — the app asking twice about what it is already showing them.
       final check = await checker((_) async => answer(updates: [_entry(version: '1.1.0')]));
       await check.check();
-      notices(CatalogUpdateCheck.noticeKey).single.actions.single.onTap();
+      notices(CatalogUpdateCheck.noticeKey).single.actions.first.onTap();
       expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
 
       expect(await check.check(force: true, announce: false), isTrue);

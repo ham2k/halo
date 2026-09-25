@@ -26,6 +26,7 @@ import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/flags_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
+import 'package:ham2k_logger/views/extension_install_flow.dart';
 import 'package:ham2k_logger/views/extensions_panel.dart';
 
 import '../support/halo_test_support.dart';
@@ -824,14 +825,218 @@ void main() {
 
     await tester.tap(find.widgetWithText(OutlinedButton, 'Update all'));
     await tester.pumpAndSettle();
-    // Named the count, not the extensions: what it confirms is the job.
+    // Every extension it will take, and what each becomes: the per-extension
+    // consent screens it skips rest on this, and the press may have come from
+    // a notice that named only two of them.
     expect(find.text('Update 2 extensions?'), findsOneWidget);
+    expect(find.descendant(of: find.byType(Dialog), matching: find.textContaining('1.0.0 → 1.1.0')), findsNWidgets(2));
+    expect(find.descendant(of: find.byType(Dialog), matching: find.textContaining('One')), findsOneWidget);
+    expect(find.descendant(of: find.byType(Dialog), matching: find.textContaining('Two')), findsOneWidget);
 
     await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
     await tester.pumpAndSettle();
     expect(downloads, 0, reason: 'declining the job must not start any part of it');
     // And the row is still there to try again.
     expect(find.byKey(const ValueKey('pending-one')), findsOneWidget);
+  });
+
+  testWidgets('an update under way shows on its Pending Updates row, which stays once it lands', (tester) async {
+    // Update all takes the list one extension at a time, and each landing
+    // stops that one being pending. A list recomputed on every rebuild drops
+    // the row the moment its update finishes — or, while the runtime
+    // restarts, every row at once — and reshuffles the rest under the
+    // pointer for the whole of the job.
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    ExtensionInfo installed(String key, String name, String version) =>
+        ExtensionInfo(key: key, file: 'index.js', core: false, name: name, category: 'activity', source: ExtensionSource.installed, version: version);
+    extensions.debugSetAvailableExtensions([installed('one', 'One', '1.0.0'), installed('two', 'Two', '1.0.0')]);
+    final catalog = _catalog(
+      (_) async => http.Response(
+        jsonEncode({
+          'extensions': [_entry('one', 'One', version: '1.1.0'), _entry('two', 'Two', version: '1.1.0')],
+        }),
+        200,
+      ),
+    );
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final pendingOne = find.byKey(const ValueKey('pending-one'));
+    expect(find.descendant(of: pendingOne, matching: find.widgetWithText(FilledButton, 'Update')), findsOneWidget);
+
+    // An update of `one`, started from anywhere — this panel, or the notice.
+    final landing = Completer<void>();
+    final job = services.extensionInstaller.run('one', () async {
+      services.extensionInstaller.downloading('one', 'One', 0.5);
+      await landing.future;
+    });
+    await tester.pump();
+    // The progress is on the row, mirrored from the footer's own item, and
+    // its button is gone: a second press would download it twice.
+    expect(find.descendant(of: pendingOne, matching: find.text('Downloading…')), findsOneWidget);
+    expect(tester.widget<LinearProgressIndicator>(find.descendant(of: pendingOne, matching: find.byType(LinearProgressIndicator))).value, 0.5);
+    expect(find.descendant(of: pendingOne, matching: find.byType(FilledButton)), findsNothing);
+    // The rest of the list is still the operator's to use.
+    expect(find.byKey(const ValueKey('pending-two')), findsOneWidget);
+
+    // It lands.
+    extensions.debugSetAvailableExtensions([installed('one', 'One', '1.1.0'), installed('two', 'Two', '1.0.0')]);
+    landing.complete();
+    await job;
+    await settings.setExtensionOverrides({'one': true});
+    await tester.pumpAndSettle();
+
+    expect(pendingOne, findsOneWidget, reason: 'a row whose update landed stays until the panel is reopened');
+    expect(find.descendant(of: pendingOne, matching: find.text('Updated to 1.1.0')), findsOneWidget);
+    expect(find.descendant(of: pendingOne, matching: find.byType(FilledButton)), findsNothing);
+    // Update all is still offered for what is left.
+    expect(tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Update all')).onPressed, isNotNull);
+
+    // With the catalog switched off, the held rows go with it: an Update
+    // button there would install from a catalog the panel no longer shows.
+    await settings.setExperimentEnabled('catalog', false);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('pending-two')), findsNothing);
+    expect(pendingOne, findsNothing);
+  });
+
+  testWidgets('Update all takes only what is still behind, and not what is already under way', (tester) async {
+    // The notice hands over what the last check offered, and that goes stale:
+    // an extension updated from a file since is AHEAD of the offer, and
+    // taking the offer anyway downgrades it without a consent screen.
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    ExtensionInfo installed(String key, String name, String version) =>
+        ExtensionInfo(key: key, file: 'index.js', core: false, name: name, category: 'activity', source: ExtensionSource.installed, version: version);
+    extensions.debugSetAvailableExtensions([installed('ahead', 'Ahead', '1.2.0'), installed('busy', 'Busy', '1.0.0'), installed('behind', 'Behind', '1.0.0')]);
+    final catalog = _catalog(
+      (_) async => http.Response(
+        jsonEncode({
+          'extensions': [_entry('ahead', 'Ahead', version: '1.1.0'), _entry('busy', 'Busy', version: '1.1.0'), _entry('behind', 'Behind', version: '1.1.0')],
+        }),
+        200,
+      ),
+    );
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+    final offered = (await tester.runAsync(() => catalog.fetchCatalog()))!;
+    final busy = Completer<void>();
+    unawaited(services.extensionInstaller.run('busy', () => busy.future));
+    addTearDown(busy.complete);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: ElevatedButton(
+                onPressed: () => updateAllFromCatalog(context, services: services, entries: offered),
+                child: const Text('go'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Update 1 extension?'), findsOneWidget);
+    final dialog = find.byType(Dialog);
+    expect(find.descendant(of: dialog, matching: find.textContaining('Behind')), findsOneWidget);
+    expect(find.descendant(of: dialog, matching: find.textContaining('Ahead')), findsNothing);
+    expect(find.descendant(of: dialog, matching: find.textContaining('Busy')), findsNothing);
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+  });
+
+  test('reloading the extension list keeps the old one readable until the new one is in hand', () async {
+    // Dropped first, the list reads empty for the whole read — every panel
+    // over it loses all its rows, and Update all pressed in that window finds
+    // nothing installed to update.
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}));
+    extensions.debugSetAvailableExtensions(_testExtensions);
+    final reload = extensions.reloadAvailableExtensions();
+    expect(extensions.availableExtensions, isNotEmpty);
+    await reload.catchError((_) {});
+  });
+
+  group('Update all with nothing it can take', () {
+    Future<(HaLoServices, StatusBarService)> setUp(WidgetTester tester, {required bool experiment}) async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      await settings.setExperimentEnabled('catalog', experiment);
+      final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+      extensions.debugSetAvailableExtensions(const [
+        ExtensionInfo(key: 'ahead', file: 'index.js', core: false, name: 'Ahead', category: 'activity', source: ExtensionSource.installed, version: '1.2.0'),
+      ]);
+      final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
+      services.statusBar.showNotice(key: CatalogUpdateCheck.noticeKey, text: 'An update is available for Ahead.');
+      return (services, services.statusBar);
+    }
+
+    Future<void> press(WidgetTester tester, HaLoServices services, List<CatalogEntry> entries) async {
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: ElevatedButton(
+                  onPressed: () => updateAllFromCatalog(context, services: services, entries: entries),
+                  child: const Text('go'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+    }
+
+    final offer = CatalogEntry.fromJson(_entry('ahead', 'Ahead', version: '1.1.0'))!;
+
+    testWidgets('an offer overtaken since says so and takes the notice down', (tester) async {
+      // Installed from a file past what the notice offered: a primary button
+      // that then does nothing, and keeps doing nothing, reads as broken.
+      final (services, statusBar) = await setUp(tester, experiment: true);
+      await press(tester, services, [offer]);
+      expect(find.byType(Dialog), findsNothing);
+      expect(statusBar.activeNotices.where((n) => n.key == CatalogUpdateCheck.noticeKey), isEmpty);
+      expect(statusBar.itemForKey('extensions:updateAll')?.text, 'Your extensions are up to date.');
+      await tester.pump(StatusBarService.completedDismissDelay);
+    });
+
+    testWidgets('with the catalog switched off it installs nothing, and the notice goes', (tester) async {
+      // The notice outlives the experiment it was posted under; its button
+      // must not install from a catalog the app no longer shows.
+      final (services, statusBar) = await setUp(tester, experiment: false);
+      await press(tester, services, [offer]);
+      expect(find.byType(Dialog), findsNothing);
+      expect(statusBar.activeNotices.where((n) => n.key == CatalogUpdateCheck.noticeKey), isEmpty);
+    });
   });
 
   testWidgets('installing an offer leaves the row where it was until the panel is reopened', (tester) async {

@@ -22,7 +22,9 @@ import '../services/catalog_service.dart';
 import '../services/error_reporting_service.dart';
 import '../config/experiments.dart' show kCatalogExperiment;
 import '../services/extension_relevance.dart' show ExtensionRelevance, OperatorGeo, kAlwaysSuggested, kRelevanceSoon, relevanceBand;
+import '../services/extension_installer.dart';
 import '../services/extension_service.dart';
+import '../services/status_bar_service.dart' show StatusBarService;
 import '../services/installed_extensions.dart';
 import 'extension_install_flow.dart';
 import '../services/halo_services.dart';
@@ -81,9 +83,20 @@ class ExtensionsPanel extends StatefulWidget {
 class ExtensionsPanelState extends State<ExtensionsPanel> {
   final _searchController = TextEditingController();
 
-  /// True while a toggle's runtime restart is applying — all switches
-  /// disable and a progress row shows, then everything re-enables.
+  /// True while a toggle's or a removal's runtime restart is applying — all
+  /// switches disable and a progress row shows, then everything re-enables.
+  /// Installs do not set it: they narrate themselves in the footer and on
+  /// their own row, through [ExtensionInstaller].
   bool _applying = false;
+
+  /// Every update Pending Updates has listed since the panel opened, by key,
+  /// with the release it offered.
+  ///
+  /// Held rather than recomputed: an update that lands stops being pending,
+  /// and a list that dropped each row the moment its update finished would
+  /// reshuffle under the pointer through the whole of an Update all. A row
+  /// stays, saying what it was updated to, until the panel is opened again.
+  final _heldPending = <String, CatalogEntry>{};
 
   /// The order each category's rows appear in, held still for as long as the
   /// panel is open — see [_orderFor].
@@ -170,7 +183,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
 
   void _subscribe() {
     final services = widget.services;
-    _listenable = Listenable.merge([services.settings, services.catalogUpdateCheck, services.flags]);
+    _listenable = Listenable.merge([services.settings, services.catalogUpdateCheck, services.flags, services.extensionInstaller]);
     services.flags.addListener(_onFlagsChanged);
     services.settings.addListener(_onSettingsChanged);
   }
@@ -273,72 +286,23 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       debugPrint('[extensions] install pressed before the installed store was ready');
       return;
     }
-    // NOT set around the picker and the consent screen: `_applying` shows
-    // "applying changes…" and blocks the list, and the operator is going to
-    // spend that time browsing their filesystem and reading a dialog.
-    final name = await installExtensionFromFile(
-      context,
-      store: store,
-      commit: (bundle) async {
-        if (mounted) setState(() => _applying = true);
-        try {
-          await services.extensions.installBundle(bundle);
-        } finally {
-          if (mounted) setState(() => _applying = false);
-        }
-      },
-    );
+    final name = await installExtensionFromFile(context, store: store, commit: commitThroughInstaller(services), isBusy: services.extensionInstaller.isActive);
     if (name == null) return; // cancelled, or refused with its own dialog
     services.track('extension_installed', {});
-    if (mounted) {
-      services.statusBar.setMessage(
-        key: 'extensions:installed',
-        text: t.extensionsPanel.installedMessage(name: name),
-      );
-    }
   }
 
-  /// Install or Update from the catalog: the shared path (installFromCatalog),
-  /// with this panel's applying state driven around the commit.
-  Future<void> _installFromCatalog(CatalogEntry entry, {bool askConsent = true}) => installFromCatalog(
-    context,
-    services: widget.services,
-    release: entry.release,
-    askConsent: askConsent,
-    commit: (bundle) async {
-      if (mounted) setState(() => _applying = true);
-      try {
-        await widget.services.extensions.installBundle(bundle);
-      } finally {
-        if (mounted) setState(() => _applying = false);
-      }
-    },
-  );
+  /// Install or Update from the catalog: the shared path (installFromCatalog).
+  Future<void> _installFromCatalog(CatalogEntry entry) =>
+      installFromCatalog(context, services: widget.services, release: entry.release, name: entry.nameFor(LocaleSettings.currentLocale.languageCode));
+
+  /// Takes every pending update — the shared path, which confirms first.
+  ///
+  /// The list is captured by the caller: each install changes what is
+  /// pending, and the confirmation is about the list the operator pressed on.
+  Future<void> _updateAll(List<CatalogEntry> entries) => updateAllFromCatalog(context, services: widget.services, entries: entries);
 
   /// Opens an extension's details, and does whatever the operator chose
   /// there — the dialog only ever answers.
-  /// Installs every pending update in turn.
-  ///
-  /// Sequential, not concurrent: each install restarts the extension runtime,
-  /// and two of those in flight at once is a runtime torn down under an
-  /// install that is still writing into it. The list is captured first for the
-  /// same reason — each install changes what is pending, and iterating the
-  /// live map would be walking a collection that mutates underneath.
-  Future<void> _updateAll(List<CatalogEntry> entries) async {
-    // One screen for the whole job, in place of the one per extension the
-    // installs below skip. Asked BEFORE any of them: a dialog that appeared
-    // after the first had already been replaced would be asking about
-    // something partly done.
-    if (!await confirmUpdateAll(context, count: entries.length)) return;
-    for (final entry in entries) {
-      if (!mounted) return;
-      // No consent screen per extension: the press was on a list naming every
-      // one of these and what each becomes, and asking again once per entry
-      // makes a five-tap chore of the button that exists to avoid one.
-      await _installFromCatalog(entry, askConsent: false);
-    }
-  }
-
   Future<void> _showDetails(ExtensionInfo info) async {
     final locale = LocaleSettings.currentLocale.languageCode;
     // What the catalog offers, when it offers something newer. The row's own
@@ -545,12 +509,37 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         // answers first: `hasUpdate` is true when either is ahead, so
         // preferring the listing unconditionally can put a row on screen
         // reading `1.0.0 → 1.0.0` and have Update all reinstall it.
-        final pending = [for (final info in visible) ?_catalogEntryFor(info)];
-        if (query.isEmpty && pending.isNotEmpty) {
+        final installer = widget.services.extensionInstaller;
+        final visibleByKey = {for (final info in visible) info.key: info};
+        if (query.isEmpty) {
+          for (final info in visible) {
+            final entry = _catalogEntryFor(info);
+            if (entry != null) _heldPending[entry.key] = entry;
+          }
+        }
+        // What is held and still here — an extension removed since is gone
+        // from the list along with its row.
+        // A held row stays while it is under way, once it has landed, or while
+        // the catalog still offers it — not for an offer since withdrawn, and
+        // not at all once the catalog is off: an Update button then installs
+        // from a catalog the panel no longer shows (see [_catalogEntryFor]).
+        final held = [
+          if (_catalogShown)
+            for (final entry in _heldPending.values)
+              if (visibleByKey[entry.key] case final info?)
+                if (installer.isActive(entry.key) || !entry.isNewerThan(info.version) || _catalogEntryFor(info) != null) entry,
+        ];
+        // What Update all would still take: not what has landed, and not what
+        // is under way already.
+        final pending = [
+          for (final entry in held)
+            if (entry.isNewerThan(visibleByKey[entry.key]!.version) && !installer.isActive(entry.key)) entry,
+        ];
+        if (query.isEmpty && held.isNotEmpty) {
           // Row identities, so taking an update remounts the list rather than
           // leaving the web's hit-testing on the geometry that had one more
           // row in it (docs/quirks.md, listContentsKey).
-          shownOffers.addAll(pending.map((entry) => 'pending:${entry.key}'));
+          shownOffers.addAll(held.map((entry) => 'pending:${entry.key}'));
           // On the post-it yellow, edge to edge, band and rows alike: this
           // section is a standing notice rather than one more group, and it is
           // the one part of the panel that says something is owed rather than
@@ -563,7 +552,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
               background: notice,
               color: onNotice,
               trailing: OutlinedButton(
-                onPressed: _applying ? null : () => unawaited(_updateAll(pending)),
+                onPressed: _applying || pending.isEmpty ? null : () => unawaited(_updateAll(pending)),
                 // Outlined, so the verb reads as a button on a ground that is
                 // already a colour: a bare label on the notice yellow is one
                 // more piece of the sentence around it.
@@ -575,8 +564,10 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
               ),
             ),
           );
-          for (final entry in pending) {
-            final info = visible.firstWhere((i) => i.key == entry.key);
+          for (final entry in held) {
+            final info = visibleByKey[entry.key]!;
+            final busy = installer.isActive(entry.key);
+            final landed = !entry.isNewerThan(info.version);
             rows.add(
               ListTile(
                 key: ValueKey('pending-${entry.key}'),
@@ -589,14 +580,28 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 title: Text(info.nameFor(locale), style: TextStyle(color: onNotice)),
                 // What it would become, beside what it is: the row is about the
                 // gap between the two, and a version on its own says neither.
-                subtitle: Text(
-                  t.extensionsPanel.installVersion(version: '${info.version} → ${entry.version}'),
-                  style: TextStyle(color: onNotice),
-                ),
-                trailing: SizedBox(
-                  height: _trailingControlHeight,
-                  child: FilledButton(onPressed: _applying ? null : () => unawaited(_installFromCatalog(entry)), child: Text(t.extensionsPanel.updateAction)),
-                ),
+                subtitle: busy
+                    ? _InstallProgressLine(extensionKey: entry.key, statusBar: widget.services.statusBar, color: onNotice)
+                    : Text(
+                        landed
+                            ? t.extensionsPanel.updatedTo(version: info.version ?? entry.version)
+                            : t.extensionsPanel.installVersion(version: '${info.version} → ${entry.version}'),
+                        style: TextStyle(color: onNotice),
+                      ),
+                trailing: busy
+                    ? _InstallSpinner(color: onNotice)
+                    : landed
+                    ? SizedBox(
+                        height: _trailingControlHeight,
+                        child: Icon(MdiIcons.check, color: onNotice),
+                      )
+                    : SizedBox(
+                        height: _trailingControlHeight,
+                        child: FilledButton(
+                          onPressed: _applying ? null : () => unawaited(_installFromCatalog(entry)),
+                          child: Text(t.extensionsPanel.updateAction),
+                        ),
+                      ),
               ),
             );
           }
@@ -695,6 +700,10 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
               // the way out.
               final isRevoked = extensionService.isExtensionRevoked(info);
               final revokedNote = isRevoked ? (revoked[info.key]?['note'] ?? '') : '';
+              // An update under way, from anywhere — this row, its details,
+              // Update all, the notice. The switch goes with it: the install
+              // restarts the runtime, and a toggle then is a restart racing it.
+              final busy = installer.isActive(info.key);
               // A bundle the engine refused. Said on the row because the
               // extension is installed, switched on, and doing nothing — and
               // the one dialog that names it passes by once. It keeps its
@@ -710,22 +719,24 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                   // switch to [_trailingControlHeight] to make room for the
                   // version under it takes its tap target below the 48 Material
                   // asks for, and the row is what gives that back.
-                  onTap: isRevoked ? null : () => toggle(!enabled),
-                  mouseCursor: isRevoked ? null : SystemMouseCursors.click,
+                  onTap: isRevoked || busy ? null : () => toggle(!enabled),
+                  mouseCursor: isRevoked || busy ? null : SystemMouseCursors.click,
                   // No "Installed" here any more: it sits under the same headings
                   // as the app's own extensions, so saying so on every row said
                   // nothing the section did not. What is left is what is
                   // UNUSUAL about this one.
-                  subtitle: _DescriptionLine(
-                    description: [
-                      if (isRevoked) t.extensionsPanel.revokedBadge,
-                      if (extensionService.isExtensionRefused(info)) t.extensionsPanel.refusedBadge,
-                      if (hasUpdate(info.key)) t.extensionsPanel.updateAvailableBadge,
-                      if (revokedNote.isNotEmpty) revokedNote,
-                      ?description,
-                    ].join(' · '),
-                    onDetails: () => unawaited(_showDetails(info)),
-                  ),
+                  subtitle: busy
+                      ? _InstallProgressLine(extensionKey: info.key, statusBar: widget.services.statusBar)
+                      : _DescriptionLine(
+                          description: [
+                            if (isRevoked) t.extensionsPanel.revokedBadge,
+                            if (extensionService.isExtensionRefused(info)) t.extensionsPanel.refusedBadge,
+                            if (hasUpdate(info.key)) t.extensionsPanel.updateAvailableBadge,
+                            if (revokedNote.isNotEmpty) revokedNote,
+                            ?description,
+                          ].join(' · '),
+                          onDetails: () => unawaited(_showDetails(info)),
+                        ),
                   trailing: _TrailingWithCaption(
                     // What is installed, not what the catalog offers: the offer
                     // is on the catalog row below, and the two together are what
@@ -734,7 +745,11 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                     // Removing lives in the details dialog now. It was a bin
                     // beside the switch, one mis-aimed click from a toggle, and
                     // the row it sat on could not say what would be removed.
-                    control: isRevoked ? const SizedBox(height: _trailingControlHeight) : _trailingSwitch(value: enabled, onChanged: toggle),
+                    control: busy
+                        ? const _InstallSpinner()
+                        : isRevoked
+                        ? const SizedBox(height: _trailingControlHeight)
+                        : _trailingSwitch(value: enabled, onChanged: toggle),
                   ),
                 ),
               );
@@ -745,6 +760,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
             // a question about where it came from.
             shownOffers.add('catalog:${entry!.key}');
             final description = entry.descriptionFor(locale);
+            final busy = installer.isActive(entry.key);
             rows.add(
               ListTile(
                 key: ValueKey('catalog-${entry.key}'),
@@ -759,21 +775,27 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                   opacity: kUninstalledIconOpacity,
                 ),
                 title: Text(entry.nameFor(locale)),
-                subtitle: description == null ? null : Text(description),
+                subtitle: busy
+                    ? _InstallProgressLine(extensionKey: entry.key, statusBar: widget.services.statusBar)
+                    : description == null
+                    ? null
+                    : Text(description),
                 // The offered version under the button, as an installed row
                 // carries the version it holds.
                 trailing: _TrailingWithCaption(
                   caption: entry.version,
-                  control: SizedBox(
-                    height: _trailingControlHeight,
-                    // Disabled until the store exists, like Install from file: a
-                    // press before then has nothing to install into. `_applying`
-                    // is the IgnorePointer's job, not a disabled button's.
-                    child: OutlinedButton(
-                      onPressed: store == null ? null : () => unawaited(_installFromCatalog(entry)),
-                      child: Text(t.extensionsPanel.installAction),
-                    ),
-                  ),
+                  control: busy
+                      ? const _InstallSpinner()
+                      : SizedBox(
+                          height: _trailingControlHeight,
+                          // Disabled until the store exists, like Install from file: a
+                          // press before then has nothing to install into. `_applying`
+                          // is the IgnorePointer's job, not a disabled button's.
+                          child: OutlinedButton(
+                            onPressed: store == null ? null : () => unawaited(_installFromCatalog(entry)),
+                            child: Text(t.extensionsPanel.installAction),
+                          ),
+                        ),
                 ),
               ),
             );
@@ -967,23 +989,11 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       context,
       store: store,
       read: file.readAsBytes,
-      commit: (bundle) async {
-        if (mounted) setState(() => _applying = true);
-        try {
-          await services.extensions.installBundle(bundle);
-        } finally {
-          if (mounted) setState(() => _applying = false);
-        }
-      },
+      commit: commitThroughInstaller(services),
+      isBusy: services.extensionInstaller.isActive,
     );
     if (name == null) return;
     services.track('extension_installed', {});
-    if (mounted) {
-      services.statusBar.setMessage(
-        key: 'extensions:installed',
-        text: t.extensionsPanel.installedMessage(name: name),
-      );
-    }
   }
 }
 
@@ -1020,6 +1030,64 @@ class _DescriptionLine extends StatelessWidget {
       ],
     );
   }
+}
+
+/// A row's subtitle while its extension is being installed: the footer's own
+/// progress item for it, mirrored, as the Data Files rows mirror theirs — the
+/// footer may be under the pane, and the row is where the operator looks.
+///
+/// Its own listener, not the panel's: the status bar notifies on every tick
+/// of every progress bar in the app, and the panel rebuilding a hundred rows
+/// for each one is the cost this keeps to the row that asked.
+class _InstallProgressLine extends StatelessWidget {
+  final String extensionKey;
+  final StatusBarService statusBar;
+
+  /// The text colour — the notice's, on the Pending Updates yellow.
+  final Color? color;
+
+  const _InstallProgressLine({required this.extensionKey, required this.statusBar, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: statusBar,
+      builder: (context, _) {
+        final item = statusBar.itemForKey(ExtensionInstaller.progressKey(extensionKey));
+        // Nothing posted is a refusal dialog open over the row, and the
+        // footer's item already taken down for it — a line here would say
+        // something is still happening.
+        if (item == null) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(item.text ?? '', style: color == null ? null : TextStyle(color: color)),
+            // A message rather than a bar is the install waiting on the
+            // operator (the consent screen), which no bar should claim.
+            if (item.isProgress) ...[const SizedBox(height: Space.sm), LinearProgressIndicator(value: item.progressValue, color: color)],
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Where a row's control goes while its extension is being installed.
+class _InstallSpinner extends StatelessWidget {
+  final Color? color;
+
+  const _InstallSpinner({this.color});
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: _trailingControlHeight,
+    height: _trailingControlHeight,
+    child: Padding(
+      padding: const EdgeInsets.all(Space.sm),
+      child: CircularProgressIndicator(strokeWidth: 2, color: color),
+    ),
+  );
 }
 
 /// One line under the Catalog header that is not a row — loading, or

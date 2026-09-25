@@ -86,6 +86,12 @@
     "uninstallTitle": "¿Quitar ${name}?",
     "uninstallBody": "Esta extensión y su configuración se eliminarán. Tus registros permanecerán intactos.",
     "installedMessage": "Se instaló ${name}",
+    "installDownloading": "Descargando…",
+    "installWaiting": "Esperando para instalar…",
+    "installInstalling": "Instalando…",
+    "installAwaitingApproval": "Esperando tu aprobación…",
+    "installAlreadyRunning": "Ya se está instalando ${name}.",
+    "updatedTo": "Actualizada a ${version}",
     "installIncomplete": "La instalación de ${name} no se completó. Puede que haya que instalarla de nuevo.",
     "uninstallFailed": "No se pudo quitar ${name}",
     "installedFrom": "Descargada desde ${source}",
@@ -105,7 +111,9 @@
     "updatesAvailableFor": "${names} necesitan actualizarse.",
     "pendingUpdatesSection": "Actualizaciones pendientes",
     "updateAllAction": "Actualizar todas",
-    "updatesNoticeAction": "Más detalles",
+    "updatesUnderWay": "Esas actualizaciones ya están en curso.",
+    "updatesNothingLeft": "Tus extensiones están al día.",
+    "updatesNoticeAction": "Más información",
     "updateAllTitle": {
       "one": "¿Actualizar ${count} extensión?",
       "other": "¿Actualizar ${count} extensiones?"

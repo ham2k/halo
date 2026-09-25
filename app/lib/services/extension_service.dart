@@ -1686,12 +1686,10 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     return rootBundle.loadString('assets/extensions/${info.file}');
   }
 
-  /// Drops the memoized list and reads it again — after anything that changes
-  /// what is installed.
-  Future<void> reloadAvailableExtensions() async {
-    _availableExtensions = null;
-    await loadAvailableExtensions();
-  }
+  /// Reads the list again — after anything that changes what is installed.
+  /// The one held is kept until the new one is in hand: dropped first, every
+  /// reader sees no extensions at all for the length of the read.
+  Future<void> reloadAvailableExtensions() => loadAvailableExtensions(force: true);
 
   /// The catalog's copy of every withdrawn built-in the operator had ON.
   Future<({bool landed, bool complete})> adoptTwins() => adoptCatalogTwins(
@@ -1753,8 +1751,28 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     await store.install(bundle);
     // `fresh` drops a stale on/off choice; one just carried is not stale.
     await _recordInstall(bundle, fresh: fresh && !carried);
-    _availableExtensions = null;
-    await restartRuntime();
+    // Re-read, not merely dropped: an empty list for the length of the
+    // restart is every panel reading it losing all its rows until the new
+    // generation is up, and the restart's own sweep deciding which
+    // extensions return against nothing at all.
+    await _reloadBeforeRestart();
+    // [fresh]: a restart already in flight (a toggle's, another install's)
+    // began before this bundle was written, and would load without it.
+    await restartRuntime(fresh: true);
+  }
+
+  /// [reloadAvailableExtensions] ahead of a restart that must happen whatever
+  /// it finds: a failure here leaves the list dropped for the boot to re-read,
+  /// rather than skipping the restart that loads what was just written.
+  Future<void> _reloadBeforeRestart() async {
+    try {
+      await reloadAvailableExtensions();
+    } catch (e, stack) {
+      // Dropped, so the boot re-reads it: the list still held predates what
+      // was just written, and a boot from it would load without it.
+      _availableExtensions = null;
+      ErrorReportingService.report(e, stack, context: 'extensions:reload-before-restart');
+    }
   }
 
   /// The settings an install touches. The provenance record is written for
@@ -1795,9 +1813,10 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     await _requireInstalledStore().uninstall(key);
     await settings?.forgetExtension(key);
     await forgetExtensionKeychainItems(_secureStorage, key, deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
-    _availableExtensions = null;
+    // Re-read, not merely dropped — see [installBundle].
+    await _reloadBeforeRestart();
     statusBar?.clearNamespace(key);
-    await restartRuntime();
+    await restartRuntime(fresh: true);
   }
 
   /// Copies every keychain item [from] owned onto [to] — the keychain half
@@ -1837,9 +1856,9 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
   /// metadata — readable without booting (or evaluating) any JS, so the
   /// Extensions panel can list DISABLED extensions and still render when
   /// the runtime is down. Memoized; [index] lets [_start] reuse its own
-  /// parse.
-  Future<List<ExtensionInfo>> loadAvailableExtensions({Map<String, dynamic>? index}) async {
-    if (_availableExtensions != null) return _availableExtensions!;
+  /// parse, and [force] reads afresh past the memo.
+  Future<List<ExtensionInfo>> loadAvailableExtensions({Map<String, dynamic>? index, bool force = false}) async {
+    if (!force && _availableExtensions != null) return _availableExtensions!;
     final parsed = index ?? jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
     final fromAssets = [for (final entry in (parsed['extensions'] as List).cast<Map<String, dynamic>>()) ExtensionInfo.fromJson(entry)];
     _hostSharedModules = ((parsed['sharedModules'] as Map?) ?? const {}).cast<String, String>();
@@ -2151,6 +2170,11 @@ class ExtensionService with ExtensionScoring implements PanelExtensionSource, Pa
     // flip still offers the direction the flip just took.
     invalidateHookContext();
     await updateExtensionDisabledSince(settings: currentSettings, available: availableExtensions, isActive: isExtensionActive);
+    // Judged after any replacement in flight — an install's, another toggle's.
+    // That one read the set before this change landed: compared against
+    // now, its host is null and the change looks like a boot's to pick up,
+    // and it loads without it.
+    await _restartFuture?.catchError((_) {});
     final desired = {
       for (final info in availableExtensions)
         if (isExtensionActive(info)) info.key,

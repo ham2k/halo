@@ -468,7 +468,8 @@ class CatalogService {
 
   /// The bundle bytes of a listed release, verified against its sha256.
   /// Throws a [BundleException] — the install flow's `read` step.
-  Future<List<int>> download(CatalogRelease release) => downloadBundle(release.bundleUrl, sha256: release.sha256);
+  Future<List<int>> download(CatalogRelease release, {void Function(double? fraction)? onProgress}) =>
+      downloadBundle(release.bundleUrl, sha256: release.sha256, onProgress: onProgress);
 
   /// Whether a bundle may be fetched from [url]. https, always — with the one
   /// exception of a loopback address while the developer override is in
@@ -490,7 +491,10 @@ class CatalogService {
   /// included ([BundleRejection.downloadFailed]): a host that never answered
   /// is a sentence about this link, which the install flow shows as it shows
   /// an unreadable file — not a defect for it to report.
-  Future<List<int>> downloadBundle(Uri source, {String? sha256}) async {
+  ///
+  /// [onProgress] hears the fraction received as chunks arrive, or null for a
+  /// response that did not say how long it is.
+  Future<List<int>> downloadBundle(Uri source, {String? sha256, void Function(double? fraction)? onProgress}) async {
     var target = source;
     if (!_allowsBundleUrl(target)) {
       throw BundleException(BundleRejection.notAnArchive, t.extensionsPanel.downloadNotHttps);
@@ -522,11 +526,14 @@ class CatalogService {
         // afterwards is a cap that has already let the thing it refuses into
         // memory.
         final builder = BytesBuilder(copy: false);
+        final total = response.contentLength;
+        onProgress?.call(total == null || total <= 0 ? null : 0);
         await for (final chunk in response.stream.timeout(_downloadTimeout)) {
           builder.add(chunk);
           if (builder.length > kMaxDownloadBytes) {
             throw BundleException(BundleRejection.tooLarge, t.extensionsPanel.downloadTooLarge);
           }
+          if (total != null && total > 0) onProgress?.call((builder.length / total).clamp(0.0, 1.0));
         }
         final bytes = builder.takeBytes();
         if (sha256 != null && sha256Hex(bytes) != sha256.toLowerCase()) {
@@ -663,6 +670,11 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   /// Null leaves the notice with nothing but its text, which is what it had.
   final VoidCallback? openExtensions;
 
+  /// Takes every pending update in place, for the notice's Update all — the
+  /// same reasons as [openExtensions] for being a callback. Null leaves the
+  /// notice with More info alone.
+  final Future<void> Function(List<CatalogEntry> entries)? updateAll;
+
   /// The clock the stamp is written and judged on. Defaults to the real
   /// clock, and that DEFAULT is the contract (time.md §7) — pinned by
   /// `catalog_service_test.dart`.
@@ -676,6 +688,7 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
     required this.applyAvailability,
     bool Function(ExtensionInfo)? inUse,
     this.openExtensions,
+    this.updateAll,
     int Function()? realNow,
   }) : inUse = inUse ?? _everythingLoads,
        _realNow = realNow ?? realNowMillis;
@@ -801,6 +814,11 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
               openExtensions!();
             },
           ),
+        // The primary, on the trailing edge: the job the notice is about,
+        // done without leaving the screen the operator is on. It takes the
+        // notice down itself once confirmed; a Cancel leaves it up.
+        if (updateAll != null)
+          StatusBarAction(label: t.extensionsPanel.updateAllAction, primary: true, onTap: () => unawaited(updateAll!(_pending.values.toList()))),
       ],
       // Not persisted: the next launch checks again and says so again if it
       // is still true, and an update taken in between must not leave a stale

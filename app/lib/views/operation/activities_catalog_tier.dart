@@ -189,7 +189,7 @@ class InstallExtensionRow extends StatelessWidget {
 /// that went wrong underneath it.
 Future<bool> installCatalogExtension(BuildContext context, {required HaLoServices services, required CatalogEntry entry}) async {
   try {
-    final name = await installFromCatalog(context, services: services, release: entry.release, commit: (bundle) => services.extensions.installBundle(bundle));
+    final name = await installFromCatalog(context, services: services, release: entry.release, name: entry.nameFor(LocaleSettings.currentLocale.languageCode));
     if (name == null) return false;
     // A fresh catalog install drops the operator's stored override, so the
     // extension lands on whatever its manifest defaults to — which an author

@@ -20,11 +20,13 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show localNetworkEntry;
+import '../config/experiments.dart' show kCatalogExperiment;
 import '../services/extension_info.dart';
-import '../services/catalog_service.dart' show CatalogRelease;
+import '../services/catalog_service.dart' show CatalogEntry, CatalogRelease, CatalogUpdateCheck;
 import '../services/error_reporting_service.dart';
 import '../services/halo_services.dart';
 import '../services/installed_extensions.dart';
+import '../services/status_bar_service.dart' show StatusBarService;
 
 /// The file types the picker offers.
 ///
@@ -54,11 +56,12 @@ Future<String?> installExtensionFromFile(
   BuildContext context, {
   required InstalledExtensions store,
   required Future<void> Function(InspectedBundle) commit,
+  bool Function(String key)? isBusy,
 }) async {
   final file = await openFile(acceptedTypeGroups: h2kextTypeGroups());
   if (file == null) return null;
   if (!context.mounted) return null;
-  return installExtensionFromBytes(context, store: store, commit: commit, read: file.readAsBytes);
+  return installExtensionFromBytes(context, store: store, commit: commit, read: file.readAsBytes, isBusy: isBusy);
 }
 
 /// The one install path, whatever the bundle arrived as — picked, dropped, or
@@ -85,6 +88,16 @@ Future<String?> installExtensionFromBytes(
   /// whole — see where the screen is shown below. Never for a file, a deep
   /// link, or anything an extension can reach.
   bool askConsent = true,
+
+  /// Whether an install of a key is already under way ([ExtensionInstaller.
+  /// isActive]) — for a caller that learns the key only from the bundle. Two
+  /// installs of one key overlapping land whichever finishes last, which need
+  /// not be the one the operator chose last.
+  bool Function(String key)? isBusy,
+
+  /// Runs before a refusal dialog opens, so whatever progress the caller
+  /// posted is not left standing behind a sentence saying it failed.
+  VoidCallback? beforeRefusal,
 }) async {
   final InspectedBundle bundle;
   try {
@@ -99,6 +112,7 @@ Future<String?> installExtensionFromBytes(
     }
     // Logged even with nobody left to tell: a panel closing mid-decode must
     // not make the failure disappear entirely.
+    beforeRefusal?.call();
     if (!context.mounted) {
       debugPrint('[extensions] install failed after the panel closed: $e');
       return null;
@@ -108,6 +122,10 @@ Future<String?> installExtensionFromBytes(
   }
 
   if (!context.mounted) return null;
+  if (isBusy?.call(bundle.key) ?? false) {
+    await showInstallRefusal(context, context.t.extensionsPanel.installAlreadyRunning(name: bundle.name));
+    return null;
+  }
   // Asked for every install, and for every update taken one at a time.
   // Comparing capabilities would let a version through silently on the
   // strength of the key alone — and the code behind that key can have changed
@@ -125,6 +143,12 @@ Future<String?> installExtensionFromBytes(
     final replacing = await _isInstalled(store, bundle);
     if (!context.mounted) return null;
     if (!await showConsentDialog(context, bundle: bundle, replacing: replacing, from: from)) return null;
+    // Asked again: another install of this key can have started while the
+    // operator was reading.
+    if (isBusy?.call(bundle.key) ?? false) {
+      if (context.mounted) await showInstallRefusal(context, context.t.extensionsPanel.installAlreadyRunning(name: bundle.name));
+      return null;
+    }
   }
 
   try {
@@ -148,13 +172,15 @@ Future<String?> installExtensionFromBytes(
 /// refused before any download, with the sentence a file with that key gets.
 /// Returns the installed extension's name, or null if nothing was installed.
 ///
-/// [commit] is [ExtensionService.installBundle], or a wrapper that also
-/// drives a caller's own "applying" state around it.
+/// The download and the install post their progress through
+/// [ExtensionInstaller], under the release's key from the first byte — which
+/// is what the Extensions panel's row for it mirrors. [name] titles that
+/// progress until the bundle names itself; the key stands in without one.
 Future<String?> installFromCatalog(
   BuildContext context, {
   required HaLoServices services,
   required CatalogRelease release,
-  required Future<void> Function(InspectedBundle) commit,
+  String? name,
   bool askConsent = true,
 }) async {
   final store = services.extensions.installed;
@@ -162,6 +188,19 @@ Future<String?> installFromCatalog(
   // outcome nobody could report.
   if (store == null) {
     debugPrint('[extensions] catalog install of ${release.key} before the installed store was ready');
+    return null;
+  }
+  final installer = services.extensionInstaller;
+  final label = name ?? release.key;
+  // A second download racing the first lands whichever finishes last. Said,
+  // not merely logged: a press from outside the panel (the Activities view)
+  // has no row showing the first one under way.
+  if (installer.isActive(release.key)) {
+    services.statusBar.setMessage(
+      key: 'extensions:installBusy',
+      text: t.extensionsPanel.installAlreadyRunning(name: label),
+      dismissAfter: StatusBarService.completedDismissDelay,
+    );
     return null;
   }
   final catalog = services.catalog;
@@ -173,26 +212,126 @@ Future<String?> installFromCatalog(
     return null;
   }
   if (!context.mounted) return null;
-  final name = await installExtensionFromBytes(
-    context,
-    store: store,
-    read: () => catalog.download(release),
-    from: catalog.host,
-    provenance: provenance,
-    commit: commit,
-    askConsent: askConsent,
+  // The job belongs to the app, not to the screen it was started from: a
+  // download outlives the panel that asked for it, and every step below
+  // stops once its context unmounts — closing the Extensions panel part way
+  // through Update all would silently drop the updates still to come. The
+  // root navigator is there for the life of the app, and its dialogs are the
+  // same dialogs.
+  final appContext = Navigator.of(context, rootNavigator: true).context;
+  final installed = await installer.run(
+    release.key,
+    () => installExtensionFromBytes(
+      appContext,
+      store: store,
+      read: () async {
+        // Posted before the request goes out: the first chunk can be many
+        // seconds away, and until it arrives nothing would say anything is
+        // happening — from the notice, with no row on screen, nothing at all.
+        installer.downloading(release.key, label, null);
+        final bytes = await catalog.download(release, onProgress: (fraction) => installer.downloading(release.key, label, fraction));
+        // What the row and the footer say while the consent screen is up:
+        // the install is waiting on the operator, not on the app.
+        if (askConsent) installer.awaitingApproval(release.key, label);
+        return bytes;
+      },
+      from: catalog.host,
+      provenance: provenance,
+      commit: commitThroughInstaller(services),
+      askConsent: askConsent,
+      beforeRefusal: () => installer.clearProgress(release.key),
+    ),
   );
-  if (name == null) return null;
-  services.catalogUpdateCheck.noteInstalled(release.key, release.version);
+  if (installed == null) return null;
   // No per-key event: the catalog's keys are whatever anyone published,
   // which is unbounded cardinality and leaks what the operator uses (the
   // same reason settings_view reports every extension panel as one).
   services.track('extension_installed', {});
-  services.statusBar.setMessage(
-    key: 'extensions:installed',
-    text: t.extensionsPanel.installedMessage(name: name),
+  return installed;
+}
+
+/// The `commit` every install passes: [ExtensionService.installBundle] in the
+/// installer's queue, which posts "Installing…" and then "Installed" in the
+/// footer under the bundle's key.
+///
+/// Whatever the bytes came from, the update check hears of it: an offer an
+/// install from a file has overtaken is one the notice must stop making.
+Future<void> Function(InspectedBundle) commitThroughInstaller(HaLoServices services) => (bundle) async {
+  await services.extensionInstaller.commit(bundle.key, bundle.name, () => services.extensions.installBundle(bundle));
+  services.catalogUpdateCheck.noteInstalled(bundle.key, bundle.version);
+};
+
+/// Update all — from the Extensions panel or the update notice: one
+/// confirmation naming every extension it will take and what each becomes,
+/// then the updates in place.
+///
+/// The confirmation lives HERE, and not with the callers, because it is what
+/// the skipped consent screens rest on: a function that could skip them
+/// without it is one call away from installing unseen code.
+///
+/// [entries] is whatever the caller offers; only what is still behind what is
+/// installed, and not already under way, is taken. A check's offer can go
+/// stale — an extension updated from a file since — and taking it anyway
+/// reinstalls or downgrades without a word.
+///
+/// Started together, not one after another: the downloads run side by side,
+/// and the installer queues the installs, each of which restarts the runtime.
+/// Every row then shows where it is from the press on, rather than the list
+/// sitting unchanged until each one's turn comes.
+Future<void> updateAllFromCatalog(BuildContext context, {required HaLoServices services, required List<CatalogEntry> entries}) async {
+  // The notice outlives the experiment it was posted under (the check that
+  // would take it down skips while the experiment is off), and its button
+  // must not install from a catalog the app no longer shows.
+  if (!services.settings.experimentEnabled(kCatalogExperiment)) {
+    services.statusBar.dismissNotice(CatalogUpdateCheck.noticeKey);
+    return;
+  }
+  final locale = LocaleSettings.currentLocale.languageCode;
+  final installed = {
+    for (final info in services.extensions.availableExtensions)
+      if (info.isInstalled) info.key: info,
+  };
+  final taken = [
+    for (final entry in entries)
+      if (installed[entry.key] case final info? when entry.isNewerThan(info.version) && !services.extensionInstaller.isActive(entry.key))
+        (entry: entry, info: info),
+  ];
+  if (taken.isEmpty) {
+    // A press that answers nothing is a button that looks broken. Either the
+    // offers were overtaken — installed since, from a file or a link — and the
+    // notice has nothing left to offer, or what is left is already running.
+    final underWay = entries.any((entry) => services.extensionInstaller.isActive(entry.key));
+    if (!underWay) services.statusBar.dismissNotice(CatalogUpdateCheck.noticeKey);
+    services.statusBar.setMessage(
+      key: 'extensions:updateAll',
+      text: underWay ? t.extensionsPanel.updatesUnderWay : t.extensionsPanel.updatesNothingLeft,
+      dismissAfter: StatusBarService.completedDismissDelay,
+    );
+    return;
+  }
+  final confirmed = await _confirmUpdateAll(
+    context,
+    updates: [for (final (:entry, :info) in taken) (name: info.nameFor(locale), from: info.version, to: entry.version)],
   );
-  return name;
+  if (!confirmed || !context.mounted) return;
+  // The notice offers this same job; with it under way, that is asking twice.
+  services.statusBar.dismissNotice(CatalogUpdateCheck.noticeKey);
+  await Future.wait([
+    for (final (:entry, :info) in taken)
+      // No consent screen per extension: the confirmation above named every
+      // one of these and what each becomes, and asking again once per entry
+      // makes a five-tap chore of the button that exists to avoid one.
+      //
+      // Each reported on its own: Future.wait surfaces only the first error,
+      // and the rest would leave no trace at all.
+      installFromCatalog(
+        context,
+        services: services,
+        release: entry.release,
+        name: info.nameFor(locale),
+        askConsent: false,
+      ).then<void>((_) {}, onError: (Object e, StackTrace stack) => ErrorReportingService.report(e, stack, context: 'extension-update-all')),
+  ]);
 }
 
 /// Whether [bundle] is replacing something, which is only how the screen is
@@ -353,18 +492,44 @@ Future<bool> confirmUninstall(BuildContext context, {required String name}) asyn
 /// The one screen Update all shows, in place of the per-extension consent it
 /// skips ([installExtensionFromBytes]'s `askConsent`).
 ///
-/// Bulk is what makes it defensible: the operator is looking at the list, the
-/// dialog names how many, and one answer covers all of them. It is a weaker
-/// screen than the one it replaces — it does not say what any of them will be
-/// able to reach — so it stays a confirmation of a job the operator started,
-/// never a way to start one.
-Future<bool> confirmUpdateAll(BuildContext context, {required int count}) async {
+/// It names every extension it will take and what each becomes, because the
+/// press that opened it may have been on a notice naming two of five. It is
+/// still a weaker screen than the one it replaces — it does not say what any
+/// of them will be able to reach — so it stays a confirmation of a job the
+/// operator started, never a way to start one.
+Future<bool> _confirmUpdateAll(BuildContext context, {required List<({String name, String? from, String to})> updates}) async {
   final t = context.t.extensionsPanel;
+  final theme = Theme.of(context);
   return await showDialog<bool>(
         context: context,
         builder: (context) => HaloDialog(
-          title: Text(t.updateAllTitle(count: count)),
-          content: Text(t.updateAllBody),
+          title: Text(t.updateAllTitle(count: updates.length)),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final update in updates)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.xs),
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: update.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(
+                          text: '  ${update.from ?? ''} → ${update.to}',
+                          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height: Space.lg),
+              Text(t.updateAllBody),
+            ],
+          ),
           cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
           // Confirming is this dialog's whole purpose, so the verb takes the
           // trailing edge and the way out sits to its left — the same shape as

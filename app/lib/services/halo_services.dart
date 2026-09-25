@@ -33,6 +33,7 @@ import '../views/cw_messages_dialog.dart';
 import '../views/voice_messages_dialog.dart';
 import '../views/settings/accounts_panel.dart';
 import '../views/notice_actions.dart';
+import '../views/extension_install_flow.dart' show updateAllFromCatalog;
 import '../config/experiments.dart';
 import '../config/secrets.dart';
 
@@ -45,6 +46,7 @@ import 'error_policy.dart';
 
 import 'error_reporting_service.dart';
 import 'extension_dev_client.dart';
+import 'extension_installer.dart';
 import 'extension_service.dart';
 import 'opened_files_service.dart';
 import 'geoshape_service.dart';
@@ -639,7 +641,23 @@ class HaLoServices {
     inUse: (info) => !extensions.isSupersededByBuiltIn(info),
     applyAvailability: extensions.applyExtensionAvailability,
     openExtensions: () => openSettingsPanel('extensions'),
+    updateAll: _updateAllFromNotice,
   );
+
+  /// Every install in flight, and its footer progress — see
+  /// services/extension_installer.dart.
+  late final ExtensionInstaller extensionInstaller = ExtensionInstaller(statusBar: statusBar);
+
+  /// The update notice's Update all: the panel's own path, over the
+  /// navigator — this sits above any screen that could lend a context.
+  Future<void> _updateAllFromNotice(List<CatalogEntry> entries) async {
+    final context = navigatorKey.currentContext;
+    if (context == null || !context.mounted) {
+      debugPrint('[extensions] Update all pressed with no navigator to confirm it on');
+      return;
+    }
+    await updateAllFromCatalog(context, services: this, entries: entries);
+  }
 
   /// Decides whether this install is out of date and, if so, says it exactly
   /// once (services/staleness.dart ranks the three signals). Fed by [flags]

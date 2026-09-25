@@ -357,6 +357,24 @@ class Translations$extensionsPanel$en {
 	/// en: 'Installed ${name}'
 	String installedMessage({required Object name}) => 'Installed ${name}';
 
+	/// en: 'Downloading…'
+	String get installDownloading => 'Downloading…';
+
+	/// en: 'Waiting to install…'
+	String get installWaiting => 'Waiting to install…';
+
+	/// en: 'Installing…'
+	String get installInstalling => 'Installing…';
+
+	/// en: 'Waiting for your approval…'
+	String get installAwaitingApproval => 'Waiting for your approval…';
+
+	/// en: '${name} is already being installed.'
+	String installAlreadyRunning({required Object name}) => '${name} is already being installed.';
+
+	/// en: 'Updated to ${version}'
+	String updatedTo({required Object version}) => 'Updated to ${version}';
+
 	/// en: 'Installing ${name} did not finish. It may need installing again.'
 	String installIncomplete({required Object name}) => 'Installing ${name} did not finish. It may need installing again.';
 
@@ -414,8 +432,14 @@ class Translations$extensionsPanel$en {
 	/// en: 'Update all'
 	String get updateAllAction => 'Update all';
 
-	/// en: 'More details'
-	String get updatesNoticeAction => 'More details';
+	/// en: 'Those updates are already under way.'
+	String get updatesUnderWay => 'Those updates are already under way.';
+
+	/// en: 'Your extensions are up to date.'
+	String get updatesNothingLeft => 'Your extensions are up to date.';
+
+	/// en: 'More info'
+	String get updatesNoticeAction => 'More info';
 
 	/// en: '(one) {Update ${count} extension?} (other) {Update ${count} extensions?}'
 	String updateAllTitle({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
@@ -7027,6 +7051,12 @@ extension on Translations {
 			'extensionsPanel.uninstallTitle' => ({required Object name}) => 'Remove ${name}?',
 			'extensionsPanel.uninstallBody' => 'This extension and its settings will be removed. Your logs will remain untouched.',
 			'extensionsPanel.installedMessage' => ({required Object name}) => 'Installed ${name}',
+			'extensionsPanel.installDownloading' => 'Downloading…',
+			'extensionsPanel.installWaiting' => 'Waiting to install…',
+			'extensionsPanel.installInstalling' => 'Installing…',
+			'extensionsPanel.installAwaitingApproval' => 'Waiting for your approval…',
+			'extensionsPanel.installAlreadyRunning' => ({required Object name}) => '${name} is already being installed.',
+			'extensionsPanel.updatedTo' => ({required Object version}) => 'Updated to ${version}',
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'Installing ${name} did not finish. It may need installing again.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'Could not remove ${name}',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'Downloaded from ${source}',
@@ -7046,7 +7076,9 @@ extension on Translations {
 			'extensionsPanel.updatesAvailableFor' => ({required Object names}) => '${names} need updating.',
 			'extensionsPanel.pendingUpdatesSection' => 'Pending Updates',
 			'extensionsPanel.updateAllAction' => 'Update all',
-			'extensionsPanel.updatesNoticeAction' => 'More details',
+			'extensionsPanel.updatesUnderWay' => 'Those updates are already under way.',
+			'extensionsPanel.updatesNothingLeft' => 'Your extensions are up to date.',
+			'extensionsPanel.updatesNoticeAction' => 'More info',
 			'extensionsPanel.updateAllTitle' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Update ${count} extension?', other: 'Update ${count} extensions?', ), 
 			'extensionsPanel.updateAllBody' => 'Each is replaced by the version the catalog now offers. Your settings for them are kept.',
 			'extensionsPanel.upgradeTitle' => 'We need to upgrade your extensions',
@@ -7453,6 +7485,8 @@ extension on Translations {
 			'operation.spots.failedText' => ({required Object sources}) => '${sources} returned an error.',
 			'operation.spots.slideLogIt' => 'Log it',
 			'operation.spots.slideIgnore' => 'Ignore',
+			_ => null,
+		} ?? switch (path) {
 			'operation.spots.slideRestore' => 'Restore',
 			'operation.spots.logConflict.title' => 'Logging panel is busy',
 			'operation.spots.logConflict.editingBody' => 'You\'re editing a logged contact. Log this spot instead, or go back and finish the edit?',
@@ -7461,8 +7495,6 @@ extension on Translations {
 			'operation.spots.logConflict.clearAndLog' => 'Clear and log spot',
 			'operation.import.title' => 'Import Data into Operation',
 			'operation.import.importAdifAction' => 'Import QSOs from ADIF',
-			_ => null,
-		} ?? switch (path) {
 			'operation.import.settingsButton' => 'Listen settings',
 			'operation.import.settingsTitle' => 'Listen for Other Apps',
 			'operation.import.protocolAddressLabel' => 'Address',
@@ -7967,6 +7999,8 @@ extension on Translations {
 			'settings.sync.title' => 'Cloud Sync',
 			'settings.sync.moreSettings' => 'More sync settings',
 			'settings.sync.enable' => 'Enable Sync',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.deviceKey' => 'Device Key',
 			'settings.peers.title' => 'Peer Devices',
 			'settings.peers.enable' => 'Connect to other devices',
@@ -7975,8 +8009,6 @@ extension on Translations {
 			'settings.peers.bleDescription' => 'Use Bluetooth LE to connect even if there is no local network',
 			'settings.peers.thisDevice' => 'This Device',
 			'settings.peers.deviceName' => 'Name',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.deviceNameHint' => 'How this device is seen by other devices',
 			'settings.peers.pairedDevices' => 'Linked Devices',
 			'settings.peers.noPairedDevices' => 'No devices linked yet. Turn this on, on another device on this network, to link them.',
@@ -8481,6 +8513,8 @@ extension on Translations {
 			'settings.panels.about' => 'About',
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
 			'settings.panels.stationDescription' => 'CAT control and more options',
@@ -8489,8 +8523,6 @@ extension on Translations {
 			'settings.showMoreSettings' => 'Show more settings',
 			'settings.numberFormat' => 'Number Formatting',
 			'settings.numberFormatOpts.locale' => 'Follow system settings',
-			_ => null,
-		} ?? switch (path) {
 			'settings.numberFormatOpts.period' => 'Always use period for decimals',
 			'settings.numberFormatOpts.comma' => 'Always use comma for decimals',
 			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'System settings (using ${separator} for decimals)',
