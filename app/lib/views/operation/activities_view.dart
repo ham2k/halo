@@ -30,10 +30,10 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../../services/halo_services.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
-import '../../services/catalog_service.dart';
+import '../../services/extensions/catalog_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/location_service.dart';
-import '../../services/extension_service.dart';
+import '../../services/extensions/extension_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import 'activities_catalog_tier.dart';

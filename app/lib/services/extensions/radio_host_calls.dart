@@ -4,7 +4,7 @@
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'extension_info.dart';
-import 'panel_radio_service.dart';
+import '../panel_radio_service.dart';
 
 /// The radio host calls and the manifest capabilities that gate them:
 /// `requiresRadioRead` for `listRadios`/`readRadio`, `requiresRadioWrite` for

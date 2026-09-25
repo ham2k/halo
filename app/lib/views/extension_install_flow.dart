@@ -21,11 +21,11 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show localNetworkEntry;
 import '../config/experiments.dart' show kCatalogExperiment;
-import '../services/extension_info.dart';
-import '../services/catalog_service.dart' show CatalogEntry, CatalogRelease, CatalogUpdateCheck;
+import '../services/extensions/extension_info.dart';
+import '../services/extensions/catalog_service.dart' show CatalogEntry, CatalogRelease, CatalogUpdateCheck;
 import '../services/error_reporting_service.dart';
 import '../services/halo_services.dart';
-import '../services/installed_extensions.dart';
+import '../services/extensions/installed_extensions.dart';
 import '../services/status_bar_service.dart' show StatusBarService;
 
 /// The file types the picker offers.

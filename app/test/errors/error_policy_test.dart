@@ -21,7 +21,7 @@ import 'package:http/http.dart' show ClientException;
 
 import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure;
 import 'package:ham2k_logger/services/peer/peer_link_types.dart' show PeerMediaDialFailure;
-import 'package:ham2k_logger/services/catalog_service.dart' show CatalogUnreachable;
+import 'package:ham2k_logger/services/extensions/catalog_service.dart' show CatalogUnreachable;
 // The io implementations directly, as cat_ic705_network_test.dart does: the
 // conditional export resolves to the web stub under the analyzer, and these
 // exceptions — the concrete CatUnreachable implementations this rule has to
@@ -31,12 +31,12 @@ import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' s
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:halo_core/halo_core.dart' show LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation;
-import 'package:ham2k_logger/services/extension_scoring.dart' show ScoringHookFailure;
-import 'package:ham2k_logger/services/extension_service.dart' show MalformedSpotDataException;
+import 'package:ham2k_logger/services/extensions/extension_scoring.dart' show ScoringHookFailure;
+import 'package:ham2k_logger/services/extensions/extension_service.dart' show MalformedSpotDataException;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
 import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed;
-import 'package:ham2k_logger/services/extension_catalog_migration.dart' show CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
+import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart' show CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
 
 ErrorDisposition dispositionFor(Object error, {FlutterErrorDetails? details}) => ErrorPolicy.decide(error, details: details).disposition;
 
@@ -559,7 +559,7 @@ void main() {
   });
 
   group('malformed spot data', () {
-    // The actual disposition check for extension_service.dart's validSpots():
+    // The actual disposition check for extension_hook_api.dart's validSpots():
     // hook_partition_test.dart only proves the STATUS BAR stayed empty, which
     // it always does on this path (report() never calls notify() — see
     // error_reporting_test.dart) regardless of which tier the rule assigns.

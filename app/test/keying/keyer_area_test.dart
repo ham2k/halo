@@ -14,7 +14,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/cw_live_typing.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/views/operation/extension_panel.dart';
 import 'package:ham2k_logger/views/keyer_area.dart';
 

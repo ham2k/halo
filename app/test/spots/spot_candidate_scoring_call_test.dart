@@ -11,8 +11,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
-import 'package:ham2k_logger/services/extension_scoring.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_scoring.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 import '../support/error_reporting_fakes.dart';
 

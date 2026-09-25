@@ -6,7 +6,7 @@
 // key" — and answering by bare prefix gives a grant to anything named right.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/extension_info.dart';
+import 'package:ham2k_logger/services/extensions/extension_info.dart';
 
 ExtensionInfo info(String key, {bool location = false}) => ExtensionInfo(key: key, file: '$key.js', core: true, name: key, requiresLocation: location);
 

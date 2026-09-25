@@ -12,7 +12,7 @@
 import 'package:halo_core/halo_core.dart';
 
 import 'extension_info.dart';
-import 'settings_service.dart';
+import '../settings_service.dart';
 
 /// Stamps the moment each non-core extension became disabled, and clears the
 /// stamp when it is enabled again.

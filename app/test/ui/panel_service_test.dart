@@ -6,7 +6,7 @@
 // rules that keep a saved layout pointing at the right pane.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 
 void main() {

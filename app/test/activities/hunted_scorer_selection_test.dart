@@ -15,7 +15,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show Scorer;
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 /// The scopes a runtime reports: core applies to everything, POTA and SOTA are
 /// gated on their own activation and hunting ref types.

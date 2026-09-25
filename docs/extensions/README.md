@@ -499,6 +499,6 @@ a background isolate. It evaluates `kernel.js` first, then every extension
 bundle listed in `index.json`, then activates all extensions. Hook calls
 cross the bridge as JSON messages with per-call timeouts; host calls
 (`fetch`, KV) travel the other way. The app-facing surface is
-`ExtensionService` (app/lib/services/extension_service.dart), which shapes
+`ExtensionService` (app/lib/services/extensions/extension_service.dart), which shapes
 raw hook invocations into domain calls (merged lookups, control descriptors,
 ref decoration).

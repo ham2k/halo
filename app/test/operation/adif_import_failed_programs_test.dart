@@ -10,7 +10,7 @@
 // heard of failed".
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/views/operation/adif_import_flow.dart';
 
 void main() {

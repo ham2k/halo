@@ -14,9 +14,9 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../config/navigation.dart';
-import 'link_opener.dart';
-import 'status_bar_service.dart';
+import '../../config/navigation.dart';
+import '../link_opener.dart';
+import '../status_bar_service.dart';
 
 /// Opens an account's standalone dialog (Settings → Accounts), behind a
 /// declarative `account` action. Supplied by the app shell.

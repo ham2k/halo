@@ -45,7 +45,7 @@ const _spotsProgressHeight = 4.0;
 /// with `callOfSpot`/`timeOfSpot` there, which describe this same wire
 /// shape), not a trusted cast, so one hook shipping a wrong-typed field
 /// degrades that single field to "absent" instead of throwing out of a
-/// getter every other spot's build depends on. `getSpots` (extension_service.dart)
+/// getter every other spot's build depends on. `getSpots` (extension_hook_api.dart)
 /// reports a wrong-typed field once, silently, per source; nothing here does.
 String? _callOf(Map<String, dynamic> spot) => asSpotString(asSpotMap(spot['their'])?['call']);
 

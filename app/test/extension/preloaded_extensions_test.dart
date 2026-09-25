@@ -17,10 +17,10 @@ import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart' show sha256;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/extension_keychain.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
-import 'package:ham2k_logger/services/installed_extensions.dart';
-import 'package:ham2k_logger/services/preloaded_extensions.dart';
+import 'package:ham2k_logger/services/extensions/extension_keychain.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
+import 'package:ham2k_logger/services/extensions/preloaded_extensions.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

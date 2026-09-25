@@ -14,7 +14,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'error_reporting_service.dart';
+import '../error_reporting_service.dart';
 
 /// Every shape a key `<extension>` may own, as a prefix that ends in `_`.
 List<String> _prefixesFor(String key) => ['settingsPanel_secret_${key}_', 'account_creds_${key}_', 'account_session_${key}_'];

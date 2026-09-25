@@ -17,7 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../services/extension_service.dart';
+import '../../services/extensions/extension_service.dart';
 
 /// How [input] should be matched against an extension the operator has NOT
 /// switched on: [search] is the whole box, matched loosely against names,

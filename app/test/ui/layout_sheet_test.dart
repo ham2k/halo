@@ -13,8 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'package:ham2k_logger/services/catalog_service.dart';
-import 'package:ham2k_logger/services/extension_info.dart';
+import 'package:ham2k_logger/services/extensions/catalog_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_info.dart';
 import 'package:ham2k_logger/views/operation/layout_sheet.dart';
 
 void main() {

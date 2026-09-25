@@ -23,7 +23,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -247,7 +247,7 @@ void main() {
     });
 
     // Straight through the same handler the runtime's ctx functions hit
-    // (ExtensionHost.onHostCall is the service's _handleHostCall).
+    // (ExtensionHost.onHostCall is the service's _ExtensionHostCalls.handle).
     final hostCall = extensions.host!.onHostCall!;
     final fetchedOp = await hostCall('getOperation', {'uuid': uuid});
     expect(fetchedOp, isA<Map>());

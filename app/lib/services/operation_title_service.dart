@@ -10,7 +10,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
-import 'extension_service.dart';
+import 'extensions/extension_service.dart';
 
 class OperationTitleService {
   final ExtensionService extensions;

@@ -19,7 +19,7 @@ import '../../services/halo_services.dart';
 import '../../services/app_storage.dart';
 import '../../services/windows_url_schemes.dart';
 import '../experiments_pane.dart';
-import '../../services/extension_dev_client.dart';
+import '../../services/extensions/extension_dev_client.dart';
 import '../version_label.dart';
 
 class DeveloperPanel extends StatelessWidget {

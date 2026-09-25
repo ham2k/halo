@@ -37,7 +37,7 @@ import '../views/extension_install_flow.dart' show updateAllFromCatalog;
 import '../config/experiments.dart';
 import '../config/secrets.dart';
 
-import 'catalog_service.dart';
+import 'extensions/catalog_service.dart';
 import 'panel_radio_service.dart';
 import 'deep_link_service.dart';
 import 'export_service.dart';
@@ -45,9 +45,9 @@ import 'connectivity_service.dart';
 import 'error_policy.dart';
 
 import 'error_reporting_service.dart';
-import 'extension_dev_client.dart';
-import 'extension_installer.dart';
-import 'extension_service.dart';
+import 'extensions/extension_dev_client.dart';
+import 'extensions/extension_installer.dart';
+import 'extensions/extension_service.dart';
 import 'opened_files_service.dart';
 import 'geoshape_service.dart';
 import 'cat/equipment.dart' show EquipmentNode, EquipmentStatus, kCategoryTransceiver;
@@ -621,7 +621,7 @@ class HaLoServices {
         staleness: staleness,
       );
 
-  /// The extension catalog (services/catalog_service.dart). Built at
+  /// The extension catalog (services/extensions/catalog_service.dart). Built at
   /// construction, because [_wireExtensions] hands it to the extension
   /// service there; every request it makes is still lazy.
   /// Injectable like [_exportsOverride], so a test hands in one over a
@@ -645,7 +645,7 @@ class HaLoServices {
   );
 
   /// Every install in flight, and its footer progress — see
-  /// services/extension_installer.dart.
+  /// services/extensions/extension_installer.dart.
   late final ExtensionInstaller extensionInstaller = ExtensionInstaller(statusBar: statusBar);
 
   /// The update notice's Update all: the panel's own path, over the

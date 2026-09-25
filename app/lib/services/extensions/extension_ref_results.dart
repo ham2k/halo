@@ -6,7 +6,7 @@
 
 import 'package:flutter/foundation.dart';
 
-import 'link_opener.dart';
+import '../link_opener.dart';
 
 /// Reads a `geojsonUrlForRef` answer, or `null` for anything the app would not
 /// fetch. Separate from the call so the shapes a hook can return are testable

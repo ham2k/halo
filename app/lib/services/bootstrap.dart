@@ -32,7 +32,7 @@ import 'database_snapshot_service.dart';
 import 'hang_watchdog.dart';
 
 import 'error_reporting_service.dart';
-import 'extension_service.dart';
+import 'extensions/extension_service.dart';
 import 'unclean_quit.dart';
 import 'metrics_service.dart';
 import 'purchase_service.dart';

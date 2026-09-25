@@ -1,0 +1,1137 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// The outward hook calls: every per-category wrapper that turns a raw
+// `invokeHook`/`invokeHookAll` into a domain-shaped answer, and the result
+// types and readers those answers are built with.
+
+part of 'extension_service.dart';
+
+/// What the activity picker's search came back with, and whether it came back
+/// at all. [allSourcesFailed] separates "no extension had a match" from "no
+/// extension could answer" — identical empty lists that mean opposite things
+/// to the operator.
+typedef ActivitySuggestionResult = ({List<Map<String, dynamic>> suggestions, bool allSourcesFailed});
+
+/// The control descriptors an activity fan-out produced, and whether any
+/// source failed to answer. [loadFailed] separates "no extension declares
+/// controls" from "an extension that does declare them could not answer" —
+/// identical empty lists, and only the second may not be treated as the
+/// operator's ref types being unknown. Without it a hook that throws or
+/// times out is indistinguishable from its extension being uninstalled, and
+/// `isUnknownRefType` says exactly that to the operator.
+typedef ControlsResult = ({List<Map<String, dynamic>> controls, bool loadFailed});
+
+/// How far a screen's [ControlsResult] fetch has got. A bool cannot express
+/// [failed] — it only says "not loaded yet" — so a fetch that threw leaves a
+/// two-state screen showing its loading placeholder forever, with the
+/// unknown-ref treatment suppressed the whole time.
+enum ControlsLoadState { loading, loaded, failed }
+
+/// What one `invokeHookAll` fan-out actually produced, split by outcome.
+typedef HookPartition = ({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<({String key, String? error})> failed});
+
+/// The partition of a fan-out that never happened — no hooks ran, so nothing
+/// succeeded and nothing is in trouble.
+const HookPartition emptyHookPartition = (
+  items: <Map<String, dynamic>>[],
+  succeeded: <String>[],
+  unreachable: <String>[],
+  failed: <({String key, String? error})>[],
+);
+
+/// A spot from [hookKey] whose `their`/`freq`/`refs`/`spot` field — or
+/// `their.call`/a `refs` entry, one level inside an otherwise right-typed
+/// container — is the wrong type for spots_panel.dart's and
+/// spots_service.dart's readers. The hook bridge enforces nothing about a JS
+/// extension's declared TypeScript types at runtime, so a numeric-string API
+/// field that slips past an extension's own coercion arrives here as a
+/// `String` where every reader expects a `num`. Classified `report` in
+/// [ErrorPolicy]: worth fixing in the offending extension, not worth the
+/// operator's other, unaffected spot sources going quiet or a notice
+/// interrupting them over it.
+class MalformedSpotDataException implements Exception {
+  MalformedSpotDataException(this.hookKey, this.field, this.value);
+  final String hookKey;
+  final String field;
+  final Object? value;
+
+  @override
+  String toString() => 'MalformedSpotDataException: hook "$hookKey" field "$field" is ${value.runtimeType}';
+}
+
+/// The first top-level field on [spot] whose type spots_panel.dart's/
+/// spots_service.dart's readers don't tolerate, or null if every field
+/// present is shaped as expected. `their.call` and each `refs` entry are
+/// checked one level deep — the two places a reader dereferences INTO an
+/// already-right-typed container rather than just reading it.
+String? _malformedSpotField(Map<String, dynamic> spot) {
+  final their = spot['their'];
+  if (their != null && their is! Map) return 'their';
+  if (their is Map && their['call'] != null && their['call'] is! String) return 'their';
+
+  final freq = spot['freq'];
+  if (freq != null && freq is! num) return 'freq';
+
+  final refs = spot['refs'];
+  if (refs != null && refs is! List) return 'refs';
+  if (refs is List && refs.any((r) => r is! Map)) return 'refs';
+
+  final inner = spot['spot'];
+  if (inner != null && inner is! Map) return 'spot';
+  if (inner is Map && inner['timeInMillis'] != null && inner['timeInMillis'] is! num) return 'spot';
+
+  return null;
+}
+
+/// Drops any spot [_malformedSpotField] flags, reporting the first one per
+/// [hookKey] to the crash backend — see [MalformedSpotDataException]. A spot
+/// missing a field outright is untouched; that is an ordinary absence the
+/// readers already handle, not a bridge-contract violation. Public for
+/// `hook_partition_test.dart`.
+List<Map<String, dynamic>> validSpots(List<Map<String, dynamic>> items) {
+  final valid = <Map<String, dynamic>>[];
+  for (final spot in items) {
+    final badField = _malformedSpotField(spot);
+    if (badField != null) {
+      final hookKey = spot['hookKey'] as String? ?? 'unknown';
+      ErrorReportingService.reportIfRepeated(
+        'getSpots:malformed:$hookKey',
+        MalformedSpotDataException(hookKey, badField, spot[badField]),
+        null,
+        context: 'getSpots:malformed:$hookKey',
+        threshold: 1,
+      );
+      continue;
+    }
+    valid.add(spot);
+  }
+  return valid;
+}
+
+/// Whether a hook's failure was the network rather than the service.
+///
+/// The markers are the ones `ErrorPolicy._isFetchTransportTransient` already
+/// classifies on, matched the same way — by PREFIX, because a hook that
+/// legitimately throws its own message mentioning a timeout must not be
+/// mistaken for the transport dropping under it. `host.fetch` rejections
+/// cross the bridge stringified and unwrapped, so a dead network arrives here
+/// as `ClientException: Failed host lookup: '<host>'` — or, from IOClient's
+/// own socket-wrapping subclass, `ClientException with Failed host lookup:
+/// '…', uri=…` — so both prefixes need matching, same as the
+/// ErrorPolicy rule this mirrors.
+bool isTransportFailure(String? error) {
+  if (error == null) return false;
+  return error.startsWith('ClientException:') ||
+      error.startsWith('ClientException with ') ||
+      error.startsWith('SocketException:') ||
+      error.startsWith('TimeoutException');
+}
+
+/// Splits a fan-out's settled entries into the list items each hook
+/// contributed and the keys of the hooks that contributed nothing, by why.
+///
+/// A hook is in at most one of [HookPartition.unreachable] and
+/// [HookPartition.failed], and the split is by what the operator should do:
+/// nothing came back over the network (wait) versus the service answered and
+/// refused (stop expecting spots). An operator told the wrong one goes
+/// looking in the wrong place.
+///
+/// A transport failure is [HookPartition.unreachable], not a service error —
+/// otherwise a device with no signal reports every healthy feed it has as
+/// broken, which is the commonest way this fan-out fails and the one where
+/// the advice matters most. A hook that doesn't implement the method at all
+/// produces no entry — the kernel filters the roster before calling anything.
+///
+/// Each entry is read under its own guard: one malformed payload must not
+/// discard what has already been learned about the others, including which of
+/// them went quiet, which is the one thing a caller cannot re-derive.
+HookPartition partitionHookEntries(List<Map<String, dynamic>> entries) {
+  final items = <Map<String, dynamic>>[];
+  final succeeded = <String>[];
+  final unreachable = <String>[];
+  final failed = <({String key, String? error})>[];
+  for (final entry in entries) {
+    try {
+      final hookKey = entry['key'] as String?;
+      if (hookKey == null) continue;
+      final error = entry['error']?.toString();
+      if (entry['ok'] == true) {
+        succeeded.add(hookKey);
+        if (entry['value'] is! List) continue;
+        for (final item in (entry['value'] as List)) {
+          if (item is Map) items.add({...item.cast<String, dynamic>(), 'hookKey': hookKey});
+        }
+      } else if (entry['timedOut'] == true || isTransportFailure(error)) {
+        unreachable.add(hookKey);
+      } else {
+        failed.add((key: hookKey, error: error));
+      }
+    } catch (e) {
+      debugPrint('[extensions] unreadable hook entry "${entry['key']}": $e');
+    }
+  }
+  return (items: items, succeeded: succeeded, unreachable: unreachable, failed: failed);
+}
+
+/// The station call a SELF-spot is posted under: the operation's own
+/// `stationCall` carrying the two suffixes the app applies centrally, rather
+/// than in each activity extension — every one of them builds its spotted
+/// call straight from `operation.stationCall`, so a rule left to them is a
+/// rule the next spot extension forgets.
+///
+///  * A Test Operation reports `/TEST` (`KI2D/TEST`) rather than whatever
+///    shorter suffix the operation itself uses (`KI2D/T`), so the spot reads
+///    unambiguously to hunters. Every comma-separated call takes it.
+///  * A multi-station operation — several operators logging one operation
+///    under one station call, a device each — appends this device's `/OP<n>`
+///    so the devices' spots stay distinguishable (`KI2D/OP1`, `KI2D/OP2`).
+///    `n` is `localData['multiIdentifier']`, reaching this payload as
+///    `operation['local']` (app-polo's `operation.local`); absent or empty
+///    means a plain single-station operation. Only the FIRST of a
+///    comma-separated call takes it, as in app-polo, where the additional
+///    calls (`stationCallPlusArray`) are spotted bare.
+///
+/// Other-spots post the spotted station's OWN call, so neither rule reaches
+/// them — see [ExtensionService.sendSpot].
+String spotCallForSelfSpot(Map<String, dynamic> operation) {
+  // Probed, not cast, like the identifier below: this operation blob crossed
+  // the extension bridge, and a cast that throws here takes the spot with it.
+  final stationCall = asQsonString(operation['stationCall']) ?? '';
+  final withTest = Operation(uuid: '', data: operation).isTestOperation ? _spotCallForTestOperation(stationCall) : stationCall;
+  final local = operation['local'];
+  // `toString()`, not a cast: this arrives across the extension bridge, where
+  // a number would throw inside the spot path and surface as a generic
+  // "something went wrong" with nothing to say a spot had failed.
+  final identifier = normalizedMultiIdentifier(local is Map ? (local['multiIdentifier']?.toString() ?? '') : '');
+  if (identifier.isEmpty) return withTest;
+  final calls = withTest.split(',');
+  if (calls.first.trim().isEmpty) return withTest;
+  calls[0] = '${calls.first.trim()}/OP$identifier';
+  return calls.join(',');
+}
+
+/// Rewrites every comma-separated call's trailing `/T` to `/TEST` — see
+/// [spotCallForSelfSpot]. A call already ending `/TEST` is left alone.
+String _spotCallForTestOperation(String stationCall) => stationCall
+    .split(',')
+    .map((call) {
+      final trimmed = call.trim().toUpperCase();
+      return trimmed.endsWith('/T') ? '${trimmed.substring(0, trimmed.length - 2)}/TEST' : trimmed;
+    })
+    .join(',');
+
+/// A template the renderer refused — see [ExtensionService.renderTemplate].
+/// The message is the renderer's own, written for the operator who typed
+/// the template.
+class TemplateError implements Exception {
+  final String message;
+  const TemplateError(this.message);
+  @override
+  String toString() => message;
+}
+
+mixin _ExtensionHookApi {
+  // Owned by the class or by another part of this library.
+  ExtensionHost? get host;
+  SettingsService? get settings;
+  Future<void> start();
+  void presentResultMessage(Map<String, dynamic> message, {String ns});
+
+  /// Fans a call out to every hook in `category` via `invokeHookAll`,
+  /// flattens each hook's returned list, and tags every item with
+  /// `hookKey` — the hook's own registration key — so a later call can be
+  /// routed back to the hook that offered it. Hooks that don't implement
+  /// `method`, or whose call fails, are silently absent from the result
+  /// (a failing source never poisons the others). Shared by `getExportOptions`
+  /// and `getSpots`, which otherwise just differ by category/method/args.
+  /// [partialOnTimeout] keeps the hooks that did answer when the shared
+  /// budget expires, instead of discarding the lot — and names the ones that
+  /// didn't in `unreachable`. Only worth setting where the hooks are
+  /// independent contributors and some data beats none.
+  ///
+  /// `unreachable` and `failed` are separate buckets and a hook is in at most
+  /// one — see [partitionHookEntries] for what divides them. Only `failed`
+  /// feeds the failure streak: a call that never got out to the network says
+  /// nothing about whether the code behind it is broken, so counting it would
+  /// upload one report per source every time an operator drives out of range.
+  ///
+  /// `succeeded` names the hooks that answered at all. All three lists empty
+  /// means the fan-out never happened — no host, or `invokeHookAll` itself
+  /// throwing — which a caller cannot otherwise tell from every hook
+  /// answering with nothing.
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> _collectHookResults(
+    String category, {
+    required String method,
+    required Object? args,
+    required String debugLabel,
+    bool partialOnTimeout = false,
+    int failureThreshold = ErrorReportingService.repeatedFailureThreshold,
+  }) async {
+    final host = this.host;
+    if (host == null) {
+      return (items: const <Map<String, dynamic>>[], succeeded: const <String>[], unreachable: const <String>[], failed: const <String>[]);
+    }
+    var parts = emptyHookPartition;
+    try {
+      parts = partitionHookEntries(
+        await host.invokeHookAll(category, method: method, args: args, timeout: const Duration(seconds: 10), partialOnTimeout: partialOnTimeout),
+      );
+    } catch (e) {
+      debugPrint('[extensions] $debugLabel failed: $e');
+    }
+    // Keyed per call AND per hook: a broken `fetchSpots` must not be masked by
+    // a healthy `suggestExportOptions`, nor one dead spot source by four live
+    // ones. Paired with recordSuccess, per reportIfRepeated's own contract —
+    // without it the streak only ever grows.
+    for (final key in parts.succeeded) {
+      ErrorReportingService.recordSuccess('$debugLabel:$key');
+    }
+    for (final failure in parts.failed) {
+      // Said out loud, like the panel fan-out does. A hook throwing every
+      // cycle — a spot API answering 503, say — otherwise loses its results
+      // with nothing recorded anywhere on either side of the bridge, which
+      // looks exactly like a source with nothing to offer.
+      debugPrint('[extensions] $debugLabel hook "${failure.key}" failed: ${failure.error}');
+      // The message is the hook's own, unprefixed: ErrorPolicy's transport
+      // rules match on its FIRST characters (`ClientException:`), so a label
+      // in front of it would silently opt every fetch failure out of the
+      // classification written for it. The label belongs in `context`.
+      ErrorReportingService.reportIfRepeated(
+        '$debugLabel:${failure.key}',
+        ExtensionHostException(failure.error ?? 'hook failed with no error'),
+        null,
+        context: '$debugLabel:${failure.key}',
+        threshold: failureThreshold,
+      );
+    }
+    return (items: parts.items, succeeded: parts.succeeded, unreachable: parts.unreachable, failed: [for (final f in parts.failed) f.key]);
+  }
+
+  /// Consecutive failures before a spot source is worth uploading, well above
+  /// [ErrorReportingService.repeatedFailureThreshold].
+  ///
+  /// Sized for `getSpots`, the only fan-out here that repeats on a timer: at
+  /// its two-minute cadence the default of 3 is six minutes, which an
+  /// operator reaches by driving through a long tunnel. Ten cycles of a
+  /// source erroring is a defect rather than the world being unreliable.
+  ///
+  /// Ten *cycles*, not twenty minutes: a hook that times out neither raises
+  /// the count nor clears it, so a source that alternates errors with dead
+  /// spots can take far longer than twenty minutes to get here. Deliberate —
+  /// a timeout says nothing either way about whether the service is broken —
+  /// but it means the count is not a clock.
+  ///
+  /// A hand-triggered fan-out keeps the default: ten consecutive Exports
+  /// Panel opens is not a threshold anyone reaches, so borrowing this one
+  /// would mean never reporting at all.
+  static const _spotSourceFailureThreshold = 10;
+
+  /// Every export option offered by every `export` hook (Exports Panel).
+  /// Hooks that don't implement
+  /// `suggestExportOptions` are silently absent from the list.
+  Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async =>
+      (await _collectHookResults('export', method: 'suggestExportOptions', args: args, debugLabel: 'getExportOptions')).items;
+
+  /// A shared type is listed once, using the highest-priority registration.
+  Future<List<Map<String, dynamic>>> getExportTypes() async {
+    final host = this.host;
+    return host == null ? [] : collectExportTypes(host);
+  }
+
+  Future<List<Map<String, dynamic>>> exportTypeSettings(Map<String, dynamic> global, Map<String, dynamic> Function(String type) overrides) async {
+    if (host == null) return [];
+    final definitions = await getExportTypes();
+    final result = await host!.invokeHook(
+      'template',
+      key: 'templates',
+      method: 'exportSettings',
+      args: {
+        'definitions': definitions,
+        'global': global,
+        'overrides': {for (final definition in definitions) definition['exportType'] as String: overrides(definition['exportType'] as String)},
+      },
+    );
+    return (result as List? ?? []).map((value) => Map<String, dynamic>.from(value as Map)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> prepareExports(Map<String, dynamic> args) async {
+    final result = await host!.invokeHook('template', key: 'templates', method: 'prepareExports', args: args);
+    return (result as List).map((value) => Map<String, dynamic>.from(value as Map)).toList();
+  }
+
+  /// Every `spots` hook currently willing to post a spot (Spotting
+  /// control), each tagged with `hookKey` so a later
+  /// `sendSpot` call can be routed back to it. Calls `isSelfSpotEnabled`
+  /// when `qso` is omitted, `isOtherSpotEnabled` otherwise; hooks that don't
+  /// implement the relevant method, or report `enabled: false`, are
+  /// silently absent — same convention as `getExportOptions`.
+  Future<List<Map<String, dynamic>>> suggestSpotSources({required Map<String, dynamic> operation, Map<String, dynamic>? qso}) async {
+    final host = this.host;
+    if (host == null) return const [];
+    final method = qso == null ? 'isSelfSpotEnabled' : 'isOtherSpotEnabled';
+    final args = qso == null ? {'operation': operation} : {'qso': qso};
+    try {
+      final entries = await host.invokeHookAll('spots', method: method, args: args, timeout: const Duration(seconds: 5));
+      final sources = <Map<String, dynamic>>[];
+      for (final entry in entries) {
+        if (entry['ok'] != true || entry['value'] is! Map) continue;
+        final value = (entry['value'] as Map).cast<String, dynamic>();
+        if (value['enabled'] != true) continue;
+        sources.add({...value, 'hookKey': entry['key']});
+      }
+      return sources;
+    } catch (e) {
+      debugPrint('[extensions] suggestSpotSources failed: $e');
+      return const [];
+    }
+  }
+
+  /// Every spot offered by every `spots` hook (Spots Panel),
+  /// each tagged with `hookKey` so the panel can
+  /// group/filter by source.
+  ///
+  /// Partial on timeout, unlike every other fan-out here: the sources are
+  /// independent, so one unreachable feed must not cost the operator the
+  /// spots the others already returned. `unreachable` and `failed` name the
+  /// feeds nothing came back from and the ones that answered with an error,
+  /// which is the difference between "nobody is activating" and "SOTAwatch
+  /// didn't reply" — a distinction the spots alone cannot carry, since a
+  /// feed that fails contributes no key to group by.
+  ///
+  /// `succeeded` names the feeds that answered at all, which is what tells a
+  /// caller holding previous spots whether a source's silence is news. All
+  /// three lists empty means the fan-out itself never ran — no extension
+  /// host, or `invokeHookAll` throwing — and says nothing about any feed.
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async {
+    final parts = await _collectHookResults(
+      'spots',
+      method: 'fetchSpots',
+      args: const {},
+      debugLabel: 'getSpots',
+      partialOnTimeout: true,
+      failureThreshold: _spotSourceFailureThreshold,
+    );
+    return (items: validSpots(parts.items), succeeded: parts.succeeded, unreachable: parts.unreachable, failed: parts.failed);
+  }
+
+  /// `{hookKey: sourceName}` for every `spots` hook, for the Spots Panel's
+  /// source filter labels (e.g. `pota` -> "POTA.app"). `sourceName` is a
+  /// plain data member on each hook, not a method — `invokeHookAll` returns
+  /// it directly without an args/ctx round-trip, same as any other field
+  /// access through the hook-call bridge.
+  Future<Map<String, String>> getSpotSourceNames() async {
+    final host = this.host;
+    if (host == null) return const {};
+    try {
+      final entries = await host.invokeHookAll('spots', method: 'sourceName', timeout: const Duration(seconds: 5));
+      return {
+        for (final entry in entries)
+          if (entry['ok'] == true && entry['value'] is String) entry['key'] as String: entry['value'] as String,
+      };
+    } catch (e) {
+      debugPrint('[extensions] getSpotSourceNames failed: $e');
+      return const {};
+    }
+  }
+
+  /// Posts a spot via every hook in `sources` (as returned by
+  /// `suggestSpotSources`) concurrently — independent per-source calls, no
+  /// ordering dependency between them. Returns `{hookKey: PostResult}` so
+  /// the caller can color each source's status icon. `freq`/`mode` are only
+  /// used for a self-spot (`qso == null`); spotting an existing QSO derives
+  /// them from the QSO itself, JS-side.
+  ///
+  /// The mode that goes out is [displayMode]'s, not the stored sideband: a
+  /// spot is read by other operators, so it is a display, and the sideband a
+  /// band runs is what the frequency beside it already says. The one that
+  /// contradicts the band is spelled out, because that is the fact a reader
+  /// cannot derive. Both paths are normalized here rather than in every
+  /// poster — the other-spot path never carries a `mode` argument at all, so
+  /// it is the QSO copy sent JS-side that has to be corrected.
+  Future<Map<String, Map<String, dynamic>>> sendSpot({
+    required List<Map<String, dynamic>> sources,
+    required Map<String, dynamic> operation,
+    Map<String, dynamic>? qso,
+    double? freq,
+    String? mode,
+    String? comment,
+    String? spotterCall,
+  }) async {
+    final host = this.host;
+    if (host == null) return const {};
+    final method = qso == null ? 'postSelfSpot' : 'postOtherSpot';
+    var spotOperation = operation;
+    var spotQso = qso;
+    if (qso == null) {
+      final spotCall = spotCallForSelfSpot(operation);
+      if (spotCall != operation['stationCall']) spotOperation = {...operation, 'stationCall': spotCall};
+    } else {
+      // Probed, not cast, like [spotCallForSelfSpot] above: this QSO blob
+      // crossed the extension bridge, and a cast that throws here is outside
+      // the per-source guard below, so it takes every source's spot with it.
+      final spotMode = displayMode(asQsonString(qso['mode']), freqKHz: asQsonNum(qso['freq'])?.toDouble(), band: asQsonString(qso['band']));
+      if (spotMode != qso['mode']) spotQso = {...qso, 'mode': spotMode};
+    }
+    final args = qso == null
+        ? {
+            'operation': spotOperation,
+            // No band to fall back on, and none needed: both entry points
+            // refuse a self-spot with no frequency, and every poster requires
+            // one. Were that to loosen, a picked band with a deliberate far
+            // sideband would fold to `SSB` — the one case that must not.
+            'freq': freq,
+            'mode': displayMode(mode, freqKHz: freq),
+            'comment': comment,
+          }
+        : {'qso': spotQso, 'comment': comment, 'spotterCall': spotterCall};
+    final entries = await Future.wait(
+      sources.map((source) async {
+        final hookKey = source['hookKey'] as String?;
+        try {
+          final result = await host.invokeHook('spots', key: hookKey, method: method, args: args, timeout: const Duration(seconds: 15)) as Map;
+          return MapEntry(hookKey ?? '', result.cast<String, dynamic>());
+        } catch (e) {
+          return MapEntry(hookKey ?? '', <String, dynamic>{'ok': false, 'message': e.toString()});
+        }
+      }),
+    );
+    for (final entry in entries) {
+      debugPrint('[spots] $method via ${entry.key}: ${entry.value}');
+      final userMessage = entry.value['userMessage'];
+      if (userMessage is Map) {
+        presentResultMessage(userMessage.cast<String, dynamic>(), ns: entry.key);
+      }
+    }
+    return {for (final entry in entries) entry.key: entry.value};
+  }
+
+  /// [template] rendered by the core `templates` extension's `template` hook
+  /// (docs/extensions/templates.md), against [operation] and [qso] in the
+  /// same shape the panels get — so `{{ qso.call }}` in a CW message means
+  /// what it means in a pane. Returns the text, or throws a [TemplateError]
+  /// carrying the renderer's own words for a template that does not parse.
+  /// Null with no runtime, which callers treat as "nothing to send".
+  ///
+  /// [keyer] is `{messages, current?}` — the keyer's messages for
+  /// `keyer.msgN`, and which one this is, so it can't include itself.
+  Future<String?> renderTemplate(
+    String template, {
+    Map<String, dynamic>? operation,
+    Map<String, dynamic>? qso,
+    int? qsoCount,
+    Map<String, dynamic>? log,
+    Map<String, dynamic>? keyer,
+  }) async {
+    final host = this.host;
+    if (host == null) return null;
+    final result = await host.invokeHook(
+      'template',
+      key: 'templates',
+      method: 'render',
+      args: {'template': template, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount, 'log': ?log, 'keyer': ?keyer},
+      timeout: const Duration(seconds: 2),
+    );
+    if (result is! Map) return null;
+    if (result['error'] case final String error) throw TemplateError(error);
+    return result['text'] as String?;
+  }
+
+  /// [templates] rendered together against one context, in one crossing —
+  /// `renderTemplate` for a list. One entry per template, in order: its
+  /// text, or the renderer's own words for one that does not parse (the
+  /// others still render). Null with no runtime.
+  Future<List<({String? text, String? error})>?> renderTemplates(
+    List<String> templates, {
+    Map<String, dynamic>? operation,
+    Map<String, dynamic>? qso,
+    int? qsoCount,
+    Map<String, dynamic>? keyer,
+  }) async {
+    final host = this.host;
+    if (host == null) return null;
+    final result = await host.invokeHook(
+      'template',
+      key: 'templates',
+      method: 'renderMany',
+      args: {'templates': templates, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount, 'keyer': ?keyer},
+      timeout: const Duration(seconds: 2),
+    );
+    if (result is! Map || result['results'] is! List) return null;
+    return [
+      for (final entry in result['results'] as List)
+        entry is Map ? (text: entry['text'] as String?, error: entry['error'] as String?) : (text: null, error: null),
+    ];
+  }
+
+  /// Runs the full lookup pipeline for one callsign — the hardcoded
+  /// callsign-annotation pre-step plus every registered `lookup` hook
+  /// (QRZ, HamDB, POTA, SOTA…), merged with locationScope-aware rules —
+  /// entirely inside the JS runtime via the single `lookupService/core`
+  /// hook (mirrors `ScoringService`'s "one coarse call in, everything back
+  /// out" shape). `online: false` asks every hook to skip network access
+  /// (for a fast local-data-only preview pass); `qso`/`operation` give
+  /// QSO-scoped hooks (e.g. POTA) access to refs already on the in-progress
+  /// QSO. Returns `{lookups: [...], guess: {...}}`, or null if the runtime
+  /// isn't up or nothing came back.
+  ///
+  /// `recentContext: true` additionally runs the `recentContextLookup` hooks
+  /// (spot history, and whatever else comes to describe what a station is
+  /// doing right now). Only the logging panel's compose path sets it: those
+  /// hooks' answers are meaningless for a saved QSO being re-enriched, for
+  /// the spots board's own per-call annotation, or for the quick lookup
+  /// dialog — and each of those fans out over far more callsigns than the
+  /// one being typed.
+  Future<Map<String, dynamic>?> lookupCall(
+    String call, {
+    required Map<String, dynamic> qso,
+    required Map<String, dynamic> operation,
+    bool online = true,
+    bool recentContext = false,
+  }) async {
+    if (ExtensionService.stubLookups) return call.length < 3 ? null : stubbedLookupResult(call);
+    final host = this.host;
+    if (host == null || call.length < 3) return null;
+    // One key for the whole pipeline, unlike _syncTransportCall's per-method
+    // one: `lookupCallInfo` is a single coarse hook, so there is no
+    // per-source failure to keep apart here.
+    const streakKey = 'extensions:lookup-call';
+
+    // While we believe we have no internet the pipeline still runs, but every
+    // hook is asked to stay local — call history, call notes, cached data
+    // files. That is the whole suspension: the operator keeps getting the
+    // answers we already hold, and we stop spending an 8-second timeout per
+    // keystroke's worth of debounce to learn the network is still down.
+    //
+    // Nothing is queued for later. A lookup for a call typed ten minutes ago
+    // is worthless by the time it would land — the background enrichment
+    // queue (`LookupQueueService`) is where a deferred lookup belongs, and it
+    // holds its own entries.
+    final reachable = online && !ConnectivityService.isOffline;
+
+    try {
+      final result = await host.invokeHook(
+        'lookupService',
+        key: 'core',
+        method: 'lookupCallInfo',
+        args: {
+          'callInfo': {'call': call},
+          'qso': qso,
+          'operation': operation,
+          'online': reachable,
+          'recentContext': recentContext,
+        },
+        timeout: const Duration(seconds: 8),
+      );
+      ErrorReportingService.recordSuccess(streakKey);
+      if (result is! Map) return null;
+      return result.cast<String, dynamic>();
+    } on ExtensionHostException catch (e, st) {
+      // The lookup runs on a debounced keystroke, so an upstream service
+      // that is merely slow or briefly down would otherwise upload one
+      // event per callsign typed for the length of the session. The streak
+      // is what distinguishes that from a lookup pipeline that answers
+      // nothing at all, which is a defect and whose only other trace would
+      // be somebody writing in about empty callsign details.
+      debugPrint('[extensions] lookup failed: $e');
+      ErrorReportingService.reportIfRepeated(streakKey, e, st);
+      return null;
+    }
+  }
+
+  /// `{hookKey: scope}` for every `scoring` hook. `scope` is a plain data
+  /// member on each hook (same access pattern as `spots`' `sourceName`), either
+  /// the string `'always'` or `{refTypes: [...]}`, so the core can decide which
+  /// scorers an operation needs *before* invoking any of them — a user may have
+  /// dozens of extensions enabled while an operation references a handful
+  /// (docs/design/contests.md §5.1).
+  Future<Map<String, dynamic>> getScoringScopes() async {
+    final host = this.host;
+    if (host == null) return const {};
+    try {
+      final entries = await host.invokeHookAll('scoring', method: 'scope', timeout: const Duration(seconds: 5));
+      return {
+        for (final entry in entries)
+          if (entry['ok'] == true && entry['value'] != null) entry['key'] as String: entry['value'],
+      };
+    } catch (e) {
+      debugPrint('[extensions] getScoringScopes failed: $e');
+      return const {};
+    }
+  }
+
+  /// Asks every registered `command` hook (priority order) to interpret the input command.
+  /// Returns the first non-null interpretation result: `{describe, confirm, commands}`.
+  /// Returns null when nothing matched, the input is empty, or the runtime isn't up.
+  /// [execute] should be true only for the final call made right before
+  /// actually running a complete interpretation — see CommandHook.interpret's
+  /// `execute` doc (extensions/sdk/src/types.ts). Every other call (the
+  /// typing-debounce describe preview) should leave it false.
+  Future<Map<String, dynamic>?> interpretCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
+    final host = this.host;
+    if (host == null || input.isEmpty) return null;
+    try {
+      final entries = await host.invokeHookAll(
+        'command',
+        method: 'interpret',
+        args: {'input': input, 'operation': ?operation, 'qso': ?qso, if (execute) 'execute': true},
+        // The describe preview must stay snappy (it reruns on every
+        // keystroke pause), but the one execute call is where hooks do
+        // real work — SEED's log read + lookups, SOLAR/WEATHER's network
+        // fetch — so it gets room to breathe instead of dying at 2s.
+        timeout: execute ? const Duration(seconds: 30) : const Duration(seconds: 2),
+      );
+      for (final entry in entries) {
+        if (entry['ok'] == true && entry['value'] is Map) {
+          return (entry['value'] as Map).cast<String, dynamic>();
+        }
+      }
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] interpretCommand failed: $e');
+      // At execute time the user pressed Enter on a recognized command —
+      // returning null here would read as "no command matched" and the UI
+      // would silently do nothing after a long wait (a hook exceeding its
+      // timeout, e.g. a stalled SOLAR/WEATHER fetch, lands here). Surface
+      // it through the same `error` channel a hook itself would use.
+      if (execute) return {'error': t.extensionService.commandFailed};
+    }
+    return null;
+  }
+
+  /// Every command advertised by a `command` hook's optional `catalog()`, for
+  /// the command dialog's browsable list — `{command, describe, params?,
+  /// category?, needsOperation?, expectsParams?, suggest?}` per entry (see
+  /// `CommandCatalogEntry`, extensions/sdk/src/types.ts).
+  ///
+  /// Cached, deliberately: unlike [interpretCommand] this is NOT per
+  /// keystroke — the palette matches the typed text against these entries
+  /// host-side, on plain strings. The cache is dropped whenever the runtime is
+  /// replaced (extension enable/disable) or the hook context is invalidated
+  /// (locale change), which are the only things that change the answer.
+  ///
+  /// Entries keep hook priority order, so a higher-priority extension's
+  /// commands list first, matching which one would actually win `interpret`.
+  Future<List<Map<String, dynamic>>> getCommandCatalog() async {
+    final cached = _commandCatalog;
+    if (cached != null) return cached;
+
+    final host = this.host;
+    if (host == null) return const [];
+    try {
+      final entries = await host.invokeHookAll('command', method: 'catalog', timeout: const Duration(seconds: 2));
+      final catalog = <Map<String, dynamic>>[];
+      for (final entry in entries) {
+        // `catalog` is optional on CommandHook, so a hook that doesn't
+        // implement it reports not-ok here — that's expected, not a failure.
+        if (entry['ok'] != true || entry['value'] is! List) continue;
+        for (final item in entry['value'] as List) {
+          if (item is! Map) continue;
+          final map = item.cast<String, dynamic>();
+          // A malformed entry would render as a blank, unselectable row.
+          if (map['command'] is! String || (map['command'] as String).isEmpty) continue;
+          catalog.add(map);
+        }
+      }
+      _commandCatalog = List.unmodifiable(catalog);
+      return _commandCatalog!;
+    } catch (e) {
+      debugPrint('[extensions] getCommandCatalog failed: $e');
+      // Not cached — a transient runtime failure shouldn't leave the palette
+      // permanently empty for the rest of the session.
+      return const [];
+    }
+  }
+
+  /// [getCommandCatalog]'s cache. Null means "not read yet"; an empty list is
+  /// a real answer (no hook advertises anything).
+  List<Map<String, dynamic>>? _commandCatalog;
+
+  /// Descriptors for controls activities want on the logging panel. `qso` is
+  /// the in-progress QSO (including any `their.guess` from the callsign
+  /// lookup pipeline) — pass it so an extension can key a QSO-scoped
+  /// `placeholder`/`transforms` (e.g. a DXCC-derived reference prefix) off
+  /// it; omit for a QSO-agnostic refresh (e.g. right after the operation loads).
+  Future<ControlsResult> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
+      _collectControls('loggingControls', operationData, qso: qso);
+
+  /// Descriptors for controls activities want in operation settings.
+  Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
+      _collectControls('operationControls', operationData, qso: qso);
+
+  /// The activity reference TYPES each installed extension registers, keyed by
+  /// extension key: `pota` -> `(activationType: 'potaActivation',
+  /// huntingType: 'pota')`. A deep link, and anything else naming an activity
+  /// by its key, needs this to turn `pota:US-1234` into a real ref.
+  ///
+  /// Read off the `refList` control descriptors an activity ALREADY publishes
+  /// rather than from a hook of its own: those descriptors are where an
+  /// activity names its types, the control key is already namespaced by
+  /// extension key (the same namespace the activity search's scope resolves
+  /// to a hook through — the scope WORD itself comes from the type, see
+  /// `activityScopeWord`), and a second declaration would be a second thing
+  /// to keep in step. An operation control is an activation, a logging
+  /// control is a hunt.
+  ///
+  /// Only extensions that are switched ON answer, because only they publish
+  /// controls — matching app-polo, whose `findHooks('activity', {key})` sees
+  /// registered hooks alone. A key nobody claims is absent here, and a caller
+  /// skips that reference rather than inventing a type for it.
+  ///
+  /// [operationData] is passed through to the hooks, which may key a
+  /// descriptor's placeholder off it; the ref TYPES never vary with it, so an
+  /// empty map is a fine argument when there is no operation yet.
+  ///
+  /// `loadFailed` carries [ControlsResult]'s own distinction and MUST be
+  /// honoured: an empty `byKey` with `loadFailed` set means "could not ask",
+  /// not "nobody claims that key". Telling an operator their installed
+  /// activity is unknown, because the runtime had not finished booting, is a
+  /// confident false statement about their own setup.
+  ///
+  /// Awaits [start] first for exactly that reason. It memoizes the in-flight
+  /// future, so a caller arriving mid-boot waits for the same start everyone
+  /// else is waiting for rather than triggering a second one — and a deep
+  /// link that cold-launches the app arrives before boot has finished.
+  Future<({Map<String, ({String? activationType, String? huntingType})> byKey, bool loadFailed})> activityRefTypes({
+    Map<String, dynamic> operationData = const {},
+  }) async {
+    await start();
+    final results = await Future.wait([operationControls(operationData), loggingControls(operationData)]);
+    final activation = _refTypesByExtensionKey(results[0].controls);
+    final hunting = _refTypesByExtensionKey(results[1].controls);
+    return (
+      byKey: {
+        for (final key in {...activation.keys, ...hunting.keys}) key: (activationType: activation[key], huntingType: hunting[key]),
+      },
+      loadFailed: results[0].loadFailed || results[1].loadFailed,
+    );
+  }
+
+  /// The `refList` ref type each control descriptor carries, keyed by the
+  /// extension key its control key is namespaced with (`pota/activation` ->
+  /// `pota`). Controls that are not reference lists carry no type and are
+  /// skipped.
+  ///
+  /// The first descriptor for a key wins. Every activity publishes exactly one
+  /// `refList` per surface, so which one that is never comes up — if that ever
+  /// stops being true, the tie needs a real rule rather than fan-out order.
+  static Map<String, String> _refTypesByExtensionKey(List<Map<String, dynamic>> controls) {
+    final types = <String, String>{};
+    for (final control in controls) {
+      final controlKey = (control['key'] as String?) ?? '';
+      final extensionKey = controlKey.split('/').first;
+      if (extensionKey.isEmpty || types.containsKey(extensionKey)) continue;
+      final input = control['input'];
+      if (input is! Map) continue;
+      final refType = input['refType'];
+      if (refType is String && refType.isNotEmpty) types[extensionKey] = refType;
+    }
+    return types;
+  }
+
+  /// Lets activities project data they own into generic QSON fields just
+  /// before a QSO is written — a contest mirroring the exchange it keeps on
+  /// its own ref into `their.exchange`, which is what the QSO row's exchange
+  /// column and a plain ADIF export read. See `ActivityHook.processQsoBeforeSave`.
+  ///
+  /// Returns [qsoData] with every hook's patch merged in, unchanged if nothing
+  /// contributed. Degrades silently: a hook that throws or times out must never
+  /// cost the operator their QSO, so the save proceeds undecorated.
+  ///
+  /// Skipped when the operation carries no refs — ordinary logging is the
+  /// common case and must not pay a bridge crossing per QSO for a hook only
+  /// contests implement.
+  Future<Map<String, dynamic>> decorateQsoBeforeSave(Map<String, dynamic> qsoData, Map<String, dynamic> operationData) async {
+    final host = this.host;
+    if (host == null) return qsoData;
+    final refs = operationData['refs'];
+    if (refs is! List || refs.isEmpty) return qsoData;
+
+    try {
+      final entries = await host.invokeHookAll(
+        'activity',
+        method: 'processQsoBeforeSave',
+        args: {'qso': qsoData, 'operation': operationData},
+        // Saving blocks the operator's next QSO, so a stalled hook loses its
+        // contribution rather than the log its pace.
+        timeout: const Duration(seconds: 2),
+      );
+      var merged = qsoData;
+      for (final entry in entries) {
+        if (entry['ok'] != true || entry['value'] is! Map) continue;
+        // The hook's own key is what lets a patch touch that extension's ref
+        // and no other (see `mergeQsoPatch`). An entry with no key can still
+        // project into `their`/`our`, but writes no ref at all.
+        final owner = entry['key'];
+        merged = mergeQsoPatch(merged, (entry['value'] as Map).cast<String, dynamic>(), owner: owner is String ? owner : '');
+      }
+      return merged;
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] processQsoBeforeSave failed: $e');
+      return qsoData;
+    }
+  }
+
+  Future<ControlsResult> _collectControls(String method, Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async {
+    final host = this.host;
+    // No host is a failure, not an empty answer: the runtime is dead or
+    // still starting (see ErrorPolicy's `extension-runtime-dead`), and the
+    // operator's refs are no less real for it.
+    if (host == null) return (controls: const <Map<String, dynamic>>[], loadFailed: true);
+    try {
+      final entries = await host.invokeHookAll(
+        'activity',
+        method: method,
+        args: {'operation': operationData, 'qso': ?qso},
+        // The timeout is ONE budget for the whole fan-out, so without this a
+        // single slow extension discards the controls every other hook had
+        // already returned — the operator loses POTA's fields because SOTA
+        // is warming a cache. Activities are independent contributors here,
+        // and the hooks that time out come back synthesized as ok:false,
+        // which is what sets `loadFailed` and names them below. A partial
+        // answer is safe precisely because it is no longer a silent one.
+        partialOnTimeout: true,
+      );
+      final controls = <Map<String, dynamic>>[];
+      var loadFailed = false;
+      for (final entry in entries) {
+        // `invokeHookAll` synthesizes {key, ok: false, error} precisely so a
+        // caller can name the source rather than just notice an absence.
+        if (entry['ok'] != true) {
+          loadFailed = true;
+          debugPrint('[extensions] $method: hook ${entry['key']} failed: ${entry['error']}');
+          continue;
+        }
+        // A hook that answered with something other than a list contributed
+        // nothing, but it ANSWERED — `partitionHookEntries` classifies the
+        // same entry as a success, and the two must agree. The kernel wraps
+        // every return as `value: (await …) ?? null`, so a hook that simply
+        // falls off its end lands here; calling that a failure would show a
+        // permanent "controls unavailable" notice for a legal no-op.
+        //
+        // A non-null one is still a shape bug worth an author seeing, though:
+        // `[42]` below is named in the log, and silence here would make the
+        // narrower mistake the harder one to find.
+        final value = entry['value'];
+        if (value is! List) {
+          if (value != null) {
+            debugPrint('[extensions] $method: hook ${entry['key']} answered ${value.runtimeType}, wanted a List');
+          }
+          continue;
+        }
+        for (final control in value) {
+          // Per element, NOT `value.cast<Map>()`: that cast is lazy, so a bad
+          // element throws its TypeError during `addAll` — past the
+          // ExtensionHostException catch below, out through the unawaited
+          // future the callers start in initState, leaving them stuck on
+          // `loading` for the life of the screen.
+          if (control is! Map) {
+            loadFailed = true;
+            debugPrint('[extensions] $method: hook ${entry['key']} returned a ${control.runtimeType} control');
+            continue;
+          }
+          controls.add(control.cast<String, dynamic>());
+        }
+      }
+      // Read, don't cast: `as num?` throws on `{'order': '1'}` — a string an
+      // extension reading its own config produces easily — and it throws from
+      // inside the comparator, which is the same escape route past the catch
+      // below that the per-element check above exists to close.
+      num orderOf(Map<String, dynamic> control) => control['order'] is num ? control['order'] as num : 0;
+      controls.sort((a, b) => orderOf(a).compareTo(orderOf(b)));
+      return (controls: controls, loadFailed: loadFailed);
+    } on ExtensionHostException catch (e) {
+      // A timeout with something salvageable behind it is handled above, by
+      // `partialOnTimeout`. What reaches here is the whole fan-out failing —
+      // a dead runtime, or a timeout with nothing settled — where there is
+      // no partial answer to keep.
+      debugPrint('[extensions] $method failed: $e');
+      return (controls: const <Map<String, dynamic>>[], loadFailed: true);
+    }
+  }
+
+  /// Candidate activities for the "add activity" search, merged across every
+  /// `activity` hook and sorted by `distance / relevance` ascending — a more
+  /// relevant hit (relevance is 0..1, higher is better) effectively counts
+  /// as closer, so it doesn't lose out to a less relevant but nearer one
+  /// (results missing a distance sort after ranked ones — an extension
+  /// search hit with no location still surfaces). `location` comes from the
+  /// operation's own coordinate, else the centre of its grid, else
+  /// [fallbackLocation] (typically the
+  /// device's current GPS position — see ActivitiesView) so nearby
+  /// suggestions still work before the operation's location is set.
+  /// `callsign` falls back from the operation's own settings to the
+  /// operator's global default.
+  /// [activityKeys] scopes the fan-out to the activity extensions serving one
+  /// ref type (the search field's `pota:` prefix — usually one hook, two when
+  /// a user-published extension serves the same type as a stock one) — those
+  /// hooks alone are asked, rather than every hook's results being merged and
+  /// then filtered, so an unrelated extension's slow search can't hold up a
+  /// scoped one.
+  /// [preferredKeys] is the softer form (a `pota ` prefix, no colon): everyone
+  /// is still asked, but those hooks' results lead the list and they search
+  /// for [preferredSearchTerm] — the box's text with the word stripped — while
+  /// the others get [searchTerm] verbatim.
+  /// Answers whether every source failed as well as the suggestions
+  /// themselves: "nothing matched" and "every extension broke" are the same
+  /// empty list, and only the second is worth telling the operator about.
+  Future<ActivitySuggestionResult> suggestActivities(
+    Map<String, dynamic> operationData, {
+    String? searchTerm,
+    GridLocation? fallbackLocation,
+    List<String>? activityKeys,
+    List<String>? preferredKeys,
+    String? preferredSearchTerm,
+  }) async {
+    final host = this.host;
+    if (host == null) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
+
+    // The operation's own coordinate first, then the centre of its grid: a
+    // park two kilometres away and one eight kilometres away rank the same
+    // from a square's centre, and this ordering is what the operator reads as
+    // "nearby".
+    final gridLocation = locationFromLatLon(operationData['lat'], operationData['lon']) ?? gridToLocation(operationData['grid'] as String?) ?? fallbackLocation;
+    final callsign = (operationData['stationCall'] as String?)?.isNotEmpty == true
+        ? operationData['stationCall'] as String
+        : settings?.activeProfile.operatorCall;
+
+    // `scoped` tells a hook its type alone is being asked for — the operator
+    // picked its "Activity Types" row, or typed its word as a scope. A bare
+    // scope and the nearby list both arrive with no search term, and an
+    // extension that keeps itself out of the nearby list still has to answer
+    // when it is the one being asked.
+    Map<String, dynamic> argsSearchingFor(String? term, {bool scoped = false}) => {
+      'operation': operationData,
+      if (gridLocation != null) 'location': {'lat': gridLocation.latitude, 'lon': gridLocation.longitude},
+      if (callsign != null && callsign.isNotEmpty) 'callsign': callsign,
+      if (term != null && term.isNotEmpty) 'searchTerm': term,
+      if (scoped) 'scoped': true,
+    };
+
+    try {
+      if (activityKeys != null) {
+        // Each hook asked on its own, wrapped in invokeHookAll's own
+        // {key, ok, value} entry shape so the merge doesn't need a second
+        // code path — and so one failing hook is one failed entry rather
+        // than the whole scope's answer.
+        final entries = await Future.wait([
+          for (final key in activityKeys)
+            host
+                .invokeHook('activity', key: key, method: 'suggest', args: argsSearchingFor(searchTerm, scoped: true), timeout: const Duration(seconds: 5))
+                .then((value) => <String, dynamic>{'key': key, 'ok': true, 'value': value})
+                .onError<ExtensionHostException>((e, _) {
+                  debugPrint('[extensions] scoped activity hook $key failed: $e');
+                  return <String, dynamic>{'key': key, 'ok': false, 'error': '$e'};
+                }),
+        ]);
+        return (suggestions: mergeActivitySuggestions(entries), allSourcesFailed: allActivitySourcesFailed(entries));
+      }
+
+      // The preferred hooks are asked SEPARATELY because they search for
+      // something else — the word stripped off the front — so their answers
+      // to the everyone-else question are discarded below rather than merged.
+      // A fan-out that never returned an entry is a failure with nothing to
+      // count, so it contributes one — the caller has to be able to tell
+      // "nobody could answer" from "nobody had anything".
+      var fanOutFailed = false;
+      final preferred =
+          Future.wait([
+            for (final key in preferredKeys ?? const <String>[])
+              host
+                  .invokeHook('activity', key: key, method: 'suggest', args: argsSearchingFor(preferredSearchTerm), timeout: const Duration(seconds: 5))
+                  .then((value) => <String, dynamic>{'key': key, 'ok': true, 'value': value})
+                  // Precedence is only an ordering: when a preferred hook fails,
+                  // what the other extensions found is still the right answer.
+                  .onError<ExtensionHostException>((e, _) {
+                    debugPrint('[extensions] preferred activity hook $key failed: $e');
+                    return <String, dynamic>{'key': key, 'ok': false, 'error': '$e'};
+                  }),
+          ]).then(
+            (entries) => [
+              for (final entry in entries)
+                if (entry['ok'] == true) entry,
+            ],
+          );
+
+      // The fan-out is ONE message under ONE timeout, so its failure takes
+      // every hook with it — but not the preferred one, asked separately and
+      // quite possibly already answered. Each side therefore degrades on its
+      // own, and only a search where both failed comes back empty.
+      final everyone = host
+          .invokeHookAll('activity', method: 'suggest', args: argsSearchingFor(searchTerm), timeout: const Duration(seconds: 5))
+          .onError<ExtensionHostException>((e, _) {
+            debugPrint('[extensions] activity suggestion fan-out failed: $e');
+            fanOutFailed = true;
+            return const [];
+          });
+
+      final results = await Future.wait([preferred, everyone]);
+      final preferredSet = preferredKeys?.toSet() ?? const <String>{};
+      final entries = [
+        ...results[0],
+        for (final entry in results[1])
+          if (!preferredSet.contains(entry['key'])) entry,
+      ];
+      return (
+        suggestions: mergeActivitySuggestions(entries, preferredKeys: preferredSet),
+        allSourcesFailed: (fanOutFailed && entries.isEmpty) || allActivitySourcesFailed(entries),
+      );
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] suggestActivities failed: $e');
+      return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true);
+    }
+  }
+
+  /// Decorates a ref (park name, location…) via its `ref:<type>` handler.
+  /// Returns the input unchanged if no handler answers.
+  Future<Map<String, dynamic>> decorateRef(Map<String, dynamic> ref) async {
+    final host = this.host;
+    final type = ref['type'] as String?;
+    if (host == null || type == null) return ref;
+    try {
+      final decorated = await host.invokeHook('ref:$type', method: 'decorateRef', args: {'ref': ref});
+      if (decorated is Map) return decorated.cast<String, dynamic>();
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] decorateRef failed: $e');
+    }
+    return ref;
+  }
+
+  /// Where a ref can be read about on the web, via its `ref:<type>` handler —
+  /// the program's own page for it, or a contest's rules.
+  ///
+  /// Resolved for display and thrown away: nothing here is ever written back
+  /// onto the operation's ref, so a program that changes its URLs takes effect
+  /// with the extension rather than needing every saved operation rewritten.
+  Future<RefLink?> linkForRef(Map<String, dynamic> ref) async {
+    final host = this.host;
+    final type = ref['type'] as String?;
+    if (host == null || type == null) return null;
+    try {
+      final result = await host.invokeHook('ref:$type', method: 'linkForRef', args: {'ref': ref});
+      return refLinkFromHookResult(result, type: type);
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] linkForRef failed: $e');
+      return null;
+    }
+  }
+
+  /// Where a ref's own outline can be fetched as GeoJSON, via its `ref:<type>`
+  /// handler — a summit's SOTA activation zone, a park's boundary.
+  ///
+  /// The hook only builds a URL; fetching and caching are the app's
+  /// (GeoshapeService). Same disposable resolution as [linkForRef]: nothing is
+  /// written back onto the ref, so a program that moves its files takes effect
+  /// with the extension.
+  Future<RefGeojson?> geojsonUrlForRef(Map<String, dynamic> ref) async {
+    final host = this.host;
+    final type = ref['type'] as String?;
+    if (host == null || type == null) return null;
+    try {
+      final result = await host.invokeHook('ref:$type', method: 'geojsonUrlForRef', args: {'ref': ref});
+      return refGeojsonFromHookResult(result, type: type);
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] geojsonUrlForRef failed: $e');
+      return null;
+    }
+  }
+}

@@ -9,7 +9,7 @@
 // that half of the wiring is verified manually rather than here.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

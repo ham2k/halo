@@ -21,8 +21,8 @@ import 'package:flutter/foundation.dart' show debugPrint, kIsWeb, visibleForTest
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 
-import 'app_storage.dart';
-import 'error_reporting_service.dart';
+import '../app_storage.dart';
+import '../error_reporting_service.dart';
 import 'extension_relevance.dart';
 import 'extension_service.dart';
 

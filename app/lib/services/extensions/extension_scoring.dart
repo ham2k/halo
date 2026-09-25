@@ -14,7 +14,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 // a call reads as what it is.
 import 'package:halo_extension_host/halo_extension_host.dart' as priority;
 
-import 'error_reporting_service.dart';
+import '../error_reporting_service.dart';
 
 /// One scorer's cached end-of-log checkpoint, as `ScoringService` stores it:
 /// its scoresheet and the day the sheet ends on, which the harness needs back

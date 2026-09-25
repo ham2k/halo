@@ -18,14 +18,14 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:file_selector/file_selector.dart' show XFile;
 
 import 'package:halo_core/halo_core.dart' show nowUtc;
-import '../services/catalog_service.dart';
+import '../services/extensions/catalog_service.dart';
 import '../services/error_reporting_service.dart';
 import '../config/experiments.dart' show kCatalogExperiment;
-import '../services/extension_relevance.dart' show ExtensionRelevance, OperatorGeo, kAlwaysSuggested, kRelevanceSoon, relevanceBand;
-import '../services/extension_installer.dart';
-import '../services/extension_service.dart';
+import '../services/extensions/extension_relevance.dart' show ExtensionRelevance, OperatorGeo, kAlwaysSuggested, kRelevanceSoon, relevanceBand;
+import '../services/extensions/extension_installer.dart';
+import '../services/extensions/extension_service.dart';
 import '../services/status_bar_service.dart' show StatusBarService;
-import '../services/installed_extensions.dart';
+import '../services/extensions/installed_extensions.dart';
 import 'extension_install_flow.dart';
 import '../services/halo_services.dart';
 

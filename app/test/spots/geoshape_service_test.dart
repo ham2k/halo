@@ -10,7 +10,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/geoshape_service.dart';
 
 const _url = 'https://az.sotl.as/W2/GC/116.geojson';

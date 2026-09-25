@@ -18,7 +18,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/cat_server/cat_server_service.dart';
-import '../services/extension_service.dart';
+import '../services/extensions/extension_service.dart';
 import '../services/settings_service.dart';
 import '../tools/sync_account_identity.dart';
 import 'cat_server_dialog.dart';

@@ -9,7 +9,7 @@
 // matcher can act on, and has to beat a claim on the bare family.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/extension_info.dart';
+import 'package:ham2k_logger/services/extensions/extension_info.dart';
 
 /// The shape a per-event party ships: its own type, plus the legacy family
 /// qualified by the code that party used to be filed under.

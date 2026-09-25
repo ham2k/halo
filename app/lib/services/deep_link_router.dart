@@ -17,11 +17,11 @@ import '../views/operation_view.dart';
 import '../views/extension_install_flow.dart';
 import '../views/settings_view.dart';
 
-import 'catalog_service.dart';
+import 'extensions/catalog_service.dart';
 import 'deep_link_service.dart';
 
 import 'error_reporting_service.dart';
-import 'installed_extensions.dart';
+import 'extensions/installed_extensions.dart';
 import 'status_bar_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 

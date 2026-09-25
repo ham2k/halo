@@ -23,15 +23,15 @@ import 'package:halo_core/halo_core.dart' show realNowMillis;
 import 'package:http/http.dart' as http;
 import 'package:pub_semver/pub_semver.dart';
 
-import '../config/user_agent.dart';
+import '../../config/user_agent.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'error_reporting_service.dart';
-import '../config/experiments.dart' show kCatalogExperiment;
+import '../error_reporting_service.dart';
+import '../../config/experiments.dart' show kCatalogExperiment;
 import 'extension_relevance.dart';
 import 'extension_service.dart' show ExtensionInfo, ExtensionSearchable;
 import 'installed_extensions.dart';
-import 'settings_service.dart';
-import 'status_bar_service.dart';
+import '../settings_service.dart';
+import '../status_bar_service.dart';
 
 /// Listing and update requests; a catalog that takes longer than this is
 /// treated as absent rather than stalling a boot step or the panel.

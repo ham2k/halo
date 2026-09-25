@@ -14,7 +14,7 @@ import '../config/user_agent.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'app_storage.dart';
 import 'error_reporting_service.dart';
-import 'extension_service.dart';
+import 'extensions/extension_service.dart';
 import 'status_bar_service.dart';
 
 /// The message shown in a download-failure notice. `package:http`'s

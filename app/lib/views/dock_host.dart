@@ -23,7 +23,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import '../services/cat/cat_service.dart';
 import '../services/cat/equipment.dart';
-import '../services/catalog_service.dart';
+import '../services/extensions/catalog_service.dart';
 import '../services/error_reporting_service.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';

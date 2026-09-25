@@ -11,7 +11,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:ham2k_logger/services/extension_installer.dart';
+import 'package:ham2k_logger/services/extensions/extension_installer.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 
 void main() {

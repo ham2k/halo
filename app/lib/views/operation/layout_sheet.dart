@@ -20,8 +20,8 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 
-import '../../services/catalog_service.dart';
-import '../../services/extension_info.dart';
+import '../../services/extensions/catalog_service.dart';
+import '../../services/extensions/extension_info.dart';
 import '../extensions_panel.dart' show extensionCategoryIcon;
 import 'activities_catalog_tier.dart' show InstallExtensionRow;
 

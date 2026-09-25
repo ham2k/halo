@@ -15,8 +15,8 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'error_reporting_service.dart';
-import 'extension_scoring.dart';
-import 'extension_service.dart';
+import 'extensions/extension_scoring.dart';
+import 'extensions/extension_service.dart';
 import 'hook_payloads.dart';
 
 /// Decides whether the checkpoints a rescore cached can stand in for the log

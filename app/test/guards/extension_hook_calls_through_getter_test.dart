@@ -21,15 +21,28 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-const _file = 'lib/services/extension_service.dart';
+const _library = 'lib/services/extensions/extension_service.dart';
+
+/// The library and every part it declares, read from its own `part`
+/// directives so a piece split out later is scanned from its first line.
+List<String> _libraryFiles() {
+  final root = File(_library).readAsStringSync();
+  final parts = [for (final m in RegExp(r"^part '([^']+)';", multiLine: true).allMatches(root)) '${File(_library).parent.path}/${m.group(1)}'];
+  // Loudly, not vacuously: a library that stopped declaring its parts would
+  // otherwise shrink the scan to the file that no longer holds the calls.
+  if (parts.isEmpty) fail('$_library declares no parts — the hook calls it splits out would go unscanned');
+  return [_library, ...parts];
+}
 
 /// A hook call and the name it is made through. Whitespace before the dot
 /// is allowed, because a formatter breaks a long chain onto the next line.
 final _hookCall = RegExp(r'\b(_?host)[!?]?\s*\.invokeHook(?:All)?\(');
 
 /// A local bound to the field: `final host = _host;`, `var h = _host!;`,
-/// `final ExtensionHost? host = _host;`.
-final _fieldBinding = RegExp(r'\b(\w+)\s*=\s*_host!?\s*;');
+/// `final ExtensionHost? host = _host;` — or reached through another object,
+/// `final h = _service._host;`, the way the host-call class reaches the
+/// service's state.
+final _fieldBinding = RegExp(r'\b(\w+)\s*=\s*(?:\w+\.)?_host!?\s*;');
 
 /// The half-open range of the innermost block enclosing [offset].
 ///
@@ -65,11 +78,11 @@ final _fieldBinding = RegExp(r'\b(\w+)\s*=\s*_host!?\s*;');
 int _lineOf(String source, int offset) => '\n'.allMatches(source.substring(0, offset)).length + 1;
 
 /// What [source] does wrong, one line each.
-List<String> offendersIn(String source) {
+List<String> offendersIn(String source, {String file = _library}) {
   final offenders = <String>[];
   for (final call in _hookCall.allMatches(source)) {
     if (call.group(1) == '_host') {
-      offenders.add('$_file:${_lineOf(source, call.start)} — a hook call through the `_host` field');
+      offenders.add('$file:${_lineOf(source, call.start)} — a hook call through the `_host` field');
     }
   }
   // The field bound to a local, whatever its name, declaration or null
@@ -80,7 +93,7 @@ List<String> offendersIn(String source) {
     final (from, to) = _enclosingBlock(source, binding.start);
     final callsThroughIt = RegExp('\\b${RegExp.escape(local)}[!?]?\\s*\\.invokeHook(?:All)?\\(');
     if (callsThroughIt.hasMatch(source.substring(from, to))) {
-      offenders.add('$_file:${_lineOf(source, binding.start)} — `$local` holds the `_host` field in a block that calls a hook through it');
+      offenders.add('$file:${_lineOf(source, binding.start)} — `$local` holds the `_host` field in a block that calls a hook through it');
     }
   }
   return offenders;
@@ -89,7 +102,7 @@ List<String> offendersIn(String source) {
 void main() {
   test('every extension hook call goes through the public getter', () {
     expect(
-      offendersIn(File(_file).readAsStringSync()),
+      [for (final file in _libraryFiles()) ...offendersIn(File(file).readAsStringSync(), file: file)],
       isEmpty,
       reason:
           'Read `this.host`, not `_host`, wherever a hook is called: the test double can\n'
@@ -115,6 +128,7 @@ void main() {
       'void a() { var host = _host; host!.invokeHook(x); }',
       'void a() { final host = _host!; host.invokeHook(x); }',
       'void a() { final h = _host; h?.invokeHookAll(x); }',
+      'void a() { final h = _service._host; h?.invokeHook(x); }',
     ]) {
       expect(offendersIn(shape), hasLength(1), reason: shape);
     }

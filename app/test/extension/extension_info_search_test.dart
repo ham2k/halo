@@ -10,7 +10,7 @@
 // call site rather than "everything matches".
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 void main() {
   const info = ExtensionInfo(

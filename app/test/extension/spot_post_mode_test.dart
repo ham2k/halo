@@ -10,7 +10,7 @@
 // posters read it off the QSO this builds.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 import '../support/fake_extension_host.dart';
 

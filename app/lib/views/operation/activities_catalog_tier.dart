@@ -19,13 +19,13 @@ import 'package:flutter/material.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../services/catalog_service.dart';
+import '../../services/extensions/catalog_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../config/experiments.dart' show kCatalogExperiment;
-import '../../services/extension_relevance.dart';
-import '../../services/extension_info.dart' show hooksClaimRef;
+import '../../services/extensions/extension_relevance.dart';
+import '../../services/extensions/extension_info.dart' show hooksClaimRef;
 import '../../services/halo_services.dart';
-import '../../services/installed_extensions.dart';
+import '../../services/extensions/installed_extensions.dart';
 import '../extension_install_flow.dart';
 import '../extensions_panel.dart' show extensionCategoryIcon;
 

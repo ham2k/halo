@@ -25,7 +25,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/adif_import_plan.dart';
 import '../../services/adif_import_service.dart';
 import '../../services/error_reporting_service.dart';
-import '../../services/extension_service.dart' show ExtensionInfo;
+import '../../services/extensions/extension_service.dart' show ExtensionInfo;
 import '../../services/hook_payloads.dart';
 import '../../services/status_bar_service.dart';
 import '../../tools/operation_title.dart';

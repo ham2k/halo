@@ -34,7 +34,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/user_agent.dart';
 import '../config/version.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'extension_relevance.dart';
+import 'extensions/extension_relevance.dart';
 import 'notices.dart';
 import 'staleness_service.dart';
 import 'status_bar_service.dart';

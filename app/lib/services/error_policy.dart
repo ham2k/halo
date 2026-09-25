@@ -31,11 +31,11 @@ import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
-import 'catalog_service.dart' show CatalogUnreachable;
+import 'extensions/catalog_service.dart' show CatalogUnreachable;
 import 'data_file_manager.dart' show DataFileRemoveHookFailed;
-import 'extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
-import 'extension_scoring.dart' show ScoringHookFailure;
-import 'extension_service.dart' show MalformedSpotDataException;
+import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
+import 'extensions/extension_scoring.dart' show ScoringHookFailure;
+import 'extensions/extension_service.dart' show MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
 import 'app_storage.dart' show PreferencesFileUnreadable;
@@ -416,7 +416,7 @@ class ErrorPolicy {
     ErrorRule(
       id: 'malformed-spot-data',
       reason:
-          'a spots hook returned a field of the wrong type (extension_service.dart\'s '
+          'a spots hook returned a field of the wrong type (extension_hook_api.dart\'s '
           'validSpots) — a defect in that one extension, not something the operator can act on, '
           'and the spot is already dropped so the panel\'s other sources are unaffected',
       disposition: ErrorDisposition.report,

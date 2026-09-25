@@ -30,8 +30,8 @@ import 'dart:convert';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show judgesWorkedBefore;
 
-import '../services/extension_scoring.dart' show kScoreCandidatesTimeout, kScoreQsoTimeout;
-import '../services/extension_service.dart';
+import '../services/extensions/extension_scoring.dart' show kScoreCandidatesTimeout, kScoreQsoTimeout;
+import '../services/extensions/extension_service.dart';
 import '../services/scoring_service.dart';
 
 /// Contest-shaped traffic: enough distinct calls that the worked-before maps

@@ -17,7 +17,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/app_storage.dart' show kDataFilesDirName;
 import 'package:ham2k_logger/services/data_file_manager.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 
 import '../support/halo_test_support.dart';

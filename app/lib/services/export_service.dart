@@ -20,7 +20,7 @@ import 'package:halo_core/halo_core.dart';
 
 import 'android_file_save.dart';
 import 'export_preferences.dart';
-import 'extension_service.dart';
+import 'extensions/extension_service.dart';
 import 'hook_payloads.dart';
 import 'settings_service.dart';
 import 'web_download.dart';

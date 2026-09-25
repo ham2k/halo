@@ -15,7 +15,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show ChangeNotifier;
 import 'package:halo_i18n/halo_i18n.dart';
 
-import 'status_bar_service.dart';
+import '../status_bar_service.dart';
 
 class ExtensionInstaller extends ChangeNotifier {
   final StatusBarService statusBar;

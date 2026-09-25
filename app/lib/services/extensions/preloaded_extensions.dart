@@ -18,10 +18,10 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:pub_semver/pub_semver.dart';
 
 import 'catalog_service.dart';
-import 'error_reporting_service.dart';
+import '../error_reporting_service.dart';
 import 'extension_info.dart';
 import 'installed_extensions.dart';
-import 'settings_service.dart';
+import '../settings_service.dart';
 
 /// The index shipped beside the bundles, naming each one.
 const kPreloadIndexAsset = 'assets/preloaded-extensions/index.json';

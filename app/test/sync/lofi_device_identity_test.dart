@@ -15,7 +15,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ham2k_logger/config/device_identity.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 AndroidDeviceInfo _android({required String manufacturer, required String board, required String name}) => AndroidDeviceInfo.setMockInitialValues(
   version: AndroidBuildVersion.setMockInitialValues(codename: 'REL', incremental: '1', previewSdkInt: 0, release: '14', sdkInt: 34),

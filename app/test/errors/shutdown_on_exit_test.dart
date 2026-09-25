@@ -39,7 +39,7 @@ import 'package:shared_preferences_platform_interface/shared_preferences_platfor
 
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/unclean_quit.dart';
 

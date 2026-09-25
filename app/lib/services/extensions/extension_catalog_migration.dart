@@ -16,10 +16,10 @@ import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'package:halo_i18n/halo_i18n.dart';
 
-import 'error_reporting_service.dart';
+import '../error_reporting_service.dart';
 import 'extension_service.dart';
 import 'preloaded_extensions.dart';
-import 'settings_service.dart';
+import '../settings_service.dart';
 
 /// The graph handed the extension service no catalog — a wiring defect, and
 /// the reason this exists as a type is that it must not read as an

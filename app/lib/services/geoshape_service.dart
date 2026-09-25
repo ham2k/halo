@@ -19,7 +19,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/user_agent.dart';
-import 'extension_service.dart';
+import 'extensions/extension_service.dart';
 
 /// The `lookups` category these rows live under. Not a data file: nothing
 /// registers it with DataFileManager, so its ownership sweeps leave it alone.

@@ -13,9 +13,9 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/extension_dev_client.dart';
-import 'package:ham2k_logger/services/extension_secrets.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_dev_client.dart';
+import 'package:ham2k_logger/services/extensions/extension_secrets.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 

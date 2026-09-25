@@ -7,7 +7,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../services/export_preferences.dart';
 import '../services/error_reporting_service.dart';
-import '../services/extension_service.dart';
+import '../services/extensions/extension_service.dart';
 import '../services/settings_service.dart';
 import 'settings_registry.dart';
 

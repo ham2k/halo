@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The one-time move to catalog extensions, offered at start until it is taken
-// (services/extension_catalog_migration.dart).
+// (services/extensions/extension_catalog_migration.dart).
 //
 // Deferrable by design, which is only honest because nothing is withdrawn
 // until the upgrade succeeds: saying Later leaves every extension working and
@@ -16,8 +16,8 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../config/experiments.dart';
 import '../../config/navigation.dart';
-import '../../services/extension_catalog_migration.dart';
-import '../../services/installed_extensions.dart';
+import '../../services/extensions/extension_catalog_migration.dart';
+import '../../services/extensions/installed_extensions.dart';
 import '../../services/halo_services.dart';
 
 class ExtensionUpgradeGate extends StatefulWidget {

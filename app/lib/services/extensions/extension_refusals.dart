@@ -13,7 +13,7 @@
 // update, and the operator's switch is left alone meanwhile.
 
 import 'extension_info.dart';
-import 'settings_service.dart';
+import '../settings_service.dart';
 
 /// The bundle key a failed boot names, or null.
 ///

@@ -19,7 +19,7 @@
 // verified against api-lofi's own controller tests, not from here.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

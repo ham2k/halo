@@ -23,7 +23,7 @@ import '../../config/navigation.dart';
 import '../../services/halo_services.dart';
 import '../../services/deep_link_service.dart';
 import '../../services/error_reporting_service.dart';
-import '../../services/extension_service.dart';
+import '../../services/extensions/extension_service.dart';
 import '../../services/pusher_service.dart';
 import '../extensions_panel.dart';
 import '../oauth_browser_login.dart';

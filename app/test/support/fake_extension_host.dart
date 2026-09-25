@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:halo_extension_host/halo_extension_host.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 /// An [ExtensionHost] that answers hook calls from a map instead of a JS
 /// runtime. Keys are `'category:key:method'` for [invokeHook] and
