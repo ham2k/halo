@@ -35,11 +35,13 @@ RefGeojson? refGeojsonFromHookResult(dynamic result, {required String type}) {
 }
 
 /// A hook's day count as a duration, or null for anything that isn't a
-/// positive number — a zero or negative TTL would re-fetch on every rebuild
-/// of the map, so it falls back to the default rather than being honored.
+/// positive number of at most a century — a zero or negative TTL would re-fetch
+/// on every rebuild of the map, and a vast one overflows the conversion and
+/// throws, taking every other reference's outline with it; either falls back
+/// to the default rather than being honored.
 Duration? _positiveDays(dynamic value) {
   final days = value is num ? value.toDouble() : null;
-  if (days == null || days <= 0) return null;
+  if (days == null || days <= 0 || days > 36500) return null;
   return Duration(milliseconds: (days * Duration.millisecondsPerDay).round());
 }
 
@@ -53,6 +55,11 @@ class RefGeojson {
   final Duration maxAge;
   final Duration missMaxAge;
 }
+
+/// A `geojsonUrlForRef` answer as a list of them reports it: the [source], and
+/// whether the program [answered] at all — a null source it answered is "no
+/// outline", one it could not be asked for is "ask again later".
+typedef RefGeojsonAnswer = ({RefGeojson? source, bool answered});
 
 /// Reads a `linkForRef` answer, or `null` for anything the app would not put a
 /// button on. Separate from the call so the shapes a hook can actually return

@@ -245,5 +245,50 @@ void main() {
       );
       expect(_names(merged), ['park']);
     });
+
+    test('a hook answering a malformed item costs only that item', () {
+      // Every hook's answers are merged into one list, so an item that is not a
+      // suggestion at all must not take the other extensions' results with it.
+      final merged = mergeActivitySuggestions([
+        {
+          'key': 'broken',
+          'ok': true,
+          'value': [
+            42,
+            {'name': 'kept', 'distance': 2.0},
+          ],
+        },
+        {
+          'key': 'pota',
+          'ok': true,
+          'value': [
+            {'name': 'park', 'distance': 1.0},
+          ],
+        },
+      ]);
+      expect(_names(merged), ['park', 'kept']);
+    });
+
+    test('a suggestion with a field of the wrong type costs no other result', () {
+      // Every extension's suggestions are sorted together, so a distance an
+      // extension sent as text must not throw out of the sort.
+      final merged = mergeActivitySuggestions([
+        {
+          'key': 'broken',
+          'ok': true,
+          'value': [
+            {'name': 'text distance', 'distance': '3 km', 'relevance': 'high'},
+          ],
+        },
+        {
+          'key': 'pota',
+          'ok': true,
+          'value': [
+            {'name': 'park', 'distance': 1.0},
+          ],
+        },
+      ]);
+      expect(_names(merged), ['park', 'text distance'], reason: 'the malformed one ranks as placeless, not dropped');
+    });
   });
 }

@@ -171,6 +171,11 @@ class _IoEngineRuntime implements EngineRuntime {
   }
 
   @override
+  void invokeBatch(int id, String callsJson, {bool wantsPartials = false}) {
+    _evaluate('__polo.invokeHookBatch($id, ${jsonEncode(callsJson)}, $wantsPartials)', name: 'invokeHookBatch');
+  }
+
+  @override
   void hostResponse(int callId, bool ok, String resultJson) {
     _evaluate('__polo.hostResponse($callId, $ok, ${jsonEncode(resultJson)})', name: 'hostResponse');
   }

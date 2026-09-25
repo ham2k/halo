@@ -74,6 +74,11 @@ abstract class EngineRuntime {
   /// each result crosses the bridge, and only a caller that will actually
   /// salvage them has anything to show for that.
   void invokeAll(int id, String category, String method, String argsJson, {bool wantsPartials = false});
+
+  /// [callsJson] is a JSON list of `{category, key, method, args}`, each run
+  /// as [invoke] would run it; [wantsPartials] as for [invokeAll], with the
+  /// calls' indices as the roster.
+  void invokeBatch(int id, String callsJson, {bool wantsPartials = false});
   void hostResponse(int callId, bool ok, String resultJson);
 
   /// Delivers one event on an extension's WebSocket (open, message, error,

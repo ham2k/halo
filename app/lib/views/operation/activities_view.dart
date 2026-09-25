@@ -721,9 +721,7 @@ class OperationSheetState extends State<OperationSheet> {
     return '$type:$reference';
   }
 
-  /// Resolves one link per ref, in parallel — a list shouldn't pay the SUM of
-  /// each hook's latency when the MAX is all that's needed, the same trade-off
-  /// [OperationTitleService] makes.
+  /// Resolves one link per ref, in one crossing for the whole list.
   ///
   /// The hooks build a URL from the reference and nothing else (no network —
   /// `docs/extensions/hooks.md`), which is what makes it affordable to ask
@@ -738,29 +736,21 @@ class OperationSheetState extends State<OperationSheet> {
       final key = _refLinkKey(ref);
       if (key != null) keyed.putIfAbsent(key, () => ref);
     }
-    final resolved = await Future.wait(
-      keyed.entries.map((entry) async {
-        try {
-          return MapEntry(entry.key, await widget.services.extensions.linkForRef(entry.value));
-        } catch (e, stack) {
-          // Caught PER ENTRY, because `Future.wait` completes with the first
-          // error and discards every value the others already resolved — one
-          // malformed ref would otherwise cost the whole list its links, and
-          // (nothing else catching it) spend the session's one "something went
-          // wrong" notice on a missing icon.
-          //
-          // An extension's own failure never reaches here — `linkForRef`
-          // swallows those — so what does is OUR bug, and is reported the way
-          // `_loadControls` reports its own: uploaded, with no notice, because
-          // the row showing no button is all the operator can act on.
-          ErrorReportingService.report(e, stack, context: 'activities:linkForRef');
-          return MapEntry(entry.key, null);
-        }
-      }),
-    );
+    final List<RefLink?> links;
+    try {
+      links = await widget.services.extensions.linkForRefs(keyed.values.toList());
+    } catch (e, stack) {
+      // An extension's own failure never reaches here — `linkForRefs` answers
+      // null for each ref whose program failed — so what does is OUR bug, and
+      // is reported the way `_loadControls` reports its own: uploaded, with no
+      // notice, because rows showing no button are all the operator can act on.
+      ErrorReportingService.report(e, stack, context: 'activities:linkForRef');
+      return const {};
+    }
+    final keys = keyed.keys.toList();
     return {
-      for (final entry in resolved)
-        if (entry.value != null) entry.key: entry.value!,
+      for (var i = 0; i < keys.length; i++)
+        if (links[i] case final RefLink link) keys[i]: link,
     };
   }
 

@@ -221,6 +221,14 @@ String _spotCallForTestOperation(String stationCall) => stationCall
     })
     .join(',');
 
+/// One reference's answer from its `ref:<type>` handler — see
+/// [ExtensionService.refHookAnswers]. Not [asked] when the ref carries no
+/// type a handler could be found by; [ok] with the handler's [value] when it
+/// answered; asked but not ok when it threw, ran out of time, or there was no
+/// runtime to ask — and [noHandler] as well when no program registers its
+/// type, which is an answer about the reference rather than a failure.
+typedef RefHookAnswer = ({bool asked, bool ok, bool noHandler, Object? value});
+
 /// A template the renderer refused — see [ExtensionService.renderTemplate].
 /// The message is the renderer's own, written for the operator who typed
 /// the template.
@@ -1009,20 +1017,7 @@ mixin _ExtensionHookApi {
 
     try {
       if (activityKeys != null) {
-        // Each hook asked on its own, wrapped in invokeHookAll's own
-        // {key, ok, value} entry shape so the merge doesn't need a second
-        // code path — and so one failing hook is one failed entry rather
-        // than the whole scope's answer.
-        final entries = await Future.wait([
-          for (final key in activityKeys)
-            host
-                .invokeHook('activity', key: key, method: 'suggest', args: argsSearchingFor(searchTerm, scoped: true), timeout: const Duration(seconds: 5))
-                .then((value) => <String, dynamic>{'key': key, 'ok': true, 'value': value})
-                .onError<ExtensionHostException>((e, _) {
-                  debugPrint('[extensions] scoped activity hook $key failed: $e');
-                  return <String, dynamic>{'key': key, 'ok': false, 'error': '$e'};
-                }),
-        ]);
+        final entries = await _activityBatch(host, activityKeys, argsSearchingFor(searchTerm, scoped: true), 'scoped');
         return (suggestions: mergeActivitySuggestions(entries), allSourcesFailed: allActivitySourcesFailed(entries));
       }
 
@@ -1033,24 +1028,19 @@ mixin _ExtensionHookApi {
       // count, so it contributes one — the caller has to be able to tell
       // "nobody could answer" from "nobody had anything".
       var fanOutFailed = false;
-      final preferred =
-          Future.wait([
-            for (final key in preferredKeys ?? const <String>[])
-              host
-                  .invokeHook('activity', key: key, method: 'suggest', args: argsSearchingFor(preferredSearchTerm), timeout: const Duration(seconds: 5))
-                  .then((value) => <String, dynamic>{'key': key, 'ok': true, 'value': value})
-                  // Precedence is only an ordering: when a preferred hook fails,
-                  // what the other extensions found is still the right answer.
-                  .onError<ExtensionHostException>((e, _) {
-                    debugPrint('[extensions] preferred activity hook $key failed: $e');
-                    return <String, dynamic>{'key': key, 'ok': false, 'error': '$e'};
-                  }),
-          ]).then(
+      final preferred = _activityBatch(host, preferredKeys ?? const [], argsSearchingFor(preferredSearchTerm), 'preferred')
+          // Precedence is only an ordering: when a preferred hook fails, what
+          // the other extensions found is still the right answer.
+          .then(
             (entries) => [
               for (final entry in entries)
                 if (entry['ok'] == true) entry,
             ],
-          );
+          )
+          .onError<ExtensionHostException>((e, _) {
+            debugPrint('[extensions] preferred activity hooks failed: $e');
+            return const <Map<String, dynamic>>[];
+          });
 
       // The fan-out is ONE message under ONE timeout, so its failure takes
       // every hook with it — but not the preferred one, asked separately and
@@ -1081,57 +1071,112 @@ mixin _ExtensionHookApi {
     }
   }
 
-  /// Decorates a ref (park name, location…) via its `ref:<type>` handler.
-  /// Returns the input unchanged if no handler answers.
-  Future<Map<String, dynamic>> decorateRef(Map<String, dynamic> ref) async {
-    final host = this.host;
-    final type = ref['type'] as String?;
-    if (host == null || type == null) return ref;
-    try {
-      final decorated = await host.invokeHook('ref:$type', method: 'decorateRef', args: {'ref': ref});
-      if (decorated is Map) return decorated.cast<String, dynamic>();
-    } on ExtensionHostException catch (e) {
-      debugPrint('[extensions] decorateRef failed: $e');
+  /// `suggest` on each of [keys]' activity hooks, in one batch: one entry per
+  /// key, in [ExtensionHost.invokeHookAll]'s `{key, ok, value}` shape so the merge needs no
+  /// second code path — one failing hook is one failed entry, never the whole
+  /// answer. [label] names the search in the console.
+  Future<List<Map<String, dynamic>>> _activityBatch(ExtensionHost host, List<String> keys, Map<String, dynamic> args, String label) async {
+    final answers = await host.invokeHookBatch(
+      [for (final key in keys) (category: 'activity', key: key, method: 'suggest', args: args)],
+      timeout: const Duration(seconds: 5),
+      partialOnTimeout: true,
+    );
+    final entries = [
+      for (final (i, key) in keys.indexed) <String, dynamic>{...answers[i], 'key': key},
+    ];
+    for (final entry in entries) {
+      if (entry['ok'] != true) debugPrint('[extensions] $label activity hook ${entry['key']} failed: ${entry['error']}');
     }
-    return ref;
+    return entries;
   }
 
-  /// Where a ref can be read about on the web, via its `ref:<type>` handler —
-  /// the program's own page for it, or a contest's rules.
+  /// Decorates a ref (park name, location…) via its `ref:<type>` handler.
+  /// Returns the input unchanged if no handler answers.
+  Future<Map<String, dynamic>> decorateRef(Map<String, dynamic> ref) async => (await decorateRefs([ref])).single;
+
+  /// [decorateRef] for every ref in [refs], in ONE crossing: one answer per
+  /// ref, in order, each the ref as it came in when its handler did not answer.
+  Future<List<Map<String, dynamic>>> decorateRefs(List<Map<String, dynamic>> refs) async {
+    final answers = await refHookAnswers(refs, 'decorateRef');
+    return [
+      for (final (i, answer) in answers.indexed)
+        if (answer.ok && answer.value is Map) (answer.value! as Map).cast<String, dynamic>() else refs[i],
+    ];
+  }
+
+  /// Where each ref in [refs] can be read about on the web, via its
+  /// `ref:<type>` handler — the program's own page for it, or a contest's
+  /// rules — in ONE crossing, in order.
   ///
   /// Resolved for display and thrown away: nothing here is ever written back
   /// onto the operation's ref, so a program that changes its URLs takes effect
   /// with the extension rather than needing every saved operation rewritten.
-  Future<RefLink?> linkForRef(Map<String, dynamic> ref) async {
-    final host = this.host;
-    final type = ref['type'] as String?;
-    if (host == null || type == null) return null;
-    try {
-      final result = await host.invokeHook('ref:$type', method: 'linkForRef', args: {'ref': ref});
-      return refLinkFromHookResult(result, type: type);
-    } on ExtensionHostException catch (e) {
-      debugPrint('[extensions] linkForRef failed: $e');
-      return null;
-    }
+  Future<List<RefLink?>> linkForRefs(List<Map<String, dynamic>> refs) async {
+    final answers = await refHookAnswers(refs, 'linkForRef');
+    return [for (final (i, answer) in answers.indexed) answer.ok ? refLinkFromHookResult(answer.value, type: '${refs[i]['type']}') : null];
   }
 
-  /// Where a ref's own outline can be fetched as GeoJSON, via its `ref:<type>`
-  /// handler — a summit's SOTA activation zone, a park's boundary.
+  /// Where each ref's own outline can be fetched as GeoJSON, via its
+  /// `ref:<type>` handler — a summit's SOTA activation zone, a park's boundary
+  /// — in ONE crossing, in order. Each says whether its program answered at
+  /// all, because "no outline" is a fact worth remembering and "could not ask"
+  /// is one worth asking again; a type no program registers has no outline.
   ///
   /// The hook only builds a URL; fetching and caching are the app's
-  /// (GeoshapeService). Same disposable resolution as [linkForRef]: nothing is
-  /// written back onto the ref, so a program that moves its files takes effect
-  /// with the extension.
-  Future<RefGeojson?> geojsonUrlForRef(Map<String, dynamic> ref) async {
-    final host = this.host;
-    final type = ref['type'] as String?;
-    if (host == null || type == null) return null;
-    try {
-      final result = await host.invokeHook('ref:$type', method: 'geojsonUrlForRef', args: {'ref': ref});
-      return refGeojsonFromHookResult(result, type: type);
-    } on ExtensionHostException catch (e) {
-      debugPrint('[extensions] geojsonUrlForRef failed: $e');
-      return null;
+  /// (GeoshapeService). Same disposable resolution as [linkForRefs]: nothing
+  /// is written back onto the ref, so a program that moves its files takes
+  /// effect with the extension.
+  Future<List<RefGeojsonAnswer>> geojsonUrlsForRefs(List<Map<String, dynamic>> refs) async {
+    final answers = await refHookAnswers(refs, 'geojsonUrlForRef');
+    return [
+      for (final (i, answer) in answers.indexed)
+        (
+          source: answer.ok ? refGeojsonFromHookResult(answer.value, type: '${refs[i]['type']}') : null,
+          answered: answer.ok || !answer.asked || answer.noHandler,
+        ),
+    ];
+  }
+
+  /// [method] on every ref's `ref:<type>` handler in one [ExtensionHost.invokeHookBatch],
+  /// with [extraArgs] beside each call's `ref`: one [RefHookAnswer] per ref,
+  /// in order.
+  ///
+  /// One budget for the whole batch, and partial: a handler that has not
+  /// answered when it runs out — or that threw, or that nothing registers, or
+  /// that has no runtime to answer in — costs its own ref the answer and no
+  /// other. A budget per ref would make a caller looping over N refs wait up to
+  /// N budgets, one after another.
+  Future<List<RefHookAnswer>> refHookAnswers(List<Map<String, dynamic>> refs, String method, {Map<String, dynamic> extraArgs = const {}}) async {
+    // Checked per ref, not cast: a malformed ref costs its own answer, never
+    // the rest of the list's.
+    final asked = <int>[];
+    for (final (i, ref) in refs.indexed) {
+      if (ref['type'] is String) {
+        asked.add(i);
+      } else if (ref['type'] != null) {
+        debugPrint('[extensions] $method: ref ${ref['ref']} has a ${ref['type'].runtimeType} type, not a String — not asked');
+      }
     }
+    final answers = <RefHookAnswer>[for (final ref in refs) (asked: ref['type'] is String, ok: false, noHandler: false, value: null)];
+    final host = this.host;
+    if (host == null || asked.isEmpty) return answers;
+    try {
+      final entries = await host.invokeHookBatch([
+        for (final i in asked) (category: 'ref:${refs[i]['type']}', key: null, method: method, args: {...extraArgs, 'ref': refs[i]}),
+      ], partialOnTimeout: true);
+      for (final (j, i) in asked.indexed) {
+        final entry = entries[j];
+        if (entry['ok'] == true) {
+          answers[i] = (asked: true, ok: true, noHandler: false, value: entry['value']);
+        } else if (entry['noHandler'] == true) {
+          answers[i] = (asked: true, ok: false, noHandler: true, value: null);
+        } else {
+          debugPrint('[extensions] $method(ref:${refs[i]['type']}) failed: ${entry['error']}');
+        }
+      }
+    } on ExtensionHostException catch (e) {
+      debugPrint('[extensions] $method failed: $e');
+    }
+    return answers;
   }
 }

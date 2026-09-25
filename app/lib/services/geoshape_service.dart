@@ -89,8 +89,20 @@ class GeoshapeService {
   /// A stale cached shape is still returned when the fetch fails: a boundary
   /// that is a month old is right, and refusing to draw it is exactly the
   /// wrong answer for the offline case this cache exists for.
-  Future<Geoshape> shapeForRef(Map<String, dynamic> ref) async {
-    final source = await extensions.geojsonUrlForRef(ref);
+  Future<Geoshape> shapeForRef(Map<String, dynamic> ref) async => shapeFromSource((await sourcesForRefs([ref])).single);
+
+  /// Where each of [refs] publishes its shape, asked of the extensions in one
+  /// crossing — a map with a dozen references asks once, not a dozen times.
+  Future<List<RefGeojsonAnswer>> sourcesForRefs(List<Map<String, dynamic>> refs) => extensions.geojsonUrlsForRefs(refs);
+
+  /// The shape [answer] names — the rest of [shapeForRef], for a caller that
+  /// resolved its sources with [sourcesForRefs].
+  Future<Geoshape> shapeFromSource(RefGeojsonAnswer answer) async {
+    // A program that could not be asked (a runtime still booting, a handler
+    // that threw or ran out of time) has said nothing about this reference, so
+    // nothing is settled — the caller asks again later.
+    if (!answer.answered) return const Geoshape(null, resolved: false);
+    final source = answer.source;
     // A program with no shapes at all is as settled an answer as a 404: the
     // hook builds its URL from the reference and never asks the network, so
     // this cannot change while the app is running.

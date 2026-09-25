@@ -303,22 +303,19 @@ Future<void> _openDeepLinkedOperation(HaLoServices services, List<({String key, 
 /// (`OperationTitleService`), so mounting on bare codes titles the operation
 /// from them and only re-titles if something writes the names later.
 Future<String> _createDeepLinkedOperation(HaLoServices services, List<Map<String, dynamic>> refs) async {
-  final decorated = <Map<String, dynamic>>[];
-  for (final ref in refs) {
-    // An unnamed park is better than no operation, so a decoration that fails
-    // costs that reference its name and nothing more.
-    //
-    // `decorateRef` already swallows ExtensionHostException itself and hands
-    // the ref back unchanged, so a program that cannot reach its API never
-    // arrives here. What does is the residue — a wrong-typed hook result, a
-    // kernel ArgumentError — and those are OUR bugs, which a bare catch would
-    // bury for good. Same split as activities_view.dart's.
-    try {
-      decorated.add(await services.extensions.decorateRef(ref));
-    } catch (e, stack) {
-      ErrorReportingService.report(e, stack, context: 'deep-link:decorate-ref');
-      decorated.add(ref);
-    }
+  // An unnamed park is better than no operation, so a decoration that fails
+  // costs the references their names and nothing more.
+  //
+  // `decorateRefs` already hands back, unchanged, every ref whose program
+  // failed or did not answer, and every malformed ref, so neither arrives
+  // here. What does is OUR bug — a bridge answering a batch wrongly — which a
+  // bare catch would bury for good. Same split as activities_view.dart's.
+  List<Map<String, dynamic>> decorated;
+  try {
+    decorated = await services.extensions.decorateRefs(refs);
+  } catch (e, stack) {
+    ErrorReportingService.report(e, stack, context: 'deep-link:decorate-ref');
+    decorated = refs;
   }
   final operation = await services.operations.create(stationCall: services.settings.activeProfile.operatorCall);
   await services.operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'refs': decorated}));

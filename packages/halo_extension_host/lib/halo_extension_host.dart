@@ -11,6 +11,8 @@
 //
 // Protocol with the JS side (see extensions/sdk/src/kernel.ts):
 //   Dart → JS   __polo.invokeHook(id, category, key|null, method, argsJson)
+//               __polo.invokeHookAll(id, category, method, argsJson, wantsPartials)
+//               __polo.invokeHookBatch(id, callsJson, wantsPartials)
 //               __polo.hostResponse(callId, ok, resultJson)
 //               __polo.unloadBundle(key) + beginBundle/eval/endBundle +
 //               __polo.activateReloaded(token)  — the dev loop's reload
@@ -19,7 +21,8 @@
 //                 — the core adds `queueMicros` on the way through: how long
 //                   the call waited for the engine, which only the core can
 //                   see (see _noteQueueWait)
-//               {type:'partial', id, keys}    — an invokeAll's roster, and
+//               {type:'partial', id, keys}    — an invokeAll's roster (a
+//                                               batch's: its call indices), and
 //               {type:'partial', id, entry}   — one hook of it as it settles;
 //                                               both only when wantsPartials
 //               {type:'hostCall', callId, method, params}
@@ -34,13 +37,16 @@ import 'dart:math';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:halo_core/halo_core.dart' show ham2kSsoFetchUri, realNowUtc, sotaSsoHost;
 import 'package:http/http.dart' as http;
-import 'package:meta/meta.dart' show visibleForTesting;
 
 import 'src/extension_sockets.dart';
+import 'src/fetch_policy.dart';
+import 'src/hook_call_stats.dart';
 import 'src/js_engine.dart';
 
 export 'src/extension_sockets.dart' show isLocalNetworkHost, localNetworkEntry, maxWebSocketFrameSize, maxWebSocketsPerExtension;
 export 'src/engine_runtime.dart' show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
+export 'src/fetch_policy.dart' show fetchBodyTimeout, fetchHeaderTimeout;
+export 'src/hook_call_stats.dart' show HookCallSample, QueueWaitStat;
 // `show`n rather than exported wholesale: this library is imported unprefixed
 // across the app, and a bare `stringsIn` in its public surface turns any
 // same-named helper written later into an ambiguous-import error reported at
@@ -49,122 +55,17 @@ export 'src/scoring_priority.dart' show Scorer, judgesWorkedBefore, kWorkedBefor
 
 typedef HostCallHandler = Future<dynamic> Function(String method, Map<String, dynamic> params);
 
-/// One completed hook invocation, for latency analysis.
-class HookCallSample {
-  final String label;
-  final int totalMillis;
-  final int jsMillis;
+/// One call in an [ExtensionHost.invokeHookBatch]: the same four things an
+/// [ExtensionHost.invokeHook] takes.
+typedef HookCall = ({String category, String? key, String method, Object? args});
 
-  /// How long this call sat between being dispatched and the engine starting
-  /// its eval — the single engine's backlog, not this hook's own cost.
-  ///
-  /// Microseconds rather than milliseconds like its neighbours: the waits
-  /// worth acting on start around a frame, and a millisecond field reports
-  /// most of that range as `0` or `1`. Always ~0 in a host running the core
-  /// in-process (every test, and all of web), where dispatch calls the core
-  /// synchronously and there is no queue to wait in.
-  final int queueMicros;
-
-  const HookCallSample({required this.label, required this.totalMillis, required this.jsMillis, this.queueMicros = 0});
-}
-
-/// The worst and typical queue wait seen for one hook label — see
-/// [ExtensionHost.queueWaitSummary].
-class QueueWaitStat {
-  final String label;
-  final int calls;
-
-  /// Microseconds, as [HookCallSample.queueMicros].
-  final int worstMicros;
-  final int totalMicros;
-
-  const QueueWaitStat({required this.label, required this.calls, required this.worstMicros, required this.totalMicros});
-
-  int get meanMicros => calls == 0 ? 0 : totalMicros ~/ calls;
-
-  @override
-  String toString() => '$label ×$calls worst ${worstMicros ~/ 1000}ms mean ${meanMicros ~/ 1000}ms';
-}
-
-/// [ExtensionHost.queueWaitSummary]'s aggregation, as a function of the
-/// samples alone so it can be exercised without booting an engine.
-///
-/// Ordered by the WORST wait rather than the mean: one hook stalling behind a
-/// rescore for a second is the thing worth finding, and averaging it against
-/// that hook's hundreds of instant calls hides exactly that.
-@visibleForTesting
-List<QueueWaitStat> summarizeQueueWaits(List<HookCallSample> samples) {
-  final calls = <String, int>{};
-  final worst = <String, int>{};
-  final total = <String, int>{};
-  for (final sample in samples) {
-    calls[sample.label] = (calls[sample.label] ?? 0) + 1;
-    total[sample.label] = (total[sample.label] ?? 0) + sample.queueMicros;
-    if (sample.queueMicros > (worst[sample.label] ?? 0)) worst[sample.label] = sample.queueMicros;
-  }
-  final stats = [
-    for (final entry in calls.entries)
-      QueueWaitStat(label: entry.key, calls: entry.value, worstMicros: worst[entry.key] ?? 0, totalMicros: total[entry.key] ?? 0),
-  ];
-  stats.sort((a, b) => b.worstMicros.compareTo(a.worstMicros));
-  return stats;
-}
-
-/// The host's own allowances for a fetch, and the ceiling an extension's
-/// `FetchOptions.timeout` is clamped to.
-const fetchHeaderTimeout = Duration(seconds: 15);
-const fetchBodyTimeout = Duration(seconds: 30);
-
-/// How long this phase of a fetch may still take: what remains of the
-/// caller's [requested] millisecond budget after [elapsed], capped at the
-/// host's [ceiling] for the phase.
-///
-/// Downward only. An extension may declare a request not worth waiting the
-/// default for; it may not award itself a longer leash than the host allows,
-/// which is the whole reason the host sets one.
-///
-/// One budget for the whole call, not one per phase. Giving each phase the
-/// full ask would let a 3s request take 3s waiting for headers and 3s more
-/// reading the body — and 12s once the DNS retry doubles it — so a caller
-/// that carefully bounded an optional request would still cost its fan-out
-/// everything it was trying to save.
-///
-/// A zero or negative ask is a caller's bug rather than a request to fail
-/// instantly, and falls back to [ceiling] rather than making every fetch
-/// throw. A budget genuinely spent DOES return zero: the caller said how long
-/// this was worth, and the request is already on the wire by then, so the
-/// timeout has something real to interrupt.
-@visibleForTesting
-Duration remainingFetchTimeout({required int? requested, required Duration elapsed, required Duration ceiling}) {
-  if (requested == null || requested <= 0) return ceiling;
-  final left = Duration(milliseconds: requested) - elapsed;
-  if (left >= ceiling) return ceiling;
-  return left.isNegative ? Duration.zero : left;
-}
-
-/// The `User-Agent` a `host.fetch` should send. HaLo's [canonical] UA wins,
-/// so every request identifies the app consistently — *unless* the calling
-/// [extensionKey] is in [overrides] (the manifest's `allowUserAgentOverride`)
-/// and [callerHeaders] already carries a `User-Agent`, in which case that one
-/// is kept. A whitelisted extension that sets none still gets [canonical], so
-/// the request is never left unidentified. See docs/design/network.md.
-@visibleForTesting
-String? resolveFetchUserAgent({
-  required String? canonical,
-  required String? extensionKey,
-  required Set<String> overrides,
-  required Map<String, String> callerHeaders,
-}) {
-  String? callerUA;
-  for (final entry in callerHeaders.entries) {
-    if (entry.key.toLowerCase() == 'user-agent') {
-      callerUA = entry.value;
-      break;
-    }
-  }
-  final mayOverride = extensionKey != null && overrides.contains(extensionKey) && callerUA != null;
-  if (mayOverride) return callerUA;
-  return canonical ?? callerUA;
+/// A batch's name in the samples, the queue summary and a timeout's message:
+/// its method when every call shares one, so the same work groups under one
+/// row whatever the batch's size, and no one program is named for a batch
+/// that spans several.
+String _batchLabel(List<Object?> methods) {
+  final distinct = methods.toSet();
+  return distinct.length == 1 ? 'batch:${distinct.single}' : 'batch:mixed';
 }
 
 class ExtensionHost {
@@ -552,6 +453,66 @@ class ExtensionHost {
     }
   }
 
+  /// Runs several single-hook calls in ONE crossing, each routed and run
+  /// exactly as [invokeHook] would run it, all of them concurrently. Returns
+  /// one entry per call, in call order: `{ok: true, value}` or
+  /// `{ok: false, error}` — one call throwing, having no hook (`noHandler:
+  /// true`), or answering what JSON cannot carry never costs the others.
+  ///
+  /// For a list of independent calls that would otherwise cross one at a time
+  /// — every reference an import brings, every search result's link. The
+  /// bridge is coarse by design (DESIGN.md §4): a crossing per item is a
+  /// message and a pump per item, and a loop that awaits each one pays every
+  /// item's latency in turn.
+  ///
+  /// [timeout] is one budget for the whole batch, and [partialOnTimeout] is
+  /// [invokeHookAll]'s: true keeps every call that answered and returns each
+  /// one that did not as `{ok: false, error, timedOut: true}` — unless a batch
+  /// of several runs out before the runtime has reported on it at all, which
+  /// throws, having nothing to keep.
+  Future<List<Map<String, dynamic>>> invokeHookBatch(
+    List<HookCall> calls, {
+    Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
+  }) async {
+    if (calls.isEmpty) return const [];
+    // Allocated here for the same reason as invokeHookAll's.
+    final id = _nextId++;
+    // Narration puts every answer on the bridge twice, and a batch of ONE has
+    // nothing else to salvage: its timed-out entry is made up here instead.
+    final narrated = partialOnTimeout && calls.length > 1;
+    List<Map<String, dynamic>> entries;
+    try {
+      final result = await _send(
+        'invokeBatch',
+        _batchLabel([for (final call in calls) call.method]),
+        {
+          'calls': [
+            // Encoded by the core — see invokeHook.
+            for (final call in calls) {'category': call.category, 'key': call.key, 'method': call.method, 'args': call.args ?? const <String, Object?>{}},
+          ],
+          'wantsPartials': narrated,
+        },
+        timeout,
+        id: id,
+      );
+      entries = (result as List).cast<Map<dynamic, dynamic>>().map((e) => e.cast<String, dynamic>()).toList();
+    } on HookTimeoutException {
+      final progress = _partials.remove(id);
+      if (!partialOnTimeout || (narrated && progress == null)) rethrow;
+      entries = (progress ?? (_FanOutProgress()..expected = const ['0'])).settledPlusMissing(timeout);
+    }
+    // Keyed by index, because salvaged entries arrive in the order they
+    // settled rather than the order they were asked for.
+    final byIndex = {for (final entry in entries) entry['key']: entry};
+    return [
+      // Every call has an entry by here — the runtime's own, or one made up for
+      // a timeout — so a missing one is a bridge that answered wrongly, not an
+      // extension that did.
+      for (var i = 0; i < calls.length; i++) byIndex['$i'] ?? (throw StateError('the runtime answered a batch of ${calls.length} with no entry for call $i')),
+    ];
+  }
+
   Future<dynamic> _send(String type, String label, Map<String, Object?> fields, Duration timeout, {int? id}) async {
     if (_dead) {
       throw ExtensionHostException('extension runtime is dead (hook $label not attempted)');
@@ -831,8 +792,9 @@ class ExtensionHost {
   }
 }
 
-/// What one in-flight `invokeAll` has reported: the roster of hooks it is
-/// about to call, then their entries as they settle.
+/// What one in-flight `invokeAll` or batch has reported: the roster of hooks
+/// (a batch's: call indices) it is about to call, then their entries as they
+/// settle.
 class _FanOutProgress {
   /// Hook keys the runtime said it would call. Empty until the roster
   /// arrives, which is the first thing the runtime posts.
@@ -1066,10 +1028,12 @@ class _HostCore {
     switch (msg['type']) {
       case 'invoke':
       case 'invokeAll':
+      case 'invokeBatch':
         final id = msg['id'] as int;
         _outstandingIds.add(id);
         _ensurePumping();
-        final label = '${msg['category']}.${msg['method']}';
+        final calls = msg['calls'];
+        final label = calls is List ? _batchLabel([for (final call in calls) (call as Map)['method']]) : '${msg['category']}.${msg['method']}';
         _noteQueueWait(id, label, msg['sentAtMicros']);
         try {
           // Inside the try, so an arg the caller believed JSON-encodable and
@@ -1085,14 +1049,17 @@ class _HostCore {
           // something somewhere failed to encode.
           final String argsJson;
           try {
-            argsJson = jsonEncode(msg['args'] ?? const <String, Object?>{});
+            argsJson = calls is List ? '[${calls.map(_encodeBatchCall).join(',')}]' : jsonEncode(msg['args'] ?? const <String, Object?>{});
           } catch (e) {
             throw ExtensionHostException('hook $label was given arguments that are not JSON-encodable: $e');
           }
-          if (msg['type'] == 'invoke') {
-            _js.invoke(id, msg['category'] as String, msg['key'] as String?, msg['method'] as String, argsJson);
-          } else {
-            _js.invokeAll(id, msg['category'] as String, msg['method'] as String, argsJson, wantsPartials: msg['wantsPartials'] == true);
+          switch (msg['type']) {
+            case 'invoke':
+              _js.invoke(id, msg['category'] as String, msg['key'] as String?, msg['method'] as String, argsJson);
+            case 'invokeAll':
+              _js.invokeAll(id, msg['category'] as String, msg['method'] as String, argsJson, wantsPartials: msg['wantsPartials'] == true);
+            default:
+              _js.invokeBatch(id, argsJson, wantsPartials: msg['wantsPartials'] == true);
           }
           // Only once an eval has actually begun: a call that failed above
           // never reached the engine, and naming it as what the NEXT slow
@@ -1153,6 +1120,19 @@ class _HostCore {
           emit({'type': 'log', 'message': 'ERROR setting clock travel: $e'});
           emit({'type': 'fatalError', 'error': 'could not set the sandbox clock: $e'});
         }
+    }
+  }
+
+  /// One call of a batch as JSON, encoded on its own: a call whose arguments
+  /// JSON cannot hold becomes one carrying that error instead, which the
+  /// kernel answers as that call's failure — encoded together, one bad call
+  /// would fail every call in the batch.
+  static String _encodeBatchCall(Object? call) {
+    try {
+      return jsonEncode(call);
+    } catch (e) {
+      final c = call is Map ? call : const <String, Object?>{};
+      return jsonEncode({'category': c['category'], 'key': c['key'], 'method': c['method'], 'error': 'arguments are not JSON-encodable: $e'});
     }
   }
 

@@ -20,6 +20,7 @@
 //               {type:'socketsDropped', socketIds}
 //   Dart → JS:  __polo.invokeHook(id, category, key|null, method, argsJson)
 //               __polo.invokeHookAll(id, category, method, argsJson, wantsPartials)
+//               __polo.invokeHookBatch(id, callsJson, wantsPartials)
 //               __polo.activateAll()
 //               __polo.hostResponse(callId, ok, resultJson)
 //               __polo.socketEvent(socketId, eventJson)
@@ -180,6 +181,41 @@ function describeError(e: unknown): string {
   // JavaScriptCore stacks don't include the message; report both.
   const err = e as Error
   return err?.message ? `${err.message}\n${err.stack ?? ""}`.trim() : String(e)
+}
+
+type SettledEntry = { key: string; ok: boolean; value?: unknown; error?: string; noHandler?: boolean }
+
+/// [entry], or — when JSON cannot carry what its hook answered (a circular
+/// object, a BigInt) — that hook's own failure in its place.
+function serializable(entry: SettledEntry): SettledEntry {
+  try {
+    JSON.stringify(entry)
+    return entry
+  } catch (e) {
+    return { key: entry.key, ok: false, error: `answered something JSON cannot carry: ${describeError(e)}` }
+  }
+}
+
+/// Posts a fan-out's or a batch's settled entries. They cross as ONE message,
+/// so a single entry JSON cannot carry would fail every other entry with it:
+/// only when the whole will not serialize is each entry checked, and those
+/// that will not become their own hook's failure. The common case pays for one
+/// serialization.
+function postEntries(id: number, entries: SettledEntry[], startedAt: number) {
+  try {
+    post({ type: "result", id, ok: true, value: entries, jsMillis: realNow() - startedAt })
+  } catch {
+    post({ type: "result", id, ok: true, value: entries.map(serializable), jsMillis: realNow() - startedAt })
+  }
+}
+
+/// One settled entry of a narrated fan-out or batch — see [postEntries].
+function postPartial(id: number, entry: SettledEntry) {
+  try {
+    post({ type: "partial", id, entry })
+  } catch {
+    post({ type: "partial", id, entry: serializable(entry) })
+  }
 }
 
 function hooksFor(category: string, key: string | null): HookRecord[] {
@@ -408,6 +444,33 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
   return await member.call(record.hook, args, ctx)
 }
 
+/// What `runHook` throws when nothing registers the category: an answer about
+/// the reference ("no program handles this"), not a failure of one — a batch
+/// entry says so with `noHandler`, so a host can tell the two apart without
+/// reading the message.
+class NoHandlerError extends Error {}
+
+/// One host-requested call on the highest-priority hook for `category` (and
+/// `key`, when given) — what `invokeHook` runs, and what `invokeHookBatch`
+/// runs once per call, so a call routes the same way whichever way it came.
+async function runHook(category: string, key: string | null, method: string, args: unknown): Promise<unknown> {
+  // Chosen from the args, not the category alone: for a `ref:` category the
+  // hook depends on the reference being asked about.
+  const record = hooksForRef(category, key, args)[0]
+  if (!record) throw new NoHandlerError(`no hook registered for ${category}/${key ?? "*"}`)
+  // Tier 1 settings panels (kind: 'simple') are static data, not a
+  // getDefinition() function — build the FormDefinition from the registered
+  // object directly. Everything else (Tier 2's real getDefinition/
+  // validateField/transformField/onChangeField, and any action method on
+  // either tier) goes through the generic path below.
+  if (category === "settingsPanel" && method === "getDefinition" && record.hook.kind === "simple") {
+    return tier1FormDefinition(record.hook)
+  }
+  const requested = (args as { online?: unknown } | null)?.online
+  const online = typeof requested === "boolean" ? requested : true
+  return await callHookMethod(record, method, args, online)
+}
+
 /// Activates one extension, returning once its onActivation call (and
 /// whatever it awaits, e.g. `host.getSettings()` before registering some of
 /// its hooks) has actually settled — not just been kicked off. `activateAll`
@@ -627,23 +690,45 @@ const kernel = {
     const startedAt = realNow()
     void (async () => {
       try {
-        const args = JSON.parse(argsJson)
-        // Parsed BEFORE the hook is chosen: for a `ref:` category the choice
-        // depends on the reference in the args, not on the category alone.
-        const record = hooksForRef(category, key, args)[0]
-        if (!record) throw new Error(`no hook registered for ${category}/${key ?? "*"}`)
-        // Tier 1 settings panels (kind: 'simple') are static data, not a
-        // getDefinition() function — build the FormDefinition from the
-        // registered object directly. Everything else (Tier 2's real
-        // getDefinition/validateField/transformField/onChangeField, and any
-        // action method on either tier) goes through the generic path below.
-        if (category === "settingsPanel" && method === "getDefinition" && record.hook.kind === "simple") {
-          post({ type: "result", id, ok: true, value: tier1FormDefinition(record.hook), jsMillis: realNow() - startedAt })
-          return
-        }
-        const online = typeof args?.online === "boolean" ? args.online : true
-        const result = await callHookMethod(record, method, args, online)
+        const result = await runHook(category, key, method, JSON.parse(argsJson))
         post({ type: "result", id, ok: true, value: result ?? null, jsMillis: realNow() - startedAt })
+      } catch (e) {
+        post({ type: "result", id, ok: false, error: describeError(e), jsMillis: realNow() - startedAt })
+      }
+    })()
+  },
+
+  /// Several single-hook calls in one crossing: each `{category, key, method,
+  /// args}` is routed and run exactly as `invokeHook` would run it, all of
+  /// them concurrently, and the result is one `{key, ok, value|error}` entry
+  /// per call, in call order, `key` being the call's index. One call failing
+  /// is that entry's `ok: false`, never the batch's; one that nothing registers
+  /// also carries `noHandler: true`.
+  ///
+  /// Narrated like `invokeHookAll` when `wantsPartials` is set — the roster
+  /// is the list of indices — so a host that stops waiting keeps every call
+  /// that already answered.
+  invokeHookBatch(id: number, callsJson: string, wantsPartials = false) {
+    const startedAt = realNow()
+    void (async () => {
+      try {
+        const calls = JSON.parse(callsJson) as { category: string; key?: string | null; method: string; args?: unknown; error?: string }[]
+        if (wantsPartials) post({ type: "partial", id, keys: calls.map((_, i) => String(i)) })
+        const entries = await Promise.all(
+          calls.map(async (call, i) => {
+            let entry: SettledEntry
+            try {
+              // A call the host could not encode arrives carrying why, and fails alone.
+              if (call.error) throw new Error(call.error)
+              entry = { key: String(i), ok: true, value: (await runHook(call.category, call.key ?? null, call.method, call.args ?? {})) ?? null }
+            } catch (e) {
+              entry = { key: String(i), ok: false, error: describeError(e), ...(e instanceof NoHandlerError ? { noHandler: true } : {}) }
+            }
+            if (wantsPartials) postPartial(id, entry)
+            return entry
+          }),
+        )
+        postEntries(id, entries, startedAt)
       } catch (e) {
         post({ type: "result", id, ok: false, error: describeError(e), jsMillis: realNow() - startedAt })
       }
@@ -696,7 +781,7 @@ const kernel = {
               }
             }),
           )
-          post({ type: "result", id, ok: true, value: entries, jsMillis: realNow() - startedAt })
+          postEntries(id, entries, startedAt)
           return
         }
         // One `settingsPanel` registration can surface more than one panel —
@@ -742,7 +827,7 @@ const kernel = {
               entries.push({ key: result.key, ok: false, error: result.error })
             }
           }
-          post({ type: "result", id, ok: true, value: entries, jsMillis: realNow() - startedAt })
+          postEntries(id, entries, startedAt)
           return
         }
         if (category === "dataFile" && method === "getDefinition") {
@@ -781,7 +866,7 @@ const kernel = {
               }
             }),
           )
-          post({ type: "result", id, ok: true, value: entries, jsMillis: realNow() - startedAt })
+          postEntries(id, entries, startedAt)
           return
         }
         const online = typeof args?.online === "boolean" ? args.online : true
@@ -806,17 +891,17 @@ const kernel = {
 
         const entries = await Promise.all(
           records.map(async (record) => {
-            let entry: { key: string; ok: boolean; value?: unknown; error?: string }
+            let entry: SettledEntry
             try {
               entry = { key: record.key, ok: true, value: (await callHookMethod(record, method, args, online)) ?? null }
             } catch (e) {
               entry = { key: record.key, ok: false, error: describeError(e) }
             }
-            if (wantsPartials) post({ type: "partial", id, entry })
+            if (wantsPartials) postPartial(id, entry)
             return entry
           }),
         )
-        post({ type: "result", id, ok: true, value: entries, jsMillis: realNow() - startedAt })
+        postEntries(id, entries, startedAt)
       } catch (e) {
         post({ type: "result", id, ok: false, error: describeError(e), jsMillis: realNow() - startedAt })
       }

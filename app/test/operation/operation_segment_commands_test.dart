@@ -27,8 +27,10 @@ void main() {
 
   setUp(() async {
     // An empty host: the Location screen waits on a runtime for its
-    // controls, and a service with none would keep it waiting forever.
-    final harness = await makeHaLoServices();
+    // controls, and a service with none would keep it waiting forever. The one
+    // stub is `ref:satellite`'s handler, which implements no
+    // `suggestOperationTitle` — the runtime answers that with null.
+    final harness = await makeHaLoServices(stubs: {'ref:satellite:null:suggestOperationTitle': null});
     services = harness.services;
 
     final created = await services.operations.create(stationCall: 'N0DEV');
@@ -90,9 +92,9 @@ void main() {
 
   test('a reference that offers no title still gets a description written', () async {
     // Plenty of ref types legitimately have no `suggestOperationTitle`
-    // (`ref:satellite` registers none), and the mock host answers for none
-    // of them. Treating that as a failure would leave every segment row on
-    // such an operation permanently without a description.
+    // (`ref:satellite` registers none, so its handler answers nothing).
+    // Treating that as a failure would leave every segment row on such an
+    // operation permanently without a description.
     await services.operations.saveData(
       Operation(
         uuid: operation.uuid,

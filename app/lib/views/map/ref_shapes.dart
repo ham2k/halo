@@ -19,6 +19,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/error_reporting_service.dart';
+import '../../services/extensions/extension_ref_results.dart' show RefGeojsonAnswer;
 import '../../services/geoshape_service.dart';
 import 'map_marker_data.dart';
 
@@ -72,34 +73,64 @@ class RefShapeLoader {
     final retryAt = _retryAfterMillis[key];
     if (retryAt != null && nowMillis() < retryAt) return null;
     if (!_inFlight.add(key)) return null;
-    unawaited(() async {
-      try {
-        final shape = await geoshapes.shapeForRef(ref);
-        final geojson = shape.geojson;
-        if (geojson != null) {
-          _shapes[key] = mapShapesFromGeojson(jsonDecode(geojson), idPrefix: id, color: color);
-        } else if (shape.resolved) {
-          // The program publishes none — remember that, and stop asking.
-          _shapes[key] = const [];
-        } else {
-          // This device could not find out (offline, or a server having a bad
-          // day). Nothing is remembered, so it asks again — after a pause.
-          _retryAfterMillis[key] = nowMillis() + retryAfterFailure.inMilliseconds;
-        }
-        onChanged();
-      } catch (e, stack) {
-        // A shape that can't be read is not worth a notice over a map the
-        // operator opened to look at something else — but it IS a program's
-        // document the app failed to parse, which nothing else would say.
-        ErrorReportingService.report(e, stack, context: 'map:geoshape');
-      } finally {
-        // In a finally, not after the await: a lookup that throws would
-        // otherwise leave its key claimed for the life of the pane, and that
-        // reference would silently never draw again.
-        _inFlight.remove(key);
-      }
-    }());
+    // Queued rather than asked for now: a pane asks for every reference on
+    // the operation in one build, and their sources are then resolved
+    // together, in one crossing, once the build is done.
+    if (_queued.isEmpty) scheduleMicrotask(() => unawaited(_resolveQueued(geoshapes)));
+    _queued.add((ref: ref, key: key, id: id, color: color));
     return null;
+  }
+
+  final List<({Map<String, dynamic> ref, String key, String id, Color color})> _queued = [];
+
+  Future<void> _resolveQueued(GeoshapeService geoshapes) async {
+    final batch = List.of(_queued);
+    _queued.clear();
+    final List<RefGeojsonAnswer> sources;
+    try {
+      sources = await geoshapes.sourcesForRefs([for (final item in batch) item.ref]);
+    } catch (e, stack) {
+      ErrorReportingService.report(e, stack, context: 'map:geoshape');
+      // Paused like any lookup that could not finish: without it a failure
+      // that repeats would ride every rebuild, and report on each one.
+      final retryAt = nowMillis() + retryAfterFailure.inMilliseconds;
+      for (final item in batch) {
+        _inFlight.remove(item.key);
+        _retryAfterMillis[item.key] = retryAt;
+      }
+      return;
+    }
+    for (final (i, item) in batch.indexed) {
+      unawaited(_land(geoshapes, sources[i], key: item.key, id: item.id, color: item.color));
+    }
+  }
+
+  Future<void> _land(GeoshapeService geoshapes, RefGeojsonAnswer source, {required String key, required String id, required Color color}) async {
+    try {
+      final shape = await geoshapes.shapeFromSource(source);
+      final geojson = shape.geojson;
+      if (geojson != null) {
+        _shapes[key] = mapShapesFromGeojson(jsonDecode(geojson), idPrefix: id, color: color);
+      } else if (shape.resolved) {
+        // The program publishes none — remember that, and stop asking.
+        _shapes[key] = const [];
+      } else {
+        // This device could not find out (offline, or a server having a bad
+        // day). Nothing is remembered, so it asks again — after a pause.
+        _retryAfterMillis[key] = nowMillis() + retryAfterFailure.inMilliseconds;
+      }
+      onChanged();
+    } catch (e, stack) {
+      // A shape that can't be read is not worth a notice over a map the
+      // operator opened to look at something else — but it IS a program's
+      // document the app failed to parse, which nothing else would say.
+      ErrorReportingService.report(e, stack, context: 'map:geoshape');
+    } finally {
+      // In a finally, not after the await: a lookup that throws would
+      // otherwise leave its key claimed for the life of the pane, and that
+      // reference would silently never draw again.
+      _inFlight.remove(key);
+    }
   }
 }
 

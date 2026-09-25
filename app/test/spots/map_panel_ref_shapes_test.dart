@@ -46,12 +46,19 @@ class _FakeGeoshapes extends GeoshapeService {
   final Map<String, Geoshape> answers;
   final asked = <String>[];
 
+  /// Each `sourcesForRefs` call, so a test can count crossings.
+  final batches = <List<String>>[];
+
   @override
-  Future<Geoshape> shapeForRef(Map<String, dynamic> ref) async {
-    final key = '${ref['ref']}';
-    asked.add(key);
-    return answers[key] ?? Geoshape.none;
+  Future<List<RefGeojsonAnswer>> sourcesForRefs(List<Map<String, dynamic>> refs) async {
+    final keys = [for (final ref in refs) '${ref['ref']}'];
+    batches.add(keys);
+    asked.addAll(keys);
+    return [for (final key in keys) (source: RefGeojson(url: 'https://shapes.test/$key', maxAge: Duration.zero, missMaxAge: Duration.zero), answered: true)];
   }
+
+  @override
+  Future<Geoshape> shapeFromSource(RefGeojsonAnswer answer) async => answers[answer.source?.url.substring('https://shapes.test/'.length)] ?? Geoshape.none;
 }
 
 Operation _operationWith({String? grid, List<Map<String, dynamic>> refs = const []}) => Operation(uuid: 'op-shapes', data: {'grid': ?grid, 'refs': refs});
@@ -111,6 +118,36 @@ void main() {
       // The color its own row and its Activities-map dot wear — not a wash
       // invented here, or the same summit reads as two different things.
       expect(shapes.single.color, const Color(0xFF1B5E20));
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('every reference a map draws is asked about in ONE crossing', (tester) async {
+    // The map asks for each reference's outline as it builds that reference's
+    // marker; asked separately, a multi-reference operation crosses the bridge
+    // once per reference on every map it opens.
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    try {
+      final geoshapes = await pump(
+        tester,
+        operation: _operationWith(
+          grid: 'FN31pr',
+          refs: const [
+            {'type': 'sotaActivation', 'ref': 'W2/GC-099'},
+            {'type': 'potaActivation', 'ref': 'US-0001'},
+            {'type': 'potaActivation', 'ref': 'US-0002'},
+          ],
+        ),
+        answers: const {'W2/GC-099': Geoshape(_zone, resolved: true)},
+        controls: const [_summitControl],
+      );
+      await tester.pumpAndSettle();
+
+      expect(geoshapes.batches, [
+        ['W2/GC-099', 'US-0001', 'US-0002'],
+      ]);
+      expect(tester.widget<OsmMapView>(find.byType(OsmMapView)).shapes, hasLength(1));
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }

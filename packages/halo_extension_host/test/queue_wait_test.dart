@@ -15,6 +15,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:halo_extension_host/src/hook_call_stats.dart';
 
 import 'support/bundles.dart';
 

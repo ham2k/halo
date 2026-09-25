@@ -17,15 +17,16 @@ const _url = 'https://az.sotl.as/W2/GC/116.geojson';
 const _summit = {'type': 'sotaActivation', 'ref': 'W2/GC-116'};
 const _shape = '{"type":"FeatureCollection","features":[]}';
 
-/// Answers `geojsonUrlForRef` from one fixed value, already parsed —
-/// overriding the method rather than stubbing the hook keeps this about
+/// Answers `geojsonUrlsForRefs` with one fixed value per ref, already parsed
+/// — overriding the method rather than stubbing the hook keeps this about
 /// GeoshapeService, not about how a hook's answer becomes a [RefGeojson].
 class _FakeExtensions extends ExtensionService {
-  _FakeExtensions(this.answer);
+  _FakeExtensions(this.answer, {this.answered = true});
   final RefGeojson? answer;
+  final bool answered;
 
   @override
-  Future<RefGeojson?> geojsonUrlForRef(Map<String, dynamic> ref) async => answer;
+  Future<List<RefGeojsonAnswer>> geojsonUrlsForRefs(List<Map<String, dynamic>> refs) async => [for (final _ in refs) (source: answer, answered: answered)];
 }
 
 void main() {
@@ -39,9 +40,19 @@ void main() {
   setUp(() => db = HaLoDatabase(NativeDatabase.memory()));
   tearDown(() => db.close());
 
-  GeoshapeService serviceFor(RefGeojson? source, {required http.Client Function() client, Duration timeout = GeoshapeService.defaultFetchTimeout}) {
+  GeoshapeService serviceFor(
+    RefGeojson? source, {
+    required http.Client Function() client,
+    Duration timeout = GeoshapeService.defaultFetchTimeout,
+    bool answered = true,
+  }) {
     lookups = LookupRepository(db);
-    return GeoshapeService(extensions: _FakeExtensions(source), lookups: lookups, httpClientFactory: client, fetchTimeout: timeout);
+    return GeoshapeService(
+      extensions: _FakeExtensions(source, answered: answered),
+      lookups: lookups,
+      httpClientFactory: client,
+      fetchTimeout: timeout,
+    );
   }
 
   /// A cache row as it would look [age] ago. Written directly rather than by
@@ -92,6 +103,17 @@ void main() {
 
     expect((await service.shapeForRef(_summit)).geojson, _shape);
     expect(requests, 1);
+  });
+
+  test('a program that could not be asked settles nothing', () async {
+    // "No outline" is remembered for the life of a map pane; "could not ask"
+    // (a runtime still booting, a handler that threw or ran out of time) must
+    // not be, or one busy moment blanks every outline until the pane rebuilds.
+    final service = serviceFor(null, client: () => http.MockClient((_) async => fail('nothing to fetch')), answered: false);
+
+    final shape = await service.shapeForRef(_summit);
+    expect(shape.geojson, isNull);
+    expect(shape.resolved, false);
   });
 
   test('403 records the miss — object storage declines an absent key without a 404', () async {
@@ -281,6 +303,14 @@ void main() {
       final source = refGeojsonFromHookResult({'url': _url, 'maxAgeInDays': 0, 'missMaxAgeInDays': -1}, type: 'sotaActivation');
       expect(source?.maxAge, const Duration(days: 30));
       expect(source?.missMaxAge, const Duration(days: 1));
+    });
+
+    test('ignores an age too vast to be one, instead of throwing', () {
+      // Converting a day count this large overflows and throws — and the
+      // reference's answer is read in the same pass as every other on the map,
+      // so one program's wild number would cost them all their outlines.
+      final source = refGeojsonFromHookResult({'url': _url, 'maxAgeInDays': 1e308}, type: 'sotaActivation');
+      expect(source?.maxAge, const Duration(days: 30));
     });
 
     test('reads a fractional age, so a program can ask for hours', () {

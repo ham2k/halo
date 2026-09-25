@@ -13,6 +13,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -21,29 +22,27 @@ import 'package:ham2k_logger/views/operation/activities_view.dart';
 
 import '../support/halo_test_support.dart';
 
-/// Answers `linkForRef` from a table, and nothing else — the real dispatch is
-/// exercised against the real bundles in halo_extension_host's `ref_link_test`.
+/// Answers each ref type's `linkForRef` hook from a table keyed by reference
+/// code, through the fake host — so the sheet's links take the real batched
+/// path (`linkForRefs`), and a hook that fails for one reference fails the way
+/// the runtime would report it. The real hooks are exercised against the real
+/// bundles in halo_extension_host's `ref_link_test`.
 class _LinkingExtensionService extends ExtensionServiceWithFakeHost {
-  _LinkingExtensionService(this.links, {List<Map<String, dynamic>> suggestions = const [], this.throwsFor})
+  _LinkingExtensionService(Map<String, RefLink> links, {List<Map<String, dynamic>> suggestions = const [], String? failsFor})
     : super(
         FakeExtensionHost({
           'activity:*:suggest': [
             {'key': 'pota', 'ok': true, 'value': suggestions},
           ],
+          for (final type in const ['potaActivation', 'pgaActivation'])
+            'ref:$type:null:linkForRef': (Object? args) {
+              final code = ((args! as Map)['ref'] as Map)['ref'];
+              if (code == failsFor) throw ExtensionHostException('this program is down');
+              final link = links[code];
+              return link == null ? null : {'url': link.url, 'label': ?link.label};
+            },
         }),
       );
-
-  final Map<String, RefLink> links;
-
-  /// [throwsFor] stands in for a bug on our side of the hook — a wrong-typed
-  /// field on the ref, say — which `linkForRef` does not swallow.
-  final String? throwsFor;
-
-  @override
-  Future<RefLink?> linkForRef(Map<String, dynamic> ref) async {
-    if (ref['ref'] == throwsFor) throw StateError('linkForRef blew up');
-    return links[ref['ref']];
-  }
 }
 
 void main() {
@@ -136,11 +135,10 @@ void main() {
     expect(tester.getRect(row).right - tester.getRect(web).right, closeTo(tester.getRect(selected).right - tester.getRect(selectedWeb).right, 0.5));
   });
 
-  testWidgets('one ref that blows up does not cost the others their links', (tester) async {
-    // `Future.wait` completes with the FIRST error and discards the values the
-    // other entries already resolved, so an unguarded fan-out would leave the
-    // whole sheet with no buttons because of one bad ref.
-    await pumpSheet(tester, _LinkingExtensionService({'US-0370': const RefLink(url: 'https://pota.app/#/park/US-0370')}, throwsFor: 'AB12'));
+  testWidgets('one ref whose program fails does not cost the others their links', (tester) async {
+    // Every link crosses in ONE batch, so a failure that escaped a single call
+    // would leave the whole sheet with no buttons because of one program.
+    await pumpSheet(tester, _LinkingExtensionService({'US-0370': const RefLink(url: 'https://pota.app/#/park/US-0370')}, failsFor: 'AB12'));
 
     expect(find.descendant(of: rowFor('US-0370'), matching: find.byIcon(MdiIcons.web)), findsOneWidget);
     expect(find.descendant(of: rowFor('AB12'), matching: find.byIcon(MdiIcons.web)), findsNothing);

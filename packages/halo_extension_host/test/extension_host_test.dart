@@ -9,6 +9,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:halo_extension_host/src/fetch_policy.dart';
 
 import 'support/bundles.dart';
 
@@ -1007,7 +1008,7 @@ __polo.defineExtension({
     expect(dynamicResult, {'call': 'KI2D'});
   });
 
-  test('invokeHookAll reports an unserializable aggregate as an error, not a timeout', () async {
+  test('a hook answering something JSON cannot carry fails alone in a fan-out', () async {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
       extensions: const [
@@ -1029,6 +1030,14 @@ __polo.defineExtension({
         }
       }
     })
+    api.registerHook('circularTest', {
+      key: 'circular-extension-plain',
+      hook: {
+        makeCircle: async function () {
+          return { plain: true }
+        }
+      }
+    })
   },
 })
 ''',
@@ -1039,13 +1048,15 @@ __polo.defineExtension({
     addTearDown(host.dispose);
 
     // The per-record try/catch can't see this failure — it happens when the
-    // aggregate is stringified for posting. Without invokeHookAll's outer
-    // catch it became an unhandled rejection and the caller burned its full
-    // timeout reporting "timed out" instead of the real error.
-    await expectLater(
-      host.invokeHookAll('circularTest', method: 'makeCircle', timeout: const Duration(seconds: 3)),
-      throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', isNot(contains('timed out')))),
-    );
+    // entries are stringified for posting, as ONE message. Posted whole, the
+    // one unserializable answer would fail the fan-out for every other hook.
+    final entries = await host.invokeHookAll('circularTest', method: 'makeCircle', timeout: const Duration(seconds: 3));
+    final byKey = {for (final e in entries) e['key']: e};
+
+    expect(byKey['circular-extension']!['ok'], false);
+    expect(byKey['circular-extension']!['error'], contains('JSON cannot carry'));
+    expect(byKey['circular-extension']!['timedOut'], isNot(true), reason: 'it answered; it did not go quiet');
+    expect(byKey['circular-extension-plain']!['value'], {'plain': true});
   });
 
   test('a host call whose handler returns an unencodable value fails the hook instead of wedging it', () async {

@@ -2,11 +2,22 @@
 
 Hooks are registered under a **category** with an optional **key** (defaults
 to the extension key) and **priority** (higher runs first; default 0). The
-host invokes them two ways:
+host invokes them three ways:
 
 - `invokeHook(category, key?, method, args)` — best (highest-priority) hook.
 - `invokeHookAll(category, method, args)` — every hook in the category, one
   bridge round-trip, per-source error isolation.
+- `invokeHookBatch(calls)` — several `invokeHook` calls, one bridge
+  round-trip, per-call error isolation. Each call reaches the same hook it
+  would reach on its own, so a hook cannot tell a batched call from a single
+  one.
+
+In both shapes that answer many hooks at once, one hook failing costs its own
+entry and nothing else — whether it throws, has no handler, or answers
+something JSON cannot carry (a circular object, a `BigInt`). One that runs out
+of time does too, when the caller asks for partial results; otherwise, and for
+a batch of several calls that runs out of time before any answer has reached
+the host, the whole call fails.
 
 All argument and result types below are defined in
 [`extensions/sdk/src/types.ts`](../../extensions/sdk/src/types.ts). Every
@@ -422,6 +433,18 @@ interface RefHandlerHook {
 etc.); results update ref chips asynchronously in the UI. Implemented by:
 `pota` (both types).
 
+**The core asks about references in batches.** Every reference an ADIF import
+or a deep link brings is decorated in one bridge round-trip, and so is every
+link a list of search results needs, every outline a map draws, and every
+phrase of an operation's title. Each reference is still its own call, to the
+handler `invokeHook` would pick for it (qualified claims included), so a
+handler implements the single-reference methods above and nothing else. The
+time budget belongs to the batch, though: ten seconds for all of its calls
+together. A handler that has not answered by then costs only its own
+reference — it stays as it was, with no name, link or outline — and every
+other reference keeps its answer. A `decorateRef` that goes to the network
+should answer well within that.
+
 `linkForRef` says where a reference can be read about on the web — the
 program's own page for it (POTA's park page, SOTA's summit page), or, for a
 contest, the rules the event is run under. The Operation Setup sheet asks for
@@ -598,8 +621,12 @@ true when THIS extension alone was asked — the operator tapped its "Activity
 Types" row or typed its key as a scope — which a bare scope otherwise cannot be
 told from the nearby list, since neither carries a `searchTerm`. An extension
 that keeps itself out of the nearby list (`cwt`, offered only around a session)
-answers a scoped call anyway: it is the one being asked. The core fans
-out to every `activity` hook via `invokeHookAll`, merges results, and ranks them
+answers a scoped call anyway: it is the one being asked. The core fans out to
+every `activity` hook via `invokeHookAll`; a scoped search asks only its own
+hooks, in one batch (`invokeHookBatch`); and a search naming a type without the
+colon asks that type's hooks in one batch AND fans out to every hook — two
+round-trips, kept apart so a fan-out that runs out of time cannot cost the named
+type's answers. The core merges results and ranks them
 in TWO BANDS (`app/lib/tools/activity_suggestions.dart`): everything carrying a
 `distance` first, by `distance / relevance` ascending — a more relevant hit
 counts as nearer — then everything without one, by DESCENDING `relevance`, with

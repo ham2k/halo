@@ -77,47 +77,47 @@ class OperationTitleService {
   /// flag: that phrase is missing from an otherwise complete sentence, and
   /// nothing recomposes it later.
   Future<RefTitleSuggestions?> suggestForRefs(Operation operation) async {
-    final host = extensions.host;
-    if (host == null) return null;
+    if (extensions.host == null) return null;
 
     final refs = operation.refs;
     if (refs.isEmpty) return const RefTitleSuggestions(suggestions: [], complete: true);
 
     final operationPayload = {...operation.data, 'uuid': operation.uuid};
 
-    // In parallel, like ExtensionService.sendSpot's per-hook fan-out — a
-    // multi-ref operation shouldn't pay the SUM of each ref's hook latency
-    // when the MAX is all that's needed (each ref's suggestion is
-    // independent of the others).
+    // Every ref in one crossing, each still answered on its own — a ref whose
+    // hook fails or runs out of time costs its own phrase and no other.
+    final answers = await extensions.refHookAnswers(refs, 'suggestOperationTitle', extraArgs: {'operation': operationPayload});
+
     var complete = true;
-    final results = await Future.wait(
-      refs.map((ref) async {
-        final type = ref['type'] as String?;
-        if (type == null) return null;
-        try {
-          final result = await host.invokeHook(
-            'ref:$type',
-            method: 'suggestOperationTitle',
-            args: {'ref': ref, 'operation': operationPayload},
-            timeout: const Duration(seconds: 10),
-          );
-          if (result is! Map) return null;
-          return OperationTitleSuggestion(
+    final suggestions = <OperationTitleSuggestion>[];
+    for (final (i, answer) in answers.indexed) {
+      if (!answer.asked) continue;
+      // A type no program registers clears it too: a program switched on
+      // later can still answer, and a description persisted now would lack
+      // its phrase for good.
+      if (!answer.ok) {
+        complete = false;
+        continue;
+      }
+      final result = answer.value;
+      if (result is! Map) continue;
+      try {
+        suggestions.add(
+          OperationTitleSuggestion(
             title: result['title'] as String?,
             forText: result['for'] as String?,
             atText: result['at'] as String?,
             subtitle: result['subtitle'] as String?,
             priority: (result['priority'] as num?) ?? 0,
-          );
-        } catch (e) {
-          debugPrint('[operationTitle] suggestOperationTitle failed for ref:$type: $e');
-          complete = false;
-          return null;
-        }
-      }),
-    );
+          ),
+        );
+      } catch (e) {
+        debugPrint('[operationTitle] suggestOperationTitle answered badly for ref:${refs[i]['type']}: $e');
+        complete = false;
+      }
+    }
 
-    return RefTitleSuggestions(suggestions: results.whereType<OperationTitleSuggestion>().toList(), complete: complete);
+    return RefTitleSuggestions(suggestions: suggestions, complete: complete);
   }
 }
 

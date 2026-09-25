@@ -244,7 +244,7 @@ Future<void> importAdifFile(BuildContext context, {required HaLoServices service
     // progress item running forever with no result.
     try {
       if (decision.addActivation && plan.hoistedOperationRefs.isNotEmpty) {
-        await _addActivationToOperation(services, operation, plan.hoistedOperationRefs);
+        await addActivationToOperation(services, operation, plan.hoistedOperationRefs);
       }
     } catch (e, stack) {
       ErrorReportingService.report(e, stack, context: 'adifImport:activation');
@@ -300,17 +300,17 @@ void _reportFailure(HaLoServices services, String where, Object error, StackTrac
 /// dialog: `saveData` writes the whole `data` column, so a stale snapshot
 /// would silently revert a sync round or an edit in another pane that landed
 /// while the operator was deciding.
-Future<void> _addActivationToOperation(HaLoServices services, Operation operation, List<Map<String, dynamic>> refs) async {
+@visibleForTesting
+Future<void> addActivationToOperation(HaLoServices services, Operation operation, List<Map<String, dynamic>> refs) async {
   final current = await services.operations.get(operation.uuid);
   if (current == null) return;
 
   final existing = current.refs;
   final have = {for (final ref in existing) '${ref['type']}|${ref['ref']}'};
-  final added = <Map<String, dynamic>>[];
-  for (final ref in refs) {
-    if (have.contains('${ref['type']}|${ref['ref']}')) continue;
-    added.add(await services.extensions.decorateRef(ref));
-  }
+  final added = await services.extensions.decorateRefs([
+    for (final ref in refs)
+      if (!have.contains('${ref['type']}|${ref['ref']}')) ref,
+  ]);
   if (added.isEmpty) return;
 
   final withRefs = Operation(

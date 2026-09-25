@@ -5,13 +5,15 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 /// An [ExtensionHost] that answers hook calls from a map instead of a JS
-/// runtime. Keys are `'category:key:method'` for [invokeHook] and
-/// `'category:*:method'` for [invokeHookAll]; a missing key answers null
-/// (or an empty list). A value that is a [Function] is called with the
-/// hook's `args`; a value that is an [Exception] is thrown, which is how a
-/// test stands in for a hook that fails.
+/// runtime. Keys are `'category:key:method'` for [invokeHook] — and for each
+/// call of an [invokeHookBatch] — and `'category:*:method'` for
+/// [invokeHookAll]; a missing key answers null (or an empty list) — except in a
+/// batch, where it answers as the runtime answers a call nothing registers. A value
+/// that is a [Function] is called with the hook's `args`; a value that is an
+/// [Exception] is thrown, which is how a test stands in for a hook that fails
+/// (in a batch, that call's `ok: false` entry, as the runtime answers it).
 ///
-/// Anything beyond the two hook calls throws [NoSuchMethodError] on purpose:
+/// Anything beyond the three hook calls throws [NoSuchMethodError] on purpose:
 /// a test that reaches the KV store or the log stream through this fake is
 /// testing something the fake cannot vouch for.
 class FakeExtensionHost implements ExtensionHost {
@@ -57,6 +59,35 @@ class FakeExtensionHost implements ExtensionHost {
     if (res is Function) res = res(args);
     if (res == null) return const [];
     return (res as List).cast<Map<String, dynamic>>();
+  }
+
+  /// Every batch the service sent, so a test can count crossings. An empty
+  /// batch is not one: the real host answers it without crossing.
+  final List<List<HookCall>> batches = [];
+
+  /// The calls run together, as the runtime runs them — a stub holding one
+  /// call up must not hold up the rest.
+  @override
+  Future<List<Map<String, dynamic>>> invokeHookBatch(
+    List<HookCall> calls, {
+    Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
+  }) async {
+    if (calls.isEmpty) return const [];
+    batches.add(calls);
+    return Future.wait([
+      for (final (i, call) in calls.indexed)
+        // Unstubbed, a batched call answers as the runtime answers a call
+        // nothing registers — not the null a bare [invokeHook] falls back to,
+        // which would read as a program that answered.
+        if (!stubs.containsKey('${call.category}:${call.key}:${call.method}'))
+          Future.value(<String, dynamic>{'key': '$i', 'ok': false, 'error': 'no hook registered for ${call.category}/${call.key ?? '*'}', 'noHandler': true})
+        else
+          invokeHook(call.category, key: call.key, method: call.method, args: call.args).then(
+            (value) => <String, dynamic>{'key': '$i', 'ok': true, 'value': value},
+            onError: (Object e) => <String, dynamic>{'key': '$i', 'ok': false, 'error': '$e'},
+          ),
+    ]);
   }
 
   @override

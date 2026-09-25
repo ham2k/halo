@@ -40,7 +40,11 @@ List<Map<String, dynamic>> mergeActivitySuggestions(List<Map<String, dynamic>> e
   for (final entry in entries) {
     if (entry['ok'] != true || entry['value'] is! List) continue;
     final band = preferredKeys.contains(entry['key']) ? preferred : others;
-    band.addAll((entry['value'] as List).cast<Map<dynamic, dynamic>>().map((s) => s.cast<String, dynamic>()));
+    // Per element, not `.cast<Map>()`: that cast is lazy, so one extension's
+    // malformed item would throw here and take every extension's results with it.
+    for (final suggestion in entry['value'] as List) {
+      if (suggestion is Map) band.add(suggestion.cast<String, dynamic>());
+    }
   }
   return [...rankActivitySuggestions(preferred), ...rankActivitySuggestions(others)];
 }
@@ -81,8 +85,8 @@ List<Map<String, dynamic>> rankActivitySuggestions(List<Map<String, dynamic>> su
       // A located suggestion always outranks one with no location at all.
       return ka != null ? -1 : 1;
     } else {
-      final ra = (a.suggestion['relevance'] as num?) ?? 0;
-      final rb = (b.suggestion['relevance'] as num?) ?? 0;
+      final ra = _numberAt(a.suggestion, 'relevance') ?? 0;
+      final rb = _numberAt(b.suggestion, 'relevance') ?? 0;
       final byRelevance = rb.compareTo(ra);
       if (byRelevance != 0) return byRelevance;
     }
@@ -94,10 +98,19 @@ List<Map<String, dynamic>> rankActivitySuggestions(List<Map<String, dynamic>> su
 
 /// The first band's sort key, or null when this suggestion has no distance.
 double? _distanceKey(Map<String, dynamic> suggestion) {
-  final distance = suggestion['distance'] as num?;
+  final distance = _numberAt(suggestion, 'distance');
   if (distance == null) return null;
-  final relevance = suggestion['relevance'] as num?;
+  final relevance = _numberAt(suggestion, 'relevance');
   // A missing or non-positive relevance is the absence of a signal, not a
   // demotion — distance alone still orders it.
   return relevance != null && relevance > 0 ? distance / relevance : distance.toDouble();
+}
+
+/// [field] of an extension's suggestion as a number, or null for anything
+/// else. Read, not cast: a cast throws from inside the sort's comparator, and
+/// every extension's results are sorted together — one `distance: '3 km'`
+/// would cost them all.
+num? _numberAt(Map<String, dynamic> suggestion, String field) {
+  final value = suggestion[field];
+  return value is num ? value : null;
 }
