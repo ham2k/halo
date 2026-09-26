@@ -9,10 +9,11 @@
 // projection logic, so the two can't drift apart.
 //
 // Exposes `window.poloMapGl.create(container, style, styleDark, initialDark,
-// onEvent, notifyClicks)` returning a handle with `setMarkersJson`,
+// onEvent, notifyClicks, frame)` returning a handle with `setMarkersJson`,
 // `setLinesJson`, `setShapesJson`, `patchMarkersJson`, `patchLinesJson`,
-// `setProjection`, `moveTo`, `reload`/`cancelReload` (the host's word that
-// the app is back online, or offline again), and `remove`. Data crosses as JSON strings —
+// `setProjection`, `moveTo`, `camera`, `snapshot`, `reload`/`cancelReload`
+// (the host's word that the app is back online, or offline again), and
+// `remove`. Data crosses as JSON strings —
 // both callers already have the payload serialized, and strings keep the
 // interop layer trivial on each side. A patch (`{upsert, removeIds}`, see
 // `mapLinesPatchPayload`) is what a caller sends when a few of thousands of
@@ -24,6 +25,14 @@
 // popup: a marker click reports through `onEvent('marker-click', id)`
 // rather than opening `showPopup`. The QSO map never sets it, so its popup
 // behavior is unchanged.
+//
+// `frame` (default null) makes a picture rather than a map to explore — the
+// Operation Postcard's (see MapFrame). The map is laid out at the frame's own
+// logical size whatever the container's, and CSS-scaled to fit it, so the
+// labels and the extent are the picture's and not the preview's: `snapshot`
+// then renders that same layout at a higher pixel ratio. It holds the
+// frame's camera — no gestures, no fit to the markers — and draws no
+// attribution control, which the host lays over the picture itself.
 //
 // `onEvent(kind, message)` is the host's error channel: every failure this
 // script can observe goes through it, so each backend can route into
@@ -43,9 +52,11 @@
 import 'dart:math';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../../services/settings_service.dart' show MapStyle;
+import 'map_zoom_controller.dart' show mapSnapshotRemovedMessage, mapSnapshotTimeoutMessage, mapSnapshotTimeoutMs;
 
 /// MapLibre GL JS itself — needs no access token, unlike the commercial GL
 /// libraries — vendored under `app/assets/maplibre/` rather than fetched from
@@ -114,6 +125,12 @@ String mapLibreStyleUrl(MapStyle style) => switch (style) {
   MapStyle.darkMatter => mapDefaultStyleUrlDark,
 };
 
+/// The light and dark style URLs the GL backends are handed for [style]. A
+/// pinned style fills both slots with itself, so the light/dark machinery in
+/// the backends never has a reason to swap it.
+({String light, String dark}) mapLibreStyleUrls(MapStyle style) =>
+    style == MapStyle.automatic ? (light: mapDefaultStyleUrl, dark: mapDefaultStyleUrlDark) : (light: mapLibreStyleUrl(style), dark: mapLibreStyleUrl(style));
+
 /// Whether the basemap actually on screen is dark-toned. Marker fills,
 /// strokes and great-circle lines contrast against the TILES, not against
 /// the app's chrome, so a pinned style carries its own tone whatever the
@@ -135,33 +152,116 @@ bool mapStyleIsDark(MapStyle style, {required bool appIsDark}) => switch (style)
 /// expose it. A fixed seed keeps the scatter stable across rebuilds instead
 /// of jumping every time a map is created.
 String mapLibreSpaceBackgroundCss() {
+  final stars = _spaceStars()
+      .map(
+        (s) =>
+            'radial-gradient(${s.size.toStringAsFixed(2)}px ${s.size.toStringAsFixed(2)}px at ${s.x.toStringAsFixed(2)}% '
+            '${s.y.toStringAsFixed(2)}%, rgba(255, 255, 255, ${s.opacity.toStringAsFixed(2)}), transparent)',
+      )
+      .join(', ');
+  return '$stars, linear-gradient(180deg, #0b0f1a 0%, #0d1526 100%)';
+}
+
+// The CSS gradient's two ends, for [paintMapSpaceBackground].
+const _spaceTop = Color(0xFF0B0F1A);
+const _spaceBottom = Color(0xFF0D1526);
+
+/// Positions in percent of the backdrop, sizes in logical pixels.
+List<({double x, double y, double size, double opacity})> _spaceStars() {
   final random = Random(1);
-  final stars = List.generate(80, (_) {
+  return List.generate(80, (_) {
     final x = random.nextDouble() * 100;
     final y = random.nextDouble() * 100;
     final size = 0.5 + random.nextDouble() * 1.2;
     final opacity = 0.3 + random.nextDouble() * 0.6;
-    return 'radial-gradient(${size.toStringAsFixed(2)}px ${size.toStringAsFixed(2)}px at ${x.toStringAsFixed(2)}% '
-        '${y.toStringAsFixed(2)}%, rgba(255, 255, 255, ${opacity.toStringAsFixed(2)}), transparent)';
-  }).join(', ');
-  return '$stars, linear-gradient(180deg, #0b0f1a 0%, #0d1526 100%)';
+    return (x: x, y: y, size: size, opacity: opacity);
+  });
+}
+
+/// [mapLibreSpaceBackgroundCss] painted onto a canvas [size] physical pixels
+/// big, at [pixelRatio] physical pixels per logical one — what a snapshot of
+/// a framed map is laid over, since the canvas it comes from is transparent
+/// wherever the globe leaves space showing and the CSS backdrop is not in it.
+void paintMapSpaceBackground(Canvas canvas, Size size, {required double pixelRatio}) {
+  final rect = Offset.zero & size;
+  canvas.drawRect(
+    rect,
+    Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_spaceTop, _spaceBottom]).createShader(rect),
+  );
+  for (final star in _spaceStars()) {
+    final center = Offset(star.x / 100 * size.width, star.y / 100 * size.height);
+    final radius = star.size * pixelRatio;
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFFFFFFFF).withValues(alpha: star.opacity),
+            const Color(0x00FFFFFF),
+          ],
+        ).createShader(Rect.fromCircle(center: center, radius: radius)),
+    );
+  }
+}
+
+/// The credit a picture of the map owes for the style at [styleUrl] — what
+/// the GL library's own attribution control would show, which a framed map
+/// does not draw (see `frame` in [mapGlScript]). Every style
+/// [mapLibreStyleUrl] can name is OpenStreetMap data served by one of two
+/// providers.
+String mapGlAttribution(String styleUrl) {
+  if (Uri.tryParse(styleUrl)?.host.endsWith('cartocdn.com') ?? false) return '© CARTO © OpenStreetMap contributors';
+  return '© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors';
 }
 
 /// JS that defines `window.poloMapGl`. Requires maplibre-gl.js (v5.x) to be
 /// loaded first. Idempotent — safe to inject more than once.
-const mapGlScript = '''
+const mapGlScript =
+    '''
 window.poloMapGl = window.poloMapGl || {
-  create: function (container, style, styleDark, initialDark, onEvent, notifyClicks) {
+  create: function (container, style, styleDark, initialDark, onEvent, notifyClicks, frame) {
+    // A framed map lives in a fixed-size element of its own, scaled to the
+    // container by fitFrame below. MapLibre sizes its canvas from
+    // clientWidth/clientHeight, which a CSS transform leaves alone.
+    let host = container;
+    if (frame) {
+      host = document.createElement('div');
+      host.style.position = 'absolute';
+      host.style.left = '0';
+      host.style.top = '0';
+      host.style.width = frame.width + 'px';
+      host.style.height = frame.height + 'px';
+      host.style.transformOrigin = '0 0';
+      // The backdrop scales with the picture, as the snapshot's does (see
+      // paintMapSpaceBackground).
+      if (frame.background) host.style.background = frame.background;
+      container.style.position = 'relative';
+      container.style.overflow = 'hidden';
+      container.appendChild(host);
+    }
     const options = {
-      container: container,
+      container: host,
       // Picking the right style up front avoids setDark() having to swap
       // styles again the moment the map opens in dark mode, which would
       // race the very first setMarkers/setLines call against the reload it
       // triggers.
       style: initialDark ? styleDark : style,
-      center: [0, 0],
-      zoom: 1,
+      center: frame ? [frame.longitude, frame.latitude] : [0, 0],
+      zoom: frame ? frame.zoom : 1,
     };
+    if (frame) {
+      options.bearing = frame.bearing || 0;
+      options.pitch = frame.pitch || 0;
+      options.interactive = false;
+      options.attributionControl = false;
+      // Labels drawn at full strength on the first frame they appear in,
+      // rather than fading in over the frames a snapshot could land on.
+      options.fadeDuration = 0;
+      // A snapshot reads the canvas after the frame it asked for; without
+      // this the browser is free to have cleared it by then.
+      options.canvasContextAttributes = { preserveDrawingBuffer: true };
+    }
     const map = new maplibregl.Map(options);
 
     // MapLibre's globe has no style-level fog property ('space-color'/
@@ -504,6 +604,7 @@ window.poloMapGl = window.poloMapGl || {
         .setLngLat([m.longitude, m.latitude])
         .setDOMContent(root)
         .addTo(map);
+      popup.markerId = m.id;
     }
 
     function lineLayer(id, highlight, width) {
@@ -812,7 +913,9 @@ window.poloMapGl = window.poloMapGl || {
       map.getSource('polo-markers').setData({ type: 'FeatureCollection', features: features });
       map.getSource('polo-marker-icons').setData({ type: 'FeatureCollection', features: iconFeatures });
       const sig = baseSig.join(',');
-      if (sig !== lastBaseSig && !baseBounds.isEmpty()) {
+      // A framed map keeps the camera it was given: it is the operator's
+      // framing, taken from the map they were looking at.
+      if (!frame && sig !== lastBaseSig && !baseBounds.isEmpty()) {
         lastBaseSig = sig;
         map.fitBounds(baseBounds, { padding: 48, maxZoom: 11, duration: 0 });
       }
@@ -871,8 +974,81 @@ window.poloMapGl = window.poloMapGl || {
     // The GL library only watches window resizes on its own; when the
     // container is an embedded platform view (Flutter web) it starts out
     // unsized and resizes with the layout, so track it directly.
-    const resizeObserver = new ResizeObserver(function () { map.resize(); });
+    // A framed map never resizes: the container changing size only rescales
+    // the picture of it.
+    function fitFrame() {
+      const scale = Math.min(container.clientWidth / frame.width, container.clientHeight / frame.height);
+      if (scale > 0) host.style.transform = 'scale(' + scale + ')';
+    }
+    const resizeObserver = new ResizeObserver(frame ? fitFrame : function () { map.resize(); });
     resizeObserver.observe(container);
+    if (frame) fitFrame();
+
+    // Long enough for a slow link to deliver a screen of tiles at the
+    // snapshot's pixel ratio; past it, the host is told rather than left
+    // waiting on a map that will never settle (offline, a dead tile server).
+    const SNAPSHOT_TIMEOUT_MS = $mapSnapshotTimeoutMs;
+
+    // The snapshots waiting to read the canvas, each by its finish, and
+    // whether the map has been taken down under them — which settles every
+    // one at once rather than leaving the host to wait out its timeout.
+    const pendingSnapshots = new Set();
+    let mapRemoved = false;
+
+    // The map as a PNG data URL, re-rendered at [pixelRatio] — the same
+    // layout, labels and extent, only more pixels. Waits for 'idle' (every
+    // tile in, nothing animating) and then for a frame drawn after it, since
+    // a payload still queued behind the style would otherwise be missing
+    // from the picture. The ratio goes back to the device's afterwards,
+    // success or not: nothing else in this script overrides it.
+    function takeSnapshot(pixelRatio) {
+      if (mapRemoved) return Promise.reject(new Error('$mapSnapshotRemovedMessage'));
+      return new Promise(function (resolve, reject) {
+        let done = false;
+        const timer = setTimeout(function () {
+          finish(null, new Error('$mapSnapshotTimeoutMessage within ' + (SNAPSHOT_TIMEOUT_MS / 1000) + 's'));
+        }, SNAPSHOT_TIMEOUT_MS);
+        function finish(data, err) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          pendingSnapshots.delete(finish);
+          // Settled before the ratio goes back: a reset that throws must not
+          // leave the host waiting on a promise nothing will settle.
+          if (err) { reject(err); } else { resolve(data); }
+          if (!mapRemoved) map.setPixelRatio(null);
+        }
+        pendingSnapshots.add(finish);
+        function whenSettled() {
+          if (done) return;
+          // `loaded()` as well as the queue: a flush that ran in this same
+          // 'idle' has handed its data to a source that is still parsing it,
+          // and the frame after would be drawn without it.
+          if (flushQueued || styleSwapInFlight || !map.loaded()) {
+            map.once('idle', whenSettled);
+            map.triggerRepaint();
+            return;
+          }
+          map.once('render', function () {
+            try { finish(map.getCanvas().toDataURL('image/png')); } catch (err) { finish(null, err); }
+          });
+          map.triggerRepaint();
+        }
+        map.setPixelRatio(pixelRatio);
+        map.once('idle', whenSettled);
+        map.triggerRepaint();
+      });
+    }
+
+    // One at a time: each resets the pixel ratio when it is done, which
+    // resizes the canvas — and clears it — under any other still waiting to
+    // read it.
+    let snapshotChain = Promise.resolve();
+    function snapshot(pixelRatio) {
+      const next = snapshotChain.then(function () { return takeSnapshot(pixelRatio); });
+      snapshotChain = next.catch(function () {});
+      return next;
+    }
 
     // The only signal the GL library gives for "why is the map blank" (a
     // style that won't load, a failed tile). JSON.stringify of an event with
@@ -922,11 +1098,27 @@ window.poloMapGl = window.poloMapGl || {
       // races the fit-to-markers in setMarkers.
       moveTo: function (lat, lon, zoom) { map.easeTo({ center: [lon, lat], zoom: zoom, duration: 500 }); },
       zoomOut: function () { map.zoomOut(); },
+      // Where the map is looking and through how big a window, for a
+      // MapFrame to hold.
+      camera: function () {
+        const center = map.getCenter();
+        const box = map.getContainer();
+        return {
+          latitude: center.lat, longitude: center.lng, zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch(),
+          width: box.clientWidth, height: box.clientHeight,
+          // The marker whose popup is open — a page element over the canvas,
+          // which a picture of the map has to draw for itself.
+          popup: popup && popup.isOpen() ? popup.markerId : null,
+        };
+      },
+      snapshot: snapshot,
       setDark: setDark,
       updateStyles: updateStyles,
       reload: reload,
       cancelReload: cancelReload,
       remove: function () {
+        mapRemoved = true;
+        Array.from(pendingSnapshots).forEach(function (finish) { finish(null, new Error('$mapSnapshotRemovedMessage')); });
         resizeObserver.disconnect();
         window.removeEventListener('online', reload);
         window.removeEventListener('offline', cancelReload);

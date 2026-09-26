@@ -379,6 +379,7 @@ class _Translations$map$es extends Translations$map$en {
 	@override String get globe => 'Globo';
 	@override String get zoomIn => 'Acercar';
 	@override String get zoomOut => 'Alejar';
+	@override late final _Translations$map$postcard$es postcard = _Translations$map$postcard$es._(_root);
 }
 
 // Path: activitiesView
@@ -1521,6 +1522,33 @@ class _Translations$operation$import$es extends Translations$operation$import$en
 	@override String gapDialogBody({required Object count}) => 'Se capturaron ${count} QSOs más antes, previos a un hueco en los datos. ¿Incluirlos también?';
 	@override String get gapDialogRecentOnly => 'Solo los recientes';
 	@override String gapDialogIncludeAll({required Object count}) => 'Incluir los ${count}';
+}
+
+// Path: map.postcard
+class _Translations$map$postcard$es extends Translations$map$postcard$en {
+	_Translations$map$postcard$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get button => 'Postal de la operación';
+	@override String title({required Object title}) => 'Postal de ${title}';
+	@override String get portrait => 'Vertical';
+	@override String get landscape => 'Horizontal';
+	@override String get square => 'Cuadrada';
+	@override String get save => 'Guardar';
+	@override String get download => 'Descargar';
+	@override String get share => 'Compartir';
+	@override String get copy => 'Copiar';
+	@override String get copied => 'Copiada al portapapeles';
+	@override String saved({required Object path}) => 'Guardada en ${path}';
+	@override String downloaded({required Object name}) => 'Se descargó ${name}';
+	@override String failed({required Object error}) => 'No se pudo crear la postal: ${error}';
+	@override String get mapNotReady => 'El mapa no terminó de cargar. Revisa la conexión y vuelve a intentarlo.';
+	@override String saveFailed({required Object error}) => 'No se pudo guardar la postal: ${error}';
+	@override String get copyFailed => 'El portapapeles no aceptó la imagen. Vuelve a intentarlo.';
+	@override String get shareFailed => 'No se pudo compartir la postal. Vuelve a intentarlo.';
+	@override String get fileName => 'postal';
 }
 
 // Path: loggingControls.info
@@ -3865,6 +3893,24 @@ extension on TranslationsEs {
 			'map.globe' => 'Globo',
 			'map.zoomIn' => 'Acercar',
 			'map.zoomOut' => 'Alejar',
+			'map.postcard.button' => 'Postal de la operación',
+			'map.postcard.title' => ({required Object title}) => 'Postal de ${title}',
+			'map.postcard.portrait' => 'Vertical',
+			'map.postcard.landscape' => 'Horizontal',
+			'map.postcard.square' => 'Cuadrada',
+			'map.postcard.save' => 'Guardar',
+			'map.postcard.download' => 'Descargar',
+			'map.postcard.share' => 'Compartir',
+			'map.postcard.copy' => 'Copiar',
+			'map.postcard.copied' => 'Copiada al portapapeles',
+			'map.postcard.saved' => ({required Object path}) => 'Guardada en ${path}',
+			'map.postcard.downloaded' => ({required Object name}) => 'Se descargó ${name}',
+			'map.postcard.failed' => ({required Object error}) => 'No se pudo crear la postal: ${error}',
+			'map.postcard.mapNotReady' => 'El mapa no terminó de cargar. Revisa la conexión y vuelve a intentarlo.',
+			'map.postcard.saveFailed' => ({required Object error}) => 'No se pudo guardar la postal: ${error}',
+			'map.postcard.copyFailed' => 'El portapapeles no aceptó la imagen. Vuelve a intentarlo.',
+			'map.postcard.shareFailed' => 'No se pudo compartir la postal. Vuelve a intentarlo.',
+			'map.postcard.fileName' => 'postal',
 			'activitiesView.title' => 'Actividades',
 			'activitiesView.activitiesCountZero' => 'Sin actividades seleccionadas',
 			'activitiesView.activitiesCountOne' => '1 actividad',
@@ -4296,6 +4342,8 @@ extension on TranslationsEs {
 			'settings.radio.zeroBeatRange.title' => 'Batido cero: margen de separación',
 			'settings.radio.zeroBeatRange.description' => 'A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez.',
 			'settings.help.title' => 'Ayuda y Recursos',
+			_ => null,
+		} ?? switch (path) {
 			'settings.help.description' => 'Comunidad y soporte',
 			'settings.help.forums' => 'Foros de Ham2K',
 			'settings.help.forumsDescription' => 'Encuentra ayuda, danos tu opinión, comparte ideas…',
@@ -4314,8 +4362,6 @@ extension on TranslationsEs {
 			'settings.map.style.title' => 'Estilo del Mapa',
 			'settings.map.styleOpts.automatic' => 'Automático',
 			'settings.map.styleOpts.liberty' => 'Liberty',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
@@ -4810,6 +4856,8 @@ extension on TranslationsEs {
 			'settings.developer.appVersion' => 'Versión de la app',
 			'settings.developer.dataFolder' => 'Carpeta de datos',
 			'settings.developer.loading' => '(cargando…)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.panelLoadFailed' => 'No se pudo cargar este panel de configuración.',
 			'settings.developer.extDevServer' => 'Servidor de desarrollo de extensiones',
 			'settings.developer.extDevServerDescription' => 'Carga extensiones desde un servidor de desarrollo en tu red en lugar de las incluidas en la app, y las recarga al guardar.',
@@ -4828,8 +4876,6 @@ extension on TranslationsEs {
 			'settings.developer.catalogDescription' => 'Leer el catálogo desde otro servidor — uno local mientras se trabaja en el catálogo mismo. Vacío significa catalog.ham2k.net.',
 			'settings.developer.catalogAddress' => 'Dirección del catálogo',
 			'settings.developer.catalogHint' => 'http://localhost:8787',
-			_ => null,
-		} ?? switch (path) {
 			'settings.about.notices' => 'Avisos y mensajes',
 			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
 			'settings.about.releaseNotes' => 'Notas de la versión',

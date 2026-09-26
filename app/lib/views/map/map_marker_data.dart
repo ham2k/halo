@@ -146,6 +146,25 @@ class MapMarkerData {
     this.glyph,
   });
 
+  /// This marker with another ring — for a map of the same contacts over a
+  /// basemap of the other tone (see [strokeColor]).
+  MapMarkerData withStrokeColor(Color strokeColor) => MapMarkerData(
+    id: id,
+    latitude: latitude,
+    longitude: longitude,
+    label: label,
+    kind: kind,
+    color: color,
+    strokeColor: strokeColor,
+    sizeFactor: sizeFactor,
+    popupTitle: popupTitle,
+    popupDetailPrefix: popupDetailPrefix,
+    popupBand: popupBand,
+    popupDetailSuffix: popupDetailSuffix,
+    highlight: highlight,
+    glyph: glyph,
+  );
+
   /// Value equality so `didUpdateWidget`/`listEquals` checks can tell a
   /// same-content rebuild from an actual data change, rather than always
   /// seeing a "different" list because the facade rebuilds a fresh one.

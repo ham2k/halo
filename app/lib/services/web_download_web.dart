@@ -3,6 +3,8 @@
 
 import 'dart:async';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
@@ -12,8 +14,14 @@ import 'package:web/web.dart' as web;
 /// fallback uses): a full season's ADIF runs to megabytes, and browsers cap
 /// `data:` navigations well below that — the download would simply not
 /// happen, with no error to report.
-void downloadFile({required String filename, required String content, String? mimeType}) {
-  final blob = web.Blob(<JSAny>[content.toJS].toJS, web.BlobPropertyBag(type: mimeType ?? 'application/octet-stream'));
+void downloadFile({required String filename, required String content, String? mimeType}) =>
+    _download(filename, web.Blob(<JSAny>[content.toJS].toJS, web.BlobPropertyBag(type: mimeType ?? 'application/octet-stream')));
+
+/// [downloadFile] for binary content — an image, where [downloadFile] takes text.
+void downloadBytes({required String filename, required Uint8List bytes, required String mimeType}) =>
+    _download(filename, web.Blob(<JSAny>[bytes.toJS].toJS, web.BlobPropertyBag(type: mimeType)));
+
+void _download(String filename, web.Blob blob) {
   final url = web.URL.createObjectURL(blob);
 
   final anchor = web.document.createElement('a') as web.HTMLAnchorElement
@@ -29,4 +37,13 @@ void downloadFile({required String filename, required String content, String? mi
   // before it has been read, and the read happens after this turn of the
   // event loop.
   Timer(const Duration(minutes: 1), () => web.URL.revokeObjectURL(url));
+}
+
+/// Whether the browser's share sheet takes a PNG file. Firefox on the desktop
+/// has no `canShare` at all, and a browser that has one may still refuse files.
+bool browserCanShareImages() {
+  final navigator = web.window.navigator;
+  if (!navigator.has('canShare')) return false;
+  final probe = web.File(<JSAny>[].toJS, 'probe.png', web.FilePropertyBag(type: 'image/png'));
+  return navigator.canShare(web.ShareData(files: <web.File>[probe].toJS));
 }

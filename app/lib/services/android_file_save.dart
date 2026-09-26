@@ -24,4 +24,8 @@ class AndroidFileSave {
   /// since it renames around a collision — or null if the operator cancelled.
   Future<String?> saveFile({required String filename, required String content}) =>
       _channel.invokeMethod<String>('saveFile', {'filename': filename, 'content': content});
+
+  /// [saveFile] for binary content — an image, where [saveFile] takes text.
+  Future<String?> saveBytes({required String filename, required Uint8List bytes}) =>
+      _channel.invokeMethod<String>('saveFile', {'filename': filename, 'bytes': bytes});
 }

@@ -4,7 +4,9 @@
 
 #include <flutter/standard_method_codec.h>
 
+#include <cstring>
 #include <optional>
+#include <vector>
 
 #include "flutter/generated_plugin_registrant.h"
 
@@ -32,6 +34,7 @@ bool FlutterWindow::OnCreate() {
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
   SetUpWindowChromeChannel();
   SetUpOpenFileChannel();
+  SetUpImageClipboardChannel();
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -143,11 +146,131 @@ void FlutterWindow::OnDestroy() {
     window_chrome_channel_->SetMethodCallHandler(nullptr);
     window_chrome_channel_ = nullptr;
   }
+  if (image_clipboard_channel_) {
+    image_clipboard_channel_->SetMethodCallHandler(nullptr);
+    image_clipboard_channel_ = nullptr;
+  }
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
 
   Win32Window::OnDestroy();
+}
+
+namespace {
+
+// The clipboard takes ownership of a handle only when SetClipboardData
+// succeeds; every other path frees it here.
+bool PutOnClipboard(UINT format, HGLOBAL handle) {
+  if (!handle) return false;
+  if (SetClipboardData(format, handle)) return true;
+  GlobalFree(handle);
+  return false;
+}
+
+HGLOBAL GlobalCopy(const std::vector<uint8_t>& data) {
+  HGLOBAL handle = GlobalAlloc(GMEM_MOVEABLE, data.size());
+  if (!handle) return nullptr;
+  void* target = GlobalLock(handle);
+  if (!target) {
+    GlobalFree(handle);
+    return nullptr;
+  }
+  memcpy(target, data.data(), data.size());
+  GlobalUnlock(handle);
+  return handle;
+}
+
+// A bottom-up 32-bit CF_DIB from straight RGBA rows, top row first. Bottom-up
+// (a positive height) because that is the layout every reader of the format
+// handles; a top-down DIB pastes upside down in some.
+HGLOBAL DibFromRgba(const std::vector<uint8_t>& rgba, int width, int height) {
+  if (width <= 0 || height <= 0) return nullptr;
+  const size_t row = static_cast<size_t>(width) * 4;
+  if (rgba.size() < row * height) return nullptr;
+  HGLOBAL handle = GlobalAlloc(GMEM_MOVEABLE, sizeof(BITMAPINFOHEADER) + row * height);
+  if (!handle) return nullptr;
+  auto* bytes = static_cast<uint8_t*>(GlobalLock(handle));
+  if (!bytes) {
+    GlobalFree(handle);
+    return nullptr;
+  }
+  BITMAPINFOHEADER header = {};
+  header.biSize = sizeof(BITMAPINFOHEADER);
+  header.biWidth = width;
+  header.biHeight = height;
+  header.biPlanes = 1;
+  header.biBitCount = 32;
+  header.biCompression = BI_RGB;
+  header.biSizeImage = static_cast<DWORD>(row * height);
+  memcpy(bytes, &header, sizeof(header));
+  uint8_t* pixels = bytes + sizeof(header);
+  for (int y = 0; y < height; y++) {
+    const uint8_t* source = rgba.data() + row * (height - 1 - y);
+    uint8_t* target = pixels + row * y;
+    for (int x = 0; x < width; x++) {
+      target[x * 4 + 0] = source[x * 4 + 2];
+      target[x * 4 + 1] = source[x * 4 + 1];
+      target[x * 4 + 2] = source[x * 4 + 0];
+      target[x * 4 + 3] = source[x * 4 + 3];
+    }
+  }
+  GlobalUnlock(handle);
+  return handle;
+}
+
+const flutter::EncodableValue* ArgumentNamed(const flutter::EncodableMap& args, const char* name) {
+  auto it = args.find(flutter::EncodableValue(name));
+  return it == args.end() ? nullptr : &it->second;
+}
+
+}  // namespace
+
+void FlutterWindow::SetUpImageClipboardChannel() {
+  // Two formats: "PNG", which is what browsers, Office and chat apps paste,
+  // and CF_DIB for everything older — built from the raw pixels the Dart
+  // side sends alongside, since decoding the PNG here would take WIC for no
+  // gain.
+  image_clipboard_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "ham2k/image_clipboard",
+          &flutter::StandardMethodCodec::GetInstance());
+  image_clipboard_channel_->SetMethodCallHandler([this](const auto& call,
+                                                        auto result) {
+    if (call.method_name() != "copyImage") {
+      result->NotImplemented();
+      return;
+    }
+    const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
+    const std::vector<uint8_t>* png = nullptr;
+    const std::vector<uint8_t>* rgba = nullptr;
+    int width = 0;
+    int height = 0;
+    if (args) {
+      if (const auto* value = ArgumentNamed(*args, "png")) png = std::get_if<std::vector<uint8_t>>(value);
+      if (const auto* value = ArgumentNamed(*args, "rgba")) rgba = std::get_if<std::vector<uint8_t>>(value);
+      if (const auto* value = ArgumentNamed(*args, "width")) width = static_cast<int>(value->LongValue());
+      if (const auto* value = ArgumentNamed(*args, "height")) height = static_cast<int>(value->LongValue());
+    }
+    if (!png || !rgba) {
+      result->Error("bad_args", "Expected png and rgba bytes");
+      return;
+    }
+    if (!OpenClipboard(GetHandle())) {
+      result->Error("copy_failed", "The clipboard is in use by another application");
+      return;
+    }
+    EmptyClipboard();
+    const UINT png_format = RegisterClipboardFormat(L"PNG");
+    const bool png_ok = png_format != 0 && PutOnClipboard(png_format, GlobalCopy(*png));
+    const bool dib_ok = PutOnClipboard(CF_DIB, DibFromRgba(*rgba, width, height));
+    CloseClipboard();
+    if (png_ok || dib_ok) {
+      result->Success();
+    } else {
+      result->Error("copy_failed", "The clipboard refused the image");
+    }
+  });
 }
 
 void FlutterWindow::SetUpOpenFileChannel() {

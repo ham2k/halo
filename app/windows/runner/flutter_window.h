@@ -45,8 +45,14 @@ class FlutterWindow : public Win32Window {
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       open_file_channel_;
 
+  // The `ham2k/image_clipboard` channel: an image on the clipboard
+  // (image_clipboard_io.dart), which Flutter's own Clipboard cannot do.
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      image_clipboard_channel_;
+
   void SetUpWindowChromeChannel();
   void SetUpOpenFileChannel();
+  void SetUpImageClipboardChannel();
 
   // Turns a forwarded WM_COPYDATA payload into an `openFiles` call. Returns
   // whether the message was ours.

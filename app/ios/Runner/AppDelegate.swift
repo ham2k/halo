@@ -26,6 +26,10 @@ import UIKit
   // (the `halo` alias family, never `logger`; see deep_link_service.dart).
   private var siblingAppsChannel: FlutterMethodChannel?
 
+  // An image on the clipboard (image_clipboard_io.dart), which Flutter's own
+  // Clipboard cannot do.
+  private var imageClipboardChannel: FlutterMethodChannel?
+
   // Documents opened from Files, a share sheet, or a browser download
   // (HALO-422). `app_links` handles custom URL schemes; an opened document
   // arrives through this delegate method instead, so a registered type
@@ -143,6 +147,23 @@ import UIKit
       default:
         result(FlutterMethodNotImplemented)
       }
+    }
+    imageClipboardChannel = FlutterMethodChannel(
+      name: "ham2k/image_clipboard",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    imageClipboardChannel?.setMethodCallHandler { call, result in
+      guard call.method == "copyImage",
+        let args = call.arguments as? [String: Any],
+        let png = args["png"] as? FlutterStandardTypedData
+      else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      // The PNG as it is, under its own type, rather than through
+      // `UIPasteboard.image`, which re-encodes it.
+      UIPasteboard.general.setData(png.data, forPasteboardType: "public.png")
+      result(nil)
     }
     // Re-query on disconnect rather than pushing `false`: `coalesced`
     // merges every attached keyboard, so one leaving doesn't mean none

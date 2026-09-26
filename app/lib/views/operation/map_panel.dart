@@ -37,6 +37,7 @@ import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
 import '../map/webview_support_probe.dart';
+import 'operation_postcard.dart';
 
 class MapPanel extends StatefulWidget {
   final Operation operation;
@@ -63,6 +64,11 @@ class MapPanel extends StatefulWidget {
   /// primary.
   final List<Map<String, dynamic>> activityControls;
 
+  /// Whether the pane offers the Operation Postcard (operation_postcard.dart)
+  /// under its projection toggle — the Operation View's map, not the Logs
+  /// View's one-contact map.
+  final bool offersPostcard;
+
   const MapPanel({
     super.key,
     required this.operation,
@@ -71,6 +77,7 @@ class MapPanel extends StatefulWidget {
     this.callInfo,
     this.geoshapes,
     this.activityControls = const [],
+    this.offersPostcard = false,
   });
 
   @override
@@ -220,75 +227,32 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       markerIdFor: (ref) => 'ref-${ref['type']}/${ref['ref']}',
     );
 
-    final Widget map;
-    var hasGlobe = true;
-    // A pinned style (see the map style menu on this tab's header button)
-    // uses the same URL for both slots, so the light/dark machinery in the
-    // GL backends just never has a reason to swap it.
-    final pinnedStyle = widget.settings.mapStyle;
-    final glStyleUrl = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrl;
-    final glStyleUrlDark = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrlDark;
-    if (kIsWeb) {
-      // The app already runs in a browser — GL JS mounts directly on a
-      // platform-view div, no webview needed.
-      map = MapboxWebMapView(
-        markers: markers,
-        lines: lines,
-        shapes: shapes,
-        projection: _projection,
-        isDark: isDark,
-        styleUrl: glStyleUrl,
-        styleUrlDark: glStyleUrlDark,
-        zoomController: _zoomController,
-      );
-    } else if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android) {
-      // Nothing until the pane has actually been opened once. macOS/Windows
-      // get here only through `webviewSupported`, which already waits for
-      // that; mobile has no such gate of its own, so without this a Map pane
-      // mounted hidden inside a dock group builds a full webview on launch —
-      // GL script, style, a screen of tiles — for a map nobody has asked to
-      // see.
-      //
-      // `expand`, not `shrink`: the placeholder stands in a pane sized by the
-      // group, and a shrink-wrapping one would resize it.
-      map = paneEverVisible
-          // No zoom controller: mobile zooms by pinch, and the buttons
-          // themselves are hidden there (see hasZoomButtons below).
-          ? MapboxWebviewMapView(
-              markers: markers,
-              lines: lines,
-              shapes: shapes,
-              projection: _projection,
-              isDark: isDark,
-              styleUrl: glStyleUrl,
-              styleUrlDark: glStyleUrlDark,
-            )
-          : const SizedBox.expand();
-    } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) && webviewSupported) {
-      // Named platform by platform, and through `defaultTargetPlatform` rather
-      // than `dart:io`'s `Platform` (which no test can override), so that the
-      // Linux exclusion is a rule a test holds down. Widening this branch to
-      // Linux gives Linux a blank pane, not a map: no webview implementation
-      // is registered there.
-      map = MapboxWebviewMapView(
-        markers: markers,
-        lines: lines,
-        shapes: shapes,
-        projection: _projection,
-        isDark: isDark,
-        styleUrl: glStyleUrl,
-        styleUrlDark: glStyleUrlDark,
-        zoomController: _zoomController,
-      );
-    } else {
-      // Linux, where no webview map exists (no web view implementation is
-      // registered there — see docs/quirks.md), so the OSM backend is the
-      // real Linux map. It has markers/lines/callouts, just no globe
-      // projection. Windows without a usable WebView2 environment lands
-      // here too.
-      hasGlobe = false;
-      map = OsmMapView(markers: markers, lines: lines, shapes: shapes, isDark: isDark, zoomController: _zoomController);
-    }
+    // The style picked in the map style menu on this tab's header button.
+    final styleUrls = mapLibreStyleUrls(widget.settings.mapStyle);
+    final backend = _backend;
+    final hasGlobe = backend != _MapBackend.osm;
+    // Nothing until the pane has actually been opened once. macOS/Windows
+    // get to the webview only through `webviewSupported`, which already waits
+    // for that; mobile has no such gate of its own, so without this a Map
+    // pane mounted hidden inside a dock group builds a full webview on launch
+    // — GL script, style, a screen of tiles — for a map nobody has asked to
+    // see.
+    //
+    // `expand`, not `shrink`: the placeholder stands in a pane sized by the
+    // group, and a shrink-wrapping one would resize it.
+    final map = isMobilePlatform && !paneEverVisible
+        ? const SizedBox.expand()
+        : _backendWidget(
+            backend,
+            markers: markers,
+            lines: lines,
+            shapes: shapes,
+            projection: _projection,
+            isDark: isDark,
+            styleUrl: styleUrls.light,
+            styleUrlDark: styleUrls.dark,
+            zoomController: _zoomController,
+          );
 
     // Mobile already zooms by pinch with no room to spare in the pane; the
     // buttons are for the platforms where a mouse/trackpad is the norm.
@@ -297,16 +261,29 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     return Stack(
       children: [
         Positioned.fill(child: map),
-        if (hasGlobe)
+        if (hasGlobe || widget.offersPostcard)
           Positioned(
             // Clears the device's real top/right insets (notch, camera
             // cutout) so the toggle isn't drawn under them — the map tiles
             // themselves stay edge-to-edge.
             top: 8 + PaneSafeArea.topOf(context),
             right: 8 + PaneSafeArea.rightOf(context),
-            child: _MapProjectionButton(
-              projection: _projection,
-              onPressed: () => setState(() => _projection = _projection == MapProjection.mercator ? MapProjection.globe : MapProjection.mercator),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              spacing: Space.md,
+              children: [
+                if (hasGlobe)
+                  _MapProjectionButton(
+                    projection: _projection,
+                    onPressed: () => setState(() => _projection = _projection == MapProjection.mercator ? MapProjection.globe : MapProjection.mercator),
+                  ),
+                if (widget.offersPostcard)
+                  _MapRoundButton(
+                    icon: MdiIcons.camera,
+                    semanticLabel: context.t.map.postcard.button,
+                    onPressed: () => _openPostcard(backend: backend, shapes: shapes, appIsDark: theme.brightness == Brightness.dark),
+                  ),
+              ],
             ),
           ),
         if (hasZoomButtons)
@@ -316,6 +293,128 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
             child: _MapZoomButtons(controller: _zoomController),
           ),
       ],
+    );
+  }
+
+  /// Which renderer this platform draws the map with.
+  _MapBackend get _backend {
+    // The app already runs in a browser — GL JS mounts directly on a
+    // platform-view div, no webview needed.
+    if (kIsWeb) return _MapBackend.web;
+    // Mobile uses the webview rather than a native map SDK: MapLibre Native
+    // has no globe projection.
+    if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android) return _MapBackend.webview;
+    // Named platform by platform, and through `defaultTargetPlatform` rather
+    // than `dart:io`'s `Platform` (which no test can override), so that the
+    // Linux exclusion is a rule a test holds down. Widening this branch to
+    // Linux gives Linux a blank pane, not a map: no webview implementation
+    // is registered there.
+    if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) && webviewSupported) return _MapBackend.webview;
+    // Linux, where no webview map exists (no web view implementation is
+    // registered there — see docs/quirks.md), so the OSM backend is the
+    // real Linux map. It has markers/lines/callouts, just no globe
+    // projection. Windows without a usable WebView2 environment lands
+    // here too.
+    return _MapBackend.osm;
+  }
+
+  static Widget _backendWidget(
+    _MapBackend backend, {
+    required List<MapMarkerData> markers,
+    required List<MapLineData> lines,
+    required List<MapShapeData> shapes,
+    required MapProjection projection,
+    required bool isDark,
+    required String styleUrl,
+    required String styleUrlDark,
+    required MapZoomController zoomController,
+    MapFrame? frame,
+  }) => switch (backend) {
+    _MapBackend.web => MapboxWebMapView(
+      markers: markers,
+      lines: lines,
+      shapes: shapes,
+      projection: projection,
+      isDark: isDark,
+      styleUrl: styleUrl,
+      styleUrlDark: styleUrlDark,
+      zoomController: zoomController,
+      frame: frame,
+    ),
+    // Mobile is handed the controller too, although it shows no zoom buttons
+    // (see hasZoomButtons): the Operation Postcard reads the camera through it.
+    _MapBackend.webview => MapboxWebviewMapView(
+      markers: markers,
+      lines: lines,
+      shapes: shapes,
+      projection: projection,
+      isDark: isDark,
+      styleUrl: styleUrl,
+      styleUrlDark: styleUrlDark,
+      zoomController: zoomController,
+      frame: frame,
+    ),
+    _MapBackend.osm => OsmMapView(markers: markers, lines: lines, shapes: shapes, isDark: isDark, zoomController: zoomController, frame: frame),
+  };
+
+  /// The postcard of what this pane shows right now: its camera, its contacts
+  /// without the one being typed, its renderer. Does nothing while the map
+  /// has not yet answered where it is looking — there is nothing to frame.
+  Future<void> _openPostcard({required _MapBackend backend, required List<MapShapeData> shapes, required bool appIsDark}) async {
+    if (_postcardOpen) return;
+    _postcardOpen = true;
+    try {
+      await _showPostcard(backend: backend, shapes: shapes, appIsDark: appIsDark);
+    } finally {
+      _postcardOpen = false;
+    }
+  }
+
+  /// Whether a postcard is opening or open: the camera read is a round trip
+  /// to the page, and a second tap inside it would open a second pane.
+  bool _postcardOpen = false;
+
+  Future<void> _showPostcard({required _MapBackend backend, required List<MapShapeData> shapes, required bool appIsDark}) async {
+    final view = await _zoomController.camera();
+    if (view == null) debugPrint('[postcard] the map never said where it was looking');
+    if (view == null || !mounted) return;
+    final markers = _markers;
+    final lines = _lines;
+    final projection = _projection;
+    final paneIsDark = mapStyleIsDark(widget.settings.mapStyle, appIsDark: appIsDark);
+    // Once per tone, not per build of the postcard: every rebuild would hand
+    // the backend a fresh list to compare against the last, contact by contact.
+    ({List<MapMarkerData> markers, List<MapLineData> lines})? retonedData;
+    await showOperationPostcard(
+      context,
+      operation: widget.operation,
+      qsos: widget.qsos,
+      view: view,
+      markers: [for (final m in markers) (latitude: m.latitude, longitude: m.longitude)],
+      callout: switch (view.popup) {
+        null => null,
+        final id => markers.where((m) => m.id == id).firstOrNull,
+      },
+      globe: projection == MapProjection.globe && backend != _MapBackend.osm,
+      mapIsFlutter: backend == _MapBackend.osm,
+      settings: widget.settings,
+      mapBuilder: (frame, controller, style) {
+        final urls = mapLibreStyleUrls(style);
+        final isDark = mapStyleIsDark(style, appIsDark: appIsDark);
+        final retoned = isDark == paneIsDark ? null : retonedData ??= retonedMapData(markers, lines, toDark: isDark);
+        return _backendWidget(
+          backend,
+          markers: retoned?.markers ?? markers,
+          lines: retoned?.lines ?? lines,
+          shapes: shapes,
+          projection: projection,
+          isDark: isDark,
+          styleUrl: urls.light,
+          styleUrlDark: urls.dark,
+          zoomController: controller,
+          frame: frame,
+        );
+      },
     );
   }
 
@@ -493,6 +592,26 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   }
 }
 
+enum _MapBackend { web, webview, osm }
+
+/// [markers] and [lines], derived by [MapPanel] against one basemap tone,
+/// redrawn for the other — for the Operation Postcard, whose style can differ
+/// from the Map tab's. The lines and the contacts' rings are the
+/// tone-dependent colours, and a dark line on a dark basemap is not there at
+/// all; the fills (band colours) and the QTH's ring read on either.
+({List<MapMarkerData> markers, List<MapLineData> lines}) retonedMapData(List<MapMarkerData> markers, List<MapLineData> lines, {required bool toDark}) {
+  final (fromStroke, toStroke) = toDark
+      ? (_MapPanelState._qsoStrokeLight, _MapPanelState._qsoStrokeDark)
+      : (_MapPanelState._qsoStrokeDark, _MapPanelState._qsoStrokeLight);
+  final (fromLine, toLine) = toDark
+      ? (_MapPanelState._lineColorLight, _MapPanelState._lineColorDark)
+      : (_MapPanelState._lineColorDark, _MapPanelState._lineColorLight);
+  return (
+    markers: [for (final m in markers) m.strokeColor == fromStroke ? m.withStrokeColor(toStroke) : m],
+    lines: [for (final line in lines) line.color == fromLine ? MapLineData(id: line.id, points: line.points, color: toLine, highlight: line.highlight) : line],
+  );
+}
+
 /// A single toggle, not a segmented pair: the icon shown is always the
 /// OTHER projection — tapping it is "switch to this" — so there's no
 /// selected/unselected state to contrast against an arbitrary basemap.
@@ -506,19 +625,34 @@ class _MapProjectionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final toGlobe = projection == MapProjection.mercator;
-    return Material(
-      color: theme.colorScheme.surface,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      elevation: 2,
-      child: IconButton(
-        icon: Icon(toGlobe ? MdiIcons.earth : MdiIcons.map, semanticLabel: toGlobe ? context.t.map.globe : context.t.map.flat),
-        onPressed: onPressed,
-      ),
+    return _MapRoundButton(
+      icon: toGlobe ? MdiIcons.earth : MdiIcons.map,
+      semanticLabel: toGlobe ? context.t.map.globe : context.t.map.flat,
+      onPressed: onPressed,
     );
   }
+}
+
+/// One of the round buttons over the map's top-right corner.
+class _MapRoundButton extends StatelessWidget {
+  final IconData icon;
+  final String semanticLabel;
+  final VoidCallback onPressed;
+
+  const _MapRoundButton({required this.icon, required this.semanticLabel, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Theme.of(context).colorScheme.surface,
+    shape: const CircleBorder(),
+    clipBehavior: Clip.antiAlias,
+    elevation: 2,
+    child: IconButton(
+      icon: Icon(icon, semanticLabel: semanticLabel),
+      onPressed: onPressed,
+    ),
+  );
 }
 
 /// The bottom-left +/- zoom cluster, non-mobile only (see hasZoomButtons in

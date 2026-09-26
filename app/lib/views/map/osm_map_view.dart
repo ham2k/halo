@@ -40,6 +40,12 @@ class OsmMapView extends StatefulWidget {
   /// for the QSO map, which keeps its own callout.
   final ValueChanged<String>? onMarkerTap;
 
+  /// Makes this a picture of the map rather than a map to explore — see
+  /// [MapFrame]. Unlike the GL backends' this does not lay the map out at the
+  /// frame's size: the caller puts it in a box of that size, since scaling a
+  /// Flutter map is Flutter's job. Read once, when the map is first built.
+  final MapFrame? frame;
+
   const OsmMapView({
     super.key,
     required this.markers,
@@ -48,6 +54,7 @@ class OsmMapView extends StatefulWidget {
     required this.isDark,
     this.zoomController,
     this.onMarkerTap,
+    this.frame,
   });
 
   /// How long the online edge waits before tiles that failed are reset. Like
@@ -89,7 +96,45 @@ class _OsmMapViewState extends State<OsmMapView> {
     widget.zoomController
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
-      ..onMoveTo = _moveTo;
+      ..onMoveTo = _moveTo
+      ..onCamera = _camera;
+    if (widget.frame != null) widget.zoomController?.onSettled = _settled;
+  }
+
+  /// The tile a framed map draws at each place, to say when the picture is
+  /// whole — see [_settled]. By place, and the latest: a reset after coming
+  /// back online replaces every tile with a new one at the same place, and a
+  /// TileImage equals any other at its place, so a set would keep the
+  /// disposed ones — never ready — for good.
+  final _tiles = <TileCoordinates, TileImage>{};
+
+  Widget _trackTile(BuildContext context, Widget tileWidget, TileImage tile) {
+    _tiles[tile.coordinates] = tile;
+    return tileWidget;
+  }
+
+  /// Once every tile has arrived or failed, and a frame has drawn them: a
+  /// picture taken sooner has holes where the network was slow.
+  Future<void> _settled() async {
+    const step = Duration(milliseconds: 100);
+    for (var waited = Duration.zero; waited < mapSnapshotTimeout; waited += step) {
+      if (!mounted) break;
+      if (_tiles.isNotEmpty && _tiles.values.every((t) => t.readyToDisplay)) {
+        await WidgetsBinding.instance.endOfFrame;
+        return;
+      }
+      await Future<void>.delayed(step);
+    }
+    throw const MapSnapshotException('the map did not finish loading');
+  }
+
+  Future<MapCameraView?> _camera() async {
+    final camera = _mapController.camera;
+    return (
+      camera: MapCameraPosition(latitude: camera.center.latitude, longitude: camera.center.longitude, zoom: camera.zoom, bearing: -camera.rotation),
+      viewport: camera.nonRotatedSize,
+      popup: widget.onMarkerTap == null ? _selectedMarkerId : null,
+    );
   }
 
   void _moveTo(double latitude, double longitude, double zoom) => _mapController.move(LatLng(latitude, longitude), zoom);
@@ -116,7 +161,7 @@ class _OsmMapViewState extends State<OsmMapView> {
             if (!m.highlight) m,
         ],
       );
-      if (baseChanged) _fitCamera();
+      if (baseChanged && widget.frame == null) _fitCamera();
     }
   }
 
@@ -139,6 +184,8 @@ class _OsmMapViewState extends State<OsmMapView> {
     if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
     if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
     if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
+    if (identical(controller?.onCamera, _camera)) controller?.onCamera = null;
+    if (identical(controller?.onSettled, _settled)) controller?.onSettled = null;
     _offlineChanges?.cancel();
     _resetTimer?.cancel();
     _reset.close();
@@ -150,13 +197,23 @@ class _OsmMapViewState extends State<OsmMapView> {
   Widget build(BuildContext context) {
     final points = [for (final m in widget.markers) LatLng(m.latitude, m.longitude)];
     final selected = _selectedMarkerId == null || widget.onMarkerTap != null ? null : widget.markers.where((m) => m.id == _selectedMarkerId).firstOrNull;
+    final frame = widget.frame?.camera;
 
     return FlutterMap(
       mapController: _mapController,
-      options: MapOptions(
-        initialCameraFit: CameraFit.coordinates(coordinates: points, padding: const EdgeInsets.all(48), maxZoom: 11),
-        onTap: (_, _) => setState(() => _selectedMarkerId = null),
-      ),
+      options: frame != null
+          ? MapOptions(
+              initialCenter: LatLng(frame.latitude, frame.longitude),
+              initialZoom: frame.zoom,
+              // flutter_map turns the map clockwise; a bearing names the
+              // direction that ends up at the top.
+              initialRotation: -frame.bearing,
+              interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+            )
+          : MapOptions(
+              initialCameraFit: CameraFit.coordinates(coordinates: points, padding: const EdgeInsets.all(48), maxZoom: 11),
+              onTap: (_, _) => setState(() => _selectedMarkerId = null),
+            ),
       children: [
         TileLayer(
           // CARTO's Dark Matter tiles in dark mode — plain OSM has no dark
@@ -165,6 +222,10 @@ class _OsmMapViewState extends State<OsmMapView> {
           // hence the attribution swap below.
           urlTemplate: widget.isDark ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png' : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.ham2k.poloNext',
+          // A picture is taken once, so its tiles show at full strength the
+          // moment they arrive, and say when they have.
+          tileDisplay: widget.frame != null ? const TileDisplay.instantaneous() : const TileDisplay.fadeIn(),
+          tileBuilder: widget.frame != null ? _trackTile : null,
           reset: _reset.stream,
           // Otherwise a failed tile is swallowed by flutter_map and the pane
           // just shows grey squares with no evidence anywhere. The tile URL
@@ -217,7 +278,8 @@ class _OsmMapViewState extends State<OsmMapView> {
               ),
             ],
           ),
-        _OsmAttribution(isDark: widget.isDark),
+        // A picture carries its credit in its own layout (see [osmAttribution]).
+        if (widget.frame == null) _OsmAttribution(isDark: widget.isDark),
       ],
     );
   }
@@ -304,6 +366,11 @@ class _OsmMapViewState extends State<OsmMapView> {
   MarkerLayer _markerLayer(List<MapMarkerData> markers) => MarkerLayer(markers: [for (final marker in markers) _markerFor(marker)]);
 }
 
+/// The credit for this backend's tiles. CARTO's dark tiles are still built
+/// from OSM's data, so both credits apply — the tile usage policy requires the
+/// one whose server actually served the tiles.
+String osmAttribution({required bool isDark}) => isDark ? '© OpenStreetMap contributors © CARTO' : '© OpenStreetMap contributors';
+
 /// The OSM credit the tile usage policy requires, in the map's bottom-right.
 ///
 /// Ours rather than flutter_map's [SimpleAttributionWidget], which lays its
@@ -328,10 +395,7 @@ class _OsmAttribution extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: Space.xs, vertical: Space.xxs),
             child: Text(
-              // CARTO's dark tiles are still built from OSM's data, so both
-              // credits apply — the tile usage policy requires the one whose
-              // server actually served the tiles.
-              isDark ? '© OpenStreetMap contributors © CARTO' : '© OpenStreetMap contributors',
+              osmAttribution(isDark: isDark),
               style: theme.textTheme.bodySmall,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

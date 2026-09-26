@@ -698,7 +698,27 @@
     "flat": "Plano",
     "globe": "Globo",
     "zoomIn": "Acercar",
-    "zoomOut": "Alejar"
+    "zoomOut": "Alejar",
+    "postcard": {
+      "button": "Postal de la operación",
+      "title": "Postal de ${title}",
+      "portrait": "Vertical",
+      "landscape": "Horizontal",
+      "square": "Cuadrada",
+      "save": "Guardar",
+      "download": "Descargar",
+      "share": "Compartir",
+      "copy": "Copiar",
+      "copied": "Copiada al portapapeles",
+      "saved": "Guardada en ${path}",
+      "downloaded": "Se descargó ${name}",
+      "failed": "No se pudo crear la postal: ${error}",
+      "mapNotReady": "El mapa no terminó de cargar. Revisa la conexión y vuelve a intentarlo.",
+      "saveFailed": "No se pudo guardar la postal: ${error}",
+      "copyFailed": "El portapapeles no aceptó la imagen. Vuelve a intentarlo.",
+      "shareFailed": "No se pudo compartir la postal. Vuelve a intentarlo.",
+      "fileName": "postal"
+    }
   },
   "activitiesView": {
     "title": "Actividades",

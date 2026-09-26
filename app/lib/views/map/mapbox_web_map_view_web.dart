@@ -77,6 +77,9 @@ class MapboxWebMapView extends StatefulWidget {
   /// map, which keeps its own popup.
   final ValueChanged<String>? onMarkerTap;
 
+  /// See MapboxWebviewMapView's field of the same name.
+  final MapFrame? frame;
+
   const MapboxWebMapView({
     super.key,
     required this.markers,
@@ -88,6 +91,7 @@ class MapboxWebMapView extends StatefulWidget {
     required this.styleUrlDark,
     this.zoomController,
     this.onMarkerTap,
+    this.frame,
   });
 
   @override
@@ -104,6 +108,10 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
 
   web.HTMLDivElement? _container;
   JSObject? _handle;
+
+  /// Completed once [_createMap] has made the map or given up, for a snapshot
+  /// asked for before then to wait on.
+  final _created = Completer<void>();
 
   /// Whether the first full set has reached the script — what a patch merges into.
   bool _dataApplied = false;
@@ -149,7 +157,9 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     widget.zoomController
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
-      ..onMoveTo = _moveTo;
+      ..onMoveTo = _moveTo
+      ..onCamera = _camera
+      ..onSnapshot = _snapshot;
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
       final div = web.HTMLDivElement();
       div.style
@@ -178,8 +188,14 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
         widget.isDark.toJS,
         onEvent,
         (widget.onMarkerTap != null).toJS,
+        switch (widget.frame) {
+          null => null,
+          final frame => {...frame.camera.toJson(), 'width': frame.width, 'height': frame.height, 'background': mapLibreSpaceBackgroundCss()}.jsify(),
+        },
       ]);
+      if (!_created.isCompleted) _created.complete();
     } catch (e, s) {
+      if (!_created.isCompleted) _created.complete();
       // A CDN load failure (offline at map open) or a create() throw (no
       // WebGL) would otherwise escape as a generic zone error: no offline
       // stamp, no empty state, and a blank pane with no evidence — the exact
@@ -271,6 +287,28 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
 
   void _moveTo(double latitude, double longitude, double zoom) => _handle?.callMethod('moveTo'.toJS, latitude.toJS, longitude.toJS, zoom.toJS);
 
+  /// A tap on a map still being made waits for it first rather than doing
+  /// nothing.
+  Future<MapCameraView?> _camera() async {
+    await _created.future.timeout(mapCameraWait, onTimeout: () {});
+    return mapCameraViewFromJson(_handle?.callMethod<JSAny?>('camera'.toJS).dartify());
+  }
+
+  /// Waits for the map when it is still being made: an operator can press
+  /// Copy the moment a postcard opens.
+  Future<Uint8List> _snapshot(double pixelRatio) async {
+    await _created.future.timeout(mapSnapshotTimeout, onTimeout: () => throw const MapSnapshotException('the map never came up'));
+    final handle = _handle;
+    if (handle == null) throw const MapSnapshotException('the map could not be drawn');
+    try {
+      final url = await handle.callMethod<JSPromise<JSString>>('snapshot'.toJS, pixelRatio.toJS).toDart;
+      return decodeDataUrl(url.toDart);
+    } catch (e) {
+      if (isMapSnapshotOutcome('$e')) throw MapSnapshotException('$e');
+      rethrow;
+    }
+  }
+
   void _zoomIn() => _handle?.callMethod('zoomIn'.toJS);
   void _zoomOut() => _handle?.callMethod('zoomOut'.toJS);
 
@@ -286,6 +324,8 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
     if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
     if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
+    if (identical(controller?.onCamera, _camera)) controller?.onCamera = null;
+    if (identical(controller?.onSnapshot, _snapshot)) controller?.onSnapshot = null;
     _offlineChanges?.cancel();
     _handle?.callMethod('remove'.toJS);
     _handle = null;

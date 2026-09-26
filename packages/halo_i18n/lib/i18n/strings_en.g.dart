@@ -780,6 +780,8 @@ class Translations$map$en {
 
 	/// en: 'Zoom out'
 	String get zoomOut => 'Zoom out';
+
+	late final Translations$map$postcard$en postcard = Translations$map$postcard$en.internal(_root);
 }
 
 // Path: activitiesView
@@ -3269,6 +3271,69 @@ class Translations$operation$import$en {
 
 	/// en: 'Include all ${count}'
 	String gapDialogIncludeAll({required Object count}) => 'Include all ${count}';
+}
+
+// Path: map.postcard
+class Translations$map$postcard$en {
+	Translations$map$postcard$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Operation Postcard'
+	String get button => 'Operation Postcard';
+
+	/// en: 'Postcard for ${title}'
+	String title({required Object title}) => 'Postcard for ${title}';
+
+	/// en: 'Portrait'
+	String get portrait => 'Portrait';
+
+	/// en: 'Landscape'
+	String get landscape => 'Landscape';
+
+	/// en: 'Square'
+	String get square => 'Square';
+
+	/// en: 'Save'
+	String get save => 'Save';
+
+	/// en: 'Download'
+	String get download => 'Download';
+
+	/// en: 'Share'
+	String get share => 'Share';
+
+	/// en: 'Copy'
+	String get copy => 'Copy';
+
+	/// en: 'Copied to the clipboard'
+	String get copied => 'Copied to the clipboard';
+
+	/// en: 'Saved to ${path}'
+	String saved({required Object path}) => 'Saved to ${path}';
+
+	/// en: 'Downloaded ${name}'
+	String downloaded({required Object name}) => 'Downloaded ${name}';
+
+	/// en: 'Could not make the postcard: ${error}'
+	String failed({required Object error}) => 'Could not make the postcard: ${error}';
+
+	/// en: 'The map didn't finish loading. Check the connection and try again.'
+	String get mapNotReady => 'The map didn\'t finish loading. Check the connection and try again.';
+
+	/// en: 'Could not save the postcard: ${error}'
+	String saveFailed({required Object error}) => 'Could not save the postcard: ${error}';
+
+	/// en: 'The clipboard didn't take the image. Try again.'
+	String get copyFailed => 'The clipboard didn\'t take the image. Try again.';
+
+	/// en: 'Could not share the postcard. Try again.'
+	String get shareFailed => 'Could not share the postcard. Try again.';
+
+	/// en: 'postcard'
+	String get fileName => 'postcard';
 }
 
 // Path: loggingControls.info
@@ -7646,6 +7711,24 @@ extension on Translations {
 			'map.globe' => 'Globe',
 			'map.zoomIn' => 'Zoom in',
 			'map.zoomOut' => 'Zoom out',
+			'map.postcard.button' => 'Operation Postcard',
+			'map.postcard.title' => ({required Object title}) => 'Postcard for ${title}',
+			'map.postcard.portrait' => 'Portrait',
+			'map.postcard.landscape' => 'Landscape',
+			'map.postcard.square' => 'Square',
+			'map.postcard.save' => 'Save',
+			'map.postcard.download' => 'Download',
+			'map.postcard.share' => 'Share',
+			'map.postcard.copy' => 'Copy',
+			'map.postcard.copied' => 'Copied to the clipboard',
+			'map.postcard.saved' => ({required Object path}) => 'Saved to ${path}',
+			'map.postcard.downloaded' => ({required Object name}) => 'Downloaded ${name}',
+			'map.postcard.failed' => ({required Object error}) => 'Could not make the postcard: ${error}',
+			'map.postcard.mapNotReady' => 'The map didn\'t finish loading. Check the connection and try again.',
+			'map.postcard.saveFailed' => ({required Object error}) => 'Could not save the postcard: ${error}',
+			'map.postcard.copyFailed' => 'The clipboard didn\'t take the image. Try again.',
+			'map.postcard.shareFailed' => 'Could not share the postcard. Try again.',
+			'map.postcard.fileName' => 'postcard',
 			'activitiesView.title' => 'Activities',
 			'activitiesView.activitiesCountZero' => 'No Activities Selected',
 			'activitiesView.activitiesCountOne' => '1 Activity',
@@ -8077,6 +8160,8 @@ extension on Translations {
 			'settings.radio.zeroBeatRange.title' => 'Zero-Beat: Avoidance range',
 			'settings.radio.zeroBeatRange.description' => 'How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again.',
 			'settings.help.title' => 'Help & Resources',
+			_ => null,
+		} ?? switch (path) {
 			'settings.help.description' => 'Community and support',
 			'settings.help.forums' => 'Ham2K Forums',
 			'settings.help.forumsDescription' => 'Find help, give feedback, discuss ideas…',
@@ -8095,8 +8180,6 @@ extension on Translations {
 			'settings.map.style.title' => 'Map Style',
 			'settings.map.styleOpts.automatic' => 'Automatic',
 			'settings.map.styleOpts.liberty' => 'Liberty',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
@@ -8591,6 +8674,8 @@ extension on Translations {
 			'settings.developer.noPatchInstalled' => 'No code push installed — running the release binary.',
 			'settings.developer.runningPatch' => ({required Object patch}) => 'Running code push #${patch}.',
 			'settings.developer.deepLinks' => 'Deep links',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.registerUrlSchemes' => 'Register URL schemes',
 			'settings.developer.registerUrlSchemesDescription' => 'Let com.ham2k:// links open this copy of the app',
 			'settings.developer.registerUrlSchemesDone' => 'This copy now answers com.ham2k:// links',
@@ -8609,8 +8694,6 @@ extension on Translations {
 			'settings.developer.extDevServerConnecting' => 'Connecting…',
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Serving ${count} extension: ${keys}', other: 'Serving ${count} extensions: ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => 'Not connected',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extDevServerReconnect' => 'Reconnect at launch',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 

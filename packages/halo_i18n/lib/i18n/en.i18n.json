@@ -698,7 +698,27 @@
     "flat": "Flat",
     "globe": "Globe",
     "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out"
+    "zoomOut": "Zoom out",
+    "postcard": {
+      "button": "Operation Postcard",
+      "title": "Postcard for ${title}",
+      "portrait": "Portrait",
+      "landscape": "Landscape",
+      "square": "Square",
+      "save": "Save",
+      "download": "Download",
+      "share": "Share",
+      "copy": "Copy",
+      "copied": "Copied to the clipboard",
+      "saved": "Saved to ${path}",
+      "downloaded": "Downloaded ${name}",
+      "failed": "Could not make the postcard: ${error}",
+      "mapNotReady": "The map didn't finish loading. Check the connection and try again.",
+      "saveFailed": "Could not save the postcard: ${error}",
+      "copyFailed": "The clipboard didn't take the image. Try again.",
+      "shareFailed": "Could not share the postcard. Try again.",
+      "fileName": "postcard"
+    }
   },
   "activitiesView": {
     "title": "Activities",

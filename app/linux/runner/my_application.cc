@@ -21,6 +21,8 @@ struct _MyApplication {
   // instance so my_application_on_window_state can push maximize
   // transitions to it.
   FlMethodChannel* window_chrome_channel;
+  // An image on the clipboard (image_clipboard_method_call_cb).
+  FlMethodChannel* image_clipboard_channel;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
@@ -128,6 +130,48 @@ static void my_application_save_window_state(MyApplication* self) {
   g_autofree gchar* dir = g_path_get_dirname(path);
   g_mkdir_with_parents(dir, 0755);
   g_key_file_save_to_file(key_file, path, nullptr);
+}
+
+// An image on the clipboard (image_clipboard_io.dart), which Flutter's own
+// Clipboard cannot do. Built from the raw pixels the Dart side sends beside
+// the PNG; GTK then offers it in every image format it can encode.
+static void image_clipboard_method_call_cb(FlMethodChannel* channel,
+                                           FlMethodCall* method_call,
+                                           gpointer user_data) {
+  (void)channel;
+  (void)user_data;
+  g_autoptr(FlMethodResponse) response = nullptr;
+  if (g_strcmp0(fl_method_call_get_name(method_call), "copyImage") != 0) {
+    response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+  } else {
+    FlValue* args = fl_method_call_get_args(method_call);
+    FlValue* rgba = args != nullptr && fl_value_get_type(args) == FL_VALUE_TYPE_MAP
+                        ? fl_value_lookup_string(args, "rgba")
+                        : nullptr;
+    FlValue* width = rgba != nullptr ? fl_value_lookup_string(args, "width") : nullptr;
+    FlValue* height = rgba != nullptr ? fl_value_lookup_string(args, "height") : nullptr;
+    if (rgba == nullptr || fl_value_get_type(rgba) != FL_VALUE_TYPE_UINT8_LIST || width == nullptr ||
+        fl_value_get_type(width) != FL_VALUE_TYPE_INT || height == nullptr ||
+        fl_value_get_type(height) != FL_VALUE_TYPE_INT) {
+      response = FL_METHOD_RESPONSE(
+          fl_method_error_response_new("bad_args", "Expected rgba bytes, width and height", nullptr));
+    } else {
+      const int w = static_cast<int>(fl_value_get_int(width));
+      const int h = static_cast<int>(fl_value_get_int(height));
+      const size_t length = fl_value_get_length(rgba);
+      if (w <= 0 || h <= 0 || length < static_cast<size_t>(w) * h * 4) {
+        response = FL_METHOD_RESPONSE(
+            fl_method_error_response_new("bad_args", "The pixels do not match the size", nullptr));
+      } else {
+        g_autoptr(GBytes) bytes = g_bytes_new(fl_value_get_uint8_list(rgba), length);
+        g_autoptr(GdkPixbuf) pixbuf =
+            gdk_pixbuf_new_from_bytes(bytes, GDK_COLORSPACE_RGB, TRUE, 8, w, h, w * 4);
+        gtk_clipboard_set_image(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD), pixbuf);
+        response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+      }
+    }
+  }
+  fl_method_call_respond(method_call, response, nullptr);
 }
 
 // ── Window-chrome channel ────────────────────────────────────────────────
@@ -279,6 +323,13 @@ static void my_application_activate(GApplication* application) {
   fl_method_channel_set_method_call_handler(self->window_chrome_channel, window_chrome_method_call_cb,
                                             window, nullptr);
 
+  g_autoptr(FlStandardMethodCodec) image_clipboard_codec = fl_standard_method_codec_new();
+  self->image_clipboard_channel =
+      fl_method_channel_new(fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+                            "ham2k/image_clipboard", FL_METHOD_CODEC(image_clipboard_codec));
+  fl_method_channel_set_method_call_handler(self->image_clipboard_channel, image_clipboard_method_call_cb,
+                                            nullptr, nullptr);
+
   // Show the window when Flutter renders.
   // Requires the view to be realized so we can start rendering.
   g_signal_connect_swapped(view, "first-frame", G_CALLBACK(first_frame_cb),
@@ -353,6 +404,7 @@ static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
   g_clear_object(&self->window_chrome_channel);
+  g_clear_object(&self->image_clipboard_channel);
   G_OBJECT_CLASS(my_application_parent_class)->dispose(object);
 }
 

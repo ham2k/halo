@@ -145,8 +145,11 @@ fixes four rules it carries but never awards.
   deleted QSOs carrying exactly that stamp and no others. Deliberately
   unlike PoLo, a deleted operation is read-only until undeleted: a save
   re-stamps it, which would strand those QSOs for good.
-- **Operation badge** screen (full-screen map/stats badge, reached from
-  the map tab; user screenshots it manually — no share code). ⛔
+- **Operation badge** ✅ — HaLo's Operation Postcard (the Map tab's camera
+  button, HALO-708) makes the picture PoLo's badge screen shows for a
+  screenshot, as an image to save, share or copy: the Map tab's framing in
+  portrait, landscape or square, any map style, the title and the contact
+  count and span over it, and the popup open on the tab.
 - Keep-device-awake while logging. ⛔ (no wakelock dependency at all)
 - Op info stats ✅ — counts, rates (last 10/100), dupes, score summaries
   and the per-day/operation breakdown now match PoLo's info panel

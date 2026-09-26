@@ -20,6 +20,7 @@ class MapboxWebMapView extends StatelessWidget {
   final String styleUrlDark;
   final MapZoomController? zoomController;
   final ValueChanged<String>? onMarkerTap;
+  final MapFrame? frame;
 
   const MapboxWebMapView({
     super.key,
@@ -32,6 +33,7 @@ class MapboxWebMapView extends StatelessWidget {
     required this.styleUrlDark,
     this.zoomController,
     this.onMarkerTap,
+    this.frame,
   });
 
   @override

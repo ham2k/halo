@@ -26,6 +26,8 @@ class MainFlutterWindow: NSWindow {
   // permission that lands on the wrong app.
   private var screenCaptureChannel: ScreenCaptureChannel?
 
+  private var imageClipboardChannel: FlutterMethodChannel?
+
   // The frame restored from the saved geometry, held only through the initial
   // layout. Flutter resizes the window once shortly after its first frame
   // (~1s), which would clobber the restore; while this is set, that resize is
@@ -70,6 +72,35 @@ class MainFlutterWindow: NSWindow {
 
     screenCaptureChannel = ScreenCaptureChannel(
       messenger: flutterViewController.engine.binaryMessenger)
+
+    // An image on the clipboard (image_clipboard_io.dart), which Flutter's
+    // own Clipboard cannot do. TIFF beside the PNG: it is NSImage's own
+    // pasteboard type, and some apps read nothing else.
+    let imageClipboard = FlutterMethodChannel(
+      name: "ham2k/image_clipboard",
+      binaryMessenger: flutterViewController.engine.binaryMessenger)
+    imageClipboard.setMethodCallHandler { call, result in
+      guard call.method == "copyImage",
+        let args = call.arguments as? [String: Any],
+        let png = args["png"] as? FlutterStandardTypedData
+      else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      let item = NSPasteboardItem()
+      item.setData(png.data, forType: .png)
+      if let tiff = NSImage(data: png.data)?.tiffRepresentation {
+        item.setData(tiff, forType: .tiff)
+      }
+      let board = NSPasteboard.general
+      board.clearContents()
+      if board.writeObjects([item]) {
+        result(nil)
+      } else {
+        result(FlutterError(code: "copy_failed", message: "The pasteboard refused the image", details: nil))
+      }
+    }
+    imageClipboardChannel = imageClipboard
 
     // Documents opened through Finder reach the app delegate; this is how they
     // reach Flutter. Assigning the channel also flushes anything the OS handed

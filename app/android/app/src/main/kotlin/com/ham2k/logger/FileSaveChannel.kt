@@ -51,7 +51,7 @@ class FileSaveChannel(private val activity: Activity, messenger: BinaryMessenger
 
   private var pendingResult: MethodChannel.Result? = null
   private var pendingFilename: String? = null
-  private var pendingContent: String? = null
+  private var pendingContent: ByteArray? = null
 
   fun dispose() {
     channel.setMethodCallHandler(null)
@@ -66,9 +66,10 @@ class FileSaveChannel(private val activity: Activity, messenger: BinaryMessenger
       return
     }
     val filename = call.argument<String>("filename")
-    val content = call.argument<String>("content")
+    // Text for an export, bytes for an image (the Operation Postcard).
+    val content = call.argument<String>("content")?.toByteArray(Charsets.UTF_8) ?: call.argument<ByteArray>("bytes")
     if (filename.isNullOrEmpty() || content == null) {
-      result.error("bad_args", "Expected a filename and content", null)
+      result.error("bad_args", "Expected a filename and content or bytes", null)
       return
     }
     // One dialog at a time: the request code is the only thing routing the
@@ -109,7 +110,7 @@ class FileSaveChannel(private val activity: Activity, messenger: BinaryMessenger
     }
 
     val filename = pendingFilename ?: ""
-    val content = pendingContent ?: ""
+    val content = pendingContent ?: ByteArray(0)
     worker.execute {
       try {
         write(uri, content)
@@ -122,7 +123,7 @@ class FileSaveChannel(private val activity: Activity, messenger: BinaryMessenger
     return true
   }
 
-  private fun write(uri: Uri, content: String) {
+  private fun write(uri: Uri, content: ByteArray) {
     // "wt" truncates: picking an existing file in the dialog otherwise leaves
     // the tail of the longer previous export behind ours. A provider that
     // rejects the mode does so in its own way — FileNotFoundException,
@@ -135,7 +136,7 @@ class FileSaveChannel(private val activity: Activity, messenger: BinaryMessenger
         activity.contentResolver.openOutputStream(uri, "w")
       }
       ) ?: throw IllegalStateException("Could not open $uri for writing")
-    stream.use { it.write(content.toByteArray(Charsets.UTF_8)) }
+    stream.use { it.write(content) }
   }
 
   private fun displayNameOf(uri: Uri): String? =

@@ -2778,6 +2778,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 // reference's outline here wears the color its own row wears
                 // everywhere else.
                 activityControls: _loggingControls,
+                offersPostcard: true,
               ),
             ),
           ),

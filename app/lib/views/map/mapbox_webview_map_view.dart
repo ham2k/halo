@@ -62,6 +62,10 @@ class MapboxWebviewMapView extends StatefulWidget {
   /// map, which keeps its own popup.
   final ValueChanged<String>? onMarkerTap;
 
+  /// Makes this a picture of the map rather than a map to explore — see
+  /// [MapFrame]. Read once, when the page is built.
+  final MapFrame? frame;
+
   const MapboxWebviewMapView({
     super.key,
     required this.markers,
@@ -73,6 +77,7 @@ class MapboxWebviewMapView extends StatefulWidget {
     required this.styleUrlDark,
     this.zoomController,
     this.onMarkerTap,
+    this.frame,
   });
 
   @override
@@ -112,6 +117,7 @@ class MapboxWebviewMapView extends StatefulWidget {
     required bool suppressWindowBlur,
     required String glSource,
     required String glCss,
+    MapFrame? frame,
   }) =>
       '''
 <!DOCTYPE html>
@@ -161,7 +167,7 @@ class MapboxWebviewMapView extends StatefulWidget {
       $isDark,
       function (kind, message) {
         window.flutter_inappwebview.callHandler('poloMapEvent', kind, message);
-      }, $notifyClicks);
+      }, $notifyClicks, ${frame == null ? 'null' : jsonEncode({...frame.camera.toJson(), 'width': frame.width, 'height': frame.height, 'background': mapLibreSpaceBackgroundCss()})});
     window.poloSetMarkers = handle.setMarkers;
     window.poloSetLines = handle.setLines;
     window.poloPatchMarkers = handle.patchMarkers;
@@ -171,6 +177,8 @@ class MapboxWebviewMapView extends StatefulWidget {
     window.poloMoveTo = handle.moveTo;
     window.poloZoomIn = handle.zoomIn;
     window.poloZoomOut = handle.zoomOut;
+    window.poloCamera = handle.camera;
+    window.poloSnapshot = handle.snapshot;
     window.poloSetDark = handle.setDark;
     window.poloUpdateStyles = handle.updateStyles;
     window.poloReload = handle.reload;
@@ -187,6 +195,13 @@ class MapboxWebviewMapView extends StatefulWidget {
 class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with WidgetsBindingObserver {
   InAppWebViewController? _controller;
   bool _mapReady = false;
+
+  /// [_mapReady], for a snapshot asked for before the page has made its map
+  /// to wait on.
+  final _ready = Completer<void>();
+
+  /// The style the page was built with — see the ready handler.
+  late final ({String url, String urlDark, bool isDark}) _pageStyle;
 
   /// Drives [MapUnavailableState]. Set when the map gives up, cleared by the
   /// page reporting in — a map that recovers must not keep the empty state.
@@ -242,6 +257,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
   @override
   void initState() {
     super.initState();
+    _pageStyle = (url: widget.styleUrl, urlDark: widget.styleUrlDark, isDark: widget.isDark);
     WidgetsBinding.instance.addObserver(this);
     _offlineChanges = ConnectivityService.offlineChanges.listen((offline) {
       // Guarded: the page may not have run its script yet, and the edge is
@@ -252,7 +268,9 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     widget.zoomController
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
-      ..onMoveTo = _moveTo;
+      ..onMoveTo = _moveTo
+      ..onCamera = _camera
+      ..onSnapshot = _snapshot;
   }
 
   /// Both halves of "is this map being painted", ANDed the way every other
@@ -296,6 +314,8 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
     if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
     if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
+    if (identical(controller?.onCamera, _camera)) controller?.onCamera = null;
+    if (identical(controller?.onSnapshot, _snapshot)) controller?.onSnapshot = null;
     WidgetsBinding.instance.removeObserver(this);
     _offlineChanges?.cancel();
     _readyWatchdog.dispose();
@@ -307,6 +327,29 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
   }
 
   void _moveTo(double latitude, double longitude, double zoom) => _controller?.evaluateJavascript(source: 'window.poloMoveTo($latitude, $longitude, $zoom);');
+
+  /// Null until the page has made its map — and then only if it answers.
+  /// Null when the page never made its map, or never answered — a tap on a
+  /// map still loading waits for it first rather than doing nothing.
+  Future<MapCameraView?> _camera() async {
+    await _ready.future.timeout(mapCameraWait, onTimeout: () {});
+    if (!_mapReady) return null;
+    return mapCameraViewFromJson(await _controller?.evaluateJavascript(source: 'window.poloCamera();'));
+  }
+
+  /// Waits for the page's map when it is still coming up: an operator can
+  /// press Copy the moment a postcard opens.
+  Future<Uint8List> _snapshot(double pixelRatio) async {
+    await _ready.future.timeout(mapSnapshotTimeout, onTimeout: () => throw const MapSnapshotException('the map never came up'));
+    final controller = _controller;
+    if (controller == null) throw const MapSnapshotException('the map never came up');
+    final result = await controller.callAsyncJavaScript(functionBody: 'return await window.poloSnapshot(pixelRatio);', arguments: {'pixelRatio': pixelRatio});
+    final error = result?.error;
+    if (error != null && isMapSnapshotOutcome(error)) throw MapSnapshotException(error);
+    final value = result?.value;
+    if (error != null || value is! String) throw StateError('map snapshot failed: ${error ?? 'no answer'}');
+    return decodeDataUrl(value);
+  }
 
   void _zoomIn() => _controller?.evaluateJavascript(source: 'window.poloZoomIn();');
   void _zoomOut() => _controller?.evaluateJavascript(source: 'window.poloZoomOut();');
@@ -404,6 +447,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
           suppressWindowBlur: defaultTargetPlatform == TargetPlatform.windows,
           glSource: mapGlLibrarySource,
           glCss: mapGlLibraryCss,
+          frame: widget.frame,
         ),
         baseUrl: WebUri('https://ham2k.com/'),
       ),
@@ -416,16 +460,24 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
           handlerName: 'poloMapReady',
           callback: (args) {
             _mapReady = true;
+            if (!_ready.isCompleted) _ready.complete();
             _readyWatchdog.markReady();
             // An empty state raised by the grace horizon is stale the moment
             // the page reports in; the style watchdog re-raises it if the map
             // is ready but its style is stuck.
             if (mounted && _unavailable) setState(() => _unavailable = false);
             _applyProjection();
-            // Dark mode is picked at creation (see _html/create's initialDark)
-            // rather than applied here — for MapLibre, doing it again on
-            // ready would swap the style a second time and race the marker
-            // application right below it.
+            // Dark mode and the style are picked at creation (see
+            // _html/create's initialDark) rather than applied here — for
+            // MapLibre, doing it again on ready would swap the style a second
+            // time and race the marker application right below it. Unless
+            // they changed while the page came up: didUpdateWidget sends a
+            // page with no map nothing, so a pick made then would be lost.
+            if (widget.styleUrl != _pageStyle.url || widget.styleUrlDark != _pageStyle.urlDark) {
+              _applyStyleUrls();
+            } else if (widget.isDark != _pageStyle.isDark) {
+              _applyDark();
+            }
             _applyMarkers();
             _applyLines();
             _applyShapes();

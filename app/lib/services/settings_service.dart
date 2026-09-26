@@ -63,6 +63,8 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   static const _homeNavExpandedKey = 'homeNavExpanded';
   static const _layoutDensityKey = 'layoutDensity';
   static const _mapStyleKey = 'mapStyle';
+  static const _postcardShapeKey = 'postcardShape';
+  static const _postcardMapStyleKey = 'postcardMapStyle';
   static const _secondaryControlsOrderKey = 'secondaryControlsOrder';
   static const _hiddenSecondaryControlsKey = 'hiddenSecondaryControls';
   static const _showRSTFieldsKey = 'showRSTFields';
@@ -1530,6 +1532,22 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   }
 
   Future<void> setMapStyle(MapStyle style) => setSettingValue(generalGroup, _mapStyleKey, style.name);
+
+  /// The Operation Postcard's last shape, by `PostcardShape` name
+  /// (operation_postcard.dart) — null until the operator picks one.
+  String? get postcardShape => asQsonString(settingValue(generalGroup, _postcardShapeKey));
+
+  Future<void> setPostcardShape(String shape) => setSettingValue(generalGroup, _postcardShapeKey, shape);
+
+  /// The Operation Postcard's last map style — null until the operator picks
+  /// one, and the postcard starts in Liberty. Kept apart from [mapStyle]: a
+  /// postcard in Dark Matter is no reason to log over one.
+  MapStyle? get postcardMapStyle {
+    final value = settingValue(generalGroup, _postcardMapStyleKey);
+    return MapStyle.values.where((e) => e.name == value).firstOrNull;
+  }
+
+  Future<void> setPostcardMapStyle(MapStyle style) => setSettingValue(generalGroup, _postcardMapStyleKey, style.name);
 }
 
 /// One callsign profile from [SettingsService.activeProfile] — an id plus a
