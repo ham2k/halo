@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"175":
   changes:
     - "New Postcard pages carry your operation's stats and scores after the map"
     - "Multi-op activations show each operator's progress under every park"
