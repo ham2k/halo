@@ -352,7 +352,9 @@ from whoever it claims; it is not worth it while a key is all there is.
 a single confirmation that names each extension and the version it moves to,
 and skips the per-extension screen for each of them: asking once per entry for
 the one thing the operator asked for once is how a screen gets pressed through
-unread. It is a confirmation of a job the operator started, never a way to
+unread. Pressed on the update notice when the notice's text already named every
+extension it takes, it skips that confirmation too: the press under those names
+was it. It is a confirmation of a job the operator started, never a way to
 start one — `install_consent_scope_test` holds it to the one function that
 shows that confirmation first.
 
@@ -492,7 +494,8 @@ At most once every six hours — on launch and on resume — the app asks the
 catalog whether anything installed has a newer release, and says so in the
 status bar and on the row; the notice comes down with the last update taken.
 It never installs unasked: the notice's **Update all** is the panel's own,
-behind the same confirmation, and **More info** opens the panel.
+behind the same confirmation unless the notice named every extension it takes,
+and **More info** opens the panel.
 
 An install or update narrates itself as one status-bar progress item, from the
 first downloaded byte to "Installed", and the Extensions panel mirrors that

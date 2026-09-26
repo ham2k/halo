@@ -481,6 +481,7 @@ void main() {
     late int applied;
     late int opened;
     late List<List<String>> updatedAll;
+    late List<Set<String>> namedAll;
 
     /// The check is behind the `catalog` experiment; on by default here so
     /// every test below is about the check itself.
@@ -498,6 +499,7 @@ void main() {
       applied = 0;
       opened = 0;
       updatedAll = [];
+      namedAll = [];
       return CatalogUpdateCheck(
         catalog: service(handler),
         settings: settings,
@@ -506,7 +508,10 @@ void main() {
         inUse: inUse,
         applyAvailability: () async => applied++,
         openExtensions: () => opened++,
-        updateAll: (entries) async => updatedAll.add([for (final entry in entries) entry.key]),
+        updateAll: (entries, named) async {
+          updatedAll.add([for (final entry in entries) entry.key]);
+          namedAll.add(named);
+        },
         realNow: realNow,
       );
     }
@@ -561,6 +566,10 @@ void main() {
       );
       await many.check();
       expect(notices(CatalogUpdateCheck.noticeKey).single.text, 'LLOTA, Other One and 1 more need updating.');
+      // The counted one is not named, so Update all must still confirm it.
+      notices(CatalogUpdateCheck.noticeKey).single.actions.last.onTap();
+      await pumpEventQueue();
+      expect(namedAll.single, {'k2hrc-llota', 'other-one'});
     });
 
     test('the notice carries a way to the panel that can act on it', () async {
@@ -597,7 +606,34 @@ void main() {
       expect(updatedAll, [
         ['k2hrc-llota'],
       ]);
+      expect(namedAll, [
+        {'k2hrc-llota'},
+      ]);
       expect(opened, 0);
+    });
+
+    test('Update all hands over the names the notice shows, not what is pending by the press', () async {
+      // Those names are what the press agreed to, and they skip the
+      // confirmation. A silent check can add an update under a notice that
+      // still reads the same; read at the press, the new one would install
+      // unnamed and unconfirmed.
+      var updates = [_entry(version: '1.1.0')];
+      final check = await checker(
+        (_) async => answer(updates: updates),
+        installed: [
+          _installed('k2hrc-llota', '1.0.0', name: 'LLOTA'),
+          _installed('other-one', '1.0.0', name: 'Other One'),
+        ],
+      );
+      await check.check();
+      expect(notices(CatalogUpdateCheck.noticeKey).single.text, 'An update is available for LLOTA.');
+
+      updates = [_entry(version: '1.1.0'), _entry(key: 'other-one', version: '2.0.0')];
+      await check.check(force: true, announce: false);
+      notices(CatalogUpdateCheck.noticeKey).single.actions.last.onTap();
+      await pumpEventQueue();
+      expect(updatedAll.single, ['k2hrc-llota', 'other-one']);
+      expect(namedAll.single, {'k2hrc-llota'});
     });
 
     test('the check the panel runs on opening does not put the notice back', () async {

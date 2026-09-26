@@ -671,9 +671,10 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   final VoidCallback? openExtensions;
 
   /// Takes every pending update in place, for the notice's Update all — the
-  /// same reasons as [openExtensions] for being a callback. Null leaves the
-  /// notice with More info alone.
-  final Future<void> Function(List<CatalogEntry> entries)? updateAll;
+  /// same reasons as [openExtensions] for being a callback. [named] is the
+  /// keys the notice's text names (updateAllFromCatalog's `named`). Null
+  /// leaves the notice with More info alone.
+  final Future<void> Function(List<CatalogEntry> entries, Set<String> named)? updateAll;
 
   /// The clock the stamp is written and judged on. Defaults to the real
   /// clock, and that DEFAULT is the contract (time.md §7) — pinned by
@@ -791,7 +792,13 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
     // one name is the whole story, two still are, and by the third the list is
     // longer than the sentence around it — what is left is a number and the
     // button that shows the rest.
-    final listed = names.take(2).join(', ');
+    //
+    // The keys are captured as posted, not read at the press: Update all skips
+    // its confirmation for what the text named, and a silent check can grow
+    // the pending set under a notice that still reads the same. The text is
+    // cut from them, so the two cannot disagree about what was named.
+    final named = _pending.keys.take(2).toSet();
+    final listed = names.take(named.length).join(', ');
     statusBar.showNotice(
       key: noticeKey,
       icon: 'update',
@@ -818,7 +825,7 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
         // done without leaving the screen the operator is on. It takes the
         // notice down itself once confirmed; a Cancel leaves it up.
         if (updateAll != null)
-          StatusBarAction(label: t.extensionsPanel.updateAllAction, primary: true, onTap: () => unawaited(updateAll!(_pending.values.toList()))),
+          StatusBarAction(label: t.extensionsPanel.updateAllAction, primary: true, onTap: () => unawaited(updateAll!(_pending.values.toList(), named))),
       ],
       // Not persisted: the next launch checks again and says so again if it
       // is still true, and an update taken in between must not leave a stale

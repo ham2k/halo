@@ -447,9 +447,6 @@ class Translations$extensionsPanel$en {
 		other: 'Update ${count} extensions?',
 	);
 
-	/// en: 'Each is replaced by the version the catalog now offers. Your settings for them are kept.'
-	String get updateAllBody => 'Each is replaced by the version the catalog now offers. Your settings for them are kept.';
-
 	/// en: 'We need to upgrade your extensions'
 	String get upgradeTitle => 'We need to upgrade your extensions';
 
@@ -7241,7 +7238,6 @@ extension on Translations {
 			'extensionsPanel.updatesNothingLeft' => 'Your extensions are up to date.',
 			'extensionsPanel.updatesNoticeAction' => 'More info',
 			'extensionsPanel.updateAllTitle' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Update ${count} extension?', other: 'Update ${count} extensions?', ), 
-			'extensionsPanel.updateAllBody' => 'Each is replaced by the version the catalog now offers. Your settings for them are kept.',
 			'extensionsPanel.upgradeTitle' => 'We need to upgrade your extensions',
 			'extensionsPanel.upgradeBody' => 'This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.',
 			'extensionsPanel.upgradeAction' => 'Upgrade now',
@@ -7646,9 +7642,9 @@ extension on Translations {
 			'operation.spots.filters.band' => 'Band',
 			'operation.spots.filters.mode' => 'Mode',
 			'operation.spots.filters.age' => 'Age',
+			'operation.spots.filters.sources' => 'Sources',
 			_ => null,
 		} ?? switch (path) {
-			'operation.spots.filters.sources' => 'Sources',
 			'operation.spots.filters.continent' => 'Continent',
 			'operation.spots.filters.sorting' => 'Sorting',
 			'operation.spots.filters.sortByTime' => 'By Spot Time',
@@ -8160,9 +8156,9 @@ extension on Translations {
 			'settings.radio.zeroBeatRange.title' => 'Zero-Beat: Avoidance range',
 			'settings.radio.zeroBeatRange.description' => 'How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again.',
 			'settings.help.title' => 'Help & Resources',
+			'settings.help.description' => 'Community and support',
 			_ => null,
 		} ?? switch (path) {
-			'settings.help.description' => 'Community and support',
 			'settings.help.forums' => 'Ham2K Forums',
 			'settings.help.forumsDescription' => 'Find help, give feedback, discuss ideas…',
 			'settings.help.chat' => 'Ham2K Chat',
@@ -8674,9 +8670,9 @@ extension on Translations {
 			'settings.developer.noPatchInstalled' => 'No code push installed — running the release binary.',
 			'settings.developer.runningPatch' => ({required Object patch}) => 'Running code push #${patch}.',
 			'settings.developer.deepLinks' => 'Deep links',
+			'settings.developer.registerUrlSchemes' => 'Register URL schemes',
 			_ => null,
 		} ?? switch (path) {
-			'settings.developer.registerUrlSchemes' => 'Register URL schemes',
 			'settings.developer.registerUrlSchemesDescription' => 'Let com.ham2k:// links open this copy of the app',
 			'settings.developer.registerUrlSchemesDone' => 'This copy now answers com.ham2k:// links',
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'Could not register: ${error}',

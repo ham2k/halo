@@ -230,7 +230,6 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 		one: '¿Actualizar ${count} extensión?',
 		other: '¿Actualizar ${count} extensiones?',
 	);
-	@override String get updateAllBody => 'Cada una se reemplaza por la versión que ofrece ahora el catálogo. Tu configuración se conserva.';
 	@override String get upgradeTitle => 'Necesitamos actualizar tus extensiones';
 	@override String get upgradeBody => 'Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.';
 	@override String get upgradeAction => 'Actualizar ahora';
@@ -3423,7 +3422,6 @@ extension on TranslationsEs {
 			'extensionsPanel.updatesNothingLeft' => 'Tus extensiones están al día.',
 			'extensionsPanel.updatesNoticeAction' => 'Más información',
 			'extensionsPanel.updateAllTitle' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '¿Actualizar ${count} extensión?', other: '¿Actualizar ${count} extensiones?', ), 
-			'extensionsPanel.updateAllBody' => 'Cada una se reemplaza por la versión que ofrece ahora el catálogo. Tu configuración se conserva.',
 			'extensionsPanel.upgradeTitle' => 'Necesitamos actualizar tus extensiones',
 			'extensionsPanel.upgradeBody' => 'Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.',
 			'extensionsPanel.upgradeAction' => 'Actualizar ahora',
@@ -3828,9 +3826,9 @@ extension on TranslationsEs {
 			'operation.spots.filters.mode' => 'Modo',
 			'operation.spots.filters.age' => 'Antigüedad',
 			'operation.spots.filters.sources' => 'Fuentes',
+			'operation.spots.filters.continent' => 'Continente',
 			_ => null,
 		} ?? switch (path) {
-			'operation.spots.filters.continent' => 'Continente',
 			'operation.spots.filters.sorting' => 'Orden',
 			'operation.spots.filters.sortByTime' => 'Por hora del spot',
 			'operation.spots.filters.sortByFrequency' => 'Por frecuencia',
@@ -4342,9 +4340,9 @@ extension on TranslationsEs {
 			'settings.radio.zeroBeatRange.title' => 'Batido cero: margen de separación',
 			'settings.radio.zeroBeatRange.description' => 'A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez.',
 			'settings.help.title' => 'Ayuda y Recursos',
+			'settings.help.description' => 'Comunidad y soporte',
 			_ => null,
 		} ?? switch (path) {
-			'settings.help.description' => 'Comunidad y soporte',
 			'settings.help.forums' => 'Foros de Ham2K',
 			'settings.help.forumsDescription' => 'Encuentra ayuda, danos tu opinión, comparte ideas…',
 			'settings.help.chat' => 'Chat de Ham2K',
@@ -4856,9 +4854,9 @@ extension on TranslationsEs {
 			'settings.developer.appVersion' => 'Versión de la app',
 			'settings.developer.dataFolder' => 'Carpeta de datos',
 			'settings.developer.loading' => '(cargando…)',
+			'settings.developer.panelLoadFailed' => 'No se pudo cargar este panel de configuración.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.developer.panelLoadFailed' => 'No se pudo cargar este panel de configuración.',
 			'settings.developer.extDevServer' => 'Servidor de desarrollo de extensiones',
 			'settings.developer.extDevServerDescription' => 'Carga extensiones desde un servidor de desarrollo en tu red en lugar de las incluidas en la app, y las recarga al guardar.',
 			'settings.developer.extDevServerAddress' => 'Dirección del servidor',

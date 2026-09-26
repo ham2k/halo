@@ -4,8 +4,9 @@
 // The consent screen is the whole of what stands between a bundle from anyone
 // and code the app will run, and `askConsent: false` is the one way past it.
 // It exists for Update all — one press, confirmed on a screen naming every
-// extension it will take and what each becomes, whether it came from the
-// Extensions panel or the update notice — and for nothing else.
+// extension it will take and what each becomes (or on the update notice, when
+// its text already named them all), whether it came from the Extensions panel
+// or the notice — and for nothing else.
 //
 // A guard rather than a widget test because what matters is not that one
 // caller behaves, but that no OTHER caller appears: a second opt-out added in

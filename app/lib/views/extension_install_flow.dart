@@ -134,7 +134,8 @@ Future<String?> installExtensionFromBytes(
   //
   // [askConsent] false is the ONE exception, and it is not a capability
   // comparison: Update all is a single press on a list the operator is looking
-  // at, naming every extension it will take and what each becomes. Asking five
+  // at, naming every extension it will take — its confirmation, which also says
+  // what each becomes, or an update notice that named them all. Asking five
   // times for the one thing they asked for once is how an operator learns to
   // press through the screen without reading it, which costs more than it
   // buys. It does mean an update that widens what an extension reaches is
@@ -263,12 +264,18 @@ Future<void> Function(InspectedBundle) commitThroughInstaller(HaLoServices servi
 };
 
 /// Update all — from the Extensions panel or the update notice: one
-/// confirmation naming every extension it will take and what each becomes,
-/// then the updates in place.
+/// confirmation naming every extension it will take and what each becomes
+/// (none when the notice already named them all — see [named]), then the
+/// updates in place.
 ///
 /// The confirmation lives HERE, and not with the callers, because it is what
 /// the skipped consent screens rest on: a function that could skip them
 /// without it is one call away from installing unseen code.
+///
+/// [named] is the keys the press that started this already put in front of
+/// the operator by name — the update notice's text. When it covers everything
+/// taken, that press WAS the confirmation, and the same names again in a
+/// dialog is asking twice. A caller passes only what it actually showed.
 ///
 /// [entries] is whatever the caller offers; only what is still behind what is
 /// installed, and not already under way, is taken. A check's offer can go
@@ -279,7 +286,12 @@ Future<void> Function(InspectedBundle) commitThroughInstaller(HaLoServices servi
 /// and the installer queues the installs, each of which restarts the runtime.
 /// Every row then shows where it is from the press on, rather than the list
 /// sitting unchanged until each one's turn comes.
-Future<void> updateAllFromCatalog(BuildContext context, {required HaLoServices services, required List<CatalogEntry> entries}) async {
+Future<void> updateAllFromCatalog(
+  BuildContext context, {
+  required HaLoServices services,
+  required List<CatalogEntry> entries,
+  Set<String> named = const {},
+}) async {
   // The notice outlives the experiment it was posted under (the check that
   // would take it down skips while the experiment is off), and its button
   // must not install from a catalog the app no longer shows.
@@ -310,17 +322,16 @@ Future<void> updateAllFromCatalog(BuildContext context, {required HaLoServices s
     );
     return;
   }
-  final confirmed = await _confirmUpdateAll(
-    context,
-    updates: [for (final (:entry, :info) in taken) (name: info.nameFor(locale), from: info.version, to: entry.version)],
-  );
+  final confirmed =
+      taken.every((update) => named.contains(update.entry.key)) ||
+      await _confirmUpdateAll(context, updates: [for (final (:entry, :info) in taken) (name: info.nameFor(locale), from: info.version, to: entry.version)]);
   if (!confirmed || !context.mounted) return;
   // The notice offers this same job; with it under way, that is asking twice.
   services.statusBar.dismissNotice(CatalogUpdateCheck.noticeKey);
   await Future.wait([
     for (final (:entry, :info) in taken)
-      // No consent screen per extension: the confirmation above named every
-      // one of these and what each becomes, and asking again once per entry
+      // No consent screen per extension: the confirmation above (or the
+      // notice) named every one of these, and asking again once per entry
       // makes a five-tap chore of the button that exists to avoid one.
       //
       // Each reported on its own: Future.wait surfaces only the first error,
@@ -534,8 +545,6 @@ Future<bool> _confirmUpdateAll(BuildContext context, {required List<({String nam
                       ),
                     ),
                   ),
-                const SizedBox(height: Space.lg),
-                Text(t.updateAllBody),
               ],
             ),
             cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),

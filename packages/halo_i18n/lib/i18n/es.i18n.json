@@ -118,7 +118,6 @@
       "one": "¿Actualizar ${count} extensión?",
       "other": "¿Actualizar ${count} extensiones?"
     },
-    "updateAllBody": "Cada una se reemplaza por la versión que ofrece ahora el catálogo. Tu configuración se conserva.",
     "upgradeTitle": "Necesitamos actualizar tus extensiones",
     "upgradeBody": "Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.",
     "upgradeAction": "Actualizar ahora",

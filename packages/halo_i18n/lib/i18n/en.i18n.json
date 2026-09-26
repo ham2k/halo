@@ -118,7 +118,6 @@
       "one": "Update ${count} extension?",
       "other": "Update ${count} extensions?"
     },
-    "updateAllBody": "Each is replaced by the version the catalog now offers. Your settings for them are kept.",
     "upgradeTitle": "We need to upgrade your extensions",
     "upgradeBody": "This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.",
     "upgradeAction": "Upgrade now",

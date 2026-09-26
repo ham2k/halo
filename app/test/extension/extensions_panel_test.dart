@@ -1039,6 +1039,63 @@ void main() {
     });
   });
 
+  group('Update all from a notice', () {
+    Future<HaLoServices> press(WidgetTester tester, {required List<String> offered, required Set<String> named}) async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      await settings.setExperimentEnabled('catalog', true);
+      final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+      extensions.debugSetAvailableExtensions([
+        for (final key in offered)
+          ExtensionInfo(key: key, file: 'index.js', core: false, name: key, category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
+      ]);
+      final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
+      services.statusBar.showNotice(key: CatalogUpdateCheck.noticeKey, text: 'updates');
+      final entries = [for (final key in offered) CatalogEntry.fromJson(_entry(key, key, version: '1.1.0'))!];
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: ElevatedButton(
+                  onPressed: () => updateAllFromCatalog(context, services: services, entries: entries, named: named),
+                  child: const Text('go'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+      return services;
+    }
+
+    bool noticeUp(HaLoServices services) => services.statusBar.activeNotices.any((n) => n.key == CatalogUpdateCheck.noticeKey);
+
+    testWidgets('that named every extension it takes goes ahead without a dialog', (tester) async {
+      // The operator pressed Update all under those very names; a dialog
+      // listing them again is the app asking twice. The notice coming down is
+      // what says the job started.
+      final services = await press(tester, offered: ['one', 'two'], named: {'one', 'two'});
+      expect(find.byType(Dialog), findsNothing);
+      expect(noticeUp(services), isFalse);
+    });
+
+    testWidgets('that named only some of them still confirms, naming them all', (tester) async {
+      // "One, Two and 1 more": the press agreed to two names and a number, and
+      // the third would install on the strength of a count.
+      final services = await press(tester, offered: ['one', 'two', 'three'], named: {'one', 'two'});
+      expect(find.text('Update 3 extensions?'), findsOneWidget);
+      expect(find.descendant(of: find.byType(Dialog), matching: find.textContaining('three')), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      expect(noticeUp(services), isTrue);
+    });
+  });
+
   testWidgets('installing an offer leaves the row where it was until the panel is reopened', (tester) async {
     // The row the operator just pressed Install on becomes theirs, and a
     // re-sort there and then takes it out from under the pointer — it would

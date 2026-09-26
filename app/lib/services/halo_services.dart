@@ -651,13 +651,13 @@ class HaLoServices {
 
   /// The update notice's Update all: the panel's own path, over the
   /// navigator — this sits above any screen that could lend a context.
-  Future<void> _updateAllFromNotice(List<CatalogEntry> entries) async {
+  Future<void> _updateAllFromNotice(List<CatalogEntry> entries, Set<String> named) async {
     final context = navigatorKey.currentContext;
     if (context == null || !context.mounted) {
       debugPrint('[extensions] Update all pressed with no navigator to confirm it on');
       return;
     }
-    await updateAllFromCatalog(context, services: this, entries: entries);
+    await updateAllFromCatalog(context, services: this, entries: entries, named: named);
   }
 
   /// Decides whether this install is out of date and, if so, says it exactly
