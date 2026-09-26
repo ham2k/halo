@@ -1016,7 +1016,10 @@ Every driver's protocol represents power differently, and confidence differs bet
 writing it:
 
 - **flrig** has a genuine absolute-watts concept on both sides (`rig.get_power`/`rig.set_power`), so
-  no conversion is guessed either way.
+  no conversion is guessed either way. `get_power` answers a typed `<i4>` where frequency and mode
+  answer bare text, so the driver reads XML-RPC values in both forms. flrig answers 0 with no rig
+  behind it, and the driver reads that as no reading — passed on, it would reset the operator's
+  power on every poll.
 - **rigctld** reads real watts (Hamlib's `RFPOWER_METER_WATTS`), but that level is read-only in
   Hamlib — a `set_level` against it is rejected by every correct backend. Writing goes through
   `RFPOWER` instead, a 0.0-1.0 fraction of the rig's own maximum with no command that states what
@@ -1403,7 +1406,7 @@ generic Yaesu entry names none.
 | driver | TX state | meters |
 |---|---|---|
 | Icom CI-V | `0x1C 0x00`, polled | power out, SWR, ALC (`0x15`, Icom's own published breakpoints) |
-| flrig | `rig.get_ptt` | `get_pwrmeter` (watts outright), `get_swrmeter` (a ratio), `get_alcmeter`, `get_vmeter` |
+| flrig | `rig.get_ptt` | `get_pwrmeter` (watts outright), `get_swrmeter` (a ratio); flrig 2.0.12 has no ALC or voltage method |
 | rigctld | `+t` | `RFPOWER_METER_WATTS`, `SWR`, `ALC`, `VD_METER` |
 | FlexRadio | `interlock state=`, PUSHED — costs nothing | none: SmartSDR's meters ride a VITA-49 stream, a project of its own |
 | Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts — for a radio whose entry names a table |

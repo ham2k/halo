@@ -223,13 +223,29 @@ void main() {
     });
 
     test('a power answer reports watts', () {
+      // flrig types this answer as <i4>, unlike the bare frequency and mode
+      // before it. A parse that reads only bare values drops it, and the
+      // radio's power never reaches the app.
       final sink = _FakeSink();
       final session = _stateOnlySession(sink);
       session.startUpdates();
       session.feed(_response('14070000'));
       session.feed(_response('USB'));
-      session.feed(_response('100'));
+      session.feed(_response('<i4>100</i4>'));
       expect(sink.powers, [100]);
+      session.teardown();
+    });
+
+    test('a power of 0 is no reading', () {
+      // flrig answers 0 with no rig behind it; passed on, it would reset the
+      // operator's power to nothing on every poll.
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.startUpdates();
+      session.feed(_response('14070000'));
+      session.feed(_response('USB'));
+      session.feed(_response('<i4>0</i4>'));
+      expect(sink.powers, isEmpty);
       session.teardown();
     });
 
@@ -292,7 +308,7 @@ void main() {
         // mode/power questions, not the missed ticks' worth of stale polls.
         session.feed(_response('14070000'));
         session.feed(_response('USB'));
-        session.feed(_response('100'));
+        session.feed(_response('<i4>100</i4>'));
         expect(sink.sent, hasLength(3));
         expect(sink.sent[1], contains('rig.get_mode'));
         expect(sink.sent[2], contains('rig.get_power'));
@@ -312,7 +328,7 @@ void main() {
       expect(sink.sent, hasLength(1), reason: 'one request on the wire, set queued');
       session.feed(_response('14070000'));
       session.feed(_response('USB'));
-      session.feed(_response('100'));
+      session.feed(_response('<i4>100</i4>'));
       expect(sink.sent, hasLength(4));
       expect(sink.sent[3], contains('rig.set_frequency'));
       session.teardown();
@@ -350,7 +366,7 @@ void main() {
         session.startUpdates();
         session.feed(_response('14070000'));
         session.feed(_response('USB'));
-        session.feed(_response('100'));
+        session.feed(_response('<i4>100</i4>'));
         sink.sent.clear();
         async.elapse(kPollSlow + const Duration(milliseconds: 10));
         expect(sink.sent, hasLength(1));
@@ -367,7 +383,7 @@ void main() {
         session.feed(_response('14250000'));
         expect(session.pollInterval, kPollSlow, reason: 'the first reading is the answer to startUpdates, not movement');
         session.feed(_response('USB'));
-        session.feed(_response('100'));
+        session.feed(_response('<i4>100</i4>'));
         async.elapse(kPollSlow + const Duration(milliseconds: 10));
         session.feed(_response('14260000'));
         expect(session.pollInterval, kPollFast);
@@ -401,23 +417,28 @@ void main() {
     /// be asserting by counting. What matters is that every answer is
     /// correlated to the question it belongs to, and a responder keyed on
     /// the method name is the only way to hold a test to that.
-    void answerAll(FlrigSession session, _FakeSink sink, {bool transmitting = false}) {
-      const answers = {
+    ///
+    /// Answers in flrig 2.0.12's captured shapes — typed where it types —
+    /// and faults any method it does not have. Returns the methods asked.
+    List<String> answerAll(FlrigSession session, _FakeSink sink, {bool transmitting = false, Map<String, String> overrides = const {}}) {
+      final answers = {
         'rig.get_vfo': '14070000',
         'rig.get_mode': 'USB',
-        'rig.get_power': '100',
+        'rig.get_power': '<i4>100</i4>',
         'rig.get_pwrmeter': '48.5',
         'rig.get_swrmeter': '1.4',
-        'rig.get_alcmeter': '60',
-        'rig.get_vmeter': '13.6',
+        ...overrides,
       };
+      final asked = <String>[];
       var guard = 0;
       while (sink.sent.isNotEmpty && guard++ < 50) {
         final request = sink.sent.removeAt(0);
         final method = RegExp(r'<methodName>([^<]+)</methodName>').firstMatch(request)!.group(1)!;
-        final value = method == 'rig.get_ptt' ? (transmitting ? '1' : '0') : answers[method];
-        if (value != null) session.feed(_response(value));
+        asked.add(method);
+        final value = method == 'rig.get_ptt' ? '<i4>${transmitting ? 1 : 0}</i4>' : answers[method];
+        session.feed(value == null ? _fault() : _response(value));
       }
+      return asked;
     }
 
     test('a receiving rig is watched and nothing else is measured', () {
@@ -449,15 +470,28 @@ void main() {
         async.elapse(const Duration(milliseconds: 250));
         answerAll(session, sink, transmitting: true);
 
-        expect(sink.meterReports.toSet(), {
-          (RadioMeter.powerOut, 48.5),
-          (RadioMeter.swr, 1.4),
-          // flrig answers ALC as a percentage of its own scale; the app
-          // carries a fraction, because no protocol here states what full
-          // scale means in dB.
-          (RadioMeter.alc, 0.6),
-          (RadioMeter.supplyVolts, 13.6),
-        });
+        expect(sink.meterReports.toSet(), {(RadioMeter.powerOut, 48.5), (RadioMeter.swr, 1.4)});
+        session.teardown();
+      });
+    });
+
+    test('a keyed rig is asked only for meters flrig has', () {
+      // One request at a time on the wire, several meter cycles a second:
+      // a method flrig lacks answers nothing and costs a round-trip every
+      // cycle the rig is keyed.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        final asked = answerAll(session, sink);
+        async.elapse(const Duration(milliseconds: 250));
+        asked.addAll(answerAll(session, sink, transmitting: true));
+        async.elapse(const Duration(milliseconds: 250));
+        asked.addAll(answerAll(session, sink, transmitting: true));
+        // Methods flrig 2.0.12's `system.listMethods` offers.
+        const offered = {'rig.get_vfo', 'rig.get_mode', 'rig.get_power', 'rig.get_ptt', 'rig.get_pwrmeter', 'rig.get_swrmeter'};
+        expect(asked, everyElement(isIn(offered)));
+        expect(asked, containsAll(['rig.get_pwrmeter', 'rig.get_swrmeter']), reason: 'the rig was keyed, so its meters were read');
         session.teardown();
       });
     });
@@ -465,16 +499,23 @@ void main() {
     test('an SWR below 1 is dropped rather than shown', () {
       // Physically impossible, so it is an flrig that does not implement the
       // method answering 0 — and a 0.0 on the strip reads as a perfect
-      // match, the most reassuring possible way to be wrong.
-      final sink = _FakeSink();
-      final session = watching(sink);
-      // Straight at the parser: the value is what is on trial, not the
-      // cadence that fetched it.
-      session.startUpdates();
-      sink.sent.clear();
-      session.feed(_response('0'));
-      expect(sink.meterReports.map((m) => m.$1), isNot(contains(RadioMeter.swr)));
-      session.teardown();
+      // match, the most reassuring possible way to be wrong. The 0 must
+      // answer the SWR question itself: an answer correlates only by order,
+      // so a 0 fed to whatever else is outstanding tests nothing.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        const noSwr = {'rig.get_swrmeter': '0'};
+        session.startUpdates();
+        final asked = answerAll(session, sink);
+        async.elapse(const Duration(milliseconds: 250));
+        asked.addAll(answerAll(session, sink, transmitting: true, overrides: noSwr));
+        async.elapse(const Duration(milliseconds: 250));
+        asked.addAll(answerAll(session, sink, transmitting: true, overrides: noSwr));
+        expect(asked, contains('rig.get_swrmeter'), reason: 'the rig was keyed, so SWR was asked');
+        expect(sink.meterReports.map((m) => m.$1), isNot(contains(RadioMeter.swr)));
+        session.teardown();
+      });
     });
   });
 }

@@ -151,14 +151,12 @@ class _FakeFlrig {
   String power = '100';
 
   /// The rig's PTT and meters, writable by the test the same way the dial
-  /// is. flrig answers every one of these on a real instance — a fake that
-  /// answered only what the test expected to be asked would let a driver
-  /// that stalls on an unanswered request pass.
+  /// is. flrig answers every method it has and faults the rest — a fake
+  /// that answered only what the test expected to be asked would let a
+  /// driver that stalls on an unanswered request pass.
   bool transmitting = false;
   String swr = '1.2';
   String powerMeter = '95';
-  String alc = '40';
-  String volts = '13.8';
 
   _FakeFlrig(this._server) {
     _server.listen((socket) {
@@ -190,7 +188,7 @@ class _FakeFlrig {
                 mode = RegExp(r'<param><value>([^<]+)</value></param>').firstMatch(body)!.group(1)!;
                 socket.add(_response(''));
               case 'rig.get_power':
-                socket.add(_response(power));
+                socket.add(_response('<i4>$power</i4>'));
               case 'rig.set_power':
                 power = RegExp(r'<double>([\d.]+)</double>').firstMatch(body)!.group(1)!;
                 socket.add(_response('<i4>1</i4>'));
@@ -200,10 +198,8 @@ class _FakeFlrig {
                 socket.add(_response(powerMeter));
               case 'rig.get_swrmeter':
                 socket.add(_response(swr));
-              case 'rig.get_alcmeter':
-                socket.add(_response(alc));
-              case 'rig.get_vmeter':
-                socket.add(_response(volts));
+              default:
+                socket.add(_fault(method));
             }
           }
         },
@@ -219,6 +215,23 @@ class _FakeFlrig {
         '<methodResponse><params><param>\r\n'
         '\t<value>$inner</value>\r\n'
         '</param></params></methodResponse>\r\n';
+    return utf8.encode(
+      'HTTP/1.1 200 OK\r\n'
+      'Server: XMLRPC++ 0.8\r\n'
+      'Content-Type: text/xml\r\n'
+      'Content-length: ${body.length}\r\n'
+      '\r\n'
+      '$body',
+    );
+  }
+
+  static List<int> _fault(String method) {
+    final body =
+        '<?xml version="1.0"?>\r\n'
+        '<methodResponse><fault>\r\n'
+        '\t<value><struct><member><name>faultCode</name><value><i4>-1</i4></value></member>'
+        '<member><name>faultString</name><value>$method: unknown method name</value></member></struct></value>\r\n'
+        '</fault></methodResponse>\r\n';
     return utf8.encode(
       'HTTP/1.1 200 OK\r\n'
       'Server: XMLRPC++ 0.8\r\n'
@@ -322,15 +335,21 @@ void main() {
       await _settleUntil(() => cat.stateFor(node.uuid).vfo.mode != null);
       expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 14070, mode: 'USB'));
 
-      // The operator turns the knob. Nothing is pushed — the change rides
-      // in on the next poll.
+      // The operator turns the knobs. Nothing is pushed — the changes ride
+      // in on the next poll, power included: flrig types that answer, and
+      // it reaches the app only if the parse reads typed values.
       rig.frequency = '7123450';
       rig.mode = 'LSB-D';
-      // Settle on BOTH fields — same in-flight-mode race as the rigctld
+      rig.power = '50';
+      // Settle on EVERY field — same in-flight-mode race as the rigctld
       // test above; flrig's one-outstanding queue makes the gap between
-      // the two answers even wider.
-      await _settleUntil(() => cat.stateFor(node.uuid).vfo == const VfoReading(freqKHz: 7123.45, mode: 'DATA-LSB'), tries: 2 * kPollSlow.inMilliseconds ~/ 10);
+      // the answers even wider.
+      await _settleUntil(
+        () => cat.stateFor(node.uuid).vfo == const VfoReading(freqKHz: 7123.45, mode: 'DATA-LSB') && cat.stateFor(node.uuid).power == 50,
+        tries: 2 * kPollSlow.inMilliseconds ~/ 10,
+      );
       expect(cat.stateFor(node.uuid).vfo, const VfoReading(freqKHz: 7123.45, mode: 'DATA-LSB'));
+      expect(cat.stateFor(node.uuid).power, 50);
 
       await cat.disconnect(node.uuid);
       expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);

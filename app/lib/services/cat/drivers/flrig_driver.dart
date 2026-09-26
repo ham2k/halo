@@ -17,14 +17,17 @@
 // Wire shapes, captured against flrig 2.0.12:
 //   rig.get_vfo        → <value>14070000</value>          (Hz, as text)
 //   rig.get_mode       → <value>USB</value>
+//   rig.get_power      → <value><i4>0</i4></value>        (watts)
+//   rig.get_ptt        → <value><i4>0</i4></value>
+//   rig.get_pwrmeter   → <value>0</value>
+//   rig.get_swrmeter   → <value>0</value>
 //   rig.set_frequency  → <value><i4>1</i4></value>        (double param, Hz)
 //   rig.set_mode       → <value></value>                  (string param)
 //   unknown method     → HTTP 200 with a <fault> struct
 // The Content-length header is spelled lowercase-l; parse it blind to case.
-//
-// rig.get_power/rig.set_power (watts, as a plain number) are documented
-// flrig XML-RPC methods but were NOT captured against a live instance —
-// unverified, same caveat CatService's `hardwareVerified` flag exists for.
+// The power, PTT and meter shapes come from an flrig with no rig behind it,
+// which answers 0 to each; what they read with a rig keyed, and whether
+// set_power takes the double it is sent, are not captured.
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -73,9 +76,11 @@ class FlrigDriver extends EquipmentDriver {
 
   /// Everything flrig publishes a meter method for. Its power meter answers
   /// watts outright and its SWR a ratio, so this is the one driver here
-  /// converting nothing on the way up.
+  /// converting nothing on the way up. No ALC or supply voltage: flrig
+  /// 2.0.12 has no method for either (`system.listMethods` offers none, and
+  /// asking faults).
   @override
-  Set<RadioMeter> get telemetryMeters => const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.alc, RadioMeter.supplyVolts};
+  Set<RadioMeter> get telemetryMeters => const {RadioMeter.powerOut, RadioMeter.swr};
 
   /// The meter cadence, and nothing else: where flrig is and which port it
   /// listens on are the TCP transport's questions.
@@ -94,7 +99,13 @@ class FlrigDriver extends EquipmentDriver {
 /// What kind of answer the outstanding request will produce — the only
 /// correlation an XML-RPC response offers is "it answers the oldest
 /// unanswered question".
-enum _Ask { frequency, mode, power, transmitting, meterPower, meterSwr, meterAlc, meterVolts, ignored }
+enum _Ask { frequency, mode, power, transmitting, meterPower, meterSwr, ignored }
+
+/// An XML-RPC scalar: bare text, which the spec reads as a string, or text
+/// inside one type element. flrig sends both — `rig.get_vfo` answers bare,
+/// `rig.get_power` and `rig.get_ptt` as `<i4>` — so a parse that reads only
+/// the bare form loses every typed answer without a trace.
+final _scalar = RegExp(r'<value>(?:<(i4|int|double|string|boolean)>([^<]*)</\1>|([^<]*))</value>');
 
 class FlrigSession implements TransceiverSession {
   final EquipmentSink _sink;
@@ -176,9 +187,6 @@ class FlrigSession implements TransceiverSession {
     if (_queue.isNotEmpty) return;
     _call(_Ask.frequency, 'rig.get_vfo');
     _call(_Ask.mode, 'rig.get_mode');
-    // Documented flrig XML-RPC method (rig.get_power/rig.set_power, watts as
-    // a plain number) — unlike get_vfo/get_mode above, not captured against
-    // a live flrig instance, so treat the exact reply shape as unverified.
     _call(_Ask.power, 'rig.get_power');
   }
 
@@ -202,17 +210,13 @@ class FlrigSession implements TransceiverSession {
       _call(_Ask.transmitting, 'rig.get_ptt');
       return;
     }
-    // The four meter methods flrig's XML-RPC list documents. What each
-    // ANSWERS IN is the open question and is handled at the parse below —
-    // none of it has been captured against a live instance, and an earlier
-    // version of this comment asserted a scale ("0-100 for everything except
-    // SWR") that the parse never implemented. Better to say what is unknown
-    // than to describe code that does something else.
+    // Only the meters flrig has a method for: every request here waits its
+    // turn on a one-at-a-time connection, so asking for one flrig lacks
+    // costs a round-trip per cycle and answers nothing. What each meter
+    // ANSWERS IN while keyed is not captured, and is handled at the parse.
     _call(_Ask.transmitting, 'rig.get_ptt');
     _call(_Ask.meterPower, 'rig.get_pwrmeter');
     _call(_Ask.meterSwr, 'rig.get_swrmeter');
-    _call(_Ask.meterAlc, 'rig.get_alcmeter');
-    _call(_Ask.meterVolts, 'rig.get_vmeter');
   }
 
   @override
@@ -268,7 +272,8 @@ class FlrigSession implements TransceiverSession {
     if (ask == _Ask.frequency || ask == _Ask.mode || ask == _Ask.power) _poller.noteData();
     // A fault answers the question with nothing; the next poll re-asks.
     if (body.contains('<fault>')) return;
-    final value = RegExp(r'<value>([^<]*)</value>').firstMatch(body)?.group(1)?.trim();
+    final match = _scalar.firstMatch(body);
+    final value = (match?.group(2) ?? match?.group(3))?.trim();
     if (value == null || value.isEmpty) return;
     switch (ask) {
       case _Ask.frequency:
@@ -280,8 +285,10 @@ class FlrigSession implements TransceiverSession {
       case _Ask.mode:
         _report(VfoReading(mode: appModeForFlrigMode(value)));
       case _Ask.power:
+        // flrig answers 0 with no rig behind it. No rig is set to 0 W, and
+        // passing it on would reset the operator's power on every poll.
         final watts = double.tryParse(value);
-        if (watts != null) _sink.reportPower(watts);
+        if (watts != null && watts > 0) _sink.reportPower(watts);
       case _Ask.transmitting:
         // "1" transmitting, "0" receiving. Anything else — an flrig that
         // does not implement it — is left as "nobody knows" rather than
@@ -294,21 +301,11 @@ class FlrigSession implements TransceiverSession {
         // watts — and the one that is wrong in a visible way if it is not: a
         // 100 W rig reading 35 would show 35 W beside a bar drawn against
         // the power the operator set, which is a disagreement they can see.
-        // Unverified against a live flrig, like [_Ask.power] above.
         final watts = double.tryParse(value);
         if (watts != null) _sink.reportMeter(RadioMeter.powerOut, watts);
       case _Ask.meterSwr:
         final swr = double.tryParse(value);
         if (swr != null && swr >= 1) _sink.reportMeter(RadioMeter.swr, swr);
-      case _Ask.meterAlc:
-        final alc = double.tryParse(value);
-        if (alc != null) _sink.reportMeter(RadioMeter.alc, (alc / 100).clamp(0.0, 1.0));
-      case _Ask.meterVolts:
-        // Volts, on the same reasoning and with the same caveat: a supply
-        // reading anywhere near 13.8 is self-evidently right, and one that
-        // is not is self-evidently wrong.
-        final volts = double.tryParse(value);
-        if (volts != null) _sink.reportMeter(RadioMeter.supplyVolts, volts);
       case _Ask.ignored:
         break;
     }
