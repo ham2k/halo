@@ -34,8 +34,17 @@ class _Sink implements EquipmentSink {
 
   List<String> get sentAscii => [for (final b in sent) ascii.decode(b)];
 
+  /// The radio's side of the bus, for a CI-V session: answers every command
+  /// with an ACK, as a radio does, so the driver's one-command-at-a-time
+  /// sending moves on. Null is a radio that answers nothing.
+  void Function(Uint8List frame)? answer;
+
   @override
-  void send(List<int> bytes) => sent.add(bytes);
+  void send(List<int> bytes) {
+    sent.add(bytes);
+    answer?.call(Uint8List.fromList([0xFE, 0xFE, bytes[3], bytes[2], 0xFB, 0xFD]));
+  }
+
   @override
   void reportVoiceActivity(VoiceActivity? activity) => activities.add(activity);
   @override
@@ -203,6 +212,7 @@ void main() {
     setUp(() {
       sink = _Sink();
       session = IcomCivSession(sink, radioAddress: radio, controllerAddress: us);
+      sink.answer = session.handleData;
     });
 
     void feed(List<int> bytes) => session.handleData(Uint8List.fromList(bytes));

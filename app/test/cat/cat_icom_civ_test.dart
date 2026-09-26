@@ -31,8 +31,16 @@ class _FakeSink implements EquipmentSink {
   final keyerSpeeds = <int>[];
   final diagnostics = <String?>[];
 
+  /// The radio's side of the bus, for a CI-V session: answers every command
+  /// with an ACK, as a radio does, so the driver's one-command-at-a-time
+  /// sending moves on. Null is a radio that answers nothing.
+  void Function(Uint8List frame)? answer;
+
   @override
-  void send(List<int> bytes) => sent.add(bytes);
+  void send(List<int> bytes) {
+    sent.add(bytes);
+    answer?.call(Uint8List.fromList([0xFE, 0xFE, bytes[3], bytes[2], 0xFB, 0xFD]));
+  }
 
   @override
   void report(VfoReading reading) => readings.add(reading);
@@ -64,8 +72,9 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) {}
+  var alive = 0;
   @override
-  void reportAlive() {}
+  void reportAlive() => alive++;
 }
 
 void main() {
@@ -78,6 +87,7 @@ void main() {
   setUp(() {
     sink = _FakeSink();
     session = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us);
+    sink.answer = session.handleData;
   });
 
   void feed(List<int> bytes) => session.handleData(Uint8List.fromList(bytes));
@@ -200,6 +210,173 @@ void main() {
       // number; only sub-command 0x15 is DC input.
       feed([0xFE, 0xFE, us, ic705, 0x15, 0x11, 0x00, 0x50, 0xFD]);
       expect(session.dcInputMeterLevel, isNull);
+    });
+  });
+
+  group('one command on the wire at a time', () {
+    // An IC-7300 keeps only the LAST of several commands that arrive back to
+    // back: sent as a burst, the poll's five queries get one answer, and the
+    // frequency read, being first, never does. Each test here runs against a
+    // serial radio that answers only when the test says so.
+    setUp(() => session = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, config: const {'baudRate': 19200}));
+
+    List<int> commands() => [for (final frame in sink.sent) frame[4]];
+
+    /// The radio acknowledging whatever is on the wire, [times] times.
+    void ack([int times = 1]) {
+      for (var i = 0; i < times; i++) {
+        feed(_fromRadio([0xFB]));
+      }
+    }
+
+    test('the next command waits for the radio to answer the last', () {
+      fakeAsync((async) {
+        session.startUpdates();
+        expect(commands(), [0x03], reason: 'the frequency read alone, not the burst');
+        feed(_fromRadio([0x03, 0x00, 0x40, 0x07, 0x14, 0x00]));
+        expect(commands(), [0x03, 0x1A]);
+        // An ACK or a NAK answers too: CI-V's answers name no command.
+        feed(_fromRadio([0xFB]));
+        feed(_fromRadio([0xFA]));
+        expect(commands(), [0x03, 0x1A, 0x04, 0x14]);
+        session.teardown();
+      });
+    });
+
+    test('a command the radio never answers holds the rest back only briefly', () {
+      // Without the timeout one lost frame would stop the session talking.
+      fakeAsync((async) {
+        session.startUpdates();
+        async.elapse(const Duration(milliseconds: 240));
+        expect(commands(), [0x03]);
+        async.elapse(const Duration(milliseconds: 20));
+        expect(commands(), [0x03, 0x1A]);
+        // Said, once: a command the radio ignores costs a timeout on every
+        // poll, and nothing else would show it.
+        expect(sink.diagnostics, ['radio did not answer CI-V command 0x03 in time']);
+        async.elapse(const Duration(seconds: 1));
+        expect(sink.diagnostics, hasLength(1));
+        session.teardown();
+      });
+    });
+
+    test('the network pairing waits longer, since its answers cross WiFi', () {
+      // A timeout under the link's jitter sends the next command over one
+      // still pending — the burst the wait exists to prevent.
+      fakeAsync((async) {
+        final network = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us);
+        network.startUpdates();
+        async.elapse(const Duration(milliseconds: 900));
+        expect(commands(), [0x03]);
+        network.teardown();
+      });
+    });
+
+    test('an answer arriving after its command timed out does not free the wire', () {
+      // Taken as the answer to what is waiting now, a late reply would send
+      // the next command over it.
+      fakeAsync((async) {
+        session.startUpdates();
+        async.elapse(const Duration(milliseconds: 260));
+        expect(commands(), [0x03, 0x1A]);
+        feed(_fromRadio([0x03, 0x00, 0x40, 0x07, 0x14, 0x00]));
+        expect(commands(), [0x03, 0x1A]);
+        session.teardown();
+      });
+    });
+
+    test('a band change reaches the radio whole and in order, behind a busy wire', () {
+      // A band change restates its frequency after its mode (cat.md § The
+      // VFO); merged with the first as a duplicate, the restatement would
+      // be lost exactly when the queue was busy.
+      fakeAsync((async) {
+        session.startUpdates();
+        sink.sent.clear();
+        session.setFrequency(14074);
+        session.setMode('USB');
+        session.setFrequency(14074);
+        ack(20);
+        final sets = commands().where((c) => c == 0x05 || c == 0x06).toList();
+        expect(sets, [0x05, 0x06, 0x05]);
+        session.teardown();
+      });
+    });
+
+    test('a keyer speed set twice is read back after the second set', () {
+      // Merging the second read-back into the first would read the speed
+      // before the radio took the second set, and pace CW at the old one.
+      session.setKeyerSpeed(20);
+      session.setKeyerSpeed(25);
+      ack(4);
+      expect(
+        [for (final f in sink.sent) f.sublist(4, 6)],
+        [
+          [0x14, 0x0C],
+          [0x14, 0x0C],
+          [0x14, 0x0C],
+          [0x14, 0x0C],
+        ],
+      );
+      expect(sink.sent[1].length, 7, reason: 'a read');
+      expect(sink.sent[2].length, greaterThan(7), reason: 'the second set, after the first read');
+      expect(sink.sent[3].length, 7, reason: 'its own read');
+    });
+
+    test('a stop goes ahead of everything waiting, and takes queued CW with it', () {
+      // Behind the telemetry reads a stop waits while the rig keeps
+      // keying, and a CW chunk still in the queue would key after it.
+      fakeAsync((async) {
+        session.startUpdates();
+        session.sendCw('CQ CQ');
+        session.stopCw();
+        sink.sent.clear();
+        ack();
+        expect(sink.sent.first.sublist(4), [0x17, 0xFF, 0xFD]);
+        ack(10);
+        expect(sink.sent.where((f) => f[4] == 0x17), hasLength(1), reason: 'the stop, and no text after it');
+        session.teardown();
+      });
+    });
+
+    test('an announcement the radio makes on its own does not free the wire', () {
+      // A transceive broadcast arrives whenever the dial moves; taken as an
+      // answer, it would send the next command over the one still pending.
+      fakeAsync((async) {
+        session.startUpdates();
+        feed([0xFE, 0xFE, 0x00, ic705, 0x00, 0x00, 0x40, 0x07, 0x14, 0x00, 0xFD]);
+        expect(commands(), [0x03]);
+        session.teardown();
+      });
+    });
+
+    test('a radio that answers nothing does not pile up polls behind it', () {
+      // The TX watch alone asks five times a second; queued without merging,
+      // a radio switched off for a minute would be answered a minute of
+      // stale questions when it came back.
+      fakeAsync((async) {
+        session.startUpdates();
+        async.elapse(const Duration(seconds: 30));
+        sink.sent.clear();
+        sink.answer = session.handleData;
+        feed(_fromRadio([0xFB]));
+        expect(sink.sent.length, lessThan(8));
+        session.teardown();
+      });
+    });
+  });
+
+  group('the link is alive whenever the radio speaks', () {
+    test('an answer carrying no VFO reading still proves the radio is there', () {
+      // Without this, a radio answering only the TX watch is marked not
+      // responding while it answers five times a second.
+      feed(_fromRadio([0x1C, 0x00, 0x00]));
+      feed(_fromRadio([0x15, 0x15, 0x01, 0x27]));
+      expect(sink.alive, 2);
+    });
+
+    test('another radio on the bus proves nothing about ours', () {
+      feed([0xFE, 0xFE, us, 0x94, 0x1C, 0x00, 0x00, 0xFD]);
+      expect(sink.alive, 0);
     });
   });
 
@@ -547,6 +724,7 @@ void main() {
       });
       addTearDown(() => MeterCalibrations.instance.setForTesting({}));
       final session = const IcomCivDriver().createSession(sink, const {}) as IcomCivSession;
+      sink.answer = session.handleData;
       void feed(List<int> bytes) => session.handleData(Uint8List.fromList(bytes));
 
       fakeAsync((async) {

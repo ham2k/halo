@@ -129,7 +129,8 @@ abstract class EquipmentSink {
   /// whose control and reading paths differ never calls this. What it does
   /// NOT vouch for even on one socket is the radio's own subscription
   /// table; a driver that relies on it keeps its resync. A reading already
-  /// counts as life, so a driver never calls this for one.
+  /// counts as life, so calling this for one as well changes nothing — which
+  /// lets a driver call it for every frame it accepts from the radio.
   void reportAlive();
 }
 

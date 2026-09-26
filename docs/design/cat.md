@@ -170,7 +170,7 @@ The sink carries twelve kinds of report, and the differences between them are lo
 | `reportCwProgress` | `CatService.cwProgress` | what the keyer is sending on the app's behalf, null when idle |
 | `reportVoiceActivity` | `CatService.voiceActivity` | what the voice keyer is playing or recording for the app, null when idle |
 | `reportSwitchState` | `.switchAntennas`, `.switchPorts` | what an antenna switch routes where — both lists together, since a port names its antenna by key |
-| `reportAlive` | `.stale` (re-armed) | the equipment answered with nothing about its state; only for something the radio sent on the readings' own path |
+| `reportAlive` | `.stale` (re-armed) | the equipment answered with nothing about its state; only ever for something the radio sent. The CI-V driver calls it for every frame from its radio, since a TX-status or meter answer carries no reading and a radio answering only those is still there |
 
 **A problem is not a connection error.** `EquipmentStatus.error` feeds the retry ladder, and the
 conditions that belong there are ones a retry can clear — a radio switched off, a port held by
@@ -210,6 +210,20 @@ The guards, and the polo bug each one prevents:
 `EquipmentSession.handleData` receives raw chunks and **must not assume a chunk is a whole frame**.
 Polo's FlexRadio driver split each chunk on `\n` with no residual buffer, so a status line
 straddling two TCP reads was mangled. The Dart port keeps a residual buffer; there is a test for it.
+
+**CI-V goes out one command at a time.** The bus has no flow control, and an IC-7300 keeps only the
+LAST of several commands that arrive back to back: a DEVLOGCAT recording showed the five-query poll
+answered once, and the frequency read — first in the burst — never, while the TX watch sent alone
+was answered every time. So `IcomCivSession` queues everything it sends and releases the next
+command when the radio answers the last — a data answer repeating its command byte, or an ACK or
+NAK, which name none — or after 250 ms (a second over the network pairing, whose answers cross
+WiFi). A transceive broadcast is not an answer, and neither is a data answer for a command that
+already timed out. The first unanswered command of a session is reported as a driver diagnostic.
+Only polls are merged — a read identical to one already waiting is not queued twice, so a radio that
+is switched off builds no backlog of stale questions; sets and read-backs always queue in order,
+because a band change restates its frequency after its mode. A stop (CW `0x17 0xFF`, voice
+`0x28 0x00 0x00`) goes ahead of everything waiting and drops the queued frames it stops. hamlib
+keeps the same one-at-a-time discipline.
 
 ## Persistence
 

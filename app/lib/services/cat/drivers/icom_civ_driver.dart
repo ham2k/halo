@@ -13,6 +13,7 @@
 // For what has and has not met real hardware, see [hardwareVerified] below.
 
 import 'dart:async';
+import 'dart:collection';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -35,6 +36,17 @@ import 'voice_activity_tracker.dart';
 /// read back whether it took. So poll as well — the same belt-and-braces the
 /// FlexRadio and FT-891 drivers use, for the same reason.
 const _pollInterval = Duration(seconds: 5);
+
+/// How long a command waits for its answer before the next one goes out
+/// anyway. An IC-7300 answers in about 10 ms at 19200 baud; this only has to
+/// outlast that on a slow link, and bound how long a command the radio never
+/// answers holds up the ones behind it.
+const _answerTimeout = Duration(milliseconds: 250);
+
+/// The same over the network pairing, whose answers cross WiFi: a timeout
+/// shorter than its jitter sends the next command over one still pending,
+/// which is the burst this wait exists to prevent.
+const _networkAnswerTimeout = Duration(seconds: 1);
 
 /// The RF power level (0x14 0x0A) is a 0-255 value standing for 0-100% of
 /// the radio's OWN maximum — CI-V has no command that states what that
@@ -357,7 +369,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     stop: stopVoice,
     ceiling: () => voiceMemoryCeiling,
     onCeiling: (limit) => _sink.reportDiagnostic('voice memory stopped at the ${limit.inSeconds} s ceiling'),
-    poll: () => _send(buildReadTransmitStatusFrame(to: radioAddress, from: controllerAddress)),
+    poll: () => _poll(buildReadTransmitStatusFrame(to: radioAddress, from: controllerAddress)),
   );
 
   /// See [voiceMemoriesConfigKey]: what the entry pinned, at most the
@@ -412,7 +424,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   void _readDataMode() {
     _dataReadPending = true;
-    _send(buildReadDataModeFrame(to: radioAddress, from: controllerAddress));
+    _poll(buildReadDataModeFrame(to: radioAddress, from: controllerAddress));
   }
 
   /// The base mode the radio last reported, and whether its DATA submode was
@@ -426,16 +438,86 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     if (base != null) _sink.report(VfoReading(mode: modeNameWithData(base, data: _dataOn)));
   }
 
-  void _send(List<int> frame) => _sink.send(frame);
+  /// Commands waiting to go out, and whether one is on the wire unanswered.
+  ///
+  /// One at a time, because CI-V has no flow control and a radio keeps only
+  /// the LAST of several commands that arrive back to back: sent as a burst,
+  /// an IC-7300 answers the last of five queries and drops the other four —
+  /// the frequency read among them, forever, since it is first. hamlib keeps
+  /// the same discipline.
+  final _outbox = Queue<List<int>>();
+  Timer? _answerTimer;
+  bool _warnedUnanswered = false;
+
+  /// The command byte on the wire unanswered, or null when the wire is free.
+  int? _awaiting;
+
+  /// Commands the operator asked for, in order and never merged: a band
+  /// change restates its frequency after its mode, and a keyer speed is set
+  /// and then read back.
+  void _send(List<int> frame) {
+    _outbox.add(frame);
+    _sendNext();
+  }
+
+  /// A question asked on a timer, dropped when the same one is already
+  /// waiting: against a radio that answers nothing the polls would otherwise
+  /// queue faster than the answer timeout lets them out. Only a read may be
+  /// merged, since only a read means the same thing wherever it lands.
+  void _poll(List<int> frame) {
+    if (_outbox.any((queued) => listEquals(queued, frame))) return;
+    _send(frame);
+  }
+
+  /// A stop, ahead of everything waiting, and taking with it the queued
+  /// frames of [command] it stops — a CW chunk or a voice play still in the
+  /// queue would otherwise key the radio after the operator stopped it. It
+  /// still waits for the one exchange on the wire.
+  void _sendFirst(List<int> frame, {required int dropping}) {
+    _outbox.removeWhere((queued) => queued[4] == dropping);
+    _outbox.addFirst(frame);
+    _sendNext();
+  }
+
+  void _sendNext() {
+    if (_awaiting != null || _outbox.isEmpty) return;
+    final frame = _outbox.removeFirst();
+    _awaiting = frame[4];
+    _answerTimer = Timer(_baudRate == null ? _networkAnswerTimeout : _answerTimeout, _unanswered);
+    _sink.send(frame);
+  }
+
+  /// Whether [frame] answers the command on the wire. A data answer repeats
+  /// its command byte, so one arriving late for a command that timed out
+  /// does not free the wire for the next; ACK and NAK name no command and
+  /// are taken as the answer to whatever is waiting.
+  bool _answers(CivFrame frame) => frame.isAck || frame.isNak || frame.command == _awaiting;
+
+  void _answered() {
+    _answerTimer?.cancel();
+    _answerTimer = null;
+    _awaiting = null;
+    _sendNext();
+  }
+
+  /// Said once a session: a radio that ignores one of our commands costs a
+  /// timeout on every poll, and nothing else would show it.
+  void _unanswered() {
+    if (!_warnedUnanswered) {
+      _warnedUnanswered = true;
+      _sink.reportDiagnostic('radio did not answer CI-V command 0x${_awaiting!.toRadixString(16).padLeft(2, '0').toUpperCase()} in time');
+    }
+    _answered();
+  }
 
   void _requestFrequencyAndMode() {
-    _send(buildReadFrequencyFrame(to: radioAddress, from: controllerAddress));
+    _poll(buildReadFrequencyFrame(to: radioAddress, from: controllerAddress));
     // DATA first: the mode answer is reported against the flag as it stands,
     // and a flag read after it would report the base mode alone in between.
     if (_dataModeSupported) _readDataMode();
-    _send(buildReadModeFrame(to: radioAddress, from: controllerAddress));
-    _send(buildReadPowerLevelFrame(to: radioAddress, from: controllerAddress));
-    _send(buildReadMeterFrame(to: radioAddress, from: controllerAddress, meterId: civMeterDcInputVoltage));
+    _poll(buildReadModeFrame(to: radioAddress, from: controllerAddress));
+    _poll(buildReadPowerLevelFrame(to: radioAddress, from: controllerAddress));
+    _poll(buildReadMeterFrame(to: radioAddress, from: controllerAddress, meterId: civMeterDcInputVoltage));
   }
 
   /// One turn of the telemetry cadence: ask whether the radio is keyed, or
@@ -452,7 +534,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // the radio as keyed for the rest of the connection, blocking every
     // antenna switch and every snap and reading four meters at 200 ms
     // forever.
-    _send(buildReadTransmitStatusFrame(to: radioAddress, from: controllerAddress));
+    _poll(buildReadTransmitStatusFrame(to: radioAddress, from: controllerAddress));
     if (!transmitting) return;
     // Only what something can interpret: a radio whose entry names no
     // calibration (an IC-706MKIIG, whose CI-V has no TX meters at all) would
@@ -460,7 +542,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // reads — and, on that radio, four rejections.
     if (_calibration == null) return;
     for (final meter in const [civMeterRfPower, civMeterSwr, civMeterAlc, civMeterDcInputVoltage]) {
-      _send(buildReadMeterFrame(to: radioAddress, from: controllerAddress, meterId: meter));
+      _poll(buildReadMeterFrame(to: radioAddress, from: controllerAddress, meterId: meter));
     }
   }
 
@@ -524,6 +606,13 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
     // Only the radio we were configured for.
     if (frame.from != radioAddress) return;
+
+    // Anything the radio says proves the link, whatever it is about: a TX
+    // status or a meter reading carries no VFO reading, and a radio answering
+    // only those would otherwise be marked not responding.
+    _sink.reportAlive();
+    // An answer to us, not a transceive broadcast, is what frees the wire.
+    if (frame.to == controllerAddress && _answers(frame)) _answered();
 
     if (frame.isNak) {
       // The radio refused the command. polo ignored this entirely, so a
@@ -709,7 +798,10 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   @override
   void stopCw() {
     _cwQueue.clear();
-    _send(buildStopCwFrame(to: radioAddress, from: controllerAddress));
+    _sendFirst(
+      buildStopCwFrame(to: radioAddress, from: controllerAddress),
+      dropping: CivCommand.sendCw,
+    );
   }
 
   @override
@@ -750,7 +842,10 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   @override
   void stopVoice() {
     if (!_voice.active) return;
-    _send(buildStopVoiceMemoryFrame(to: radioAddress, from: controllerAddress));
+    _sendFirst(
+      buildStopVoiceMemoryFrame(to: radioAddress, from: controllerAddress),
+      dropping: CivCommand.voiceMemory,
+    );
     _voice.end();
   }
 
@@ -794,6 +889,8 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   @override
   void teardown() {
+    _answerTimer?.cancel();
+    _outbox.clear();
     _cwQueue.clear();
     _voice.dispose();
     _stopPolling();
