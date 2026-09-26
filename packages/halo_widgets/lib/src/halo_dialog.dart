@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 
 import 'settings_list.dart';
 import 'platform_chrome.dart' show shrinkToFitText;
+import 'platform_view_shield.dart';
 import 'spacing.dart';
 import 'theme.dart';
 
@@ -401,22 +402,26 @@ class HaloDialog extends StatelessWidget {
       // throws on content holding a shrink-wrapping viewport — several dialogs
       // have ListViews.) So the width is chosen here instead: compact for
       // prompts, the full cap for content-carrying dialogs.
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: wide ? maxDialogWidth : compactDialogWidth),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (title != null) HaloDialogHeader(title: title),
-            ?header,
-            // Flexible, not Expanded: a short dialog still shrink-wraps.
-            if (body != null) Flexible(child: body),
-            if (actions.isNotEmpty || cancel != null || destructive != null || help != null || secondary != null || tools != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.lg),
-                child: haloDialogFooterRow(cancel: cancel, destructive: destructive, help: help, secondary: secondary, actions: actions, tools: tools),
-              ),
-          ],
+      child: PlatformViewShield(
+        // The card's own box, inside the Dialog: the Dialog itself fills the whole
+        // size cap around the card.
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: wide ? maxDialogWidth : compactDialogWidth),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (title != null) HaloDialogHeader(title: title),
+              ?header,
+              // Flexible, not Expanded: a short dialog still shrink-wraps.
+              if (body != null) Flexible(child: body),
+              if (actions.isNotEmpty || cancel != null || destructive != null || help != null || secondary != null || tools != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.lg),
+                  child: haloDialogFooterRow(cancel: cancel, destructive: destructive, help: help, secondary: secondary, actions: actions, tools: tools),
+                ),
+            ],
+          ),
         ),
       ),
     );

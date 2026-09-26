@@ -524,7 +524,11 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
                 // element off every node and that element takes the click
                 // before any hit test runs, so a scrim that only absorbed
                 // POINTERS would be clicked straight through.
-                ? ModalBarrier(color: haloBarrierColor(context), dismissible: true, onDismiss: () => setState(() => _footerExpanded = false))
+                // Shielded: on the web a map under the scrim would otherwise
+                // take the tap that puts the list away.
+                ? PlatformViewShield(
+                    child: ModalBarrier(color: haloBarrierColor(context), dismissible: true, onDismiss: () => setState(() => _footerExpanded = false)),
+                  )
                 : null,
             chrome: [
               for (final piece in [

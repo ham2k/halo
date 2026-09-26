@@ -22,6 +22,7 @@ import 'density.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
 import 'platform_chrome.dart';
+import 'platform_view_shield.dart';
 import 'spacing.dart';
 import 'theme.dart';
 
@@ -249,27 +250,29 @@ class _ModalPaneScaffold extends StatelessWidget {
   );
 
   Widget _buildFullScreen(BuildContext context) {
-    return ScaffoldMessenger(
-      child: Scaffold(
-        appBar: AppBar(
-          // Full-screen presentation puts this AppBar at the window top, so
-          // it doubles as the window header.
-          flexibleSpace: windowHeaderGestureArea(),
-          // The back button is the dismissal — same Navigator.pop as the
-          // dialog presentation's close button.
-          leadingWidth: route.leading != null ? null : macOSAwareLeadingWidth(context),
-          leading: route.leading ?? macOSAwareBackButton(context),
-          title: route.title == null ? null : shrinkToFitText(Text(route.title!)),
-          actions: [...route.headerActions, if (route.trailing != null) route.trailing!, windowsCaptionSpacer(context)],
-        ),
-        body: SafeArea(
-          child: route.scrollable
-              ? SingleChildScrollView(padding: const EdgeInsets.all(Space.xxl), child: _body())
-              // Tight height, because here the pane IS the screen: the
-              // Scaffold's body slot is LOOSE, and a body that shrink-wraps
-              // given the chance would float its pinned actions up under the
-              // last field instead of leaving them on the bottom edge.
-              : SizedBox(height: double.infinity, child: _body()),
+    return PlatformViewShield(
+      child: ScaffoldMessenger(
+        child: Scaffold(
+          appBar: AppBar(
+            // Full-screen presentation puts this AppBar at the window top, so
+            // it doubles as the window header.
+            flexibleSpace: windowHeaderGestureArea(),
+            // The back button is the dismissal — same Navigator.pop as the
+            // dialog presentation's close button.
+            leadingWidth: route.leading != null ? null : macOSAwareLeadingWidth(context),
+            leading: route.leading ?? macOSAwareBackButton(context),
+            title: route.title == null ? null : shrinkToFitText(Text(route.title!)),
+            actions: [...route.headerActions, if (route.trailing != null) route.trailing!, windowsCaptionSpacer(context)],
+          ),
+          body: SafeArea(
+            child: route.scrollable
+                ? SingleChildScrollView(padding: const EdgeInsets.all(Space.xxl), child: _body())
+                // Tight height, because here the pane IS the screen: the
+                // Scaffold's body slot is LOOSE, and a body that shrink-wraps
+                // given the chance would float its pinned actions up under the
+                // last field instead of leaving them on the bottom edge.
+                : SizedBox(height: double.infinity, child: _body()),
+          ),
         ),
       ),
     );
@@ -327,68 +330,70 @@ class _ModalPaneScaffold extends StatelessWidget {
                   // no floor here: the Column below takes this box's max on
                   // its own once its mainAxisSize says to.
                   constraints: dialogConstraints,
-                  child: Material(
-                    color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
-                    elevation: modalSurfaceElevation,
-                    shadowColor: haloDialogShadowColor,
-                    surfaceTintColor: theme.colorScheme.surfaceTint,
-                    borderRadius: BorderRadius.circular(28),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // The same banded header a dialog gets — one shared
-                        // widget, so the two families can't drift apart.
-                        HaloDialogHeader(
-                          leading: route.leading,
-                          title: route.title == null ? null : Text(route.title!),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ...route.headerActions,
-                              if (route.trailing != null)
-                                route.trailing!
-                              else if (route.closeButton)
-                                IconButton(
-                                  icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
-                                  // maybePop — see the barrier handler above.
-                                  onPressed: () => Navigator.of(context).maybePop(),
-                                ),
-                            ],
-                          ),
-                        ),
-                        // Surface-coloured body framed by the bands. Material,
-                        // not ColoredBox: InkWell content paints its splashes
-                        // on the nearest Material ancestor.
-                        if (route.scrollable)
-                          Flexible(
-                            // Tight under fillHeight, and that ONE word is
-                            // what fills the card: a tight flex child claims
-                            // the whole of the box's max height, which the
-                            // Column then takes whatever its mainAxisSize
-                            // says. Loose, the card is as tall as the body.
-                            fit: route.fillHeight ? FlexFit.tight : FlexFit.loose,
-                            child: Material(
-                              color: theme.colorScheme.surface,
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl), child: _body()),
-                              ),
+                  child: PlatformViewShield(
+                    child: Material(
+                      color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
+                      elevation: modalSurfaceElevation,
+                      shadowColor: haloDialogShadowColor,
+                      surfaceTintColor: theme.colorScheme.surfaceTint,
+                      borderRadius: BorderRadius.circular(28),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // The same banded header a dialog gets — one shared
+                          // widget, so the two families can't drift apart.
+                          HaloDialogHeader(
+                            leading: route.leading,
+                            title: route.title == null ? null : Text(route.title!),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ...route.headerActions,
+                                if (route.trailing != null)
+                                  route.trailing!
+                                else if (route.closeButton)
+                                  IconButton(
+                                    icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
+                                    // maybePop — see the barrier handler above.
+                                    onPressed: () => Navigator.of(context).maybePop(),
+                                  ),
+                              ],
                             ),
-                          )
-                        else
-                          Flexible(
-                            // Edge to edge, no padding — a non-scrollable body
-                            // manages its own layout (see showModalPane's doc).
-                            // Loose by default: it OFFERS the remaining height
-                            // rather than forcing it, so a body that wants less
-                            // gets a card that fits it. fillHeight is exactly
-                            // the opposite ask — see the scrollable branch.
-                            fit: route.fillHeight ? FlexFit.tight : FlexFit.loose,
-                            child: Material(color: theme.colorScheme.surface, child: _body()),
                           ),
-                      ],
+                          // Surface-coloured body framed by the bands. Material,
+                          // not ColoredBox: InkWell content paints its splashes
+                          // on the nearest Material ancestor.
+                          if (route.scrollable)
+                            Flexible(
+                              // Tight under fillHeight, and that ONE word is
+                              // what fills the card: a tight flex child claims
+                              // the whole of the box's max height, which the
+                              // Column then takes whatever its mainAxisSize
+                              // says. Loose, the card is as tall as the body.
+                              fit: route.fillHeight ? FlexFit.tight : FlexFit.loose,
+                              child: Material(
+                                color: theme.colorScheme.surface,
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl), child: _body()),
+                                ),
+                              ),
+                            )
+                          else
+                            Flexible(
+                              // Edge to edge, no padding — a non-scrollable body
+                              // manages its own layout (see showModalPane's doc).
+                              // Loose by default: it OFFERS the remaining height
+                              // rather than forcing it, so a body that wants less
+                              // gets a card that fits it. fillHeight is exactly
+                              // the opposite ask — see the scrollable branch.
+                              fit: route.fillHeight ? FlexFit.tight : FlexFit.loose,
+                              child: Material(color: theme.colorScheme.surface, child: _body()),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -817,60 +822,62 @@ class _TopModalPaneScaffold extends StatelessWidget {
                               // scrollable.
                               minHeight: (isNarrow || !route.scrollable) ? sheetMaxHeight : 0,
                             ),
-                            child: Material(
-                              color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
-                              elevation: modalSurfaceElevation,
-                              shadowColor: haloDialogShadowColor,
-                              surfaceTintColor: theme.colorScheme.surfaceTint,
-                              // Square at the bottom in the narrow case — it
-                              // reaches the screen's true edge there, so a
-                              // rounded corner would just look clipped.
-                              borderRadius: isNarrow ? BorderRadius.zero : const BorderRadius.vertical(bottom: Radius.circular(28)),
-                              clipBehavior: Clip.antiAlias,
-                              // Narrow only, and only when the header behind it
-                              // isn't being kept visible: the sheet starts at the
-                              // screen's very top then, so its first row must
-                              // clear the status bar itself. Wide (or
-                              // keepHeaderVisible) starts below the app's header
-                              // instead — a SafeArea there would double-inset.
-                              child: SafeArea(
-                                top: isNarrow && !route.keepHeaderVisible,
-                                bottom: false,
-                                left: false,
-                                right: false,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    if (route.showHeader)
-                                      HaloDialogHeader(
-                                        leading: route.leading,
-                                        title: route.title,
-                                        trailing:
-                                            route.trailing ??
-                                            IconButton(
-                                              icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
-                                              onPressed: () => Navigator.of(context).maybePop(),
-                                            ),
-                                      ),
-                                    if (route.scrollable)
-                                      Flexible(
-                                        child: Material(
-                                          color: theme.colorScheme.surface,
-                                          child: SizedBox(
-                                            width: double.infinity,
-                                            child: SingleChildScrollView(
-                                              padding: route.contentPadding ?? const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
-                                              child: _body(),
+                            child: PlatformViewShield(
+                              child: Material(
+                                color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
+                                elevation: modalSurfaceElevation,
+                                shadowColor: haloDialogShadowColor,
+                                surfaceTintColor: theme.colorScheme.surfaceTint,
+                                // Square at the bottom in the narrow case — it
+                                // reaches the screen's true edge there, so a
+                                // rounded corner would just look clipped.
+                                borderRadius: isNarrow ? BorderRadius.zero : const BorderRadius.vertical(bottom: Radius.circular(28)),
+                                clipBehavior: Clip.antiAlias,
+                                // Narrow only, and only when the header behind it
+                                // isn't being kept visible: the sheet starts at the
+                                // screen's very top then, so its first row must
+                                // clear the status bar itself. Wide (or
+                                // keepHeaderVisible) starts below the app's header
+                                // instead — a SafeArea there would double-inset.
+                                child: SafeArea(
+                                  top: isNarrow && !route.keepHeaderVisible,
+                                  bottom: false,
+                                  left: false,
+                                  right: false,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      if (route.showHeader)
+                                        HaloDialogHeader(
+                                          leading: route.leading,
+                                          title: route.title,
+                                          trailing:
+                                              route.trailing ??
+                                              IconButton(
+                                                icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
+                                                onPressed: () => Navigator.of(context).maybePop(),
+                                              ),
+                                        ),
+                                      if (route.scrollable)
+                                        Flexible(
+                                          child: Material(
+                                            color: theme.colorScheme.surface,
+                                            child: SizedBox(
+                                              width: double.infinity,
+                                              child: SingleChildScrollView(
+                                                padding: route.contentPadding ?? const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
+                                                child: _body(),
+                                              ),
                                             ),
                                           ),
+                                        )
+                                      else
+                                        Expanded(
+                                          child: Material(color: theme.colorScheme.surface, child: _body()),
                                         ),
-                                      )
-                                    else
-                                      Expanded(
-                                        child: Material(color: theme.colorScheme.surface, child: _body()),
-                                      ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),

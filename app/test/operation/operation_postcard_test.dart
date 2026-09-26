@@ -32,7 +32,6 @@ import 'package:ham2k_logger/views/map/map_zoom_controller.dart';
 import 'package:ham2k_logger/views/operation/map_panel.dart' show retonedMapData;
 import 'package:ham2k_logger/views/operation/operation_postcard.dart';
 import 'package:ham2k_logger/views/operation/postcard_summary.dart';
-import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/error_reporting_fakes.dart';
@@ -762,17 +761,15 @@ void main() {
       }
     });
 
-    testWidgets("keeps the whole pane's clicks and drags from whatever lies under it", (tester) async {
+    testWidgets("keeps the clicks and drags over its map's page for the carousel, on the web alone", (tester) async {
+      // A picture's map takes no input; on the web its element would keep a
+      // tap or a swipe over it from the pages.
+      PlatformViewShield.debugOnWeb = true;
+      addTearDown(() => PlatformViewShield.debugOnWeb = false);
       await pumpPanel(tester, await freshSettings(), mapIsFlutter: false, sections: summary);
-      // On the web only: there a map element under the pane — the Map tab's —
-      // takes the events over it wherever the pane paints no element of its own.
-      final pane = find.ancestor(of: find.byType(PageView), matching: find.byType(PointerInterceptor)).last;
-      expect(tester.getRect(pane), tester.getRect(find.byType(OperationPostcardPanel)));
-      // Elsewhere an interceptor is one more native view for nothing: iOS
-      // has one of its own.
-      expect([
-        for (final interceptor in tester.widgetList<PointerInterceptor>(find.byType(PointerInterceptor))) interceptor.intercepting,
-      ], everyElement(kIsWeb));
+      final shield = find.descendant(of: find.byType(PageView), matching: find.byType(PlatformViewShield));
+      expect(shield, findsOneWidget);
+      expect(find.descendant(of: shield, matching: find.byKey(const ValueKey('platform-view-blocker'))), findsOneWidget);
     });
 
     testWidgets('lines the footer actions up from its leading edge, Done at the trailing one, and gives up their labels from the right', (tester) async {

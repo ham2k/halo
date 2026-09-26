@@ -16,6 +16,7 @@ export 'src/dock_regions.dart' show DockRegion, DockBodyDrop, dockSplitRegionAt,
 export 'src/dock_tab.dart' show quietTabActionTone;
 export 'src/flags.dart';
 export 'src/form_pane.dart';
+export 'src/halo_snack_bar.dart';
 export 'src/icon_resolver.dart';
 export 'src/halo_dialog.dart';
 export 'src/inline_markdown.dart';
@@ -34,6 +35,7 @@ export 'src/keyboard_accessory.dart';
 export 'src/number_keys.dart';
 export 'src/option_matching.dart';
 export 'src/platform_chrome.dart';
+export 'src/platform_view_shield.dart';
 export 'src/qso_list.dart';
 export 'src/qso_row_badges.dart' show qsoNotesMarker, qsoNotesMarkerSize;
 export 'src/ref_text_input.dart';

@@ -29,7 +29,7 @@ const _aboutRecentReleaseCount = 3;
 Future<void> _copyVersionDetailsToClipboard(BuildContext context) async {
   await Clipboard.setData(ClipboardData(text: '$ham2kAppName\n${versionDetailsText()}'));
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.t.settings.about.copiedVersion)));
+  ScaffoldMessenger.of(context).showSnackBar(haloSnackBar(context.t.settings.about.copiedVersion));
 }
 
 class AboutPanel extends StatelessWidget {

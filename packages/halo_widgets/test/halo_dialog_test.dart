@@ -556,6 +556,90 @@ void main() {
     expect(cardRight - actionsRight, lessThan(40));
   });
 
+  group('on the web', () {
+    // A map's element takes the events over it, whatever Flutter paints
+    // above; each of these surfaces lays an element of its own under itself.
+    setUp(() => PlatformViewShield.debugOnWeb = true);
+    tearDown(() => PlatformViewShield.debugOnWeb = false);
+
+    Finder blockerUnder(String text) => find.descendant(
+      of: find.ancestor(of: find.text(text), matching: find.byType(PlatformViewShield)),
+      matching: find.byKey(const ValueKey('platform-view-blocker')),
+    );
+
+    Future<void> open(WidgetTester tester, Size size, void Function(BuildContext context) show) async {
+      tester.view.physicalSize = size * 3;
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(onPressed: () => show(context), child: const Text('open')),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a dialog, over its card and no further', (tester) async {
+      await open(
+        tester,
+        const Size(1200, 900),
+        (context) => showHaloDialog<void>(
+          context: context,
+          builder: (_) => const HaloDialog(content: Text('dialog')),
+        ),
+      );
+      expect(blockerUnder('dialog'), findsOneWidget);
+      // The Dialog fills the whole size cap around its card; a shield that
+      // size would take the tap beside the card that closes it.
+      final card = tester.getRect(find.descendant(of: find.byType(Dialog), matching: find.byType(Material)).first);
+      expect(tester.getRect(blockerUnder('dialog')), card);
+    });
+
+    testWidgets('a SnackBar, edge to edge', (tester) async {
+      await open(tester, const Size(1200, 900), (context) => ScaffoldMessenger.of(context).showSnackBar(haloSnackBar('saved')));
+      final bar = tester.getRect(find.descendant(of: find.byType(SnackBar), matching: find.byType(Material)).first);
+      expect(tester.getRect(blockerUnder('saved')), bar);
+    });
+
+    testWidgets('a pane as a dialog, title bar and all', (tester) async {
+      await open(tester, const Size(1200, 900), (context) => showModalPane<void>(context, title: 'Pane', builder: (_) => const Text('pane body')));
+      expect(blockerUnder('pane body'), findsOneWidget);
+      expect(blockerUnder('Pane'), findsOneWidget);
+    });
+
+    testWidgets('a pane as the whole screen, on a phone', (tester) async {
+      await open(tester, const Size(390, 800), (context) => showModalPane<void>(context, title: 'Pane', builder: (_) => const Text('pane body')));
+      expect(blockerUnder('pane body'), findsOneWidget);
+    });
+
+    testWidgets("a sheet, which still reaches the window's foot", (tester) async {
+      await open(tester, const Size(390, 800), (context) => showTopModalPane<void>(context, title: const Text('Sheet'), builder: (_) => const Text('short')));
+      expect(blockerUnder('short'), findsOneWidget);
+      // The shield's own box must pass the sheet's floor through: a loose one
+      // would centre a sheet as short as its content in the room instead.
+      final shield = find.ancestor(of: find.text('short'), matching: find.byType(PlatformViewShield));
+      final sheet = tester.getRect(find.descendant(of: shield, matching: find.byType(Material)).first);
+      expect(sheet.bottom, closeTo(800, 1));
+    });
+  });
+
+  testWidgets('elsewhere a shield is its child alone: a native view would be one more for nothing', (tester) async {
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: PlatformViewShield(child: Text('x')),
+      ),
+    );
+    expect(find.byKey(const ValueKey('platform-view-blocker')), findsNothing);
+    expect(find.byType(Stack), findsNothing);
+  });
+
   testWidgets('header and footer are optional', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

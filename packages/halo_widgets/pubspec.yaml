@@ -18,6 +18,9 @@ dependencies:
   # Already resolved through flutter itself; declared because the draft-QSO
   # publisher deep-compares nested maps, which foundation's mapEquals can't.
   collection: any
+  # The element that keeps a dialog, pane or menu over a map from handing its
+  # clicks to the map's own, on the web (platform_view_shield.dart).
+  web: ^1.1.0
   flutter_markdown: ^0.7.0
   intl: ^0.20.2
   # Same parser flutter_markdown uses, so InlineMarkdownText and MarkdownBody

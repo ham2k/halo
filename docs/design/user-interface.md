@@ -441,6 +441,28 @@ and when a dialog reaches for a raw `AlertDialog` instead of `HaloDialog`.
 
 A dialog shown through `showHaloDialog`, `showFormDialog` or a Modal Pane gets its route's `HoldSizeWhileCovered` from there, and a page route from the theme. One built by hand — a direct `showDialog` or `showGeneralDialog`, a `PageRouteBuilder`, a route subclass — wraps its own content in one; `app/test/guards/covered_route_hold_test.dart` fails the build when it does not (see the status bar's keyboard rule above for why).
 
+### Over a map, on the web
+
+On the web a map — or a website pane's page — is an HTML element, and the
+browser hands it every pointer event over it, whatever the app paints above: a
+dialog over the Map tab would otherwise let the map pan under a drag and take
+the clicks meant for its buttons. Two widgets in `platform_view_shield.dart`
+stand between them, and do nothing off the web:
+
+- **`PlatformViewShield`** goes under every surface the app draws that can
+  sit over a map: `HaloDialog` and the Modal Panes carry one already, as do the
+  status bar's scrim and menus and the form fields' menus. The shield's element
+  takes no part in Flutter's own hit testing, so what it hands to Flutter still
+  reaches whatever lies there, the barrier beside a dialog's card included. A
+  new menu or overlay drawn over the
+  operation view needs its own. SnackBars are built with `haloSnackBar`, which
+  shields the whole bar; `app/test/guards/snack_bar_shield_test.dart` fails the
+  build on a bare `SnackBar`.
+- **`PlatformViewCover`** goes over every platform view itself — the map, the
+  website pane — and blocks it while a route covers its own and for a moment
+  after. That is what reaches the framework's popups the app cannot wrap, such
+  as a dropdown's menu.
+
 ### What it says
 
 Brief and to the point. A dialog states what is about to happen and what it

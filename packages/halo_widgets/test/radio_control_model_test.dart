@@ -13,6 +13,7 @@ import 'package:halo_widgets/src/logging_controls_draft.dart';
 import 'package:halo_widgets/src/logging_controls_radio.dart';
 import 'package:halo_widgets/src/logging_controls_types.dart';
 import 'package:halo_widgets/src/mdi_icons.g.dart';
+import 'package:halo_widgets/src/platform_view_shield.dart';
 
 class _FakeVfoStore implements VfoStore {
   Vfo _vfoA = const Vfo();
@@ -70,6 +71,22 @@ class _Harness {
 }
 
 void main() {
+  testWidgets("shields a Band menu entry across its row, the menu being the field's own overlay", (tester) async {
+    // On the web a map under the open menu would otherwise take its clicks;
+    // nothing but the entry itself can carry a shield into that overlay.
+    PlatformViewShield.debugOnWeb = true;
+    addTearDown(() => PlatformViewShield.debugOnWeb = false);
+    final h = _Harness();
+    addTearDown(h.model.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(child: SizedBox(width: 86, child: h.model.bandMenuEntries.first.labelWidget)),
+      ),
+    );
+    final blocker = find.byKey(const ValueKey('platform-view-blocker'));
+    expect(tester.getSize(blocker), const Size(86, 48), reason: 'the whole row, not the word');
+  });
+
   testWidgets('a frequency names its band, and a band picked by hand only stands without one', (tester) async {
     final h = _Harness();
     h.model.setBand('40m');

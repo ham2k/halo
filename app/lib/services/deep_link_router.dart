@@ -11,6 +11,7 @@ import 'dart:io' show File;
 
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart' show haloSnackBar;
 
 import '../views/confirm_device_dialog.dart';
 import '../views/operation_view.dart';
@@ -472,7 +473,7 @@ void _openConfirmDevicePane(HaLoServices services, ({String clientUuid, String c
       // across an arbitrary stretch of the operator's attention.
       final messengerContext = navigatorKey.currentContext;
       if (linked != true || messengerContext == null || !messengerContext.mounted) return;
-      ScaffoldMessenger.of(messengerContext).showSnackBar(SnackBar(content: Text(t.settings.syncPanel.deviceLinked)));
+      ScaffoldMessenger.of(messengerContext).showSnackBar(haloSnackBar(t.settings.syncPanel.deviceLinked));
     }),
   );
 }

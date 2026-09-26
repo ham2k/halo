@@ -37,6 +37,7 @@ import 'panel_model.dart';
 import 'secondary_control_row.dart' show SecondaryControlSpec, SummaryPart;
 import 'spacing.dart';
 import 'theme.dart';
+import 'platform_view_shield.dart';
 
 /// What the model reads from the panel's live configuration — re-read on
 /// every use rather than copied in, because each of these can change under a
@@ -769,7 +770,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     final key = values.join('\x00');
     if (key == cacheKey) return cache;
     setKey(key);
-    return [for (final v in values) DropdownMenuEntry(value: v, label: v)];
+    return [for (final v in values) DropdownMenuEntry(value: v, label: v, labelWidget: _ShieldedEntryLabel(v), style: _shieldedEntryStyle)];
   }
 
   void _onBandTextChanged() => _onDropdownTextChanged((f) => _bandFilter = f, bandController.text, band ?? '');
@@ -1206,6 +1207,7 @@ class RadioControlFields extends StatelessWidget {
                 // an open menu kept snapping back to the selected item while the
                 // user scrolled.
                 enableSearch: false,
+                menuStyle: _shieldedMenuStyle,
                 textStyle: textStyle,
                 inputDecorationTheme: decorationTheme,
                 dropdownMenuEntries: model.bandMenuEntries,
@@ -1271,6 +1273,7 @@ class RadioControlFields extends StatelessWidget {
                 // See the Band dropdown: search off so rebuilds don't re-scroll
                 // the open menu to the selection.
                 enableSearch: false,
+                menuStyle: _shieldedMenuStyle,
                 textStyle: textStyle,
                 inputDecorationTheme: decorationTheme,
                 dropdownMenuEntries: model.modeMenuEntries,
@@ -1459,3 +1462,34 @@ SecondaryControlSpec powerControlSpec(RadioControlModel model, {required TextInp
   summary: model.powerSummary,
   expandedBuilder: (context) => PowerControlFields(model: model, keyboardType: keyboardType),
 );
+
+/// A Band or Mode menu entry's own padding, moved inside its label — see
+/// [_ShieldedEntryLabel].
+final _shieldedEntryStyle = MenuItemButton.styleFrom(padding: EdgeInsets.zero);
+
+/// The Band and Mode menus' panel, with no padding of its own outside the
+/// entries' shields — see [_ShieldedEntryLabel].
+const _shieldedMenuStyle = MenuStyle(padding: WidgetStatePropertyAll(EdgeInsets.zero));
+
+/// A Band or Mode menu entry's label, spanning its row and shielded: the menu
+/// is an overlay of the field's own, and a map beneath it would otherwise take
+/// its clicks on the web (platform_view_shield.dart). The row's height and its
+/// padding are the menu item's own, held by the label instead.
+class _ShieldedEntryLabel extends StatelessWidget {
+  final String label;
+
+  const _ShieldedEntryLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) => PlatformViewShield(
+    child: SizedBox(
+      width: double.infinity,
+      // A menu item's own least height (48), as its density adjusts it.
+      height: 48 + Theme.of(context).visualDensity.baseSizeAdjustment.dy,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+        child: Align(alignment: AlignmentDirectional.centerStart, child: Text(label)),
+      ),
+    ),
+  );
+}

@@ -22,6 +22,7 @@ import 'mdi_icons.g.dart';
 import 'spacing.dart';
 import 'theme.dart';
 import 'ui_scale.dart';
+import 'platform_view_shield.dart';
 
 /// One row in the footer: a transient message or progress bar. Mirrors the
 /// app's `StatusBarItem` without depending on it, so this package doesn't
@@ -646,26 +647,28 @@ class _PermaIconsState extends State<_PermaIcons> {
         menuChildren: [
           Padding(
             padding: const EdgeInsetsDirectional.only(end: Space.lg),
-            child: Material(
-              color: _menuFill(context),
-              elevation: 3,
-              shadowColor: Colors.black.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(Space.xs),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final status in widget.perma)
-                    MenuItemButton(
-                      leadingIcon: Icon(status.icon, size: 18, color: _permaColor(status)),
-                      style: MenuItemButton.styleFrom(foregroundColor: widget.color),
-                      // Straight through, null included: a status that only reports
-                      // renders as a disabled entry, which is honest. A `?? () {}` would
-                      // make an entry whose action went missing look live and do nothing.
-                      onPressed: status.onTap,
-                      child: Text(status.text),
-                    ),
-                ],
+            child: PlatformViewShield(
+              child: Material(
+                color: _menuFill(context),
+                elevation: 3,
+                shadowColor: Colors.black.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(Space.xs),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final status in widget.perma)
+                      MenuItemButton(
+                        leadingIcon: Icon(status.icon, size: 18, color: _permaColor(status)),
+                        style: MenuItemButton.styleFrom(foregroundColor: widget.color),
+                        // Straight through, null included: a status that only reports
+                        // renders as a disabled entry, which is honest. A `?? () {}` would
+                        // make an entry whose action went missing look live and do nothing.
+                        onPressed: status.onTap,
+                        child: Text(status.text),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

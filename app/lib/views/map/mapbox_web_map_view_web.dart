@@ -16,6 +16,7 @@ import 'dart:ui_web' as ui_web;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:halo_widgets/halo_widgets.dart' show PlatformViewCover;
 import 'package:web/web.dart' as web;
 
 import '../../services/connectivity_service.dart';
@@ -336,7 +337,11 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   @override
   Widget build(BuildContext context) => Stack(
     children: [
-      Positioned.fill(child: HtmlElementView(viewType: _viewType)),
+      // Covered while a route sits over the map's: a dropdown's menu has
+      // nothing of its own to put between its clicks and the map.
+      Positioned.fill(
+        child: PlatformViewCover(child: HtmlElementView(viewType: _viewType)),
+      ),
       if (_unavailable) const Positioned.fill(child: MapUnavailableState()),
     ],
   );

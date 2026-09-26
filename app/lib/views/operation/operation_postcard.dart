@@ -29,7 +29,6 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../services/android_file_save.dart';
@@ -876,94 +875,88 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
       ),
     );
 
-    // Under the whole pane: on the web a map beneath it — the Map tab's own,
-    // which the pane opens over — would otherwise take every click and drag
-    // over it that lands on anything short of a button.
-    return PointerInterceptor(
-      intercepting: kIsWeb,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.md),
-            child: LayoutBuilder(
-              // Side by side where both fit — the dialog on a large screen —
-              // and stacked on a phone. Capped either way, so that on a wide
-              // window the pickers do not stretch across it; filled up to
-              // that, so that on a narrow one the shape labels ellipsize rather
-              // than overflow.
-              builder: (context, constraints) => Center(
-                child: style != null && constraints.maxWidth >= _controlsSideBySideWidth
-                    ? ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: _controlsRowMaxWidth),
-                        child: Row(
-                          children: [
-                            Expanded(child: shapes),
-                            const SizedBox(width: Space.lg),
-                            SizedBox(width: _styleWidth, child: style),
-                            const SizedBox(width: Space.md),
-                            sections,
-                          ],
-                        ),
-                      )
-                    : ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: _controlsMaxWidth),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Beside the style, or where there is none to pick,
-                            // beside the shapes.
-                            if (style == null)
-                              Row(
-                                children: [
-                                  Expanded(child: shapes),
-                                  const SizedBox(width: Space.md),
-                                  sections,
-                                ],
-                              )
-                            else ...[
-                              shapes,
-                              const SizedBox(height: Space.lg),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: _styleShare, child: style),
-                                  ),
-                                  const SizedBox(width: Space.md),
-                                  sections,
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.md),
+          child: LayoutBuilder(
+            // Side by side where both fit — the dialog on a large screen —
+            // and stacked on a phone. Capped either way, so that on a wide
+            // window the pickers do not stretch across it; filled up to
+            // that, so that on a narrow one the shape labels ellipsize rather
+            // than overflow.
+            builder: (context, constraints) => Center(
+              child: style != null && constraints.maxWidth >= _controlsSideBySideWidth
+                  ? ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: _controlsRowMaxWidth),
+                      child: Row(
+                        children: [
+                          Expanded(child: shapes),
+                          const SizedBox(width: Space.lg),
+                          SizedBox(width: _styleWidth, child: style),
+                          const SizedBox(width: Space.md),
+                          sections,
+                        ],
                       ),
-              ),
-            ),
-          ),
-          Expanded(child: LayoutBuilder(builder: (context, constraints) => _carousel(constraints.biggest))),
-          _pager(),
-          SizedBox(
-            height: Space.xxl + Space.md,
-            child: Center(
-              child: _busy
-                  ? const SizedBox.square(dimension: Space.xl, child: CircularProgressIndicator(strokeWidth: 2))
-                  : _status == null
-                  ? null
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
-                      child: Text(
-                        _status!,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(color: _statusIsError ? theme.colorScheme.error : null),
+                    )
+                  : ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: _controlsMaxWidth),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Beside the style, or where there is none to pick,
+                          // beside the shapes.
+                          if (style == null)
+                            Row(
+                              children: [
+                                Expanded(child: shapes),
+                                const SizedBox(width: Space.md),
+                                sections,
+                              ],
+                            )
+                          else ...[
+                            shapes,
+                            const SizedBox(height: Space.lg),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: _styleShare, child: style),
+                                ),
+                                const SizedBox(width: Space.md),
+                                sections,
+                              ],
+                            ),
+                          ],
+                        ],
                       ),
                     ),
             ),
           ),
-          _footer(actions),
-        ],
-      ),
+        ),
+        Expanded(child: LayoutBuilder(builder: (context, constraints) => _carousel(constraints.biggest))),
+        _pager(),
+        SizedBox(
+          height: Space.xxl + Space.md,
+          child: Center(
+            child: _busy
+                ? const SizedBox.square(dimension: Space.xl, child: CircularProgressIndicator(strokeWidth: 2))
+                : _status == null
+                ? null
+                : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
+                    child: Text(
+                      _status!,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(color: _statusIsError ? theme.colorScheme.error : null),
+                    ),
+                  ),
+          ),
+        ),
+        _footer(actions),
+      ],
     );
   }
 
@@ -1286,9 +1279,7 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
         // A picture's map takes no input, and on the web its element would
         // otherwise keep every click and drag over it from the carousel: a
         // tap that brings this page forward, a swipe to the next.
-        Positioned.fill(
-          child: PointerInterceptor(intercepting: kIsWeb, child: const SizedBox.expand()),
-        ),
+        Positioned.fill(child: PlatformViewShield(child: const SizedBox.expand())),
       ],
     );
   }

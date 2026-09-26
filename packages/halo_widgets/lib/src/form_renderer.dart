@@ -23,6 +23,7 @@ import 'spacing.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
 import 'text_template_editor.dart';
+import 'halo_snack_bar.dart';
 
 typedef FormValidator = Future<String?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormTransformer = Future<dynamic> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
@@ -2370,7 +2371,7 @@ class FormRendererState extends State<FormRenderer> {
     if (elements != null) widget.onElementsChanged?.call(elements);
     final message = result?.message;
     if (message != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context).showSnackBar(haloSnackBar(message));
     }
   }
 

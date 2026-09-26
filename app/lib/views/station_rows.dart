@@ -838,11 +838,13 @@ class _TransceiverMenuState extends State<TransceiverMenu> {
         alignmentOffset: Offset(left, 0),
         style: const MenuStyle(padding: WidgetStatePropertyAll(EdgeInsets.zero)),
         menuChildren: [
-          SizedBox(
-            width: width,
-            child: ListTileTheme.merge(
-              contentPadding: EdgeInsets.only(left: _margin, right: _margin + transceiverPickerWidth + trailingGap),
-              child: Column(mainAxisSize: MainAxisSize.min, children: widget.rows(context, _controller.close)),
+          PlatformViewShield(
+            child: SizedBox(
+              width: width,
+              child: ListTileTheme.merge(
+                contentPadding: EdgeInsets.only(left: _margin, right: _margin + transceiverPickerWidth + trailingGap),
+                child: Column(mainAxisSize: MainAxisSize.min, children: widget.rows(context, _controller.close)),
+              ),
             ),
           ),
         ],

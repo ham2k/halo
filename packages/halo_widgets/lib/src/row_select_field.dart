@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'icon_resolver.dart';
 import 'spacing.dart';
 import 'theme.dart';
+import 'platform_view_shield.dart';
 
 /// One row of a [RowSelectField]. [name] leads and carries the weight, [tags]
 /// are short markers between the two columns, and [trailing] is the
@@ -148,19 +149,35 @@ class _RowSelectFieldState extends State<RowSelectField> {
         minimumSize: WidgetStatePropertyAll(Size(width, 0)),
         maximumSize: WidgetStatePropertyAll(Size(width, dropdownMenuMaxHeight(context))),
         alignment: Alignment.bottomLeft,
+        // Moved inside the shield below, with the rows.
+        padding: const WidgetStatePropertyAll(EdgeInsets.zero),
       ),
       menuChildren: [
-        for (final row in widget.rows)
-          MenuItemButton(
-            onPressed: () => widget.onChanged(row.value),
-            // The width is on the ITEM as well as on the menu's own style:
-            // the panel takes the width of its widest child, so this holds
-            // even where the style's constraint does not reach.
-            child: SizedBox(
-              width: width > _menuItemPadding ? width - _menuItemPadding : null,
-              child: _SelectRowLayout(row: row, trailingWidth: trailingWidth, twoLine: twoLine),
+        // One shield under every row, rather than one a row: an element of
+        // its own each, and the gaps between them left open.
+        PlatformViewShield(
+          child: Padding(
+            // A menu panel's own, above and below its rows.
+            padding: const EdgeInsets.symmetric(vertical: Space.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final row in widget.rows)
+                  MenuItemButton(
+                    onPressed: () => widget.onChanged(row.value),
+                    // The width is on the ITEM as well as on the menu's own
+                    // style: the panel takes the width of its widest child, so
+                    // this holds even where the style's constraint does not reach.
+                    child: SizedBox(
+                      width: width > _menuItemPadding ? width - _menuItemPadding : null,
+                      child: _SelectRowLayout(row: row, trailingWidth: trailingWidth, twoLine: twoLine),
+                    ),
+                  ),
+              ],
             ),
           ),
+        ),
       ],
       builder: (context, controller, _) => InkWell(
         key: _anchorKey,

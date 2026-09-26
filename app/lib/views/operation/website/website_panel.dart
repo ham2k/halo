@@ -396,90 +396,95 @@ class _WebsitePanelState extends State<WebsitePanel> with WidgetsBindingObserver
       padding: EdgeInsets.zero.add(PaneSafeArea.paddingOf(context)),
       child: Stack(
         children: [
-          InAppWebView(
-            // Null off Windows; on Windows the app's own environment, without
-            // which the plugin builds a second one whose options do not match
-            // ours — see WindowsWebView.
-            webViewEnvironment: WindowsWebView.environment,
-            initialUrlRequest: URLRequest(url: WebUri.uri(uri)),
-            initialSettings: InAppWebViewSettings(
-              // On, unlike the extension sandbox: most of what an operator
-              // would point this at renders blank without scripts. It is also
-              // why website_url.dart refuses `javascript:` and `data:`.
-              javaScriptEnabled: true,
-              // Never set `incognito` here: on Android it clears every cookie
-              // in the PROCESS, taking the operator's account logins with it.
-              useShouldOverrideUrlLoading: true,
-              transparentBackground: true,
-              supportZoom: true,
-            ),
-            onWebViewCreated: (controller) {
-              ErrorReportingService.breadcrumb('website panel webview created', category: 'webview');
-              _controller = controller;
-            },
-            shouldOverrideUrlLoading: (controller, action) async {
-              final target = action.request.url?.toString();
-              if (target == null) return NavigationActionPolicy.CANCEL;
+          // Covered while a route sits over the pane's: a dropdown's menu has
+          // nothing of its own to put between its clicks and the page, which
+          // is an iframe on the web.
+          PlatformViewCover(
+            child: InAppWebView(
+              // Null off Windows; on Windows the app's own environment, without
+              // which the plugin builds a second one whose options do not match
+              // ours — see WindowsWebView.
+              webViewEnvironment: WindowsWebView.environment,
+              initialUrlRequest: URLRequest(url: WebUri.uri(uri)),
+              initialSettings: InAppWebViewSettings(
+                // On, unlike the extension sandbox: most of what an operator
+                // would point this at renders blank without scripts. It is also
+                // why website_url.dart refuses `javascript:` and `data:`.
+                javaScriptEnabled: true,
+                // Never set `incognito` here: on Android it clears every cookie
+                // in the PROCESS, taking the operator's account logins with it.
+                useShouldOverrideUrlLoading: true,
+                transparentBackground: true,
+                supportZoom: true,
+              ),
+              onWebViewCreated: (controller) {
+                ErrorReportingService.breadcrumb('website panel webview created', category: 'webview');
+                _controller = controller;
+              },
+              shouldOverrideUrlLoading: (controller, action) async {
+                final target = action.request.url?.toString();
+                if (target == null) return NavigationActionPolicy.CANCEL;
 
-              // A subframe is part of the page, not a navigation away from
-              // it. Judging one against the configured URL cancels an ad slot
-              // rotating its creative — and, before this guard, threw it at
-              // the OS browser once per rotation.
-              if (action.isForMainFrame == false) return NavigationActionPolicy.ALLOW;
+                // A subframe is part of the page, not a navigation away from
+                // it. Judging one against the configured URL cancels an ad slot
+                // rotating its creative — and, before this guard, threw it at
+                // the OS browser once per rotation.
+                if (action.isForMainFrame == false) return NavigationActionPolicy.ALLOW;
 
-              // The configured page, its canonical form, and its reloads.
-              if (_isConfiguredPage(target)) return NavigationActionPolicy.ALLOW;
+                // The configured page, its canonical form, and its reloads.
+                if (_isConfiguredPage(target)) return NavigationActionPolicy.ALLOW;
 
-              // A load THIS pane asked for, still settling. A server redirect
-              // — `qrz.com` to `www.qrz.com` — is a different origin and can
-              // only be told from a hijack by who started it.
-              if (_loadInFlight) return NavigationActionPolicy.ALLOW;
+                // A load THIS pane asked for, still settling. A server redirect
+                // — `qrz.com` to `www.qrz.com` — is a different origin and can
+                // only be told from a hijack by who started it.
+                if (_loadInFlight) return NavigationActionPolicy.ALLOW;
 
-              // The operator clicked something. Off it goes, and the pane
-              // stays on the page they configured.
-              final byHand = action.hasGesture == true || action.navigationType == NavigationType.LINK_ACTIVATED;
-              if (byHand) {
-                openExternalUrl(target);
+                // The operator clicked something. Off it goes, and the pane
+                // stays on the page they configured.
+                final byHand = action.hasGesture == true || action.navigationType == NavigationType.LINK_ACTIVATED;
+                if (byHand) {
+                  openExternalUrl(target);
+                  return NavigationActionPolicy.CANCEL;
+                }
+
+                // Nobody asked for this — a `<meta refresh>`, a script
+                // replacing the document. Dropped SILENTLY: raising the
+                // operator's browser without an interaction is a hijack, which
+                // is the same reasoning `panel_content_view` states for
+                // refusing to open one.
+                debugPrint('[panels] ${widget.panelId}: blocked an unrequested navigation to $target');
                 return NavigationActionPolicy.CANCEL;
-              }
-
-              // Nobody asked for this — a `<meta refresh>`, a script
-              // replacing the document. Dropped SILENTLY: raising the
-              // operator's browser without an interaction is a hijack, which
-              // is the same reasoning `panel_content_view` states for
-              // refusing to open one.
-              debugPrint('[panels] ${widget.panelId}: blocked an unrequested navigation to $target');
-              return NavigationActionPolicy.CANCEL;
-            },
-            // Denied outright. The app holds a location entitlement, so an
-            // unwired handler defaults to PROMPT and a page could raise a
-            // system prompt that looks like HaLo asking.
-            onPermissionRequest: (controller, request) async => PermissionResponse(resources: request.resources, action: PermissionResponseAction.DENY),
-            onLoadStop: (controller, url) async {
-              _loadInFlight = false;
-              _loadedAt = widget.now();
-              if (!mounted) return;
-              if (_loadError != null) setState(() => _loadError = null);
-              _syncRefresh();
-            },
-            onReceivedError: (controller, request, error) {
-              _loadInFlight = false;
-              // Only the MAIN frame. A page whose analytics script 404s is not
-              // a broken pane, and reporting subresources would raise a notice
-              // on most of the web.
-              if (request.isForMainFrame != true) return;
-              // A navigation THIS pane cancelled reports back as a failed
-              // load. Without this, handing a clicked link to the browser —
-              // the designed behaviour — paints an error over a working page
-              // and files a report for it.
-              if (error.type == WebResourceErrorType.CANCELLED) return;
-              _reportLoadFailure('${error.description} (${error.type})');
-            },
-            onReceivedHttpError: (controller, request, response) {
-              _loadInFlight = false;
-              if (request.isForMainFrame != true) return;
-              _reportLoadFailure('HTTP ${response.statusCode}');
-            },
+              },
+              // Denied outright. The app holds a location entitlement, so an
+              // unwired handler defaults to PROMPT and a page could raise a
+              // system prompt that looks like HaLo asking.
+              onPermissionRequest: (controller, request) async => PermissionResponse(resources: request.resources, action: PermissionResponseAction.DENY),
+              onLoadStop: (controller, url) async {
+                _loadInFlight = false;
+                _loadedAt = widget.now();
+                if (!mounted) return;
+                if (_loadError != null) setState(() => _loadError = null);
+                _syncRefresh();
+              },
+              onReceivedError: (controller, request, error) {
+                _loadInFlight = false;
+                // Only the MAIN frame. A page whose analytics script 404s is not
+                // a broken pane, and reporting subresources would raise a notice
+                // on most of the web.
+                if (request.isForMainFrame != true) return;
+                // A navigation THIS pane cancelled reports back as a failed
+                // load. Without this, handing a clicked link to the browser —
+                // the designed behaviour — paints an error over a working page
+                // and files a report for it.
+                if (error.type == WebResourceErrorType.CANCELLED) return;
+                _reportLoadFailure('${error.description} (${error.type})');
+              },
+              onReceivedHttpError: (controller, request, response) {
+                _loadInFlight = false;
+                if (request.isForMainFrame != true) return;
+                _reportLoadFailure('HTTP ${response.statusCode}');
+              },
+            ),
           ),
           if (_loadError != null)
             Positioned(

@@ -23,7 +23,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/geoshape_service.dart';
@@ -483,22 +482,21 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         // (modal_pane.dart) — an ordinary Flutter ancestor gesture
         // recognizer stacked above a platform view on web silently
         // swallows the platform view's own click events before they reach
-        // it. PointerInterceptor opts this rectangle out of Flutter's own
-        // hit-test routing so the browser delivers clicks to the map
-        // directly; on every other platform it's a no-op passthrough (see
-        // DefaultPointerInterceptor).
+        // it. PlatformViewShield lays an element of the app's own under the
+        // map, the browser's target wherever the map's own does not reach;
+        // on every other platform it's the map alone.
         //
         // ExcludeSemantics on top of that: with accessibility on, Flutter
         // Web still generates a `role=button`/`group` DOM node for any
         // ANCESTOR that merges this subtree's geometry into its own — sized
         // to include the map's full rect, and (like the modal pane's own
         // barrier) positioned over it with `pointer-events: all`, right back
-        // to swallowing clicks PointerInterceptor just made reachable. The
+        // to swallowing clicks the shield just made reachable. The
         // map's dots carry no accessible labels of their own to lose here —
         // the reveal card below, a real sibling widget, is what a
         // screen-reader user actually needs, and it keeps its own semantics.
         Positioned.fill(
-          child: ExcludeSemantics(child: PointerInterceptor(child: map)),
+          child: ExcludeSemantics(child: PlatformViewShield(child: map)),
         ),
         if (selected != null)
           Positioned(

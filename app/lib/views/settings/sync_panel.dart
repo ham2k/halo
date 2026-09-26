@@ -276,7 +276,7 @@ class _SyncPanelState extends State<SyncPanel> {
 
   void _notify(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(haloSnackBar(message));
   }
 
   /// Surfaces whatever the server said about a rejected account call. Null

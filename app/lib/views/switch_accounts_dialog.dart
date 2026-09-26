@@ -942,7 +942,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBin
     if (code == null) return;
     await Clipboard.setData(ClipboardData(text: code));
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.t.switchAccounts.copiedCode)));
+    ScaffoldMessenger.of(context).showSnackBar(haloSnackBar(context.t.switchAccounts.copiedCode));
   }
 
   Widget _buildCode(BuildContext context) {
