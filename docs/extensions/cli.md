@@ -6,6 +6,15 @@ hook with JSON and read back what it returned. No app, no simulator, no log
 to set up — though the package still resolves against the Flutter SDK, since
 the host it boots is a Flutter FFI plugin.
 
+It runs on the plain Dart VM, where `dart:ui` does not exist, so neither
+`halo_cli` nor anything it imports — `halo_extension_host`, `halo_core`,
+`halo_build_tools`, `halo_quickjs` — may import `package:flutter`;
+`package:flutter/foundation.dart` alone is enough to stop it compiling. The
+gate runs its tests with `dart test` rather than `flutter test` for that
+reason, since under `flutter test` such an import passes every test, and
+`halo_extension_host` does not list `flutter` as a dependency, so the analyzer
+flags one there (`depend_on_referenced_packages`).
+
 It exists to answer the questions a debugger can't: *what does POTA's
 `decorateRef` actually return for this park, today, over the real API? which
 command hook claims this text? what does the ADIF exporter produce for this

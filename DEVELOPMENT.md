@@ -142,7 +142,12 @@ wires all of this up. The public version number lives in
 The single source of truth is **`./scripts/test.sh`** (or `mise run test`): it
 typechecks + tests the extensions, **rebuilds the bundles** (Dart integration
 tests load them), copies the blank secrets template if missing, then runs
-`flutter analyze` + `flutter test` for every package and the app.
+`flutter analyze` and the tests for every package and the app — `dart test`
+for a package whose pubspec never names the Flutter SDK (`halo_core`,
+`halo_build_tools`, `halo_cli`), `flutter test` for the rest. The pure-Dart
+ones run on the plain Dart VM, where `dart:ui` does not exist, and
+`flutter test` would supply it and hide a Flutter import that breaks them
+(docs/extensions/cli.md).
 
 CI runs `./scripts/test.sh --quick` on every push to `main` and nothing else
 (`.github/workflows/checks.yml`): the source-scanning guards, the extensions'
@@ -225,7 +230,8 @@ Run pieces directly while iterating:
 
 ```sh
 cd app && flutter test                       # app widget/unit tests
-cd packages/halo_widgets && flutter test     # a package (also halo_core, etc.)
+cd packages/halo_widgets && flutter test     # a Flutter package
+cd packages/halo_core && dart test           # a pure-Dart one (also halo_cli, halo_build_tools)
 cd extensions && npm run typecheck && npm test
 ```
 

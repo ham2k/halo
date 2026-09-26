@@ -462,23 +462,39 @@ run_browser_tests() {
 # Subset runner
 # ---------------------------------------------------------------------------
 
-# Totals for the summary line. flutter's progress line carries a running
-# `+passed` counter — the last one is the run's test count; node's test
-# runner prints an `ℹ tests N` (or TAP `# tests N`) line.
+# Totals for the summary line. The Dart test runner's progress line (under
+# `flutter test` and `dart test` alike) carries a running `+passed` counter —
+# the last one is the run's test count; node's test runner prints an
+# `ℹ tests N` (or TAP `# tests N`) line.
 TESTS_TOTAL=0
 APP_FILES_COUNT=0
 EXTRA_APP_FILES=""
 
-run_flutter_counted() { # <pkg dir> [test files...]
+# The test runner for a package: `dart test` for one whose pubspec never names
+# the Flutter SDK, `flutter test` for the rest. A pure-Dart package runs on the
+# plain Dart VM — halo-ext is one (`dart run`, docs/extensions/cli.md) — where
+# `dart:ui` does not exist. `flutter test` supplies `dart:ui`, so under it a
+# Flutter import anywhere in such a package's dependencies passes every test
+# and leaves the tool unable to compile; `dart test` compiles the tests the way
+# the tool is compiled.
+test_runner_for() { # <pkg dir>
+  if grep -q "sdk: flutter" "$ROOT_DIR/$1/pubspec.yaml"; then
+    echo "flutter test"
+  else
+    echo "dart test"
+  fi
+}
+
+run_tests_counted() { # <pkg dir> [test files...]
   local dir="$1"; shift
   local log n rc=0
   log="$(mktemp)"
-  (cd "$ROOT_DIR/$dir" && flutter test "$@") | tee "$log" || rc=$?
+  (cd "$ROOT_DIR/$dir" && $(test_runner_for "$dir") "$@") | tee "$log" || rc=$?
   n=$(grep -oE '\+[0-9]+' "$log" | tail -1 | tr -d '+' || true)
   rm -f "$log"
   [[ "$rc" -ne 0 ]] && exit "$rc"
   if [[ -z "$n" ]]; then
-    echo "⚠️  could not parse a test count from flutter's output for $dir" >&2
+    echo "⚠️  could not parse a test count from the test runner's output for $dir" >&2
   fi
   TESTS_TOTAL=$((TESTS_TOTAL + ${n:-0}))
 }
@@ -565,7 +581,7 @@ $(echo "$EXTRA_APP_FILES" | tr ' ' '\n')"
   for pkg in $pkg_dirs; do
     ensure_pub "$pkg"
     echo "▶ $pkg: test (analyze skipped in subset mode)"
-    run_flutter_counted "$pkg"
+    run_tests_counted "$pkg"
   done
 
   # dedupe: --changed can hand over guards/x_test.dart as a file AND append
@@ -577,12 +593,12 @@ $(echo "$EXTRA_APP_FILES" | tr ' ' '\n')"
     if [[ "$run_all_app" == "1" ]]; then
       APP_FILES_COUNT=$(find "$ROOT_DIR/app/test" -name '*_test.dart' | wc -l | tr -d ' ')
       echo "▶ app: all tests (analyze skipped in subset mode)"
-      run_flutter_counted app
+      run_tests_counted app
     else
       APP_FILES_COUNT=$(echo "$files" | wc -l | tr -d ' ')
       echo "▶ app: $APP_FILES_COUNT test files (analyze skipped in subset mode)"
       # shellcheck disable=SC2046
-      run_flutter_counted app $(echo "$files" | sed 's|^|test/|')
+      run_tests_counted app $(echo "$files" | sed 's|^|test/|')
     fi
   fi
 
@@ -592,7 +608,7 @@ $(echo "$EXTRA_APP_FILES" | tr ' ' '\n')"
       for pkg in app_dist/halo_dist_tools app_dist; do
         ensure_pub "$pkg"
         echo "▶ $pkg: test (analyze skipped in subset mode)"
-        run_flutter_counted "$pkg"
+        run_tests_counted "$pkg"
       done
     else
       echo "⚠️  group 'dist' skipped: no app_dist/ in this checkout" >&2
@@ -929,7 +945,7 @@ for pkg in "${PACKAGES[@]}"; do
   # fixed or carries a reasoned `// ignore:` naming the card that owns it.
   flutter analyze
   if [[ "$QUICK" -eq 0 ]]; then
-    flutter test
+    $(test_runner_for "$pkg")
   fi
 done
 

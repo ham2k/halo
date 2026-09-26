@@ -9,8 +9,11 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
-  flutter:
-    sdk: flutter
+  # No `flutter` here, deliberately: this package must stay importable on the
+  # plain Dart VM, where halo-ext runs it (docs/extensions/cli.md), and without
+  # the dependency the analyzer flags a `package:flutter` import in lib/
+  # (depend_on_referenced_packages). The SDK still arrives through halo_quickjs
+  # and flutter_test.
   halo_quickjs:
     path: ../halo_quickjs
   http: ^1.2.0

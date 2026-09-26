@@ -4,6 +4,15 @@
 // What each hook call cost, and where the calls queued behind each other —
 // the records ExtensionHost keeps for latency analysis.
 
+/// Whether this is a debug build — where the host reports slow queue waits
+/// without being asked. Flutter's `kDebugMode`, spelled the way Flutter
+/// defines it rather than imported: this package must stay importable from a
+/// plain Dart VM — the halo-ext CLI boots the very same host
+/// (docs/extensions/cli.md) — and `package:flutter/foundation.dart` pulls in
+/// `dart:ui`, which does not exist there. See `runningOnWeb` for the same move
+/// with `kIsWeb`.
+const bool debugBuild = !bool.fromEnvironment('dart.vm.product') && !bool.fromEnvironment('dart.vm.profile');
+
 /// One completed hook invocation, for latency analysis.
 class HookCallSample {
   final String label;

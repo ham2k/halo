@@ -36,7 +36,6 @@ import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:halo_core/halo_core.dart' show ham2kSsoFetchUri, realNowUtc, sotaSsoHost;
 import 'package:http/http.dart' as http;
 
@@ -1014,7 +1013,7 @@ class _HostCore {
   /// Measuring never stops (see [_noteQueueWait]); only the reporting is
   /// gated, so a release build sweeping the threshold down reports the same
   /// numbers it was already computing.
-  static const _reportsSlowQueue = _slowHookMillisOverride > 0 || kDebugMode;
+  static const _reportsSlowQueue = _slowHookMillisOverride > 0 || debugBuild;
 
   _HostCore({
     required this.emit,
@@ -1199,7 +1198,7 @@ class _HostCore {
       // been changed wrongly — and staying silent would hide it perfectly,
       // because an unmeasured call and an instant one both report zero.
       assert(false, 'hook message for $label reached the core with no sentAtMicros stamp');
-      if (kDebugMode) {
+      if (debugBuild) {
         emit({'type': 'log', 'message': 'UNSTAMPED-HOOK $label — queue wait not measured'});
       }
       return;
