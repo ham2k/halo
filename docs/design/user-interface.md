@@ -421,6 +421,7 @@ all of them, while `showFormDialog`, `showFormPane` and a modal pane's
 | `secondary` | trailing group, leftmost | Something else to **do** with the thing being edited |
 | `cancel` | trailing group, next to the primary | The way out |
 | `actions` | trailing edge | The primary/confirm action, normally one `FilledButton` |
+| `tools` | leading edge, all the room left | Things to do with what a surface shows as a whole rather than a verb that confirms it — the Operation Postcard's Share, Copy and Save, its section picker's Reset; in place of `destructive` and `help`, a `haloDialogCancelGap` from the trailing group, which takes at most half the row |
 
 This follows Material, which end-aligns dialog buttons with the dismissive
 action immediately left of the confirming one, and gives the leading edge to

@@ -165,30 +165,7 @@ class InformationPanel extends StatelessWidget {
     if (summary == null || summary.isEmpty) return const [];
     final theme = Theme.of(context);
 
-    // A contest's ref type IS its scorer key, but an activity's is the key plus
-    // a suffix (`pota` scores an operation whose ref type is `potaActivation`),
-    // so an exact match alone would leave every activity's icons uncolored.
-    // Ref types are namespaced by extension key, which is what makes the prefix
-    // fallback safe.
-    //
-    // An operation that only HUNTS a program carries no ref for it at all
-    // (docs/design/activities.md §4) and still scores, so fall back to the
-    // hunting control's own accent.
-    final refs = operation.refs.cast<Map<String, dynamic>?>();
-    final ref =
-        refs.firstWhere((r) => r?['type'] == scorerKey, orElse: () => null) ??
-        refs.firstWhere((r) => (r?['type'] as String?)?.startsWith(scorerKey) ?? false, orElse: () => null);
-    // Each extension's own declared accent (same color `activityRefIcon`
-    // tints its icon with) rather than one shared tertiary for every
-    // scorer — falls back to a plain grey when the extension declares none.
-    // Falling back to the scorer key whenever the ref's own type misses, not
-    // only when there is no ref: a control declares the HUNTING type
-    // ('pota'), while an activating operation's ref carries the activation one
-    // ('potaActivation'), so the commoner case would otherwise be the grey one.
-    final iconColor =
-        colorForRefType(activityControls, ref?['type'] as String?, code: ref == null ? null : refCodeOf(ref)) ??
-        colorForRefType(activityControls, scorerKey) ??
-        theme.colorScheme.onSurfaceVariant;
+    final iconColor = scorerIconColor(operation, scorerKey, activityControls) ?? theme.colorScheme.onSurfaceVariant;
 
     return _tallyRows(context, summary, iconColor);
   }
@@ -290,4 +267,31 @@ class InformationPanel extends StatelessWidget {
       child: MarkdownBody(data: detail, softLineBreak: true, styleSheet: styleSheet),
     );
   }
+}
+
+/// The accent a scorer's tallies wear: its extension's own declared color,
+/// the same one its references' icons are tinted with — or null when it
+/// declares none. Shared with the Operation Postcard's summary pages.
+Color? scorerIconColor(Operation operation, String scorerKey, List<Map<String, dynamic>> activityControls) {
+  // A contest's ref type IS its scorer key, but an activity's is the key plus
+  // a suffix (`pota` scores an operation whose ref type is `potaActivation`),
+  // so an exact match alone would leave every activity's icons uncolored.
+  // Ref types are namespaced by extension key, which is what makes the prefix
+  // fallback safe.
+  //
+  // An operation that only HUNTS a program carries no ref for it at all
+  // (docs/design/activities.md §4) and still scores, so fall back to the
+  // hunting control's own accent.
+  final refs = operation.refs.cast<Map<String, dynamic>?>();
+  final ref =
+      refs.firstWhere((r) => r?['type'] == scorerKey, orElse: () => null) ??
+      refs.firstWhere((r) => (r?['type'] as String?)?.startsWith(scorerKey) ?? false, orElse: () => null);
+  // Each extension's own declared accent (same color `activityRefIcon`
+  // tints its icon with) rather than one shared tertiary for every
+  // scorer.
+  // Falling back to the scorer key whenever the ref's own type misses, not
+  // only when there is no ref: a control declares the HUNTING type
+  // ('pota'), while an activating operation's ref carries the activation one
+  // ('potaActivation'), so the commoner case would otherwise be the grey one.
+  return colorForRefType(activityControls, ref?['type'] as String?, code: ref == null ? null : refCodeOf(ref)) ?? colorForRefType(activityControls, scorerKey);
 }

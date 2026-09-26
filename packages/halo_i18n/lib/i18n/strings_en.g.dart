@@ -3293,8 +3293,8 @@ class Translations$map$postcard$en {
 	/// en: 'Square'
 	String get square => 'Square';
 
-	/// en: 'Save'
-	String get save => 'Save';
+	/// en: 'Save…'
+	String get save => 'Save…';
 
 	/// en: 'Download'
 	String get download => 'Download';
@@ -3313,6 +3313,45 @@ class Translations$map$postcard$en {
 
 	/// en: 'Downloaded ${name}'
 	String downloaded({required Object name}) => 'Downloaded ${name}';
+
+	/// en: 'Saved ${count} images to ${path}'
+	String savedMany({required Object count, required Object path}) => 'Saved ${count} images to ${path}';
+
+	/// en: 'Saved ${names}'
+	String savedFiles({required Object names}) => 'Saved ${names}';
+
+	/// en: '${error} — ${names} had already been saved'
+	String savePartial({required Object error, required Object names}) => '${error} — ${names} had already been saved';
+
+	/// en: 'Downloading ${count} images — allow them if the browser asks'
+	String downloadedMany({required Object count}) => 'Downloading ${count} images — allow them if the browser asks';
+
+	/// en: 'The map didn't load, so it was left out'
+	String get mapLeftOut => 'The map didn\'t load, so it was left out';
+
+	/// en: '${outcome} — the map didn't load, so it was left out'
+	String withMapLeftOut({required Object outcome}) => '${outcome} — the map didn\'t load, so it was left out';
+
+	/// en: '${title} (continued)'
+	String continued({required Object title}) => '${title} (continued)';
+
+	/// en: 'Previous page'
+	String get previousPage => 'Previous page';
+
+	/// en: 'Next page'
+	String get nextPage => 'Next page';
+
+	/// en: 'Page ${page} of ${count}'
+	String pageOf({required Object page, required Object count}) => 'Page ${page} of ${count}';
+
+	/// en: 'Summary sections'
+	String get sections => 'Summary sections';
+
+	/// en: 'Each day'
+	String get sectionDays => 'Each day';
+
+	/// en: 'Reset'
+	String get reset => 'Reset';
 
 	/// en: 'Could not make the postcard: ${error}'
 	String failed({required Object error}) => 'Could not make the postcard: ${error}';
@@ -7712,13 +7751,26 @@ extension on Translations {
 			'map.postcard.portrait' => 'Portrait',
 			'map.postcard.landscape' => 'Landscape',
 			'map.postcard.square' => 'Square',
-			'map.postcard.save' => 'Save',
+			'map.postcard.save' => 'Save…',
 			'map.postcard.download' => 'Download',
 			'map.postcard.share' => 'Share',
 			'map.postcard.copy' => 'Copy',
 			'map.postcard.copied' => 'Copied to the clipboard',
 			'map.postcard.saved' => ({required Object path}) => 'Saved to ${path}',
 			'map.postcard.downloaded' => ({required Object name}) => 'Downloaded ${name}',
+			'map.postcard.savedMany' => ({required Object count, required Object path}) => 'Saved ${count} images to ${path}',
+			'map.postcard.savedFiles' => ({required Object names}) => 'Saved ${names}',
+			'map.postcard.savePartial' => ({required Object error, required Object names}) => '${error} — ${names} had already been saved',
+			'map.postcard.downloadedMany' => ({required Object count}) => 'Downloading ${count} images — allow them if the browser asks',
+			'map.postcard.mapLeftOut' => 'The map didn\'t load, so it was left out',
+			'map.postcard.withMapLeftOut' => ({required Object outcome}) => '${outcome} — the map didn\'t load, so it was left out',
+			'map.postcard.continued' => ({required Object title}) => '${title} (continued)',
+			'map.postcard.previousPage' => 'Previous page',
+			'map.postcard.nextPage' => 'Next page',
+			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Page ${page} of ${count}',
+			'map.postcard.sections' => 'Summary sections',
+			'map.postcard.sectionDays' => 'Each day',
+			'map.postcard.reset' => 'Reset',
 			'map.postcard.failed' => ({required Object error}) => 'Could not make the postcard: ${error}',
 			'map.postcard.mapNotReady' => 'The map didn\'t finish loading. Check the connection and try again.',
 			'map.postcard.saveFailed' => ({required Object error}) => 'Could not save the postcard: ${error}',
@@ -8144,6 +8196,8 @@ extension on Translations {
 			'settings.radio.voiceMessages.stop' => 'Stop',
 			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Record memory ${n}',
 			'settings.radio.voiceMessages.stopRecording' => 'Stop recording',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.playing' => 'Playing…',
 			'settings.radio.voiceMessages.recording' => 'Recording…',
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Playing ${label}',
@@ -8157,8 +8211,6 @@ extension on Translations {
 			'settings.radio.zeroBeatRange.description' => 'How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again.',
 			'settings.help.title' => 'Help & Resources',
 			'settings.help.description' => 'Community and support',
-			_ => null,
-		} ?? switch (path) {
 			'settings.help.forums' => 'Ham2K Forums',
 			'settings.help.forumsDescription' => 'Find help, give feedback, discuss ideas…',
 			'settings.help.chat' => 'Ham2K Chat',
@@ -8658,6 +8710,8 @@ extension on Translations {
 			'settings.search.hint' => 'Search preferences',
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'Experiments',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} enabled', other: '${count} enabled', ), 
 			'settings.developer.patchTrack' => 'Code Push Track',
 			'settings.developer.patchTrackDescription' => 'Which over-the-air code push ring this device follows. More adventurous rings get fixes earlier, less tested. Code pushes apply on the next restart.',
@@ -8671,8 +8725,6 @@ extension on Translations {
 			'settings.developer.runningPatch' => ({required Object patch}) => 'Running code push #${patch}.',
 			'settings.developer.deepLinks' => 'Deep links',
 			'settings.developer.registerUrlSchemes' => 'Register URL schemes',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.registerUrlSchemesDescription' => 'Let com.ham2k:// links open this copy of the app',
 			'settings.developer.registerUrlSchemesDone' => 'This copy now answers com.ham2k:// links',
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'Could not register: ${error}',

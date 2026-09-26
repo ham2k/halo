@@ -13,8 +13,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -29,6 +31,8 @@ import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/map/map_zoom_controller.dart';
 import 'package:ham2k_logger/views/operation/map_panel.dart' show retonedMapData;
 import 'package:ham2k_logger/views/operation/operation_postcard.dart';
+import 'package:ham2k_logger/views/operation/postcard_summary.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/error_reporting_fakes.dart';
@@ -314,6 +318,7 @@ void main() {
       List<PostcardMarker> markers = const [],
       MapMarkerData? callout,
       void Function(MapZoomController controller)? attach,
+      List<PostcardSummarySection> sections = const [],
     }) async {
       await tester.pumpWidget(
         TranslationProvider(
@@ -329,6 +334,7 @@ void main() {
                     key: UniqueKey(),
                     operation: operation,
                     text: text,
+                    sections: sections,
                     view: view,
                     markers: markers,
                     callout: callout,
@@ -355,23 +361,40 @@ void main() {
 
     setUp(built.clear);
 
-    /// Real time, a bounded while: inside [WidgetTester.runAsync], where the
-    /// pane's renders run.
-    Future<void> until(bool Function() done, String what) async {
-      for (var i = 0; i < 1000 && !done(); i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+    /// Both clocks turned [rounds] times, 10ms each.
+    Future<void> turn(WidgetTester tester, int rounds) async {
+      for (var i = 0; i < rounds; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+    }
+
+    /// Both clocks turned, a bounded while, until [done]: a render starts in
+    /// the test's fake zone — the map's picture as the pane opens — and waits
+    /// there on timers, while the engine's image work completes only in real
+    /// time.
+    Future<void> until(WidgetTester tester, bool Function() done, String what) async {
+      for (var i = 0; i < 300 && !done(); i++) {
+        await turn(tester, 1);
       }
       if (!done()) fail('never: $what');
     }
 
-    /// Copy, pressed, and let run to its outcome, shown.
-    Future<void> copyOnce(WidgetTester tester, {Duration settle = const Duration(milliseconds: 300)}) async {
-      await tester.runAsync(() async {
-        await tester.tap(find.text('Copy'));
-        await Future<void>.delayed(settle);
-      });
+    bool idle() => find.byType(CircularProgressIndicator).evaluate().isEmpty;
+
+    /// [label] pressed, and let run to its outcome, shown.
+    Future<void> press(WidgetTester tester, String label) async {
+      await tester.tap(find.bySemanticsLabel(label));
+      await tester.pump();
+      await until(tester, idle, '$label finished');
       await tester.pumpAndSettle();
     }
+
+    Future<void> copyOnce(WidgetTester tester) => press(tester, 'Copy');
+
+    /// The map's page comes first; the summary's pages each have an overlay
+    /// of their own.
+    PostcardOverlay mapOverlay(WidgetTester tester) => tester.widget<PostcardOverlay>(find.byType(PostcardOverlay).first);
 
     void mockClipboard(WidgetTester tester, Future<Object?> Function(MethodCall call) handler) {
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/image_clipboard'), handler);
@@ -383,16 +406,13 @@ void main() {
       mockClipboard(tester, (call) async => copies.add(call.arguments));
       // Made when the pane asks, in the real zone its render runs in: one
       // made in the test's fake zone would deliver only at the next pump.
-      Completer<void>? tiles;
-      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, attach: (c) => c.onSettled ??= () => (tiles = Completer<void>()).future);
-      await tester.runAsync(() async {
-        await tester.tap(find.text('Copy'));
-        await until(() => tiles != null, 'asked whether the tiles were in');
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-        expect(copies, isEmpty, reason: 'the tiles are still on their way');
-        tiles!.complete();
-        await until(() => copies.isNotEmpty, 'copied once the tiles arrived');
-      });
+      final tiles = Completer<void>();
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, attach: (c) => c.onSettled ??= () => tiles.future);
+      await tester.tap(find.bySemanticsLabel('Copy'));
+      await turn(tester, 30);
+      expect(copies, isEmpty, reason: 'the tiles are still on their way');
+      tiles.complete();
+      await until(tester, () => copies.isNotEmpty, 'copied once the tiles arrived');
     });
 
     testWidgets('Copy pressed as the pane opens waits for its map to come up', (tester) async {
@@ -400,13 +420,12 @@ void main() {
       mockClipboard(tester, (call) async => copies.add(call.arguments));
       late MapZoomController map;
       await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, attach: (c) => map = c);
-      await tester.runAsync(() async {
-        await tester.tap(find.text('Copy'));
-        await Future<void>.delayed(const Duration(milliseconds: 200));
-        // The backend hooks itself up only now, as a map still loading does.
-        map.onSettled = () async {};
-        await until(() => copies.isNotEmpty, 'copied once the map came up');
-      });
+      await tester.tap(find.bySemanticsLabel('Copy'));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(copies, isEmpty, reason: 'no map yet to take a picture of');
+      // The backend hooks itself up only now, as a map still loading does.
+      map.onSettled = () async {};
+      await until(tester, () => copies.isNotEmpty, 'copied once the map came up');
     });
 
     testWidgets("says what went wrong in the ordinary way without reporting it — and reports what didn't", (tester) async {
@@ -434,13 +453,7 @@ void main() {
           throw PlatformException(code: saves.length == 1 ? 'save_failed' : 'bad_args', message: 'no room');
         });
         addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/file_save'), null));
-        Future<void> save() async {
-          await tester.runAsync(() async {
-            await tester.tap(find.text('Save'));
-            await Future<void>.delayed(const Duration(milliseconds: 300));
-          });
-          await tester.pumpAndSettle();
-        }
+        Future<void> save() => press(tester, 'Save…');
 
         await pumpPanel(tester, await freshSettings(), mapIsFlutter: true);
         await save();
@@ -462,20 +475,33 @@ void main() {
       final backend = FakeErrorReportingBackend();
       await withErrorHooks(backend: backend, () async {
         // Made when the pane asks, in the real zone its render runs in.
-        Completer<Uint8List>? snapshot;
-        await pumpPanel(tester, await freshSettings(), mapIsFlutter: false, attach: (c) => c.onSnapshot = (_) => (snapshot = Completer<Uint8List>()).future);
-        await tester.runAsync(() async {
-          await tester.tap(find.text('Copy'));
-          await until(() => snapshot != null, 'the snapshot was asked for');
-        });
+        final snapshot = Completer<Uint8List>();
+        var asked = false;
+        await pumpPanel(
+          tester,
+          await freshSettings(),
+          mapIsFlutter: false,
+          attach: (c) => c.onSnapshot = (_) {
+            asked = true;
+            return snapshot.future;
+          },
+        );
+        await tester.tap(find.bySemanticsLabel('Copy'));
+        await until(tester, () => asked, 'the snapshot was asked for');
         // Done: the pane closes, and its map with it.
         await tester.pumpWidget(const SizedBox());
-        await tester.runAsync(() async {
-          snapshot!.completeError(StateError('The WKWebView was invalidated'));
-          await Future<void>.delayed(const Duration(milliseconds: 100));
-        });
+        snapshot.completeError(StateError('The WKWebView was invalidated'));
+        await turn(tester, 10);
         expect(backend.exceptions, isEmpty);
       });
+    });
+
+    testWidgets('a pane closed while waiting for its map to come up leaves nothing waiting behind it', (tester) async {
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: false);
+      await tester.tap(find.bySemanticsLabel('Copy'));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(const SizedBox());
+      // The test's own end fails on a timer still pending.
     });
 
     testWidgets('an OSM postcard is light whatever style was saved, having no picker to change it with', (tester) async {
@@ -483,7 +509,7 @@ void main() {
       await settings.setPostcardMapStyle(MapStyle.darkMatter);
       await pumpPanel(tester, settings, mapIsFlutter: true);
       expect(built.last.style, MapStyle.liberty);
-      expect(tester.widget<PostcardOverlay>(find.byType(PostcardOverlay)).isDark, isFalse);
+      expect(mapOverlay(tester).isDark, isFalse);
     });
 
     Future<List<Map<Object?, Object?>>> copyEach(WidgetTester tester, List<PostcardShape?> shapes) async {
@@ -509,10 +535,8 @@ void main() {
           await tester.pumpAndSettle();
         }
         final before = copies.length;
-        await tester.runAsync(() async {
-          await tester.tap(find.text('Copy'));
-          await until(() => copies.length > before, 'the copy reached the clipboard');
-        });
+        await tester.tap(find.bySemanticsLabel('Copy'));
+        await until(tester, () => copies.length > before, 'the copy reached the clipboard');
         await tester.pumpAndSettle();
       }
       return copies;
@@ -603,7 +627,7 @@ void main() {
         markers: [(latitude: 40, longitude: -74)],
         callout: shown,
       );
-      final overlay = tester.widget<PostcardOverlay>(find.byType(PostcardOverlay));
+      final overlay = mapOverlay(tester);
       expect(overlay.callout, shown);
       expect(overlay.calloutAt, postcardPoint(built.last.frame.camera, (latitude: 40, longitude: -74), PostcardShape.portrait.logicalSize, tileSize: 512));
       expect(find.text('EA4IDR • 5,765 km'), findsOneWidget);
@@ -645,6 +669,349 @@ void main() {
       // A phone.
       await pumpPanel(tester, await freshSettings(), mapIsFlutter: false, width: 375);
       expect(styleAt().dy, greaterThan(shapesAt().dy + Space.xl), reason: 'stacked');
+    });
+
+    /// Enough of a summary for two pages after the map's.
+    final summary = [
+      for (final (key, title) in [('stats', 'Operation Stats'), ('core.bands', 'Bands')])
+        PostcardSummarySection(PostcardHeading(title), [for (var i = 0; i < 18; i++) PostcardParagraph.plain('line $i')], key: key),
+    ];
+
+    Future<Uint8List> copyPage(WidgetTester tester) async {
+      Uint8List? png;
+      mockClipboard(tester, (call) async => png = (call.arguments as Map<Object?, Object?>)['png'] as Uint8List);
+      await tester.tap(find.bySemanticsLabel('Copy'));
+      await until(tester, () => png != null, 'the copy reached the clipboard');
+      await tester.pumpAndSettle();
+      return png!;
+    }
+
+    testWidgets('pages the summary after the map, and copies the page on show — the map veiled under it', (tester) async {
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary);
+      expect(find.bySemanticsLabel('Page 1 of 3'), findsOneWidget);
+      final map = await copyPage(tester);
+
+      await tester.tap(find.byIcon(MdiIcons.chevronRight));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Page 2 of 3'), findsOneWidget);
+      final page = await copyPage(tester);
+      expect(pngSize(page), (1080, 1920), reason: 'the size of the map postcard it follows');
+      expect(page, isNot(map));
+
+      // A corner clear of the text: the map (teal here) through the veil,
+      // which is the band's light tone at 78%.
+      final pixels = await tester.runAsync(() async {
+        final image = await decodeImageFromList(page);
+        final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        final at = 4 * (1900 * 1080 + 20);
+        image.dispose();
+        return [for (var i = 0; i < 3; i++) data!.getUint8(at + i)];
+      });
+      const teal = Color(0xFF009688), band = Color(0xFFF2F8FA);
+      int veiled(double map, double band) => (0.78 * band + 0.22 * map) * 255 ~/ 1;
+      for (final (i, (m, b)) in [(teal.r, band.r), (teal.g, band.g), (teal.b, band.b)].indexed) {
+        expect(pixels![i], closeTo(veiled(m, b), 3), reason: 'channel $i');
+      }
+    });
+
+    testWidgets('shows some of the next page beside the one on show, set back or not, in every shape', (tester) async {
+      // A phone: the width is what limits every shape's page.
+      tester.view.physicalSize = const Size(1200, 2700);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary, width: 400, height: 900);
+      final pane = tester.getRect(find.byType(OperationPostcardPanel));
+      for (final shape in ['Portrait', 'Landscape', 'Square']) {
+        await tester.tap(find.text(shape));
+        await tester.pumpAndSettle();
+        // Its rect as drawn, shrinking and all.
+        final next = tester.getRect(find.byType(PostcardSummaryPage).first);
+        expect(pane.right - next.left, greaterThanOrEqualTo(Space.xxl - 0.5), reason: shape);
+      }
+    });
+
+    testWidgets('brings a page beside the one on show forward when tapped, the map among them', (tester) async {
+      double onShow() => tester.widget<PageView>(find.byType(PageView)).controller!.page!;
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary);
+      await tester.tapAt(tester.getRect(find.byType(PostcardSummaryPage).first).centerLeft + const Offset(4, 0));
+      await tester.pumpAndSettle();
+      expect(onShow(), 1);
+      // The map's page, peeking at the left.
+      await tester.tapAt(tester.getRect(find.byType(PostcardOverlay).first).centerRight - const Offset(4, 0));
+      await tester.pumpAndSettle();
+      expect(onShow(), 0);
+    });
+
+    testWidgets('shows a hand over every page, the map among them, for they drag the carousel', (tester) async {
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: false, sections: summary);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      for (final page in [find.byType(PostcardOverlay).first, find.byType(PostcardSummaryPage).first]) {
+        await mouse.moveTo(tester.getRect(page).center);
+        await tester.pump();
+        expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.grab);
+      }
+    });
+
+    testWidgets("keeps the whole pane's clicks and drags from whatever lies under it", (tester) async {
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: false, sections: summary);
+      // On the web only: there a map element under the pane — the Map tab's —
+      // takes the events over it wherever the pane paints no element of its own.
+      final pane = find.ancestor(of: find.byType(PageView), matching: find.byType(PointerInterceptor)).last;
+      expect(tester.getRect(pane), tester.getRect(find.byType(OperationPostcardPanel)));
+      // Elsewhere an interceptor is one more native view for nothing: iOS
+      // has one of its own.
+      expect([
+        for (final interceptor in tester.widgetList<PointerInterceptor>(find.byType(PointerInterceptor))) interceptor.intercepting,
+      ], everyElement(kIsWeb));
+    });
+
+    testWidgets('lines the footer actions up from its leading edge, Done at the trailing one, and gives up their labels from the right', (tester) async {
+      const labels = ['Share', 'Copy', 'Save…'];
+      var lastBare = 0;
+      for (var width = 700.0; width >= 300; width -= 20) {
+        await pumpPanel(tester, await freshSettings(), mapIsFlutter: false, width: width);
+        final shown = [for (final label in labels) find.text(label).evaluate().isNotEmpty];
+        final bare = shown.where((s) => !s).length;
+        expect(shown, [for (var i = 0; i < labels.length; i++) i < labels.length - bare], reason: 'the rightmost first, at $width');
+        expect(bare, greaterThanOrEqualTo(lastBare), reason: 'no label comes back as the pane narrows, at $width');
+        lastBare = bare;
+        final pane = tester.getRect(find.byType(OperationPostcardPanel));
+        final done = tester.getRect(find.text('Done'));
+        final share = tester.getRect(find.bySemanticsLabel('Share'));
+        final save = tester.getRect(find.bySemanticsLabel('Save…'));
+        expect(share.left, closeTo(pane.left + Space.xxl, 1), reason: 'at the leading edge, at $width');
+        expect(save.right, lessThanOrEqualTo(done.left), reason: 'clear of Done, at $width');
+        expect(save.center.dy, inInclusiveRange(done.top, done.bottom), reason: 'one row, at $width');
+      }
+      expect(lastBare, greaterThan(0), reason: 'the case being tested: some narrow width gives a label up');
+    });
+
+    testWidgets('sets the pages off with a glow of the other tone when they share the pane\'s', (tester) async {
+      List<BoxShadow>? glow() => tester
+          .widgetList<DecoratedBox>(find.ancestor(of: find.byType(PostcardOverlay).first, matching: find.byType(DecoratedBox)))
+          .map((box) => box.decoration)
+          .whereType<BoxDecoration>()
+          .firstWhere((d) => d.border != null)
+          .boxShadow;
+      // The test app is light: a light map on it needs the dark shadow.
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: false);
+      expect(glow()?.single.color, Colors.black.withValues(alpha: 0.35));
+      final settings = await freshSettings();
+      await settings.setPostcardMapStyle(MapStyle.darkMatter);
+      await pumpPanel(tester, settings, mapIsFlutter: false);
+      expect(glow(), isNull, reason: 'a dark postcard stands off a light pane on its own');
+    });
+
+    testWidgets('lays out the summary sections picked, in the order picked, and keeps what another operation\'s were given', (tester) async {
+      final settings = await freshSettings();
+      // Picked on another operation, with a POTA tally this one lacks.
+      await settings.setPostcardSections(['pota.activation', 'core.bands', 'stats'], {'pota.activation'});
+      await pumpPanel(tester, settings, mapIsFlutter: false, sections: summary);
+      expect(
+        tester.widget<PostcardSummaryPage>(find.byType(PostcardSummaryPage).first).layout.pages.first.first.block,
+        isA<PostcardHeading>().having((h) => h.title, 'title', 'Bands'),
+      );
+
+      await tester.tap(find.bySemanticsLabel('Summary sections'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.ancestor(of: find.text('Bands'), matching: find.byType(ListTile)),
+          matching: find.byType(Checkbox),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.bySemanticsLabel(RegExp(r'^Page \d of 2$')), findsOneWidget, reason: 'the map and the stats alone');
+      final picks = settings.postcardSections;
+      expect(picks.hidden, {'core.bands', 'pota.activation'});
+      expect(picks.order, ['pota.activation', 'core.bands', 'stats'], reason: 'the absent tally keeps its place in what is stored');
+    });
+
+    testWidgets('marks the sections button while picks are remembered, until they are reset', (tester) async {
+      Color? mark() => tester.widget<Icon>(find.byIcon(MdiIcons.formatListBulleted)).color;
+      Future<void> inDialog(Future<void> Function() steps) async {
+        await tester.tap(find.bySemanticsLabel('Summary sections'));
+        await tester.pumpAndSettle();
+        await steps();
+        await tester.pumpAndSettle();
+      }
+
+      final settings = await freshSettings();
+      await pumpPanel(tester, settings, mapIsFlutter: false, sections: summary);
+      expect(mark(), isNull);
+
+      await inDialog(() => tester.tap(find.text('Save')));
+      expect(mark(), isNull, reason: 'saved as it came: nothing to remember');
+      expect(settings.postcardSections.order, isEmpty);
+
+      await inDialog(() async {
+        expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Reset')).onPressed, isNull, reason: 'nothing to reset');
+        await tester.tap(
+          find.descendant(
+            of: find.ancestor(of: find.text('Bands'), matching: find.byType(ListTile)),
+            matching: find.byType(Checkbox),
+          ),
+        );
+        await tester.pump();
+        await tester.tap(find.text('Save'));
+      });
+      expect(mark(), const Color(0xFF00BFA5));
+
+      await settings.setPostcardSections([...settings.postcardSections.order, 'pota.activation'], {...settings.postcardSections.hidden, 'pota.activation'});
+      await inDialog(() => tester.tap(find.text('Reset')));
+      expect(mark(), isNull);
+      expect(settings.postcardSections, (order: const <String>[], hidden: const <String>{}), reason: "every pick forgotten, another operation's too");
+      expect(find.bySemanticsLabel(RegExp(r'^Page \d of 3$')), findsOneWidget, reason: 'every section back');
+    });
+
+    testWidgets("takes the map's picture only while its page is drawn, bringing it back on show for one", (tester) async {
+      double onShow() => tester.widget<PageView>(find.byType(PageView)).controller!.page!;
+      final tiles = Completer<void>();
+      final copies = <Object?>[];
+      mockClipboard(tester, (call) async => copies.add(call.arguments));
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary, attach: (c) => c.onSettled ??= () => tiles.future);
+      for (var i = 0; i < 2; i++) {
+        await tester.tap(find.byIcon(MdiIcons.chevronRight));
+        await tester.pumpAndSettle();
+      }
+      expect(onShow(), 2, reason: 'the map two pages off, and not drawn');
+      await tester.tap(find.bySemanticsLabel('Copy'));
+      await turn(tester, 5);
+      tiles.complete();
+      await until(tester, () => copies.isNotEmpty, 'copied once the tiles arrived');
+      expect(onShow(), 0, reason: 'a picture of a map not drawn is of whatever it drew last');
+    });
+
+    testWidgets('counts pages in numbers where their dots would not fit', (tester) async {
+      await pumpPanel(
+        tester,
+        await freshSettings(),
+        mapIsFlutter: false,
+        sections: [
+          for (var i = 0; i < 12; i++)
+            PostcardSummarySection(PostcardHeading('S$i'), [for (var l = 0; l < 30; l++) PostcardParagraph.plain('line $l')], key: 's$i'),
+        ],
+      );
+      final counter = find.byWidgetPredicate((w) => w is Text && RegExp(r'^1 / \d+$').hasMatch(w.data ?? ''));
+      expect(counter, findsOneWidget);
+      expect(int.parse(tester.widget<Text>(counter).data!.split(' / ').last), greaterThan(9), reason: 'the case being tested');
+      expect(tester.takeException(), isNull, reason: 'no row of dots running off a phone');
+    });
+
+    testWidgets('makes the summary pages over the veil alone when the map will not load, and leaves the map out of Save', (tester) async {
+      final asked = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/file_save'), (call) async {
+        asked.add((call.arguments as Map<Object?, Object?>)['filename'] as String);
+        return 'saved-${asked.length}.png';
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/file_save'), null));
+      // Offline, a try is half a minute's wait before it fails: the first
+      // fails, and every later one never ends. An export that waited on one —
+      // a try a page, say — would never finish here.
+      var tries = 0;
+      await pumpPanel(
+        tester,
+        await freshSettings(),
+        mapIsFlutter: false,
+        sections: summary,
+        attach: (c) => c.onSnapshot = (_) => ++tries == 1 ? Future.error(const MapSnapshotException('offline')) : Completer<Uint8List>().future,
+      );
+
+      await tester.tap(find.byIcon(MdiIcons.chevronRight));
+      await tester.pumpAndSettle();
+      final page = await copyPage(tester);
+      expect(pngSize(page), (1080, 1920), reason: 'a summary page, offline');
+
+      await press(tester, 'Save…');
+      expect([for (final name in asked) name.split(' ').last], ['2.png', '3.png'], reason: 'the summary pages, as numbered with the map');
+      expect(find.textContaining("the map didn't load, so it was left out"), findsOneWidget);
+    });
+
+    testWidgets('makes a page drawn over the veil alone again once the map comes', (tester) async {
+      final png = (await tester.runAsync(() async {
+        final recorder = ui.PictureRecorder();
+        Canvas(recorder).drawColor(Colors.teal, BlendMode.src);
+        final image = await recorder.endRecording().toImage(8, 8);
+        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        image.dispose();
+        return data!.buffer.asUint8List();
+      }))!;
+      var online = false;
+      await pumpPanel(
+        tester,
+        await freshSettings(),
+        mapIsFlutter: false,
+        sections: summary,
+        attach: (c) => c.onSnapshot = (_) async => online ? png : throw const MapSnapshotException('offline'),
+      );
+      await tester.tap(find.byIcon(MdiIcons.chevronRight));
+      await tester.pumpAndSettle();
+      final bare = await copyPage(tester);
+
+      online = true;
+      // The map's page, beside this one, tries again as it is built.
+      await tester.tap(find.byIcon(MdiIcons.chevronLeft));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(MdiIcons.chevronRight));
+      await tester.pumpAndSettle();
+      await until(tester, () => tester.widget<PostcardSummaryPage>(find.byType(PostcardSummaryPage).first).map != null, 'the map came');
+      expect(tester.widget<PageView>(find.byType(PageView)).controller!.page, 1, reason: 'the same page copied again');
+      final withMap = await copyPage(tester);
+      expect(withMap, isNot(bare), reason: 'not the page kept from before the map came');
+    });
+
+    testWidgets('measures its footer once, and keeps no hidden copies of its buttons after', (tester) async {
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: false, width: 700);
+      expect(find.byIcon(MdiIcons.contentCopy, skipOffstage: false), findsOneWidget);
+      expect(find.text('Copy'), findsOneWidget, reason: 'room for every label');
+    });
+
+    testWidgets('goes back to the map when another shape or style is picked', (tester) async {
+      double onShow() => tester.widget<PageView>(find.byType(PageView)).controller!.page!;
+      Future<void> away() async {
+        await tester.tap(find.byIcon(MdiIcons.chevronRight));
+        await tester.pumpAndSettle();
+        expect(onShow(), 1);
+      }
+
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: false, sections: summary);
+      await away();
+      await tester.tap(find.text('Landscape'));
+      await tester.pumpAndSettle();
+      expect(onShow(), 0, reason: 'the map is what changed, and it comes up only on show');
+
+      await away();
+      await tester.tap(find.text('Liberty'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Dark Matter').last);
+      await tester.pumpAndSettle();
+      expect(onShow(), 0, reason: 'a map restyles only on show too');
+      expect(find.bySemanticsLabel(RegExp(r'^Page 1 of ')), findsOneWidget);
+    });
+
+    testWidgets('saves every page in order, a dialog each on Android — and a cancelled one abandons the rest', (tester) async {
+      final asked = <String>[];
+      String? Function(int call) answer = (call) => 'saved-$call.png';
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/file_save'), (call) async {
+        asked.add((call.arguments as Map<Object?, Object?>)['filename'] as String);
+        return answer(asked.length);
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/file_save'), null));
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary);
+
+      await press(tester, 'Save…');
+      expect([for (final name in asked) name.split(' ').last], ['1.png', '2.png', '3.png']);
+      expect(find.text('Saved saved-1.png, saved-2.png, saved-3.png'), findsOneWidget);
+
+      asked.clear();
+      answer = (call) => call == 1 ? 'saved-1.png' : null;
+      await press(tester, 'Save…');
+      expect(asked, hasLength(2), reason: 'no third dialog after the second was cancelled');
+      expect(find.text('Saved to saved-1.png'), findsOneWidget, reason: 'what landed, not what was asked for');
     });
 
     testWidgets('fits its shape labels to a phone, one line each', (tester) async {

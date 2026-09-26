@@ -398,6 +398,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       globe: projection == MapProjection.globe && backend != _MapBackend.osm,
       mapIsFlutter: backend == _MapBackend.osm,
       settings: widget.settings,
+      activityControls: widget.activityControls,
       mapBuilder: (frame, controller, style) {
         final urls = mapLibreStyleUrls(style);
         final isDark = mapStyleIsDark(style, appIsDark: appIsDark);

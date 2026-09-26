@@ -149,7 +149,9 @@ fixes four rules it carries but never awards.
   button, HALO-708) makes the picture PoLo's badge screen shows for a
   screenshot, as an image to save, share or copy: the Map tab's framing in
   portrait, landscape or square, any map style, the title and the contact
-  count and span over it, and the popup open on the tab.
+  count and span over it, and the popup open on the tab. Beyond PoLo's
+  badge, pages after the map carry the Info pane's summary (HALO-716), its
+  sections picked and ordered by the operator.
 - Keep-device-awake while logging. ⛔ (no wakelock dependency at all)
 - Op info stats ✅ — counts, rates (last 10/100), dupes, score summaries
   and the per-day/operation breakdown now match PoLo's info panel

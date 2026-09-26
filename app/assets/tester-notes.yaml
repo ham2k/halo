@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "New Postcard pages carry your operation's stats and scores after the map"
+
 "173":
   changes:
     - "Added Yaesu FT-991/A to the radio list"

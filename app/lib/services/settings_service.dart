@@ -65,6 +65,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   static const _mapStyleKey = 'mapStyle';
   static const _postcardShapeKey = 'postcardShape';
   static const _postcardMapStyleKey = 'postcardMapStyle';
+  static const _postcardSectionsKey = 'postcardSections';
   static const _secondaryControlsOrderKey = 'secondaryControlsOrder';
   static const _hiddenSecondaryControlsKey = 'hiddenSecondaryControls';
   static const _showRSTFieldsKey = 'showRSTFields';
@@ -1548,6 +1549,21 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   }
 
   Future<void> setPostcardMapStyle(MapStyle style) => setSettingValue(generalGroup, _postcardMapStyleKey, style.name);
+
+  /// The Operation Postcard's summary sections as last picked, by section key
+  /// (`PostcardSummarySection.key`): in [order], less the [hidden] ones. Both
+  /// empty until the operator picks, which is every section in its own order.
+  ({List<String> order, Set<String> hidden}) get postcardSections {
+    final value = settingValue(generalGroup, _postcardSectionsKey);
+    List<String> strings(Object? list) => list is List ? list.whereType<String>().toList() : const [];
+    return value is Map ? (order: strings(value['order']), hidden: strings(value['hidden']).toSet()) : (order: const [], hidden: const {});
+  }
+
+  Future<void> setPostcardSections(List<String> order, Set<String> hidden) =>
+      setSettingValue(generalGroup, _postcardSectionsKey, {'order': order, 'hidden': hidden.toList()});
+
+  /// Forgets every pick, this operation's and every other's.
+  Future<void> clearPostcardSections() => setSettingValue(generalGroup, _postcardSectionsKey, null);
 }
 
 /// One callsign profile from [SettingsService.activeProfile] — an id plus a

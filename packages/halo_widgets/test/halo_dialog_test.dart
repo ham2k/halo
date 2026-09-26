@@ -505,6 +505,47 @@ void main() {
     expect(cancel.center.dy, isNot(save.center.dy));
   });
 
+  testWidgets('beside tools, the trailing group still stacks rather than overflowing', (tester) async {
+    // Tools take the room the trailing group leaves; held to its buttons'
+    // own width with nothing to bound it, the group could never stack, and
+    // a narrow footer would paint red stripes past its edge instead.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 260,
+              child: haloDialogFooterRow(
+                tools: const TextButton(onPressed: null, child: Text('Restablecer')),
+                cancel: const TextButton(onPressed: null, child: Text('Cancelar')),
+                actions: const [FilledButton(onPressed: null, child: Text('Guardar'))],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull, reason: 'a footer this narrow must stack, not overflow');
+    expect(tester.getRect(find.text('Cancelar')).center.dy, isNot(tester.getRect(find.text('Guardar')).center.dy));
+  });
+
+  testWidgets('a dialog whose only footer button is a tool still has its footer', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: const Scaffold(
+          body: HaloDialog(
+            content: Text('Body'),
+            tools: TextButton(onPressed: null, child: Text('Reset')),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Reset'), findsOneWidget);
+  });
+
   testWidgets('with no cancel, actions still pack to the trailing edge as before', (tester) async {
     await pump(tester, Brightness.light);
     final actionsRight = tester.getTopRight(find.text('OK')).dx;

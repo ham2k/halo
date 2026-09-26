@@ -10,7 +10,10 @@ import 'package:halo_i18n/halo_i18n.dart';
 /// last" (only while the last QSO is recent), and last-10 / last-100 Q/h
 /// rates. Mirrors app-polo's OpInfo. Shared by LoggingControls' compact info
 /// row and the wide-layout Information Panel so both stay in sync.
-List<String> operationStatsLines(BuildContext context, List<Qso> qsos) {
+///
+/// [sinceLast] off leaves the now-relative "since last" out — for a picture
+/// of the operation, which is looked at long after it was made.
+List<String> operationStatsLines(BuildContext context, List<Qso> qsos, {bool sinceLast = true}) {
   final t = context.t.loggingControls.info;
   final contacts = [
     for (final q in qsos)
@@ -28,7 +31,7 @@ List<String> operationStatsLines(BuildContext context, List<Qso> qsos) {
     (firstMs != null && lastMs != null) ? t.qsosInTime(count: countText, time: fmtTimeBetween(firstMs, lastMs)) : countText,
     // "since last" only while the last QSO is recent (<6h) — otherwise a
     // long-idle log would show a distractingly large figure.
-    if (lastMs != null && nowMs - lastMs < 6 * 60 * 60 * 1000) t.sinceLast(time: fmtTimeBetween(lastMs, nowMs)),
+    if (sinceLast && lastMs != null && nowMs - lastMs < 6 * 60 * 60 * 1000) t.sinceLast(time: fmtTimeBetween(lastMs, nowMs)),
   ];
 
   final line2 = <String>[];

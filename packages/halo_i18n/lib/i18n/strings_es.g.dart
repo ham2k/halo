@@ -1535,13 +1535,26 @@ class _Translations$map$postcard$es extends Translations$map$postcard$en {
 	@override String get portrait => 'Vertical';
 	@override String get landscape => 'Horizontal';
 	@override String get square => 'Cuadrada';
-	@override String get save => 'Guardar';
+	@override String get save => 'Guardar…';
 	@override String get download => 'Descargar';
 	@override String get share => 'Compartir';
 	@override String get copy => 'Copiar';
 	@override String get copied => 'Copiada al portapapeles';
 	@override String saved({required Object path}) => 'Guardada en ${path}';
 	@override String downloaded({required Object name}) => 'Se descargó ${name}';
+	@override String savedMany({required Object count, required Object path}) => 'Se guardaron ${count} imágenes en ${path}';
+	@override String savedFiles({required Object names}) => 'Se guardaron ${names}';
+	@override String savePartial({required Object error, required Object names}) => '${error} — ya se habían guardado ${names}';
+	@override String downloadedMany({required Object count}) => 'Descargando ${count} imágenes — permítelas si el navegador pregunta';
+	@override String get mapLeftOut => 'El mapa no cargó, así que quedó fuera';
+	@override String withMapLeftOut({required Object outcome}) => '${outcome} — el mapa no cargó, así que quedó fuera';
+	@override String continued({required Object title}) => '${title} (continuación)';
+	@override String get previousPage => 'Página anterior';
+	@override String get nextPage => 'Página siguiente';
+	@override String pageOf({required Object page, required Object count}) => 'Página ${page} de ${count}';
+	@override String get sections => 'Secciones del resumen';
+	@override String get sectionDays => 'Cada día';
+	@override String get reset => 'Restablecer';
 	@override String failed({required Object error}) => 'No se pudo crear la postal: ${error}';
 	@override String get mapNotReady => 'El mapa no terminó de cargar. Revisa la conexión y vuelve a intentarlo.';
 	@override String saveFailed({required Object error}) => 'No se pudo guardar la postal: ${error}';
@@ -3896,13 +3909,26 @@ extension on TranslationsEs {
 			'map.postcard.portrait' => 'Vertical',
 			'map.postcard.landscape' => 'Horizontal',
 			'map.postcard.square' => 'Cuadrada',
-			'map.postcard.save' => 'Guardar',
+			'map.postcard.save' => 'Guardar…',
 			'map.postcard.download' => 'Descargar',
 			'map.postcard.share' => 'Compartir',
 			'map.postcard.copy' => 'Copiar',
 			'map.postcard.copied' => 'Copiada al portapapeles',
 			'map.postcard.saved' => ({required Object path}) => 'Guardada en ${path}',
 			'map.postcard.downloaded' => ({required Object name}) => 'Se descargó ${name}',
+			'map.postcard.savedMany' => ({required Object count, required Object path}) => 'Se guardaron ${count} imágenes en ${path}',
+			'map.postcard.savedFiles' => ({required Object names}) => 'Se guardaron ${names}',
+			'map.postcard.savePartial' => ({required Object error, required Object names}) => '${error} — ya se habían guardado ${names}',
+			'map.postcard.downloadedMany' => ({required Object count}) => 'Descargando ${count} imágenes — permítelas si el navegador pregunta',
+			'map.postcard.mapLeftOut' => 'El mapa no cargó, así que quedó fuera',
+			'map.postcard.withMapLeftOut' => ({required Object outcome}) => '${outcome} — el mapa no cargó, así que quedó fuera',
+			'map.postcard.continued' => ({required Object title}) => '${title} (continuación)',
+			'map.postcard.previousPage' => 'Página anterior',
+			'map.postcard.nextPage' => 'Página siguiente',
+			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Página ${page} de ${count}',
+			'map.postcard.sections' => 'Secciones del resumen',
+			'map.postcard.sectionDays' => 'Cada día',
+			'map.postcard.reset' => 'Restablecer',
 			'map.postcard.failed' => ({required Object error}) => 'No se pudo crear la postal: ${error}',
 			'map.postcard.mapNotReady' => 'El mapa no terminó de cargar. Revisa la conexión y vuelve a intentarlo.',
 			'map.postcard.saveFailed' => ({required Object error}) => 'No se pudo guardar la postal: ${error}',
@@ -4328,6 +4354,8 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.stop' => 'Detener',
 			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Grabar la memoria ${n}',
 			'settings.radio.voiceMessages.stopRecording' => 'Detener la grabación',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.playing' => 'Reproduciendo…',
 			'settings.radio.voiceMessages.recording' => 'Grabando…',
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Reproduciendo ${label}',
@@ -4341,8 +4369,6 @@ extension on TranslationsEs {
 			'settings.radio.zeroBeatRange.description' => 'A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez.',
 			'settings.help.title' => 'Ayuda y Recursos',
 			'settings.help.description' => 'Comunidad y soporte',
-			_ => null,
-		} ?? switch (path) {
 			'settings.help.forums' => 'Foros de Ham2K',
 			'settings.help.forumsDescription' => 'Encuentra ayuda, danos tu opinión, comparte ideas…',
 			'settings.help.chat' => 'Chat de Ham2K',
@@ -4842,6 +4868,8 @@ extension on TranslationsEs {
 			'settings.developer.trackBleeding' => 'Vanguardia',
 			'settings.developer.checkingTrack' => ({required Object track}) => 'Buscando un code push en «${track}»…',
 			'settings.developer.patchDownloaded' => 'Code push descargado — reinicia la app para aplicarlo.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.noNewPatch' => ({required Object track}) => 'No hay code push nuevo en «${track}».',
 			'settings.developer.noPatchInstalled' => 'No hay code push instalado — ejecutando el binario de la versión.',
 			'settings.developer.runningPatch' => ({required Object patch}) => 'Ejecutando el code push #${patch}.',
@@ -4855,8 +4883,6 @@ extension on TranslationsEs {
 			'settings.developer.dataFolder' => 'Carpeta de datos',
 			'settings.developer.loading' => '(cargando…)',
 			'settings.developer.panelLoadFailed' => 'No se pudo cargar este panel de configuración.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extDevServer' => 'Servidor de desarrollo de extensiones',
 			'settings.developer.extDevServerDescription' => 'Carga extensiones desde un servidor de desarrollo en tu red en lugar de las incluidas en la app, y las recarga al guardar.',
 			'settings.developer.extDevServerAddress' => 'Dirección del servidor',
