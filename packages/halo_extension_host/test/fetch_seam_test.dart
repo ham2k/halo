@@ -19,6 +19,7 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:halo_extension_host/src/fetch_policy.dart';
 
 import 'support/bundles.dart';
 import 'package:http/http.dart' as http;
@@ -256,4 +257,133 @@ void main() {
     );
     expect(rec.sent, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
+
+  group('a plain-http fetch', () {
+    // An extension that fetches whatever URL it is handed, so the host's own
+    // routing is the only thing under test.
+    const fetcherSource = '''
+__polo.defineExtension({
+  key: 'fetcher',
+  name: 'Fetcher',
+  version: '0.0.1',
+  onActivation: function (api) {
+    boundHostCall = api.hostCall
+    api.registerHook('bench', { key: 'fetcher', hook: {
+      get: async function (args) { return await boundHostCall('fetch', { url: args.url }) },
+    }})
+  },
+})
+var boundHostCall = null
+''';
+
+    Future<ExtensionHost> fetcherWith(http.Client client, List<String> domains) async {
+      final host = await ExtensionHost.start(
+        kernelSource: bundleSource('kernel'),
+        extensions: const [ExtensionBundle(key: 'fetcher', source: fetcherSource)],
+        fetchAllowlists: {'fetcher': domains},
+        httpClient: client,
+        userAgent: 'Ham2K-Test/1.0',
+        onHostCall: nullHostCall,
+      );
+      addTearDown(host.dispose);
+      return host;
+    }
+
+    Future<Object?> fetch(ExtensionHost host, String url) =>
+        host.invokeHook('bench', key: 'fetcher', method: 'get', args: {'url': url}, timeout: const Duration(seconds: 20));
+
+    test('to an http-only host goes out over https, through the proxy', () async {
+      // The QSO Party Hub serves http only. Without the rewrite, the https
+      // check refuses it and an extension has to hard-code somebody's proxy.
+      final rec = recorder('<table></table>');
+      final host = await fetcherWith(rec.client, const ['qsopartyhub.com']);
+
+      final result = await fetch(host, 'http://qsopartyhub.com/txqp-table.php?x=1') as Map;
+
+      expect(result['status'], 200);
+      expect(rec.sent.single.url.toString(), 'https://services.ham2k.net/qsopartyhub.com/txqp-table.php?x=1');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('to any other host is still refused, before anything is sent', () async {
+      // The proxy relays only what its config names. Rewriting an unknown
+      // host would send it a 404 at best; sending it direct would be the
+      // plain-http request the https rule exists to prevent.
+      final rec = recorder('');
+      final host = await fetcherWith(rec.client, const ['example.com']);
+
+      await expectLater(fetch(host, 'http://example.com/'), throwsA(anything));
+      expect(rec.sent, isEmpty);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('to a host that serves https is refused, not detoured through the proxy', () async {
+      // An `http://` typo for QRZ must fail loudly on native. Proxying it
+      // would work, and would quietly put the logbook API key in the body
+      // through Ham2K infrastructure on every call.
+      final rec = recorder('');
+      final host = await fetcherWith(rec.client, const ['logbook.qrz.com']);
+
+      await expectLater(fetch(host, 'http://logbook.qrz.com/api'), throwsA(anything));
+      expect(rec.sent, isEmpty);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('is checked against the host the extension named, not the proxy', () async {
+      // Declaring services.ham2k.net must not buy access to every host it
+      // relays: the manifest says which sources an extension talks to.
+      final rec = recorder('');
+      final host = await fetcherWith(rec.client, const ['services.ham2k.net']);
+
+      await expectLater(fetch(host, 'http://qsopartyhub.com/txqp-table.php'), throwsA(anything));
+      expect(rec.sent, isEmpty);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
+
+  group('extensionFetchUri', () {
+    test('leaves an https fetch to a proxied host direct on a native build', () {
+      // Native builds have no CORS to get around; sending them through the
+      // proxy would put every POTA and QRZ request on Ham2K infrastructure
+      // for nothing.
+      final uri = Uri.parse('https://api.pota.app/spot/activator');
+      expect(extensionFetchUri(uri, onWeb: false), uri);
+    });
+
+    test('proxies an https fetch to a proxied host on web, query and all', () {
+      expect(
+        extensionFetchUri(Uri.parse('https://www.parksnpeaks.org/api/SPOTS?a=b%20c'), onWeb: true).toString(),
+        'https://services.ham2k.net/www.parksnpeaks.org/api/SPOTS?a=b%20c',
+      );
+    });
+
+    test('proxies an http-only host on every build', () {
+      for (final onWeb in [false, true]) {
+        expect(
+          extensionFetchUri(Uri.parse('http://qsopartyhub.com/txqp-spots.php'), onWeb: onWeb).toString(),
+          'https://services.ham2k.net/qsopartyhub.com/txqp-spots.php',
+        );
+      }
+    });
+
+    test('leaves plain http to a web-proxied host unchanged on a native build', () {
+      // Unchanged means refused by the https check — the web proxy list is
+      // not a licence to reach those hosts over http.
+      const url = 'http://logbook.qrz.com/api';
+      expect(extensionFetchUri(Uri.parse(url), onWeb: false).toString(), url);
+    });
+
+    test('leaves a host the proxy does not route unchanged, http or not', () {
+      for (final url in ['http://example.com/a', 'https://example.com/a']) {
+        expect(extensionFetchUri(Uri.parse(url), onWeb: true).toString(), url);
+      }
+    });
+
+    test('routes SOTA SSO by path, on web only', () {
+      // Only the two endpoints Keycloak gives a browser no CORS for; the
+      // rest of the host, and every native call, stays direct so SOTA
+      // tokens transit Ham2K infrastructure only where there is no choice.
+      const token = 'https://sso.sota.org.uk/auth/realms/SOTA/protocol/openid-connect/token';
+      const discovery = 'https://sso.sota.org.uk/auth/realms/SOTA/.well-known/openid-configuration';
+      expect(extensionFetchUri(Uri.parse(token), onWeb: true).host, 'services.ham2k.net');
+      expect(extensionFetchUri(Uri.parse(token), onWeb: false).toString(), token);
+      expect(extensionFetchUri(Uri.parse(discovery), onWeb: true).toString(), discovery);
+    });
+  });
 }

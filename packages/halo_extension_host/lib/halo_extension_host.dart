@@ -36,7 +36,7 @@ import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
 
-import 'package:halo_core/halo_core.dart' show ham2kSsoFetchUri, realNowUtc, sotaSsoHost;
+import 'package:halo_core/halo_core.dart' show realNowUtc;
 import 'package:http/http.dart' as http;
 
 import 'src/extension_sockets.dart';
@@ -1343,46 +1343,6 @@ class _HostCore {
     }
   }
 
-  Uri _resolveFetchUri(String urlString) {
-    final uri = Uri.parse(urlString);
-    if (runningOnWeb) {
-      // SOTA's SSO host routes by PATH, not by host: exactly the two
-      // endpoints services.ham2k.net proxies go through it, and every other
-      // path on that host stays direct. Keeping the rest direct is the point
-      // — a refresh grant and the tokens it returns transit Ham2K
-      // infrastructure only where a browser leaves no alternative, and never
-      // on a native build. See halo_core's ham2kSsoFetchUri for what that
-      // costs and why the discovery document is not among them.
-      if (uri.host == sotaSsoHost) {
-        return ham2kSsoFetchUri(uri, onWeb: true);
-      }
-      const allowedDomains = {
-        'api.pota.app',
-        'logbook.qrz.com',
-        'xmldata.qrz.com',
-        'country-files.com',
-        'pota.app',
-        'www.sotadata.org.uk',
-        'sotadata.org.uk',
-        'www.hamqsl.com',
-        'llota.app',
-        // Spot feeds and self-spotting on hosts that send no CORS headers.
-        // Narrower than the data-file allowlist in DataFileManager: the other
-        // hosts there serve a reference file and nothing else. The remaining
-        // spot sources (spots.wwff.co, api-db2.sota.org.uk, api.open-meteo.com,
-        // api.wwbota.org, LoFi) answer cross-origin GETs directly.
-        'www.cqgma.org',
-        'ontheair.nz',
-        'www.rozhledny.eu',
-        'www.parksnpeaks.org',
-      };
-      if (allowedDomains.contains(uri.host)) {
-        return Uri.parse('https://services.ham2k.net/${uri.host}${uri.path}${uri.hasQuery ? "?${uri.query}" : ""}');
-      }
-    }
-    return uri;
-  }
-
   /// Whether [extensionKey] is [bundleKey] or one of the sub-extensions its
   /// bundle defines ('pota-all-parks' for 'pota') — same prefix rule the
   /// kernel applies to defineExtension.
@@ -1418,7 +1378,7 @@ class _HostCore {
   /// Enforces the manifest's declared network capability (DESIGN.md §3).
   /// `extensionKey` is kernel-derived (bound at activation), never supplied
   /// by extension code, so this really is "who is calling", and the check
-  /// runs against the ORIGINAL host — before any web proxy rewrite.
+  /// runs against the ORIGINAL host — before any proxy rewrite.
   void _checkFetchAllowed(String? extensionKey, String host) {
     if (_hostAllowed(_allowlistFor(fetchAllowlists, extensionKey), host)) return;
     throw ExtensionHostException("fetch blocked: '$host' is not in extension '${extensionKey ?? 'unknown'}'s declared domains");
@@ -1426,9 +1386,9 @@ class _HostCore {
 
   Future<Map<String, Object?>> _hostFetch(Map<String, dynamic> params) async {
     _checkFetchAllowed(params['extensionKey'] as String?, Uri.parse(params['url'] as String).host);
-    final uri = _resolveFetchUri(params['url'] as String);
+    final uri = extensionFetchUri(Uri.parse(params['url'] as String), onWeb: runningOnWeb);
     if (uri.scheme != 'https') {
-      throw ExtensionHostException('only https URLs are allowed');
+      throw ExtensionHostException("fetch refused: '${params['url']}' is not https");
     }
     final method = (params['method'] as String? ?? 'GET').toUpperCase();
     final headers = ((params['headers'] ?? const <String, dynamic>{}) as Map).cast<String, String>();

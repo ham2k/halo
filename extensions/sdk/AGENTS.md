@@ -102,7 +102,7 @@ evaluating one script. Reach the outside world through `host`:
 ```ts
 import { host } from "@ham2k/extension-sdk"
 
-await host.fetch(url)          // https only, and only domains your manifest lists
+await host.fetch(url)          // https only (http-only hosts the Ham2K proxy fronts excepted), and only domains your manifest lists
 host.webSocket(url)            // wss:// to hosts your manifest's webSockets lists
 host.setTimeout(fn, ms)        // timers — plain setTimeout reaches these too
 await host.kvGet('key')        // storage, namespaced to your extension

@@ -567,7 +567,7 @@ class _AccountPaneState extends State<AccountPane> {
         // Keycloak sends this endpoint no Access-Control-Allow-Origin, so a
         // browser refuses the exchange after the sign-in has already
         // succeeded. The extension's own refresh grant takes the same route
-        // (halo_extension_host's _resolveFetchUri).
+        // (halo_extension_host's extensionFetchUri).
         ham2kSsoFetchUri(Uri.parse(tokenEndpoint), onWeb: kIsWeb),
         headers: {'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent},
         body: {'grant_type': 'authorization_code', 'client_id': clientId, 'code': code, 'redirect_uri': redirectUrl, 'code_verifier': codeVerifier},

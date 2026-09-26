@@ -109,3 +109,4 @@ To resolve this:
   - `https://country-files.com/xxx` ➡️ `https://services.ham2k.net/country-files.com/xxx`
   - `https://pota.app/all_parks_ext.csv` ➡️ `https://services.ham2k.net/pota.app/all_parks_ext.csv`
   - `https://www.sotadata.org.uk/summitslist.csv` ➡️ `https://services.ham2k.net/www.sotadata.org.uk/summitslist.csv`
+- On every build, native included, an extension's fetch to a host that serves plain http only goes through the same proxy, its only https route: `http://qsopartyhub.com/txqp-table.php` ➡️ `https://services.ham2k.net/qsopartyhub.com/txqp-table.php`. A native `http://` fetch to any other host, proxied on web or not, is refused. Both lists (`servicesProxiedHosts`, `servicesHttpOnlyHosts`) are in `packages/halo_extension_host/lib/src/fetch_policy.dart`, kept in step with the Worker's `config.yaml` by hand.
