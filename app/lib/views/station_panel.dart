@@ -993,6 +993,24 @@ class StationPanel extends StatelessWidget {
         // to a local radio the operator had deliberately stepped off, and
         // the pick is what re-engages by itself when the peer returns.
         final absentSelection = selection != null && !peerRadios.any((r) => selection.matches(r.deviceId, r.radio.id)) ? selection : null;
+        // Keep nullable peer field reads outside the inventory loop. Dart
+        // 3.12.2 AOT hoists radioName.isEmpty above the null guard when this
+        // row is built inside that loop, crashing macOS release builds with
+        // a local radio selected. See docs/quirks.md.
+        final absentPeerRow = compact || absentSelection == null
+            ? null
+            : TransceiverRow(
+                name: absentSelection.radioName.isEmpty ? absentSelection.radioId : absentSelection.radioName,
+                connection: st.peerRadioNotAvailable,
+                connectionIcon: MdiIcons.lan,
+                selected: true,
+                onSelect: () {},
+                onEdit: () => showPeerRadioElsewhere(
+                  context,
+                  radio: absentSelection.radioName.isEmpty ? absentSelection.radioId : absentSelection.radioName,
+                  device: absentSelection.deviceName.isEmpty ? absentSelection.deviceId : absentSelection.deviceName,
+                ),
+              );
 
         return StationExpansionScope(
           builder: (context, expanded, toggle) => SectionedListView(
@@ -1138,19 +1156,7 @@ class StationPanel extends StatelessWidget {
                           onSelect: () => unawaited(_onMainVfoPicked(_peerValue(_selectionFor(peer)))),
                           onEdit: () => showPeerRadioElsewhere(context, radio: peer.radio.name, device: peer.deviceName),
                         ),
-                      if (absentSelection != null)
-                        TransceiverRow(
-                          name: absentSelection.radioName.isEmpty ? absentSelection.radioId : absentSelection.radioName,
-                          connection: st.peerRadioNotAvailable,
-                          connectionIcon: MdiIcons.lan,
-                          selected: true,
-                          onSelect: () {},
-                          onEdit: () => showPeerRadioElsewhere(
-                            context,
-                            radio: absentSelection.radioName.isEmpty ? absentSelection.radioId : absentSelection.radioName,
-                            device: absentSelection.deviceName.isEmpty ? absentSelection.deviceId : absentSelection.deviceName,
-                          ),
-                        ),
+                      ?absentPeerRow,
                     ],
                   ],
                 ],

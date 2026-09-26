@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/accordion_section.dart';
@@ -91,6 +92,45 @@ void main() {
     expect(find.text('No equipment configured'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Add'), findsOneWidget);
   });
+
+  for (final radioName in ['Remote Rig', '']) {
+    testWidgets('the inventory retains an absent peer with ${radioName.isEmpty ? 'an ID fallback' : 'its saved name'} until a local rig is selected', (
+      tester,
+    ) async {
+      final services = await pumpSettings(
+        tester,
+        catEnabled: true,
+        equipment: {
+          'version': 3,
+          'mainVfo': {'radio': 'local-rig'},
+          'nodes': {
+            'local-rig': {
+              'typeKey': 'flexradio-tcp',
+              'name': 'Local Rig',
+              'config': {'host': 'flex.local', 'port': 4992},
+            },
+          },
+        },
+      );
+      await services.cat.setRadio1(PeerRadio(PeerRadioSelection(deviceId: 'remote-device', radioId: 'remote-rig', radioName: radioName)));
+      await tester.tap(find.text('Station Configuration'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('1 transceiver'));
+      await tester.pumpAndSettle();
+
+      final label = radioName.isEmpty ? 'remote-rig' : radioName;
+      // Both the current rig and its inventory row keep the saved selection
+      // visible even when no peer offers it. The name falls back to its ID.
+      expect(find.text(label), findsNWidgets(2));
+      expect(find.text('Local Rig'), findsOneWidget);
+
+      await services.cat.setRadio1(const LocalRadio('local-rig'));
+      await tester.pumpAndSettle();
+      expect(find.text(label), findsNothing);
+      expect(find.text('Local Rig'), findsNWidgets(2));
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('the Configuration fields start where the list rows do', (tester) async {
     // On a wide pane the rows are centred to the ideal reading width by an

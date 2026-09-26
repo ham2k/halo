@@ -4,6 +4,35 @@ Workarounds we carry for upstream or platform bugs. Each entry records what
 breaks, why, and where the fix lives — so nobody later "cleans up" a
 load-bearing workaround without knowing what it protects.
 
+## macOS AOT hoists a nullable peer-radio read out of the station inventory loop
+
+**Breaks:** opening Settings → Station Configuration with a local radio
+selected crashes macOS ARM64 release builds with `EXC_BAD_ACCESS`. The settings
+widget tests pass because they do not run the AOT-compiled code.
+
+With Flutter 3.44.9 / Dart 3.12.2, the nested inventory loop in
+`StationPanel._buildContent` compiles a guarded
+`absentSelection.radioName.isEmpty` into an unconditional field read before
+the loop. `absentSelection` is null for a local radio. The generated code
+dereferences that null value and then treats the result as a String pointer.
+The shipped build and an isolated stock-Flutter release reproduction both
+fault at `0x000004cf0003f1b9`; this does not require Shorebird or a live radio.
+
+**Carried for it:** construct the optional unavailable-peer row before the
+inventory loop, behind its null check, and insert that widget into the loop.
+Keep the nullable peer's field reads out of the loop even though Dart's
+source-level null promotion makes them look safe there.
+
+**Verification:** the settings tests cover the unavailable peer's saved name,
+ID fallback, and replacement by a local radio. Also exercise a **macOS ARM64
+release build**: open Station Configuration with no radio and with a local
+radio, expand the transceiver inventory, then select an unavailable peer and
+switch back to the local radio. Debug/widget tests alone cannot verify this
+compiler workaround.
+
+**When to revisit:** after a Dart compiler upgrade, remove the workaround
+only if those release-build checks pass with the nullable row back in the loop.
+
 ## `flutter_inappwebview_macos` does not compile under Swift Package Manager
 
 **Breaks:** `flutter build macos` fails outright — not a test failure, so the
