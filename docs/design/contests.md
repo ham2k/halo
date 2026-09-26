@@ -385,7 +385,8 @@ fast-path, never truth**:
 - Within a session the incremental path applies: an append replays only the
   appended contacts onto the cached end-scoresheet, and so does the live
   call-info check and the spots board (`resolveScoringResume` in
-  `scoring_service.dart` is the one rule for all three). A mid-log edit, a
+  `scoring_service.dart` is the one rule for all three; the live two reach it
+  through `ScoringService.liveResumeFor`, which applies the guard below). A mid-log edit, a
   delete, or a change to the operation folds the whole log again — a
   checkpoint cannot un-fold a contact.
 - The checkpoint stays in the runtime once it is there. The pass that produces
@@ -397,8 +398,9 @@ fast-path, never truth**:
   answers a `resume-missing` refusal by sending the sheet once more
   (docs/extensions/hooks.md, the scoring section, is the wire contract).
 
-`ScoringService` owns that invariant: it resumes from a cached checkpoint only
-for an operation whose whole log THIS runtime has already folded and written,
+`ScoringService` owns that invariant: it resumes from a cached checkpoint — in
+a pass, and for the live paths through `liveResumeFor` — only for an
+operation whose whole log THIS runtime has already folded and written,
 and forgets every such operation when the extension runtime's generation
 ticks (an extension installed, updated or switched off). The checkpoints
 themselves live in `local_data`, device-local and never synced, so a

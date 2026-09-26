@@ -226,6 +226,29 @@ void main() {
       expect(args.containsKey('resumeFrom'), isFalse);
     });
 
+    test('the live paths resume under the same guard, not from whatever checkpoint is cached', () async {
+      // The pills and the spots board resume from the checkpoint in
+      // local_data. Handed one written before an extension update, the new
+      // scorer replays a tail onto a sheet it may not read — the POTA scorer
+      // threw on one missing its operator fields.
+      final operation = await operationWith(2);
+      final extensions = _FakeExtensions(scopes: _core, answer: _fold);
+      final scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
+      await scoring.rescoreOperation(operation);
+      final folded = await current(operation);
+      final log = await qsos.forOperation(folded.uuid);
+      expect(scoring.liveResumeFor(folded, log), isNotNull, reason: 'folded by this runtime: resume');
+
+      final nextLaunch = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
+      expect(nextLaunch.liveResumeFor(folded, log), isNull, reason: 'a checkpoint from an earlier launch');
+
+      extensions.runtimeGeneration.value++;
+      expect(scoring.liveResumeFor(folded, log), isNull, reason: 'an extension changed since the checkpoint was written');
+
+      await scoring.rescoreOperation(folded);
+      expect(scoring.liveResumeFor(await current(folded), log), isNotNull, reason: 'the next full pass re-arms it');
+    });
+
     // A pass writes every scorer's verdict for a contact together; on a tail
     // a scorer that fails would leave the newest contact alone without it.
     test('when a scorer fails on the tail, so the tail contact still gets every verdict', () async {

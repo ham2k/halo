@@ -12,7 +12,7 @@ import assert from "node:assert/strict"
 
 import { activityScorer } from "./activityScoring.ts"
 import { contestScorer } from "./scoring.ts"
-import type { HookContext, JSONValue, ScoreTally } from "./types.ts"
+import type { HookContext, JSONValue, OperationSegmentPayload, ScoreTally } from "./types.ts"
 
 const ctx: HookContext = { online: false }
 
@@ -63,11 +63,13 @@ function qso(
     hunting = [],
     huntingType = "pota",
     uuid,
-  }: { at?: number; band?: string; mode?: string; hunting?: string[]; huntingType?: string; uuid?: string } = {},
+    operator,
+  }: { at?: number; band?: string; mode?: string; hunting?: string[]; huntingType?: string; uuid?: string; operator?: string } = {},
 ): Record<string, JSONValue> {
   return {
     uuid: uuid ?? `${call}-${at}-${band}-${mode}`,
     their: { call },
+    ...(operator === undefined ? {} : { our: { operatorCall: operator } }),
     band,
     mode,
     startAtMillis: at,
@@ -76,10 +78,15 @@ function qso(
 }
 
 /// Runs a whole log through the harness the way the host does.
-async function score(rules: Parameters<typeof activityScorer>[0], operation: Record<string, JSONValue>, qsos: Record<string, JSONValue>[]) {
+async function score(
+  rules: Parameters<typeof activityScorer>[0],
+  operation: Record<string, JSONValue>,
+  qsos: Record<string, JSONValue>[],
+  segments?: OperationSegmentPayload[],
+) {
   const refTypes = [rules.activationType, rules.huntingType].filter((t): t is string => Boolean(t))
   const hook = contestScorer(activityScorer(rules), { scope: { refTypes } })
-  return await hook.scoreQsos({ operation, qsos, ref: (operation.refs as Record<string, JSONValue>[])?.[0] }, ctx)
+  return await hook.scoreQsos({ operation, qsos, ref: (operation.refs as Record<string, JSONValue>[])?.[0], segments }, ctx)
 }
 
 function tally(scores: Record<string, ScoreTally> | undefined, key: string): ScoreTally | undefined {
@@ -450,6 +457,120 @@ test("an n-fer does get one, marking which parks are short", async () => {
   const operation = operationActivating("potaActivation", "US-0001", "US-0002")
   const result = await score(POTA, operation, manyCalls(3))
   assert.equal(tally(result.operationSummary, "activation")!.longSummary, "❌ US-0001: 3/10\n❌ US-0002: 3/10")
+})
+
+// --- Operators --------------------------------------------------------------
+// A multi-op activation owes each operator their own ten contacts; a park at
+// 12 can still leave one operator short, and that is what the operator row
+// exists to say.
+
+const NBSP4 = "\u00A0".repeat(4)
+
+/// Distinct callsigns logged by one operator, offset so two operators' batches
+/// never collide on a hunter call.
+function callsBy(operator: string | undefined, n: number, from = 0, opts: Parameters<typeof qso>[1] = {}) {
+  return Array.from({ length: n }, (_, i) => qso(`W${from + i}AAA`, { ...opts, operator }))
+}
+
+function clubActivating(...refs: string[]): Record<string, JSONValue> {
+  return { ...operationActivating("potaActivation", ...refs), stationCall: "K4X" }
+}
+
+test("guest operators each get their own progress under the park", async () => {
+  const result = await score(POTA, clubActivating("US-0001"), [...callsBy("N0B", 5), ...callsBy("N0A", 2, 100)])
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, `❌ US-0001: 7/10\n${NBSP4}N0A 2/10 · N0B 5/10`)
+})
+
+test("an operator can be done while the park's other operator is still short", async () => {
+  const result = await score(POTA, clubActivating("US-0001"), [...callsBy("N0A", 10), ...callsBy("N0B", 3, 100)])
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, `✅ **US-0001: 13**\n${NBSP4}N0A ✓ · N0B 3/10`)
+})
+
+test("every park of an n-fer gets its own operator row", async () => {
+  const result = await score(POTA, clubActivating("US-0001", "US-0002"), callsBy("N0A", 4))
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, `❌ US-0001: 4/10\n${NBSP4}N0A 4/10\n❌ US-0002: 4/10\n${NBSP4}N0A 4/10`)
+})
+
+test("an operator running their own call gets no operator row", async () => {
+  // The ordinary single-op activation — the park's line already says it all.
+  // Case and whitespace don't make a second operator: a WSJT-X capture keeps
+  // whatever the datagram spelled.
+  const operation = { ...operationActivating("potaActivation", "US-0001"), stationCall: "N0A" }
+  const result = await score(POTA, operation, [...callsBy("N0A", 3), ...callsBy(" n0a ", 2, 100)])
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, "❌ US-0001: 5/10")
+})
+
+test("the station call is listed beside a guest once there is one", async () => {
+  const result = await score(POTA, clubActivating("US-0001"), [...callsBy("K4X", 3), ...callsBy("N0A", 1, 100)])
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, `❌ US-0001: 4/10\n${NBSP4}K4X 3/10 · N0A 1/10`)
+})
+
+test("a contact with no operator counts for the park and for no operator", async () => {
+  // Attributing it to the station call would credit a person who may never
+  // have been at the key.
+  const result = await score(POTA, clubActivating("US-0001"), [...callsBy(undefined, 4), ...callsBy("N0A", 2, 100)])
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, `❌ US-0001: 6/10\n${NBSP4}N0A 2/10`)
+})
+
+test("a hunter repeated by a second operator is the station's duplicate, not that operator's credit", async () => {
+  const result = await score(POTA, clubActivating("US-0001"), [qso("W1AW", { operator: "N0A" }), qso("W1AW", { operator: "N0B", at: DAY_1 + 60_000 })])
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, `❌ US-0001: 1/10\n${NBSP4}N0A 1/10`)
+})
+
+test("an operator's day row counts that day alone, like the park's", async () => {
+  const result = await score(POTA, clubActivating("US-0001"), [...callsBy("N0A", 6, 0, { at: DAY_1 }), ...callsBy("N0A", 3, 0, { at: DAY_1 + DAY })])
+  assert.equal(tally(result.daySections[1].scores, "activation")!.longSummary, `❌ US-0001: 3/10\n${NBSP4}N0A 3/10`)
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, `❌ US-0001: 9/10\n${NBSP4}N0A 9/10`)
+})
+
+test("a program can opt out of the operator breakdown", async () => {
+  const result = await score({ ...POTA, tracksOperators: false }, clubActivating("US-0001"), callsBy("N0A", 3))
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, "❌ US-0001: 3/10")
+})
+
+test("an operator running their own call portable is not a guest", async () => {
+  // Operation Details fills the operator with the profile's own call when the
+  // station call carries a suffix, so this is every solo /P activation.
+  const operation = { ...operationActivating("potaActivation", "DL-0001"), stationCall: "DL1ABC/P" }
+  const result = await score(POTA, operation, callsBy("DL1ABC", 3))
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, "❌ DL-0001: 3/10")
+})
+
+test("an operator named among several station calls is not a guest", async () => {
+  const operation = { ...operationActivating("potaActivation", "US-0001"), stationCall: "K4X, N0A" }
+  const result = await score(POTA, operation, callsBy("N0A", 3))
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, "❌ US-0001: 3/10")
+})
+
+test("a guest is judged against the station call in effect for the contact, not the current one", async () => {
+  // Day 1 runs club call K4X with N0A at the key; day 2 N0A signs their own
+  // call. Judged against today's call, day 1's guest would vanish.
+  const day1 = clubActivating("US-0001")
+  const day2 = { ...day1, stationCall: "N0A" }
+  const segments = [
+    { fromMillis: -1, operation: day1 },
+    { fromMillis: DAY_1 + DAY, operation: day2 },
+  ]
+  const qsos = [...callsBy("N0A", 4, 0, { at: DAY_1 }), ...callsBy("N0A", 3, 0, { at: DAY_1 + DAY })]
+  const result = await score(POTA, day2, qsos, segments)
+  assert.equal(tally(result.daySections[0].scores, "activation")!.longSummary, `❌ US-0001: 4/10\n${NBSP4}N0A 4/10`)
+  assert.equal(tally(result.daySections[1].scores, "activation")!.longSummary, "❌ US-0001: 3/10")
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, `❌ US-0001: 7/10\n${NBSP4}N0A 7/10`)
+})
+
+test("a checkpoint saved without the operator fields still resumes", async () => {
+  // The logging pills resume from the sheet saved in local_data, which may
+  // predate these fields; without a guard the first operator-stamped contact
+  // replayed onto it throws, and the scorer answers nothing at all.
+  const hook = contestScorer(activityScorer(POTA), { scope: { refTypes: ["potaActivation", "pota"] } })
+  const operation = clubActivating("US-0001")
+  const saved = (await score(POTA, operation, callsBy("N0A", 2))).scoresheet as Record<string, JSONValue>
+  const { operatorRefs: _a, dayOperatorRefs: _b, guestOperators: _c, dayGuestOperators: _d, ...oldShape } = saved
+  const result = await hook.scoreQsos(
+    { operation, ref: (operation.refs as Record<string, JSONValue>[])[0], resumeFrom: oldShape, qsos: [qso("W9ZZZ", { operator: "N0B" })] },
+    ctx,
+  )
+  assert.match(tally(result.operationSummary, "activation")!.longSummary!, /^❌ US-0001: 3\/10/)
 })
 
 // --- Shape ------------------------------------------------------------------

@@ -16,7 +16,6 @@ import '../../services/cat/equipment.dart';
 import '../../services/cat/cat_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
-import '../../services/scoring_service.dart';
 import '../../services/settings_service.dart';
 import '../../tools/call_location_line.dart';
 import '../../tools/operation_stats.dart';
@@ -885,13 +884,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
                 // The last rescore's checkpoints, when the log this panel holds
                 // is exactly what they folded plus appended contacts — so the
                 // pills resume from a cached sheet instead of re-folding a
-                // long log on every keystroke (resolveScoringResume says when).
-                final resume = resolveScoringResume(
-                  scoring: widget.operation.localData['scoring'] as Map<String, dynamic>?,
-                  operationUpdatedAtMillis: widget.operation.updatedAtMillis,
-                  qsos: widget.qsos,
-                  excludeUuid: excludeUuid,
-                );
+                // long log on every keystroke (liveResumeFor says when).
+                final resume = widget.services.scoring.liveResumeFor(widget.operation, widget.qsos, excludeUuid: excludeUuid);
                 return widget.services.extensions.scoreQso(
                   operation: operation,
                   qso: qso,

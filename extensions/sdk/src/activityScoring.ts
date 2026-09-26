@@ -31,6 +31,7 @@
 
 import { createCachedTranslator, createTranslator } from "./i18n.ts"
 import { modesMatchForDupe } from "./modes.ts"
+import { parseCallsign } from "@ham2k/lib-callsigns"
 import type { ContestScorer, HookContext, JSONValue, QsoScoreVerdict, ScoreTally } from "./types.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 
@@ -80,6 +81,12 @@ export interface ActivityScoringRules {
   /// Set false and no activation tally is reported — inventing a threshold the
   /// award doesn't have would be worse than showing none. Defaults to true.
   tracksActivation?: boolean
+
+  /// Whether each park's progress also breaks down by operator, once any
+  /// contact was logged by an operator other than the station call — a
+  /// multi-op activation owes each operator their own threshold. Defaults to
+  /// true; a program whose award credits the station alone opts out.
+  tracksOperators?: boolean
 
   /// Whether a hunted reference this station hasn't given before rescues the
   /// ACTIVATION credit on a contact that is otherwise a repeat.
@@ -137,14 +144,23 @@ export type ActivityScoresheet = {
   workedByCall: Record<string, string[]>
   /// Reference code → contacts credited to activating it.
   activatedRefs: Record<string, number>
+  /// Reference code → operator call → the share of `activatedRefs` logged by
+  /// that operator. A contact with no operator recorded counts for the
+  /// reference and for nobody here, so the shares need not add up.
+  operatorRefs: Record<string, Record<string, number>>
+  /// Whether any credited contact was logged by an operator other than the
+  /// station call in effect for it — what earns the breakdown a row at all.
+  guestOperators: boolean
   /// Reference code → contacts credited to hunting it.
   huntedRefs: Record<string, number>
   activatedQsos: number
   huntedQsos: number
   duplicates: number
-  /// Day-scoped mirrors of the four above, reset on each new UTC day when
+  /// Day-scoped mirrors of the six above, reset on each new UTC day when
   /// `activates: 'daily'`.
   dayActivatedRefs: Record<string, number>
+  dayOperatorRefs: Record<string, Record<string, number>>
+  dayGuestOperators: boolean
   dayHuntedRefs: Record<string, number>
   dayActivatedQsos: number
   dayHuntedQsos: number
@@ -198,6 +214,7 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
   }
   const freshRefRescuesActivation = rules.freshRefRescuesActivation ?? true
   const tracksActivation = rules.tracksActivation ?? true
+  const tracksOperators = rules.tracksOperators ?? true
   const allowsMultiple = rules.allowsMultipleReferences ?? false
   const activatesDaily = (rules.activates ?? "daily") === "daily"
   const unique = new Set<UniqueAxis>(rules.uniquePer ?? [])
@@ -282,11 +299,15 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
       return {
         workedByCall: {},
         activatedRefs: {},
+        operatorRefs: {},
+        guestOperators: false,
         huntedRefs: {},
         activatedQsos: 0,
         huntedQsos: 0,
         duplicates: 0,
         dayActivatedRefs: {},
+        dayOperatorRefs: {},
+        dayGuestOperators: false,
         dayHuntedRefs: {},
         dayActivatedQsos: 0,
         dayHuntedQsos: 0,
@@ -300,8 +321,14 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
     // checkpoint at its boundary, so nothing cached is ever aliased.
     scoreQso({ scoresheet, qso, operation, isNewDay }) {
       const sheet = scoresheet
+      // A checkpoint saved by an earlier bundle lacks the operator fields, and
+      // the live paths resume from a saved checkpoint.
+      sheet.operatorRefs ??= {}
+      sheet.dayOperatorRefs ??= {}
       if (isNewDay && activatesDaily) {
         sheet.dayActivatedRefs = {}
+        sheet.dayOperatorRefs = {}
+        sheet.dayGuestOperators = false
         sheet.dayHuntedRefs = {}
         sheet.dayActivatedQsos = 0
         sheet.dayHuntedQsos = 0
@@ -393,9 +420,24 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
       // Adding zero still records the reference, so a park whose every contact
       // so far was a repeat still shows in the summary — at 0, which is the
       // truth, rather than vanishing.
+      const operator = tracksOperators
+        ? str(((qso.our as Record<string, JSONValue>) ?? {}).operatorCall)
+            ?.trim()
+            .toUpperCase()
+        : undefined
+      if (operator && isGuestOperator(operator, operation)) {
+        sheet.guestOperators = true
+        sheet.dayGuestOperators = true
+      }
       for (const ref of activationRefs) {
         sheet.activatedRefs[ref] = (sheet.activatedRefs[ref] ?? 0) + activationCredit
         sheet.dayActivatedRefs[ref] = (sheet.dayActivatedRefs[ref] ?? 0) + activationCredit
+        if (operator) {
+          const shares = (sheet.operatorRefs[ref] ??= {})
+          shares[operator] = (shares[operator] ?? 0) + activationCredit
+          const dayShares = (sheet.dayOperatorRefs[ref] ??= {})
+          dayShares[operator] = (dayShares[operator] ?? 0) + activationCredit
+        }
       }
       sheet.activatedQsos += activationCredit
       sheet.dayActivatedQsos += activationCredit
@@ -429,6 +471,7 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
         // operation reads as one program summary, not two.
         tallies.activation = summarizeActivation(
           activatedRefs,
+          (perDay ? scoresheet.dayGuestOperators : scoresheet.guestOperators) ? (perDay ? scoresheet.dayOperatorRefs : scoresheet.operatorRefs) : {},
           perDay ? scoresheet.dayActivatedQsos : scoresheet.activatedQsos,
           perDay ? scoresheet.dayDuplicates : scoresheet.duplicates,
           huntedQsos,
@@ -449,11 +492,30 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
   }
 }
 
+/// Whether the operator is someone other than the station call(s) in effect
+/// for this contact. Compared by base call: DL1ABC running DL1ABC/P is the
+/// ordinary single-op activation, where the park's own line already says
+/// everything. Looser than the ADIF export, which writes OPERATOR for that
+/// contact — there the full call is data; here the question is who operated.
+function isGuestOperator(operator: string, operation: Record<string, JSONValue>): boolean {
+  const stations = String(operation.stationCall ?? "")
+    .split(",")
+    .map((call) => baseCallOf(call))
+    .filter((call) => call.length > 0)
+  return !stations.includes(baseCallOf(operator))
+}
+
+function baseCallOf(call: string): string {
+  const trimmed = call.trim().toUpperCase()
+  return parseCallsign(trimmed).baseCall || trimmed
+}
+
 /// The activator's progress: how far the WEAKEST reference still is from the
 /// threshold, since an n-fer is only fully activated once every reference
 /// clears it.
 function summarizeActivation(
   activatedRefs: Record<string, number>,
+  operatorRefs: Record<string, Record<string, number>>,
   qsos: number,
   duplicates: number,
   huntedQsos: number,
@@ -479,11 +541,21 @@ function summarizeActivation(
   // panel's per-day rows show this instead of `summary` (InformationPanel
   // never renders both for the same tally), so a single-park operation still
   // needs its own progress line there.
-  const detail = refKeys.map((key) =>
-    activatedRefs[key] >= qsosToActivate
-      ? `✅ **${key}: ${fmtInteger(activatedRefs[key])}**`
-      : `❌ ${key}: ${fmtInteger(activatedRefs[key])}/${fmtInteger(qsosToActivate)}`,
-  )
+  //
+  // Under each, when several operators share the activation, a row with each
+  // operator's own progress toward the same threshold. Indented with
+  // no-break spaces: four ordinary ones would make it a Markdown code block.
+  const detail = refKeys.flatMap((key) => {
+    const line =
+      activatedRefs[key] >= qsosToActivate
+        ? `✅ **${key}: ${fmtInteger(activatedRefs[key])}**`
+        : `❌ ${key}: ${fmtInteger(activatedRefs[key])}/${fmtInteger(qsosToActivate)}`
+    const byOperator = operatorRefs[key] ?? {}
+    const operators = Object.keys(byOperator).sort()
+    if (operators.length === 0) return [line]
+    const shares = operators.map((op) => (byOperator[op] >= qsosToActivate ? `${op} ✓` : `${op} ${fmtInteger(byOperator[op])}/${fmtInteger(qsosToActivate)}`))
+    return [line, `\u00A0\u00A0\u00A0\u00A0${shares.join(" · ")}`]
+  })
 
   // "POTA: 47 activation QSOs, 2 P2P QSOs" — singular/plural by explicit
   // ternary, not i18next's `count` pluralization, which needs

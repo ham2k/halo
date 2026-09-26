@@ -399,6 +399,27 @@ live paths select from a short list instead of rescanning the log per keystroke;
 they add the refs of the work in hand as well, so the first contact with a new
 program selects its scorer before any rescore has recorded it.
 
+**A multi-op activation shows each operator's own progress.** POTA credits
+each operator of a multi-op activation separately, so a park at 12 ✓ can
+still leave one operator short. The scorer keeps each reference's credit
+split by the contact's `our.operatorCall`, and the activation detail adds a
+row under each reference with every operator's count, or a tick at the
+threshold. The row appears once a credited contact was logged by an
+operator other than the station call in effect for it — decided per
+contact, so a segment's station call is the one that counts, and compared
+by base call, so a solo DL1ABC/P activation is no guest. Deliberately
+narrow:
+
+- The reference's own line, `summary` and `activated` still count the
+  station as a whole.
+- Duplicates stay the station's: a hunter who worked N0A and then N0B on the
+  same band, mode and day credits N0A only.
+- A contact with no operator recorded counts for the reference and for no
+  operator — attributing it to the station call would credit someone who
+  may never have been at the key.
+- On for every program; one whose award credits only the station sets
+  `tracksOperators: false`.
+
 ---
 
 ## 4b. Design — the reference-activity factory (A1)

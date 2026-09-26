@@ -21,7 +21,6 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/hook_payloads.dart';
 import '../../services/halo_services.dart';
-import '../../services/scoring_service.dart';
 import '../../services/spots_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -1129,7 +1128,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
   ///
   /// Resumes from `ScoringService`'s cached checkpoints whenever the log this
   /// panel holds is what they folded plus appended contacts — the same rule
-  /// the call-info pills use (`resolveScoringResume`), so the second after
+  /// the call-info pills use (`ScoringService.liveResumeFor`), so the second after
   /// working a station the new contact travels as the tail and the spot
   /// strikes at once, and the 2-minute refresh replays nothing at all. Only a
   /// log the checkpoints cannot account for (an edit, a delete, a change to
@@ -1161,11 +1160,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
           operationUuid: widget.operation.uuid,
           candidates: candidates,
           segments: segmented.isSegmented ? segmented.payload : null,
-          resume: resolveScoringResume(
-            scoring: widget.operation.localData['scoring'] as Map<String, dynamic>?,
-            operationUpdatedAtMillis: widget.operation.updatedAtMillis,
-            qsos: widget.qsos,
-          ),
+          resume: widget.services.scoring.liveResumeFor(widget.operation, widget.qsos),
           huntedRefTypes: _huntedRefTypes,
         );
         if (!mounted) return;

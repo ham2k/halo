@@ -6,12 +6,15 @@
 // since it. The trap is the second after working a station — a board that
 // resumed from the checkpoint alone would leave that station unstruck until
 // the next rescore landed. So what this pins is the panel's OWN decision:
-// that its pass hands the scorers the checkpoint AND the new contact.
+// that its pass hands the scorers the checkpoint AND the new contact — and
+// only a checkpoint this runtime folded (ScoringService.liveResumeFor), so
+// the cache is written by a real rescore rather than by hand.
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,15 +22,46 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extensions/extension_scoring.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
-import 'package:ham2k_logger/services/scoring_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
+
+class _StubHost implements ExtensionHost {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 class _FakeExtensions extends ExtensionService {
   _FakeExtensions(this.board);
 
   final List<Map<String, dynamic>> board;
   final List<ScoringResume?> resumes = [];
+
+  /// Up only for the rescore, which returns early without a host; the panel
+  /// reaches past these overrides to the host when it has one.
+  bool hostUp = false;
+
+  @override
+  ExtensionHost? get host => hostUp ? _StubHost() : null;
+
+  @override
+  Future<Map<String, dynamic>> getScoringScopes() async => const {'core': 'always'};
+
+  /// The rescore's pass: a sheet naming the calls it folded.
+  @override
+  Future<Map<String, dynamic>?> scoreQsos({required String scorerKey, required Map<String, dynamic> args}) async {
+    final sent = (args['qsos'] as List).cast<Map<String, dynamic>>();
+    return {
+      'qsoScores': {
+        for (final q in sent) q['uuid'] as String: const {'value': 1},
+      },
+      'daySections': const [],
+      'operationSummary': const {},
+      'scoresheet': {
+        'worked': [for (final q in sent) (q['their'] as Map)['call']],
+      },
+      'scoresheetDay': 0,
+    };
+  }
 
   @override
   Future<Map<String, Map<String, List<String>>>?> scoreCandidates({
@@ -82,37 +116,23 @@ void main() {
     final operations = OperationsRepository(db);
     final qsos = QsosRepository(db);
     final created = await operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
-    final folded = await qsos.add(created.uuid, {
+    await qsos.add(created.uuid, {
       'their': {'call': 'W1AW'},
       'band': '20m',
       'mode': 'SSB',
       'startAtMillis': 1000,
     });
+    // The last rescore folded the first contact; the second is the station
+    // just worked, which the rescore's own debounce has not yet caught up with.
+    extensions.hostUp = true;
+    await services.scoring.rescoreOperation((await operations.get(created.uuid))!);
+    extensions.hostUp = false;
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 2)));
     final since = await qsos.add(created.uuid, {
       'their': {'call': 'K1ABC'},
       'band': '20m',
       'mode': 'SSB',
       'startAtMillis': 2000,
-    });
-    // The last rescore's cache: it folded the first contact; the second is
-    // the station just worked, which the rescore's own debounce has not yet
-    // caught up with.
-    await operations.updateLocalData(created.uuid, {
-      'scoring': {
-        'core': {
-          'scoresheet': const {
-            'worked': ['W1AW'],
-          },
-          'scoresheetDay': 0,
-          'checkpoint': {
-            'digest': checkpointDigestOf([folded]),
-            'updatedAtMillis': folded.updatedAtMillis,
-            'startAtMillis': 1000,
-            'operationUpdatedAtMillis': (await operations.get(created.uuid))!.updatedAtMillis,
-          },
-        },
-      },
     });
     final operation = (await operations.get(created.uuid))!;
     final log = await qsos.forOperation(created.uuid);

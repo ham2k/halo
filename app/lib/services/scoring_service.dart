@@ -236,6 +236,22 @@ class ScoringService {
 
   void _onRuntimeGenerationChanged() => _foldedFully.clear();
 
+  /// [resolveScoringResume] for the live paths — the call-info pills and the
+  /// spots board — under the guard a pass uses: only for an operation whose
+  /// whole log this runtime has folded ([_foldedFully]). Without it, a scorer
+  /// just installed or updated is handed a checkpoint its predecessor wrote,
+  /// one it may not read or no longer agrees with. Null folds cold, which is
+  /// slower and always right.
+  ScoringResume? liveResumeFor(Operation operation, List<Qso> qsos, {String? excludeUuid}) {
+    if (!_foldedFully.contains(operation.uuid)) return null;
+    return resolveScoringResume(
+      scoring: operation.localData['scoring'] as Map<String, dynamic>?,
+      operationUpdatedAtMillis: operation.updatedAtMillis,
+      qsos: qsos,
+      excludeUuid: excludeUuid,
+    );
+  }
+
   /// Scores the QSOs logged for the operation [operation] names and caches
   /// the results. Degrades silently if the extension runtime isn't ready or
   /// the hook call fails — scoring is a display enhancement, never
