@@ -730,6 +730,15 @@ void main() {
       }
     });
 
+    testWidgets('sets the map back beside the page on show, as it does the summary pages', (tester) async {
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary);
+      await tester.tap(find.byIcon(MdiIcons.chevronRight));
+      await tester.pumpAndSettle();
+      final map = tester.getRect(find.byType(PostcardOverlay).first);
+      final onShow = tester.getRect(find.byType(PostcardSummaryPage).first);
+      expect(map.height / onShow.height, closeTo(0.92, 0.01), reason: 'the same step back as the page on the other side');
+    });
+
     testWidgets('brings a page beside the one on show forward when tapped, the map among them', (tester) async {
       double onShow() => tester.widget<PageView>(find.byType(PageView)).controller!.page!;
       await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary);

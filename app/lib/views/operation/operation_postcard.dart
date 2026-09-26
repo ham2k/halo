@@ -1112,11 +1112,7 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
         }),
         // The map's page is kept when it scrolls out of sight: a map taken
         // down is a map to load again, and its picture is taken from it.
-        itemBuilder: (context, index) => index == 0
-            ? _KeepAlive(
-                child: GestureDetector(onTap: _page == 0 ? null : () => _goTo(0), child: framed(0)),
-              )
-            : _behind(index, framed(index)),
+        itemBuilder: (context, index) => index == 0 ? _KeepAlive(child: _behind(0, framed(0))) : _behind(index, framed(index)),
       ),
     );
   }
@@ -1132,10 +1128,8 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
     return _pages = PageController(viewportFraction: fraction, initialPage: _page);
   }
 
-  /// A summary page beside the one on show sits back a little, and a tap
-  /// brings it forward, as it does the map's. The map's page does not sit
-  /// back: a platform view under a transform is one more thing a platform
-  /// can draw wrong.
+  /// A page beside the one on show — the map's among them — sits back a
+  /// little, and a tap brings it forward.
   Widget _behind(int index, Widget page) {
     final pages = _pages!;
     return AnimatedBuilder(
