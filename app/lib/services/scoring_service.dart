@@ -169,10 +169,8 @@ String checkpointKeyOf(Map<String, dynamic> stamp) =>
 /// The identity of a folded log for a checkpoint's stamp: every row's uuid
 /// with its stamp, combined so that order does not matter. Not a secure hash —
 /// it only has to notice a stamp that moved or a contact that came or went.
-/// Built by hand rather than with `Object.hash`, whose seed changes per run:
-/// the stamp is persisted, and a digest that never matched after a relaunch
-/// would fold every keystroke cold until the first rescore. Each term and the
-/// sum stay under 2^53 so the web build's integers carry them.
+/// Each term and the sum stay under 2^53 so the web build's integers carry
+/// them.
 ///
 /// A [QsoLog] carries this very digest, maintained by the log stream as it
 /// patches the list, so one is read in a step rather than walked: the
@@ -212,16 +210,23 @@ class ScoringService {
   final QsosRepository qsos;
   final OperationsRepository operations;
 
-  /// The operations whose whole log THIS runtime has folded and written. A
-  /// pass may resume from a cached checkpoint only for one of these: a
-  /// checkpoint from an earlier launch, or from before an extension was
-  /// installed, updated or switched off, was written by a scorer that may no
-  /// longer exist or no longer agree, and resuming from it would carry its
-  /// verdicts forward with no error anywhere (docs/design/contests.md
-  /// §5.1.2). Added only once a full pass has WRITTEN — a pass that found no
-  /// scorer, an empty log or a failing runtime spends nothing — and cleared
-  /// whenever the runtime generation ticks.
-  final _foldedFully = <String>{};
+  /// The operations whose whole log THIS runtime has folded and written,
+  /// each with the host that folded it. A pass or a live path may resume from
+  /// a cached checkpoint only for one of these, and only while that host is
+  /// still the one answering ([_foldedByCurrentHost]): a checkpoint from an
+  /// earlier launch, or from before an extension was installed, updated or
+  /// switched off, was written by a scorer that may no longer exist or no
+  /// longer agree, and resuming from it would carry its verdicts forward with
+  /// no error anywhere (docs/design/contests.md §5.1.2). Added only once a
+  /// full pass has WRITTEN, by the host it started under — a pass that found
+  /// no scorer, an empty log or a failing runtime spends nothing — and
+  /// cleared whenever the runtime generation ticks.
+  ///
+  /// The host is what closes the gap the generation alone leaves: a new
+  /// runtime answers hooks while its extensions activate, before the
+  /// generation ticks, and a pass whose results came from the old runtime can
+  /// finish writing after the tick.
+  final _foldedBy = <String, ExtensionHost>{};
 
   /// The pass in flight per operation. A second request queues behind it and
   /// reads the operation afresh when its turn comes, so it continues the
@@ -234,16 +239,21 @@ class ScoringService {
     extensions.runtimeGeneration.addListener(_onRuntimeGenerationChanged);
   }
 
-  void _onRuntimeGenerationChanged() => _foldedFully.clear();
+  void _onRuntimeGenerationChanged() => _foldedBy.clear();
+
+  bool _foldedByCurrentHost(String uuid) {
+    final host = extensions.host;
+    return host != null && identical(_foldedBy[uuid], host);
+  }
 
   /// [resolveScoringResume] for the live paths — the call-info pills and the
   /// spots board — under the guard a pass uses: only for an operation whose
-  /// whole log this runtime has folded ([_foldedFully]). Without it, a scorer
+  /// whole log the current runtime has folded ([_foldedBy]). Without it, a scorer
   /// just installed or updated is handed a checkpoint its predecessor wrote,
   /// one it may not read or no longer agrees with. Null folds cold, which is
   /// slower and always right.
   ScoringResume? liveResumeFor(Operation operation, List<Qso> qsos, {String? excludeUuid}) {
-    if (!_foldedFully.contains(operation.uuid)) return null;
+    if (!_foldedByCurrentHost(operation.uuid)) return null;
     return resolveScoringResume(
       scoring: operation.localData['scoring'] as Map<String, dynamic>?,
       operationUpdatedAtMillis: operation.updatedAtMillis,
@@ -264,7 +274,7 @@ class ScoringService {
   /// their verdicts are written: a fold is forward-only, so an append never
   /// changes an earlier contact's verdict. The whole log goes over when the
   /// rule says cold; when this runtime has not yet folded the operation in
-  /// full ([_foldedFully]); when a scorer the log just started needing has no
+  /// full ([_foldedBy]); when a scorer the log just started needing has no
   /// checkpoint, or one fails on the tail — a pass writes every scorer's
   /// verdict for a contact together, and a contact carrying half of them
   /// would render without the rest; when there is nothing to replay although
@@ -349,7 +359,7 @@ class ScoringService {
       if (scorers.isEmpty) return;
 
       final cachedScoring = operation.localData['scoring'] as Map<String, dynamic>?;
-      final resume = full || !_foldedFully.contains(uuid)
+      final resume = full || !_foldedByCurrentHost(uuid)
           ? null
           : resolveScoringResume(scoring: cachedScoring, operationUpdatedAtMillis: operation.updatedAtMillis, qsos: all);
       final append = resume != null && resume.tail.isNotEmpty && scorers.every((scorer) => resume.checkpoints.containsKey(scorer.key));
@@ -441,7 +451,7 @@ class ScoringService {
 
       await qsos.updateScoreCache(operation.uuid, {for (final entry in scoresByUuid.entries) entry.key: jsonEncode(entry.value)});
       await operations.updateLocalData(operation.uuid, {'scoring': scoringByScorer});
-      if (!append) _foldedFully.add(uuid);
+      if (!append) _foldedBy[uuid] = host;
     } catch (e, st) {
       debugPrint('[scoring] rescoreOperation failed: $e');
       ErrorReportingService.report(e, st, context: 'scoring:rescore-operation');

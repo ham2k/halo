@@ -1363,11 +1363,19 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     setState(() => _loggingControls = result.controls);
   }
 
-  /// Retries [_refreshLoggingControls] once the extension runtime is live
-  /// again, but only when the last fetch actually failed — every runtime
-  /// restart (any extension anywhere being toggled) ticks the generation,
-  /// and most of those have nothing to do with this operation.
+  /// Rescores under the new runtime, and retries [_refreshLoggingControls]
+  /// once it is live again, but only when the last fetch actually failed —
+  /// every runtime restart (any extension anywhere being toggled) ticks the
+  /// generation, and most of those have nothing to do with this operation's
+  /// controls.
+  ///
+  /// The rescore is unconditional: a tick invalidates every cached
+  /// checkpoint ([ScoringService.liveResumeFor]), and until a pass under the
+  /// new runtime folds the log, every call-info keystroke and spots refresh
+  /// folds the whole log cold and the summaries show the old scorers'.
   void _onRuntimeGenerationChanged() {
+    _lastScoredFingerprint = null;
+    _maybeScheduleRescore();
     if (!_loggingControlsStale) return;
     // `_draftOperation`, not just `_operation` — the Activities/Setup sheet
     // can still be open with a ref the operator just added, and refreshing
@@ -1396,7 +1404,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     _rescoreDebounce = Timer(const Duration(milliseconds: 750), () async {
       final operation = _operation;
       if (operation == null || widget.services.extensions.host == null) {
-        return; // not ready — retried on the next change
+        return; // not ready — retried on the next change, or when the runtime comes up
       }
       _lastScoredFingerprint = fingerprint;
       await widget.services.scoring.rescoreOperation(operation);

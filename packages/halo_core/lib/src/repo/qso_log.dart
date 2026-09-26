@@ -34,10 +34,7 @@ class QsoLog extends UnmodifiableListView<Qso> {
 }
 
 /// One row's term in the digest. Not a secure hash — it only has to notice a
-/// stamp that moved or a contact that came or went. Built by hand rather than
-/// with `Object.hash`, whose seed changes per run: the digest is persisted in
-/// the checkpoint stamp, and one that never matched after a relaunch would
-/// fold every keystroke cold until the first rescore. Each term and the sum
+/// stamp that moved or a contact that came or went. Each term and the sum
 /// stay under 2^53 so the web build's integers carry them.
 int qsoDigestTerm(Qso qso) => ((qso.uuid.hashCode & 0xFFFFFFFF) * 31 + (qso.updatedAtMillis ?? 0)) & 0xFFFFFFFF;
 

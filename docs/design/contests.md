@@ -401,8 +401,11 @@ fast-path, never truth**:
 `ScoringService` owns that invariant: it resumes from a cached checkpoint — in
 a pass, and for the live paths through `liveResumeFor` — only for an
 operation whose whole log THIS runtime has already folded and written,
-and forgets every such operation when the extension runtime's generation
-ticks (an extension installed, updated or switched off). The checkpoints
+only while the host that folded it is still the one answering (a new
+runtime answers hooks before its generation ticks), and forgets every such
+operation when the extension runtime's generation ticks (an extension
+installed, updated or switched off). The Operation View rescores on that
+tick, so the live paths fold cold only until the new runtime's first pass. The checkpoints
 themselves live in `local_data`, device-local and never synced, so a
 checkpoint written by a scorer that no longer exists or no longer agrees is
 simply never resumed from — there is no checkpoint versioning story to

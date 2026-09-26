@@ -542,6 +542,13 @@ test("an operator named among several station calls is not a guest", async () =>
   assert.equal(tally(result.operationSummary, "activation")!.longSummary, "❌ US-0001: 3/10")
 })
 
+test("an operator with no station call to compare against is not a guest", async () => {
+  // Stamping needs a named operator, and nothing else names the station, so
+  // this is a solo operator; calling them a guest gives them a row of their own.
+  const result = await score(POTA, operationActivating("potaActivation", "US-0001"), callsBy("N0A", 3))
+  assert.equal(tally(result.operationSummary, "activation")!.longSummary, "❌ US-0001: 3/10")
+})
+
 test("a guest is judged against the station call in effect for the contact, not the current one", async () => {
   // Day 1 runs club call K4X with N0A at the key; day 2 N0A signs their own
   // call. Judged against today's call, day 1's guest would vanish.
@@ -556,21 +563,6 @@ test("a guest is judged against the station call in effect for the contact, not 
   assert.equal(tally(result.daySections[0].scores, "activation")!.longSummary, `❌ US-0001: 4/10\n${NBSP4}N0A 4/10`)
   assert.equal(tally(result.daySections[1].scores, "activation")!.longSummary, "❌ US-0001: 3/10")
   assert.equal(tally(result.operationSummary, "activation")!.longSummary, `❌ US-0001: 7/10\n${NBSP4}N0A 7/10`)
-})
-
-test("a checkpoint saved without the operator fields still resumes", async () => {
-  // The logging pills resume from the sheet saved in local_data, which may
-  // predate these fields; without a guard the first operator-stamped contact
-  // replayed onto it throws, and the scorer answers nothing at all.
-  const hook = contestScorer(activityScorer(POTA), { scope: { refTypes: ["potaActivation", "pota"] } })
-  const operation = clubActivating("US-0001")
-  const saved = (await score(POTA, operation, callsBy("N0A", 2))).scoresheet as Record<string, JSONValue>
-  const { operatorRefs: _a, dayOperatorRefs: _b, guestOperators: _c, dayGuestOperators: _d, ...oldShape } = saved
-  const result = await hook.scoreQsos(
-    { operation, ref: (operation.refs as Record<string, JSONValue>[])[0], resumeFrom: oldShape, qsos: [qso("W9ZZZ", { operator: "N0B" })] },
-    ctx,
-  )
-  assert.match(tally(result.operationSummary, "activation")!.longSummary!, /^❌ US-0001: 3\/10/)
 })
 
 // --- Shape ------------------------------------------------------------------

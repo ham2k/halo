@@ -321,10 +321,6 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
     // checkpoint at its boundary, so nothing cached is ever aliased.
     scoreQso({ scoresheet, qso, operation, isNewDay }) {
       const sheet = scoresheet
-      // A checkpoint saved by an earlier bundle lacks the operator fields, and
-      // the live paths resume from a saved checkpoint.
-      sheet.operatorRefs ??= {}
-      sheet.dayOperatorRefs ??= {}
       if (isNewDay && activatesDaily) {
         sheet.dayActivatedRefs = {}
         sheet.dayOperatorRefs = {}
@@ -495,14 +491,14 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
 /// Whether the operator is someone other than the station call(s) in effect
 /// for this contact. Compared by base call: DL1ABC running DL1ABC/P is the
 /// ordinary single-op activation, where the park's own line already says
-/// everything. Looser than the ADIF export, which writes OPERATOR for that
+/// everything. With no station call there is nobody to be a guest of. Looser than the ADIF export, which writes OPERATOR for that
 /// contact — there the full call is data; here the question is who operated.
 function isGuestOperator(operator: string, operation: Record<string, JSONValue>): boolean {
   const stations = String(operation.stationCall ?? "")
     .split(",")
     .map((call) => baseCallOf(call))
     .filter((call) => call.length > 0)
-  return !stations.includes(baseCallOf(operator))
+  return stations.length > 0 && !stations.includes(baseCallOf(operator))
 }
 
 function baseCallOf(call: string): string {

@@ -31,8 +31,12 @@ class _FakeExtensions extends ExtensionService {
 
   _FakeExtensions({required this.scopes, required this.answer});
 
+  /// One instance, not one per read: a fold counts only while the host that
+  /// did it is still the one answering. Replace it to stand up a new runtime.
+  ExtensionHost? currentHost = _StubHost();
+
   @override
-  ExtensionHost? get host => _StubHost();
+  ExtensionHost? get host => currentHost;
 
   @override
   Future<Map<String, dynamic>> getScoringScopes() async => scopes;
@@ -228,9 +232,9 @@ void main() {
 
     test('the live paths resume under the same guard, not from whatever checkpoint is cached', () async {
       // The pills and the spots board resume from the checkpoint in
-      // local_data. Handed one written before an extension update, the new
-      // scorer replays a tail onto a sheet it may not read — the POTA scorer
-      // threw on one missing its operator fields.
+      // local_data. Handed one written before an extension changed, the new
+      // scorer replays a tail onto a sheet it may not read or agree with, and
+      // its verdicts carry forward with no error.
       final operation = await operationWith(2);
       final extensions = _FakeExtensions(scopes: _core, answer: _fold);
       final scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
@@ -247,6 +251,41 @@ void main() {
 
       await scoring.rescoreOperation(folded);
       expect(scoring.liveResumeFor(await current(folded), log), isNotNull, reason: 'the next full pass re-arms it');
+    });
+
+    test('a new runtime gets no resume before its generation ticks', () async {
+      // A restarted runtime answers hooks while its extensions activate, and
+      // the generation ticks only once they have: in that window a resume
+      // would hand the new scorers a sheet the old ones wrote.
+      final operation = await operationWith(2);
+      final extensions = _FakeExtensions(scopes: _core, answer: _fold);
+      final scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
+      await scoring.rescoreOperation(operation);
+      final folded = await current(operation);
+      final log = await qsos.forOperation(folded.uuid);
+      expect(scoring.liveResumeFor(folded, log), isNotNull);
+
+      extensions.currentHost = _StubHost();
+      expect(scoring.liveResumeFor(folded, log), isNull, reason: 'folded by a runtime that is no longer answering');
+    });
+
+    test('a pass whose runtime was replaced before it wrote does not vouch for its checkpoint', () async {
+      // The old runtime's results land after the new one is up: the sheet
+      // they write is the old scorers', so it must not be resumed from.
+      final operation = await operationWith(2);
+      late _FakeExtensions extensions;
+      extensions = _FakeExtensions(
+        scopes: _core,
+        answer: (key, args) {
+          extensions.currentHost = _StubHost();
+          return _fold(key, args);
+        },
+      );
+      final scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
+      await scoring.rescoreOperation(operation);
+      final folded = await current(operation);
+      expect(folded.localData['scoring'], isNotNull, reason: 'the pass still wrote its scores');
+      expect(scoring.liveResumeFor(folded, await qsos.forOperation(folded.uuid)), isNull);
     });
 
     // A pass writes every scorer's verdict for a contact together; on a tail

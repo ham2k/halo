@@ -21,14 +21,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extensions/extension_scoring.dart';
+
+import '../support/fake_extension_host.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
-
-class _StubHost implements ExtensionHost {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
 
 class _FakeExtensions extends ExtensionService {
   _FakeExtensions(this.board);
@@ -36,12 +33,12 @@ class _FakeExtensions extends ExtensionService {
   final List<Map<String, dynamic>> board;
   final List<ScoringResume?> resumes = [];
 
-  /// Up only for the rescore, which returns early without a host; the panel
-  /// reaches past these overrides to the host when it has one.
-  bool hostUp = false;
+  /// One instance throughout: the board resumes only from a pass folded by
+  /// the host still answering.
+  final ExtensionHost _host = FakeExtensionHost();
 
   @override
-  ExtensionHost? get host => hostUp ? _StubHost() : null;
+  ExtensionHost? get host => _host;
 
   @override
   Future<Map<String, dynamic>> getScoringScopes() async => const {'core': 'always'};
@@ -124,9 +121,7 @@ void main() {
     });
     // The last rescore folded the first contact; the second is the station
     // just worked, which the rescore's own debounce has not yet caught up with.
-    extensions.hostUp = true;
     await services.scoring.rescoreOperation((await operations.get(created.uuid))!);
-    extensions.hostUp = false;
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 2)));
     final since = await qsos.add(created.uuid, {
       'their': {'call': 'K1ABC'},

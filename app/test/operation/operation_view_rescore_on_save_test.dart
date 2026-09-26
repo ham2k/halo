@@ -206,4 +206,65 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
   });
+
+  // A runtime change moves neither the log nor the operation, so a rescore
+  // driven by those alone never comes: every checkpoint is void from the
+  // tick on, the call-info pills and the spots board fold the whole log on
+  // every keystroke and refresh, and the summaries stay the old scorers'.
+  testWidgets('a runtime generation tick rescores the whole log with nothing else changed', (tester) async {
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final passes = <Map<String, dynamic>>[];
+    final HaLoHarness(:services, :settings) = await makeHaLoServices(
+      stubs: {
+        'scoring:*:scope': [
+          {'key': 'core', 'ok': true, 'value': 'always'},
+        ],
+        'scoring:core:scoreQsos': (Object? args) {
+          final sent = ((args as Map)['qsos'] as List).cast<Map<String, dynamic>>();
+          passes.add(args.cast<String, dynamic>());
+          return {
+            'qsoScores': {
+              for (final q in sent) q['uuid'] as String: {'value': 1},
+            },
+            'daySections': const <dynamic>[],
+            'operationSummary': const <String, dynamic>{},
+            'scoresheet': {'folded': sent.length},
+            'scoresheetDay': 0,
+          };
+        },
+      },
+    );
+    await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
+    final operation = await services.operations.create(stationCall: 'KI2D');
+    await services.qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': 1000,
+    });
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(passes, hasLength(1), reason: 'the open pass');
+
+    services.extensions.runtimeGeneration.value++;
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(passes, hasLength(2), reason: 'the tick alone schedules a pass');
+    expect(passes.last.containsKey('resumeFrom'), isFalse, reason: 'under a new runtime the pass folds the whole log');
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
 }
