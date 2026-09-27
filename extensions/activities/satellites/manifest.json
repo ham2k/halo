@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "satellite-variant",
   "accentColor": "#3F51B5",
-  "keywords": ["satellite", "sat", "amsat", "transponder"],
+  "keywords": ["satellite", "sat", "amsat", "transponder", "sats"],
   "hooks": ["activity", "adifFields", "adifImport", "command", "dataFile", "ref:satellite"],
   "domains": ["polo.ham2k.com"],
   "translations": {

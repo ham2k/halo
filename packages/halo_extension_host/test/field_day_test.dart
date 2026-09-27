@@ -65,7 +65,8 @@ void main() {
     return result.cast<String, dynamic>();
   }
 
-  Map<String, dynamic>? contestTally(Map<String, dynamic> result) => ((result['operationSummary'] as Map?)?['contest'] as Map?)?.cast<String, dynamic>();
+  /// The contest's one operation tally, whatever the scorer keys it by.
+  Map<String, dynamic> contestTally(Map<String, dynamic> result) => ((result['operationSummary'] as Map).values.single as Map).cast<String, dynamic>();
 
   group('the rules both contests share', () {
     for (final type in ['fd', 'wfd']) {
@@ -125,7 +126,7 @@ void main() {
             contestQso(type, 'G0CCC', band: '20m', mode: 'SSB', section: 'DX', uuid: 'c'),
           ],
         );
-        expect(contestTally(result)!['longSummary'], contains('3 sections'));
+        expect(contestTally(result)['longSummary'], contains('3 sections'));
       }, timeout: const Timeout(Duration(seconds: 60)));
     }
   });
@@ -161,7 +162,7 @@ void main() {
           setup: setup,
           qsos: [contestQso('fd', 'K1AAA', band: '20m', mode: 'CW', uuid: 'a')],
         );
-        return contestTally(result)!['total'] as int;
+        return contestTally(result)['total'] as int;
       }
 
       // 2 QSO points, times the multiplier.
@@ -188,7 +189,7 @@ void main() {
           setup: {'ourPower': '500W', ...setup},
           qsos: [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a')],
         );
-        return contestTally(result)!['total'] as int;
+        return contestTally(result)['total'] as int;
       }
 
       // 1 QSO point at x1 throughout, so the rest is bonus.
@@ -207,7 +208,7 @@ void main() {
           setup: {'ourPower': '500W', ...setup},
           qsos: [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a')],
         );
-        return contestTally(result)!['total'] as int;
+        return contestTally(result)['total'] as int;
       }
 
       expect(await totalWith({'bonusNTSMessages': 4}), 1 + 40, reason: '10 each');
@@ -228,7 +229,7 @@ void main() {
           setup: {'ourPower': '500W', ...setup},
           qsos: [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a')],
         );
-        return contestTally(result)!['total'] as int;
+        return contestTally(result)['total'] as int;
       }
 
       expect(await totalWith(const {}), 1, reason: 'nothing claimed');
@@ -747,10 +748,10 @@ void main() {
     // extensions. They are grouped so the next reader can see, in one place,
     // what this port got wrong and what now holds it right.
 
-    test('a day section reports THAT day, and counts the bonus once', () async {
+    test('a day section carries no score of its own, and the bonus counts once', () async {
       // Field Day always spans two UTC days, so this fires on every operation.
-      // The first version reported the running total per day and re-added the
-      // whole bonus to each one.
+      // The bonus is claimed once for the entry: a per-day tally re-adding it
+      // to each day claims it twice.
       final host = await hostFor('fd');
       final result = await score(
         host,
@@ -765,13 +766,12 @@ void main() {
 
       final days = (result['daySections'] as List).cast<Map>();
       expect(days, hasLength(2));
-      int totalFor(int i) => ((days[i]['scores'] as Map)['contest'] as Map)['total'] as int;
-      // Day one: its own 1 point. Day two: its own 2 — NOT the running 3.
-      expect(totalFor(0), 1, reason: 'day one scores its own QSOs');
-      expect(totalFor(1), 2, reason: 'day two scores its own, not the cumulative');
-      // The 200-point bonus is claimed once for the entry, so it belongs to the
-      // operation total and to neither day.
-      expect(contestTally(result)!['total'], 3 + 200);
+      // A contest's score belongs to the whole entry, so no day publishes one.
+      for (final day in days) {
+        expect(day['scores'], isEmpty);
+      }
+      // The 200-point bonus is claimed once, on the operation total.
+      expect(contestTally(result)['total'], 3 + 200);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a QSO with no mode scores as phone, not as data', () async {
@@ -815,7 +815,7 @@ void main() {
           setup: setup,
           qsos: [contestQso('wfd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a')],
         );
-        return contestTally(result)!['total'] as int;
+        return contestTally(result)['total'] as int;
       }
 
       expect(await totalWith(const {}), 1, reason: 'x1 for taking part');
@@ -974,7 +974,7 @@ void main() {
         setup: {'ourPower': '500W', 'bonusTransmitters': 20, 'bonusEmergencyPower': true},
         qsos: [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', uuid: 'a')],
       );
-      expect(contestTally(result)!['summary'], contains('2,001'));
+      expect(contestTally(result)['summary'], contains('2,001'));
     }, timeout: const Timeout(Duration(seconds: 60)));
   });
 }

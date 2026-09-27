@@ -17,7 +17,8 @@
 
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { parseCallsign } from "@ham2k/lib-callsigns"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
 export const TYPE = "r1-fd"
@@ -38,8 +39,6 @@ export type R1FDScoresheet = {
   bandPoints: Record<string, number>
   qsos: number
   points: number
-  dayQsos: number
-  dayPoints: number
   /// Whether WE entered as a fixed station — the setup's `ourStationType`.
   /// Fixed-to-fixed is the one pairing worth nothing.
   ourFixed: boolean
@@ -88,19 +87,13 @@ export const R1FDScorer: ContestScorer<R1FDScoresheet> = {
       bandPoints: {},
       qsos: 0,
       points: 0,
-      dayQsos: 0,
-      dayPoints: 0,
       ourFixed: str(ref?.ourStationType) === "FIXED",
     }
   },
 
   // Mutates and returns the given scoresheet — see ContestScorer.scoreQso.
-  scoreQso({ scoresheet, qso, ref, isNewDay }) {
+  scoreQso({ scoresheet, qso, ref }) {
     const base = scoresheet
-    if (isNewDay) {
-      base.dayQsos = 0
-      base.dayPoints = 0
-    }
 
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
@@ -156,8 +149,6 @@ export const R1FDScorer: ContestScorer<R1FDScoresheet> = {
     base.bandPoints[band] = (base.bandPoints[band] ?? 0) + points
     base.qsos += 1
     base.points += points
-    base.dayQsos += 1
-    base.dayPoints += points
 
     const score: QsoScoreVerdict = { value: points, band }
     const notices: string[] = []
@@ -169,29 +160,29 @@ export const R1FDScorer: ContestScorer<R1FDScoresheet> = {
     return { scoresheet: base, score }
   },
 
-  summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === "day"
-    const multCount = Object.keys(scoresheet.mults).length
-    const points = isDay ? scoresheet.dayPoints : scoresheet.points
-    // Multipliers accumulate across the whole running, so a day's "score" is
-    // still its points against the running mult count.
-    const total = points * multCount
-
-    return {
-      r1fd: {
+  summarizeScore({ scoresheet, ref, scope }, ctx) {
+    const mults = Object.keys(scoresheet.mults).length
+    return contestSummary(
+      {
         key: "r1fd",
-        for: scope,
+        scope,
         icon: "tent",
-        total,
-        points,
-        mults: multCount,
-        qsos: isDay ? scoresheet.dayQsos : scoresheet.qsos,
-        label: `${fmtInteger(points)} × ${fmtInteger(multCount)}`,
-        summary: `${fmtInteger(total)}`,
-        longSummary: breakdown(scoresheet),
+        title: contestTitle(ref),
+        total: scoresheet.points * mults,
+        arithmetic: contestArithmetic({ qsos: scoresheet.qsos, points: scoresheet.points, mults }, ctx),
+        detail: breakdown(scoresheet),
+        extra: { points: scoresheet.points, mults, qsos: scoresheet.qsos },
       },
-    }
+      ctx,
+    )
   },
+}
+
+/// "R1FD CW" — the name the operation's title gives the contest, which its
+/// summary repeats.
+export function contestTitle(ref: Record<string, JSONValue> | undefined): string {
+  const mode = modeOfRef(str(ref?.ref))
+  return mode ? `R1FD ${mode}` : "R1FD"
 }
 
 /// The per-band table — in a field day the per-band countries ARE the score,

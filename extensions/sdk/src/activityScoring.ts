@@ -30,8 +30,8 @@
 // `node --test` — the same constraint dxcc.ts and core/scoring document.
 
 import { createCachedTranslator, createTranslator } from "./i18n.ts"
+import { baseCallOf } from "./callsigns.ts"
 import { modesMatchForDupe } from "./modes.ts"
-import { parseCallsign } from "@ham2k/lib-callsigns"
 import type { ContestScorer, HookContext, JSONValue, QsoScoreVerdict, ScoreTally } from "./types.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 
@@ -499,11 +499,6 @@ function isGuestOperator(operator: string, operation: Record<string, JSONValue>)
     .map((call) => baseCallOf(call))
     .filter((call) => call.length > 0)
   return stations.length > 0 && !stations.includes(baseCallOf(operator))
-}
-
-function baseCallOf(call: string): string {
-  const trimmed = call.trim().toUpperCase()
-  return parseCallsign(trimmed).baseCall || trimmed
 }
 
 /// The activator's progress: how far the WEAKEST reference still is from the

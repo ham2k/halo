@@ -393,22 +393,11 @@ test("DE: a declared power class multiplies the score, and no claim multiplies b
   assert.equal(qrp.summary().total, undeclared.summary().total * 3)
 })
 
-test("a party is one period: a day shows the running total, never a score of its own", () => {
-  const { summary, sheet } = run([qso({ location: "ERI" }), qso({ call: "K2DEF", location: "CHA" })])
-  const day = summary("day")
-  const whole = summary("operation")
-  // The same figure under both scopes — a "day's points against the running
-  // multiplier" is a number no sponsor publishes. Summarized from the same
-  // sheet, so this is what the last day header carries.
-  assert.equal(day.total, whole.total)
-  assert.equal(day.summary, whole.summary)
-  assert.equal(whole.total, sheet.points * Object.keys(sheet.mults).length)
-  // The checklist is the operation's; a day carries the number alone, so the
-  // panel shows its short summary instead of repeating the grid per day —
-  // and its title is the event's name alone, or the total would read twice.
-  assert.equal(day.longSummary, "")
-  assert.equal(day.label, whole.label!.split(":")[0])
-  assert.ok(!day.label!.includes(day.summary!))
+// A party is one period, however many UTC days it straddles: the sponsors
+// publish one total, and a day's share of it is not a number they define.
+test("a party is one period: it offers no per-day summary", () => {
+  const { summary } = run([qso({ location: "ERI" }), qso({ call: "K2DEF", location: "CHA" })])
+  assert.equal(summary("day"), undefined)
 })
 
 test("the summary is titled with the event and its total, and opens on the arithmetic", () => {
@@ -417,8 +406,19 @@ test("the summary is titled with the event and its total, and opens on the arith
   // The label is what the information panel shows as the section title — and
   // the only place the total is visible, since a tally with a `longSummary`
   // does not show its short `summary`.
-  assert.equal(tally.label, `NYQP: ${tally.total}`)
-  assert.equal((tally.longSummary as string).split("\n\n")[0], `${tally.points} × ${tally.mults}`)
+  assert.equal(tally.label, `NYQP: ${tally.total} points`)
+  // An in-state NYQP entrant's own state multiplies too, on top of the two
+  // counties worked.
+  assert.equal((tally.longSummary as string).split("\n")[0], `2 QSOs, ${tally.points} pts × 3 mults (2 counties, 1 state)`)
+})
+
+// Counties and states are different things to chase; the split says which
+// the log is short of.
+test("the arithmetic splits the multipliers by the kind of place", () => {
+  const { summary } = run([qso({ location: "ERI" }), qso({ call: "K2DEF", location: "NJ" }), qso({ call: "DL1ABC", location: "DX" })], { ourLocation: "ALB" })
+  // NY (our own, in-state) and NJ are states; ERI is a county; NYQP gives DX
+  // no multiplier, so it names no kind.
+  assert.match((summary().longSummary as string).split("\n")[0], /× 3 mults \(1 county, 2 states\)$/)
 })
 
 test("a party this build does not know scores nothing, and says which way it failed", () => {

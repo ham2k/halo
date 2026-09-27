@@ -106,7 +106,7 @@ String _totalOf(Map<String, Object?> tally) => '${tally['total'] ?? tally['count
 /// did not already say.
 ///
 /// A `longSummary` is the scorer's own fuller statement, composed for display
-/// — core's bandsAndModes sets `**20m**: 44 — SSB 44` and leaves `label`
+/// — core's bandsAndModes sets `**20m**: 44 SSB` and leaves `label`
 /// empty. Appending its `bands`/`modes` maps under it would print the same
 /// counts twice. So: when a tally composed a long summary, that IS the
 /// detail; when it only has a short label, the breakdowns are the part it

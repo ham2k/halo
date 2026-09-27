@@ -830,6 +830,17 @@ next to the summary in `local_data.scoring`:
   tallies (`qsoCount`) from carry-over ones (`dxcc`, `bandsAndModes`). The core
   snapshots at day boundaries and calls `summarizeScore` per boundary; `for`
   tells the display which resets. No new concept.
+- **A contest summarizes the operation, and only the operation.** Its
+  multipliers and bonuses are won across the whole event, so a day's share of
+  the score is a number no sponsor defines. Every contest builds its tally with
+  the SDK's `contestSummary` (`sdk/src/contestSummary.ts`), which answers the
+  day scope with nothing and gives every contest one shape: the title is the
+  contest as the operation's title names it, with its score (`CQWPX SSB: 6
+  points`); the detail opens on `contestArithmetic`'s line (`45 QSOs, 90 pts ×
+  15 mults (12 counties, 3 states) + 100 bonus`) — the multiplier kinds only
+  where a contest's multipliers come from different kinds of place — and the
+  contest's own tables follow it. `core` and the activities keep their
+  day-scoped tallies; they are not contests.
 - **Multi-scorer merge composes:** scorers are independent, so fan-out is "run K
   scorers over the same batch." Core dupe/DXCC/bands scoring is *just another
   scorer* registered under `core` — an `always`-scoped one, which runs for every

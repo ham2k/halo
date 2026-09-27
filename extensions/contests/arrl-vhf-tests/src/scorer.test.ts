@@ -166,8 +166,19 @@ test("10 GHz: the summary reports the distance and QSO halves separately", () =>
   const { sheet } = run([qso("KN2X", "3cm", "FN20aa"), qso("KN2X", "3cm", "FN21bb")], { grid: "FN31aa" }, TEN_GIG)
   const tally = ARRLVHFScorer.summarizeScore({ scoresheet: sheet, operation: {}, ref: TEN_GIG, scope: "operation" }, ctx)["arrl-vhf-tests"]
   assert.equal(tally.total, sheet.points)
-  assert.match(tally.summary!, /pts \(\d[\d,]* km total\)/)
+  assert.match(tally.label!, /^ARRL 10G Sep: [\d,]+ points$/)
+  assert.match(tally.longSummary!, /^2 QSOs, [\d,]+ pts, [\d,]+ km\n/)
   assert.match(tally.longSummary!, new RegExp(`${sheet.distancePoints} distance points \\+ 100 QSO points`))
+})
+
+// A points-only event computes no distance: a "Longest: 0 km" per band reads
+// as a measurement nobody took.
+test("a points-only event's summary names no distance", () => {
+  const ref = { type: "arrl-vhf-tests", ref: "ARRL-VHF-JAN" }
+  const { sheet } = run([qso("K1ABC", "6m", "FN20")], { grid: "FN31" }, ref)
+  const tally = ARRLVHFScorer.summarizeScore({ scoresheet: sheet, operation: {}, ref, scope: "operation" }, ctx)["arrl-vhf-tests"]
+  assert.doesNotMatch(tally.longSummary!, /km/)
+  assert.match(tally.longSummary!, /\*\*6m\*\*: 1 QSOs$/m)
 })
 
 test("a 2-character grid is malformed, not short", () => {

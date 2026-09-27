@@ -16,7 +16,8 @@
 
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { parseCallsign } from "@ham2k/lib-callsigns"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
 /// WPX is an HF contest: the WARC bands are excluded by the rules.
@@ -37,8 +38,6 @@ export type CQWPXScoresheet = {
   bandPoints: Record<string, number>
   qsos: number
   points: number
-  dayQsos: number
-  dayPoints: number
   /// Our own continent and DXCC entity, resolved once from the station call —
   /// every point calculation is relative to them.
   ourContinent?: string
@@ -98,20 +97,14 @@ export const CQWPXScorer: ContestScorer<CQWPXScoresheet> = {
       bandPoints: {},
       qsos: 0,
       points: 0,
-      dayQsos: 0,
-      dayPoints: 0,
       ourContinent: ours.continent,
       ourEntity: ours.entityPrefix,
     }
   },
 
   // Mutates and returns the given scoresheet — see ContestScorer.scoreQso.
-  scoreQso({ scoresheet, qso, ref, isNewDay }) {
+  scoreQso({ scoresheet, qso, ref }) {
     const base = scoresheet
-    if (isNewDay) {
-      base.dayQsos = 0
-      base.dayPoints = 0
-    }
 
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
@@ -174,8 +167,6 @@ export const CQWPXScorer: ContestScorer<CQWPXScoresheet> = {
     base.bandPoints[band] = (base.bandPoints[band] ?? 0) + points
     base.qsos += 1
     base.points += points
-    base.dayQsos += 1
-    base.dayPoints += points
 
     const score: QsoScoreVerdict = { value: points, band }
     const notices: string[] = []
@@ -187,29 +178,28 @@ export const CQWPXScorer: ContestScorer<CQWPXScoresheet> = {
     return { scoresheet: base, score }
   },
 
-  summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === "day"
-    const multCount = Object.keys(scoresheet.mults).length
-    const points = isDay ? scoresheet.dayPoints : scoresheet.points
-    // Multipliers accumulate across the whole contest, so a day's "score" is
-    // still its points against the running prefix count.
-    const total = points * multCount
-
-    return {
-      cqwpx: {
+  summarizeScore({ scoresheet, ref, scope }, ctx) {
+    const mults = Object.keys(scoresheet.mults).length
+    return contestSummary(
+      {
         key: "cqwpx",
-        for: scope,
+        scope,
         icon: "flag-checkered",
-        total,
-        points,
-        mults: multCount,
-        qsos: isDay ? scoresheet.dayQsos : scoresheet.qsos,
-        label: `${fmtInteger(points)} × ${fmtInteger(multCount)}`,
-        summary: `${fmtInteger(total)}`,
-        longSummary: breakdown(scoresheet),
+        title: contestTitle(ref),
+        total: scoresheet.points * mults,
+        arithmetic: contestArithmetic({ qsos: scoresheet.qsos, points: scoresheet.points, mults }, ctx),
+        detail: breakdown(scoresheet),
+        extra: { points: scoresheet.points, mults, qsos: scoresheet.qsos },
       },
-    }
+      ctx,
+    )
   },
+}
+
+/// "CQWPX SSB" — the name the operation's title gives the contest, which its
+/// summary repeats.
+export function contestTitle(ref: Record<string, JSONValue> | undefined): string {
+  return ["CQWPX", str(ref?.mode)].filter((x) => x).join(" ")
 }
 
 /// The per-band table plus the prefix list — in WPX the prefixes ARE the score,

@@ -1,6 +1,6 @@
 {
   "key": "zlota",
-  "name": "ZL on the Air",
+  "name": "ZLOTA: ZL on the Air",
   "shortName": "ZLOTA",
   "version": "0.0.1",
   "description": "New Zealand references, activation and chasing, and spots",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "fa-kiwi-bird",
   "accentColor": "#2E7D6B",
-  "keywords": ["new zealand", "islands", "huts", "lakes", "activation"],
+  "keywords": ["new zealand", "islands", "huts", "lakes", "activation", "zlota"],
   "relevance": {
     "entities": ["ZL"]
   },

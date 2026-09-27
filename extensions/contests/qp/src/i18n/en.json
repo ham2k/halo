@@ -58,5 +58,14 @@
   "overlayNOVICE-TECH": "Novice / Technician",
   "overlayNEW-CONTESTER": "New Contester",
   "overlayTB-WIRES": "Tribander / Wires",
-  "overlayPOTA": "POTA"
+  "overlayPOTA": "POTA",
+  "multStateOne": "1 state",
+  "multStateMany": "{{formatted}} states",
+  "multProvinceOne": "1 province",
+  "multProvinceMany": "{{formatted}} provinces",
+  "multSectionOne": "1 section",
+  "multSectionMany": "{{formatted}} sections",
+  "multDxOne": "1 DX",
+  "multDxMany": "{{formatted}} DX",
+  "powerFactor": "power"
 }

@@ -198,19 +198,18 @@ test("WARC bands are excluded by the rules", () => {
   assert.ok(scores[0].alerts?.includes("invalidBand"))
 })
 
-test("the day summary resets its counters but keeps the running multipliers", () => {
-  let sheet = NAQPScorer.startScoresheet({ operation: usOperation, ref: cwRef }, ctx)
-  const score = (q: Record<string, JSONValue>, isNewDay: boolean) => {
-    const r = NAQPScorer.scoreQso({ scoresheet: sheet, qso: q, operation: usOperation, ref: cwRef, isNewDay }, ctx)
-    sheet = r.scoresheet
-  }
-  score(qso("W1AW", "20m", "CT"), false)
-  score(qso("VE3XYZ", "20m", "ON"), true)
+// States, provinces and NA countries are different things to chase; the
+// split says which the log is short of.
+test("the summary names the contest and its score, and splits the multipliers by kind", () => {
+  const { sheet } = run([qso("W1AW", "20m", "CT"), qso("VE3XYZ", "20m", "ON"), qso("CO2ABC", "20m", "CM")])
+  const summary = NAQPScorer.summarizeScore({ scoresheet: sheet, operation: usOperation, ref: cwRef, scope: "operation" }, ctx).naqp
+  assert.equal(summary.label, "NAQP CW: 9 points")
+  assert.equal((summary.longSummary as string).split("\n")[0], "3 QSOs, 3 pts × 3 mults (1 state, 1 province, 1 country)")
+})
 
-  const day = NAQPScorer.summarizeScore({ scoresheet: sheet, operation: usOperation, ref: cwRef, scope: "day" }, ctx)
-  assert.equal(day.naqp.qsos, 1)
-  assert.equal(day.naqp.points, 1)
-  // …but multipliers are a contest-long tally, so the day is scored against
-  // both of them.
-  assert.equal(day.naqp.total, 2)
+// Multipliers are a contest-long tally, so a day's share of the score is not
+// a number the contest defines.
+test("offers no per-day summary", () => {
+  const { sheet } = run([qso("W1AW", "20m", "CT")])
+  assert.deepEqual(NAQPScorer.summarizeScore({ scoresheet: sheet, operation: usOperation, ref: cwRef, scope: "day" }, ctx), {})
 })

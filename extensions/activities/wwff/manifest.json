@@ -1,6 +1,6 @@
 {
   "key": "wwff",
-  "name": "World Wide Flora & Fauna",
+  "name": "WWFF: World Wide Flora & Fauna",
   "shortName": "WWFF",
   "version": "0.0.1",
   "description": "Park references, activation and hunting, spots and spotting",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "flower",
   "accentColor": "#4C7A3F",
-  "keywords": ["flora", "fauna", "parks", "activation", "hunting"],
+  "keywords": ["flora", "fauna", "parks", "activation", "hunting", "wwff"],
   "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:wwff", "ref:wwffActivation", "scoring", "spots"],
   "domains": ["wwff.co", "spots.wwff.co"],
   "translations": {

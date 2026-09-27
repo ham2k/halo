@@ -32,10 +32,6 @@
   "bonusWebSubmission": "Envío por web (50 pts)",
   "theirClassLabel": "Clase",
   "theirSectionLabel": "Secc",
-  "scoreLabel": "Field Day",
-  "scoreSummary": "{{total}} pts",
-  "scoreQsos": "{{qsos}} QSOs — {{points}} puntos × {{multiplier}}",
-  "scoreBonus": "+ {{bonus}} puntos de bonificación",
   "scoreSections": "{{sections}} secciones",
   "scorePleaseCopy": "{{copies}} contactos «please copy»",
   "adifExport": "ADIF de Field Day",
@@ -47,5 +43,6 @@
   "bonusGotaCoach": "Instructor GOTA (100 pts)",
   "bonusSiteResponsibilities": "Responsabilidades del sitio — clases B–F (50 pts)",
   "notConfigured": "¡Sin configurar!",
-  "activityDescription": "El evento de junio de la ARRL, al aire libre"
+  "activityDescription": "El evento de junio de la ARRL, al aire libre",
+  "powerMultiplier": "potencia"
 }

@@ -32,12 +32,15 @@
 // its distance: the sponsor's log checker may accept it, and refusing the
 // points outright would hide a real contact behind a typing slip.
 
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { distanceOnEarth, gridToLocation } from "@ham2k/lib-geo-tools"
 
 import { eventFor } from "./events.ts"
 import { trimmedGrid } from "./exchange.ts"
+
+import manifest from "../manifest.json" with { type: "json" }
 
 export type ARRLVHFScoresheet = {
   /// `call|band|ourGrid` → the set of their-grids already worked under that
@@ -56,9 +59,6 @@ export type ARRLVHFScoresheet = {
   distanceTotal: number
   maxDistance: number
   maxDistancePerBand: Record<string, number>
-  dupeCount: number
-  dayQsos: number
-  dayPoints: number
 }
 
 function str(value: JSONValue | undefined): string {
@@ -96,14 +96,11 @@ export const ARRLVHFScorer: ContestScorer<ARRLVHFScoresheet> = {
       distanceTotal: 0,
       maxDistance: 0,
       maxDistancePerBand: {},
-      dupeCount: 0,
-      dayQsos: 0,
-      dayPoints: 0,
     }
   },
 
   // Mutates and returns the given scoresheet — see ContestScorer.scoreQso.
-  scoreQso({ scoresheet, qso, operation, ref, isNewDay }) {
+  scoreQso({ scoresheet, qso, operation, ref }) {
     const base = scoresheet
     // A scoresheet persisted by a build that predates these three fields
     // comes back through `resumeFrom` (the spots panel scores candidates off
@@ -112,10 +109,6 @@ export const ARRLVHFScorer: ContestScorer<ARRLVHFScoresheet> = {
     base.qsoPointsTaken ??= {}
     base.distancePoints ??= 0
     base.qsoPoints ??= 0
-    if (isNewDay) {
-      base.dayQsos = 0
-      base.dayPoints = 0
-    }
 
     const event = eventFor(str(ref?.ref))
     if (!event) return { scoresheet: base, score: { value: 0 } }
@@ -144,7 +137,6 @@ export const ARRLVHFScorer: ContestScorer<ARRLVHFScoresheet> = {
     const priorGrids = base.worked[key] ?? []
     const isDupe = priorGrids.includes(theirGrid)
     if (isDupe) {
-      base.dupeCount += 1
       return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
@@ -189,8 +181,6 @@ export const ARRLVHFScorer: ContestScorer<ARRLVHFScoresheet> = {
     base.points += value
     base.distancePoints += distancePoints
     base.qsoPoints += qsoPoints
-    base.dayQsos += 1
-    base.dayPoints += value
     if (distance !== null) {
       base.distanceTotal += distance
       base.maxDistance = Math.max(base.maxDistance, distance)
@@ -203,45 +193,40 @@ export const ARRLVHFScorer: ContestScorer<ARRLVHFScoresheet> = {
     return { scoresheet: base, score }
   },
 
-  summarizeScore({ scoresheet, ref, scope }): Record<string, ScoreTally> {
+  summarizeScore({ scoresheet, ref, scope }, ctx) {
     const event = eventFor(str(ref?.ref))
-    const isDay = scope === "day"
-    const points = isDay ? scoresheet.dayPoints : scoresheet.points
-    const qsos = isDay ? scoresheet.dayQsos : scoresheet.qsos
-
     const usesDistance = event?.score !== "points"
-    const summary = usesDistance ? `${fmtInteger(points)} pts (${fmtInteger(scoresheet.distanceTotal)} km total)` : `${fmtInteger(points)} pts`
-    // The whole-log split; the day scope has no per-day halves to show.
+    // The rules score the two halves separately, so the split is shown too.
     const split =
-      event?.score === "distanceAndPoints" && !isDay
-        ? `${fmtInteger(scoresheet.distancePoints)} distance points + ${fmtInteger(scoresheet.qsoPoints)} QSO points`
-        : null
+      event?.score === "distanceAndPoints" ? `${fmtInteger(scoresheet.distancePoints)} distance points + ${fmtInteger(scoresheet.qsoPoints)} QSO points` : null
 
     const bandLines = Object.keys(scoresheet.bands)
       .sort()
       .map((band) => {
         const count = scoresheet.bands[band] ?? 0
         if (!count) return null
+        // A points-only event measures no distance, so it has no longest one.
         return usesDistance
           ? `**${band}**: ${fmtInteger(count)} QSOs • Longest: ${fmtInteger(scoresheet.maxDistancePerBand[band] ?? 0)} km`
           : `**${band}**: ${fmtInteger(count)} QSOs`
       })
       .filter((line): line is string => line !== null)
 
-    return {
-      "arrl-vhf-tests": {
+    return contestSummary(
+      {
         key: "arrl-vhf-tests",
-        for: scope,
+        scope,
         icon: "radio-tower",
-        total: points,
-        qsos,
-        summary,
-        longSummary: [
-          summary + (scoresheet.dupeCount > 0 ? ` (${fmtInteger(scoresheet.dupeCount)} dupe${scoresheet.dupeCount > 1 ? "s" : ""})` : ""),
-          ...(split ? [split] : []),
-          ...bandLines,
-        ].join("\n"),
+        title: event?.short ?? manifest.shortName,
+        total: scoresheet.points,
+        arithmetic: contestArithmetic(
+          { qsos: scoresheet.qsos, points: scoresheet.points, more: usesDistance ? [`${fmtInteger(scoresheet.distanceTotal)} km`] : [] },
+          ctx,
+        ),
+        detail: [...(split ? [split, ""] : []), ...bandLines].join("\n"),
+        extra: { qsos: scoresheet.qsos },
       },
-    }
+      ctx,
+    )
   },
 }

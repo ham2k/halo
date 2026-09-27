@@ -25,15 +25,15 @@ void main() {
     'bands': {'20m': 44},
     'modes': {'SSB': 44},
     'label': '',
-    'longSummary': '**20m**: 44 — SSB 44',
+    'longSummary': '**20m**: 44 SSB',
   };
 
   group('summaries', () {
     test('a scorer that composed a long summary is not repeated back to it', () {
-      // bandsAndModes says "**20m**: 44 — SSB 44" AND carries the bands/modes
+      // bandsAndModes says "**20m**: 44 SSB" AND carries the bands/modes
       // maps it built that from. Appending them prints every count twice.
       final md = scoreSummariesMarkdown(const {'bandsAndModes': bandsAndModes});
-      expect(md, contains('**20m**: 44 — SSB 44'));
+      expect(md, contains('**20m**: 44 SSB'));
       expect(md, isNot(contains('bands:')));
       expect(md, isNot(contains('modes:')));
     });

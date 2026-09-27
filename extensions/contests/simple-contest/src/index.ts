@@ -32,7 +32,7 @@ import type {
 } from "@ham2k/extension-sdk"
 
 import { tFor } from "./i18n.ts"
-import { SimpleContestScorer } from "./scorer.ts"
+import { SimpleContestScorer, contestTitle } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -185,8 +185,7 @@ const RefHandler = {
   },
 
   async suggestOperationTitle({ ref, operation }: { ref: Ref; operation: Record<string, JSONValue> }, ctx: HookContext) {
-    const id = str((ref as Record<string, JSONValue>).contestIdentifier) || contestId(operation, ctx)
-    return { for: id, subtitle: str((ref as Record<string, JSONValue>).exchange) || undefined }
+    return { for: contestTitle(ref as Record<string, JSONValue>, ctx), subtitle: str((ref as Record<string, JSONValue>).exchange) || undefined }
   },
 }
 

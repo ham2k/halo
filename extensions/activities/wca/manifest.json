@@ -1,6 +1,6 @@
 {
   "key": "wca",
-  "name": "World Castles Awards",
+  "name": "WCA: World Castles Awards",
   "shortName": "WCA",
   "version": "0.0.1",
   "description": "Castle references, activation logging, and self-spotting",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "castle",
   "accentColor": "#7B5E3B",
-  "keywords": ["castles", "fortresses", "activation"],
+  "keywords": ["castles", "fortresses", "activation", "wca"],
   "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:wcaActivation", "scoring", "spots"],
   "domains": ["polo.ham2k.com", "www.cqgma.org"],
   "translations": {

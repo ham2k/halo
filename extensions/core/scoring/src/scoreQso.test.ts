@@ -249,7 +249,7 @@ test("scoreQsos: the DXCC breakdown lists flag, name and count, busiest first", 
     },
     ctxWithLog([]),
   )
-  assert.equal(result.operationSummary.dxcc.longSummary, "🇩🇪 Germany (2) 🇺🇸 United States")
+  assert.equal(result.operationSummary.dxcc.longSummary, "🇩🇪 Germany (2)   🇺🇸 United States")
 })
 
 // entityPrefixForCall resolves against BIGCTY; DXCC_BY_PREFIX is a separate,
@@ -258,7 +258,7 @@ test("scoreQsos: the DXCC breakdown lists flag, name and count, busiest first", 
 // still show up — as its bare prefix — rather than silently shrinking the
 // list below the header count.
 test("dxccBreakdown: a prefix DXCC_BY_PREFIX has never heard of falls back to itself", () => {
-  assert.equal(dxccBreakdown({ K: 2, ZZ99: 1 }), "🇺🇸 United States (2) ZZ99")
+  assert.equal(dxccBreakdown({ K: 2, ZZ99: 1 }), "🇺🇸 United States (2)   ZZ99")
 })
 
 // A scoresheet cached before rule 4 landed has no `states`/`provinces` maps and
@@ -362,7 +362,7 @@ test("scoreQsos: the band breakdown is one row per band worked, in band-plan ord
   )
   // 40m before 20m: band-plan order, not the order QSOs arrived. Modes within a
   // band are busiest-first, so 20m leads with CW.
-  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**40m**: 1 — SSB 1\n**20m**: 3 — CW 2, SSB 1")
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**40m**: 1 SSB\n**20m**: 3 — 2 CW, 1 SSB")
 })
 
 // A band's total counts every contact on it; a QSO logged with no mode has no
@@ -375,7 +375,7 @@ test("scoreQsos: a mode-less QSO still counts toward its band's total", async ()
     },
     ctxWithLog([]),
   )
-  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 2 — CW 1")
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 2 — 1 CW")
 })
 
 test("scoreQsos: a band the band plan doesn't list still gets a row, after the ones it does", async () => {
@@ -387,12 +387,93 @@ test("scoreQsos: a band the band plan doesn't list still gets a row, after the o
     ctxWithLog([]),
   )
   const rows = (result.operationSummary.bandsAndModes.longSummary as string).split("\n")
-  assert.deepEqual(rows, ["**20m**: 1 — CW 1", "**wormhole**: 1 — CW 1"])
+  assert.deepEqual(rows, ["**20m**: 1 CW", "**wormhole**: 1 CW"])
 })
 
 test("scoreQsos: no QSOs means no rows, not an empty bullet", async () => {
   const result = await scoreQsos({ operation: usOp, qsos: [] }, ctxWithLog([]))
   assert.equal(result.operationSummary.bandsAndModes.longSummary, "")
+})
+
+const byOp = (operatorCall: string) => ({ our: { operatorCall } })
+const INDENT = "\u00A0".repeat(4)
+
+// One named operator is a solo operation whatever the station call — the
+// per-operator blocks would only repeat the operation's own lines.
+test("scoreQsos: a single named operator leaves the band breakdown as it is", async () => {
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [qso("W1AW", "20m", "CW", { uuid: "q1", ...byOp("KI2D") }), qso("K5XYZ", "40m", "SSB", { uuid: "q2" })],
+    },
+    ctxWithLog([]),
+  )
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**40m**: 1 SSB\n**20m**: 1 CW")
+})
+
+// One person under a portable suffix is still one operator: keying on the
+// full call turns a solo activation into a two-operator breakdown of itself.
+test("scoreQsos: an operator's portable suffixes are the same operator", async () => {
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "CW", { uuid: "q1", ...byOp("KI2D") }),
+        qso("K5XYZ", "20m", "CW", { uuid: "q2", ...byOp("KI2D/P") }),
+        qso("K6ABC", "20m", "CW", { uuid: "q3", ...byOp("VE3/ki2d ") }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 3 CW")
+})
+
+// The call is printed inside `**…**`; a `~~` or `**` left in it would strike
+// through or unbold everything after it in the panel and on the postcard.
+test("scoreQsos: markdown in an operator call never reaches the heading", async () => {
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [qso("W1AW", "20m", "CW", { uuid: "q1", ...byOp("KI2D") }), qso("K5XYZ", "20m", "CW", { uuid: "q2", ...byOp("~~N0**CALL") })],
+    },
+    ctxWithLog([]),
+  )
+  const headings = (result.operationSummary.bandsAndModes.longSummary as string).split("\n").filter((line) => !line.startsWith(INDENT))
+  assert.ok(headings.includes("**N0CALL**: 1 QSO"), headings.join(" | "))
+})
+
+// The Overall block counts every contact, including the one nobody claimed,
+// so it cannot be derived from the operators' blocks — and a contact with no
+// operator must not be handed to the station call or to anyone else.
+test("scoreQsos: with two operators, each gets their own band lines after the overall ones", async () => {
+  const result = await scoreQsos(
+    {
+      operation: usOp,
+      qsos: [
+        qso("W1AW", "20m", "CW", { uuid: "q1", ...byOp("ki2d ") }),
+        qso("K5XYZ", "20m", "SSB", { uuid: "q2", ...byOp("N0CALL") }),
+        qso("K6ABC", "20m", "CW", { uuid: "q3", ...byOp("KI2D") }),
+        qso("DL1ABC", "40m", "USB", { uuid: "q4", ...byOp("KI2D") }),
+        qso("F1ABC", "40m", "CW", { uuid: "q5" }),
+      ],
+    },
+    ctxWithLog([]),
+  )
+  assert.equal(
+    result.operationSummary.bandsAndModes.longSummary,
+    [
+      "**Overall**: 5 QSOs",
+      `${INDENT}**40m**: 2 — 1 CW, 1 SSB`,
+      `${INDENT}**20m**: 3 — 2 CW, 1 SSB`,
+      "",
+      "**KI2D**: 3 QSOs",
+      `${INDENT}**40m**: 1 SSB`,
+      `${INDENT}**20m**: 2 CW`,
+      "",
+      "**N0CALL**: 1 QSO",
+      `${INDENT}**20m**: 1 SSB`,
+    ].join("\n"),
+  )
 })
 
 // The bands and bandModes maps carry across the whole operation, so a day
@@ -413,7 +494,7 @@ test("scoreQsos: a day section's tally carries no band breakdown", async () => {
     assert.equal(section.scores.bandsAndModes.longSummary, undefined)
   }
   // The operation summary still has it.
-  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**40m**: 1 — SSB 1\n**20m**: 1 — CW 1")
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**40m**: 1 SSB\n**20m**: 1 CW")
 })
 
 // Duplicates count toward a band's total: the row is contacts logged, which is
@@ -430,7 +511,7 @@ test("scoreQsos: the sideband spellings are one mode worked, in the count and th
     ctxWithLog([]),
   )
   assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 1 Mode")
-  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 3 — SSB 3")
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 3 SSB")
 
   // The CHECKPOINT, not just what was rendered from it. This is the object
   // cached on the operation and resumed from on the next append, so a
@@ -459,7 +540,7 @@ test("scoreQsos: nothing but the sidebands and the alias spellings is combined",
     ctxWithLog([]),
   )
   assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 3 Modes")
-  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 4 — DIGITALVOICE 2, FT4 1, MFSK 1")
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 4 — 2 DIGITALVOICE, 1 FT4, 1 MFSK")
 })
 
 test("scoreQsos: a checkpoint that tallied raw modes still renders folded", async () => {
@@ -487,7 +568,7 @@ test("scoreQsos: a checkpoint that tallied raw modes still renders folded", asyn
   }
   const result = await scoreQsos({ operation: usOp, qsos: [], resumeFrom: rawTally }, ctxWithLog([]))
   assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 1 Mode")
-  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 15 — SSB 15")
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 15 SSB")
 })
 
 test("scoreQsos: a duplicate the tally would call a new mode brings nothing new", async () => {
@@ -524,7 +605,9 @@ test("scoreQsos: a mode of whitespace alone is no mode at all", async () => {
   assert.deepEqual(sheet.modes, { SSB: 1 })
   assert.equal(result.operationSummary.bandsAndModes.label, "1 Band, 1 Mode")
   // The band still counts the contact — it has a band, it just has no mode.
-  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 2 — SSB 1")
+  // That leaves one mode whose count is NOT the band's, so the total stays:
+  // dropping it here would under-report the band.
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 2 — 1 SSB")
 })
 
 test("scoreQsos: a checkpoint's lower-case and nameless keys migrate too", async () => {
@@ -600,5 +683,5 @@ test("scoreQsos: a duplicate still counts toward its band's row", async () => {
     ctxWithLog([]),
   )
   assert.equal(result.qsoScores.q2.dupe, true)
-  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 2 — CW 2")
+  assert.equal(result.operationSummary.bandsAndModes.longSummary, "**20m**: 2 CW")
 })

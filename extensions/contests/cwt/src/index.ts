@@ -39,7 +39,7 @@ import type {
 import { tFor } from "./i18n.ts"
 import { NUMBER_PATTERN, firstName, guessedName, guessedQth, normalizeNumber, ourExchange } from "./exchange.ts"
 import { type CwtSession, relevanceFor, sessionAtHand, sessionDateLabel, sessionFor, sessionShortLabel, sessionsFrom } from "./schedule.ts"
-import { CWTScorer } from "./scorer.ts"
+import { CWTScorer, contestTitle } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -310,7 +310,7 @@ const RefHandler = {
     const session = sessionFor(ref.ref)
     const { name, number } = ourExchange(ref as Record<string, JSONValue>)
     return {
-      for: session ? sessionShortLabel(session) : manifest.shortName,
+      for: contestTitle(ref as Record<string, JSONValue>),
       subtitle: name || number ? tFor(ctx)("ourExchangeSubtitle", { name, number }) : undefined,
     }
   },

@@ -27,7 +27,7 @@ import type {
 } from "@ham2k/extension-sdk"
 
 import { tFor } from "./i18n.ts"
-import { CQWPXScorer } from "./scorer.ts"
+import { contestTitle, CQWPXScorer } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -184,9 +184,8 @@ const RefHandler = {
   /// "KI2D for CQWPX CW", subtitled with what the exchange is — unlike CQ WW's
   /// zone there is no fixed value to show, since the number changes every QSO.
   async suggestOperationTitle({ ref }: { ref: Ref }, ctx: HookContext) {
-    const mode = str((ref as Record<string, JSONValue>).mode)
     return {
-      for: ["CQWPX", mode].filter((x) => x).join(" "),
+      for: contestTitle(ref as Record<string, JSONValue>),
       subtitle: tFor(ctx)("serialSubtitle"),
     }
   },

@@ -1,6 +1,6 @@
 {
   "key": "pga",
-  "name": "Polish Gmina Award",
+  "name": "PGA: Polish Gmina Award",
   "shortName": "PGA",
   "version": "0.0.1",
   "description": "Polish gmina references and activation logging",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "map-outline",
   "accentColor": "#B03A48",
-  "keywords": ["gmina", "poland", "activation"],
+  "keywords": ["gmina", "poland", "activation", "pga"],
   "relevance": {
     "entities": ["SP"]
   },

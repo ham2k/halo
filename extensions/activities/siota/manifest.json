@@ -1,6 +1,6 @@
 {
   "key": "siota",
-  "name": "Silos on the Air",
+  "name": "SiOTA: Silos on the Air",
   "shortName": "SiOTA",
   "version": "0.0.1",
   "description": "Silo references, activation and chasing",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "silo",
   "accentColor": "#B08C4F",
-  "keywords": ["silos", "australia", "activation", "chasing"],
+  "keywords": ["silos", "australia", "activation", "chasing", "siota"],
   "relevance": {
     "entities": ["VK"]
   },

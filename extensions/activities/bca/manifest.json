@@ -1,6 +1,6 @@
 {
   "key": "bca",
-  "name": "Belgium Castles & Fortresses",
+  "name": "BCA: Belgium Castles & Fortresses",
   "shortName": "BCA",
   "version": "0.0.1",
   "description": "Belgian castle references, activation logging, and self-spotting",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "castle",
   "accentColor": "#7B5E3B",
-  "keywords": ["castles", "fortresses", "belgium", "activation"],
+  "keywords": ["castles", "fortresses", "belgium", "activation", "bca"],
   "relevance": {
     "entities": ["ON"]
   },

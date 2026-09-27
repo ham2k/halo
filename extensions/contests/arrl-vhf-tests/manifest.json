@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "radio-tower",
   "accentColor": "#1565C0",
-  "keywords": ["contest", "vhf", "uhf", "grid", "distance", "cabrillo"],
+  "keywords": ["contest", "vhf", "uhf", "grid", "distance", "cabrillo", "arrl vhf", "arrlvhf"],
   "relevance": {
     "continents": ["NA"]
   },

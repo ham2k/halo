@@ -137,8 +137,8 @@ $ halo-ext score summaries --md --key core --qson mylog.qson
 |---|---:|---|
 | `qsoCount` | 44 | 44 QSOs |
 | `dxcc` | 4 | 4 DXCC Entities · entities: K 35, HI 7, HK 1, KP4 1 |
-| `bandsAndModes` | 1 | **20m**: 44 — SSB 44 |
-| `statesAndProvinces` | 15 | 15 States · states: NC 8, VA 6, GA 2, … |
+| `bandsAndModes` | 1 | **20m**: 44 SSB |
+| `statesAndProvinces` | 15 | 15 US States · states: NC 8, VA 6, GA 2, … |
 ```
 
 Without `--key` each scorer's section is printed under its own `## \`key\``

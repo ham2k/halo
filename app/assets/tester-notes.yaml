@@ -4,6 +4,11 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+"upcoming":
+  changes:
+    - "Multi-op operations list each operator's band and mode counts"
+    - "Contest summaries show the contest name, score and its arithmetic"
+
 "175":
   changes:
     - "New Postcard pages carry your operation's stats and scores after the map"

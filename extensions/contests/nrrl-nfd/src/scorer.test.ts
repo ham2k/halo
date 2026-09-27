@@ -179,6 +179,8 @@ describe("NFDScorer multipliers", () => {
     const summary = NFDScorer.summarizeScore({ scoresheet: sheet, operation: {}, scope: "operation" }, {} as never)
     // 6 points × 3 mults, no bonuses claimed.
     assert.equal(summary.contest.total, 18)
+    assert.equal(summary.contest.label, "NFD: 18 points")
+    assert.equal((summary.contest.longSummary as string).split("\n")[0], "3 QSOs, 6 pts × 3 mults")
   })
 })
 
@@ -225,15 +227,23 @@ describe("bonusPoints", () => {
 })
 
 describe("NFDScorer bonuses in the score", () => {
-  it("adds the bonus to the operation total but never to a day", () => {
+  it("adds the bonus to the total, and keeps it apart in the arithmetic", () => {
     const ref = { ref: "2026", bonusReport: true }
     const { sheet } = run([{ call: "DL1AAA" }], { ref })
     const operation = NFDScorer.summarizeScore({ scoresheet: sheet, operation: {}, ref, scope: "operation" }, {} as never)
-    const day = NFDScorer.summarizeScore({ scoresheet: sheet, operation: {}, ref, scope: "day" }, {} as never)
     // 1 point x 1 mult, plus the 10,000 report bonus.
     assert.equal(operation.contest.total, 10001)
-    // A two-day contest would otherwise claim the whole bonus twice.
-    assert.equal(day.contest.total, 1)
+    // The bonus can be most of the score; folded in, the operator could not
+    // tell what the contacts themselves earned.
+    assert.equal((operation.contest.longSummary as string).split("\n")[0], "1 QSO, 1 pt × 1 mult + 10,000 bonus")
+  })
+
+  // Multipliers and bonuses belong to the whole entry, so a day's share of
+  // the score is not a number the contest defines.
+  it("offers no per-day summary", () => {
+    const ref = { ref: "2026", bonusReport: true }
+    const { sheet } = run([{ call: "DL1AAA" }], { ref })
+    assert.deepEqual(NFDScorer.summarizeScore({ scoresheet: sheet, operation: {}, ref, scope: "day" }, {} as never), {})
   })
 
   it("latches the bonus at the start of the fold, not from the ref at summary time", () => {

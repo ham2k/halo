@@ -1,6 +1,6 @@
 {
   "key": "eca",
-  "name": "English Castles Awards",
+  "name": "ECA: English Castles Awards",
   "shortName": "ECA",
   "version": "0.0.1",
   "description": "English castle references, activation logging, and self-spotting",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "castle",
   "accentColor": "#7B5E3B",
-  "keywords": ["castles", "england", "activation"],
+  "keywords": ["castles", "england", "activation", "eca"],
   "relevance": {
     "entities": ["G"]
   },

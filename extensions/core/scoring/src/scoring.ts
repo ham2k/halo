@@ -25,6 +25,7 @@
 // tsc/esbuild-only bare specifier). `index.ts` keeps the alias for
 // `defineExtension` and is the one module the tests don't import.
 
+import { baseCallOf } from "../../../sdk/src/callsigns.ts"
 import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
 import { createCachedTranslator, createTranslator } from "../../../sdk/src/i18n.ts"
 import { canonicalMode, modesMatchForDupe } from "../../../sdk/src/modes.ts"
@@ -80,6 +81,11 @@ export type CoreScoresheet = {
   /// our own station is North American (see [tracksStatesAndProvinces]).
   states: Record<string, number>
   provinces: Record<string, number>
+  /// Explicit operator (`our.operatorCall`, as [operatorKeyOf] keys it) → that
+  /// operator's own share of the band tallies above. A contact with no
+  /// operator belongs to no one here rather than to the station call, so the
+  /// operators' numbers need not add up to the operation's.
+  operators: Record<string, OperatorTally>
   /// Our own DXCC entity prefix and the station call it came from, resolved
   /// once and kept here so the fold doesn't re-annotate it per QSO. The call is
   /// stored WITH it because a checkpoint outlives the operation setup it was
@@ -94,6 +100,12 @@ export type CoreScoresheet = {
   dayQsos: number
   dayPoints: number
   dayDuplicates: number
+}
+
+export type OperatorTally = {
+  qsos: number
+  bands: Record<string, number>
+  bandModes: Record<string, Record<string, number>>
 }
 
 /// US states and Canadian provinces, ported from web-lofi's
@@ -210,6 +222,7 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
       bandModes: {},
       states: {},
       provinces: {},
+      operators: {},
       qsos: 0,
       points: 0,
       duplicates: 0,
@@ -244,6 +257,7 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
     }
     base.states ??= {}
     base.provinces ??= {}
+    base.operators ??= {}
     base.bandModes ??= {}
     base.bands ??= {}
     base.modes ??= {}
@@ -333,19 +347,21 @@ export const CoreScorer: ContestScorer<CoreScoresheet> = {
       else base.workedByCall[call] = [bandMode]
     }
     if (entityPrefix) base.entities[entityPrefix] = (base.entities[entityPrefix] ?? 0) + 1
-    if (band) base.bands[band] = (base.bands[band] ?? 0) + 1
+    tallyBandMode(base, band, tallyMode)
     // Keyed on `tallyMode`, so guarded on it too: `str` does not trim, so a
     // mode of whitespace alone is truthy and canonicalizes to nothing, and a
     // nameless key is a phantom mode in the count and a blank entry in the
     // breakdown.
     if (tallyMode) base.modes[tallyMode] = (base.modes[tallyMode] ?? 0) + 1
-    if (band && tallyMode) {
-      const byMode = (base.bandModes[band] ??= {})
-      byMode[tallyMode] = (byMode[tallyMode] ?? 0) + 1
-    }
     if (stateWorked?.kind === "state") base.states[stateWorked.code] = (base.states[stateWorked.code] ?? 0) + 1
     if (stateWorked?.kind === "province") {
       base.provinces[stateWorked.code] = (base.provinces[stateWorked.code] ?? 0) + 1
+    }
+    const operator = operatorKeyOf(str(((qso.our as Record<string, JSONValue>) ?? {}).operatorCall))
+    if (operator) {
+      const tally = (base.operators[operator] ??= { qsos: 0, bands: {}, bandModes: {} })
+      tally.qsos += 1
+      tallyBandMode(tally, band, tallyMode)
     }
     base.qsos += 1
     base.points += points
@@ -387,9 +403,33 @@ function summarizeQsoCount(sheet: CoreScoresheet, isDay: boolean, t: Translator)
     total,
     count: isDay ? sheet.dayQsos : sheet.qsos,
     duplicates: isDay ? sheet.dayDuplicates : sheet.duplicates,
-    label: total === 1 ? t("oneQso") : t("manyQsos", { formatted: fmtInteger(total) }),
+    label: qsosLabel(total, t),
     summary: fmtInteger(total),
   }
+}
+
+function qsosLabel(count: number, t: Translator): string {
+  return count === 1 ? t("oneQso") : t("manyQsos", { formatted: fmtInteger(count) })
+}
+
+/// Counts one contact into a band total and its band → mode split — the
+/// operation's own tally and each operator's alike, so the two cannot drift.
+function tallyBandMode(target: Pick<CoreScoresheet, "bands" | "bandModes">, band: string, tallyMode: string): void {
+  if (band) target.bands[band] = (target.bands[band] ?? 0) + 1
+  if (band && tallyMode) {
+    const byMode = (target.bandModes[band] ??= {})
+    byMode[tallyMode] = (byMode[tallyMode] ?? 0) + 1
+  }
+}
+
+/// The operator a contact is credited to: its base call, so `DL1ABC/P` and
+/// `DL1ABC` are one operator rather than turning a solo operation into a
+/// multi-op one. Anything but letters, digits and `/` is dropped — the key is
+/// printed inside a markdown heading, where a stray `**` or `~~` restyles
+/// the lines after it. Undefined when nothing is left.
+function operatorKeyOf(operatorCall: string | undefined): string | undefined {
+  if (!operatorCall) return undefined
+  return baseCallOf(operatorCall).replace(/[^A-Z0-9/]/g, "") || undefined
 }
 
 function summarizeDxcc(sheet: CoreScoresheet, t: Translator): ScoreTally {
@@ -409,8 +449,10 @@ function summarizeDxcc(sheet: CoreScoresheet, t: Translator): ScoreTally {
 
 /// Flag, name and (when worked more than once) contact count for every entity
 /// worked, busiest first. `\u00A0` inside an entry keeps its flag/name/count
-/// together on wrap; the plain space between entries is where the markdown
-/// renderer is free to break the line.
+/// together on wrap; each entry ends in two `\u00A0` to set it apart from the
+/// next, and the plain space after them is where the markdown renderer is free
+/// to break the line — the non-breaking pair then trails the wrapped line
+/// instead of indenting the next one.
 ///
 /// `entityPrefixForCall` resolves against the BIGCTY country file;
 /// `DXCC_BY_PREFIX` is `@ham2k/lib-dxcc-data`'s own, separately-maintained
@@ -427,7 +469,7 @@ export function dxccBreakdown(entities: Record<string, number>): string {
       const label = entity ? `${entity.flag}\u00A0${entity.name.split(" ").join("\u00A0")}` : prefix
       return `${label}${countTxt}`
     })
-    .join(" ")
+    .join("\u00A0\u00A0 ")
 }
 
 /// A mode tally re-keyed through [canonicalMode], merging the counts that
@@ -499,8 +541,36 @@ function summarizeBandsAndModes(sheet: CoreScoresheet, t: Translator, isDay: boo
     // Operation scope only. `bands`/`bandModes` carry across the whole
     // operation (`for: 'operation'` says so), so a breakdown attached to a day
     // section would read as that day's while holding operation-to-date numbers.
-    ...(isDay ? {} : { longSummary: bandBreakdown(sheet) }),
+    ...(isDay ? {} : { longSummary: bandsAndOperatorsBreakdown(sheet, t) }),
   }
+}
+
+/// The lib types its list as a union of the band names it knows, which a log's
+/// free-form band string is not — compared as plain strings here.
+const BAND_PLAN_ORDER: string[] = [...EXTENDED_BANDS]
+
+/// Four `\u00A0`, which markdown keeps where it strips plain leading spaces.
+const INDENT = "\u00A0".repeat(4)
+
+/// The operation's [bandLines] alone while at most one operator is named.
+/// With two or more, an `Overall` block and then one block per operator,
+/// busiest first, each a bold heading with its contact count over its band
+/// lines, indented.
+function bandsAndOperatorsBreakdown(sheet: CoreScoresheet, t: Translator): string {
+  const operators = Object.entries(sheet.operators ?? {})
+  if (operators.length < 2) return bandLines(sheet.bands, sheet.bandModes).join("\n")
+
+  const block = (heading: string, count: number, lines: string[]) =>
+    [`**${heading}**: ${qsosLabel(count, t)}`, ...lines.map((line) => INDENT + line)].join("\n")
+
+  return [
+    block(t("overall"), sheet.qsos, bandLines(sheet.bands, sheet.bandModes)),
+    ...operators
+      // Count first, then call — so two operators tied don't swap places
+      // between renders of the same log.
+      .sort((a, b) => b[1].qsos - a[1].qsos || a[0].localeCompare(b[0]))
+      .map(([call, tally]) => block(call, tally.qsos, bandLines(tally.bands, tally.bandModes))),
+  ].join("\n\n")
 }
 
 /// One line per band WORKED, in band-plan order: the band's contacts, then how
@@ -510,29 +580,28 @@ function summarizeBandsAndModes(sheet: CoreScoresheet, t: Translator, isDay: boo
 /// A band's total is CONTACTS LOGGED on it — duplicates included, matching the
 /// stats block's own QSO count rather than the score, which drops them. It also
 /// counts any contact with no mode at all, which has no mode column to sit in,
-/// so the mode numbers need not add up to the total. Rendered as markdown by
-/// the information panel, which joins these single newlines with
-/// `softLineBreak`.
-function bandBreakdown(sheet: CoreScoresheet): string {
-  const worked = Object.keys(sheet.bands ?? {})
+/// so the mode numbers need not add up to the total. A band whose contacts
+/// all sit in one mode drops the total, which would only repeat that mode's
+/// count — but keeps it when mode-less contacts make the two differ. Rendered
+/// as markdown by the information panel, which joins these lines' single
+/// newlines with `softLineBreak`.
+function bandLines(bands: Record<string, number> | undefined, bandModes: Record<string, Record<string, number>> | undefined): string[] {
+  const worked = Object.keys(bands ?? {})
   // A band the lib doesn't list still gets a row, after the ones it does —
   // dropping a worked band would silently under-report the operation.
-  // The lib types its list as a union of the band names it knows, which a
-  // log's free-form band string is not — compared as plain strings here.
-  const bandPlanOrder: string[] = [...EXTENDED_BANDS]
-  const ordered = [...bandPlanOrder.filter((band) => worked.includes(band)), ...worked.filter((band) => !bandPlanOrder.includes(band)).sort()]
+  const ordered = [...BAND_PLAN_ORDER.filter((band) => worked.includes(band)), ...worked.filter((band) => !BAND_PLAN_ORDER.includes(band)).sort()]
 
-  return ordered
-    .map((band) => {
-      const total = fmtInteger(sheet.bands[band] ?? 0)
-      const byMode = Object.entries(foldedModeTally(sheet.bandModes?.[band]))
-        // Count first, then mode name — so two modes tied at 3 don't swap
-        // places between renders of the same log.
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .map(([mode, count]) => `${mode} ${fmtInteger(count)}`)
-      return byMode.length > 0 ? `**${band}**: ${total} — ${byMode.join(", ")}` : `**${band}**: ${total}`
-    })
-    .join("\n")
+  return ordered.map((band) => {
+    const total = bands?.[band] ?? 0
+    const byMode = Object.entries(foldedModeTally(bandModes?.[band]))
+      // Count first, then mode name — so two modes tied at 3 don't swap
+      // places between renders of the same log.
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    const modes = byMode.map(([mode, count]) => `${fmtInteger(count)} ${mode}`).join(", ")
+    if (byMode.length === 0) return `**${band}**: ${fmtInteger(total)}`
+    if (byMode.length === 1 && byMode[0][1] === total) return `**${band}**: ${modes}`
+    return `**${band}**: ${fmtInteger(total)} — ${modes}`
+  })
 }
 
 /// Undefined until something has actually been worked, which for a DX operator

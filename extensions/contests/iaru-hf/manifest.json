@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "earth",
   "accentColor": "#1B5E9E",
-  "keywords": ["contest", "iaru", "zone", "hq", "cabrillo"],
+  "keywords": ["contest", "iaru", "zone", "hq", "cabrillo", "iaru hf", "iaruhf"],
   "hooks": ["activity", "adifFields", "export", "ref:iaru-hf", "scoring"],
   "translations": {
     "es": {

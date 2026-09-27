@@ -36,7 +36,7 @@ Operation _operation() => Operation(
             'label': '3 DXCC Entities',
             'entities': {'K': 5, 'DL': 4, 'JA': 3},
           },
-          'bandsAndModes': {'key': 'bandsAndModes', 'total': 4, 'label': '2 Bands, 2 Modes', 'longSummary': '**80m**: 2 — SSB 2\n**30m**: 10 — CW 6, SSB 4'},
+          'bandsAndModes': {'key': 'bandsAndModes', 'total': 4, 'label': '2 Bands, 2 Modes', 'longSummary': '**80m**: 2 SSB\n**30m**: 10 — 6 CW, 4 SSB'},
         },
       },
       'cqww': {
@@ -141,7 +141,7 @@ void main() {
     await _pump(tester, _operation());
 
     final markdown = tester.widgetList<MarkdownBody>(find.byType(MarkdownBody));
-    expect(markdown.any((m) => m.data.contains('**30m**: 10 — CW 6, SSB 4')), isTrue);
+    expect(markdown.any((m) => m.data.contains('**30m**: 10 — 6 CW, 4 SSB')), isTrue);
   });
 
   testWidgets('a tally with no longSummary keeps its score badge', (tester) async {

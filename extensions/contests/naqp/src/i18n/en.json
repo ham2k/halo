@@ -13,5 +13,11 @@
   "adifExport": "ADIF for {{contest}}",
   "cabrilloExport": "Cabrillo for {{contest}}",
   "ourExchangeSubtitle": "{{name}} in {{location}}",
-  "notConfigured": "Not configured!"
+  "notConfigured": "Not configured!",
+  "stateOne": "1 state",
+  "stateMany": "{{formatted}} states",
+  "provinceOne": "1 province",
+  "provinceMany": "{{formatted}} provinces",
+  "countryOne": "1 country",
+  "countryMany": "{{formatted}} countries"
 }

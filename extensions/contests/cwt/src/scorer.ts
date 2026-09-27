@@ -16,7 +16,10 @@
 // place for all of them rather than in this one scorer.
 
 import { fmtInteger } from "@ham2k/lib-format-tools"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
+
+import { sessionFor, sessionShortLabel } from "./schedule.ts"
 
 export const VALID_BANDS = ["160m", "80m", "40m", "20m", "15m", "10m"]
 
@@ -27,8 +30,6 @@ export type CwtScoresheet = {
   bands: Record<string, number>
   qsos: number
   points: number
-  dayQsos: number
-  dayPoints: number
 }
 
 function str(value: JSONValue | undefined): string {
@@ -37,16 +38,12 @@ function str(value: JSONValue | undefined): string {
 
 export const CWTScorer: ContestScorer<CwtScoresheet> = {
   startScoresheet(): CwtScoresheet {
-    return { workedByCall: {}, bands: {}, qsos: 0, points: 0, dayQsos: 0, dayPoints: 0 }
+    return { workedByCall: {}, bands: {}, qsos: 0, points: 0 }
   },
 
   // Mutates and returns the given scoresheet — see ContestScorer.scoreQso.
-  scoreQso({ scoresheet, qso, isNewDay }) {
+  scoreQso({ scoresheet, qso }) {
     const base = scoresheet
-    if (isNewDay) {
-      base.dayQsos = 0
-      base.dayPoints = 0
-    }
 
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
@@ -82,37 +79,35 @@ export const CWTScorer: ContestScorer<CwtScoresheet> = {
     base.bands[band] = (base.bands[band] ?? 0) + 1
     base.qsos += 1
     base.points += 1
-    base.dayQsos += 1
-    base.dayPoints += 1
 
     const score: QsoScoreVerdict = { value: 1, band }
     if (notices.length > 0) score.notices = notices
     return { scoresheet: base, score }
   },
 
-  summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === "day"
+  summarizeScore({ scoresheet, ref, scope }, ctx) {
     const mults = Object.keys(scoresheet.workedByCall).length
-    const points = isDay ? scoresheet.dayPoints : scoresheet.points
-    // Multipliers are counted over the whole log, so a day's "score" is its
-    // own points against the running multiplier count.
-    const total = points * mults
-
-    return {
-      cwt: {
+    return contestSummary(
+      {
         key: "cwt",
-        for: scope,
+        scope,
         icon: "clock-fast",
-        total,
-        points,
-        mults,
-        qsos: isDay ? scoresheet.dayQsos : scoresheet.qsos,
-        label: `${fmtInteger(points)} × ${fmtInteger(mults)}`,
-        summary: `${fmtInteger(total)}`,
-        longSummary: bandBreakdown(scoresheet),
+        title: contestTitle(ref),
+        total: scoresheet.points * mults,
+        arithmetic: contestArithmetic({ qsos: scoresheet.qsos, points: scoresheet.points, mults }, ctx),
+        detail: bandBreakdown(scoresheet),
+        extra: { points: scoresheet.points, mults, qsos: scoresheet.qsos },
       },
-    }
+      ctx,
+    )
   },
+}
+
+/// "CWT 1300z" — the name the operation's title gives the session, which its
+/// summary repeats.
+export function contestTitle(ref: Record<string, JSONValue> | undefined): string {
+  const session = sessionFor(str(ref?.ref))
+  return session ? sessionShortLabel(session) : "CWT"
 }
 
 /// QSOs per band — the multiplier is a single whole-log number, so unlike CQ

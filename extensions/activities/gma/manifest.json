@@ -1,6 +1,6 @@
 {
   "key": "gma",
-  "name": "Global Mountain Activity",
+  "name": "GMA: Global Mountain Activity",
   "shortName": "GMA",
   "version": "0.0.1",
   "description": "Summit references, activation and chasing, and spotting",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "summit",
   "accentColor": "#6B7F4B",
-  "keywords": ["summits", "mountains", "activation", "chasing"],
+  "keywords": ["summits", "mountains", "activation", "chasing", "gma"],
   "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:gma", "ref:gmaActivation", "spots"],
   "domains": ["www.cqgma.org"],
   "translations": {

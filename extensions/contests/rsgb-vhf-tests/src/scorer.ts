@@ -15,7 +15,8 @@
 // duplicate (rejected earlier, before bonuses are considered) never
 // contributes one.
 
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
 import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { distanceForRegion1VHFContests } from "@ham2k/lib-geo-tools"
@@ -24,6 +25,8 @@ import { RSGB_POSTCODE_DISTRICTS } from "./districts.ts"
 import { eventFor, hasDistrictExchange } from "./events.ts"
 import { trimmedGrid } from "./exchange.ts"
 import { BAND_MULTIPLIERS } from "../../r1-vhf-tests/src/scorer.ts"
+
+import manifest from "../manifest.json" with { type: "json" }
 
 export type RSGBVHFScoresheet = {
   worked: Record<string, string[]>
@@ -34,9 +37,6 @@ export type RSGBVHFScoresheet = {
   distanceTotal: number
   maxDistance: number
   maxDistancePerBand: Record<string, number>
-  dupeCount: number
-  dayQsos: number
-  dayPoints: number
   gridsSeen: Record<string, true>
   districtsSeen: Record<string, true>
   entitiesSeen: Record<string, true>
@@ -57,21 +57,14 @@ export const RSGBVHFScorer: ContestScorer<RSGBVHFScoresheet> = {
       distanceTotal: 0,
       maxDistance: 0,
       maxDistancePerBand: {},
-      dupeCount: 0,
-      dayQsos: 0,
-      dayPoints: 0,
       gridsSeen: {},
       districtsSeen: {},
       entitiesSeen: {},
     }
   },
 
-  scoreQso({ scoresheet, qso, operation, ref, isNewDay }) {
+  scoreQso({ scoresheet, qso, operation, ref }) {
     const base = scoresheet
-    if (isNewDay) {
-      base.dayQsos = 0
-      base.dayPoints = 0
-    }
 
     const event = eventFor(str(ref?.ref))
     if (!event) return { scoresheet: base, score: { value: 0 } }
@@ -99,7 +92,6 @@ export const RSGBVHFScorer: ContestScorer<RSGBVHFScoresheet> = {
     const key = `${call}|${band}|${ourGrid}`
     const priorGrids = base.worked[key] ?? []
     if (priorGrids.includes(theirGrid)) {
-      base.dupeCount += 1
       return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
@@ -114,8 +106,6 @@ export const RSGBVHFScorer: ContestScorer<RSGBVHFScoresheet> = {
     base.bands[band] = (base.bands[band] ?? 0) + 1
     base.qsos += 1
     base.points += value
-    base.dayQsos += 1
-    base.dayPoints += value
     base.distanceTotal += distance
     base.maxDistance = Math.max(base.maxDistance, distance)
     base.maxDistancePerBand[band] = Math.max(base.maxDistancePerBand[band] ?? 0, distance)
@@ -156,18 +146,7 @@ export const RSGBVHFScorer: ContestScorer<RSGBVHFScoresheet> = {
     return { scoresheet: base, score }
   },
 
-  summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === "day"
-    const points = isDay ? scoresheet.dayPoints : scoresheet.points
-    const qsos = isDay ? scoresheet.dayQsos : scoresheet.qsos
-    // Bonuses accumulate for the whole operation only — RSGB's rules award
-    // them once per contest, not once per day of a multi-day event.
-    const total = points + (isDay ? 0 : scoresheet.bonus)
-
-    const summary = scoresheet.bonus
-      ? `${fmtInteger(points)} pts + ${fmtInteger(scoresheet.bonus)} bonus = ${fmtInteger(total)} pts`
-      : `${fmtInteger(points)} pts`
-
+  summarizeScore({ scoresheet, ref, scope }, ctx) {
     const bandLines = Object.keys(scoresheet.bands)
       .sort()
       .map((band) => {
@@ -177,19 +156,23 @@ export const RSGBVHFScorer: ContestScorer<RSGBVHFScoresheet> = {
       })
       .filter((line): line is string => line !== null)
 
-    return {
-      "rsgb-vhf-tests": {
+    return contestSummary(
+      {
         key: "rsgb-vhf-tests",
-        for: scope,
+        scope,
         icon: "flag-checkered",
-        total,
-        qsos,
-        summary,
-        longSummary: [
-          summary + (scoresheet.dupeCount > 0 ? ` (${fmtInteger(scoresheet.dupeCount)} dupe${scoresheet.dupeCount > 1 ? "s" : ""})` : ""),
-          ...bandLines,
-        ].join("\n"),
+        title: eventFor(str(ref?.ref))?.short ?? manifest.shortName,
+        // RSGB awards bonuses once per contest, so they sit outside the
+        // distance points in the arithmetic.
+        total: scoresheet.points + scoresheet.bonus,
+        arithmetic: contestArithmetic(
+          { qsos: scoresheet.qsos, points: scoresheet.points, bonus: scoresheet.bonus, more: [`${fmtInteger(scoresheet.distanceTotal)} km`] },
+          ctx,
+        ),
+        detail: bandLines.join("\n"),
+        extra: { qsos: scoresheet.qsos },
       },
-    }
+      ctx,
+    )
   },
 }

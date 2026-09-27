@@ -1,14 +1,15 @@
 {
   "oneQso": "1 QSO",
   "manyQsos": "{{formatted}} QSOs",
+  "overall": "Overall",
   "oneDxccEntity": "1 DXCC Entity",
   "manyDxccEntities": "{{formatted}} DXCC Entities",
   "oneBand": "1 Band",
   "manyBands": "{{n}} Bands",
   "oneMode": "1 Mode",
   "manyModes": "{{n}} Modes",
-  "oneState": "1 State",
-  "manyStates": "{{n}} States",
-  "oneProvince": "1 Province",
-  "manyProvinces": "{{n}} Provinces"
+  "oneState": "1 US State",
+  "manyStates": "{{n}} US States",
+  "oneProvince": "1 Canadian Province",
+  "manyProvinces": "{{n}} Canadian Provinces"
 }

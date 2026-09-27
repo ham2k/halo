@@ -359,45 +359,30 @@ test("an event this build does not know scores nothing, and says why", () => {
   assert.equal(summary().total, 0)
 })
 
-test("a day’s figure is its own points against the running multiplier", () => {
+// Parks and bonuses are won across the whole event, so a day's share of the
+// score is not a number the event defines.
+test("offers no per-day summary", () => {
   const operation = operationFor(TX_A)
   const ref = { type: "stateparks", ref: "TXSP" }
-  let sheet = StateParksScorer.startScoresheet({ operation, ref }, ctx)
-
-  for (const [index, q] of [qso({ mode: "SSB", hunting: [TX_B] }), qso({ call: "K2DEF", mode: "SSB" })].entries()) {
-    sheet = StateParksScorer.scoreQso({ scoresheet: sheet, qso: q, operation, ref, isNewDay: index === 0 }, ctx).scoresheet
-  }
-  const firstDay = StateParksScorer.summarizeScore({ scoresheet: sheet, operation, ref, scope: "day" }, ctx).stateparks
-  assert.equal(firstDay.points, 2)
-
-  // A new day resets the day's points but not the parks or the bonuses.
-  sheet = StateParksScorer.scoreQso({ scoresheet: sheet, qso: qso({ call: "K3GHI", mode: "SSB" }), operation, ref, isNewDay: true }, ctx).scoresheet
-  const secondDay = StateParksScorer.summarizeScore({ scoresheet: sheet, operation, ref, scope: "day" }, ctx).stateparks
-  assert.equal(secondDay.points, 1)
-  assert.equal(secondDay.mults, 1, "the park worked yesterday still multiplies today")
-
-  const whole = StateParksScorer.summarizeScore({ scoresheet: sheet, operation, ref, scope: "operation" }, ctx).stateparks
-  assert.equal(whole.points, 3)
+  const sheet = StateParksScorer.startScoresheet({ operation, ref }, ctx)
+  assert.deepEqual(StateParksScorer.summarizeScore({ scoresheet: sheet, operation, ref, scope: "day" }, ctx), {})
 })
 
-test("a day’s total leaves the event’s bonuses out, so they are not paid twice", () => {
+test("the event's bonuses sit outside the multiplied points in the arithmetic", () => {
   const operation = operationFor(TX_A)
   const ref = { type: "stateparks", ref: "TXSP" }
   let sheet = StateParksScorer.startScoresheet({ operation, ref }, ctx)
 
-  // Ten QSOs on day one, so the park is activated and its 100-point bonus is due.
+  // Ten QSOs, so the park is activated and its 100-point bonus is due.
   for (let i = 0; i < QSOS_TO_ACTIVATE; i++) {
-    sheet = StateParksScorer.scoreQso({ scoresheet: sheet, qso: qso({ call: `K1AB${i}`, mode: "SSB" }), operation, ref, isNewDay: i === 0 }, ctx).scoresheet
+    sheet = StateParksScorer.scoreQso({ scoresheet: sheet, qso: qso({ call: `K1AB${i}`, mode: "SSB" }), operation, ref, isNewDay: false }, ctx).scoresheet
   }
 
-  const day = StateParksScorer.summarizeScore({ scoresheet: sheet, operation, ref, scope: "day" }, ctx).stateparks
   const whole = StateParksScorer.summarizeScore({ scoresheet: sheet, operation, ref, scope: "operation" }, ctx).stateparks
-  // 10 points × 1 multiplier, and the bonus counted ONCE, at the operation level.
-  assert.equal(day.total, 10)
+  // 10 points × 1 multiplier, and the bonus counted once, on top.
   assert.equal(whole.total, 110)
-  // A second day would otherwise add the same 100 again.
-  assert.match(String(whole.label), /\+ 100$/)
-  assert.equal(day.label, "10 × 1")
+  assert.equal(whole.label, "TX SP: 110 points")
+  assert.equal(String(whole.longSummary).split("\n")[0], "10 QSOs, 10 pts × 1 mult (1 park activated) + 100 bonus")
 })
 
 test("Texas’s power class ADDS to the multiplier sum, where the event has one", () => {
@@ -412,7 +397,8 @@ test("Texas’s power class ADDS to the multiplier sum, where the event has one"
   assert.equal(run(hunt, { ourPower: "QRP" }).summary().total, 4) // 1 × (3 + 1)
   assert.equal(run(hunt, { ourPower: "LP" }).summary().total, 3) // 1 × (2 + 1)
   assert.equal(run(hunt, { ourPower: "HP" }).summary().total, 2) // 1 × (1 + 1)
-  assert.equal(run(hunt, { ourPower: "QRP" }).summary().label, "1 × 4")
+  // The power class is a KIND of multiplier the arithmetic names beside the parks.
+  assert.equal(String(run(hunt, { ourPower: "QRP" }).summary().longSummary).split("\n")[0], "1 QSO, 1 pt × 4 mults (1 park worked, 3 power)")
   // Not one of the classes Texas publishes: no term, rather than a term of its
   // own invention.
   assert.equal(run(hunt, { ourPower: "MEDIUM" }).summary().total, 1)

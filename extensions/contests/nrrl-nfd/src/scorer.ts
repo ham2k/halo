@@ -26,7 +26,8 @@
 // rules encoded here are worth testing more than the summary is worth
 // translating, so the breakdown below stays in language-neutral numbers, as
 // `cqwpx` and `r1-fd` do.
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { superModeForMode } from "@ham2k/lib-operation-data"
 
@@ -83,8 +84,6 @@ export type NFDScoresheet = {
   byMode: Record<string, number>
   qsos: number
   points: number
-  dayQsos: number
-  dayPoints: number
   /// The bonuses as they stood while these QSOs were scored.
   ///
   /// Latched during the fold rather than read off `ref` in `summarizeScore`,
@@ -158,19 +157,13 @@ export const NFDScorer: ContestScorer<NFDScoresheet> = {
       byMode: {},
       qsos: 0,
       points: 0,
-      dayQsos: 0,
-      dayPoints: 0,
       bonus: bonusPoints(ref),
     }
   },
 
   // Mutates and returns the given scoresheet — see ContestScorer.scoreQso.
-  scoreQso({ scoresheet, qso, isNewDay }) {
+  scoreQso({ scoresheet, qso }) {
     const base = scoresheet
-    if (isNewDay) {
-      base.dayQsos = 0
-      base.dayPoints = 0
-    }
 
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
@@ -226,8 +219,6 @@ export const NFDScorer: ContestScorer<NFDScoresheet> = {
     base.byMode[mode] = (base.byMode[mode] ?? 0) + 1
     base.qsos += 1
     base.points += points
-    base.dayQsos += 1
-    base.dayPoints += points
 
     const score: QsoScoreVerdict = { value: points, band }
     if (isNewMult) score.notices = ["newMult"]
@@ -236,57 +227,39 @@ export const NFDScorer: ContestScorer<NFDScoresheet> = {
     return { scoresheet: base, score }
   },
 
-  summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === "day"
-    const multCount = Object.keys(scoresheet.mults).length
-    const points = isDay ? scoresheet.dayPoints : scoresheet.points
-    const qsos = isDay ? scoresheet.dayQsos : scoresheet.qsos
-    // Bonuses are claimed once for the whole entry, so they belong to the
-    // operation total and are left out of a day's figure rather than being
-    // re-added to each one — the rule `fd` and `stateparks` both follow.
-    const bonus = isDay ? 0 : scoresheet.bonus
-
-    // ASSUMPTION, and the one number here the rules do not settle: they define
-    // the HF score ("summen av alle poeng, multiplisert med summen av alle
-    // multiplikatorer ... blir total HF-poengsum") and define the bonuses, but
-    // never say how the two combine. Added, which is what every other field
-    // day does and what "total HF-poengsum" implies by naming only the HF
-    // half. Worth re-checking against a published result before anyone
-    // submits on the strength of this figure.
-    const total = points * multCount + bonus
-
-    return {
-      contest: {
-        key: TYPE,
-        for: scope,
-        // Without an icon the day-header renderer drops the whole badge, not
-        // just the glyph (qso_list.dart).
+  summarizeScore({ scoresheet, scope }, ctx) {
+    const mults = Object.keys(scoresheet.mults).length
+    return contestSummary(
+      {
+        // `contest`, as before: saved postcard sections are keyed by it.
+        key: "contest",
+        scope,
         icon: "pine-tree",
-        total,
-        points,
-        mults: multCount,
-        qsos,
-        label: `${fmtInteger(points)} × ${fmtInteger(multCount)}`,
-        summary: `${fmtInteger(total)}`,
-        // Spelled out because an operator checking a claimed score wants the
-        // arithmetic, not just the answer — and here the bonus can be most of
-        // it, so folding it into one total would be actively confusing.
-        longSummary: breakdown(scoresheet, points, multCount, bonus),
+        title: "NFD",
+        // ASSUMPTION, and the one number here the rules do not settle: they
+        // define the HF score ("summen av alle poeng, multiplisert med summen
+        // av alle multiplikatorer ... blir total HF-poengsum") and define the
+        // bonuses, but never say how the two combine. Added, which is what
+        // every other field day does and what "total HF-poengsum" implies by
+        // naming only the HF half. Worth re-checking against a published
+        // result before anyone submits on the strength of this figure.
+        total: scoresheet.points * mults + scoresheet.bonus,
+        // Here the bonus can be most of the score, so the arithmetic keeps it
+        // apart from the points rather than folding it into one figure.
+        arithmetic: contestArithmetic({ qsos: scoresheet.qsos, points: scoresheet.points, mults, bonus: scoresheet.bonus }, ctx),
+        detail: breakdown(scoresheet),
+        extra: { points: scoresheet.points, mults, qsos: scoresheet.qsos },
       },
-    }
+      ctx,
+    )
   },
 }
 
-/// The arithmetic, then the per-band table and the per-mode split — with
-/// multipliers counted per band AND mode, what tells an operator where the
-/// score is left is which combinations are thin.
-function breakdown(sheet: NFDScoresheet, points: number, mults: number, bonus: number): string {
+/// The per-band table and the per-mode split — with multipliers counted per
+/// band AND mode, what tells an operator where the score is left is which
+/// combinations are thin.
+function breakdown(sheet: NFDScoresheet): string {
   const lines: string[] = []
-  if (bonus > 0) {
-    lines.push(`**${fmtInteger(points)} × ${fmtInteger(mults)} + ${fmtInteger(bonus)} bonus**`)
-    lines.push("")
-  }
-
   lines.push(
     ...VALID_BANDS.map((band) => {
       const bandQsos = sheet.bands[band] ?? 0

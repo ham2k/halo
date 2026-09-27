@@ -58,5 +58,14 @@
   "overlayNOVICE-TECH": "Novice / Technician",
   "overlayNEW-CONTESTER": "Nuevo concursante",
   "overlayTB-WIRES": "Tribanda / hilos",
-  "overlayPOTA": "POTA"
+  "overlayPOTA": "POTA",
+  "multStateOne": "1 estado",
+  "multStateMany": "{{formatted}} estados",
+  "multProvinceOne": "1 provincia",
+  "multProvinceMany": "{{formatted}} provincias",
+  "multSectionOne": "1 sección",
+  "multSectionMany": "{{formatted}} secciones",
+  "multDxOne": "1 DX",
+  "multDxMany": "{{formatted}} DX",
+  "powerFactor": "potencia"
 }

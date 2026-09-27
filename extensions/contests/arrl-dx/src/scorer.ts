@@ -17,7 +17,8 @@
 // who we may work and what multiplies.
 
 import { fmtInteger } from "@ham2k/lib-format-tools"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
 export const VALID_BANDS = ["160m", "80m", "40m", "20m", "15m", "10m"]
@@ -45,8 +46,6 @@ export type ARRLDXScoresheet = {
   bands: Record<string, number>
   qsos: number
   points: number
-  dayQsos: number
-  dayPoints: number
   /// Whether WE are the W/VE side. Decides who we may work and what multiplies.
   weAreWve: boolean
 }
@@ -84,19 +83,13 @@ export const ARRLDXScorer: ContestScorer<ARRLDXScoresheet> = {
       bands: {},
       qsos: 0,
       points: 0,
-      dayQsos: 0,
-      dayPoints: 0,
       weAreWve: weAreWve(operation, ref),
     }
   },
 
   // Mutates and returns the given scoresheet — see ContestScorer.scoreQso.
-  scoreQso({ scoresheet, qso, ref, isNewDay }) {
+  scoreQso({ scoresheet, qso, ref }) {
     const base = scoresheet
-    if (isNewDay) {
-      base.dayQsos = 0
-      base.dayPoints = 0
-    }
 
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
@@ -145,36 +138,36 @@ export const ARRLDXScorer: ContestScorer<ARRLDXScoresheet> = {
     base.bands[band] = (base.bands[band] ?? 0) + 1
     base.qsos += 1
     base.points += points
-    base.dayQsos += 1
-    base.dayPoints += points
 
     const score: QsoScoreVerdict = { value: points, band }
     if (notices.length > 0) score.notices = notices
     return { scoresheet: base, score }
   },
 
-  summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === "day"
-    const multCount = Object.keys(scoresheet.mults).length
-    const points = isDay ? scoresheet.dayPoints : scoresheet.points
-
-    return {
-      arrlDx: {
+  summarizeScore({ scoresheet, ref, scope }, ctx) {
+    const mults = Object.keys(scoresheet.mults).length
+    return contestSummary(
+      {
         key: "arrlDx",
-        for: scope,
+        scope,
         icon: "flag-variant",
-        total: points * multCount,
-        points,
-        mults: multCount,
-        qsos: isDay ? scoresheet.dayQsos : scoresheet.qsos,
-        label: `${fmtInteger(points)} × ${fmtInteger(multCount)}`,
-        summary: fmtInteger(points * multCount),
-        longSummary: VALID_BANDS.map((band) => {
+        title: contestTitle(ref),
+        total: scoresheet.points * mults,
+        arithmetic: contestArithmetic({ qsos: scoresheet.qsos, points: scoresheet.points, mults }, ctx),
+        detail: VALID_BANDS.map((band) => {
           const qsos = scoresheet.bands[band] ?? 0
           const mults = Object.keys(scoresheet.bandMults[band] ?? {}).length
           return qsos === 0 && mults === 0 ? `**${band}**: —` : `**${band}**: ${fmtInteger(qsos)} QSOs, ${fmtInteger(mults)} mults`
         }).join("\n"),
+        extra: { points: scoresheet.points, mults, qsos: scoresheet.qsos },
       },
-    }
+      ctx,
+    )
   },
+}
+
+/// "ARRL DX CW" — the name the operation's title gives the contest, which its
+/// summary repeats.
+export function contestTitle(ref: Record<string, JSONValue> | undefined): string {
+  return ["ARRL DX", str(ref?.mode)].filter((x) => x).join(" ")
 }

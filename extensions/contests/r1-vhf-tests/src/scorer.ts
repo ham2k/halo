@@ -22,12 +22,15 @@
 // contact. Only a repeat of the exact (call, band, our grid, their grid)
 // tuple is a dupe.
 
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { distanceForRegion1VHFContests } from "@ham2k/lib-geo-tools"
 
 import { eventFor } from "./events.ts"
 import { trimmedGrid } from "./exchange.ts"
+
+import manifest from "../manifest.json" with { type: "json" }
 
 /// All 1 except the millimeter bands, matching app-polo's table — R1 doesn't
 /// scale the microwave bands as steeply as ARRL's family does. `5m`, `33cm`
@@ -68,9 +71,6 @@ export type R1VHFScoresheet = {
   distanceTotal: number
   maxDistance: number
   maxDistancePerBand: Record<string, number>
-  dupeCount: number
-  dayQsos: number
-  dayPoints: number
 }
 
 function str(value: JSONValue | undefined): string {
@@ -87,18 +87,11 @@ export const R1VHFScorer: ContestScorer<R1VHFScoresheet> = {
       distanceTotal: 0,
       maxDistance: 0,
       maxDistancePerBand: {},
-      dupeCount: 0,
-      dayQsos: 0,
-      dayPoints: 0,
     }
   },
 
-  scoreQso({ scoresheet, qso, operation, ref, isNewDay }) {
+  scoreQso({ scoresheet, qso, operation, ref }) {
     const base = scoresheet
-    if (isNewDay) {
-      base.dayQsos = 0
-      base.dayPoints = 0
-    }
 
     const event = eventFor(str(ref?.ref))
     if (!event) return { scoresheet: base, score: { value: 0 } }
@@ -126,7 +119,6 @@ export const R1VHFScorer: ContestScorer<R1VHFScoresheet> = {
     const key = `${call}|${band}|${ourGrid}`
     const priorGrids = base.worked[key] ?? []
     if (priorGrids.includes(theirGrid)) {
-      base.dupeCount += 1
       return { scoresheet: base, score: { value: 0, dupe: true, alerts: ["duplicate"] } }
     }
 
@@ -138,8 +130,6 @@ export const R1VHFScorer: ContestScorer<R1VHFScoresheet> = {
     base.bands[band] = (base.bands[band] ?? 0) + 1
     base.qsos += 1
     base.points += value
-    base.dayQsos += 1
-    base.dayPoints += value
     base.distanceTotal += distance
     base.maxDistance = Math.max(base.maxDistance, distance)
     base.maxDistancePerBand[band] = Math.max(base.maxDistancePerBand[band] ?? 0, distance)
@@ -148,13 +138,7 @@ export const R1VHFScorer: ContestScorer<R1VHFScoresheet> = {
     return { scoresheet: base, score }
   },
 
-  summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === "day"
-    const points = isDay ? scoresheet.dayPoints : scoresheet.points
-    const qsos = isDay ? scoresheet.dayQsos : scoresheet.qsos
-
-    const summary = `${fmtInteger(points)} pts (${fmtInteger(scoresheet.distanceTotal)} km total)`
-
+  summarizeScore({ scoresheet, ref, scope }, ctx) {
     const bandLines = Object.keys(scoresheet.bands)
       .sort()
       .map((band) => {
@@ -164,19 +148,18 @@ export const R1VHFScorer: ContestScorer<R1VHFScoresheet> = {
       })
       .filter((line): line is string => line !== null)
 
-    return {
-      "r1-vhf-tests": {
+    return contestSummary(
+      {
         key: "r1-vhf-tests",
-        for: scope,
+        scope,
         icon: "flag-checkered",
-        total: points,
-        qsos,
-        summary,
-        longSummary: [
-          summary + (scoresheet.dupeCount > 0 ? ` (${fmtInteger(scoresheet.dupeCount)} dupe${scoresheet.dupeCount > 1 ? "s" : ""})` : ""),
-          ...bandLines,
-        ].join("\n"),
+        title: eventFor(str(ref?.ref))?.short ?? manifest.shortName,
+        total: scoresheet.points,
+        arithmetic: contestArithmetic({ qsos: scoresheet.qsos, points: scoresheet.points, more: [`${fmtInteger(scoresheet.distanceTotal)} km`] }, ctx),
+        detail: bandLines.join("\n"),
+        extra: { qsos: scoresheet.qsos },
       },
-    }
+      ctx,
+    )
   },
 }

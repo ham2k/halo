@@ -1,0 +1,11 @@
+{
+  "titleOnePoint": "{{title}}: 1 punto",
+  "titleManyPoints": "{{title}}: {{formatted}} puntos",
+  "qsoOne": "1 QSO",
+  "qsoMany": "{{formatted}} QSOs",
+  "pointOne": "1 pt",
+  "points": "{{formatted}} pts",
+  "multOne": "1 mult",
+  "multMany": "{{formatted}} mults",
+  "bonus": "+ {{formatted}} de bonificación"
+}

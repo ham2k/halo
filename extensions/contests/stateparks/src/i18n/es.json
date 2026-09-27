@@ -21,5 +21,10 @@
   "checkPota": "**Revisa también tu activación POTA** — estos eventos se puntúan con los parques que activas y los que trabajas.",
   "period": "**Período:** {{period}}",
   "status": "**Estado:** {{status}}",
-  "lastUpdated": "**Datos actualizados:** {{lastUpdated}}"
+  "lastUpdated": "**Datos actualizados:** {{lastUpdated}}",
+  "parkActivatedOne": "1 parque activado",
+  "parkActivatedMany": "{{formatted}} parques activados",
+  "parkWorkedOne": "1 parque trabajado",
+  "parkWorkedMany": "{{formatted}} parques trabajados",
+  "powerMultiplier": "{{formatted}} de potencia"
 }

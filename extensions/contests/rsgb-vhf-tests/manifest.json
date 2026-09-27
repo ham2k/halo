@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "flag-checkered",
   "accentColor": "#00695C",
-  "keywords": ["contest", "vhf", "uhf", "grid", "distance", "reg1test", "edi", "rsgb", "ukac"],
+  "keywords": ["contest", "vhf", "uhf", "grid", "distance", "reg1test", "edi", "rsgb", "ukac", "rsgb vhf", "rsgbvhf"],
   "relevance": {
     "entities": ["G", "GM", "GW", "GI", "GD", "GU", "GJ"]
   },

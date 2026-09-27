@@ -1,6 +1,6 @@
 {
   "key": "wwbota",
-  "name": "Bunkers on the Air",
+  "name": "WWBOTA: Bunkers on the Air",
   "shortName": "WWBOTA",
   "version": "0.0.1",
   "description": "Bunker references, activation and chasing, spots and spotting",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "nuke",
   "accentColor": "#5A6B72",
-  "keywords": ["bunkers", "activation", "chasing"],
+  "keywords": ["bunkers", "activation", "chasing", "wwbota"],
   "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:wwbota", "ref:wwbotaActivation", "scoring", "spots"],
   "domains": ["api.wwbota.org"],
   "translations": {

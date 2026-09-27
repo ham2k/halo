@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "flag-checkered",
   "accentColor": "#00695C",
-  "keywords": ["contest", "stateparks", "park", "pota", "txsp", "flsp", "gasp", "ohsp", "ospota", "cabrillo"],
+  "keywords": ["contest", "stateparks", "park", "pota", "txsp", "flsp", "gasp", "ohsp", "ospota", "cabrillo", "state parks"],
   "relevance": {
     "countries": ["us"]
   },

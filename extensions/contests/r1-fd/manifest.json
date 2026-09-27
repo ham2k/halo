@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "tent",
   "accentColor": "#1565C0",
-  "keywords": ["field day", "fieldday", "region 1", "iaru", "darc", "contest", "cabrillo"],
+  "keywords": ["field day", "fieldday", "region 1", "iaru", "darc", "contest", "cabrillo", "r1 fd", "r1fd"],
   "relevance": {
     "ituRegions": [1]
   },

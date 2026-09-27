@@ -1,6 +1,6 @@
 {
   "key": "tota",
-  "name": "Towers on the Air",
+  "name": "TOTA: Towers on the Air",
   "shortName": "TOTA",
   "version": "0.0.1",
   "description": "Lookout tower references, activation and hunting, and spots",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "tower-fire",
   "accentColor": "#8C5A3C",
-  "keywords": ["towers", "lookouts", "activation", "hunting"],
+  "keywords": ["towers", "lookouts", "activation", "hunting", "tota"],
   "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:tota", "ref:totaActivation", "scoring", "spots"],
   "domains": ["rozhledny.eu", "www.rozhledny.eu"],
   "translations": {

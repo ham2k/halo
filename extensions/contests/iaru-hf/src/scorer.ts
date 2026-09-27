@@ -26,7 +26,10 @@
 
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { superModeForMode } from "@ham2k/lib-operation-data"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
+
+import { tFor } from "./i18n.ts"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
 /// IARU HF is an HF contest: the WARC bands are excluded by the rules.
@@ -51,8 +54,6 @@ export type IARUHFScoresheet = {
   bandPoints: Record<string, number>
   qsos: number
   points: number
-  dayQsos: number
-  dayPoints: number
   /// Resolved once from the station call and the setup ref — every point
   /// calculation is relative to them.
   ourContinent?: string
@@ -129,8 +130,6 @@ export const IARUHFScorer: ContestScorer<IARUHFScoresheet> = {
       bandPoints: {},
       qsos: 0,
       points: 0,
-      dayQsos: 0,
-      dayPoints: 0,
       ourContinent: ours.continent,
       // Our zone comes from setup when given, since an operator away from home
       // is exactly who needs to override it.
@@ -139,12 +138,8 @@ export const IARUHFScorer: ContestScorer<IARUHFScoresheet> = {
   },
 
   // Mutates and returns the given scoresheet — see ContestScorer.scoreQso.
-  scoreQso({ scoresheet, qso, ref, isNewDay }) {
+  scoreQso({ scoresheet, qso, ref }) {
     const base = scoresheet
-    if (isNewDay) {
-      base.dayQsos = 0
-      base.dayPoints = 0
-    }
 
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
@@ -234,8 +229,6 @@ export const IARUHFScorer: ContestScorer<IARUHFScoresheet> = {
     base.bandPoints[band] = (base.bandPoints[band] ?? 0) + points
     base.qsos += 1
     base.points += points
-    base.dayQsos += 1
-    base.dayPoints += points
 
     const score: QsoScoreVerdict = { value: points, band }
     const notices: string[] = []
@@ -253,29 +246,46 @@ export const IARUHFScorer: ContestScorer<IARUHFScoresheet> = {
     return { scoresheet: base, score }
   },
 
-  summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === "day"
-    const multCount = Object.keys(scoresheet.mults).length
-    const points = isDay ? scoresheet.dayPoints : scoresheet.points
-    // Multipliers accumulate across the whole contest, so a day's "score" is
-    // still its points against the running multiplier count.
-    const total = points * (multCount || 0)
-
-    return {
-      "iaru-hf": {
+  summarizeScore({ scoresheet, ref, scope }, ctx) {
+    const t = tFor(ctx)
+    const keys = Object.keys(scoresheet.mults)
+    const zones = keys.filter((key) => key.includes("|Z")).length
+    const hq = keys.filter((key) => key.includes("|HQ:")).length
+    // An IARU official (AC, R1, R2, R3) is keyed by its bare office.
+    const officials = keys.length - zones - hq
+    return contestSummary(
+      {
         key: "iaru-hf",
-        for: scope,
+        scope,
         icon: "earth",
-        total,
-        points,
-        mults: multCount,
-        qsos: isDay ? scoresheet.dayQsos : scoresheet.qsos,
-        label: `${fmtInteger(points)} × ${fmtInteger(multCount)}`,
-        summary: `${fmtInteger(total)}`,
-        longSummary: bandBreakdown(scoresheet),
+        title: contestTitle(ref),
+        total: scoresheet.points * keys.length,
+        arithmetic: contestArithmetic(
+          {
+            qsos: scoresheet.qsos,
+            points: scoresheet.points,
+            mults: keys.length,
+            multParts: [
+              zones === 1 ? t("zoneOne") : zones > 1 ? t("zoneMany", { formatted: fmtInteger(zones) }) : "",
+              hq === 1 ? t("hqOne") : hq > 1 ? t("hqMany", { formatted: fmtInteger(hq) }) : "",
+              officials === 1 ? t("officialOne") : officials > 1 ? t("officialMany", { formatted: fmtInteger(officials) }) : "",
+            ].filter((part) => part),
+          },
+          ctx,
+        ),
+        detail: bandBreakdown(scoresheet),
+        extra: { points: scoresheet.points, mults: keys.length, qsos: scoresheet.qsos },
       },
-    }
+      ctx,
+    )
   },
+}
+
+/// "IARU HF CW" — the name the operation's title gives the contest, which its
+/// summary repeats. A Mixed entry is the contest's default and goes unnamed.
+export function contestTitle(ref: Record<string, JSONValue> | undefined): string {
+  const restriction = str(ref?.modeRestriction)
+  return ["IARU HF", restriction && restriction !== "Mixed" ? restriction : undefined].filter(Boolean).join(" ")
 }
 
 /// The per-band table a contester actually reads while operating.

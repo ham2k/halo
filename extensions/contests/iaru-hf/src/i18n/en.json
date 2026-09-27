@@ -20,5 +20,11 @@
   "adifExport": "ADIF for {{contest}}",
   "cabrilloExport": "Cabrillo for {{contest}}",
   "ourExchangeSubtitle": "Sending {{exchange}}",
-  "notConfigured": "Not configured!"
+  "notConfigured": "Not configured!",
+  "zoneOne": "1 zone",
+  "zoneMany": "{{formatted}} zones",
+  "hqOne": "1 HQ",
+  "hqMany": "{{formatted}} HQ",
+  "officialOne": "1 official",
+  "officialMany": "{{formatted}} officials"
 }

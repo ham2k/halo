@@ -18,8 +18,8 @@
 //
 // The rules: https://www.winterfieldday.org/
 
-import { tally } from "@ham2k/extension-sdk"
-import type { ContestScorer, HookContext, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, HookContext, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { superModeForMode } from "@ham2k/lib-operation-data"
 
@@ -51,11 +51,6 @@ export type WFDScoresheet = {
   modesByCall: Record<string, Record<string, true>>
   qsoPoints: number
   qsoCount: number
-  /// Reset on each new UTC day. Winter Field Day ALWAYS spans two of them
-  /// (1900Z Saturday to 1859Z Sunday), so without these the per-day header
-  /// reports the running total instead of that day's.
-  dayPoints: number
-  dayQsos: number
   /// The setup as it stood while these QSOs were scored.
   ///
   /// `summarizeScore` is handed the FIRST segment's ref, so reading the
@@ -127,8 +122,6 @@ export const WFDScorer: ContestScorer<WFDScoresheet> = {
       modesByCall: {},
       qsoPoints: 0,
       qsoCount: 0,
-      dayPoints: 0,
-      dayQsos: 0,
       multiplier: 1,
       byMode: {},
       sectionsSeen: {},
@@ -138,15 +131,8 @@ export const WFDScorer: ContestScorer<WFDScoresheet> = {
     }
   },
 
-  scoreQso({ scoresheet, qso, operation, ref, isNewDay }, _ctx) {
+  scoreQso({ scoresheet, qso, operation, ref }, _ctx) {
     const sheet = scoresheet
-
-    // The DUPE rule spans the whole event, so `worked` is never reset — only
-    // the day-scoped display counters are.
-    if (isNewDay) {
-      sheet.dayPoints = 0
-      sheet.dayQsos = 0
-    }
 
     // Latched per QSO from the segment-effective operation, so a setup change
     // partway through the contest counts for the QSOs after it.
@@ -210,8 +196,6 @@ export const WFDScorer: ContestScorer<WFDScoresheet> = {
     ;(sheet.modesByCall[call] ??= {})[superMode] = true
     sheet.qsoCount += 1
     sheet.qsoPoints += value
-    sheet.dayQsos += 1
-    sheet.dayPoints += value
     if (section) sheet.sectionsSeen[section] = true
     sheet.byMode[superMode] = (sheet.byMode[superMode] ?? 0) + 1
 
@@ -230,37 +214,26 @@ export const WFDScorer: ContestScorer<WFDScoresheet> = {
     return { scoresheet: sheet, score }
   },
 
-  summarizeScore({ scoresheet, scope }, ctx): Record<string, ScoreTally> {
+  summarizeScore({ scoresheet, scope }, ctx) {
     const t = tFor(ctx)
-    const isDay = scope === "day"
     // Latched during the fold, not read off `ref` — the ref handed here is the
-    // FIRST segment's, which loses a mid-contest power change.
+    // FIRST segment's, which loses a mid-contest change of objectives.
     const multiplier = scoresheet.multiplier
-    const points = isDay ? scoresheet.dayPoints : scoresheet.qsoPoints
-    const qsos = isDay ? scoresheet.dayQsos : scoresheet.qsoCount
-    // Bonuses are claimed once for the whole entry, so they belong to the
-    // operation total and are left out of a day's figure entirely rather than
-    // being counted again on each one — the rule `stateparks` states.
-    const total = points * multiplier
-
+    const points = scoresheet.qsoPoints
     const sections = Object.keys(scoresheet.arrlSections).length + Object.keys(scoresheet.racSections).length + Object.keys(scoresheet.otherSections).length
 
-    return {
-      contest: tally(TYPE, scope, total, {
-        // Without an icon the day-header renderer drops the whole badge, not
-        // just the glyph (qso_list.dart).
+    return contestSummary(
+      {
+        // `contest`, as before: saved postcard sections are keyed by it.
+        key: "contest",
+        scope,
         icon: "snowflake",
-        label: t("scoreLabel"),
-        summary: t("scoreSummary", { total: fmtInteger(total) }),
-        // Spelled out because an operator checking a claimed score wants the
-        // arithmetic, not just the answer.
-        longSummary: [
-          t("scoreQsos", { qsos: fmtInteger(qsos), points: fmtInteger(points), multiplier }),
-          t("scoreSections", { sections: fmtInteger(sections) }),
-        ]
-          .filter((line) => line)
-          .join("\n"),
-      }),
-    }
+        title: "WFD",
+        total: points * multiplier,
+        arithmetic: contestArithmetic({ qsos: scoresheet.qsoCount, points, mults: multiplier }, ctx),
+        detail: t("scoreSections", { sections: fmtInteger(sections) }),
+      },
+      ctx,
+    )
   },
 }

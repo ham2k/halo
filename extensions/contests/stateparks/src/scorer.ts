@@ -80,11 +80,15 @@
 
 import { fmtInteger } from "@ham2k/lib-format-tools"
 import { superModeForMode } from "@ham2k/lib-operation-data"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
 
 import { powerMultiplier } from "./entry.ts"
 import { bandCounts, eventFor, type StateParkEvent } from "./events.ts"
+import { tFor } from "./i18n.ts"
 import { ourParkRefs, refOfType, theirParkAbbreviation, theirParkRefs } from "./parks.ts"
+
+import manifest from "../manifest.json" with { type: "json" }
 
 /// QSOs a park needs before it counts as ACTIVATED — POTA's own threshold, and
 /// the one polo uses. A park worked from for an hour is a park activated; a
@@ -124,8 +128,6 @@ export type StateParksScoresheet = {
   qsos: number
   points: number
   dupes: number
-  dayQsos: number
-  dayPoints: number
 }
 
 function str(value: JSONValue | undefined): string {
@@ -149,18 +151,11 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
       qsos: 0,
       points: 0,
       dupes: 0,
-      dayQsos: 0,
-      dayPoints: 0,
     }
   },
 
   // Mutates and returns the given scoresheet — see ContestScorer.scoreQso.
-  scoreQso({ scoresheet: sheet, qso, operation, ref, isNewDay }) {
-    if (isNewDay) {
-      sheet.dayQsos = 0
-      sheet.dayPoints = 0
-    }
-
+  scoreQso({ scoresheet: sheet, qso, operation, ref }) {
     // A ref naming an event this build doesn't know — a log synced from a newer
     // app, or next year's event added to polo first. Scoring it against another
     // event's park list would be worse than declining to: 0 points and a
@@ -260,8 +255,6 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
     if (superMode) sheet.modes[superMode] = (sheet.modes[superMode] ?? 0) + 1
     sheet.qsos += 1
     sheet.points += value
-    sheet.dayQsos += 1
-    sheet.dayPoints += value
 
     const score: QsoScoreVerdict = { value, band }
     if (notices.length > 0) score.notices = notices
@@ -275,47 +268,57 @@ export const StateParksScorer: ContestScorer<StateParksScoresheet> = {
     return { scoresheet: sheet, score }
   },
 
-  summarizeScore({ scoresheet: sheet, ref, scope }): Record<string, ScoreTally> {
+  summarizeScore({ scoresheet: sheet, ref, scope }, ctx) {
+    const t = tFor(ctx)
     // The scoresheet's own record first: it was written from the ref each QSO
     // was actually scored against, while `ref` here is the base operation's.
     const event = eventFor(sheet.eventKey) ?? eventFor(str(ref?.ref))
-    const isDay = scope === "day"
 
     const activated = Object.values(sheet.activated).filter((qsos) => qsos >= QSOS_TO_ACTIVATE).length
     const hunted = Object.keys(sheet.hunted).length
-    const parkMult = event?.multipliers === "stateParksActivatedAndHunted" ? activated + hunted : event?.multipliers === "stateParksActivated" ? activated : 0
+    const countsActivated = event?.multipliers === "stateParksActivatedAndHunted" || event?.multipliers === "stateParksActivated"
+    const countsHunted = event?.multipliers === "stateParksActivatedAndHunted"
+    const parkMult = (countsActivated ? activated : 0) + (countsHunted ? hunted : 0)
+    const power = sheet.powerMult ?? 0
     // The power class ADDS to the park multipliers rather than scaling them
     // (events.ts), and is 0 for the three events that publish no such term and
     // for a class the operator never declared. `|| 1` is the floor either way:
     // a log with no parks yet is still worth its points.
-    const mult = parkMult + (sheet.powerMult ?? 0) || 1
+    const mult = parkMult + power || 1
 
     const bonusPoints = Object.values(sheet.bonusStations).reduce((sum, points) => sum + points, 0) + activated * (event?.bonusPointsPerParkActivated ?? 0)
 
-    const points = isDay ? sheet.dayPoints : sheet.points
-    // Multipliers and bonuses are won across the whole event, so a day's figure
-    // is its own points against the running multiplier — the same reading NAQP
-    // takes of the same question. Bonuses are left out of it entirely rather
-    // than counted again on every day.
-    const total = isDay ? points * mult : points * mult + bonusPoints
+    const part = (count: number, one: string, many: string) => (count === 1 ? t(one) : t(many, { formatted: fmtInteger(count) }))
+    const multParts = [
+      countsActivated && activated > 0 ? part(activated, "parkActivatedOne", "parkActivatedMany") : "",
+      countsHunted && hunted > 0 ? part(hunted, "parkWorkedOne", "parkWorkedMany") : "",
+      power > 0 ? t("powerMultiplier", { formatted: fmtInteger(power) }) : "",
+    ].filter((p) => p)
 
-    return {
-      stateparks: {
+    return contestSummary(
+      {
         key: "stateparks",
-        for: scope,
+        scope,
         icon: "flag-checkered",
-        total,
-        points,
-        mults: mult,
-        qsos: isDay ? sheet.dayQsos : sheet.qsos,
-        label:
-          bonusPoints > 0 && !isDay
-            ? `${fmtInteger(points)} × ${fmtInteger(mult)} + ${fmtInteger(bonusPoints)}`
-            : `${fmtInteger(points)} × ${fmtInteger(mult)}`,
-        summary: `${fmtInteger(total)}`,
-        longSummary: event ? longSummaryFor(event, sheet, { activated, hunted, bonusPoints }) : "",
+        title: event?.short ?? manifest.shortName,
+        total: sheet.points * mult + bonusPoints,
+        arithmetic: contestArithmetic(
+          {
+            qsos: sheet.qsos,
+            points: sheet.points,
+            // An event with no multiplier terms at all multiplies by nothing
+            // worth writing down.
+            mults: event?.multipliers === "none" && power === 0 ? undefined : mult,
+            multParts,
+            bonus: bonusPoints,
+          },
+          ctx,
+        ),
+        detail: event ? longSummaryFor(event, sheet, { activated, hunted, bonusPoints }) : "",
+        extra: { points: sheet.points, mults: mult, qsos: sheet.qsos },
       },
-    }
+      ctx,
+    )
   },
 }
 

@@ -31,7 +31,7 @@ import type {
 
 import { tFor } from "./i18n.ts"
 import { MODES, nextRunningYear, relevanceFor } from "./schedule.ts"
-import { R1FDScorer, TYPE, modeOfRef, refOfType, yearOfRef } from "./scorer.ts"
+import { R1FDScorer, TYPE, contestTitle, modeOfRef, refOfType, yearOfRef } from "./scorer.ts"
 import type { R1FdMode } from "./schedule.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -272,9 +272,8 @@ const RefHandler = {
   },
 
   async suggestOperationTitle({ ref }: { ref: Ref }, ctx: HookContext): Promise<TitleSuggestion | null> {
-    const mode = modeOfRef(str(ref.ref as JSONValue))
     return {
-      for: mode ? `R1FD ${mode}` : "R1FD",
+      for: contestTitle(ref as Record<string, JSONValue>),
       subtitle: tFor(ctx)("serialSubtitle"),
     }
   },

@@ -213,22 +213,20 @@ describe("CQWPXScorer summary", () => {
     assert.match(detail, /DL1 JA1/)
   })
 
-  it("reports a day scope against the running multiplier count", () => {
+  it("titles itself as the operation does, with the score, over the arithmetic", () => {
+    const { summary } = run([
+      { call: "DL1ABC", band: "20m" },
+      { call: "JA1ABC", band: "40m" },
+    ])
+    assert.equal(summary.cqwpx.label, "CQWPX CW: 18 points")
+    assert.equal((summary.cqwpx.longSummary as string).split("\n")[0], "2 QSOs, 9 pts × 2 mults")
+  })
+
+  // Prefixes count once for the whole contest, so a day's share of the score
+  // is not a number WPX defines.
+  it("offers no per-day summary", () => {
     const operation = { stationCall: "KI2D" }
-    let sheet = CQWPXScorer.startScoresheet({ operation }, {} as never) as CQWPXScoresheet
-    for (const [call, isNewDay] of [
-      ["DL1ABC", false],
-      ["JA1ABC", true],
-    ] as [string, boolean][]) {
-      sheet = CQWPXScorer.scoreQso(
-        { scoresheet: sheet, qso: { band: "20m", mode: "CW", their: { call } }, operation, ref: CW, isNewDay },
-        {} as never,
-      ).scoresheet
-    }
-    const day = CQWPXScorer.summarizeScore({ scoresheet: sheet, operation, ref: CW, scope: "day" }, {} as never)
-    // Day two's own points, but multipliers never reset — they are a
-    // contest-long tally.
-    assert.equal(day.cqwpx.points, 3)
-    assert.equal(day.cqwpx.mults, 2)
+    const sheet = CQWPXScorer.startScoresheet({ operation }, {} as never) as CQWPXScoresheet
+    assert.deepEqual(CQWPXScorer.summarizeScore({ scoresheet: sheet, operation, ref: CW, scope: "day" }, {} as never), {})
   })
 })

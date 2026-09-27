@@ -1224,6 +1224,12 @@ those notice keys (`newPark` is state-parks' spelling of `newRef`) rather than
 inventing a spelling of your own: an unrecognized key leaves core's `duplicate`
 standing beside your credit, on the one row that can show only one.
 
+A contest's `summarizeScore` returns `contestSummary(...)` rather than
+building its tallies by hand: one tally titled with the contest's name and
+score, its detail opening on a `contestArithmetic(...)` line, and nothing at
+all for the `day` scope — a contest's multipliers run the whole event
+(docs/design/contests.md §5.2).
+
 A scorer's internal *rules* stay private to its scoresheet: contests don't
 share a rule vocabulary, so only notices, alerts, points and summary tallies
 cross the boundary. `scoreQso` **may mutate** the scoresheet it's given and

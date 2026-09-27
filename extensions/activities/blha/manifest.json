@@ -1,6 +1,6 @@
 {
   "key": "blha",
-  "name": "Belgian Lighthouses and Lightships",
+  "name": "BLHA: Belgian Lighthouses and Lightships",
   "shortName": "BLHA",
   "version": "0.0.1",
   "description": "Belgian lighthouse references, activation logging, and self-spotting",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "lighthouse",
   "accentColor": "#2E6F9E",
-  "keywords": ["lighthouses", "lightships", "belgium", "activation"],
+  "keywords": ["lighthouses", "lightships", "belgium", "activation", "blha"],
   "relevance": {
     "entities": ["ON"]
   },

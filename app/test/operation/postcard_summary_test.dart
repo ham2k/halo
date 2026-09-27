@@ -29,13 +29,37 @@ void main() {
     ];
 
     test('keeps each line of a breakdown on a line of its own, as the pane does', () {
-      expect(shape(postcardParagraphs('**20m**: 12 — CW 8\n**40m**: 3')), [
+      expect(shape(postcardParagraphs('**20m**: 12 — 8 CW\n**40m**: 3')), [
         [
           PostcardTextKind.body,
           ['20m', true, false],
-          [': 12 — CW 8\n', false, false],
+          [': 12 — 8 CW\n', false, false],
           ['40m', true, false],
           [': 3', false, false],
+        ],
+      ]);
+    });
+
+    // A multi-operator breakdown indents each block's band lines with
+    // non-breaking spaces and separates the blocks with a blank line. Trimming
+    // a line, or reading the blank line as a break inside one paragraph, runs
+    // one operator's bands into the next operator's heading.
+    test("keeps an operator block's indent, and each block a paragraph of its own", () {
+      const indent = '\u00A0\u00A0\u00A0\u00A0';
+      expect(shape(postcardParagraphs('**Overall**: 3 QSOs\n$indent**20m**: 3 CW\n\n**KI2D**: 2 QSOs\n$indent**20m**: 2 CW')), [
+        [
+          PostcardTextKind.body,
+          ['Overall', true, false],
+          [': 3 QSOs\n$indent', false, false],
+          ['20m', true, false],
+          [': 3 CW', false, false],
+        ],
+        [
+          PostcardTextKind.body,
+          ['KI2D', true, false],
+          [': 2 QSOs\n$indent', false, false],
+          ['20m', true, false],
+          [': 2 CW', false, false],
         ],
       ]);
     });

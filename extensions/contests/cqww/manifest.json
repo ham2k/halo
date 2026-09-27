@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "earth",
   "accentColor": "#C8102E",
-  "keywords": ["contest", "dx", "zone", "cabrillo"],
+  "keywords": ["contest", "dx", "zone", "cabrillo", "cq ww", "cqww"],
   "hooks": ["activity", "adifFields", "export", "ref:cqww", "scoring"],
   "translations": {
     "es": {

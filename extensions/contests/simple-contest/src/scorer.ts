@@ -16,8 +16,10 @@
 // --experimental-strip-types), so this module's tests run under plain
 // `node --test` without resolving the tsc/esbuild-only package alias.
 
-import { fmtInteger } from "@ham2k/lib-format-tools"
-import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
+import type { ContestScorer, HookContext, JSONValue, QsoScoreVerdict } from "@ham2k/extension-sdk"
+import { contestArithmetic, contestSummary } from "../../../sdk/src/contestSummary.ts"
+
+import { tFor } from "./i18n.ts"
 
 /// What the scorer accumulates while working through the log. A type alias
 /// rather than an interface so it stays assignable to `Scoresheet` (JSONValue),
@@ -27,9 +29,6 @@ export type SimpleContestScoresheet = {
   worked: Record<string, string[]>
   qsos: number
   points: number
-  /// Reset on each new UTC day; drives the per-day sections in the QSO list.
-  dayQsos: number
-  dayPoints: number
 }
 
 function str(value: JSONValue | undefined): string {
@@ -42,23 +41,19 @@ function bandModeKey(qso: Record<string, JSONValue>): string {
 
 export const SimpleContestScorer: ContestScorer<SimpleContestScoresheet> = {
   startScoresheet(): SimpleContestScoresheet {
-    return { worked: {}, qsos: 0, points: 0, dayQsos: 0, dayPoints: 0 }
+    return { worked: {}, qsos: 0, points: 0 }
   },
 
   // Mutates and returns the given scoresheet — see CoreScorer's note and
   // ContestScorer.scoreQso: per-QSO copying of accumulated state is quadratic,
   // and the harness copies any resume checkpoint at its boundary.
-  scoreQso({ scoresheet, qso, isNewDay }) {
+  scoreQso({ scoresheet, qso }) {
     const their = (qso.their as Record<string, JSONValue>) ?? {}
     const call = str(their.call)
 
-    // A new day resets only the day-scoped counters; worked-call state carries
-    // over, since a dupe is a dupe across the whole contest.
+    // Worked-call state is never reset: a dupe is a dupe across the whole
+    // contest, whatever the day.
     const base = scoresheet
-    if (isNewDay) {
-      base.dayQsos = 0
-      base.dayPoints = 0
-    }
 
     if (!call) return { scoresheet: base, score: { value: 0 } }
 
@@ -89,29 +84,30 @@ export const SimpleContestScorer: ContestScorer<SimpleContestScoresheet> = {
     }
     base.qsos += 1
     base.points += points
-    base.dayQsos += 1
-    base.dayPoints += points
 
     return { scoresheet: base, score }
   },
 
-  summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
-    const isDay = scope === "day"
-    const points = isDay ? scoresheet.dayPoints : scoresheet.points
-    const qsos = isDay ? scoresheet.dayQsos : scoresheet.qsos
-
-    return {
-      contest: {
+  summarizeScore({ scoresheet, ref, scope }, ctx) {
+    return contestSummary(
+      {
         key: "contest",
-        for: scope,
+        scope,
         icon: "flag-checkered",
-        total: points,
-        count: qsos,
-        // Counts and scores shown to the user carry thousands separators
-        // (docs/extensions/README.md).
-        label: points === 1 ? "1 point" : `${fmtInteger(points)} points`,
-        summary: fmtInteger(points),
+        title: contestTitle(ref, ctx),
+        total: scoresheet.points,
+        // One point a contact and no multipliers: the count of contacts IS the
+        // arithmetic.
+        arithmetic: contestArithmetic({ qsos: scoresheet.qsos }, ctx),
+        extra: { count: scoresheet.qsos },
       },
-    }
+      ctx,
+    )
   },
+}
+
+/// The contest identifier the operator set up — the name the operation's
+/// title gives the contest, which its summary repeats.
+export function contestTitle(ref: Record<string, JSONValue> | undefined, ctx: HookContext): string {
+  return str(ref?.contestIdentifier) || tFor(ctx)("defaultContestId")
 }

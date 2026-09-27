@@ -30,7 +30,7 @@ import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 import { tFor } from "./i18n.ts"
 import { firstName, guessedLocation, guessedName, normalizeLocation, ourExchange } from "./exchange.ts"
 import { LOCATION_PATTERN, VALID_LOCATIONS } from "./locations.ts"
-import { NAQPScorer } from "./scorer.ts"
+import { NAQPScorer, contestTitle } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -229,10 +229,9 @@ const RefHandler = {
   /// "KI2D for NAQP CW" with "SEB in NY" beneath it: the sent exchange is the
   /// one thing an operator re-reads constantly during a contest.
   async suggestOperationTitle({ ref }: { ref: Ref; operation: Record<string, JSONValue> }, ctx: HookContext) {
-    const mode = str((ref as Record<string, JSONValue>).mode)
     const { name, location } = ourExchange(ref as Record<string, JSONValue>)
     return {
-      for: ["NAQP", mode].filter((x) => x).join(" "),
+      for: contestTitle(ref as Record<string, JSONValue>),
       subtitle: name && location ? tFor(ctx)("ourExchangeSubtitle", { name, location }) : undefined,
     }
   },

@@ -209,19 +209,20 @@ test("what we send depends on which kind of station we are", () => {
   assert.equal(ourExchange(usOperation, { type: "iaru-hf" }), "7")
 })
 
-test("the day summary resets its counters but keeps the running multipliers", () => {
-  let sheet = IARUHFScorer.startScoresheet({ operation: usOperation, ref: mixedRef }, ctx)
-  const score = (q: Record<string, JSONValue>, isNewDay: boolean) => {
-    const r = IARUHFScorer.scoreQso({ scoresheet: sheet, qso: q, operation: usOperation, ref: mixedRef, isNewDay }, ctx)
-    sheet = r.scoresheet
-  }
-  score(qso("DL1ABC", "20m", "CW", "28"), false)
-  score(qso("JA1ABC", "20m", "CW", "45"), true)
+// Zones and HQ stations are different things to chase; the split says which
+// the log is short of.
+test("the summary names the contest and its score, and splits the multipliers by kind", () => {
+  const { sheet } = run([qso("DL1ABC", "20m", "CW", "28"), qso("DL0HQ", "20m", "CW", "DARC"), qso("K1ZZ", "20m", "CW", "R2")])
+  const summary = IARUHFScorer.summarizeScore({ scoresheet: sheet, operation: usOperation, ref: mixedRef, scope: "operation" }, ctx)["iaru-hf"]
+  assert.equal(summary.label, `IARU HF: ${summary.total} points`)
+  // An official is keyed by its bare office, neither `Z` nor `HQ:` — counted by
+  // subtraction it would read as a zone.
+  assert.match((summary.longSummary as string).split("\n")[0], /^3 QSOs, \d+ pts × 3 mults \(1 zone, 1 HQ, 1 official\)$/)
+})
 
-  const day = IARUHFScorer.summarizeScore({ scoresheet: sheet, operation: usOperation, ref: mixedRef, scope: "day" }, ctx)
-  assert.equal(day["iaru-hf"].qsos, 1, "the second day has one QSO")
-  assert.equal(day["iaru-hf"].points, 5)
-  // …but multipliers are a contest-long tally, so the day is scored against
-  // both of them.
-  assert.equal(day["iaru-hf"].total, 10)
+// Multipliers are a contest-long tally, so a day's share of the score is not
+// a number the contest defines.
+test("offers no per-day summary", () => {
+  const { sheet } = run([qso("DL1ABC", "20m", "CW", "28")])
+  assert.deepEqual(IARUHFScorer.summarizeScore({ scoresheet: sheet, operation: usOperation, ref: mixedRef, scope: "day" }, ctx), {})
 })

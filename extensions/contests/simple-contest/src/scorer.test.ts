@@ -72,25 +72,25 @@ test("a QSO with no callsign is ignored rather than counted", () => {
   assert.equal(sheet.qsos, 0)
 })
 
-test("a new day resets the day counters but not dupe detection", () => {
+test("a new day does not reset dupe detection", () => {
   let sheet = SimpleContestScorer.startScoresheet({ operation: op }, ctx)
   sheet = SimpleContestScorer.scoreQso({ scoresheet: sheet, qso: qso("W1AW"), operation: op, isNewDay: false }, ctx).scoresheet
   const next = SimpleContestScorer.scoreQso({ scoresheet: sheet, qso: qso("W1AW"), operation: op, isNewDay: true }, ctx)
 
-  // Day totals restart...
-  assert.equal(next.scoresheet.dayQsos, 1)
-  assert.equal(next.scoresheet.dayPoints, 0)
-  // ...but a station worked yesterday on this band+mode is still a dupe today.
+  // A station worked yesterday on this band+mode is still a dupe today.
   assert.equal(next.score.dupe, true)
   assert.equal(next.scoresheet.points, 1)
 })
 
-test("summaries report points for the requested scope", () => {
+test("the summary names the contest by its identifier, with its points", () => {
   const { sheet } = run([qso("W1AW"), qso("K2ABC")])
-  const operation = SimpleContestScorer.summarizeScore({ scoresheet: sheet, operation: op, scope: "operation" }, ctx)
+  const operation = SimpleContestScorer.summarizeScore({ scoresheet: sheet, operation: op, ref: { contestIdentifier: "NEQP" }, scope: "operation" }, ctx)
   assert.equal(operation.contest.total, 2)
-  assert.equal(operation.contest.for, "operation")
+  assert.equal(operation.contest.label, "NEQP: 2 points")
+  assert.equal(operation.contest.longSummary, "2 QSOs")
+})
 
-  const day = SimpleContestScorer.summarizeScore({ scoresheet: sheet, operation: op, scope: "day" }, ctx)
-  assert.equal(day.for === undefined ? day.contest.for : day.contest.for, "day")
+test("offers no per-day summary", () => {
+  const { sheet } = run([qso("W1AW")])
+  assert.deepEqual(SimpleContestScorer.summarizeScore({ scoresheet: sheet, operation: op, scope: "day" }, ctx), {})
 })

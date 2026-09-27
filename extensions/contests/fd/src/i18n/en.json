@@ -32,10 +32,6 @@
   "bonusWebSubmission": "Web submission (50 pts)",
   "theirClassLabel": "Class",
   "theirSectionLabel": "Sect",
-  "scoreLabel": "Field Day",
-  "scoreSummary": "{{total}} pts",
-  "scoreQsos": "{{qsos}} QSOs — {{points}} points × {{multiplier}}",
-  "scoreBonus": "+ {{bonus}} bonus points",
   "scoreSections": "{{sections}} sections",
   "scorePleaseCopy": "{{copies}} \"please copy\" contacts",
   "adifExport": "Field Day ADIF",
@@ -47,5 +43,6 @@
   "bonusGotaCoach": "GOTA coach (100 pts)",
   "bonusSiteResponsibilities": "Site responsibilities — classes B–F (50 pts)",
   "notConfigured": "Not configured!",
-  "activityDescription": "The ARRL's June operating event, out in the field"
+  "activityDescription": "The ARRL's June operating event, out in the field",
+  "powerMultiplier": "power"
 }

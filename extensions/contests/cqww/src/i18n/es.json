@@ -9,5 +9,9 @@
   "cabrilloExport": "Cabrillo para {{contest}}",
   "activityLabel": "Concursos CQ WW",
   "ourZoneSubtitle": "Zona {{zone}}",
-  "notConfigured": "¡Sin configurar!"
+  "notConfigured": "¡Sin configurar!",
+  "zoneOne": "1 zona",
+  "zoneMany": "{{formatted}} zonas",
+  "countryOne": "1 país",
+  "countryMany": "{{formatted}} países"
 }

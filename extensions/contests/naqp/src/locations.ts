@@ -133,6 +133,14 @@ const NORTH_AMERICAN_ENTITIES = [
 /// Everything the location field accepts, `DX` included.
 export const VALID_LOCATIONS = new Set<string>(["DX", ...US_STATES, ...DISTRICT_OF_COLUMBIA, ...CANADIAN_PROVINCES, ...NORTH_AMERICAN_ENTITIES])
 
+/// Which kind of place a multiplier location names — the summary counts the
+/// three apart. `HI` reads as the state: the code alone cannot say which.
+export function locationKind(location: string): "state" | "province" | "country" {
+  if (US_STATES.includes(location) || DISTRICT_OF_COLUMBIA.includes(location)) return "state"
+  if (CANADIAN_PROVINCES.includes(location)) return "province"
+  return "country"
+}
+
 /// Whether a location counts as a MULTIPLIER. `DX` is a valid exchange and a
 /// valid QSO — it just isn't a multiplier, because it names no one place.
 export function isMultiplier(location: string): boolean {

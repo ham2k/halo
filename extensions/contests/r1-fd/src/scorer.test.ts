@@ -179,5 +179,14 @@ describe("R1FDScorer multipliers", () => {
     assert.equal(summary.r1fd.points, 10)
     assert.equal(summary.r1fd.mults, 3)
     assert.equal(summary.r1fd.total, 30)
+    assert.equal(summary.r1fd.label, "R1FD: 30 points")
+    assert.equal((summary.r1fd.longSummary as string).split("\n")[0], "3 QSOs, 10 pts × 3 mults")
+  })
+
+  // Countries are a contest-long tally, so a day's share of the score is not
+  // a number the contest defines.
+  it("offers no per-day summary", () => {
+    const { sheet } = run([{ call: "DL1AAA" }])
+    assert.deepEqual(R1FDScorer.summarizeScore({ scoresheet: sheet, operation: {}, scope: "day" }, {} as never), {})
   })
 })

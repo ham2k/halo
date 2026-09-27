@@ -1,6 +1,6 @@
 {
   "key": "mota",
-  "name": "Mills on the Air",
+  "name": "MOTA: Mills on the Air",
   "shortName": "MOTA",
   "version": "0.0.1",
   "description": "Mill references, activation and chasing, and spotting",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "wind-turbine",
   "accentColor": "#8A6F3B",
-  "keywords": ["mills", "windmills", "activation", "chasing"],
+  "keywords": ["mills", "windmills", "activation", "chasing", "mota"],
   "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:mota", "ref:motaActivation", "scoring", "spots"],
   "domains": ["www.cqgma.org"],
   "translations": {

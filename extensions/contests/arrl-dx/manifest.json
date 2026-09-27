@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "flag-variant",
   "accentColor": "#00205B",
-  "keywords": ["contest", "dx", "arrl", "cabrillo"],
+  "keywords": ["contest", "dx", "arrl", "cabrillo", "arrl dx", "arrldx"],
   "hooks": ["activity", "adifFields", "export", "ref:arrl-dx", "scoring"],
   "translations": {
     "es": {

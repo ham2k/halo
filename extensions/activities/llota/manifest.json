@@ -1,6 +1,6 @@
 {
   "key": "llota",
-  "name": "Lakes and Lagoons on the Air",
+  "name": "LLOTA: Lakes and Lagoons on the Air",
   "shortName": "LLOTA",
   "version": "0.0.1",
   "description": "Lake references, activation and hunting, spots and spotting",
@@ -8,7 +8,7 @@
   "enabledByDefault": false,
   "icon": "waves",
   "accentColor": "#2F7FA6",
-  "keywords": ["lakes", "lagoons", "activation", "hunting"],
+  "keywords": ["lakes", "lagoons", "activation", "hunting", "llota"],
   "hooks": ["activity", "adifFields", "adifImport", "dataFile", "export", "ref:llota", "ref:llotaActivation", "scoring", "spots"],
   "domains": ["llota.app"],
   "translations": {

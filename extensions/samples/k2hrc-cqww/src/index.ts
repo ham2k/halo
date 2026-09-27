@@ -20,9 +20,8 @@
 // See `docs/hooks.md` §`scoring`, and `contests/cqww` in the app's repository
 // for the whole thing.
 
-import { annotateCallAgainstCountryFile, contestScorer, defineExtension } from "@ham2k/extension-sdk"
-import type { ContestScorer, HookContext, JSONValue, LoggingControlDescriptor, Ref, ScoreTally } from "@ham2k/extension-sdk"
-import { fmtInteger } from "@ham2k/lib-format-tools"
+import { annotateCallAgainstCountryFile, contestArithmetic, contestScorer, contestSummary, defineExtension } from "@ham2k/extension-sdk"
+import type { ContestScorer, HookContext, JSONValue, LoggingControlDescriptor, Ref } from "@ham2k/extension-sdk"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -126,24 +125,23 @@ const CQWWScorer: ContestScorer<Scoresheet> = {
     return { scoresheet, score: { value: points } }
   },
 
-  /// The score as the operator reads it. `scope` is 'day' or the whole
-  /// contest; this sample reports the same totals for both, where the real
-  /// extension tracks a separate per-day tally.
-  summarizeScore({ scoresheet, scope }): Record<string, ScoreTally> {
+  /// The score as the operator reads it. Every contest summarizes the same way — its name and score as the
+  /// title, then the arithmetic — so the SDK builds the tally. It also answers
+  /// the day scope with nothing: a contest's multipliers run the whole event.
+  summarizeScore({ scoresheet, scope }, ctx) {
     const mults = Object.keys(scoresheet.mults).length
-    return {
-      [TYPE]: {
+    return contestSummary(
+      {
         key: TYPE,
-        for: scope,
+        scope,
         icon: manifest.icon,
+        title: manifest.shortName,
         total: scoresheet.points * mults,
-        points: scoresheet.points,
-        mults,
-        qsos: scoresheet.qsos,
-        label: `${fmtInteger(scoresheet.points)} × ${fmtInteger(mults)}`,
-        summary: `${fmtInteger(scoresheet.points * mults)}`,
+        arithmetic: contestArithmetic({ qsos: scoresheet.qsos, points: scoresheet.points, mults }, ctx),
+        extra: { points: scoresheet.points, mults, qsos: scoresheet.qsos },
       },
-    }
+      ctx,
+    )
   },
 }
 
