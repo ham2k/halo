@@ -81,7 +81,7 @@ class AccordionHeader extends StatelessWidget {
     // centring past the rows.
     final direction = Directionality.of(context);
     final inset = headerInset.resolve(direction);
-    final rowStart = (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xxl)).resolve(direction).left;
+    final rowStart = (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero).resolve(direction).left;
     final hanging = rowStart - kMinInteractiveDimension;
     final left = hanging > Space.xs ? hanging : Space.xs;
 

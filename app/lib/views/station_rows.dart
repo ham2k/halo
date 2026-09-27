@@ -826,7 +826,7 @@ class _TransceiverMenuState extends State<TransceiverMenu> {
       // Settings pane carries its centring) is taken off both sides, and the
       // menu stands [_margin] proud of what is left. Its rows take just that
       // margin as their own inset, so their text lines up with the row above.
-      final inset = (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xxl)).resolve(Directionality.of(context));
+      final inset = (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero).resolve(Directionality.of(context));
       final width = (constraints.maxWidth - inset.horizontal + _margin * 2).clamp(0.0, constraints.maxWidth);
       final left = (inset.left - _margin).clamp(0.0, constraints.maxWidth - width);
       // On the right the rows stop where the current row's content does: short

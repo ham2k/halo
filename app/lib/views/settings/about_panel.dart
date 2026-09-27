@@ -175,7 +175,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             // The rows' own inset, so the notes start under the section
             // band's title rather than at an inset of their own.
-            padding: ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xl),
+            padding: ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero,
             child: MarkdownBody(data: markdown, styleSheet: styleSheet),
           ),
         ),

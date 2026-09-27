@@ -53,11 +53,10 @@ const _storedSecretPlaceholder = '••••••••';
 /// rung instead spans the whole pane while the list rows above and below it
 /// are centred in it.
 ///
-/// The fallback is a `ListTile`'s own — this panel also presents with no
-/// ambient theme at all (`compact`, in a modal pane), and there the rows to
-/// line up with are plain tiles at Material's inset.
-EdgeInsets _rowInset(BuildContext context) =>
-    (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xl)).resolve(Directionality.of(context));
+/// Both hosts publish one — the Settings pane, and the compact dialog's
+/// `SettingsList`. With none published it takes none, as [SectionHeader] and
+/// [CategoryBand] do (docs/design/user-interface.md § Settings lists).
+EdgeInsets _rowInset(BuildContext context) => (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero).resolve(Directionality.of(context));
 
 /// What a piece of equipment is doing, in the panel's own vocabulary — shared
 /// so the status bar's line and the panel's pill cannot come to word the same
