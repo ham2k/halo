@@ -50,7 +50,8 @@ app at all. Declare the lowest version that has what the bundle uses, so it
 reaches every app that can run it: 2 adds `host.webSocket`, and the packer
 refuses a manifest declaring `webSockets` under anything less; 3 adds timers
 and `onShow`/`onHide`, and from 3 the build rewrites a bare `setTimeout` into
-the SDK's (README's "Timers").
+the SDK's (README's "Timers"); 4 lets `host.fetch` reach a plain-`http://` host
+the app fronts with its https proxy (README's `host.fetch`).
 
 Three fields are **refused** in a distributed bundle, and it is worth
 understanding why:
@@ -259,7 +260,7 @@ It reports every problem at once rather than one per run:
 h2kext-pack: ./build is not ready to package:
 manifest.json: missing required field 'name'
 manifest.json: key 'my-clock' must start with your callsign — 'my' is not one (e.g. ki2d-my-clock)
-manifest.json: missing 'api' — declare the extension API this was built against (currently 3)
+manifest.json: missing 'api' — declare the extension API this was built against (currently 4)
 ```
 
 `--force-name` waives the naming convention below. It exists for Ham2K's own
