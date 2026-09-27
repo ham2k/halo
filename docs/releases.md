@@ -527,6 +527,12 @@ build number and no note lands under a build that never ships. Until the rename,
 `upcoming` is a non-numeric key the app's parser skips — that is what keeps
 accumulated notes off a tester's screen before the build carrying them exists.
 
+For Next, the same entry is also the build's store testing notes — TestFlight's
+"What to Test" and the Play release notes — printed as plain text by
+`app/tool/print_tester_notes.dart` and fitted to each store's length limit. A
+build with no entry says only its version there. Regular keeps the bare version:
+Play carries a release's notes forward when it is promoted to production.
+
 Because the file is hand-edited and the cut commits, tags and pushes it unseen,
 the cut vets it rather than trusting it. It parses the document on both sides of
 the rename and **refuses** — before writing, tagging or pushing anything — on a
@@ -564,6 +570,16 @@ monthly main version is a binary release.
   promoting that same release into `GOOGLE_PLAY_TRACK` when one is set. Each
   edition is its own Play listing (`com.ham2k.logger.next` / `.prod`), so a
   closed-track name configured for one has to exist on the other too.
+- **Public testers (Next only)**: every Next build also goes to Play **open
+  testing** and to the TestFlight **external group** (submitted for Beta App
+  Review), so it reaches public testers once each store's review passes. A build
+  that should see private testers first is cut with `halo-ops release
+  --private-first`, which marks its release tag; the build then stops at the
+  internal/closed tracks and internal TestFlight. `halo-ops promote-testers
+  <build>` hands such a build on later — the same two store steps, run by their
+  own CI workflow — but only while it is still the newest build: each upload
+  replaces the Play internal track's release it promotes from. Dev and Regular
+  builds never reach public testers.
 
 Store installs update through the store's own mechanism; no custom updater
 needed.
