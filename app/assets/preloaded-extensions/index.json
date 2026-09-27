@@ -14,9 +14,9 @@
     },
     {
       "key": "ham2k-lookup",
-      "version": "0.2.0",
-      "file": "ham2k-lookup-0.2.0.h2kext",
-      "sha256": "17df578694dfdecdd9b98e40ac7d50d4400e1baf748e1c522597a9ec2bd57c16"
+      "version": "0.2.1",
+      "file": "ham2k-lookup-0.2.1.h2kext",
+      "sha256": "0113e9441f2da0e35c7c7aa77e030b19fd3946e1375b33313dc176869eadcc76"
     },
     {
       "key": "ham2k-pota",
