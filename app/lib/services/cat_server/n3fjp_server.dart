@@ -5,9 +5,8 @@
 // TCP API (https://www.n3fjp.com/help/api.html), for the programs that
 // follow a radio through N3FJP — GridTracker's N3FJP integration first.
 //
-// Every message is `<CMD><NAME>…</CMD>`, and several can arrive in one read
-// or one split across two, so input is cut at `</CMD>` rather than at line
-// ends. Tags match case-insensitively.
+// The message format and the mode tables are the driver's too
+// (n3fjp_codec.dart).
 //
 // N3FJP speaks first when the radio moves: a `READBMFRESPONSE` goes to every
 // client whenever band, mode or frequency changes, and a client following the
@@ -24,11 +23,9 @@ import 'dart:typed_data';
 
 import 'package:halo_core/halo_core.dart';
 
+import '../cat/drivers/n3fjp_codec.dart';
 import 'cat_server_protocol.dart';
 import 'cat_server_rig.dart';
-
-final _command = RegExp(r'<CMD>\s*<([A-Z0-9_]+)>(.*?)</CMD>', caseSensitive: false, dotAll: true);
-final _commandEnd = RegExp(r'</CMD>', caseSensitive: false);
 
 class N3fjpServerConnection implements CatServerConnection {
   final CatServerRig rig;
@@ -54,7 +51,7 @@ class N3fjpServerConnection implements CatServerConnection {
     _pending += utf8.decode(bytes, allowMalformed: true);
     if (!_vetted) {
       final lineEnd = _pending.indexOf('\n');
-      final commandEnd = _commandEnd.firstMatch(_pending)?.end ?? -1;
+      final commandEnd = n3fjpCommandEnd.firstMatch(_pending)?.end ?? -1;
       final firstEnd = [lineEnd, commandEnd].where((i) => i >= 0).fold<int?>(null, (a, b) => a == null || b < a ? b : a);
       if (firstEnd != null) {
         if (isHttpRequestLine(_pending.substring(0, firstEnd))) {
@@ -65,11 +62,11 @@ class N3fjpServerConnection implements CatServerConnection {
       }
     }
     while (_vetted) {
-      final end = _commandEnd.firstMatch(_pending);
+      final end = n3fjpCommandEnd.firstMatch(_pending);
       if (end == null) break;
       final message = _pending.substring(0, end.end);
       _pending = _pending.substring(end.end);
-      final match = _command.firstMatch(message);
+      final match = n3fjpCommand.firstMatch(message);
       if (match == null) continue;
       // A tune notifies at once; its report waits until the command's own
       // reply is out, which is the order a client reading replies expects.
@@ -112,45 +109,45 @@ class N3fjpServerConnection implements CatServerConnection {
   String? respond(String name, String body) {
     switch (name) {
       case 'PROGRAM':
-        return _reply('<PROGRAMRESPONSE><PGM>Ham2K Logger</PGM><VER>1.0</VER><APIVER>2.2</APIVER>');
+        return n3fjpMessage('<PROGRAMRESPONSE><PGM>Ham2K Logger</PGM><VER>1.0</VER><APIVER>2.2</APIVER>');
       case 'APIVER':
-        return _reply('<APIVERRESPONSE><APIVER>2.2</APIVER>');
+        return n3fjpMessage('<APIVERRESPONSE><APIVER>2.2</APIVER>');
       case 'RIGENABLED':
-        return _reply('<RIGRESPONSE><RIG>${rig.available ? 'HaLo' : 'None'}</RIG>');
+        return n3fjpMessage('<RIGRESPONSE><RIG>${rig.available ? 'HaLo' : 'None'}</RIG>');
       case 'GETRIGPOLLINGRATE':
-        return _reply('<GETRIGPOLLINGRATERESPONSE><VALUE>500</VALUE>');
+        return n3fjpMessage('<GETRIGPOLLINGRATERESPONSE><VALUE>500</VALUE>');
       case 'RIGTX' || 'RIGRX':
         return null;
       case 'READBMF':
         // Answered even with no radio, the way N3FJP answers with none
         // attached: an empty mode and a zero frequency.
-        return (_lastReport = _bandModeFreq()) ?? _reply('<READBMFRESPONSE><BAND></BAND><MODE></MODE><MODETEST></MODETEST><FREQ>0.000000</FREQ>');
+        return (_lastReport = _bandModeFreq()) ?? n3fjpMessage('<READBMFRESPONSE><BAND></BAND><MODE></MODE><MODETEST></MODETEST><FREQ>0.000000</FREQ>');
       case 'CHANGEFREQ' || 'CHANGEMODE' || 'CHANGEBM' when !rig.available:
         return null;
       case 'CHANGEFREQ':
-        final mhz = double.tryParse(_tag(body, 'VALUE') ?? '');
+        final mhz = double.tryParse(n3fjpTag(body, 'VALUE') ?? '');
         if (mhz == null || !isTunableFrequencyKHz(mhz * 1000)) return null;
         // SUPPRESSMODEDEFAULT asks N3FJP not to pick a mode for the new
         // sub-band. HaLo never picks one on a retune, so there is nothing to
         // suppress.
         rig.tune(freqKHz: mhz * 1000);
-        return _reply('<CHANGEFREQRESPONSE><VALUE>${_tag(body, 'VALUE')!.trim()}</VALUE>');
+        return n3fjpMessage('<CHANGEFREQRESPONSE><VALUE>${n3fjpTag(body, 'VALUE')!.trim()}</VALUE>');
       case 'CHANGEMODE':
-        final mode = _tag(body, 'VALUE')?.trim();
+        final mode = n3fjpTag(body, 'VALUE')?.trim();
         if (mode != null && mode.isNotEmpty) _tuneMode(mode);
         return null;
       case 'CHANGEBM':
         // N3FJP's own "no rig interface" form. A band alone cannot tune a
         // radio, so only the mode is taken from it.
-        final mode = _tag(body, 'MODE')?.trim();
+        final mode = n3fjpTag(body, 'MODE')?.trim();
         if (mode != null && mode.isNotEmpty) _tuneMode(mode);
         return null;
     }
-    return _reply('<CMD_NOT_FOUND>');
+    return n3fjpMessage('<CMD_NOT_FOUND>');
   }
 
   void _tuneMode(String requested) {
-    final mode = tunableAppMode(_appMode(requested));
+    final mode = tunableAppMode(appModeForN3fjpMode(requested)!);
     if (mode != null) rig.tune(mode: mode);
   }
 
@@ -160,48 +157,11 @@ class N3fjpServerConnection implements CatServerConnection {
     if (!rig.available) return null;
     final freq = rig.freqKHz;
     if (freq == null) return null;
-    final mode = _n3fjpMode(radioModeForAppMode(rig.mode, freq));
+    final mode = n3fjpModeForRadioMode(radioModeForAppMode(rig.mode, freq));
     final band = bandForFrequency(freq);
-    return _reply(
-      '<READBMFRESPONSE><BAND>${_n3fjpBand(band)}</BAND><MODE>$mode</MODE>'
-      '<MODETEST>${_modeTest(mode)}</MODETEST><FREQ>${(freq / 1000).toStringAsFixed(6)}</FREQ>',
+    return n3fjpMessage(
+      '<READBMFRESPONSE><BAND>${n3fjpBand(band)}</BAND><MODE>$mode</MODE>'
+      '<MODETEST>${n3fjpModeTest(mode)}</MODETEST><FREQ>${(freq / 1000).toStringAsFixed(6)}</FREQ>',
     );
   }
 }
-
-String _reply(String inner) => '<CMD>$inner</CMD>\r\n';
-
-String? _tag(String body, String name) => RegExp('<$name>(.*?)</$name>', caseSensitive: false, dotAll: true).firstMatch(body)?.group(1);
-
-/// N3FJP names a band by its metres without the unit (`40`), and anything
-/// shorter by its own name (`70CM`).
-String _n3fjpBand(String? band) {
-  if (band == null) return '';
-  final upper = band.toUpperCase();
-  return upper.endsWith('M') && !upper.endsWith('CM') && !upper.endsWith('MM') ? upper.substring(0, upper.length - 1) : upper;
-}
-
-/// A radio mode as N3FJP's mode field writes it: its sidebands and variants
-/// fold into the mode a log records.
-String _n3fjpMode(String? mode) => switch (mode) {
-  null => '',
-  'CW-R' => 'CW',
-  'FM-N' => 'FM',
-  'AM-N' => 'AM',
-  'RTTY-LSB' || 'RTTY-USB' => 'RTTY',
-  'DATA-USB' || 'DATA-LSB' || 'DATA-FM' => 'DATA',
-  _ => mode,
-};
-
-String _modeTest(String mode) => switch (superModeForMode(mode)) {
-  'CW' => 'CW',
-  'Phone' => 'PH',
-  _ => mode.isEmpty ? '' : 'DIG',
-};
-
-/// What a client asks for, as the app names it. N3FJP clients say `DATA`
-/// or `DIG` for the data sideband.
-String _appMode(String mode) => switch (mode.toUpperCase()) {
-  'DATA' || 'DIG' || 'PKTUSB' || 'USB-D' => 'DATA-USB',
-  final other => other,
-};

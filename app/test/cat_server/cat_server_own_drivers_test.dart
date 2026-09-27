@@ -1,10 +1,15 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// HaLo's own rigctld and flrig drivers, pointed at HaLo's emulations of the
-// same programs. Each driver was written against the real program, so a
-// session that follows and tunes the emulation is evidence the emulation
-// answers what a real client asks, in the form a real client reads.
+// HaLo's own drivers, pointed at HaLo's emulations of the same programs.
+//
+// The rigctld and flrig drivers were written against the real programs, so
+// for those a session that follows and tunes the emulation is evidence the
+// emulation answers what a real client asks, in the form a real client
+// reads. The HRD and N3FJP halves were both written from the same published
+// descriptions, with no capture of either program: for those this proves
+// only that the two halves agree, and a misreading of the documents shared
+// by both would pass.
 
 import 'dart:typed_data';
 
@@ -12,6 +17,8 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/flrig_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/hrd_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/n3fjp_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/rigctld_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat_server/cat_server_protocol.dart';
@@ -41,6 +48,8 @@ void main() {
   for (final (protocol, createSession) in [
     (CatServerProtocol.rigctld, (EquipmentSink sink) => RigctldSession(sink) as TransceiverSession),
     (CatServerProtocol.flrig, (EquipmentSink sink) => FlrigSession(sink) as TransceiverSession),
+    (CatServerProtocol.hrd, (EquipmentSink sink) => HrdSession(sink) as TransceiverSession),
+    (CatServerProtocol.n3fjp, (EquipmentSink sink) => N3fjpSession(sink) as TransceiverSession),
   ]) {
     group('HaLo\'s ${protocol.key} driver against the ${protocol.key} emulation', () {
       test('follows the radio and tunes it', () {

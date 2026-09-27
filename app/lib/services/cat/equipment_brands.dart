@@ -39,4 +39,4 @@ const xieguBrand = 'Xiegu';
 /// reaching for flrig already knows their radio is not directly reachable.
 /// A bridge added later belongs here — nothing derives this list, and one
 /// left out lands under "Other Brands" with the radios.
-const softwareIntermediaryModelKeys = ['flrig', 'rigctld'];
+const softwareIntermediaryModelKeys = ['flrig', 'rigctld', 'hrd', 'n3fjp', 'dxlab-commander'];

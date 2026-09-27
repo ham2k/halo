@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/cat/drivers/hrd_codec.dart';
 import 'package:ham2k_logger/services/cat_server/hrd_server.dart';
 
 import 'fake_cat_server_rig.dart';

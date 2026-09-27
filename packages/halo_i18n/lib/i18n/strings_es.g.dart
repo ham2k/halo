@@ -2099,6 +2099,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get channelNotInUse => 'sin usar';
 	@override String get channelHeldByUnknown => 'en uso por otro programa';
 	@override String get flexNoSlices => 'Esta radio no ha informado de ningún slice — comprueba que SmartSDR esté activo y que este cliente pueda suscribirse';
+	@override String get n3fjpNoRig => 'N3FJP no tiene configurada una interfaz de radio, así que esto sigue lo que se escribe en N3FJP, no una radio';
 	@override String get winkeyerKeyPort => 'Salida de manipulación';
 	@override String get winkeyerKeyPortDescription => 'En cuál de los dos conectores de salida del manipulador está enchufada tu radio.';
 	@override String winkeyerKeyPortLabel({required Object n}) => 'Puerto ${n}';
@@ -2179,6 +2180,12 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get rigctldTroubleshooting => 'Esto conecta con un **daemon rigctld que tú mismo ejecutas**, no directamente con la radio — el backend de Hamlib es quien habla con la radio y soporta cientos de modelos.\n\n- **El daemon debe estar ya en ejecución**, p. ej. `rigctld -m 1035 -r /dev/ttyUSB0`. Encuentra el número de modelo de tu radio con `rigctl -l`.\n- **Desde otra máquina**, inícialo con `-T 0.0.0.0` — por defecto rigctld solo acepta conexiones desde la máquina donde corre.\n- **El puerto** es 4532 salvo que hayas iniciado el daemon con `-t`.\n- Una vez conectado, si falta la frecuencia normalmente es que el daemon mismo no puede comunicarse con la radio — pruébalo con `rigctl -m 2 f` en la máquina del daemon.';
 	@override String get flrigTroubleshootingTitle => 'Si la app no puede conectar';
 	@override String get flrigTroubleshooting => 'Esto se conecta a un **programa flrig que tú mismo ejecutas**, no directamente a la radio — flrig habla con la radio y soporta la mayoría de marcas y modelos.\n\n- **flrig ya debe estar corriendo**, con su transceptor configurado y conectado.\n- **El puerto** es 12345 salvo que lo hayas cambiado en la configuración de flrig (Config → Setup → Server).\n- **Desde otra máquina**, asegúrate de que el servidor de flrig sea alcanzable — escucha en todas las interfaces, pero tu firewall puede no estar de acuerdo.\n- Una vez conectado, si falta la frecuencia normalmente es que flrig no puede hablar con la radio — verifica que la pantalla de flrig siga el dial.';
+	@override String get hrdTroubleshootingTitle => 'Si la app no puede conectar';
+	@override String get hrdTroubleshooting => 'Esto se conecta al **Rig Control de Ham Radio Deluxe, que se ejecuta en tu computadora**, no directamente a la radio — HRD habla con la radio.\n\n- **Rig Control ya debe estar corriendo** y conectado a la radio.\n- **Su servidor IP debe estar activado.** Rig Control solo responde a otros programas a través de él.\n- **El puerto** es 7809 salvo que lo hayas cambiado en la configuración del servidor IP.\n- **Desde otra máquina**, asegúrate de que tu firewall deje pasar la conexión.\n\nEsta entrada se escribió a partir de descripciones publicadas del protocolo de HRD y no se ha probado contra HRD. Si funciona a medias, merece la pena avisar.';
+	@override String get n3fjpTroubleshootingTitle => 'Si la app no puede conectar';
+	@override String get n3fjpTroubleshooting => 'Esto se conecta a **un programa de registro de N3FJP que se ejecuta en tu computadora**, no directamente a la radio — N3FJP habla con la radio.\n\n- **La API del programa debe estar activada**: Settings → Application Program Interface, marca **TCP API Enabled**.\n- **El puerto** es 1100 salvo que lo hayas cambiado ahí.\n- **N3FJP debe tener configurada una interfaz de radio** para seguir o sintonizar la radio. Sin ella, solo informa lo que se escribe en su ventana de entrada.\n- N3FJP informa solo banda, modo y frecuencia: ni potencia ni estado de transmisión.\n\nEsta entrada se escribió a partir de la API publicada de N3FJP y no se ha probado contra N3FJP. Si funciona a medias, merece la pena avisar.';
+	@override String get commanderTroubleshootingTitle => 'Si la app no puede conectar';
+	@override String get commanderTroubleshooting => 'Esto se conecta a **DXLab Commander, que se ejecuta en tu computadora**, no directamente a la radio — Commander habla con la radio.\n\n- **Commander ya debe estar corriendo** y conectado a la radio.\n- **Su servicio de red debe estar activado**: el botón **Net Serv** del panel Radio en la ventana de configuración de Commander.\n- **El puerto** es 52002, el tercero del bloque que empieza en el **Base Port** de Net Serv (52000 salvo que lo hayas cambiado).\n- **Desde otra máquina**, asegúrate de que tu firewall deje pasar la conexión.\n\nEsta entrada se escribió a partir de los mensajes TCP publicados de Commander y no se ha probado contra Commander. Si funciona a medias, merece la pena avisar.';
 	@override String get ic705TroubleshootingTitle => 'Si la radio nunca responde';
 	@override String get ic705Troubleshooting => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.';
 	@override String get statusStale => 'Sin respuesta';
@@ -3226,6 +3233,12 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get rigctldNodeName => 'Mi radio (vía rigctld)';
 	@override String get flrig => 'Radio controlada vía flrig';
 	@override String get flrigNodeName => 'Mi radio (vía flrig)';
+	@override String get hrd => 'Radio controlada vía Ham Radio Deluxe®';
+	@override String get hrdNodeName => 'Mi radio (vía HRD)';
+	@override String get n3fjp => 'Radio controlada vía N3FJP';
+	@override String get n3fjpNodeName => 'Mi radio (vía N3FJP)';
+	@override String get commander => 'Radio controlada vía DXLab Commander';
+	@override String get commanderNodeName => 'Mi radio (vía Commander)';
 	@override String get placeholderRadio => 'Radio genérica (marcador)';
 	@override String get placeholderRadioNodeName => 'Mi radio';
 	@override String get antenna => 'Antena';
@@ -4605,6 +4618,7 @@ extension on TranslationsEs {
 			'settings.station.channelNotInUse' => 'sin usar',
 			'settings.station.channelHeldByUnknown' => 'en uso por otro programa',
 			'settings.station.flexNoSlices' => 'Esta radio no ha informado de ningún slice — comprueba que SmartSDR esté activo y que este cliente pueda suscribirse',
+			'settings.station.n3fjpNoRig' => 'N3FJP no tiene configurada una interfaz de radio, así que esto sigue lo que se escribe en N3FJP, no una radio',
 			'settings.station.winkeyerKeyPort' => 'Salida de manipulación',
 			'settings.station.winkeyerKeyPortDescription' => 'En cuál de los dos conectores de salida del manipulador está enchufada tu radio.',
 			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'Puerto ${n}',
@@ -4657,6 +4671,12 @@ extension on TranslationsEs {
 			'settings.station.models.rigctldNodeName' => 'Mi radio (vía rigctld)',
 			'settings.station.models.flrig' => 'Radio controlada vía flrig',
 			'settings.station.models.flrigNodeName' => 'Mi radio (vía flrig)',
+			'settings.station.models.hrd' => 'Radio controlada vía Ham Radio Deluxe®',
+			'settings.station.models.hrdNodeName' => 'Mi radio (vía HRD)',
+			'settings.station.models.n3fjp' => 'Radio controlada vía N3FJP',
+			'settings.station.models.n3fjpNodeName' => 'Mi radio (vía N3FJP)',
+			'settings.station.models.commander' => 'Radio controlada vía DXLab Commander',
+			'settings.station.models.commanderNodeName' => 'Mi radio (vía Commander)',
 			'settings.station.models.placeholderRadio' => 'Radio genérica (marcador)',
 			'settings.station.models.placeholderRadioNodeName' => 'Mi radio',
 			'settings.station.models.antenna' => 'Antena',
@@ -4720,6 +4740,12 @@ extension on TranslationsEs {
 			'settings.station.rigctldTroubleshooting' => 'Esto conecta con un **daemon rigctld que tú mismo ejecutas**, no directamente con la radio — el backend de Hamlib es quien habla con la radio y soporta cientos de modelos.\n\n- **El daemon debe estar ya en ejecución**, p. ej. `rigctld -m 1035 -r /dev/ttyUSB0`. Encuentra el número de modelo de tu radio con `rigctl -l`.\n- **Desde otra máquina**, inícialo con `-T 0.0.0.0` — por defecto rigctld solo acepta conexiones desde la máquina donde corre.\n- **El puerto** es 4532 salvo que hayas iniciado el daemon con `-t`.\n- Una vez conectado, si falta la frecuencia normalmente es que el daemon mismo no puede comunicarse con la radio — pruébalo con `rigctl -m 2 f` en la máquina del daemon.',
 			'settings.station.flrigTroubleshootingTitle' => 'Si la app no puede conectar',
 			'settings.station.flrigTroubleshooting' => 'Esto se conecta a un **programa flrig que tú mismo ejecutas**, no directamente a la radio — flrig habla con la radio y soporta la mayoría de marcas y modelos.\n\n- **flrig ya debe estar corriendo**, con su transceptor configurado y conectado.\n- **El puerto** es 12345 salvo que lo hayas cambiado en la configuración de flrig (Config → Setup → Server).\n- **Desde otra máquina**, asegúrate de que el servidor de flrig sea alcanzable — escucha en todas las interfaces, pero tu firewall puede no estar de acuerdo.\n- Una vez conectado, si falta la frecuencia normalmente es que flrig no puede hablar con la radio — verifica que la pantalla de flrig siga el dial.',
+			'settings.station.hrdTroubleshootingTitle' => 'Si la app no puede conectar',
+			'settings.station.hrdTroubleshooting' => 'Esto se conecta al **Rig Control de Ham Radio Deluxe, que se ejecuta en tu computadora**, no directamente a la radio — HRD habla con la radio.\n\n- **Rig Control ya debe estar corriendo** y conectado a la radio.\n- **Su servidor IP debe estar activado.** Rig Control solo responde a otros programas a través de él.\n- **El puerto** es 7809 salvo que lo hayas cambiado en la configuración del servidor IP.\n- **Desde otra máquina**, asegúrate de que tu firewall deje pasar la conexión.\n\nEsta entrada se escribió a partir de descripciones publicadas del protocolo de HRD y no se ha probado contra HRD. Si funciona a medias, merece la pena avisar.',
+			'settings.station.n3fjpTroubleshootingTitle' => 'Si la app no puede conectar',
+			'settings.station.n3fjpTroubleshooting' => 'Esto se conecta a **un programa de registro de N3FJP que se ejecuta en tu computadora**, no directamente a la radio — N3FJP habla con la radio.\n\n- **La API del programa debe estar activada**: Settings → Application Program Interface, marca **TCP API Enabled**.\n- **El puerto** es 1100 salvo que lo hayas cambiado ahí.\n- **N3FJP debe tener configurada una interfaz de radio** para seguir o sintonizar la radio. Sin ella, solo informa lo que se escribe en su ventana de entrada.\n- N3FJP informa solo banda, modo y frecuencia: ni potencia ni estado de transmisión.\n\nEsta entrada se escribió a partir de la API publicada de N3FJP y no se ha probado contra N3FJP. Si funciona a medias, merece la pena avisar.',
+			'settings.station.commanderTroubleshootingTitle' => 'Si la app no puede conectar',
+			'settings.station.commanderTroubleshooting' => 'Esto se conecta a **DXLab Commander, que se ejecuta en tu computadora**, no directamente a la radio — Commander habla con la radio.\n\n- **Commander ya debe estar corriendo** y conectado a la radio.\n- **Su servicio de red debe estar activado**: el botón **Net Serv** del panel Radio en la ventana de configuración de Commander.\n- **El puerto** es 52002, el tercero del bloque que empieza en el **Base Port** de Net Serv (52000 salvo que lo hayas cambiado).\n- **Desde otra máquina**, asegúrate de que tu firewall deje pasar la conexión.\n\nEsta entrada se escribió a partir de los mensajes TCP publicados de Commander y no se ha probado contra Commander. Si funciona a medias, merece la pena avisar.',
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',
@@ -4855,6 +4881,8 @@ extension on TranslationsEs {
 			'settings.profiles.club' => 'Club',
 			'settings.profiles.arrlSection' => 'Sección ARRL',
 			'settings.profiles.racSection' => 'Sección RAC',
+			_ => null,
+		} ?? switch (path) {
 			'settings.profiles.section' => 'Sección',
 			'settings.search.clear' => 'Borrar',
 			'settings.search.hint' => 'Buscar preferencias',
@@ -4868,8 +4896,6 @@ extension on TranslationsEs {
 			'settings.developer.trackBleeding' => 'Vanguardia',
 			'settings.developer.checkingTrack' => ({required Object track}) => 'Buscando un code push en «${track}»…',
 			'settings.developer.patchDownloaded' => 'Code push descargado — reinicia la app para aplicarlo.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.noNewPatch' => ({required Object track}) => 'No hay code push nuevo en «${track}».',
 			'settings.developer.noPatchInstalled' => 'No hay code push instalado — ejecutando el binario de la versión.',
 			'settings.developer.runningPatch' => ({required Object patch}) => 'Ejecutando el code push #${patch}.',

@@ -4544,6 +4544,9 @@ class Translations$settings$station$en {
 	/// en: 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe'
 	String get flexNoSlices => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe';
 
+	/// en: 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio'
+	String get n3fjpNoRig => 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio';
+
 	/// en: 'Key output'
 	String get winkeyerKeyPort => 'Key output';
 
@@ -4772,6 +4775,24 @@ class Translations$settings$station$en {
 
 	/// en: 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models. - **flrig must already be running**, with its transceiver configured and connected. - **Port** is 12345 unless you changed it in flrig's configuration (Config → Setup → Server). - **From another machine**, make sure flrig's server is reachable — it listens on all interfaces, but your firewall may not agree. - Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig's own display is following the dial.'
 	String get flrigTroubleshooting => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable — it listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig\'s own display is following the dial.';
+
+	/// en: 'If the app cannot connect'
+	String get hrdTroubleshootingTitle => 'If the app cannot connect';
+
+	/// en: 'This connects to **Ham Radio Deluxe's Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio. - **Rig Control must already be running** and connected to the radio. - **Its IP server must be enabled.** Rig Control only answers other programs through it. - **Port** is 7809 unless you changed it in the IP server's settings. - **From another machine**, make sure your firewall lets the connection through. This entry was written from published descriptions of HRD's protocol and has not been run against HRD. If it half-works, that is worth reporting.'
+	String get hrdTroubleshooting => 'This connects to **Ham Radio Deluxe\'s Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio.\n\n- **Rig Control must already be running** and connected to the radio.\n- **Its IP server must be enabled.** Rig Control only answers other programs through it.\n- **Port** is 7809 unless you changed it in the IP server\'s settings.\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from published descriptions of HRD\'s protocol and has not been run against HRD. If it half-works, that is worth reporting.';
+
+	/// en: 'If the app cannot connect'
+	String get n3fjpTroubleshootingTitle => 'If the app cannot connect';
+
+	/// en: 'This connects to **an N3FJP logging program running on your computer**, not to the radio directly — N3FJP talks to the radio. - **The program's API must be on**: Settings → Application Program Interface, check **TCP API Enabled**. - **Port** is 1100 unless you changed it there. - **N3FJP must have a radio interface set up** to follow or tune the radio. Without one, it reports only what is typed into its entry window. - N3FJP reports band, mode and frequency only: no power, no transmit state. This entry was written from N3FJP's published API and has not been run against N3FJP. If it half-works, that is worth reporting.'
+	String get n3fjpTroubleshooting => 'This connects to **an N3FJP logging program running on your computer**, not to the radio directly — N3FJP talks to the radio.\n\n- **The program\'s API must be on**: Settings → Application Program Interface, check **TCP API Enabled**.\n- **Port** is 1100 unless you changed it there.\n- **N3FJP must have a radio interface set up** to follow or tune the radio. Without one, it reports only what is typed into its entry window.\n- N3FJP reports band, mode and frequency only: no power, no transmit state.\n\nThis entry was written from N3FJP\'s published API and has not been run against N3FJP. If it half-works, that is worth reporting.';
+
+	/// en: 'If the app cannot connect'
+	String get commanderTroubleshootingTitle => 'If the app cannot connect';
+
+	/// en: 'This connects to **DXLab Commander, running on your computer**, not to the radio directly — Commander talks to the radio. - **Commander must already be running** and connected to the radio. - **Its network service must be on**: the **Net Serv** button in the Radio panel of Commander's Configuration window. - **Port** is 52002, the third port of the block starting at Net Serv's **Base Port** (52000 unless you changed it). - **From another machine**, make sure your firewall lets the connection through. This entry was written from Commander's published TCP messages and has not been run against Commander. If it half-works, that is worth reporting.'
+	String get commanderTroubleshooting => 'This connects to **DXLab Commander, running on your computer**, not to the radio directly — Commander talks to the radio.\n\n- **Commander must already be running** and connected to the radio.\n- **Its network service must be on**: the **Net Serv** button in the Radio panel of Commander\'s Configuration window.\n- **Port** is 52002, the third port of the block starting at Net Serv\'s **Base Port** (52000 unless you changed it).\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from Commander\'s published TCP messages and has not been run against Commander. If it half-works, that is worth reporting.';
 
 	/// en: 'If the radio never answers'
 	String get ic705TroubleshootingTitle => 'If the radio never answers';
@@ -6954,6 +6975,24 @@ class Translations$settings$station$models$en {
 	/// en: 'My Radio (via flrig)'
 	String get flrigNodeName => 'My Radio (via flrig)';
 
+	/// en: 'Radio controlled via Ham Radio Deluxe®'
+	String get hrd => 'Radio controlled via Ham Radio Deluxe®';
+
+	/// en: 'My Radio (via HRD)'
+	String get hrdNodeName => 'My Radio (via HRD)';
+
+	/// en: 'Radio controlled via N3FJP'
+	String get n3fjp => 'Radio controlled via N3FJP';
+
+	/// en: 'My Radio (via N3FJP)'
+	String get n3fjpNodeName => 'My Radio (via N3FJP)';
+
+	/// en: 'Radio controlled via DXLab Commander'
+	String get commander => 'Radio controlled via DXLab Commander';
+
+	/// en: 'My Radio (via Commander)'
+	String get commanderNodeName => 'My Radio (via Commander)';
+
 	/// en: 'Antenna'
 	String get antenna => 'Antenna';
 
@@ -8447,6 +8486,7 @@ extension on Translations {
 			'settings.station.channelNotInUse' => 'not in use',
 			'settings.station.channelHeldByUnknown' => 'in use by another program',
 			'settings.station.flexNoSlices' => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe',
+			'settings.station.n3fjpNoRig' => 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio',
 			'settings.station.winkeyerKeyPort' => 'Key output',
 			'settings.station.winkeyerKeyPortDescription' => 'Which of the keyer\'s two output jacks your radio is plugged into.',
 			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'Port ${n}',
@@ -8499,6 +8539,12 @@ extension on Translations {
 			'settings.station.models.rigctldNodeName' => 'My Radio (via rigctld)',
 			'settings.station.models.flrig' => 'Radio controlled via flrig',
 			'settings.station.models.flrigNodeName' => 'My Radio (via flrig)',
+			'settings.station.models.hrd' => 'Radio controlled via Ham Radio Deluxe®',
+			'settings.station.models.hrdNodeName' => 'My Radio (via HRD)',
+			'settings.station.models.n3fjp' => 'Radio controlled via N3FJP',
+			'settings.station.models.n3fjpNodeName' => 'My Radio (via N3FJP)',
+			'settings.station.models.commander' => 'Radio controlled via DXLab Commander',
+			'settings.station.models.commanderNodeName' => 'My Radio (via Commander)',
 			'settings.station.models.antenna' => 'Antenna',
 			'settings.station.models.key' => 'CW Key',
 			'settings.station.models.winkeyer' => 'WinKeyer',
@@ -8567,6 +8613,12 @@ extension on Translations {
 			'settings.station.rigctldTroubleshooting' => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.',
 			'settings.station.flrigTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.flrigTroubleshooting' => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable — it listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig\'s own display is following the dial.',
+			'settings.station.hrdTroubleshootingTitle' => 'If the app cannot connect',
+			'settings.station.hrdTroubleshooting' => 'This connects to **Ham Radio Deluxe\'s Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio.\n\n- **Rig Control must already be running** and connected to the radio.\n- **Its IP server must be enabled.** Rig Control only answers other programs through it.\n- **Port** is 7809 unless you changed it in the IP server\'s settings.\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from published descriptions of HRD\'s protocol and has not been run against HRD. If it half-works, that is worth reporting.',
+			'settings.station.n3fjpTroubleshootingTitle' => 'If the app cannot connect',
+			'settings.station.n3fjpTroubleshooting' => 'This connects to **an N3FJP logging program running on your computer**, not to the radio directly — N3FJP talks to the radio.\n\n- **The program\'s API must be on**: Settings → Application Program Interface, check **TCP API Enabled**.\n- **Port** is 1100 unless you changed it there.\n- **N3FJP must have a radio interface set up** to follow or tune the radio. Without one, it reports only what is typed into its entry window.\n- N3FJP reports band, mode and frequency only: no power, no transmit state.\n\nThis entry was written from N3FJP\'s published API and has not been run against N3FJP. If it half-works, that is worth reporting.',
+			'settings.station.commanderTroubleshootingTitle' => 'If the app cannot connect',
+			'settings.station.commanderTroubleshooting' => 'This connects to **DXLab Commander, running on your computer**, not to the radio directly — Commander talks to the radio.\n\n- **Commander must already be running** and connected to the radio.\n- **Its network service must be on**: the **Net Serv** button in the Radio panel of Commander\'s Configuration window.\n- **Port** is 52002, the third port of the block starting at Net Serv\'s **Base Port** (52000 unless you changed it).\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from Commander\'s published TCP messages and has not been run against Commander. If it half-works, that is worth reporting.',
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
 			'settings.station.statusStale' => 'Not responding',
@@ -8697,6 +8749,8 @@ extension on Translations {
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Updated ${hours}h ${minutes}m ago',
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Updated ${minutes}m ago',
 			'settings.offlineData.extensionsSection' => 'Extensions',
+			_ => null,
+		} ?? switch (path) {
 			'settings.profiles.notSet' => 'Not set',
 			'settings.profiles.personalInfo' => 'Personal Info',
 			'settings.profiles.personalInfoNote' => 'This might be included in generated logs when relevant for submissions',
@@ -8710,8 +8764,6 @@ extension on Translations {
 			'settings.search.hint' => 'Search preferences',
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'Experiments',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} enabled', other: '${count} enabled', ), 
 			'settings.developer.patchTrack' => 'Code Push Track',
 			'settings.developer.patchTrackDescription' => 'Which over-the-air code push ring this device follows. More adventurous rings get fixes earlier, less tested. Code pushes apply on the next restart.',

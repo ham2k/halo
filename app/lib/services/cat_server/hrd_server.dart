@@ -5,17 +5,10 @@
 // programs that drive a radio "through HRD" (HRD Logbook, DM-780, WSJT-X's
 // and its forks' Ham Radio Deluxe option).
 //
-// Each message is a frame, integers little-endian:
-//
-//   u32 total length, this field included
-//   u32 0x1234ABCD
-//   u32 0xABCD1234
-//   u32 checksum, always 0
-//   UTF-16LE text, NUL-terminated
-//
-// and a reply is framed the same way. Some accounts of the protocol describe
-// it instead as newline-terminated text, so a client whose first bytes are
-// not a frame is answered in text, one line per command.
+// The frame and the mode names are the driver's too (hrd_codec.dart). Some
+// accounts of the protocol describe it instead as newline-terminated text,
+// so a client whose first bytes are not a frame is answered in text, one
+// line per command.
 //
 // A command may carry a context prefix, `[1] get frequency`, where the
 // number comes from `get context`. There is one radio here, so the prefix is
@@ -33,30 +26,9 @@ import 'dart:typed_data';
 
 import 'package:halo_core/halo_core.dart';
 
+import '../cat/drivers/hrd_codec.dart';
 import 'cat_server_protocol.dart';
 import 'cat_server_rig.dart';
-
-const _magic1 = 0x1234ABCD;
-const _magic2 = 0xABCD1234;
-const _headerLength = 16;
-
-/// HRD's mode names, as a Kenwood-style radio lists them, against the app's.
-const _hrdModesByAppMode = <String, String>{
-  'LSB': 'LSB',
-  'USB': 'USB',
-  'CW': 'CW',
-  'CW-R': 'CW-R',
-  'AM': 'AM',
-  'FM': 'FM',
-  'FM-N': 'FMN',
-  'RTTY-LSB': 'FSK',
-  'RTTY-USB': 'FSK-R',
-  'DATA-LSB': 'PKT-L',
-  'DATA-USB': 'PKT-U',
-  'DATA-FM': 'PKT-FM',
-};
-
-final _appModesByHrdMode = {for (final e in _hrdModesByAppMode.entries) e.value: e.key};
 
 final _contextPrefix = RegExp(r'^\[\d+\]\s*');
 
@@ -81,7 +53,7 @@ class HrdServerConnection implements CatServerConnection {
     while (true) {
       final pending = _buffer.toBytes();
       if (pending.isEmpty) return;
-      _framed ??= pending.length >= 8 ? _startsWithFrame(pending) : (pending.contains(0x0a) ? false : null);
+      _framed ??= pending.length >= 8 ? startsWithHrdFrame(pending) : (pending.contains(0x0a) ? false : null);
       final framed = _framed;
       if (framed == null) return;
       final ({int consumed, String command})? taken;
@@ -103,17 +75,9 @@ class HrdServerConnection implements CatServerConnection {
   @override
   void close() {}
 
-  static bool _startsWithFrame(Uint8List bytes) => ByteData.sublistView(bytes).getUint32(4, Endian.little) == _magic1;
-
-  ({int consumed, String command})? _takeFrame(Uint8List pending) {
-    if (pending.length < 4) return null;
-    final data = ByteData.sublistView(pending);
-    final length = data.getUint32(0, Endian.little);
-    if (length < _headerLength || length > catServerMaxPending) {
-      throw FormatException('HRD frame length $length');
-    }
-    if (pending.length < length) return null;
-    return (consumed: length, command: decodeUtf16le(pending.sublist(_headerLength, length)));
+  static ({int consumed, String command})? _takeFrame(Uint8List pending) {
+    final frame = takeHrdFrame(pending, maxLength: catServerMaxPending);
+    return frame == null ? null : (consumed: frame.consumed, command: frame.text);
   }
 
   bool _firstLine = true;
@@ -154,7 +118,7 @@ class HrdServerConnection implements CatServerConnection {
         case 'dropdowns':
           return 'Mode';
         case 'dropdown-list':
-          return _isModeDropdown(args) ? _hrdModesByAppMode.values.join(',') : '';
+          return _isModeDropdown(args) ? hrdModesByAppMode.values.join(',') : '';
         case 'buttons':
           return 'TX';
         case 'button-select':
@@ -194,7 +158,7 @@ class HrdServerConnection implements CatServerConnection {
         case 'dropdown':
           // `set dropdown Mode USB 1`: the name, the item, the item's index.
           if (args.length < 2 || !_isModeDropdown(args.sublist(0, 1))) return 'ERROR: unknown dropdown';
-          final mode = tunableAppMode(_appModesByHrdMode[args[1].toUpperCase()] ?? args[1]);
+          final mode = tunableAppMode(appModeForHrdMode(args[1]));
           if (mode == null) return 'ERROR: unknown mode';
           rig.tune(mode: mode);
           return 'OK';
@@ -206,7 +170,7 @@ class HrdServerConnection implements CatServerConnection {
   String? _hrdMode() {
     final mode = radioModeForAppMode(rig.mode, rig.freqKHz);
     if (mode == null) return null;
-    return _hrdModesByAppMode[mode] ?? mode;
+    return hrdModesByAppMode[mode] ?? mode;
   }
 
   /// Whether [args] start with the mode dropdown's name, which radios call
@@ -214,38 +178,4 @@ class HrdServerConnection implements CatServerConnection {
   static bool _isModeDropdown(List<String> args) => args.isNotEmpty && _name(args.first).toLowerCase().contains('mode');
 
   static String _name(String raw) => raw.replaceAll('~', ' ').trim();
-}
-
-/// [text] as one HRD frame.
-Uint8List encodeHrdFrame(String text) {
-  final payload = encodeUtf16le('$text\u0000');
-  final frame = ByteData(_headerLength + payload.length)
-    ..setUint32(0, _headerLength + payload.length, Endian.little)
-    ..setUint32(4, _magic1, Endian.little)
-    ..setUint32(8, _magic2, Endian.little)
-    ..setUint32(12, 0, Endian.little);
-  final bytes = frame.buffer.asUint8List();
-  bytes.setRange(_headerLength, bytes.length, payload);
-  return bytes;
-}
-
-Uint8List encodeUtf16le(String text) {
-  final units = text.codeUnits;
-  final bytes = Uint8List(units.length * 2);
-  for (var i = 0; i < units.length; i++) {
-    bytes[i * 2] = units[i] & 0xff;
-    bytes[i * 2 + 1] = units[i] >> 8;
-  }
-  return bytes;
-}
-
-/// UTF-16LE up to the first NUL.
-String decodeUtf16le(List<int> bytes) {
-  final units = <int>[];
-  for (var i = 0; i + 1 < bytes.length; i += 2) {
-    final unit = bytes[i] | (bytes[i + 1] << 8);
-    if (unit == 0) break;
-    units.add(unit);
-  }
-  return String.fromCharCodes(units);
 }

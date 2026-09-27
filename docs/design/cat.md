@@ -631,8 +631,8 @@ shelf, retired after a few seconds, because a UDP listen has no terminal state a
 the activity would turn for the whole visit.
 
 The rest of the dialog is the catalogue, shelved by maker: one shelf per brand in `featuredBrands`
-(equipment_brands.dart), then the software intermediaries — flrig and rigctld, which name a program
-rather than a maker — then Other Brands, then the equipment added by name rather than picked by
+(equipment_brands.dart), then the software intermediaries — flrig, rigctld, Ham Radio Deluxe, N3FJP
+and DXLab Commander, which name a program rather than a maker — then Other Brands, then the equipment added by name rather than picked by
 model. One shelf open at a time, headers pinned. A QUERY flattens the lot into one list across every
 shelf, since the answer to "which brand?" is the row itself and headings over one-row groups would be
 most of what came back.
@@ -1422,6 +1422,9 @@ generic Yaesu entry names none.
 | Icom CI-V | `0x1C 0x00`, polled | power out, SWR, ALC (`0x15`, Icom's own published breakpoints) |
 | flrig | `rig.get_ptt` | `get_pwrmeter` (watts outright), `get_swrmeter` (a ratio); flrig 2.0.12 has no ALC or voltage method |
 | rigctld | `+t` | `RFPOWER_METER_WATTS`, `SWR`, `ALC`, `VD_METER` |
+| Ham Radio Deluxe | `get button-select TX`, where `get buttons` lists a TX button; slowed after two unanswered | none: HRD's meters are per-radio sliders in unstated units |
+| DXLab Commander | `CmdSendTX`, slowed after two unanswered | none: Commander publishes no meter message |
+| N3FJP | none: the API has no PTT read | none |
 | FlexRadio | `interlock state=`, PUSHED — costs nothing | none: SmartSDR's meters ride a VITA-49 stream, a project of its own |
 | Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts — for a radio whose entry names a table |
 | Yaesu (FT-817/857/897) | bit 7 of `F7`, polled | none: the PO meter is a 0-15 nibble and HI SWR is one bit, neither with a published scale |
@@ -1687,7 +1690,8 @@ pushing (Yaesu `AI1;`, Icom transceive) cannot be read back:
 
 | driver | reports | contributes |
 |---|---|---|
-| flrig, rigctld | poll only — these servers push nothing at all | `AdaptivePoller.interval` |
+| flrig, rigctld, HRD, Commander | poll only — these servers push nothing at all | `AdaptivePoller.interval` |
+| N3FJP | pushes every change (API 0.8 on); the `READBMF` poll is the backstop | `AdaptivePoller.interval` |
 | FT-891 | `AI1;` pushes, poll is the backstop | `AdaptivePoller.interval` |
 | FT-817/857/897 | poll only — this protocol has no auto-information at all | `AdaptivePoller.interval` |
 | Icom CI-V | transceive pushes, the 5 s poll is the backstop | 5 s **until an unsolicited frame arrives**, null after |
@@ -1995,6 +1999,63 @@ app knows which of its antenna nodes that is, but nothing reads it —
 join, and a transceiver's own antenna ports (a Flex has two, most rigs one),
 are the next step and are what § Where this is going means by "ports,
 port-to-port connections".
+
+## Software intermediaries
+
+A program the operator already runs may own the radio's port — flrig, a rigctld daemon, Ham Radio
+Deluxe's Rig Control, an N3FJP logger, DXLab Commander — and answer for it over TCP. Each is a
+catalogue model of its own (equipment_bridges.dart) on the shared TCP transport, with a driver for
+its protocol. Where HaLo also *serves* that protocol (§ CAT server), the driver and the server share
+one codec file (`hrd_codec.dart`, `n3fjp_codec.dart`).
+
+flrig and rigctld were built against the real programs. **HRD, N3FJP and Commander were built from
+published protocol descriptions alone**, with no capture of any of them; their troubleshooting notes
+say so and ask for a report. The HRD and N3FJP drivers are run against HaLo's own emulations
+(`cat_server_own_drivers_test.dart`), which proves only that the two halves agree — both were read
+from the same documents.
+
+- **One request at a time, and none waits forever** (`request_queue.dart`). HRD's replies name no
+  command, so an answer belongs to the oldest question, as with flrig. Commander's do, but its
+  document says nothing about two messages in one read, and a server that parses only the first
+  would drop the second. So both keep one message on the wire. Unlike flrig, a question that goes
+  unanswered is given up on (2 s for HRD, 1 s for Commander): without a capture there is no knowing
+  which commands a given version ignores, and one it ignores would otherwise stop every poll behind
+  it. A Commander set, which has no answer, is followed by a 100 ms pause instead.
+- **A timeout is followed by silence.** An answer that arrives after its question was given up on
+  would be read as the answer to the next one, and on HRD every answer after it too, for the life of
+  the connection. So nothing is sent for 500 ms after a timeout, and a late answer lands while
+  nothing is outstanding. HRD also checks each answer's shape (whole Hz for a frequency, `0`/`1` for
+  PTT), which catches an answer later still.
+- **A PTT watch the peer ignores slows down rather than stopping.** Some radios behind HRD or
+  Commander have no readable PTT, and each unanswered question holds the wire for a timeout while the
+  frequency poll waits. After two misses the watch asks every five seconds, and one answer restores
+  it: a peer that was only busy keeps its PTT.
+- **HRD's mode is an item in the radio's own dropdown.** The dropdown's name (`Mode`, `Main Mode`)
+  and its items (`PKT-U`, `USB-D`, `DATA-U`) differ by radio family, so a session learns both at
+  connect (`get dropdowns`, `get dropdown-list`), reads every family's spellings
+  (`appModeForHrdMode`), and sets a mode by the radio's own item and its index. Before the list is
+  known, or for a mode the radio lacks, nothing is sent: a guessed index selects whatever sits there.
+  The dropdown is `Mode`, else one starting with it (`Mode A`), else `Main Mode`, and only then any
+  naming a mode — `AGC Mode` listed first is not the radio's mode. An opening question that goes
+  unanswered is asked again ahead of the polls, up to three times; one answered with an error (HRD
+  up, its radio not yet) is asked again with the polls until it answers. Either way, a missed one
+  would leave the session without what it teaches until a reconnect, while the frequency kept the
+  row looking healthy. A radio with no recognisable mode dropdown says which dropdowns it has, as a
+  diagnostic.
+- **Commander reads a set's frequency in its machine's locale** — `14074,5` in Germany — while
+  `CmdGetFreq` answers in a fixed form. A session asks `CmdSendFreq` (locale form) with every poll
+  until an answer settles the separator: one that could be either (`0,000` from a radio that is off,
+  `14,010`, `1,296,100`) teaches nothing. After three go unanswered it stops asking. Until then, or
+  for good, a set goes out in whole kHz, which reads the same in every locale — half a kHz off
+  rather than 1000×. Both questions reply as `CmdFreq`, so the frequency read accepts only the fixed
+  form, and a late locale answer is also kept off it by the silence after a timeout.
+- **N3FJP speaks a log's modes**: `SSB`, `FT8`, `DATA`. A report goes through `radioModeForAppMode`
+  like any other app mode, so `SSB` becomes the sideband for its frequency and `FT8` DATA-USB. N3FJP
+  answers `READBMF` with or without a radio behind it, so `RIGENABLED` answering `None` is reported
+  as a problem: the row is connected, and what it follows is what was typed into N3FJP. It is asked
+  with every poll, so the problem follows N3FJP's rig interface being set up or lost mid-session.
+- **None of the three sets power or keys the transmitter.** HRD's power is a per-radio slider,
+  N3FJP's API has no power, and Commander's `cwchars` (CW from text) is not wired to the keyer.
 
 ## CAT server
 

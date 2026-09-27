@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The two catalogue entries that are not a radio but a PATH to one: a program
+// The catalogue entries that are not a radio but a PATH to one: a program
 // the operator already runs, which owns the rig's port and answers for it.
 // The app talks to the program and never to the radio, and knows nothing
 // about which radio is behind it.
@@ -12,7 +12,10 @@
 
 import 'package:halo_i18n/halo_i18n.dart';
 
+import 'drivers/commander_driver.dart';
 import 'drivers/flrig_driver.dart';
+import 'drivers/hrd_driver.dart';
+import 'drivers/n3fjp_driver.dart';
 import 'drivers/rigctld_driver.dart';
 import 'equipment.dart';
 import 'equipment_registry.dart';
@@ -20,6 +23,9 @@ import 'transports/tcp_transport.dart';
 
 const _flrigTcpKey = 'flrig-tcp';
 const _rigctldTcpKey = 'rigctld-tcp';
+const _hrdTcpKey = 'hrd-tcp';
+const _n3fjpTcpKey = 'n3fjp-tcp';
+const _commanderTcpKey = 'dxlab-commander-tcp';
 
 /// Any radio Hamlib has a backend for, through a `rigctld` daemon the
 /// operator already runs — the app connects to the daemon, never to the
@@ -94,5 +100,101 @@ List<Map<String, dynamic>> _flrigTcpNotes() => [
     'text':
         '**${t.settings.station.flrigTroubleshootingTitle}**\n\n'
         '${t.settings.station.flrigTroubleshooting}',
+  },
+];
+
+/// Any radio Ham Radio Deluxe's Rig Control drives, through its IP server.
+/// No discoverer: HRD announces nothing.
+const hrdModel = EquipmentModel(
+  key: 'hrd',
+  category: kCategoryTransceiver,
+  name: _hrdName,
+  suggestedName: _hrdNodeName,
+  variants: [
+    EquipmentVariant(
+      key: _hrdTcpKey,
+      driver: HrdDriver(),
+      transport: TcpTransport(),
+      defaultConfig: {'host': '127.0.0.1', 'port': HrdDriver.defaultPort},
+      notes: _hrdTcpNotes,
+    ),
+  ],
+);
+
+String _hrdName() => t.settings.station.models.hrd;
+String _hrdNodeName() => t.settings.station.models.hrdNodeName;
+
+List<Map<String, dynamic>> _hrdTcpNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.hrdTroubleshootingTitle}**\n\n'
+        '${t.settings.station.hrdTroubleshooting}',
+  },
+];
+
+/// Any radio an N3FJP logging program drives, through its TCP API. No
+/// discoverer: N3FJP announces nothing.
+const n3fjpModel = EquipmentModel(
+  key: 'n3fjp',
+  category: kCategoryTransceiver,
+  name: _n3fjpName,
+  suggestedName: _n3fjpNodeName,
+  variants: [
+    EquipmentVariant(
+      key: _n3fjpTcpKey,
+      driver: N3fjpDriver(),
+      transport: TcpTransport(),
+      defaultConfig: {'host': '127.0.0.1', 'port': N3fjpDriver.defaultPort},
+      notes: _n3fjpTcpNotes,
+    ),
+  ],
+);
+
+String _n3fjpName() => t.settings.station.models.n3fjp;
+String _n3fjpNodeName() => t.settings.station.models.n3fjpNodeName;
+
+List<Map<String, dynamic>> _n3fjpTcpNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.n3fjpTroubleshootingTitle}**\n\n'
+        '${t.settings.station.n3fjpTroubleshooting}',
+  },
+];
+
+/// Any radio DXLab Commander drives, through its TCP network service. No
+/// discoverer: Commander announces nothing.
+const commanderModel = EquipmentModel(
+  key: 'dxlab-commander',
+  category: kCategoryTransceiver,
+  name: _commanderName,
+  suggestedName: _commanderNodeName,
+  variants: [
+    EquipmentVariant(
+      key: _commanderTcpKey,
+      driver: CommanderDriver(),
+      transport: TcpTransport(),
+      defaultConfig: {'host': '127.0.0.1', 'port': CommanderDriver.defaultPort},
+      notes: _commanderTcpNotes,
+    ),
+  ],
+);
+
+String _commanderName() => t.settings.station.models.commander;
+String _commanderNodeName() => t.settings.station.models.commanderNodeName;
+
+List<Map<String, dynamic>> _commanderTcpNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.commanderTroubleshootingTitle}**\n\n'
+        '${t.settings.station.commanderTroubleshooting}',
   },
 ];
