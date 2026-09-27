@@ -478,28 +478,32 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
           // reach it — clips and scrolls, instead of pushing the footer (or
           // Title, above) off screen.
           Flexible(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SectionHeader(t.panelSettingsAction),
-                // Flexible with no scrollview of its own: every
-                // panelSettingsBuilder result scrolls itself internally
-                // given a bounded height (_TargetSettingsForm's own
-                // Flexible+SingleChildScrollView; EmbeddedPanelSettingsForm's
-                // below) — wrapping it in a SECOND SingleChildScrollView here
-                // would hand it UNBOUNDED height instead, which is exactly
-                // what breaks a Flexible nested inside one.
-                Flexible(
-                  child: Padding(
-                    // Vertical only: these are settings rows, and a row that
-                    // spans the pane is what makes its background and the
-                    // band above it reach the same edge.
-                    padding: const EdgeInsets.only(top: Space.md, bottom: Space.lg),
-                    child: SettingsList(child: Builder(builder: builder)),
+            // Around the band too: it takes the rows' inset from the same
+            // SettingsList they do.
+            child: SettingsList(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SectionHeader(t.panelSettingsAction),
+                  // Flexible with no scrollview of its own: every
+                  // panelSettingsBuilder result scrolls itself internally
+                  // given a bounded height (_TargetSettingsForm's own
+                  // Flexible+SingleChildScrollView; EmbeddedPanelSettingsForm's
+                  // below) — wrapping it in a SECOND SingleChildScrollView here
+                  // would hand it UNBOUNDED height instead, which is exactly
+                  // what breaks a Flexible nested inside one.
+                  Flexible(
+                    child: Padding(
+                      // Vertical only: these are settings rows, and a row that
+                      // spans the pane is what makes its background and the
+                      // band above it reach the same edge.
+                      padding: const EdgeInsets.only(top: Space.md, bottom: Space.lg),
+                      child: Builder(builder: builder),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         // The shared modal-pane footer band: everything that DOES something

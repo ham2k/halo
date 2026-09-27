@@ -2690,12 +2690,11 @@ void main() {
       expect(header.style?.fontFamily, 'RobotoSlab');
     });
 
-    testWidgets("style: 'section' is a ruled header standing proud of its rows", (tester) async {
+    testWidgets("style: 'section' is a ruled header on its rows' inset", (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            // The inset a settings list publishes: without one the rows sit at
-            // the edge and the band has nothing to stand proud of.
+            // The inset a settings list publishes.
             body: ListTileTheme(
               data: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 24)),
               child: FormRenderer(
@@ -2755,6 +2754,34 @@ void main() {
       // FormRenderer caller renders `type: 'header'`, not just settings
       // panels.
       expect(find.ancestor(of: find.text('Plain Title'), matching: find.byType(Container)), findsNothing);
+    });
+
+    testWidgets("with no inset published, the section header lines up with the rows all the same", (tester) async {
+      // A dialog or pane that pads its body publishes no row inset: the
+      // padding IS the inset. A header with a fallback inset of its own lands
+      // that far to the right of the rows it heads.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: FormRenderer(
+                formDefinition: const {
+                  'elements': [
+                    {'type': 'header', 'title': 'Plain Title'},
+                    {'type': 'header', 'title': 'Section Header', 'style': 'section'},
+                  ],
+                },
+                initialState: const {},
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.getTopLeft(find.text('Section Header')).dx, tester.getTopLeft(find.text('Plain Title')).dx);
     });
   });
 

@@ -24,5 +24,8 @@ Future<void> showPeersDialog(BuildContext context, HaLoServices services) => sho
   // PeersPanel is its own scrolling ListView — the pane must not also wrap it
   // in a SingleChildScrollView.
   scrollable: false,
-  builder: (context) => PeersPanel(services: services),
+  // The settings row inset, as in the Settings pane: a pane publishes none of
+  // its own, and without it the name field sits flush against the pane's edge
+  // while the rows take ListTile's inset.
+  builder: (context) => SettingsList(child: PeersPanel(services: services)),
 );

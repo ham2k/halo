@@ -17,8 +17,10 @@ import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/settings/extension_settings_panel.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
 import '../support/halo_test_support.dart';
@@ -60,6 +62,7 @@ Future<HaLoServices> _pumpDataFiles(WidgetTester tester, {required List<Map<Stri
     'settingsPanel:call-notes:getDefinition': {
       'title': 'Callsign Notes',
       'elements': [
+        {'type': 'header', 'title': 'Built-in Notes', 'style': 'section'},
         {'type': 'field', 'fieldType': 'checkbox', 'key': 'enabled.hams-of-note', 'label': "Ham2K's Hams of Note", 'value': true},
       ],
     },
@@ -155,5 +158,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Some Toggle'), findsOneWidget, reason: "radio-commands' own panel rendered, showing its field — not call-notes'");
+  });
+
+  testWidgets('the panel opened from here is laid out as the settings list it is: rows to the edges, heading and rows on one inset', (tester) async {
+    await _pumpDataFiles(
+      tester,
+      panels: [_panelEntry(panelKey: 'call-notes', title: 'Callsign Notes', sidebar: false, dataFilesSection: true)],
+    );
+
+    final row = find.text('Callsign Notes');
+    await tester.ensureVisible(row);
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+
+    // The panel publishes no padding of its own, so a pane that pads its
+    // body like prose puts the rows in a gutter and insets the heading
+    // twice — once by the pane, once by the heading's own reading of the
+    // row inset.
+    final panel = find.byType(ExtensionSettingsPanel);
+    final heading = tester.getTopLeft(find.descendant(of: panel, matching: find.text('Built-in Notes'))).dx;
+    // The Data Files list behind the pane has a row of this name too.
+    final label = tester.getTopLeft(find.descendant(of: panel, matching: find.text("Ham2K's Hams of Note"))).dx;
+    // Measured from the pane's surface, not the panel: a pane that pads its
+    // body moves the panel in with everything in it, and the offsets inside
+    // the panel come out right regardless.
+    final surfaceEdge = tester.getTopLeft(find.ancestor(of: panel, matching: find.byType(Material)).first).dx;
+    expect(heading, label, reason: 'the section heading lines up with the rows it heads');
+    expect(label - surfaceEdge, settingsRowInset, reason: "the rows span the pane and inset their contents by the settings list's own inset");
   });
 }

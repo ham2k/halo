@@ -85,7 +85,14 @@ class _DataFilesPanelState extends State<DataFilesPanel> {
   Future<void> _openExtensionPanel(BuildContext context, Map<String, dynamic> panel) => showModalPane<void>(
     context,
     title: (panel['title'] as String?) ?? (panel['panelKey'] as String?) ?? '',
-    builder: (context) => ExtensionSettingsPanel(services: widget.services, descriptor: panel),
+    // The panel is a settings list that scrolls itself and takes its row
+    // inset from the ambient theme, as it does in the Settings pane. A pane
+    // publishes no inset and pads a scrollable body like prose: its rows
+    // would sit in that padding and its section bands would be inset twice.
+    scrollable: false,
+    builder: (context) => SettingsList(
+      child: ExtensionSettingsPanel(services: widget.services, descriptor: panel),
+    ),
   );
 
   Future<void> _refresh(DataFileStatus file) async {

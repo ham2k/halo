@@ -363,9 +363,10 @@ class HaloDialog extends StatelessWidget {
   /// Restated rather than merged, and a bare value rather than a number of
   /// our own: a dialog's rows have to land where they do when the same dialog
   /// is opened from anywhere else, and the consumers disagree about what "no
-  /// inset" means — `SectionHeader` reads Space.xxl, `FormRenderer`'s rows
-  /// zero, a plain `ListTile` Material's 16. Naming one of those here would
-  /// move the other two in every dialog in the app.
+  /// inset" means — `SectionHeader`, `CategoryBand` and `FormRenderer`'s rows
+  /// read zero (the dialog's own padding is their inset), a plain `ListTile`
+  /// Material's 16. Naming either here would move the other in every dialog
+  /// in the app.
   Widget _wrapContent(BuildContext context, Widget content) =>
       list ? SettingsList(child: content) : ListTileTheme(data: Theme.of(context).listTileTheme, child: content);
 

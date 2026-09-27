@@ -21,7 +21,12 @@ import 'theme.dart';
 /// head; the slab face and the rule are what set the heading apart from
 /// them. The inset comes from the ambient `ListTileTheme` — the same one
 /// every settings row takes its content inset from — so a heading and the
-/// rows under it stay related wherever the pane puts them.
+/// rows under it stay related wherever the pane puts them. With no inset
+/// there, the heading takes none, exactly as [FormRenderer]'s rows and
+/// [CategoryBand] do: a surface that pads its body itself has already
+/// spent the inset, and a heading with a default of its own lands off the
+/// rows by that much. A surface that pads nothing publishes the inset
+/// (`SettingsList`) rather than leaning on a default here.
 class SectionHeader extends StatelessWidget {
   final String title;
 
@@ -91,7 +96,7 @@ class SectionHeader extends StatelessWidget {
   static const ruleWidth = 1.0;
 
   static EdgeInsets _padding(BuildContext context) {
-    final inset = (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xxl)).resolve(Directionality.of(context));
+    final inset = (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero).resolve(Directionality.of(context));
     // More above than below: the gap belongs between sections, and the
     // heading abuts the rows it names.
     return EdgeInsets.fromLTRB(inset.left, inset.top + Space.sm + Space.md, inset.right, inset.bottom + Space.sm);

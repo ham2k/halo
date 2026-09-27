@@ -523,11 +523,13 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
   @override
   Widget build(BuildContext context) {
     final m = context.t.settings.radio.cwMessages;
-    // Zero content inset so the Details band runs edge to edge; the fields
-    // take the dialog's usual inset themselves (halo_dialog.dart's default).
-    const rowInset = EdgeInsets.symmetric(horizontal: Space.xxl);
+    // Zero content padding, with the settings row inset published instead
+    // (`list`): the Details band reads it, and the fields take the same one
+    // themselves.
+    const rowInset = EdgeInsets.symmetric(horizontal: settingsRowInset);
     return HaloDialog(
       title: Text(m.messageTitle(n: widget.n)),
+      list: true,
       contentPadding: EdgeInsets.zero,
       // The body scrolls itself, because its band pins — which needs a
       // sliver viewport, and the shell's plain scroll view is not one.

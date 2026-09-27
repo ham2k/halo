@@ -753,7 +753,11 @@ and these rules are what keep it one:
   that builds something that is not a row (a search field, a status line)
   takes the same inset from that theme rather than restating it, and a
   DIALOG carrying a list says `list: true` rather than spending horizontal
-  padding of its own.
+  padding of its own. Where no inset is published, rows, `SectionHeader` and
+  `CategoryBand` all take none: a surface that pads its body has spent the
+  inset already, and one that pads nothing — a pane or dialog hosting a
+  settings panel — wraps it in `SettingsList` rather than leaning on any
+  widget's default.
 - **The SURFACE decides the row shape, not the element.** `FormRenderer`
   renders a settings list's fields as settings rows — bold title, the
   description underneath, the whole row working the toggle, a tap opening the
