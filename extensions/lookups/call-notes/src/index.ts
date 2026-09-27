@@ -51,8 +51,8 @@ import type {
   SettingsPanelDescriptor,
 } from "@ham2k/extension-sdk"
 
-import { combineNotes, customIdentifier, expansionValueFor, parseCallNotes } from "./callNotes"
-import type { CallNotesIndex } from "./callNotes"
+import { combineNotes, customIdentifier, expansionValueFor, parseCallNotes } from "./callNotes.ts"
+import type { CallNotesIndex } from "./callNotes.ts"
 import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -71,6 +71,14 @@ interface BuiltinNote {
 // generically (map over this array, not a hardcoded single row), so adding
 // a second builtin source later is a one-line change here, not a UI change.
 const BUILT_IN_NOTES: BuiltinNote[] = [{ identifier: "hams-of-note", name: "Ham2K's Hams of Note", url: "https://ham2k.com/data/hams-of-note.txt" }]
+
+// The settings panel lists builtins first, then custom files; precedence is
+// the reverse of that list, so the file listed last wins. app-polo's
+// call-notes puts custom files first in list order, so there the FIRST custom
+// file wins — HaLo deliberately differs, as its settings help text states.
+function precedenceOrder(customIdentifiers: string[]): string[] {
+  return [...BUILT_IN_NOTES.map((note) => note.identifier), ...customIdentifiers].reverse()
+}
 
 interface CustomFile {
   name: string
@@ -108,23 +116,32 @@ let notesByFile: Record<string, CallNotesIndex> = {}
 // settings, so the very next lookup reflects the change.
 let enabledByIdentifier: Record<string, boolean> = {}
 
-// Fixed at activation, in builtin-then-custom-list order — the precedence
-// `entriesFor` folds multiple sources in. Sources populate `notesByFile`
+// Fixed at activation, in precedence order (see precedenceOrder). Within one
+// file, entries keep file order. Sources populate `notesByFile`
 // asynchronously as each one's fetch/cache-load finishes, which can finish
 // in ANY order; iterating this fixed list (not `Object.keys(notesByFile)`,
 // whose insertion order would just be "whichever source happened to load
 // first") is what keeps that precedence deterministic regardless.
 let fileOrder: string[] = []
 
+// Every file's exact-call entries come before any file's baseCall fallback:
+// otherwise a higher-precedence file's note for KI2D would headline a lookup
+// of KI2D/P over another file's note written for KI2D/P itself. A note text
+// already collected (the same line in two files, or one file added twice) is
+// shown once.
 function entriesFor(call: string, baseCall?: string) {
-  const results = []
+  const base = baseCall?.toUpperCase()
+  const exact = []
+  const fallback = []
   for (const identifier of fileOrder) {
     if (enabledByIdentifier[identifier] === false) continue
     const index = notesByFile[identifier]
     if (!index) continue
-    const entries = index[call] ?? (baseCall ? index[baseCall.toUpperCase()] : undefined)
-    if (entries) results.push(...entries)
+    if (index[call]) exact.push(...index[call])
+    else if (base && index[base]) fallback.push(...index[base])
   }
+  const seen = new Set<string>()
+  const results = [...exact, ...fallback].filter((entry) => !seen.has(entry.note) && seen.add(entry.note))
   return results.length ? results : undefined
 }
 
@@ -326,7 +343,7 @@ defineExtension({
     // comment about registerHook calls made after an await landing late.
     // Only a user-added custom file's OWN dataFile registration genuinely
     // needs settings first (its identifier/URL comes from there).
-    fileOrder = [...BUILT_IN_NOTES.map((note) => note.identifier)]
+    fileOrder = precedenceOrder([])
     for (const note of BUILT_IN_NOTES) {
       registerHook("dataFile", { hook: makeDataFileDef(note.identifier, note.name, note.url), key: note.identifier })
     }
@@ -340,7 +357,7 @@ defineExtension({
     // Extended now that custom files are known — see `fileOrder`'s own
     // comment on why this has to be a fixed list, not object insertion
     // order.
-    fileOrder = [...BUILT_IN_NOTES.map((note) => note.identifier), ...settings.customFiles.map((file) => customIdentifier(file.location))]
+    fileOrder = precedenceOrder(settings.customFiles.map((file) => customIdentifier(file.location)))
     for (const file of settings.customFiles) {
       const identifier = customIdentifier(file.location)
       registerHook("dataFile", { hook: makeDataFileDef(identifier, file.name, file.location), key: identifier })
