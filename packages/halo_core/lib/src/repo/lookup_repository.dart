@@ -134,4 +134,41 @@ class LookupRepository {
           ..limit(100))
         .get();
   }
+
+  /// The most rows [queryLookupsInBounds] answers with, whatever is asked.
+  static const maxInBounds = 1000;
+
+  /// Every lookup in a category inside a box — what a map panned to it
+  /// shows. Nearest the box's centre first, and the cap applied after that
+  /// ordering, so a box holding more than [limit] loses its corners rather
+  /// than whichever rows the planner met last.
+  ///
+  /// [west] greater than [east] is a box across the antimeridian.
+  Future<List<LookupRow>> queryLookupsInBounds(
+    String category, {
+    required double south,
+    required double west,
+    required double north,
+    required double east,
+    bool activeOnly = false,
+    int limit = 500,
+  }) async {
+    final crosses = west > east;
+    final centerLat = (south + north) / 2;
+    final centerLon = crosses ? ((west + east + 360) / 2 + 180) % 360 - 180 : (west + east) / 2;
+    final latDelta = db.lookups.lat - Variable(centerLat);
+    final lonDelta = db.lookups.lon - Variable(centerLon);
+    final distanceSquared = latDelta * latDelta + lonDelta * lonDelta;
+    return await (db.select(db.lookups)
+          ..where(
+            (l) =>
+                l.category.equals(category) &
+                l.lat.isBetweenValues(south, north) &
+                (crosses ? (l.lon.isBiggerOrEqualValue(west) | l.lon.isSmallerOrEqualValue(east)) : l.lon.isBetweenValues(west, east)) &
+                (activeOnly ? _notRetired(l) : const Constant(true)),
+          )
+          ..orderBy([(l) => OrderingTerm.asc(distanceSquared)])
+          ..limit(limit.clamp(1, maxInBounds)))
+        .get();
+  }
 }

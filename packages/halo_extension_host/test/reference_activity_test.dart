@@ -48,6 +48,21 @@ void main() {
     },
   };
 
+  // A viewport's worth of castles — more than the 30 a nearby list keeps, so
+  // a viewport answer that is still capped shows as a short list.
+  final viewportCastles = [
+    for (var i = 0; i < 40; i++)
+      {
+        'key': 'ON-${10000 + i}',
+        'name': 'Castle $i',
+        'lat': 50.5 + i / 100,
+        'lon': 4.0 + i / 100,
+        'flags': 1,
+        'data': {'location': 'Vlaams-Brabant'},
+      },
+  ];
+  Map<String, dynamic>? inBoundsParams;
+
   // Hoisted, not written inline at the call site: `sharedHost` keys on the
   // handler's identity, so a closure rebuilt per call would boot a host per
   // call and defeat the sharing. The table it answers from is `const`, so one
@@ -63,6 +78,9 @@ void main() {
         // Deliberately returns the FAR castle first: the factory has to
         // rank by real distance rather than trusting query order.
         return [castles['I-00001'], castles['ON-00558'], castles['ON-00123']];
+      case 'dbLookupSelectInBounds':
+        inBoundsParams = params;
+        return viewportCastles;
       case 'log':
         return null;
       default:
@@ -223,6 +241,29 @@ void main() {
       expect(suggestions.first['ref'], 'ON-00558');
       expect(suggestions.map((s) => s['ref']), ['ON-00558', 'ON-00123', 'I-00001']);
       expect(suggestions.first['type'], 'wcaActivation');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('a map viewport is answered whole, not cut to the nearest few', () async {
+      final host = await startHost();
+      final suggestions =
+          (await host.invokeHook(
+                    'activity',
+                    key: 'wca',
+                    method: 'suggest',
+                    args: {
+                      'operation': {'uuid': 'op'},
+                      'location': {'lat': 50.7, 'lon': 4.2},
+                      'bounds': {'south': 50.4, 'west': 3.9, 'north': 51.0, 'east': 4.5},
+                    },
+                  )
+                  as List)
+              .cast<Map>();
+
+      // Cut to 30, the corners of every panned view would stay empty.
+      expect(suggestions, hasLength(40));
+      expect(inBoundsParams, containsPair('south', 50.4));
+      expect(inBoundsParams, containsPair('east', 4.5));
+      expect(inBoundsParams!['limit'], greaterThan(30));
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a name search finds a castle and labels it', () async {

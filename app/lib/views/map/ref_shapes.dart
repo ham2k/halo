@@ -16,12 +16,21 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/error_reporting_service.dart';
 import '../../services/extensions/extension_ref_results.dart' show RefGeojsonAnswer;
 import '../../services/geoshape_service.dart';
 import 'map_marker_data.dart';
+
+/// The zoom, on the GL scale, from which a map fetches reference outlines it
+/// was not asked to draw at every zoom — the Map tab's, and the Activities
+/// map's unpicked suggestions — fading them in until
+/// [refOutlinesOpaqueAtZoom]. Further out a park is a few pixels across, and
+/// its outline a fetch for a smudge.
+const refOutlinesFromZoom = 7.0;
+const refOutlinesOpaqueAtZoom = 8.0;
 
 /// One pane's parsed outlines, and what it is still waiting on.
 ///
@@ -110,7 +119,7 @@ class RefShapeLoader {
       final shape = await geoshapes.shapeFromSource(source);
       final geojson = shape.geojson;
       if (geojson != null) {
-        _shapes[key] = mapShapesFromGeojson(jsonDecode(geojson), idPrefix: id, color: color);
+        _shapes[key] = mapShapesFromGeojson(jsonDecode(geojson), idPrefix: id, color: color, sourceName: source.source?.sourceName);
       } else if (shape.resolved) {
         // The program publishes none — remember that, and stop asking.
         _shapes[key] = const [];
@@ -125,6 +134,9 @@ class RefShapeLoader {
       // operator opened to look at something else — but it IS a program's
       // document the app failed to parse, which nothing else would say.
       ErrorReportingService.report(e, stack, context: 'map:geoshape');
+      // Paused like a lookup that could not finish: without it the next
+      // rebuild asks again — the body re-downloaded, the report re-sent.
+      _retryAfterMillis[key] = nowMillis() + retryAfterFailure.inMilliseconds;
     } finally {
       // In a finally, not after the await: a lookup that throws would
       // otherwise leave its key claimed for the life of the pane, and that
@@ -133,6 +145,11 @@ class RefShapeLoader {
     }
   }
 }
+
+/// The marker id of the reference a shape from [refShapes] outlines — the
+/// shape's own id less the index its document gave it. The last separator
+/// only: a SOTA reference carries a slash of its own.
+String markerIdOfShape(MapShapeData shape) => shape.id.substring(0, shape.id.lastIndexOf('/'));
 
 /// The outlines for every reference in [refs], in each one's own activity
 /// color — the same pair its row and its marker use, so a dot, a row and an
@@ -155,3 +172,47 @@ List<MapShapeData> refShapes(
       color: colorForRefType(controls, ref['type'] as String?, code: refCodeOf(ref)) ?? fallbackColor,
     ),
 ];
+
+/// The line under a map showing reference outlines: they are no survey, and
+/// here is who drew them. Nothing at all while [shapes] is empty.
+///
+/// Bottom-left, and at most 60% of the width it is given, so the backend's
+/// own credit in the bottom-right corner is never covered — flutter_map's
+/// strip and MapLibre's control both sit there.
+class MapOutlinesNotice extends StatelessWidget {
+  const MapOutlinesNotice({super.key, required this.shapes});
+
+  final List<MapShapeData> shapes;
+
+  @override
+  Widget build(BuildContext context) {
+    if (shapes.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final sources = {for (final shape in shapes) ?shape.sourceName}.toList()..sort();
+    final style = theme.textTheme.bodySmall;
+    return LayoutBuilder(
+      builder: (context, constraints) => Align(
+        alignment: Alignment.bottomLeft,
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.6),
+          child: Material(
+            color: theme.colorScheme.surface.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xs),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(context.t.map.outlinesDisclaimer, style: style?.copyWith(fontWeight: FontWeight.bold)),
+                  if (sources.isNotEmpty) Text(context.t.map.outlinesSource(sources: sources.join(', ')), style: style),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

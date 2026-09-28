@@ -7,6 +7,7 @@
 // geometry from the constants here, so the two can't drift into two
 // different-looking "you are here" dots.
 
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -38,6 +39,7 @@ Future<MapMarkerImage> renderMarkerIconImage({
   required Color foreground,
   required Color strokeColor,
   required double devicePixelRatio,
+  double strokeWidth = markerIconStrokeWidth,
 }) async {
   final scale = devicePixelRatio.clamp(1.0, 4.0);
   final size = (markerIconDiameter * scale).ceil();
@@ -50,7 +52,7 @@ Future<MapMarkerImage> renderMarkerIconImage({
   // Inset by half the stroke: a stroked circle straddles its radius, so a
   // full-radius one would have half its ring clipped off by the image's own
   // edge.
-  const radius = markerIconDiameter / 2 - markerIconStrokeWidth / 2;
+  final radius = markerIconDiameter / 2 - strokeWidth / 2;
   canvas.drawCircle(center, radius, Paint()..color = background);
   canvas.drawCircle(
     center,
@@ -58,7 +60,7 @@ Future<MapMarkerImage> renderMarkerIconImage({
     Paint()
       ..color = strokeColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = markerIconStrokeWidth,
+      ..strokeWidth = strokeWidth,
   );
 
   final painter = TextPainter(
@@ -93,7 +95,7 @@ Future<MapMarkerImage> renderMarkerIconImage({
         id:
             'glyph-${icon.fontPackage}/${icon.fontFamily}/${icon.codePoint}'
             '-${background.toARGB32()}-${foreground.toARGB32()}-${strokeColor.toARGB32()}'
-            '-$size',
+            '-$strokeWidth-$size',
         // Offset and length, not the whole buffer: a view into a larger one
         // would hand the GL backends more bytes than width * height * 4, and
         // addImage rejects the size mismatch rather than the byte count.
@@ -110,5 +112,67 @@ Future<MapMarkerImage> renderMarkerIconImage({
     // produces one, and a picture disposed only on the success path leaks
     // native memory once per retry — and this IS retried, once per rebuild.
     picture.dispose();
+  }
+}
+
+/// One map's rasterized glyph markers, keyed by every input that changes a
+/// pixel. Rasterizing goes through the engine and so is asynchronous: a marker
+/// draws as a plain dot for the frame or two before its pixels land rather
+/// than the map waiting for them. [onLanded] is the map's cue to rebuild — it
+/// must check `mounted` itself, since pixels can land after the map is gone.
+///
+/// The cache grows with the icons on screen times the themes and displays
+/// visited before its map closes, which is small enough to leave unswept.
+class MarkerGlyphCache {
+  MarkerGlyphCache({required this.onLanded});
+
+  final VoidCallback onLanded;
+  final Map<String, MapMarkerGlyph> _glyphs = {};
+  final Set<String> _inFlight = {};
+
+  /// The glyph for these inputs if it has been drawn, otherwise null with a
+  /// rasterization started — call it from `build`, and [onLanded] brings the
+  /// marker in.
+  MapMarkerGlyph? glyphFor({
+    required IconData icon,
+    required Color background,
+    required Color foreground,
+    required Color strokeColor,
+    required double devicePixelRatio,
+    double strokeWidth = markerIconStrokeWidth,
+  }) {
+    // The font is part of the icon's identity, not decoration: extensions
+    // name icons across two of them (halo_widgets' resolveIconName), so two
+    // different glyphs can share a code point.
+    final key =
+        '${icon.fontFamily}/${icon.fontPackage}/${icon.codePoint}'
+        '/${background.toARGB32()}/${foreground.toARGB32()}'
+        '/${strokeColor.toARGB32()}/$strokeWidth/$devicePixelRatio';
+    final ready = _glyphs[key];
+    if (ready != null) return ready;
+    if (!_inFlight.add(key)) return null;
+    unawaited(() async {
+      try {
+        final image = await renderMarkerIconImage(
+          icon: icon,
+          background: background,
+          foreground: foreground,
+          strokeColor: strokeColor,
+          devicePixelRatio: devicePixelRatio,
+          strokeWidth: strokeWidth,
+        );
+        _glyphs[key] = MapMarkerGlyph(icon: icon, color: foreground, image: image);
+        onLanded();
+      } finally {
+        // In a finally, not after the await: a rasterization that throws
+        // would otherwise leave its key claimed forever, and that marker
+        // would be a plain dot for the rest of the session with nothing
+        // saying why. Freeing it lets the next build try again, and the
+        // throw itself goes on to ErrorPolicy rather than being swallowed
+        // here.
+        _inFlight.remove(key);
+      }
+    }());
+    return null;
   }
 }

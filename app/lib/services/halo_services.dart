@@ -1755,6 +1755,10 @@ class HaLoServices {
         return _runContestBench(params);
       case 'devLogCat':
         return catTraffic.toggle();
+      case 'devMapInfo':
+        final show = !settings.devMapInfo;
+        await settings.setDevMapInfo(show);
+        return (text: show ? 'Maps show their zoom and viewport size' : 'Map info hidden', failed: false);
       case 'sendSpots':
         return _sendSpot(params ?? const {});
       case 'toggleExperiment':

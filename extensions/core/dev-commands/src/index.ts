@@ -14,7 +14,8 @@
 // window (web only). RELOAD forces a data-file re-sync (bypassing the normal 30-day
 // staleness check), for both developers iterating on `csvToLookupEntry`
 // mapping logic and anyone troubleshooting stale/missing lookup data.
-// DEVTT moves the app clock, for testing anything that turns on the date or on
+// DEVMAPINFO shows the maps' zoom and the size of what they show, for tuning
+// the zoom thresholds the maps act on. DEVTT moves the app clock, for testing anything that turns on the date or on
 // elapsed time (see timetravel.ts and docs/design/time.md).
 // SEED fills the current log with generated QSOs for exercising list/
 // scoring/map UI against realistic data (ported from app-polo's
@@ -22,7 +23,7 @@
 // app/experiments.yaml. All are just `command` hooks like radio-commands' —
 // see docs/extensions/hooks.md.
 
-import { defineExtension, hooks } from "@ham2k/extension-sdk"
+import { defineExtension, hooks, host } from "@ham2k/extension-sdk"
 import type { CommandAction, CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/extension-sdk"
 
 import { FALLBACK_CALLS, existingStatsFromQsos, mutateCall, parseSeedCommand, randomRST, seedPlan, seedableCallsFrom } from "./seed.ts"
@@ -322,6 +323,19 @@ const DevLogCatCommand = {
   catalog: devCatalog("DEVLOGCAT", "Record radio traffic, or stop and send it"),
 }
 
+const DevMapInfoCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (input.trim().toUpperCase() !== "DEVMAPINFO") return null
+    const showing = (await host.getSettings()).devMapInfo === true
+    return {
+      describe: showing ? "Hide the maps' zoom and viewport size?" : "Show the maps' zoom and viewport size?",
+      commands: [{ devMapInfo: {} }],
+    }
+  },
+
+  catalog: devCatalog("DEVMAPINFO", "Show or hide the maps' zoom and viewport size"),
+}
+
 // "RELOAD POTA" / "RELOAD SOTA" -> reload data files whose category matches
 // that word; "RELOAD ALL", "RELOADALL", or bare "RELOAD!" -> reload every
 // data file. Bare "RELOAD" (no target, no ALL/!) isn't executable by itself,
@@ -599,5 +613,6 @@ defineExtension({
     registerHook("command", { key: "dev-commands-devtimetravel", hook: DevTimeTravelCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-devbench", hook: DevBenchCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-devlogcat", hook: DevLogCatCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devmapinfo", hook: DevMapInfoCommand, priority: 100 })
   },
 })

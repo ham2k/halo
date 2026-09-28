@@ -435,6 +435,9 @@ export interface RefGeojson {
   /// server answered 403/404). Shorter than [maxAgeInDays], so a newly
   /// surveyed zone appears within a day rather than a month. Default 1.
   missMaxAgeInDays?: number
+  /// Who the shapes come from, short enough for the map's one-line credit
+  /// under the outlines ("OSM", "sotl.as"). Defaults to the URL's host.
+  sourceName?: string
 }
 
 /// Declarative UI contribution: the core renders these with native widgets
@@ -727,16 +730,31 @@ export interface ActivitySuggestion extends Ref {
   allowsMultiple?: boolean
 }
 
+/// A box on the map in degrees. `west` greater than `east` means the box
+/// crosses the antimeridian.
+export interface MapBounds {
+  south: number
+  west: number
+  north: number
+  east: number
+}
+
 export interface SuggestArgs {
   operation: Record<string, JSONValue>
   /// The operation's own location if set, otherwise the station's default —
   /// resolved by the core before calling, since operations don't always
-  /// carry their own location.
+  /// carry their own location. When the operator pans the results map, the
+  /// map's new centre instead: answer "what is near here" all the same.
   location?: { lat: number; lon: number }
   /// Same fallback rule as `location`: operation's callsign if set, else the
   /// station default.
   callsign?: string
   searchTerm?: string
+  /// The map's viewport, when the operator panned the Activities results map:
+  /// answer with every reference inside it rather than the nearest few, so
+  /// the whole view fills in. Arrives with `location` at its centre and no
+  /// `searchTerm`. `nearbyLookupRows` reads either case.
+  bounds?: MapBounds
   /// True when THIS extension alone was asked — the operator tapped its row in
   /// "Activity Types", or typed its key as a scope (`cwt:`). The nearby list
   /// and a bare scope both arrive with no `searchTerm`, and they are different
@@ -1454,6 +1472,9 @@ export interface CommandAction {
   /// stops and sends the recording. The app owns the recording and reports
   /// where it is.
   devLogCat?: Record<string, never>
+  /// Shows or hides the maps' zoom and viewport-size box (DEVMAPINFO). The
+  /// app owns the setting and reports which way it went.
+  devMapInfo?: Record<string, never>
   /// Toggles an experimental feature (EXP command). The app resolves
   /// `token` against `app/experiments.yaml`'s keys and aliases and flips
   /// that experiment's persisted state; an unknown token reports an error

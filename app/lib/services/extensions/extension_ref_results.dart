@@ -27,10 +27,14 @@ RefGeojson? refGeojsonFromHookResult(dynamic result, {required String type}) {
     debugPrint('[extensions] geojsonUrlForRef(ref:$type) answered no usable https url');
     return null;
   }
+  final sourceName = result['sourceName'];
   return RefGeojson(
     url: url,
     maxAge: _positiveDays(result['maxAgeInDays']) ?? const Duration(days: 30),
     missMaxAge: _positiveDays(result['missMaxAgeInDays']) ?? const Duration(days: 1),
+    // The host when the hook names none: every outline on a map is credited
+    // to someone, and the server it came from is never wrong about that.
+    sourceName: sourceName is String && sourceName.trim().isNotEmpty ? sourceName.trim() : Uri.tryParse(url)?.host,
   );
 }
 
@@ -49,11 +53,14 @@ Duration? _positiveDays(dynamic value) {
 /// long the app may keep it — [missMaxAge] being how long it remembers that
 /// there is no outline at all.
 class RefGeojson {
-  const RefGeojson({required this.url, required this.maxAge, required this.missMaxAge});
+  const RefGeojson({required this.url, required this.maxAge, required this.missMaxAge, this.sourceName});
 
   final String url;
   final Duration maxAge;
   final Duration missMaxAge;
+
+  /// Who the shapes come from, as the map's credit line names them.
+  final String? sourceName;
 }
 
 /// A `geojsonUrlForRef` answer as a list of them reports it: the [source], and

@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:halo_core/halo_core.dart' show GridLocation;
 
 import '../../services/connectivity_service.dart';
 import '../../services/error_policy.dart' show ErrorPolicy;
@@ -40,6 +41,20 @@ class OsmMapView extends StatefulWidget {
   /// for the QSO map, which keeps its own callout.
   final ValueChanged<String>? onMarkerTap;
 
+  /// Where the camera came to rest — its centre, its zoom on the GL
+  /// backends' scale (512-pixel tiles) whatever the backend, see
+  /// [MapZoomController.glZoomOf], and the box it shows. Reported after every
+  /// move.
+  final ValueChanged<MapCameraSettled>? onCameraChanged;
+
+  /// A tap that landed on no marker, at the map point it landed on — for a
+  /// host that decides what else is there (the Activities map's outlines).
+  /// Only reported alongside [onMarkerTap]: the QSO map keeps its own popup.
+  final ValueChanged<GridLocation>? onMapTap;
+
+  /// What this map fades in as it closes in — see [MapZoomFades].
+  final MapZoomFades? zoomFades;
+
   /// Makes this a picture of the map rather than a map to explore — see
   /// [MapFrame]. Unlike the GL backends' this does not lay the map out at the
   /// frame's size: the caller puts it in a box of that size, since scaling a
@@ -54,6 +69,9 @@ class OsmMapView extends StatefulWidget {
     required this.isDark,
     this.zoomController,
     this.onMarkerTap,
+    this.onCameraChanged,
+    this.onMapTap,
+    this.zoomFades,
     this.frame,
   });
 
@@ -150,25 +168,33 @@ class _OsmMapViewState extends State<OsmMapView> {
       if (!widget.markers.any((m) => m.id == _selectedMarkerId)) _selectedMarkerId = null;
       // Refit only when the BASE markers change (a QSO logged), not on each
       // keystroke's highlight update — otherwise the map pans/zooms out from
-      // under the operator as they type a call.
-      final baseChanged = !listEquals(
-        [
-          for (final m in oldWidget.markers)
-            if (!m.highlight) m,
-        ],
-        [
-          for (final m in widget.markers)
-            if (!m.highlight) m,
-        ],
-      );
+      // under the operator as they type a call. A map that keys its fit
+      // (MapMarkerData.fitKey) refits when the key changes, and only then.
+      final oldFitted = _fitted(oldWidget.markers), newFitted = _fitted(widget.markers);
+      final newKey = newFitted.map((m) => m.fitKey).nonNulls.firstOrNull;
+      final baseChanged = newKey != null ? newKey != oldFitted.map((m) => m.fitKey).nonNulls.firstOrNull : !listEquals(oldFitted, newFitted);
       if (baseChanged && widget.frame == null) _fitCamera();
     }
   }
 
+  /// The markers the camera fits: the base ones, less any a host keeps out of
+  /// the fit ([MapMarkerData.fitsCamera]).
+  static List<MapMarkerData> _fitted(List<MapMarkerData> markers) => [
+    for (final m in markers)
+      if (!m.highlight && m.fitsCamera) m,
+  ];
+
+  /// [MapZoomController.fitMaxZoom] on flutter_map's own scale.
+  static const _fitMaxZoom = MapZoomController.fitMaxZoom + 1;
+
+  /// The GL-scale zoom of the camera [context] is under, for a fade.
+  static double _glZoom(BuildContext context) => MapZoomController.glZoomOf(osmZoom: MapCamera.of(context).zoom);
+
   void _fitCamera() {
-    if (widget.markers.isEmpty) return;
+    final fitted = _fitted(widget.markers);
+    if (fitted.isEmpty) return;
     _mapController.fitCamera(
-      CameraFit.coordinates(coordinates: [for (final m in widget.markers) LatLng(m.latitude, m.longitude)], padding: const EdgeInsets.all(48), maxZoom: 11),
+      CameraFit.coordinates(coordinates: [for (final m in fitted) LatLng(m.latitude, m.longitude)], padding: const EdgeInsets.all(48), maxZoom: _fitMaxZoom),
     );
   }
 
@@ -195,9 +221,13 @@ class _OsmMapViewState extends State<OsmMapView> {
 
   @override
   Widget build(BuildContext context) {
-    final points = [for (final m in widget.markers) LatLng(m.latitude, m.longitude)];
+    final points = [
+      for (final m in widget.markers)
+        if (m.fitsCamera) LatLng(m.latitude, m.longitude),
+    ];
     final selected = _selectedMarkerId == null || widget.onMarkerTap != null ? null : widget.markers.where((m) => m.id == _selectedMarkerId).firstOrNull;
     final frame = widget.frame?.camera;
+    final footprints = _footprintLayers();
 
     return FlutterMap(
       mapController: _mapController,
@@ -211,8 +241,24 @@ class _OsmMapViewState extends State<OsmMapView> {
               interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
             )
           : MapOptions(
-              initialCameraFit: CameraFit.coordinates(coordinates: points, padding: const EdgeInsets.all(48), maxZoom: 11),
-              onTap: (_, _) => setState(() => _selectedMarkerId = null),
+              initialCameraFit: CameraFit.coordinates(coordinates: points, padding: const EdgeInsets.all(48), maxZoom: _fitMaxZoom),
+              onTap: (_, point) {
+                setState(() => _selectedMarkerId = null);
+                if (widget.onMarkerTap != null) widget.onMapTap?.call(GridLocation(point.latitude, point.longitude));
+              },
+              onPositionChanged: (camera, _) => widget.onCameraChanged?.call((
+                camera: MapCameraPosition(
+                  latitude: camera.center.latitude,
+                  longitude: camera.center.longitude,
+                  zoom: MapZoomController.glZoomOf(osmZoom: camera.zoom),
+                ),
+                bounds: mapViewBounds(
+                  south: camera.visibleBounds.south,
+                  west: camera.visibleBounds.west,
+                  north: camera.visibleBounds.north,
+                  east: camera.visibleBounds.east,
+                ),
+              )),
             ),
       children: [
         TileLayer(
@@ -241,7 +287,9 @@ class _OsmMapViewState extends State<OsmMapView> {
         // Base lines, then base markers, then the current QSO's highlight line
         // and marker in layers ABOVE them — flutter_map stacks children in
         // order, so the highlight paints over every base line AND marker.
-        _shapeLayer(),
+        if (widget.shapes.any((shape) => shape.dashed)) _fadedWithZoom(footprints.dashed, widget.zoomFades?.dashedShapes),
+        _fadedWithZoom(footprints.solid, widget.zoomFades?.solidShapes),
+        if (widget.shapes.any((shape) => shape.isLine && !shape.dashed)) _fadedWithZoom(footprints.lines, widget.zoomFades?.solidShapes),
         _lineLayer([
           for (final l in widget.lines)
             if (!l.highlight) l,
@@ -284,27 +332,83 @@ class _OsmMapViewState extends State<OsmMapView> {
     );
   }
 
-  /// The footprints, under the lines and dots so an area never covers what
-  /// sits inside it. Holes are the rings after the first, GeoJSON's own
-  /// convention (see mapShapesFromGeojson).
-  PolygonLayer _shapeLayer() => PolygonLayer(
-    // Off for the same reason as the polylines below: a boundary is a
-    // survey's own outline, and simplifying it moves the edge the
-    // activator is judging their position against.
-    simplificationTolerance: 0,
-    polygons: [
-      for (final shape in widget.shapes)
-        Polygon(
-          points: [for (final p in shape.rings.first) LatLng(p.latitude, p.longitude)],
-          holePointsList: [
-            for (final ring in shape.rings.skip(1)) [for (final p in ring) LatLng(p.latitude, p.longitude)],
-          ],
-          color: shape.color.withValues(alpha: 0.18),
-          borderColor: shape.color.withValues(alpha: 0.9),
-          borderStrokeWidth: 2,
-        ),
-    ],
-  );
+  /// The footprint layers as last built, and the shapes they were built from.
+  /// Rebuilt only for different shapes: a layer handed the same instance again is
+  /// not rebuilt, and flutter_map keeps its projection of every point — a
+  /// fresh layer per frame of a drag would re-project a national forest's
+  /// outline sixty times a second.
+  List<MapShapeData>? _shapeLayersFrom;
+  ({Widget solid, Widget lines, Widget dashed})? _shapeLayers;
+
+  ({Widget solid, Widget lines, Widget dashed}) _footprintLayers() {
+    // Equal, not identical: a pane builds its list afresh each time, and a
+    // shape compares by id and colour, never point by point.
+    if (_shapeLayers case final built? when listEquals(_shapeLayersFrom, widget.shapes)) return built;
+    _shapeLayersFrom = widget.shapes;
+    return _shapeLayers = (
+      solid: PolygonLayer(
+        // Off for the same reason as the polylines below: a boundary is a
+        // survey's own outline, and simplifying it moves the edge the
+        // activator is judging their position against.
+        simplificationTolerance: 0,
+        polygons: [
+          for (final shape in widget.shapes)
+            if (!shape.isLine && !shape.dashed)
+              Polygon(
+                points: [for (final p in shape.rings.first) LatLng(p.latitude, p.longitude)],
+                holePointsList: [
+                  for (final ring in shape.rings.skip(1)) [for (final p in ring) LatLng(p.latitude, p.longitude)],
+                ],
+                color: shape.color.withValues(alpha: 0.18),
+                borderColor: shape.color.withValues(alpha: 0.9),
+                borderStrokeWidth: 2,
+              ),
+        ],
+      ),
+      // The footprints that are lines — a trail or a river that is the park —
+      // stroked like an area's edge, and never closed into one.
+      lines: PolylineLayer(
+        simplificationTolerance: 0,
+        polylines: [
+          for (final shape in widget.shapes)
+            if (shape.isLine && !shape.dashed)
+              Polyline(points: [for (final p in shape.rings.first) LatLng(p.latitude, p.longitude)], color: shape.color.withValues(alpha: 0.9), strokeWidth: 2),
+        ],
+      ),
+      // Suggestions nobody has picked, as edges alone, under every solid
+      // shape. Every ring is stroked, holes included, so a dashed area and
+      // its solid form trace the same lines.
+      dashed: PolylineLayer(
+        simplificationTolerance: 0,
+        polylines: [
+          for (final shape in widget.shapes)
+            if (shape.dashed)
+              for (final ring in shape.rings)
+                Polyline(
+                  points: [for (final p in ring) LatLng(p.latitude, p.longitude)],
+                  color: shape.color.withValues(alpha: 0.8),
+                  strokeWidth: 1.25,
+                  // Dots: a suggestion's edge is context, and any length of
+                  // dash reads as a boundary of its own.
+                  pattern: const StrokePattern.dotted(spacingFactor: 2),
+                ),
+        ],
+      ),
+    );
+  }
+
+  /// [layer] faded in over [band] ([MapZoomFades]), following the camera
+  /// frame by frame. The layer itself is the same instance every frame — only
+  /// the opacity around it changes — and at full strength it is not wrapped.
+  Widget _fadedWithZoom(Widget layer, MapZoomFade? band) {
+    if (band == null) return layer;
+    return Builder(
+      builder: (context) {
+        final opacity = mapZoomFadeOpacity(band, _glZoom(context));
+        return opacity >= 1 ? layer : Opacity(opacity: opacity, child: layer);
+      },
+    );
+  }
 
   /// The layer objects by id, kept across builds and replaced only for an
   /// entry whose data changed: a rebuild of this widget — every emission of a
@@ -312,7 +416,7 @@ class _OsmMapViewState extends State<OsmMapView> {
   /// contacts back into `LatLng` lists and `Marker` subtrees for the layers to
   /// diff against what they already had.
   final _polylines = <String, ({MapLineData data, Polyline line})>{};
-  final _markerWidgets = <String, ({MapMarkerData data, Marker marker})>{};
+  final _markerWidgets = <String, ({MapMarkerData data, double scale, Marker marker})>{};
 
   Polyline _polylineFor(MapLineData line) {
     final cached = _polylines[line.id];
@@ -327,9 +431,9 @@ class _OsmMapViewState extends State<OsmMapView> {
     return built;
   }
 
-  Marker _markerFor(MapMarkerData marker) {
+  Marker _markerFor(MapMarkerData marker, double scale) {
     final cached = _markerWidgets[marker.id];
-    if (cached != null && cached.data == marker) return cached.marker;
+    if (cached != null && cached.data == marker && cached.scale == scale) return cached.marker;
     final built = Marker(
       point: LatLng(marker.latitude, marker.longitude),
       // A generous transparent hit area around the small circle.
@@ -338,10 +442,21 @@ class _OsmMapViewState extends State<OsmMapView> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => widget.onMarkerTap != null ? widget.onMarkerTap!(marker.id) : setState(() => _selectedMarkerId = marker.id),
-        child: Center(child: MapCircleMarker(marker: marker)),
+        child: Center(
+          child: marker.fadesWithZoom
+              // A builder of its own, so the fade follows the camera frame
+              // by frame without rebuilding every other marker.
+              ? Builder(
+                  builder: (context) => Opacity(
+                    opacity: mapZoomFadeOpacity(widget.zoomFades?.markers, _glZoom(context)),
+                    child: MapCircleMarker(marker: marker, scale: scale),
+                  ),
+                )
+              : MapCircleMarker(marker: marker, scale: scale),
+        ),
       ),
     );
-    _markerWidgets[marker.id] = (data: marker, marker: built);
+    _markerWidgets[marker.id] = (data: marker, scale: scale, marker: built);
     return built;
   }
 
@@ -363,7 +478,15 @@ class _OsmMapViewState extends State<OsmMapView> {
     polylines: [for (final line in lines) _polylineFor(line)],
   );
 
-  MarkerLayer _markerLayer(List<MapMarkerData> markers) => MarkerLayer(markers: [for (final marker in markers) _markerFor(marker)]);
+  /// Under a builder reading the camera, so the markers shrink with the zoom
+  /// ([mapMarkerScaleAt]). The scale is rounded to a twentieth: each step
+  /// rebuilds every marker, and a pinch would otherwise do it every frame.
+  Widget _markerLayer(List<MapMarkerData> markers) => Builder(
+    builder: (context) {
+      final scale = (mapMarkerScaleAt(_glZoom(context)) * 20).round() / 20;
+      return MarkerLayer(markers: [for (final marker in markers) _markerFor(marker, scale)]);
+    },
+  );
 }
 
 /// The credit for this backend's tiles. CARTO's dark tiles are still built

@@ -23,9 +23,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'package:halo_quickjs/halo_quickjs.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:ham2k_logger/views/map/map_gl_script.dart' show mapGlScript;
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/map/map_zoom_controller.dart';
@@ -35,109 +33,7 @@ import 'package:ham2k_logger/views/operation/postcard_summary.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/error_reporting_fakes.dart';
-
-/// Just enough of a browser and of MapLibre for a framed `create`, a
-/// `setMarkers` and a `snapshot`: timers on a clock the test advances, a map
-/// whose events the test fires, and a canvas that says what pixel ratio it
-/// was read at.
-const _fakeBrowser = r'''
-var window = globalThis;
-var calls = [];
-var now = 0;
-var timers = [];
-var nextTimer = 1;
-function setTimeout(fn, ms) { var id = nextTimer++; timers.push({ id: id, at: now + (ms || 0), fn: fn }); return id; }
-function clearTimeout(id) { timers = timers.filter(function (t) { return t.id !== id; }); }
-function advance(ms) {
-  var until = now + ms;
-  for (;;) {
-    var due = timers.filter(function (t) { return t.at <= until; }).sort(function (a, b) { return a.at - b.at; })[0];
-    if (!due) break;
-    clearTimeout(due.id);
-    now = due.at;
-    due.fn();
-  }
-  now = until;
-}
-window.addEventListener = function () {};
-window.removeEventListener = function () {};
-function ResizeObserver() {}
-ResizeObserver.prototype.observe = function () {};
-ResizeObserver.prototype.disconnect = function () {};
-var document = {
-  createElement: function () { return { style: {}, children: [], appendChild: function (c) { this.children.push(c); } }; },
-  createTextNode: function (text) { return { text: text }; },
-};
-function LngLatBounds() { this.n = 0; }
-LngLatBounds.prototype.extend = function () { this.n++; };
-LngLatBounds.prototype.isEmpty = function () { return this.n === 0; };
-var sourcesLoaded = true;
-function FakeMap(options) {
-  var listeners = {};
-  var sources = {};
-  var layers = {};
-  var pixelRatio = null;
-  this.options = options;
-  this.on = function (type, fn) { (listeners[type] = listeners[type] || []).push({ fn: fn }); };
-  this.once = function (type, fn) { (listeners[type] = listeners[type] || []).push({ fn: fn, once: true }); };
-  this.fire = function (type) {
-    var ls = listeners[type] || [];
-    listeners[type] = ls.filter(function (l) { return !l.once; });
-    ls.forEach(function (l) { l.fn({}); });
-  };
-  this.getSource = function (id) { return sources[id]; };
-  this.addSource = function (id) { sources[id] = { setData: function () {} }; };
-  this.getLayer = function (id) { return layers[id]; };
-  this.addLayer = function (layer) { layers[layer.id] = layer; };
-  this.fitBounds = function () { calls.push('fitBounds'); };
-  this.loaded = function () { return sourcesLoaded; };
-  this.isStyleLoaded = function () { return true; };
-  this.setPixelRatio = function (r) { pixelRatio = r; calls.push('setPixelRatio ' + r); };
-  this.triggerRepaint = function () {};
-  this.getCanvas = function () { return { style: {}, toDataURL: function (type) { return 'data:' + type + ';ratio=' + pixelRatio + ';base64,AAAA'; } }; };
-  this.getCenter = function () { return { lat: options.center[1], lng: options.center[0] }; };
-  this.getZoom = function () { return options.zoom; };
-  this.getBearing = function () { return options.bearing || 0; };
-  this.getPitch = function () { return options.pitch || 0; };
-  this.getContainer = function () { return options.container; };
-  this.queryRenderedFeatures = function () { return window.hits || []; };
-  this.remove = function () {};
-  window.fakeMap = this;
-}
-function Popup() { this.open = false; }
-Popup.prototype.setLngLat = function () { return this; };
-Popup.prototype.setDOMContent = function () { return this; };
-Popup.prototype.addTo = function () { this.open = true; return this; };
-Popup.prototype.isOpen = function () { return this.open; };
-Popup.prototype.remove = function () { this.open = false; return this; };
-var maplibregl = { Map: FakeMap, LngLatBounds: LngLatBounds, AJAXError: function () {}, Popup: Popup };
-''';
-
-class _GlPage {
-  final _js = HaloQuickJs();
-
-  _GlPage({required bool framed}) {
-    run(_fakeBrowser);
-    run(mapGlScript);
-    final frame = framed ? jsonEncode({'latitude': 41.5, 'longitude': -74.4, 'zoom': 9.25, 'bearing': 0, 'pitch': 0, 'width': 540, 'height': 960}) : 'null';
-    run("var container = document.createElement('div'); container.clientWidth = 270; container.clientHeight = 480;");
-    run("var handle = window.poloMapGl.create(container, 'light-style', 'dark-style', false, function () {}, false, $frame);");
-  }
-
-  String run(String code) {
-    final result = _js.eval(code);
-    if (!result.ok) fail('JS threw: ${result.text}');
-    return result.text;
-  }
-
-  void pumpPromises() {
-    while (_js.pump() > 0) {}
-  }
-
-  List<String> takeCalls() => (jsonDecode(run('var c = JSON.stringify(calls); calls = []; c')) as List).cast<String>();
-
-  void dispose() => _js.dispose();
-}
+import '../support/gl_page.dart';
 
 const _markers = "[{id: 'q1', latitude: 40, longitude: -74, kind: 'qso', color: '#ff0000', strokeColor: '#000000'}]";
 
@@ -145,11 +41,11 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('a framed GL map', () {
-    late _GlPage page;
+    late GlPage page;
     tearDown(() => page.dispose());
 
     test('keeps the camera it was given when its contacts arrive', () {
-      page = _GlPage(framed: true);
+      page = GlPage(framed: true);
       page.run('handle.setMarkers($_markers)');
       // The pane's map fits its contacts; a framed one refitting would throw
       // away the operator's framing, which is the whole point of reading it.
@@ -160,7 +56,7 @@ void main() {
     });
 
     test('is laid out at the frame size and scaled to the container, not resized to it', () {
-      page = _GlPage(framed: true);
+      page = GlPage(framed: true);
       // Laid out at the container's size, a 270-wide preview would show a
       // different extent and label density from the 540-wide picture.
       expect(page.run("fakeMap.options.container.style.width + ' ' + fakeMap.options.container.style.height"), '540px 960px');
@@ -168,13 +64,13 @@ void main() {
     });
 
     test("the Map tab's own map still fits its contacts", () {
-      page = _GlPage(framed: false);
+      page = GlPage(framed: false);
       page.run('handle.setMarkers($_markers)');
       expect(page.takeCalls(), contains('fitBounds'));
     });
 
     test("the Map tab's own map says whose popup is open over it", () {
-      page = _GlPage(framed: false);
+      page = GlPage(framed: false);
       page.run('handle.setMarkers($_markers)');
       Object? camera() => jsonDecode(page.run('JSON.stringify(handle.camera())'));
       expect(mapCameraViewFromJson(camera())?.popup, isNull);
@@ -186,7 +82,7 @@ void main() {
     });
 
     test("the Map tab's own map says how big a window it looks through", () {
-      page = _GlPage(framed: false);
+      page = GlPage(framed: false);
       // Without the size, a zoom says nothing about how much ground the
       // operator framed.
       expect(mapCameraViewFromJson(jsonDecode(page.run('JSON.stringify(handle.camera())')))?.viewport, const Size(270, 480));
@@ -194,7 +90,7 @@ void main() {
   });
 
   group('a snapshot', () {
-    late _GlPage page;
+    late GlPage page;
     tearDown(() => page.dispose());
 
     // Pumped: a snapshot starts when the one before it — if any — is done.
@@ -204,7 +100,7 @@ void main() {
     }
 
     test('is read at the asked ratio from a frame drawn after the map went idle, then the ratio is given back', () {
-      page = _GlPage(framed: true);
+      page = GlPage(framed: true);
       page.run('handle.setMarkers($_markers)');
       page.takeCalls();
       start();
@@ -221,7 +117,7 @@ void main() {
     });
 
     test('waits out a source still parsing data applied in the same idle', () {
-      page = _GlPage(framed: true);
+      page = GlPage(framed: true);
       start();
       page.run("sourcesLoaded = false; fakeMap.fire('idle'); fakeMap.fire('render')");
       page.pumpPromises();
@@ -232,7 +128,7 @@ void main() {
     });
 
     test("one at a time: a second waits for the first, whose ratio reset would clear the canvas under it", () {
-      page = _GlPage(framed: true);
+      page = GlPage(framed: true);
       page.run('var first = null, second = null; handle.snapshot(2).then(function (d) { first = d; }); handle.snapshot(3).then(function (d) { second = d; });');
       page.pumpPromises();
       expect(page.takeCalls(), ['setPixelRatio 2'], reason: 'the second has not started');
@@ -246,7 +142,7 @@ void main() {
     });
 
     test('of a map taken down under it fails at once, not when its timeout comes round', () {
-      page = _GlPage(framed: true);
+      page = GlPage(framed: true);
       start();
       page.run('handle.remove()');
       page.pumpPromises();
@@ -254,7 +150,7 @@ void main() {
     });
 
     test('of a map that never settles fails, and gives the ratio back', () {
-      page = _GlPage(framed: true);
+      page = GlPage(framed: true);
       start();
       page.takeCalls();
       page.run('advance(30000)');

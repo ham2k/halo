@@ -89,6 +89,7 @@ class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
     List<String>? activityKeys,
     List<String>? preferredKeys,
     String? preferredSearchTerm,
+    ({double south, double west, double north, double east})? searchWithin,
   }) async {
     searches++;
     if (allSourcesFail) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true);

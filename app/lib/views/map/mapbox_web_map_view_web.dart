@@ -16,6 +16,7 @@ import 'dart:ui_web' as ui_web;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:halo_core/halo_core.dart' show GridLocation;
 import 'package:halo_widgets/halo_widgets.dart' show PlatformViewCover;
 import 'package:web/web.dart' as web;
 
@@ -78,6 +79,20 @@ class MapboxWebMapView extends StatefulWidget {
   /// map, which keeps its own popup.
   final ValueChanged<String>? onMarkerTap;
 
+  /// Where the camera came to rest — its centre, its zoom on the GL
+  /// backends' scale (512-pixel tiles) whatever the backend, see
+  /// [MapZoomController.glZoomOf], and the box it shows. Reported after every
+  /// move.
+  final ValueChanged<MapCameraSettled>? onCameraChanged;
+
+  /// A tap that landed on no marker, at the map point it landed on — for a
+  /// host that decides what else is there (the Activities map's outlines).
+  /// Only reported alongside [onMarkerTap]: the QSO map keeps its own popup.
+  final ValueChanged<GridLocation>? onMapTap;
+
+  /// What this map fades in as it closes in — see [MapZoomFades].
+  final MapZoomFades? zoomFades;
+
   /// See MapboxWebviewMapView's field of the same name.
   final MapFrame? frame;
 
@@ -92,6 +107,9 @@ class MapboxWebMapView extends StatefulWidget {
     required this.styleUrlDark,
     this.zoomController,
     this.onMarkerTap,
+    this.onCameraChanged,
+    this.onMapTap,
+    this.zoomFades,
     this.frame,
   });
 
@@ -131,6 +149,34 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   void _onMapEvent(String kind, String message) {
     if (kind == 'marker-click') {
       widget.onMarkerTap?.call(message);
+      return;
+    }
+    if (kind == 'map-click') {
+      if ([for (final part in message.split(',')) double.tryParse(part)] case [final latitude?, final longitude?]) {
+        widget.onMapTap?.call(GridLocation(latitude, longitude));
+      } else {
+        MapErrorReporter.report(backend: 'web', kind: 'map-click-malformed', message: message);
+      }
+      return;
+    }
+    if (kind == 'camera') {
+      Object? decoded;
+      try {
+        decoded = jsonDecode(message);
+      } on FormatException {
+        decoded = null;
+      }
+      if ((MapCameraPosition.fromJson(decoded), decoded) case (
+        final camera?,
+        {'south': final num south, 'west': final num west, 'north': final num north, 'east': final num east},
+      )) {
+        final bounds = mapViewBounds(south: south.toDouble(), west: west.toDouble(), north: north.toDouble(), east: east.toDouble());
+        widget.onCameraChanged?.call((camera: camera, bounds: bounds));
+      } else {
+        // The page and this side disagree about the report's shape — and the
+        // zoom gates, the outlines and the exploring all hang on it.
+        MapErrorReporter.report(backend: 'web', kind: 'camera-malformed', message: message);
+      }
       return;
     }
     if (kind == 'recovered') {
@@ -215,6 +261,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     // the canvas itself tracking the layout after that.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _applyZoomFades();
       _applyMarkers();
       _applyLines();
       _applyShapes();
@@ -257,6 +304,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       }
     }
     if (!listEquals(oldWidget.shapes, widget.shapes)) _applyShapes();
+    if (oldWidget.zoomFades != widget.zoomFades) _applyZoomFades();
   }
 
   void _applyProjection() {
@@ -280,6 +328,10 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
 
   void _applyLines() {
     _handle?.callMethod('setLinesJson'.toJS, jsonEncode(mapLinesPayload(widget.lines)).toJS);
+  }
+
+  void _applyZoomFades() {
+    _handle?.callMethod('setZoomFadesJson'.toJS, jsonEncode(mapZoomFadesPayload(widget.zoomFades)).toJS);
   }
 
   void _applyShapes() {

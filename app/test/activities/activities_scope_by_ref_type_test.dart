@@ -79,6 +79,7 @@ class _ScopedExtensions extends ExtensionServiceWithFakeHost {
     List<String>? activityKeys,
     List<String>? preferredKeys,
     String? preferredSearchTerm,
+    ({double south, double west, double north, double east})? searchWithin,
   }) async {
     askedKeys.add(activityKeys);
     return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);

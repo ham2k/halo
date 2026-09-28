@@ -22,6 +22,7 @@ import 'runtime.dart' show CliUsageError;
 /// operator sets in the config file's `settings` map merges OVER this.
 const defaultSettings = <String, Object?>{
   'developerMode': false,
+  'devMapInfo': false,
   'locale': 'en',
   // Machine-facing (ADIF PROGRAMID, a spot's `source`) — the same fixed name
   // the app reports, so a file exported here matches one exported there.

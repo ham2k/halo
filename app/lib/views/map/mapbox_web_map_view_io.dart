@@ -6,6 +6,7 @@
 // native builds don't compile the dart:ui_web/package:web implementation.
 
 import 'package:flutter/widgets.dart';
+import 'package:halo_core/halo_core.dart' show GridLocation;
 
 import 'map_marker_data.dart';
 import 'map_zoom_controller.dart';
@@ -20,6 +21,9 @@ class MapboxWebMapView extends StatelessWidget {
   final String styleUrlDark;
   final MapZoomController? zoomController;
   final ValueChanged<String>? onMarkerTap;
+  final ValueChanged<MapCameraSettled>? onCameraChanged;
+  final ValueChanged<GridLocation>? onMapTap;
+  final MapZoomFades? zoomFades;
   final MapFrame? frame;
 
   const MapboxWebMapView({
@@ -33,6 +37,9 @@ class MapboxWebMapView extends StatelessWidget {
     required this.styleUrlDark,
     this.zoomController,
     this.onMarkerTap,
+    this.onCameraChanged,
+    this.onMapTap,
+    this.zoomFades,
     this.frame,
   });
 

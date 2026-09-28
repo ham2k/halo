@@ -978,6 +978,7 @@ mixin _ExtensionHookApi {
     List<String>? activityKeys,
     List<String>? preferredKeys,
     String? preferredSearchTerm,
+    ({double south, double west, double north, double east})? searchWithin,
   }) async {
     final host = this.host;
     if (host == null) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
@@ -996,18 +997,51 @@ mixin _ExtensionHookApi {
     // scope and the nearby list both arrive with no search term, and an
     // extension that keeps itself out of the nearby list still has to answer
     // when it is the one being asked.
+    // A view's centre stands in for the operation's place: extensions measure
+    // and rank from `location`, and one that predates `bounds` answers with
+    // what is nearest the middle of the view rather than of somewhere else.
+    final searchCenter = switch (searchWithin) {
+      (:final south, :final west, :final north, :final east) => GridLocation(
+        (south + north) / 2,
+        west <= east ? (west + east) / 2 : ((west + east + 360) / 2 + 180) % 360 - 180,
+      ),
+      null => null,
+    };
+
     Map<String, dynamic> argsSearchingFor(String? term, {bool scoped = false}) => {
       'operation': operationData,
-      if (gridLocation != null) 'location': {'lat': gridLocation.latitude, 'lon': gridLocation.longitude},
+      if (searchCenter ?? gridLocation case final at?) 'location': {'lat': at.latitude, 'lon': at.longitude},
+      if (searchWithin case (:final south, :final west, :final north, :final east)) 'bounds': {'south': south, 'west': west, 'north': north, 'east': east},
       if (callsign != null && callsign.isNotEmpty) 'callsign': callsign,
       if (term != null && term.isNotEmpty) 'searchTerm': term,
       if (scoped) 'scoped': true,
     };
 
+    // A search run [searchWithin] a map's view still reports each result's
+    // distance from the operation's own place: that is the distance its card
+    // shows, and "12 km" from wherever the map happened to be is no answer.
+    List<Map<String, dynamic>> measured(List<Map<String, dynamic>> suggestions) {
+      if (searchWithin == null) return suggestions;
+      return [
+        for (final suggestion in suggestions)
+          {
+            for (final entry in suggestion.entries)
+              if (entry.key != 'distance') entry.key: entry.value,
+            if ((
+                  gridLocation,
+                  locationFromLatLon(suggestion['lat'], suggestion['lon']) ??
+                      gridToLocation(suggestion['grid'] is String ? suggestion['grid'] as String : null),
+                )
+                case (final from?, final to?))
+              'distance': distanceOnEarthKm(from, to),
+          },
+      ];
+    }
+
     try {
       if (activityKeys != null) {
         final entries = await _activityBatch(host, activityKeys, argsSearchingFor(searchTerm, scoped: true), 'scoped');
-        return (suggestions: mergeActivitySuggestions(entries), allSourcesFailed: allActivitySourcesFailed(entries));
+        return (suggestions: measured(mergeActivitySuggestions(entries)), allSourcesFailed: allActivitySourcesFailed(entries));
       }
 
       // The preferred hooks are asked SEPARATELY because they search for
@@ -1051,7 +1085,7 @@ mixin _ExtensionHookApi {
           if (!preferredSet.contains(entry['key'])) entry,
       ];
       return (
-        suggestions: mergeActivitySuggestions(entries, preferredKeys: preferredSet),
+        suggestions: measured(mergeActivitySuggestions(entries, preferredKeys: preferredSet)),
         allSourcesFailed: (fanOutFailed && entries.isEmpty) || allActivitySourcesFailed(entries),
       );
     } on ExtensionHostException catch (e) {

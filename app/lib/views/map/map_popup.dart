@@ -20,7 +20,11 @@ import 'map_marker_icon.dart';
 class MapCircleMarker extends StatelessWidget {
   final MapMarkerData marker;
 
-  const MapCircleMarker({super.key, required this.marker});
+  /// Its size against the full one, as the map's zoom sets it — see
+  /// [mapMarkerScaleAt].
+  final double scale;
+
+  const MapCircleMarker({super.key, required this.marker, this.scale = 1});
 
   @override
   Widget build(BuildContext context) {
@@ -28,11 +32,13 @@ class MapCircleMarker extends StatelessWidget {
     // A glyph marker takes its geometry from map_marker_icon.dart, the same
     // constants the rasterized copy the other backends draw is built from.
     final glyph = marker.glyph;
-    final diameter = glyph != null
-        ? markerIconDiameter
-        : isQth
-        ? 12.0
-        : 14.0 * marker.sizeFactor;
+    final diameter =
+        scale *
+        (glyph != null
+            ? markerIconDiameter
+            : isQth
+            ? 12.0
+            : 14.0 * marker.sizeFactor);
     return Container(
       width: diameter,
       height: diameter,
@@ -41,17 +47,20 @@ class MapCircleMarker extends StatelessWidget {
         color: marker.color,
         border: Border.all(
           color: marker.strokeColor,
-          width: glyph != null
-              ? markerIconStrokeWidth
-              : isQth
-              ? 2
-              : 1.5,
+          width:
+              scale *
+              (marker.strokeWidth ??
+                  (glyph != null
+                      ? markerIconStrokeWidth
+                      : isQth
+                      ? 2
+                      : 1.5)),
         ),
       ),
       child: glyph == null
           ? null
           : Center(
-              child: Icon(glyph.icon, size: markerIconGlyphSize, color: glyph.color),
+              child: Icon(glyph.icon, size: markerIconGlyphSize * scale, color: glyph.color),
             ),
     );
   }

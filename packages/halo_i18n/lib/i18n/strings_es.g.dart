@@ -368,6 +368,8 @@ class _Translations$map$es extends Translations$map$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
+	@override String get outlinesDisclaimer => 'Los contornos son solo orientativos. ¡Investiga por tu cuenta!';
+	@override String outlinesSource({required Object sources}) => 'Fuente: ${sources}';
 	@override String get emptyState => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.';
 	@override String get unavailable => 'El mapa no está disponible en este momento.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -3906,6 +3908,8 @@ extension on TranslationsEs {
 			'operation.import.gapDialogBody' => ({required Object count}) => 'Se capturaron ${count} QSOs más antes, previos a un hueco en los datos. ¿Incluirlos también?',
 			'operation.import.gapDialogRecentOnly' => 'Solo los recientes',
 			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Incluir los ${count}',
+			'map.outlinesDisclaimer' => 'Los contornos son solo orientativos. ¡Investiga por tu cuenta!',
+			'map.outlinesSource' => ({required Object sources}) => 'Fuente: ${sources}',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
 			'map.unavailable' => 'El mapa no está disponible en este momento.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4364,10 +4368,10 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Reproducir la memoria ${n}',
 			'settings.radio.voiceMessages.stop' => 'Detener',
 			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Grabar la memoria ${n}',
-			'settings.radio.voiceMessages.stopRecording' => 'Detener la grabación',
-			'settings.radio.voiceMessages.playing' => 'Reproduciendo…',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.stopRecording' => 'Detener la grabación',
+			'settings.radio.voiceMessages.playing' => 'Reproduciendo…',
 			'settings.radio.voiceMessages.recording' => 'Grabando…',
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Reproduciendo ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Grabando ${label}',
@@ -4878,10 +4882,10 @@ extension on TranslationsEs {
 			'settings.profiles.email' => 'Correo electrónico',
 			'settings.profiles.club' => 'Club',
 			'settings.profiles.arrlSection' => 'Sección ARRL',
-			'settings.profiles.racSection' => 'Sección RAC',
-			'settings.profiles.section' => 'Sección',
 			_ => null,
 		} ?? switch (path) {
+			'settings.profiles.racSection' => 'Sección RAC',
+			'settings.profiles.section' => 'Sección',
 			'settings.search.clear' => 'Borrar',
 			'settings.search.hint' => 'Buscar preferencias',
 			'settings.developer.developerModeDescription' => 'Habilita avisos de desarrollador, registros de depuración y herramientas.',

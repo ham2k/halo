@@ -11,6 +11,7 @@ import {
   hunterDefaultPrefix,
   activationDefaultPrefix,
   potaCountryPrefixForCall,
+  parkOutlineUrl,
 } from "./refFormatting.ts"
 import { suggestOperationTitleForPota } from "./titleSuggestion.ts"
 
@@ -158,3 +159,17 @@ test("suggestOperationTitleForPota returns null for an activation ref with no re
 
 // isTestOperation itself (K-TEST substitution's gate) is shared and tested
 // once in sdk/src/testOperation.test.ts.
+
+test("parkOutlineUrl names the park's outline on Ham2K's services, in its canonical form", () => {
+  assert.equal(parkOutlineUrl("US-1234"), "https://services.ham2k.net/lookups/outlines/pota/US-1234.geojson")
+  // Stored refs are canonical, but a lowercase or padded one must not ask for
+  // a file the server keys differently.
+  assert.equal(parkOutlineUrl(" us-12345 "), "https://services.ham2k.net/lookups/outlines/pota/US-12345.geojson")
+})
+
+test("parkOutlineUrl asks for nothing a park cannot answer: a half-typed reference or a TEST one", () => {
+  assert.equal(parkOutlineUrl("US-12"), null)
+  assert.equal(parkOutlineUrl(""), null)
+  assert.equal(parkOutlineUrl("../US-1234"), null)
+  assert.equal(parkOutlineUrl("K-TEST"), null)
+})

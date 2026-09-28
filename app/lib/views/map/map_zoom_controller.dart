@@ -64,6 +64,31 @@ class MapZoomController {
   /// activation zone frames at roughly half the pane at this level, where
   /// the marker-fit's own cap (zoom 11) leaves it a speck.
   static const closeUpZoom = 14.0;
+
+  /// The closest a map's fit to its markers comes, on the GL scale: a lone
+  /// marker, or a tight cluster, would otherwise fit at street level.
+  static const fitMaxZoom = 10.5;
+
+  /// A flutter_map zoom on the GL backends' scale: its 256-pixel tiles show
+  /// the same view one level higher than GL's 512-pixel ones.
+  static double glZoomOf({required double osmZoom}) => osmZoom - 1;
+}
+
+/// The box a map shows, in degrees, longitudes wrapped into ±180 — so [west]
+/// past [east] is a view across the antimeridian. Structurally the record
+/// `suggestActivities` takes, so the two need no conversion.
+typedef MapViewBounds = ({double south, double west, double north, double east});
+
+/// Where a map came to rest: its [camera] (zoom on the GL scale, see
+/// [MapZoomController.glZoomOf]) and the [bounds] it shows.
+typedef MapCameraSettled = ({MapCameraPosition camera, MapViewBounds bounds});
+
+/// [south]..[north] and [west]..[east] as a [MapViewBounds]: longitudes
+/// wrapped into ±180, and a span of the whole world as exactly that.
+MapViewBounds mapViewBounds({required double south, required double west, required double north, required double east}) {
+  if (east - west >= 360) return (south: south, west: -180.0, north: north, east: 180.0);
+  double wrap(double lon) => ((lon + 180) % 360 + 360) % 360 - 180;
+  return (south: south, west: wrap(west), north: north, east: wrap(east));
 }
 
 /// Where a map is looking. Zoom is the backend's own: a GL zoom and a

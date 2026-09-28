@@ -18,9 +18,11 @@
 // regardless of which backend rendered the dot.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -30,6 +32,7 @@ import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
+import '../map/map_info_box.dart';
 import '../map/map_marker_icon.dart';
 import '../map/ref_shapes.dart';
 import '../map/map_zoom_controller.dart';
@@ -45,7 +48,9 @@ import 'activities_view.dart' show ActivityRowChip, activityRowDetail, activityR
 /// `grid`. Null when the entry has neither, same as a QSO with no
 /// resolvable location on the Map tab.
 GridLocation? locationForSuggestion(Map<String, dynamic> suggestion) =>
-    locationFromLatLon(suggestion['lat'], suggestion['lon']) ?? gridToLocation(suggestion['grid'] as String?);
+    // Read, not cast: an extension's answer, and a malformed one must not take
+    // the map with it.
+    locationFromLatLon(suggestion['lat'], suggestion['lon']) ?? gridToLocation(suggestion['grid'] is String ? suggestion['grid'] as String : null);
 
 /// One marker per [suggestions] entry that is NOT already on the operation
 /// and has a resolvable location (see [locationForSuggestion]) — entries
@@ -165,6 +170,24 @@ class ActivitiesResultsMap extends StatefulWidget {
 
   final ValueChanged<Map<String, dynamic>> onAdd;
 
+  /// References found by panning, drawn after [suggestions] and never fitted
+  /// by the camera — the operator is the one moving it. Map-only: the list
+  /// above the map keeps answering the search it was asked.
+  final List<Map<String, dynamic>> exploredSuggestions;
+
+  /// What moves the camera: it refits to the markers when this changes, and
+  /// only then (see [MapMarkerData.fitKey]). The pane changes it with each
+  /// search it answers. Null fits once, when the map first has markers —
+  /// never whenever they change, which on this map is the operator's own
+  /// doing (a card opened, a reference added, a dot hidden by zooming out).
+  final String? fitKey;
+
+  /// Asks for the references in a view the operator took the map to, past
+  /// [exploreFromZoom], answering whether every program answered it — the
+  /// map asks again about a view that came back short. Null where the map has
+  /// nothing more to find.
+  final Future<bool> Function(MapViewBounds bounds)? onExplore;
+
   /// The search band's own location pill, mirrored onto the map as a dot —
   /// null exactly when the pill has nothing to show either (still
   /// determining, denied, or a grid the search can't place). See
@@ -187,11 +210,41 @@ class ActivitiesResultsMap extends StatefulWidget {
     this.geoshapes,
     this.camera,
     required this.onAdd,
+    this.exploredSuggestions = const [],
+    this.onExplore,
+    this.fitKey,
     this.currentLocation,
     this.currentLocationColor,
     this.currentLocationIcon,
     this.currentLocationIconColor,
   });
+
+  /// The zoom, on the GL scale, from which the suggestions nobody has picked
+  /// get their outlines too — the same as the Map tab's, see
+  /// [refOutlinesFromZoom].
+  static const suggestionOutlinesFromZoom = refOutlinesFromZoom;
+  static const suggestionOutlinesOpaqueAtZoom = refOutlinesOpaqueAtZoom;
+
+  /// The zoom, on the GL scale, from which panning brings in the references
+  /// around the map's new centre — a pane some 150km across. Further out
+  /// each program's nearest few would be a scatter across a region.
+  static const exploreFromZoom = 7.0;
+
+  /// Below this zoom, on the GL scale, the map shows only the operation's own
+  /// references and "you are here": a country's worth of suggestions is a
+  /// smear of dots, and the ones the operator chose get lost in it. From here
+  /// they fade in, fully shown at [suggestionMarkersOpaqueAtZoom].
+  static const suggestionMarkersFromZoom = 6.0;
+  static const suggestionMarkersOpaqueAtZoom = 7.5;
+
+  /// The two fades above, as the backends apply them.
+  static const MapZoomFades zoomFades = (
+    markers: (from: suggestionMarkersFromZoom, to: suggestionMarkersOpaqueAtZoom),
+    dashedShapes: (from: suggestionOutlinesFromZoom, to: suggestionOutlinesOpaqueAtZoom),
+    // The operation's own and the open card's, at every zoom: the operator
+    // asked for these.
+    solidShapes: null,
+  );
 
   @override
   State<ActivitiesResultsMap> createState() => _ActivitiesResultsMapState();
@@ -204,15 +257,154 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
   /// card).
   String? _selectedMarkerId;
 
-  /// The rasterized halves of the glyph markers, keyed by every input that
-  /// changes a pixel. Rasterizing goes through the engine and so is
-  /// asynchronous: a marker draws as a plain dot for the frame or two before
-  /// its pixels land rather than the map waiting for them. The cache grows
-  /// with the reference types on screen times the themes and displays
-  /// visited before this pane closes, which is small enough to leave
-  /// unswept — the whole State goes with the pane.
-  final Map<String, MapMarkerGlyph> _glyphs = {};
-  final Set<String> _glyphsInFlight = {};
+  /// The rasterized halves of this map's glyph markers.
+  late final _glyphCache = MarkerGlyphCache(
+    onLanded: () {
+      if (mounted) setState(() {});
+    },
+  );
+
+  /// Whether the map has closed in past
+  /// [ActivitiesResultsMap.suggestionOutlinesFromZoom]. Kept as
+  /// the crossing rather than the zoom itself, so a drag rebuilds this pane
+  /// only when the answer changes, not on every frame of the gesture.
+  bool _suggestionOutlines = false;
+
+  /// The last zoom a backend reported, on the GL scale — what turns a tap's
+  /// few pixels of slack into metres for [_onMapTap]. Not state: nothing
+  /// draws from it.
+  double? _zoom;
+
+  /// The outlines on the map as last built, for [_onMapTap] to hit-test.
+  List<MapShapeData> _shapes = const [];
+
+  /// How far from an edge or a trail a tap still counts as on it.
+  static const _tapSlackPixels = 12.0;
+
+  /// How thick the chosen marker's ring is, against the 1.5–2 of the rest.
+  static const _chosenRingWidth = 4.0;
+
+  /// The marker whose card is open, drawn black inside a thick ring of its
+  /// own colour — the colour moves to the ring, so it still says which
+  /// program it is, and the black says "this one" against every other dot.
+  /// A glyph marker gets its glyph redrawn the same way; until those pixels
+  /// land it keeps its own.
+  MapMarkerData _asChosen(MapMarkerData marker, {required Color glyphForeground, required double devicePixelRatio}) {
+    const fill = Colors.black;
+    final ring = marker.color;
+    final glyph = marker.glyph;
+    return marker.asChosen(
+      fill: fill,
+      ring: ring,
+      ringWidth: _chosenRingWidth,
+      // A plain dot grows, or the ring would leave almost no black to see.
+      sizeFactor: glyph == null ? 1.4 : null,
+      glyph: glyph == null
+          ? null
+          : _glyphCache.glyphFor(
+              icon: glyph.icon,
+              background: fill,
+              foreground: glyphForeground,
+              strokeColor: ring,
+              devicePixelRatio: devicePixelRatio,
+              strokeWidth: _chosenRingWidth,
+            ),
+    );
+  }
+
+  /// The views answered since the search changed, and the zoom each was
+  /// answered at. A view inside one has nothing new to find — until the map
+  /// is a whole zoom level closer: each program answers a view with its
+  /// nearest few hundred, so a dense one leaves its corners to a closer look.
+  /// Recorded only once an answer came back whole, so a failure is asked
+  /// about again rather than remembered as an empty region.
+  final List<({MapViewBounds bounds, double zoom})> _explored = [];
+  Timer? _exploreDebounce;
+
+  /// Bumped with each new search, so an answer for the last one is not
+  /// recorded against this one.
+  int _exploreGeneration = 0;
+
+  /// The backend's last camera report, for DEVMAPINFO's box — which listens
+  /// to it alone, so a drag does not rebuild the pane.
+  final _cameraReport = ValueNotifier<MapCameraSettled?>(null);
+
+  void _onCameraChanged(MapCameraSettled settled) {
+    // After the frame when flutter_map reports from its own layout: the box
+    // listening to it would otherwise rebuild during a build.
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      _cameraReport.value = settled;
+    } else {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _cameraReport.value = settled;
+      });
+    }
+    final (:camera, :bounds) = settled;
+    _onZoomChanged(camera.zoom);
+    final onExplore = widget.onExplore;
+    if (onExplore == null || camera.zoom < ActivitiesResultsMap.exploreFromZoom) return;
+    // flutter_map reports every frame of a drag; GL only where it came to
+    // rest. Waiting for the camera to stay put asks once either way.
+    _exploreDebounce?.cancel();
+    _exploreDebounce = Timer(const Duration(milliseconds: 400), () async {
+      if (!mounted || _explored.any((done) => camera.zoom < done.zoom + 1 && _boundsContain(done.bounds, bounds))) return;
+      final generation = _exploreGeneration;
+      final whole = await onExplore(bounds);
+      if (whole && mounted && generation == _exploreGeneration) _explored.add((bounds: bounds, zoom: camera.zoom));
+    });
+  }
+
+  /// Whether [outer] holds all of [inner]. A view across the antimeridian is
+  /// never counted as held: rare enough that asking again costs nothing.
+  static bool _boundsContain(MapViewBounds outer, MapViewBounds inner) =>
+      outer.west <= outer.east &&
+      inner.west <= inner.east &&
+      outer.south <= inner.south &&
+      outer.north >= inner.north &&
+      outer.west <= inner.west &&
+      outer.east >= inner.east;
+
+  /// Web Mercator at 512-pixel tiles, [zoom] on the GL scale.
+  static double _metersPerPixel(GridLocation at, double zoom) => 40075016.686 * math.cos(at.latitude * math.pi / 180) / (512 * math.pow(2, zoom));
+
+  @override
+  void dispose() {
+    _exploreDebounce?.cancel();
+    _cameraReport.dispose();
+    super.dispose();
+  }
+
+  /// The map's suggestions: the search's own, then the ones panning found.
+  /// In that order, so a marker's index id keeps naming the same entry as
+  /// more arrive.
+  List<Map<String, dynamic>> get _allSuggestions => [...widget.suggestions, ...widget.exploredSuggestions];
+
+  /// Whether the map is close enough in for the suggestions' own markers —
+  /// see [ActivitiesResultsMap.suggestionMarkersFromZoom]. Kept as the
+  /// crossing, like [_suggestionOutlines].
+  bool _suggestionMarkers = true;
+
+  void _onZoomChanged(double zoom) {
+    _zoom = zoom;
+    final outlines = zoom >= ActivitiesResultsMap.suggestionOutlinesFromZoom;
+    final markers = zoom >= ActivitiesResultsMap.suggestionMarkersFromZoom;
+    if (outlines == _suggestionOutlines && markers == _suggestionMarkers) return;
+    // flutter_map reports a position from its own layout (a resize refits
+    // the camera), when a setState would be a build during a build.
+    void apply() {
+      if (!mounted || (outlines == _suggestionOutlines && markers == _suggestionMarkers)) return;
+      setState(() {
+        _suggestionOutlines = outlines;
+        _suggestionMarkers = markers;
+      });
+    }
+
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      apply();
+    } else {
+      SchedulerBinding.instance.addPostFrameCallback((_) => apply());
+    }
+  }
 
   /// The outlines drawn for this pane's references — the caching and backoff
   /// rules live in ref_shapes.dart, shared with the Map tab so a summit whose
@@ -223,50 +415,6 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
       if (mounted) setState(() {});
     },
   );
-
-  /// The glyph for these inputs if it has been drawn, otherwise null with a
-  /// rasterization started — call it from `build`, and the `setState` that
-  /// lands the pixels brings the marker in.
-  MapMarkerGlyph? _glyphFor({
-    required IconData icon,
-    required Color background,
-    required Color foreground,
-    required Color strokeColor,
-    required double devicePixelRatio,
-  }) {
-    // The font is part of the icon's identity, not decoration: extensions
-    // name icons across two of them (halo_widgets' resolveIconName), so two
-    // different glyphs can share a code point.
-    final key =
-        '${icon.fontFamily}/${icon.fontPackage}/${icon.codePoint}'
-        '/${background.toARGB32()}/${foreground.toARGB32()}'
-        '/${strokeColor.toARGB32()}/$devicePixelRatio';
-    final ready = _glyphs[key];
-    if (ready != null) return ready;
-    if (!_glyphsInFlight.add(key)) return null;
-    unawaited(() async {
-      try {
-        final image = await renderMarkerIconImage(
-          icon: icon,
-          background: background,
-          foreground: foreground,
-          strokeColor: strokeColor,
-          devicePixelRatio: devicePixelRatio,
-        );
-        if (!mounted) return;
-        setState(() => _glyphs[key] = MapMarkerGlyph(icon: icon, color: foreground, image: image));
-      } finally {
-        // In a finally, not after the await: a rasterization that throws
-        // would otherwise leave its key claimed forever, and that marker
-        // would be a plain dot for the rest of the session with nothing
-        // saying why. Freeing it lets the next build try again, and the
-        // throw itself goes on to ErrorPolicy rather than being swallowed
-        // here.
-        _glyphsInFlight.remove(key);
-      }
-    }());
-    return null;
-  }
 
   @override
   void initState() {
@@ -292,9 +440,28 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     if (revealedSuggestion && !identical(oldWidget.suggestions, widget.suggestions)) {
       setState(() => _selectedMarkerId = null);
     }
+    // A new search starts the exploring over: what was found for the last
+    // one is gone from the map.
+    if (!identical(oldWidget.suggestions, widget.suggestions)) {
+      _exploreDebounce?.cancel();
+      _explored.clear();
+      _exploreGeneration++;
+    }
   }
 
   void _onMarkerTap(String id) {
+    // Faded out, a suggestion is not there to tap; and a marker that stands
+    // for no entry ("you are here") reveals nothing — it only closes a card.
+    if (!_suggestionMarkers && int.tryParse(id) != null) return;
+    if (_markerEntry(id) == null) {
+      setState(() => _selectedMarkerId = null);
+      return;
+    }
+    // A second tap on what is already open closes it, and moves nothing.
+    if (id == _selectedMarkerId) {
+      setState(() => _selectedMarkerId = null);
+      return;
+    }
     setState(() => _selectedMarkerId = id);
     // Only a reference already on the operation, not a suggestion: a
     // suggestion's card offers Add, and flying the map away from the search
@@ -304,6 +471,29 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     if (!id.startsWith('ref-')) return;
     final location = locationForSuggestion(_markerEntry(id) ?? const {});
     if (location != null) widget.camera?.moveTo(location.latitude, location.longitude);
+  }
+
+  /// A tap on an outline opens its reference's card, as a tap on its marker
+  /// does — the map's own references and its suggestions alike. The camera
+  /// stays put even for the operation's own reference: the operator tapped
+  /// something already in view.
+  void _onMapTap(GridLocation point) {
+    final zoom = _zoom;
+    // Web Mercator at 512-pixel tiles; without a zoom, only a tap inside an
+    // area can land.
+    final metersPerPixel = zoom == null ? 0.0 : _metersPerPixel(point, zoom);
+    final hit = shapeAt(_shapes, point, toleranceMeters: _tapSlackPixels * metersPerPixel);
+    if (hit == null) return;
+    final id = markerIdOfShape(hit);
+    final String markerId;
+    if (widget.refs.any((ref) => selectedRefMarkerId(ref) == id)) {
+      markerId = id;
+    } else {
+      final index = _allSuggestions.indexWhere((suggestion) => selectedRefMarkerId(suggestion) == id);
+      if (index < 0) return;
+      markerId = '$index';
+    }
+    setState(() => _selectedMarkerId = markerId == _selectedMarkerId ? null : markerId);
   }
 
   /// The entry a marker id stands for, or null when it stands for none — the
@@ -322,7 +512,8 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     // Lower bound too: the id makes a round trip through the backend's JS,
     // and this promises null for one that stands for no entry rather than a
     // RangeError.
-    return index != null && index >= 0 && index < widget.suggestions.length ? widget.suggestions[index] : null;
+    final all = _allSuggestions;
+    return index != null && index >= 0 && index < all.length ? all[index] : null;
   }
 
   @override
@@ -340,20 +531,23 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     // on a saturated fill, and one shared foreground is what makes the
     // chosen references and the "you are here" dot read as one family.
     const glyphForeground = Colors.white;
-    final markers = activitySuggestionMarkers(
-      widget.suggestions,
-      controls: widget.controls,
-      refs: widget.refs,
-      defaultColor: theme.colorScheme.primary,
-      strokeColor: strokeColor,
-    );
+    final markers = [
+      for (final marker in activitySuggestionMarkers(
+        _allSuggestions,
+        controls: widget.controls,
+        refs: widget.refs,
+        defaultColor: theme.colorScheme.primary,
+        strokeColor: strokeColor,
+      ))
+        marker.withFit(fitsCamera: int.parse(marker.id) < widget.suggestions.length, fadesWithZoom: true),
+    ];
     final refMarkers = activitySelectedRefMarkers(
       widget.refs,
       controls: widget.controls,
       defaultColor: theme.colorScheme.primary,
       strokeColor: strokeColor,
       glyphFor: (icon, background) =>
-          _glyphFor(icon: icon, background: background, foreground: glyphForeground, strokeColor: strokeColor, devicePixelRatio: devicePixelRatio),
+          _glyphCache.glyphFor(icon: icon, background: background, foreground: glyphForeground, strokeColor: strokeColor, devicePixelRatio: devicePixelRatio),
     );
 
     // The hint is about a search that found nothing, so it must not stand in
@@ -389,7 +583,12 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     final currentLocation = widget.currentLocation;
     final currentLocationIcon = widget.currentLocationIcon;
     final currentLocationColor = widget.currentLocationColor;
-    final allMarkers = [
+    final unkeyedMarkers = [
+      // Hidden zoomed out, where they are a scatter over a region; the
+      // operation's own references and "you are here" stay.
+      // Always sent, and faded to nothing below the threshold by the backend
+      // (fadesWithZoom): left out, a search answered while zoomed out would
+      // fit the camera to everything but its own results.
       ...markers,
       ...refMarkers,
       if (currentLocation != null)
@@ -403,13 +602,22 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
           strokeColor: strokeColor,
           glyph: currentLocationIcon == null || currentLocationColor == null
               ? null
-              : _glyphFor(
+              : _glyphCache.glyphFor(
                   icon: currentLocationIcon,
                   background: currentLocationColor,
                   foreground: widget.currentLocationIconColor ?? glyphForeground,
                   strokeColor: strokeColor,
                   devicePixelRatio: devicePixelRatio,
                 ),
+        ),
+    ];
+    // Every marker carries the search's key, so the camera refits for a new
+    // search and for nothing else — not for a reference added from a card,
+    // nor for suggestions hidden or shown by zooming.
+    final allMarkers = [
+      for (final marker in unkeyedMarkers)
+        (marker.id == _selectedMarkerId ? _asChosen(marker, glyphForeground: glyphForeground, devicePixelRatio: devicePixelRatio) : marker).withFit(
+          fitKey: widget.fitKey ?? 'once',
         ),
     ];
 
@@ -420,13 +628,28 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
       ...widget.refs,
       if (_markerEntry(_selectedMarkerId) case final revealed? when !widget.refs.any((r) => selectedRefMarkerId(r) == selectedRefMarkerId(revealed))) revealed,
     ];
-    final shapes = refShapes(
-      shapeRefs,
-      loader: _shapeLoader,
-      controls: widget.controls,
-      fallbackColor: theme.colorScheme.primary,
-      markerIdFor: selectedRefMarkerId,
-    );
+    final solidIds = {for (final ref in shapeRefs) selectedRefMarkerId(ref)};
+    // Every other suggestion on the map, dashed, once the map is close enough
+    // for a footprint to be worth its fetch. First in the list, so a backend
+    // that stacks in list order agrees with the ones that layer by kind.
+    // Named by the same marker id as the solid form, so opening a card reuses
+    // the outline already fetched rather than asking again.
+    final dashedRefs = [
+      if (_suggestionOutlines)
+        for (final suggestion in _allSuggestions)
+          if (locationForSuggestion(suggestion) != null && !solidIds.contains(selectedRefMarkerId(suggestion))) suggestion,
+    ];
+    final shapes = _shapes = [
+      for (final shape in refShapes(
+        dashedRefs,
+        loader: _shapeLoader,
+        controls: widget.controls,
+        fallbackColor: theme.colorScheme.primary,
+        markerIdFor: selectedRefMarkerId,
+      ))
+        shape.asDashed(),
+      ...refShapes(shapeRefs, loader: _shapeLoader, controls: widget.controls, fallbackColor: theme.colorScheme.primary, markerIdFor: selectedRefMarkerId),
+    ];
 
     final pinnedStyle = widget.settings.mapStyle;
     final glStyleUrl = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrl;
@@ -443,6 +666,9 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         styleUrl: glStyleUrl,
         styleUrlDark: glStyleUrlDark,
         onMarkerTap: _onMarkerTap,
+        onCameraChanged: _onCameraChanged,
+        zoomFades: ActivitiesResultsMap.zoomFades,
+        onMapTap: _onMapTap,
       );
     } else if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android) {
       map = MapboxWebviewMapView(
@@ -454,6 +680,9 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         styleUrl: glStyleUrl,
         styleUrlDark: glStyleUrlDark,
         onMarkerTap: _onMarkerTap,
+        onCameraChanged: _onCameraChanged,
+        zoomFades: ActivitiesResultsMap.zoomFades,
+        onMapTap: _onMapTap,
       );
     } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) && webviewSupported) {
       map = MapboxWebviewMapView(
@@ -465,11 +694,23 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         styleUrl: glStyleUrl,
         styleUrlDark: glStyleUrlDark,
         onMarkerTap: _onMarkerTap,
+        onCameraChanged: _onCameraChanged,
+        zoomFades: ActivitiesResultsMap.zoomFades,
+        onMapTap: _onMapTap,
       );
     } else {
       // Linux, or Windows without a usable WebView2 environment — see
       // map_panel.dart's own fallback for the same reasoning.
-      map = OsmMapView(markers: allMarkers, shapes: shapes, isDark: isDark, zoomController: widget.camera, onMarkerTap: _onMarkerTap);
+      map = OsmMapView(
+        markers: allMarkers,
+        shapes: shapes,
+        isDark: isDark,
+        zoomController: widget.camera,
+        onMarkerTap: _onMarkerTap,
+        onCameraChanged: _onCameraChanged,
+        zoomFades: ActivitiesResultsMap.zoomFades,
+        onMapTap: _onMapTap,
+      );
     }
 
     final selected = _markerEntry(_selectedMarkerId);
@@ -498,11 +739,24 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         Positioned.fill(
           child: ExcludeSemantics(child: PlatformViewShield(child: map)),
         ),
+        Positioned(
+          left: Space.sm,
+          right: Space.sm,
+          bottom: Space.sm,
+          child: MapOutlinesNotice(shapes: shapes),
+        ),
+        Positioned(
+          right: MapInfoBox.right,
+          bottom: MapInfoBox.bottom,
+          child: MapInfoBox(settings: widget.settings, camera: _cameraReport),
+        ),
+        // At the top, clear of the outline notice and the map's credit along
+        // the bottom edge.
         if (selected != null)
           Positioned(
             left: Space.md,
             right: Space.md,
-            bottom: Space.md,
+            top: Space.md,
             child: _RevealCard(
               suggestion: selected,
               control: controlForRefType(widget.controls, selected['type'] as String?),

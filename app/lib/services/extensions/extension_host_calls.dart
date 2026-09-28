@@ -28,6 +28,7 @@ class _ExtensionHostCalls {
       'dbLookupSelectOne' => _dbLookupSelectOne(params),
       'dbLookupSelectAll' => _dbLookupSelectAll(params),
       'dbLookupSelectByLocation' => _dbLookupSelectByLocation(params),
+      'dbLookupSelectInBounds' => _dbLookupSelectInBounds(params),
       'getLocation' => _getLocation(params),
       'getVersionInfo' => _getVersionInfo(),
       'showForm' => _showForm(params),
@@ -97,6 +98,8 @@ class _ExtensionHostCalls {
     // SettingsService) and device identifiers.
     return {
       'developerMode': _service.settings?.developerMode ?? false,
+      // So DEVMAPINFO can say which way it is about to flip it.
+      'devMapInfo': _service.settings?.devMapInfo ?? false,
       'locale': _service.settings?.locale ?? 'en',
       // Lets a hook whose effect must stay invisible until its own
       // experiment ships ungated check per-call, rather than hiding at
@@ -301,6 +304,34 @@ class _ExtensionHostCalls {
     final delta = (params['delta'] as num).toDouble();
     final activeOnly = params['activeOnly'] as bool? ?? false;
     final list = await _service.lookups?.queryLookupsByLocation(category, lat, lon, delta, activeOnly: activeOnly) ?? const [];
+    return list
+        .map(
+          (row) => {
+            'category': row.category,
+            'subCategory': row.subCategory,
+            'key': row.key,
+            'name': row.name,
+            'data': row.data != null ? jsonDecode(row.data!) : null,
+            'lat': row.lat,
+            'lon': row.lon,
+            'flags': row.flags,
+          },
+        )
+        .toList();
+  }
+
+  Future<dynamic> _dbLookupSelectInBounds(Map<String, dynamic> params) async {
+    final list =
+        await _service.lookups?.queryLookupsInBounds(
+          params['category'] as String,
+          south: (params['south'] as num).toDouble(),
+          west: (params['west'] as num).toDouble(),
+          north: (params['north'] as num).toDouble(),
+          east: (params['east'] as num).toDouble(),
+          activeOnly: params['activeOnly'] as bool? ?? false,
+          limit: (params['limit'] as num?)?.toInt() ?? 500,
+        ) ??
+        const [];
     return list
         .map(
           (row) => {

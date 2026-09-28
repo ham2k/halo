@@ -473,15 +473,18 @@ its own program name reads the wrong program aloud. Programs built on the SDK's 
 from one `linkUrl` config line.
 
 `geojsonUrlForRef` says where the reference's own footprint can be fetched as
-GeoJSON — a SOTA summit's activation zone, and whatever equivalent another
-program publishes. Same contract as `linkForRef`: build the URL from the
+GeoJSON — a SOTA summit's activation zone, a POTA park's boundary, and
+whatever equivalent another program publishes. Areas (`Polygon`,
+`MultiPolygon`) are drawn filled with an edge; lines (`LineString`,
+`MultiLineString`) — a trail or a river that is the park — are drawn as an
+edge alone; points are ignored. Same contract as `linkForRef`: build the URL from the
 reference, **never hit the network**, return `null` for a reference the program
 has no shape for. The core does the fetching and the caching (`GeoshapeService`),
 so an extension never decides how long a device keeps a file or how large one may
 be; it only names the two ages the core should use:
 
 ```ts
-// RefGeojson: {url, maxAgeInDays?, missMaxAgeInDays?}
+// RefGeojson: {url, maxAgeInDays?, missMaxAgeInDays?, sourceName?}
 ```
 
 `maxAgeInDays` (default 30) is how long a fetched shape stays usable offline —
@@ -490,6 +493,14 @@ long the core remembers that a reference has NO shape, deliberately shorter so a
 newly surveyed zone appears within a day rather than a month. Both are ignored
 unless positive: a zero would re-fetch on every rebuild of the map.
 
+`sourceName` is who drew the shapes, short enough for the credit line a map
+shows under its outlines ("Source: OSM, sotl.as") — the host of `url` when it
+is left out. Name the data's owner, not the server that relays it: POTA's
+outlines are served by Ham2K and credited to OSM.
+
+A document past 16MB is not kept: the core remembers it as a miss, on
+`missMaxAgeInDays`, rather than downloading it again on every retry.
+
 The URL must be `https`, and the core does not follow redirects to reach it.
 Unlike a link, this one is fetched rather than handed to the platform, and a
 plaintext one — named outright, or arrived at through a `Location:` header —
@@ -497,10 +508,13 @@ would downgrade every activator's connection on a program's say-so.
 
 Shapes are asked for sparingly: the Map tab asks about the operation's own
 references, and the Activities pane's results map about those plus the one
-suggestion whose card is open. Neither fetches a shape per search hit — a search
-answers with dozens of references, and at the zoom that shows dozens of them a
-footprint is a few pixels across. Implemented by: `sota` (both types, via
-SOTLAS's `az.sotl.as`, used with the operators' permission).
+suggestion whose card is open, drawn solid. The rest of the map's suggestions
+are asked about only once it is zoomed in (from GL zoom 7, fading in by 8)
+and drawn as a dashed edge under the solid ones — a search answers with dozens
+of references, and further out a footprint is a few pixels across. Implemented by: `sota` (both types, via
+SOTLAS's `az.sotl.as`, used with the operators' permission) and `pota` (both
+types, via `services.ham2k.net/lookups/outlines/pota/`, which links parks to
+OpenStreetMap shapes; a park not yet linked answers 404).
 
 `suggestOperationTitle` lets an activity build a natural-language operation
 title/subtitle from its refs — "at Yosemite NP" (POTA), "for Field Day"
@@ -537,7 +551,7 @@ interface ActivityHook {
 // extension only says what the short form is.
 // `skipFocus: true` takes a main logging field out of the Space and Tab cycle;
 // the arrow keys still reach it. Every shipped contest sets it on Our Serial.
-// SuggestArgs: {operation, location?: {lat, lon}, callsign?, searchTerm?, scoped?}
+// SuggestArgs: {operation, location?: {lat, lon}, callsign?, searchTerm?, scoped?, bounds?: {south, west, north, east}}
 // ActivitySuggestion: Ref & {distance?, relevance?, allowsMultiple?}
 
 // The input catalog. A new kind is earned by a different WIDGET, never by
@@ -622,7 +636,17 @@ proposing a new `input.kind` is a core PR, deliberately (DESIGN.md §5's
 
 `suggest` powers the Activities view's "add activity" search: called with a
 `location`/`callsign` the core resolves from the operation if set, else the
-station defaults (extensions never need to know which). Called with no
+station defaults (extensions never need to know which). When the operator pans
+the Activities results map it asks again with the map's view as `bounds` (and
+its centre as `location`, no `searchTerm`, the box's scope if it has one):
+answer with EVERY reference inside the view, not the nearest few, or the view's
+corners stay empty however far the operator pans. `nearbyLookupRows` reads
+either case, through the `dbLookupSelectInBounds` host call for a view — only
+an app that sends `bounds` answers that call, so an extension that calls it
+only then runs on older apps unchanged, and one that predates `bounds` answers
+with what is nearest the view's centre. Measure `distance` from the `location`
+given either way; the core re-measures a panned answer from the operation's own
+place before any card shows it. Called with no
 `searchTerm` for nearby suggestions, or with one for name/code search — an
 extension may honor either, both, or neither (returning `[]`). `scoped` is
 true when THIS extension alone was asked — the operator tapped its "Activity

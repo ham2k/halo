@@ -56,6 +56,19 @@ class LookupStore {
     for (final row in await repository.queryLookupsByLocation(category, lat, lon, delta, activeOnly: activeOnly)) _toJson(row)!,
   ];
 
+  Future<List<Map<String, Object?>>> selectInBounds(
+    String category, {
+    required double south,
+    required double west,
+    required double north,
+    required double east,
+    bool activeOnly = false,
+    int limit = 500,
+  }) async => [
+    for (final row in await repository.queryLookupsInBounds(category, south: south, west: west, north: north, east: east, activeOnly: activeOnly, limit: limit))
+      _toJson(row)!,
+  ];
+
   /// Row counts per category, for `data-files list`.
   Future<Map<String, int>> counts() async {
     final rows = await db.customSelect('SELECT category, COUNT(*) AS n FROM lookups GROUP BY category ORDER BY category').get();

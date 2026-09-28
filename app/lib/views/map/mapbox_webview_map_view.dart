@@ -26,6 +26,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:halo_core/halo_core.dart' show GridLocation;
 
 import '../../services/connectivity_service.dart';
 import '../../services/error_reporting_service.dart';
@@ -62,6 +63,20 @@ class MapboxWebviewMapView extends StatefulWidget {
   /// map, which keeps its own popup.
   final ValueChanged<String>? onMarkerTap;
 
+  /// Where the camera came to rest — its centre, its zoom on the GL
+  /// backends' scale (512-pixel tiles) whatever the backend, see
+  /// [MapZoomController.glZoomOf], and the box it shows. Reported after every
+  /// move.
+  final ValueChanged<MapCameraSettled>? onCameraChanged;
+
+  /// A tap that landed on no marker, at the map point it landed on — for a
+  /// host that decides what else is there (the Activities map's outlines).
+  /// Only reported alongside [onMarkerTap]: the QSO map keeps its own popup.
+  final ValueChanged<GridLocation>? onMapTap;
+
+  /// What this map fades in as it closes in — see [MapZoomFades].
+  final MapZoomFades? zoomFades;
+
   /// Makes this a picture of the map rather than a map to explore — see
   /// [MapFrame]. Read once, when the page is built.
   final MapFrame? frame;
@@ -77,6 +92,9 @@ class MapboxWebviewMapView extends StatefulWidget {
     required this.styleUrlDark,
     this.zoomController,
     this.onMarkerTap,
+    this.onCameraChanged,
+    this.onMapTap,
+    this.zoomFades,
     this.frame,
   });
 
@@ -173,6 +191,7 @@ class MapboxWebviewMapView extends StatefulWidget {
     window.poloPatchMarkers = handle.patchMarkers;
     window.poloPatchLines = handle.patchLines;
     window.poloSetShapes = handle.setShapes;
+    window.poloSetZoomFades = handle.setZoomFades;
     window.poloSetProjection = handle.setProjection;
     window.poloMoveTo = handle.moveTo;
     window.poloZoomIn = handle.zoomIn;
@@ -226,6 +245,34 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
   void _onMapEvent(String kind, String message) {
     if (kind == 'marker-click') {
       widget.onMarkerTap?.call(message);
+      return;
+    }
+    if (kind == 'map-click') {
+      if ([for (final part in message.split(',')) double.tryParse(part)] case [final latitude?, final longitude?]) {
+        widget.onMapTap?.call(GridLocation(latitude, longitude));
+      } else {
+        MapErrorReporter.report(backend: 'webview', kind: 'map-click-malformed', message: message);
+      }
+      return;
+    }
+    if (kind == 'camera') {
+      Object? decoded;
+      try {
+        decoded = jsonDecode(message);
+      } on FormatException {
+        decoded = null;
+      }
+      if ((MapCameraPosition.fromJson(decoded), decoded) case (
+        final camera?,
+        {'south': final num south, 'west': final num west, 'north': final num north, 'east': final num east},
+      )) {
+        final bounds = mapViewBounds(south: south.toDouble(), west: west.toDouble(), north: north.toDouble(), east: east.toDouble());
+        widget.onCameraChanged?.call((camera: camera, bounds: bounds));
+      } else {
+        // The page and this side disagree about the report's shape — and the
+        // zoom gates, the outlines and the exploring all hang on it.
+        MapErrorReporter.report(backend: 'webview', kind: 'camera-malformed', message: message);
+      }
       return;
     }
     if (kind == 'recovered') {
@@ -388,6 +435,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
       }
     }
     if (!listEquals(oldWidget.shapes, widget.shapes)) _applyShapes();
+    if (oldWidget.zoomFades != widget.zoomFades) _applyZoomFades();
   }
 
   Future<void> _applyProjection() async {
@@ -423,6 +471,11 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
   Future<void> _patchLines(MapDiff<MapLineData> diff) async {
     final data = jsonEncode(mapLinesPatchPayload(diff));
     await _controller?.evaluateJavascript(source: 'window.poloPatchLines($data);');
+  }
+
+  Future<void> _applyZoomFades() async {
+    final data = jsonEncode(mapZoomFadesPayload(widget.zoomFades));
+    await _controller?.evaluateJavascript(source: 'window.poloSetZoomFades($data);');
   }
 
   Future<void> _applyShapes() async {
@@ -478,6 +531,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
             } else if (widget.isDark != _pageStyle.isDark) {
               _applyDark();
             }
+            _applyZoomFades();
             _applyMarkers();
             _applyLines();
             _applyShapes();

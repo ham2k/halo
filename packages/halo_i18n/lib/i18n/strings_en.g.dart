@@ -748,6 +748,12 @@ class Translations$map$en {
 
 	// Translations
 
+	/// en: 'Outlines are for reference only. Do your own research!'
+	String get outlinesDisclaimer => 'Outlines are for reference only. Do your own research!';
+
+	/// en: 'Source: ${sources}'
+	String outlinesSource({required Object sources}) => 'Source: ${sources}';
+
 	/// en: 'No QSO locations yet. QSOs with a grid square, state, or country will show up here.'
 	String get emptyState => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.';
 
@@ -7772,6 +7778,8 @@ extension on Translations {
 			'operation.import.gapDialogBody' => ({required Object count}) => '${count} more QSOs were captured earlier, before a gap in the data. Include them too?',
 			'operation.import.gapDialogRecentOnly' => 'Just the recent ones',
 			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Include all ${count}',
+			'map.outlinesDisclaimer' => 'Outlines are for reference only. Do your own research!',
+			'map.outlinesSource' => ({required Object sources}) => 'Source: ${sources}',
 			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
 			'map.unavailable' => 'The map isn\'t available right now.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -8230,10 +8238,10 @@ extension on Translations {
 			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Play memory ${n}',
 			'settings.radio.voiceMessages.stop' => 'Stop',
 			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Record memory ${n}',
-			'settings.radio.voiceMessages.stopRecording' => 'Stop recording',
-			'settings.radio.voiceMessages.playing' => 'Playing…',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.stopRecording' => 'Stop recording',
+			'settings.radio.voiceMessages.playing' => 'Playing…',
 			'settings.radio.voiceMessages.recording' => 'Recording…',
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Playing ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Recording ${label}',
@@ -8744,10 +8752,10 @@ extension on Translations {
 			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'Updated ${hours}h ago',
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Updated ${hours}h ${minutes}m ago',
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Updated ${minutes}m ago',
-			'settings.offlineData.extensionsSection' => 'Extensions',
-			'settings.profiles.notSet' => 'Not set',
 			_ => null,
 		} ?? switch (path) {
+			'settings.offlineData.extensionsSection' => 'Extensions',
+			'settings.profiles.notSet' => 'Not set',
 			'settings.profiles.personalInfo' => 'Personal Info',
 			'settings.profiles.personalInfoNote' => 'This might be included in generated logs when relevant for submissions',
 			'settings.profiles.name' => 'Name',

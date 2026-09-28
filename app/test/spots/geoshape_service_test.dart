@@ -216,6 +216,30 @@ void main() {
     expect((await service.shapeForRef({'type': 'pota', 'ref': 'US-0001'})).resolved, isTrue);
   });
 
+  test('an outline grown past the ceiling keeps the one this device already holds', () async {
+    final service = serviceFor(
+      const RefGeojson(url: _url, maxAge: Duration(days: 30), missMaxAge: Duration(days: 1)),
+      client: () =>
+          http.MockClient.streaming((_, _) async => http.StreamedResponse(const Stream.empty(), 200, contentLength: GeoshapeService.maxBodyBytes + 1)),
+    );
+    await seed(geojson: _shape, age: const Duration(days: 400));
+
+    // The document grew past what can be kept; the boundary it had is still
+    // the best this device can draw.
+    expect((await service.shapeForRef(_summit)).geojson, _shape);
+    expect((await lookups.getLookup(geoshapeLookupCategory, _url))?.data, _shape, reason: 'not overwritten by a miss');
+  });
+
+  test('a failure that is not the network is the caller\'s to report, not an outage to retry', () async {
+    final service = serviceFor(
+      const RefGeojson(url: _url, maxAge: Duration(days: 30), missMaxAge: Duration(days: 1)),
+      client: () => http.MockClient((_) async => throw StateError('a bug here')),
+    );
+    // Read as offline, a bug would be retried every 30 seconds and never
+    // reported.
+    await expectLater(service.shapeForRef(_summit), throwsStateError);
+  });
+
   test('a body past the ceiling is refused on its declared length, before it is read', () async {
     var bytesRead = 0;
     final service = serviceFor(
@@ -236,9 +260,29 @@ void main() {
     );
 
     final answer = await service.shapeForRef(_summit);
-    expect(answer.resolved, isFalse, reason: 'an oversized answer settles nothing — it is not proof of no shape');
     expect(bytesRead, 0);
-    expect(await lookups.getLookup(geoshapeLookupCategory, _url), isNull);
+    // Unresolved, an open map would download the same oversized document again
+    // on every retry, for a shape it can never keep.
+    expect(answer.resolved, isTrue);
+    expect(answer.geojson, isNull);
+    final row = await lookups.getLookup(geoshapeLookupCategory, _url);
+    expect(row, isNotNull, reason: 'remembered as a miss, so it is asked again on the miss age, not the next rebuild');
+    expect(row!.data, isNull);
+  });
+
+  test('a body that declared no length is refused once read past the ceiling, and remembered as a miss', () async {
+    var requests = 0;
+    final service = serviceFor(
+      const RefGeojson(url: _url, maxAge: Duration(days: 30), missMaxAge: Duration(days: 1)),
+      client: () => http.MockClient.streaming((_, _) async {
+        requests++;
+        return http.StreamedResponse(Stream.value(List.filled(GeoshapeService.maxBodyBytes + 1, 0x20)), 200);
+      }),
+    );
+
+    expect((await service.shapeForRef(_summit)).resolved, isTrue);
+    expect((await service.shapeForRef(_summit)).geojson, isNull);
+    expect(requests, 1, reason: 'the pre-check cannot see an undeclared length; the post-read check is the only thing keeping it out');
   });
 
   test('a server that connects and then says nothing is given up on, not waited on forever', () async {
@@ -315,6 +359,15 @@ void main() {
 
     test('reads a fractional age, so a program can ask for hours', () {
       expect(refGeojsonFromHookResult({'url': _url, 'missMaxAgeInDays': 0.5}, type: 'sotaActivation')?.missMaxAge, const Duration(hours: 12));
+    });
+
+    test('credits the source a hook names, and the url\'s host when it names none', () {
+      // Every outline on a map is credited to someone: a blank or missing
+      // name falls back to the server, never to an empty credit line.
+      expect(refGeojsonFromHookResult({'url': _url, 'sourceName': ' OSM '}, type: 'pota')?.sourceName, 'OSM');
+      expect(refGeojsonFromHookResult({'url': _url}, type: 'sotaActivation')?.sourceName, 'az.sotl.as');
+      expect(refGeojsonFromHookResult({'url': _url, 'sourceName': '  '}, type: 'sotaActivation')?.sourceName, 'az.sotl.as');
+      expect(refGeojsonFromHookResult({'url': _url, 'sourceName': 42}, type: 'sotaActivation')?.sourceName, 'az.sotl.as');
     });
   });
 }

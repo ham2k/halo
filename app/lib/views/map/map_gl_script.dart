@@ -56,7 +56,8 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../../services/settings_service.dart' show MapStyle;
-import 'map_zoom_controller.dart' show mapSnapshotRemovedMessage, mapSnapshotTimeoutMessage, mapSnapshotTimeoutMs;
+import 'map_marker_data.dart' show mapMarkerFullAtZoom, mapMarkerSmallAtZoom, mapMarkerSmallScale;
+import 'map_zoom_controller.dart' show MapZoomController, mapSnapshotRemovedMessage, mapSnapshotTimeoutMessage, mapSnapshotTimeoutMs;
 
 /// MapLibre GL JS itself — needs no access token, unlike the commercial GL
 /// libraries — vendored under `app/assets/maplibre/` rather than fetched from
@@ -291,6 +292,7 @@ window.poloMapGl = window.poloMapGl || {
 
     const EMPTY = { type: 'FeatureCollection', features: [] };
     const MARKER_LAYERS = ['polo-markers', 'polo-markers-highlight', 'polo-marker-icons'];
+    const FIT_MAX_ZOOM = ${MapZoomController.fitMaxZoom};
 
     // The marker data behind the rendered circles, by feature id — a click
     // gets properties back through the GL layer, and the popup wants the
@@ -623,29 +625,65 @@ window.poloMapGl = window.poloMapGl || {
 
     // A reference's own footprint (map_marker_data.dart's MapShapeData) — a
     // translucent wash with a solid edge, so an activation zone reads as an
-    // area without hiding the terrain the activator is standing on.
+    // area without hiding the terrain the activator is standing on. A trail
+    // or river gets the edge alone: the fill is kept to polygons, so a line
+    // is never closed into an area. A dashed shape — a suggestion nobody has
+    // picked — is an edge alone, in its own layer first so it sits under
+    // every solid one (line-dasharray cannot be set per feature).
+    const DASHED_OPACITY = 0.8;
+    const FILL_OPACITY = 0.18;
+    const EDGE_OPACITY = 0.9;
+
     function shapeLayers() {
       return [
+        {
+          id: 'polo-shapes-dashed',
+          type: 'line',
+          source: 'polo-shapes',
+          filter: ['==', ['get', 'dashed'], true],
+          // Round caps on zero-length dashes are what make the dots: a
+          // suggestion's edge is context, and any length of dash reads as a
+          // boundary of its own.
+          layout: { 'line-cap': 'round' },
+          paint: {
+            'line-color': ['coalesce', ['get', 'color'], '#000000'],
+            'line-width': 1.25,
+            'line-opacity': DASHED_OPACITY,
+            // In line widths: a dot, then two widths of gap.
+            'line-dasharray': [0, 2],
+          },
+        },
         {
           id: 'polo-shapes-fill',
           type: 'fill',
           source: 'polo-shapes',
+          filter: ['all', ['==', ['geometry-type'], 'Polygon'], ['!=', ['get', 'dashed'], true]],
           paint: {
             'fill-color': ['coalesce', ['get', 'color'], '#000000'],
-            'fill-opacity': 0.18,
+            'fill-opacity': FILL_OPACITY,
           },
         },
         {
           id: 'polo-shapes-outline',
           type: 'line',
           source: 'polo-shapes',
+          filter: ['!=', ['get', 'dashed'], true],
           paint: {
             'line-color': ['coalesce', ['get', 'color'], '#000000'],
             'line-width': 2,
-            'line-opacity': 0.9,
+            'line-opacity': EDGE_OPACITY,
           },
         },
       ];
+    }
+
+    // Every marker shrinks as the map zooms out (map_marker_data.dart's
+    // mapMarkerSmallAtZoom): a zoom expression, so the size follows a pinch
+    // frame by frame.
+    function scaledWithZoom(size) {
+      return ['interpolate', ['linear'], ['zoom'],
+        $mapMarkerSmallAtZoom, typeof size === 'number' ? size * $mapMarkerSmallScale : ['*', size, $mapMarkerSmallScale],
+        $mapMarkerFullAtZoom, size];
     }
 
     function circleLayer(id, highlight) {
@@ -657,9 +695,9 @@ window.poloMapGl = window.poloMapGl || {
         paint: {
           // Per feature, so one layer covers the QTH dot, every band colour
           // and every signal-strength size.
-          'circle-radius': ['get', 'radius'],
+          'circle-radius': scaledWithZoom(['get', 'radius']),
           'circle-color': ['coalesce', ['get', 'color'], '#000000'],
-          'circle-stroke-width': ['get', 'strokeWidth'],
+          'circle-stroke-width': scaledWithZoom(['get', 'strokeWidth']),
           'circle-stroke-color': ['get', 'strokeColor'],
         },
       };
@@ -675,6 +713,7 @@ window.poloMapGl = window.poloMapGl || {
         source: 'polo-marker-icons',
         layout: {
           'icon-image': ['get', 'image'],
+          'icon-size': scaledWithZoom(1),
           // These markers mean something specific ("you are here", "this is
           // on the operation"), so they are never the one collision-based
           // placement drops.
@@ -757,7 +796,36 @@ window.poloMapGl = window.poloMapGl || {
       // Last, so a glyph marker is never buried under a plain dot that
       // happens to share its spot.
       ensureLayer(iconLayer());
+      applyZoomFades();
       return true;
+    }
+
+    // What the host fades in with the zoom (map_marker_data.dart's
+    // MapZoomFades). Paint expressions on the live zoom, so a fade follows a
+    // pinch frame by frame; re-applied whenever the layers are (re)made,
+    // since a style swap throws the paint away with them.
+    let zoomFades = null;
+
+    function applyZoomFades() {
+      if (!map.getLayer('polo-markers') || !map.getLayer('polo-shapes-dashed') || !map.getLayer('polo-shapes-fill')) return;
+      function fading(band, full) {
+        return band ? ['interpolate', ['linear'], ['zoom'], band.from, 0, band.to, full] : full;
+      }
+      const markers = zoomFades && zoomFades.markers;
+      const markerOpacity = markers
+        ? ['interpolate', ['linear'], ['zoom'], markers.from, ['case', ['==', ['get', 'fades'], true], 0, 1], markers.to, 1]
+        : 1;
+      map.setPaintProperty('polo-markers', 'circle-opacity', markerOpacity);
+      map.setPaintProperty('polo-markers', 'circle-stroke-opacity', markerOpacity);
+      map.setPaintProperty('polo-shapes-dashed', 'line-opacity', fading(zoomFades && zoomFades.dashedShapes, DASHED_OPACITY));
+      const solid = zoomFades && zoomFades.solidShapes;
+      map.setPaintProperty('polo-shapes-fill', 'fill-opacity', fading(solid, FILL_OPACITY));
+      map.setPaintProperty('polo-shapes-outline', 'line-opacity', fading(solid, EDGE_OPACITY));
+    }
+
+    function setZoomFades(data) {
+      zoomFades = data;
+      applyZoomFades();
     }
 
     // 'idle' (not 'load') because 'load' fires only once ever: a call landing
@@ -865,6 +933,7 @@ window.poloMapGl = window.poloMapGl || {
       markersById = {};
       const baseBounds = new maplibregl.LngLatBounds();
       const baseSig = [];
+      let fitKey = null;
       const iconFeatures = [];
       const features = [];
       data.forEach((m) => {
@@ -879,12 +948,14 @@ window.poloMapGl = window.poloMapGl || {
         // operation" from "tap to add".
         const glyphSize = m.image ? m.image.width / (m.image.pixelRatio || 1) : 0;
         const size = glyphSize || (m.kind === 'qth' ? 12 : 14 * (m.sizeFactor || 1));
-        const strokeWidth = glyphSize ? 2 : (m.kind === 'qth' ? 2 : 1.5);
+        const strokeWidth = m.strokeWidth || (glyphSize ? 2 : (m.kind === 'qth' ? 2 : 1.5));
         // The camera fits the base markers only, and only when they change, so
-        // typing a call (which moves the highlight marker) doesn't refit.
-        if (!m.highlight) {
+        // typing a call (which moves the highlight marker) doesn't refit —
+        // nor does a marker the operator's own panning brought in.
+        if (!m.highlight && m.fit !== false) {
           baseBounds.extend([m.longitude, m.latitude]);
           baseSig.push(m.longitude, m.latitude);
+          if (m.fitKey) fitKey = m.fitKey;
         }
         const geometry = { type: 'Point', coordinates: [m.longitude, m.latitude] };
         // A marker whose image could not be registered falls back to the
@@ -902,6 +973,7 @@ window.poloMapGl = window.poloMapGl || {
           properties: {
             id: m.id,
             highlight: m.highlight === true,
+            fades: m.fades === true,
             color: m.color,
             radius: Math.max(size / 2 - strokeWidth, 1),
             strokeWidth: strokeWidth,
@@ -912,12 +984,14 @@ window.poloMapGl = window.poloMapGl || {
       });
       map.getSource('polo-markers').setData({ type: 'FeatureCollection', features: features });
       map.getSource('polo-marker-icons').setData({ type: 'FeatureCollection', features: iconFeatures });
-      const sig = baseSig.join(',');
+      // A host that keys its fit (MapMarkerData.fitKey) refits when the key
+      // changes, however its markers come and go in between.
+      const sig = fitKey ? 'key:' + fitKey : baseSig.join(',');
       // A framed map keeps the camera it was given: it is the operator's
       // framing, taken from the map they were looking at.
       if (!frame && sig !== lastBaseSig && !baseBounds.isEmpty()) {
         lastBaseSig = sig;
-        map.fitBounds(baseBounds, { padding: 48, maxZoom: 11, duration: 0 });
+        map.fitBounds(baseBounds, { padding: 48, maxZoom: FIT_MAX_ZOOM, duration: 0 });
       }
     }
 
@@ -941,6 +1015,21 @@ window.poloMapGl = window.poloMapGl || {
       map.getSource('polo-shapes').setData({ type: 'FeatureCollection', features: data.features });
     }
 
+    // Where the camera came to rest, for a host that fetches more as the map
+    // closes in or moves on (the Activities map's outlines and the references
+    // around its centre). 'moveend' covers a fit, a flyTo and a drag alike;
+    // 'load' covers a map that never moves.
+    function reportCamera() {
+      const center = map.getCenter();
+      const bounds = map.getBounds();
+      report('camera', JSON.stringify({
+        latitude: center.lat, longitude: center.lng, zoom: map.getZoom(),
+        south: bounds.getSouth(), west: bounds.getWest(), north: bounds.getNorth(), east: bounds.getEast(),
+      }));
+    }
+    map.on('load', reportCamera);
+    map.on('moveend', reportCamera);
+
     map.on('click', function (e) {
       // Topmost first, so where the current QSO overlaps another station the
       // popup describes the dot the operator can actually see.
@@ -959,6 +1048,9 @@ window.poloMapGl = window.poloMapGl || {
         report('marker-drift', 'clicked feature ' + hits[0].properties.id + ' has no marker record');
       }
       if (popup) { popup.remove(); popup = null; }
+      // Whatever else is under the tap — a reference's outline — is the
+      // host's to decide; it has the shapes and knows what a hit means.
+      if (notifyClicks) report('map-click', e.lngLat.lat + ',' + e.lngLat.lng);
     });
 
     // One mousemove delegate rather than mouseenter/mouseleave per layer:
@@ -1076,6 +1168,7 @@ window.poloMapGl = window.poloMapGl || {
       setMarkers: setMarkers,
       setLines: setLines,
       setShapes: setShapes,
+      setZoomFades: setZoomFades,
       // JSON-string variants for callers on the far side of an interop
       // boundary (Flutter web's js_interop), where a string is the cheapest
       // thing to pass.
@@ -1086,6 +1179,7 @@ window.poloMapGl = window.poloMapGl || {
       patchMarkersJson: function (json) { patchMarkers(JSON.parse(json)); },
       patchLinesJson: function (json) { patchLines(JSON.parse(json)); },
       setShapesJson: function (json) { setShapes(JSON.parse(json)); },
+      setZoomFadesJson: function (json) { setZoomFades(JSON.parse(json)); },
       setProjection: function (name) {
         if (map.isStyleLoaded()) { applyProjection(name); return; }
         pendingProjection = name;

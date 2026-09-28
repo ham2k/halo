@@ -947,6 +947,31 @@ void main() {
     expect(lookup2, isNotNull);
   });
 
+  test('queryLookupsInBounds answers the whole box, nearest its centre first, and crosses the antimeridian', () async {
+    final lookupRepo = LookupRepository(db);
+    await lookupRepo.insertLookupBatch([
+      LookupRow(category: 'pota', key: 'corner', lat: 40.9, lon: -75.9, updated: 1),
+      LookupRow(category: 'pota', key: 'middle', lat: 40.5, lon: -75.5, updated: 1),
+      LookupRow(category: 'pota', key: 'outside', lat: 42.0, lon: -75.5, updated: 1),
+      LookupRow(category: 'sota', key: 'other-category', lat: 40.5, lon: -75.5, updated: 1),
+      LookupRow(category: 'pota', key: 'fiji-east', lat: -17.0, lon: 179.5, updated: 1),
+      LookupRow(category: 'pota', key: 'fiji-west', lat: -17.0, lon: -179.5, updated: 1),
+    ]);
+
+    // The corner is in: a view answered only around its centre leaves its
+    // corners empty, which is the whole point of asking by box.
+    final view = await lookupRepo.queryLookupsInBounds('pota', south: 40.0, west: -76.0, north: 41.0, east: -75.0);
+    expect(view.map((r) => r.key), ['middle', 'corner']);
+
+    // Capped, the rows past the cap are the ones farthest from the centre.
+    final capped = await lookupRepo.queryLookupsInBounds('pota', south: 40.0, west: -76.0, north: 41.0, east: -75.0, limit: 1);
+    expect(capped.map((r) => r.key), ['middle']);
+
+    // West past east: the box spans 179°E..179°W, not the rest of the world.
+    final dateline = await lookupRepo.queryLookupsInBounds('pota', south: -18.0, west: 179.0, north: -16.0, east: -179.0);
+    expect(dateline.map((r) => r.key).toSet(), {'fiji-east', 'fiji-west'});
+  });
+
   test('queryLookups treats a literal % or _ in the search term as text, not a SQL wildcard', () async {
     final lookupRepo = LookupRepository(db);
     await lookupRepo.insertLookupBatch([

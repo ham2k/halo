@@ -157,6 +157,16 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
 
   Operation? _operation;
   List<Map<String, dynamic>> _loggingControls = const [];
+
+  /// The operation's own controls (`operationControls`), for the Map tab's
+  /// markers and outlines: a program declares its ACTIVATION type there and
+  /// only its hunting type among [_loggingControls], so the operation's own
+  /// references find their icon and colour here and nowhere else.
+  List<Map<String, dynamic>> _operationControls = const [];
+
+  /// Both lists, the operation's first — built when either changes, so the
+  /// map is handed the same list between them.
+  List<Map<String, dynamic>> _mapControls = const [];
   // `_refreshLoggingControls` now has three independent callers (a ref
   // change, a draft edit, a runtime-generation retry) that can overlap —
   // bumped before each fetch and checked on return, so a slower call
@@ -1334,10 +1344,26 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// nothing.
   bool _loggingControlsStale = false;
 
+  /// The same for [_operationControls]: the map's icons and colours, with no
+  /// status of their own, retried with the logging controls.
+  bool _operationControlsStale = false;
+
   Future<void> _refreshLoggingControls(Operation operation) async {
     final requestId = ++_loggingControlsRequestId;
-    final result = await widget.services.extensions.loggingControls(operationPayloadFor(operation));
+    final payload = operationPayloadFor(operation);
+    // Both asked at once, awaited apart: a record `.wait` would wrap an
+    // unexpected throw in a ParallelWaitError that ErrorPolicy cannot see
+    // through.
+    final loggingFuture = widget.services.extensions.loggingControls(payload);
+    final operationFuture = widget.services.extensions.operationControls(payload);
+    final result = await loggingFuture;
+    final operationWide = await operationFuture;
     if (!mounted || requestId != _loggingControlsRequestId) return;
+    // A failed fetch keeps what the map already shows — unless it shows
+    // nothing, when whatever extensions did answer beats no colours at all.
+    // Retried with the logging controls below when the runtime comes back.
+    _operationControlsStale = operationWide.loadFailed;
+    if (!operationWide.loadFailed || _operationControls.isEmpty) _operationControls = operationWide.controls;
     // A fetch that failed says nothing about what the activities want, so the
     // panel keeps what it is already showing rather than blanking a live
     // logging panel because the runtime happened to be restarting.
@@ -1351,13 +1377,16 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // the meantime would leave the operator staring at the wrong fields with
     // no account of why, which is the whole defect this change exists to end.
     _loggingControlsStale = result.loadFailed;
+    final keepLogging = result.loadFailed && _loggingControls.isNotEmpty;
     if (result.loadFailed) {
       widget.services.statusBar.setMessage(key: 'operation:logging-controls-stale', text: context.t.operation.loggingControlsStale);
-      if (_loggingControls.isNotEmpty) return;
     } else {
       widget.services.statusBar.clear('operation:logging-controls-stale');
     }
-    setState(() => _loggingControls = result.controls);
+    setState(() {
+      if (!keepLogging) _loggingControls = result.controls;
+      _mapControls = [..._operationControls, ..._loggingControls];
+    });
   }
 
   /// Rescores under the new runtime, and retries [_refreshLoggingControls]
@@ -1373,7 +1402,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   void _onRuntimeGenerationChanged() {
     _lastScoredFingerprint = null;
     _maybeScheduleRescore();
-    if (!_loggingControlsStale) return;
+    if (!_loggingControlsStale && !_operationControlsStale) return;
     // `_draftOperation`, not just `_operation` — the Activities/Setup sheet
     // can still be open with a ref the operator just added, and refreshing
     // against the committed, ref-less operation instead would overwrite the
@@ -2779,11 +2808,9 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 settings: widget.services.settings,
                 callInfo: _callInfo,
                 geoshapes: widget.services.geoshapes,
-                // The same list the Information panel is given, so a
-                // reference's outline here wears the color its own row wears
-                // everywhere else.
-                activityControls: _loggingControls,
+                activityControls: _mapControls,
                 offersPostcard: true,
+                deviceGrid: widget.services.location.grid,
               ),
             ),
           ),

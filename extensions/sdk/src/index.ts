@@ -10,6 +10,7 @@
 
 import type {
   DeviceLocation,
+  MapBounds,
   FetchOptions,
   FetchResponse,
   JSONValue,
@@ -51,6 +52,7 @@ export * from "./activityAdifImport.ts"
 export * from "./exportNames.ts"
 export * from "./exportSettings.ts"
 export * from "./referenceActivity.ts"
+export * from "./nearby.ts"
 export * from "./refTransforms.ts"
 export * from "./templates.ts"
 export * from "./templateContext.ts"
@@ -434,6 +436,14 @@ export const host = {
 
   async dbLookupSelectByLocation(category: string, lat: number, lon: number, delta: number, activeOnly?: boolean): Promise<LookupRow[]> {
     return (await hostCallFn()("dbLookupSelectByLocation", { category, lat, lon, delta, activeOnly })) as LookupRow[]
+  },
+
+  /// Every row inside `bounds`, nearest its centre first, at most `limit`
+  /// (default 500, never past 1000). `west` past `east` is a box across the
+  /// antimeridian. Only an app that sends `SuggestArgs.bounds` answers this
+  /// call — so call it only when `bounds` arrived, as `nearbyLookupRows` does.
+  async dbLookupSelectInBounds(category: string, bounds: MapBounds, options: { activeOnly?: boolean; limit?: number } = {}): Promise<LookupRow[]> {
+    return (await hostCallFn()("dbLookupSelectInBounds", { category, ...bounds, ...options })) as LookupRow[]
   },
 
   async showForm(form: FormDefinition, state: Record<string, any> = {}): Promise<Record<string, any> | null> {

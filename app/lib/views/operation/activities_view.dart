@@ -47,6 +47,7 @@ import '../../tools/distance_format.dart';
 import '../../tools/operation_title.dart';
 import '../map/map_zoom_controller.dart';
 import 'activities_results_map.dart';
+import 'operation_location_pin.dart';
 
 /// An icon, circled in [color] at 60% opacity when the control declares an
 /// accent — sparingly used, so a control with no color just
@@ -452,6 +453,17 @@ class OperationSheetState extends State<OperationSheet> {
   // more recent one and clobbering its results — only the response whose
   // id still matches the latest request gets applied.
   int _searchRequestId = 0;
+
+  /// References the results map found as the operator panned it — map-only,
+  /// and cleared by the next search, whose question they no longer answer.
+  List<Map<String, dynamic>> _exploredSuggestions = const [];
+
+  /// The query [_suggestions] answers, so panning asks the same scope.
+  ActivitySearchQuery? _lastQuery;
+
+  /// Counts the searches answered: the results map refits its camera when
+  /// this changes and for nothing else (see ActivitiesResultsMap.fitKey).
+  int _answeredSearches = 0;
 
   /// Extensions that match what was typed but aren't running — offered as
   /// rows of the Activity Types section (see activities_enable_tier.dart),
@@ -1024,6 +1036,41 @@ class OperationSheetState extends State<OperationSheet> {
     return word.isEmpty ? null : word;
   }
 
+  /// The references in [bounds], the view the operator took the results
+  /// map to. The same scope as the search in the box, but never its text: a
+  /// typed search is answered by what it names, not by where the map is, so
+  /// with text in the box panning finds nothing more.
+  ///
+  /// Answers whether the view came back whole — every program answered, for
+  /// the search still in the box — so the map knows whether to ask again.
+  Future<bool> _explore(MapViewBounds bounds) async {
+    final query = _lastQuery;
+    // Nothing to find: a typed search has its answer. Whole, so the map
+    // does not keep asking.
+    if (query == null || query.term.isNotEmpty) return true;
+    final requestId = _searchRequestId;
+    final answered = _answeredSearches;
+    final fallbackPosition = widget.services.location.position;
+    final results = await widget.services.extensions.suggestActivities(
+      _operation.data,
+      activityKeys: query.activityKeys ?? query.preferredKeys,
+      fallbackLocation: fallbackPosition == null ? null : GridLocation(fallbackPosition.latitude, fallbackPosition.longitude),
+      searchWithin: bounds,
+    );
+    // A search that started or landed meanwhile has cleared the map's
+    // extras, or is about to; these answer the question it replaced.
+    if (!mounted || requestId != _searchRequestId || answered != _answeredSearches) return false;
+    final known = {
+      for (final suggestion in [..._suggestions, ..._exploredSuggestions]) '${suggestion['type']}/${suggestion['ref']}',
+    };
+    final fresh = [
+      for (final suggestion in results.suggestions)
+        if (known.add('${suggestion['type']}/${suggestion['ref']}')) suggestion,
+    ];
+    if (fresh.isNotEmpty) setState(() => _exploredSuggestions = [..._exploredSuggestions, ...fresh]);
+    return !results.allSourcesFailed;
+  }
+
   Future<void> _search(String term) async {
     final requestId = ++_searchRequestId;
     setState(() => _loadingSuggestions = true);
@@ -1044,6 +1091,9 @@ class OperationSheetState extends State<OperationSheet> {
     if (mounted && requestId == _searchRequestId) {
       setState(() {
         _suggestions = results.suggestions;
+        _exploredSuggestions = const [];
+        _lastQuery = query;
+        _answeredSearches++;
         _searchFailed = results.allSourcesFailed;
         _suggestionsAreSearchResults = trimmed.isNotEmpty;
         // A recognized scope (`query.activityKeys` set) already names KNOWN,
@@ -2308,30 +2358,12 @@ class OperationSheetState extends State<OperationSheet> {
                           // a half-typed `FN` saved unvalidated must not label this
                           // button "located" under a notice still saying it isn't.
                           if (_hasOperationGrid) {
-                            // Only for operations stored before `gridSource` existed, and
-                            // compared at SIX characters on both sides: those carry a
-                            // 6-character grid, so matching them against a fix's own
-                            // displayed locator could never be reliably equal, and every
-                            // legacy GPS-set operation would quietly lose its green pin.
-                            final gridSource =
-                                asQsonString(_operation.data['gridSource']) ??
-                                ((_operation.location != null &&
-                                        widget.services.location.grid != null &&
-                                        locationToGrid6(_operation.location!.latitude, _operation.location!.longitude) == widget.services.location.grid)
-                                    ? 'gps'
-                                    : 'manual');
-
-                            if (gridSource == 'gps') {
-                              locationIcon = MdiIcons.mapMarker;
-                              locationPin = Icon(locationIcon, color: onLocationColor);
-                              label = operationGrid!;
-                              locationColor = const Color(0xFF1B5E20);
-                            } else {
-                              locationIcon = MdiIcons.pin;
-                              locationPin = Icon(locationIcon, color: onLocationColor);
-                              label = operationGrid!;
-                              locationColor = const Color(0xFF455A64);
-                            }
+                            // The same pin the Map tab puts on the operation's own marker.
+                            final pin = operationLocationPin(_operation, deviceGrid: widget.services.location.grid);
+                            locationIcon = pin.icon;
+                            locationPin = Icon(locationIcon, color: onLocationColor);
+                            label = operationGrid!;
+                            locationColor = pin.color;
                           } else {
                             if (locStatus == LocationStatus.unknown || locStatus == LocationStatus.determining) {
                               // The pulse is an animation over the same glyph, and a
@@ -2605,6 +2637,9 @@ class OperationSheetState extends State<OperationSheet> {
                                     geoshapes: widget.services.geoshapes,
                                     camera: _resultsCamera,
                                     onAdd: _addSuggestion,
+                                    exploredSuggestions: _exploredSuggestions,
+                                    onExplore: _explore,
+                                    fitKey: '$_answeredSearches',
                                     currentLocation: currentLocation,
                                     currentLocationColor: locationColor,
                                     currentLocationIcon: locationIcon,

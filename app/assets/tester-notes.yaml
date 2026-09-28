@@ -11,6 +11,9 @@
     - "Contest summaries show the contest name, score and its arithmetic"
     - "New Station Configuration connects and controls your radios (Settings)"
     - "New Extension Catalog to browse, install and update extensions (Manage Extensions)"
+    - "New POTA park outlines on the maps, where one is on file"
+    - "Activities map fills in nearby references as you pan it"
+    - "Map tab now marks your references and location"
 
 "175":
   changes:

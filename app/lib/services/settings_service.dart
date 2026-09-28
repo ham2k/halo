@@ -52,6 +52,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   static const _syncDeviceKeyKey = 'syncDeviceKey';
   static const _syncStateKey = 'syncState';
   static const _developerModeKey = 'developerMode';
+  static const _devMapInfoKey = 'devMapInfo';
   static const _extensionDevServerUrlKey = 'extensionDevServerUrl';
   static const _extensionDevServerEnabledKey = 'extensionDevServerEnabled';
   static const _catTrafficLogPathKey = 'catTrafficLogPath';
@@ -934,6 +935,15 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   @override
   Future<void> setDeveloperMode(bool enabled) async {
     await _prefs.setBool(_developerModeKey, enabled);
+    notifyListeners();
+  }
+
+  /// Whether maps show their zoom and viewport size (DEVMAPINFO) — a
+  /// developer's view of the thresholds the maps act on. Device-local.
+  bool get devMapInfo => _prefs.getBool(_devMapInfoKey) ?? false;
+
+  Future<void> setDevMapInfo(bool show) async {
+    await _prefs.setBool(_devMapInfoKey, show);
     notifyListeners();
   }
 

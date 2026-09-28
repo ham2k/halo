@@ -21,6 +21,7 @@
 // `@ham2k/extension-sdk` alias, so this module's tests can run under plain
 // `node --test` — the constraint dxcc.ts and scoring.ts document.
 
+import { nearbyLookupRows } from "./nearby.ts"
 import { distanceOnEarth } from "@ham2k/lib-geo-tools"
 
 import { activityAdifImport } from "./activityAdifImport.ts"
@@ -375,13 +376,11 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
         }
       : {}),
 
-    async suggest({ location, searchTerm, scoped }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
+    async suggest({ location, bounds, searchTerm, scoped }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
       const host = await hostApi()
-      const rows: LookupRow[] = searchTerm
-        ? await host.dbLookupSelectAll(category, searchTerm)
-        : location
-          ? await host.dbLookupSelectByLocation(category, location.lat, location.lon, NEARBY_DELTA)
-          : []
+      const { rows, inViewport }: { rows: LookupRow[]; inViewport: boolean } = searchTerm
+        ? { rows: await host.dbLookupSelectAll(category, searchTerm), inViewport: false }
+        : await nearbyLookupRows(host, category, { location, bounds }, { delta: NEARBY_DELTA })
 
       const withDistance = rows.map((row) => ({
         row,
@@ -394,7 +393,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
         withDistance.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
       }
 
-      const suggestions = withDistance.slice(0, MAX_SUGGESTIONS).map(({ row, distance }) => {
+      const suggestions = withDistance.slice(0, inViewport ? withDistance.length : MAX_SUGGESTIONS).map(({ row, distance }) => {
         const data = (row.data ?? {}) as Record<string, any>
         return {
           type: config.activationType,

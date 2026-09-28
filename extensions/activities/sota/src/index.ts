@@ -24,6 +24,7 @@ import {
   huntingExportHook,
   looksLikeReference,
   LOCATION_ACCURACY,
+  nearbyLookupRows,
 } from "@ham2k/extension-sdk"
 import type {
   AnnotatedCallInfo,
@@ -297,7 +298,7 @@ const RefHandler = {
 
   async geojsonUrlForRef({ ref }: { ref: Ref }, _ctx: HookContext): Promise<RefGeojson | null> {
     const url = activationZoneUrl(ref.ref ?? "")
-    return url ? { url } : null
+    return url ? { url, sourceName: "sotl.as" } : null
   },
 }
 
@@ -342,12 +343,10 @@ const ActivityHook = {
     ]
   },
 
-  async suggest({ location, searchTerm, callsign, scoped }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
-    const rows: LookupRow[] = searchTerm
-      ? await host.dbLookupSelectAll("sota", searchTerm)
-      : location
-        ? await host.dbLookupSelectByLocation("sota", location.lat, location.lon, NEARBY_DELTA)
-        : []
+  async suggest({ location, bounds, searchTerm, callsign, scoped }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
+    const { rows, inViewport }: { rows: LookupRow[]; inViewport: boolean } = searchTerm
+      ? { rows: await host.dbLookupSelectAll("sota", searchTerm), inViewport: false }
+      : await nearbyLookupRows(host, "sota", { location, bounds }, { delta: NEARBY_DELTA })
 
     // Entity-restrict name/code search results to the caller's own DXCC
     // entity when known, but never nearby ones — same reasoning as POTA's
@@ -369,7 +368,7 @@ const ActivityHook = {
       withDistance.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
     }
 
-    const suggestions: ActivitySuggestion[] = withDistance.slice(0, MAX_SUGGESTIONS).map(({ row, distance }) => {
+    const suggestions: ActivitySuggestion[] = withDistance.slice(0, inViewport ? withDistance.length : MAX_SUGGESTIONS).map(({ row, distance }) => {
       const data = (row.data ?? {}) as Record<string, any>
       const associationRegion = [data.region, data.association].filter((x) => x).join(", ")
 

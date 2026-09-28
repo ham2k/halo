@@ -268,6 +268,17 @@ class CliHostCalls {
               activeOnly: params['activeOnly'] as bool? ?? false,
             ) ??
             const [];
+      case 'dbLookupSelectInBounds':
+        return await lookups?.selectInBounds(
+              params['category'] as String,
+              south: (params['south'] as num).toDouble(),
+              west: (params['west'] as num).toDouble(),
+              north: (params['north'] as num).toDouble(),
+              east: (params['east'] as num).toDouble(),
+              activeOnly: params['activeOnly'] as bool? ?? false,
+              limit: (params['limit'] as num?)?.toInt() ?? 500,
+            ) ??
+            const [];
 
       case 'getLocation':
         final extensionKey = params['extensionKey'] as String?;

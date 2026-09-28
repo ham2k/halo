@@ -53,3 +53,21 @@ export function hunterDefaultPrefix(operation: { stationCall?: unknown }, qso: {
 export function activationDefaultPrefix(operation: { stationCall?: unknown }): string {
   return potaCountryPrefixForCall(operation.stationCall as string | undefined) ?? "US"
 }
+
+// POTA publishes no park boundaries. Ham2K's services link each park to the
+// OpenStreetMap shapes that outline it — tagged in OSM with
+// `communication:amateur_radio:pota`, or matched by a reviewer — and serve
+// them as GeoJSON. A park nobody has linked yet answers 404, which the core
+// remembers as "no outline" for a day.
+//
+// The data is OpenStreetMap's, under the ODbL: it only ever draws on a map
+// that already credits OpenStreetMap.
+export const OUTLINE_HOST = "https://services.ham2k.net/lookups/outlines/pota"
+
+// A "-TEST" reference is POTA's stand-in for an activation with no park, so
+// there is nothing to outline and nothing worth asking the network about.
+export function parkOutlineUrl(reference: string): string | null {
+  const normalized = reference.toUpperCase().trim()
+  if (!REFERENCE_REGEX.test(normalized) || normalized.endsWith("-TEST")) return null
+  return `${OUTLINE_HOST}/${normalized}.geojson`
+}

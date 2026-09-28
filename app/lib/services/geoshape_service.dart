@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Fetches the outline of a reference's own footprint — a SOTA activation
-// zone today — and keeps it on the device so it still draws for an activator
-// who is standing on the summit with no signal, which is the whole point of
-// having it.
+// zone, a POTA park — and keeps it on the device so it still draws for an
+// activator who is standing on the summit with no signal, which is the whole
+// point of having it.
 //
 // The URL comes from the reference's `ref:<type>` handler
 // (`geojsonUrlForRef`, docs/extensions/hooks.md); the fetching and the
@@ -19,6 +19,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/user_agent.dart';
+import 'error_policy.dart';
 import 'extensions/extension_service.dart';
 
 /// The `lookups` category these rows live under. Not a data file: nothing
@@ -69,13 +70,17 @@ class GeoshapeService {
   final Duration fetchTimeout;
   static const defaultFetchTimeout = Duration(seconds: 20);
 
-  /// A ceiling on what one reference may pull down. Real activation zones run
-  /// to tens of kilobytes; anything past this is a program's server answering
-  /// with something that is not a boundary, and reading it would cost the
-  /// operator's memory and then their disk for a shape that will never draw.
-  /// Checked against the declared length BEFORE the body is read, and again
-  /// after for a server that declared none.
-  static const maxBodyBytes = 4 * 1024 * 1024;
+  /// A ceiling on what one reference may pull down. Activation zones run to
+  /// tens of kilobytes and most park outlines to a few megabytes, but a
+  /// national forest traced from OpenStreetMap can run to tens of megabytes —
+  /// parsed, several times that in memory, and then stored whole on the
+  /// device. Checked against the declared length BEFORE the body is read, and
+  /// again after for a server that declared none.
+  ///
+  /// A body past it is remembered as a miss, on the program's miss age: the
+  /// same document comes back the next time it is asked for, so treating it as
+  /// a passing failure only re-downloads it on every retry of an open map.
+  static const maxBodyBytes = 16 * 1024 * 1024;
 
   /// One in-flight fetch per URL. Two reference types can name the same file
   /// — SOTA's `sota` and `sotaActivation` resolve to one summit — and the map
@@ -184,9 +189,22 @@ class GeoshapeService {
       jsonDecode(body);
       await _store(source.url, body);
       return Geoshape(body, resolved: true);
+    } on _TooLarge catch (e) {
+      debugPrint('[geoshape] Not keeping ${source.url}: $e');
+      // A shape this device already holds still draws: the document grew past
+      // what can be kept, which says nothing against the one it had.
+      if (fallback?.geojson case final kept?) return Geoshape(kept, resolved: true);
+      await _store(source.url, null);
+      return Geoshape.none;
     } catch (e) {
       // Offline is the ordinary case here, not an incident: no report, and
       // whatever this device already holds is still the best answer it has.
+      // Only for what offline looks like — the transport failing, the
+      // exchange timing out, or a body that is not JSON (a captive portal's
+      // page). Anything else is a bug here, or the database refusing a
+      // write, and goes on to the caller's report rather than being retried
+      // as an outage every 30 seconds.
+      if (!ErrorPolicy.isTransportFailure(e) && e is! TimeoutException && e is! FormatException) rethrow;
       debugPrint('[geoshape] Could not fetch ${source.url}: $e');
       return _fallback(fallback);
     } finally {
@@ -204,14 +222,10 @@ class GeoshapeService {
   Future<http.Response> _read(http.Client client, http.Request request) async {
     final streamed = await client.send(request);
     final declared = streamed.contentLength;
-    if (declared != null && declared > maxBodyBytes) {
-      throw http.ClientException('$declared bytes, past the ceiling', request.url);
-    }
+    if (declared != null && declared > maxBodyBytes) throw _TooLarge(declared);
     final response = await http.Response.fromStream(streamed);
     // Again, for a server that declared no length or under-declared one.
-    if (response.bodyBytes.length > maxBodyBytes) {
-      throw http.ClientException('${response.bodyBytes.length} bytes, past the ceiling', request.url);
-    }
+    if (response.bodyBytes.length > maxBodyBytes) throw _TooLarge(response.bodyBytes.length);
     return response;
   }
 
@@ -227,4 +241,14 @@ class GeoshapeService {
   /// they come back.
   Future<void> _store(String url, String? geojson) =>
       lookups.insertLookupBatch([LookupRow(category: geoshapeLookupCategory, key: url, data: geojson, updated: realNowMillis())]);
+}
+
+/// A body past [GeoshapeService.maxBodyBytes] — a settled answer, unlike the
+/// transport failures the fetch otherwise catches.
+class _TooLarge implements Exception {
+  const _TooLarge(this.bytes);
+  final int bytes;
+
+  @override
+  String toString() => '$bytes bytes, past the ${GeoshapeService.maxBodyBytes}-byte ceiling';
 }

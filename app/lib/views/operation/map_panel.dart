@@ -21,6 +21,7 @@
 // today HaLo never writes `our.grid`, so this collapses to a single QTH.
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -32,7 +33,11 @@ import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
 import '../map/map_zoom_controller.dart';
+import '../map/map_info_box.dart';
+import '../map/map_marker_icon.dart';
 import '../map/ref_shapes.dart';
+import 'activities_results_map.dart' show activitySelectedRefMarkers;
+import 'operation_location_pin.dart';
 import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
@@ -69,6 +74,10 @@ class MapPanel extends StatefulWidget {
   /// View's one-contact map.
   final bool offersPostcard;
 
+  /// The device's own 6-character fix, for the one case where it decides the
+  /// pin on the operation's marker — see [operationLocationPin].
+  final String? deviceGrid;
+
   const MapPanel({
     super.key,
     required this.operation,
@@ -78,6 +87,7 @@ class MapPanel extends StatefulWidget {
     this.geoshapes,
     this.activityControls = const [],
     this.offersPostcard = false,
+    this.deviceGrid,
   });
 
   @override
@@ -86,6 +96,48 @@ class MapPanel extends StatefulWidget {
 
 class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> {
   MapProjection _projection = MapProjection.mercator;
+
+  /// The backend's last camera report, for DEVMAPINFO's box — which listens
+  /// to it alone, so a drag does not rebuild the pane.
+  final _cameraReport = ValueNotifier<MapCameraSettled?>(null);
+
+  @override
+  void dispose() {
+    _cameraReport.dispose();
+    super.dispose();
+  }
+
+  /// The outlines fade in over the same band the Activities map's do.
+  static const MapZoomFades _zoomFades = (markers: null, dashedShapes: null, solidShapes: (from: refOutlinesFromZoom, to: refOutlinesOpaqueAtZoom));
+
+  /// Whether the map is in past [refOutlinesFromZoom]. Kept as the crossing,
+  /// not the zoom, so a drag rebuilds the pane only when the answer changes.
+  bool _outlinesShown = false;
+
+  void _onCameraChanged(MapCameraSettled settled) {
+    // After the frame when flutter_map reports from its own layout: the box
+    // listening to it would otherwise rebuild during a build.
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      _cameraReport.value = settled;
+    } else {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _cameraReport.value = settled;
+      });
+    }
+    final show = settled.camera.zoom >= refOutlinesFromZoom;
+    if (show == _outlinesShown) return;
+    // flutter_map reports a position from its own layout (a resize refits
+    // the camera), when a setState would be a build during a build.
+    void apply() {
+      if (mounted && show != _outlinesShown) setState(() => _outlinesShown = show);
+    }
+
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      apply();
+    } else {
+      SchedulerBinding.instance.addPostFrameCallback((_) => apply());
+    }
+  }
 
   /// The operation's reference outlines — see ref_shapes.dart, shared with the
   /// Activities pane's map so the same summit draws the same way in both.
@@ -146,6 +198,59 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   /// walk.
   List<Qso>? _builtQsos;
   List<MapMarkerData> _markers = const [];
+
+  /// The operation's own places — its references, then its location — as
+  /// last built, and [_markers] with them appended. Rebuilt only when either
+  /// changes, so a pane handed the same log is handed the same list.
+  List<MapMarkerData> _places = const [];
+  List<MapMarkerData>? _placesAppendedTo;
+  List<MapMarkerData> _withPlaces = const [];
+
+  /// The rasterized halves of the places' glyph markers.
+  late final _glyphCache = MarkerGlyphCache(
+    onLanded: () {
+      if (mounted) setState(() {});
+    },
+  );
+
+  /// The operation's references, each in its own icon and colour as its row
+  /// wears them, and its location last — on top of them — in the pin the
+  /// setup sheet's location button wears.
+  List<MapMarkerData> _placeMarkers(ThemeData theme, {required bool isDark}) {
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    // Against the basemap's tone, like the Activities map's glyph markers.
+    final strokeColor = isDark ? const Color(0xFFF2F2F2) : const Color(0xFF1A1A1A);
+    const foreground = Colors.white;
+    MapMarkerGlyph? glyphFor(IconData icon, Color background) =>
+        _glyphCache.glyphFor(icon: icon, background: background, foreground: foreground, strokeColor: strokeColor, devicePixelRatio: devicePixelRatio);
+    final grid = widget.operation.displayGrid;
+    final location = widget.operation.location;
+    final pin = operationLocationPin(widget.operation, deviceGrid: widget.deviceGrid);
+    return [
+      ...activitySelectedRefMarkers(
+        widget.operation.refs,
+        controls: widget.activityControls,
+        defaultColor: theme.colorScheme.primary,
+        strokeColor: strokeColor,
+        glyphFor: glyphFor,
+      ),
+      if (grid != null && location != null)
+        MapMarkerData(
+          // The id the plain QTH circle it replaces had, so a popup open on
+          // it stays open.
+          id: 'qth-${grid.toUpperCase()}',
+          latitude: location.latitude,
+          longitude: location.longitude,
+          label: grid,
+          kind: MapMarkerKind.qth,
+          color: pin.color,
+          strokeColor: strokeColor,
+          popupTitle: t.map.qthPopupTitle(grid: grid),
+          glyph: glyphFor(pin.icon, pin.color),
+        ),
+    ];
+  }
+
   List<MapLineData> _lines = const [];
 
   /// The QTHs the cached contacts drew to, by display grid. Any difference
@@ -189,14 +294,22 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     // dependency this reads rebuilds it on reveal, and the identity check
     // then catches it up.
     final visible = DockPaneVisibility.of(context);
-    if (visible) _ensureData(context, isDark: isDark);
+    if (visible) {
+      _ensureData(context, isDark: isDark);
+      final places = _placeMarkers(theme, isDark: isDark);
+      if (!identical(_placesAppendedTo, _markers) || !listEquals(places, _places)) {
+        _places = places;
+        _placesAppendedTo = _markers;
+        _withPlaces = places.isEmpty ? _markers : [..._markers, ...places];
+      }
+    }
 
     // The current QSO's highlight is derived every build (it changes on every
     // keystroke, so it can't share `_ensureData`'s heavy memo) and appended
     // last, so backends draw it on top. Cheap: one location resolve plus one
     // great-circle.
     final highlight = visible ? _buildHighlight(theme, isDark: isDark) : null;
-    final markers = highlight == null || highlight.markers.isEmpty ? _markers : [..._markers, ...highlight.markers];
+    final markers = highlight == null || highlight.markers.isEmpty ? _withPlaces : [..._withPlaces, ...highlight.markers];
     final lines = highlight == null || highlight.lines.isEmpty ? _lines : [..._lines, ...highlight.lines];
 
     if (markers.isEmpty) {
@@ -219,13 +332,18 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     // Named after the reference rather than a marker, because this map draws
     // no dot for the operation's references — its markers are QSOs and QTHs —
     // so a shape id here has nothing to trace back to but the reference.
-    final shapes = refShapes(
-      widget.operation.refs,
-      loader: _shapeLoader,
-      controls: widget.activityControls,
-      fallbackColor: theme.colorScheme.primary,
-      markerIdFor: (ref) => 'ref-${ref['type']}/${ref['ref']}',
-    );
+    // Only once close enough in, like the Activities map's suggestions (see
+    // refOutlinesFromZoom): further out a park is a smudge and its outline a
+    // fetch for nothing.
+    final shapes = _outlinesShown
+        ? refShapes(
+            widget.operation.refs,
+            loader: _shapeLoader,
+            controls: widget.activityControls,
+            fallbackColor: theme.colorScheme.primary,
+            markerIdFor: (ref) => 'ref-${ref['type']}/${ref['ref']}',
+          )
+        : const <MapShapeData>[];
 
     // The style picked in the map style menu on this tab's header button.
     final styleUrls = mapLibreStyleUrls(widget.settings.mapStyle);
@@ -252,6 +370,8 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
             styleUrl: styleUrls.light,
             styleUrlDark: styleUrls.dark,
             zoomController: _zoomController,
+            onCameraChanged: _onCameraChanged,
+            zoomFades: _zoomFades,
           );
 
     // Mobile already zooms by pinch with no room to spare in the pane; the
@@ -286,12 +406,26 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
               ],
             ),
           ),
-        if (hasZoomButtons)
-          Positioned(
-            bottom: 8 + PaneSafeArea.bottomOf(context),
-            left: 8 + PaneSafeArea.leftOf(context),
-            child: _MapZoomButtons(controller: _zoomController),
+        Positioned(
+          right: MapInfoBox.right + PaneSafeArea.rightOf(context),
+          bottom: MapInfoBox.bottom + PaneSafeArea.bottomOf(context),
+          child: MapInfoBox(settings: widget.settings, camera: _cameraReport),
+        ),
+        // The zoom pill and the outline notice share the bottom-left corner,
+        // side by side, so neither covers the other.
+        Positioned(
+          bottom: 8 + PaneSafeArea.bottomOf(context),
+          left: 8 + PaneSafeArea.leftOf(context),
+          right: 8 + PaneSafeArea.rightOf(context),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            spacing: Space.sm,
+            children: [
+              if (hasZoomButtons) _MapZoomButtons(controller: _zoomController),
+              Expanded(child: MapOutlinesNotice(shapes: shapes)),
+            ],
           ),
+        ),
       ],
     );
   }
@@ -329,6 +463,8 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     required String styleUrlDark,
     required MapZoomController zoomController,
     MapFrame? frame,
+    ValueChanged<MapCameraSettled>? onCameraChanged,
+    MapZoomFades? zoomFades,
   }) => switch (backend) {
     _MapBackend.web => MapboxWebMapView(
       markers: markers,
@@ -340,6 +476,8 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       styleUrlDark: styleUrlDark,
       zoomController: zoomController,
       frame: frame,
+      onCameraChanged: onCameraChanged,
+      zoomFades: zoomFades,
     ),
     // Mobile is handed the controller too, although it shows no zoom buttons
     // (see hasZoomButtons): the Operation Postcard reads the camera through it.
@@ -353,8 +491,19 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       styleUrlDark: styleUrlDark,
       zoomController: zoomController,
       frame: frame,
+      onCameraChanged: onCameraChanged,
+      zoomFades: zoomFades,
     ),
-    _MapBackend.osm => OsmMapView(markers: markers, lines: lines, shapes: shapes, isDark: isDark, zoomController: zoomController, frame: frame),
+    _MapBackend.osm => OsmMapView(
+      markers: markers,
+      lines: lines,
+      shapes: shapes,
+      isDark: isDark,
+      zoomController: zoomController,
+      frame: frame,
+      onCameraChanged: onCameraChanged,
+      zoomFades: zoomFades,
+    ),
   };
 
   /// The postcard of what this pane shows right now: its camera, its contacts
@@ -378,7 +527,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     final view = await _zoomController.camera();
     if (view == null) debugPrint('[postcard] the map never said where it was looking');
     if (view == null || !mounted) return;
-    final markers = _markers;
+    final markers = _withPlaces;
     final lines = _lines;
     final projection = _projection;
     final paneIsDark = mapStyleIsDark(widget.settings.mapStyle, appIsDark: appIsDark);
@@ -414,6 +563,8 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
           styleUrlDark: urls.dark,
           zoomController: controller,
           frame: frame,
+          // The picture shows the outlines as faded as the pane did.
+          zoomFades: _zoomFades,
         );
       },
     );
@@ -487,21 +638,25 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
 
     // Weak-signal (smaller) circles draw last so they stay visible and
     // tappable on top of larger ones — same layering as app-polo — and the
-    // QTH circles on top of everything.
+    // QTH circles on top of everything. The operation's own location is not
+    // among them: it is a glyph marker, drawn with the references
+    // (_placeMarkers).
     qsoMarkers.sort((a, b) => b.sizeFactor.compareTo(a.sizeFactor));
+    final ownGrid = widget.operation.location == null ? null : operationGrid?.toUpperCase();
     _markers = [
       ...qsoMarkers,
       for (final entry in qthGrids.entries)
-        MapMarkerData(
-          id: 'qth-${entry.key}',
-          latitude: entry.value.location.latitude,
-          longitude: entry.value.location.longitude,
-          label: entry.value.display,
-          kind: MapMarkerKind.qth,
-          color: shared.colors.bandColor('other'),
-          strokeColor: _qthStroke,
-          popupTitle: t.map.qthPopupTitle(grid: entry.value.display),
-        ),
+        if (entry.key != ownGrid)
+          MapMarkerData(
+            id: 'qth-${entry.key}',
+            latitude: entry.value.location.latitude,
+            longitude: entry.value.location.longitude,
+            label: entry.value.display,
+            kind: MapMarkerKind.qth,
+            color: shared.colors.bandColor('other'),
+            strokeColor: _qthStroke,
+            popupTitle: t.map.qthPopupTitle(grid: entry.value.display),
+          ),
     ];
     _lines = lines;
   }

@@ -54,6 +54,7 @@ class _DataBackedExtensions extends ExtensionServiceWithFakeHost {
     List<String>? activityKeys,
     List<String>? preferredKeys,
     String? preferredSearchTerm,
+    ({double south, double west, double north, double east})? searchWithin,
   }) async {
     asked.add(searchTerm);
     return (suggestions: parks, allSourcesFailed: false);
