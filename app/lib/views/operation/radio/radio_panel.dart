@@ -100,9 +100,8 @@ class _RadioPanelState extends State<RadioPanel> {
 
   /// Whether a config load has ever landed. Separate from [_configRevision]
   /// because a revision of 0 means both "never edited" and "never read": the
-  /// descriptor can be absent when this pane mounts — the CAT experiment is
-  /// what registers it, and a view registers from `didChangeDependencies` —
-  /// and without this the load would be abandoned, the revision would still
+  /// descriptor can be absent when this pane mounts — a view registers it
+  /// from `didChangeDependencies` — and without this the load would be abandoned, the revision would still
   /// match on every later notification, and the operator's saved radio would
   /// be discarded for the life of the pane with nothing on screen to say so.
   bool _configLoaded = false;

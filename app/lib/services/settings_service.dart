@@ -359,6 +359,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// an explicitly-empty '' (the user skipped onboarding) counts as
   /// defined, so onboarding only shows while the key has never been
   /// written at all.
+  @override
   bool get defaultProfileCallsignDefined {
     final profile = _profilesData[defaultProfileId];
     return profile is Map && profile.containsKey('operatorCall');
@@ -775,7 +776,6 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// KEPT (never pruned) — a returning experiment picks its old state up.
   Map<String, dynamic> get experimentStates => jsonMapPref(_experimentsKey);
 
-  @override
   bool experimentEnabled(String key) {
     final state = experimentStates[key];
     return state is Map && state['enabled'] == true;

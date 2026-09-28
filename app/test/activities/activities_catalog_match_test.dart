@@ -78,12 +78,10 @@ Future<(HaLoServices, Operation, _CountingCatalog)> _harness({
   List<CatalogEntry>? catalog = const [],
   List<ExtensionInfo> available = const [],
   List<Map<String, dynamic>> refs = const [],
-  bool experimentOn = true,
   Completer<void>? gate,
 }) async {
   SharedPreferences.setMockInitialValues(const {});
   final settings = SettingsService(await SharedPreferences.getInstance());
-  if (experimentOn) await settings.setExperimentEnabled('catalog', true);
   final db = HaLoDatabase(NativeDatabase.memory());
   final extensions = _NoActivityExtensions()..settings = settings;
   extensions.debugSetAvailableExtensions(available);
@@ -168,11 +166,6 @@ void main() {
     // The trap: the catalog lists everything, including what the operator
     // installed already. Offering a download for one of those asks them to
     // fetch what they have.
-    //
-    // Installed rather than built in, because this tier only appears under
-    // the catalog experiment and that experiment withdraws every built-in —
-    // so an installed extension is the only kind the catalog can now
-    // duplicate.
     final (services, operation, _) = await _harness(
       catalog: [
         _entry('qp', 'QSO Parties', keywords: const ['texas']),
@@ -220,20 +213,6 @@ void main() {
 
     expect(catalog.fetches, 1);
     // An unreachable catalog leaves the tier absent, with nothing in the way.
-    expect(find.textContaining('Install '), findsNothing);
-  });
-
-  testWidgets('with the experiment off the tier is absent and nothing is fetched', (tester) async {
-    final (services, operation, catalog) = await _harness(
-      catalog: [
-        _entry('ham2k-texas-qso-party', 'Texas QSO Party', keywords: const ['texas']),
-      ],
-      experimentOn: false,
-    );
-    await _pump(tester, services, operation);
-    await _type(tester, 'texas');
-
-    expect(catalog.fetches, 0, reason: 'a section that is not built must not ask the catalog anything');
     expect(find.textContaining('Install '), findsNothing);
   });
 

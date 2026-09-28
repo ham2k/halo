@@ -218,6 +218,51 @@ void main() {
       }, backend: backend);
     });
 
+    test('an error status is the same streak, and never resets it', () async {
+      // A challenge page or a maintenance response refuses every request.
+      // Counted as an answer, each refusal wiped the streak its neighbours
+      // were building, and a catalog refusing everything never reported.
+      await withErrorHooks(() async {
+        var status = 0;
+        final catalog = service((_) async {
+          if (status == 0) throw http.ClientException('connection refused');
+          return http.Response('', status);
+        });
+        Future<void> attempt(int answer) async {
+          status = answer;
+          catalog.invalidate();
+          expect(await catalog.fetchCatalog(), isNull);
+        }
+
+        await attempt(0);
+        await attempt(503);
+        expect(backend.exceptions, isEmpty);
+        await attempt(0);
+        expect(backend.exceptions, hasLength(1), reason: 'three failures in a row, one of them a 503');
+
+        ErrorReportingService.resetFailureStreaks();
+        backend.exceptions.clear();
+        for (var i = 0; i < 3; i++) {
+          await attempt(403);
+        }
+        expect(backend.exceptions.single.error, isA<CatalogRefused>());
+        expect((backend.exceptions.single.error as CatalogRefused).status, 403);
+      }, backend: backend);
+    });
+
+    test('a 404 is an answer about a key, not a failure', () async {
+      // `fetchExtension` asks for keys that may not exist — a deep link to
+      // something unpublished. Counted, three taps on one upload a defect.
+      await withErrorHooks(() async {
+        final catalog = service((_) async => http.Response('', 404));
+        for (var i = 0; i < 3; i++) {
+          catalog.invalidate();
+          expect(await catalog.fetchExtension('ham2k-gone'), isNull);
+        }
+        expect(backend.exceptions, isEmpty);
+      }, backend: backend);
+    });
+
     test('answers from its cache for a while, judged on the REAL clock', () async {
       // The TTL mirrors the catalog's own max-age, which is real seconds
       // (time.md §1, category 2). Travelled a month forward, a cache on the
@@ -483,18 +528,14 @@ void main() {
     late List<List<String>> updatedAll;
     late List<Set<String>> namedAll;
 
-    /// The check is behind the `catalog` experiment; on by default here so
-    /// every test below is about the check itself.
     Future<CatalogUpdateCheck> checker(
       Future<http.Response> Function(http.Request) handler, {
       List<ExtensionInfo>? installed,
       bool Function(ExtensionInfo)? inUse,
       Map<String, Object> prefs = const {},
       int Function()? realNow,
-      bool experiment = true,
     }) async {
       settings = await settingsWith(prefs);
-      if (experiment) await settings.setExperimentEnabled('catalog', true);
       statusBar = StatusBarService(settings.prefs);
       applied = 0;
       opened = 0;
@@ -713,22 +754,6 @@ void main() {
       }, installed: const [ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'POTA', version: '1.0.0')]);
       expect(await check.check(), isFalse);
       expect(requests, 0);
-    });
-
-    test('the experiment off means no request, and no stamp', () async {
-      // Forced, so only the experiment can be what skips it. The stamp is
-      // the trap: a skip that wrote one would silence the first check after
-      // the flip for six hours, and read as "checked" in the meantime.
-      var requests = 0;
-      final check = await checker((_) async {
-        requests++;
-        return answer(updates: [_entry(version: '1.1.0')]);
-      }, experiment: false);
-      expect(await check.check(force: true), isFalse);
-      expect(requests, 0);
-      expect(settings.catalogUpdateCheckedAt, isNull);
-      expect(check.pendingUpdates, isEmpty);
-      expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
     });
 
     test('the notice comes down with the last pending update, and with a check that finds none', () async {

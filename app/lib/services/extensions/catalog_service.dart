@@ -26,7 +26,6 @@ import 'package:pub_semver/pub_semver.dart';
 import '../../config/user_agent.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../error_reporting_service.dart';
-import '../../config/experiments.dart' show kCatalogExperiment;
 import 'extension_relevance.dart';
 import 'extension_service.dart' show ExtensionInfo, ExtensionSearchable;
 import 'installed_extensions.dart';
@@ -286,6 +285,20 @@ class CatalogUnreachable implements Exception {
 
   @override
   String toString() => 'CatalogUnreachable: $url ($cause)';
+}
+
+/// The catalog answered with a status other than 200 — a server that is up
+/// and not serving, or something in front of it (a challenge page, a
+/// maintenance response). Reported on the same streak as [CatalogUnreachable]:
+/// one 503 during a deploy is the world, every request refused is a defect.
+class CatalogRefused implements Exception {
+  final Uri url;
+  final int status;
+
+  CatalogRefused(this.url, this.status);
+
+  @override
+  String toString() => 'CatalogRefused: $url answered $status';
 }
 
 class CatalogService {
@@ -562,7 +575,9 @@ class CatalogService {
       _json(url, (headers) => _client.post(url, headers: {...headers, 'Content-Type': 'application/json'}, body: jsonEncode(body)));
 
   /// One request, one policy. A non-200 is null and a console line — a
-  /// missing key is a 404 and normal. A 200 that is not a JSON object is
+  /// missing key is a 404 and normal, and neither counts toward the failure
+  /// streak nor resets it; any other status joins the streak as
+  /// [CatalogRefused]. A 200 that is not a JSON object is
   /// something having published a broken response, reported on the first
   /// occurrence. Not being answered at all is reported only as a streak:
   /// one failure is a tunnel or a captive portal, the same failure every time
@@ -585,11 +600,16 @@ class CatalogService {
     } on IOException catch (e, st) {
       return _unanswered(url, e, st);
     }
-    ErrorReportingService.recordSuccess(_failureKey);
     if (response.statusCode != 200) {
       debugPrint('[catalog] $url answered ${response.statusCode}');
+      if (response.statusCode != 404) {
+        ErrorReportingService.reportIfRepeated(_failureKey, CatalogRefused(url, response.statusCode), StackTrace.current, context: 'catalog-fetch');
+      }
       return null;
     }
+    // Only a 200 is an answer: counted as one, a refusal resets the streak
+    // and a catalog refusing every request is never reported.
+    ErrorReportingService.recordSuccess(_failureKey);
     final Object? decoded;
     try {
       decoded = jsonDecode(response.body);
@@ -724,8 +744,7 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// Runs the check if it is due. Returns whether the catalog was asked and
-  /// answered; false for a skip (no store, the experiment off, nothing
-  /// installed, not yet due, a check already in flight) and for a catalog
+  /// answered; false for a skip (no store, nothing installed, not yet due, a check already in flight) and for a catalog
   /// that did not answer — which leaves the stamp alone, so the next trigger
   /// asks again.
   ///
@@ -737,10 +756,6 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   /// pending set still takes one down.
   Future<bool> check({bool force = false, bool announce = true}) async {
     if (!InstalledExtensions.isSupported) return false;
-    // Behind the experiment while the catalog is not live — the same skip as
-    // no store, BEFORE the stamp: nothing is asked and nothing is written, so
-    // the first check after the flip is due at once rather than six hours on.
-    if (!settings.experimentEnabled(kCatalogExperiment)) return false;
     final candidates = installed().where((info) => info.isInstalled).toList();
     if (candidates.isEmpty) return false;
     final last = settings.catalogUpdateCheckedAt;

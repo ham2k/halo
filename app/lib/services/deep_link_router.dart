@@ -390,10 +390,7 @@ void openInstallExtension(HaLoServices services, Uri source, {int attemptsLeft =
   final local = source.isScheme('file');
   // The catalog's own bundle URLs take the verified path: the listing's
   // sha256 is what the bytes are checked against, and what the install
-  // records. Every other host keeps the plain download's rules. Not behind
-  // the `catalog` experiment, unlike the panel's section: a link is opened
-  // on purpose, and gating this branch would only send the same link down
-  // the plain download below — strictly less checked, not less reachable.
+  // records. Every other host keeps the plain download's rules.
   if (!local && services.catalog.isCatalogUrl(source)) {
     unawaited(_installFromCatalogLink(services, context, store, source));
     return;

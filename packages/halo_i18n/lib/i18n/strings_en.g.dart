@@ -459,9 +459,6 @@ class Translations$extensionsPanel$en {
 	/// en: 'Later'
 	String get upgradeLater => 'Later';
 
-	/// en: 'The extension catalog could not be reached, so your extensions were not upgraded. We will try again later.'
-	String get upgradeUnreachable => 'The extension catalog could not be reached, so your extensions were not upgraded. We will try again later.';
-
 	/// en: 'Your extensions are ready'
 	String get upgradeDoneTitle => 'Your extensions are ready';
 
@@ -7320,7 +7317,6 @@ extension on Translations {
 			'extensionsPanel.upgradeBody' => 'This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.',
 			'extensionsPanel.upgradeAction' => 'Upgrade now',
 			'extensionsPanel.upgradeLater' => 'Later',
-			'extensionsPanel.upgradeUnreachable' => 'The extension catalog could not be reached, so your extensions were not upgraded. We will try again later.',
 			'extensionsPanel.upgradeDoneTitle' => 'Your extensions are ready',
 			'extensionsPanel.upgradeDoneBody' => 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.',
 			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'Not carried over: ${names}.',
@@ -7721,9 +7717,9 @@ extension on Translations {
 			'operation.spots.filters.mode' => 'Mode',
 			'operation.spots.filters.age' => 'Age',
 			'operation.spots.filters.sources' => 'Sources',
+			'operation.spots.filters.continent' => 'Continent',
 			_ => null,
 		} ?? switch (path) {
-			'operation.spots.filters.continent' => 'Continent',
 			'operation.spots.filters.sorting' => 'Sorting',
 			'operation.spots.filters.sortByTime' => 'By Spot Time',
 			'operation.spots.filters.sortByFrequency' => 'By Frequency',
@@ -8235,9 +8231,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.stop' => 'Stop',
 			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Record memory ${n}',
 			'settings.radio.voiceMessages.stopRecording' => 'Stop recording',
+			'settings.radio.voiceMessages.playing' => 'Playing…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.voiceMessages.playing' => 'Playing…',
 			'settings.radio.voiceMessages.recording' => 'Recording…',
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Playing ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Recording ${label}',
@@ -8749,9 +8745,9 @@ extension on Translations {
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Updated ${hours}h ${minutes}m ago',
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Updated ${minutes}m ago',
 			'settings.offlineData.extensionsSection' => 'Extensions',
+			'settings.profiles.notSet' => 'Not set',
 			_ => null,
 		} ?? switch (path) {
-			'settings.profiles.notSet' => 'Not set',
 			'settings.profiles.personalInfo' => 'Personal Info',
 			'settings.profiles.personalInfoNote' => 'This might be included in generated logs when relevant for submissions',
 			'settings.profiles.name' => 'Name',

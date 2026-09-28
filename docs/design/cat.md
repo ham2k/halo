@@ -1,7 +1,8 @@
 # CAT — station equipment and radio control
 
 Controlling radios — and eventually antenna switches, rotators and relay boards — from the app.
-Everything here is behind the Station Configuration experiment (`EXP CAT` in the call field; its stored key is still `gato`, see experiments.yaml) until it is ready.
+Station Configuration itself is available to everyone; keying, Enter Sends Messages and the CAT
+server are still experiments (app/experiments.yaml).
 
 This document records the shape of the layer and, more importantly, *why* it is that shape. The
 model it serves is in [data-model.md](data-model.md) § Stations.
@@ -983,11 +984,9 @@ one. The cache holds 32 spots, evicting by last use — insertion order would dr
 worked all session in favour of one glanced at once — and a spot that is never offset spends no
 slot, so browsing a phone-heavy list cannot evict the CW spot in progress.
 
-`services.cat` is only read once the CAT experiment is on. That getter is a `late final`, so reading
+`avoidZeroBeat` is checked before `services.cat` is read. That getter is a `late final`, so reading
 it builds a CatService — registry, stored equipment, a RadioService listener held for the process —
-and this runs on every spot tap; without the experiment there is no Station Configuration to connect
-a radio from, so the answer would be "not connected" regardless. Checking `avoidZeroBeat` alone
-would not do, since it defaults to on.
+and this runs on every spot tap.
 
 Smart VFO Snap does not undo it: the snapper only reacts to readings from the radio, app writes
 arrive as `VfoOrigin.user` and rebase it, and its smallest-move rule leaves anything under 200 Hz
@@ -1022,9 +1021,7 @@ battery-derated *display* value (`icom_civ_driver`) would come back out as a rea
 
 A cleared power (`clearPower: true`) is the operator saying they don't know it, not a command to run
 the radio at nothing: nothing is sent to the rig, and a QSO logged with the field empty carries no
-`power` at all. Unlike its BAND/MODE/frequency
-siblings in the same extension, PowerCommand checks `ctx.enabledExperiments` (docs/extensions/hooks.md)
-and stays invisible while `gato` is off — CAT power control has no surface anywhere else without it.
+`power` at all.
 
 Every driver's protocol represents power differently, and confidence differs between reading and
 writing it:
@@ -1078,8 +1075,7 @@ picks the speed and opens the editor, and `20WPM` typed into the call field sets
 `5W` sets power. The editor is the **CW Keyer** dialog — the message sets, saved together on Save, and message 1's
 repeat and Enter Sends Messages, which apply as they change — reached from that row, the keyer area
 and a row of its own in Settings → Radio; the settings it edits stay declared for SET/SHOW but are not Settings rows
-(`listed: false`). Everything here is behind the `keyer` experiment (`EXP KEYER`, aliases `CW`/`MACROS`)
-on top of `gato`, which it needs to reach a radio at all.
+(`listed: false`). Everything here is behind the `keyer` experiment (`EXP KEYER`, aliases `CW`/`MACROS`).
 
 It is a **capability, not a transceiver method**: `CwKeyerSession` (driver.dart) sits beside
 `AntennaSwitchSession` rather than adding three methods to `TransceiverSession`, because most
@@ -2063,7 +2059,7 @@ The other direction: HaLo as the thing other programs connect to. Ham Radio Delu
 and N3FJP's loggers all offer a TCP port through which WSJT-X, fldigi, GridTracker and friends read
 and tune the radio. HaLo can stand in for any of them, so those programs follow the Main VFO radio
 while HaLo holds the connection to it. It lives in `app/lib/services/cat_server/`, and its settings
-are one row in the Radio section (behind `EXP SERVER`, on top of `EXP CAT`), opening a dialog: the protocol (or Disabled), the port, and
+are one row in the Radio section (behind `EXP SERVER`), opening a dialog: the protocol (or Disabled), the port, and
 "Open access" (off by default).
 
 | Protocol | Default port | Pinned against |

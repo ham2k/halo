@@ -46,8 +46,8 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   effect must stay invisible until an experiment gating the surface it
   belongs to has shipped ungated — checked per-call, since gating at the
   whole-extension `manifest.experiments` grain would also hide any other
-  hook the same extension registers (e.g. `radio-commands`' POWER command
-  checks `gato` here; its BAND/MODE/frequency siblings don't).
+  hook the same extension registers (e.g. `radio-commands`' WPM command
+  checks `keyer` here; its BAND/MODE/frequency siblings don't).
 * `experiments?: { key, name, aliases }[]` — The experiment catalog itself,
   on or off, so a hook can resolve a typed key-or-alias to one of the keys
   `enabledExperiments` lists (the EXP preview says "Enable"/"Disable" rather

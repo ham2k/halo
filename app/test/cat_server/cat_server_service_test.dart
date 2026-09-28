@@ -81,7 +81,6 @@ void main() {
 
   Map<String, Object> prefsWith(Map<String, dynamic> radio, {bool server = true}) => {
     'experiments': jsonEncode({
-      'gato': {'enabled': true},
       if (server) 'server': {'enabled': true},
     }),
     'settings.radio': jsonEncode(radio),
@@ -134,7 +133,7 @@ void main() {
     expect(service.status.port, 4532);
   });
 
-  test('binds nothing without its own experiment, even with CAT on and a protocol picked', () async {
+  test('binds nothing without its own experiment, even with a protocol picked', () async {
     await start(radio: {protocolKey: 'rigctld'}, server: false);
     expect(bound, isEmpty);
 
@@ -192,13 +191,13 @@ void main() {
     expect(bound.single.port, 4532);
   });
 
-  test('Disabled, or CAT turned off, closes the socket', () async {
+  test('Disabled, or the experiment turned off, closes the socket', () async {
     await start(radio: {protocolKey: 'hrd'});
     await set({protocolKey: CatServerSettings.off});
     expect(bound.single.closed, isTrue);
 
     await set({protocolKey: 'hrd'});
-    await settings.setExperimentEnabled('gato', false);
+    await settings.setExperimentEnabled('server', false);
     await pumpEventQueue();
     expect(bound, hasLength(2));
     expect(bound.every((l) => l.closed), isTrue);

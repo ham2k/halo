@@ -157,6 +157,7 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   // Reads the same "already onboarded" signal, so it must run before
   // onboarding gets a chance to write a callsign.
   await settings.seedSyncEnabledDefault();
+  await settings.seedExtensionsMigratedDefault();
   unawaited(LocaleSettings.setLocaleRaw(settings.locale));
   Intl.defaultLocale = settings.locale;
   await deviceIdentityResolved;
@@ -247,10 +248,8 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
 
   // Started before the first thing it guards, and awaited: spawning an isolate
   // is a few milliseconds, and a watchdog that arrives after the call it
-  // exists for has missed the only moment it matters. OUTSIDE the experiment
-  // gate for the same reason [shutdownOnExit] is — CAT switched on mid-session
-  // would otherwise quit unguarded — and it costs an idle isolate to a session
-  // that never guards anything.
+  // exists for has missed the only moment it matters. It costs an idle
+  // isolate to a session that never guards anything.
   await HangWatchdog.start();
 
   // Before the reconnect below, so a DEVLOGCAT recording carried across a
@@ -258,9 +257,8 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   await services.catTraffic.resume();
 
   // Reconnect the designated radio (docs/design/cat.md). Not awaited: the
-  // radio may be off, and boot must not wait on a socket timeout. Gated on
-  // the experiment so nothing opens a connection unless CAT is on.
-  if (settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ && !kIsWeb) {
+  // radio may be off, and boot must not wait on a socket timeout.
+  if (!kIsWeb) {
     // Before the reconnect, not after: the notice describes what this launch
     // is about to NOT do, and the call below is fire-and-forget.
     showAutoConnectHeldNotice(services);
@@ -275,11 +273,8 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
     unawaited(services.cat.reconnectDesignatedRadio());
   }
 
-  // OUTSIDE the experiment gate, deliberately: gated inside it, turning CAT
-  // on in Settings mid-session and then connecting a radio would leave no
-  // listener at all — bypassing exactly the people who had just
-  // enabled the feature. shutdown() is a no-op when nothing is connected, so
-  // installing it always costs nothing.
+  // shutdown() is a no-op when nothing is connected, so installing it always
+  // costs nothing.
   if (!kIsWeb) shutdownOnExit(services);
 
   // macOS app-menu actions (see WindowChromeService and macos/Runner): "About"

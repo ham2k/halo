@@ -84,9 +84,8 @@ class DeveloperPanel extends StatelessWidget {
             // and above the patch track because an author reaches for it far
             // more often.
             if (settings.developerMode) SectionedSlivers(slivers: [_ExtensionDevServerSection(services: services)]),
-            // Not behind the `catalog` experiment, unlike the panel's
-            // section: developer mode already gates it, and pointing the
-            // app at a local catalog is how the catalog itself is worked on.
+            // Developer mode gates it: pointing the app at a local catalog
+            // is how the catalog itself is worked on.
             if (settings.developerMode) SectionedSlivers(slivers: [_CatalogOverrideSection(services: services)]),
             // Shorebird over-the-air patch track (docs/releases.md §4.3). Only
             // shown when the Shorebird engine is actually present — i.e. a

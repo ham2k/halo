@@ -16,6 +16,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'package:halo_i18n/halo_i18n.dart';
 
+import '../connectivity_service.dart';
 import '../error_reporting_service.dart';
 import 'extension_service.dart';
 import 'preloaded_extensions.dart';
@@ -42,6 +43,23 @@ class SettingsNotWired implements Exception {
   @override
   String toString() => 'ExtensionService.settings is null';
 }
+
+/// The upgrade check has found no usable catalog [launches] launches in a
+/// row — nothing answered, or ([empty]) the listing had nothing in it.
+class UpgradeCatalogUnavailable implements Exception {
+  const UpgradeCatalogUnavailable({required this.launches, required this.empty});
+
+  final int launches;
+  final bool empty;
+
+  @override
+  String toString() => 'the upgrade check found ${empty ? 'an empty catalog' : 'no catalog'} $launches launches in a row';
+}
+
+/// Launches in a row without a usable catalog before the upgrade check says
+/// so. One is a device that was offline; several is an install the catalog
+/// cannot reach.
+const kUpgradeCheckMissesReported = 3;
 
 /// How an upgrade ended, in the operator's terms rather than a bool's.
 ///
@@ -139,7 +157,33 @@ Future<bool> canReachCatalog(ExtensionService service) async {
   // launch after it, with no answer it could ever give. Saying nothing and
   // asking again once something is published is what an operator wants from
   // both cases, so they are one case here.
-  return listing != null && listing.isNotEmpty;
+  final usable = listing != null && listing.isNotEmpty;
+  await _countUpgradeCheck(service.settings, usable: usable, empty: listing != null);
+  return usable;
+}
+
+/// Reports the upgrade check stuck, exactly once per stretch: at the launch
+/// that reaches [kUpgradeCheckMissesReported], and not again until a usable
+/// answer resets the count. At-or-above would report every launch of an
+/// install that is stuck for good.
+Future<void> _countUpgradeCheck(SettingsService? settings, {required bool usable, required bool empty}) async {
+  if (settings == null) return;
+  if (usable) {
+    await settings.setUpgradeCheckMisses(0);
+    return;
+  }
+  // A device known to be offline says nothing about the catalog — a field
+  // station can go days without a route — so it neither counts nor resets.
+  if (ConnectivityService.isOffline) return;
+  final misses = settings.upgradeCheckMisses + 1;
+  await settings.setUpgradeCheckMisses(misses);
+  if (misses == kUpgradeCheckMissesReported) {
+    ErrorReportingService.report(
+      UpgradeCatalogUnavailable(launches: misses, empty: empty),
+      StackTrace.current,
+      context: 'extensions:upgrade-offer',
+    );
+  }
 }
 
 /// Moves this install's extensions to the catalog, and answers how it ended.
@@ -180,6 +224,7 @@ Future<UpgradeOutcome> migrateToCatalogExtensions(ExtensionService service) asyn
 Future<UpgradeOutcome> _migrate(ExtensionService service, SettingsService settings) async {
   await settings.setExtensionsMigrated(true);
   await service.preloadShippedExtensions();
+  await carryBuiltInChoicesToTwins(settings);
   // BEFORE the adoption looks: it decides what to fetch from the installed
   // list, and the seven the pre-load just installed are not in a memoized one.
   // They would be downloaded again from the catalog over bytes already on

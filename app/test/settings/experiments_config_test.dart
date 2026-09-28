@@ -21,10 +21,6 @@ void main() {
     expect(definitions, isNotEmpty);
     // Remote Screens is not ready for the list: reachable by EXP only.
     expect(findExperiment(definitions, 'REMOTE')?.private, isTrue);
-    // CAT gates the Station Configuration section (docs/design/cat.md);
-    // losing the entry would leave no way to turn the section on at all.
-    expect(findExperiment(definitions, 'GATO')?.key, 'gato');
-    expect(findExperiment(definitions, 'CAT')?.key, 'gato');
   });
 
   test('parses full and minimal entries with defaults', () {

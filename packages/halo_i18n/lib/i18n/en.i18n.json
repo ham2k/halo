@@ -122,7 +122,6 @@
     "upgradeBody": "This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.",
     "upgradeAction": "Upgrade now",
     "upgradeLater": "Later",
-    "upgradeUnreachable": "The extension catalog could not be reached, so your extensions were not upgraded. We will try again later.",
     "upgradeDoneTitle": "Your extensions are ready",
     "upgradeDoneBody": "They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.",
     "upgradeDoneUnserved": "Not carried over: ${names}.",

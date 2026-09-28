@@ -242,11 +242,11 @@ class InstalledExtensions {
   /// stay unambiguous, and secret visibility is by key prefix, so an
   /// installed extension calling itself `sota` would be asking for `SOTA_*`.
   ///
-  /// Live because the set MOVES. Under the catalog experiment the app offers
-  /// none of its own extensions but the core ones (HALO-581), and the bundle
-  /// it pre-loads for `ham2k-lookup` is one it also ships built in — so a set
-  /// captured when the store was built would refuse the pre-load forever, or
-  /// admit it after the experiment went off and the built-in came back.
+  /// Live because the set MOVES. Once the upgrade to catalog extensions is
+  /// taken the app offers none of its own extensions but the core ones
+  /// (HALO-581), and the bundle it pre-loads for `ham2k-lookup` is one it also
+  /// ships built in — so a set captured when the store was built would refuse
+  /// the pre-load forever.
   final Set<String> Function() builtInKeys;
 
   /// What this build's kernel carries, from `assets/extensions/index.json`, for

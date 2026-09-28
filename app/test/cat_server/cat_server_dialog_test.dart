@@ -36,10 +36,9 @@ void main() {
   late CatServerService service;
   Object? bindError;
 
-  Future<void> setUpWith({bool cat = true, bool server = true, Map<String, dynamic> radio = const {}}) async {
+  Future<void> setUpWith({bool server = true, Map<String, dynamic> radio = const {}}) async {
     SharedPreferences.setMockInitialValues({
       'experiments': jsonEncode({
-        if (cat) 'gato': {'enabled': true},
         if (server) 'server': {'enabled': true},
       }),
       'settings.radio': jsonEncode(radio),
@@ -117,11 +116,6 @@ void main() {
       final elements = await RadioSettingsGroup(settings, catServer: () => service).buildElements();
       expect(elements.where((e) => e['key'] == 'catServer'), isEmpty);
       expect(elements, isNotEmpty, reason: 'the rest of the Radio section is CAT\'s, and stays');
-    });
-
-    test('has no CAT Server row without CAT, which is still an experiment', () async {
-      await setUpWith(cat: false);
-      expect(await RadioSettingsGroup(settings, catServer: () => service).buildElements(), isEmpty);
     });
   });
 

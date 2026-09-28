@@ -401,8 +401,9 @@ built-in's own state stays where it is.
 One rule bends for these, and only for them:
 
 - **Built-in collisions.** An installed bundle may not claim a key the app
-  ships — judged against what the app is currently OFFERING, which under the
-  catalog experiment is the core extensions and nothing else. `ham2k-lookup`
+  ships — judged against what the app is currently OFFERING, which once the
+  upgrade to catalog extensions is taken is the core extensions and nothing
+  else. `ham2k-lookup`
   is both a built-in and a pre-load, and could otherwise never install.
 
 **Build secrets are not among them, and used to be.** A pre-load holding a
@@ -414,14 +415,16 @@ sees no build secret, whatever key it claims and wherever it came from.
 
 ### The upgrade to catalog extensions
 
-An install that has been running the app's own extensions is offered the move
-at start, and again the moment the catalog experiment is switched on: that
-switch is the operator asking for catalog extensions, and being made to
-relaunch before anything is offered reads as nothing having happened. The
-switch withdraws nothing by itself; only a taken upgrade does, and the offer
-may be deferred either way. A catalog that cannot be reached says so in the
-footer when the operator asked, and says nothing at a launch nobody was
-watching.
+A new install — one whose default profile has never had a callsign — starts
+on the catalog at its first boot, on the bundles the app ships, with nothing
+to offer and nothing to carry; the decision is recorded once
+(`seedExtensionsMigratedDefault`). Onboarding still names its activities by
+their built-in keys, which `offeredKeyFor` maps to the shipped twin that
+actually runs. An install that has been running the app's own extensions is
+offered the move at start, on every launch until it is taken. Only a taken upgrade withdraws
+anything, and the offer may be deferred. A catalog that cannot be reached
+raises no offer and says nothing: it is a launch nobody was watching, and the
+offer comes back next time.
 
 Accepting installs the pre-loads, then fetches the catalog's twin of every
 other built-in the operator had switched on — `wca` becomes `ham2k-wca` —

@@ -12,8 +12,6 @@
 // The suggestion maps are built by the real `suggestedQsoFromSpot`, so a
 // rename of the keys it writes fails here rather than in production.
 
-import 'dart:convert';
-
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -52,13 +50,8 @@ void main() {
   late HaLoServices services;
 
   /// Services with a fake CAT radio, connected as radio1 or not.
-  Future<void> build({required bool connected, bool avoidZeroBeat = true, bool catExperiment = true}) async {
-    SharedPreferences.setMockInitialValues({
-      if (catExperiment)
-        'experiments': jsonEncode({
-          'gato': {'enabled': true},
-        }),
-    });
+  Future<void> build({required bool connected, bool avoidZeroBeat = true}) async {
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     settings = SettingsService(prefs);
     await settings.setAvoidZeroBeat(avoidZeroBeat);
@@ -127,16 +120,6 @@ void main() {
     final idle = await cat.addNode(typeKey: 'fake-type', config: {'host': 'second.local'});
     await cat.setRadio1(LocalRadio(idle.uuid));
     expect(cat.stateFor(idle.uuid).status, isNot(EquipmentStatus.connected));
-    expect(resolve(_suggestion())['freq'], _spotFreqKHz);
-  });
-
-  test('without the CAT experiment the spot frequency is used exactly', () async {
-    // The experiment gate also keeps `services.cat` unread on a CAT-less
-    // install — but that part is NOT pinned here: this fixture injects an
-    // already-built CatService, so construction is unobservable either way,
-    // and reordering the gate below `final cat = services.cat` would leave
-    // every assertion green. Only the frequency is claimed.
-    await build(connected: true, catExperiment: false);
     expect(resolve(_suggestion())['freq'], _spotFreqKHz);
   });
 

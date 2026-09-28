@@ -21,7 +21,6 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show localNetworkEntry;
-import '../config/experiments.dart' show kCatalogExperiment;
 import '../services/extensions/extension_info.dart';
 import '../services/extensions/catalog_service.dart' show CatalogEntry, CatalogRelease, CatalogUpdateCheck;
 import '../services/error_reporting_service.dart';
@@ -292,13 +291,6 @@ Future<void> updateAllFromCatalog(
   required List<CatalogEntry> entries,
   Set<String> named = const {},
 }) async {
-  // The notice outlives the experiment it was posted under (the check that
-  // would take it down skips while the experiment is off), and its button
-  // must not install from a catalog the app no longer shows.
-  if (!services.settings.experimentEnabled(kCatalogExperiment)) {
-    services.statusBar.dismissNotice(CatalogUpdateCheck.noticeKey);
-    return;
-  }
   final locale = LocaleSettings.currentLocale.languageCode;
   final installed = {
     for (final info in services.extensions.availableExtensions)

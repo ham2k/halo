@@ -110,13 +110,11 @@ void main() {
   });
 
   group('RadioSettingsGroup', () {
-    Future<SettingsService> settingsWith({bool cat = true, bool keyer = true, bool snap = true, bool zeroBeat = true, bool developer = true}) async {
+    Future<SettingsService> settingsWith({bool keyer = true, bool snap = true, bool zeroBeat = true, bool developer = true}) async {
       SharedPreferences.setMockInitialValues({
-        if (cat)
-          'experiments': jsonEncode({
-            'gato': {'enabled': true},
-            if (keyer) 'keyer': {'enabled': true},
-          }),
+        'experiments': jsonEncode({
+          if (keyer) 'keyer': {'enabled': true},
+        }),
         // Both features written explicitly, never left to their defaults: a
         // test isolating one of them would otherwise also be asserting the
         // other one's default, and would change meaning when that default did.
@@ -155,14 +153,6 @@ void main() {
       for (final el in await RadioSettingsGroup(settings).buildElements())
         if (!isMessageElement(el) && !isNotAKnob(el)) el['key'] as String,
     };
-
-    test('contributes nothing at all until the CAT experiment is on', () async {
-      // An empty group renders nothing; a group with only a header renders a
-      // section title over no rows, on everyone's Settings screen.
-      // Raw, not through keysFor — that helper filters the CW messages out,
-      // and they are exactly what a guard left off would leak.
-      expect(await RadioSettingsGroup(await settingsWith(cat: false)).buildElements(), isEmpty);
-    });
 
     test('ends with a row that leads on to the Station Configuration panel', () async {
       // Application Preferences only carries the app-wide radio behaviour;
@@ -337,8 +327,7 @@ void main() {
       expect(settings.cwRepeatDelay, const Duration(seconds: 5));
       await group.commit('voiceRepeatDelay', '3');
       expect(settings.voiceRepeatDelay, const Duration(seconds: 3));
-      expect(await RadioSettingsGroup(await settingsWith(cat: false)).buildElements(), isEmpty, reason: 'sanity: still nothing without CAT, messages included');
-      // CAT on, keyer off: the radio's own toggles, none of the messages.
+      // Keyer off: the radio's own toggles, none of the messages.
       final withoutKeyer = await RadioSettingsGroup(await settingsWith(keyer: false, snap: false, zeroBeat: false)).buildElements();
       expect(withoutKeyer.where(isMessageElement), isEmpty, reason: 'the messages follow the keyer experiment');
       expect(withoutKeyer, isNotEmpty);
@@ -352,9 +341,6 @@ void main() {
       // applying the withdrawn 0, and re-picking the value already displayed
       // would be the only way to reconcile them.
       SharedPreferences.setMockInitialValues({
-        'experiments': jsonEncode({
-          'gato': {'enabled': true},
-        }),
         'developerMode': true,
         'settings.radio': jsonEncode({'smartVfoSnap': true, 'smartVfoSnapMinSpeed': '0'}),
       });
@@ -373,12 +359,7 @@ void main() {
       // option string. An option that doesn't survive that round trip (0.10,
       // say, which formats as "0.1") leaves the dropdown with no matching
       // item — which throws when the dialog opens.
-      SharedPreferences.setMockInitialValues({
-        'experiments': jsonEncode({
-          'gato': {'enabled': true},
-        }),
-        'developerMode': true,
-      });
+      SharedPreferences.setMockInitialValues({'developerMode': true});
       final prefs = await SharedPreferences.getInstance();
       final settings = SettingsService(prefs);
 

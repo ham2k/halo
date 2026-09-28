@@ -30,15 +30,10 @@ void main() {
   late SettingsService settings;
 
   setUp(() async {
-    // RadioSettingsGroup contributes nothing at all without the Station
-    // Configuration experiment, so the zero-beat settings these tests name
-    // would simply not be in the catalog — which is itself the behaviour
-    // 'a group that declines to contribute' below pins down.
     final extensions = ExtensionService();
     final harness = await makeHaLoServices(extensions: extensions);
     services = harness.services;
     settings = harness.settings;
-    await settings.setExperimentEnabled('gato', true);
     await extensions.start();
   });
 
@@ -248,17 +243,6 @@ void main() {
       await settings.setDeveloperMode(true);
       final after = await interpret('SET SNAPDEBOUNCE');
       expect(after?['expectsParams'], isNot(isTrue), reason: 'the same query must resolve once developer mode makes the setting real');
-    });
-
-    test('a group that declines to contribute takes its settings out of reach', () async {
-      // RadioSettingsGroup returns nothing at all without the Station
-      // Configuration experiment. Nothing filters its settings out by name —
-      // they are absent because the group never declared them, which is what
-      // keeps the catalog honest as groups come and go.
-      await settings.setExperimentEnabled('gato', false);
-      final result = await interpret('SET ZEROBEAT');
-      expect(result?['expectsParams'], isTrue);
-      expect(result?['commands'], isNull);
     });
   });
 }

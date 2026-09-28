@@ -21,7 +21,7 @@ import 'package:http/http.dart' show ClientException;
 
 import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure;
 import 'package:ham2k_logger/services/peer/peer_link_types.dart' show PeerMediaDialFailure;
-import 'package:ham2k_logger/services/extensions/catalog_service.dart' show CatalogUnreachable;
+import 'package:ham2k_logger/services/extensions/catalog_service.dart' show CatalogRefused, CatalogUnreachable;
 // The io implementations directly, as cat_ic705_network_test.dart does: the
 // conditional export resolves to the web stub under the analyzer, and these
 // exceptions — the concrete CatUnreachable implementations this rule has to
@@ -36,7 +36,8 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart' show Ex
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
 import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed;
-import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart' show CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
+import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart'
+    show CatalogNotWired, SettingsNotWired, UpgradeCatalogUnavailable, UpgradeLeftNoRuntime;
 
 ErrorDisposition dispositionFor(Object error, {FlutterErrorDetails? details}) => ErrorPolicy.decide(error, details: details).disposition;
 
@@ -530,6 +531,23 @@ void main() {
         expect(decision.rule?.id, 'catalog-unreachable', reason: '$cause');
         expect(decision.disposition, ErrorDisposition.report, reason: '$cause');
       }
+    });
+
+    test('an error status on the catalog is reported, not noticed', () {
+      // A challenge page or a maintenance response in front of the six-hourly
+      // check. Unclassified, the default notify puts a notice in front of an
+      // operator who asked for nothing.
+      final decision = ErrorPolicy.decide(CatalogRefused(url, 503));
+      expect(decision.rule?.id, 'catalog-unreachable');
+      expect(decision.disposition, ErrorDisposition.report);
+    });
+
+    test('an upgrade check stuck without a catalog is reported, not noticed', () {
+      // The operator did not ask and has lost nothing; the audience is
+      // whoever runs the catalog.
+      final decision = ErrorPolicy.decide(const UpgradeCatalogUnavailable(launches: 3, empty: false));
+      expect(decision.rule?.id, 'upgrade-catalog-unavailable');
+      expect(decision.disposition, ErrorDisposition.report);
     });
 
     test('the wrapper does not launder anything else — a non-transport cause stays loud', () {

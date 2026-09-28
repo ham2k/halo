@@ -234,7 +234,6 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get upgradeBody => 'Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.';
 	@override String get upgradeAction => 'Actualizar ahora';
 	@override String get upgradeLater => 'Más tarde';
-	@override String get upgradeUnreachable => 'No se pudo conectar con el catálogo de extensiones, así que tus extensiones no se actualizaron. Lo intentaremos más tarde.';
 	@override String get upgradeDoneTitle => 'Tus extensiones están listas';
 	@override String get upgradeDoneBody => 'Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.';
 	@override String upgradeDoneUnserved({required Object names}) => 'No se trasladaron: ${names}.';
@@ -3452,7 +3451,6 @@ extension on TranslationsEs {
 			'extensionsPanel.upgradeBody' => 'Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.',
 			'extensionsPanel.upgradeAction' => 'Actualizar ahora',
 			'extensionsPanel.upgradeLater' => 'Más tarde',
-			'extensionsPanel.upgradeUnreachable' => 'No se pudo conectar con el catálogo de extensiones, así que tus extensiones no se actualizaron. Lo intentaremos más tarde.',
 			'extensionsPanel.upgradeDoneTitle' => 'Tus extensiones están listas',
 			'extensionsPanel.upgradeDoneBody' => 'Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.',
 			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'No se trasladaron: ${names}.',
@@ -3853,9 +3851,9 @@ extension on TranslationsEs {
 			'operation.spots.filters.age' => 'Antigüedad',
 			'operation.spots.filters.sources' => 'Fuentes',
 			'operation.spots.filters.continent' => 'Continente',
+			'operation.spots.filters.sorting' => 'Orden',
 			_ => null,
 		} ?? switch (path) {
-			'operation.spots.filters.sorting' => 'Orden',
 			'operation.spots.filters.sortByTime' => 'Por hora del spot',
 			'operation.spots.filters.sortByFrequency' => 'Por frecuencia',
 			'operation.spots.filters.groupByBand' => 'Agrupar por banda',
@@ -4367,9 +4365,9 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.stop' => 'Detener',
 			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Grabar la memoria ${n}',
 			'settings.radio.voiceMessages.stopRecording' => 'Detener la grabación',
+			'settings.radio.voiceMessages.playing' => 'Reproduciendo…',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.voiceMessages.playing' => 'Reproduciendo…',
 			'settings.radio.voiceMessages.recording' => 'Grabando…',
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Reproduciendo ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Grabando ${label}',
@@ -4881,9 +4879,9 @@ extension on TranslationsEs {
 			'settings.profiles.club' => 'Club',
 			'settings.profiles.arrlSection' => 'Sección ARRL',
 			'settings.profiles.racSection' => 'Sección RAC',
+			'settings.profiles.section' => 'Sección',
 			_ => null,
 		} ?? switch (path) {
-			'settings.profiles.section' => 'Sección',
 			'settings.search.clear' => 'Borrar',
 			'settings.search.hint' => 'Buscar preferencias',
 			'settings.developer.developerModeDescription' => 'Habilita avisos de desarrollador, registros de depuración y herramientas.',

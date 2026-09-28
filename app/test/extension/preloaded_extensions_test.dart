@@ -95,7 +95,7 @@ void main() {
     test('a catalog key inherits the built-in it is named after', () {
       // The rule the seven named renames are exceptions to. Thirty-three
       // built-ins have no entry in `kPreloadReplaces` and are withdrawn by the
-      // experiment all the same; without the rule, reinstalling one from the
+      // upgrade all the same; without the rule, reinstalling one from the
       // catalog is a silent loss of everything the operator had set up.
       const builtIns = {'wca', 'cqww', 'pota', 'ham2k-lookup'};
       expect(predecessorBuiltInKey('ham2k-wca', builtIns), 'wca');
@@ -206,12 +206,10 @@ void main() {
   });
 
   group('moving to the catalog withdraws the app\'s own extensions', () {
-    // The experiment says the upgrade is OFFERED; `extensionsMigrated` says it
-    // was taken, and only both together withdraw anything — see
-    // catalog_migration_test.dart, which holds that pair. Everything here is
-    // about what withdrawal then does, so these set both.
+    // `extensionsMigrated` says the upgrade was taken, and only it withdraws
+    // anything — see catalog_migration_test.dart. Everything here is about
+    // what withdrawal then does.
     Future<void> moveToCatalog(SettingsService settings) async {
-      await settings.setExperimentEnabled('catalog', true);
       await settings.setExtensionsMigrated(true);
     }
 
@@ -238,16 +236,16 @@ void main() {
 
     ExtensionInfo infoFor(ExtensionService extensions, String key) => extensions.availableExtensions.firstWhere((info) => info.key == key);
 
-    test('off the experiment, everything the app ships is offered', () async {
+    test('before the upgrade, everything the app ships is offered', () async {
       final (extensions, _) = await harness();
       for (final key in ['pota', 'adif', 'ham2k-lofi']) {
         expect(extensions.isExtensionAvailable(infoFor(extensions, key)), isTrue, reason: key);
       }
     });
 
-    test('on it, a non-core built-in is withdrawn and the core ones are not', () async {
+    test('after it, a non-core built-in is withdrawn and the core ones are not', () async {
       // `ham2k-lofi` is core, so sync keeps running — withdrawing it would
-      // stop an operator's log syncing the moment they tried the experiment.
+      // stop an operator's log syncing the moment they upgraded.
       final (extensions, settings) = await harness();
       await moveToCatalog(settings);
       expect(extensions.isExtensionAvailable(infoFor(extensions, 'pota')), isFalse);
@@ -311,7 +309,7 @@ void main() {
       expect(extensions.isExtensionActive(twin), isTrue);
     });
 
-    test('an installed extension is never withdrawn while the experiment is on', () async {
+    test('an installed extension is never withdrawn by the upgrade', () async {
       // The whole point: the catalog's copies replace the built-ins, so
       // withdrawing them too would leave the app with nothing at all.
       final (extensions, settings) = await harness();
@@ -319,8 +317,8 @@ void main() {
       expect(extensions.isExtensionAvailable(infoFor(extensions, 'ham2k-pota')), isTrue);
     });
 
-    test('with the experiment off, the pre-load stands down for the built-in it replaced', () async {
-      // Otherwise turning the experiment off leaves both loaded: two POTA
+    test('before the upgrade, the pre-load stands down for the built-in it replaced', () async {
+      // Otherwise a pre-load that lands before the upgrade leaves both loaded: two POTA
       // rows in the panel, both registering `ref:pota`, and one of them
       // winning by position with nothing to say which.
       final (extensions, _) = await harness();
@@ -360,11 +358,33 @@ void main() {
       expect(extensions.isExtensionAvailable(infoFor(extensions, 'pota')), isFalse);
     });
 
+    test('once upgraded, a choice named by its built-in key lands on the twin that runs', () async {
+      // Onboarding names POTA as `pota`, and a fresh install starts upgraded,
+      // so its picks arrive after `pota` is withdrawn. Written under that key
+      // they reach nothing, and `ham2k-pota` runs whatever the operator said.
+      final (extensions, settings) = await harness();
+      await moveToCatalog(settings);
+      await extensions.setExtensionsEnabled({'pota': false});
+      expect(settings.extensionOverrides['ham2k-pota'], isFalse);
+      expect(extensions.isExtensionActive(infoFor(extensions, 'ham2k-pota')), isFalse);
+      // And under the built-in's key: the twin's is pruned while the twin is
+      // not yet installed, and this is what the pre-load carries when it lands.
+      expect(settings.extensionOverrides['pota'], isFalse);
+    });
+
+    test('before the upgrade, the same choice stays on the built-in', () async {
+      // A copy under the twin's key would sit dormant and then outrank a
+      // later change to `pota`: the upgrade carries a choice only where the
+      // twin has none of its own.
+      final (extensions, settings) = await harness();
+      await extensions.setExtensionsEnabled({'pota': false});
+      expect(settings.extensionOverrides, {'pota': false});
+    });
+
     test('a withdrawn built-in stays in the list, so its on/off choice survives', () async {
       // `_updateDisabledSince` prunes overrides for any key absent from
       // `availableExtensions`. Gating by removal would delete the operator's
-      // choice for every built-in the moment they tried the experiment, and
-      // turning it back off would find them all reset.
+      // choice for every built-in the moment they upgraded.
       final (extensions, settings) = await harness();
       await settings.setExtensionOverrides({'pota': false});
       await moveToCatalog(settings);
@@ -376,8 +396,8 @@ void main() {
   group('carrying an operator\'s state across a rename', () {
     test('settings, panel values and the on/off choice follow, and the old key keeps its own', () async {
       // `ham2k-pota` is the built-in `pota` under a name the catalog can
-      // serve. Copied, not moved: turning the experiment back off has to
-      // find the built-in exactly as it was.
+      // serve. Copied, not moved: the built-in's own records stay exactly as
+      // they were.
       SharedPreferences.setMockInitialValues(const {
         'settings.extension_pota': '{"spotting":true}',
         'settingsPanel.pota.token': 'abc',
@@ -444,10 +464,11 @@ void main() {
     /// whether the operator's on/off choice is thrown away.
     late Map<String, bool> freshness;
 
-    Future<bool> runPreload({Map<String, String?> installed = const {}}) => installShippedExtensions(
+    Future<bool> runPreload({Map<String, String?> installed = const {}, Map<String, bool> builtInDefaults = const {}}) => installShippedExtensions(
       store: store,
       settings: settings,
       installedVersions: installed,
+      builtInDefaults: builtInDefaults,
       recordInstall: (bundle, {required bool fresh}) async => freshness[bundle.key] = fresh,
       copySecrets: ({required String from, required String to}) async {},
       loadAsset: loadAsset,
@@ -486,8 +507,7 @@ void main() {
       // operator\'s on/off choice across the rename; `fresh` exists to DROP a
       // stale choice so a key the store never had runs. Reported fresh, the
       // second undoes the first three lines later and every extension the
-      // operator had switched off comes back on the moment the experiment is
-      // flipped.
+      // operator had switched off comes back on the moment they upgrade.
       await runPreload();
       // Seven of the eight take over from a built-in and carry its state.
       for (final key in kPreloadReplaces.keys) {
@@ -496,6 +516,27 @@ void main() {
       // The eighth renames nothing, so there is no choice to protect and the
       // ordinary rule applies.
       expect(freshness['ham2k-lookup'], isTrue);
+    });
+
+    test('a built-in nobody switched arrives in its own default state, and a choice still beats it', () async {
+      // An installed extension is on unless switched off. Carrying only
+      // explicit choices turns SOTA and WWFF — off by default as built-ins —
+      // on for every upgrade and every new install that skips onboarding.
+      await settings.setExtensionOverrides({'wwff': true});
+      await runPreload(builtInDefaults: const {'pota': true, 'sota': false, 'wwff': false});
+      final overrides = settings.extensionOverrides;
+      expect(overrides['ham2k-sota'], isFalse);
+      expect(overrides['ham2k-pota'], isTrue);
+      expect(overrides['ham2k-wwff'], isTrue, reason: 'the operator switched WWFF on');
+    });
+
+    test('a choice made before the twin lands still reaches it', () async {
+      // A new install starts upgraded and onboarding can finish before the
+      // pre-load: the twin's override is pruned as an unknown key, and only
+      // the built-in's — which the pre-load carries — survives.
+      await settings.setExtensionOverrides({'sota': true});
+      await runPreload(builtInDefaults: const {'sota': false});
+      expect(settings.extensionOverrides['ham2k-sota'], isTrue);
     });
 
     test('a second run installs nothing, because the record says they were offered', () async {

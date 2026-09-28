@@ -88,9 +88,9 @@ mixin _ExtensionInstalls {
   /// Installs the `.h2kext` bundles the app ships (HALO-581), and answers
   /// whether anything landed — the caller re-reads the store when it did.
   ///
-  /// Only under the catalog experiment: off it, the app runs its own
-  /// extensions and pre-loading their catalog twins would put two of each in
-  /// the panel, one of them switched off and unexplained.
+  /// Only once the upgrade to catalog extensions is taken: before it, the app
+  /// runs its own extensions and pre-loading their catalog twins would put
+  /// two of each in the panel, one of them switched off and unexplained.
   Future<bool> preloadShippedExtensions() async {
     final currentSettings = settings;
     final store = _installed;
@@ -102,6 +102,10 @@ mixin _ExtensionInstalls {
       installedVersions: {
         for (final info in availableExtensions)
           if (info.isInstalled) info.key: info.version,
+      },
+      builtInDefaults: {
+        for (final info in availableExtensions)
+          if (info.source == ExtensionSource.asset) info.key: info.enabledByDefault,
       },
       recordInstall: (bundle, {required bool fresh}) => _recordInstall(bundle, fresh: fresh),
       copySecrets: copyExtensionSecrets,
@@ -230,7 +234,7 @@ mixin _ExtensionInstalls {
     final store = InstalledExtensions.isSupported
         ? (_installed ??= InstalledExtensions(
             // Read live, not captured, and only what the app is OFFERING: the
-            // catalog experiment withdraws every non-core built-in, and the
+            // catalog upgrade withdraws every non-core built-in, and the
             // bundle pre-loaded for `ham2k-lookup` is one the app also ships.
             builtInKeys: () => {
               for (final info in fromAssets)
@@ -373,15 +377,14 @@ mixin _ExtensionInstalls {
   ///
   /// Core extensions always are — they are the app itself, and `ham2k-lofi`
   /// among them, so sync does not stop. Every other built-in is withdrawn
-  /// while the catalog experiment is on (HALO-581): the point of that
-  /// experiment is to run on what the catalog serves, and a built-in left
+  /// once the upgrade to catalog extensions is taken (HALO-581): the point of
+  /// the upgrade is to run on what the catalog serves, and a built-in left
   /// loaded beside its catalog twin would register the same hooks and the
   /// same `ref:` types twice.
   ///
   /// Withdrawn, not forgotten. The entry stays in [availableExtensions] so
   /// that [updateExtensionDisabledSince] does not prune the operator's on/off
-  /// choice for it, and so it comes back untouched when the experiment goes
-  /// off.
+  /// choice for it.
   ///
   /// Nothing is withdrawn where there is no store to put anything in its
   /// place. On web an installed extension is a file on disk the platform does
@@ -392,8 +395,6 @@ mixin _ExtensionInstalls {
     if (!InstalledExtensions.isSupported) return true;
     // MIGRATED, not merely offered: an operator who deferred the upgrade, or
     // who was offline when it was offered, keeps every extension they had.
-    // Withdrawing on the experiment alone is what left "Later" meaning "with
-    // no extensions until you are next online".
     return !(settings?.catalogExtensionsInUse ?? false);
   }
 
@@ -450,13 +451,38 @@ mixin _ExtensionInstalls {
   /// silently never happens.
   bool isExtensionActive(ExtensionInfo info) => isExtensionAvailable(info) && isExtensionEnabled(info);
 
+  /// The key the app currently offers for [key]: the shipped catalog twin
+  /// once the upgrade has withdrawn the built-in, else [key] itself.
+  ///
+  /// For callers that name an extension by its built-in key — onboarding's
+  /// activity picks, `ONBOARD_AS`. A fresh install starts upgraded, so its
+  /// onboarding runs after `pota` is withdrawn, and a choice written under
+  /// that key alone would reach nothing: `ham2k-pota` would run regardless.
+  String offeredKeyFor(String key) {
+    if (!InstalledExtensions.isSupported || !(settings?.catalogExtensionsInUse ?? false)) return key;
+    for (final MapEntry(key: twin, value: replaces) in kPreloadReplaces.entries) {
+      if (replaces == key) return twin;
+    }
+    return key;
+  }
+
   /// Persists enable/disable choices and applies them by restarting the
   /// runtime with the filtered bundle set. The overrides land BEFORE any
   /// restart, so a quit mid-apply loses nothing.
+  ///
+  /// A built-in key is written as given AND under [offeredKeyFor]'s twin.
+  /// Both, because on a fresh install the twin may not be installed yet: its
+  /// override is then pruned as an unknown key (updateExtensionDisabledSince)
+  /// and the built-in's, which is never pruned, is what the pre-load carries
+  /// across when the twin lands.
   Future<void> setExtensionsEnabled(Map<String, bool> changes) async {
     final currentSettings = settings;
     if (currentSettings == null || changes.isEmpty) return;
-    await currentSettings.setExtensionOverrides({...currentSettings.extensionOverrides, ...changes});
+    await currentSettings.setExtensionOverrides({
+      ...currentSettings.extensionOverrides,
+      ...changes,
+      for (final MapEntry(:key, :value) in changes.entries) offeredKeyFor(key): value,
+    });
     await applyExtensionAvailability();
   }
 

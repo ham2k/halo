@@ -31,9 +31,10 @@ import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
-import 'extensions/catalog_service.dart' show CatalogUnreachable;
+import 'extensions/catalog_service.dart' show CatalogRefused, CatalogUnreachable;
 import 'data_file_manager.dart' show DataFileRemoveHookFailed;
-import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
+import 'extensions/extension_catalog_migration.dart'
+    show BundleWouldNotEvaluate, CatalogNotWired, SettingsNotWired, UpgradeCatalogUnavailable, UpgradeLeftNoRuntime;
 import 'extensions/extension_scoring.dart' show ScoringHookFailure;
 import 'extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
@@ -188,6 +189,17 @@ class ErrorPolicy {
           'everybody',
       disposition: ErrorDisposition.report,
       matches: (error, _) => error is UpgradeLeftNoRuntime,
+    ),
+    ErrorRule(
+      id: 'upgrade-catalog-unavailable',
+      reason:
+          'the upgrade check found no usable catalog several launches in a row. It asks once a '
+          'launch, so the in-session failure streak never fires for it, and an install the '
+          'catalog cannot reach — a trust store refusing its certificate, a challenge in front of '
+          'it — is never offered the upgrade with nothing anywhere to say so. Uploaded, not '
+          'noticed: the operator did not ask, and has lost nothing',
+      disposition: ErrorDisposition.report,
+      matches: (error, _) => error is UpgradeCatalogUnavailable,
     ),
     ErrorRule(
       id: 'web-focus-traversal-null',
@@ -398,9 +410,10 @@ class ErrorPolicy {
     ErrorRule(
       id: 'catalog-unreachable',
       reason:
-          'the extension catalog did not answer (a connection failure or the request timeout) '
-          'on a check the operator did not ask for; the service reports it only as a failure '
-          'streak, so a dead catalog is seen in aggregate and a captive portal is not noticed',
+          'the extension catalog did not answer (a connection failure or the request timeout), '
+          'or answered with an error status, on a check the operator did not ask for; the '
+          'service reports it only as a failure streak, so a dead catalog is seen in aggregate '
+          'and a captive portal is not noticed',
       disposition: ErrorDisposition.report,
       matches: _isCatalogUnreachable,
     ),
@@ -874,12 +887,14 @@ class ErrorPolicy {
   /// [CatalogUnreachable] wrapping the transport failure CatalogService
   /// caught — a `ClientException`, the `TimeoutException` its own
   /// `.timeout()` threw, or a `dart:io` [IOException] IOClient hands up
-  /// unwrapped (a TLS handshake refused, a socket reset). The wrapper is
-  /// what keeps this narrow: a bare TimeoutException stays loud everywhere
-  /// else (see [_isHttpClientConnectionTransient]), and a catalog response
-  /// that arrived and could not be read is never wrapped in it.
+  /// unwrapped (a TLS handshake refused, a socket reset) — or
+  /// [CatalogRefused], a response with an error status. The wrappers are
+  /// what keep this narrow: a bare TimeoutException stays loud everywhere
+  /// else (see [_isHttpClientConnectionTransient]), and a 200 that could not
+  /// be read is wrapped in neither.
   static bool _isCatalogUnreachable(Object error, FlutterErrorDetails? details) =>
-      error is CatalogUnreachable && (error.cause is ClientException || error.cause is TimeoutException || error.cause is IOException);
+      error is CatalogRefused ||
+      (error is CatalogUnreachable && (error.cause is ClientException || error.cause is TimeoutException || error.cause is IOException));
 
   /// A [MapError] stamped offline at arrival. The stamp is the whole match:
   /// with no network there is nothing a map backend can fetch, so every

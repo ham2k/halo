@@ -299,7 +299,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
@@ -446,7 +445,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const []);
     final catalog = _catalog(
@@ -513,7 +511,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const []);
     final flags = FlagsService(
@@ -592,7 +589,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     // Two installed, so the category is not yet a settled subject.
     extensions.debugSetAvailableExtensions(const [
@@ -634,7 +630,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(key: 'mine-a', file: 'index.js', core: false, name: 'Mine A', category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
@@ -680,7 +675,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const []);
     final catalog = _catalog(
@@ -724,7 +718,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions([
       for (var i = 0; i < 12; i++)
@@ -793,7 +786,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(key: 'one', file: 'index.js', core: false, name: 'One', category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
@@ -854,7 +846,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     ExtensionInfo installed(String key, String name, String version) =>
         ExtensionInfo(key: key, file: 'index.js', core: false, name: name, category: 'activity', source: ExtensionSource.installed, version: version);
@@ -908,13 +899,6 @@ void main() {
     expect(find.descendant(of: pendingOne, matching: find.byType(FilledButton)), findsNothing);
     // Update all is still offered for what is left.
     expect(tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Update all')).onPressed, isNotNull);
-
-    // With the catalog switched off, the held rows go with it: an Update
-    // button there would install from a catalog the panel no longer shows.
-    await settings.setExperimentEnabled('catalog', false);
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('pending-two')), findsNothing);
-    expect(pendingOne, findsNothing);
   });
 
   testWidgets('Update all takes only what is still behind, and not what is already under way', (tester) async {
@@ -925,7 +909,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     ExtensionInfo installed(String key, String name, String version) =>
         ExtensionInfo(key: key, file: 'index.js', core: false, name: name, category: 'activity', source: ExtensionSource.installed, version: version);
@@ -982,12 +965,11 @@ void main() {
   });
 
   group('Update all with nothing it can take', () {
-    Future<(HaLoServices, StatusBarService)> setUp(WidgetTester tester, {required bool experiment}) async {
+    Future<(HaLoServices, StatusBarService)> setUp(WidgetTester tester) async {
       SharedPreferences.setMockInitialValues({});
       final settings = SettingsService(await SharedPreferences.getInstance());
       final db = HaLoDatabase(NativeDatabase.memory());
       addTearDown(db.close);
-      await settings.setExperimentEnabled('catalog', experiment);
       final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
       extensions.debugSetAvailableExtensions(const [
         ExtensionInfo(key: 'ahead', file: 'index.js', core: false, name: 'Ahead', category: 'activity', source: ExtensionSource.installed, version: '1.2.0'),
@@ -1021,21 +1003,12 @@ void main() {
     testWidgets('an offer overtaken since says so and takes the notice down', (tester) async {
       // Installed from a file past what the notice offered: a primary button
       // that then does nothing, and keeps doing nothing, reads as broken.
-      final (services, statusBar) = await setUp(tester, experiment: true);
+      final (services, statusBar) = await setUp(tester);
       await press(tester, services, [offer]);
       expect(find.byType(Dialog), findsNothing);
       expect(statusBar.activeNotices.where((n) => n.key == CatalogUpdateCheck.noticeKey), isEmpty);
       expect(statusBar.itemForKey('extensions:updateAll')?.text, 'Your extensions are up to date.');
       await tester.pump(StatusBarService.completedDismissDelay);
-    });
-
-    testWidgets('with the catalog switched off it installs nothing, and the notice goes', (tester) async {
-      // The notice outlives the experiment it was posted under; its button
-      // must not install from a catalog the app no longer shows.
-      final (services, statusBar) = await setUp(tester, experiment: false);
-      await press(tester, services, [offer]);
-      expect(find.byType(Dialog), findsNothing);
-      expect(statusBar.activeNotices.where((n) => n.key == CatalogUpdateCheck.noticeKey), isEmpty);
     });
   });
 
@@ -1045,7 +1018,6 @@ void main() {
       final settings = SettingsService(await SharedPreferences.getInstance());
       final db = HaLoDatabase(NativeDatabase.memory());
       addTearDown(db.close);
-      await settings.setExperimentEnabled('catalog', true);
       final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
       extensions.debugSetAvailableExtensions([
         for (final key in offered)
@@ -1109,7 +1081,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
@@ -1224,10 +1195,6 @@ void main() {
   });
 
   testWidgets('a built-in row says so where the others carry a version, and the line still fits', (tester) async {
-    // Off the catalog experiment, because the experiment that shows the
-    // Catalog section is the one that withdraws every built-in — the two
-    // row shapes cannot appear together, which is why this is its own test.
-    //
     // Rendered at the tightest geometry the app has, for the same reason the
     // sibling geometry test does it: this row's control is a bare switch,
     // and a caption squeezed to a sliver under it is still found by
@@ -1284,7 +1251,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
@@ -1357,7 +1323,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
@@ -1412,9 +1377,7 @@ void main() {
         expect(tester.getSize(find.text(caption)).height, greaterThanOrEqualTo(lineHeight), reason: '"$caption" is squeezed by the control above it');
 
     // The built-in row's own shape — a bare switch under the same cap — is
-    // measured where it can still be rendered, in the built-in test above:
-    // the experiment that puts a Catalog section on screen is the one that
-    // takes every built-in row off it.
+    // measured in the built-in test above.
     expectAFullLine('1.0.0'); // the switch and remove row
     expectAFullLine('2.3.4'); // the install button row
   });
@@ -1428,7 +1391,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(_testExtensions);
     // The callsign is annotated AFTER the panel is open — a cold launch
@@ -1554,7 +1516,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(_testExtensions);
     final answer = Completer<http.Response>();
@@ -1579,61 +1540,6 @@ void main() {
     expect(_catalogRowKeys(tester), isEmpty);
   });
 
-  testWidgets('with the experiment off there is no Catalog section, and the catalog is not asked', (tester) async {
-    tester.view.physicalSize = const Size(1000, 800);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
-    extensions.debugSetAvailableExtensions(_testExtensions);
-    var requests = 0;
-    final catalog = _catalog((_) async {
-      requests++;
-      return http.Response(
-        jsonEncode({
-          'extensions': [_entry('aa-world', 'Alpha World', relevance: _soon())],
-        }),
-        200,
-      );
-    });
-    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
-
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(body: ExtensionsPanel(services: services)),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    // Hidden entirely — no header, no status line — and NOT fetched: a
-    // section that is not built but still asks the catalog is the trap the
-    // request count catches, and the text finders cannot.
-    expect(find.text('Loading the catalog…'), findsNothing);
-    expect(find.text('Catalog unreachable'), findsNothing);
-    expect(_catalogRowKeys(tester), isEmpty);
-    expect(requests, 0);
-    // Install from file is not the catalog's, and stays. It is an icon beside
-    // the search field now, so its label lives in the icon's semantics.
-    expect(find.byKey(const ValueKey('extensions-install-from-file')), findsOneWidget);
-
-    // Flipped on from the Experiments panel over this one: the fetch the
-    // opening skipped happens now, without reopening.
-    await settings.setExperimentEnabled('catalog', true);
-    await tester.pumpAndSettle();
-    expect(requests, 1);
-    expect(_catalogRowKeys(tester), ['catalog-aa-world']);
-
-    await settings.setExperimentEnabled('catalog', false);
-    await tester.pumpAndSettle();
-    expect(_catalogRowKeys(tester), isEmpty);
-  });
-
   testWidgets('the details button opens what an extension is, and the way out of it', (tester) async {
     // The row carries a name, a description and a switch. Everything else —
     // where it came from, what it can reach, and removing it — moved behind
@@ -1646,7 +1552,6 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
@@ -1734,50 +1639,5 @@ void main() {
     expect(inDialog(find.text('Built in')), findsOneWidget);
     expect(inDialog(find.widgetWithText(TextButton, 'Remove')), findsNothing);
     expect(inDialog(find.widgetWithText(FilledButton, 'Update')), findsNothing);
-  });
-
-  testWidgets('with the catalog off, details offers no Update the panel could not perform', (tester) async {
-    // The row's badge hides when the Catalog section does — a check that ran
-    // before the experiment was flipped off leaves a pending update with
-    // nowhere to go. The dialog's button reads the same gate, or it would
-    // offer to install from a catalog the panel is no longer showing.
-    tester.view.physicalSize = const Size(1200, 1400);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
-    extensions.debugSetAvailableExtensions(const [
-      ExtensionInfo(
-        key: 'k2hrc-llota',
-        file: 'index.js',
-        core: false,
-        name: 'LLOTA',
-        category: 'activity',
-        source: ExtensionSource.installed,
-        version: '1.0.0',
-      ),
-    ]);
-    final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
-
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(body: ExtensionsPanel(services: services)),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Catalog'), findsNothing, reason: 'the experiment is off');
-
-    await tester.tap(find.descendant(of: find.byKey(const ValueKey('extension-k2hrc-llota')), matching: find.byIcon(MdiIcons.informationOutline)));
-    await tester.pumpAndSettle();
-    final inDialog = find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, 'Update'));
-    expect(inDialog, findsNothing);
-    // Removing still works: it needs no catalog at all.
-    expect(find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(TextButton, 'Remove')), findsOneWidget);
   });
 }

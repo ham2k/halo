@@ -232,14 +232,13 @@ class _SettingsViewState extends State<SettingsView> {
       // via the Web Serial API. TCP and the Icom network transport
       // don't — a radio using either throws UnsupportedError on
       // connect, just not hidden a layer up from it.
-      if (settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ )
-        _SettingsPanelEntry(
-          key: 'station',
-          title: t.settings.panels.station,
-          icon: MdiIcons.cat,
-          order: _stationPanelOrder,
-          description: t.settings.panels.stationDescription,
-        ),
+      _SettingsPanelEntry(
+        key: 'station',
+        title: t.settings.panels.station,
+        icon: MdiIcons.cat,
+        order: _stationPanelOrder,
+        description: t.settings.panels.stationDescription,
+      ),
       // Between Sync (10) and Accounts (20): both are about where the log
       // goes — cloud first, then the devices beside you.
       if (settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ )
@@ -756,9 +755,8 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
         ),
       );
     }
-    // A group can decline to contribute anything at all — RadioSettingsGroup
-    // does while the CAT experiment is off. Its title is chrome for the rows
-    // below it, so with no rows there is nothing to head.
+    // A group can decline to contribute anything at all. Its title is chrome
+    // for the rows below it, so with no rows there is nothing to head.
     if (elements.isEmpty) return _box(const SizedBox.shrink());
     if (widget.commonOnly) {
       elements = [

@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'package:ham2k_logger/config/experiments.dart';
 import 'package:ham2k_logger/config/navigation.dart';
 import 'package:ham2k_logger/services/extensions/catalog_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_info.dart';
@@ -124,28 +123,6 @@ class _MigrationFails extends ExtensionServiceWithFakeHost {
   Future<void> restartRuntime({bool fresh = false}) async {}
 }
 
-/// Reachable, but not before [arrived] completes — a slow link, where the
-/// screen stays live and the operator can change their mind.
-class _SlowCatalog extends CatalogService {
-  _SlowCatalog(this.arrived);
-
-  final Future<void> arrived;
-
-  @override
-  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false}) async {
-    await arrived;
-    return [
-      CatalogEntry(
-        key: 'wca',
-        name: 'WCA',
-        version: '1.0.0',
-        sha256: 'a' * 64,
-        bundleUrl: Uri.parse('https://catalog.example/api/v1/extensions/wca/versions/1.0.0/bundle'),
-      ),
-    ];
-  }
-}
-
 /// Reachable, and publishing nothing — what a channel looks like before its
 /// first release.
 class _EmptyCatalog extends CatalogService {
@@ -156,7 +133,6 @@ class _EmptyCatalog extends CatalogService {
 void main() {
   testWidgets('the offer is raised from above the Navigator', (tester) async {
     final h = await makeHaLoServices(catalog: _ReachableCatalog());
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
@@ -181,127 +157,9 @@ void main() {
     expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget, reason: 'a barrier tap dismissed the offer');
   });
 
-  testWidgets('switching the experiment on offers the upgrade there and then', (tester) async {
-    // The flag withdraws every non-core built-in the moment it flips, so an
-    // offer that waits for the next launch leaves the operator a whole
-    // session with the fewest extensions they will ever have, unasked.
-    final h = await makeHaLoServices(catalog: _ReachableCatalog());
-    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
-
-    addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: MaterialApp(
-          navigatorKey: navigatorKey,
-          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-          home: const Scaffold(body: SizedBox()),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing, reason: 'the experiment is still off');
-
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
-    await tester.pumpAndSettle();
-
-    expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget);
-  });
-
-  testWidgets('an unrelated setting does not ask again once Later was answered', (tester) async {
-    // Every settings write notifies, and this offer asks the catalog whether
-    // it can be reached. A gate that answers the notification rather than the
-    // transition re-asks a question already answered — and puts a request on
-    // the wire for each theme change.
-    final h = await makeHaLoServices(catalog: _ReachableCatalog());
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
-    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
-
-    addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: MaterialApp(
-          navigatorKey: navigatorKey,
-          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-          home: const Scaffold(body: SizedBox()),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(t.extensionsPanel.upgradeLater));
-    await tester.pumpAndSettle();
-    expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing);
-
-    await h.settings.setThemeMode(ThemeMode.dark);
-    await tester.pumpAndSettle();
-
-    expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing, reason: 'the offer came back unasked');
-  });
-
-  testWidgets('the experiment switched off and on again does not stack a second offer', (tester) async {
-    // The offer is up and the operator goes back to the Experiments pane.
-    // Each transition to on is a fresh reason to ask, and the one already on
-    // screen is the answer to it.
-    final h = await makeHaLoServices(catalog: _ReachableCatalog());
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
-    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
-
-    addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: MaterialApp(
-          navigatorKey: navigatorKey,
-          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-          home: const Scaffold(body: SizedBox()),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget);
-
-    await h.settings.setExperimentEnabled(kCatalogExperiment, false);
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
-    await tester.pumpAndSettle();
-
-    expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget, reason: 'a second offer stacked on the first');
-  });
-
-  testWidgets('the experiment switched back off during the catalog check cancels the offer', (tester) async {
-    // That check is a forced fetch — seconds of it on a slow link — and the
-    // screen is live throughout. Asked anyway, an operator who changed their
-    // mind would migrate under a flag that is off, and `extensionsMigrated`
-    // then reports the upgrade done forever: the offer never comes back when
-    // they turn the experiment on for real.
-    final reply = Completer<void>();
-    final h = await makeHaLoServices(catalog: _SlowCatalog(reply.future));
-    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
-
-    addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: MaterialApp(
-          navigatorKey: navigatorKey,
-          builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
-          home: const Scaffold(body: SizedBox()),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
-    await tester.pump();
-    await h.settings.setExperimentEnabled(kCatalogExperiment, false);
-    reply.complete();
-    await tester.pumpAndSettle();
-
-    expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing);
-    expect(h.settings.extensionsMigrated, isFalse);
-  });
-
-  testWidgets('an unreachable catalog is said when the operator asked, not at boot', (tester) async {
-    // "I turned it on and nothing happened" is the complaint the listener
-    // exists to answer, and an offline operator hits exactly that: the offer
-    // returns silently, having asked a catalog that did not reply. At boot
-    // nobody is watching and silence is right; here they are looking at it.
+  testWidgets('an unreachable catalog raises no offer and says nothing', (tester) async {
+    // At boot nobody is watching, and a dialog whose button cannot work is
+    // worse than none: the offer is retried next launch.
     final h = await makeHaLoServices(catalog: _EmptyCatalog());
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
@@ -316,13 +174,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(h.services.statusBar.itemForKey('extensions:upgradeOffer'), isNull, reason: 'boot says nothing');
-
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
-    await tester.pumpAndSettle();
 
     expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing);
-    expect(h.services.statusBar.itemForKey('extensions:upgradeOffer')?.text, t.extensionsPanel.upgradeUnreachable);
+    expect(h.settings.extensionsMigrated, isFalse);
   });
 
   testWidgets('a finished upgrade says so', (tester) async {
@@ -330,7 +184,6 @@ void main() {
     // had. Only the failure was ever reported, so a success looked exactly
     // like a dialog that had done nothing.
     final h = await makeHaLoServices(extensions: _MigrationSucceeds(), catalog: _ReachableCatalog());
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
@@ -366,7 +219,6 @@ void main() {
         ExtensionInfo(key: 'wca', file: 'wca.js', core: false, name: 'WCA'),
       ]);
     final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
@@ -406,7 +258,6 @@ void main() {
     // it would report a loss that was their own choice.
     final extensions = _MigrationSucceeds()..debugSetAvailableExtensions(const [ExtensionInfo(key: 'qp', file: 'qp.js', core: false, name: 'QSO Parties')]);
     final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
     await h.settings.setExtensionOverrides({'qp': false});
 
@@ -434,7 +285,6 @@ void main() {
     // ready — the worse of the two wrong answers, since the flag is reverted
     // underneath them and the built-ins are what they still have.
     final h = await makeHaLoServices(extensions: _MigrationFails(), catalog: _ReachableCatalog());
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
@@ -466,7 +316,6 @@ void main() {
     // install running nothing at all. The upgrade reverts itself first, so
     // what this has to say is that the previous extensions are working.
     final h = await makeHaLoServices(extensions: _RuntimeDead(), catalog: _ReachableCatalog());
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
@@ -499,7 +348,6 @@ void main() {
       ]);
     final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
     await h.settings.setExtensionRefused({'ki2d-my-clock': '1.2.3'});
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     await tester.pumpWidget(
@@ -539,7 +387,6 @@ void main() {
       ]);
     final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
     await h.settings.setExtensionRefused({'ki2d-my-clock': '1.2.3'});
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     await tester.pumpWidget(
@@ -570,7 +417,6 @@ void main() {
     InstalledExtensions.debugTreatAsUnsupported = true;
     addTearDown(() => InstalledExtensions.debugTreatAsUnsupported = null);
     final h = await makeHaLoServices(catalog: _ReachableCatalog());
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));
@@ -594,7 +440,6 @@ void main() {
     // one after that. Silence costs the operator nothing: the offer is made
     // again as soon as the channel has something to give them.
     final h = await makeHaLoServices(catalog: _EmptyCatalog());
-    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
     addTearDown(() => tester.pumpWidget(const SizedBox()));

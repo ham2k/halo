@@ -248,8 +248,7 @@ class HaLoServices {
   /// — so a peer reading "not connected" tunes the far rig exactly zero
   /// beat, which is the failure that setting exists to prevent.
   ///
-  /// Reads [cat], which builds CatService on first touch: call it behind the
-  /// same experiment gate its callers already have.
+  /// Reads [cat], which builds CatService on first touch.
   bool get radio1IsLive => switch (cat.radio1) {
     LocalRadio(:final uuid) => cat.stateFor(uuid).status == EquipmentStatus.connected,
     PeerRadio(:final selection) => peerRemoteRadios.find(selection.deviceId, selection.radioId) != null,
@@ -401,10 +400,8 @@ class HaLoServices {
     return service;
   }
 
-  // Station equipment and CAT control, behind the `cat` experiment
-  // (docs/design/cat.md). Lazy: nothing connects until the user asks it to
-  // from Settings → Station Configuration, so this costs nothing while the
-  // experiment is off.
+  // Station equipment and CAT control (docs/design/cat.md). Lazy: built on
+  // first touch.
   /// Injectable like [_exportsOverride], so a test can hand in a CatService
   /// built over a fake transport — the real one can only reach `connected`
   /// through hardware.

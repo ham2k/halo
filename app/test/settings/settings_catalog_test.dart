@@ -160,7 +160,6 @@ void main() {
       // The radio group declares nothing without this, and it owns the alias
       // that first exposed the mismatch.
       final HaLoHarness(:services, :settings) = await makeHaLoServices();
-      await settings.setExperimentEnabled('gato', true);
 
       // The REAL element maps, as the search box sees them — not rebuilt from
       // catalog entries, which would only prove the reconstruction agrees

@@ -10,10 +10,11 @@
 
 import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'package:ham2k_logger/config/experiments.dart';
+import 'package:ham2k_logger/services/connectivity_service.dart';
 import 'package:ham2k_logger/services/extensions/catalog_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart';
 import 'package:ham2k_logger/services/extensions/extension_disabled_since.dart';
@@ -188,10 +189,9 @@ class _Catalog extends CatalogService {
   }
 }
 
-Future<SettingsService> _settings({bool experiment = false, bool migrated = false}) async {
+Future<SettingsService> _settings({bool migrated = false}) async {
   SharedPreferences.setMockInitialValues(const {});
   final settings = SettingsService(await SharedPreferences.getInstance());
-  if (experiment) await settings.setExperimentEnabled(kCatalogExperiment, true);
   if (migrated) await settings.setExtensionsMigrated(true);
   return settings;
 }
@@ -199,34 +199,74 @@ Future<SettingsService> _settings({bool experiment = false, bool migrated = fals
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('what the two flags mean together', () {
-    test('the experiment alone withdraws nothing', () async {
-      // The whole reason "Later" is safe to offer. Turning the experiment on
-      // used to withdraw every built-in on the spot, so an operator who
-      // deferred the upgrade — or who was offline when it was offered — was
-      // left with no extensions at all.
-      final settings = await _settings(experiment: true);
+  group('what migrated means', () {
+    test('an install that has not upgraded withdraws nothing', () async {
+      // The whole reason "Later" is safe to offer: an operator who deferred
+      // the upgrade — or who was offline when it was offered — keeps every
+      // extension they had rather than being left with none.
+      final settings = await _settings();
       final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
       expect(settings.catalogExtensionsInUse, isFalse);
       expect(extensions.isBuiltInOffered(_builtIn), isTrue);
     });
 
-    test('migrated alone withdraws nothing either', () async {
-      // Turning the experiment back off restores the built-ins without
-      // forgetting the upgrade happened, so turning it on again does not
-      // re-run it.
+    test('migrated is what moves the app to the catalog', () async {
       final settings = await _settings(migrated: true);
-      final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
-      expect(settings.catalogExtensionsInUse, isFalse);
-      expect(extensions.isBuiltInOffered(_builtIn), isTrue);
-    });
-
-    test('both together is what moves the app to the catalog', () async {
-      final settings = await _settings(experiment: true, migrated: true);
       final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
       expect(settings.catalogExtensionsInUse, isTrue);
       expect(extensions.isBuiltInOffered(_builtIn), isFalse);
     });
+  });
+
+  group('which installs start on the catalog', () {
+    test('a new install does, with no upgrade to offer', () async {
+      final settings = await _settings();
+      await settings.seedExtensionsMigratedDefault();
+      expect(settings.extensionsMigrated, isTrue);
+    });
+
+    test('an install that has been through onboarding is asked, not moved', () async {
+      // The trap: its flag was never written, so reading it as new would
+      // withdraw every built-in it runs on an app update, unasked. A skipped
+      // onboarding writes an empty callsign, and counts.
+      for (final call in ['KI2D', '']) {
+        final settings = await _settings();
+        await settings.setProfileOperatorCall(SettingsService.defaultProfileId, call);
+        await settings.seedExtensionsMigratedDefault();
+        expect(settings.extensionsMigrated, isFalse, reason: 'callsign "$call"');
+      }
+    });
+
+    test('the answer is decided once, not on every boot', () async {
+      // Onboarding sets a callsign after the first boot's seed; a second boot
+      // re-deciding from that would move the new install back.
+      final settings = await _settings();
+      await settings.seedExtensionsMigratedDefault();
+      await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
+      await settings.seedExtensionsMigratedDefault();
+      expect(settings.extensionsMigrated, isTrue);
+    });
+
+    test('nothing is recorded where there is no store', () async {
+      // Web: recorded there, the flag would stand for an upgrade the install
+      // never had anywhere to put.
+      InstalledExtensions.debugTreatAsUnsupported = true;
+      addTearDown(() => InstalledExtensions.debugTreatAsUnsupported = null);
+      final settings = await _settings();
+      await settings.seedExtensionsMigratedDefault();
+      expect(settings.prefs.containsKey('extensionsMigrated'), isFalse);
+    });
+  });
+
+  test('an upgrade taken again carries choices made while it was reverted', () async {
+    // The pre-load carries a choice only on its first install. An upgrade
+    // that reverted and is retried finds the twins already there, holding
+    // the first attempt's choices — SOTA switched on in between would be off.
+    final settings = await _settings();
+    await settings.setExtensionOverrides({'sota': true, 'ham2k-sota': false});
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    await withErrorHooks(() async => migrateToCatalogExtensions(extensions));
+    expect(settings.extensionOverrides['ham2k-sota'], isTrue);
   });
 
   test('the extension service gets the real catalog, not the test override', () async {
@@ -246,7 +286,7 @@ void main() {
     // replacement on disk, and the gate never offering again because the flag
     // says it already happened. A clean failure reverts it; a THROWN one has
     // to as well.
-    final settings = await _settings(experiment: true);
+    final settings = await _settings();
     final extensions = _PreloadThrows()..settings = settings;
 
     await withErrorHooks(() async {
@@ -263,7 +303,7 @@ void main() {
     // the memoized extension list predates the installs. Left as it is, the
     // rest of the session loads from a list that does not know what is on
     // disk.
-    final settings = await _settings(experiment: true);
+    final settings = await _settings();
     final extensions = _PartialAdoption()..settings = settings;
 
     expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.incomplete);
@@ -279,7 +319,7 @@ void main() {
       // the crash backoff — so a migration that trusted it reported success
       // over an install with NO extensions at all: one twin that will not
       // evaluate takes the whole generation down with it.
-      final settings = await _settings(experiment: true);
+      final settings = await _settings();
       final extensions = _RuntimeNeverComesBack(revives: true)..settings = settings;
 
       expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.runtimeReverted);
@@ -297,7 +337,7 @@ void main() {
       // boot failing for a reason the twins never caused — it is the worst
       // answer this can give, and the second restart cannot report its own
       // failure any more than the first could.
-      final settings = await _settings(experiment: true);
+      final settings = await _settings();
       final extensions = _RuntimeNeverComesBack()..settings = settings;
 
       final reports = FakeErrorReportingBackend();
@@ -320,7 +360,7 @@ void main() {
     // locked macOS. A throw there schedules a backoff restart over a
     // generation that is loaded and serving hooks. Read as a failure, one
     // keychain prompt reverts a perfectly good upgrade.
-    final settings = await _settings(experiment: true);
+    final settings = await _settings();
     final extensions = _BootsThenSchedulesRestart()..settings = settings;
 
     expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.done);
@@ -335,7 +375,7 @@ void main() {
       // takes the whole generation with it. Reverting the whole upgrade over
       // it costs the operator every extension they were promised, and the
       // boot names the culprit — so the rest do not have to go down with it.
-      final settings = await _settings(experiment: true);
+      final settings = await _settings();
       final extensions = _OneBadBundle('ham2k-wca')
         ..settings = settings
         ..debugSetAvailableExtensions(const [
@@ -361,7 +401,7 @@ void main() {
       // and the available list puts the asset first. Recording that one's
       // version refuses the app's own built-in for good, while the installed
       // bundle that actually failed stays in the set and fails again.
-      final settings = await _settings(experiment: true);
+      final settings = await _settings();
       final extensions = _OneBadBundle('ham2k-lookup')
         ..settings = settings
         ..debugSetAvailableExtensions(const [
@@ -382,7 +422,7 @@ void main() {
       // a catalog-only one installed earlier — kills the boot that was about
       // to give the operator everything back. It still will not evaluate;
       // what that costs is a name, which every dialog carries.
-      final settings = await _settings(experiment: true);
+      final settings = await _settings();
       final extensions = _OneBadBundle('ham2k-wca', staysBroken: true)
         ..settings = settings
         ..debugSetAvailableExtensions(const [
@@ -402,7 +442,7 @@ void main() {
       // gone, there is nothing to update, and the POTA the operator knows is
       // running. "Would not run: POTA" over a working POTA tells them
       // something false twice over.
-      final settings = await _settings(experiment: true);
+      final settings = await _settings();
       await settings.setExtensionRefused({'ham2k-pota': '0.2.1'});
       final extensions = ExtensionServiceWithFakeHost()
         ..settings = settings
@@ -419,7 +459,7 @@ void main() {
       // so putting it aside changes nothing. Unguarded, the upgrade restarts
       // the runtime for a set that cannot differ — a third boot on a path
       // that has already failed twice.
-      final settings = await _settings(experiment: true);
+      final settings = await _settings();
       await settings.setExtensionRefused({'ham2k-wca': '0.2.1'});
       final extensions = _OneBadBundle('ham2k-wca', staysBroken: true)
         ..settings = settings
@@ -440,7 +480,7 @@ void main() {
     // withdrawn, and the same button works a moment later — telling the
     // operator the upgrade failed sends them chasing a problem they do not
     // have.
-    final settings = await _settings(experiment: true);
+    final settings = await _settings();
     final extensions = _StillRunning()..settings = settings;
 
     final first = migrateToCatalogExtensions(extensions);
@@ -450,6 +490,66 @@ void main() {
 
     extensions.release.complete();
     expect(await first, UpgradeOutcome.done, reason: 'the pass that held the flag still finishes');
+  });
+
+  group('an upgrade check that keeps finding no catalog', () {
+    // It asks once a launch, so the catalog's in-session streak never fires
+    // for it: an install the catalog cannot reach would never be offered the
+    // upgrade, with nothing anywhere to say so.
+    Future<List<UpgradeCatalogUnavailable>> launches(SettingsService settings, List<List<String>?> listings) async {
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(() async {
+        for (final keys in listings) {
+          final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))
+            ..settings = settings
+            ..catalog = _Catalog(keys);
+          await canReachCatalog(extensions);
+        }
+      }, backend: backend);
+      return backend.exceptions.map((e) => e.error).whereType<UpgradeCatalogUnavailable>().toList();
+    }
+
+    test('says so once, on the launch that makes it a stretch', () async {
+      // Once, not every launch after: an install stuck for good would
+      // otherwise report on each one.
+      final reports = await launches(await _settings(), [null, null, null, null, null]);
+      expect(reports, hasLength(1));
+      expect(reports.single.launches, kUpgradeCheckMissesReported);
+      expect(reports.single.empty, isFalse);
+    });
+
+    test('an empty listing counts, and says which it was', () async {
+      final reports = await launches(await _settings(), [const [], const [], const []]);
+      expect(reports.single.empty, isTrue);
+    });
+
+    test('a device known to be offline neither counts nor resets', () async {
+      // A field station can go days without a route; that says nothing
+      // about the catalog.
+      addTearDown(ConnectivityService.resetForTesting);
+      ConnectivityService.start(changesSource: Stream.value([ConnectivityResult.none]), check: () async => [ConnectivityResult.none]);
+      await pumpEventQueue();
+      expect(ConnectivityService.isOffline, isTrue);
+      final settings = await _settings();
+      expect(await launches(settings, [null, null, null, null]), isEmpty);
+      expect(settings.upgradeCheckMisses, 0);
+    });
+
+    test('an answer in between starts the count again', () async {
+      // Offline now and then is a field operator, not a defect.
+      final settings = await _settings();
+      expect(
+        await launches(settings, [
+          null,
+          null,
+          const ['ham2k-pota'],
+          null,
+          null,
+        ]),
+        isEmpty,
+      );
+      expect(settings.upgradeCheckMisses, 2);
+    });
   });
 
   test('a service with no settings is a wiring defect, and says so', () async {
@@ -469,7 +569,7 @@ void main() {
     // under that name and cannot find in the Extensions panel.
     await LocaleSettings.setLocale(AppLocale.es);
     addTearDown(() => LocaleSettings.setLocale(AppLocale.en));
-    final settings = await _settings(experiment: true, migrated: true);
+    final settings = await _settings(migrated: true);
     final extensions = _PartialAdoption()
       ..settings = settings
       ..debugSetAvailableExtensions(const [
@@ -510,7 +610,7 @@ void main() {
       // Asking the listing for `ham2k-qp` or `ham2k-stateparks` can only fail,
       // so an operator with either switched on would fail the upgrade on every
       // launch, forever.
-      final settings = await _settings(experiment: true, migrated: true);
+      final settings = await _settings(migrated: true);
 
       final result = await adopt(settings, _Catalog(null), enabled: const ['qp', 'stateparks']);
 
@@ -524,7 +624,7 @@ void main() {
       // The pre-loads are published first and are already installed, so a
       // channel part way through publishing carries exactly these. Counting
       // them as proof the listing is whole retires every other twin for good.
-      final settings = await _settings(experiment: true, migrated: true);
+      final settings = await _settings(migrated: true);
 
       // `qp` rides along so the record IS written here: nothing is persisted
       // when the only key is one the app answered itself.
@@ -538,7 +638,7 @@ void main() {
       // The listing is plainly real here, and `ham2k-gma` is still absent —
       // dropped as unparseable, or filtered by the `api` parameter, or not yet
       // published. None of those is the catalog saying it will never serve it.
-      final settings = await _settings(experiment: true, migrated: true);
+      final settings = await _settings(migrated: true);
 
       // `ham2k-wca` is listed but not wanted, so nothing downloads and only
       // the absent `ham2k-gma` can leave the job incomplete.

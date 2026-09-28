@@ -18,8 +18,8 @@ class CatTrafficRecording {
   final CatTrafficLog log;
   final SettingsService _settings;
 
-  /// Read only when a recording is sent: building [CatService] at every
-  /// launch is what the Station Configuration experiment exists to avoid.
+  /// Read only when a recording is sent, so that holding this never builds
+  /// a [CatService] by itself.
   final CatService Function() _cat;
   final StatusBarService _statusBar;
 

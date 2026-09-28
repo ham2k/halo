@@ -54,7 +54,6 @@ void main() {
   setUp(() async {
     final harness = await makeHaLoServices(extensions: _TemplateExtensions());
     services = harness.services;
-    await harness.settings.setExperimentEnabled('gato', true);
     await harness.settings.setExperimentEnabled('keyer', true);
     await harness.settings.setExperimentEnabled('esm', true);
     await harness.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');

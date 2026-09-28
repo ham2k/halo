@@ -27,7 +27,7 @@ runtime — so **the extensions must be built before the app will run**.
   **Node 22**, so match that locally.
 - **Platform toolchains** for whatever targets you build:
   - macOS/iOS → Xcode, plus `brew install automake libtool` — CocoaPods
-    builds libserialport (GATO's serial CAT transport) from source, and
+    builds libserialport (the serial CAT transport) from source, and
     without autotools `pod install` fails with "Please run `brew install
     automake libtool`" and the app won't build at all
   - Android → Android SDK/NDK (see the Windows/README notes for a full list)

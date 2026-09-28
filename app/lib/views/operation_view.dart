@@ -692,7 +692,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// notifications, so a radio connecting takes effect on the next one.
   bool get _voiceKeyingPossible {
     final settings = widget.services.settings;
-    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) return false;
     if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     return widget.services.cat.canPlayVoice;
   }
@@ -702,7 +701,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// message typed mid-operation takes effect on the next rebuild.
   bool get _cwMessagesConfigured {
     final settings = widget.services.settings;
-    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) return false;
     if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     for (var n = 1; n <= SettingsService.cwMessageCount; n++) {
       if (settings.cwMessage(n).trim().isNotEmpty) return true;
@@ -879,7 +877,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // A keypress by itself stops nothing: what a call typed over a CQ stops
     // is decided by the callsign field (LoggingSession.onCallTyped), which
     // hears every way a call is entered and not only a hardware key.
-    if (!services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) return false;
     if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     final cat = services.cat;
     final keyboard = HardwareKeyboard.instance;
@@ -3147,14 +3144,10 @@ class _FallingDotsPainter extends CustomPainter {
 /// either way, so neither is safe to mutate.
 Map<String, dynamic> zeroBeatSuggestionFor(Map<String, dynamic> qso, {required HaLoServices services, required ZeroBeatOffsetter offsetter}) {
   final settings = services.settings;
-  // Both gates are checked before `services.cat`, which is what keeps it
-  // untouched: that getter is a `late final`, so reading it builds a
-  // CatService — registry, stored equipment, a RadioService listener held for
-  // the process — and this runs on every spot tap. The experiment is the
-  // structural one and stays first: without Station Configuration there is no
-  // way to connect a radio at all, so the answer would be "not connected"
-  // however the setting is left.
-  if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) return qso;
+  // Checked before `services.cat`, which is what keeps it untouched: that
+  // getter is a `late final`, so reading it builds a CatService — registry,
+  // stored equipment, a RadioService listener held for the process — and
+  // this runs on every spot tap.
   if (!settings.avoidZeroBeat) return qso;
   // The main VFO specifically — a rig connected in the shack but not driving
   // the panel is not going to be retuned by this suggestion either. A PEER's

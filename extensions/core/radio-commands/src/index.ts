@@ -28,16 +28,11 @@ import { parseBandCommand } from "./parseBandCommand.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
-// Station Configuration — and everything CAT, including power — is still
-// behind this experiment (.agents/AGENTS.md: no user-visible surface until
-// an experiment ships ungated). BAND/MODE/frequency predate it and stay
-// ungated; only POWER checks this, per-call via ctx.enabledExperiments
-// rather than manifest.experiments, which would gate the whole file.
-const GATO_EXPERIMENT = "gato"
-
-// CW keying sits behind its own experiment on top of CAT (app/experiments.yaml).
+// CW keying sits behind its own experiment (app/experiments.yaml), checked
+// per-call via ctx.enabledExperiments rather than manifest.experiments, which
+// would gate the whole file.
 const KEYER_EXPERIMENT = "keyer"
-const keyerEnabled = (ctx: HookContext) => !!ctx.enabledExperiments?.includes(GATO_EXPERIMENT) && !!ctx.enabledExperiments?.includes(KEYER_EXPERIMENT)
+const keyerEnabled = (ctx: HookContext) => !!ctx.enabledExperiments?.includes(KEYER_EXPERIMENT)
 
 // Enter Sends Messages, on top of keying (app/experiments.yaml).
 const ESM_EXPERIMENT = "esm"
@@ -188,7 +183,6 @@ const ModeCommand = {
 
 const PowerCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return null
     const watts = parsePowerCommand(input)
     if (watts == null) return null
     const t = tFor(ctx)
@@ -200,7 +194,6 @@ const PowerCommand = {
   },
 
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
-    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return []
     const t = tFor(ctx)
     return [
       {

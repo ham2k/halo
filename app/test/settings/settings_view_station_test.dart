@@ -27,7 +27,6 @@ void main() {
 
   Future<HaLoServices> pumpSettings(
     WidgetTester tester, {
-    required bool catEnabled,
     Object? equipment,
     FlutterSecureStorage? secureStorage,
     // Short windows are how the Add dialog's list is made to overflow: the
@@ -41,13 +40,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final HaLoHarness(:services) = await makeHaLoServices(
-      prefs: {
-        if (catEnabled)
-          'experiments': jsonEncode({
-            'gato': {'enabled': true},
-          }),
-        if (equipment != null) 'stationEquipment': jsonEncode(equipment),
-      },
+      prefs: {if (equipment != null) 'stationEquipment': jsonEncode(equipment)},
       secureStorage: secureStorage,
     );
 
@@ -60,13 +53,8 @@ void main() {
     return services;
   }
 
-  testWidgets('the section is hidden until the CAT experiment is on', (tester) async {
-    await pumpSettings(tester, catEnabled: false);
-    expect(find.text('Station Configuration'), findsNothing);
-  });
-
-  testWidgets('with CAT on, the section sits between Application Preferences and Cloud Sync', (tester) async {
-    await pumpSettings(tester, catEnabled: true);
+  testWidgets('the section sits between Application Preferences and Cloud Sync', (tester) async {
+    await pumpSettings(tester);
 
     expect(find.text('Station Configuration'), findsOneWidget);
     // The CAT pun, not the plain radio glyph.
@@ -84,7 +72,7 @@ void main() {
   });
 
   testWidgets('the panel starts empty and offers to add equipment', (tester) async {
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
 
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
@@ -99,7 +87,6 @@ void main() {
     ) async {
       final services = await pumpSettings(
         tester,
-        catEnabled: true,
         equipment: {
           'version': 3,
           'mainVfo': {'radio': 'local-rig'},
@@ -139,7 +126,6 @@ void main() {
     // couple of hundred pixels left of every row around them.
     await pumpSettings(
       tester,
-      catEnabled: true,
       viewSize: const Size(1600, 1200),
       equipment: {
         'version': 1,
@@ -174,7 +160,6 @@ void main() {
   testWidgets('the current transceiver heads the panel with its address and state, and the inventory lists it again', (tester) async {
     await pumpSettings(
       tester,
-      catEnabled: true,
       equipment: {
         'version': 1,
         // radio1 is spelled out because it is plain stored state — the panel
@@ -220,7 +205,6 @@ void main() {
     // while their rows scroll under them.
     await pumpSettings(
       tester,
-      catEnabled: true,
       viewSize: const Size(1200, 900),
       equipment: {
         'version': 1,
@@ -256,7 +240,7 @@ void main() {
   testWidgets('Add Equipment is a button in the Inventory heading', (tester) async {
     // It was the last ROW of the inventory, which on a long one is the single
     // place an operator has to scroll to reach.
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
@@ -271,7 +255,7 @@ void main() {
   });
 
   testWidgets('adding by hand goes through the type list into that type\'s own form', (tester) async {
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
@@ -388,7 +372,7 @@ void main() {
     // The one shelf that starts open: a radio the app has already found is
     // the shortest path to a configured one, and it costs nothing to see it
     // before hunting by make. Everything else starts shut.
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
     await openAddDialog(tester);
 
     final detected = tester.getRect(find.ancestor(of: find.text('Detected Equipment'), matching: find.byType(AccordionHeader)));
@@ -428,7 +412,7 @@ void main() {
     // UDP discovery has no terminal state — it listens for as long as the
     // pane is open — so a spinner tied to the actual activity would turn for
     // the whole visit and become furniture. It says the search STARTED.
-    final services = await pumpSettings(tester, catEnabled: true);
+    final services = await pumpSettings(tester);
     await openAddDialog(tester);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
@@ -449,7 +433,7 @@ void main() {
     // screen, and by nothing at all when it already is.
     // A window short enough that the list scrolls — at full height nothing
     // moves whatever the reveal does, and the assertion would hold either way.
-    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1000, 620));
+    await pumpSettings(tester, viewSize: const Size(1000, 620));
     await openAddDialog(tester);
 
     final before = tester.getRect(find.ancestor(of: find.text('Detected Equipment'), matching: find.byType(AccordionHeader)));
@@ -469,7 +453,7 @@ void main() {
     // order, and the two catch-alls come last however many radios each holds.
     // A group derived from whatever the catalogue happens to declare would
     // reorder itself the day a model is added.
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
     await openAddDialog(tester);
 
     const expected = ['Elecraft', 'FlexRadio', 'Icom', 'Kenwood', 'Yaesu', 'Software Intermediaries', 'Other Brands', otherEquipment];
@@ -488,7 +472,7 @@ void main() {
     // what keeps the State across it.
     //
     // Mutation check: drop that key and the State identity below changes.
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
     await openAddDialog(tester);
 
     final before = tester.state(find.byType(AnimatedRotation).first);
@@ -516,7 +500,7 @@ void main() {
     // Same kind of thing, one pane apart: a shelf of rows under a band that
     // folds. Two styles for that would read as two mechanisms, so the heading
     // takes SectionHeader.titleStyle whole — the slab face and the accent.
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
     await openAddDialog(tester);
 
     final context = tester.element(find.text('Elecraft'));
@@ -551,7 +535,7 @@ void main() {
     //
     // Mutation check: drop the sort and this fails on the pair below, since
     // the catalogue declares the IC-705 before Icom - Generic.
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
     await openAddDialog(tester);
     await openBrand(tester, 'Icom');
 
@@ -571,7 +555,7 @@ void main() {
     //
     // A short window, so the list actually scrolls; at full height every
     // shelf fits and the correction is unreachable.
-    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1000, 620));
+    await pumpSettings(tester, viewSize: const Size(1000, 620));
     await openAddDialog(tester);
 
     await openBrand(tester, 'Icom');
@@ -608,7 +592,7 @@ void main() {
     // Matched EXACTLY against featuredBrands: a model spelling its maker any
     // other way, or naming none at all, lands here rather than silently
     // creating a sixth brand nobody ordered.
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
     await openAddDialog(tester);
     await openBrand(tester, 'Other Brands');
 
@@ -623,7 +607,7 @@ void main() {
     // already knows their radio is not directly reachable. Keyed by model
     // rather than derived, so a bridge left off the list falls in with the
     // radios rather than quietly forming a shelf of one.
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
     await openAddDialog(tester);
     await openBrand(tester, 'Software Intermediaries');
 
@@ -633,7 +617,7 @@ void main() {
   });
 
   testWidgets('the search box filters by radio name and by how it plugs in', (tester) async {
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
     await openAddDialog(tester);
 
     // A query FLATTENS the shelves: the answer to "which brand?" is the row
@@ -683,7 +667,7 @@ void main() {
     // operator searches for by make has to come back from the same box that
     // finds their radio — nobody hunting "winkey" knows it lives under a
     // heading rather than in the catalogue.
-    final services = await pumpSettings(tester, catEnabled: true);
+    final services = await pumpSettings(tester);
     await services.settings.setExperimentEnabled('keyer', true);
     await tester.pumpAndSettle();
     await openAddDialog(tester);
@@ -707,7 +691,7 @@ void main() {
     // name. A measurement would therefore pass with the alignment deleted.
     // A discovered device's row (`detail` under its name) is two-line and
     // still needs this, and so does the next radio that ships untested.
-    await pumpSettings(tester, catEnabled: true);
+    await pumpSettings(tester);
     await openAddDialog(tester);
     await openBrand(tester, 'Icom');
 
@@ -719,7 +703,7 @@ void main() {
     // Column's inflexible children — an unbounded section pushes the whole
     // dialog past its height cap and paints overflow stripes. Any thrown
     // layout exception fails this test on its own.
-    await pumpSettings(tester, catEnabled: true, viewSize: const Size(900, 420));
+    await pumpSettings(tester, viewSize: const Size(900, 420));
     await openAddDialog(tester);
 
     expect(find.text('Detected Equipment'), findsOneWidget);
@@ -729,7 +713,7 @@ void main() {
   });
 
   testWidgets('a new radio is named after the model, numbered once that name is taken', (tester) async {
-    await pumpSettings(tester, catEnabled: true, secureStorage: FakeSecureStorage());
+    await pumpSettings(tester, secureStorage: FakeSecureStorage());
     await openAddDialog(tester);
     await openBrand(tester, 'Software Intermediaries');
 
@@ -766,9 +750,6 @@ void main() {
 
     final HaLoHarness(:services) = await makeHaLoServices(
       prefs: {
-        'experiments': jsonEncode({
-          'gato': {'enabled': true},
-        }),
         'stationEquipment': jsonEncode({
           'version': 1,
           'nodes': {
@@ -855,7 +836,7 @@ void main() {
     //
     // Mutation check: point the validator at anything but `values['transport']`
     // and the Save below stops producing a node.
-    final services = await pumpSettings(tester, catEnabled: true, secureStorage: FakeSecureStorage());
+    final services = await pumpSettings(tester, secureStorage: FakeSecureStorage());
 
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
@@ -900,7 +881,6 @@ void main() {
     // no port or address is unconfigured and skips its checks.)
     final services = await pumpSettings(
       tester,
-      catEnabled: true,
       secureStorage: FakeSecureStorage(),
       equipment: {
         'version': 1,
@@ -938,7 +918,6 @@ void main() {
     // That the re-typed node then persists is cat_service_test's to prove.
     await pumpSettings(
       tester,
-      catEnabled: true,
       secureStorage: FakeSecureStorage(),
       equipment: {
         'version': 1,
@@ -993,7 +972,6 @@ void main() {
     // because none of them goes through this widget.
     final services = await pumpSettings(
       tester,
-      catEnabled: true,
       secureStorage: FakeSecureStorage(),
       equipment: {
         'version': 1,
@@ -1036,7 +1014,6 @@ void main() {
     // station knows about, whether or not it happens to be connected.
     final services = await pumpSettings(
       tester,
-      catEnabled: true,
       equipment: {
         'version': 1,
         'radio1': 'radio-1',
@@ -1084,7 +1061,6 @@ void main() {
     // to "…Slice A" and dropped the address entirely.
     await pumpSettings(
       tester,
-      catEnabled: true,
       equipment: {
         'version': 1,
         'radio1': 'radio-1',
@@ -1119,7 +1095,6 @@ void main() {
   testWidgets('a node whose type no longer exists says so instead of vanishing', (tester) async {
     await pumpSettings(
       tester,
-      catEnabled: true,
       equipment: {
         'version': 1,
         'nodes': {

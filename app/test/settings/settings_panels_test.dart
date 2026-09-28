@@ -227,7 +227,6 @@ void main() {
     final services = await makeServices(
       prefs: {
         'experiments': jsonEncode({
-          'gato': {'enabled': true},
           'keyer': {'enabled': true},
         }),
       },

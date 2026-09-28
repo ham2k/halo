@@ -24,6 +24,7 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/operation/clock/clock_panel.dart';
+import 'package:ham2k_logger/views/operation/radio/radio_panel.dart';
 import 'package:ham2k_logger/views/operation/solar/solar_panel.dart';
 import 'package:ham2k_logger/views/operation/weather/weather_panel.dart';
 import 'package:ham2k_logger/views/operation/website/website_panel.dart';
@@ -171,7 +172,7 @@ void main() {
     expect(homeCatalog, containsAll([HomeView.operationsPanelId, HomeView.versionPanelId]));
     expect(homeCatalog.intersection({'logging', 'info', 'spots', 'map'}), isEmpty, reason: 'a logging pane on Home has no operation to log into');
 
-    final sharedDashboardIds = {clockPanelId, weatherPanelId, solarPanelId, websitePanelId};
+    final sharedDashboardIds = {clockPanelId, weatherPanelId, solarPanelId, websitePanelId, radioPanelId};
     final operationCatalog = services.panels.catalogFor(PanelViews.operation).map((p) => p.id).toSet();
     expect(
       operationCatalog.intersection(homeCatalog.difference(sharedDashboardIds)),

@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../config/experiments.dart';
 import '../../config/navigation.dart';
 import '../../services/extensions/extension_catalog_migration.dart';
 import '../../services/extensions/installed_extensions.dart';
@@ -31,93 +30,26 @@ class ExtensionUpgradeGate extends StatefulWidget {
 }
 
 class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
-  /// Whether the experiment was on the last time settings changed, so the
-  /// offer follows the moment it is switched ON rather than every write.
-  late bool _experimentWasOn;
-
-  /// An offer already on screen, or its catalog check in flight.
-  bool _offering = false;
-
   @override
   void initState() {
     super.initState();
+    unawaited(_offer());
+  }
+
+  Future<void> _offer() async {
     final settings = widget.services.settings;
-    _experimentWasOn = settings.experimentEnabled(kCatalogExperiment);
-    settings.addListener(_settingsChanged);
-    unawaited(_offerUpgrade(operatorAsked: false));
-  }
-
-  @override
-  void dispose() {
-    widget.services.settings.removeListener(_settingsChanged);
-    super.dispose();
-  }
-
-  /// Switching the experiment on is the operator asking for catalog
-  /// extensions, and the offer is how they get them. Made from `initState`
-  /// alone it arrived a whole session late: they turned the experiment on,
-  /// nothing happened, and the app had to be relaunched to ask.
-  ///
-  /// Nothing is withdrawn by that switch — `isBuiltInOffered` needs the
-  /// migration too, deliberately — so this is a convenience, not a repair.
-  void _settingsChanged() {
-    final isOn = widget.services.settings.experimentEnabled(kCatalogExperiment);
-    final switchedOn = isOn && !_experimentWasOn;
-    _experimentWasOn = isOn;
-    // The transition only. Settings notify on every write, and this offer
-    // asks the catalog whether it can be reached.
-    if (switchedOn) unawaited(_offerUpgrade(operatorAsked: true));
-  }
-
-  Future<void> _offerUpgrade({required bool operatorAsked}) async {
-    // A second pass cannot run beside the first: they would ask the same
-    // question twice, and the second dialog would stand over a migration the
-    // first is already running.
-    if (_offering) return;
-    _offering = true;
-    try {
-      await _offer(operatorAsked: operatorAsked);
-    } finally {
-      _offering = false;
-    }
-  }
-
-  /// Its own method so the global translations are in scope: `_offer` binds a
-  /// local `t` to the panel's strings, which shadows them for the whole body.
-  void _sayCatalogUnreachable() => widget.services.statusBar.setMessage(key: 'extensions:upgradeOffer', text: t.extensionsPanel.upgradeUnreachable);
-
-  Future<void> _offer({required bool operatorAsked}) async {
-    final settings = widget.services.settings;
-    // Behind the experiment until this goes to everybody, at which point this
-    // one condition is what changes.
-    if (!settings.experimentEnabled(kCatalogExperiment)) return;
     // Nowhere to put the replacements: web has no extension store, so every
     // step of the upgrade no-ops and it ends in the failure dialog — asked
     // again on every launch, and never able to answer differently.
     if (!InstalledExtensions.isSupported) return;
+    // A fresh install starts upgraded (seedExtensionsMigratedDefault), so
+    // this is only ever asked of one that has extensions of its own.
     if (settings.extensionsMigrated) return;
-    // Not while onboarding still owns the screen: a fresh install has no
-    // extensions set up to carry, and stacking this behind the callsign
-    // question asks for a decision about something they have not met.
-    if (!settings.defaultProfileCallsignDefined) return;
     // Asked BEFORE the dialog, so nobody is shown a button that cannot work.
-    if (!await canReachCatalog(widget.services.extensions)) {
-      // Silence is right at a boot nobody was watching, and wrong when the
-      // operator has just switched the experiment on and is looking at the
-      // screen: "nothing happened" is exactly the complaint this gate's own
-      // listener exists to answer. Offline, unwired, empty channel — the
-      // operator can act on none of them, so they read the one sentence that
-      // matters and it is retried next launch.
-      if (operatorAsked) _sayCatalogUnreachable();
-      return;
-    }
+    // Unreachable is silent: this runs at a boot nobody was watching, and the
+    // offer is retried next launch.
+    if (!await canReachCatalog(widget.services.extensions)) return;
     if (!mounted) return;
-    // Re-read after that round trip: it is a forced fetch, seconds of it on a
-    // slow link, and the screen is live throughout. An operator who switched
-    // the experiment back off in the meantime would otherwise be asked
-    // anyway — and accepting would migrate under a flag that is now off,
-    // which `extensionsMigrated` then reports as done forever.
-    if (!settings.experimentEnabled(kCatalogExperiment)) return;
 
     // This gate sits in MaterialApp.builder, ABOVE the Navigator, so its own
     // context cannot push a dialog: showDialog would throw into this

@@ -17,7 +17,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../config/experiments.dart';
+import 'installed_extensions.dart';
 
 mixin ExtensionStoreSettings on ChangeNotifier {
   SharedPreferences get prefs;
@@ -69,7 +69,6 @@ mixin ExtensionStoreSettings on ChangeNotifier {
 
   /// Whether this install has moved its extensions to the catalog.
   ///
-  /// Separate from the experiment, which only says the upgrade is OFFERED.
   /// Nothing is withdrawn until this is true, so an operator who defers the
   /// upgrade — or who is offline when it is offered — keeps every extension
   /// they had. Set only once the twins are in hand.
@@ -82,20 +81,44 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     notifyListeners();
   }
 
+  /// Consecutive launches whose upgrade check found no usable catalog; see
+  /// `canReachCatalog`. Persisted because the check asks once a launch.
+  static const _upgradeCheckMissesKey = 'catalogUpgradeCheckMisses';
+
+  int get upgradeCheckMisses => prefs.getInt(_upgradeCheckMissesKey) ?? 0;
+
+  Future<void> setUpgradeCheckMisses(int misses) async {
+    if (misses == 0) {
+      await prefs.remove(_upgradeCheckMissesKey);
+    } else {
+      await prefs.setInt(_upgradeCheckMissesKey, misses);
+    }
+  }
+
+  /// Decides, once per install, whether it starts on catalog extensions: yes
+  /// for a new one, which has nothing of its own to carry and runs on the
+  /// bundles the app ships; no for one that predates this, which is offered
+  /// the upgrade instead (ExtensionUpgradeGate).
+  ///
+  /// Recorded rather than defaulted, like `seedSyncEnabledDefault`, and on
+  /// the same signal — so it has to run before onboarding can set a
+  /// callsign. The getter's fallback stays false, so an existing install is
+  /// never moved without being asked. Nothing is recorded where there is no
+  /// store to install into.
+  Future<void> seedExtensionsMigratedDefault() async {
+    if (!InstalledExtensions.isSupported || prefs.containsKey(_extensionsMigratedKey)) return;
+    await setExtensionsMigrated(!defaultProfileCallsignDefined);
+  }
+
+  bool get defaultProfileCallsignDefined;
+
   /// Whether the catalog is where this app's extensions come from NOW — the
   /// one question every withdrawal, pre-load and adoption asks.
-  ///
-  /// Both halves: the experiment says the upgrade is on offer here, and
-  /// [extensionsMigrated] says it was taken. Turning the experiment off puts
-  /// the built-ins back without forgetting that the upgrade happened, so
-  /// turning it on again does not re-run it.
-  bool get catalogExtensionsInUse => experimentEnabled(kCatalogExperiment) && extensionsMigrated;
-
-  bool experimentEnabled(String key);
+  bool get catalogExtensionsInUse => extensionsMigrated;
 
   /// Which catalog twins this app has already fetched for a built-in the
-  /// operator had switched on ({key: version}), when the catalog experiment
-  /// withdrew the built-ins.
+  /// operator had switched on ({key: version}), when the upgrade withdrew
+  /// the built-ins.
   ///
   /// The same job [extensionPreloaded] does for the bundles the app ships, for
   /// the ones it has to go and get. An empty value records a key the catalog

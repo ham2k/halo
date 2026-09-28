@@ -384,11 +384,6 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// The Radio panel's descriptor names the designated radio and lists the
   /// configured ones, so its form is only as fresh as its last registration
   /// (docs/design/layouts.md). Registering is what publishes it.
-  ///
-  /// In the mixin, and unconditional on the experiment, for the same reason
-  /// the catalog listener is: a view that installed this only while CAT was
-  /// on would leave the picker stale for exactly the operator who turned it
-  /// on mid-session.
   void _onEquipmentChanged() {
     if (!mounted) return;
     final key = _equipmentDescriptorKey();
@@ -1755,69 +1750,67 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         ],
       ),
     );
-    // Registered only with the CAT experiment on, and re-registered whenever
-    // CatService notifies — see [_onEquipmentChanged], which is what keeps
-    // the radio picker's options and the Automatic option's name current.
-    if (dockServices.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) {
-      final cat = dockServices.cat;
-      final designated = switch (cat.radio1) {
-        LocalRadio(:final uuid) => cat.nodeFor(uuid),
-        _ => null,
-      };
-      service.registerNative(
-        PanelDefinition(
-          id: radioPanelId,
-          title: t.tabs.radio,
-          description: t.layout.panels.radioDescription,
-          icon: 'radio',
-          source: PanelSource.native,
-          views: sharedViews,
-          // A two-radio shack wants both front panels side by side, which is
-          // the case this exists for — and, as with Clock and Weather, a
-          // placement in Home and one in an operation are independent
-          // locations rather than one shared config.
-          multiple: true,
-          // Frequency, mode and power on a row that has to stay legible: the
-          // seven-segment readout scales down with the pane, but below this
-          // the digits stop being readable across a room, which is the only
-          // reason to have a rig's display on screen at all.
-          minWidth: 3,
-          minHeight: 2,
-          formFields: [
-            {
-              'type': 'field',
-              'key': radioNodeKey,
-              'fieldType': 'select',
-              'label': t.layout.panels.radioRadio,
-              'value': radioNodeAuto,
-              'options': [
-                {
-                  // The label carries the designated radio's NAME, so the
-                  // settings row reads "Radio: VFO A — Left Radio" and the
-                  // operator can see which rig Automatic currently means
-                  // without opening Station Configuration to find out.
-                  'label': designated == null ? t.layout.panels.radioAutoNone : t.layout.panels.radioAutoNamed(name: cat.displayNameFor(designated)),
-                  'value': radioNodeAuto,
-                },
-                for (final node in cat.nodes)
-                  if (cat.typeFor(node)?.category == kCategoryTransceiver) {'label': cat.displayNameFor(node), 'value': node.uuid},
-              ],
-            },
-            {
-              'type': 'field',
-              'key': radioStyleKey,
-              'fieldType': 'select',
-              'label': t.layout.panels.radioStyle,
-              'value': radioStyleLcd,
-              'options': [
-                {'label': t.layout.panels.radioStyleLcd, 'value': radioStyleLcd},
-                {'label': t.layout.panels.radioStyleModern, 'value': radioStyleModern},
-              ],
-            },
-          ],
-        ),
-      );
-    }
+    // Re-registered whenever CatService notifies — see [_onEquipmentChanged],
+    // which is what keeps the radio picker's options and the Automatic
+    // option's name current.
+    final cat = dockServices.cat;
+    final designated = switch (cat.radio1) {
+      LocalRadio(:final uuid) => cat.nodeFor(uuid),
+      _ => null,
+    };
+    service.registerNative(
+      PanelDefinition(
+        id: radioPanelId,
+        title: t.tabs.radio,
+        description: t.layout.panels.radioDescription,
+        icon: 'radio',
+        source: PanelSource.native,
+        views: sharedViews,
+        // A two-radio shack wants both front panels side by side, which is
+        // the case this exists for — and, as with Clock and Weather, a
+        // placement in Home and one in an operation are independent
+        // locations rather than one shared config.
+        multiple: true,
+        // Frequency, mode and power on a row that has to stay legible: the
+        // seven-segment readout scales down with the pane, but below this
+        // the digits stop being readable across a room, which is the only
+        // reason to have a rig's display on screen at all.
+        minWidth: 3,
+        minHeight: 2,
+        formFields: [
+          {
+            'type': 'field',
+            'key': radioNodeKey,
+            'fieldType': 'select',
+            'label': t.layout.panels.radioRadio,
+            'value': radioNodeAuto,
+            'options': [
+              {
+                // The label carries the designated radio's NAME, so the
+                // settings row reads "Radio: VFO A — Left Radio" and the
+                // operator can see which rig Automatic currently means
+                // without opening Station Configuration to find out.
+                'label': designated == null ? t.layout.panels.radioAutoNone : t.layout.panels.radioAutoNamed(name: cat.displayNameFor(designated)),
+                'value': radioNodeAuto,
+              },
+              for (final node in cat.nodes)
+                if (cat.typeFor(node)?.category == kCategoryTransceiver) {'label': cat.displayNameFor(node), 'value': node.uuid},
+            ],
+          },
+          {
+            'type': 'field',
+            'key': radioStyleKey,
+            'fieldType': 'select',
+            'label': t.layout.panels.radioStyle,
+            'value': radioStyleLcd,
+            'options': [
+              {'label': t.layout.panels.radioStyleLcd, 'value': radioStyleLcd},
+              {'label': t.layout.panels.radioStyleModern, 'value': radioStyleModern},
+            ],
+          },
+        ],
+      ),
+    );
     // Registered only with the experiment on. A saved arrangement holding one
     // of these then falls to the missing-panel placeholder rather than
     // vanishing, which is the same deal an uninstalled extension's panel

@@ -122,7 +122,6 @@
     "upgradeBody": "Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.",
     "upgradeAction": "Actualizar ahora",
     "upgradeLater": "Más tarde",
-    "upgradeUnreachable": "No se pudo conectar con el catálogo de extensiones, así que tus extensiones no se actualizaron. Lo intentaremos más tarde.",
     "upgradeDoneTitle": "Tus extensiones están listas",
     "upgradeDoneBody": "Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.",
     "upgradeDoneUnserved": "No se trasladaron: ${names}.",

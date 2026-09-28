@@ -21,7 +21,6 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/extensions/catalog_service.dart';
 import '../../services/error_reporting_service.dart';
-import '../../config/experiments.dart' show kCatalogExperiment;
 import '../../services/extensions/extension_relevance.dart';
 import '../../services/extensions/extension_info.dart' show hooksClaimRef;
 import '../../services/halo_services.dart';
@@ -52,11 +51,10 @@ class CatalogTier {
   bool _fetchStarted = false;
 
   /// Whether the tier appears at all. Where the Extensions panel's Catalog
-  /// section appears — a platform with a store to install into, and only
-  /// under the experiment while that section is still gated. Off, the tier is
-  /// absent and nothing is fetched: a section that is not built must not be
-  /// asking the catalog anything.
-  static bool shownFor(HaLoServices services) => InstalledExtensions.isSupported && services.settings.experimentEnabled(kCatalogExperiment);
+  /// section appears — a platform with a store to install into. Elsewhere the
+  /// tier is absent and nothing is fetched: a section that is not built must
+  /// not be asking the catalog anything.
+  static bool shownFor(HaLoServices services) => InstalledExtensions.isSupported;
 
   /// Catalog entries claiming any of [refs], minus [alreadyOffered]. What
   /// answers an operation opened long after the extension that wrote its

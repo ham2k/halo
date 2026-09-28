@@ -207,9 +207,10 @@ class _OnboardingContentState extends State<_OnboardingContent> {
       selection: TextSelection.collapsed(offset: call.length),
     );
     final overrides = settings.extensionOverrides;
-    _pota = overrides['pota'] ?? _pota;
-    _sota = overrides['sota'] ?? _sota;
-    _wwff = overrides['wwff'] ?? _wwff;
+    final extensions = widget.services.extensions;
+    _pota = overrides[extensions.offeredKeyFor('pota')] ?? overrides['pota'] ?? _pota;
+    _sota = overrides[extensions.offeredKeyFor('sota')] ?? overrides['sota'] ?? _sota;
+    _wwff = overrides[extensions.offeredKeyFor('wwff')] ?? overrides['wwff'] ?? _wwff;
     _consentAppData = (settings.settingValue(SettingsService.privacyGroup, 'consentAppData') as bool?) ?? _consentAppData;
     _consentOpData = (settings.settingValue(SettingsService.privacyGroup, 'consentOpData') as bool?) ?? _consentOpData;
 

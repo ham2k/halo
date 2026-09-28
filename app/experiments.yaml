@@ -18,25 +18,11 @@
 # experiment and a setting is worth more confusion than it saves typing.
 
 experiments:
-  # Station equipment and CAT control (docs/design/cat.md). Reveals the
-  # Station Configuration settings section, on every platform including web
-  # (HALO-64: the serial transport works there via the Web Serial API).
-  # A radio needing TCP or the Icom network transport still fails loudly at
-  # connect on web — neither has a web implementation — same as before.
-  # The key stays 'gato' on purpose. It is what is written into stored
-  # settings, so renaming it silently turns the experiment off for
-  # everyone who has it on. The codename is retired from the code; the
-  # persisted key is not worth a migration, because 'cat' is already an
-  # alias and `EXP CAT` is what anyone actually types.
-  - key: gato
-    name: Station Configuration
-    description: Connect and control radios and other station equipment.
-    aliases: [cat, rig]
   # Keying through a CAT radio: F1-F8 messages — CW text, or the radio's
   # own voice memories in a Phone mode — the keyer area, WPM and KEYER
-  # (docs/design/cat.md § CW keying, § Voice keying). Does nothing without
-  # Station Configuration, and is gated on its own so the keying surfaces
-  # can be tried — or left off — separately from the rest of CAT.
+  # (docs/design/cat.md § CW keying, § Voice keying). Gated on its own so
+  # the keying surfaces can be tried — or left off — separately from the rest
+  # of CAT.
   - key: keyer
     name: Keying
     description: Key CW messages, or play the radio's voice memories, on F1-F8 through a CAT-controlled radio.
@@ -51,8 +37,7 @@ experiments:
     description: Enter keys the exchange's CW messages or voice memories as it moves through a contact.
   # The CAT server (docs/design/cat.md § CAT server): other apps control the
   # Main VFO radio through HaLo, which stands in for rigctld, flrig, Ham
-  # Radio Deluxe or N3FJP. On top of Station Configuration, which it needs a
-  # radio from, and gated on its own because it opens a listening socket.
+  # Radio Deluxe or N3FJP. Gated because it opens a listening socket.
   - key: server
     name: CAT Server
     description: Let other apps (WSJT-X, loggers, etc) control the radio through Ham2K Logger.
@@ -96,21 +81,3 @@ experiments:
     description: Show a screen or window from one of your other devices in a panel.
     aliases: [screens, screenshare]
     private: true
-
-  # The extension catalog: the Catalog section of Manage Extensions — browse,
-  # install and update from catalog.ham2k.net — and the unattended update
-  # check behind its "Update available" badge and notice (the gate sits at
-  # `CatalogUpdateCheck.check`, so nothing is asked and nothing is stamped).
-  #
-  # Gated because the catalog is not live yet: without the gate the section
-  # reads "Catalog unreachable" to every tester, and the check asks a host
-  # with nothing to say every six hours. Outside the gate, on purpose: a
-  # catalog link opened by hand (deep_link_router.dart) and the Developer
-  # address field (developer_panel.dart) — each says why.
-  # It also withdraws every non-core built-in and pre-loads eight of the
-  # catalog's own instead (HALO-581), so what the app runs under it is what
-  # the catalog serves. Core extensions stay, `ham2k-lofi` among them, so
-  # sync keeps working.
-  - key: catalog
-    name: Extension Catalog
-    description: Run on catalog extensions instead of the built-in ones, and browse, install and update from catalog.ham2k.net.

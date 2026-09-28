@@ -204,12 +204,18 @@ void main() {
     // that group is still on Spots, and its band names Spots.
     await startEditing(tester);
     await openAddSheet(tester);
-    // What stays on offer is everything not already placed: Clock, Weather
-    // and Web Site are all placeable more than once, so they stay listed
-    // whether or not one is already in the view, and none of the three ships
+    // What stays on offer is everything not already placed: Clock, Weather,
+    // Web Site and Radio are all placeable more than once, so they stay listed
+    // whether or not one is already in the view, and none of them ships
     // in the default arrangement besides. Every pane the discard restored is
     // gone from this list, which is what it is asserting.
-    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website'], reason: 'every single-placement pane is in the view again');
+    expect(sheetOf(tester).available.map((p) => p.id), [
+      'clock',
+      'weather',
+      'solar',
+      'website',
+      'radio',
+    ], reason: 'every single-placement pane is in the view again');
 
     await unmount(tester);
   });
@@ -224,7 +230,7 @@ void main() {
     // the repeatable panes plus the ones that ship outside it. (The empty
     // sheet's own rendering is layout_sheet's to prove — it cannot be
     // reached from this view any more.)
-    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website']);
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website', 'radio']);
     await tester.tap(find.byIcon(MdiIcons.check));
     await tester.pumpAndSettle();
 
@@ -234,13 +240,13 @@ void main() {
     // A pane taken out has to have a way back that isn't Reset Layout.
     // Catalog order is registration order, so the repeatable Clock trails the
     // single-placement panes.
-    expect(sheetOf(tester).available.map((p) => p.id), ['info', 'clock', 'weather', 'solar', 'website']);
+    expect(sheetOf(tester).available.map((p) => p.id), ['info', 'clock', 'weather', 'solar', 'website', 'radio']);
     // The whole row, not just its plus — and the add is the sheet's last act.
     await tester.tap(find.descendant(of: find.byType(LayoutSheet), matching: find.text(tabs.info)));
     await tester.pumpAndSettle();
     expect(find.byType(LayoutSheet), findsNothing, reason: 'adding a panel dismisses the sheet');
     await openAddSheet(tester);
-    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website'], reason: 'and once back, it is no longer on offer');
+    expect(sheetOf(tester).available.map((p) => p.id), ['clock', 'weather', 'solar', 'website', 'radio'], reason: 'and once back, it is no longer on offer');
 
     await unmount(tester);
   });

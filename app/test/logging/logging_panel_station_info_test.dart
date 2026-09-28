@@ -28,7 +28,6 @@ void main() {
     final harness = await makeHaLoServices();
     services = harness.services;
     operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
-    await services.settings.setExperimentEnabled('gato', true);
   });
 
   Widget wrap(Widget child) => TranslationProvider(

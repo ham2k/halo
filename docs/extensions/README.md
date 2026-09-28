@@ -43,7 +43,7 @@ that imports it and calls `defineExtension`:
                                // switched on. The packer refuses it in a
                                // distributed bundle, where the operator's
                                // having installed it IS the answer.
-  "experiments": ["gato"],     // rare. Any experiments.yaml KEY; availability
+  "experiments": ["keyer"],    // rare. Any experiments.yaml KEY; availability
                                // gate: hidden from the panel and
                                // never loaded unless EVERY listed experiment
                                // (app/experiments.yaml) is enabled; the user's
@@ -65,7 +65,7 @@ that imports it and calls `defineExtension`:
 }
 ```
 
-Under the **Extension Catalog** experiment the app offers none of its own
+Once the upgrade to catalog extensions is taken the app offers none of its own
 extensions but the core ones, and pre-loads eight of the catalog's instead —
 see [distribution.md](distribution.md).
 

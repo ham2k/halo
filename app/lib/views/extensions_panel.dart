@@ -20,7 +20,6 @@ import 'package:file_selector/file_selector.dart' show XFile;
 import 'package:halo_core/halo_core.dart' show nowUtc;
 import '../services/extensions/catalog_service.dart';
 import '../services/error_reporting_service.dart';
-import '../config/experiments.dart' show kCatalogExperiment;
 import '../services/extensions/extension_relevance.dart' show ExtensionRelevance, OperatorGeo, kAlwaysSuggested, kRelevanceSoon, relevanceBand;
 import '../services/extensions/extension_installer.dart';
 import '../services/extensions/extension_service.dart';
@@ -139,21 +138,15 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
 
   /// The Catalog section shows where Install from file does — the full
   /// panel, on a platform with a store: a hook-filtered panel is asking a
-  /// narrower question, and the web has nowhere to install into — and only
-  /// under the experiment while the catalog is not live. Hidden entirely:
-  /// no header, no status line, and no fetch — a section that is not built
-  /// but still asks the catalog is a request nobody can see the reason for.
-  bool get _catalogShown => widget.onlyHook == null && InstalledExtensions.isSupported && widget.services.settings.experimentEnabled(kCatalogExperiment);
-
-  /// What [_catalogShown] answered last, so the settings change that flips
-  /// the experiment is told apart from every other one (an override, a
-  /// revocation) — those rebuild, this one also fetches.
-  bool _catalogWasShown = false;
+  /// narrower question, and the web has nowhere to install into. Hidden
+  /// entirely: no header, no status line, and no fetch — a section that is
+  /// not built but still asks the catalog is a request nobody can see the
+  /// reason for.
+  bool get _catalogShown => widget.onlyHook == null && InstalledExtensions.isSupported;
 
   @override
   void initState() {
     super.initState();
-    _catalogWasShown = _catalogShown;
     _subscribe();
     // Usually already memoized by the runtime boot; on a broken runtime
     // this is what still populates the panel.
@@ -176,7 +169,6 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.services != widget.services) {
       oldWidget.services.flags.removeListener(_onFlagsChanged);
-      oldWidget.services.settings.removeListener(_onSettingsChanged);
       _subscribe();
     }
   }
@@ -185,18 +177,6 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     final services = widget.services;
     _listenable = Listenable.merge([services.settings, services.catalogUpdateCheck, services.flags, services.extensionInstaller]);
     services.flags.addListener(_onFlagsChanged);
-    services.settings.addListener(_onSettingsChanged);
-  }
-
-  /// The experiment flipped from the Experiments panel over this one: the
-  /// fetch initState skipped is due now, without reopening. The service
-  /// answers from its cache within its window, so flipping back and forth
-  /// is not a request each time.
-  void _onSettingsChanged() {
-    final shown = _catalogShown;
-    if (shown == _catalogWasShown) return;
-    _catalogWasShown = shown;
-    if (shown && !_catalogLoading) unawaited(_loadCatalog());
   }
 
   void _onFlagsChanged() {
@@ -209,8 +189,8 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
   ///
   /// [force] bypasses the service's own cache — what an opening does, since
   /// the operator asking is the case the cache must not answer. The listener
-  /// paths below leave it alone: a geo arriving or an experiment flipping is
-  /// the app noticing something, not somebody waiting on an answer.
+  /// path below leaves it alone: a geo arriving is the app noticing
+  /// something, not somebody waiting on an answer.
   Future<void> _loadCatalog({bool force = false}) async {
     final geo = widget.services.flags.operatorGeo;
     setState(() {
@@ -230,7 +210,6 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
   @override
   void dispose() {
     widget.services.flags.removeListener(_onFlagsChanged);
-    widget.services.settings.removeListener(_onSettingsChanged);
     _searchController.dispose();
     _scroll.dispose();
     super.dispose();
@@ -330,10 +309,9 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
   /// The catalog's release for [info] when it is newer than what is
   /// installed, from either the listing on screen or the unattended check.
   CatalogEntry? _catalogEntryFor(ExtensionInfo info) {
-    // `_catalogShown` for the same reason the row's badge reads it: a check
-    // that ran before the catalog was switched off leaves a pending update
-    // with nowhere to go, and an Update button that installs from a catalog
-    // the panel is no longer showing is worse than the badge would have been.
+    // `_catalogShown` for the same reason the row's badge reads it: an Update
+    // button that installs from a catalog the panel is not showing is worse
+    // than no badge at all.
     if (!info.isInstalled || !_catalogShown) return null;
     for (final entry in [
       ?(_catalog ?? const <CatalogEntry>[]).where((e) => e.key == info.key).firstOrNull,
@@ -431,8 +409,8 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         // installable) and the installed store's versions (a higher catalog
         // version is an Update).
         //
-        // Offering, not merely shipping. Under the catalog experiment the app
-        // withdraws its own extensions, and the store will then install a
+        // Offering, not merely shipping. Once upgraded to catalog extensions
+        // the app withdraws its own extensions, and the store will then install a
         // catalog bundle for one of those keys — so a panel judging by what
         // the app ships would show "Built in" over a row that is in fact
         // installable, and disagree with the door about the same bundle.
@@ -447,8 +425,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         final catalogByKey = {for (final entry in _catalog ?? const <CatalogEntry>[]) entry.key: entry};
         final pendingUpdates = widget.services.catalogUpdateCheck.pendingUpdates;
         // The badge follows the section: the Update button it points at is
-        // a catalog row, and a check that ran before the experiment was
-        // flipped off would otherwise leave a badge with nowhere to go.
+        // a catalog row, and in a hook-filtered panel there is none.
         bool hasUpdate(String key) =>
             _catalogShown &&
             ((catalogByKey[key]?.isNewerThan(installedVersions[key]) ?? false) || (pendingUpdates[key]?.isNewerThan(installedVersions[key]) ?? false));

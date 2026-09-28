@@ -7,8 +7,8 @@ The default Kenwood driver and the KX2/KX3 definitions retain their behavior.
 
 ## Connections
 
-Enable Station Configuration with `EXP CAT`; enable `EXP KEYER` to exercise
-CW and voice controls. The K4 uses these existing feature gates.
+Enable `EXP KEYER` to exercise CW and voice controls. The K4 uses this
+existing feature gate.
 
 - **USB:** connect the rear USB-B PC socket, select either unused virtual COM
   port, and match its **Serial USB-PCn: Baud Rate** setting. The form starts

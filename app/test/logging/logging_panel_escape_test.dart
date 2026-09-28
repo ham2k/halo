@@ -113,7 +113,6 @@ void main() {
     // logging fields hear the same keystroke AFTER it. Were they to ask
     // "is anything running?" again, the stop just made would read as
     // nothing, and one Escape would kill the repeat AND drop the edit.
-    await services.settings.setExperimentEnabled('gato', true);
     await services.settings.setExperimentEnabled('keyer', true);
     // Stands in for OperationView's handler: same place in the dispatch,
     // same call.
@@ -148,7 +147,6 @@ void main() {
   testWidgets('the same holds with focus in a compose field', (tester) async {
     // The fields' own Escape (LoggingSession.escapeClaimed), not the
     // panel's: the two read the same answer from the one stop.
-    await services.settings.setExperimentEnabled('gato', true);
     await services.settings.setExperimentEnabled('keyer', true);
     bool viewHandler(KeyEvent event) {
       if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.escape) return false;

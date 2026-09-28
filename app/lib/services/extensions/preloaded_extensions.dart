@@ -1,11 +1,11 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The extensions the app ships already packaged, for the catalog experiment
-// to start from (HALO-581, docs/extensions/distribution.md).
+// The extensions the app ships already packaged, for the upgrade to catalog
+// extensions to start from (HALO-581, docs/extensions/distribution.md).
 //
-// Under that experiment the app offers none of its own extensions but the
-// core ones, so it ships eight of the catalog's instead — `.h2kext` bundles
+// Once upgraded the app offers none of its own extensions but the core ones,
+// so it ships eight of the catalog's instead — `.h2kext` bundles
 // under `assets/preloaded-extensions/`, installed into the ordinary store on
 // first run. Once installed they are ordinary installed extensions: the same
 // panel rows, the same update check, the same Update and uninstall.
@@ -65,6 +65,24 @@ const kPreloadReplaces = <String, String>{
 /// what has no twin, and the operator keeps it until they install the ones
 /// they want.
 const kBuiltInsWithoutTwin = {'qp', 'stateparks'};
+
+/// Writes each built-in's on/off choice onto the shipped twin that replaces
+/// it, over whatever the twin holds.
+///
+/// For an upgrade being taken. The pre-load carries a choice only on its
+/// FIRST install, so an upgrade that reverted and is taken again finds its
+/// twins already there, still holding the first attempt's choices — and a
+/// built-in switched in between would be lost. Overwriting is right here:
+/// while the upgrade is not taken the twin is withdrawn, so the built-in's
+/// choice is the only one the operator could have made.
+Future<void> carryBuiltInChoicesToTwins(SettingsService settings) async {
+  final overrides = settings.extensionOverrides;
+  final carried = {
+    for (final MapEntry(key: twin, value: builtIn) in kPreloadReplaces.entries)
+      if (overrides[builtIn] case final on? when overrides[twin] != on) twin: on,
+  };
+  if (carried.isNotEmpty) await settings.setExtensionOverrides({...overrides, ...carried});
+}
 
 /// The built-in whose stored state [key] inherits, or null.
 ///
@@ -188,6 +206,9 @@ Version? _parse(String? raw) {
 /// service's two contributions — recording the install and copying keychain
 /// items — arrive as callbacks.
 ///
+/// [builtInDefaults] is each shipped built-in's `enabledByDefault`, for a
+/// predecessor the operator never switched either way.
+///
 /// Every failure is per-bundle and reported, never fatal. Seven working
 /// extensions and one that says why beats a boot that stops on the first bad
 /// zip, and the operator can install the missing one from the catalog by
@@ -196,6 +217,7 @@ Future<bool> installShippedExtensions({
   required InstalledExtensions store,
   required SettingsService settings,
   required Map<String, String?> installedVersions,
+  required Map<String, bool> builtInDefaults,
   required Future<void> Function(InspectedBundle bundle, {required bool fresh}) recordInstall,
   required Future<void> Function({required String from, required String to}) copySecrets,
   Future<ByteData> Function(String key)? loadAsset,
@@ -243,6 +265,15 @@ Future<bool> installShippedExtensions({
       if (carried) {
         await settings.copyExtensionRecords(from: replaces, to: bundle.key);
         await copySecrets(from: replaces, to: bundle.key);
+        // No choice to carry is still a state to carry: the built-in's own
+        // default. An installed extension is on unless switched off, so
+        // without this SOTA and WWFF, off by default as built-ins, arrive on
+        // — for an upgrade and for a new install that skips onboarding alike.
+        final overrides = settings.extensionOverrides;
+        final fallback = builtInDefaults[replaces];
+        if (!overrides.containsKey(bundle.key) && fallback != null) {
+          await settings.setExtensionOverrides({...overrides, bundle.key: fallback});
+        }
       }
       await store.install(inspected);
       // NOT fresh where a predecessor's state was just carried. `fresh` is

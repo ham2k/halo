@@ -522,11 +522,11 @@ constant in the view. Two sources write into it:
   Clock, Weather, Solar and Web Site are the exception: every customizable
   view offers all four, so `DockHost.registerSharedDashboardPanels` (used by
   every view via the mixin) is what registers them, and
-  `DockHost.sharedDashboardPanes` is what builds their widgets. Remote
-  Screen and Radio join them while their experiments (`remote`, `gato`) are
-  on — registered from the same place and gated there, so a saved
-  arrangement holding one falls to the missing-panel placeholder with the
-  experiment off rather than losing the operator their pane. Registering
+  `DockHost.sharedDashboardPanes` is what builds their widgets. Radio joins
+  them, and Remote Screen does while its experiment (`remote`) is on —
+  registered from the same place and gated there, so a saved arrangement
+  holding one falls to the missing-panel placeholder with the experiment off
+  rather than losing the operator their pane. Registering
   from every view rather than a single owner is deliberate —
   `PanelService.registerNative` no-ops on an identical re-registration, so
   whichever view mounts first wins and the other calls cost nothing, and no

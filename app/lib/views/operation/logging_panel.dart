@@ -228,10 +228,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
   late bool _trackingPower = _computeTrackingPower();
 
   bool _computeTrackingPower() {
-    // The same gate _withStationInfo opens with: with the experiment off it
-    // captures nothing, so claiming power is tracked would put the field in
-    // front of the operator and stamp QSOs the capture path never runs for.
-    if (!_gatoEnabled) return false;
     final settings = widget.services.settings;
     return settings.trackStationInfo && settings.stationInfoTrackedFields.contains('power');
   }
@@ -241,35 +237,21 @@ class _LoggingPanelState extends State<LoggingPanel> {
     return (vfo.freq == null && vfo.band == null) || vfo.mode == null;
   }
 
-  // Whether the 'gato' experiment is on — the single read every gate below
-  // shares, and the cat listener's own attach/detach guard. Tracked
-  // explicitly (not re-read from experimentEnabled at dispose time, which
-  // can have changed since initState if the operator flips the experiment,
-  // e.g. from the Experiments panel, without leaving this screen — that
-  // would either leak the listener into a disposed State, where a later
-  // CatService.notifyListeners() throws, or skip attaching it after a live
-  // enable, freezing the fields below). Kept in sync by _onSettingsChanged.
-  late bool _gatoEnabled = widget.services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */;
-
-  /// The CW keying surfaces (keyer area, Escape-stops-a-message) need this on
-  /// top of CAT. Kept in sync by _onSettingsChanged like _gatoEnabled.
+  /// The CW keying surfaces (keyer area, Escape-stops-a-message). Kept in
+  /// sync by _onSettingsChanged.
   late bool _keyerEnabled = widget.services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
 
   /// Enter Sends Messages, on top of the keyer. Kept in sync by
   /// _onSettingsChanged like _keyerEnabled.
   late bool _esmEnabled = widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */;
 
-  // Whether the Radio control's icon should read as CAT-configured — mirrors
-  // zeroBeatSuggestionFor's gate (operation_view.dart): the experiment check
-  // comes first so `services.cat`, a `late final` that builds a whole
-  // CatService the first time it's touched, is never built just to answer
-  // "no" for an operator without Station Configuration on.
+  // Whether the Radio control's icon should read as CAT-configured.
   late bool _hasConfiguredRadio = _computeHasConfiguredRadio();
 
   // The ROLE, not locality: a peer's radio the operator picked for the main
   // VFO is a configured radio, whether or not this device holds the session
   // to it. `_radioConnected` below is where locality is the question.
-  bool _computeHasConfiguredRadio() => _gatoEnabled && widget.services.cat.radio1 != null;
+  bool _computeHasConfiguredRadio() => widget.services.cat.radio1 != null;
 
   // Whether the main VFO's radio is actually reachable right now, as opposed
   // to merely configured — the Station Configuration button's red/green.
@@ -281,13 +263,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
   // the same fact the Station dialog's row states as availability.
   late bool _radioConnected = _computeRadioConnected();
 
-  bool _computeRadioConnected() => _gatoEnabled && widget.services.radio1IsLive;
+  bool _computeRadioConnected() => widget.services.radio1IsLive;
 
   // The main VFO's display name — the Radio control's own reflection of the
   // same name station_panel.dart's equipment list shows for it.
   late String? _radioName = _computeRadioName();
 
-  String? _computeRadioName() => _gatoEnabled ? widget.services.radio1Name : null;
+  String? _computeRadioName() => widget.services.radio1Name;
 
   /// Merges the operator's tracked station-info fields (Station
   /// Configuration's "Track Station Info for each QSO") into a QSO at save
@@ -296,7 +278,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// nest under `our`; power is top-level (`Qso.power`), matching QSON
   /// convention (freq/band/mode) rather than app-only placement.
   Map<String, dynamic> _withStationInfo(Map<String, dynamic> qso) {
-    if (!_gatoEnabled) return qso;
     final settings = widget.services.settings;
     if (!settings.trackStationInfo) return qso;
     final cat = widget.services.cat;
@@ -364,16 +345,11 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // — rebuild so it clears the moment the operator answers via
     // the Radio control, without waiting for an unrelated rebuild.
     widget.services.radio.addListener(_onRadioChanged);
-    // Gated the same way _computeHasConfiguredRadio reads it — no listener,
-    // no CatService built, when the experiment is off. _onSettingsChanged
-    // keeps this in sync with _gatoEnabled if the experiment flips later.
-    if (_gatoEnabled) {
-      widget.services.cat.addListener(_onCatChanged);
-      // A peer's rig going away or coming back is this notifier's news
-      // alone — CatService hears nothing, so without this the chip keeps
-      // whatever colour it had when the link dropped.
-      widget.services.peerRemoteRadios.addListener(_onCatChanged);
-    }
+    widget.services.cat.addListener(_onCatChanged);
+    // A peer's rig going away or coming back is this notifier's news
+    // alone — CatService hears nothing, so without this the chip keeps
+    // whatever colour it had when the link dropped.
+    widget.services.peerRemoteRadios.addListener(_onCatChanged);
     // Route the dev bridge's actions to this panel's LoggingControls — only
     // when the bridge is installed (dev/preview web), so nothing runs in
     // production or on native.
@@ -396,10 +372,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
   void dispose() {
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.radio.removeListener(_onRadioChanged);
-    if (_gatoEnabled) {
-      widget.services.cat.removeListener(_onCatChanged);
-      widget.services.peerRemoteRadios.removeListener(_onCatChanged);
-    }
+    widget.services.cat.removeListener(_onCatChanged);
+    widget.services.peerRemoteRadios.removeListener(_onCatChanged);
     // Only clear if still ours — a newer logging panel may have taken over.
     if (DevBridge.instance.actionHandler == _devAction) {
       DevBridge.instance.setFieldHandler = null;
@@ -618,10 +592,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// panel's QsoList is expensive to rebuild.
   void _onSettingsChanged() {
     final s = widget.services.settings;
-    // The 'gato' experiment can flip while this panel stays mounted (e.g.
-    // toggled from the Experiments panel over this one) — keep the cat
-    // listener's attachment and the fields it feeds in sync with it right
-    // away, rather than leaving them to drift until the next CAT event.
     final keyer = s.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
     if (keyer != _keyerEnabled) {
       // Switched off mid-message: the keyer area and its Escape go away with
@@ -631,23 +601,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
     }
     final esm = s.experimentEnabled('esm') /* stored key, see experiments.yaml */;
     if (esm != _esmEnabled) setState(() => _esmEnabled = esm);
-    final gato = s.experimentEnabled('gato') /* stored key, see experiments.yaml */;
-    if (gato != _gatoEnabled) {
-      if (gato) {
-        widget.services.cat.addListener(_onCatChanged);
-        widget.services.peerRemoteRadios.addListener(_onCatChanged);
-      } else {
-        widget.services.cat.removeListener(_onCatChanged);
-        widget.services.peerRemoteRadios.removeListener(_onCatChanged);
-      }
-      // Its own setState — _onCatChanged's below only fires one if the
-      // radio-derived fields it owns actually changed, which they don't
-      // when this flips with no CAT radio ever configured (has/connected/
-      // name all stay false/false/null), leaving build()'s own read of
-      // _gatoEnabled stale until some unrelated rebuild catches up.
-      setState(() => _gatoEnabled = gato);
-      _onCatChanged();
-    }
     final trackingPower = _computeTrackingPower();
     if (trackingPower != _trackingPower) setState(() => _trackingPower = trackingPower);
     if (s.showNumbersRow != _showNumbersRow ||
@@ -677,7 +630,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// draft's mode picks able to send — otherwise off, and Enter logs.
   EnterSends? _enterSends() {
     final send = widget.onEnterSends;
-    if (send == null || !_gatoEnabled || !_keyerEnabled || !_esmEnabled) return null;
+    if (send == null || !_keyerEnabled || !_esmEnabled) return null;
     final cat = widget.services.cat;
     final esm = cat.enterSends.value;
     if (!esm.on) return null;
@@ -827,9 +780,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
               // Escape stops every message, chain and repeat before it closes
               // or cancels anything — see LoggingSession.escapeClaimed. The
               // stop itself is OperationView's key handler's, which runs first.
-              escapeClaimed: _gatoEnabled && _keyerEnabled ? () => widget.services.cat.escapeStoppedKeying : null,
+              escapeClaimed: _keyerEnabled ? () => widget.services.cat.escapeStoppedKeying : null,
               // A call typed over a CQ stops it — see CatService.stopMessageOne.
-              onCallTyped: _gatoEnabled && _keyerEnabled ? widget.services.cat.stopMessageOne : null,
+              onCallTyped: _keyerEnabled ? widget.services.cat.stopMessageOne : null,
               enterSends: _enterSends,
               editingQso: _selectedQso,
               suggestedQso: widget.suggestedQso,
@@ -853,10 +806,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
               radioUpdates: widget.services.radio,
               hasConfiguredRadio: _hasConfiguredRadio,
               radioConnected: _radioConnected,
-              // Gated on the experiment, not on whether a radio happens to be
-              // configured — the button itself is a Station Configuration
-              // affordance that shouldn't exist for operators without it on.
-              onOpenStationConfig: _gatoEnabled ? () => _openStationConfigDialog(context) : null,
+              // Offered with no radio configured too: the dialog is where
+              // one gets configured.
+              onOpenStationConfig: () => _openStationConfigDialog(context),
               onConnectRadio: _hasConfiguredRadio ? radio1ConnectAction(widget.services.cat, connected: _radioConnected) : null,
               radioName: _radioName,
               ourItuRegion: widget.ourItuRegion,
@@ -921,7 +873,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
               onDispatcherChanged: (dispatch) => widget.services.setCommandDispatchFor(widget.operation.uuid, dispatch),
             ),
             strip: ControlStripSettings(
-              aboveEntryRow: _gatoEnabled && _keyerEnabled
+              aboveEntryRow: _keyerEnabled
                   ? KeyerArea(
                       cat: widget.services.cat,
                       services: widget.services,

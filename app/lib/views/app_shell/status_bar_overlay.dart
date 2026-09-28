@@ -150,8 +150,6 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
     super.dispose();
   }
 
-  late final bool _gatoEnabled = widget.services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */;
-
   /// The permanent statuses, in the order they take the trailing edge of the
   /// bar.
   ///
@@ -203,46 +201,44 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
                   showPeersDialog(navigatorContext, widget.services);
                 },
               ),
-      if (_gatoEnabled) ...[
-        // Whatever drives the VFO, local rig or peer's: the bar is where
-        // "is it talking to me" is answered, and a peer pick going blank
-        // here is that question left unanswered for the one radio the
-        // operator is actually working through.
-        for (final name in [widget.services.radio1Name])
-          if (name != null)
-            StatusBarPermaData(
-              key: 'radio1',
-              icon: MdiIcons.cat,
-              // Name AND state, in the Station panel's own words
-              // ([equipmentStatusLabel]): the name alone answers "which
-              // rig", which is the question the operator already knows the
-              // answer to — "is it talking to me" is the one they open the
-              // bar for.
-              //
-              // A peer's rig has no EquipmentState to label, and the
-              // question is the same one anyway: whether it is there.
-              text: switch (widget.services.cat.radio1) {
-                LocalRadio(:final uuid) => '$name: ${equipmentStatusLabel(context, widget.services.cat.stateFor(uuid))}',
-                _ => '$name: ${widget.services.radio1IsLive ? t.settings.station.statusConnected : t.settings.station.peerRadioNotAvailable}',
-              },
-              // The Radio control's own quick-access pane, not the full
-              // Station Configuration page — the same one tapping the
-              // logging row's Radio chip opens, so the two ways in do not
-              // land somewhere different.
-              onTap: () {
-                final navigatorContext = navigatorKey.currentContext;
-                if (navigatorContext == null) {
-                  // Two gestures deep — the menu opened, an entry chosen —
-                  // so a silent no-op here is the operator's action
-                  // disappearing. It means the chrome outlived the
-                  // navigator, which is worth knowing about.
-                  debugPrint('[status-bar] no navigator for the radio status');
-                  return;
-                }
-                showStationConfigDialog(navigatorContext, widget.services);
-              },
-            ),
-      ],
+      // Whatever drives the VFO, local rig or peer's: the bar is where
+      // "is it talking to me" is answered, and a peer pick going blank
+      // here is that question left unanswered for the one radio the
+      // operator is actually working through.
+      for (final name in [widget.services.radio1Name])
+        if (name != null)
+          StatusBarPermaData(
+            key: 'radio1',
+            icon: MdiIcons.cat,
+            // Name AND state, in the Station panel's own words
+            // ([equipmentStatusLabel]): the name alone answers "which
+            // rig", which is the question the operator already knows the
+            // answer to — "is it talking to me" is the one they open the
+            // bar for.
+            //
+            // A peer's rig has no EquipmentState to label, and the
+            // question is the same one anyway: whether it is there.
+            text: switch (widget.services.cat.radio1) {
+              LocalRadio(:final uuid) => '$name: ${equipmentStatusLabel(context, widget.services.cat.stateFor(uuid))}',
+              _ => '$name: ${widget.services.radio1IsLive ? t.settings.station.statusConnected : t.settings.station.peerRadioNotAvailable}',
+            },
+            // The Radio control's own quick-access pane, not the full
+            // Station Configuration page — the same one tapping the
+            // logging row's Radio chip opens, so the two ways in do not
+            // land somewhere different.
+            onTap: () {
+              final navigatorContext = navigatorKey.currentContext;
+              if (navigatorContext == null) {
+                // Two gestures deep — the menu opened, an entry chosen —
+                // so a silent no-op here is the operator's action
+                // disappearing. It means the chrome outlived the
+                // navigator, which is worth knowing about.
+                debugPrint('[status-bar] no navigator for the radio status');
+                return;
+              }
+              showStationConfigDialog(navigatorContext, widget.services);
+            },
+          ),
     ];
   }
 
@@ -334,10 +330,6 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
       // home layer: whether a row is published and whether Quick Lookup is on
       // screen both change how much room the notice and the footer get, and
       // listening only to the status bar would leave that stale.
-      // `cat` only when Station Configuration is on: it is a `late final` that
-      // builds a whole CatService the first time it is touched, and an
-      // operator without the experiment must not pay for one just so this can
-      // ask it for a radio it cannot have.
       listenable: Listenable.merge([
         widget.services.statusBar,
         widget.services.keyboardAccessory,
@@ -348,11 +340,11 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
         // (this service caches them) and the live sessions the badge counts,
         // which change on their own as a link comes up or drops.
         widget.services.peerService,
-        if (_gatoEnabled) widget.services.cat,
+        widget.services.cat,
         // A peer's rig going away or coming back is this notifier's news
         // alone — CatService hears nothing of it, so the radio row would
         // keep saying "Not available" about a rig that is back.
-        if (_gatoEnabled) widget.services.peerRemoteRadios,
+        widget.services.peerRemoteRadios,
       ]),
       builder: (context, _) {
         final statusBar = widget.services.statusBar;

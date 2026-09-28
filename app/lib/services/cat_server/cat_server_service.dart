@@ -20,10 +20,8 @@ import 'cat_server_protocol.dart';
 import 'cat_server_rig.dart';
 import 'cat_server_socket.dart';
 
-/// Whether the CAT server is offered at all: its experiment, on top of
-/// Station Configuration's.
-bool catServerExperimentEnabled(SettingsService settings) =>
-    settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ && settings.experimentEnabled(kCatServerExperiment);
+/// Whether the CAT server is offered at all.
+bool catServerExperimentEnabled(SettingsService settings) => settings.experimentEnabled(kCatServerExperiment);
 
 /// Calls [start] once the settings ask for a CAT server — now, or on the
 /// first settings change that does — and stops watching then. The service

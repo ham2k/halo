@@ -54,7 +54,7 @@ export interface HookContext {
   /// Keys of every experiment (app/experiments.yaml) currently ON for this
   /// user — for a hook whose own effect must stay invisible until an
   /// experiment gating the surface it belongs to has shipped ungated (e.g.
-  /// a `command` hook for a feature still behind `gato`, checked per-call
+  /// a `command` hook for a feature still behind `keyer`, checked per-call
   /// rather than at the whole-extension `manifest.experiments` grain, which
   /// would also hide unrelated hooks the same extension registers).
   enabledExperiments?: string[]

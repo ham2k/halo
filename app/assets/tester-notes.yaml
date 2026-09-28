@@ -9,6 +9,8 @@
     - "QSO party setup suggests counties and flags unknown locations"
     - "Multi-op operations list each operator's band and mode counts"
     - "Contest summaries show the contest name, score and its arithmetic"
+    - "New Station Configuration connects and controls your radios (Settings)"
+    - "New Extension Catalog to browse, install and update extensions (Manage Extensions)"
 
 "175":
   changes:

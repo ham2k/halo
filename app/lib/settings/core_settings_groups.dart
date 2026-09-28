@@ -569,9 +569,8 @@ const phoneKeyerActionKey = 'phoneKeyer';
 class RadioSettingsGroup extends SettingsGroup {
   final SettingsService settings;
 
-  /// The CAT server, resolved only while the section shows anything: it
-  /// reaches CAT, which an operator without the experiment never pays for.
-  /// Null where there is none to offer — a test's settings alone, or web.
+  /// The CAT server, resolved only while its experiment is on and never on
+  /// web. Null where there is none to offer — a test's settings alone.
   final CatServerService Function()? catServer;
 
   /// Open the dialogs behind [cwKeyerActionKey] and [phoneKeyerActionKey].
@@ -629,11 +628,6 @@ class RadioSettingsGroup extends SettingsGroup {
 
   @override
   Future<List<Map<String, dynamic>>> buildElements() async {
-    // Nothing here means anything without CAT, which is still behind the
-    // Station Configuration experiment — an empty group renders nothing at
-    // all (see settings_view.dart's _SettingsGroupForm), rather than a
-    // section header over nothing.
-    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ ) return [];
     final s = t.settings.radio;
     final radios = hasTransceivers?.call() ?? true;
     return [
