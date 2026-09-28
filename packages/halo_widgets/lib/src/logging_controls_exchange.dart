@@ -557,25 +557,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
       for (final c in (input['preferredCodes'] as List?) ?? const [])
         if (c is String) c,
     ];
-    final matches = matchExchangeOptions(typed, options, matchOn: on, preferred: preferred);
-
-    // What the value may be SHORT for, where a later value borrows the first
-    // one's prefix. When that reading names a real code it goes FIRST — ahead
-    // of anything the literal text matched.
-    //
-    // Consulted alongside the literal reading, never only when that matches
-    // nothing: in 7QP, `ORDES/JEF` matches `IDJEF`, `MTJEF`, `ORJEF` and
-    // `WAJEF` by NAME ("Jefferson …"), so the literal always matches, and
-    // Space would take the first — logging Idaho's Jefferson for a shorthand
-    // that unambiguously means Oregon's. The shorthand is not a guess: the
-    // first value says which state.
-    final inherited = _inheritedValue(control);
-    if (inherited == null) return matches;
-    final exact = options.where((o) => o.code.toUpperCase() == inherited.toUpperCase()).toList();
-    if (exact.isEmpty) {
-      return matches.isNotEmpty ? matches : matchExchangeOptions(inherited, options, matchOn: on, preferred: preferred);
-    }
-    return [...exact, ...matches.where((o) => o.code.toUpperCase() != inherited.toUpperCase())];
+    return matchExchangeOptionsInheriting(typed, _inheritedValue(control), options, matchOn: on, preferred: preferred);
   }
 
   /// Whether the suggestion menu is showing — what arms the arrow keys and

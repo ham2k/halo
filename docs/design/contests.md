@@ -1258,6 +1258,14 @@ uses the same dataset and widget as the on-air exchange; and **dynamic labels**,
 since ARRL DX's sent-exchange field is "Your Power" or "Your State/Province"
 depending on the station type chosen in the same form.
 
+The searchable field is `suggestions` on a `text` field
+([forms.md](../extensions/forms.md)), not as a new field type backed by
+`optionSet`: inline, because a setup form is rendered once per edit rather than
+once per QSO, and on `text`, so a host that predates it still shows a field the
+operator can type into. The QSO parties' own location uses it — counties, then
+states, provinces and `DX` marked `standalone`, since a county line runs
+between the party's own counties.
+
 **A form field key IS a ref key, and some ref keys belong to the core.** This
 bit NAQP during M4 and is worth stating outright, because nothing enforces it.
 The setup form's values are written onto the contest ref under their field keys,

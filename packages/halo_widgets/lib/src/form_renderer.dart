@@ -20,6 +20,7 @@ import 'row_select_field.dart';
 import 'secret_text_field.dart';
 import 'section_header.dart';
 import 'spacing.dart';
+import 'suggesting_text_field.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
 import 'text_template_editor.dart';
@@ -956,6 +957,21 @@ class FormRendererState extends State<FormRenderer> {
         // filter makes `uppercase: true` meaningless, and the full-width
         // layout has never honored it there.
         final multiline = fieldType == 'multiline';
+        if (fieldType == 'text' && el['suggestions'] is List) {
+          return inset(
+            SuggestingTextField(
+              field: el,
+              controller: _controllers[key]!,
+              focusNode: _focusNodes[key]!,
+              enabled: el['disabled'] != true,
+              keyboardType: _keyboardTypeFor(fieldType!),
+              textCapitalization: _capitalizationFor(fieldType, el),
+              inputFormatters: _inputFormattersFor(fieldType, el),
+              decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
+              onSubmit: submit,
+            ),
+          );
+        }
         return inset(
           TextField(
             selectAllOnFocus: false,

@@ -76,6 +76,7 @@ import {
   str,
   TYPE,
 } from "./entry.ts"
+import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
 import { tFor } from "./i18n.ts"
 import {
   allInParty,
@@ -85,8 +86,10 @@ import {
   guessedStateOf,
   nameForLocation,
   ourOwnCodes,
+  parseOurLocations,
   parseLocations,
   splitLocations,
+  stateForEntity,
 } from "./location.ts"
 import { CANADIAN_PROVINCES, US_STATES } from "./locations.ts"
 import { daysUntil, hasAlreadyRun, partyFor, partyStates, type QsoParty, ROVING_STATION_CLASSES, setupOrderOf, SUPPORTED_PARTIES } from "./parties.ts"
@@ -217,9 +220,9 @@ const ActivityHook = {
   /// A `form`, not the `options` field the entry row uses: operation settings
   /// render `refList` and `form` and silently drop every other kind
   /// (`activities_view.dart`), and the form schema has no searchable single
-  /// select. The location is therefore a plain text field — which a county
-  /// LINE needs anyway, since it is two counties and a separator rather than
-  /// one choice from a list.
+  /// select. The location is therefore a text field carrying `suggestions` —
+  /// which a county LINE needs anyway, since it is several counties and a
+  /// separator rather than one choice from a list.
   async operationControls({ operation }: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx) as Translator
     const now = Date.now()
@@ -263,20 +266,43 @@ const ActivityHook = {
     ]
 
     if (party) {
+      // A station outside the US and Canada has one answer, so it is offered
+      // rather than asked — the same entities `normalizeLocation` reads as DX.
+      const ourEntity = (entityPrefixForCall(str(operation.stationCall)) ?? "").toUpperCase()
+      const weAreDx = ourEntity !== "" && ourEntity !== "K" && ourEntity !== "VE" && !stateForEntity(party, ourEntity)
       elements.push({
         type: "field",
         fieldType: "text",
         key: "location",
         label: t("ourLocationLabel"),
-        value: ourLocationText(undefined, ref),
+        value: ourLocationText(undefined, ref) || (weAreDx ? "DX" : ""),
         placeholder: Object.keys(party.counties)[0],
+        uppercase: true,
+        // Counties inside the party, states and provinces outside it — the same
+        // list an exchange from a station not yet looked up is checked against,
+        // which already leaves out the party's own states, the one mistake the
+        // scorer alerts on. And `DX`, which `parseOurLocations` accepts in every
+        // party.
+        //
+        // A county line is a line between the party's OWN counties, so
+        // everything else is only valid on its own.
+        suggestions: [...exchangeOptionsFor(party, undefined), { code: "DX" }].map((option) =>
+          party.counties[option.code] === undefined ? { ...option, standalone: true } : option,
+        ),
+        ...(party.options.countyLine
+          ? {
+              multiValue: {
+                separator: COUNTY_LINE_SEPARATOR,
+                ...(exchangeInheritPrefix(party) ? { inheritPrefix: exchangeInheritPrefix(party) } : {}),
+              },
+              // A comma, which `splitLocations` reads as a separator too,
+              // written as the slash the field splits on.
+              transforms: exchangeTransforms(party),
+            }
+          : {}),
       })
       if (party.options.countyLine) {
-        const [first, second] = Object.keys(party.counties)
-        elements.push({
-          type: "markdown",
-          text: t("ourLocationLineHelp", { example: `${first}${COUNTY_LINE_SEPARATOR}${second ?? first}` }),
-        })
+        elements.push({ type: "markdown", text: t("ourLocationLineHelp") })
       }
       if (party.exchange.name) {
         elements.push({
@@ -623,7 +649,7 @@ const AdifFieldsHook = {
     // `operation` is already the segment-effective one for this contact (the
     // core generator resolves it), so our county is simply the operation's.
     const ours = ourLocationText(operation as Record<string, unknown>)
-    const weAreInParty = allInParty(parseLocations(party, ours))
+    const weAreInParty = allInParty(parseOurLocations(party, ours))
     const theirs = str(qsoRef?.location).toUpperCase()
     const ourSerial = serialOf(qsoRef?.ourSerial)
     const theirSerial = serialOf(qsoRef?.theirSerial)

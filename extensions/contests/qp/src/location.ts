@@ -328,6 +328,20 @@ export function parseLocations(
   return locations
 }
 
+/// OUR location, from setup — `parseLocations`, plus `DX` whatever the party
+/// counts. A station outside the US and Canada has no county, state or
+/// province to give, and every party accepts entries from them; without this
+/// `DX` resolves to nothing (we have no entity prefix of our own to hand
+/// `normalizeLocation`), and the whole log scores zero under an `ourLocation`
+/// alert.
+export function parseOurLocations(party: QsoParty, text: string | undefined): PartyLocation[] {
+  const locations = parseLocations(party, text)
+  if (splitLocations(text).includes("DX") && !locations.some((location) => location.code === "DX")) {
+    locations.push({ code: "DX", multCode: "DX", name: nameForLocation(party, "DX"), inParty: false, sent: "DX" })
+  }
+  return locations
+}
+
 /// What a station who sent us no exchange is recorded as — the ONE answer the
 /// scorer and both exports read, so a contact cannot be scored under one
 /// location and filed under another.

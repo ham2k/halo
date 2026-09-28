@@ -6,6 +6,7 @@
 
 "upcoming":
   changes:
+    - "QSO party setup suggests counties and flags unknown locations"
     - "Multi-op operations list each operator's band and mode counts"
     - "Contest summaries show the contest name, score and its arithmetic"
 

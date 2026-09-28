@@ -2203,6 +2203,27 @@ export interface FormField {
   /// that follows the uppercase-unless-explicitly-mixed-case rule (grids,
   /// states, RSTs) while free-prose fields (names, notes) stay unflagged.
   uppercase?: boolean
+  /// Only used when fieldType === 'text': the codes this field takes, offered
+  /// as the operator types (matched on code and name, like a `kind: 'options'`
+  /// logging control) and checked on the way out — a value that is not one of
+  /// them is flagged beside the field. Flagged, not refused: Save still writes
+  /// it. A host that predates this renders the plain text field, and so does a
+  /// settings list (or a field with an `icon`), which edits text in a row
+  /// dialog of its own.
+  ///
+  /// `standalone` marks a code that is only valid as the WHOLE value, never as
+  /// one of a `multiValue` list — a state beside a county on a QSO party
+  /// county line. It is not suggested once the field holds a separator, and
+  /// is flagged there.
+  suggestions?: { code: string; name?: string; standalone?: boolean }[]
+  /// Only used with `suggestions`: the field holds several codes joined by
+  /// `separator` (a QSO party county line, `ALB/SCH`), each suggested and
+  /// checked on its own. `inheritPrefix` as on a logging control's multiValue.
+  multiValue?: { separator: string; inheritPrefix?: number }
+  /// Only used with `suggestions`: live-reformatting passes applied as the
+  /// operator types, as on a logging control — a county line typed with a
+  /// comma becomes the slash its `multiValue` separator is.
+  transforms?: { pattern: string; replacement: string; flags?: string }[]
   /// The choices for 'select', 'radio', and 'multiselect'. Either inline
   /// options, or the `$`-prefixed name of a system list (e.g.
   /// `"$core.bands"`) — a named vocabulary the app resolves before

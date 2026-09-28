@@ -71,6 +71,7 @@ import {
   outOfPartyTables,
   type PartyLocation,
   parseLocations,
+  parseOurLocations,
   type Standing,
 } from "./location.ts"
 import { tFor } from "./i18n.ts"
@@ -336,7 +337,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     const mode = scoringModeFor(party, superMode)
 
     // OUR side, from the segment-effective ref: this is what a rover changes.
-    const ourLocations = parseLocations(party, ourLocationText(operation, ref as Record<string, unknown>))
+    const ourLocations = parseOurLocations(party, ourLocationText(operation, ref as Record<string, unknown>))
     if (ourLocations.length === 0) {
       // Nothing can be scored until the operator says where they are — every
       // QSO is worth our-counties × theirs, and ours is zero.

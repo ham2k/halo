@@ -85,6 +85,34 @@ List<ExchangeOption> matchExchangeOptions(
   return [for (final entry in matched.take(limit)) entry.option];
 }
 
+/// [matchExchangeOptions] for a later value in a multi-value field, which may
+/// be SHORT for [inherited] — the code it reads as once it borrows the first
+/// value's prefix (`inheritedCandidate`). When that reading names a real code
+/// it goes FIRST, ahead of anything the literal text matched.
+///
+/// Consulted alongside the literal reading, never only when that matches
+/// nothing: in 7QP, `ORDES/JEF` matches `IDJEF`, `MTJEF`, `ORJEF` and `WAJEF`
+/// by NAME ("Jefferson …"), so the literal always matches, and Space would take
+/// the first — logging Idaho's Jefferson for a shorthand that unambiguously
+/// means Oregon's. The shorthand is not a guess: the first value says which
+/// state. Nor INSTEAD of the literal reading: `ORDES/WAK` is the start of a
+/// Washington county on the OR/WA line as much as a short Oregon one.
+List<ExchangeOption> matchExchangeOptionsInheriting(
+  String typed,
+  String? inherited,
+  List<ExchangeOption> options, {
+  Set<String> matchOn = const {'code', 'name'},
+  List<String> preferred = const [],
+}) {
+  final matches = matchExchangeOptions(typed, options, matchOn: matchOn, preferred: preferred);
+  if (inherited == null) return matches;
+  final exact = options.where((o) => o.code.toUpperCase() == inherited.toUpperCase()).toList();
+  if (exact.isEmpty) {
+    return matches.isNotEmpty ? matches : matchExchangeOptions(inherited, options, matchOn: matchOn, preferred: preferred);
+  }
+  return [...exact, ...matches.where((o) => o.code.toUpperCase() != inherited.toUpperCase())];
+}
+
 /// How closely [option] answers [query] — 0 the best, null not at all.
 ///
 /// The five tiers `matchExchangeOptions` ranks by, exposed because the SPACE

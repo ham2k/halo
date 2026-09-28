@@ -105,6 +105,16 @@ test("nothing scores until the operator says where WE are", () => {
   assert.deepEqual(scores[0].alerts, ["ourLocation"])
 })
 
+test("a DX entrant says DX, and scores", () => {
+  // We have no entity prefix of our own to resolve `DX` against, so without
+  // `parseOurLocations` it resolves to nothing and the whole log scores zero
+  // under `ourLocation`. NYQP counts no DX multiplier; the entry still counts.
+  const { scores, sheet } = run([qso({ location: "ERI" })], { ourLocation: "DX" })
+  assert.equal(scores[0].value, 2)
+  assert.deepEqual(scores[0].alerts, undefined)
+  assert.equal(sheet.weAreInParty, false)
+})
+
 test("an exchange that was never sent, and one that means nothing", () => {
   assert.deepEqual(run([qso({ location: "" })]).scores[0].alerts, ["missingExchange"])
   assert.deepEqual(run([qso({ location: "ZZZ", entityPrefix: "" })]).scores[0].alerts, ["invalidExchange"])

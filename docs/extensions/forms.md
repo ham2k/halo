@@ -38,6 +38,23 @@ export interface FormField {
   value?: any; // initial state value if not provided in host call state
   placeholder?: string;
   uppercase?: boolean; // force typed input to uppercase (callsign fields always are)
+  // Only used when fieldType === 'text': the codes the field takes, offered
+  // in a list under it as the operator types (matched on code and name, as a
+  // `kind: 'options'` logging control matches) and named beside it — a value
+  // that is none of them shows in red with a `?` once the operator pauses or
+  // leaves the field. Flagged, never refused: Save writes what was typed.
+  // `standalone` marks a code valid only as the WHOLE value, never inside a
+  // multiValue list. A host older than this renders the plain text field, and
+  // so does a settings list (or a field with an `icon`), which edits text in a
+  // dialog row of its own.
+  suggestions?: { code: string; name?: string; standalone?: boolean }[];
+  // Only used with `suggestions`: the field holds several codes joined by
+  // `separator` (a QSO party county line, `ALB/SCH`), each suggested, named
+  // and checked on its own. `inheritPrefix` as on a logging control's.
+  multiValue?: { separator: string; inheritPrefix?: number };
+  // Only used with `suggestions`: live-reformatting passes as a logging
+  // control's `transforms` — a county line typed `ALB,SCH` becomes `ALB/SCH`.
+  transforms?: { pattern: string; replacement: string; flags?: string }[];
   options?: FormFieldOption[]; // required for select/radio
   validate?: (value: any, state: Record<string, any>) => string | null | undefined | Promise<string | null | undefined>;
   transform?: (value: any, state: Record<string, any>) => any | Promise<any>;
